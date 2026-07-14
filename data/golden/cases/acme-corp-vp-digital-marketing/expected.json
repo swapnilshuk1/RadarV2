@@ -1,0 +1,151 @@
+{
+  "jobHash": "j-acme-vp-mumbai",
+  "role": "VP Digital Marketing",
+  "company": "Acme Corp",
+  "location": "Mumbai · India",
+  "scrapedFrom": "Indeed",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "VP",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "VP Digital Marketing",
+            "source": "title"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "Current title",
+        "detail": "You are VP Marketing already — lateral unless commercial scope grows."
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": []
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "GTM + CRM + Digital",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Experience in GTM, CRM, and digital platforms.",
+            "source": "snippet"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "All three delivered at Ford",
+        "detail": "GTM + Salesforce CRM + digital platform stack — end-to-end."
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": []
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Digital + CRM",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "GTM, CRM, and digital platforms.",
+            "source": "snippet"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "Full capability stack",
+        "detail": "capabilities.growth + capabilities.crm."
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "Mumbai",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Mumbai · India",
+            "source": "location"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "Adjacent, not preferred",
+        "detail": "preferences.locations lists Gurugram / Delhi NCR first; Mumbai is secondary."
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Supporting",
+      "bucket": "Contradicted",
+      "jdEvidence": {
+        "value": "On-site",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Must be located in Mumbai office (100% on-site).",
+            "source": "snippet"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "Hybrid preference violated",
+        "detail": "preferences.workModel = hybrid; 100% on-site in Mumbai is out of scope."
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Salesforce",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Stack: Salesforce, GA4.",
+            "source": "snippet"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "Platform-native",
+        "detail": "SFMC + CDP already run at APAC scale."
+      }
+    }
+  ]
+}

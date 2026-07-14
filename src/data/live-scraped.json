@@ -1,0 +1,5967 @@
+[
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-b3ddc90e9e82",
+    "role": "Head of Marketing",
+    "company": "Revvknew Technologies",
+    "location": "Remote",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "Indeed",
+    "primaryConcern": null,
+    "applyUrl": "https://in.indeed.com/rc/clk?jk=cade501d04db5d95",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Head",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Head of",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "CRM",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "CRM",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "APAC",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "APAC",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Salesforce",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Salesforce",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 22,
+      "llmMs": 3,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-07873ec4648e",
+    "role": "Head of Marketing",
+    "company": "Ram Fincorp",
+    "location": "Gurugram, Haryana, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4439016362/?eBP=BUDGET_EXHAUSTED_JOB&refId=%2F%2BLsEdznH4eauW6JMSb94Q%3D%3D&trackingId=J0Pxb9JrswVQJCvyWVVlcQ%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Head",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Head of",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Transformation",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "digital transformation",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": {
+            "P&L": true,
+            "Budget": true
+          },
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Performance",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "performance marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Gurugram",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Adobe",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Adobe",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 7,
+      "llmMs": 1036,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-d4acf7ed639e",
+    "role": "Senior Director - Performance Marketing",
+    "company": "Confidential",
+    "location": "APAC (Remote)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4437661536/?eBP=NOT_ELIGIBLE_FOR_CHARGING&refId=%2F%2BLsEdznH4eauW6JMSb94Q%3D%3D&trackingId=jGhzalyODay%2Fv%2B6Mj4TgYA%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Director",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Director",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "CEO",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Turnaround",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "restructuring",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "P&L Ownership",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Performance",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Performance Marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "APAC",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "APAC",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 16,
+      "llmMs": 1104,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-ccf6e227b06f",
+    "role": "Chief Growth Officer",
+    "company": "Meenakshi Sundararajan Group of Institutions",
+    "location": "Chennai, Tamil Nadu, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4439836078/?eBP=CwEAAAGfYmzcM3wFf1eNC__bMH1-HHVRA5u7sRWbuiQCwj9foTcWQLDcmkNyBd127X9uNK15VJ-CLWUTOcCuTMQ9Kr4dv_qYS3KezT7QsH8LNO0i52yJmDjfJEysBZhkM4KAXdmSQ3VakVTLnv1VG52PniDruFkXk7hgOpuA-Xrtb9krsX7_d7T7Nh58AmFn5oL3eZvZ0kG5lGoFxy6UYklraz3xNvpVPQTTI4yGUBke5x7VBjwSeYuE28zsiwgTpeacz8QDaUmMXi_KSj-Y1J04K0rK-F6_3A9SE8yg7cJa4XGWwT4k8VuJ7QvcUOgu77X8Z63MNbE0le31dAE7qxYoNN9i2HqtPIbg2P-sxO-iTEoEGv5c0uTDKPumrnDHQ3fxbrPXXSVtpY1G2pXc3nIUnSWaJNXtLSlcJGMZ83ZSommZ7Cw9KwA6sWjtg_1R_Xf9oBRZ3nPNPjRL7ugFdEwc_6ZesuahlhD09BJ_Y4LS4KXmmyQ2m_TXpv5ARID-7Lw6_LAD&refId=U%2BplLWDHjpUBnNh1xDD4Fg%3D%3D&trackingId=BpD6R9fTDe4Wp368voNg1w%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "CxO",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Chief Growth Officer",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Brand",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "brand strategy",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Chennai",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 51,
+      "llmMs": 6,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-e26320d19489",
+    "role": "Head of Growth Operations - Crypto exchange",
+    "company": "KOS International Talent Group",
+    "location": "APAC (Remote)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4439833811/?eBP=NOT_ELIGIBLE_FOR_CHARGING&refId=%2F%2BLsEdznH4eauW6JMSb94Q%3D%3D&trackingId=SjiWQRoFAUObn9RLsSWqkQ%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Head",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Head of",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Growth",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "growth strategy",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "APAC",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "APAC",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 1,
+      "llmMs": 10376,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-f0d866eb1bff",
+    "role": "VP/SVP-Marketing",
+    "company": "Aarvi Encon",
+    "location": "Mumbai, Maharashtra, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4439829501/?eBP=BUDGET_EXHAUSTED_JOB&refId=%2F%2BLsEdznH4eauW6JMSb94Q%3D%3D&trackingId=IMR6%2BS8fxGSLoceu3cdSkw%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "SVP",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "SVP",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Develop and execute the overall B2B marketing strategy",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "CRM",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "CRM",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Mumbai",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Salesforce",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Salesforce",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 1,
+      "llmMs": 1072,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-24421edc3cab",
+    "role": "Head of Growth and Marketing",
+    "company": "Elevation Capital",
+    "location": "Gurugram, Haryana, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4439845454/?eBP=BUDGET_EXHAUSTED_JOB&refId=%2F%2BLsEdznH4eauW6JMSb94Q%3D%3D&trackingId=TnFvJaw7mzidP0JOTtnBbw%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Head",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Head of",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Greenfield",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "0-to-1",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Brand",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "brand strategy",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Gurugram",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 1,
+      "llmMs": 10300,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-1e0e3f742752",
+    "role": "Associate Director - Digital Commerce/Integrated Marketing",
+    "company": "PepsiCo",
+    "location": "Gurugram, Haryana, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4435677024/?eBP=BUDGET_EXHAUSTED_JOB&refId=%2F%2BLsEdznH4eauW6JMSb94Q%3D%3D&trackingId=wG42erf6Gs3kfbEaPsCKng%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Director",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Director",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Performance",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "performance marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Gurugram",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 2,
+      "llmMs": 10431,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-d87bdfb32989",
+    "role": "Chief Marketing Officer",
+    "company": "Touchzing Media",
+    "location": "Mumbai",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "Naukri",
+    "primaryConcern": null,
+    "applyUrl": "https://www.naukri.com/job-listings-chief-marketing-officer-touchzing-media-pvt-ltd-mumbai-2-to-4-years-301224501675",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "CxO",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Chief Marketing Officer",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Mumbai",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 0,
+      "llmMs": 621,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-098dd0efa9a8",
+    "role": "Chief Marketing Officer",
+    "company": "JSW Steel",
+    "location": "Mumbai",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "Naukri",
+    "primaryConcern": null,
+    "applyUrl": "https://www.naukri.com/job-listings-chief-marketing-officer-jsw-steel-mumbai-15-to-21-years-140726034126",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "CxO",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Chief Marketing Officer",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "PNL Management",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Digital",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "digital marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Mumbai",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 1,
+      "llmMs": 604,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-4a326ceeb0cb",
+    "role": "VP / Head - Brand Marketing (Consumer Tech / Consumer Brand)",
+    "company": "Elevation Capital",
+    "location": "Bengaluru, Karnataka, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4437958611/?eBP=BUDGET_EXHAUSTED_JOB&refId=KlAUdUkJQoFOnJy44FNoOQ%3D%3D&trackingId=RDRbthBh9h2US%2FlBsvdW1g%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Brand",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Brand Marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Bengaluru",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 1,
+      "llmMs": 10347,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-566d4c85e709",
+    "role": "Head of Paid Media Operations- India",
+    "company": "Forbes Advisor",
+    "location": "Mumbai Metropolitan Region (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4424747838/?eBP=CwEAAAGfYmzoopKVJ5_TwWSNKW0aaq20YEDzJm6GgmcvcBxyog9xMB1WyvLUQyt9hBQ9MrPzAwqp3v0FnCBrbZdFLfqiHto5eaNzRtZIoShniWb3xV4LIcou1VXol9cJjyIGIJibXW7Pa507MY726uJphkuu20VZwkPWFQ-Mwfk0NN1ugIwkIl9XP2GjfYzzGVfjRRr-iCK4YOxjUJaEGuFNuqrTzi1w5adEvoJNFXQ5B1wsbDZnLHCM1N8lXUg0fR4N_U7oDScxCy-X1SvCJyrNkuL-iAjLqyvkLFonSPs-cRRKIFg71MHe9fYnNxIuqC-Mec3tSQbnh-AjsSigUR8CJjA2Zk0KRIMRZRuAJJGCOwiIDJv_DKtgenQkSIpWdZfpMM9JrCwyCxfJTcHaTBQTzkfvznFxfGjNxO-bfRjtcxfD3_obh7a8-Za1RDyCbFkP79NwSv5jzQzmTECX&refId=Xtl0xXJnm0IkkwLl8CyL3A%3D%3D&trackingId=Axg2HXWw31IOS7lVnDuvVQ%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Head",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Head of",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Performance",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "performance marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Mumbai",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 54,
+      "llmMs": 35,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-7a12b8c64bfd",
+    "role": "Head of Global Marketing of Alliedstar",
+    "company": "Straumann Group",
+    "location": "Delhi, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4430611891/?eBP=CwEAAAGfYfXmg__pRY4XpIlGI3iIsa_-Ur7eafRSeOTcnRGOOukFKncXZvu7uF2R54BkmpWK47dvoU1Isp06rFj_cdwrtVY9w-zUiTlB0cNl_aTFkeGsSl0ygux4vb4_15Dc2xZHzDdbAnuuxY8Xs2Aqc1UFs6IcZEeUvFKsieZlR44aAbvRGy6P1uur2SyK17wP-tfNYoA9im5AfckMKRA9NSt5O3VlRSdmBdV1hPDnOPt8t3TBbECcvEhLHbTvG0Aq5YIpkNRNfNr24TMf99JxJs0TnsugZBXfgqgDecY4TwuNSQ_ZvTgG_tPYN4wTfG46wUISYKm502EYmMoiwgT20VdzJGJdWaTBm7HNEvNBc_dMh5buv9-PkuKQtFKdGS-LRPpGOgoiAa1rdv71fuR5P5K4324iu0m3woRiZJQD1oBHnvNQkC_vF46BU7dNdCFpNHWwiHHIJRObuhV8Fiu81fHIHB0Se49PXoLUR5PEhtlUF4L9Kow2-V8fBvi5hNZRew&refId=KlAUdUkJQoFOnJy44FNoOQ%3D%3D&trackingId=I79TgaXH%2Fd4u%2BTiQ%2BHiwuA%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Head",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Head of",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Product Marketing",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "product marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Delhi",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 2,
+      "llmMs": 10469,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-03ba65eaf7f2",
+    "role": "Vice President, Global Growth and Marketing",
+    "company": "Cialfo",
+    "location": "Delhi, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4438009162/?eBP=CwEAAAGfYfcH_26tgPIoQat_kSudTuyoXGhwh46v2OR9Z_Y3yE7z3Cb7hf2pkDC_BRsntTeY3ire-mTlZ73oqmE9XOoZxaphXcmJCJe3QD5_kAdtN7G7aDOQxlOZrn6OE-FRpm3S4gADXByOqVYijzkK3Ip3ra_6xqyZ0SlWJBGJGQ40C_33Su-iKyeU_WhcI2PN_FF54xGGel1LEGdnsN6jR5QyZ8N45L7SVisRGxxiL-NMK8CmBaSZDBL6bY-MkpOtaDUFCNDHr2Te7CqmYhwvj7Z_6arZjRtflB_JYosA_RsfKe1woHH0GB1jQPNENfqwayBid1cUcX17LV6e4_ka9OMsnu-cGteZhoglvaoPdpAnPKhWgJq6uWZoao0VKry9SqG9S7WPouXutW7Uc78ExDRUFsGafRE0812nRXF1a_UfJ5rAfIsXJujBN_vEsNKt-03iFMlcTVbm-Ceq3qrm6q4zgoR_fWdeU6XgqnrUA9MlpUjV1NM&refId=fN2xDZRFltcLwBymq4wlpA%3D%3D&trackingId=OcyLk%2F4KqTAuX9xH7KjFLg%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "VP",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Vice President",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "CEO, COO, and Business Leaders",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Build a single global Growth and Marketing operating system",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Contribution to profitable revenue growth, customer acquisition, customer expansion, retention, market leadership, brand equity, commercial efficiency, marketing return on investment, EBITDA, and long-term enterprise value",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Product Marketing",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "product marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Delhi",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 4,
+      "llmMs": 1054,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-f93d910d29d4",
+    "role": "Amazon Brand Manager",
+    "company": "Gigabrands Ai",
+    "location": "Madurai",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "Naukri",
+    "primaryConcern": null,
+    "applyUrl": "https://www.naukri.com/job-listings-amazon-brand-manager-gigabrands-madurai-4-to-8-years-140726932975",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Client Satisfaction and Retention",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 2,
+      "llmMs": 10922,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-d4be58e21497",
+    "role": "Head - Partner Growth, Engagement & Insights",
+    "company": "Angel One",
+    "location": "New Delhi, Delhi, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4428223244/?eBP=BUDGET_EXHAUSTED_JOB&refId=Zqlc0t6qZUdwRpE8BXb4pA%3D%3D&trackingId=2TRdgRS3SONUw4tc5XQ8Dw%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "CRM",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "CRM",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Delhi",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 3,
+      "llmMs": 10419,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-38239011e477",
+    "role": "Marketing Head",
+    "company": "Weekday AI (YC W21)",
+    "location": "Delhi, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4439791951/?eBP=NOT_ELIGIBLE_FOR_CHARGING&refId=KlAUdUkJQoFOnJy44FNoOQ%3D%3D&trackingId=qOVC%2BF%2BezWxSp0Yvlb3PfQ%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Brand",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "brand marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Delhi",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Segment",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "segment",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 2,
+      "llmMs": 10415,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-15da3377d4b7",
+    "role": "Head of Marketing",
+    "company": "Healthify",
+    "location": "Bengaluru, Karnataka, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4440047606/?eBP=BUDGET_EXHAUSTED_JOB&refId=Zqlc0t6qZUdwRpE8BXb4pA%3D%3D&trackingId=b7Hsp53S979RtIUWyqLPXQ%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Head",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Head of",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Performance",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "performance marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Bengaluru",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 2,
+      "llmMs": 10388,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-7aafcdfa8f4a",
+    "role": "Associate Director – Strategy (Revenue & Product Growth)",
+    "company": "HighLevel",
+    "location": "India (Remote)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4430799333/?eBP=BUDGET_EXHAUSTED_JOB&refId=CjAyM5wpAZaNEK62ucU58w%3D%3D&trackingId=TEWdc4KJ8u2%2BpiwqKForDQ%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Director",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Director",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Transformation",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "business transformation",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "India",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "remote",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "remote-first",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 5,
+      "llmMs": 1,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-c1c4c09604c3",
+    "role": "Customer Sales Executive - Two Wheeler Loans",
+    "company": "Tata Capital",
+    "location": "Mumbai, Ganjam, Berhampur, Hyderabad, New Delhi, Pune, Chennai, Ahmedabad, Gurugram, Bengaluru",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "Naukri",
+    "primaryConcern": null,
+    "applyUrl": "https://www.naukri.com/job-listings-customer-sales-executive-two-wheeler-loans-tata-capital-ltd-mumbai-ganjam-berhampur-hyderabad-new-delhi-pune-chennai-ahmedabad-gurugram-bengaluru-0-to-7-years-140726500055",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Mumbai",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 0,
+      "llmMs": 10820,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-730c62a5fdf9",
+    "role": "VP Retail Marketing Strategy and Brand Partnerships",
+    "company": "HSBC",
+    "location": "Mumbai, Maharashtra, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4440023552/?eBP=BUDGET_EXHAUSTED_JOB&refId=rt2mk2VU9pa3VR6hH4LNMw%3D%3D&trackingId=wXp5Ah0TcxQ351B2AxBMGA%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Develop and execute HSBC India’s brand partnership strategy",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Demonstrating measurable business outcomes, customer acquisition, engagement and return on marketing investment",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Brand",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Brand Strategy",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Mumbai",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 5,
+      "llmMs": 856,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-5bedb5f63c65",
+    "role": "Senior Director - B2B Marketing",
+    "company": "Delhivery",
+    "location": "Bengaluru, Karnataka, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4437639743/?eBP=BUDGET_EXHAUSTED_JOB&refId=rt2mk2VU9pa3VR6hH4LNMw%3D%3D&trackingId=c8wvXnvl8Y4cgRb4OXGCDg%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Director",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Director",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Bengaluru",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 2,
+      "llmMs": 10389,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-5a2769562ba0",
+    "role": "Head of Growth, International",
+    "company": "FRND",
+    "location": "Bengaluru, Karnataka, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4439071000/?eBP=BUDGET_EXHAUSTED_JOB&refId=Z3OG6xNeyRe3MVva7cwYZQ%3D%3D&trackingId=zn3WIF7D72redEHJ9Gr8wg%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Head",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Head of",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Growth",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "growth team",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Bengaluru",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 2,
+      "llmMs": 10261,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-c63151a25fcd",
+    "role": "Head Marketing - Retail",
+    "company": "Consult Pro",
+    "location": "Gurugram, Haryana, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4426932657/?eBP=NOT_ELIGIBLE_FOR_CHARGING&refId=Z3OG6xNeyRe3MVva7cwYZQ%3D%3D&trackingId=JjcODr9XzJHk1FQqLGSTNQ%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Transformation",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "digital transformation",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Yes",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Performance",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "performance marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Gurugram",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 4,
+      "llmMs": 1237,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-f5f07fb32cd4",
+    "role": "Senior Partner Marketing Manager",
+    "company": "Adobe",
+    "location": "Bengaluru East, Karnataka, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4406507395/?eBP=CwEAAAGfYffwvagNNBg59WnhZeNwg6kuJAgDxXM_ovt2alDWZ9IjUdPyhBw2jxRUNwwzUBuTvWx3DN1Yu6sUrHH9Ph6vS2sppLRvEyfDTaKrO3AprUVofXVNAX9p2pFQ3C_iYIxQJH_nb1qGFjerzXmjsLGZB6x1Ds8YOV_NZ1sLlHbBUqamXS3195XEmF22FPs1GXqOQKmSnAhjMjQ-pewN4jPlw7FnUmaYoRM0mTIENEUBZzupJD2YGffnx5FylrgiwgrUbXUVNYZCSrhMiHEID-xQysL8y01vQfUmt1F7frtAaotAdXsOcb-CtXF3QueRi8AmOeXDwQVAU987IDLg-4wjo6BzvXFgQqTDcx_oXHoSLR5a5obWiDqcvf6_449mPeqTiP71Tr9qGFCvrLm3cd5BZ179UGIJZw-xuqdfbLTxDPVonbxecu2yJZYBVciVwRcqNnj97_IPYUB0Yvj-MrS2EPYKJ4D-2bxD_gNuoMOFOIHg&refId=Z3OG6xNeyRe3MVva7cwYZQ%3D%3D&trackingId=MA8YaADF%2F%2FFbBz3bqvaYig%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Bengaluru",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Adobe",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Adobe",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 4,
+      "llmMs": 10516,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-ff7f7645b940",
+    "role": "Senior Director - Content Marketing, Youth",
+    "company": "JioStar",
+    "location": "Mumbai, Maharashtra, India (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4430224544/?eBP=NOT_ELIGIBLE_FOR_CHARGING&refId=KlAUdUkJQoFOnJy44FNoOQ%3D%3D&trackingId=aPFHbwKPwJcO3DPUaPD%2FFw%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Director",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Director",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Marketing Lead for the Youth Cluster",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Performance",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "performance marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Mumbai",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 2,
+      "llmMs": 1002,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-aa8c4aef7044",
+    "role": "Associate Director - Customer Marketing",
+    "company": "Abbott",
+    "location": "Mumbai Metropolitan Region (On-site)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "LinkedIn",
+    "primaryConcern": null,
+    "applyUrl": "https://www.linkedin.com/jobs/view/4440013412/?eBP=BUDGET_EXHAUSTED_JOB&refId=Z3OG6xNeyRe3MVva7cwYZQ%3D%3D&trackingId=w7gcxiU43kDuNVW5pMKq3Q%3D%3D&trk=flagship3_search_srp_jobs",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Director",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Director",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "General Manager for India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "reports into the General Manager for India",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Brand",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Brand Marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Mumbai",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "onsite",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "On-site",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 3,
+      "llmMs": 10397,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-fd9a80633ad1",
+    "role": "Sales Executive",
+    "company": "Beingdigital Preneurr",
+    "location": "Kolkata, Hyderabad, Navi Mumbai",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "Naukri",
+    "primaryConcern": null,
+    "applyUrl": "https://www.naukri.com/job-listings-sales-executive-beingdigital-preneurr-kolkata-hyderabad-navi-mumbai-0-to-5-years-140726019949",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Digital",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Digital Marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Kolkata",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "remote",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Work From Home",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 0,
+      "llmMs": 10849,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-ea5ac636db69",
+    "role": "Sales Executive",
+    "company": "Ivysol Corporation",
+    "location": "Ludhiana(Punjab Agricultural University), Ahmedabad, Bengaluru(Peenya Industrial Area 2nd stage)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "Naukri",
+    "primaryConcern": null,
+    "applyUrl": "https://www.naukri.com/job-listings-sales-executive-ivysol-corporation-ludhiana-ahmedabad-bengaluru-2-to-7-years-130726020808",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "mandate@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Ahmedabad",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 2,
+      "llmMs": 1,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-1ad10d16aa59",
+    "role": "ICONIQA HOTEL - Chief Marketing Officer",
+    "company": "Royal Orchid & Regenta Hotels",
+    "location": "Mumbai",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "Naukri",
+    "primaryConcern": null,
+    "applyUrl": "https://www.naukri.com/job-listings-iconiqa-hotel-chief-marketing-officer-royal-orchid-hotels-ltd-mumbai-4-to-8-years-130726502883",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "CxO",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Chief Marketing Officer",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Develop and implement comprehensive marketing strategies to achieve business objectives",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "CRM",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "marketing automation",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Mumbai",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 0,
+      "llmMs": 770,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-990e7b943ebc",
+    "role": "Vice President- Marketing",
+    "company": "CIMET",
+    "location": "Gurugram, Jaipur",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "Naukri",
+    "primaryConcern": null,
+    "applyUrl": "https://www.naukri.com/job-listings-vice-president-marketing-cimet-gurugram-jaipur-10-to-15-years-220626003727",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "VP",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Vice President",
+              "source": "title"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "requiredLevel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "CEO",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "report directly to the CEO",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Grow B2C revenue by 5x over two years",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Own the full marketing budget end to end",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Performance",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "performance marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "India",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "Gurugram",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 2,
+      "llmMs": 759,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-0f9b3cdb0a23",
+    "role": "Marketing Head",
+    "company": "Acme Visa Solutions",
+    "location": "Ludhiana(Sarabha Nagar)",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "Naukri",
+    "primaryConcern": null,
+    "applyUrl": "https://www.naukri.com/job-listings-marketing-head-acme-visa-solutions-ludhiana-3-to-6-years-120326019763",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "3-7 years",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Develop and implement comprehensive marketing strategies, manage digital campaigns, generate leads, optimize ROI, and coordinate with sales teams",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Digital",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "digital marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 9,
+      "llmMs": 3347,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+    }
+  },
+  {
+    "extractorVersion": "1.0.0",
+    "promptVersion": "1.0.0",
+    "jobHash": "j-3af5d9de8f5b",
+    "role": "Marketing Head",
+    "company": "Dada Organics",
+    "location": "Rajkot",
+    "postedRelative": "Posted recently",
+    "scrapedFrom": "Naukri",
+    "primaryConcern": null,
+    "applyUrl": "https://www.naukri.com/job-listings-marketing-head-dada-organics-rajkot-4-to-6-years-090726015588",
+    "dimensions": [
+      {
+        "key": "requiredLevel",
+        "label": "Required Level",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "3-5 years",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Seniority check",
+          "detail": "Matches target title list"
+        }
+      },
+      {
+        "key": "reportingLine",
+        "label": "Reporting Line",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "reportingLine@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Reporting line alignment",
+          "detail": "CxO / MD reporting proven"
+        }
+      },
+      {
+        "key": "mandate",
+        "label": "Mandate",
+        "importance": "Core",
+        "bucket": "Adjacent",
+        "jdEvidence": {
+          "value": "Develop and execute marketing strategies to drive product growth, brand awareness, and business expansion",
+          "status": "Inferred",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "medium",
+          "extractorId": "groq:llama-3.3-70b-versatile"
+        },
+        "candidateProof": {
+          "headline": "Mandate alignment",
+          "detail": "Lifecycle stage matches profile"
+        }
+      },
+      {
+        "key": "commercialAccountability",
+        "label": "Commercial Accountability",
+        "importance": "Core",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "commercialAccountability@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "P&L Scale matches",
+          "detail": "Prior P&L / budget precedent"
+        }
+      },
+      {
+        "key": "functionalScope",
+        "label": "Functional Scope",
+        "importance": "Supporting",
+        "bucket": "Matched",
+        "jdEvidence": {
+          "value": "Product Marketing",
+          "status": "Explicit",
+          "evidence": [
+            {
+              "quote": "product marketing",
+              "source": "snippet"
+            }
+          ],
+          "provenance": "explicit",
+          "quality": "high",
+          "extractorId": "functionalScope@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Competency match",
+          "detail": "Full growth capability stack"
+        }
+      },
+      {
+        "key": "geography",
+        "label": "Geography",
+        "importance": "Supporting",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "geography@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Location match",
+          "detail": "Target market listing matches"
+        }
+      },
+      {
+        "key": "workModel",
+        "label": "Work Model",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "workModel@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Work model preference",
+          "detail": "Preferred work model"
+        }
+      },
+      {
+        "key": "technologyStack",
+        "label": "Technology Stack",
+        "importance": "Context",
+        "bucket": "Missing",
+        "jdEvidence": {
+          "value": null,
+          "status": "Missing",
+          "evidence": [],
+          "provenance": "llm",
+          "quality": "low",
+          "extractorId": "technologyStack@1.0.0"
+        },
+        "candidateProof": {
+          "headline": "Platform stack",
+          "detail": "Platform-native experience"
+        }
+      }
+    ],
+    "telemetry": {
+      "deterministicMs": 2,
+      "llmMs": 2842,
+      "llmCalled": true,
+      "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+    }
+  }
+]

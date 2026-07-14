@@ -1,0 +1,579 @@
+{
+  "runId": "run-1784028302401",
+  "startedAt": "2026-07-14T11:25:02.402Z",
+  "updatedAt": "2026-07-14T12:23:35.506Z",
+  "status": "completed",
+  "scraperVersion": "1.0.0",
+  "snapshotSchemaVersion": "1.0.0",
+  "extractorVersion": "1.0.0",
+  "recommendationSchemaVersion": "1.0.0",
+  "keywords": [
+    "Chief Marketing Officer",
+    "Chief Growth Officer",
+    "VP Marketing"
+  ],
+  "portals": [
+    "LinkedIn",
+    "Indeed",
+    "Naukri"
+  ],
+  "maxPages": 2,
+  "maxCardsPerPage": 10,
+  "units": [
+    {
+      "id": "LinkedIn:Chief Marketing Officer:1",
+      "portal": "LinkedIn",
+      "keyword": "Chief Marketing Officer",
+      "page": 1,
+      "status": "skipped_gated",
+      "attempts": 0,
+      "cardIds": []
+    },
+    {
+      "id": "LinkedIn:Chief Marketing Officer:2",
+      "portal": "LinkedIn",
+      "keyword": "Chief Marketing Officer",
+      "page": 2,
+      "status": "skipped_gated",
+      "attempts": 0,
+      "cardIds": []
+    },
+    {
+      "id": "LinkedIn:Chief Growth Officer:1",
+      "portal": "LinkedIn",
+      "keyword": "Chief Growth Officer",
+      "page": 1,
+      "status": "skipped_gated",
+      "attempts": 0,
+      "cardIds": []
+    },
+    {
+      "id": "LinkedIn:Chief Growth Officer:2",
+      "portal": "LinkedIn",
+      "keyword": "Chief Growth Officer",
+      "page": 2,
+      "status": "skipped_gated",
+      "attempts": 0,
+      "cardIds": []
+    },
+    {
+      "id": "LinkedIn:VP Marketing:1",
+      "portal": "LinkedIn",
+      "keyword": "VP Marketing",
+      "page": 1,
+      "status": "skipped_gated",
+      "attempts": 0,
+      "cardIds": []
+    },
+    {
+      "id": "LinkedIn:VP Marketing:2",
+      "portal": "LinkedIn",
+      "keyword": "VP Marketing",
+      "page": 2,
+      "status": "skipped_gated",
+      "attempts": 0,
+      "cardIds": []
+    },
+    {
+      "id": "Indeed:Chief Marketing Officer:1",
+      "portal": "Indeed",
+      "keyword": "Chief Marketing Officer",
+      "page": 1,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Indeed:Chief Marketing Officer:1#4a006b2934ce94f7"
+      ],
+      "startedAt": "2026-07-14T11:27:21.844Z",
+      "finishedAt": "2026-07-14T11:34:04.671Z"
+    },
+    {
+      "id": "Indeed:Chief Marketing Officer:2",
+      "portal": "Indeed",
+      "keyword": "Chief Marketing Officer",
+      "page": 2,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Indeed:Chief Marketing Officer:2#4a006b2934ce94f7"
+      ],
+      "startedAt": "2026-07-14T11:34:07.060Z",
+      "finishedAt": "2026-07-14T11:37:44.039Z"
+    },
+    {
+      "id": "Indeed:Chief Growth Officer:1",
+      "portal": "Indeed",
+      "keyword": "Chief Growth Officer",
+      "page": 1,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Indeed:Chief Growth Officer:1#4a006b2934ce94f7"
+      ],
+      "startedAt": "2026-07-14T11:37:46.652Z",
+      "finishedAt": "2026-07-14T11:43:22.957Z"
+    },
+    {
+      "id": "Indeed:Chief Growth Officer:2",
+      "portal": "Indeed",
+      "keyword": "Chief Growth Officer",
+      "page": 2,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Indeed:Chief Growth Officer:2#4a006b2934ce94f7"
+      ],
+      "startedAt": "2026-07-14T11:43:24.548Z",
+      "finishedAt": "2026-07-14T11:48:01.351Z"
+    },
+    {
+      "id": "Indeed:VP Marketing:1",
+      "portal": "Indeed",
+      "keyword": "VP Marketing",
+      "page": 1,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Indeed:VP Marketing:1#4a006b2934ce94f7"
+      ],
+      "startedAt": "2026-07-14T11:48:02.660Z",
+      "finishedAt": "2026-07-14T11:53:08.334Z"
+    },
+    {
+      "id": "Indeed:VP Marketing:2",
+      "portal": "Indeed",
+      "keyword": "VP Marketing",
+      "page": 2,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Indeed:VP Marketing:2#4a006b2934ce94f7"
+      ],
+      "startedAt": "2026-07-14T11:53:10.800Z",
+      "finishedAt": "2026-07-14T11:57:18.145Z"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:1",
+      "portal": "Naukri",
+      "keyword": "Chief Marketing Officer",
+      "page": 1,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Naukri:Chief Marketing Officer:1#4b8d52359b64b860",
+        "Naukri:Chief Marketing Officer:1#56ded03516565fc1",
+        "Naukri:Chief Marketing Officer:1#ca7a454bf8a63c74",
+        "Naukri:Chief Marketing Officer:1#3e8341c83634efd8",
+        "Naukri:Chief Marketing Officer:1#05fafd40a8075765"
+      ],
+      "startedAt": "2026-07-14T11:57:27.184Z",
+      "finishedAt": "2026-07-14T12:02:55.875Z"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:2",
+      "portal": "Naukri",
+      "keyword": "Chief Marketing Officer",
+      "page": 2,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Naukri:Chief Marketing Officer:2#5ab28de37b46abcf",
+        "Naukri:Chief Marketing Officer:2#bf16f71c4f0f1369",
+        "Naukri:Chief Marketing Officer:2#43d3f8a91ef66ea8",
+        "Naukri:Chief Marketing Officer:2#9d462f39929ccf3c",
+        "Naukri:Chief Marketing Officer:2#d1b5e2122738872f"
+      ],
+      "startedAt": "2026-07-14T12:02:57.729Z",
+      "finishedAt": "2026-07-14T12:08:34.765Z"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:1",
+      "portal": "Naukri",
+      "keyword": "Chief Growth Officer",
+      "page": 1,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Naukri:Chief Growth Officer:1#baaa8f2f55e025c4",
+        "Naukri:Chief Growth Officer:1#5f453acca362a34d",
+        "Naukri:Chief Growth Officer:1#a8e2eb2d3dfca3d1",
+        "Naukri:Chief Growth Officer:1#51e0505ffbe51dd5",
+        "Naukri:Chief Growth Officer:1#d218bc1dbb86dcf8"
+      ],
+      "startedAt": "2026-07-14T12:08:36.116Z",
+      "finishedAt": "2026-07-14T12:11:58.147Z"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:2",
+      "portal": "Naukri",
+      "keyword": "Chief Growth Officer",
+      "page": 2,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Naukri:Chief Growth Officer:2#e786c82a4d18a925",
+        "Naukri:Chief Growth Officer:2#253f434e5c1d2f9b",
+        "Naukri:Chief Growth Officer:2#6ec76d4b0ce8bfb6",
+        "Naukri:Chief Growth Officer:2#362ab1ccdb68d8c6",
+        "Naukri:Chief Growth Officer:2#d6a8db955dca4193"
+      ],
+      "startedAt": "2026-07-14T12:11:59.064Z",
+      "finishedAt": "2026-07-14T12:15:23.005Z"
+    },
+    {
+      "id": "Naukri:VP Marketing:1",
+      "portal": "Naukri",
+      "keyword": "VP Marketing",
+      "page": 1,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Naukri:VP Marketing:1#56ded03516565fc1",
+        "Naukri:VP Marketing:1#deb3e32860b6f809",
+        "Naukri:VP Marketing:1#93a7b14d7318c901",
+        "Naukri:VP Marketing:1#c467cb4cee0a8729",
+        "Naukri:VP Marketing:1#cd015fb2c03887d2"
+      ],
+      "startedAt": "2026-07-14T12:15:24.025Z",
+      "finishedAt": "2026-07-14T12:20:05.546Z"
+    },
+    {
+      "id": "Naukri:VP Marketing:2",
+      "portal": "Naukri",
+      "keyword": "VP Marketing",
+      "page": 2,
+      "status": "done",
+      "attempts": 1,
+      "cardIds": [
+        "Naukri:VP Marketing:2#66a820cc0c0bfe2c",
+        "Naukri:VP Marketing:2#a59b20040a8642e0",
+        "Naukri:VP Marketing:2#14124b031cfc2d59",
+        "Naukri:VP Marketing:2#277a6bc74b60fc64",
+        "Naukri:VP Marketing:2#32e557be222402a4"
+      ],
+      "startedAt": "2026-07-14T12:20:06.814Z",
+      "finishedAt": "2026-07-14T12:23:35.506Z"
+    }
+  ],
+  "cards": [
+    {
+      "id": "Indeed:Chief Marketing Officer:1#4a006b2934ce94f7",
+      "cardHash": "4a006b2934ce94f7",
+      "parentUnitId": "Indeed:Chief Marketing Officer:1",
+      "status": "done",
+      "attempts": 4,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\4a006b2934ce94f7.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\4a006b2934ce94f7.json"
+    },
+    {
+      "id": "Indeed:Chief Marketing Officer:2#4a006b2934ce94f7",
+      "cardHash": "4a006b2934ce94f7",
+      "parentUnitId": "Indeed:Chief Marketing Officer:2",
+      "status": "skipped_empty",
+      "attempts": 10,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\4a006b2934ce94f7.json"
+    },
+    {
+      "id": "Indeed:Chief Growth Officer:1#4a006b2934ce94f7",
+      "cardHash": "4a006b2934ce94f7",
+      "parentUnitId": "Indeed:Chief Growth Officer:1",
+      "status": "skipped_empty",
+      "attempts": 9,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\4a006b2934ce94f7.json"
+    },
+    {
+      "id": "Indeed:Chief Growth Officer:2#4a006b2934ce94f7",
+      "cardHash": "4a006b2934ce94f7",
+      "parentUnitId": "Indeed:Chief Growth Officer:2",
+      "status": "skipped_empty",
+      "attempts": 9,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\4a006b2934ce94f7.json"
+    },
+    {
+      "id": "Indeed:VP Marketing:1#4a006b2934ce94f7",
+      "cardHash": "4a006b2934ce94f7",
+      "parentUnitId": "Indeed:VP Marketing:1",
+      "status": "skipped_empty",
+      "attempts": 10,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\4a006b2934ce94f7.json"
+    },
+    {
+      "id": "Indeed:VP Marketing:2#4a006b2934ce94f7",
+      "cardHash": "4a006b2934ce94f7",
+      "parentUnitId": "Indeed:VP Marketing:2",
+      "status": "skipped_empty",
+      "attempts": 9,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\4a006b2934ce94f7.json"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:1#4b8d52359b64b860",
+      "cardHash": "4b8d52359b64b860",
+      "parentUnitId": "Naukri:Chief Marketing Officer:1",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\4b8d52359b64b860.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\4b8d52359b64b860.json"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:1#56ded03516565fc1",
+      "cardHash": "56ded03516565fc1",
+      "parentUnitId": "Naukri:Chief Marketing Officer:1",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\56ded03516565fc1.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\56ded03516565fc1.json"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:1#ca7a454bf8a63c74",
+      "cardHash": "ca7a454bf8a63c74",
+      "parentUnitId": "Naukri:Chief Marketing Officer:1",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\ca7a454bf8a63c74.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\ca7a454bf8a63c74.json"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:1#3e8341c83634efd8",
+      "cardHash": "3e8341c83634efd8",
+      "parentUnitId": "Naukri:Chief Marketing Officer:1",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\3e8341c83634efd8.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\3e8341c83634efd8.json"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:1#05fafd40a8075765",
+      "cardHash": "05fafd40a8075765",
+      "parentUnitId": "Naukri:Chief Marketing Officer:1",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\05fafd40a8075765.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\05fafd40a8075765.json"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:2#5ab28de37b46abcf",
+      "cardHash": "5ab28de37b46abcf",
+      "parentUnitId": "Naukri:Chief Marketing Officer:2",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\5ab28de37b46abcf.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\5ab28de37b46abcf.json"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:2#bf16f71c4f0f1369",
+      "cardHash": "bf16f71c4f0f1369",
+      "parentUnitId": "Naukri:Chief Marketing Officer:2",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\bf16f71c4f0f1369.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\bf16f71c4f0f1369.json"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:2#43d3f8a91ef66ea8",
+      "cardHash": "43d3f8a91ef66ea8",
+      "parentUnitId": "Naukri:Chief Marketing Officer:2",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\43d3f8a91ef66ea8.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\43d3f8a91ef66ea8.json"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:2#9d462f39929ccf3c",
+      "cardHash": "9d462f39929ccf3c",
+      "parentUnitId": "Naukri:Chief Marketing Officer:2",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\9d462f39929ccf3c.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\9d462f39929ccf3c.json"
+    },
+    {
+      "id": "Naukri:Chief Marketing Officer:2#d1b5e2122738872f",
+      "cardHash": "d1b5e2122738872f",
+      "parentUnitId": "Naukri:Chief Marketing Officer:2",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\d1b5e2122738872f.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\d1b5e2122738872f.json"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:1#baaa8f2f55e025c4",
+      "cardHash": "baaa8f2f55e025c4",
+      "parentUnitId": "Naukri:Chief Growth Officer:1",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\baaa8f2f55e025c4.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\baaa8f2f55e025c4.json"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:1#5f453acca362a34d",
+      "cardHash": "5f453acca362a34d",
+      "parentUnitId": "Naukri:Chief Growth Officer:1",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\5f453acca362a34d.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\5f453acca362a34d.json"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:1#a8e2eb2d3dfca3d1",
+      "cardHash": "a8e2eb2d3dfca3d1",
+      "parentUnitId": "Naukri:Chief Growth Officer:1",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\a8e2eb2d3dfca3d1.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\a8e2eb2d3dfca3d1.json"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:1#51e0505ffbe51dd5",
+      "cardHash": "51e0505ffbe51dd5",
+      "parentUnitId": "Naukri:Chief Growth Officer:1",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\51e0505ffbe51dd5.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\51e0505ffbe51dd5.json"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:1#d218bc1dbb86dcf8",
+      "cardHash": "d218bc1dbb86dcf8",
+      "parentUnitId": "Naukri:Chief Growth Officer:1",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\d218bc1dbb86dcf8.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\d218bc1dbb86dcf8.json"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:2#e786c82a4d18a925",
+      "cardHash": "e786c82a4d18a925",
+      "parentUnitId": "Naukri:Chief Growth Officer:2",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\e786c82a4d18a925.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\e786c82a4d18a925.json"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:2#253f434e5c1d2f9b",
+      "cardHash": "253f434e5c1d2f9b",
+      "parentUnitId": "Naukri:Chief Growth Officer:2",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\253f434e5c1d2f9b.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\253f434e5c1d2f9b.json"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:2#6ec76d4b0ce8bfb6",
+      "cardHash": "6ec76d4b0ce8bfb6",
+      "parentUnitId": "Naukri:Chief Growth Officer:2",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\6ec76d4b0ce8bfb6.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\6ec76d4b0ce8bfb6.json"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:2#362ab1ccdb68d8c6",
+      "cardHash": "362ab1ccdb68d8c6",
+      "parentUnitId": "Naukri:Chief Growth Officer:2",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\362ab1ccdb68d8c6.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\362ab1ccdb68d8c6.json"
+    },
+    {
+      "id": "Naukri:Chief Growth Officer:2#d6a8db955dca4193",
+      "cardHash": "d6a8db955dca4193",
+      "parentUnitId": "Naukri:Chief Growth Officer:2",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\d6a8db955dca4193.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\d6a8db955dca4193.json"
+    },
+    {
+      "id": "Naukri:VP Marketing:1#56ded03516565fc1",
+      "cardHash": "56ded03516565fc1",
+      "parentUnitId": "Naukri:VP Marketing:1",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\56ded03516565fc1.json"
+    },
+    {
+      "id": "Naukri:VP Marketing:1#deb3e32860b6f809",
+      "cardHash": "deb3e32860b6f809",
+      "parentUnitId": "Naukri:VP Marketing:1",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\deb3e32860b6f809.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\deb3e32860b6f809.json"
+    },
+    {
+      "id": "Naukri:VP Marketing:1#93a7b14d7318c901",
+      "cardHash": "93a7b14d7318c901",
+      "parentUnitId": "Naukri:VP Marketing:1",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\93a7b14d7318c901.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\93a7b14d7318c901.json"
+    },
+    {
+      "id": "Naukri:VP Marketing:1#c467cb4cee0a8729",
+      "cardHash": "c467cb4cee0a8729",
+      "parentUnitId": "Naukri:VP Marketing:1",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\c467cb4cee0a8729.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\c467cb4cee0a8729.json"
+    },
+    {
+      "id": "Naukri:VP Marketing:1#cd015fb2c03887d2",
+      "cardHash": "cd015fb2c03887d2",
+      "parentUnitId": "Naukri:VP Marketing:1",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\cd015fb2c03887d2.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\cd015fb2c03887d2.json"
+    },
+    {
+      "id": "Naukri:VP Marketing:2#66a820cc0c0bfe2c",
+      "cardHash": "66a820cc0c0bfe2c",
+      "parentUnitId": "Naukri:VP Marketing:2",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\66a820cc0c0bfe2c.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\66a820cc0c0bfe2c.json"
+    },
+    {
+      "id": "Naukri:VP Marketing:2#a59b20040a8642e0",
+      "cardHash": "a59b20040a8642e0",
+      "parentUnitId": "Naukri:VP Marketing:2",
+      "status": "skipped_empty",
+      "attempts": 2,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\a59b20040a8642e0.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\a59b20040a8642e0.json"
+    },
+    {
+      "id": "Naukri:VP Marketing:2#14124b031cfc2d59",
+      "cardHash": "14124b031cfc2d59",
+      "parentUnitId": "Naukri:VP Marketing:2",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\14124b031cfc2d59.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\14124b031cfc2d59.json"
+    },
+    {
+      "id": "Naukri:VP Marketing:2#277a6bc74b60fc64",
+      "cardHash": "277a6bc74b60fc64",
+      "parentUnitId": "Naukri:VP Marketing:2",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\277a6bc74b60fc64.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\277a6bc74b60fc64.json"
+    },
+    {
+      "id": "Naukri:VP Marketing:2#32e557be222402a4",
+      "cardHash": "32e557be222402a4",
+      "parentUnitId": "Naukri:VP Marketing:2",
+      "status": "done",
+      "attempts": 1,
+      "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\snapshots\\32e557be222402a4.json",
+      "extractionPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\.scraper-cache\\extractions\\32e557be222402a4.json"
+    }
+  ],
+  "finishedAt": "2026-07-14T12:23:36.860Z"
+}

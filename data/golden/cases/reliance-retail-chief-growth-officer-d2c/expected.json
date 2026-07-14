@@ -1,0 +1,165 @@
+{
+  "jobHash": "j-reliance-cgo",
+  "role": "Chief Growth Officer, D2C",
+  "company": "Reliance Retail",
+  "location": "Mumbai · India",
+  "scrapedFrom": "LinkedIn",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "CxO",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Chief Growth Officer",
+            "source": "title"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "CGO is on your target list",
+        "detail": "strategy.targetTitles includes CGO."
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "CEO",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Reports to the CEO, Reliance Retail Digital.",
+            "source": "snippet"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "CxO reporting proven",
+        "detail": "Prior reporting into CMO / CEO layer at Ford and BMW."
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Transformation",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Re-platform Salesforce CRM within 12 months.",
+            "source": "snippet"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "13-market Salesforce reset in 12 months",
+        "detail": "Exact playbook already delivered once."
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "D2C P&L",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Owns D2C P&L (₹300 Cr+ topline).",
+            "source": "snippet"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "$8M Ford + ₹36 Cr BMW",
+        "detail": "Comparable P&L archetype, larger commercial altitude."
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Growth + CRM",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Growth, CRM, and lifecycle marketing.",
+            "source": "snippet"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "Full capability stack",
+        "detail": "capabilities.growth + capabilities.crm explicit."
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Mumbai",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Mumbai · India",
+            "source": "location"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "Preferred location",
+        "detail": "preferences.locations includes Mumbai."
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Hybrid",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Hybrid, 3 days in Mumbai HQ.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Salesforce",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Stack: Salesforce Marketing Cloud, CDP.",
+            "source": "snippet"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "Platform-native",
+        "detail": "Already run across 13 markets."
+      }
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "jobHash": "j-tcs-transformation",
+  "role": "Transformation Lead",
+  "company": "Tata Consultancy Services",
+  "location": "Bengaluru · India",
+  "scrapedFrom": "Naukri",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Contradicted",
+      "jdEvidence": {
+        "value": "5–8 yrs",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "5–8 years experience.",
+            "source": "snippet"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "20 yrs; VP → CMO trajectory",
+        "detail": "This is a two-notch downgrade — Scrum / PMO delivery, not executive."
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": []
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "Agile transformation",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Scrum, PMO, and project management.",
+            "source": "snippet"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "Transformation family match",
+        "detail": "Adjacent theme, wrong altitude."
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": []
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "PMO / delivery",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Scrum, PMO, and project management.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Bengaluru",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Bengaluru · India",
+            "source": "location"
+          }
+        ]
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Supporting",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": []
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": []
+      }
+    }
+  ]
+}
