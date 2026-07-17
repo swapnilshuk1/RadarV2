@@ -1,7 +1,0 @@
-2026/07/17-12:18:47.290 1f08 Reusing MANIFEST C:\Users\swapn\Downloads\radar-local-v2\scraper-profile\Default\Local Storage\leveldb/MANIFEST-000001
-2026/07/17-12:18:48.005 1f08 Recovering log #4
-2026/07/17-12:18:48.006 1f08 Level-0 table #6: started
-2026/07/17-12:18:48.939 1f08 Level-0 table #6: 14865 bytes OK
-2026/07/17-12:18:49.062 1f08 Recovering log #6
-2026/07/17-12:18:49.211 1f08 Reusing old log C:\Users\swapn\Downloads\radar-local-v2\scraper-profile\Default\Local Storage\leveldb/000006.log 
-2026/07/17-12:18:49.215 1f08 Delete type=0 #4
