@@ -255,14 +255,39 @@ function selectOpening(record: RecommendationRecord, source: OpportunitySource):
   }
 }
 
+export function cleanDimValue(val: any): string {
+  if (!val) return "";
+  let obj = val;
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        obj = JSON.parse(val);
+      } catch {
+        return val;
+      }
+    } else {
+      return val;
+    }
+  }
+  if (typeof obj === "object" && obj !== null) {
+    return obj.rawValue || obj.canonicalValue || obj.value || "";
+  }
+  return String(val);
+}
+
 /** Generate dynamic narrative using general editorial playbook templates */
 function generateDynamicNarrative(
   record: RecommendationRecord,
   source: OpportunitySource,
 ): EditorialNarrative {
-  const level = dim(source, "requiredLevel")?.jdEvidence.value ?? source.role;
-  const mandate = dim(source, "mandate")?.jdEvidence.value ?? "";
-  const commercial = dim(source, "commercialAccountability")?.jdEvidence.value ?? "";
+  const rawLevel = dim(source, "requiredLevel")?.jdEvidence.value ?? source.role;
+  const rawMandate = dim(source, "mandate")?.jdEvidence.value ?? "";
+  const rawCommercial = dim(source, "commercialAccountability")?.jdEvidence.value ?? "";
+
+  const level = cleanDimValue(rawLevel);
+  const mandate = cleanDimValue(rawMandate);
+  const commercial = cleanDimValue(rawCommercial);
   
   const recommendation = selectOpening(record, source);
 

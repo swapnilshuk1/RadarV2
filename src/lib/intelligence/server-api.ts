@@ -1,45 +1,54 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRepositories } from "../../data/sqlite/db";
+import { OpportunityService } from "./services/OpportunityService";
 import type { OpportunitySource } from "../../data/opportunity-fixtures";
-import type { Extraction } from "../../domain/entities";
 
 export const getOpportunitiesFn = createServerFn({ method: "GET" }).handler(async () => {
-  const repos = getRepositories();
-  const ops = repos.opportunities.findOpportunities({ status: 'Active' });
+  const service = new OpportunityService();
+  const ops = service.getActiveOpportunities();
   
-  const results: OpportunitySource[] = [];
+  const results: any[] = [];
+  
+  // HACK: Fallback to SQLite raw queries for Company name and Document dimensions 
+  // until we build the full UI models.
+  const db = require("../../data/sqlite/provider").getDatabase();
   
   for (const op of ops) {
-    const company = (repos as any).companies.findByName((op as any).companyId); // Wait, findById needed? 
-    // Actually, we don't have findById on companies yet. We can just use raw sqlite.
-    const db = require("../../data/sqlite/db").getDatabase();
     const companyRow = db.prepare("SELECT * FROM companies WHERE id = ?").get(op.companyId) as any;
-    
-    const listingRow = db.prepare("SELECT * FROM source_listings WHERE opportunity_id = ? LIMIT 1").get(op.id) as any;
-    if (!listingRow) continue;
-    
-    const extractionRow = db.prepare("SELECT * FROM extractions WHERE source_listing_id = ? LIMIT 1").get(listingRow.id) as any;
+    const documentRow = db.prepare("SELECT * FROM documents WHERE opportunity_id = ? LIMIT 1").get(op.id) as any;
     
     let dimensions = [];
-    if (extractionRow) {
+    if (documentRow && documentRow.payload_type === "Structured") {
       try {
-        const rawJson = JSON.parse(extractionRow.raw_json);
+        const rawJson = JSON.parse(documentRow.content);
         dimensions = rawJson.dimensions || [];
       } catch (e) {}
     }
     
     results.push({
       jobHash: op.id,
-      role: op.canonicalRole,
+      role: op.canonicalTitle,
       company: companyRow ? companyRow.name : "Unknown",
-      location: "India", // fallback
-      postedRelative: listingRow.posted_at || "Recently",
-      scrapedFrom: listingRow.portal,
-      applyUrl: listingRow.url,
+      location: op.location || "Unknown",
+      postedRelative: op.postingWindow || "Recently",
+      scrapedFrom: "Careers",
+      applyUrl: "", 
       dimensions: dimensions,
       primaryConcern: null
-    } as any);
+    });
   }
   
-  return results;
+  return results as OpportunitySource[];
 });
+
+export const explainOpportunityFn = createServerFn({ method: "GET" })
+  .validator((d: { opportunityId: string, personId: string }) => d)
+  .handler(async ({ data }) => {
+    const service = new OpportunityService();
+    const explanation = service.explainOpportunity(data.opportunityId, data.personId);
+    
+    if (!explanation) {
+      throw new Error("Explanation not found or incomplete reasoning chain");
+    }
+
+    return explanation;
+  });

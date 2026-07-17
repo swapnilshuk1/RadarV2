@@ -1,0 +1,377 @@
+{
+  "Salesforce": {
+    "category": "CRM",
+    "aliases": ["SFDC", "Sales Cloud", "Salesforce CRM", "Salesforce.com", "Salesforce Service Cloud", "Salesforce Marketing Cloud"],
+    "vendor": "Salesforce"
+  },
+  "HubSpot": {
+    "category": "CRM",
+    "aliases": ["HubSpot CRM", "HubSpot Sales Hub", "HubSpot Service Hub"],
+    "vendor": "HubSpot"
+  },
+  "Microsoft Dynamics": {
+    "category": "CRM",
+    "aliases": ["Dynamics 365", "Dynamics CRM", "MS Dynamics", "Microsoft Dynamics 365", "D365"],
+    "vendor": "Microsoft"
+  },
+  "Zoho": {
+    "category": "CRM",
+    "aliases": ["Zoho CRM", "Zoho One", "Zoho Analytics"],
+    "vendor": "Zoho"
+  },
+  "Pipedrive": {
+    "category": "CRM",
+    "aliases": ["Pipedrive CRM"],
+    "vendor": "Pipedrive"
+  },
+  "Freshsales": {
+    "category": "CRM",
+    "aliases": ["Freshworks CRM", "Freshdesk", "Freshworks"],
+    "vendor": "Freshworks"
+  },
+  "SAP": {
+    "category": "ERP",
+    "aliases": ["SAP S/4HANA", "SAP ECC", "SAP ERP", "S4HANA", "S/4 HANA", "SAP HANA", "SAP R/3", "SAP MM", "SAP SD", "SAP FI", "SAP BW"],
+    "vendor": "SAP"
+  },
+  "Oracle": {
+    "category": "ERP",
+    "aliases": ["Oracle ERP", "Oracle Fusion", "Oracle Cloud", "Oracle E-Business Suite", "Oracle EBS", "Oracle Financials", "JD Edwards", "PeopleSoft"],
+    "vendor": "Oracle"
+  },
+  "NetSuite": {
+    "category": "ERP",
+    "aliases": ["Oracle NetSuite", "NetSuite ERP", "NetSuite CRM"],
+    "vendor": "Oracle"
+  },
+  "Workday": {
+    "category": "ERP",
+    "aliases": ["Workday HCM", "Workday Finance", "Workday HR"],
+    "vendor": "Workday"
+  },
+  "Microsoft Dynamics ERP": {
+    "category": "ERP",
+    "aliases": ["Dynamics 365 Finance", "Dynamics 365 Supply Chain", "Dynamics AX", "Navision", "Business Central"],
+    "vendor": "Microsoft"
+  },
+  "Epicor": {
+    "category": "ERP",
+    "aliases": ["Epicor ERP", "Epicor Kinetic"],
+    "vendor": "Epicor"
+  },
+  "Infor": {
+    "category": "ERP",
+    "aliases": ["Infor ERP", "Infor CloudSuite", "Infor LN"],
+    "vendor": "Infor"
+  },
+  "Google Analytics": {
+    "category": "Analytics",
+    "aliases": ["GA4", "Universal Analytics", "GA", "Google Analytics 4"],
+    "vendor": "Google"
+  },
+  "Adobe Analytics": {
+    "category": "Analytics",
+    "aliases": ["Adobe Experience Cloud", "SiteCatalyst", "Omniture"],
+    "vendor": "Adobe"
+  },
+  "Tableau": {
+    "category": "Analytics",
+    "aliases": ["Tableau Desktop", "Tableau Server", "Tableau Online", "Tableau Public"],
+    "vendor": "Salesforce"
+  },
+  "Power BI": {
+    "category": "Analytics",
+    "aliases": ["PowerBI", "Microsoft Power BI", "Power BI Desktop", "PBIX"],
+    "vendor": "Microsoft"
+  },
+  "Looker": {
+    "category": "Analytics",
+    "aliases": ["Looker Studio", "Google Looker", "LookML"],
+    "vendor": "Google"
+  },
+  "Mixpanel": {
+    "category": "Analytics",
+    "aliases": ["Mixpanel Analytics"],
+    "vendor": "Mixpanel"
+  },
+  "Amplitude": {
+    "category": "Analytics",
+    "aliases": ["Amplitude Analytics"],
+    "vendor": "Amplitude"
+  },
+  "Segment": {
+    "category": "Analytics",
+    "aliases": ["Twilio Segment", "Segment CDP"],
+    "vendor": "Twilio"
+  },
+  "Qlik": {
+    "category": "Analytics",
+    "aliases": ["QlikView", "Qlik Sense", "Qlik Cloud"],
+    "vendor": "Qlik"
+  },
+  "Sisense": {
+    "category": "Analytics",
+    "aliases": ["Sisense BI"],
+    "vendor": "Sisense"
+  },
+  "Domo": {
+    "category": "Analytics",
+    "aliases": ["Domo BI"],
+    "vendor": "Domo"
+  },
+  "AWS": {
+    "category": "Cloud",
+    "aliases": ["Amazon Web Services", "Amazon AWS", "EC2", "S3", "Lambda", "AWS Cloud", "Amazon EC2", "Amazon S3"],
+    "vendor": "Amazon"
+  },
+  "Azure": {
+    "category": "Cloud",
+    "aliases": ["Microsoft Azure", "Azure Cloud", "Azure DevOps", "Azure Kubernetes Service", "AKS", "Azure Functions", "Azure Data Factory"],
+    "vendor": "Microsoft"
+  },
+  "Google Cloud": {
+    "category": "Cloud",
+    "aliases": ["GCP", "Google Cloud Platform", "BigQuery", "Google BigQuery", "Cloud Run", "GKE"],
+    "vendor": "Google"
+  },
+  "Snowflake": {
+    "category": "Cloud",
+    "aliases": ["Snowflake Data Cloud", "Snowflake DWH", "Snowflake Warehouse"],
+    "vendor": "Snowflake"
+  },
+  "Databricks": {
+    "category": "Cloud",
+    "aliases": ["Azure Databricks", "Databricks Lakehouse"],
+    "vendor": "Databricks"
+  },
+  "Marketo": {
+    "category": "MarTech",
+    "aliases": ["Adobe Marketo", "Marketo Engage", "Marketo Automation"],
+    "vendor": "Adobe"
+  },
+  "Mailchimp": {
+    "category": "MarTech",
+    "aliases": ["Intuit Mailchimp", "Mailchimp Email"],
+    "vendor": "Intuit"
+  },
+  "Pardot": {
+    "category": "MarTech",
+    "aliases": ["Salesforce Pardot", "Account Engagement"],
+    "vendor": "Salesforce"
+  },
+  "Klaviyo": {
+    "category": "MarTech",
+    "aliases": [],
+    "vendor": "Klaviyo"
+  },
+  "HubSpot Marketing": {
+    "category": "MarTech",
+    "aliases": ["HubSpot Marketing Hub", "HubSpot Campaigns"],
+    "vendor": "HubSpot"
+  },
+  "Sprinklr": {
+    "category": "MarTech",
+    "aliases": ["Sprinklr Social"],
+    "vendor": "Sprinklr"
+  },
+  "Hootsuite": {
+    "category": "MarTech",
+    "aliases": ["Hootsuite Social"],
+    "vendor": "Hootsuite"
+  },
+  "Meta": {
+    "category": "MarTech",
+    "aliases": ["Meta Ads", "Facebook Ads", "Instagram Ads", "Meta Business Manager"],
+    "vendor": "Meta"
+  },
+  "Google Ads": {
+    "category": "MarTech",
+    "aliases": ["AdWords", "Google AdWords", "Google Ads Campaigns"],
+    "vendor": "Google"
+  },
+  "SEO": {
+    "category": "Analytics",
+    "aliases": ["Search Engine Optimization", "Search Engine Optimisation"],
+    "vendor": "Generic"
+  },
+  "GTM": {
+    "category": "MarTech",
+    "aliases": ["Go-To-Market", "Go To Market"],
+    "vendor": "Generic"
+  },
+  "Jira": {
+    "category": "Productivity",
+    "aliases": ["Atlassian Jira", "Jira Software", "Jira Service Management"],
+    "vendor": "Atlassian"
+  },
+  "Confluence": {
+    "category": "Productivity",
+    "aliases": ["Atlassian Confluence"],
+    "vendor": "Atlassian"
+  },
+  "Slack": {
+    "category": "Productivity",
+    "aliases": ["Salesforce Slack"],
+    "vendor": "Salesforce"
+  },
+  "Microsoft Teams": {
+    "category": "Productivity",
+    "aliases": ["MS Teams"],
+    "vendor": "Microsoft"
+  },
+  "Notion": {
+    "category": "Productivity",
+    "aliases": ["Notion AI"],
+    "vendor": "Notion"
+  },
+  "Trello": {
+    "category": "Productivity",
+    "aliases": ["Atlassian Trello"],
+    "vendor": "Atlassian"
+  },
+  "Asana": {
+    "category": "Productivity",
+    "aliases": ["Asana PM"],
+    "vendor": "Asana"
+  },
+  "Monday.com": {
+    "category": "Productivity",
+    "aliases": ["Monday", "Monday CRM"],
+    "vendor": "Monday.com"
+  },
+  "Zoom": {
+    "category": "Productivity",
+    "aliases": ["Zoom Meetings", "Zoom Video"],
+    "vendor": "Zoom"
+  },
+  "SharePoint": {
+    "category": "Productivity",
+    "aliases": ["Microsoft SharePoint", "SharePoint Online"],
+    "vendor": "Microsoft"
+  },
+  "MySQL": {
+    "category": "Database",
+    "aliases": ["MySQL DB"],
+    "vendor": "Oracle"
+  },
+  "PostgreSQL": {
+    "category": "Database",
+    "aliases": ["Postgres", "PostgreSQL DB"],
+    "vendor": "PostgreSQL"
+  },
+  "MongoDB": {
+    "category": "Database",
+    "aliases": ["Mongo", "MongoDB Atlas"],
+    "vendor": "MongoDB"
+  },
+  "Redis": {
+    "category": "Database",
+    "aliases": ["Redis Cache"],
+    "vendor": "Redis"
+  },
+  "Elasticsearch": {
+    "category": "Database",
+    "aliases": ["Elastic Search", "ELK Stack", "Kibana", "Logstash"],
+    "vendor": "Elastic"
+  },
+  "Cassandra": {
+    "category": "Database",
+    "aliases": ["Apache Cassandra"],
+    "vendor": "Apache"
+  },
+  "SQL Server": {
+    "category": "Database",
+    "aliases": ["Microsoft SQL Server", "MSSQL", "SQL Server Management Studio", "SSMS"],
+    "vendor": "Microsoft"
+  },
+  "Oracle Database": {
+    "category": "Database",
+    "aliases": ["Oracle DB", "Oracle RDBMS", "Oracle SQL"],
+    "vendor": "Oracle"
+  },
+  "Redshift": {
+    "category": "Database",
+    "aliases": ["Amazon Redshift", "AWS Redshift"],
+    "vendor": "Amazon"
+  },
+  "Docker": {
+    "category": "DevOps",
+    "aliases": ["Docker Container", "Docker Hub"],
+    "vendor": "Docker"
+  },
+  "Kubernetes": {
+    "category": "DevOps",
+    "aliases": ["K8s", "K8", "EKS"],
+    "vendor": "CNCF"
+  },
+  "Terraform": {
+    "category": "DevOps",
+    "aliases": ["HashiCorp Terraform", "TF"],
+    "vendor": "HashiCorp"
+  },
+  "Jenkins": {
+    "category": "DevOps",
+    "aliases": ["Jenkins CI", "Jenkins Pipeline"],
+    "vendor": "CloudBees"
+  },
+  "GitHub": {
+    "category": "DevOps",
+    "aliases": ["GitHub Actions", "GitHub Enterprise"],
+    "vendor": "Microsoft"
+  },
+  "GitLab": {
+    "category": "DevOps",
+    "aliases": ["GitLab CI", "GitLab CD"],
+    "vendor": "GitLab"
+  },
+  "Datadog": {
+    "category": "DevOps",
+    "aliases": ["Datadog APM", "Datadog Monitoring"],
+    "vendor": "Datadog"
+  },
+  "Ansible": {
+    "category": "DevOps",
+    "aliases": ["Ansible Automation"],
+    "vendor": "Red Hat"
+  },
+  "Python": {
+    "category": "Programming",
+    "aliases": ["Python3", "Python 3"],
+    "vendor": "PSF"
+  },
+  "Java": {
+    "category": "Programming",
+    "aliases": ["Java SE", "Java EE", "Spring Boot", "Spring Framework"],
+    "vendor": "Oracle"
+  },
+  "JavaScript": {
+    "category": "Programming",
+    "aliases": ["JS", "Node.js", "NodeJS", "TypeScript", "TS"],
+    "vendor": "OpenJS"
+  },
+  "SQL": {
+    "category": "Programming",
+    "aliases": ["PL/SQL", "T-SQL", "HiveQL", "SparkSQL"],
+    "vendor": "ISO"
+  },
+  "R": {
+    "category": "Programming",
+    "aliases": ["R Language", "R Studio", "RStudio"],
+    "vendor": "R Foundation"
+  },
+  "Scala": {
+    "category": "Programming",
+    "aliases": ["Scala JVM"],
+    "vendor": "EPFL"
+  },
+  "Spark": {
+    "category": "Programming",
+    "aliases": ["Apache Spark", "PySpark", "Spark Streaming"],
+    "vendor": "Apache"
+  },
+  "Kafka": {
+    "category": "Programming",
+    "aliases": ["Apache Kafka", "Kafka Streams"],
+    "vendor": "Apache"
+  }
+}

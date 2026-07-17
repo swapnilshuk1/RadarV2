@@ -1,0 +1,18 @@
+{
+  "version": "1.1.0",
+  "generatedAt": "2026-07-17",
+  "productCount": 71,
+  "aliasCount": 195,
+  "categoryCount": 9,
+  "categories": [
+    "CRM",
+    "ERP",
+    "Analytics",
+    "Cloud",
+    "MarTech",
+    "Productivity",
+    "Database",
+    "DevOps",
+    "Programming"
+  ]
+}

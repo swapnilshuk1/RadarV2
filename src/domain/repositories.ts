@@ -1,18 +1,17 @@
 import type {
+  Source,
   Company,
   Opportunity,
-  SourceListing,
-  Extraction,
+  Document,
   Evidence,
   Fact,
   Claim,
   Person,
-  CareerProfile,
-  PreferenceProfile,
-  Match,
-  Recommendation,
-  Decision,
-  Outcome
+  CandidateProfile,
+  ResumeVersion,
+  RecommendationRun,
+  OpportunityAssessment,
+  RecommendationRecord
 } from "./entities";
 
 /**
@@ -24,40 +23,48 @@ import type {
 // 1. GLOBAL LAYER STORES
 // ============================================================================
 
+export interface SourceStore {
+  recordSource(source: Source): void;
+  getSource(id: string): Source | undefined;
+}
+
 export interface CompanyStore {
   registerCompany(company: Company): void;
   findByName(name: string): Company | undefined;
-  updateIntelligenceSignals(id: string, signals: Partial<Company>): void;
 }
 
 export interface OpportunityStore {
   mergeOpportunity(opportunity: Opportunity): void;
-  recordListing(listing: SourceListing): void;
   getOpportunity(id: string): Opportunity | undefined;
   listActiveOpportunities(): Opportunity[];
   
   findOpportunities(criteria: {
-    level?: string;
-    industry?: string;
-    minScore?: number;
-    status?: string;
+    companyId?: string;
+    lifecycle?: string;
   }): Opportunity[];
 }
 
 export interface AcquisitionStore {
-  recordExtraction(extraction: Extraction): void;
+  recordDocument(document: Document): void;
+  logDiscovery(discovery: {
+    id: string;
+    opportunityId: string;
+    executionId: string;
+    sourceName: string;
+    firstPortal: string;
+    firstDefinition: string;
+  }): void;
 }
 
 export interface KnowledgeStore {
   recordEvidence(evidence: Evidence[]): void;
   recordFacts(facts: Fact[]): void;
   
-  findEvidenceForOpportunity(opportunityId: string): Evidence[];
+  findEvidenceForDocument(documentId: string): Evidence[];
   findFactsForOpportunity(opportunityId: string): Fact[];
 }
 
 export interface ReasoningStore {
-  // Claims are Global: they interpret Facts without a specific Person's context.
   recordClaims(claims: Claim[]): void;
   findClaimsForOpportunity(opportunityId: string): Claim[];
 }
@@ -70,25 +77,24 @@ export interface PersonStore {
   registerPerson(person: Person): void;
   getPersonByEmail(email: string): Person | undefined;
   
-  saveCareerProfile(profile: CareerProfile): void;
-  getCareerProfile(personId: string): CareerProfile | undefined;
+  saveCandidateProfile(profile: CandidateProfile): void;
+  saveResumeVersion(version: ResumeVersion): void;
   
-  savePreferenceProfile(profile: PreferenceProfile): void;
-  getPreferenceProfile(personId: string): PreferenceProfile | undefined;
+  getCandidateProfile(personId: string, version: string): CandidateProfile | undefined;
+  getLatestCandidateProfile(personId: string): CandidateProfile | undefined;
+  getResumeVersions(candidateProfileId: string): ResumeVersion[];
 }
 
 export interface DecisionSupportStore {
-  recordMatch(match: Match): void;
-  findMatches(personId: string, opportunityId?: string): Match[];
+  recordRecommendationRun(run: RecommendationRun): void;
+  getRecommendationRun(id: string): RecommendationRun | undefined;
   
-  recordRecommendation(recommendation: Recommendation): void;
-  latestRecommendations(personId: string, limit: number): Recommendation[];
-  getRecommendationForOpportunity(personId: string, opportunityId: string): Recommendation | undefined;
-}
-
-export interface UserOutcomeStore {
-  recordDecision(decision: Decision): void;
-  recordOutcome(outcome: Outcome): void;
+  recordOpportunityAssessment(assessment: OpportunityAssessment): void;
+  getOpportunityAssessment(id: string): OpportunityAssessment | undefined;
+  
+  recordRecommendationRecord(record: RecommendationRecord): void;
+  latestRecommendationRecords(personId: string, limit: number): RecommendationRecord[];
+  getRecommendationRecordForOpportunity(personId: string, opportunityId: string): RecommendationRecord | undefined;
 }
 
 // ============================================================================
@@ -96,6 +102,7 @@ export interface UserOutcomeStore {
 // ============================================================================
 
 export interface StorageProvider {
+  sources: SourceStore;
   companies: CompanyStore;
   opportunities: OpportunityStore;
   acquisition: AcquisitionStore;
@@ -103,6 +110,4 @@ export interface StorageProvider {
   reasoning: ReasoningStore;
   people: PersonStore;
   decisions: DecisionSupportStore;
-  outcomes: UserOutcomeStore;
 }
-

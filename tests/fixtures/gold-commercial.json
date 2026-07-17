@@ -1,0 +1,122 @@
+[
+  {
+    "testCategory": "PL",
+    "text": "The successful candidate will have full P&L accountability of $150M USD for the APAC business.",
+    "expectedCanonical": "PL_OWNERSHIP",
+    "expectedRaw": "$150M USD"
+  },
+  {
+    "testCategory": "PL",
+    "text": "Requires a leader who has managed a commercial P&L of over €10M in the logistics sector.",
+    "expectedCanonical": "PL_OWNERSHIP",
+    "expectedRaw": "€10M"
+  },
+  {
+    "testCategory": "Budget",
+    "text": "Responsible for managing an annual operational budget of $5,000,000 across multiple sites.",
+    "expectedCanonical": "BUDGET",
+    "expectedRaw": "$5,000,000"
+  },
+  {
+    "testCategory": "Budget",
+    "text": "Will oversee budget allocation and budget ownership of £2M for capital expenditures.",
+    "expectedCanonical": "BUDGET",
+    "expectedRaw": "£2M"
+  },
+  {
+    "testCategory": "Revenue",
+    "text": "Must be comfortable carrying a sales quota and revenue target of $20M annually.",
+    "expectedCanonical": "REVENUE",
+    "expectedRaw": "$20M"
+  },
+  {
+    "testCategory": "Revenue",
+    "text": "Responsible for delivering top-line growth and revenue accountability of $50M.",
+    "expectedCanonical": "REVENUE",
+    "expectedRaw": "$50M"
+  },
+  {
+    "testCategory": "EBITDA",
+    "text": "Direct accountability for operational margin improvement and EBITDA targets of $2M.",
+    "expectedCanonical": "EBITDA",
+    "expectedRaw": "$2M"
+  },
+  {
+    "testCategory": "EBITDA",
+    "text": "Responsible for optimizing costs to meet annual EBITDA goals.",
+    "expectedCanonical": "EBITDA",
+    "expectedRaw": "EBITDA goals"
+  },
+  {
+    "testCategory": "General",
+    "text": "Will have commercial accountability for vendor negotiations and contract signing.",
+    "expectedCanonical": "GENERAL",
+    "expectedRaw": "commercial accountability"
+  },
+  {
+    "testCategory": "General",
+    "text": "Responsible for commercial growth strategy, pricing models, and gross margin optimization.",
+    "expectedCanonical": "GENERAL",
+    "expectedRaw": "commercial growth strategy"
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Collaborate closely with the budget owner to support budget planning processes.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Position reports to the Chief Operating Officer and manages a team of 15 members.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Will support the sales enablement team with client presentations and material preparation.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Responsible for customer success, retention campaigns, and net promoter score improvements.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Must understand P&L structures and financial statements in order to analyze report metrics.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Assisting with the budget planning and presenting recommendations to function leads.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Requires experience analyzing revenue streams and pricing structures for enterprise accounts.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Work closely with finance leads to provide inputs for the annual budget.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Responsible for executing marketing campaigns within the allocated media budget.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Position requires knowledge of EBITDA calculations and SaaS metrics.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  }
+]

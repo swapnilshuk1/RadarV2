@@ -18,13 +18,16 @@ export const linkedinHandler: PortalHandler = {
     const page = ctx.activePage;
     let keepOpen = false;
     try {
+      // We catch the timeout so we can still evaluate the URL and DOM state.
+      // Often the page loads enough for us to know if we are logged in, even if 
+      // some ad-tracking script hangs the 'load' event.
       await page.goto("https://www.linkedin.com/feed/", {
         waitUntil: "domcontentloaded",
         timeout: CONFIG.navTimeoutMs,
-      });
+      }).catch((e: any) => ctx.logger(`Navigation timeout caught (non-fatal): ${e.message}`));
 
       // Wait for the page to fully settle (React hydration, redirects).
-      await page.waitForLoadState("load").catch(() => {});
+      await page.waitForLoadState("load", { timeout: 10000 }).catch(() => {});
 
       const checkLoggedIn = async (): Promise<boolean> => {
         const url = page.url();

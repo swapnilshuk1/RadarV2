@@ -1,0 +1,122 @@
+[
+  {
+    "testCategory": "CRM",
+    "text": "Experience with Salesforce and SFDC required to manage customer database.",
+    "expectedProducts": ["Salesforce"],
+    "expectedCategories": ["CRM"]
+  },
+  {
+    "testCategory": "CRM",
+    "text": "Strong experience implementing HubSpot CRM for marketing alignment.",
+    "expectedProducts": ["HubSpot"],
+    "expectedCategories": ["CRM"]
+  },
+  {
+    "testCategory": "ERP",
+    "text": "Requires extensive knowledge of SAP ERP and S/4 HANA deployments.",
+    "expectedProducts": ["SAP"],
+    "expectedCategories": ["ERP"]
+  },
+  {
+    "testCategory": "ERP",
+    "text": "Experience managing Oracle Fusion or NetSuite integrations is a major plus.",
+    "expectedProducts": ["NetSuite", "Oracle"],
+    "expectedCategories": ["ERP"]
+  },
+  {
+    "testCategory": "Cloud",
+    "text": "Architecting secure infrastructure on Amazon Web Services (AWS) and Microsoft Azure.",
+    "expectedProducts": ["AWS", "Azure"],
+    "expectedCategories": ["Cloud"]
+  },
+  {
+    "testCategory": "Cloud",
+    "text": "Must have worked with Google Cloud Platform (GCP), Kubernetes, and Terraform configurations.",
+    "expectedProducts": ["Google Cloud", "Kubernetes", "Terraform"],
+    "expectedCategories": ["Cloud", "DevOps"]
+  },
+  {
+    "testCategory": "Analytics",
+    "text": "Familiarity with Google Analytics 4 (GA4) and Adobe Analytics.",
+    "expectedProducts": ["Adobe Analytics", "Google Analytics"],
+    "expectedCategories": ["Analytics"]
+  },
+  {
+    "testCategory": "Analytics",
+    "text": "Building dashboards in Tableau Software or Microsoft Power BI for leadership.",
+    "expectedProducts": ["Power BI", "Tableau"],
+    "expectedCategories": ["Analytics"]
+  },
+  {
+    "testCategory": "Programming",
+    "text": "Scripting expertise in Python and SQL (Postgres or MySQL).",
+    "expectedProducts": ["MySQL", "PostgreSQL", "Python", "SQL"],
+    "expectedCategories": ["Database", "Programming"]
+  },
+  {
+    "testCategory": "Collaboration",
+    "text": "Daily coordination using Jira, Slack, and Microsoft Teams.",
+    "expectedProducts": ["Jira", "Microsoft Teams", "Slack"],
+    "expectedCategories": ["Productivity"]
+  },
+  {
+    "testCategory": "MultiCategory",
+    "text": "Manage customer database in Salesforce CRM and deploy analytical models using Python and Amazon Web Services.",
+    "expectedProducts": ["AWS", "Python", "Salesforce"],
+    "expectedCategories": ["CRM", "Cloud", "Programming"]
+  },
+  {
+    "testCategory": "MultiCategory",
+    "text": "SAP S/4HANA operations with Google Cloud Platform database migrations and Tableau reporting.",
+    "expectedProducts": ["Google Cloud", "SAP", "Tableau"],
+    "expectedCategories": ["Analytics", "Cloud", "ERP"]
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "This is a leadership role focused on people management, not coding or writing SQL.",
+    "expectedProducts": [],
+    "expectedCategories": []
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Must collaborate across cloud engineering teams to understand requirements.",
+    "expectedProducts": [],
+    "expectedCategories": []
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Familiarity with modern software development lifecycle methodologies.",
+    "expectedProducts": [],
+    "expectedCategories": []
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Aligning with CRM specialists to understand system capabilities.",
+    "expectedProducts": [],
+    "expectedCategories": []
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "The marketing head will interact with analytics agencies.",
+    "expectedProducts": [],
+    "expectedCategories": []
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Liaison with external ERP consultants during upgrades.",
+    "expectedProducts": [],
+    "expectedCategories": []
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Help engineering teams choose cloud providers.",
+    "expectedProducts": [],
+    "expectedCategories": []
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Understand the value of programming automation.",
+    "expectedProducts": [],
+    "expectedCategories": []
+  }
+]

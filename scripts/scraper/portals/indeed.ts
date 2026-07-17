@@ -16,8 +16,13 @@ export const indeedHandler: PortalHandler = {
     const page = ctx.activePage;
     let keepOpen = false;
     try {
-      await page.goto("https://in.indeed.com/", { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
-      await sleep(2000);
+      // Catch timeout to avoid crashing the session probe. We can still verify state via URL/DOM.
+      await page.goto("https://in.indeed.com/", {
+        waitUntil: "domcontentloaded",
+        timeout: CONFIG.navTimeoutMs,
+      }).catch((e: any) => ctx.logger(`Navigation timeout caught (non-fatal): ${e.message}`));
+      
+      await page.waitForLoadState("load", { timeout: 10000 }).catch(() => {});
       // Indeed doesn't strictly require login but may show CAPTCHA.
       const captcha = await page.locator('iframe[src*="captcha" i], form[action*="captcha" i]').first().count().catch(() => 0);
       if (captcha) {

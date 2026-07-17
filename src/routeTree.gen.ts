@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkbenchRouteImport } from './routes/workbench'
 import { Route as ScrapedRouteImport } from './routes/scraped'
 import { Route as DecisionsRouteImport } from './routes/decisions'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as QaMappingRouteImport } from './routes/qa.mapping'
 import { Route as OpportunityJobHashRouteImport } from './routes/opportunity.$jobHash'
 
+const WorkbenchRoute = WorkbenchRouteImport.update({
+  id: '/workbench',
+  path: '/workbench',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScrapedRoute = ScrapedRouteImport.update({
   id: '/scraped',
   path: '/scraped',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/decisions': typeof DecisionsRoute
   '/scraped': typeof ScrapedRoute
+  '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/decisions': typeof DecisionsRoute
   '/scraped': typeof ScrapedRoute
+  '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
 }
@@ -60,20 +68,33 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/decisions': typeof DecisionsRoute
   '/scraped': typeof ScrapedRoute
+  '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/decisions' | '/scraped' | '/opportunity/$jobHash' | '/qa/mapping'
+    | '/'
+    | '/decisions'
+    | '/scraped'
+    | '/workbench'
+    | '/opportunity/$jobHash'
+    | '/qa/mapping'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/decisions' | '/scraped' | '/opportunity/$jobHash' | '/qa/mapping'
+  to:
+    | '/'
+    | '/decisions'
+    | '/scraped'
+    | '/workbench'
+    | '/opportunity/$jobHash'
+    | '/qa/mapping'
   id:
     | '__root__'
     | '/'
     | '/decisions'
     | '/scraped'
+    | '/workbench'
     | '/opportunity/$jobHash'
     | '/qa/mapping'
   fileRoutesById: FileRoutesById
@@ -82,12 +103,20 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DecisionsRoute: typeof DecisionsRoute
   ScrapedRoute: typeof ScrapedRoute
+  WorkbenchRoute: typeof WorkbenchRoute
   OpportunityJobHashRoute: typeof OpportunityJobHashRoute
   QaMappingRoute: typeof QaMappingRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workbench': {
+      id: '/workbench'
+      path: '/workbench'
+      fullPath: '/workbench'
+      preLoaderRoute: typeof WorkbenchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scraped': {
       id: '/scraped'
       path: '/scraped'
@@ -130,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DecisionsRoute: DecisionsRoute,
   ScrapedRoute: ScrapedRoute,
+  WorkbenchRoute: WorkbenchRoute,
   OpportunityJobHashRoute: OpportunityJobHashRoute,
   QaMappingRoute: QaMappingRoute,
 }

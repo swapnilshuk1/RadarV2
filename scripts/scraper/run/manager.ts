@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { RUNS_DIR } from "../config";
+import { RUNS_DIR, SNAPSHOT_DIR, SEARCH_METRICS_NDJSON } from "../config";
 import {
   MANIFEST_VERSION,
   SCRAPER_VERSION,
@@ -59,19 +59,48 @@ export class RunController {
     this.manifestPath = path.join(this.runDir, "manifest.json");
     this.journalPath = path.join(this.runDir, "journal.ndjson");
 
+    const planPath = path.join(process.cwd(), ".radar", "runs", "ExecutionPlan.json");
+    let plan = null;
+    if (fs.existsSync(planPath)) {
+      plan = readJsonSafe<any>(planPath);
+    }
+
     const units: WorkUnit[] = [];
-    for (const portal of opts.portals) {
-      for (const kw of opts.keywords) {
-        for (let p = 1; p <= opts.maxPages; p++) {
-          units.push({
-            id: `${portal}:${kw}:${p}`,
-            portal,
-            keyword: kw,
-            page: p,
-            status: "pending",
-            attempts: 0,
-            cardIds: [],
-          });
+    
+    if (plan && plan.workUnits) {
+      console.log(`Loading ${plan.workUnits.length} units from ExecutionPlan.json...`);
+      for (const u of plan.workUnits) {
+        units.push({
+          id: u.id,
+          portal: u.portal as PortalName,
+          keyword: u.keyword,
+          page: u.page,
+          status: "pending",
+          attempts: 0,
+          cardIds: [],
+          executionPlanId: plan.id || "unknown-plan",
+          definitionId: u.definitionId,
+          familyId: u.familyId
+        });
+      }
+    } else {
+      for (const portal of opts.portals) {
+        for (const kw of opts.keywords) {
+          const adhocId = `adhoc:${portal}:${kw.replace(/\s+/g, '-').toLowerCase()}`;
+          for (let p = 1; p <= opts.maxPages; p++) {
+            units.push({
+              id: `${portal}:${kw}:${p}`,
+              portal,
+              keyword: kw,
+              page: p,
+              status: "pending",
+              attempts: 0,
+              cardIds: [],
+              executionPlanId: `plan:${adhocId}`,
+              definitionId: `def:${adhocId}`,
+              familyId: `fam:${adhocId}`
+            });
+          }
         }
       }
     }
@@ -95,7 +124,7 @@ export class RunController {
         httpFallbacks: 0,
         llmCalls: 0,
       },
-      searchMetrics: [],
+      pageExecutionRecords: [],
       units,
       cards: [],
     };
@@ -184,13 +213,12 @@ export class RunController {
     return this.manifest.cards.filter((c) => c.parentUnitId === unitId);
   }
 
-  appendMetric(metric: import("../types").SearchMetric): void {
-    if (!this.manifest.searchMetrics) this.manifest.searchMetrics = [];
-    this.manifest.searchMetrics.push(metric);
+  appendMetric(metric: import("../types").PageExecutionRecord): void {
+    if (!this.manifest.pageExecutionRecords) this.manifest.pageExecutionRecords = [];
+    this.manifest.pageExecutionRecords.push(metric);
     this.persistManifest();
     
     // Also append directly to the NDJSON sink
-    const { SEARCH_METRICS_NDJSON } = require("../config");
     fs.appendFileSync(SEARCH_METRICS_NDJSON, JSON.stringify(metric) + "\n");
   }
 
@@ -228,28 +256,11 @@ export class RunController {
     this.journal.append({ type: "state_transition", from: oldState, to: state });
   }
 
-  updatePortalHealth(portal: PortalName, health: { status: import("../types").PortalHealth["status"], details: string, score?: import("../types").HealthScore }): void {
+  updatePortalHealth(portal: PortalName, patch: Partial<import("../types").PortalHealth>): void {
     if (!this.manifest.portalHealth) this.manifest.portalHealth = {};
-    
-    // Auto-derive score if not explicitly provided
-    let score: import("../types").HealthScore = health.score ?? "Healthy";
-    if (!health.score) {
-       if (health.status === "error" || health.status === "timeout") {
-         score = "Degraded";
-         if (health.details.toLowerCase().includes("auth wall") || health.details.toLowerCase().includes("captcha") || health.details.toLowerCase().includes("session gated")) {
-           score = "Blocked";
-         }
-       }
-    }
-    
-    const fails = this.listingFailures.get(portal) || 0;
-    if (fails >= 2) {
-       score = "Disabled";
-       health.status = "error";
-       health.details = `Circuit breaker open (${fails} consecutive list failures)`;
-    }
-
-    this.manifest.portalHealth[portal] = { ...health, score };
+    const ph = this.manifest.portalHealth[portal] || { status: "ready", score: 100, details: "" };
+    Object.assign(ph, patch);
+    this.manifest.portalHealth[portal] = ph;
     this.manifest.updatedAt = new Date().toISOString();
     this.persistManifest();
   }
@@ -258,7 +269,7 @@ export class RunController {
     const fails = (this.listingFailures.get(portal) || 0) + 1;
     this.listingFailures.set(portal, fails);
     if (fails >= 2) {
-      this.updatePortalHealth(portal, { status: "error", details: "Circuit breaker open", score: "Disabled" });
+      this.updatePortalHealth(portal, { status: "error", details: "Circuit breaker open", score: 0 });
     }
   }
 

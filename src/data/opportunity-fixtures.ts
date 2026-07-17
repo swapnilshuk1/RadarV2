@@ -47,6 +47,28 @@ export type DimensionResult = {
   candidateProof?: { headline: string; detail: string };
 };
 
+export interface CapabilityCardViewModel {
+  id: string;
+  name: string;
+  description: string;
+  strength: "Strong" | "Moderate" | "Weak";
+  score: number;
+  scorePercentage: number;
+  evidenceQuote: string;
+  dimensionLabel: string;
+  weight?: number;
+  weightedContribution?: number;
+}
+
+export interface RecommendationViewModel {
+  score: number;
+  decision: string;
+  policyId: string;
+  policyVersion: string;
+  explanation: string;
+  capabilities: CapabilityCardViewModel[];
+}
+
 export type Opportunity = {
   jobHash: string;
   role: string;
@@ -76,6 +98,7 @@ export type Opportunity = {
   applyUrl?: string;
   hiringRisk: string;
   alternativePath?: string;
+  recommendationResult?: RecommendationViewModel;
 };
 
 /** Derive the apply URL from the scraped source when a direct one wasn't captured. */

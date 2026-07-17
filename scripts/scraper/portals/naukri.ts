@@ -16,8 +16,20 @@ export const naukriHandler: PortalHandler = {
     const page = ctx.activePage;
     let keepOpen = false;
     try {
-      await page.goto("https://www.naukri.com/", { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
+      await page.goto("https://www.naukri.com/", {
+        waitUntil: "domcontentloaded",
+        timeout: CONFIG.navTimeoutMs,
+      }).catch((e: any) => ctx.logger(`Navigation timeout caught (non-fatal): ${e.message}`));
+      
+      await page.waitForLoadState("load", { timeout: 10000 }).catch(() => {});
       await sleep(2500);
+      
+      const title = await page.title().catch(() => "unknown");
+      if (!title || title === "unknown" || title.includes("Just a moment") || title.includes("Access Denied")) {
+        ctx.logger(`Naukri session probe failed: Blocked by bot-protection (Title: ${title})`);
+        return "error";
+      }
+      
       return "ready";
     } catch (err: any) {
       ctx.logger(`Naukri session probe failed: ${err.message}`);
@@ -43,7 +55,12 @@ export const naukriHandler: PortalHandler = {
       await page.goto(ctx.searchUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
       ctx.logger(`Goto completed in ${Date.now() - startGoto}ms`);
       ctx.logger(`Post-nav URL: ${page.url()}`);
-      ctx.logger(`Page title: ${await page.title().catch(() => "unknown")}`);
+      
+      const title = await page.title().catch(() => "unknown");
+      ctx.logger(`Page title: ${title}`);
+      if (!title || title === "unknown" || title.includes("Just a moment") || title.includes("Access Denied")) {
+        throw new Error("Portal blocked by Cloudflare/Akamai or empty response");
+      }
 
       await humanize(page);
 

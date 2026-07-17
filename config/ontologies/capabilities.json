@@ -1,0 +1,108 @@
+{
+  "version": "1.0.0",
+  "capabilities": [
+    {
+      "id": "cap_crm_strategy",
+      "name": "CRM & Customer Retention Strategy",
+      "description": "Ability to lead, scale, and govern CRM systems and customer retention architectures.",
+      "evaluation": {
+        "allOf": [
+          {
+            "dimension": "technologyStack",
+            "anyOf": ["Salesforce", "HubSpot", "Microsoft Dynamics", "Zoho CRM", "CRM"]
+          }
+        ]
+      },
+      "strengthPolicy": {
+        "weak": [0.0, 0.4],
+        "moderate": [0.4, 0.8],
+        "strong": [0.8, 1.01]
+      },
+      "explanationTemplate": "Strong evidence of CRM & Customer Retention Strategy based on matching tool(s) {matchedValues} under the technologyStack dimension."
+    },
+    {
+      "id": "cap_executive_growth_scale",
+      "name": "Executive Growth & Scale Mandate",
+      "description": "Direct executive accountability to scale operations or establish completely new greenfield structures.",
+      "evaluation": {
+        "allOf": [
+          {
+            "dimension": "mandate",
+            "anyOf": ["SCALE", "GREENFIELD"]
+          },
+          {
+            "dimension": "reportingLine",
+            "anyOf": ["CEO", "BOARD", "EXECUTIVE_COMMITTEE"]
+          }
+        ]
+      },
+      "strengthPolicy": {
+        "weak": [0.0, 0.5],
+        "moderate": [0.5, 0.8],
+        "strong": [0.8, 1.01]
+      },
+      "explanationTemplate": "Strong executive growth potential indicated by reporting directly to {reportingLine} with a company mandate of {mandate}."
+    },
+    {
+      "id": "cap_business_turnaround",
+      "name": "Corporate Turnaround & Restructuring",
+      "description": "Expertise in stabilizing declining business units, restructuring teams, and driving EBITDA/margin recovery.",
+      "evaluation": {
+        "allOf": [
+          {
+            "dimension": "mandate",
+            "anyOf": ["TURNAROUND"]
+          },
+          {
+            "dimension": "commercialAccountability",
+            "anyOf": ["PL_OWNERSHIP", "EBITDA"]
+          }
+        ]
+      },
+      "strengthPolicy": {
+        "weak": [0.0, 0.5],
+        "moderate": [0.5, 0.8],
+        "strong": [0.8, 1.01]
+      },
+      "explanationTemplate": "Proven competency in Corporate Turnaround & Restructuring supported by a TURNAROUND mandate accompanied by {commercialAccountability} commercial ownership."
+    },
+    {
+      "id": "cap_enterprise_financial_stewardship",
+      "name": "Enterprise Financial Stewardship",
+      "description": "Direct accountability for managing large operational budgets, revenue targets, and P&L allocations.",
+      "evaluation": {
+        "allOf": [
+          {
+            "dimension": "commercialAccountability",
+            "anyOf": ["PL_OWNERSHIP", "BUDGET", "REVENUE", "EBITDA"]
+          }
+        ]
+      },
+      "strengthPolicy": {
+        "weak": [0.0, 0.3],
+        "moderate": [0.3, 0.7],
+        "strong": [0.7, 1.01]
+      },
+      "explanationTemplate": "Solid corporate financial stewardship demonstrated by ownership of {commercialAccountability}."
+    },
+    {
+      "id": "cap_high_growth_builder",
+      "name": "Greenfield Builder",
+      "description": "Experience building product divisions or regional branches from 0 to 1.",
+      "evaluation": {
+        "allOf": [
+          {
+            "dimension": "mandate",
+            "anyOf": ["GREENFIELD"]
+          }
+        ]
+      },
+      "strengthPolicy": {
+        "weak": [0.0, 0.4],
+        "moderate": [0.4, 0.8],
+        "strong": [0.8, 1.01]
+      },
+      "explanationTemplate": "Identified as a high-growth builder capable of standing up new structures based on a GREENFIELD mandate."
+    }
+  ]
+}

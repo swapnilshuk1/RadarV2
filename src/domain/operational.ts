@@ -3,12 +3,12 @@
  * Sprint 2: Separating application/operational state from the Domain Knowledge Graph
  */
 
-import type { VersionMetadata } from "./entities";
+import type { Provenance } from "./entities";
 
 export interface OperationalEntityBase {
   id: string;
   createdAt: string; // ISO-8601
-  _meta?: VersionMetadata;
+  provenance: Provenance;
 }
 
 // ============================================================================

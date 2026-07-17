@@ -1,0 +1,50 @@
+{
+  "runId": "run_1784276403298",
+  "timestamp": "2026-07-17T08:20:03.298Z",
+  "champion": {
+    "id": "policy-v1.0",
+    "version": "1.0.0",
+    "hash": "a172c865279a795725a58a787230a1ee4064a1c734962f21bcc22248711c7d94"
+  },
+  "candidate": {
+    "id": "policy-v1.1-candidate",
+    "version": "1.1.0",
+    "hash": "efcc9048e30694daff106236927bee202940db86ca2646b2cc349b2821973874"
+  },
+  "hashes": {
+    "profileHash": "849aa9a3e0264ba4550f48a2675d55d0c0b7e8986642f47340d2075a76b473c2",
+    "ontologyHash": "9dd1c3d2382d4a47b34ef23d5abd6436cab275d56a21730e53c4e8d8c640471c",
+    "corpusHash": "7f79f313384607262ea1a41d5c47ca3fb9ad8bdb0abf584729dd3d588f1ca721"
+  },
+  "results": {
+    "id": "run_1784276403298",
+    "timestamp": "2026-07-17T08:20:03.298Z",
+    "policyVersion": "1.1.0",
+    "profileHash": "849aa9a3e0264ba4550f48a2675d55d0c0b7e8986642f47340d2075a76b473c2",
+    "corpusHash": "7f79f313384607262ea1a41d5c47ca3fb9ad8bdb0abf584729dd3d588f1ca721",
+    "volatility": 0.02287581699346405,
+    "excellentCount": 0,
+    "goodCount": 0,
+    "averageCount": 0,
+    "weakCount": 39,
+    "insufficientCount": 504,
+    "avgScore": 24.202614379084967,
+    "avgConfidence": 55.908496732026144
+  },
+  "comparison": {
+    "id": "comp_1784276403301",
+    "timestamp": "2026-07-17T08:20:03.298Z",
+    "championPolicyId": "policy-v1.0",
+    "candidatePolicyId": "policy-v1.1-candidate",
+    "corpusHash": "7f79f313384607262ea1a41d5c47ca3fb9ad8bdb0abf584729dd3d588f1ca721",
+    "profileHash": "849aa9a3e0264ba4550f48a2675d55d0c0b7e8986642f47340d2075a76b473c2",
+    "stabilityIndex": 0.9771241830065359,
+    "volatility": 0.02287581699346405,
+    "excellentDelta": 0,
+    "goodDelta": 0,
+    "averageDelta": 0,
+    "weakDelta": 9,
+    "insufficientEvidenceDelta": 0,
+    "winner": "CHAMPION"
+  }
+}

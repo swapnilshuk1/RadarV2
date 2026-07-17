@@ -1,0 +1,102 @@
+# ============================================================
+# RADAR Candidate Profile
+# Bootstrap file — imported ONCE into the CandidateProfileStore.
+# The recommendation engine NEVER reads this file directly.
+# Edit this file, then re-run: npx ts-node scripts/import-profile.ts
+# ============================================================
+
+# Career Experience
+experience:
+  - title: CEO
+    company: Example Corp
+    years: 4
+    scope: global
+    revenueOwned: "$500M"
+    teamSize: 2000
+    industries: [Technology, SaaS]
+  - title: COO
+    company: Growth Inc
+    years: 3
+    scope: regional
+    revenueOwned: "$200M"
+    teamSize: 800
+    industries: [E-Commerce, Retail]
+
+# Industry Domains
+industries:
+  - Technology
+  - SaaS
+  - E-Commerce
+  - Fintech
+  - Consumer
+
+# Leadership profile
+leadership:
+  - P&L ownership
+  - Board reporting
+  - Executive team building
+  - Organisational transformation
+  - Investor relations
+
+# International experience
+international:
+  - APAC
+  - EMEA
+  - North America
+
+# Transformation mandate types handled
+transformation:
+  - Digital transformation
+  - Business model pivot
+  - Post-merger integration
+  - Turnaround
+
+# Technology fluency
+technology:
+  - Cloud (AWS, GCP)
+  - SaaS platforms
+  - CRM
+  - ERP
+  - AI/ML strategy
+  - Data & Analytics
+
+# P&L / commercial accountability
+pnl:
+  - Full P&L ownership
+  - Revenue accountability
+  - Cost optimisation
+  - Capital allocation
+
+# Functional expertise
+functions:
+  - Strategy
+  - Operations
+  - Commercial / Sales
+  - Product
+  - Finance
+
+# Core skills
+skills:
+  - Executive leadership
+  - Strategic planning
+  - Stakeholder management
+  - M&A and integration
+  - Culture transformation
+  - Go-to-market strategy
+  - Team development
+
+# Preferences (soft)
+preferences:
+  remoteOk: true
+  preferredCompanySize: [mid-market, enterprise]
+  travelWillingness: "up to 40%"
+  targetCompensation: "market rate for C-suite"
+
+# Hard constraints — deal-breakers, evaluated before scoring
+hardConstraints:
+  - no_individual_contributor
+
+# Soft constraints — will lower score but not reject
+softConstraints:
+  - prefer_global_scope
+  - prefer_transformation_mandate

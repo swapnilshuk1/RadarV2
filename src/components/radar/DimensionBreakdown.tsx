@@ -1,4 +1,5 @@
-import type { DimensionResult } from "../../data/opportunity-fixtures";
+import { type DimensionResult } from "../../data/opportunity-fixtures";
+import { cleanDimValue } from "../../lib/intelligence/editorial";
 import { EvidenceChip } from "./EvidenceChip";
 
 export function DimensionBreakdown({ dimensions }: { dimensions: DimensionResult[] }) {
@@ -24,7 +25,7 @@ function Group({ label, items }: { label: string; items: DimensionResult[] }) {
           <div key={d.key} className="grid grid-cols-[180px_minmax(0,1fr)] gap-6 py-4">
             <div>
               <p className="font-serif text-[17px] text-ink">{d.label}</p>
-              <div className="mt-2"><EvidenceChip bucket={d.bucket} label={typeof d.jdEvidence.value === "string" ? d.jdEvidence.value : (d.jdEvidence.value ? JSON.stringify(d.jdEvidence.value) : "no evidence")} /></div>
+              <div className="mt-2"><EvidenceChip bucket={d.bucket} label={cleanDimValue(d.jdEvidence.value) || "no evidence"} /></div>
             </div>
             <div className="space-y-2">
               {d.jdEvidence.evidence[0] ? (

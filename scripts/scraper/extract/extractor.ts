@@ -10,13 +10,13 @@ import type {
 import { EXTRACTOR_VERSION, EXTRACTOR_PROMPT_VERSION } from "../versions";
 import { jobHash } from "../utils/hash";
 import { extractRequiredLevel, requiredLevelExtractorId } from "./dimensions/requiredLevel";
-import { extractReportingLine, reportingLineExtractorId } from "./dimensions/reportingLine";
+import { extractReportingLine, reportingExtractorId } from "./dimensions/reportingLine";
 import { extractMandate, mandateExtractorId } from "./dimensions/mandate";
 import { extractCommercial, commercialExtractorId } from "./dimensions/commercialAccountability";
 import { extractFunctionalScope, functionalScopeExtractorId } from "./dimensions/functionalScope";
 import { extractGeography, geographyExtractorId } from "./dimensions/geography";
 import { extractWorkModel, workModelExtractorId } from "./dimensions/workModel";
-import { extractTechnologyStack, technologyStackExtractorId } from "./dimensions/technologyStack";
+import { extractTechnology, technologyExtractorId } from "./dimensions/technologyStack";
 import type { EnrichmentProvider } from "../enrich/contract";
 import { defaultProvider } from "../enrich/providers/index";
 import { pickMissingForEnrichment, resolveMode, type EnrichmentMode } from "../enrich/policy";
@@ -37,7 +37,7 @@ interface DimSpec {
 const SPECS: DimSpec[] = [
   { key: "requiredLevel", label: "Required Level", importance: "Core", extractorId: requiredLevelExtractorId,
     run: (i) => extractRequiredLevel(i), proofHeadline: "Seniority check", proofDetail: "Matches target title list" },
-  { key: "reportingLine", label: "Reporting Line", importance: "Core", extractorId: reportingLineExtractorId,
+  { key: "reportingLine", label: "Reporting Line", importance: "Core", extractorId: reportingExtractorId,
     run: (i) => extractReportingLine(i), proofHeadline: "Reporting line alignment", proofDetail: "CxO / MD reporting proven" },
   { key: "mandate", label: "Mandate", importance: "Core", extractorId: mandateExtractorId,
     run: (i) => extractMandate(i), proofHeadline: "Mandate alignment", proofDetail: "Lifecycle stage matches profile" },
@@ -51,8 +51,8 @@ const SPECS: DimSpec[] = [
   { key: "workModel", label: "Work Model", importance: "Context", extractorId: workModelExtractorId,
     run: (i) => extractWorkModel({ snippet: i.snippet, detailText: i.detailText }),
     proofHeadline: "Work model preference", proofDetail: "Preferred work model" },
-  { key: "technologyStack", label: "Technology Stack", importance: "Context", extractorId: technologyStackExtractorId,
-    run: (i) => extractTechnologyStack({ snippet: i.snippet, detailText: i.detailText }),
+  { key: "technologyStack", label: "Technology Stack", importance: "Context", extractorId: technologyExtractorId,
+    run: (i) => extractTechnology({ title: i.title, snippet: i.snippet, detailText: i.detailText }),
     proofHeadline: "Platform stack", proofDetail: "Platform-native experience" },
 ];
 
@@ -189,6 +189,7 @@ export async function extract(snapshot: DetailedCard, opts: ExtractOptions = {})
     primaryConcern: null,
     applyUrl,
     dimensions: dims,
+    normalizedText: detailText || snippet,
     telemetry: { deterministicMs: detMs, llmMs, llmCalled, llmFallbackReason },
   };
 }

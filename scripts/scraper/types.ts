@@ -12,9 +12,23 @@ export type UnitStatus =
   | "done"
   | "failed"
   | "skipped_gated"
-  | "skipped_empty";
+  | "skipped_empty"
+  | "skipped_pruned";
 
 // ---------- Manifest / Journal ----------
+
+export interface UnitDecisionRecord {
+  ruleVersion: string;
+  cardsSeen: number;
+  cardsParsed: number;
+  duplicates: number;
+  extractionErrors: number;
+  qualified: number | null;
+  recommended: number | null;
+  newCompanies: number | null;
+  decision: "CONTINUE" | "STOP";
+  reason: string;
+}
 
 export interface WorkUnit {
   id: string;                // portal:kw:page
@@ -26,7 +40,11 @@ export interface WorkUnit {
   startedAt?: string;
   finishedAt?: string;
   error?: string;
+  executionPlanId?: string;  // from ExecutionPlan.json, or adhoc ID
+  definitionId?: string;     // attach definition ID for stopping rules
+  familyId?: string;         // attach family ID for downstream association
   cardIds: string[];         // list of card work-unit ids discovered on this page
+  decisionRecord?: UnitDecisionRecord;
 }
 
 export interface CardUnit {
@@ -41,18 +59,32 @@ export interface CardUnit {
   isNew?: boolean;
 }
 
-export interface SearchMetric {
+export interface PageExecutionRecord {
+  type: "PageExecutionRecord";
+  telemetrySchemaVersion: string;
   runId: string;
+  executionPlanId: string; // Ensure this is always populated (or synthetic)
+  definitionId: string;    // Ensure this is always populated (or synthetic)
+  familyId: string;        // Ensure this is always populated (or synthetic)
+  plannerVersion: string;
+  ruleVersion: string;
+  extractorVersion: string;
+  promptVersion: string;
   portal: PortalName;
   keyword: string;
   page: number;
-  cardsFound: number;
+  cardsSeen: number;
+  cardsParsed: number;
   duplicates: number;
-  newJobs: number;
-  duplicateStreak: number;
-  qualified: number;
+  rejected: number;
+  opportunities: number;
   saved: number;
-  runtimeMs: number;
+  qualified: number | null; // Always null at acquisition time
+  latencyMs: number;
+  decision: string;
+  decisionReason: string;
+  failureReason: string | null;
+  timestamp: string;
 }
 
 export type RunState = "initializing" | "waiting_for_confirmation" | "running" | "completed" | "failed" | "aborted";
@@ -61,7 +93,7 @@ export type HealthScore = "Healthy" | "Slow" | "Degraded" | "Blocked" | "Disable
 
 export interface PortalHealth {
   status: "ready" | "error" | "timeout" | "navigating" | "gated"; // Keep for backward compatibility with confirmation UI
-  score: HealthScore;
+  score: number; // 0 to 100 percentage
   details: string;
 }
 
@@ -86,7 +118,7 @@ export interface RunManifest {
     httpFallbacks: number;
     llmCalls: number;
   };
-  searchMetrics?: SearchMetric[];
+  pageExecutionRecords?: PageExecutionRecord[];
   units: WorkUnit[];
   cards: CardUnit[];
 }
@@ -201,6 +233,7 @@ export interface ExtractionResult {
   primaryConcern: string | null;
   applyUrl: string;
   dimensions: DimensionResult[];
+  normalizedText: string;
   telemetry: {
     deterministicMs: number;
     llmMs: number;

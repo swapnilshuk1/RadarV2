@@ -1,0 +1,21 @@
+{
+  "id": "policy_executive_default_v1",
+  "version": "1.0.0",
+  "description": "Standard scoring weights and thresholds for high-growth executive leadership alignments.",
+  "author": "RADAR Governance Council",
+  "created": "2026-07-17T16:00:00Z",
+  "weights": {
+    "cap_crm_strategy": 15,
+    "cap_executive_growth_scale": 25,
+    "cap_business_turnaround": 30,
+    "cap_enterprise_financial_stewardship": 20,
+    "cap_high_growth_builder": 10
+  },
+  "decisionThresholds": {
+    "Excellent": [80, 101],
+    "Good": [65, 80],
+    "Average": [50, 65],
+    "Weak Fit": [30, 50],
+    "Needs More Evidence": [0, 30]
+  }
+}

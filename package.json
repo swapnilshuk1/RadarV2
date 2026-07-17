@@ -4,7 +4,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "npm run serve & npm run tailwind & npm run vite",
+    "dev": "vite",
     "benchmark": "npx @dotenvx/dotenvx run -- npx tsx scripts/qa-eval.ts",
     "build": "vite build",
     "build:dev": "vite build --mode development",
@@ -12,9 +12,19 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "scrape": "tsx scripts/scrape.ts",
+    "enrich": "tsx scripts/enrich.ts",
+    "validate-graph": "tsx scripts/validate-graph.ts",
     "eval:seed": "tsx scripts/golden/seed-from-fixtures.ts",
     "eval": "tsx scripts/eval/run.ts",
-    "eval:viewer": "tsx scripts/eval/viewer/server.ts"
+    "eval:viewer": "tsx scripts/eval/viewer/server.ts",
+    "rebuild-read-models": "tsx scripts/rebuild-read-models.ts",
+    "rebuild-one": "tsx scripts/rebuild-read-models.ts",
+    "eqe:1:html": "tsx tests/normalizeScrapedText.test.ts",
+    "eqe:2:ontology": "tsx scripts/validate-ontology.ts",
+    "eqe:3:recognition": "tsx scripts/corpus-recognition-report.ts",
+    "eqe:4:acceptance": "tsx scripts/test-acceptance.ts",
+    "eqe:5:calibration": "tsx scripts/run-policy-calibration.ts --candidate=candidate.json",
+    "test:eqe": "npm run eqe:1:html && npm run eqe:2:ontology && npm run eqe:3:recognition && npm run eqe:4:acceptance && npm run eqe:5:calibration"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -49,6 +59,7 @@
     "@tanstack/react-router": "^1.170.16",
     "@tanstack/react-start": "^1.168.26",
     "@tanstack/router-plugin": "^1.168.18",
+    "@types/uuid": "^10.0.0",
     "better-sqlite3": "^12.11.1",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
@@ -72,6 +83,7 @@
     "tailwindcss": "^4.2.1",
     "tw-animate-css": "^1.3.4",
     "undici": "^8.7.0",
+    "uuid": "^14.0.1",
     "vaul": "^1.1.2",
     "vite-tsconfig-paths": "^6.0.2",
     "zod": "^3.24.2"
@@ -80,6 +92,7 @@
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "^2.7.1",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

@@ -1,0 +1,85 @@
+{
+  "version": "1.0.0",
+  "products": {
+    "Salesforce": {
+      "category": "CRM",
+      "aliases": ["SFDC", "Salesforce CRM", "Salesforce.com"]
+    },
+    "HubSpot": {
+      "category": "CRM",
+      "aliases": ["Hubspot CRM"]
+    },
+    "Dynamics": {
+      "category": "CRM",
+      "aliases": ["Microsoft Dynamics", "MS Dynamics"]
+    },
+    "NetSuite": {
+      "category": "ERP",
+      "aliases": ["Oracle NetSuite"]
+    },
+    "SAP": {
+      "category": "ERP",
+      "aliases": ["SAP ERP", "S/4 HANA", "S/4HANA"]
+    },
+    "Oracle": {
+      "category": "ERP",
+      "aliases": ["Oracle Fusion", "Oracle ERP"]
+    },
+    "AWS": {
+      "category": "Cloud/Infrastructure",
+      "aliases": ["Amazon Web Services", "EC2", "S3"]
+    },
+    "Azure": {
+      "category": "Cloud/Infrastructure",
+      "aliases": ["Microsoft Azure", "Azure Cloud"]
+    },
+    "GCP": {
+      "category": "Cloud/Infrastructure",
+      "aliases": ["Google Cloud", "Google Cloud Platform"]
+    },
+    "Kubernetes": {
+      "category": "Cloud/Infrastructure",
+      "aliases": ["K8s", "EKS", "GKE"]
+    },
+    "Terraform": {
+      "category": "Cloud/Infrastructure",
+      "aliases": ["IaC"]
+    },
+    "GA4": {
+      "category": "Analytics",
+      "aliases": ["Google Analytics 4", "Google Analytics", "Universal Analytics"]
+    },
+    "Adobe Analytics": {
+      "category": "Analytics",
+      "aliases": ["Adobe Experience Cloud", "Omniture"]
+    },
+    "Tableau": {
+      "category": "Analytics",
+      "aliases": ["Tableau Software"]
+    },
+    "PowerBI": {
+      "category": "Analytics",
+      "aliases": ["Power BI", "MS PowerBI"]
+    },
+    "Python": {
+      "category": "Programming/Data",
+      "aliases": ["PySpark", "pandas", "numpy"]
+    },
+    "SQL": {
+      "category": "Programming/Data",
+      "aliases": ["Postgres", "MySQL", "Oracle SQL", "MSSQL"]
+    },
+    "Jira": {
+      "category": "Productivity/Collaboration",
+      "aliases": ["Atlassian Jira"]
+    },
+    "Microsoft Teams": {
+      "category": "Productivity/Collaboration",
+      "aliases": ["MS Teams", "Teams app", "Teams software"]
+    },
+    "Slack": {
+      "category": "Productivity/Collaboration",
+      "aliases": ["Slack Technologies"]
+    }
+  }
+}

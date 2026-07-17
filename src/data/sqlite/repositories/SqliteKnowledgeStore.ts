@@ -8,13 +8,14 @@ export class SqliteKnowledgeStore implements KnowledgeStore {
   recordEvidence(evidenceList: Evidence[]): void {
     const stmt = this.db.prepare(`
       INSERT INTO evidence (
-        id, source_listing_id, text, source_type, quality_score,
-        created_at, updated_at, meta_schema_version
+        id, document_id, text, section, quality_score,
+        created_at, updated_at,
+        meta_schema_version, meta_extractor_version, meta_prompt_version, meta_model, meta_run_id, meta_timestamp
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         text = excluded.text,
-        source_type = excluded.source_type,
+        section = excluded.section,
         quality_score = excluded.quality_score,
         updated_at = excluded.updated_at
     `);
@@ -23,13 +24,18 @@ export class SqliteKnowledgeStore implements KnowledgeStore {
       for (const ev of evidenceList) {
         stmt.run(
           ev.id,
-          ev.sourceListingId,
+          ev.documentId,
           ev.text,
-          ev.sourceType,
+          ev.section ?? null,
           ev.qualityScore,
           ev.createdAt,
           ev.updatedAt,
-          ev._meta.schemaVersion
+          ev.provenance.schemaVersion,
+          ev.provenance.extractorVersion ?? null,
+          ev.provenance.promptVersion ?? null,
+          ev.provenance.model ?? null,
+          ev.provenance.runId ?? null,
+          ev.provenance.timestamp
         );
       }
     })();
@@ -39,13 +45,12 @@ export class SqliteKnowledgeStore implements KnowledgeStore {
     const factStmt = this.db.prepare(`
       INSERT INTO facts (
         id, opportunity_id, attribute, value,
-        created_at, updated_at, meta_schema_version
+        created_at, updated_at,
+        meta_schema_version, meta_extractor_version, meta_prompt_version, meta_model, meta_run_id, meta_timestamp
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        attribute = excluded.attribute,
-        value = excluded.value,
-        updated_at = excluded.updated_at
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      -- Facts are Immutable
+      ON CONFLICT(id) DO NOTHING
     `);
 
     const linkStmt = this.db.prepare(`
@@ -61,9 +66,14 @@ export class SqliteKnowledgeStore implements KnowledgeStore {
           JSON.stringify(fact.value),
           fact.createdAt,
           fact.updatedAt,
-          fact._meta.schemaVersion
+          fact.provenance.schemaVersion,
+          fact.provenance.extractorVersion ?? null,
+          fact.provenance.promptVersion ?? null,
+          fact.provenance.model ?? null,
+          fact.provenance.runId ?? null,
+          fact.provenance.timestamp
         );
-        
+
         for (const evId of fact.evidenceIds) {
           linkStmt.run(fact.id, evId);
         }
@@ -71,26 +81,9 @@ export class SqliteKnowledgeStore implements KnowledgeStore {
     })();
   }
 
-  findEvidenceForOpportunity(opportunityId: string): Evidence[] {
-    const rows = this.db.prepare(`
-      SELECT e.* 
-      FROM evidence e
-      JOIN source_listings sl ON e.source_listing_id = sl.id
-      WHERE sl.opportunity_id = ?
-    `).all(opportunityId) as any[];
-
-    return rows.map(row => ({
-      id: row.id,
-      sourceListingId: row.source_listing_id,
-      text: row.text,
-      sourceType: row.source_type,
-      qualityScore: row.quality_score,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      _meta: {
-        schemaVersion: row.meta_schema_version
-      }
-    }));
+  findEvidenceForDocument(documentId: string): Evidence[] {
+    const rows = this.db.prepare(`SELECT * FROM evidence WHERE document_id = ?`).all(documentId) as any[];
+    return rows.map(r => this.mapEvidenceRow(r));
   }
 
   findFactsForOpportunity(opportunityId: string): Fact[] {
@@ -102,17 +95,42 @@ export class SqliteKnowledgeStore implements KnowledgeStore {
       GROUP BY f.id
     `).all(opportunityId) as any[];
 
-    return rows.map(row => ({
-      id: row.id,
-      opportunityId: row.opportunity_id,
-      attribute: row.attribute,
-      value: JSON.parse(row.value),
-      evidenceIds: row.evidence_ids ? row.evidence_ids.split(",") : [],
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      _meta: {
-        schemaVersion: row.meta_schema_version
+    return rows.map(r => ({
+      id: r.id,
+      opportunityId: r.opportunity_id,
+      attribute: r.attribute,
+      value: JSON.parse(r.value),
+      evidenceIds: r.evidence_ids ? r.evidence_ids.split(",") : [],
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      provenance: {
+        schemaVersion: r.meta_schema_version,
+        extractorVersion: r.meta_extractor_version,
+        promptVersion: r.meta_prompt_version,
+        model: r.meta_model,
+        runId: r.meta_run_id,
+        timestamp: r.meta_timestamp
       }
     }));
+  }
+
+  private mapEvidenceRow(row: any): Evidence {
+    return {
+      id: row.id,
+      documentId: row.document_id,
+      text: row.text,
+      section: row.section,
+      qualityScore: row.quality_score,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      provenance: {
+        schemaVersion: row.meta_schema_version,
+        extractorVersion: row.meta_extractor_version,
+        promptVersion: row.meta_prompt_version,
+        model: row.meta_model,
+        runId: row.meta_run_id,
+        timestamp: row.meta_timestamp
+      }
+    };
   }
 }

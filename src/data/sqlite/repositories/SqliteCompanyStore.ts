@@ -8,20 +8,19 @@ export class SqliteCompanyStore implements CompanyStore {
   registerCompany(company: Company): void {
     const stmt = this.db.prepare(`
       INSERT INTO companies (
-        id, name, industry, hq, size, tech_stack,
-        hiring_velocity, growth_signal, leadership_changes, technology_adoption, executive_turnover,
+        id, name, industry, hq, size, tech_stack, hiring_velocity, growth_signal,
         created_at, updated_at,
-        meta_schema_version, meta_extractor_version, meta_prompt_version, meta_model, meta_benchmark_version
+        meta_schema_version, meta_extractor_version, meta_prompt_version, meta_model, meta_run_id, meta_timestamp
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
-        name = excluded.name,
         industry = excluded.industry,
         hq = excluded.hq,
         size = excluded.size,
         tech_stack = excluded.tech_stack,
-        updated_at = excluded.updated_at,
-        meta_schema_version = excluded.meta_schema_version
+        hiring_velocity = excluded.hiring_velocity,
+        growth_signal = excluded.growth_signal,
+        updated_at = excluded.updated_at
     `);
 
     stmt.run(
@@ -33,24 +32,24 @@ export class SqliteCompanyStore implements CompanyStore {
       company.techStack ? JSON.stringify(company.techStack) : null,
       company.hiringVelocity ?? null,
       company.growthSignal ?? null,
-      company.leadershipChanges ?? null,
-      company.technologyAdoption ?? null,
-      company.executiveTurnover ?? null,
       company.createdAt,
       company.updatedAt,
-      company._meta.schemaVersion,
-      company._meta.extractorVersion ?? null,
-      company._meta.promptVersion ?? null,
-      company._meta.model ?? null,
-      company._meta.benchmarkVersion ?? null
+      company.provenance.schemaVersion,
+      company.provenance.extractorVersion ?? null,
+      company.provenance.promptVersion ?? null,
+      company.provenance.model ?? null,
+      company.provenance.runId ?? null,
+      company.provenance.timestamp
     );
   }
 
   findByName(name: string): Company | undefined {
-    // Case-insensitive search on company name
-    const row = this.db.prepare(`SELECT * FROM companies WHERE LOWER(name) = LOWER(?)`).get(name) as any;
+    const row = this.db.prepare(`SELECT * FROM companies WHERE name = ? COLLATE NOCASE`).get(name) as any;
     if (!row) return undefined;
+    return this.mapRow(row);
+  }
 
+  private mapRow(row: any): Company {
     return {
       id: row.id,
       name: row.name,
@@ -60,36 +59,16 @@ export class SqliteCompanyStore implements CompanyStore {
       techStack: row.tech_stack ? JSON.parse(row.tech_stack) : undefined,
       hiringVelocity: row.hiring_velocity,
       growthSignal: row.growth_signal,
-      leadershipChanges: row.leadership_changes,
-      technologyAdoption: row.technology_adoption,
-      executiveTurnover: row.executive_turnover,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      _meta: {
+      provenance: {
         schemaVersion: row.meta_schema_version,
         extractorVersion: row.meta_extractor_version,
         promptVersion: row.meta_prompt_version,
         model: row.meta_model,
-        benchmarkVersion: row.meta_benchmark_version
+        runId: row.meta_run_id,
+        timestamp: row.meta_timestamp
       }
     };
-  }
-
-  updateIntelligenceSignals(id: string, signals: Partial<Company>): void {
-    const sets: string[] = [];
-    const params: any[] = [];
-    
-    if (signals.hiringVelocity !== undefined) { sets.push("hiring_velocity = ?"); params.push(signals.hiringVelocity); }
-    if (signals.growthSignal !== undefined) { sets.push("growth_signal = ?"); params.push(signals.growthSignal); }
-    if (signals.leadershipChanges !== undefined) { sets.push("leadership_changes = ?"); params.push(signals.leadershipChanges); }
-    if (signals.technologyAdoption !== undefined) { sets.push("technology_adoption = ?"); params.push(signals.technologyAdoption); }
-    if (signals.executiveTurnover !== undefined) { sets.push("executive_turnover = ?"); params.push(signals.executiveTurnover); }
-    
-    if (sets.length === 0) return;
-    
-    sets.push("updated_at = CURRENT_TIMESTAMP");
-    params.push(id);
-    
-    this.db.prepare(`UPDATE companies SET ${sets.join(", ")} WHERE id = ?`).run(...params);
   }
 }

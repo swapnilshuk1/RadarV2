@@ -16,9 +16,9 @@ import { present, type Presented } from "./present";
 import type { RecommendationRecord } from "./record";
 import type { OpportunityIntelligence } from "./schema";
 
-const KEY = "radar.opportunities.v2";
+const KEY = "radar.opportunities.v3";
 
-const baseOpportunities = [...authored, ...(liveScraped as OpportunitySource[])];
+const baseOpportunities = [...(liveScraped as OpportunitySource[])];
 
 let memoryCache: OpportunitySource[] | null = null;
 
@@ -60,9 +60,7 @@ export function addExtraOpportunities() {
 }
 
 export function injectFreshRecords(records: any[]) {
-  if (records && records.length > 0) {
-    writeOpportunities([...authored, ...(records as OpportunitySource[])]);
-  }
+    writeOpportunities([...(records as OpportunitySource[])]);
 }
 
 function toOI(a: OpportunitySource): OpportunityIntelligence {

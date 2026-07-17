@@ -99,12 +99,9 @@ function Shortlist() {
       const freshRecords = await getLiveScrapedFn();
       if (freshRecords && freshRecords.length > 0) {
         OpportunityProvider.injectFresh(freshRecords);
-      } else {
-        OpportunityProvider.addExtra(); // fallback
       }
     } catch (err) {
       console.error("Failed to fetch fresh records, falling back:", err);
-      OpportunityProvider.addExtra();
     }
     setLastScanAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
     setExtraScraped((prev) => prev + 1);
@@ -132,16 +129,20 @@ function Shortlist() {
             </Link>
             <button
               type="button"
-              onClick={runSearch}
-              disabled={!!activeRunId || isStarting}
-              aria-busy={!!activeRunId || isStarting}
-              className="inline-flex items-center gap-2 rounded-sm border border-ink bg-ink px-3 py-1.5 text-[11.5px] font-medium uppercase tracking-[0.14em] text-parchment transition-opacity hover:opacity-90 disabled:opacity-60"
+              onClick={async () => {
+                if (activeRunId || isStarting) {
+                  if (activeRunId) await abortScrapeFn({ data: { runId: activeRunId }});
+                } else {
+                  await runSearch();
+                }
+              }}
+              className="inline-flex items-center gap-2 rounded-sm border border-ink bg-ink px-3 py-1.5 text-[11.5px] font-medium uppercase tracking-[0.14em] text-parchment transition-opacity hover:opacity-90"
             >
               <span
                 aria-hidden
-                className={`inline-block h-1.5 w-1.5 rounded-full bg-parchment ${activeRunId || isStarting ? "animate-pulse" : ""}`}
+                className={`inline-block h-1.5 w-1.5 rounded-full bg-parchment ${activeRunId || isStarting ? "animate-pulse bg-red-500" : ""}`}
               />
-              {activeRunId || isStarting ? "Scanning…" : "Search"}
+              {activeRunId || isStarting ? "Stop" : "Search"}
             </button>
           </div>
         </div>

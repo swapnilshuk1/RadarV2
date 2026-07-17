@@ -13,6 +13,20 @@ export function jobHash(role: string, company: string): string {
   return "j-" + crypto.createHash("sha256").update(clean).digest("hex").slice(0, 12);
 }
 
+export function canonicalizeUrl(portal: string, rawUrl: string): string {
+  try {
+    const urlObj = new URL(rawUrl, "https://example.com");
+    if (portal === "Indeed") {
+      const jk = urlObj.searchParams.get("jk");
+      if (jk) return `https://in.indeed.com/viewjob?jk=${jk}`;
+    }
+  } catch (e) {}
+  
+  // Default fallback for LinkedIn, Naukri, and generic portals
+  return rawUrl.split("?")[0];
+}
+
 export function cardHashFor(portal: string, url: string): string {
-  return shortHash(`${portal}::${url.split("?")[0]}`, 16);
+  const canonical = canonicalizeUrl(portal, url);
+  return shortHash(`${portal}::${canonical}`, 16);
 }

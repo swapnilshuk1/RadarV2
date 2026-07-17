@@ -14,7 +14,16 @@ function loadProfile(): string {
   return profileCache;
 }
 
+function cleanText(text: string): string {
+  // Strip any remaining HTML tags just in case
+  const noHtml = text.replace(/<[^>]*>?/gm, ' ');
+  // Compress all whitespace (spaces, tabs, newlines) into a single space
+  return noHtml.replace(/\s+/g, ' ').trim();
+}
+
 function buildPrompt(input: EnrichInput): string {
+  const cleanDetail = cleanText(input.detailText).slice(0, 6000);
+  
   return `You are an executive search analyst filling *missing* fields in a job posting.
 Candidate profile (context only):
 ${loadProfile()}
@@ -26,7 +35,7 @@ Location: ${input.location}
 Portal: ${input.portal}
 URL: ${input.applyUrl}
 Snippet: ${input.snippet}
-Detail: ${input.detailText.slice(0, 6000)}
+Detail: ${cleanDetail}
 
 Return ONLY a JSON object mapping each of these dimension keys to an object
 { "value": "<short answer or null>", "rationale": "<one sentence>" }.

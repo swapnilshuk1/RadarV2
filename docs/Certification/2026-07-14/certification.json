@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "passed": true,
+  "scorecard": {
+    "Architecture": "PASS",
+    "Integrity": "PASS",
+    "Provenance": "PASS",
+    "Explainability": "PASS",
+    "Determinism": "PASS",
+    "Performance": 0,
+    "Recommendation": 0,
+    "Acquisition": 0,
+    "Intelligence": 0
+  }
+}

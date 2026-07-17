@@ -1,7 +1,5 @@
--- Migration 001: Initial Canonical Knowledge Graph Schema
--- Multi-User Architecture
+-- Migration 001: Canonical Knowledge Graph Schema (ADR-001)
 
--- Operational Tables
 CREATE TABLE IF NOT EXISTS _migrations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     migration_name TEXT NOT NULL UNIQUE,
@@ -12,6 +10,21 @@ CREATE TABLE IF NOT EXISTS _migrations (
 -- 1. GLOBAL LAYER (Owned by the System)
 -- ============================================================================
 
+CREATE TABLE IF NOT EXISTS sources (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    url TEXT,
+    name TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    meta_schema_version TEXT,
+    meta_extractor_version TEXT,
+    meta_prompt_version TEXT,
+    meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME
+);
+
 CREATE TABLE IF NOT EXISTS companies (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -21,69 +34,70 @@ CREATE TABLE IF NOT EXISTS companies (
     tech_stack TEXT, -- JSON array
     hiring_velocity REAL,
     growth_signal TEXT,
-    leadership_changes TEXT,
-    technology_adoption TEXT,
-    executive_turnover TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
     meta_extractor_version TEXT,
     meta_prompt_version TEXT,
     meta_model TEXT,
-    meta_benchmark_version TEXT
+    meta_run_id TEXT,
+    meta_timestamp DATETIME
 );
 
 CREATE TABLE IF NOT EXISTS opportunities (
     id TEXT PRIMARY KEY,
     company_id TEXT NOT NULL,
-    canonical_role TEXT NOT NULL,
-    status TEXT NOT NULL,
+    canonical_title TEXT NOT NULL,
+    location TEXT,
+    employment_type TEXT,
+    posting_window TEXT,
+    fingerprint TEXT NOT NULL UNIQUE,
+    lifecycle TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
     meta_extractor_version TEXT,
     meta_prompt_version TEXT,
     meta_model TEXT,
-    meta_benchmark_version TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
     FOREIGN KEY(company_id) REFERENCES companies(id)
 );
 
-CREATE TABLE IF NOT EXISTS source_listings (
+CREATE TABLE IF NOT EXISTS documents (
     id TEXT PRIMARY KEY,
-    opportunity_id TEXT NOT NULL,
-    portal TEXT NOT NULL,
-    url TEXT NOT NULL,
-    posted_at DATETIME,
-    recruiter TEXT,
-    salary_metadata TEXT,
-    raw_html_path TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    meta_schema_version TEXT,
-    FOREIGN KEY(opportunity_id) REFERENCES opportunities(id)
-);
-
-CREATE TABLE IF NOT EXISTS extractions (
-    id TEXT PRIMARY KEY,
-    source_listing_id TEXT NOT NULL,
-    raw_json TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    opportunity_id TEXT,
+    payload_type TEXT NOT NULL,
+    content TEXT NOT NULL,
+    lifecycle TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
     meta_extractor_version TEXT,
-    FOREIGN KEY(source_listing_id) REFERENCES source_listings(id)
+    meta_prompt_version TEXT,
+    meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
+    FOREIGN KEY(source_id) REFERENCES sources(id),
+    FOREIGN KEY(opportunity_id) REFERENCES opportunities(id)
 );
 
 CREATE TABLE IF NOT EXISTS evidence (
     id TEXT PRIMARY KEY,
-    source_listing_id TEXT NOT NULL,
+    document_id TEXT NOT NULL,
     text TEXT NOT NULL,
-    source_type TEXT NOT NULL,
+    section TEXT,
     quality_score REAL NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
-    FOREIGN KEY(source_listing_id) REFERENCES source_listings(id)
+    meta_extractor_version TEXT,
+    meta_prompt_version TEXT,
+    meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
+    FOREIGN KEY(document_id) REFERENCES documents(id)
 );
 
 CREATE TABLE IF NOT EXISTS facts (
@@ -94,6 +108,11 @@ CREATE TABLE IF NOT EXISTS facts (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
+    meta_extractor_version TEXT,
+    meta_prompt_version TEXT,
+    meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
     FOREIGN KEY(opportunity_id) REFERENCES opportunities(id)
 );
 
@@ -113,8 +132,11 @@ CREATE TABLE IF NOT EXISTS claims (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
+    meta_extractor_version TEXT,
     meta_prompt_version TEXT,
     meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
     FOREIGN KEY(opportunity_id) REFERENCES opportunities(id)
 );
 
@@ -126,7 +148,6 @@ CREATE TABLE IF NOT EXISTS claim_facts (
     FOREIGN KEY(fact_id) REFERENCES facts(id)
 );
 
-
 -- ============================================================================
 -- 2. USER-SCOPED LAYER (Owned by the Person)
 -- ============================================================================
@@ -136,7 +157,12 @@ CREATE TABLE IF NOT EXISTS people (
     email TEXT NOT NULL UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    meta_schema_version TEXT
+    meta_schema_version TEXT,
+    meta_extractor_version TEXT,
+    meta_prompt_version TEXT,
+    meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME
 );
 
 CREATE TABLE IF NOT EXISTS career_profiles (
@@ -144,11 +170,32 @@ CREATE TABLE IF NOT EXISTS career_profiles (
     person_id TEXT NOT NULL,
     timeline TEXT NOT NULL, -- JSON array
     skills TEXT NOT NULL, -- JSON array
-    achievements TEXT NOT NULL, -- JSON array
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
+    meta_extractor_version TEXT,
+    meta_prompt_version TEXT,
+    meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
     FOREIGN KEY(person_id) REFERENCES people(id)
+);
+
+CREATE TABLE IF NOT EXISTS resume_versions (
+    id TEXT PRIMARY KEY,
+    career_profile_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    achievements TEXT NOT NULL, -- JSON array
+    custom_statement TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    meta_schema_version TEXT,
+    meta_extractor_version TEXT,
+    meta_prompt_version TEXT,
+    meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
+    FOREIGN KEY(career_profile_id) REFERENCES career_profiles(id)
 );
 
 CREATE TABLE IF NOT EXISTS preference_profiles (
@@ -159,12 +206,14 @@ CREATE TABLE IF NOT EXISTS preference_profiles (
     target_compensation TEXT,
     travel_willingness TEXT,
     company_size TEXT, -- JSON array
-    international BOOLEAN NOT NULL,
-    startups BOOLEAN NOT NULL,
-    public_companies BOOLEAN NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
+    meta_extractor_version TEXT,
+    meta_prompt_version TEXT,
+    meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
     FOREIGN KEY(person_id) REFERENCES people(id)
 );
 
@@ -172,38 +221,68 @@ CREATE TABLE IF NOT EXISTS matches (
     id TEXT PRIMARY KEY,
     person_id TEXT NOT NULL,
     opportunity_id TEXT NOT NULL,
-    capability_score REAL NOT NULL,
-    career_progression_score REAL NOT NULL,
-    strategic_value_score REAL NOT NULL,
-    lifestyle_score REAL NOT NULL,
-    overall_confidence REAL NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
+    meta_extractor_version TEXT,
     meta_prompt_version TEXT,
     meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
     FOREIGN KEY(person_id) REFERENCES people(id),
     FOREIGN KEY(opportunity_id) REFERENCES opportunities(id)
+);
+
+CREATE TABLE IF NOT EXISTS match_claims (
+    match_id TEXT NOT NULL,
+    claim_id TEXT NOT NULL,
+    PRIMARY KEY (match_id, claim_id),
+    FOREIGN KEY(match_id) REFERENCES matches(id),
+    FOREIGN KEY(claim_id) REFERENCES claims(id)
+);
+
+CREATE TABLE IF NOT EXISTS assessments (
+    id TEXT PRIMARY KEY,
+    match_id TEXT NOT NULL UNIQUE,
+    capability_score REAL NOT NULL,
+    career_growth_score REAL NOT NULL,
+    leadership_scope_score REAL NOT NULL,
+    compensation_score REAL NOT NULL,
+    industry_alignment_score REAL NOT NULL,
+    location_fit_score REAL NOT NULL,
+    lifestyle_score REAL NOT NULL,
+    confidence_score REAL NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    meta_schema_version TEXT,
+    meta_extractor_version TEXT,
+    meta_prompt_version TEXT,
+    meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
+    FOREIGN KEY(match_id) REFERENCES matches(id)
 );
 
 CREATE TABLE IF NOT EXISTS recommendations (
     id TEXT PRIMARY KEY,
     person_id TEXT NOT NULL,
     opportunity_id TEXT NOT NULL,
-    match_id TEXT NOT NULL,
+    assessment_id TEXT NOT NULL,
     summary TEXT NOT NULL,
     reasons TEXT NOT NULL, -- JSON array
     risks TEXT NOT NULL, -- JSON array
-    unknowns TEXT NOT NULL, -- JSON array
-    supporting_claims TEXT NOT NULL, -- JSON array
+    lifecycle TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
+    meta_extractor_version TEXT,
     meta_prompt_version TEXT,
     meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
     FOREIGN KEY(person_id) REFERENCES people(id),
     FOREIGN KEY(opportunity_id) REFERENCES opportunities(id),
-    FOREIGN KEY(match_id) REFERENCES matches(id)
+    FOREIGN KEY(assessment_id) REFERENCES assessments(id)
 );
 
 CREATE TABLE IF NOT EXISTS decisions (
@@ -213,9 +292,15 @@ CREATE TABLE IF NOT EXISTS decisions (
     recommendation_id TEXT,
     action TEXT NOT NULL,
     reason TEXT,
+    lifecycle TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
+    meta_extractor_version TEXT,
+    meta_prompt_version TEXT,
+    meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
     FOREIGN KEY(person_id) REFERENCES people(id),
     FOREIGN KEY(opportunity_id) REFERENCES opportunities(id),
     FOREIGN KEY(recommendation_id) REFERENCES recommendations(id)
@@ -227,10 +312,15 @@ CREATE TABLE IF NOT EXISTS outcomes (
     opportunity_id TEXT NOT NULL,
     decision_id TEXT NOT NULL,
     result TEXT NOT NULL,
-    learned_reason TEXT,
+    outcome_source TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     meta_schema_version TEXT,
+    meta_extractor_version TEXT,
+    meta_prompt_version TEXT,
+    meta_model TEXT,
+    meta_run_id TEXT,
+    meta_timestamp DATETIME,
     FOREIGN KEY(person_id) REFERENCES people(id),
     FOREIGN KEY(opportunity_id) REFERENCES opportunities(id),
     FOREIGN KEY(decision_id) REFERENCES decisions(id)
