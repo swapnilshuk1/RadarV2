@@ -16,6 +16,10 @@ dist-ssr
 .nitro
 *.local
 
+# Bun (use npm for Railway — bun.lock triggers bun toolchain detection)
+bun.lock
+bunfig.toml
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
