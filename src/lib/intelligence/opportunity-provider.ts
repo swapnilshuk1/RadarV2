@@ -11,11 +11,18 @@ export type ProviderOptions = {
 };
 
 export const OpportunityProvider = {
-  /** List all dynamically computed opportunity DTOs. */
+  /** List all dynamically computed opportunity DTOs, sorted by Pursuit Potential. */
   list(options?: ProviderOptions): Opportunity[] {
     const active = options?.activePursuits ?? activePursuits();
     const { presented } = runEngine(active);
-    return presented.map((p) => p.opportunity);
+    const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, PASS: 2 };
+    return presented
+      .map((p) => p.opportunity)
+      .sort((a, b) => {
+        const tierDiff = (decisionRank[a.decision] ?? 3) - (decisionRank[b.decision] ?? 3);
+        if (tierDiff !== 0) return tierDiff;
+        return (b.recommendationResult?.score ?? 0) - (a.recommendationResult?.score ?? 0);
+      });
   },
 
   /** Get a single computed opportunity DTO by hash. */
