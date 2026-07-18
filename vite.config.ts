@@ -60,7 +60,7 @@ export default defineConfig((async ({ command, mode }: any) => {
       ...(command === "build"
         ? [
             await import("nitro/vite").then(({ nitro }) =>
-              nitro({ defaultPreset: "cloudflare-module" })
+              nitro({ defaultPreset: "node-server" })
             ),
           ]
         : []),

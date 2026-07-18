@@ -77,7 +77,9 @@ async function enrichWithGroq(input: EnrichInput): Promise<EnrichPatch | null> {
   const model = process.env.GROQ_MODEL || DEFAULT_MODEL;
   const prompt = buildPrompt(input);
 
-  try {
+    console.info(`\n[enrich:groq] Enriching "${input.title}" at "${input.company}"`);
+    console.info(`[enrich:groq] Missing dimensions: ${input.missingKeys.join(", ")}`);
+    
     let { res, data, status } = await groqCall(apiKey, model, prompt);
 
     if (status === 429) {
@@ -93,6 +95,8 @@ async function enrichWithGroq(input: EnrichInput): Promise<EnrichPatch | null> {
     const text = data?.choices?.[0]?.message?.content;
     if (!text) throw new Error("Groq returned empty response");
 
+    console.info(`[enrich:groq] Raw response from Groq:\n${text}`);
+
     // Log token usage if available.
     if (data.usage) {
       console.info(
@@ -100,8 +104,14 @@ async function enrichWithGroq(input: EnrichInput): Promise<EnrichPatch | null> {
       );
     }
 
+    const parsed = JSON.parse(text) as EnrichPatch;
+    console.info(`[enrich:groq] Successfully extracted values:`);
+    for (const [key, field] of Object.entries(parsed)) {
+      console.info(`  - ${key}: "${field?.value}" (Rationale: ${field?.rationale})`);
+    }
+
     groqMetrics.successes++;
-    return JSON.parse(text) as EnrichPatch;
+    return parsed;
   } catch (err: any) {
     console.warn(`[enrich:groq] LLM fallback failed: ${err.message}`);
     groqMetrics.failures++;
