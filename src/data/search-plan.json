@@ -1,0 +1,320 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-07-18T10:13:48.547Z",
+  "candidateIntent": {
+    "targetLevel": [
+      "CMO",
+      "VP",
+      "SVP",
+      "Head",
+      "Director"
+    ],
+    "functions": [
+      "Marketing Leadership",
+      "Growth",
+      "CRM",
+      "Lifecycle Marketing",
+      "Digital Marketing",
+      "Marketing",
+      "Digital",
+      "Transformation",
+      "Commercial"
+    ],
+    "operatingModels": [
+      "GCC",
+      "CoE"
+    ],
+    "ownership": [
+      "Transformation",
+      "Platform Ownership"
+    ],
+    "industries": [
+      "Automotive",
+      "Healthcare",
+      "Consumer",
+      "FMCG",
+      "Retail"
+    ],
+    "exclusions": [
+      "Engineering",
+      "Product",
+      "HR",
+      "Finance",
+      "General Management",
+      "Consulting",
+      "Other"
+    ]
+  },
+  "searchHypotheses": [
+    {
+      "name": "Marketing & Growth Leadership Core",
+      "description": "High-priority executive titles matching the candidate's target career levels.",
+      "queries": [
+        "Transformation Director",
+        "VP Marketing",
+        "Vice President Marketing",
+        "Head of Growth",
+        "VP Growth",
+        "Marketing Director",
+        "Director of Marketing",
+        "SVP Marketing",
+        "Head of Marketing",
+        "Chief Marketing Officer",
+        "CMO",
+        "Chief Growth Officer",
+        "Chief Digital Officer",
+        "Chief Customer Officer"
+      ]
+    },
+    {
+      "name": "Global Capability & CoE Operating Models",
+      "description": "CoE and GCC operating models matching the candidate's executive scaling intent.",
+      "queries": [
+        "Global Marketing Director",
+        "Head of Global Marketing"
+      ]
+    },
+    {
+      "name": "High-Yield Functional Domains",
+      "description": "Targeted performance marketing, CRM, and functional domains aligning with growth intent.",
+      "queries": [
+        "VP Performance Marketing",
+        "Director Performance Marketing",
+        "Head of Performance Marketing",
+        "CRM Director",
+        "Head of CRM",
+        "Lifecycle Marketing Director"
+      ]
+    },
+    {
+      "name": "Platform & Digital Product Ownership",
+      "description": "MarTech, AdTech, and transformation platform ownership targets.",
+      "queries": [
+        "Digital Platform Lead",
+        "VP Digital Platforms",
+        "Marketing Technology Lead",
+        "Director Marketing Technology"
+      ]
+    },
+    {
+      "name": "Enterprise Transformation Mandates",
+      "description": "Transformation, commercial excellence, and customer growth mandates.",
+      "queries": [
+        "Digital Transformation Director",
+        "Head of Digital Transformation",
+        "Marketing Transformation Lead",
+        "VP Marketing Transformation",
+        "Commercial Excellence Director",
+        "VP Commercial Excellence",
+        "VP Customer Growth",
+        "Customer Growth Director"
+      ]
+    }
+  ],
+  "rankedQueries": [
+    {
+      "query": "Transformation Director",
+      "score": 130,
+      "dimension": "targetRoles",
+      "concept": "Transformation Director"
+    },
+    {
+      "query": "VP Marketing",
+      "score": 105,
+      "dimension": "targetRoles",
+      "concept": "VP Marketing"
+    },
+    {
+      "query": "Vice President Marketing",
+      "score": 105,
+      "dimension": "targetRoles",
+      "concept": "VP Marketing"
+    },
+    {
+      "query": "Head of Growth",
+      "score": 105,
+      "dimension": "targetRoles",
+      "concept": "Head of Growth"
+    },
+    {
+      "query": "VP Growth",
+      "score": 105,
+      "dimension": "targetRoles",
+      "concept": "Head of Growth"
+    },
+    {
+      "query": "Marketing Director",
+      "score": 105,
+      "dimension": "targetRoles",
+      "concept": "Marketing Director"
+    },
+    {
+      "query": "Director of Marketing",
+      "score": 105,
+      "dimension": "targetRoles",
+      "concept": "Marketing Director"
+    },
+    {
+      "query": "SVP Marketing",
+      "score": 105,
+      "dimension": "targetRoles",
+      "concept": "SVP Marketing"
+    },
+    {
+      "query": "Head of Marketing",
+      "score": 105,
+      "dimension": "targetRoles",
+      "concept": "Head of Marketing"
+    },
+    {
+      "query": "Chief Marketing Officer",
+      "score": 65,
+      "dimension": "targetRoles",
+      "concept": "Chief Marketing Officer"
+    },
+    {
+      "query": "CMO",
+      "score": 65,
+      "dimension": "targetRoles",
+      "concept": "Chief Marketing Officer"
+    },
+    {
+      "query": "Chief Growth Officer",
+      "score": 65,
+      "dimension": "targetRoles",
+      "concept": "Chief Growth Officer"
+    },
+    {
+      "query": "Chief Digital Officer",
+      "score": 65,
+      "dimension": "targetRoles",
+      "concept": "Chief Digital Officer"
+    },
+    {
+      "query": "Digital Transformation Director",
+      "score": 60,
+      "dimension": "strategicMandate",
+      "concept": "Digital Transformation"
+    },
+    {
+      "query": "Head of Digital Transformation",
+      "score": 60,
+      "dimension": "strategicMandate",
+      "concept": "Digital Transformation"
+    },
+    {
+      "query": "Marketing Transformation Lead",
+      "score": 60,
+      "dimension": "strategicMandate",
+      "concept": "Marketing Transformation"
+    },
+    {
+      "query": "VP Marketing Transformation",
+      "score": 60,
+      "dimension": "strategicMandate",
+      "concept": "Marketing Transformation"
+    },
+    {
+      "query": "Global Marketing Director",
+      "score": 35,
+      "dimension": "leadershipModel",
+      "concept": "Global Marketing"
+    },
+    {
+      "query": "Head of Global Marketing",
+      "score": 35,
+      "dimension": "leadershipModel",
+      "concept": "Global Marketing"
+    },
+    {
+      "query": "VP Performance Marketing",
+      "score": 35,
+      "dimension": "functionalExpertise",
+      "concept": "Performance Marketing"
+    },
+    {
+      "query": "Director Performance Marketing",
+      "score": 35,
+      "dimension": "functionalExpertise",
+      "concept": "Performance Marketing"
+    },
+    {
+      "query": "Head of Performance Marketing",
+      "score": 35,
+      "dimension": "functionalExpertise",
+      "concept": "Performance Marketing"
+    },
+    {
+      "query": "CRM Director",
+      "score": 35,
+      "dimension": "functionalExpertise",
+      "concept": "CRM"
+    },
+    {
+      "query": "Head of CRM",
+      "score": 35,
+      "dimension": "functionalExpertise",
+      "concept": "CRM"
+    },
+    {
+      "query": "Lifecycle Marketing Director",
+      "score": 35,
+      "dimension": "functionalExpertise",
+      "concept": "CRM"
+    },
+    {
+      "query": "Digital Platform Lead",
+      "score": 35,
+      "dimension": "platformOwnership",
+      "concept": "Digital Platform"
+    },
+    {
+      "query": "VP Digital Platforms",
+      "score": 35,
+      "dimension": "platformOwnership",
+      "concept": "Digital Platform"
+    },
+    {
+      "query": "Marketing Technology Lead",
+      "score": 35,
+      "dimension": "platformOwnership",
+      "concept": "Marketing Technology"
+    },
+    {
+      "query": "Director Marketing Technology",
+      "score": 35,
+      "dimension": "platformOwnership",
+      "concept": "Marketing Technology"
+    },
+    {
+      "query": "Commercial Excellence Director",
+      "score": 35,
+      "dimension": "strategicMandate",
+      "concept": "Commercial Excellence"
+    },
+    {
+      "query": "VP Commercial Excellence",
+      "score": 35,
+      "dimension": "strategicMandate",
+      "concept": "Commercial Excellence"
+    },
+    {
+      "query": "VP Customer Growth",
+      "score": 35,
+      "dimension": "strategicMandate",
+      "concept": "Customer Growth"
+    },
+    {
+      "query": "Customer Growth Director",
+      "score": 35,
+      "dimension": "strategicMandate",
+      "concept": "Customer Growth"
+    },
+    {
+      "query": "Chief Customer Officer",
+      "score": 30,
+      "dimension": "targetRoles",
+      "concept": "Chief Customer Officer"
+    }
+  ]
+}

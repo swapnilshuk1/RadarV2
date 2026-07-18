@@ -53,7 +53,31 @@ export interface RunOptions {
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   const log = makeLogger("scrape");
-  let keywords = opts.keywords ?? DEFAULT_KEYWORDS;
+  let keywords = opts.keywords;
+  if (!keywords) {
+    try {
+      const profilePath = path.join(process.cwd(), "src", "data", "candidate-profile.json");
+      const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
+      const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
+      const searchPlanOutputPath = path.join(process.cwd(), "src", "data", "search-plan.json");
+      
+      const { CareerIntentModel } = await import("./scraper/run/career-intent");
+      const intent = CareerIntentModel.extractIntent(profilePath, taxonomyPath);
+      
+      const { SearchPlanner } = await import("./scraper/run/search-planner");
+      const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
+      
+      fs.writeFileSync(searchPlanOutputPath, JSON.stringify(searchPlan, null, 2), "utf-8");
+      log(`Generated and persisted Search Plan first-class artifact to: ${searchPlanOutputPath}`);
+      
+      // Select the top 10 ranked queries to prevent crawler bloat, while maintaining high diversity!
+      keywords = searchPlan.rankedQueries.slice(0, 10).map(q => q.query);
+      log(`Search Planner compiled top portal queries: ${keywords.join(", ")}`);
+    } catch (e: any) {
+      log(`Search Planner failed to dynamically generate Search Plan (${e.message}). Falling back to static defaults.`, "warn");
+      keywords = DEFAULT_KEYWORDS;
+    }
+  }
   let portals = opts.portals ?? DEFAULT_PORTALS;
   const maxPages = opts.maxPages ?? CONFIG.maxPages;
 
