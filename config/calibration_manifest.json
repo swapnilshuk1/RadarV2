@@ -1,0 +1,15 @@
+{
+  "policyVersion": "1.1.0",
+  "policyId": "policy-v1.1-candidate",
+  "ontologyVersion": "1.1.0",
+  "ontologyHash": "9dd1c3d2382d6df9b6d85949d2822a9e5256e2975fe5fe3f0ff36b2512f45ec0",
+  "corpusHash": "eca0890ea165f1e8477ffda83eb07ca7f369f688849b253be6fa40f4e4fa4ec7",
+  "calibrationDate": "2026-07-18T04:14:04Z",
+  "trainingJobs": 717,
+  "metrics": {
+    "stability": 97.2,
+    "volatility": 2.8,
+    "outcome": "PROMOTE",
+    "selectedTechWeight": 15
+  }
+}

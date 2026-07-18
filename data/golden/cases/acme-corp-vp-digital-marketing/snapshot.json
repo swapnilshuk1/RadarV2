@@ -1,0 +1,27 @@
+{
+  "snapshotSchemaVersion": "1.0.0",
+  "scraperVersion": "1.0.0",
+  "cardHash": "j-fd44b5cd9d7b",
+  "portal": "Indeed",
+  "keyword": "golden-seed",
+  "discoveredAt": "1970-01-01T00:00:00.000Z",
+  "searchUrl": "about:golden",
+  "detailUrl": "about:golden/j-acme-vp-mumbai",
+  "card": {
+    "rawHtml": "<pre>VP Digital Marketing\nAcme Corp — Mumbai · India\nPosted 8 days ago\nVP Digital Marketing\nExperience in GTM, CRM, and digital platforms.\nGTM, CRM, and digital platforms.\nMumbai · India\nMust be located in Mumbai office (100% on-site).\nStack: Salesforce, GA4.</pre>",
+    "rawText": "VP Digital Marketing\nAcme Corp — Mumbai · India\nPosted 8 days ago\nVP Digital Marketing\nExperience in GTM, CRM, and digital platforms.\nGTM, CRM, and digital platforms.\nMumbai · India\nMust be located in Mumbai office (100% on-site).\nStack: Salesforce, GA4.",
+    "title": "VP Digital Marketing",
+    "company": "Acme Corp",
+    "location": "Mumbai · India"
+  },
+  "detail": {
+    "fetched": true,
+    "rawHtml": "<pre>VP Digital Marketing\nAcme Corp — Mumbai · India\nPosted 8 days ago\nVP Digital Marketing\nExperience in GTM, CRM, and digital platforms.\nGTM, CRM, and digital platforms.\nMumbai · India\nMust be located in Mumbai office (100% on-site).\nStack: Salesforce, GA4.</pre>",
+    "rawText": "VP Digital Marketing\nAcme Corp — Mumbai · India\nPosted 8 days ago\nVP Digital Marketing\nExperience in GTM, CRM, and digital platforms.\nGTM, CRM, and digital platforms.\nMumbai · India\nMust be located in Mumbai office (100% on-site).\nStack: Salesforce, GA4."
+  },
+  "telemetry": {
+    "cardExtractMs": 0,
+    "detailExtractMs": 0,
+    "totalMs": 0
+  }
+}

@@ -1,0 +1,174 @@
+{
+  "extractorVersion": "1.0.0",
+  "promptVersion": "1.0.0",
+  "jobHash": "j-68c77928f480",
+  "role": "Director Marketing",
+  "company": "Product based AI Powered Conversational Messaging Company",
+  "location": "Pune",
+  "postedRelative": "Posted recently",
+  "scrapedFrom": "Naukri",
+  "primaryConcern": null,
+  "applyUrl": "https://www.naukri.com/job-listings-director-marketing-experteye-consulting-pune-12-to-18-years-120626008101",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Director",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Director",
+            "source": "title"
+          }
+        ],
+        "provenance": "explicit",
+        "quality": "high",
+        "extractorId": "requiredLevel@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Seniority check",
+        "detail": "Matches target title list"
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "reportingLine@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Reporting line alignment",
+        "detail": "CxO / MD reporting proven"
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "mandate@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Mandate alignment",
+        "detail": "Lifecycle stage matches profile"
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "commercialAccountability@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "P&L Scale matches",
+        "detail": "Prior P&L / budget precedent"
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "functionalScope@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Competency match",
+        "detail": "Full growth capability stack"
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "India",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Pune",
+            "source": "snippet"
+          }
+        ],
+        "provenance": "explicit",
+        "quality": "high",
+        "extractorId": "geography@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Location match",
+        "detail": "Target market listing matches"
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "workModel@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Work model preference",
+        "detail": "Preferred work model"
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "technologyStack@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Platform stack",
+        "detail": "Platform-native experience"
+      }
+    }
+  ],
+  "telemetry": {
+    "deterministicMs": 4,
+    "llmMs": 0,
+    "llmCalled": true,
+    "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+  }
+}

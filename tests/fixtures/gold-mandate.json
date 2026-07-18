@@ -1,0 +1,122 @@
+[
+  {
+    "testCategory": "Greenfield",
+    "text": "The successful candidate will stand up the new division and build the team from scratch.",
+    "expectedCategories": ["GREENFIELD"],
+    "expectedPrimary": "GREENFIELD"
+  },
+  {
+    "testCategory": "Greenfield",
+    "text": "Requires a 0-to-1 leader who can build our APAC operations from the ground up.",
+    "expectedCategories": ["GREENFIELD"],
+    "expectedPrimary": "GREENFIELD"
+  },
+  {
+    "testCategory": "Scale",
+    "text": "Expected to scale the business and team from 10 to 100 people during hyperscale.",
+    "expectedCategories": ["SCALE"],
+    "expectedPrimary": "SCALE"
+  },
+  {
+    "testCategory": "Scale",
+    "text": "Tasked with driving a 10x growth trajectory for the division.",
+    "expectedCategories": ["SCALE"],
+    "expectedPrimary": "SCALE"
+  },
+  {
+    "testCategory": "Transformation",
+    "text": "Lead the business transformation and digital transformation of our core CRM platform.",
+    "expectedCategories": ["TRANSFORMATION"],
+    "expectedPrimary": "TRANSFORMATION"
+  },
+  {
+    "testCategory": "Transformation",
+    "text": "Responsible for the modernization and operating model redesign of legacy operations.",
+    "expectedCategories": ["TRANSFORMATION"],
+    "expectedPrimary": "TRANSFORMATION"
+  },
+  {
+    "testCategory": "Turnaround",
+    "text": "Requires a turnaround specialist who can restructure the division and stabilize performance.",
+    "expectedCategories": ["TURNAROUND"],
+    "expectedPrimary": "TURNAROUND"
+  },
+  {
+    "testCategory": "Turnaround",
+    "text": "Will oversee a reset of the operational execution to reverse declining revenues.",
+    "expectedCategories": ["TURNAROUND"],
+    "expectedPrimary": "TURNAROUND"
+  },
+  {
+    "testCategory": "Integration",
+    "text": "Manage post-merger integration and M&A integration after key corporate acquisitions.",
+    "expectedCategories": ["INTEGRATION"],
+    "expectedPrimary": "INTEGRATION"
+  },
+  {
+    "testCategory": "Integration",
+    "text": "Responsible for PMI execution to align merged business lines.",
+    "expectedCategories": ["INTEGRATION"],
+    "expectedPrimary": "INTEGRATION"
+  },
+  {
+    "testCategory": "MultiCategory",
+    "text": "Will restructure operations to stabilize them and then scale the business from 10x growth.",
+    "expectedCategories": ["TURNAROUND", "SCALE"],
+    "expectedPrimary": "TURNAROUND"
+  },
+  {
+    "testCategory": "MultiCategory",
+    "text": "Lead digital transformation of our legacy core and stand up a new division from scratch.",
+    "expectedCategories": ["TRANSFORMATION", "GREENFIELD"],
+    "expectedPrimary": "TRANSFORMATION"
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Collaborate closely with various teams to maintain current day-to-day operations.",
+    "expectedCategories": [],
+    "expectedPrimary": "NONE"
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Must fit within the existing culture and maintain the status quo.",
+    "expectedCategories": [],
+    "expectedPrimary": "NONE"
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "This is a caretaker role focused on keeping things running smoothly.",
+    "expectedCategories": [],
+    "expectedPrimary": "NONE"
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Assess need for future scaling, although immediate focus is steady-state ops.",
+    "expectedCategories": [],
+    "expectedPrimary": "NONE"
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Work closely with integration consultants to understand past PMIs.",
+    "expectedCategories": [],
+    "expectedPrimary": "NONE"
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Must have basic understanding of digital transformation principles.",
+    "expectedCategories": [],
+    "expectedPrimary": "NONE"
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Report to the turnaround manager and assist with documentation.",
+    "expectedCategories": [],
+    "expectedPrimary": "NONE"
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Help with team alignment exercises during reorganizations.",
+    "expectedCategories": [],
+    "expectedPrimary": "NONE"
+  }
+]

@@ -1,0 +1,137 @@
+{
+  "jobHash": "j-hul-vp-digital",
+  "role": "VP Digital & E-commerce",
+  "company": "Hindustan Unilever",
+  "location": "Mumbai · India",
+  "scrapedFrom": "LinkedIn",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "VP",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "VP Digital & E-commerce",
+            "source": "title"
+          }
+        ]
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "CMO",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Reports to CMO, HUL.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "Category-first",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Operate within HUL's category-first brand structure.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "D2C P&L",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Indirect P&L via category owners.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Digital + E-com",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Digital, e-commerce, CRM.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "Mumbai",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Mumbai · India",
+            "source": "location"
+          }
+        ]
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Hybrid",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Hybrid, 3 days at HUL HQ.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Salesforce",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Salesforce Marketing Cloud + Adobe Analytics.",
+            "source": "snippet"
+          }
+        ]
+      }
+    }
+  ]
+}

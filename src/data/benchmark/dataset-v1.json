@@ -1,0 +1,933 @@
+{
+  "version": "1.0-draft",
+  "entries": [
+    {
+      "id": "bm-0c9ed20d977c9e99",
+      "cardHash": "0c9ed20d977c9e99",
+      "portal": "Indeed",
+      "difficulty": "Easy",
+      "isNegativeExample": false,
+      "rawHtml": "<div class=\"slider_list css-1bej0z4 eu4oa1w0\"><div data-testid=\"slider_item\" class=\"slider_item css-17bghu4 eu4oa1w0\"><div data-testid=\"fade-in-wrapper\" class=\"css-u74ql7 eu4oa1w0\"><div class=\"job_seen_beacon\"><table class=\"mainContentTable css-13i7zt6 eu4oa1w0\" cellpadding=\"0\" cellspacing=\"0\" role=\"presentation\"><tbody><tr><td class=\"resultContent css-1o6lhys eu4oa1w0\"><div class=\"css-pt3vth e37uo190\"><h3 class=\"jobTitle css-1o1rnx9 eu4oa1w0\" tabindex=\"-1\"><a id=\"job_890abcdef0123456\" data-mobtk=\"1jtgm8h9shbmr800\" data-jk=\"890abcdef0123456\" data-hiring-event=\"false\" data-hide-spinner=\"true\" role=\"button\" aria-label=\"full details of Head of Marketing\" class=\"jcs-JobTitle css-1baag51 eu4oa1w0\" href=\"/viewjob?jk=890abcdef0123456\" tabindex=\"-1\" rel=\"nofollow\"><span title=\"Head of Marketing\" id=\"jobTitle-b0050520c9223f12\">Head of Marketing</span></a></h3><div class=\"css-j160pq e37uo190\"><div class=\"css-glvc6p e37uo190\"><div class=\"mosaic-provider-jobcards-1k6cgqp e1xnxm2i0\"><div class=\"mosaic-provider-jobcards-1oa1vqn ecydgvn0\"><div class=\"mosaic-provider-jobcards-1f1q1js ecydgvn1\">Easily apply</div></div></div></div></div></div><div class=\"css-u74ql7 eu4oa1w0\"><div class=\"company_location css-o9i1wn e37uo190\"><div data-testid=\"timing-attribute\"><div class=\"css-1afmp4o e37uo190\"><span data-testid=\"company-name\" class=\"css-19eicqx eu4oa1w0\">Zenara Health</span></div><div data-testid=\"text-location\" class=\"css-1f06pz4 eu4oa1w0\">Remote in India</div></div></div><div class=\"jobMetaDataGroup css-jf723e eu4oa1w0\"><ul class=\"heading6 tapItem-gutter metadataContainer css-1hl5lcb eu4oa1w0\"><li class=\"salary-snippet-container mosaic-provider-jobcards-fswglz e1xnxm2i0\" data-testid=\"attribute_snippet_testid salary-snippet-container\"><div class=\"mosaic-provider-jobcards-1oa1vqn ecydgvn0\"><div class=\"mosaic-provider-jobcards-1f1q1js ecydgvn1\"><span class=\"css-zydy3i e1wnkr790\">₹50,00,000 - ₹70,00,000 a year</span></div></div></li><li class=\"mosaic-provider-jobcards-fswglz e1xnxm2i0\"><div class=\"mosaic-provider-jobcards-1oa1vqn ecydgvn0\"><div class=\"mosaic-provider-jobcards-1f1q1js ecydgvn1\"><span class=\"css-zydy3i e1wnkr790\">Health insurance</span></div></div></li><li class=\"mosaic-provider-jobcards-fswglz e1xnxm2i0\"><div class=\"mosaic-provider-jobcards-1oa1vqn ecydgvn0\"><div class=\"mosaic-provider-jobcards-1f1q1js ecydgvn1\"><span class=\"css-zydy3i e1wnkr790\">Paid time off</span></div></div></li></ul><div class=\"heading6 error-text tapItem-gutter\"></div></div></div></td></tr></tbody></table><div class=\"ctaContainer ctaContainer_withCompanyInfo\"><button class=\"bookmark bookmark-tap-target mosaic-provider-jobcards-ykqx5t e8ju0x50\" aria-label=\"Save job Toggle\" aria-pressed=\"false\" tabindex=\"-1\"><svg xmlns=\"http://www.w3.org/2000/svg\" focusable=\"false\" role=\"presentation\" fill=\"currentColor\" viewBox=\"0 0 24 24\" aria-hidden=\"true\" class=\"mosaic-provider-jobcards-s0xhw4 eac13zx0\"><path d=\"M12 18.221l-4.027 1.723c-.758.319-1.477.256-2.157-.19-.68-.446-1.02-1.077-1.02-1.892V5.072c0-.63.222-1.166.666-1.61.443-.443.98-.665 1.61-.665h9.856c.63 0 1.166.222 1.61.665.443.444.665.98.665 1.61v12.79c0 .815-.34 1.446-1.02 1.892-.679.445-1.398.509-2.156.19L12 18.22zm0-2.493l4.928 2.115V5.072H7.072v12.77L12 15.729z\"></path></svg></button></div><div aria-live=\"polite\"></div></div></div></div><div data-testid=\"slider_sub_item\" class=\"slider_sub_item css-u74ql7 eu4oa1w0\"><div data-testid=\"belowJobSnippet\" class=\"css-1vlebyu eu4oa1w0\"><ul style=\"list-style-type:circle;margin-top: 0px;margin-bottom: 0px;padding-left:20px;\">\n <li style=\"margin-bottom:0px;\">Experience with conference and event <b>marketing</b> — booth strategy, lead capture, field <b>marketing</b> (healthcare preferred).</li>\n <li>SEO and content-marketing experience.</li>\n</ul></div><div class=\"css-1a1rhwu eu4oa1w0\"><div class=\"result-tab visible css-1243kpv eu4oa1w0\"><div data-testid=\"more_links\" class=\"css-1b45w5d eu4oa1w0\"><ul><li><span class=\"mat\">View all <a href=\"/q-zenara-health-jobs.html\" class=\"css-1k2hae4 e19afand0\">Zenara Health jobs</a> - <a href=\"/l-india-jobs.html\" class=\"css-1k2hae4 e19afand0\">India jobs</a></span></li><li><span class=\"mat\">Salary Search: <a href=\"/career/head-of-marketing/salaries?campaignid=serp-more&amp;fromjk=b0050520c9223f12&amp;from=serp-more\" class=\"css-1k2hae4 e19afand0\">Head of Marketing salaries in India</a></span></li></ul></div></div></div></div></div>",
+      "rawText": "Head of MarketingEasily applyZenara HealthRemote in India₹50,00,000 - ₹70,00,000 a yearHealth insurancePaid time off Experience with conference and event marketing — booth strategy, lead capture, field marketing (healthcare preferred). SEO and content-marketing experience. View all Zenara Health jobs - India jobsSalary Search: Head of Marketing salaries in India",
+      "metadata": {
+        "originalTitle": "Head of Marketing",
+        "originalCompany": "Zenara Health",
+        "url": "https://in.indeed.com/viewjob?jk=890abcdef0123456"
+      },
+      "truth": {
+        "role": {
+          "value": "Head of Marketing",
+          "evidence": "Head of Marketing"
+        },
+        "company": {
+          "value": "Zenara Health",
+          "evidence": "Zenara Health"
+        },
+        "location": {
+          "value": "Remote in India",
+          "evidence": "Remote in India"
+        },
+        "salary": {
+          "value": "₹50,00,000 - ₹70,00,000 a year",
+          "evidence": "₹50,00,000 - ₹70,00,000 a year"
+        },
+        "mustHave": [
+          {
+            "value": "Experience with conference and event marketing",
+            "evidence": "Experience with conference and event marketing — booth strategy, lead capture, field marketing (healthcare preferred)"
+          },
+          {
+            "value": "SEO and content-marketing experience",
+            "evidence": "SEO and content-marketing experience"
+          }
+        ],
+        "niceToHave": [],
+        "tools": [],
+        "technologies": [],
+        "leadershipLevel": {
+          "value": "Head",
+          "evidence": "Head of Marketing"
+        },
+        "aiExposure": {
+          "value": null,
+          "evidence": null
+        },
+        "travel": {
+          "value": null,
+          "evidence": null
+        },
+        "remoteType": {
+          "value": "Remote",
+          "evidence": "Remote in India"
+        }
+      },
+      "expectedRecommendation": {
+        "fit": "Poor",
+        "reason": [
+          "The role is not a VP/CMO position",
+          "There is no mention of P&L responsibility",
+          "There is no mention of AI exposure"
+        ]
+      }
+    },
+    {
+      "id": "bm-9fcf8d055cf9ca91",
+      "cardHash": "9fcf8d055cf9ca91",
+      "portal": "Naukri",
+      "difficulty": "Easy",
+      "isNegativeExample": false,
+      "rawHtml": "<div class=\"styles_JDC__match-score__VnjLL\"><div><span class=\"styles_JDC__job-highlight-head__TEq5Q\">Job highlights</span></div><ul class=\"styles_JDC__job-highlight-list__QZC12\"><li>Experience in automotive parts marketing with OEMs and Tier-1 clients, skilled in RFQ management and product costing</li><li>Identify and approach new OEMs, develop business relationships, manage RFQs, submit quotations, and negotiate deals</li></ul></div><div class=\"\"><h2>Job description</h2></div><div class=\"\"><div class=\"styles_JDC__dang-inner-html__h0K4t\">Responsible for marketing, Identify to approach new OEMs and develop business relationship for Automotive parts.presentations Introduce products range to OEM customers (2W &amp; 4W &amp; Tier-1) get RFQs. Key Account customers. Efficient product costing Sub<br><br><p><b>Required Candidate profile</b></p>Managing the received RFQs and checking the feasibility of the enquiries.<br>Submitting the Quotations to customers and Negotiate with customers to get the business.Sheet Metal</div><div class=\"styles_other-details__oEN4O\"><div class=\"styles_details__Y424J\"><label>Role: </label><span><a href=\"https://www.naukri.com/head-marketing-jobs\" target=\"_blank\">Head - Marketing</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Industry Type: </label><span><a href=\"https://www.naukri.com/automobile-jobs\" target=\"_blank\">Automobile</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Department: </label><span><a href=\"https://www.naukri.com/marketing-communication-jobs\" target=\"_blank\">Marketing &amp; Communication</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Employment Type: </label><span><span>Full Time, Permanent</span></span></div><div class=\"styles_details__Y424J\"><label>Role Category: </label><span><span>Marketing</span></span></div></div><div class=\"styles_education__KXFkO\"><div class=\"styles_heading__veHpg\">Education</div><div class=\"styles_details__Y424J\"><label>UG: </label><span class=\"\">B.Tech / B.E. in Mechanical Engineering</span></div></div></div><div class=\"styles_key-skill__GIPn_\"><div class=\"styles_heading__veHpg\">Key Skills</div><div class=\"styles_legend__DVbef\">Skills highlighted with ‘<i class=\"ni-icon-jd-save\"></i>‘ are preferred keyskills</div><div><a href=\"https://www.naukri.com/sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>Sales</span></a><a href=\"https://www.naukri.com/kam-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>Kam</span></a><a href=\"https://www.naukri.com/oem-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>OEM</span></a><a href=\"https://www.naukri.com/business-development-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>Business Development</span></a><a href=\"https://www.naukri.com/marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>Marketing</span></a></div></div><div class=\"styles_JDC__footer__ZJnPe\"><a href=\"//www.facebook.com/sharer.php?u=https://www.naukri.com/job-listings-gm-vp-marketing-for-bangalore-only-from-automotive-industry-corporate-destination-bengaluru-20-to-25-years-080726025673&amp;title=Job Description for GM/VP-Marketing (For Bangalore) only from Automotive industry in Corporate Destination in Bengaluru for 20 to 25 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-facebook\" title=\"Share This Job on Facebook\"></i></a><a href=\"//twitter.com/share?url=https://www.naukri.com/job-listings-gm-vp-marketing-for-bangalore-only-from-automotive-industry-corporate-destination-bengaluru-20-to-25-years-080726025673&amp;title=Job Description for GM/VP-Marketing (For Bangalore) only from Automotive industry in Corporate Destination in Bengaluru for 20 to 25 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-twitter\" title=\"Share This Job on X\"></i></a><a href=\"//www.linkedin.com/shareArticle?mini=true&amp;url=https://www.naukri.com/job-listings-gm-vp-marketing-for-bangalore-only-from-automotive-industry-corporate-destination-bengaluru-20-to-25-years-080726025673&amp;title=Job Description for GM/VP-Marketing (For Bangalore) only from Automotive industry in Corporate Destination in Bengaluru for 20 to 25 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-linkedin\" title=\"Share This Job on Linkedin\"></i></a><span class=\"styles_report-job__U0NH3\">Report this job</span></div><div class=\"styles_modal-container__Ks9eE\"><div class=\"styles_mc__main__km_Lg styles_mc__main--hide__p_70h\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Report this job\"><div><h1 class=\"styles_mc__heading__hAeb9\">Report this job</h1><i class=\"ni-icon-cross-icon\" role=\"button\" tabindex=\"0\" aria-label=\"Close\"></i></div><div class=\"\"><div class=\"reportJob_report-job-modal__Z9VHb\"><div class=\"reportJob_options__2aAAd\"><div><i id=\"ic\" class=\"ni-icon-unchecked\"></i><label>Inappropriate Content</label></div><div><i id=\"ij\" class=\"ni-icon-unchecked\"></i><label>Incomplete information about job / company</label></div><div><i id=\"fj\" class=\"ni-icon-unchecked\"></i><label>Fake job / Non-recruitment related job / Scam</label></div><div><i id=\"dj\" class=\"ni-icon-unchecked\"></i><label>Duplicate of another job on the site</label></div><div><i id=\"ie\" class=\"ni-icon-unchecked\"></i><label>Incorrect Email ID</label></div><div><i id=\"ip\" class=\"ni-icon-unchecked\"></i><label>Phone number not contactable</label></div><div><i id=\"io\" class=\"ni-icon-unchecked\"></i><label>Other</label></div></div><div class=\"reportJob_other__3tkIl reportJob_closed__aznsg\"><textarea class=\"reportJob_other-text-area__zpgYQ\" spellcheck=\"true\" autocapitalize=\"sentences\" maxlength=\"500\" placeholder=\"Type Here\"></textarea><div><span class=\"reportJob_count__xViH7\">500/500 Characters left</span></div></div></div></div><div class=\"styles_mc__footer__fA45A\"><button class=\"styles_mc__footer-action__vCB3W styles_mc__footer-action--contained__008qp\" type=\"text\">Submit</button></div></div></div><div class=\"styles_mc__backdrop__GNySo styles_mc__backdrop--hide__epfS_\" aria-hidden=\"true\"></div>",
+      "rawText": "Job highlightsExperience in automotive parts marketing with OEMs and Tier-1 clients, skilled in RFQ management and product costingIdentify and approach new OEMs, develop business relationships, manage RFQs, submit quotations, and negotiate dealsJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob descriptionResponsible for marketing, Identify to approach new OEMs and develop business relationship for Automotive parts.presentations Introduce products range to OEM customers (2W & 4W & Tier-1) get RFQs. Key Account customers. Efficient product costing SubRequired Candidate profileManaging the received RFQs and checking the feasibility of the enquiries.Submitting the Quotations to customers and Negotiate with customers to get the business.Sheet MetalRole: Head - Marketing,Industry Type: Automobile,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: MarketingEducationUG: B.Tech / B.E. in Mechanical EngineeringKey SkillsSkills highlighted with ‘‘ are preferred keyskillsSalesKamOEMBusiness DevelopmentMarketingReport this job",
+      "metadata": {
+        "originalTitle": "GM/VP-Marketing (For Bangalore) only from Automotive industry",
+        "originalCompany": "Client of Corporate Destination",
+        "url": "https://www.naukri.com/job-listings-gm-vp-marketing-for-bangalore-only-from-automotive-industry-corporate-destination-bengaluru-20-to-25-years-080726025673"
+      },
+      "truth": {
+        "role": {
+          "value": "GM/VP-Marketing",
+          "evidence": "Title: GM/VP-Marketing (For Bangalore) only from Automotive industry"
+        },
+        "company": {
+          "value": "Client of Corporate Destination",
+          "evidence": "Company: Client of Corporate Destination"
+        },
+        "location": {
+          "value": "Bengaluru",
+          "evidence": "Location: Bengaluru"
+        },
+        "salary": {
+          "value": null,
+          "evidence": null
+        },
+        "mustHave": [
+          {
+            "value": "Experience in automotive parts marketing with OEMs and Tier-1 clients",
+            "evidence": "Experience in automotive parts marketing with OEMs and Tier-1 clients"
+          },
+          {
+            "value": "B.Tech / B.E. in Mechanical Engineering",
+            "evidence": "UG: B.Tech / B.E. in Mechanical Engineering"
+          }
+        ],
+        "niceToHave": [
+          {
+            "value": "Sales",
+            "evidence": "Skills highlighted with ‘‘ are preferred keyskillsSales"
+          }
+        ],
+        "tools": [
+          {
+            "value": null,
+            "evidence": null
+          }
+        ],
+        "technologies": [
+          {
+            "value": null,
+            "evidence": null
+          }
+        ],
+        "leadershipLevel": {
+          "value": "VP",
+          "evidence": "Title: GM/VP-Marketing (For Bangalore) only from Automotive industry"
+        },
+        "aiExposure": {
+          "value": false,
+          "evidence": null
+        },
+        "travel": {
+          "value": null,
+          "evidence": null
+        },
+        "remoteType": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      "expectedRecommendation": {
+        "fit": "Poor",
+        "reason": [
+          "The role is specific to the automotive industry, which may not align with the candidate's background as a senior digital/growth executive.",
+          "There is no mention of AI exposure or P&L responsibility, which are key aspects the candidate is looking for in a VP/CMO role."
+        ]
+      }
+    },
+    {
+      "id": "bm-a8e2eb2d3dfca3d1",
+      "cardHash": "a8e2eb2d3dfca3d1",
+      "portal": "Naukri",
+      "difficulty": "Medium",
+      "isNegativeExample": false,
+      "rawHtml": "<div class=\"styles_JDC__match-score__VnjLL\"><div><span class=\"styles_MS__head__wMsss\">Job match score</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Early Applicant</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Keyskills</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Location</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Work Experience</span></div></div><div class=\"\"><h2>Job description</h2></div><div class=\"\"><div class=\"styles_JDC__dang-inner-html__h0K4t\"><ul> <li> Collaborate with cross-functional teams to develop and implement new features and products. </li> <li> Analyze market trends and competitor activity to identify opportunities for growth. </li> <li> Develop and maintain technical documentation for products and services. </li> <li> Provide training and support to customers on new products and features. </li> <li> Troubleshoot and resolve technical issues related to products and services. </li> <li> Participate in code reviews and contribute to improving overall code quality. </li> </ul><br><br>Disclaimer: This job posting has been aggregated from external source. Role details, content, and availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.</div><div class=\"styles_other-details__oEN4O\"><div class=\"styles_details__Y424J\"><label>Role: </label><span><a href=\"https://www.naukri.com/chief-financial-officer-cfo)-jobs\" target=\"_blank\">Chief Financial Officer (CFO)</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Industry Type: </label><span><a href=\"https://www.naukri.com/it-services-consulting-jobs\" target=\"_blank\">IT Services &amp; Consulting</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Department: </label><span><a href=\"https://www.naukri.com/finance-accounting-jobs\" target=\"_blank\">Finance &amp; Accounting</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Employment Type: </label><span><span>Full Time, Permanent</span></span></div><div class=\"styles_details__Y424J\"><label>Role Category: </label><span><span>Finance</span></span></div></div><div class=\"styles_education__KXFkO\"><div class=\"styles_heading__veHpg\">Education</div><div class=\"styles_details__Y424J\"><label>UG: </label><span class=\"\">Any Graduate</span></div><div class=\"styles_details__Y424J\"><label>PG: </label><span class=\"\">Any Postgraduate</span></div></div></div><div class=\"styles_key-skill__GIPn_\"><div class=\"styles_heading__veHpg\">Key Skills</div><div><a href=\"https://www.naukri.com/team-management-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>team management</span></a><a href=\"https://www.naukri.com/team-motivation-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>team motivation</span></a><a href=\"https://www.naukri.com/team-supervisor-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>team supervision</span></a><a href=\"https://www.naukri.com/documentation-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>documentation</span></a><a href=\"https://www.naukri.com/team-handling-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>team handling</span></a><a href=\"https://www.naukri.com/customer-service-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>customer service</span></a><a href=\"https://www.naukri.com/team-coach-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>team coaching</span></a><a href=\"https://www.naukri.com/training-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>training</span></a><a href=\"https://www.naukri.com/research-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>research</span></a><a href=\"https://www.naukri.com/sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>sales</span></a><a href=\"https://www.naukri.com/providing-training-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>providing training</span></a><a href=\"https://www.naukri.com/branch-handling-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>branch handling</span></a><a href=\"https://www.naukri.com/operations-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>operations</span></a><a href=\"https://www.naukri.com/team-leader-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>team leading</span></a><a href=\"https://www.naukri.com/trouble-shooting-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>troubleshooting</span></a><a href=\"https://www.naukri.com/technical-documentation-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>technical documentation</span></a></div></div><div class=\"styles_JDC__footer__ZJnPe\"><a href=\"//www.facebook.com/sharer.php?u=https://www.naukri.com/job-listings-manager-runiks-technologies-pvt-ltd-madurai-0-to-2-years-200526504965&amp;title=Job Description for MANAGER in Runiks Technologies in Madurai for 0 to 2 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-facebook\" title=\"Share This Job on Facebook\"></i></a><a href=\"//twitter.com/share?url=https://www.naukri.com/job-listings-manager-runiks-technologies-pvt-ltd-madurai-0-to-2-years-200526504965&amp;title=Job Description for MANAGER in Runiks Technologies in Madurai for 0 to 2 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-twitter\" title=\"Share This Job on X\"></i></a><a href=\"//www.linkedin.com/shareArticle?mini=true&amp;url=https://www.naukri.com/job-listings-manager-runiks-technologies-pvt-ltd-madurai-0-to-2-years-200526504965&amp;title=Job Description for MANAGER in Runiks Technologies in Madurai for 0 to 2 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-linkedin\" title=\"Share This Job on Linkedin\"></i></a><span class=\"styles_report-job__U0NH3\">Report this job</span></div>",
+      "rawText": "Job match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob description Collaborate with cross-functional teams to develop and implement new features and products. Analyze market trends and competitor activity to identify opportunities for growth. Develop and maintain technical documentation for products and services. Provide training and support to customers on new products and features. Troubleshoot and resolve technical issues related to products and services. Participate in code reviews and contribute to improving overall code quality. Disclaimer: This job posting has been aggregated from external source. Role details, content, and availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.Role: Chief Financial Officer (CFO),Industry Type: IT Services & Consulting,Department: Finance & Accounting,Employment Type: Full Time, PermanentRole Category: FinanceEducationUG: Any GraduatePG: Any PostgraduateKey Skillsteam managementteam motivationteam supervisiondocumentationteam handlingcustomer serviceteam coachingtrainingresearchsalesproviding trainingbranch handlingoperationsteam leadingtroubleshootingtechnical documentationReport this job",
+      "metadata": {
+        "originalTitle": "MANAGER",
+        "originalCompany": "Runiks Technologies",
+        "url": "https://www.naukri.com/job-listings-manager-runiks-technologies-pvt-ltd-madurai-0-to-2-years-200526504965"
+      },
+      "truth": {
+        "role": {
+          "value": "MANAGER",
+          "evidence": "Title: MANAGER"
+        },
+        "company": {
+          "value": "Runiks Technologies",
+          "evidence": "Company: Runiks Technologies"
+        },
+        "location": {
+          "value": "Madurai",
+          "evidence": "Location: Madurai"
+        },
+        "salary": {
+          "value": null,
+          "evidence": null
+        },
+        "mustHave": [
+          {
+            "value": "team management",
+            "evidence": "team management"
+          },
+          {
+            "value": "team motivation",
+            "evidence": "team motivation"
+          },
+          {
+            "value": "team supervision",
+            "evidence": "team supervision"
+          },
+          {
+            "value": "documentation",
+            "evidence": "documentation"
+          },
+          {
+            "value": "team handling",
+            "evidence": "team handling"
+          },
+          {
+            "value": "customer service",
+            "evidence": "customer service"
+          },
+          {
+            "value": "team coaching",
+            "evidence": "team coaching"
+          },
+          {
+            "value": "training",
+            "evidence": "training"
+          },
+          {
+            "value": "research",
+            "evidence": "research"
+          },
+          {
+            "value": "sales",
+            "evidence": "sales"
+          },
+          {
+            "value": "providing training",
+            "evidence": "providing training"
+          },
+          {
+            "value": "branch handling",
+            "evidence": "branch handling"
+          },
+          {
+            "value": "operation",
+            "evidence": "operation"
+          },
+          {
+            "value": "team leading",
+            "evidence": "team leading"
+          },
+          {
+            "value": "troubleshooting",
+            "evidence": "troubleshooting"
+          },
+          {
+            "value": "technical documentation",
+            "evidence": "technical documentation"
+          }
+        ],
+        "niceToHave": [],
+        "tools": [],
+        "technologies": [],
+        "leadershipLevel": {
+          "value": "Manager",
+          "evidence": "Title: MANAGER"
+        },
+        "aiExposure": {
+          "value": false,
+          "evidence": null
+        },
+        "travel": {
+          "value": null,
+          "evidence": null
+        },
+        "remoteType": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      "expectedRecommendation": {
+        "fit": "Poor",
+        "reason": [
+          "The role is a Manager position, which is below the desired VP/CMO level.",
+          "There is no mention of P&L responsibility or AI exposure in the job description."
+        ]
+      }
+    },
+    {
+      "id": "bm-baaa8f2f55e025c4",
+      "cardHash": "baaa8f2f55e025c4",
+      "portal": "Naukri",
+      "difficulty": "Easy",
+      "isNegativeExample": false,
+      "rawHtml": "<div class=\"styles_JDC__match-score__VnjLL\"><div><span class=\"styles_JDC__job-highlight-head__TEq5Q\">Job highlights</span></div><ul class=\"styles_JDC__job-highlight-list__QZC12\"><li>Under Graduate/ Graduate in any discipline. Disclaimer : This job posting has been aggregated from external source</li></ul></div><div class=\"\"><h2>Job description</h2></div><div class=\"\"><div class=\"styles_JDC__dang-inner-html__h0K4t\"><div> <p> <span> <strong> <u> Perform the following under the guidance/direction of Supervisor/Manager</u> </strong> </span> </p> <p> <span> With help of Supervisor/ Manager, Identify the customers for protentional Business</span> </p> <p> <span> Collect the documents from Customers and validate as per the organization norms</span> </p> <p> <span> Logging the case in the system as per SOP and follow the process for disbursement. <br> </span> </p> <p> <span> Fulfil - the Sanction ratio as per organisation requirement</span> </p> <p> <span> Meeting the Customer requirements cross- sell multiple products, under the guidance of Supervisor/ Manager. <br> </span> </p> <p> <span> With help of Manager / Supervisor, empanelment of new vendor and develop relationships with them</span> </p> <p> <span> With help of Manager / Supervisor, ensure compliance to all Audit / RBI regulations. <br> </span> <br> </p> <p> <span> Under Graduate/ Graduate in any discipline</span> </p> </div><br><br>Disclaimer : This job posting has been aggregated from external source. Role details, content, and availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.</div><div class=\"styles_other-details__oEN4O\"><div class=\"styles_details__Y424J\"><label>Role: </label><span><a href=\"https://www.naukri.com/branch-sales-executive-jobs\" target=\"_blank\">Branch Sales Executive</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Industry Type: </label><span><a href=\"https://www.naukri.com/financial-services-jobs\" target=\"_blank\">Financial Services</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Department: </label><span><a href=\"https://www.naukri.com/sales-business-development-jobs\" target=\"_blank\">Sales &amp; Business Development</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Employment Type: </label><span><span>Full Time, Permanent</span></span></div><div class=\"styles_details__Y424J\"><label>Role Category: </label><span><span>Enterprise &amp; B2B Sales</span></span></div></div><div class=\"styles_education__KXFkO\"><div class=\"styles_heading__veHpg\">Education</div><div class=\"styles_details__Y424J\"><label>UG: </label><span class=\"\">Any Graduate</span></div><div class=\"styles_details__Y424J\"><label>PG: </label><span class=\"\">Any Postgraduate</span></div></div></div><div class=\"styles_key-skill__GIPn_\"><div class=\"styles_heading__veHpg\">Key Skills</div><div><a href=\"https://www.naukri.com/channel-sale-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>channel sales</span></a><a href=\"https://www.naukri.com/personal-loans-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>personal loans</span></a><a href=\"https://www.naukri.com/direct-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>direct marketing</span></a><a href=\"https://www.naukri.com/distributor-sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>distributor sales</span></a><a href=\"https://www.naukri.com/business-development-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>business development</span></a><a href=\"https://www.naukri.com/retail-sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>retail sales</span></a><a href=\"https://www.naukri.com/counter-sale-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>counter sales</span></a><a href=\"https://www.naukri.com/distribution-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>distribution</span></a><a href=\"https://www.naukri.com/corporate-sale-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>corporate sales</span></a><a href=\"https://www.naukri.com/sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>sales</span></a><a href=\"https://www.naukri.com/marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>marketing</span></a><a href=\"https://www.naukri.com/sales-excutive-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>sales executive activities</span></a><a href=\"https://www.naukri.com/two-wheeler-loan-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>two wheeler loan</span></a><a href=\"https://www.naukri.com/selling-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>selling</span></a><a href=\"https://www.naukri.com/showroom-sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>showroom sales</span></a><a href=\"https://www.naukri.com/direct-sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>direct sales</span></a></div></div><div class=\"styles_JDC__footer__ZJnPe\"><a href=\"//www.facebook.com/sharer.php?u=https://www.naukri.com/job-listings-customer-sales-executive-two-wheeler-loans-tata-capital-ltd-mumbai-ganjam-berhampur-hyderabad-new-delhi-pune-chennai-ahmedabad-gurugram-bengaluru-0-to-7-years-140726500055&amp;title=Job Description for Customer Sales Executive - Two Wheeler Loans in Tata Capital in Chennai,Ganjam,Berhampur,Bengaluru,Hyderabad,Ahmedabad,Pune,Gurugram,New Delhi,Mumbai for 0 to 7 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-facebook\" title=\"Share This Job on Facebook\"></i></a><a href=\"//twitter.com/share?url=https://www.naukri.com/job-listings-customer-sales-executive-two-wheeler-loans-tata-capital-ltd-mumbai-ganjam-berhampur-hyderabad-new-delhi-pune-chennai-ahmedabad-gurugram-bengaluru-0-to-7-years-140726500055&amp;title=Job Description for Customer Sales Executive - Two Wheeler Loans in Tata Capital in Chennai,Ganjam,Berhampur,Bengaluru,Hyderabad,Ahmedabad,Pune,Gurugram,New Delhi,Mumbai for 0 to 7 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-twitter\" title=\"Share This Job on X\"></i></a><a href=\"//www.linkedin.com/shareArticle?mini=true&amp;url=https://www.naukri.com/job-listings-customer-sales-executive-two-wheeler-loans-tata-capital-ltd-mumbai-ganjam-berhampur-hyderabad-new-delhi-pune-chennai-ahmedabad-gurugram-bengaluru-0-to-7-years-140726500055&amp;title=Job Description for Customer Sales Executive - Two Wheeler Loans in Tata Capital in Chennai,Ganjam,Berhampur,Bengaluru,Hyderabad,Ahmedabad,Pune,Gurugram,New Delhi,Mumbai for 0 to 7 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-linkedin\" title=\"Share This Job on Linkedin\"></i></a><span class=\"styles_report-job__U0NH3\">Report this job</span></div><div class=\"styles_modal-container__Ks9eE\"><div class=\"styles_mc__main__km_Lg styles_mc__main--hide__p_70h\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Report this job\"><div><h1 class=\"styles_mc__heading__hAeb9\">Report this job</h1><i class=\"ni-icon-cross-icon\" role=\"button\" tabindex=\"0\" aria-label=\"Close\"></i></div><div class=\"\"><div class=\"reportJob_report-job-modal__Z9VHb\"><div class=\"reportJob_options__2aAAd\"><div><i id=\"ic\" class=\"ni-icon-unchecked\"></i><label>Inappropriate Content</label></div><div><i id=\"ij\" class=\"ni-icon-unchecked\"></i><label>Incomplete information about job / company</label></div><div><i id=\"fj\" class=\"ni-icon-unchecked\"></i><label>Fake job / Non-recruitment related job / Scam</label></div><div><i id=\"dj\" class=\"ni-icon-unchecked\"></i><label>Duplicate of another job on the site</label></div><div><i id=\"ie\" class=\"ni-icon-unchecked\"></i><label>Incorrect Email ID</label></div><div><i id=\"ip\" class=\"ni-icon-unchecked\"></i><label>Phone number not contactable</label></div><div><i id=\"ej\" class=\"ni-icon-unchecked\"></i><label>Expired job / Job is not active</label></div><div><i id=\"io\" class=\"ni-icon-unchecked\"></i><label>Other</label></div></div><div class=\"reportJob_other__3tkIl reportJob_closed__aznsg\"><textarea class=\"reportJob_other-text-area__zpgYQ\" spellcheck=\"true\" autocapitalize=\"sentences\" maxlength=\"500\" placeholder=\"Type Here\"></textarea><div><span class=\"reportJob_count__xViH7\">500/500 Characters left</span></div></div></div></div><div class=\"styles_mc__footer__fA45A\"><button class=\"styles_mc__footer-action__vCB3W styles_mc__footer-action--contained__008qp\" type=\"text\">Submit</button></div></div></div><div class=\"styles_mc__backdrop__GNySo styles_mc__backdrop--hide__epfS_\" aria-hidden=\"true\"></div>",
+      "rawText": "Job highlightsUnder Graduate/ Graduate in any discipline. Disclaimer : This job posting has been aggregated from external sourceJob description Perform the following under the guidance/direction of Supervisor/Manager With help of Supervisor/ Manager, Identify the customers for protentional Business Collect the documents from Customers and validate as per the organization norms Logging the case in the system as per SOP and follow the process for disbursement. Fulfil - the Sanction ratio as per organisation requirement Meeting the Customer requirements cross- sell multiple products, under the guidance of Supervisor/ Manager. With help of Manager / Supervisor, empanelment of new vendor and develop relationships with them With help of Manager / Supervisor, ensure compliance to all Audit / RBI regulations. Under Graduate/ Graduate in any discipline Disclaimer : This job posting has been aggregated from external source. Role details, content, and availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.Role: Branch Sales Executive,Industry Type: Financial Services,Department: Sales & Business Development,Employment Type: Full Time, PermanentRole Category: Enterprise & B2B SalesEducationUG: Any GraduatePG: Any PostgraduateKey Skillschannel salespersonal loansdirect marketingdistributor salesbusiness developmentretail salescounter salesdistributioncorporate salessalesmarketingsales executive activitiestwo wheeler loansellingshowroom salesdirect salesReport this job",
+      "metadata": {
+        "originalTitle": "Customer Sales Executive - Two Wheeler Loans",
+        "originalCompany": "Tata Capital",
+        "url": "https://www.naukri.com/job-listings-customer-sales-executive-two-wheeler-loans-tata-capital-ltd-mumbai-ganjam-berhampur-hyderabad-new-delhi-pune-chennai-ahmedabad-gurugram-bengaluru-0-to-7-years-140726500055"
+      },
+      "truth": {
+        "role": {
+          "value": "Customer Sales Executive - Two Wheeler Loans",
+          "evidence": "Title: Customer Sales Executive - Two Wheeler Loans"
+        },
+        "company": {
+          "value": "Tata Capital",
+          "evidence": "Company: Tata Capital"
+        },
+        "location": {
+          "value": "Mumbai, Ganjam, Berhampur, Hyderabad, New Delhi, Pune, Chennai, Ahmedabad, Gurugram, Bengaluru",
+          "evidence": "Location: Mumbai, Ganjam, Berhampur, Hyderabad, New Delhi, Pune, Chennai, Ahmedabad, Gurugram, Bengaluru"
+        },
+        "salary": {
+          "value": null,
+          "evidence": null
+        },
+        "mustHave": [
+          {
+            "value": "Under Graduate/ Graduate in any discipline",
+            "evidence": "Under Graduate/ Graduate in any discipline"
+          }
+        ],
+        "niceToHave": [
+          {
+            "value": "channel sales",
+            "evidence": "channel sales"
+          },
+          {
+            "value": "personal loans",
+            "evidence": "personal loans"
+          },
+          {
+            "value": "direct marketing",
+            "evidence": "direct marketing"
+          },
+          {
+            "value": "distributor sales",
+            "evidence": "distributor sales"
+          },
+          {
+            "value": "business development",
+            "evidence": "business development"
+          },
+          {
+            "value": "retail sales",
+            "evidence": "retail sales"
+          },
+          {
+            "value": "counter sales",
+            "evidence": "counter sales"
+          },
+          {
+            "value": "distribution",
+            "evidence": "distribution"
+          },
+          {
+            "value": "corporate sales",
+            "evidence": "corporate sales"
+          },
+          {
+            "value": "marketing",
+            "evidence": "marketing"
+          },
+          {
+            "value": "sales executive activities",
+            "evidence": "sales executive activities"
+          },
+          {
+            "value": "two wheeler loans",
+            "evidence": "two wheeler loans"
+          },
+          {
+            "value": "selling",
+            "evidence": "selling"
+          },
+          {
+            "value": "showroom sales",
+            "evidence": "showroom sales"
+          },
+          {
+            "value": "direct sales",
+            "evidence": "direct sales"
+          }
+        ],
+        "tools": {
+          "value": null,
+          "evidence": null
+        },
+        "technologies": {
+          "value": null,
+          "evidence": null
+        },
+        "leadershipLevel": {
+          "value": null,
+          "evidence": null
+        },
+        "aiExposure": {
+          "value": false,
+          "evidence": null
+        },
+        "travel": {
+          "value": null,
+          "evidence": null
+        },
+        "remoteType": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      "expectedRecommendation": {
+        "fit": "Poor",
+        "reason": [
+          "The role is not a VP/CMO position",
+          "There is no mention of P&L responsibility",
+          "There is no AI exposure"
+        ]
+      }
+    },
+    {
+      "id": "bm-51e0505ffbe51dd5",
+      "cardHash": "51e0505ffbe51dd5",
+      "portal": "Naukri",
+      "difficulty": "Easy",
+      "isNegativeExample": false,
+      "rawHtml": "<div class=\"styles_JDC__match-score__VnjLL\"><div><span class=\"styles_JDC__job-highlight-head__TEq5Q\">Job highlights</span></div><ul class=\"styles_JDC__job-highlight-list__QZC12\"><li>Proficient in Hindi communication with basic English, target-oriented, confident in customer interaction</li><li>Call potential customers, explain e-commerce and digital marketing plans, convert leads to sales, follow up, and maintain call records</li></ul><div><span class=\"styles_MS__head__wMsss\">Job match score</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-check_circle\"></i><span>Early Applicant</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Keyskills</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Location</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Work Experience</span></div></div><div class=\"\"><h2>Job description</h2></div><div class=\"\"><div class=\"styles_JDC__dang-inner-html__h0K4t\"><p><strong>-Role &amp; responsibilities</strong> :- Roles &amp; Responsibilities (Short)</p><br><p>Call potential customers and explain the company's E-commerce and Digital Marketing plans.</p><br><p>Understand customer requirements and recommend suitable plans.</p><br><p>Convert leads into sales by explaining plan benefits.</p><br><p>Follow up with interested customers.</p><br><p>Achieve sales targets and maintain daily call records.</p><br><br><p><strong>Preferred candidate profile</strong> </p><br><p>-Good communication skills in Hindi and basic English.</p><br><p>-Freshers and experienced candidates are welcome.</p><br><p>-Comfortable with Work From Home.</p><br><p>-Target-oriented and confident in speaking with customers.</p><br><p>-Laptop and stable internet connection required.</p><br><br><p><b>Perks and benefits</b></p>Work from home, Accessible workspace</div><div class=\"styles_other-details__oEN4O\"><div class=\"styles_details__Y424J\"><label>Role: </label><span><a href=\"https://www.naukri.com/bd-pre-sales-other-jobs\" target=\"_blank\">BD / Pre Sales - Other</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Industry Type: </label><span><a href=\"https://www.naukri.com/internet-jobs\" target=\"_blank\">Internet (E-Commerce)</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Department: </label><span><a href=\"https://www.naukri.com/sales-business-development-jobs\" target=\"_blank\">Sales &amp; Business Development</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Employment Type: </label><span><span>Part Time, Freelance/Homebased</span></span></div><div class=\"styles_details__Y424J\"><label>Role Category: </label><span><span>BD / Pre Sales</span></span></div></div><div class=\"styles_education__KXFkO\"><div class=\"styles_details__Y424J\"><label>Education: </label><span class=\"\">10th Pass</span></div></div></div><div class=\"styles_key-skill__GIPn_\"><div class=\"styles_heading__veHpg\">Key Skills</div><div class=\"styles_legend__DVbef\">Skills highlighted with ‘<i class=\"ni-icon-jd-save\"></i>‘ are preferred keyskills</div><div><a target=\"_blank\" class=\"styles_chip__7YCfG styles_non-clickable__RM_KJ\"><i class=\"ni-icon-jd-save\"></i><span>Digital Marketing Tools</span></a><a href=\"https://www.naukri.com/sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>Sales</span></a><a href=\"https://www.naukri.com/ecommerce-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>E-commerce</span></a><a target=\"_blank\" class=\"styles_chip__7YCfG styles_non-clickable__RM_KJ\"><i class=\"ni-icon-jd-save\"></i><span>Internet Services</span></a><a href=\"https://www.naukri.com/it-services-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>IT Services</span></a></div><div><a href=\"https://www.naukri.com/marketing-support-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Marketing Support</span></a></div></div><div class=\"styles_JDC__footer__ZJnPe\"><a href=\"//www.facebook.com/sharer.php?u=https://www.naukri.com/job-listings-sales-executive-beingdigital-preneurr-kolkata-hyderabad-navi-mumbai-0-to-5-years-140726019949&amp;title=Job Description for Sales Executive in Beingdigital Preneurr in Hyderabad,Navi Mumbai,Kolkata for 0 to 5 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-facebook\" title=\"Share This Job on Facebook\"></i></a><a href=\"//twitter.com/share?url=https://www.naukri.com/job-listings-sales-executive-beingdigital-preneurr-kolkata-hyderabad-navi-mumbai-0-to-5-years-140726019949&amp;title=Job Description for Sales Executive in Beingdigital Preneurr in Hyderabad,Navi Mumbai,Kolkata for 0 to 5 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-twitter\" title=\"Share This Job on X\"></i></a><a href=\"//www.linkedin.com/shareArticle?mini=true&amp;url=https://www.naukri.com/job-listings-sales-executive-beingdigital-preneurr-kolkata-hyderabad-navi-mumbai-0-to-5-years-140726019949&amp;title=Job Description for Sales Executive in Beingdigital Preneurr in Hyderabad,Navi Mumbai,Kolkata for 0 to 5 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-linkedin\" title=\"Share This Job on Linkedin\"></i></a><span class=\"styles_report-job__U0NH3\">Report this job</span></div><div class=\"styles_modal-container__Ks9eE\"><div class=\"styles_mc__main__km_Lg styles_mc__main--hide__p_70h\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Report this job\"><div><h1 class=\"styles_mc__heading__hAeb9\">Report this job</h1><i class=\"ni-icon-cross-icon\" role=\"button\" tabindex=\"0\" aria-label=\"Close\"></i></div><div class=\"\"><div class=\"reportJob_report-job-modal__Z9VHb\"><div class=\"reportJob_options__2aAAd\"><div><i id=\"ic\" class=\"ni-icon-unchecked\"></i><label>Inappropriate Content</label></div><div><i id=\"ij\" class=\"ni-icon-unchecked\"></i><label>Incomplete information about job / company</label></div><div><i id=\"fj\" class=\"ni-icon-unchecked\"></i><label>Fake job / Non-recruitment related job / Scam</label></div><div><i id=\"dj\" class=\"ni-icon-unchecked\"></i><label>Duplicate of another job on the site</label></div><div><i id=\"ie\" class=\"ni-icon-unchecked\"></i><label>Incorrect Email ID</label></div><div><i id=\"ip\" class=\"ni-icon-unchecked\"></i><label>Phone number not contactable</label></div><div><i id=\"io\" class=\"ni-icon-unchecked\"></i><label>Other</label></div></div><div class=\"reportJob_other__3tkIl reportJob_closed__aznsg\"><textarea class=\"reportJob_other-text-area__zpgYQ\" spellcheck=\"true\" autocapitalize=\"sentences\" maxlength=\"500\" placeholder=\"Type Here\"></textarea><div><span class=\"reportJob_count__xViH7\">500/500 Characters left</span></div></div></div></div><div class=\"styles_mc__footer__fA45A\"><button class=\"styles_mc__footer-action__vCB3W styles_mc__footer-action--contained__008qp\" type=\"text\">Submit</button></div></div></div><div class=\"styles_mc__backdrop__GNySo styles_mc__backdrop--hide__epfS_\" aria-hidden=\"true\"></div>",
+      "rawText": "Job highlightsProficient in Hindi communication with basic English, target-oriented, confident in customer interactionCall potential customers, explain e-commerce and digital marketing plans, convert leads to sales, follow up, and maintain call recordsJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob description-Role & responsibilities :- Roles & Responsibilities (Short)Call potential customers and explain the company's E-commerce and Digital Marketing plans.Understand customer requirements and recommend suitable plans.Convert leads into sales by explaining plan benefits.Follow up with interested customers.Achieve sales targets and maintain daily call records.Preferred candidate profile -Good communication skills in Hindi and basic English.-Freshers and experienced candidates are welcome.-Comfortable with Work From Home.-Target-oriented and confident in speaking with customers.-Laptop and stable internet connection required.Perks and benefitsWork from home, Accessible workspaceRole: BD / Pre Sales - Other,Industry Type: Internet (E-Commerce),Department: Sales & Business Development,Employment Type: Part Time, Freelance/HomebasedRole Category: BD / Pre SalesEducation: 10th PassKey SkillsSkills highlighted with ‘‘ are preferred keyskillsDigital Marketing ToolsSalesE-commerceInternet ServicesIT ServicesMarketing SupportReport this jobReport this jobInappropriate ContentIncomplete information about job / companyFake job / Non-recruitment related job / ScamDuplicate of another job on the siteIncorrect Email IDPhone number not contactableOther500/500 Characters leftSubmit",
+      "metadata": {
+        "originalTitle": "Sales Executive",
+        "originalCompany": "Beingdigital Preneurr",
+        "url": "https://www.naukri.com/job-listings-sales-executive-beingdigital-preneurr-kolkata-hyderabad-navi-mumbai-0-to-5-years-140726019949"
+      },
+      "truth": {
+        "role": {
+          "value": "Sales Executive",
+          "evidence": "Title: Sales Executive"
+        },
+        "company": {
+          "value": "Beingdigital Preneurr",
+          "evidence": "Company: Beingdigital Preneurr"
+        },
+        "location": {
+          "value": "Kolkata, Hyderabad, Navi Mumbai",
+          "evidence": "Location: Kolkata, Hyderabad, Navi Mumbai"
+        },
+        "salary": {
+          "value": null,
+          "evidence": null
+        },
+        "mustHave": [
+          {
+            "value": "Good communication skills in Hindi and basic English",
+            "evidence": "Good communication skills in Hindi and basic English"
+          },
+          {
+            "value": "Target-oriented and confident in speaking with customers",
+            "evidence": "Target-oriented and confident in speaking with customers"
+          },
+          {
+            "value": "Laptop and stable internet connection",
+            "evidence": "Laptop and stable internet connection required"
+          }
+        ],
+        "niceToHave": [
+          {
+            "value": "Experience",
+            "evidence": "Freshers and experienced candidates are welcome"
+          }
+        ],
+        "tools": [
+          {
+            "value": "Digital Marketing Tools",
+            "evidence": "Digital Marketing Tools"
+          }
+        ],
+        "technologies": [
+          {
+            "value": "E-commerce",
+            "evidence": "E-commerce"
+          },
+          {
+            "value": "Internet Services",
+            "evidence": "Internet Services"
+          },
+          {
+            "value": "IT Services",
+            "evidence": "IT Services"
+          }
+        ],
+        "leadershipLevel": {
+          "value": null,
+          "evidence": null
+        },
+        "aiExposure": {
+          "value": null,
+          "evidence": null
+        },
+        "travel": {
+          "value": null,
+          "evidence": null
+        },
+        "remoteType": {
+          "value": "Remote",
+          "evidence": "Work from home"
+        }
+      },
+      "expectedRecommendation": {
+        "fit": "Poor",
+        "reason": [
+          "The role is not a VP/CMO position",
+          "There is no mention of P&L responsibility",
+          "There is no mention of AI exposure"
+        ]
+      }
+    },
+    {
+      "id": "bm-66a820cc0c0bfe2c",
+      "cardHash": "66a820cc0c0bfe2c",
+      "portal": "Naukri",
+      "difficulty": "Easy",
+      "isNegativeExample": false,
+      "rawHtml": "<div class=\"styles_JDC__match-score__VnjLL\"><div><span class=\"styles_JDC__job-highlight-head__TEq5Q\">Job highlights</span></div><ul class=\"styles_JDC__job-highlight-list__QZC12\"><li>3-7 years in digital marketing with expertise in SEO, PPC, social media ads, and lead generation</li><li>Develop and implement marketing strategies, manage digital campaigns, generate leads, optimize ROI, and coordinate with sales teams</li></ul></div><div class=\"\"><h2>Job description</h2></div><div class=\"\"><div class=\"styles_JDC__dang-inner-html__h0K4t\"><p> </p><p><strong>Key Responsibilities:</strong><br>• Develop and implement comprehensive marketing strategies<br>• Manage and optimize digital marketing campaigns (Google Ads, Meta Ads, SEO, etc.)<br>• Generate quality leads for visa and immigration services<br>• Manage social media platforms and content strategy<br>• Track marketing performance and optimize ROI<br>• Coordinate with sales teams to improve conversion rates<br>• Manage marketing budget and external agencies if required</p><br><br><br><p><strong>Preferred candidate profile</strong> </p><br><p> <strong>Requirements:</strong>  3-7 years of experience in digital marketing / marketing leadership  Strong knowledge of SEO, PPC, social media ads, and analytics  Experience in lead generation and funnel optimization  Excellent leadership and communication skills  Experience in the visa / immigration / education industry is a plus<strong>Role &amp; responsibilities</strong>  </p></div><div class=\"styles_other-details__oEN4O\"><div class=\"styles_details__Y424J\"><label>Role: </label><span><a href=\"https://www.naukri.com/head-digital-marketing-jobs\" target=\"_blank\">Head - Digital Marketing</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Industry Type: </label><span><a href=\"https://www.naukri.com/travel-tourism-jobs\" target=\"_blank\">Travel &amp; Tourism</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Department: </label><span><a href=\"https://www.naukri.com/marketing-communication-jobs\" target=\"_blank\">Marketing &amp; Communication</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Employment Type: </label><span><span>Full Time, Permanent</span></span></div><div class=\"styles_details__Y424J\"><label>Role Category: </label><span><span>Digital Marketing</span></span></div></div><div class=\"styles_education__KXFkO\"><div class=\"styles_heading__veHpg\">Education</div><div class=\"styles_details__Y424J\"><label>UG: </label><span class=\"\">Any Graduate</span></div></div></div><div class=\"styles_key-skill__GIPn_\"><div class=\"styles_heading__veHpg\">Key Skills</div><div class=\"styles_legend__DVbef\">Skills highlighted with ‘<i class=\"ni-icon-jd-save\"></i>‘ are preferred keyskills</div><div><a href=\"https://www.naukri.com/digital-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>Digital Marketing</span></a></div><div><a href=\"https://www.naukri.com/online-branding-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Online Branding</span></a><a href=\"https://www.naukri.com/online-advertising-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Online Advertising</span></a><a href=\"https://www.naukri.com/mobile-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Mobile Marketing</span></a><a href=\"https://www.naukri.com/internet-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Internet Marketing</span></a><a href=\"https://www.naukri.com/social-media-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Social Media Marketing</span></a><a href=\"https://www.naukri.com/social-media-optimization-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Social Media Optimization</span></a><a href=\"https://www.naukri.com/search-engine-optimization-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Search Engine Optimization</span></a><a href=\"https://www.naukri.com/web-promotions-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Web Promotion</span></a><a href=\"https://www.naukri.com/online-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Online Marketing</span></a><a href=\"https://www.naukri.com/search-engine-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Search Engine Marketing</span></a><a href=\"https://www.naukri.com/web-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Web Marketing</span></a><a href=\"https://www.naukri.com/seo-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>SEO</span></a></div></div><div class=\"styles_JDC__footer__ZJnPe\"><a href=\"//www.facebook.com/sharer.php?u=https://www.naukri.com/job-listings-marketing-head-acme-visa-solutions-ludhiana-3-to-6-years-120326019763&amp;title=Job Description for Marketing Head in Acme Visa Solutions in Ludhiana for 3 to 6 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-facebook\" title=\"Share This Job on Facebook\"></i></a><a href=\"//twitter.com/share?url=https://www.naukri.com/job-listings-marketing-head-acme-visa-solutions-ludhiana-3-to-6-years-120326019763&amp;title=Job Description for Marketing Head in Acme Visa Solutions in Ludhiana for 3 to 6 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-twitter\" title=\"Share This Job on X\"></i></a><a href=\"//www.linkedin.com/shareArticle?mini=true&amp;url=https://www.naukri.com/job-listings-marketing-head-acme-visa-solutions-ludhiana-3-to-6-years-120326019763&amp;title=Job Description for Marketing Head in Acme Visa Solutions in Ludhiana for 3 to 6 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-linkedin\" title=\"Share This Job on Linkedin\"></i></a><span class=\"styles_report-job__U0NH3\">Report this job</span></div><div class=\"styles_modal-container__Ks9eE\"><div class=\"styles_mc__main__km_Lg styles_mc__main--hide__p_70h\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Report this job\"><div><h1 class=\"styles_mc__heading__hAeb9\">Report this job</h1><i class=\"ni-icon-cross-icon\" role=\"button\" tabindex=\"0\" aria-label=\"Close\"></i></div><div class=\"\"><div class=\"reportJob_report-job-modal__Z9VHb\"><div class=\"reportJob_options__2aAAd\"><div><i id=\"ic\" class=\"ni-icon-unchecked\"></i><label>Inappropriate Content</label></div><div><i id=\"ij\" class=\"ni-icon-unchecked\"></i><label>Incomplete information about job / company</label></div><div><i id=\"fj\" class=\"ni-icon-unchecked\"></i><label>Fake job / Non-recruitment related job / Scam</label></div><div><i id=\"dj\" class=\"ni-icon-unchecked\"></i><label>Duplicate of another job on the site</label></div><div><i id=\"ie\" class=\"ni-icon-unchecked\"></i><label>Incorrect Email ID</label></div><div><i id=\"ip\" class=\"ni-icon-unchecked\"></i><label>Phone number not contactable</label></div><div><i id=\"io\" class=\"ni-icon-unchecked\"></i><label>Other</label></div></div><div class=\"reportJob_other__3tkIl reportJob_closed__aznsg\"><textarea class=\"reportJob_other-text-area__zpgYQ\" spellcheck=\"true\" autocapitalize=\"sentences\" maxlength=\"500\" placeholder=\"Type Here\"></textarea><div><span class=\"reportJob_count__xViH7\">500/500 Characters left</span></div></div></div></div><div class=\"styles_mc__footer__fA45A\"><button class=\"styles_mc__footer-action__vCB3W styles_mc__footer-action--contained__008qp\" type=\"text\">Submit</button></div></div></div><div class=\"styles_mc__backdrop__GNySo styles_mc__backdrop--hide__epfS_\" aria-hidden=\"true\"></div>",
+      "rawText": "Job highlights3-7 years in digital marketing with expertise in SEO, PPC, social media ads, and lead generationDevelop and implement marketing strategies, manage digital campaigns, generate leads, optimize ROI, and coordinate with sales teamsJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob description Key Responsibilities:• Develop and implement comprehensive marketing strategies• Manage and optimize digital marketing campaigns (Google Ads, Meta Ads, SEO, etc.)• Generate quality leads for visa and immigration services• Manage social media platforms and content strategy• Track marketing performance and optimize ROI• Coordinate with sales teams to improve conversion rates• Manage marketing budget and external agencies if requiredPreferred candidate profile Requirements: 3-7 years of experience in digital marketing / marketing leadership Strong knowledge of SEO, PPC, social media ads, and analytics Experience in lead generation and funnel optimization Excellent leadership and communication skills Experience in the visa / immigration / education industry is a plusRole & responsibilities Role: Head - Digital Marketing,Industry Type: Travel & Tourism,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: Digital MarketingEducationUG: Any GraduateKey SkillsSkills highlighted with ‘‘ are preferred keyskillsDigital MarketingOnline BrandingOnline AdvertisingMobile MarketingInternet MarketingSocial Media MarketingSocial Media OptimizationSearch Engine OptimizationWeb PromotionOnline MarketingSearch Engine MarketingWeb MarketingSEOReport this job",
+      "metadata": {
+        "originalTitle": "Marketing Head",
+        "originalCompany": "Acme Visa Solutions",
+        "url": "https://www.naukri.com/job-listings-marketing-head-acme-visa-solutions-ludhiana-3-to-6-years-120326019763"
+      },
+      "truth": {
+        "role": {
+          "value": "Head - Digital Marketing",
+          "evidence": "Role: Head - Digital Marketing"
+        },
+        "company": {
+          "value": "Acme Visa Solutions",
+          "evidence": "Company: Acme Visa Solutions"
+        },
+        "location": {
+          "value": "Ludhiana(Sarabha Nagar)",
+          "evidence": "Location: Ludhiana(Sarabha Nagar)"
+        },
+        "salary": {
+          "value": null,
+          "evidence": null
+        },
+        "mustHave": [
+          {
+            "value": "3-7 years of experience in digital marketing / marketing leadership",
+            "evidence": "3-7 years of experience in digital marketing / marketing leadership"
+          },
+          {
+            "value": "Strong knowledge of SEO, PPC, social media ads, and analytics",
+            "evidence": "Strong knowledge of SEO, PPC, social media ads, and analytics"
+          },
+          {
+            "value": "Experience in lead generation and funnel optimization",
+            "evidence": "Experience in lead generation and funnel optimization"
+          },
+          {
+            "value": "Excellent leadership and communication skills",
+            "evidence": "Excellent leadership and communication skills"
+          }
+        ],
+        "niceToHave": [
+          {
+            "value": "Experience in the visa / immigration / education industry",
+            "evidence": "Experience in the visa / immigration / education industry is a plus"
+          }
+        ],
+        "tools": [
+          {
+            "value": "Google Ads",
+            "evidence": "Manage and optimize digital marketing campaigns (Google Ads, Meta Ads, SEO, etc.)"
+          },
+          {
+            "value": "Meta Ads",
+            "evidence": "Manage and optimize digital marketing campaigns (Google Ads, Meta Ads, SEO, etc.)"
+          }
+        ],
+        "technologies": [
+          {
+            "value": "SEO",
+            "evidence": "Manage and optimize digital marketing campaigns (Google Ads, Meta Ads, SEO, etc.)"
+          }
+        ],
+        "leadershipLevel": {
+          "value": "IC",
+          "evidence": "Role: Head - Digital Marketing"
+        },
+        "aiExposure": {
+          "value": null,
+          "evidence": null
+        },
+        "travel": {
+          "value": null,
+          "evidence": null
+        },
+        "remoteType": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      "expectedRecommendation": {
+        "fit": "Poor",
+        "reason": [
+          "The role is not a VP/CMO position",
+          "There is no mention of P&L responsibility",
+          "There is no mention of AI exposure"
+        ]
+      }
+    },
+    {
+      "id": "bm-b4d52497c6a8d3a2",
+      "cardHash": "b4d52497c6a8d3a2",
+      "portal": "Naukri",
+      "difficulty": "Medium",
+      "isNegativeExample": false,
+      "rawHtml": "<div class=\"styles_JDC__match-score__VnjLL\"><div><span class=\"styles_JDC__job-highlight-head__TEq5Q\">Job highlights</span></div><ul class=\"styles_JDC__job-highlight-list__QZC12\"><li>15-21 years FMCG experience with brand management, brand positioning, casting, and PNL management expertise</li><li>Develop brand strategies, lead product launches, analyze market trends, and collaborate on KPI setting</li></ul><div><span class=\"styles_MS__head__wMsss\">Job match score</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-check_circle\"></i><span>Early Applicant</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Keyskills</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Location</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Work Experience</span></div></div><div class=\"\"><h2>Job description</h2></div><div class=\"\"><div class=\"styles_JDC__dang-inner-html__h0K4t\"><p><b>Roles and Responsibilities :</b></p><ul><li>Develop and execute comprehensive brand strategies to drive business growth and increase customer engagement.</li><li>Lead cross-functional teams to launch new products, services, and campaigns, ensuring successful project delivery on time and within budget.</li><li>Analyze market trends, competitor activity, and consumer behavior to inform data-driven marketing decisions.</li><li>Collaborate with stakeholders to identify key performance indicators (KPIs) for measuring campaign success.</li></ul><p><b>Job Requirements :</b></p><ul><li>15-21 years of experience in FMCG industry with expertise in brand management, brand positioning, casting, functional leadership.</li><li>Proven track record of developing effective brand strategies that drive business results.</li><li>Strong understanding of digital marketing channels such as social media platforms.</li><li>Excellent PNL management skills with ability to analyze complex financial data.</li></ul></div><div class=\"styles_other-details__oEN4O\"><div class=\"styles_details__Y424J\"><label>Role: </label><span><a href=\"https://www.naukri.com/head-marketing-jobs\" target=\"_blank\">Head - Marketing</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Industry Type: </label><span><a href=\"https://www.naukri.com/iron-steel-jobs\" target=\"_blank\">Iron &amp; Steel</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Department: </label><span><a href=\"https://www.naukri.com/marketing-communication-jobs\" target=\"_blank\">Marketing &amp; Communication</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Employment Type: </label><span><span>Full Time, Permanent</span></span></div><div class=\"styles_details__Y424J\"><label>Role Category: </label><span><span>Marketing</span></span></div></div><div class=\"styles_education__KXFkO\"><div class=\"styles_heading__veHpg\">Education</div><div class=\"styles_details__Y424J\"><label>UG: </label><span class=\"\">Graduation Not Required</span></div></div></div><div class=\"styles_key-skill__GIPn_\"><div class=\"styles_heading__veHpg\">Key Skills</div><div class=\"styles_legend__DVbef\">Skills highlighted with ‘<i class=\"ni-icon-jd-save\"></i>‘ are preferred keyskills</div><div><a href=\"https://www.naukri.com/leadership-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>Leadership</span></a><a href=\"https://www.naukri.com/brand-positioning-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>Brand Positioning</span></a><a href=\"https://www.naukri.com/brand-strategy-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>Brand Strategy</span></a><a href=\"https://www.naukri.com/brand-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>Brand</span></a><a href=\"https://www.naukri.com/brand-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><i class=\"ni-icon-jd-save\"></i><span>Brand Marketing</span></a></div><div><a target=\"_blank\" class=\"styles_chip__7YCfG styles_non-clickable__RM_KJ\"><span>PNL Management</span></a><a href=\"https://www.naukri.com/digital-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Digital Marketing</span></a><a href=\"https://www.naukri.com/marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Marketing</span></a><a href=\"https://www.naukri.com/functional-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Functional</span></a><a href=\"https://www.naukri.com/casting-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Casting</span></a><a href=\"https://www.naukri.com/brand-management-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Brand Management</span></a><a href=\"https://www.naukri.com/campaign-management-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Campaign Management</span></a><a href=\"https://www.naukri.com/performance-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Performance</span></a></div></div><div class=\"styles_JDC__footer__ZJnPe\"><a href=\"//www.facebook.com/sharer.php?u=https://www.naukri.com/job-listings-chief-marketing-officer-jsw-steel-mumbai-15-to-21-years-140726034126&amp;title=Job Description for Chief Marketing Officer in JSW Steel in Mumbai for 15 to 21 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-facebook\" title=\"Share This Job on Facebook\"></i></a><a href=\"//twitter.com/share?url=https://www.naukri.com/job-listings-chief-marketing-officer-jsw-steel-mumbai-15-to-21-years-140726034126&amp;title=Job Description for Chief Marketing Officer in JSW Steel in Mumbai for 15 to 21 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-twitter\" title=\"Share This Job on X\"></i></a><a href=\"//www.linkedin.com/shareArticle?mini=true&amp;url=https://www.naukri.com/job-listings-chief-marketing-officer-jsw-steel-mumbai-15-to-21-years-140726034126&amp;title=Job Description for Chief Marketing Officer in JSW Steel in Mumbai for 15 to 21 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-linkedin\" title=\"Share This Job on Linkedin\"></i></a><span class=\"styles_report-job__U0NH3\">Report this job</span></div>",
+      "rawText": "Job highlights15-21 years FMCG experience with brand management, brand positioning, casting, and PNL management expertiseDevelop brand strategies, lead product launches, analyze market trends, and collaborate on KPI settingJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob descriptionRoles and Responsibilities :Develop and execute comprehensive brand strategies to drive business growth and increase customer engagement.Lead cross-functional teams to launch new products, services, and campaigns, ensuring successful project delivery on time and within budget.Analyze market trends, competitor activity, and consumer behavior to inform data-driven marketing decisions.Collaborate with stakeholders to identify key performance indicators (KPIs) for measuring campaign success.Job Requirements :15-21 years of experience in FMCG industry with expertise in brand management, brand positioning, casting, functional leadership.Proven track record of developing effective brand strategies that drive business results.Strong understanding of digital marketing channels such as social media platforms.Excellent PNL management skills with ability to analyze complex financial data.Role: Head - Marketing,Industry Type: Iron & Steel,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: MarketingEducationUG: Graduation Not RequiredKey SkillsSkills highlighted with ‘‘ are preferred keyskillsLeadershipBrand PositioningBrand StrategyBrandBrand MarketingPNL ManagementDigital MarketingMarketingFunctionalCastingBrand ManagementCampaign ManagementPerformanceReport this job",
+      "metadata": {
+        "originalTitle": "Chief Marketing Officer",
+        "originalCompany": "JSW Steel",
+        "url": "https://www.naukri.com/job-listings-chief-marketing-officer-jsw-steel-mumbai-15-to-21-years-140726034126"
+      },
+      "truth": {
+        "role": {
+          "value": "Chief Marketing Officer",
+          "evidence": "Title: Chief Marketing Officer"
+        },
+        "company": {
+          "value": "JSW Steel",
+          "evidence": "Company: JSW Steel"
+        },
+        "location": {
+          "value": "Mumbai",
+          "evidence": "Location: Mumbai"
+        },
+        "salary": {
+          "value": null,
+          "evidence": null
+        },
+        "mustHave": [
+          {
+            "value": "15-21 years of experience in FMCG industry",
+            "evidence": "15-21 years of experience in FMCG industry"
+          },
+          {
+            "value": "brand management expertise",
+            "evidence": "brand management, brand positioning, casting, and PNL management expertise"
+          },
+          {
+            "value": "PNL management skills",
+            "evidence": "Excellent PNL management skills"
+          }
+        ],
+        "niceToHave": [
+          {
+            "value": "digital marketing channels knowledge",
+            "evidence": "Strong understanding of digital marketing channels such as social media platforms"
+          }
+        ],
+        "tools": [],
+        "technologies": [],
+        "leadershipLevel": {
+          "value": "C-Level",
+          "evidence": "Chief Marketing Officer"
+        },
+        "aiExposure": {
+          "value": null,
+          "evidence": null
+        },
+        "travel": {
+          "value": null,
+          "evidence": null
+        },
+        "remoteType": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      "expectedRecommendation": {
+        "fit": "Excellent",
+        "reason": [
+          "The role is a C-Level position, which matches the candidate's seniority level.",
+          "The role involves P&L management, which is a key requirement for the candidate."
+        ]
+      }
+    },
+    {
+      "id": "bm-5f453acca362a34d",
+      "cardHash": "5f453acca362a34d",
+      "portal": "Naukri",
+      "difficulty": "Medium",
+      "isNegativeExample": false,
+      "rawHtml": "<div class=\"styles_JDC__match-score__VnjLL\"><div><span class=\"styles_JDC__job-highlight-head__TEq5Q\">Job highlights</span></div><ul class=\"styles_JDC__job-highlight-list__QZC12\"><li>Under Graduate/ Graduate in any discipline. Disclaimer : This job posting has been aggregated from external source</li></ul><div><span class=\"styles_MS__head__wMsss\">Job match score</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-check_circle\"></i><span>Early Applicant</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Keyskills</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Location</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Work Experience</span></div></div><div class=\"\"><h2>Job description</h2></div><div class=\"\"><div class=\"styles_JDC__dang-inner-html__h0K4t\"><div> <p> <span> <strong> <u> Perform the following under the guidance/direction of Supervisor/Manager</u> </strong> </span> </p> <p> <span> With help of Supervisor/ Manager, Identify the customers for protentional Business</span> </p> <p> <span> Collect the documents from Customers and validate as per the organization norms</span> </p> <p> <span> Logging the case in the system as per SOP and follow the process for disbursement. <br> </span> </p> <p> <span> Fulfil - the Sanction ratio as per organisation requirement</span> </p> <p> <span> Meeting the Customer requirements cross- sell multiple products, under the guidance of Supervisor/ Manager. <br> </span> </p> <p> <span> With help of Manager / Supervisor, empanelment of new vendor and develop relationships with them</span> </p> <p> <span> With help of Manager / Supervisor, ensure compliance to all Audit / RBI regulations. <br> </span> <br> </p> <p> <span> Under Graduate/ Graduate in any discipline</span> </p> </div><br><br>Disclaimer : This job posting has been aggregated from external source. Role details, content, and availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.</div><div class=\"styles_other-details__oEN4O\"><div class=\"styles_details__Y424J\"><label>Role: </label><span><a href=\"https://www.naukri.com/branch-sales-executive-jobs\" target=\"_blank\">Branch Sales Executive</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Industry Type: </label><span><a href=\"https://www.naukri.com/financial-services-jobs\" target=\"_blank\">Financial Services</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Department: </label><span><a href=\"https://www.naukri.com/sales-business-development-jobs\" target=\"_blank\">Sales &amp; Business Development</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Employment Type: </label><span><span>Full Time, Permanent</span></span></div><div class=\"styles_details__Y424J\"><label>Role Category: </label><span><span>Enterprise &amp; B2B Sales</span></span></div></div><div class=\"styles_education__KXFkO\"><div class=\"styles_heading__veHpg\">Education</div><div class=\"styles_details__Y424J\"><label>UG: </label><span class=\"\">Any Graduate</span></div><div class=\"styles_details__Y424J\"><label>PG: </label><span class=\"\">Any Postgraduate</span></div></div></div><div class=\"styles_key-skill__GIPn_\"><div class=\"styles_heading__veHpg\">Key Skills</div><div><a href=\"https://www.naukri.com/channel-sale-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>channel sales</span></a><a href=\"https://www.naukri.com/personal-loans-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>personal loans</span></a><a href=\"https://www.naukri.com/direct-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>direct marketing</span></a><a href=\"https://www.naukri.com/distributor-sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>distributor sales</span></a><a href=\"https://www.naukri.com/business-development-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>business development</span></a><a href=\"https://www.naukri.com/retail-sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>retail sales</span></a><a href=\"https://www.naukri.com/counter-sale-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>counter sales</span></a><a href=\"https://www.naukri.com/distribution-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>distribution</span></a><a href=\"https://www.naukri.com/corporate-sale-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>corporate sales</span></a><a href=\"https://www.naukri.com/sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>sales</span></a><a href=\"https://www.naukri.com/marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>marketing</span></a><a href=\"https://www.naukri.com/sales-excutive-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>sales executive activities</span></a><a href=\"https://www.naukri.com/two-wheeler-loan-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>two wheeler loan</span></a><a href=\"https://www.naukri.com/selling-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>selling</span></a><a href=\"https://www.naukri.com/showroom-sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>showroom sales</span></a><a href=\"https://www.naukri.com/direct-sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>direct sales</span></a></div></div><div class=\"styles_JDC__footer__ZJnPe\"><a href=\"//www.facebook.com/sharer.php?u=https://www.naukri.com/job-listings-customer-sales-executive-two-wheeler-loans-tata-capital-ltd-mumbai-ganjam-new-delhi-hyderabad-berhampur-pune-gurugram-ahmedabad-chennai-bengaluru-0-to-7-years-140726500054&amp;title=Job Description for Customer Sales Executive - Two Wheeler Loans in Tata Capital in Mumbai,Gurugram,New Delhi,Pune,Ahmedabad,Hyderabad,Bengaluru,Berhampur,Ganjam,Chennai for 0 to 7 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-facebook\" title=\"Share This Job on Facebook\"></i></a><a href=\"//twitter.com/share?url=https://www.naukri.com/job-listings-customer-sales-executive-two-wheeler-loans-tata-capital-ltd-mumbai-ganjam-new-delhi-hyderabad-berhampur-pune-gurugram-ahmedabad-chennai-bengaluru-0-to-7-years-140726500054&amp;title=Job Description for Customer Sales Executive - Two Wheeler Loans in Tata Capital in Mumbai,Gurugram,New Delhi,Pune,Ahmedabad,Hyderabad,Bengaluru,Berhampur,Ganjam,Chennai for 0 to 7 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-twitter\" title=\"Share This Job on X\"></i></a><a href=\"//www.linkedin.com/shareArticle?mini=true&amp;url=https://www.naukri.com/job-listings-customer-sales-executive-two-wheeler-loans-tata-capital-ltd-mumbai-ganjam-new-delhi-hyderabad-berhampur-pune-gurugram-ahmedabad-chennai-bengaluru-0-to-7-years-140726500054&amp;title=Job Description for Customer Sales Executive - Two Wheeler Loans in Tata Capital in Mumbai,Gurugram,New Delhi,Pune,Ahmedabad,Hyderabad,Bengaluru,Berhampur,Ganjam,Chennai for 0 to 7 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-linkedin\" title=\"Share This Job on Linkedin\"></i></a><span class=\"styles_report-job__U0NH3\">Report this job</span></div>",
+      "rawText": "Job highlightsUnder Graduate/ Graduate in any discipline. Disclaimer : This job posting has been aggregated from external sourceJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob description Perform the following under the guidance/direction of Supervisor/Manager With help of Supervisor/ Manager, Identify the customers for protentional Business Collect the documents from Customers and validate as per the organization norms Logging the case in the system as per SOP and follow the process for disbursement. Fulfil - the Sanction ratio as per organisation requirement Meeting the Customer requirements cross- sell multiple products, under the guidance of Supervisor/ Manager. With help of Manager / Supervisor, empanelment of new vendor and develop relationships with them With help of Manager / Supervisor, ensure compliance to all Audit / RBI regulations. Under Graduate/ Graduate in any discipline Disclaimer : This job posting has been aggregated from external source. Role details, content, and availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.Role: Branch Sales Executive,Industry Type: Financial Services,Department: Sales & Business Development,Employment Type: Full Time, PermanentRole Category: Enterprise & B2B SalesEducationUG: Any GraduatePG: Any PostgraduateKey Skillschannel salespersonal loansdirect marketingdistributor salesbusiness developmentretail salescounter salesdistributioncorporate salessalesmarketingsales executive activitiestwo wheeler loansellingshowroom salesdirect salesReport this job",
+      "metadata": {
+        "originalTitle": "Customer Sales Executive - Two Wheeler Loans",
+        "originalCompany": "Tata Capital",
+        "url": "https://www.naukri.com/job-listings-customer-sales-executive-two-wheeler-loans-tata-capital-ltd-mumbai-ganjam-new-delhi-hyderabad-berhampur-pune-gurugram-ahmedabad-chennai-bengaluru-0-to-7-years-140726500054"
+      },
+      "truth": {
+        "role": {
+          "value": "Customer Sales Executive - Two Wheeler Loans",
+          "evidence": "Title: Customer Sales Executive - Two Wheeler Loans"
+        },
+        "company": {
+          "value": "Tata Capital",
+          "evidence": "Company: Tata Capital"
+        },
+        "location": {
+          "value": "Mumbai, Ganjam, New Delhi, Hyderabad, Berhampur, Pune, Gurugram, Ahmedabad, Chennai, Bengaluru",
+          "evidence": "Location: Mumbai, Ganjam, New Delhi, Hyderabad, Berhampur, Pune, Gurugram, Ahmedabad, Chennai, Bengaluru"
+        },
+        "salary": {
+          "value": null,
+          "evidence": null
+        },
+        "mustHave": [
+          {
+            "value": "Under Graduate/ Graduate in any discipline",
+            "evidence": "Under Graduate/ Graduate in any discipline"
+          }
+        ],
+        "niceToHave": [],
+        "tools": [],
+        "technologies": [],
+        "leadershipLevel": {
+          "value": null,
+          "evidence": null
+        },
+        "aiExposure": {
+          "value": false,
+          "evidence": "No mention of AI"
+        },
+        "travel": {
+          "value": null,
+          "evidence": null
+        },
+        "remoteType": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      "expectedRecommendation": {
+        "fit": "Poor",
+        "reason": [
+          "The role is not a VP/CMO position",
+          "There is no mention of P&L responsibility",
+          "The role does not involve AI exposure"
+        ]
+      }
+    },
+    {
+      "id": "bm-4b8d52359b64b860",
+      "cardHash": "4b8d52359b64b860",
+      "portal": "Naukri",
+      "difficulty": "Hard",
+      "isNegativeExample": false,
+      "rawHtml": "<div class=\"styles_JDC__match-score__VnjLL\"><div><span class=\"styles_JDC__job-highlight-head__TEq5Q\">Job highlights</span></div><ul class=\"styles_JDC__job-highlight-list__QZC12\"><li>. Proficiency with ASO tools,including Google Play Console and other external tools. Ability to work within a team and independently </li><li>Minimum 2-4 years of experience with ASO in a game / app with million+ installs. .</li></ul></div><div class=\"\"><h2>Job description</h2></div><div class=\"\"><div class=\"styles_JDC__dang-inner-html__h0K4t\"><ul> Be in charge of ASO of various apps and games.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Analyze the current state of ASO and define a strategy to maximize organic user acquisition.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Execute the ASO strategy in multiple languages working with different teams - keywords, description, title, screenshots, etc.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Optimize conversion rate on the store listing page with experiments and try to maximize the same.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Monitor and track rankings and conversion rates using ASO tools.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Always be on the lookout to increase downloads with improvements and new ideas.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Be up to date with the latest ASO tips, tricks, hacks and news.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Perform keyword research for Apps to optimize existing listing, uncover new opportunities, and expand the keyword set.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Optimizing Apps on both Play Store and App Store and improving rankings for app keywords both on Play Store and App Store.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Improve App organic traffic and Analyze click to install and uninstall rate for the apps.  </ul> <div> <br> <br> </div> Key Requirements  <ul> <li> <b> </b> </li> Minimum 2-4 years of experience with ASO in a game/app with million+ installs.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Excellent analytical and reporting skills.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Enthusiasm and energy to fire up internal teams  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Great communication skills  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Creative and original thinking  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Proficiency with ASO tools, including Google Play Console and other external tools.  </ul> <div> <br> </div> <ul> <li> <b> </b> </li> Ability to work within a team and independently  </ul></div><div class=\"styles_other-details__oEN4O\"><div class=\"styles_details__Y424J\"><label>Role: </label><span><a href=\"https://www.naukri.com/other-jobs\" target=\"_blank\">Other</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Industry Type: </label><span><a href=\"https://www.naukri.com/events-live-entertainment-jobs\" target=\"_blank\">Events / Live Entertainment</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Department: </label><span><a href=\"https://www.naukri.com/other-jobs\" target=\"_blank\">Other</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Employment Type: </label><span><span>Full Time, Permanent</span></span></div><div class=\"styles_details__Y424J\"><label>Role Category: </label><span><span>Other</span></span></div></div><div class=\"styles_education__KXFkO\"><div class=\"styles_heading__veHpg\">Education</div><div class=\"styles_details__Y424J\"><label>UG: </label><span class=\"\">Any Graduate</span></div><div class=\"styles_details__Y424J\"><label>PG: </label><span class=\"\">Any Postgraduate</span></div></div></div><div class=\"styles_key-skill__GIPn_\"><div class=\"styles_heading__veHpg\">Key Skills</div><div><a target=\"_blank\" class=\"styles_chip__7YCfG styles_non-clickable__RM_KJ\"><span>Incharge</span></a><a href=\"https://www.naukri.com/analytical-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Analytical</span></a><a href=\"https://www.naukri.com/research-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Research</span></a><a href=\"https://www.naukri.com/monitoring-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>Monitoring</span></a></div></div><div class=\"styles_JDC__footer__ZJnPe\"><a href=\"//www.facebook.com/sharer.php?u=https://www.naukri.com/job-listings-chief-marketing-officer-touchzing-media-pvt-ltd-mumbai-2-to-4-years-301224501675&amp;title=Job Description for Chief Marketing Officer in Touchzing Media in Mumbai for 2 to 4 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-facebook\" title=\"Share This Job on Facebook\"></i></a><a href=\"//twitter.com/share?url=https://www.naukri.com/job-listings-chief-marketing-officer-touchzing-media-pvt-ltd-mumbai-2-to-4-years-301224501675&amp;title=Job Description for Chief Marketing Officer in Touchzing Media in Mumbai for 2 to 4 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-twitter\" title=\"Share This Job on X\"></i></a><a href=\"//www.linkedin.com/shareArticle?mini=true&amp;url=https://www.naukri.com/job-listings-chief-marketing-officer-touchzing-media-pvt-ltd-mumbai-2-to-4-years-301224501675&amp;title=Job Description for Chief Marketing Officer in Touchzing Media in Mumbai for 2 to 4 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-linkedin\" title=\"Share This Job on Linkedin\"></i></a><span class=\"styles_report-job__U0NH3\">Report this job</span></div>",
+      "rawText": "Job highlights. Proficiency with ASO tools,including Google Play Console and other external tools. Ability to work within a team and independently Minimum 2-4 years of experience with ASO in a game / app with million+ installs. .Job match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob description Be in charge of ASO of various apps and games. Analyze the current state of ASO and define a strategy to maximize organic user acquisition. Execute the ASO strategy in multiple languages working with different teams - keywords, description, title, screenshots, etc. Optimize conversion rate on the store listing page with experiments and try to maximize the same. Monitor and track rankings and conversion rates using ASO tools. Always be on the lookout to increase downloads with improvements and new ideas. Be up to date with the latest ASO tips, tricks, hacks and news. Perform keyword research for Apps to optimize existing listing, uncover new opportunities, and expand the keyword set. Optimizing Apps on both Play Store and App Store and improving rankings for app keywords both on Play Store and App Store. Improve App organic traffic and Analyze click to install and uninstall rate for the apps. Key Requirements Minimum 2-4 years of experience with ASO in a game/app with million+ installs. Excellent analytical and reporting skills. Enthusiasm and energy to fire up internal teams Great communication skills Creative and original thinking Proficiency with ASO tools, including Google Play Console and other external tools. Ability to work within a team and independently Role: Other,Industry Type: Events / Live Entertainment,Department: Other,Employment Type: Full Time, PermanentRole Category: OtherEducationUG: Any GraduatePG: Any PostgraduateKey SkillsInchargeAnalyticalResearchMonitoringReport this job",
+      "metadata": {
+        "originalTitle": "Chief Marketing Officer",
+        "originalCompany": "Touchzing Media",
+        "url": "https://www.naukri.com/job-listings-chief-marketing-officer-touchzing-media-pvt-ltd-mumbai-2-to-4-years-301224501675"
+      },
+      "truth": {
+        "role": {
+          "value": "Chief Marketing Officer",
+          "evidence": "Title: Chief Marketing Officer"
+        },
+        "company": {
+          "value": "Touchzing Media",
+          "evidence": "Company: Touchzing Media"
+        },
+        "location": {
+          "value": "Mumbai",
+          "evidence": "Location: Mumbai"
+        },
+        "salary": {
+          "value": null,
+          "evidence": null
+        },
+        "mustHave": [
+          {
+            "value": "Minimum 2-4 years of experience with ASO in a game/app with million+ installs",
+            "evidence": "Minimum 2-4 years of experience with ASO in a game / app with million+ installs"
+          },
+          {
+            "value": "Excellent analytical and reporting skills",
+            "evidence": "Excellent analytical and reporting skills"
+          },
+          {
+            "value": "Proficiency with ASO tools, including Google Play Console and other external tools",
+            "evidence": "Proficiency with ASO tools,including Google Play Console and other external tools"
+          },
+          {
+            "value": "Ability to work within a team and independently",
+            "evidence": "Ability to work within a team and independently"
+          }
+        ],
+        "niceToHave": [],
+        "tools": [
+          {
+            "value": "Google Play Console",
+            "evidence": "Proficiency with ASO tools,including Google Play Console and other external tools"
+          },
+          {
+            "value": "ASO tools",
+            "evidence": "Proficiency with ASO tools,including Google Play Console and other external tools"
+          }
+        ],
+        "technologies": [],
+        "leadershipLevel": {
+          "value": "C-Level",
+          "evidence": "Title: Chief Marketing Officer"
+        },
+        "aiExposure": {
+          "value": null,
+          "evidence": null
+        },
+        "travel": {
+          "value": null,
+          "evidence": null
+        },
+        "remoteType": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      "expectedRecommendation": {
+        "fit": "Excellent",
+        "reason": [
+          "The role is a C-Level position, which matches the candidate's senior executive profile",
+          "The job involves strategic decision-making and leadership, which aligns with the candidate's experience"
+        ]
+      }
+    },
+    {
+      "id": "bm-56ded03516565fc1",
+      "cardHash": "56ded03516565fc1",
+      "portal": "Naukri",
+      "difficulty": "Medium",
+      "isNegativeExample": true,
+      "rawHtml": "<div class=\"styles_JDC__match-score__VnjLL\"><div><span class=\"styles_JDC__job-highlight-head__TEq5Q\">Job highlights</span></div><ul class=\"styles_JDC__job-highlight-list__QZC12\"><li>Proven experience in marketing leadership roles,preferably in the hospitality industry.  .  Strong understanding of marketing principles and practices.  </li><li>Experience with marketing automation tools and data analysis software</li></ul><div><span class=\"styles_MS__head__wMsss\">Job match score</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-check_circle\"></i><span>Early Applicant</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Keyskills</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Location</span></div><div class=\"styles_MS__details__iS7mj\"><i class=\"ni-icon-crossMatchscore\"></i><span>Work Experience</span></div></div><div class=\"\"><h2>Job description</h2></div><div class=\"\"><div class=\"styles_JDC__dang-inner-html__h0K4t\"><p>We are looking for a highly experienced and skilled Chief Marketing Officer to lead our marketing efforts in Mumbai. The ideal candidate will have a strong background in marketing and a proven track record of success.</p><br><h3>Roles and Responsibility</h3><br><ul><br><li>Develop and implement comprehensive marketing strategies to achieve business objectives.</li><br><li>Lead cross-functional teams to launch new products and services.</li><br><li>Conduct market research and analyze consumer trends to identify opportunities.</li><br><li>Manage and maintain relationships with key stakeholders, including customers and partners.</li><br><li>Collaborate with the sales team to drive revenue growth.</li><br><li>Monitor and report on marketing performance metrics.</li><br></ul><br><h3>Job Requirements</h3><br><ul><br><li>Proven experience in marketing leadership roles, preferably in the hospitality industry.</li><br><li>Strong understanding of marketing principles and practices.</li><br><li>Excellent communication and interpersonal skills.</li><br><li>Ability to work in a fast-paced environment and adapt to changing priorities.</li><br><li>Strong analytical and problem-solving skills.</li><br><li>Experience with marketing automation tools and data analysis software.</li><br></ul><br><h3>About Company</h3><br><p>Royal Orchid Hotels Ltd. is a leading hotel management company committed to delivering exceptional guest experiences and driving business success. We are a team of dedicated professionals passionate about hospitality and eager to make a positive impact in our communities.</p><br><br>Disclaimer : This job posting has been aggregated from external source. Role detailscontentand availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.</div><div class=\"styles_other-details__oEN4O\"><div class=\"styles_details__Y424J\"><label>Role: </label><span><a href=\"https://www.naukri.com/head-marketing-jobs\" target=\"_blank\">Head - Marketing</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Industry Type: </label><span><a href=\"https://www.naukri.com/hotels-restaurants-jobs\" target=\"_blank\">Hotels &amp; Restaurants</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Department: </label><span><a href=\"https://www.naukri.com/marketing-communication-jobs\" target=\"_blank\">Marketing &amp; Communication</a><span class=\"styles_comma__6l5nn\">,</span></span></div><div class=\"styles_details__Y424J\"><label>Employment Type: </label><span><span>Full Time, Permanent</span></span></div><div class=\"styles_details__Y424J\"><label>Role Category: </label><span><span>Marketing</span></span></div></div><div class=\"styles_education__KXFkO\"><div class=\"styles_heading__veHpg\">Education</div><div class=\"styles_details__Y424J\"><label>UG: </label><span class=\"\">Any Graduate</span></div><div class=\"styles_details__Y424J\"><label>PG: </label><span class=\"\">Any Postgraduate</span></div></div></div><div class=\"styles_key-skill__GIPn_\"><div class=\"styles_heading__veHpg\">Key Skills</div><div><a href=\"https://www.naukri.com/digital-marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>digital marketing</span></a><a href=\"https://www.naukri.com/marketing-strategy-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>marketing strategies</span></a><a href=\"https://www.naukri.com/strong-analytical-skills-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>strong analytical skills</span></a><a href=\"https://www.naukri.com/branding-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>branding</span></a><a href=\"https://www.naukri.com/market-research-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>market research</span></a><a href=\"https://www.naukri.com/sales-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>sales</span></a><a href=\"https://www.naukri.com/research-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>research</span></a><a href=\"https://www.naukri.com/marketing-automation-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>marketing automation</span></a><a href=\"https://www.naukri.com/brand-management-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>brand management</span></a><a href=\"https://www.naukri.com/marketing-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>marketing</span></a><a target=\"_blank\" class=\"styles_chip__7YCfG styles_non-clickable__RM_KJ\"><span>performance metrics</span></a><a href=\"https://www.naukri.com/leadership-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>leadership</span></a><a href=\"https://www.naukri.com/hospitality-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>hospitality</span></a><a href=\"https://www.naukri.com/hotel-management-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>hotel management</span></a><a href=\"https://www.naukri.com/consumer-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>consumer</span></a><a href=\"https://www.naukri.com/communication-skills-jobs\" target=\"_blank\" class=\"styles_chip__7YCfG styles_clickable__dUW8S\"><span>communication skills</span></a></div></div><div class=\"styles_JDC__footer__ZJnPe\"><a href=\"//www.facebook.com/sharer.php?u=https://www.naukri.com/job-listings-iconiqa-hotel-chief-marketing-officer-royal-orchid-hotels-ltd-mumbai-4-to-8-years-130726502883&amp;title=Job Description for ICONIQA HOTEL - Chief Marketing Officer in Royal Orchid &amp; Regenta Hotels in Mumbai for 4 to 8 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-facebook\" title=\"Share This Job on Facebook\"></i></a><a href=\"//twitter.com/share?url=https://www.naukri.com/job-listings-iconiqa-hotel-chief-marketing-officer-royal-orchid-hotels-ltd-mumbai-4-to-8-years-130726502883&amp;title=Job Description for ICONIQA HOTEL - Chief Marketing Officer in Royal Orchid &amp; Regenta Hotels in Mumbai for 4 to 8 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-twitter\" title=\"Share This Job on X\"></i></a><a href=\"//www.linkedin.com/shareArticle?mini=true&amp;url=https://www.naukri.com/job-listings-iconiqa-hotel-chief-marketing-officer-royal-orchid-hotels-ltd-mumbai-4-to-8-years-130726502883&amp;title=Job Description for ICONIQA HOTEL - Chief Marketing Officer in Royal Orchid &amp; Regenta Hotels in Mumbai for 4 to 8 years of experience. Apply Now!\" target=\"_blank\"><i class=\"ni-icon-linkedin\" title=\"Share This Job on Linkedin\"></i></a><span class=\"styles_report-job__U0NH3\">Report this job</span></div>",
+      "rawText": "Job highlightsProven experience in marketing leadership roles,preferably in the hospitality industry. . Strong understanding of marketing principles and practices. Experience with marketing automation tools and data analysis softwareJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob descriptionWe are looking for a highly experienced and skilled Chief Marketing Officer to lead our marketing efforts in Mumbai. The ideal candidate will have a strong background in marketing and a proven track record of success.Roles and ResponsibilityDevelop and implement comprehensive marketing strategies to achieve business objectives.Lead cross-functional teams to launch new products and services.Conduct market research and analyze consumer trends to identify opportunities.Manage and maintain relationships with key stakeholders, including customers and partners.Collaborate with the sales team to drive revenue growth.Monitor and report on marketing performance metrics.Job RequirementsProven experience in marketing leadership roles, preferably in the hospitality industry.Strong understanding of marketing principles and practices.Excellent communication and interpersonal skills.Ability to work in a fast-paced environment and adapt to changing priorities.Strong analytical and problem-solving skills.Experience with marketing automation tools and data analysis software.About CompanyRoyal Orchid Hotels Ltd. is a leading hotel management company committed to delivering exceptional guest experiences and driving business success. We are a team of dedicated professionals passionate about hospitality and eager to make a positive impact in our communities.Disclaimer : This job posting has been aggregated from external source. Role detailscontentand availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.Role: Head - Marketing,Industry Type: Hotels & Restaurants,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: MarketingEducationUG: Any GraduatePG: Any PostgraduateKey Skillsdigital marketingmarketing strategiesstrong analytical skillsbrandingmarket researchsalesresearchmarketing automationbrand managementmarketingperformance metricsleadershiphospitalityhotel managementconsumercommunication skillsReport this job",
+      "metadata": {
+        "originalTitle": "ICONIQA HOTEL - Chief Marketing Officer",
+        "originalCompany": "Royal Orchid & Regenta Hotels",
+        "url": "https://www.naukri.com/job-listings-iconiqa-hotel-chief-marketing-officer-royal-orchid-hotels-ltd-mumbai-4-to-8-years-130726502883"
+      },
+      "truth": {
+        "role": {
+          "value": "Chief Marketing Officer",
+          "evidence": "Title: ICONIQA HOTEL - Chief Marketing Officer"
+        },
+        "company": {
+          "value": "Royal Orchid & Regenta Hotels",
+          "evidence": "Company: Royal Orchid & Regenta Hotels"
+        },
+        "location": {
+          "value": "Mumbai",
+          "evidence": "Location: Mumbai"
+        },
+        "salary": {
+          "value": null,
+          "evidence": null
+        },
+        "mustHave": [
+          {
+            "value": "Proven experience in marketing leadership roles",
+            "evidence": "Proven experience in marketing leadership roles,preferably in the hospitality industry."
+          },
+          {
+            "value": "Strong understanding of marketing principles and practices",
+            "evidence": "Strong understanding of marketing principles and practices."
+          },
+          {
+            "value": "Excellent communication and interpersonal skills",
+            "evidence": "Excellent communication and interpersonal skills."
+          },
+          {
+            "value": "Ability to work in a fast-paced environment and adapt to changing priorities",
+            "evidence": "Ability to work in a fast-paced environment and adapt to changing priorities."
+          },
+          {
+            "value": "Strong analytical and problem-solving skills",
+            "evidence": "Strong analytical and problem-solving skills."
+          },
+          {
+            "value": "Experience with marketing automation tools and data analysis software",
+            "evidence": "Experience with marketing automation tools and data analysis software"
+          }
+        ],
+        "niceToHave": [
+          {
+            "value": "Experience in the hospitality industry",
+            "evidence": "preferably in the hospitality industry"
+          }
+        ],
+        "tools": [
+          {
+            "value": "marketing automation tools",
+            "evidence": "Experience with marketing automation tools and data analysis software"
+          },
+          {
+            "value": "data analysis software",
+            "evidence": "Experience with marketing automation tools and data analysis software"
+          }
+        ],
+        "technologies": {
+          "value": null,
+          "evidence": null
+        },
+        "leadershipLevel": {
+          "value": "C-Level",
+          "evidence": "Chief Marketing Officer"
+        },
+        "aiExposure": {
+          "value": false,
+          "evidence": null
+        },
+        "travel": {
+          "value": null,
+          "evidence": null
+        },
+        "remoteType": {
+          "value": null,
+          "evidence": null
+        }
+      },
+      "expectedRecommendation": {
+        "fit": "Excellent",
+        "reason": [
+          "The role is a C-Level position, which matches the candidate's seniority level.",
+          "The job description mentions marketing leadership, digital marketing, and data analysis, which aligns with the candidate's skills and experience."
+        ]
+      }
+    }
+  ]
+}

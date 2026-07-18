@@ -1,0 +1,41 @@
+{
+  "version": "1.0.0",
+  "dimensions": {
+    "targetRoles": {
+      "Chief Marketing Officer": ["Chief Marketing Officer", "CMO"],
+      "Chief Growth Officer": ["Chief Growth Officer", "Chief Growth Officer"],
+      "VP Marketing": ["VP Marketing", "Vice President Marketing"],
+      "Head of Growth": ["Head of Growth", "VP Growth"],
+      "Marketing Director": ["Marketing Director", "Director of Marketing"],
+      "Chief Customer Officer": ["Chief Customer Officer"],
+      "Chief Digital Officer": ["Chief Digital Officer"],
+      "SVP Marketing": ["SVP Marketing", "SVP Marketing"],
+      "Head of Marketing": ["Head of Marketing"],
+      "Transformation Director": ["Transformation Director"]
+    },
+    "leadershipModel": {
+      "Center of Excellence": ["CoE Lead", "CoE Director", "Center of Excellence"],
+      "Global Capability Center": ["GCC Lead", "GCC Head", "Global Capability Center"],
+      "Shared Services": ["Shared Services Marketing", "Shared Services Director"],
+      "Global Marketing": ["Global Marketing Director", "Head of Global Marketing"]
+    },
+    "functionalExpertise": {
+      "Performance Marketing": ["VP Performance Marketing", "Director Performance Marketing", "Head of Performance Marketing"],
+      "Demand Generation": ["VP Demand Gen", "Head of Demand Generation", "Demand Generation Director"],
+      "CRM": ["CRM Director", "Head of CRM", "Lifecycle Marketing Director"],
+      "MarTech": ["VP Martech", "Head of Martech", "Martech Director"]
+    },
+    "platformOwnership": {
+      "Digital Platform": ["Digital Platform Lead", "VP Digital Platforms"],
+      "Marketing Technology": ["Marketing Technology Lead", "Director Marketing Technology"],
+      "Product Owner": ["Product Owner Marketing", "Product Director Marketing Platforms"],
+      "Customer Experience Platform": ["Customer Experience Platform Lead", "CX Platform Director"]
+    },
+    "strategicMandate": {
+      "Digital Transformation": ["Digital Transformation Director", "Head of Digital Transformation"],
+      "Commercial Excellence": ["Commercial Excellence Director", "VP Commercial Excellence"],
+      "Customer Growth": ["VP Customer Growth", "Customer Growth Director"],
+      "Marketing Transformation": ["Marketing Transformation Lead", "VP Marketing Transformation"]
+    }
+  }
+}

@@ -1,0 +1,122 @@
+[
+  {
+    "testCategory": "Board",
+    "text": "The position reports directly to the Board of Directors.",
+    "expectedCanonical": "BOARD",
+    "expectedRaw": "Board of Directors"
+  },
+  {
+    "testCategory": "Board",
+    "text": "Accountable to the Board for all strategic operations.",
+    "expectedCanonical": "BOARD",
+    "expectedRaw": "Board"
+  },
+  {
+    "testCategory": "CEO",
+    "text": "The role reports to the CEO and Founder of the company.",
+    "expectedCanonical": "CEO",
+    "expectedRaw": "CEO and Founder"
+  },
+  {
+    "testCategory": "CEO",
+    "text": "Position reports directly to the Chief Executive Officer.",
+    "expectedCanonical": "CEO",
+    "expectedRaw": "Chief Executive Officer"
+  },
+  {
+    "testCategory": "CEO",
+    "text": "The candidate has a direct reporting line to the Founder & CEO.",
+    "expectedCanonical": "CEO",
+    "expectedRaw": "Founder & CEO"
+  },
+  {
+    "testCategory": "ExecutiveCommittee",
+    "text": "Reports directly to the Executive Vice President of Operations.",
+    "expectedCanonical": "EXECUTIVE_COMMITTEE",
+    "expectedRaw": "Executive Vice President of Operations"
+  },
+  {
+    "testCategory": "ExecutiveCommittee",
+    "text": "Will report directly to the Chief Operating Officer (COO).",
+    "expectedCanonical": "EXECUTIVE_COMMITTEE",
+    "expectedRaw": "Chief Operating Officer (COO)"
+  },
+  {
+    "testCategory": "ExecutiveCommittee",
+    "text": "Reports directly to the President - Asia Pacific.",
+    "expectedCanonical": "EXECUTIVE_COMMITTEE",
+    "expectedRaw": "President - Asia Pacific"
+  },
+  {
+    "testCategory": "BUHead",
+    "text": "Reports directly to the Business Unit President.",
+    "expectedCanonical": "BU_HEAD",
+    "expectedRaw": "Business Unit President"
+  },
+  {
+    "testCategory": "BUHead",
+    "text": "This position reports to the Managing Director of India Region.",
+    "expectedCanonical": "BU_HEAD",
+    "expectedRaw": "Managing Director of India Region"
+  },
+  {
+    "testCategory": "FunctionHead",
+    "text": "Reports directly to the Head of Marketing.",
+    "expectedCanonical": "FUNCTION_HEAD",
+    "expectedRaw": "Head of Marketing"
+  },
+  {
+    "testCategory": "FunctionHead",
+    "text": "Reporting directly to the Director of Sales.",
+    "expectedCanonical": "FUNCTION_HEAD",
+    "expectedRaw": "Director of Sales"
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Will work closely with the CEO and Founder on global strategy.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Responsible for managing a team of direct reports in marketing.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Must collaborate with the Board of Directors on quarterly alignments.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "False Positives",
+    "text": "Will present operational results to the Executive Vice President.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Assisting the Chief Operating Officer with daily administrative tasks.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "The director will align their budget recommendations with the CFO.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Help the managing director coordinate regional summits.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  },
+  {
+    "testCategory": "Borderline",
+    "text": "Dotted line collaboration with the Head of Engineering.",
+    "expectedCanonical": "NONE",
+    "expectedRaw": null
+  }
+]

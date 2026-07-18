@@ -1,0 +1,169 @@
+{
+  "extractorVersion": "1.0.0",
+  "promptVersion": "1.0.0",
+  "jobHash": "j-3acd85628183",
+  "role": "Marketing Manager",
+  "company": "Carenx Innovations",
+  "location": "Mumbai",
+  "postedRelative": "Posted recently",
+  "scrapedFrom": "Naukri",
+  "primaryConcern": null,
+  "applyUrl": "https://www.naukri.com/job-listings-marketing-manager-carenx-innovations-mumbai-4-to-9-years-140726503046",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "requiredLevel@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Seniority check",
+        "detail": "Matches target title list"
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "reportingLine@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Reporting line alignment",
+        "detail": "CxO / MD reporting proven"
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "mandate@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Mandate alignment",
+        "detail": "Lifecycle stage matches profile"
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "commercialAccountability@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "P&L Scale matches",
+        "detail": "Prior P&L / budget precedent"
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "functionalScope@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Competency match",
+        "detail": "Full growth capability stack"
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "India",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Mumbai",
+            "source": "snippet"
+          }
+        ],
+        "provenance": "explicit",
+        "quality": "high",
+        "extractorId": "geography@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Location match",
+        "detail": "Target market listing matches"
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "workModel@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Work model preference",
+        "detail": "Preferred work model"
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "technologyStack@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Platform stack",
+        "detail": "Platform-native experience"
+      }
+    }
+  ],
+  "telemetry": {
+    "deterministicMs": 1,
+    "llmMs": 0,
+    "llmCalled": true,
+    "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+  }
+}

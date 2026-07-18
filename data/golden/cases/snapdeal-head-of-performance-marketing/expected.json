@@ -1,0 +1,122 @@
+{
+  "jobHash": "j-snapdeal-head-perf",
+  "role": "Head of Performance Marketing",
+  "company": "Snapdeal",
+  "location": "Delhi NCR · India",
+  "scrapedFrom": "Indeed",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Contradicted",
+      "jdEvidence": {
+        "value": "8–10 yrs",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "8–10 years of performance marketing experience.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": []
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "Performance",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Own paid + performance channels.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": []
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Performance",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Paid + performance.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Delhi NCR",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Delhi NCR · India",
+            "source": "location"
+          }
+        ]
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Hybrid",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Hybrid, 3 days in-office.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "jobHash": "j-tata-digital-svp",
+  "role": "SVP Growth & CRM",
+  "company": "Tata Digital",
+  "location": "Bengaluru · India",
+  "scrapedFrom": "LinkedIn",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "SVP",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "SVP Growth & CRM",
+            "source": "title"
+          }
+        ]
+      },
+      "candidateProof": {
+        "headline": "SVP on target list",
+        "detail": "strategy.targetTitles includes SVP."
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "CEO",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Reports to CEO, Tata Digital.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Growth + CRM",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Own growth, CRM, and lifecycle across Tata Neu.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "₹200 Cr+ P&L",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Owns the Tata Neu growth P&L.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Growth + CRM",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Growth, CRM, lifecycle.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "Bengaluru",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Bengaluru · India",
+            "source": "location"
+          }
+        ]
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Hybrid",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Hybrid, 3 days in-office.",
+            "source": "snippet"
+          }
+        ]
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Salesforce",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Stack: Salesforce Marketing Cloud + CDP.",
+            "source": "snippet"
+          }
+        ]
+      }
+    }
+  ]
+}

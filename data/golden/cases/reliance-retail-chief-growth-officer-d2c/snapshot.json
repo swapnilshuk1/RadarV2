@@ -1,0 +1,27 @@
+{
+  "snapshotSchemaVersion": "1.0.0",
+  "scraperVersion": "1.0.0",
+  "cardHash": "j-1a7b8faa0caf",
+  "portal": "LinkedIn",
+  "keyword": "golden-seed",
+  "discoveredAt": "1970-01-01T00:00:00.000Z",
+  "searchUrl": "about:golden",
+  "detailUrl": "about:golden/j-reliance-cgo",
+  "card": {
+    "rawHtml": "<pre>Chief Growth Officer, D2C\nReliance Retail — Mumbai · India\nPosted 4 days ago\nChief Growth Officer\nReports to the CEO, Reliance Retail Digital.\nRe-platform Salesforce CRM within 12 months.\nOwns D2C P&L (₹300 Cr+ topline).\nGrowth, CRM, and lifecycle marketing.\nMumbai · India\nHybrid, 3 days in Mumbai HQ.\nStack: Salesforce Marketing Cloud, CDP.</pre>",
+    "rawText": "Chief Growth Officer, D2C\nReliance Retail — Mumbai · India\nPosted 4 days ago\nChief Growth Officer\nReports to the CEO, Reliance Retail Digital.\nRe-platform Salesforce CRM within 12 months.\nOwns D2C P&L (₹300 Cr+ topline).\nGrowth, CRM, and lifecycle marketing.\nMumbai · India\nHybrid, 3 days in Mumbai HQ.\nStack: Salesforce Marketing Cloud, CDP.",
+    "title": "Chief Growth Officer, D2C",
+    "company": "Reliance Retail",
+    "location": "Mumbai · India"
+  },
+  "detail": {
+    "fetched": true,
+    "rawHtml": "<pre>Chief Growth Officer, D2C\nReliance Retail — Mumbai · India\nPosted 4 days ago\nChief Growth Officer\nReports to the CEO, Reliance Retail Digital.\nRe-platform Salesforce CRM within 12 months.\nOwns D2C P&L (₹300 Cr+ topline).\nGrowth, CRM, and lifecycle marketing.\nMumbai · India\nHybrid, 3 days in Mumbai HQ.\nStack: Salesforce Marketing Cloud, CDP.</pre>",
+    "rawText": "Chief Growth Officer, D2C\nReliance Retail — Mumbai · India\nPosted 4 days ago\nChief Growth Officer\nReports to the CEO, Reliance Retail Digital.\nRe-platform Salesforce CRM within 12 months.\nOwns D2C P&L (₹300 Cr+ topline).\nGrowth, CRM, and lifecycle marketing.\nMumbai · India\nHybrid, 3 days in Mumbai HQ.\nStack: Salesforce Marketing Cloud, CDP."
+  },
+  "telemetry": {
+    "cardExtractMs": 0,
+    "detailExtractMs": 0,
+    "totalMs": 0
+  }
+}
