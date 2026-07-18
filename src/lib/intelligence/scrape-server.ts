@@ -9,7 +9,7 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
       // Dynamic import isolates Playwright/Node modules from the browser bundler.
       const { startRun } = await import("../../../scripts/scrape");
       
-      const { runId, completion } = await startRun({ resume: false });
+      const { runId, completion } = await startRun({ resume: false, autoConfirm: true });
       
       // Fire and forget
       void completion.catch((err: any) => {

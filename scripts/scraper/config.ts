@@ -3,6 +3,35 @@ import fs from "fs";
 import type { PortalName } from "./types";
 
 export const ROOT = process.cwd();
+
+// Helper to load .env files
+function loadEnvFile(filename: string) {
+  const filePath = path.join(ROOT, filename);
+  if (fs.existsSync(filePath)) {
+    const content = fs.readFileSync(filePath, "utf-8");
+    for (const line of content.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const index = trimmed.indexOf("=");
+      if (index !== -1) {
+        const key = trimmed.slice(0, index).trim();
+        let value = trimmed.slice(index + 1).trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    }
+  }
+}
+
+// Load configurations
+loadEnvFile(".env");
+loadEnvFile("gemini.env");
+loadEnvFile("groq.env");
+
 export const DATA_DIR = path.join(ROOT, "src", "data");
 export const ARTIFACTS_DIR = process.env.SCRAPER_ARTIFACTS_DIR || path.join(ROOT, ".scraper-artifacts");
 export const RUNS_DIR = path.join(ARTIFACTS_DIR, "runs");

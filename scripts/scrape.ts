@@ -49,6 +49,7 @@ export interface RunOptions {
   portals?: PortalName[];
   maxPages?: number;
   resume?: boolean;
+  autoConfirm?: boolean;
 }
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
@@ -183,7 +184,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       });
 
       // Phase 2: Polling Pause
-      if (!CONFIG.autoConfirm) {
+      const autoConfirm = opts.autoConfirm ?? CONFIG.autoConfirm;
+      if (!autoConfirm) {
         mgr.transitionTo("waiting_for_confirmation");
         log("Waiting for user confirmation. (Set AUTO_CONFIRM=true to bypass)");
         const deadline = Date.now() + 15 * 60 * 1000; // 15 mins
