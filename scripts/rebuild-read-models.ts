@@ -65,6 +65,8 @@ function main() {
   db.close();
 }
 
-if (process.argv[1] === new URL(import.meta.url).pathname || process.argv[1] === __filename) {
+import { fileURLToPath } from "url";
+if (process.argv[1] && (process.argv[1].endsWith('rebuild-read-models.ts') || process.argv[1] === fileURLToPath(import.meta.url))) {
   main();
 }
+

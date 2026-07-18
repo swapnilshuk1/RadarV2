@@ -28,6 +28,8 @@ export type RecommendationRecord = Readonly<{
   comparison: ComparativeAnalysis;
   explanation: ExplanationObject;
   trace: DecisionTrace;
+  esi?: number;
+  diligenceStatus?: "READY" | "INSUFFICIENT" | "STALE" | "FAILED" | "UNKNOWN";
 }>;
 
 /** Deterministic fingerprint of engine + priority + verb so that different

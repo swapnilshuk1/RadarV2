@@ -58,11 +58,17 @@ function Brief() {
       ? "PROCEED WITH CAUTION"
       : "NOT RECOMMENDED YET";
 
-  // Point 5: Explicit conviction & certainty metric
-  const certainty = score >= 60 || isBenchmark ? "HIGH" : "MODERATE";
-  const certaintyReason = score >= 60 || isBenchmark
+  // Point 5: Explicit conviction & certainty metric (Decision Confidence Layer)
+  const decisionConfidence = o.recommendationResult?.decisionConfidence;
+  const certaintyScore = decisionConfidence?.overall ?? (score >= 60 || isBenchmark ? 0.90 : 0.65);
+  const certainty = certaintyScore >= 0.85
+    ? "HIGH"
+    : certaintyScore >= 0.65
+      ? "MODERATE"
+      : "LOW";
+  const certaintyReason = decisionConfidence?.explanation || (score >= 60 || isBenchmark
     ? "Direct, high-confidence evidence verified within the primary job description text."
-    : "Limited explicit evidence found in source text regarding technologyStack and secondary dimensions.";
+    : "Limited explicit evidence found in source text regarding technologyStack and secondary dimensions.");
 
   // Point 2: Custom dynamic summary sentence
   const decisionSummary = score >= 75 || (isBenchmark && isPursue)
@@ -122,15 +128,43 @@ function Brief() {
                     <span className={`font-mono text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-sm border leading-none ${
                       certainty === "HIGH"
                         ? "border-emerald-600/20 bg-emerald-500/5 text-emerald-700"
-                        : "border-amber-600/20 bg-amber-500/5 text-amber-700"
+                        : certainty === "MODERATE"
+                          ? "border-amber-600/20 bg-amber-500/5 text-amber-700"
+                          : "border-red-600/20 bg-red-500/5 text-red-700"
                     }`}>
-                      {certainty}
+                      {certainty} ({Math.round(certaintyScore * 100)}%)
                     </span>
                   </div>
                   <span className="text-ink-muted text-[13px] font-serif italic leading-none ml-2">
                     {certaintyReason}
                   </span>
                 </div>
+
+                {/* Minimal Fact Rule: High-Impact Questions to Verify */}
+                {decisionConfidence && decisionConfidence.limitingDimensions && decisionConfidence.limitingDimensions.length > 0 && (
+                  <div className="mt-6 border-t border-hairline pt-5">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-brass mb-3 flex items-center gap-1.5">
+                      <span>🕵️</span> High-Impact Verification Required (Minimal Fact Rule)
+                    </p>
+                    <div className="space-y-3">
+                      {decisionConfidence.limitingDimensions.map((dim: any, idx: number) => (
+                        <div key={idx} className="bg-amber-500/5 border border-amber-600/10 p-3 rounded-sm">
+                          <div className="flex justify-between items-baseline">
+                            <span className="font-mono text-[11px] uppercase font-semibold text-amber-800">
+                              Verify: {dim.attribute}
+                            </span>
+                            <span className="font-mono text-[9px] uppercase tracking-wider text-amber-700/80 bg-amber-500/10 px-1.5 py-0.5 rounded-sm font-semibold">
+                              Impact: {Math.round(dim.impactScore * 100)}%
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-ink-muted italic font-serif">
+                            {dim.narrative}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <p className="mt-6 font-serif text-[18px] leading-relaxed text-ink">
                   {decisionSummary}

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { OpportunityService } from "./services/OpportunityService";
 import type { OpportunitySource } from "../../data/opportunity-fixtures";
+import { getDatabase } from "../../data/sqlite/provider";
 
 export const getOpportunitiesFn = createServerFn({ method: "GET" }).handler(async () => {
   const service = new OpportunityService();
@@ -10,7 +11,7 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" }).handler(asyn
   
   // HACK: Fallback to SQLite raw queries for Company name and Document dimensions 
   // until we build the full UI models.
-  const db = require("../../data/sqlite/provider").getDatabase();
+  const db = getDatabase();
   
   for (const op of ops) {
     const companyRow = db.prepare("SELECT * FROM companies WHERE id = ?").get(op.companyId) as any;

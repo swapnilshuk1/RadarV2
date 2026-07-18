@@ -55,3 +55,8 @@ scraper-profile-temp-*/
 
 # Zip archives
 *.zip
+
+# Scratch files and backups
+scratch/
+*.bak
+

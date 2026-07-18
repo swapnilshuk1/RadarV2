@@ -1,5 +1,6 @@
 import { type OpportunitySource, type ScrapeSource } from "./opportunity-fixtures";
 import { readOpportunities } from "../lib/intelligence/engine";
+import { OpportunityProvider } from "../lib/intelligence/opportunity-provider";
 
 export type ScrapedJob = {
   id: string;
@@ -16,16 +17,23 @@ export type ScrapedJob = {
 // were scraped but filtered out before RADAR built a brief.
 export function getScrapedJobs(): ScrapedJob[] {
   const current = readOpportunities();
+  const shortlist = new Set(
+    OpportunityProvider.list({ activePursuits: 0 }).map((o) => o.jobHash),
+  );
   return [
-    ...current.map((o: OpportunitySource) => ({
-      id: o.jobHash,
-      role: o.role,
-      company: o.company,
-      location: o.location,
-      source: o.scrapedFrom,
-      scrapedRelative: o.postedRelative,
-      shortlistedAs: o.jobHash,
-    })),
+    ...current.map((o: OpportunitySource) => {
+      const isShortlisted = shortlist.has(o.jobHash);
+      return {
+        id: o.jobHash,
+        role: o.role,
+        company: o.company,
+        location: o.location,
+        source: o.scrapedFrom,
+        scrapedRelative: o.postedRelative,
+        shortlistedAs: isShortlisted ? o.jobHash : undefined,
+        filteredReason: isShortlisted ? undefined : "Low alignment score / functional mismatch",
+      };
+    }),
     { id: "s-01", role: "Head of Digital Marketing", company: "Maruti Suzuki", location: "Gurugram · India", source: "Naukri", scrapedRelative: "Scraped 1 day ago", filteredReason: "Head-of scope below VP+ threshold" },
     { id: "s-02", role: "Growth Marketing Manager", company: "Zomato", location: "Gurugram · India", source: "LinkedIn", scrapedRelative: "Scraped 2 days ago", filteredReason: "Manager level — target list starts at VP" },
     { id: "s-03", role: "Regional CMO, MENA", company: "Landmark Group", location: "Dubai · UAE", source: "LinkedIn", scrapedRelative: "Scraped 3 days ago", filteredReason: "Geography outside preferred India set" },

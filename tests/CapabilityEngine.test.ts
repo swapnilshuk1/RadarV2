@@ -60,7 +60,7 @@ describe("CapabilityEngine Integration Tests", () => {
     const config = ontology.getCapability("cap_crm_strategy")!;
     const summary = engine.generateSummary(config, crmCap!);
 
-    expect(summary).toBe("Strong evidence of CRM & Customer Retention Strategy based on matching tool(s) HubSpot under the technologyStack dimension.");
+    expect(summary).toBe("Strong evidence of CRM & Customer Retention Strategy based on matching HubSpot under the technologyStack dimension.");
   });
 
   // ============================================================================

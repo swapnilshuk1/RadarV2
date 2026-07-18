@@ -94,10 +94,35 @@ export function runEngine(activePursuits = 0): {
   const byHash = new Map(currentAuthored.map((a) => [a.jobHash, a]));
   const presented = result.records
     .map((r) => {
+      // MASSIVE OPTIMIZATION: Skip executing the heavy McKinsey-grade narrative 
+      // formatter on the 700+ PASS records during bulk list loading!
+      if (r.verb === "PASS") return null;
+      
       const a = byHash.get(r.jobHash);
       return a ? present(a, r) : null;
     })
     .filter((x): x is Presented => x !== null);
 
   return { presented, records: result.records };
+}
+
+export function runEngineSingle(jobHash: string, activePursuits = 0): Presented | undefined {
+  const currentAuthored = readOpportunities();
+  const found = currentAuthored.find((o) => o.jobHash === jobHash);
+  if (!found) return undefined;
+
+  const opportunities = [toOI(found)];
+  const result = runPipeline({
+    opportunities,
+    identity: loadIdentity(),
+    preferences: loadPreferences(),
+    strategy: loadStrategy(),
+    market: marketFor,
+    headspace: buildHeadspace(activePursuits),
+  });
+
+  const record = result.records[0];
+  if (!record) return undefined;
+
+  return present(found, record);
 }

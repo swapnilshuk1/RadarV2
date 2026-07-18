@@ -19,7 +19,13 @@ export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
       ? "PROCEED WITH CAUTION"
       : "NOT RECOMMENDED YET";
 
-  const certainty = score >= 60 || isBenchmark ? "HIGH" : "MODERATE";
+  const decisionConfidence = o.recommendationResult?.decisionConfidence;
+  const certaintyScore = decisionConfidence?.overall ?? (score >= 60 || isBenchmark ? 0.90 : 0.65);
+  const certainty = certaintyScore >= 0.85
+    ? "HIGH"
+    : certaintyScore >= 0.65
+      ? "MODERATE"
+      : "LOW";
 
   return (
     <div className="animate-fade-in space-y-5 pl-1 pr-1">
@@ -40,9 +46,13 @@ export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
         <div>
           <span className="text-ink-muted uppercase tracking-wider">Certainty:</span>
           <span className={`ml-2 font-semibold ${
-            certainty === "HIGH" ? "text-emerald-700" : "text-amber-700"
+            certainty === "HIGH" 
+              ? "text-emerald-700" 
+              : certainty === "MODERATE" 
+                ? "text-amber-700" 
+                : "text-red-700"
           }`}>
-            {certainty}
+            {certainty} ({Math.round(certaintyScore * 100)}%)
           </span>
         </div>
         <div className="ml-auto">
@@ -50,6 +60,22 @@ export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
           <span className="ml-2 font-serif text-[12px] font-semibold text-brass">{score}</span>
         </div>
       </div>
+
+      {/* Asymmetric UI: highlight verification gaps only if they exist */}
+      {decisionConfidence && decisionConfidence.limitingDimensions && decisionConfidence.limitingDimensions.length > 0 && (
+        <div className="bg-amber-500/5 border border-amber-600/10 p-3 rounded-sm text-xs max-w-2xl">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-amber-800 font-semibold mb-1 flex items-center gap-1.5">
+            <span>⚠️</span> Verification Gaps (Uncertainty affects decision)
+          </p>
+          <ul className="list-disc list-inside space-y-1 text-ink-muted italic font-serif">
+            {decisionConfidence.limitingDimensions.map((dim: any, idx: number) => (
+              <li key={idx}>
+                Confirm <strong>{dim.attribute}</strong>: {dim.narrative}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Recommendation — the one sentence that matters on the shortlist */}
       <div className="max-w-2xl text-[14.5px] leading-relaxed text-ink">

@@ -71,8 +71,9 @@ async function main() {
   // 5. Open Database & Compute Semantic Corpus Hash
   const db = new Database(dbPath, { readonly: true });
   const opportunities = db.prepare(`
-    SELECT id, fingerprint, canonical_title FROM opportunities WHERE lifecycle IN ('Normalized', 'Verified') ORDER BY id ASC
+    SELECT id, fingerprint, canonical_title FROM opportunities WHERE lifecycle IN ('Active', 'Normalized', 'Verified') ORDER BY id ASC
   `).all() as any[];
+
 
   const semanticData = opportunities.map(o => `${o.id}:${o.fingerprint}`).join("|");
   const corpusHash = computeHash(semanticData);

@@ -39,6 +39,28 @@ This document codifies the permanent, non-negotiable architectural invariants of
 9. **Knowledge Evolves Through Releases**
    Platform code is decoupled from curation. Code updates follow semantic versioning (SemVer), while knowledge and policy assets evolve via independent, weekly calendar snapshots.
 
+10. **Universal Extraction Protocol**
+    All extractors emit only unified `ExtractionEvidence`. No extractor may communicate directly with the Capability Engine through a custom or ad-hoc interface. This guarantees complete decoupling and preserves the repeatability and replaceability of our matching models.
+
+11. **The Four-Layer Epistemological Judgment Pipeline**
+    To construct, calibrate, and govern executive judgment under uncertainty, all decision paths in RADAR must process knowledge sequentially through four explicit, isolated layers:
+    * **Observed Facts**: Verifiable, black-and-white statements extracted directly from Tier 1 source text.
+    * **Semantic Interpretation**: Understanding what those facts mean within context.
+    * **Calibrated Inference**: Clearly labeled assumptions with quantified uncertainty.
+    * **Governance Policy**: Deterministic rules that transform calibrated evidence into consistent recommendations.
+    No extractor or model may bypass these layers to make direct, uncalibrated, or unexplainable recommendations. This guarantees complete auditability, extensibility, and resistance to model drift.
+
+12. **Decision Confidence Invariant (The Minimal Fact Rule)**
+    Every opportunity recommendation must be accompanied by the smallest set of additional facts that would materially improve the decision. This invariant drives calibration, prioritization, evidence acquisition, UI design, crawler behavior, and executive workflow.
+
+13. **The Core Product Principle of RADAR**
+    The platform does not seek to answer "Is this a good job?" It seeks to answer: *"Do I have enough reliable evidence to confidently invest my limited executive time in this opportunity?"* Every optimization, UI component, and model calibration must prioritize maximizing **Executive Time Saved Per Correct Decision**.
+
+14. **Uncertainty Separation Invariant (Immutable Evidence, Calibrated Confidence)**
+    Evidence calibration influences confidence, not facts. Observed and inferred statements remain stored as immutable evidence records in the database; what changes under calibration is solely the decision weight assigned to them based on their validation status. Facts remain quiet; uncertainty becomes visible only when it matters.
+
+
+
 ---
 
 ## 🔀 Governance & Parallel Development Rule of Thumb

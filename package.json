@@ -13,6 +13,8 @@
     "format": "prettier --write .",
     "scrape": "tsx scripts/scrape.ts",
     "enrich": "tsx scripts/enrich.ts",
+    "corpus:generate": "tsx scripts/corpus/pipeline.ts",
+    "corpus:health": "tsx scripts/corpus/health.ts",
     "validate-graph": "tsx scripts/validate-graph.ts",
     "eval:seed": "tsx scripts/golden/seed-from-fixtures.ts",
     "eval": "tsx scripts/eval/run.ts",
@@ -90,7 +92,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "^2.7.1",
+    "lightningcss": "^1.30.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.16.5",

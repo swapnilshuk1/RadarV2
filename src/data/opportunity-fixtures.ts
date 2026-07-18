@@ -19,6 +19,7 @@ export type DimensionKey =
   | "mandate"
   | "commercialAccountability"
   | "functionalScope"
+  | "functionalCategory"
   | "geography"
   | "workModel"
   | "technologyStack";
@@ -60,6 +61,8 @@ export interface CapabilityCardViewModel {
   weightedContribution?: number;
 }
 
+import type { DecisionConfidence } from "../domain/entities";
+
 export interface RecommendationViewModel {
   score: number;
   decision: string;
@@ -67,6 +70,7 @@ export interface RecommendationViewModel {
   policyVersion: string;
   explanation: string;
   capabilities: CapabilityCardViewModel[];
+  decisionConfidence?: DecisionConfidence;
 }
 
 export type Opportunity = {
@@ -99,6 +103,8 @@ export type Opportunity = {
   hiringRisk: string;
   alternativePath?: string;
   recommendationResult?: RecommendationViewModel;
+  esi?: number;
+  diligenceStatus?: "READY" | "INSUFFICIENT" | "STALE" | "FAILED" | "UNKNOWN";
 };
 
 /** Derive the apply URL from the scraped source when a direct one wasn't captured. */

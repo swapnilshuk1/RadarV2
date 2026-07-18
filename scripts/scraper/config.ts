@@ -4,7 +4,7 @@ import type { PortalName } from "./types";
 
 export const ROOT = process.cwd();
 export const DATA_DIR = path.join(ROOT, "src", "data");
-export const ARTIFACTS_DIR = path.join(ROOT, ".scraper-artifacts");
+export const ARTIFACTS_DIR = process.env.SCRAPER_ARTIFACTS_DIR || path.join(ROOT, ".scraper-artifacts");
 export const RUNS_DIR = path.join(ARTIFACTS_DIR, "runs");
 export const PROFILES_DIR = path.join(ARTIFACTS_DIR, "profiles");
 export const LINKEDIN_PROFILE_DIR = path.join(PROFILES_DIR, "linkedin-primary");

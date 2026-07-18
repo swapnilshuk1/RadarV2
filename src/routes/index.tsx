@@ -127,6 +127,12 @@ function Shortlist() {
             >
               Decisions
             </Link>
+            <Link
+              to="/corpus"
+              className="text-[11.5px] font-medium uppercase tracking-[0.14em] text-ink-muted hover:text-ink"
+            >
+              Corpus
+            </Link>
             <button
               type="button"
               onClick={async () => {

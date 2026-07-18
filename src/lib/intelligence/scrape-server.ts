@@ -106,3 +106,15 @@ export const getLiveScrapedFn = createServerFn({ method: "GET" })
       return [];
     }
   });
+
+export const getCorpusHealthFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    try {
+      const { calculateCorpusHealth } = await import("../../../scripts/corpus/health");
+      return calculateCorpusHealth();
+    } catch (err: any) {
+      console.error("[Server] getCorpusHealthFn failed:", err.message);
+      return null;
+    }
+  });
+

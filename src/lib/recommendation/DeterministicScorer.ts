@@ -22,10 +22,25 @@ import type {
   OpportunityAssessment,
   RecommendationReason,
   MissingEvidence,
+  DecisionConfidence,
+  DecisionImpact,
 } from "../../domain/entities";
 import type { RecommendationPolicy } from "./RecommendationPolicy";
-import { randomUUID } from "crypto";
 import { DimensionResolver, type ResolvedEvidence } from "./DimensionResolver";
+import * as fs from "fs";
+import * as path from "path";
+
+function generateUUID(): string {
+  if (typeof globalThis !== "undefined" && globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 
 /** The knowledge graph slice for a single job that the scorer consumes. */
 export interface JobSlice {
@@ -53,6 +68,64 @@ export class DeterministicScorer {
 
   score(input: ScorerInput): OpportunityAssessment {
     const { profile, policy, job, recommendationRunId } = input;
+
+    // 1. Compute Raw Scores deterministically
+    const {
+      rawScore,
+      maxPossibleScore,
+      normalisedScore,
+      reasons,
+      missingEvidence,
+    } = this.computeRawScores(job, profile, policy);
+
+    // 2. Determine initial decision
+    let decision: OpportunityAssessment["decision"];
+    const totalDimensions = Object.keys(policy.weights).length;
+    const dataConfidence = totalDimensions > 0
+      ? Math.round(((totalDimensions - missingEvidence.length) / totalDimensions) * 100)
+      : 0;
+    const confidenceCutoff = policy.thresholds?.confidenceCutoff ?? 50;
+
+    if (dataConfidence < confidenceCutoff) {
+      decision = "Needs More Evidence";
+    } else {
+      decision = this.scoreToDecision(normalisedScore, policy);
+    }
+
+    // 3. Calibrate Decision Confidence Layer (Sprint 12)
+    const decisionConfidence = this.calculateDecisionConfidence(job, profile, policy, normalisedScore, decision);
+
+    return this.buildAssessment({
+      recommendationRunId,
+      job,
+      profile,
+      rawScore: normalisedScore,
+      maxPossibleScore: 100,
+      dataConfidence,
+      modelConfidence: 95,
+      recommendationConfidence: Math.round(decisionConfidence.overall * 100),
+      decision,
+      reasons,
+      missingEvidence,
+      decisionConfidence,
+    });
+  }
+
+  // ============================================================================
+  // Core Scoring Engine Logic (Splitted for Perturbation Isolation)
+  // ============================================================================
+
+  private computeRawScores(
+    job: JobSlice,
+    profile: CandidateProfile,
+    policy: RecommendationPolicy
+  ): {
+    rawScore: number;
+    maxPossibleScore: number;
+    normalisedScore: number;
+    reasons: RecommendationReason[];
+    missingEvidence: MissingEvidence[];
+  } {
     const reasons: RecommendationReason[] = [];
     const missingEvidence: MissingEvidence[] = [];
 
@@ -70,16 +143,13 @@ export class DeterministicScorer {
           score: -100,
           message: `Hard constraint violated: ${constraint}`,
         });
-        return this.buildAssessment({
-          recommendationRunId,
-          job,
-          profile,
+        return {
           rawScore: 0,
           maxPossibleScore: 100,
-          decision: "Weak Fit",
+          normalisedScore: 0,
           reasons,
           missingEvidence,
-        });
+        };
       }
     }
 
@@ -101,49 +171,188 @@ export class DeterministicScorer {
       reasons.push(reason);
     }
 
-    // === CONFIDENCE BREAKDOWN ===
-    const totalDimensions = Object.keys(policy.weights).length;
-    const extractedCount = totalDimensions - missingEvidence.length;
-
-    // Data confidence: how much of what we need do we have?
-    const dataConfidence = totalDimensions > 0
-      ? Math.round((extractedCount / totalDimensions) * 100)
-      : 0;
-
-    // Model confidence: we're fully deterministic, so always high
-    const modelConfidence = 95;
-
-    // Recommendation confidence: geometric mean of data and model confidence
-    const recommendationConfidence = Math.round(
-      Math.sqrt(dataConfidence * modelConfidence)
-    );
-
-    // === NORMALISE SCORE ===
     const normalisedScore = maxPossibleScore > 0
       ? Math.round((rawScore / maxPossibleScore) * 100)
       : 0;
 
-    let decision: OpportunityAssessment["decision"];
-    const confidenceCutoff = policy.thresholds?.confidenceCutoff ?? 50;
-    if (dataConfidence < confidenceCutoff) {
-      decision = "Needs More Evidence";
-    } else {
-      decision = this.scoreToDecision(normalisedScore, policy);
-    }
-
-    return this.buildAssessment({
-      recommendationRunId,
-      job,
-      profile,
-      rawScore: normalisedScore,
-      maxPossibleScore: 100,
-      dataConfidence,
-      modelConfidence,
-      recommendationConfidence,
-      decision,
+    return {
+      rawScore,
+      maxPossibleScore,
+      normalisedScore,
       reasons,
       missingEvidence,
-    });
+    };
+  }
+
+  // ============================================================================
+  // Sprint 12 — Decision Confidence Layer (Calibration & Perturbation)
+  // ============================================================================
+
+  private calculateDecisionConfidence(
+    job: JobSlice,
+    profile: CandidateProfile,
+    policy: RecommendationPolicy,
+    baseScore: number,
+    baseDecision: OpportunityAssessment["decision"]
+  ): DecisionConfidence {
+    const config = this.loadCalibrationConfig();
+
+    const limitingDimensions: DecisionImpact[] = [];
+    let sumCalibratedConfidence = 0;
+    let sumWeights = 0;
+
+    const dimensions = Object.keys(policy.weights);
+
+    for (const dimension of dimensions) {
+      const evidence = this.resolver.resolve(dimension, job, profile);
+      const policyWeight = policy.weights[dimension] ?? 0;
+
+      const coeff = config.coefficients[dimension] || { inferredWeight: 0.70 };
+      const inferredWeight = coeff.inferredWeight;
+
+      let dimConfidence = 1.0; // Default for explicit/observed facts
+
+      if (evidence.source === "none" || evidence.value === undefined || evidence.value === null) {
+        dimConfidence = 0.0;
+      } else if (evidence.source === "llm" || evidence.source === "derived") {
+        dimConfidence = inferredWeight; // calibrated discount coefficient
+      }
+
+      sumCalibratedConfidence += dimConfidence * policyWeight;
+      sumWeights += policyWeight;
+
+      // Deterministic Perturbation Invariant Loop (No LLM participation)
+      const admissibleValues = this.getAdmissibleValuesForDimension(dimension);
+      let maxDelta = 0;
+      let flipped = false;
+
+      for (const val of admissibleValues) {
+        const perturbedJob: JobSlice = {
+          ...job,
+          dimensions: {
+            ...job.dimensions,
+            [dimension]: {
+              value: val,
+              confidence: 1.0,
+            }
+          }
+        };
+
+        const result = this.computeRawScores(perturbedJob, profile, policy);
+        const delta = Math.abs(result.normalisedScore - baseScore);
+        if (delta > maxDelta) {
+          maxDelta = delta;
+        }
+
+        const perturbedDecision = result.normalisedScore >= (policy.thresholds?.confidenceCutoff ?? 50)
+          ? this.scoreToDecision(result.normalisedScore, policy)
+          : "Needs More Evidence";
+
+        if (perturbedDecision !== baseDecision) {
+          flipped = true;
+        }
+      }
+
+      const impactScore = maxDelta / 100;
+
+      if (impactScore >= config.thresholds.highImpactThreshold || flipped) {
+        limitingDimensions.push({
+          attribute: dimension,
+          impactScore: Math.round(impactScore * 100) / 100,
+          direction: baseDecision === "Weak Fit" || baseDecision === "Needs More Evidence" ? "UP" : "DOWN",
+          narrative: flipped
+            ? `Verifying this would flip your recommendation from ${baseDecision}.`
+            : `Highly sensitive to ${dimension} verification.`,
+        });
+      }
+    }
+
+    // Sort limiting dimensions by decision impact score descending
+    limitingDimensions.sort((a, b) => b.impactScore - a.impactScore);
+
+    // Limit to maxQuestions to enforce the Minimal Fact Rule
+    const limitedQuestions = limitingDimensions.slice(0, config.thresholds.maxHighImpactQuestions);
+
+    const overall = sumWeights > 0 ? sumCalibratedConfidence / sumWeights : 1.0;
+
+    // Discount stability according to high-impact gaps
+    let stability = 1.0;
+    for (const ld of limitedQuestions) {
+      stability -= ld.impactScore * 0.4;
+    }
+    stability = Math.max(0.1, Math.min(1.0, stability));
+
+    // Plain-English Advice Explanation (Asymmetric UI principle)
+    let explanation = "";
+    if (overall >= 0.85 && stability >= 0.85) {
+      explanation = "All core criteria are explicitly verified. Highly stable recommendation.";
+    } else if (limitedQuestions.length > 0) {
+      const listStr = limitedQuestions.map(q => q.attribute).join(" and ");
+      explanation = `Recommended as ${baseDecision}, but this relies heavily on assumptions about ${listStr}. Confirm these to verify fit.`;
+    } else {
+      explanation = `Recommendation is stable, but based on partial evidence. Overall decision confidence is ${Math.round(overall * 100)}%.`;
+    }
+
+    return {
+      overall: Math.round(overall * 100) / 100,
+      stability: Math.round(stability * 100) / 100,
+      limitingDimensions: limitedQuestions,
+      explanation,
+    };
+  }
+
+  private loadCalibrationConfig(): any {
+    const defaultConfig = {
+      coefficients: {
+        reportingLine: { inferredWeight: 0.90 },
+        budgetOwnership: { inferredWeight: 0.55 },
+        teamLeadership: { inferredWeight: 0.82 },
+        commercialAccountability: { inferredWeight: 0.75 },
+        technologyStack: { inferredWeight: 0.85 },
+        mandate: { inferredWeight: 0.70 },
+      },
+      thresholds: {
+        highImpactThreshold: 0.15,
+        confidenceVisibleThreshold: 0.80,
+        maxHighImpactQuestions: 2
+      }
+    };
+
+    if (typeof window === "undefined" && typeof process !== "undefined" && process.cwd) {
+      try {
+        const configPath = path.resolve(process.cwd(), "config", "calibration_coefficients.json");
+        if (fs.existsSync(configPath)) {
+          const content = fs.readFileSync(configPath, "utf8");
+          return JSON.parse(content);
+        }
+      } catch (err) {
+        // Fall back to default config if file is missing or unreadable
+      }
+    }
+    return defaultConfig;
+  }
+
+  private getAdmissibleValuesForDimension(dimension: string): any[] {
+    switch (dimension) {
+      case "leadershipLevel":
+        return ["Director", "VP", "SVP", "EVP", "CEO", "None"];
+      case "transformation":
+        return ["transformation mandate derived from mandate", "true", "none"];
+      case "geography":
+        return ["Remote", "Onsite", "Hybrid", "none"];
+      case "technologyStack":
+        return ["Core", "None"];
+      case "functionalScope":
+        return ["Full", "Partial", "None"];
+      case "budgetOwnership":
+        return ["Full", "Shared", "None"];
+      case "teamLeadership":
+        return ["Direct", "Indirect", "None"];
+      case "reportingLine":
+        return ["CEO", "CFO", "MD", "None"];
+      default:
+        return ["true", "false", "none"];
+    }
   }
 
   // ============================================================================
@@ -322,10 +531,11 @@ export class DeterministicScorer {
     decision: OpportunityAssessment["decision"];
     reasons: RecommendationReason[];
     missingEvidence: MissingEvidence[];
+    decisionConfidence?: DecisionConfidence;
   }): OpportunityAssessment {
     const now = new Date().toISOString();
     return {
-      id: randomUUID(),
+      id: generateUUID(),
       jobId: params.job.jobId,
       candidateProfileId: params.profile.id,
       recommendationRunId: params.recommendationRunId,
@@ -338,6 +548,7 @@ export class DeterministicScorer {
       missingEvidence: params.missingEvidence,
       createdAt: now,
       updatedAt: now,
+      decisionConfidence: params.decisionConfidence,
       provenance: {
         schemaVersion: "1.0",
         timestamp: now,

@@ -34,9 +34,9 @@ export function opportunityToJobSlice(source: OpportunitySource): JobSlice {
   };
 }
 
-/** Merge computed engine output onto the OpportunitySource. Source fields
- *  (dimension evidence) pass through verbatim; the engine's verb + narrative-generated
- *  prose lines (recommendation, positioning, etc.) are overlaid on top. */
+import { DeterministicScorer } from "../recommendation/DeterministicScorer";
+import { candidateProfile } from "../../data/candidate-profile";
+
 export function present(
   source: OpportunitySource,
   record: RecommendationRecord,
@@ -88,13 +88,44 @@ export function present(
     };
   });
 
+  const isPass = record.verb === "PASS";
+
+  // Run DeterministicScorer to compute calibrated Decision Confidence (Sprint 12)
+  let decisionConfidence;
+  try {
+    const deterministicScorer = new DeterministicScorer();
+    const policy: any = {
+      weights: {
+        reportingLine: 25,
+        budgetOwnership: 25,
+        teamLeadership: 25,
+        commercialAccountability: 25
+      },
+      thresholds: {
+        confidenceCutoff: 30
+      }
+    };
+    const assessment = deterministicScorer.score({
+      profile: candidateProfile as any,
+      policy: policy,
+      job: jobSlice,
+      recommendationRunId: "run-present"
+    });
+    decisionConfidence = assessment.decisionConfidence;
+  } catch (err) {
+    // Suppress error
+  }
+  
   const recommendationResultViewModel: RecommendationViewModel = {
-    score: Math.round(recommendationResult.score),
-    decision: recommendationResult.decision,
+    score: isPass ? 0 : Math.round(recommendationResult.score),
+    decision: isPass ? "PASS" : recommendationResult.decision,
     policyId: recommendationResult.policyId,
     policyVersion: recommendationResult.policyVersion,
-    explanation: recommendationResult.explanation,
-    capabilities: mappedCapabilities,
+    explanation: isPass 
+      ? `Excluded: the role "${source.role}" at ${source.company} is out of scope for your target executive marketing/growth profile.`
+      : recommendationResult.explanation,
+    capabilities: isPass ? [] : mappedCapabilities,
+    decisionConfidence,
   };
 
   // Close the loop with explainability: feed the engine's compiled explanation directly
@@ -114,6 +145,8 @@ export function present(
       hiringRisk: narrative.hiringRisk,
       alternativePath: narrative.alternativePath,
       recommendationResult: recommendationResultViewModel,
+      esi: record.esi,
+      diligenceStatus: record.diligenceStatus,
     },
     record,
     narrative,

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkbenchRouteImport } from './routes/workbench'
 import { Route as ScrapedRouteImport } from './routes/scraped'
 import { Route as DecisionsRouteImport } from './routes/decisions'
+import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as QaMappingRouteImport } from './routes/qa.mapping'
 import { Route as OpportunityJobHashRouteImport } from './routes/opportunity.$jobHash'
@@ -29,6 +30,11 @@ const ScrapedRoute = ScrapedRouteImport.update({
 const DecisionsRoute = DecisionsRouteImport.update({
   id: '/decisions',
   path: '/decisions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CorpusRoute = CorpusRouteImport.update({
+  id: '/corpus',
+  path: '/corpus',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -49,6 +55,7 @@ const OpportunityJobHashRoute = OpportunityJobHashRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
   '/scraped': typeof ScrapedRoute
   '/workbench': typeof WorkbenchRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
   '/scraped': typeof ScrapedRoute
   '/workbench': typeof WorkbenchRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
   '/scraped': typeof ScrapedRoute
   '/workbench': typeof WorkbenchRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/corpus'
     | '/decisions'
     | '/scraped'
     | '/workbench'
@@ -84,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/corpus'
     | '/decisions'
     | '/scraped'
     | '/workbench'
@@ -92,6 +103,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/corpus'
     | '/decisions'
     | '/scraped'
     | '/workbench'
@@ -101,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CorpusRoute: typeof CorpusRoute
   DecisionsRoute: typeof DecisionsRoute
   ScrapedRoute: typeof ScrapedRoute
   WorkbenchRoute: typeof WorkbenchRoute
@@ -131,6 +144,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DecisionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/corpus': {
+      id: '/corpus'
+      path: '/corpus'
+      fullPath: '/corpus'
+      preLoaderRoute: typeof CorpusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -157,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CorpusRoute: CorpusRoute,
   DecisionsRoute: DecisionsRoute,
   ScrapedRoute: ScrapedRoute,
   WorkbenchRoute: WorkbenchRoute,

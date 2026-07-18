@@ -41,6 +41,7 @@ export const CANONICAL_DIMENSIONS: DimensionKey[] = [
   "mandate",
   "commercialAccountability",
   "functionalScope",
+  "functionalCategory",
   "geography",
   "workModel",
   "technologyStack",

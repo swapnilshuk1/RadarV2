@@ -6,10 +6,14 @@
       "name": "CRM & Customer Retention Strategy",
       "description": "Ability to lead, scale, and govern CRM systems and customer retention architectures.",
       "evaluation": {
-        "allOf": [
+        "anyOf": [
           {
             "dimension": "technologyStack",
             "anyOf": ["Salesforce", "HubSpot", "Microsoft Dynamics", "Zoho CRM", "CRM"]
+          },
+          {
+            "dimension": "functionalScope",
+            "anyOf": ["CRM", "Salesforce", "HubSpot", "Microsoft Dynamics", "Zoho CRM"]
           }
         ]
       },
@@ -18,7 +22,7 @@
         "moderate": [0.4, 0.8],
         "strong": [0.8, 1.01]
       },
-      "explanationTemplate": "Strong evidence of CRM & Customer Retention Strategy based on matching tool(s) {matchedValues} under the technologyStack dimension."
+      "explanationTemplate": "Strong evidence of CRM & Customer Retention Strategy based on matching {matchedValues} under the {dimensions} dimension."
     },
     {
       "id": "cap_executive_growth_scale",

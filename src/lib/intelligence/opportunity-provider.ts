@@ -2,7 +2,7 @@
 // raw fixtures -> runEngine() -> Narrative Formatter -> Presenter -> Opportunity DTO.
 // Exposes a repository pattern for UI consumers.
 
-import { runEngine, addExtraOpportunities } from "./engine";
+import { runEngine, runEngineSingle, addExtraOpportunities, injectFreshRecords } from "./engine";
 import { activePursuits } from "../decisions-store";
 import type { Opportunity } from "@/data/opportunity-fixtures";
 
@@ -18,6 +18,7 @@ export const OpportunityProvider = {
     const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, PASS: 2 };
     return presented
       .map((p) => p.opportunity)
+      .filter((o) => o.decision !== "PASS")
       .sort((a, b) => {
         const tierDiff = (decisionRank[a.decision] ?? 3) - (decisionRank[b.decision] ?? 3);
         if (tierDiff !== 0) return tierDiff;
@@ -28,7 +29,13 @@ export const OpportunityProvider = {
   /** Get a single computed opportunity DTO by hash. */
   get(jobHash: string, options?: ProviderOptions): Opportunity | undefined {
     const opportunities = this.list(options);
-    return opportunities.find((o) => o.jobHash === jobHash);
+    const found = opportunities.find((o) => o.jobHash === jobHash);
+    if (found) return found;
+
+    // Lazy, super-fast single-record fallback!
+    const active = options?.activePursuits ?? activePursuits();
+    const presentedSingle = runEngineSingle(jobHash, active);
+    return presentedSingle?.opportunity;
   },
 
   /** Get neighbors (prev/next DTOs) of an opportunity. */
@@ -52,7 +59,6 @@ export const OpportunityProvider = {
 
   /** Inject fresh scraped records from the server into the UI. */
   injectFresh(records: any[]): void {
-    const { injectFreshRecords } = require("./engine");
     injectFreshRecords(records);
   }
 };

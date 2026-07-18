@@ -1,19 +1,71 @@
-// @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
-// or the app will break with duplicate plugins:
-//   - TanStack devtools (dev-only, first), tanstackStart, viteReact, tailwindcss, tsConfigPaths,
-//     nitro (build-only using cloudflare as a default target), VITE_* env injection, @ path alias,
-//     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
-// You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import tsConfigPaths from "vite-tsconfig-paths";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 
-export default defineConfig({
-  tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
-    server: { entry: "server" },
-  },
-  nitro: {
-    // Override default cloudflare-module preset → standard Node.js server for Railway/VPS hosting.
-    preset: "node-server",
-  },
-});
+export default defineConfig((async ({ command, mode }: any) => {
+  const isDevBuild = command === "build" && mode === "development";
+
+  return {
+    css: { transformer: "lightningcss" },
+    resolve: {
+      // No @->src alias needed: vite-tsconfig-paths reads it from tsconfig.json
+      dedupe: [
+        "react",
+        "react-dom",
+        "react/jsx-runtime",
+        "react/jsx-dev-runtime",
+        "@tanstack/react-query",
+        "@tanstack/query-core",
+      ],
+    },
+    optimizeDeps: {
+      include: [
+        "react",
+        "react-dom",
+        "react-dom/client",
+        "react/jsx-runtime",
+        "react/jsx-dev-runtime",
+      ],
+    },
+    // Preserves debuggable identifiers in `npm run build:dev`
+    ...(isDevBuild
+      ? {
+          environments: {
+            client: {
+              define: { "process.env.NODE_ENV": JSON.stringify("development") },
+            },
+          },
+          esbuild: { keepNames: true },
+        }
+      : {}),
+    plugins: [
+      // Plugin order matches the recommended standalone non-sandbox sequence
+      tailwindcss(),
+      tsConfigPaths({ projects: ["./tsconfig.json"] }),
+      tanstackStart({
+        // Redirect TanStack Start's bundled server entry to src/server.ts
+        server: { entry: "server" },
+        // Prevent server-only code from leaking into client bundles
+        importProtection: {
+          behavior: "error",
+          client: {
+            files: ["**/server/**"],
+            specifiers: ["server-only"],
+          },
+        },
+      }),
+      // Nitro only on production builds — defaultPreset allows env auto-detection
+      ...(command === "build"
+        ? [
+            await import("nitro/vite").then(({ nitro }) =>
+              nitro({ defaultPreset: "cloudflare-module" })
+            ),
+          ]
+        : []),
+      react(),
+    ],
+    server: { host: "::", port: 8080 },
+  };
+}) as any);

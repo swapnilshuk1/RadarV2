@@ -1,0 +1,43 @@
+{
+  "version": "1.0.0",
+  "concentricRings": {
+    "primary": [
+      "Marketing Leadership",
+      "Marketing Operations",
+      "Demand Generation"
+    ],
+    "adjacent": [
+      "Revenue Operations",
+      "Partnerships",
+      "Customer Success",
+      "Enterprise Sales",
+      "Channel Sales"
+    ],
+    "excluded": [
+      "Engineering",
+      "Product",
+      "HR",
+      "Finance",
+      "General Management",
+      "Consulting",
+      "Other"
+    ]
+  },
+  "descriptions": {
+    "Marketing Leadership": "CMO, VP Marketing, Head of Marketing, Growth VP, Brand Director, and other executive marketing leaders.",
+    "Marketing Operations": "MarTech Lead, Marketing Ops, Performance CoE Lead, managing marketing technology and execution systems.",
+    "Demand Generation": "Performance Marketing, Paid Media Lead, Acquisition Lead, focused on outbound growth and customer acquisition.",
+    "Revenue Operations": "RevOps, Sales Ops, CRM Operations, aligning marketing and sales data/systems.",
+    "Partnerships": "Alliance Lead, Partnerships Director, managing strategic channels and alliances.",
+    "Customer Success": "Customer Success Director, CS Lead, focused on post-sale customer retention and growth.",
+    "Enterprise Sales": "Key Account Director, B2B Enterprise Director, outbound corporate sales.",
+    "Channel Sales": "Channel Director, Retail Sales Director, indirect distribution sales.",
+    "Engineering": "CTO, VP of Engineering, Solutions Architect, Software Developer, and other core technical roles.",
+    "Product": "VP Product, CPO, Product Manager, orchestrating product lifecycle and roadmaps.",
+    "HR": "Chief People Officer, HR Director, Recruiter, managing talent and people operations.",
+    "Finance": "CFO, Finance Controller, Financial Analyst, managing corporate treasury and accounting.",
+    "General Management": "CEO, COO, Chief of Staff, holding overall corporate administration responsibility.",
+    "Consulting": "Partner, Strategy Consultant, Management Consultant, advising on corporate strategy.",
+    "Other": "Out-of-scope roles such as administrative assistants, legal counsel, or operations managers."
+  }
+}

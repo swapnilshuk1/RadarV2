@@ -25,7 +25,7 @@ export class CapabilityRecommendationScorer {
   private policy: RecommendationPolicyConfig;
 
   constructor(policyConfig?: RecommendationPolicyConfig) {
-    this.policy = policyConfig || (defaultPolicy as RecommendationPolicyConfig);
+    this.policy = policyConfig || (defaultPolicy as unknown as RecommendationPolicyConfig);
   }
 
   /**

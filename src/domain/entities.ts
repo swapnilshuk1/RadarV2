@@ -196,6 +196,20 @@ export interface RecommendationReason {
   message: string;
 }
 
+export interface DecisionImpact {
+  attribute: string;
+  impactScore: number;    // Delta contribution to overall score
+  direction: "UP" | "DOWN";
+  narrative: string;      // Plain-English consequence
+}
+
+export interface DecisionConfidence {
+  overall: number;        // 0.0 to 1.0 calibrated decision confidence
+  stability: number;      // 0.0 to 1.0 likelihood of recommendation hold
+  limitingDimensions: DecisionImpact[]; // Dimensions capping overall confidence
+  explanation: string;    // Actionable plain-English guidance
+}
+
 /** Persistent deterministic assessment object */
 export interface OpportunityAssessment extends EntityBase {
   jobId: string; // Fk -> Opportunity.id
@@ -212,6 +226,7 @@ export interface OpportunityAssessment extends EntityBase {
   missingEvidence: MissingEvidence[];
   strategicNotes?: string;
   actions?: string[];
+  decisionConfidence?: DecisionConfidence;
 }
 
 /** Disposable generated presentation layer */
