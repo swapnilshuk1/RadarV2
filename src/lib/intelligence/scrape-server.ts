@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import path from "path";
 import fs from "fs";
+import { ARTIFACTS_DIR } from "../../../scripts/scraper/config";
 
 let rebuildTimeout: NodeJS.Timeout | null = null;
 
@@ -109,7 +110,7 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
     const { runId, afterIndex } = data;
     const { Journal } = await import("../../../scripts/scraper/run/journal");
     
-    const runDir = path.join(process.cwd(), ".scraper-artifacts", "runs", runId);
+    const runDir = path.join(ARTIFACTS_DIR, "runs", runId);
     const journalPath = path.join(runDir, "journal.ndjson");
     const manifestPath = path.join(runDir, "manifest.json");
     
@@ -165,7 +166,7 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
 export const confirmScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    const manifestPath = path.join(process.cwd(), ".scraper-artifacts", "runs", data.runId, "manifest.json");
+    const manifestPath = path.join(ARTIFACTS_DIR, "runs", data.runId, "manifest.json");
     try {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
       if (manifest.status === "waiting_for_confirmation") {
@@ -181,7 +182,7 @@ export const confirmScrapeFn = createServerFn({ method: "POST" })
 export const abortScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    const manifestPath = path.join(process.cwd(), ".scraper-artifacts", "runs", data.runId, "manifest.json");
+    const manifestPath = path.join(ARTIFACTS_DIR, "runs", data.runId, "manifest.json");
     try {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
       if (manifest.status === "waiting_for_confirmation" || manifest.status === "running") {

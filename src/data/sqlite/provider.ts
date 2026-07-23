@@ -47,8 +47,29 @@ export function getDatabase(dbPath?: string): Database.Database {
 
       const pathModule = requireInstance("path");
       const DatabaseConstructor = requireInstance("better-sqlite3");
+      const fsModule = requireInstance("fs");
 
-      const resolvedPath = dbPath || process.env.SQLITE_DB_PATH || pathModule.resolve(process.cwd(), "radar.sqlite");
+      const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY);
+      let resolvedPath = dbPath || process.env.SQLITE_DB_PATH;
+
+      if (!resolvedPath) {
+        const bundledPath = pathModule.resolve(process.cwd(), "radar.sqlite");
+        if (isServerless) {
+          const tmpPath = pathModule.resolve("/tmp", "radar.sqlite");
+          // On cold start, copy the bundled read-only database to writable /tmp
+          if (!fsModule.existsSync(tmpPath) && fsModule.existsSync(bundledPath)) {
+            try {
+              console.log("[Database] Serverless detected. Copying bundled radar.sqlite to writable /tmp...");
+              fsModule.copyFileSync(bundledPath, tmpPath);
+            } catch (err: any) {
+              console.error("[Database] Failed to copy database to /tmp:", err.message);
+            }
+          }
+          resolvedPath = tmpPath;
+        } else {
+          resolvedPath = bundledPath;
+        }
+      }
       
       try {
         runMigrations(resolvedPath);
@@ -57,7 +78,11 @@ export function getDatabase(dbPath?: string): Database.Database {
       }
 
       _db = new DatabaseConstructor(resolvedPath);
-      _db!.pragma('journal_mode = WAL');
+      try {
+        _db!.pragma('journal_mode = WAL');
+      } catch (walErr: any) {
+        console.warn("[Database] Failed to set journal_mode to WAL:", walErr.message);
+      }
     } catch (err) {
       console.error("[Database] Initialization error:", err);
     }

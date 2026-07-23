@@ -33,7 +33,13 @@ loadEnvFile("gemini.env");
 loadEnvFile("groq.env");
 
 export const DATA_DIR = path.join(ROOT, "src", "data");
-export const ARTIFACTS_DIR = process.env.SCRAPER_ARTIFACTS_DIR || path.join(ROOT, ".scraper-artifacts");
+
+const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY);
+const defaultArtifactsDir = isServerless 
+  ? path.join("/tmp", ".scraper-artifacts")
+  : path.join(ROOT, ".scraper-artifacts");
+
+export const ARTIFACTS_DIR = process.env.SCRAPER_ARTIFACTS_DIR || defaultArtifactsDir;
 export const RUNS_DIR = path.join(ARTIFACTS_DIR, "runs");
 export const PROFILES_DIR = path.join(ARTIFACTS_DIR, "profiles");
 export const LINKEDIN_PROFILE_DIR = path.join(PROFILES_DIR, "linkedin-primary");
@@ -42,9 +48,15 @@ export const EXTRACTION_DIR = path.join(ARTIFACTS_DIR, "extractions");
 export const ENRICHMENT_CACHE_DIR = path.join(ARTIFACTS_DIR, "enrichment-cache");
 export const METRICS_DIR = path.join(ARTIFACTS_DIR, "metrics");
 
-// Ensure structure exists
+// Ensure structure exists safely (using /tmp on serverless or catch EROFS errors)
 for (const dir of [ARTIFACTS_DIR, RUNS_DIR, PROFILES_DIR, SNAPSHOT_DIR, EXTRACTION_DIR, ENRICHMENT_CACHE_DIR, METRICS_DIR]) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (err: any) {
+    console.warn(`[Config] Failed to ensure directory exists: ${dir}. Error: ${err.message}`);
+  }
 }
 
 export const SEARCH_METRICS_NDJSON = path.join(METRICS_DIR, "search-metrics.ndjson");
