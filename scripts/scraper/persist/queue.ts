@@ -93,6 +93,29 @@ export class EnrichmentQueue {
         FOREIGN KEY(job_id) REFERENCES enrichment_jobs(id)
       );
     `);
+
+    // Self-healing migration for existing user databases lacking newly introduced columns
+    const columns = this.db.prepare("PRAGMA table_info(enrichment_jobs)").all() as { name: string }[];
+    const colNames = new Set(columns.map(c => c.name));
+
+    const migrations = [
+      { name: "last_error", type: "TEXT" },
+      { name: "failure_type", type: "TEXT" },
+      { name: "next_retry_at", type: "DATETIME" },
+      { name: "lease_owner", type: "TEXT" },
+      { name: "lease_expires_at", type: "DATETIME" }
+    ];
+
+    for (const m of migrations) {
+      if (!colNames.has(m.name)) {
+        console.log(`[Queue Migration] Adding missing column '${m.name}' to enrichment_jobs`);
+        try {
+          this.db.exec(`ALTER TABLE enrichment_jobs ADD COLUMN ${m.name} ${m.type}`);
+        } catch (err: any) {
+          console.error(`[Queue Migration] Failed to add column '${m.name}':`, err.message);
+        }
+      }
+    }
   }
 
   public enqueue(
@@ -172,9 +195,15 @@ export class EnrichmentQueue {
     this.logEvent(jobId, "LLM_STARTED");
   }
 
-  public markCompleted(jobId: string) {
-    this.db.prepare(`UPDATE enrichment_jobs SET status = 'COMPLETE', completed_at = CURRENT_TIMESTAMP WHERE id = ?`).run(jobId);
-    this.logEvent(jobId, "JOB_FINISHED");
+  public markCompleted(jobId: string, lastError?: string | null) {
+    this.db.prepare(`
+      UPDATE enrichment_jobs 
+      SET status = 'COMPLETE', 
+          completed_at = CURRENT_TIMESTAMP,
+          last_error = ?
+      WHERE id = ?
+    `).run(lastError || null, jobId);
+    this.logEvent(jobId, "JOB_FINISHED", lastError || undefined);
   }
 
   public markRetry(jobId: string, failureType: FailureType, errorMsg: string, nextRetryAt: string) {
@@ -272,4 +301,169 @@ export class EnrichmentQueue {
       }
     };
   }
+
+  // 1. Fetch telemetry stats scoped to a specific runId
+  public getRunStats(runId: string) {
+    const total = this.db.prepare("SELECT COUNT(*) as count FROM enrichment_jobs WHERE run_id = ?").get(runId) as { count: number };
+    const completed = this.db.prepare("SELECT COUNT(*) as count FROM enrichment_jobs WHERE run_id = ? AND status = 'COMPLETE'").get(runId) as { count: number };
+    const failed = this.db.prepare("SELECT COUNT(*) as count FROM enrichment_jobs WHERE run_id = ? AND status = 'FAILED'").get(runId) as { count: number };
+    const processing = this.db.prepare("SELECT COUNT(*) as count FROM enrichment_jobs WHERE run_id = ? AND status IN ('LEASED', 'RUNNING')").get(runId) as { count: number };
+    const pending = this.db.prepare("SELECT COUNT(*) as count FROM enrichment_jobs WHERE run_id = ? AND status IN ('PENDING', 'RETRY')").get(runId) as { count: number };
+    
+    // Fetch latest processed job details to display in the UI console
+    const latestJobs = this.db.prepare(`
+      SELECT id, snapshot_path, status, last_error
+      FROM enrichment_jobs
+      WHERE run_id = ?
+      ORDER BY completed_at DESC, created_at DESC
+      LIMIT 3
+    `).all(runId) as any[];
+
+    return {
+      total: total.count,
+      completed: completed.count,
+      failed: failed.count,
+      processing: processing.count,
+      pending: pending.count,
+      latestJobs
+    };
+  }
+
+  // 2. Fetch full global ingestion and recommendation pipeline stats
+  public getGlobalPipelineStats() {
+    const counts = this.db.prepare(`
+      SELECT status, COUNT(*) as count 
+      FROM enrichment_jobs 
+      GROUP BY status
+    `).all() as { status: string; count: number }[];
+
+    const stateMap: Record<string, number> = {
+      PENDING: 0, LEASED: 0, RUNNING: 0, RETRY: 0, COMPLETE: 0, FAILED: 0
+    };
+    for (const row of counts) {
+      stateMap[row.status] = row.count;
+    }
+
+    // Oldest Pending Age in seconds
+    const oldestPendingRow = this.db.prepare(`
+      SELECT CAST(strftime('%s', CURRENT_TIMESTAMP) - strftime('%s', created_at) AS INTEGER) as age_sec
+      FROM enrichment_jobs
+      WHERE status IN ('PENDING', 'RETRY')
+      ORDER BY created_at ASC
+      LIMIT 1
+    `).get() as { age_sec: number | null } | undefined;
+
+    // Detailed failure reasons distribution
+    const failures = this.db.prepare(`
+      SELECT failure_type, COUNT(*) as count
+      FROM enrichment_jobs
+      WHERE status = 'FAILED' OR status = 'RETRY'
+      GROUP BY failure_type
+    `).all() as { failure_type: string | null; count: number }[];
+
+    const errorDistribution: Record<string, number> = {};
+    for (const f of failures) {
+      errorDistribution[f.failure_type || "UNKNOWN"] = f.count;
+    }
+
+    // Throughput (completions in last 5 minutes)
+    const completions5m = this.db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM enrichment_jobs 
+      WHERE status = 'COMPLETE' 
+        AND completed_at >= datetime('now', '-5 minutes')
+    `).get() as { count: number };
+
+    // Total unique cache hits vs live LLM calls
+    const cacheHitStats = this.db.prepare(`
+      SELECT 
+        SUM(CASE WHEN details LIKE '%cached%' OR details LIKE '%skipped LLM%' THEN 1 ELSE 0 END) as cache_saves,
+        COUNT(*) as total
+      FROM enrichment_events
+      WHERE event_type = 'JOB_FINISHED'
+    `).get() as { cache_saves: number | null; total: number } | undefined;
+
+    return {
+      discovered: stateMap.PENDING + stateMap.RETRY + stateMap.LEASED + stateMap.RUNNING + stateMap.COMPLETE + stateMap.FAILED,
+      pending: stateMap.PENDING,
+      retry: stateMap.RETRY,
+      leased: stateMap.LEASED,
+      enriching: stateMap.RUNNING,
+      completed: stateMap.COMPLETE,
+      failed: stateMap.FAILED,
+      oldestPendingSec: oldestPendingRow?.age_sec ?? null,
+      throughputPerMin: Number((completions5m.count / 5).toFixed(1)),
+      cacheHitRate: cacheHitStats?.total ? Math.round(((cacheHitStats.cache_saves || 0) / cacheHitStats.total) * 100) : 0,
+      cacheSaves: cacheHitStats?.cache_saves || 0,
+      errorDistribution
+    };
+  }
+
+  // 3. Count of pending/retry jobs for a specific runId
+  public getPendingCountForRun(runId: string): number {
+    const stmt = this.db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM enrichment_jobs 
+      WHERE run_id = ? AND status IN ('PENDING', 'RETRY')
+    `);
+    const res = stmt.get(runId) as { count: number };
+    return res.count;
+  }
+
+  // 4. Check if any jobs for a run are in retry status
+  public hasRetriesForRun(runId: string): boolean {
+    const stmt = this.db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM enrichment_jobs 
+      WHERE run_id = ? AND status = 'RETRY'
+    `);
+    const res = stmt.get(runId) as { count: number };
+    return res.count > 0;
+  }
+
+  // 5. Lease jobs for a specific runId
+  public leaseJobsForRun(workerId: string, runId: string, limit: number, leaseDurationSeconds: number = 300): EnrichmentJob[] {
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + leaseDurationSeconds * 1000).toISOString();
+
+    const stmt = this.db.prepare(`
+      UPDATE enrichment_jobs
+      SET status = 'LEASED',
+          lease_owner = ?,
+          lease_expires_at = ?
+      WHERE id IN (
+        SELECT id FROM enrichment_jobs
+        WHERE run_id = ? AND (
+             (status = 'PENDING')
+          OR (status = 'RETRY' AND (next_retry_at IS NULL OR next_retry_at <= ?))
+          OR (status = 'LEASED' AND lease_expires_at < ?)
+        )
+        ORDER BY (business_priority + execution_priority) DESC, created_at ASC
+        LIMIT ?
+      )
+      RETURNING *
+    `);
+
+    const leased = stmt.all(workerId, expiresAt, runId, now, now, limit) as EnrichmentJob[];
+    for (const job of leased) {
+      this.logEvent(job.id, "LEASE_ACQUIRED", JSON.stringify({ workerId, expiresAt }));
+    }
+    return leased;
+  }
+
+  // 6. Recover expired leases back to PENDING
+  public recoverExpiredLeases(): number {
+    const now = new Date().toISOString();
+    const stmt = this.db.prepare(`
+      UPDATE enrichment_jobs
+      SET status = 'PENDING',
+          lease_owner = NULL,
+          lease_expires_at = NULL,
+          last_error = 'Lease expired / worker reclaimed job'
+      WHERE status = 'LEASED' AND lease_expires_at < ?
+    `);
+    const result = stmt.run(now);
+    return result.changes;
+  }
 }
+

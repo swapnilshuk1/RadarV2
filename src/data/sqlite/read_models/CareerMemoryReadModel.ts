@@ -1,7 +1,24 @@
 import type { Database } from "better-sqlite3";
 import type { TimelineEvent } from "../../../domain/entities";
 import type { ReadModel } from "./ReadModel";
-import crypto from "crypto";
+
+function sha256(data: string): string {
+  if (typeof window === "undefined") {
+    try {
+      const req = typeof require !== "undefined" ? require : null;
+      if (req) {
+        return req("crypto").createHash("sha256").update(data).digest("hex");
+      }
+    } catch {}
+  }
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(16).padStart(8, '0');
+}
 
 export class CareerMemoryReadModel implements ReadModel {
   name = "CareerMemory";
@@ -81,14 +98,10 @@ export class CareerMemoryReadModel implements ReadModel {
 
   checksum(db: Database): string {
     const rows = db.prepare("SELECT * FROM rm_career_memory ORDER BY person_id, attribute").all();
-    return crypto.createHash("sha256").update(JSON.stringify(rows)).digest("hex");
+    return sha256(JSON.stringify(rows));
   }
 
   private calculateChecksum(modelVersion: string, eventVersion: number, payload: any): string {
-    return crypto.createHash("sha256")
-      .update(modelVersion)
-      .update(eventVersion.toString())
-      .update(JSON.stringify(payload))
-      .digest("hex");
+    return sha256(modelVersion + eventVersion.toString() + JSON.stringify(payload));
   }
 }

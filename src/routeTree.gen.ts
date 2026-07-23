@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkbenchRouteImport } from './routes/workbench'
 import { Route as ScrapedRouteImport } from './routes/scraped'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DecisionsRouteImport } from './routes/decisions'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
@@ -25,6 +27,16 @@ const WorkbenchRoute = WorkbenchRouteImport.update({
 const ScrapedRoute = ScrapedRouteImport.update({
   id: '/scraped',
   path: '/scraped',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DecisionsRoute = DecisionsRouteImport.update({
@@ -57,6 +69,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
+  '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
@@ -66,6 +80,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
+  '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
@@ -76,6 +92,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
+  '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
@@ -87,6 +105,8 @@ export interface FileRouteTypes {
     | '/'
     | '/corpus'
     | '/decisions'
+    | '/login'
+    | '/profile'
     | '/scraped'
     | '/workbench'
     | '/opportunity/$jobHash'
@@ -96,6 +116,8 @@ export interface FileRouteTypes {
     | '/'
     | '/corpus'
     | '/decisions'
+    | '/login'
+    | '/profile'
     | '/scraped'
     | '/workbench'
     | '/opportunity/$jobHash'
@@ -105,6 +127,8 @@ export interface FileRouteTypes {
     | '/'
     | '/corpus'
     | '/decisions'
+    | '/login'
+    | '/profile'
     | '/scraped'
     | '/workbench'
     | '/opportunity/$jobHash'
@@ -115,6 +139,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CorpusRoute: typeof CorpusRoute
   DecisionsRoute: typeof DecisionsRoute
+  LoginRoute: typeof LoginRoute
+  ProfileRoute: typeof ProfileRoute
   ScrapedRoute: typeof ScrapedRoute
   WorkbenchRoute: typeof WorkbenchRoute
   OpportunityJobHashRoute: typeof OpportunityJobHashRoute
@@ -135,6 +161,20 @@ declare module '@tanstack/react-router' {
       path: '/scraped'
       fullPath: '/scraped'
       preLoaderRoute: typeof ScrapedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/decisions': {
@@ -179,6 +219,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CorpusRoute: CorpusRoute,
   DecisionsRoute: DecisionsRoute,
+  LoginRoute: LoginRoute,
+  ProfileRoute: ProfileRoute,
   ScrapedRoute: ScrapedRoute,
   WorkbenchRoute: WorkbenchRoute,
   OpportunityJobHashRoute: OpportunityJobHashRoute,

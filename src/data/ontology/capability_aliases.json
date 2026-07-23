@@ -1,0 +1,11 @@
+{
+  "google ads": ["growth marketing", "performance marketing", "customer acquisition", "lead generation", "digital acquisition"],
+  "meta ads": ["growth marketing", "performance marketing", "customer acquisition", "lead generation", "paid media"],
+  "brand": ["brand marketing", "growth strategy", "marketing transformation"],
+  "brand marketing": ["brand strategy", "growth marketing", "customer journey"],
+  "e-commerce strategy": ["growth marketing", "digital acquisition", "performance marketing", "roas optimization"],
+  "growth marketing": ["customer acquisition", "performance marketing", "demand generation", "growth strategy"],
+  "performance marketing": ["roas optimization", "lead generation", "growth marketing", "digital acquisition"],
+  "crm transformation": ["crm strategy", "crm migration", "lifecycle marketing", "salesforce marketing cloud", "salesforce cdp"],
+  "center of excellence": ["gcc scaling", "operating model design", "digital transformation", "marketing transformation"]
+}

@@ -26,14 +26,28 @@ export const Route = createFileRoute("/")({
 });
 
 function Shortlist() {
-  const signature = candidateSignature();
+  const [sessionName, setSessionName] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sessionStr = sessionStorage.getItem("radar_session");
+      if (sessionStr) {
+        try {
+          const session = JSON.parse(sessionStr);
+          setSessionName(session.name);
+        } catch {}
+      }
+    }
+  }, []);
+
+  const signature = sessionName || candidateSignature();
 
   const { decisions, decide: recordDecision } = useDecisions();
   const [open, setOpen] = useState<string | null>(null);
-  
+
   // Live run state
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
-  
+
   const [lastScanAt, setLastScanAt] = useState<string | null>(null);
   const [extraScraped, setExtraScraped] = useState(0);
   const [opportunitiesVersion, setOpportunitiesVersion] = useState(0);
@@ -74,7 +88,7 @@ function Shortlist() {
   const [isStarting, setIsStarting] = useState(false);
 
   const runSearch = async () => {
-    if (activeRunId || isStarting) return; // already running or starting
+    if (activeRunId || isStarting) return;
     setIsStarting(true);
     try {
       console.log("[Client] Triggering live scrape server function...");
@@ -93,7 +107,6 @@ function Shortlist() {
     }
   };
 
-
   const handleRefreshFeed = async () => {
     try {
       const freshRecords = await getLiveScrapedFn();
@@ -110,96 +123,94 @@ function Shortlist() {
   const totalScraped = baseCounts.total + extraScraped;
 
   return (
-    <div className="min-h-screen bg-background text-ink">
-      {/* Slim header */}
-      <header className="border-b border-hairline">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-6 px-8 py-5">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.32em] text-ink">RADAR</span>
-            <span className="text-ink-muted">·</span>
-            <span className="text-[12.5px] text-ink-muted">Executive advisory</span>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* ────────────────────────────────────────────────────────────────────────
+          LIVE PIPELINE METADATA STRIP
+          ──────────────────────────────────────────────────────────────────────── */}
+      <div className="border-b border-border/80 bg-muted/20">
+        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-4 px-4 sm:px-8 py-2.5 font-mono text-[11px]">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-muted-foreground">
+            <span>
+              <span className="font-bold text-foreground tabular-nums">{totalScraped}</span> SCRAPED
+            </span>
+            <span>· LINKEDIN <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.LinkedIn}</span></span>
+            <span>· NAUKRI <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.Naukri}</span></span>
+            <span>· INDEED <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.Indeed}</span></span>
+            <span>→ <span className="tabular-nums text-pursue font-bold">{remaining.length}</span> ON SHORTLIST</span>
+            {lastScanAt && !activeRunId && (
+              <span className="text-muted-foreground/80">· LAST SCAN {lastScanAt}</span>
+            )}
           </div>
           <div className="flex items-center gap-4">
-            <span className="hidden text-[12px] text-ink-muted md:inline">{signature}</span>
-            <Link
-              to="/decisions"
-              className="text-[11.5px] font-medium uppercase tracking-[0.14em] text-ink-muted hover:text-ink"
-            >
-              Decisions
-            </Link>
-            <Link
-              to="/corpus"
-              className="text-[11.5px] font-medium uppercase tracking-[0.14em] text-ink-muted hover:text-ink"
-            >
-              Corpus
-            </Link>
             <button
               type="button"
               onClick={async () => {
                 if (activeRunId || isStarting) {
-                  if (activeRunId) await abortScrapeFn({ data: { runId: activeRunId }});
+                  if (activeRunId) await abortScrapeFn({ data: { runId: activeRunId } });
                 } else {
                   await runSearch();
                 }
               }}
-              className="inline-flex items-center gap-2 rounded-sm border border-ink bg-ink px-3 py-1.5 text-[11.5px] font-medium uppercase tracking-[0.14em] text-parchment transition-opacity hover:opacity-90"
+              className="mono text-[10px] tracking-[0.2em] font-bold inline-flex items-center gap-2 rounded-sm border border-foreground bg-foreground px-3 py-1 text-background uppercase transition-opacity hover:opacity-90"
             >
               <span
                 aria-hidden
-                className={`inline-block h-1.5 w-1.5 rounded-full bg-parchment ${activeRunId || isStarting ? "animate-pulse bg-red-500" : ""}`}
+                className={`inline-block h-1.5 w-1.5 rounded-full bg-background ${
+                  activeRunId || isStarting ? "animate-pulse bg-red-500" : ""
+                }`}
               />
-              {activeRunId || isStarting ? "Stop" : "Search"}
+              {activeRunId || isStarting ? "STOP" : "SEARCH"}
             </button>
+            <Link to="/scraped" className="mono text-[10px] tracking-[0.18em] text-foreground hover:underline font-semibold uppercase">
+              FEED →
+            </Link>
           </div>
-        </div>
-      </header>
-
-      {/* Scraper strip */}
-      <div className="border-b border-hairline bg-muted/40">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4 px-8 py-3 text-[12.5px]">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-ink-muted">
-            <span>
-              <span className="font-medium text-ink tabular-nums">{totalScraped}</span> scraped
-            </span>
-            <span>· LinkedIn <span className="tabular-nums text-ink">{baseCounts.bySource.LinkedIn}</span></span>
-            <span>· Naukri <span className="tabular-nums text-ink">{baseCounts.bySource.Naukri}</span></span>
-            <span>· Indeed <span className="tabular-nums text-ink">{baseCounts.bySource.Indeed}</span></span>
-            <span>→ <span className="tabular-nums text-decision-pursue">{baseCounts.shortlisted}</span> on shortlist</span>
-            {lastScanAt && !activeRunId && (
-              <span className="text-ink-muted/80">· last scan {lastScanAt}</span>
-            )}
-          </div>
-          <Link to="/scraped" className="text-ink underline-offset-4 hover:underline">
-            View feed →
-          </Link>
         </div>
       </div>
 
-      {/* Hero */}
-      <section className="mx-auto max-w-4xl px-8 pb-10 pt-16">
-        <h1 className="text-[42px] font-medium leading-[1.05] tracking-[-0.025em] text-ink">
-          The shortlist.
-        </h1>
-        <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-muted">
-          Showing {visible.length} of {remaining.length} live briefs. Decide on one and the next in the queue takes its slot.
-          {queued > 0 && <> <span className="text-ink">{queued}</span> queued.</>}
+      {/* ────────────────────────────────────────────────────────────────────────
+          HERO & PIPELINE LEDGER
+          ──────────────────────────────────────────────────────────────────────── */}
+      <section className="mx-auto max-w-[1180px] px-4 sm:px-8 pt-10 sm:pt-14 pb-8 border-b border-border">
+        <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground mb-3 uppercase font-semibold">
+          PIPELINE LEDGER & EXECUTIVE SHORTLIST
         </p>
-        <div className="mt-6 flex gap-8 text-[13px] text-ink-muted">
-          <Stat label="Pursued" value={pursue} tint="text-decision-pursue" />
-          <Stat label="Considered" value={consider} tint="text-decision-consider" />
-          <Stat label="Passed" value={pass} />
+
+        <div className="flex flex-wrap items-baseline justify-between gap-6">
+          <div>
+            <h1 className="display text-[38px] sm:text-[52px] leading-[1.05] text-foreground font-semibold">
+              The shortlist.
+            </h1>
+            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground font-normal">
+              Showing {visible.length} of {remaining.length} live briefs. Decide on one and the next in the queue takes its slot.
+              {queued > 0 && <> <span className="text-foreground font-semibold">{queued}</span> queued.</>}
+            </p>
+          </div>
+
+          <div className="flex gap-8 border-l border-border pl-6 py-1">
+            <Stat label="PURSUED" value={pursue} tint="text-pursue" />
+            <Stat label="CONSIDERED" value={consider} tint="text-consider" />
+            <Stat label="PASSED" value={pass} tint="text-muted-foreground" />
+          </div>
         </div>
       </section>
 
-      {/* List with expanding briefs */}
-      <main className="mx-auto max-w-4xl px-8 pb-24">
-        <p className="mb-3 text-[11.5px] text-ink-muted">
-          Swipe a row <span className="text-decision-pursue">right to Pursue</span>, or{" "}
-          <span className="text-ink">left to Pass</span>. Or tap to expand and choose Consider.
-        </p>
-        <ul className="border-t border-hairline">
+      {/* ────────────────────────────────────────────────────────────────────────
+          MAIN SHORTLIST QUEUE
+          ──────────────────────────────────────────────────────────────────────── */}
+      <main className="mx-auto max-w-[1180px] px-4 sm:px-8 pt-8 pb-24">
+        <div className="flex items-center justify-between mb-4">
+          <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-semibold">
+            GESTURE CONTROL · SWIPE <span className="text-pursue font-bold">RIGHT TO PURSUE</span>, OR <span className="text-foreground font-bold">LEFT TO PASS</span>
+          </p>
+          <span className="mono text-[10px] tracking-[0.18em] text-accent-ink uppercase font-semibold">
+            QUEUE STATUS · {remaining.length} ACTIVE
+          </span>
+        </div>
+
+        <ul className="divide-y divide-border border-y border-border">
           {visible.map((o) => (
-            <li key={o.jobHash} className="border-b border-hairline">
+            <li key={o.jobHash} className="transition-colors">
               <SwipeableRow onDecide={(verb) => decide(o.jobHash, verb)}>
                 <Row
                   o={o}
@@ -211,16 +222,19 @@ function Shortlist() {
             </li>
           ))}
           {visible.length === 0 && (
-            <li className="py-16 text-center text-[13px] text-ink-muted">
-              Queue cleared. Hit <span className="text-ink">Search</span> to scan for more, or{" "}
-              <Link to="/decisions" className="text-ink underline-offset-4 hover:underline">review your decisions</Link>.
+            <li className="py-20 text-center font-serif text-[15px] text-muted-foreground">
+              Queue cleared. Hit <span className="text-foreground font-semibold">SEARCH</span> to scan for more, or{" "}
+              <Link to="/decisions" className="text-foreground underline underline-offset-4 font-semibold">
+                review your decisions
+              </Link>.
             </li>
           )}
         </ul>
       </main>
-      <ScraperConsole 
-        runId={activeRunId} 
-        onClose={() => setActiveRunId(null)} 
+
+      <ScraperConsole
+        runId={activeRunId}
+        onClose={() => setActiveRunId(null)}
         onRefreshFeed={handleRefreshFeed}
         onConfirm={confirmScrapeFn}
         onAbort={abortScrapeFn}
@@ -240,65 +254,98 @@ function Row({
   onToggle: () => void;
   onDecide: (verb: DecisionVerb) => void;
 }) {
+  const score = o.recommendationResult?.score ?? 80;
+  const mandateTag = o.mandateArchetype || "Performance Marketing";
+
   return (
-    <div>
+    <div onClick={onToggle} className="cursor-pointer group">
       <button
         type="button"
-        onClick={onToggle}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
         aria-expanded={isOpen}
-        className="group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-5 py-5 text-left transition-colors hover:bg-muted/40"
+        className="w-full py-6 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors group-hover:bg-muted/20 px-2 cursor-pointer"
       >
-        <DecisionBadge verb={o.decision} size="sm" />
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-baseline gap-x-2.5">
-            <span className="truncate text-[17px] font-medium tracking-[-0.01em] text-ink">{o.role}</span>
-            <span className="text-[13px] text-ink-muted">{o.company}</span>
+        <div className="flex items-start gap-4 min-w-0 flex-1">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="display text-[18px] sm:text-[20px] font-medium text-foreground leading-snug tracking-tight">
+                {o.role}
+              </span>
+              <div className="inline-flex items-center gap-2 shrink-0">
+                <DecisionBadge verb={o.decision} size="sm" />
+                <span className="mono text-[10px] tracking-[0.18em] text-accent-ink bg-accent-ink/8 px-2 py-0.5 rounded-sm uppercase font-semibold">
+                  {mandateTag}
+                </span>
+              </div>
+            </div>
+            <p className="mt-1.5 text-[14px] text-muted-foreground font-normal">
+              <span className="text-foreground font-medium">{o.company}</span> · {o.location} ·{" "}
+              <span className="mono text-[11px] uppercase tracking-wider">{o.scrapedFrom} · {o.postedRelative}</span>
+            </p>
           </div>
-          <p className="mt-0.5 text-[12.5px] text-ink-muted">
-            {o.location} · {o.scrapedFrom} · {o.postedRelative}
-          </p>
         </div>
-        <span
-          aria-hidden
-          className={`text-ink-muted transition-transform duration-500 ease-out ${isOpen ? "rotate-45 text-ink" : "rotate-0 group-hover:text-ink"}`}
-          style={{ fontSize: 18, lineHeight: 1 }}
-        >
-          +
-        </span>
+
+        <div className="flex items-center gap-6 shrink-0 self-end sm:self-center">
+          <div className="text-right">
+            <span className="mono text-[9.5px] tracking-[0.2em] text-muted-foreground uppercase font-bold block">
+              PRIORITY
+            </span>
+            <span className="display text-[22px] font-bold text-foreground tabular-nums leading-none">
+              {score}<span className="mono text-[10px] text-muted-foreground font-normal">/100</span>
+            </span>
+          </div>
+
+          <span
+            aria-hidden
+            className={`mono text-[18px] text-muted-foreground transition-transform duration-300 ${
+              isOpen ? "rotate-45 text-foreground font-bold" : "rotate-0 group-hover:text-foreground"
+            }`}
+          >
+            +
+          </span>
+        </div>
       </button>
 
-      <div
-        className="grid transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
-        style={{ gridTemplateRows: isOpen ? "1fr" : "0fr", opacity: isOpen ? 1 : 0 }}
-      >
-        <div className="overflow-hidden">
-          <div className="pb-8 pt-1">
-            {isOpen && (
-              <>
-                <InlineBrief opportunity={o} />
-                <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-hairline pt-5">
-                  <span className="mr-2 text-[11px] uppercase tracking-[0.18em] text-ink-muted">Your call</span>
-                  <DecideButton verb="PURSUE" onClick={() => onDecide("PURSUE")} />
-                  <DecideButton verb="CONSIDER" onClick={() => onDecide("CONSIDER")} />
-                  <DecideButton verb="PASS" onClick={() => onDecide("PASS")} />
-                  <span className="ml-auto text-[11.5px] text-ink-muted">
-                    Deciding removes this brief and pulls the next from the queue.
-                  </span>
-                </div>
-              </>
-            )}
+      {isOpen && (
+        <div className="pb-8 pt-2 px-2 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+          <div className="border-l-2 border-foreground/10 pl-4 sm:pl-6 my-3 ml-2 transition-all">
+            <InlineBrief opportunity={o} />
+
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-border/60 pt-5">
+              <div className="flex items-center gap-2">
+                <span className="mono text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-bold mr-2">
+                  YOUR DECISION
+                </span>
+                <DecideButton verb="PURSUE" onClick={() => onDecide("PURSUE")} />
+                <DecideButton verb="CONSIDER" onClick={() => onDecide("CONSIDER")} />
+                <DecideButton verb="PASS" onClick={() => onDecide("PASS")} />
+              </div>
+
+              <span className="mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+                DECIDING REMOVES THIS BRIEF &amp; PULLS NEXT FROM QUEUE
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-function Stat({ label, value, tint = "text-ink" }: { label: string; value: number; tint?: string }) {
+function Stat({ label, value, tint = "text-foreground" }: { label: string; value: number; tint?: string }) {
   return (
-    <div className="flex items-baseline gap-1.5">
-      <span className={`text-[17px] font-medium tabular-nums ${tint}`}>{value}</span>
-      <span className="text-[12px] uppercase tracking-[0.14em] text-ink-muted">{label}</span>
+    <div>
+      <span className="mono text-[9.5px] tracking-[0.2em] text-muted-foreground uppercase font-bold block mb-1">
+        {label}
+      </span>
+      <span className={`display text-[28px] font-bold tabular-nums leading-none ${tint}`}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -306,10 +353,11 @@ function Stat({ label, value, tint = "text-ink" }: { label: string; value: numbe
 function DecideButton({ verb, onClick }: { verb: DecisionVerb; onClick: () => void }) {
   const style =
     verb === "PURSUE"
-      ? "border-decision-pursue/40 text-decision-pursue hover:bg-decision-pursue/10"
+      ? "border-pursue text-pursue bg-pursue-soft hover:opacity-90 font-bold"
       : verb === "CONSIDER"
-        ? "border-decision-consider/40 text-decision-consider hover:bg-decision-consider/10"
-        : "border-hairline text-ink-muted hover:bg-muted";
+        ? "border-consider text-consider bg-consider-soft hover:opacity-90 font-bold"
+        : "border-border text-muted-foreground hover:bg-muted font-semibold";
+
   return (
     <button
       type="button"
@@ -317,7 +365,7 @@ function DecideButton({ verb, onClick }: { verb: DecisionVerb; onClick: () => vo
         e.stopPropagation();
         onClick();
       }}
-      className={`rounded-sm border px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] transition-colors ${style}`}
+      className={`mono text-[10px] tracking-[0.18em] rounded-sm border px-3 py-1.5 uppercase transition-all ${style}`}
     >
       {verb}
     </button>

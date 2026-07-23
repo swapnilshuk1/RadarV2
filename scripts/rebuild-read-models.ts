@@ -4,19 +4,8 @@ import { SqliteTimelineStore } from "../src/data/sqlite/repositories/SqliteTimel
 import { ReadModelRebuilder } from "../src/data/sqlite/read_models/ReadModelRebuilder";
 import { globalReadModelRegistry, initializeReadModels } from "../src/lib/infrastructure/Registry";
 
-function main() {
+export function runRebuildReadModels(verify: boolean = false, targetName: string = "") {
   initializeReadModels();
-
-  const args = process.argv.slice(2);
-  let targetName = "";
-  let verify = false;
-
-  if (args.length > 0 && !args[0].startsWith("--")) {
-    targetName = args[0];
-    if (args.includes("--verify")) verify = true;
-  } else if (args.includes("--verify")) {
-    verify = true;
-  }
 
   const dbPath = path.resolve(process.cwd(), process.env.SQLITE_DB_PATH || "radar.sqlite");
   const db = new Database(dbPath);
@@ -29,7 +18,8 @@ function main() {
     const rm = globalReadModelRegistry.getReadModel(targetName);
     if (!rm) {
       console.error(`Read Model "${targetName}" not found in registry.`);
-      process.exit(1);
+      db.close();
+      return;
     }
     readModelsToRebuild = [rm];
     console.log(`Targeting single read model: ${targetName}`);
@@ -38,21 +28,18 @@ function main() {
   const workspaces = db.prepare("SELECT id FROM workspaces").all() as { id: string }[];
   
   if (workspaces.length === 0) {
-    console.log("No workspaces found. Nothing to rebuild.");
+    console.log("[Rebuild] No workspaces found. Nothing to rebuild.");
     db.close();
     return;
   }
 
   if (verify) {
     console.log("Running in --verify mode. Will compare checksums before overwriting...");
-    // For verify, we'd theoretically rebuild into a temporary table/db and compare checksums
-    // Since this is a scaffolding/implementation detail for the CLI, we will mock the verify check
     for (const row of workspaces) {
       for (const rm of readModelsToRebuild) {
         console.log(`[Verify] Checksum for ${rm.name} on workspace ${row.id}: ${rm.checksum(db)}`);
       }
     }
-    console.log("Verification complete (Checksums match). Proceeding with live rebuild...");
   }
 
   const rebuilder = new ReadModelRebuilder(db, timelineStore, readModelsToRebuild);
@@ -61,12 +48,31 @@ function main() {
     rebuilder.rebuildAll(row.id);
   }
 
-  console.log(`Successfully rebuilt ${readModelsToRebuild.length} read models for ${workspaces.length} workspaces.`);
+  console.log(`[Rebuild] Successfully rebuilt ${readModelsToRebuild.length} read models for ${workspaces.length} workspaces.`);
   db.close();
 }
 
-import { fileURLToPath } from "url";
-if (process.argv[1] && (process.argv[1].endsWith('rebuild-read-models.ts') || process.argv[1] === fileURLToPath(import.meta.url))) {
-  main();
+function main() {
+  const args = process.argv.slice(2);
+  let targetName = "";
+  let verify = false;
+
+  if (args.length > 0 && !args[0].startsWith("--")) {
+    targetName = args[0];
+    if (args.includes("--verify")) verify = true;
+  } else if (args.includes("--verify")) {
+    verify = true;
+  }
+
+  runRebuildReadModels(verify, targetName);
 }
 
+import { fileURLToPath } from "url";
+const isMain = typeof process !== "undefined" && 
+  process.argv && 
+  process.argv[1] && 
+  (process.argv[1].endsWith('rebuild-read-models.ts') || process.argv[1] === fileURLToPath(import.meta.url));
+
+if (isMain) {
+  main();
+}

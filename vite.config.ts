@@ -1,7 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import tsConfigPaths from "vite-tsconfig-paths";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 
 export default defineConfig((async ({ command, mode }: any) => {
@@ -10,7 +9,7 @@ export default defineConfig((async ({ command, mode }: any) => {
   return {
     css: { transformer: "lightningcss" },
     resolve: {
-      // No @->src alias needed: vite-tsconfig-paths reads it from tsconfig.json
+      tsconfigPaths: true,
       dedupe: [
         "react",
         "react-dom",
@@ -43,7 +42,6 @@ export default defineConfig((async ({ command, mode }: any) => {
     plugins: [
       // Plugin order matches the recommended standalone non-sandbox sequence
       tailwindcss(),
-      tsConfigPaths({ projects: ["./tsconfig.json"] }),
       tanstackStart({
         // Redirect TanStack Start's bundled server entry to src/server.ts
         server: { entry: "server" },

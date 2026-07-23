@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "weights": {
+    "identity": 0.35,
+    "career": 0.30,
+    "opportunity": 0.20,
+    "capability": 0.15
+  },
+  "thresholds": {
+    "pursueScore": 80,
+    "considerScore": 60,
+    "identityCutoff": 30,
+    "identityPursueCutoff": 60,
+    "capabilityCutoff": 0.25,
+    "regressionCutoff": 50
+  }
+}

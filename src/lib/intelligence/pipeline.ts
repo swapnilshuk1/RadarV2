@@ -40,6 +40,23 @@ export type PipelineOutput = {
 };
 
 /**
+ * === EVALUATION PIPELINE STAGE ===
+ * This declarative pipeline implements Layer 3 of the RADAR intelligence core.
+ * It inputs parsed opportunities (OpportunityIntelligence) and runs them through:
+ * 
+ *   Eligibility Gate -> Consensus Mapping -> ESI Calculation -> Context Build -> 
+ *   Priority Calculation -> Decision Verb Mapping -> Headspace Saturation Filter -> 
+ *   Stability Perturbation -> Comparative Ranker -> Narrative Generator -> Final Record
+ * 
+ * Connections:
+ * - engine.ts -> runEngine() -> runPipeline()
+ * - eligibility.ts -> checkEligibility() (Structural hard constraints)
+ * - priority.ts -> computePriority() (Strategic and value matching)
+ * - headspace-filter.ts -> applyHeadspaceFilter() (Bandwidth limits)
+ * - present.ts -> present() (Combines pipeline outputs with Skill Fit capabilities)
+ * 
+ * =================================
+ *
  * Computes the Evidence Sufficiency Index (ESI) as a weighted percentage score.
  * Evaluates dimension coverage, evidence completeness, text richness, and classifier confidence.
  */

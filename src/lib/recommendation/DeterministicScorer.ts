@@ -25,10 +25,8 @@ import type {
   DecisionConfidence,
   DecisionImpact,
 } from "../../domain/entities";
-import type { RecommendationPolicy } from "./RecommendationPolicy";
 import { DimensionResolver, type ResolvedEvidence } from "./DimensionResolver";
-import * as fs from "fs";
-import * as path from "path";
+import type { RecommendationPolicy } from "./RecommendationPolicy";
 
 function generateUUID(): string {
   if (typeof globalThis !== "undefined" && globalThis.crypto?.randomUUID) {
@@ -320,6 +318,11 @@ export class DeterministicScorer {
 
     if (typeof window === "undefined" && typeof process !== "undefined" && process.cwd) {
       try {
+        const requireInstance = typeof require !== "undefined"
+          ? require
+          : eval("require('module')").createRequire(import.meta.url);
+        const fs = requireInstance("fs");
+        const path = requireInstance("path");
         const configPath = path.resolve(process.cwd(), "config", "calibration_coefficients.json");
         if (fs.existsSync(configPath)) {
           const content = fs.readFileSync(configPath, "utf8");

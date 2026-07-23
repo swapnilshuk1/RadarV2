@@ -1,5 +1,5 @@
-import Database from "better-sqlite3";
-import path from "path";
+import type Database from "better-sqlite3";
+
 import { SqliteCompanyStore } from "./repositories/SqliteCompanyStore";
 import { SqliteOpportunityStore } from "./repositories/SqliteOpportunityStore";
 import { SqliteAcquisitionStore } from "./repositories/SqliteAcquisitionStore";
@@ -8,16 +8,68 @@ import { SqliteReasoningStore } from "./repositories/SqliteReasoningStore";
 import { SqliteSourceStore } from "./repositories/SqliteSourceStore";
 import { SqlitePersonStore } from "./repositories/SqlitePersonStore";
 import { SqliteDecisionSupportStore } from "./repositories/SqliteDecisionSupportStore";
+import { runMigrations } from "./migrations/runner";
 
 let _db: Database.Database | null = null;
 
 export function getDatabase(dbPath?: string): Database.Database {
-  if (!_db) {
-    const resolvedPath = dbPath || process.env.SQLITE_DB_PATH || path.resolve(process.cwd(), "radar.sqlite");
-    _db = new Database(resolvedPath);
-    _db.pragma('journal_mode = WAL');
+  if (typeof window !== "undefined") {
+    return {
+      prepare: () => ({
+        get: () => null,
+        all: () => [],
+        run: () => ({ changes: 0, lastInsertRowId: 0 }),
+      }),
+      transaction: (fn: any) => fn,
+    } as any;
   }
-  return _db;
+  if (!_db) {
+    try {
+      let requireInstance: any = null;
+      if (typeof require !== "undefined") {
+        requireInstance = require;
+      } else {
+        try {
+          requireInstance = eval("require('module')").createRequire(import.meta.url);
+        } catch {}
+      }
+
+      if (!requireInstance) {
+        return {
+          prepare: () => ({
+            get: () => null,
+            all: () => [],
+            run: () => ({ changes: 0, lastInsertRowId: 0 }),
+          }),
+          transaction: (fn: any) => fn,
+        } as any;
+      }
+
+      const pathModule = requireInstance("path");
+      const DatabaseConstructor = requireInstance("better-sqlite3");
+
+      const resolvedPath = dbPath || process.env.SQLITE_DB_PATH || pathModule.resolve(process.cwd(), "radar.sqlite");
+      
+      try {
+        runMigrations(resolvedPath);
+      } catch (err) {
+        console.error("[Database] Migration execution failed:", err);
+      }
+
+      _db = new DatabaseConstructor(resolvedPath);
+      _db!.pragma('journal_mode = WAL');
+    } catch (err) {
+      console.error("[Database] Initialization error:", err);
+    }
+  }
+  return _db || {
+    prepare: () => ({
+      get: () => null,
+      all: () => [],
+      run: () => ({ changes: 0, lastInsertRowId: 0 }),
+    }),
+    transaction: (fn: any) => fn,
+  } as any;
 }
 
 export function closeDatabase() {

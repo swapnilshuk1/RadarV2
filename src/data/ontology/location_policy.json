@@ -1,0 +1,15 @@
+{
+  "primaryMetros": {
+    "penaltyPoints": 0,
+    "keywords": ["gurugram", "delhi", "ncr", "mumbai", "bengaluru", "bangalore"]
+  },
+  "secondaryMetros": {
+    "penaltyPoints": 5,
+    "keywords": ["pune", "hyderabad", "chennai"]
+  },
+  "regionalTier2": {
+    "penaltyPoints": 18,
+    "keywords": ["belgaum", "karnataka", "tier-2", "tier 2"]
+  },
+  "nonPreferredWorkModelPenalty": 10
+}

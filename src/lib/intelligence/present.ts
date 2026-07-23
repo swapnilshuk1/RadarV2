@@ -92,6 +92,8 @@ export function present(
 
   // Run DeterministicScorer to compute calibrated Decision Confidence (Sprint 12)
   let decisionConfidence;
+  const dynamicProfile = candidateProfile;
+
   try {
     const deterministicScorer = new DeterministicScorer();
     const policy: any = {
@@ -106,7 +108,7 @@ export function present(
       }
     };
     const assessment = deterministicScorer.score({
-      profile: candidateProfile as any,
+      profile: dynamicProfile as any,
       policy: policy,
       job: jobSlice,
       recommendationRunId: "run-present"
@@ -117,20 +119,20 @@ export function present(
   }
   
   const recommendationResultViewModel: RecommendationViewModel = {
-    score: isPass ? 0 : Math.round(recommendationResult.score),
-    decision: isPass ? "PASS" : recommendationResult.decision,
-    policyId: recommendationResult.policyId,
-    policyVersion: recommendationResult.policyVersion,
+    score: Math.round(record.priority),
+    decision: record.verb,
+    policyId: "policy-v1.0",
+    policyVersion: "1.0.0",
     explanation: isPass 
-      ? `Excluded: the role "${source.role}" at ${source.company} is out of scope for your target executive marketing/growth profile.`
-      : recommendationResult.explanation,
-    capabilities: isPass ? [] : mappedCapabilities,
+      ? `Evaluated by RADAR V4 strategic framework: ${record.verb.toLowerCase()} (Score: ${Math.round(record.priority)}/100).`
+      : `Dynamically evaluated using RADAR V4 strategic framework to ${record.verb.toLowerCase()} (Score: ${Math.round(record.priority)}/100).`,
+    capabilities: mappedCapabilities,
     decisionConfidence,
   };
 
-  // Close the loop with explainability: feed the engine's compiled explanation directly
-  // as the primary advisory recommendation at the top of the viewport
-  const finalRecommendation = recommendationResultViewModel.explanation || narrative.recommendation;
+  // Close the loop with explainability: feed the dynamic human-focused narrative 
+  // as the primary advisory recommendation, while keeping the structural explanation in the result view model
+  const finalRecommendation = narrative.recommendation;
 
   return {
     opportunity: {
@@ -147,6 +149,14 @@ export function present(
       recommendationResult: recommendationResultViewModel,
       esi: record.esi,
       diligenceStatus: record.diligenceStatus,
+      recommendationArchetype: narrative.recommendationArchetype,
+      recommendationArchetypeTagline: narrative.recommendationArchetypeTagline,
+      mandateArchetype: narrative.mandateArchetype,
+      primaryDriver: narrative.primaryDriver,
+      secondaryDriver: narrative.secondaryDriver,
+      primaryRisk: narrative.primaryRisk,
+      tailoringEffort: narrative.tailoringEffort,
+      capabilityAlignmentText: narrative.capabilityAlignmentText,
     },
     record,
     narrative,

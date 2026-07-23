@@ -1,7 +1,24 @@
 import type { Database } from "better-sqlite3";
 import type { TimelineEvent } from "../../../domain/entities";
 import type { ReadModel } from "./ReadModel";
-import crypto from "crypto";
+
+function sha256(data: string): string {
+  if (typeof window === "undefined") {
+    try {
+      const req = typeof require !== "undefined" ? require : null;
+      if (req) {
+        return req("crypto").createHash("sha256").update(data).digest("hex");
+      }
+    } catch {}
+  }
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(16).padStart(8, '0');
+}
 
 export class OpportunityInboxReadModel implements ReadModel {
   name = "OpportunityInbox";
@@ -15,15 +32,17 @@ export class OpportunityInboxReadModel implements ReadModel {
         workspace_id TEXT NOT NULL,
         person_id TEXT NOT NULL,
         
-        -- Core Fields
-        title TEXT,
-        company_name TEXT,
-        status TEXT DEFAULT 'Active',
+        -- Normalized job info
+        title TEXT NOT NULL,
+        company_name TEXT NOT NULL,
         
-        -- Pre-calculated Rankings (Engine owns default ordering)
-        priority_rank INTEGER DEFAULT 0,
-        confidence_rank INTEGER DEFAULT 0,
-        freshness_rank INTEGER DEFAULT 0,
+        -- lifecycle states
+        status TEXT NOT NULL, -- 'Active' | 'Dismissed' | 'Snoozed' | 'Engaged'
+        
+        -- computed priority rankings
+        priority_rank INTEGER NOT NULL,
+        confidence_rank INTEGER NOT NULL,
+        freshness_rank INTEGER NOT NULL,
         
         -- strict metadata
         read_model_version TEXT NOT NULL,
@@ -40,23 +59,16 @@ export class OpportunityInboxReadModel implements ReadModel {
   }
 
   apply(db: Database, event: TimelineEvent): void {
-    const rebuiltAt = new Date().toISOString(); // Mock for actual rebuild cycle time
+    const rebuiltAt = new Date().toISOString();
     const updatedAt = event.occurredAt;
-    
-    if (event.eventCategory === "Acquisition" && event.eventType === "OpportunityDiscovered") {
-      // Stub payload extraction
-      const payload = {
-         title: "New Opportunity",
-         companyName: "Acme Corp",
-         priorityRank: 0,
-         confidenceRank: 0,
-         freshnessRank: 100
-      };
 
+    if (event.eventCategory === "Inbox" && event.eventType === "OpportunityInboxAdded") {
+      const payload = JSON.parse(event.payloadJson);
+      
       const checksum = this.calculateChecksum(this.version, event.eventVersion, payload);
 
       db.prepare(`
-        INSERT OR IGNORE INTO rm_opportunity_inbox 
+        INSERT INTO rm_opportunity_inbox 
         (opportunity_id, workspace_id, person_id, title, company_name, status, priority_rank, confidence_rank, freshness_rank, read_model_version, rebuilt_at, updated_at, event_version, read_model_checksum)
         VALUES (?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
@@ -70,14 +82,10 @@ export class OpportunityInboxReadModel implements ReadModel {
 
   checksum(db: Database): string {
     const rows = db.prepare("SELECT * FROM rm_opportunity_inbox ORDER BY opportunity_id").all();
-    return crypto.createHash("sha256").update(JSON.stringify(rows)).digest("hex");
+    return sha256(JSON.stringify(rows));
   }
 
   private calculateChecksum(modelVersion: string, eventVersion: number, payload: any): string {
-    return crypto.createHash("sha256")
-      .update(modelVersion)
-      .update(eventVersion.toString())
-      .update(JSON.stringify(payload))
-      .digest("hex");
+    return sha256(modelVersion + eventVersion.toString() + JSON.stringify(payload));
   }
 }

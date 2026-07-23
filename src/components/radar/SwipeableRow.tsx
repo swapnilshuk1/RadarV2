@@ -32,6 +32,13 @@ export function SwipeableRow({
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (disabled) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    
+    // Ignore swipe gestures on nested interactive elements (buttons, links)
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("a")) {
+      return;
+    }
+    
     start.current = { x: e.clientX, y: e.clientY, locked: null };
   };
 
@@ -84,7 +91,7 @@ export function SwipeableRow({
   const showLeft = dx < 0;
 
   return (
-    <div className="relative touch-pan-y select-none overflow-hidden">
+    <div className="relative touch-pan-y overflow-hidden">
       {/* Right (pursue) hint — revealed as row moves right */}
       <div
         aria-hidden

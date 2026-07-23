@@ -7,11 +7,37 @@
  * Usage: run once at setup time or when the profile changes.
  */
 
-import fs from "fs";
-import path from "path";
 import yaml from "js-yaml";
-import { randomUUID } from "crypto";
 import type { CandidateProfile } from "../../domain/entities";
+
+function getNodeFs() {
+  if (typeof window !== "undefined") return null;
+  try {
+    return typeof require !== "undefined" ? require("fs") : null;
+  } catch {
+    return null;
+  }
+}
+
+function getNodePath() {
+  if (typeof window !== "undefined") return null;
+  try {
+    return typeof require !== "undefined" ? require("path") : null;
+  } catch {
+    return null;
+  }
+}
+
+function generateUUID(): string {
+  if (typeof globalThis !== "undefined" && globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
+    return globalThis.crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 export interface RawProfile {
   // Identity
@@ -41,6 +67,12 @@ export class ProfileImporter {
    * The caller is responsible for persisting the returned entity.
    */
   static fromYaml(yamlPath: string, personId: string): CandidateProfile {
+    const path = getNodePath();
+    const fs = getNodeFs();
+    if (!path || !fs) {
+      throw new Error("Cannot run fromYaml in non-Node environment");
+    }
+
     const resolvedPath = path.resolve(yamlPath);
     if (!fs.existsSync(resolvedPath)) {
       throw new Error(`Profile YAML not found at: ${resolvedPath}`);
@@ -53,7 +85,7 @@ export class ProfileImporter {
     const version = `v${Date.now()}`;
 
     const profile: CandidateProfile = {
-      id: randomUUID(),
+      id: generateUUID(),
       personId,
       version,
       experience: raw.experience ?? [],
@@ -85,6 +117,12 @@ export class ProfileImporter {
    */
   static validate(yamlPath: string): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
+    const path = getNodePath();
+    const fs = getNodeFs();
+    if (!path || !fs) {
+      return { valid: false, errors: ["Cannot run validate in non-Node environment"] };
+    }
+
     const resolvedPath = path.resolve(yamlPath);
 
     if (!fs.existsSync(resolvedPath)) {

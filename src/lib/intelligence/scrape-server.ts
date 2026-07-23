@@ -2,6 +2,86 @@ import { createServerFn } from "@tanstack/react-start";
 import path from "path";
 import fs from "fs";
 
+let rebuildTimeout: NodeJS.Timeout | null = null;
+
+// Debounced 2-second function to rebuild SQLite read models and write live-scraped.json
+export function triggerDebouncedRebuild() {
+  if (rebuildTimeout) {
+    clearTimeout(rebuildTimeout);
+  }
+  rebuildTimeout = setTimeout(async () => {
+    console.log("[Server] Debounce trigger: rebuilding SQLite read models...");
+    try {
+      const { runRebuildReadModels } = await import("../../../scripts/rebuild-read-models");
+      runRebuildReadModels();
+
+      const { collectRecords, writeLiveScraped } = await import("../../../scripts/scraper/persist/writer");
+      const records = collectRecords();
+      writeLiveScraped(records);
+      console.log(`[Server] Successfully rebuilt live-scraped.json cache with ${records.length} records.`);
+    } catch (err: any) {
+      console.error("[Server] Debounced rebuild failed:", err.message);
+    }
+  }, 2000);
+}
+
+// Vite HMR-safe singleton background daemon initialization
+if (typeof globalThis !== "undefined") {
+  const g = globalThis as any;
+  if (!g.__RADAR_DAEMON__) {
+    g.__RADAR_DAEMON__ = {
+      started: false,
+      start: async () => {
+        if (g.__RADAR_DAEMON__.started) return;
+        g.__RADAR_DAEMON__.started = true;
+        console.log("[Daemon] Starting self-healing RADAR background daemon...");
+        
+        try {
+          // 1. Recover expired leases
+          const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
+          const queue = new EnrichmentQueue();
+          const recovered = queue.recoverExpiredLeases();
+          if (recovered > 0) {
+            console.log(`[Daemon] Recovered ${recovered} expired leases.`);
+          }
+          
+          // 2. Rebuild the live-scraped.json cache if out of sync
+          const jsonPath = path.join(process.cwd(), "src", "data", "live-scraped.json");
+          if (!fs.existsSync(jsonPath)) {
+            console.log("[Daemon] live-scraped.json missing. Building on boot...");
+            const { runRebuildReadModels } = await import("../../../scripts/rebuild-read-models");
+            runRebuildReadModels();
+            const { collectRecords, writeLiveScraped } = await import("../../../scripts/scraper/persist/writer");
+            writeLiveScraped(collectRecords());
+          }
+
+          // 3. Start background queue drain loop
+          const { enrichGlobalQueue } = await import("../../../scripts/enrich");
+          void enrichGlobalQueue(triggerDebouncedRebuild).catch(err => {
+            console.error("[Daemon] Queue loop error:", err);
+            g.__RADAR_DAEMON__.started = false; // allow restart
+          });
+          
+        } catch (err: any) {
+          console.error("[Daemon] Startup failure:", err.message);
+          g.__RADAR_DAEMON__.started = false;
+        }
+      }
+    };
+  }
+  
+  // Start the singleton daemon inside the server context with a 10-second delay.
+  // This defers background database checks and loops, allowing Vite to fully load
+  // and bundle the page instantly when running 'npm run dev' or loading localhost!
+  if (typeof window === "undefined" && !g.__RADAR_DAEMON__.started) {
+    setTimeout(() => {
+      g.__RADAR_DAEMON__.start().catch((e: any) => {
+        console.error("[Daemon] Deferred start failed:", e.message);
+      });
+    }, 10000); // 10 seconds deferred delay
+  }
+}
+
 export const triggerScrapeFn = createServerFn({ method: "POST" })
   .handler(async () => {
     try {
@@ -53,14 +133,32 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
       if (e.type === "extraction_written") summary.extracted++;
     }
 
+    // Load active enrichment stats from queue.db
+    let enrichmentStats: any = null;
+    let isEnriching = false;
+    try {
+      const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
+      const queue = new EnrichmentQueue();
+      enrichmentStats = queue.getRunStats(runId);
+      if (enrichmentStats && enrichmentStats.total > 0 && (enrichmentStats.pending + enrichmentStats.processing > 0)) {
+        isEnriching = true;
+      }
+    } catch (err: any) {
+      console.error("[Server] Failed to load enrichment stats:", err.message);
+    }
+
+    const completed = (manifest?.status === "completed" || manifest?.status === "failed" || manifest?.status === "aborted") && !isEnriching;
+    const status = isEnriching ? "enriching" : (manifest?.status || "running");
+
     return {
       runId,
-      completed: manifest?.status === "completed" || manifest?.status === "failed" || manifest?.status === "aborted",
-      status: manifest?.status || "running",
+      completed,
+      status,
       portalHealth: manifest?.portalHealth || {},
       events: events as any[],
       nextIndex,
-      summary
+      summary,
+      enrichmentStats
     };
   });
 
@@ -107,6 +205,18 @@ export const getLiveScrapedFn = createServerFn({ method: "GET" })
     }
   });
 
+export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
+  .handler(async () => {
+    try {
+      console.log("[Server] triggerCorpusRegenerationFn: starting corpus pipeline...");
+      const { runCorpusPipeline } = await import("../../../scripts/corpus/pipeline");
+      return await runCorpusPipeline();
+    } catch (err: any) {
+      console.error("[Server] triggerCorpusRegenerationFn failed:", err.message);
+      return { success: false, error: err.message };
+    }
+  });
+
 export const getCorpusHealthFn = createServerFn({ method: "GET" })
   .handler(async () => {
     try {
@@ -118,3 +228,23 @@ export const getCorpusHealthFn = createServerFn({ method: "GET" })
     }
   });
 
+export const getPipelineStatsFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    try {
+      const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
+      const queue = new EnrichmentQueue();
+      const stats = queue.getGlobalPipelineStats();
+      
+      const { getScraperCounts } = await import("../../data/scraped-jobs");
+      const counts = getScraperCounts();
+
+      return {
+        ...stats,
+        filtered: counts.filtered,
+        shortlisted: counts.shortlisted
+      };
+    } catch (err: any) {
+      console.error("[Server] getPipelineStatsFn failed:", err.message);
+      return null;
+    }
+  });

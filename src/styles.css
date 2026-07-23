@@ -39,7 +39,12 @@
   --color-evidence-matched: var(--evidence-matched);
   --color-evidence-adjacent: var(--evidence-adjacent);
   --color-evidence-missing: var(--evidence-missing);
-  --color-evidence-contradicted: var(--evidence-contradicted);
+  --color-pursue: var(--pursue);
+  --color-pursue-soft: var(--pursue-soft);
+  --color-consider: var(--consider);
+  --color-consider-soft: var(--consider-soft);
+  --color-pass: var(--pass);
+  --color-accent-ink: var(--accent-ink);
 }
 
 /* Navy Trust palette — executive advisory register */
@@ -67,6 +72,13 @@
   --ring: oklch(0.58 0.14 255);
 
   /* Decision verbs */
+  --pursue: oklch(0.48 0.12 155);
+  --pursue-soft: oklch(0.96 0.03 155);
+  --consider: oklch(0.55 0.14 65);
+  --consider-soft: oklch(0.97 0.03 65);
+  --pass: oklch(0.62 0.008 260);
+  --accent-ink: oklch(0.42 0.12 250);
+
   --decision-pursue: oklch(0.48 0.12 155);
   --decision-pursue-fg: oklch(0.995 0.002 260);
   --decision-consider: oklch(0.68 0.10 75);
@@ -135,4 +147,15 @@
 @utility brief-expand-open {
   grid-template-rows: 1fr;
   opacity: 1;
+}
+
+@utility display {
+  font-family: var(--font-serif);
+  letter-spacing: -0.035em;
+  font-weight: 600;
+}
+
+@utility mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "zero", "ss01";
 }

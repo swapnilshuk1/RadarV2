@@ -4,7 +4,7 @@
 
 export type EvidenceSource = "title" | "snippet" | "location" | "llm";
 export type Status = "Explicit" | "Inferred" | "Missing";
-export type DecisionVerb = "PURSUE" | "CONSIDER" | "PASS";
+export type DecisionVerb = "PURSUE" | "CONSIDER" | "PASS" | "NOT_EVALUABLE";
 export type ScrapeSource = "LinkedIn" | "Naukri" | "Indeed";
 
 export type Traced<T> = {
@@ -105,6 +105,14 @@ export type Opportunity = {
   recommendationResult?: RecommendationViewModel;
   esi?: number;
   diligenceStatus?: "READY" | "INSUFFICIENT" | "STALE" | "FAILED" | "UNKNOWN";
+  recommendationArchetype?: string;
+  recommendationArchetypeTagline?: string;
+  mandateArchetype?: string;
+  primaryDriver?: string;
+  secondaryDriver?: string;
+  primaryRisk?: string;
+  tailoringEffort?: "LOW" | "MODERATE" | "HIGH";
+  capabilityAlignmentText?: string;
 };
 
 /** Derive the apply URL from the scraped source when a direct one wasn't captured. */

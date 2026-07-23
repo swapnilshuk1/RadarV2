@@ -74,6 +74,7 @@
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.575.0",
+    "mammoth": "^1.12.0",
     "playwright": "^1.61.1",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
@@ -90,12 +91,10 @@
     "undici": "^8.7.0",
     "uuid": "^14.0.1",
     "vaul": "^1.1.2",
-    "vite-tsconfig-paths": "^6.0.2",
     "zod": "^3.24.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "lightningcss": "^1.30.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.16.5",
@@ -108,6 +107,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
+    "lightningcss": "^1.30.0",
     "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",
     "tsx": "^4.23.1",

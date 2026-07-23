@@ -4,6 +4,7 @@ const STYLES: Record<DecisionVerb, string> = {
   PURSUE: "bg-decision-pursue text-decision-pursue-fg",
   CONSIDER: "bg-decision-consider text-decision-consider-fg",
   PASS: "bg-decision-pass text-decision-pass-fg",
+  NOT_EVALUABLE: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
 };
 
 export function DecisionBadge({ verb, size = "md" }: { verb: DecisionVerb; size?: "sm" | "md" | "lg" }) {

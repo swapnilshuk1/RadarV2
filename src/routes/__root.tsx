@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 
@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" },
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.gif", type: "image/gif" },
     ],
   }),
   shellComponent: RootShell,
@@ -103,10 +103,125 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+import { useLocation, useNavigate } from "@tanstack/react-router";
+import { candidateSignature } from "../lib/personalization";
+
+function GlobalHeader() {
+  const location = useLocation();
+  const [sessionName, setSessionName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sessionStr = sessionStorage.getItem("radar_session");
+      if (sessionStr) {
+        try {
+          const session = JSON.parse(sessionStr);
+          setSessionName(session.name);
+        } catch {}
+      }
+    }
+  }, []);
+
+  const signature = sessionName || candidateSignature();
+
+  const isSelected = (path: string) => {
+    if (path === "/") {
+      return location.pathname === "/";
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  let pageName = "Executive advisory";
+  if (location.pathname === "/profile") pageName = "Candidate Profile";
+  else if (location.pathname === "/decisions") pageName = "Decision Ledger";
+  else if (location.pathname === "/corpus") pageName = "Corpus Health";
+  else if (location.pathname.startsWith("/opportunity/")) pageName = "Opportunity Brief";
+  else if (location.pathname === "/scraped") pageName = "Scraped Feed";
+  else if (location.pathname === "/qa/mapping") pageName = "QA Mapping";
+
+  return (
+    <header className="border-b border-hairline bg-parchment/85 sticky top-0 z-50 backdrop-blur-md">
+      <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 sm:gap-6 px-4 sm:px-8 py-4 sm:py-5">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Link to="/" className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.32em] text-ink hover:opacity-80 transition-opacity">
+            RADAR
+          </Link>
+          <span className="text-ink-muted">·</span>
+          <span className="text-[11px] sm:text-[12px] uppercase tracking-[0.12em] sm:tracking-[0.16em] text-ink-muted font-medium truncate max-w-[100px] xs:max-w-[140px] sm:max-w-none">
+            {pageName}
+          </span>
+        </div>
+        <div className="flex items-center gap-3 sm:gap-6 text-[11px] sm:text-[11.5px]">
+          <span className="hidden md:inline mr-1 text-[12px] text-ink-muted">
+            <Link to="/profile" className="hover:text-ink transition-colors">
+              👤 {signature}
+            </Link>
+          </span>
+          <Link
+            to="/"
+            className={
+              isSelected("/")
+                ? "font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/40 pb-0.5"
+                : "font-medium uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+            }
+          >
+            Shortlist
+          </Link>
+          <Link
+            to="/profile"
+            className={
+              isSelected("/profile")
+                ? "font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/40 pb-0.5"
+                : "font-medium uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+            }
+          >
+            Profile
+          </Link>
+          <Link
+            to="/decisions"
+            className={
+              isSelected("/decisions")
+                ? "font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/40 pb-0.5"
+                : "font-medium uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+            }
+          >
+            Decisions
+          </Link>
+          <Link
+            to="/corpus"
+            className={
+              isSelected("/corpus")
+                ? "font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/40 pb-0.5"
+                : "font-medium uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+            }
+          >
+            Corpus
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const session = sessionStorage.getItem("radar_session");
+      if (!session && location.pathname !== "/login") {
+        navigate({ to: "/login" });
+      }
+    }
+  }, [location.pathname, navigate]);
+
+  const showHeader = location.pathname !== "/login";
+
   return (
     <QueryClientProvider client={queryClient}>
+      {showHeader && <GlobalHeader />}
       <Outlet />
     </QueryClientProvider>
   );

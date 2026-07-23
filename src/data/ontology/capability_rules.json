@@ -1,0 +1,38 @@
+[
+  {
+    "keywords": ["e-commerce", "ecommerce", "marketplace"],
+    "canonicalCapability": "E-Commerce Strategy",
+    "confidence": 0.90,
+    "priority": 1
+  },
+  {
+    "keywords": ["growth", "acquisition", "lead generation"],
+    "canonicalCapability": "Growth Marketing",
+    "confidence": 0.90,
+    "priority": 1
+  },
+  {
+    "keywords": ["performance", "roas", "paid search", "google ads"],
+    "canonicalCapability": "Performance Marketing",
+    "confidence": 0.90,
+    "priority": 1
+  },
+  {
+    "keywords": ["crm", "salesforce", "lifecycle"],
+    "canonicalCapability": "CRM Transformation",
+    "confidence": 0.90,
+    "priority": 1
+  },
+  {
+    "keywords": ["brand", "branding", "positioning"],
+    "canonicalCapability": "Brand Marketing",
+    "confidence": 0.85,
+    "priority": 2
+  },
+  {
+    "keywords": ["coe", "gcc", "center of excellence"],
+    "canonicalCapability": "Center of Excellence",
+    "confidence": 0.95,
+    "priority": 1
+  }
+]

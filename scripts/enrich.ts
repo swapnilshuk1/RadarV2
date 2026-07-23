@@ -3,7 +3,7 @@ import path from "path";
 import { EnrichmentQueue } from "./scraper/persist/queue";
 import { extract } from "./scraper/extract/extractor";
 import { ingestIntoSqlite } from "./scraper/persist/ingest";
-import { writeExtraction } from "./scraper/persist/writer";
+import { writeExtraction, readExtractionIfFresh } from "./scraper/persist/writer";
 import { EXTRACTOR_VERSION } from "./scraper/versions";
 import type { DetailedCard } from "./scraper/types";
 import { makeLogger } from "./scraper/utils/logger";
@@ -24,14 +24,24 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
     const snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
     const detailedCard = JSON.parse(snapStr) as DetailedCard;
     
-    // 1. Extract
-    const tLlm0 = Date.now();
-    const extraction = await extract(detailedCard);
-    llmMs = Date.now() - tLlm0;
+    // Check if we already have a fresh, valid-version extraction on disk!
+    const cachedEx = readExtractionIfFresh(filteredCardHash(detailedCard), CONFIG.snapshotFreshHours, EXTRACTOR_VERSION);
+    let extraction;
+    let isFromCache = false;
+
+    if (cachedEx) {
+      log(`[Enrich] Using cached extraction for ${job.id} (skipped live LLM call)`);
+      extraction = cachedEx;
+      isFromCache = true;
+    } else {
+      // 1. Extract live via LLM
+      const tLlm0 = Date.now();
+      extraction = await extract(detailedCard);
+      llmMs = Date.now() - tLlm0;
+      writeExtraction(filteredCardHash(detailedCard), extraction);
+    }
     
-    writeExtraction(filteredCardHash(detailedCard), extraction);
-    
-    // 2. Ingest
+    // 2. Ingest into SQLite
     const exStr = JSON.stringify(extraction);
     const report = ingestIntoSqlite(detailedCard, exStr, EXTRACTOR_VERSION, true);
     
@@ -39,7 +49,12 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
       log(`Ingestion warnings for ${job.id}: ${report.warnings.join(", ")}`, "warn");
     }
     
-    queue.markCompleted(job.id);
+    if (isFromCache) {
+      queue.markCompleted(job.id, "skipped LLM / cached");
+    } else {
+      queue.markCompleted(job.id);
+    }
+
     return { 
       llmMs, 
       busyMs: (Date.now() - tStart) - llmMs, 
@@ -284,8 +299,109 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
   }
 }
 
-// Run directly
-startWorker().catch(err => {
-  console.error("Worker crashed:", err);
-  process.exit(1);
-});
+// Expose a run-scoped enricher that can be triggered programmatically inline.
+export async function enrichJobsForRun(runId: string) {
+  const queue = new EnrichmentQueue();
+  log(`[Enrich] Starting inline enrichment worker for run ${runId}`);
+
+  // Exponential backoff for empty intervals or wait-retries
+  let emptyBackoffMs = 250;
+  
+  while (true) {
+    const pendingCount = queue.getPendingCountForRun(runId);
+    if (pendingCount === 0) {
+      log(`[Enrich] All jobs for run ${runId} have been successfully processed.`);
+      break;
+    }
+
+    // Recover any leases expired globally during our run
+    queue.recoverExpiredLeases();
+
+    // Lease jobs only for this run!
+    const jobs = queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency);
+
+    if (jobs.length === 0) {
+      // Check if there are any jobs currently cooling down in retry status
+      const hasRetries = queue.hasRetriesForRun(runId);
+      if (hasRetries) {
+        log(`[Enrich] Active jobs in retry cooling-down. Sleeping for ${emptyBackoffMs}ms...`);
+        await new Promise(r => setTimeout(r, emptyBackoffMs));
+        // Exponential backoff cap at 5 seconds
+        emptyBackoffMs = Math.min(emptyBackoffMs * 2, 5000);
+        continue;
+      } else {
+        // No jobs leased, no pending retries: queue is complete/drained or empty.
+        log(`[Enrich] No jobs leased and no retries. Run ${runId} enrichment complete.`);
+        break;
+      }
+    }
+
+    // Reset backoff once we successfully process a job
+    emptyBackoffMs = 250;
+
+    log(`[Enrich] Processing ${jobs.length} jobs concurrently...`);
+    await Promise.all(jobs.map(job => processJob(queue, job)));
+  }
+}
+
+// Expose a global queue enricher that processes all pending jobs across all runs.
+export async function enrichGlobalQueue(onJobCompleted?: () => void) {
+  const queue = new EnrichmentQueue();
+  log(`[Enrich] Starting global background enrichment daemon`);
+
+  // Exponential backoff for empty intervals or wait-retries
+  let emptyBackoffMs = 250;
+  
+  while (true) {
+    // Check global pending stats (getGlobalPipelineStats returns counts)
+    const stats = queue.getGlobalPipelineStats();
+    if (stats.pending + stats.retry === 0 && stats.leased === 0 && stats.enriching === 0) {
+      // Nothing to process. Sleep for 10 seconds to eliminate idle CPU and SQLite polling overhead.
+      await new Promise(r => setTimeout(r, 10000));
+      continue;
+    }
+
+    // Recover any leases expired globally
+    queue.recoverExpiredLeases();
+
+    // Lease jobs globally
+    const jobs = queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency);
+
+    if (jobs.length === 0) {
+      // If there are still items but we leased 0, they might be in retry status.
+      if (stats.retry > 0 || stats.leased > 0 || stats.enriching > 0) {
+        await new Promise(r => setTimeout(r, emptyBackoffMs));
+        emptyBackoffMs = Math.min(emptyBackoffMs * 2, 5000);
+        continue;
+      } else {
+        // Sleep on empty
+        await new Promise(r => setTimeout(r, 5000));
+        continue;
+      }
+    }
+
+    // Reset backoff once we successfully process a job
+    emptyBackoffMs = 250;
+
+    log(`[Enrich] Daemon processing ${jobs.length} jobs concurrently...`);
+    await Promise.all(jobs.map(job => processJob(queue, job)));
+
+    if (onJobCompleted) {
+      try { onJobCompleted(); } catch {}
+    }
+  }
+}
+
+// Run directly if called as main module
+const isMain = typeof process !== "undefined" && 
+  process.argv && 
+  process.argv[1] && 
+  (process.argv[1].endsWith("enrich.ts") || process.argv[1].endsWith("enrich"));
+
+if (isMain) {
+  startWorker().catch(err => {
+    console.error("Worker crashed:", err);
+    process.exit(1);
+  });
+}
+

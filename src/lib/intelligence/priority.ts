@@ -1,9 +1,24 @@
 // Layer 3 — Priority Engine. Pure math from an EvaluationContext.
 // No verb, no language, no confidence input.
 //
-//     Priority = (CareerValue × ShortlistingPotential) / PursuitFriction
+// === TWO-ENGINE DECOUPLED DECISION SCORING ===
+// RADAR uses two independent scoring algorithms to evaluate career matches:
+// 
+// 1. Priority Pipeline Engine (This file): Measures STRUCTURAL alignment.
+//    Priority = (CareerValue × ShortlistingPotential) / PursuitFriction
+//    - CareerValue: Alignment of Level, Mandate, and Commercial Accountability.
+//    - ShortlistingPotential: Alignment across all canonical JD dimensions.
+//    - PursuitFriction: Multiplicative friction from location, work-model, and reporting lines.
+//    All factors are normalized to [0, 1] and clamped.
+//    - Outputs the Structural Decision Verb: Priority >= 0.55 = PURSUE, >= 0.30 = CONSIDER, < 0.30 = PASS.
 //
-// All three factors are normalised to [0,1] and Priority is clamped to [0,1].
+// 2. Capability Scorer Engine (CapabilityRecommendationScorer.ts): Measures SKILL alignment.
+//    - Computes the displayed "Pursuit Potential" percentage based on professional expertise.
+//
+// Connections:
+// - evaluation-context.ts -> buildEvaluationContext()
+// - pipeline.ts -> runPipeline() -> computePriority()
+// ==========================================================
 
 import type { EvaluationContext } from "./evaluation-context";
 import { CANONICAL_DIMENSIONS, dim, type DimensionResult } from "./schema";
