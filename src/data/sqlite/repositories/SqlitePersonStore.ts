@@ -1,12 +1,13 @@
-import type { Database } from "better-sqlite3";
+import type { DatabaseAdapter } from "../../database/adapter";
 import type { PersonStore } from "../../../domain/repositories";
 import type { Person, CandidateProfile, ResumeVersion } from "../../../domain/entities";
 
 export class SqlitePersonStore implements PersonStore {
-  constructor(private db: Database) {}
+  constructor(private db: DatabaseAdapter) {}
 
-  registerPerson(person: Person): void {
-    const stmt = this.db.prepare(`
+  async registerPerson(person: Person): Promise<void> {
+    await this.db.execute(
+      `
       INSERT INTO people (
         id, email, created_at, updated_at,
         meta_schema_version, meta_extractor_version, meta_prompt_version, meta_model, meta_run_id, meta_timestamp
@@ -15,24 +16,24 @@ export class SqlitePersonStore implements PersonStore {
       ON CONFLICT(id) DO UPDATE SET
         email = excluded.email,
         updated_at = excluded.updated_at
-    `);
-    
-    stmt.run(
-      person.id,
-      person.email,
-      person.createdAt,
-      person.updatedAt,
-      person.provenance.schemaVersion,
-      person.provenance.extractorVersion ?? null,
-      person.provenance.promptVersion ?? null,
-      person.provenance.model ?? null,
-      person.provenance.runId ?? null,
-      person.provenance.timestamp
+      `,
+      [
+        person.id,
+        person.email,
+        person.createdAt,
+        person.updatedAt,
+        person.provenance.schemaVersion,
+        person.provenance.extractorVersion ?? null,
+        person.provenance.promptVersion ?? null,
+        person.provenance.model ?? null,
+        person.provenance.runId ?? null,
+        person.provenance.timestamp
+      ]
     );
   }
 
-  getPersonByEmail(email: string): Person | undefined {
-    const row = this.db.prepare(`SELECT * FROM people WHERE email = ?`).get(email) as any;
+  async getPersonByEmail(email: string): Promise<Person | undefined> {
+    const row = await this.db.one<any>(`SELECT * FROM people WHERE email = ?`, [email]);
     if (!row) return undefined;
     
     return {
@@ -51,23 +52,23 @@ export class SqlitePersonStore implements PersonStore {
     };
   }
 
-  saveCandidateProfile(profile: CandidateProfile): void {
+  async saveCandidateProfile(profile: CandidateProfile): Promise<void> {
     throw new Error("Method not implemented.");
   }
   
-  saveResumeVersion(version: ResumeVersion): void {
+  async saveResumeVersion(version: ResumeVersion): Promise<void> {
     throw new Error("Method not implemented.");
   }
 
-  getCandidateProfile(personId: string, version: string): CandidateProfile | undefined {
+  async getCandidateProfile(personId: string, version: string): Promise<CandidateProfile | undefined> {
     throw new Error("Method not implemented.");
   }
   
-  getLatestCandidateProfile(personId: string): CandidateProfile | undefined {
+  async getLatestCandidateProfile(personId: string): Promise<CandidateProfile | undefined> {
     throw new Error("Method not implemented.");
   }
   
-  getResumeVersions(candidateProfileId: string): ResumeVersion[] {
+  async getResumeVersions(candidateProfileId: string): Promise<ResumeVersion[]> {
     throw new Error("Method not implemented.");
   }
 }

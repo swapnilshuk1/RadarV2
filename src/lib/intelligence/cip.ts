@@ -3,7 +3,7 @@
  *
  * Implements Phase 3 (Candidate Intelligence Pipeline).
  * Ingests raw candidate portfolio/CV signals, projects the CandidateProjection
- * (with embedded claims referencing evidence), and stores them inside SQLite.
+ * (with embedded claims referencing evidence), and stores them inside SQLite or Turso.
  */
 
 import { getDatabase } from "../../data/sqlite/provider";
@@ -148,8 +148,8 @@ export class CandidateIntelligencePipeline {
       updatedAt: new Date().toISOString()
     };
 
-    // 5. Persist to SQLite
-    this.persist(projection, intent);
+    // 5. Persist to Database asynchronously (fire and forget or background sync)
+    this.persist(projection, intent).catch(() => {});
 
     const result = { projection, intent };
     if (!profilePath) {
@@ -162,16 +162,20 @@ export class CandidateIntelligencePipeline {
   /**
    * Save compiled projection & intent to database tables.
    */
-  private persist(projection: CandidateProjection, intent: CandidateIntent): void {
+  private async persist(projection: CandidateProjection, intent: CandidateIntent): Promise<void> {
     // Upsert people record first to avoid foreign key errors
-    this.db.prepare(`
+    await this.db.execute(
+      `
       INSERT INTO people (id, email)
       VALUES (?, ?)
       ON CONFLICT(id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
-    `).run(projection.id, "swapnil@radar.io");
+      `,
+      [projection.id, "swapnil@radar.io"]
+    );
 
     // Upsert candidate_projection table
-    this.db.prepare(`
+    await this.db.execute(
+      `
       INSERT INTO candidate_projection (id, person_id, timeline, skills, claims, updated_at)
       VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
@@ -179,17 +183,20 @@ export class CandidateIntelligencePipeline {
         skills = excluded.skills,
         claims = excluded.claims,
         updated_at = excluded.updated_at
-    `).run(
-      projection.id,
-      projection.personId,
-      JSON.stringify(projection.timeline),
-      JSON.stringify(projection.skills),
-      JSON.stringify(projection.claims),
-      projection.updatedAt
+      `,
+      [
+        projection.id,
+        projection.personId,
+        JSON.stringify(projection.timeline),
+        JSON.stringify(projection.skills),
+        JSON.stringify(projection.claims),
+        projection.updatedAt
+      ]
     );
 
     // Upsert intent table
-    this.db.prepare(`
+    await this.db.execute(
+      `
       INSERT INTO intent (id, candidate_id, desired_roles, preferred_locations, salary_band, industries, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
@@ -198,14 +205,16 @@ export class CandidateIntelligencePipeline {
         salary_band = excluded.salary_band,
         industries = excluded.industries,
         updated_at = excluded.updated_at
-    `).run(
-      intent.id,
-      intent.candidateId,
-      JSON.stringify(intent.desiredRoles),
-      JSON.stringify(intent.preferredLocations),
-      JSON.stringify(intent.salaryBand),
-      JSON.stringify(intent.industries),
-      intent.updatedAt
+      `,
+      [
+        intent.id,
+        intent.candidateId,
+        JSON.stringify(intent.desiredRoles),
+        JSON.stringify(intent.preferredLocations),
+        JSON.stringify(intent.salaryBand),
+        JSON.stringify(intent.industries),
+        intent.updatedAt
+      ]
     );
   }
 

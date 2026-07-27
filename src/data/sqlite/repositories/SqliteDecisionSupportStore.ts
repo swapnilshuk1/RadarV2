@@ -1,35 +1,35 @@
-import type { Database } from "better-sqlite3";
+import type { DatabaseAdapter } from "../../database/adapter";
 import type { DecisionSupportStore } from "../../../domain/repositories";
 import type { RecommendationRun, OpportunityAssessment, RecommendationRecord } from "../../../domain/entities";
 
 export class SqliteDecisionSupportStore implements DecisionSupportStore {
-  constructor(private db: Database) {}
+  constructor(private db: DatabaseAdapter) {}
 
-  recordRecommendationRun(run: RecommendationRun): void {
+  async recordRecommendationRun(run: RecommendationRun): Promise<void> {
     throw new Error("Method not implemented.");
   }
   
-  getRecommendationRun(id: string): RecommendationRun | undefined {
+  async getRecommendationRun(id: string): Promise<RecommendationRun | undefined> {
     throw new Error("Method not implemented.");
   }
   
-  recordOpportunityAssessment(assessment: OpportunityAssessment): void {
+  async recordOpportunityAssessment(assessment: OpportunityAssessment): Promise<void> {
     throw new Error("Method not implemented.");
   }
   
-  getOpportunityAssessment(id: string): OpportunityAssessment | undefined {
+  async getOpportunityAssessment(id: string): Promise<OpportunityAssessment | undefined> {
     throw new Error("Method not implemented.");
   }
   
-  recordRecommendationRecord(record: RecommendationRecord): void {
+  async recordRecommendationRecord(record: RecommendationRecord): Promise<void> {
     throw new Error("Method not implemented.");
   }
   
-  latestRecommendationRecords(personId: string, limit: number): RecommendationRecord[] {
+  async latestRecommendationRecords(personId: string, limit: number): Promise<RecommendationRecord[]> {
     throw new Error("Method not implemented.");
   }
   
-  getRecommendationRecordForOpportunity(personId: string, opportunityId: string): RecommendationRecord | undefined {
+  async getRecommendationRecordForOpportunity(personId: string, opportunityId: string): Promise<RecommendationRecord | undefined> {
     throw new Error("Method not implemented.");
   }
 }
