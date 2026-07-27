@@ -67,8 +67,8 @@ export function useDecisions() {
             };
           }
 
-          // 3. One-time auto-sync of local storage decisions if not synced yet
-          if (typeof window !== "undefined" && !window.localStorage.getItem(SYNC_FLAG) && Object.keys(initialLocal).length > 0) {
+          // 3. Auto-sync local storage decisions to server if local has unsynced items
+          if (typeof window !== "undefined" && Object.keys(initialLocal).length > 0 && Object.keys(initialLocal).length > Object.keys(serverMap).length) {
             await syncDecisionsFn({ data: { decisions: initialLocal } });
             window.localStorage.setItem(SYNC_FLAG, "true");
           }
