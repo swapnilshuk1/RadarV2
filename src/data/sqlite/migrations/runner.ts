@@ -1,18 +1,20 @@
-import type Database from "better-sqlite3";
+import { createRequire } from "module";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const req = createRequire(import.meta.url);
 
 export function runMigrations(dbPath: string) {
   if (typeof window !== "undefined") return;
 
   try {
-    const nodeModule = require("module");
-    const createRequireFn = nodeModule.createRequire || nodeModule.default?.createRequire;
-    if (!createRequireFn) return;
-
-    const req = createRequireFn(import.meta.url);
-    const fs = req("fs");
-    const path = req("path");
-    const { fileURLToPath } = req("url");
-    const DatabaseConstructor = req("better-sqlite3");
+    let DatabaseConstructor: any;
+    try {
+      DatabaseConstructor = req("better-sqlite3");
+    } catch {
+      return;
+    }
 
     if (!DatabaseConstructor) return;
 

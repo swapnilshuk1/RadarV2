@@ -121,7 +121,7 @@ export function runLayerB() {
 
   for (let i = 0; i < iterations; i++) {
     for (const record of dataset) {
-      const report = ingestIntoSqlite(record.card, JSON.stringify(record.extraction), "2.0", true);
+      const report = await ingestIntoSqlite(record.card, JSON.stringify(record.extraction), "2.0", true);
       if (i === 0) {
         totalFactsCreated += report.factsCreated;
       } else {

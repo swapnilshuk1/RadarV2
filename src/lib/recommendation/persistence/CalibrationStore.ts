@@ -1,6 +1,9 @@
 import fs from "fs";
 import path from "path";
+import { createRequire } from "module";
 import type { PolicyComparison } from "../RecommendationPolicy";
+
+const req = createRequire(import.meta.url);
 
 export interface CalibrationRunMetadata {
   id: string;
@@ -24,7 +27,10 @@ export class CalibrationStore {
   constructor() {
     try {
       const dbPath = path.resolve(process.cwd(), "radar.sqlite");
-      const DatabaseConstructor = typeof require !== "undefined" ? require("better-sqlite3") : null;
+      let DatabaseConstructor: any = null;
+      try {
+        DatabaseConstructor = req("better-sqlite3");
+      } catch {}
       if (DatabaseConstructor) {
         this.db = new DatabaseConstructor(dbPath);
         this.initializeTables();

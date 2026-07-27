@@ -3,6 +3,9 @@ import { SqliteAdapter } from "./sqlite";
 import { TursoAdapter } from "./turso";
 import path from "path";
 import fs from "fs";
+import { createRequire } from "module";
+
+const req = createRequire(import.meta.url);
 
 let _cachedAdapter: DatabaseAdapter | null = null;
 let _hasLoggedStartup = false;
@@ -65,7 +68,11 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
 
   // Fallback to SQLite (better-sqlite3)
   try {
-    const DatabaseConstructor = typeof require !== "undefined" ? require("better-sqlite3") : null;
+    let DatabaseConstructor: any = null;
+    try {
+      DatabaseConstructor = req("better-sqlite3");
+    } catch {}
+
     if (!DatabaseConstructor) {
       throw new Error("better-sqlite3 module unavailable in this environment");
     }
@@ -110,9 +117,14 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
     _cachedAdapter = {
       async one<T>() { return null; },
       async many<T>() { return []; },
-      async execute() {},
+      async execute() { return { rowsAffected: 0 }; },
       async transaction<T>(fn: (tx: any) => Promise<T>): Promise<T> {
-        return fn({ execute: async () => {} });
+        return fn({
+          one: async () => null,
+          many: async () => [],
+          execute: async () => ({ rowsAffected: 0 }),
+          transaction: async (f: any) => f(this)
+        });
       }
     };
     return _cachedAdapter;

@@ -57,7 +57,7 @@ export class ExecutiveDashboardReadModel implements ReadModel {
     const updatedAt = event.occurredAt;
     
     // 1. Initialize empty dashboard state on WorkspaceInitialized
-    if (event.eventCategory === "Workspace" && event.eventType === "WorkspaceInitialized") {
+    if ((event.eventCategory as string) === "Workspace" && event.eventType === "WorkspaceInitialized") {
       const checksum = this.calculateChecksum(this.version, event.eventVersion, "init");
       db.prepare(`
         INSERT OR IGNORE INTO rm_executive_dashboard 
@@ -67,7 +67,7 @@ export class ExecutiveDashboardReadModel implements ReadModel {
     }
     
     // 2. Adjust limits based on CapacityAdjusted
-    if (event.eventCategory === "Headspace" && event.eventType === "CapacityAdjusted") {
+    if ((event.eventCategory as string) === "Headspace" && event.eventType === "CapacityAdjusted") {
       const payload = JSON.parse(event.payloadJson);
       const maxMonthly = payload.limitValue || 5;
       

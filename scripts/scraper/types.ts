@@ -87,7 +87,7 @@ export interface PageExecutionRecord {
   timestamp: string;
 }
 
-export type RunState = "initializing" | "waiting_for_confirmation" | "running" | "completed" | "failed" | "aborted";
+export type RunState = "initializing" | "waiting_for_confirmation" | "running" | "enriching" | "completed" | "failed" | "aborted";
 
 export type HealthScore = "Healthy" | "Slow" | "Degraded" | "Blocked" | "Disabled";
 

@@ -3,14 +3,16 @@ import path from "path";
 import { SqliteTimelineStore } from "../src/data/sqlite/repositories/SqliteTimelineStore";
 import { ReadModelRebuilder } from "../src/data/sqlite/read_models/ReadModelRebuilder";
 import { globalReadModelRegistry, initializeReadModels } from "../src/lib/infrastructure/Registry";
+import { SqliteAdapter } from "../src/data/database/sqlite";
 
-export function runRebuildReadModels(verify: boolean = false, targetName: string = "") {
+export async function runRebuildReadModels(verify: boolean = false, targetName: string = "") {
   initializeReadModels();
 
   const dbPath = path.resolve(process.cwd(), process.env.SQLITE_DB_PATH || "radar.sqlite");
-  const db = new Database(dbPath);
+  const rawDb = new Database(dbPath);
+  const adapter = new SqliteAdapter(rawDb);
 
-  const timelineStore = new SqliteTimelineStore(db);
+  const timelineStore = new SqliteTimelineStore(adapter);
   
   let readModelsToRebuild = globalReadModelRegistry.getReadModels();
 
@@ -18,18 +20,18 @@ export function runRebuildReadModels(verify: boolean = false, targetName: string
     const rm = globalReadModelRegistry.getReadModel(targetName);
     if (!rm) {
       console.error(`Read Model "${targetName}" not found in registry.`);
-      db.close();
+      rawDb.close();
       return;
     }
     readModelsToRebuild = [rm];
     console.log(`Targeting single read model: ${targetName}`);
   }
 
-  const workspaces = db.prepare("SELECT id FROM workspaces").all() as { id: string }[];
+  const workspaces = rawDb.prepare("SELECT id FROM workspaces").all() as { id: string }[];
   
   if (workspaces.length === 0) {
     console.log("[Rebuild] No workspaces found. Nothing to rebuild.");
-    db.close();
+    rawDb.close();
     return;
   }
 
@@ -37,22 +39,22 @@ export function runRebuildReadModels(verify: boolean = false, targetName: string
     console.log("Running in --verify mode. Will compare checksums before overwriting...");
     for (const row of workspaces) {
       for (const rm of readModelsToRebuild) {
-        console.log(`[Verify] Checksum for ${rm.name} on workspace ${row.id}: ${rm.checksum(db)}`);
+        console.log(`[Verify] Checksum for ${rm.name} on workspace ${row.id}: ${rm.checksum(rawDb)}`);
       }
     }
   }
 
-  const rebuilder = new ReadModelRebuilder(db, timelineStore, readModelsToRebuild);
+  const rebuilder = new ReadModelRebuilder(rawDb, timelineStore, readModelsToRebuild);
 
   for (const row of workspaces) {
-    rebuilder.rebuildAll(row.id);
+    await rebuilder.rebuildAll(row.id);
   }
 
   console.log(`[Rebuild] Successfully rebuilt ${readModelsToRebuild.length} read models for ${workspaces.length} workspaces.`);
-  db.close();
+  rawDb.close();
 }
 
-function main() {
+async function main() {
   const args = process.argv.slice(2);
   let targetName = "";
   let verify = false;
@@ -64,7 +66,7 @@ function main() {
     verify = true;
   }
 
-  runRebuildReadModels(verify, targetName);
+  await runRebuildReadModels(verify, targetName);
 }
 
 import { fileURLToPath } from "url";

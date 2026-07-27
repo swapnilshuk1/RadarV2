@@ -22,8 +22,8 @@ export function normalizeCard(card: DetailedCard): NormalizedOpportunity {
   const company = (card.company || "Unknown Company").trim();
   const location = (card.location || "").trim();
   const scrapedFrom = card.portal || "Direct";
-  const applyUrl = card.detail?.applyUrl || card.detailUrl || "";
-  const postedRelative = card.postedRelative || "Posted recently";
+  const applyUrl = (card.detail as any)?.applyUrl || card.detailUrl || "";
+  const postedRelative = (card as any).postedRelative || "Posted recently";
 
   const rawSnippet = card.rawText || "";
   const rawDetailText = card.detail?.rawText || "";

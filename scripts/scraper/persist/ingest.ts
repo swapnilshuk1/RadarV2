@@ -4,12 +4,12 @@ import { KnowledgeGraphBuilder } from "../../../src/lib/intelligence/KnowledgeGr
 import { KnowledgeGraphIngestService } from "../../../src/lib/intelligence/KnowledgeGraphIngestService";
 import type { KnowledgeGraphBuildReport } from "../../../src/lib/intelligence/KnowledgeGraphBuilder";
 
-export function ingestIntoSqlite(
+export async function ingestIntoSqlite(
   card: DetailedCard, 
   extractionJson: string, 
   extractorVersion: string,
   persist: boolean = true
-): KnowledgeGraphBuildReport {
+): Promise<KnowledgeGraphBuildReport> {
   
   const runId = "run_" + new Date().toISOString().split("T")[0]; // Stub run ID for now
 
@@ -43,7 +43,7 @@ export function ingestIntoSqlite(
   const repos = getRepositories();
   const service = new KnowledgeGraphIngestService(repos);
   
-  const finalReport = service.ingest(graph, report);
+  const finalReport = await service.ingest(graph, report);
 
   // 3. Telemetry: OpportunityDiscovery
   // In a real run, executionId is passed down. For now, if we found new opportunities, log their discovery.

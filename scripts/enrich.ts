@@ -43,7 +43,7 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
     
     // 2. Ingest into SQLite
     const exStr = JSON.stringify(extraction);
-    const report = ingestIntoSqlite(detailedCard, exStr, EXTRACTOR_VERSION, true);
+    const report = await ingestIntoSqlite(detailedCard, exStr, EXTRACTOR_VERSION, true);
     
     if (report.warnings.length > 0) {
       log(`Ingestion warnings for ${job.id}: ${report.warnings.join(", ")}`, "warn");

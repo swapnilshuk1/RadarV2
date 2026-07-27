@@ -62,7 +62,7 @@ export class OpportunityInboxReadModel implements ReadModel {
     const rebuiltAt = new Date().toISOString();
     const updatedAt = event.occurredAt;
 
-    if (event.eventCategory === "Inbox" && event.eventType === "OpportunityInboxAdded") {
+    if ((event.eventCategory as string) === "Inbox" && event.eventType === "OpportunityInboxAdded") {
       const payload = JSON.parse(event.payloadJson);
       
       const checksum = this.calculateChecksum(this.version, event.eventVersion, payload);
