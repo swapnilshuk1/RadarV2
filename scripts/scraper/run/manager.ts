@@ -242,7 +242,8 @@ export class RunController {
     const validTransitions: Record<RunManifest["status"], RunManifest["status"][]> = {
       initializing: ["waiting_for_confirmation", "running", "failed", "aborted"],
       waiting_for_confirmation: ["running", "aborted"],
-      running: ["completed", "failed", "aborted"],
+      running: ["enriching", "completed", "failed", "aborted"],
+      enriching: ["completed", "failed", "aborted"],
       completed: [],
       failed: [],
       aborted: []

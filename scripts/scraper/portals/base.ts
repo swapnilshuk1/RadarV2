@@ -56,12 +56,28 @@ export async function getPortalContext(portal: PortalName): Promise<any> {
   ensureStealth();
   if (contextCache.has(portal)) return contextCache.get(portal);
   const userDataDir = profileDirFor(portal);
+  const isCloudEnv = !!(
+    process.env.RENDER ||
+    process.env.VERCEL ||
+    process.env.NETLIFY ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.CI ||
+    process.env.NODE_ENV === "production"
+  );
+  const isHeadless = process.env.HEADLESS ? process.env.HEADLESS === "true" : isCloudEnv;
+
   let ctx;
   try {
     ctx = await chromiumExtra.launchPersistentContext(userDataDir, {
-      headless: false,
+      headless: isHeadless,
       viewport: { width: 1280, height: 800 },
-      args: ["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+      args: [
+        "--disable-blink-features=AutomationControlled",
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
     });
   } catch (err: any) {
     const msg = err?.message ?? "";
