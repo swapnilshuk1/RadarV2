@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import type { 
   EvaluationEnvelope, 
   EvaluationResponse, 
@@ -29,11 +31,6 @@ export function loadDecisionPolicy(): DecisionPolicy {
 
   if (typeof window === "undefined" && typeof process !== "undefined" && process.cwd) {
     try {
-      const requireInstance = typeof require !== "undefined"
-        ? require
-        : eval("require('module')").createRequire(import.meta.url);
-      const fs = requireInstance("fs");
-      const path = requireInstance("path");
       const policyPath = path.resolve(process.cwd(), "config", "decision_policy_v1.json");
       if (fs.existsSync(policyPath)) {
         const content = fs.readFileSync(policyPath, "utf8");

@@ -17,6 +17,8 @@
  * - Consumes ExtractionResult dimensions only
  */
 
+import fs from "fs";
+import path from "path";
 import type {
   CandidateProfile,
   OpportunityAssessment,
@@ -318,11 +320,6 @@ export class DeterministicScorer {
 
     if (typeof window === "undefined" && typeof process !== "undefined" && process.cwd) {
       try {
-        const requireInstance = typeof require !== "undefined"
-          ? require
-          : eval("require('module')").createRequire(import.meta.url);
-        const fs = requireInstance("fs");
-        const path = requireInstance("path");
         const configPath = path.resolve(process.cwd(), "config", "calibration_coefficients.json");
         if (fs.existsSync(configPath)) {
           const content = fs.readFileSync(configPath, "utf8");
