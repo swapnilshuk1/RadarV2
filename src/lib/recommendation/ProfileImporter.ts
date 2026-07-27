@@ -7,25 +7,17 @@
  * Usage: run once at setup time or when the profile changes.
  */
 
+import fs from "fs";
+import path from "path";
 import yaml from "js-yaml";
 import type { CandidateProfile } from "../../domain/entities";
 
 function getNodeFs() {
-  if (typeof window !== "undefined") return null;
-  try {
-    return typeof require !== "undefined" ? require("fs") : null;
-  } catch {
-    return null;
-  }
+  return fs;
 }
 
 function getNodePath() {
-  if (typeof window !== "undefined") return null;
-  try {
-    return typeof require !== "undefined" ? require("path") : null;
-  } catch {
-    return null;
-  }
+  return path;
 }
 
 function generateUUID(): string {
