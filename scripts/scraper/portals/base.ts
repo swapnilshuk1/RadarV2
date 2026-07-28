@@ -71,6 +71,10 @@ export async function getPortalContext(portal: PortalName): Promise<any> {
     ctx = await chromiumExtra.launchPersistentContext(userDataDir, {
       headless: isHeadless,
       viewport: { width: 1280, height: 800 },
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      extraHTTPHeaders: {
+        "Accept-Language": "en-US,en;q=0.9",
+      },
       args: [
         "--disable-blink-features=AutomationControlled",
         "--no-sandbox",

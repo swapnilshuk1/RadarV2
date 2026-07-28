@@ -71,8 +71,9 @@ export const indeedHandler: PortalHandler = {
          await dumpFailureArtifacts(ctx.runId, ctx.portal, page, e.message);
       });
 
+      const maxCards = CONFIG.getMaxCardsPerPage("Indeed");
       const cards = await page.locator(CARD_SELECTORS).all();
-      const sliced = cards.slice(0, CONFIG.maxCardsPerPage);
+      const sliced = cards.slice(0, maxCards);
       for (const card of sliced) {
         try {
           const title = ((await card.locator("h2.jobTitle, .jobTitle, [class*='jobTitle']").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();

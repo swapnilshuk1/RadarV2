@@ -24,8 +24,9 @@ export const naukriHandler: PortalHandler = {
       await page.waitForLoadState("load", { timeout: 10000 }).catch(() => {});
       await sleep(2500);
       
-      const title = await page.title().catch(() => "unknown");
-      if (!title || title === "unknown" || title.includes("Just a moment") || title.includes("Access Denied")) {
+      const title = (await page.title().catch(() => "")) || "";
+      const isExplicitBlock = title.includes("Just a moment") || title.includes("Access Denied") || title.includes("Attention Required");
+      if (isExplicitBlock) {
         ctx.logger(`Naukri session probe failed: Blocked by bot-protection (Title: ${title})`);
         return "error";
       }
@@ -48,6 +49,11 @@ export const naukriHandler: PortalHandler = {
       "[class*='job-tuple']",
       ".srp-jobtuple-wrapper",
       ".cust-job-tuple",
+      "div[data-job-id]",
+      "div.tuple",
+      "div[class*='tuple']",
+      "[class*='styles_jcard']",
+      "[class*='jobCard']",
     ].join(", ");
 
     try {
@@ -56,13 +62,16 @@ export const naukriHandler: PortalHandler = {
       ctx.logger(`Goto completed in ${Date.now() - startGoto}ms`);
       ctx.logger(`Post-nav URL: ${page.url()}`);
       
-      const title = await page.title().catch(() => "unknown");
-      ctx.logger(`Page title: ${title}`);
-      if (!title || title === "unknown" || title.includes("Just a moment") || title.includes("Access Denied")) {
-        throw new Error("Portal blocked by Cloudflare/Akamai or empty response");
+      const title = (await page.title().catch(() => "")) || "";
+      ctx.logger(`Page title: "${title}"`);
+      const isExplicitBlock = title.includes("Just a moment") || title.includes("Access Denied") || title.includes("Attention Required");
+      if (isExplicitBlock) {
+        throw new Error(`Portal blocked by Cloudflare/Akamai challenge page (Title: ${title})`);
       }
 
       await humanize(page);
+      await page.evaluate(() => window.scrollBy(0, 400)).catch(() => {});
+      await sleep(1000);
 
       // Wait for at least one card to appear in the DOM.
       ctx.logger(`Waiting for selector: ${CARD_SELECTORS}`);
@@ -73,8 +82,9 @@ export const naukriHandler: PortalHandler = {
          await dumpFailureArtifacts(ctx.runId, ctx.portal, page, e.message);
       });
 
+      const maxCards = CONFIG.getMaxCardsPerPage("Naukri");
       const cards = await page.locator(CARD_SELECTORS).all();
-      const sliced = cards.slice(0, CONFIG.maxCardsPerPage);
+      const sliced = cards.slice(0, maxCards);
       for (const card of sliced) {
         try {
           const titleEl = card.locator("a.title, [class*='title'] a, a[class*='title']").first();
