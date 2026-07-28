@@ -209,11 +209,13 @@ function Shortlist() {
         </div>
 
         <ul className="divide-y divide-border border-y border-border">
-          {visible.map((o) => (
+          {visible.map((o, idx) => (
             <li key={o.jobHash} className="transition-colors">
               <SwipeableRow onDecide={(verb) => decide(o.jobHash, verb)}>
                 <Row
                   o={o}
+                  index={idx + 1}
+                  total={remaining.length}
                   isOpen={open === o.jobHash}
                   onToggle={() => setOpen(open === o.jobHash ? null : o.jobHash)}
                   onDecide={(verb) => decide(o.jobHash, verb)}
@@ -245,11 +247,15 @@ function Shortlist() {
 
 function Row({
   o,
+  index,
+  total,
   isOpen,
   onToggle,
   onDecide,
 }: {
   o: Opportunity;
+  index: number;
+  total: number;
   isOpen: boolean;
   onToggle: () => void;
   onDecide: (verb: DecisionVerb) => void;
@@ -258,7 +264,12 @@ function Row({
   const mandateTag = o.mandateArchetype || "Performance Marketing";
 
   return (
-    <div onClick={onToggle} className="cursor-pointer group">
+    <div
+      onClick={onToggle}
+      className={`cursor-pointer group transition-all duration-200 ${
+        isOpen ? "bg-muted/30 border-l-4 border-foreground py-2 my-2 rounded-sm shadow-sm" : ""
+      }`}
+    >
       <button
         type="button"
         onClick={(e) => {
@@ -268,41 +279,43 @@ function Row({
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
         aria-expanded={isOpen}
-        className="w-full py-6 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors group-hover:bg-muted/20 px-2 cursor-pointer"
+        className="w-full py-3.5 sm:py-4 text-left flex items-center justify-between gap-3 transition-colors group-hover:bg-muted/20 px-2.5 cursor-pointer"
       >
-        <div className="flex items-start gap-4 min-w-0 flex-1">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className="display text-[18px] sm:text-[20px] font-medium text-foreground leading-snug tracking-tight">
-                {o.role}
+        <div className="min-w-0 flex-1">
+          {/* Row 1: Role Title + Badges */}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="display text-[15px] sm:text-[18px] font-semibold text-foreground leading-snug tracking-tight truncate">
+              {o.role}
+            </span>
+            <div className="inline-flex items-center gap-1.5 shrink-0">
+              <DecisionBadge verb={o.decision} size="sm" />
+              <span className="mono text-[9px] tracking-[0.14em] text-accent-ink bg-accent-ink/8 px-1.5 py-0.5 rounded-sm uppercase font-semibold hidden sm:inline-block">
+                {mandateTag}
               </span>
-              <div className="inline-flex items-center gap-2 shrink-0">
-                <DecisionBadge verb={o.decision} size="sm" />
-                <span className="mono text-[10px] tracking-[0.18em] text-accent-ink bg-accent-ink/8 px-2 py-0.5 rounded-sm uppercase font-semibold">
-                  {mandateTag}
-                </span>
-              </div>
             </div>
-            <p className="mt-1.5 text-[14px] text-muted-foreground font-normal">
-              <span className="text-foreground font-medium">{o.company}</span> · {o.location} ·{" "}
-              <span className="mono text-[11px] uppercase tracking-wider">{o.scrapedFrom} · {o.postedRelative}</span>
-            </p>
           </div>
+
+          {/* Row 2: Company • Location • Portal • Relative Date */}
+          <p className="mt-1 text-[12px] sm:text-[13px] text-muted-foreground font-normal truncate">
+            <span className="text-foreground font-medium">{o.company}</span> · {o.location} ·{" "}
+            <span className="mono text-[10px] uppercase tracking-wider">{o.scrapedFrom} · {o.postedRelative}</span>
+          </p>
         </div>
 
-        <div className="flex items-center gap-6 shrink-0 self-end sm:self-center">
+        {/* Priority Score & Expand Chevron */}
+        <div className="flex items-center gap-3 sm:gap-5 shrink-0">
           <div className="text-right">
-            <span className="mono text-[9.5px] tracking-[0.2em] text-muted-foreground uppercase font-bold block">
+            <span className="mono text-[8.5px] sm:text-[9.5px] tracking-[0.18em] text-muted-foreground uppercase font-bold block">
               PRIORITY
             </span>
-            <span className="display text-[22px] font-bold text-foreground tabular-nums leading-none">
-              {score}<span className="mono text-[10px] text-muted-foreground font-normal">/100</span>
+            <span className="display text-[18px] sm:text-[22px] font-bold text-foreground tabular-nums leading-none">
+              {score}<span className="mono text-[9px] sm:text-[10px] text-muted-foreground font-normal">/100</span>
             </span>
           </div>
 
           <span
             aria-hidden
-            className={`mono text-[18px] text-muted-foreground transition-transform duration-300 ${
+            className={`mono text-[16px] sm:text-[18px] text-muted-foreground transition-transform duration-300 ${
               isOpen ? "rotate-45 text-foreground font-bold" : "rotate-0 group-hover:text-foreground"
             }`}
           >
@@ -312,22 +325,33 @@ function Row({
       </button>
 
       {isOpen && (
-        <div className="pb-8 pt-2 px-2 animate-fade-in" onClick={(e) => e.stopPropagation()}>
-          <div className="border-l-2 border-foreground/10 pl-4 sm:pl-6 my-3 ml-2 transition-all">
+        <div className="pb-4 pt-1 px-2.5 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+          <div className="border-l-2 border-foreground/15 pl-3 sm:pl-5 my-1 transition-all">
+            {/* Active Focus Header Badge */}
+            <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-border/50">
+              <span className="mono text-[10px] sm:text-[11px] font-bold tracking-[0.16em] uppercase text-foreground bg-foreground/10 px-2.5 py-1 rounded-sm">
+                Reviewing {index} of {total}
+              </span>
+              <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase font-semibold">
+                ACTIVE FOCUS
+              </span>
+            </div>
+
             <InlineBrief opportunity={o} />
 
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-border/60 pt-5">
+            {/* Inline Sticky Decision Bar */}
+            <div className="sticky bottom-0 z-20 bg-background/95 backdrop-blur-md py-3 px-1 mt-4 border-t border-border/80 flex flex-wrap items-center justify-between gap-3 shadow-sm">
               <div className="flex items-center gap-2">
-                <span className="mono text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-bold mr-2">
-                  YOUR DECISION
+                <span className="mono text-[9.5px] sm:text-[10px] tracking-[0.18em] uppercase text-muted-foreground font-bold mr-1">
+                  YOUR DECISION:
                 </span>
                 <DecideButton verb="PURSUE" onClick={() => onDecide("PURSUE")} />
                 <DecideButton verb="CONSIDER" onClick={() => onDecide("CONSIDER")} />
                 <DecideButton verb="PASS" onClick={() => onDecide("PASS")} />
               </div>
 
-              <span className="mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
-                DECIDING REMOVES THIS BRIEF &amp; PULLS NEXT FROM QUEUE
+              <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase hidden sm:inline">
+                PULLS NEXT BRIEF FROM QUEUE
               </span>
             </div>
           </div>
