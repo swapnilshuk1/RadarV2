@@ -1,15 +1,24 @@
-import { createRequire } from "module";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const req = createRequire(import.meta.url);
+function getReq() {
+  if (typeof window !== "undefined") return null;
+  try {
+    const mod = eval('require("module")');
+    return mod && mod.createRequire ? mod.createRequire(import.meta.url) : null;
+  } catch {
+    return null;
+  }
+}
 
 export function runMigrations(dbPath: string) {
   if (typeof window !== "undefined") return;
 
   try {
     let DatabaseConstructor: any;
+    const req = getReq();
+    if (!req) return;
     try {
       DatabaseConstructor = req("better-sqlite3");
     } catch {

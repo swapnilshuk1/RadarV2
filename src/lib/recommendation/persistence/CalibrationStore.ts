@@ -1,9 +1,16 @@
 import fs from "fs";
 import path from "path";
-import { createRequire } from "module";
 import type { PolicyComparison } from "../RecommendationPolicy";
 
-const req = createRequire(import.meta.url);
+function getReq() {
+  if (typeof window !== "undefined") return null;
+  try {
+    const mod = eval('require("module")');
+    return mod && mod.createRequire ? mod.createRequire(import.meta.url) : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface CalibrationRunMetadata {
   id: string;
@@ -25,12 +32,17 @@ export class CalibrationStore {
   private db: any = null;
 
   constructor() {
+    if (typeof window !== "undefined") return;
+
     try {
       const dbPath = path.resolve(process.cwd(), "radar.sqlite");
       let DatabaseConstructor: any = null;
-      try {
-        DatabaseConstructor = req("better-sqlite3");
-      } catch {}
+      const req = getReq();
+      if (req) {
+        try {
+          DatabaseConstructor = req("better-sqlite3");
+        } catch {}
+      }
       if (DatabaseConstructor) {
         this.db = new DatabaseConstructor(dbPath);
         this.initializeTables();

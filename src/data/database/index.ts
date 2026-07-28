@@ -3,14 +3,22 @@ import { SqliteAdapter } from "./sqlite";
 import { TursoAdapter } from "./turso";
 import path from "path";
 import fs from "fs";
-import { createRequire } from "module";
 
-const req = createRequire(import.meta.url);
+function getReq() {
+  if (typeof window !== "undefined") return null;
+  try {
+    const mod = eval('require("module")');
+    return mod && mod.createRequire ? mod.createRequire(import.meta.url) : null;
+  } catch {
+    return null;
+  }
+}
 
 let _cachedAdapter: DatabaseAdapter | null = null;
 let _hasLoggedStartup = false;
 
 function loadEnvFile(fileBasename: string) {
+  if (typeof window !== "undefined") return;
   try {
     const envPath = path.resolve(process.cwd(), fileBasename);
     if (fs.existsSync(envPath)) {
@@ -69,9 +77,12 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
   // Fallback to SQLite (better-sqlite3)
   try {
     let DatabaseConstructor: any = null;
-    try {
-      DatabaseConstructor = req("better-sqlite3");
-    } catch {}
+    const req = getReq();
+    if (req) {
+      try {
+        DatabaseConstructor = req("better-sqlite3");
+      } catch {}
+    }
 
     if (!DatabaseConstructor) {
       throw new Error("better-sqlite3 module unavailable in this environment");

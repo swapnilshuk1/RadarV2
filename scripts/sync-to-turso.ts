@@ -25,6 +25,7 @@ function loadEnvFile(fileBasename: string) {
 
 // Load env files
 loadEnvFile(".env");
+loadEnvFile(".env.local");
 loadEnvFile("gemini.env");
 loadEnvFile("groq.env");
 
@@ -63,7 +64,8 @@ async function sync() {
     for (const table of tables) {
       if (table.sql) {
         console.log(`  └─ Ensuring schema for table: ${table.name}`);
-        await turso.execute(table.sql);
+        const safeSql = table.sql.replace(/^CREATE TABLE /i, "CREATE TABLE IF NOT EXISTS ");
+        await turso.execute(safeSql);
       }
     }
 
@@ -77,9 +79,6 @@ async function sync() {
 
       console.log(`  └─ Syncing ${rows.length} rows for table: ${table.name}...`);
 
-      // Clear existing records in Turso table to perform full clean sync
-      await turso.execute(`DELETE FROM "${table.name}"`);
-
       // Batch insert rows in chunks of 50
       const chunkSize = 50;
       for (let i = 0; i < rows.length; i += chunkSize) {
@@ -90,7 +89,7 @@ async function sync() {
           const placeholders = keys.map(() => "?").join(", ");
           const args = keys.map(k => row[k]);
           return {
-            sql: `INSERT INTO "${table.name}" (${cols}) VALUES (${placeholders})`,
+            sql: `INSERT OR REPLACE INTO "${table.name}" (${cols}) VALUES (${placeholders})`,
             args
           };
         });
