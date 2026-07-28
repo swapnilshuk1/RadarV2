@@ -98,6 +98,7 @@ export const linkedinHandler: PortalHandler = {
         ".jobs-search-results-list",
         ".scaffold-layout__list-container",
         "div.jobs-search-results__list",
+        "ul.jobs-search__results-list",
         ".jobs-search-results",
         "main",
       ];
@@ -109,8 +110,8 @@ export const linkedinHandler: PortalHandler = {
           cardSelector,
           containerSelectors,
           targetCards: targetMaxCards,
-          maxPasses: 6,
-          consecutiveStableLimit: 2,
+          maxPasses: 15,
+          consecutiveStableLimit: 3,
         },
         ctx.logger
       );

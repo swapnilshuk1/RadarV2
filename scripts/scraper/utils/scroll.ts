@@ -76,28 +76,42 @@ export async function hydrateVirtualizedList(
   for (let pass = 1; pass <= maxPasses; pass++) {
     passesCompleted = pass;
 
-    // 1. Scroll the last rendered card into view (forces Playwright to scroll whichever ancestor container wraps it)
+    // 1. Target the last card element
     const cardsLocator = page.locator(cardSelector);
     const countBeforeScroll = await cardsLocator.count().catch(() => 0);
+    
     if (countBeforeScroll > 0) {
-      await cardsLocator.nth(countBeforeScroll - 1).scrollIntoViewIfNeeded().catch(() => {});
+      const lastCard = cardsLocator.nth(countBeforeScroll - 1);
+      
+      // Hover on the last card to trigger any hover-based loading listeners
+      await lastCard.hover().catch(() => {});
+      
+      // Scroll it into view
+      await lastCard.scrollIntoViewIfNeeded().catch(() => {});
+
+      // Use the mouse wheel to scroll over the last card - this is often more effective
+      // than setting scrollTop directly as it triggers native "wheel" and "scroll" events.
+      const box = await lastCard.boundingBox().catch(() => null);
+      if (box) {
+        await page.mouse.wheel(0, 800);
+      }
     }
 
-    // 2. Also scroll container and window incrementally with synthetic scroll events
+    // 2. Fallback: synthetic scroll events on container and window
     if (containerLocator) {
       await containerLocator.evaluate((el) => {
-        el.scrollTop += (el.clientHeight || 600);
+        el.scrollTop += (el.clientHeight || 800);
         el.dispatchEvent(new Event('scroll', { bubbles: true }));
       }).catch(() => {});
     }
 
     await page.evaluate(() => {
-      window.scrollBy(0, 600);
+      window.scrollBy(0, 800);
       window.dispatchEvent(new Event('scroll', { bubbles: true }));
     }).catch(() => {});
 
-    // Jitter delay for DOM rendering & IntersectionObserver triggers
-    await jitter(600, 1000);
+    // Longer jitter delay to allow LinkedIn's API to respond and DOM to hydrate
+    await jitter(800, 1500);
 
     // Re-count cards
     currentCards = await page.locator(cardSelector).count().catch(() => 0);
