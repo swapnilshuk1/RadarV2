@@ -692,13 +692,13 @@ function Brief() {
             ──────────────────────────────────────────────────────────────────────── */}
         <div className="my-8 border-t border-b border-border py-4 flex flex-wrap items-center justify-between gap-3 text-muted-foreground mono text-[11px] tracking-[0.18em]">
           <div>
-            Generated: <span className="text-foreground font-bold">29 Jul 2026</span>
+            Generated: <span className="text-foreground font-bold">{new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
           </div>
           <div>
             Confidence: <span className="text-pursue font-bold">{certaintyPct}%</span>
           </div>
           <div>
-            Evidence: <span className="text-foreground font-bold">284 verified signals</span>
+            Evidence: <span className="text-foreground font-bold">{o.dimensions.reduce((acc, d) => acc + (d.jdEvidence?.evidence?.length || 0), 0) + o.dimensions.filter(d => d.jdEvidence?.value !== null).length} verified signals</span>
           </div>
         </div>
 
