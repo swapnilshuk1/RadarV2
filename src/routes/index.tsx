@@ -128,7 +128,7 @@ function Shortlist() {
           LIVE PIPELINE METADATA STRIP
           ──────────────────────────────────────────────────────────────────────── */}
       <div className="border-b border-border/80 bg-muted/20">
-        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-4 px-4 sm:px-8 py-2.5 font-mono text-[11px]">
+        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3 px-3 sm:px-8 py-2.5 font-mono text-[10px] sm:text-[11px]">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-muted-foreground">
             <span>
               <span className="font-bold text-foreground tabular-nums">{totalScraped}</span> SCRAPED

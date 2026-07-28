@@ -141,17 +141,17 @@ function GlobalHeader() {
 
   return (
     <header className="border-b border-hairline bg-parchment/85 sticky top-0 z-50 backdrop-blur-md">
-      <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 sm:gap-6 px-4 sm:px-8 py-4 sm:py-5">
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <Link to="/" className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.32em] text-ink hover:opacity-80 transition-opacity">
+      <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-2 sm:gap-6 px-3 sm:px-8 py-3 sm:py-4">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Link to="/" className="font-mono text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.32em] text-ink hover:opacity-80 transition-opacity">
             RADAR
           </Link>
-          <span className="text-ink-muted">·</span>
-          <span className="text-[11px] sm:text-[12px] uppercase tracking-[0.12em] sm:tracking-[0.16em] text-ink-muted font-medium truncate max-w-[100px] xs:max-w-[140px] sm:max-w-none">
+          <span className="text-ink-muted hidden sm:inline">·</span>
+          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.12em] text-ink-muted font-medium truncate hidden sm:inline max-w-[140px] md:max-w-none">
             {pageName}
           </span>
         </div>
-        <div className="flex items-center gap-3 sm:gap-6 text-[11px] sm:text-[11.5px]">
+        <div className="flex items-center gap-2 sm:gap-5 text-[10px] sm:text-[11.5px] font-mono shrink-0">
           <span className="hidden md:inline mr-1 text-[12px] text-ink-muted">
             <Link to="/profile" className="hover:text-ink transition-colors">
               👤 {signature}
@@ -161,8 +161,8 @@ function GlobalHeader() {
             to="/"
             className={
               isSelected("/")
-                ? "font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/40 pb-0.5"
-                : "font-medium uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/80 pb-0.5"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
             }
           >
             Shortlist
@@ -171,8 +171,8 @@ function GlobalHeader() {
             to="/profile"
             className={
               isSelected("/profile")
-                ? "font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/40 pb-0.5"
-                : "font-medium uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/80 pb-0.5"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
             }
           >
             Profile
@@ -181,8 +181,8 @@ function GlobalHeader() {
             to="/decisions"
             className={
               isSelected("/decisions")
-                ? "font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/40 pb-0.5"
-                : "font-medium uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/80 pb-0.5"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
             }
           >
             Decisions
@@ -191,8 +191,8 @@ function GlobalHeader() {
             to="/corpus"
             className={
               isSelected("/corpus")
-                ? "font-semibold uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/40 pb-0.5"
-                : "font-medium uppercase tracking-[0.12em] sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/80 pb-0.5"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
             }
           >
             Corpus
