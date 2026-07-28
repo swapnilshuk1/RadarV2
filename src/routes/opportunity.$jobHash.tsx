@@ -12,8 +12,15 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: ({ params }) => {
     const opportunity = OpportunityProvider.get(params.jobHash);
     if (!opportunity) throw notFound();
+    const list = OpportunityProvider.list();
+    const index = list.findIndex((o) => o.jobHash === params.jobHash);
     const neighbors = OpportunityProvider.neighbours(params.jobHash);
-    return { opportunity, neighbors };
+    return {
+      opportunity,
+      neighbors,
+      currentIndex: index >= 0 ? index + 1 : 1,
+      totalCount: list.length || 1,
+    };
   },
   head: ({ loaderData }) => {
     if (!loaderData) {
@@ -33,7 +40,7 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
 });
 
 function Brief() {
-  const { opportunity: o, neighbors } = Route.useLoaderData();
+  const { opportunity: o, neighbors, currentIndex, totalCount } = Route.useLoaderData();
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [envelope, setEnvelope] = useState<EvaluationEnvelope | null>(null);
 
@@ -121,8 +128,18 @@ function Brief() {
           </Link>
 
           <div className="flex items-center gap-3 sm:gap-6">
-            <span className="mono text-[11px] tracking-[0.2em] text-muted-foreground hidden md:inline">
-              BRIEF <span className="text-foreground font-bold">05</span> / 06
+            <span className="mono text-[11px] tracking-[0.2em] text-muted-foreground hidden md:inline-flex items-center gap-2">
+              REVIEWING <span className="text-foreground font-bold">{String(currentIndex).padStart(2, "0")}</span> OF {String(totalCount).padStart(2, "0")}
+              <span className="flex items-center gap-1 ml-1">
+                {Array.from({ length: totalCount }).slice(0, 8).map((_, idx) => (
+                  <span
+                    key={idx}
+                    className={`h-1.5 w-3 rounded-xs transition-colors ${
+                      idx < currentIndex ? "bg-pursue" : "bg-border"
+                    }`}
+                  />
+                ))}
+              </span>
             </span>
             <div className="flex items-center gap-1.5">
               {neighbors.prev ? (
@@ -170,171 +187,132 @@ function Brief() {
           ARTICLE MAIN CONTAINER
           ──────────────────────────────────────────────────────────────────────── */}
       <article className="max-w-[1180px] mx-auto px-4 sm:px-8 pt-8 sm:pt-12">
-        {/* HEADER */}
+        {/* HEADER & HERO RECOMMENDATION BOX */}
         <header className="border-b border-border pb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="mono text-[10px] tracking-[0.22em] text-accent-ink bg-accent-ink/8 px-2.5 py-1 rounded-sm uppercase font-semibold">
-              {mandateTag}
-            </span>
-            <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground uppercase">
-              {o.scrapedFrom} · {o.postedRelative.toUpperCase()}
-            </span>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="lg:col-span-8">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <span className="mono text-[10px] tracking-[0.22em] text-accent-ink bg-accent-ink/8 px-2.5 py-1 rounded-sm uppercase font-semibold">
+                  {mandateTag}
+                </span>
+                <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground uppercase">
+                  {o.scrapedFrom} · {o.postedRelative.toUpperCase()}
+                </span>
+                <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground bg-muted/40 border border-border px-2 py-0.5 rounded-sm uppercase">
+                  201–500 EMPLOYEES · TECHNOLOGY
+                </span>
+              </div>
 
-          <h1 className="display text-[32px] sm:text-[56px] leading-[1.08] text-foreground font-semibold">
-            {o.role}
-          </h1>
+              <h1 className="display text-[32px] sm:text-[52px] leading-[1.08] text-foreground font-semibold">
+                {o.role}
+              </h1>
 
-          <div className="mt-3 flex items-center gap-3 text-[14.5px]">
-            <span className="text-foreground font-semibold">{o.company}</span>
-            <span className="text-border">·</span>
-            <span className="text-muted-foreground">{o.location}</span>
+              <div className="mt-3 flex items-center gap-3 text-[14.5px]">
+                <span className="text-foreground font-semibold">{o.company}</span>
+                <span className="text-border">·</span>
+                <span className="text-muted-foreground">{o.location}</span>
+              </div>
+
+              <p className="mt-4 text-[15px] sm:text-[16px] text-muted-foreground leading-relaxed max-w-2xl font-normal">
+                Targeted executive opportunity in {o.role} capacity, aligned with your marketing growth and digital-stack precedents.
+              </p>
+            </div>
+
+            {/* HERO RECOMMENDATION BOX */}
+            <div className="lg:col-span-4 border border-border bg-card/60 p-5 rounded-md shadow-2xs">
+              <div className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-2">
+                RADAR RECOMMENDATION
+              </div>
+              <div className="flex items-center gap-2 text-pursue mb-2">
+                <span className="text-[22px] font-bold">✔</span>
+                <span className="display text-[26px] font-bold tracking-tight">{currentVerdict}</span>
+              </div>
+              <p className="text-[13px] text-muted-foreground leading-relaxed">
+                This opportunity0 meaningfully advances your executive trajectory with manageable application effort.
+              </p>
+            </div>
           </div>
         </header>
 
         {/* ────────────────────────────────────────────────────────────────────────
-            EXECUTIVE SUMMARY & RECOMMENDATION
+            4-CARD QUANTITATIVE KPI METRIC STRIP
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-10 border-b border-border">
-          <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground mb-5 font-semibold uppercase">
-            Executive summary &amp; recommendation
-          </p>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-            {/* Core Conclusion Sentence */}
-            <div className="lg:col-span-7">
-              <p className="text-[17px] sm:text-[20px] leading-[1.45] text-foreground font-medium">
-                <MarkdownRenderer content={o.recommendation} isHero={false} />
+        <section className="py-8 border-b border-border">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="border border-border/80 bg-muted/15 p-5 rounded-md">
+              <div className="flex items-baseline gap-1">
+                <span className="display text-[36px] sm:text-[44px] leading-none tabular-nums text-foreground font-bold">
+                  {score}
+                </span>
+                <span className="mono text-[12px] text-muted-foreground">/100</span>
+              </div>
+              <p className="mono text-[10px] tracking-[0.2em] text-foreground mt-2 uppercase font-bold">
+                PRIORITY
               </p>
-
-              <div className="mt-5 flex items-center gap-3">
-                <span className="mono text-[10px] tracking-[0.22em] text-primary-foreground bg-foreground px-2.5 py-1 rounded-sm uppercase font-bold">
-                  VERDICT · {currentVerdict}
-                </span>
-                <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground uppercase font-medium">
-                  {archetype.toUpperCase()} PATH
-                </span>
-              </div>
+              <p className="text-[12px] text-muted-foreground mt-0.5">High opportunity fit</p>
             </div>
 
-            {/* Metrics Panel (NUMBERS FIRST, Labels Below) */}
-            <div className="lg:col-span-5 grid grid-cols-3 gap-4 sm:gap-6 lg:border-l border-border lg:pl-8 pt-6 lg:pt-0 border-t lg:border-t-0">
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="display text-[38px] sm:text-[46px] leading-none tabular-nums text-foreground font-bold">
-                    {score}
-                  </span>
-                  <span className="mono text-[12px] text-muted-foreground">/100</span>
-                </div>
-                <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground mt-2 uppercase font-semibold">
-                  Priority
-                </p>
+            <div className="border border-border/80 bg-muted/15 p-5 rounded-md">
+              <div className="flex items-baseline gap-1">
+                <span className="display text-[36px] sm:text-[44px] leading-none tabular-nums text-pursue font-bold">
+                  {certaintyPct}
+                </span>
+                <span className="mono text-[12px] text-muted-foreground">%</span>
               </div>
+              <p className="mono text-[10px] tracking-[0.2em] text-foreground mt-2 uppercase font-bold">
+                CONFIDENCE
+              </p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">In assessment</p>
+            </div>
 
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="display text-[38px] sm:text-[46px] leading-none tabular-nums text-pursue font-bold">
-                    {certaintyPct}
-                  </span>
-                  <span className="mono text-[12px] text-muted-foreground">%</span>
-                </div>
-                <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground mt-2 uppercase font-semibold">
-                  Certainty
-                </p>
+            <div className="border border-border/80 bg-muted/15 p-5 rounded-md">
+              <div className="display text-[36px] sm:text-[44px] leading-none text-foreground font-bold">
+                {tailoringEffort}
               </div>
+              <p className="mono text-[10px] tracking-[0.2em] text-foreground mt-2 uppercase font-bold">
+                EFFORT
+              </p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">~{estimatedTimeText} to apply</p>
+            </div>
 
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="display text-[38px] sm:text-[46px] leading-none tabular-nums text-foreground font-bold">
-                    {tailoringEffort}
-                  </span>
-                </div>
-                <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground mt-2 uppercase font-semibold">
-                  Tailoring effort
-                </p>
+            <div className="border border-border/80 bg-muted/15 p-5 rounded-md">
+              <div className="display text-[36px] sm:text-[44px] leading-none text-pursue font-bold">
+                HIGH
               </div>
+              <p className="mono text-[10px] tracking-[0.2em] text-foreground mt-2 uppercase font-bold">
+                SHORTLIST PROBABILITY
+              </p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">Based on role fit &amp; signals</p>
             </div>
           </div>
 
-          {/* Primary Driver & Primary Risk Cards */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="border-l-2 border-pursue/60 pl-4 py-1.5 bg-pursue-soft/20 rounded-r-md">
+          {/* 3-CARD ROW: PRIMARY DRIVER / PRIMARY RISK / APPLICATION EFFORT */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="border-l-2 border-pursue/60 pl-4 py-2 bg-pursue-soft/20 rounded-r-md">
               <div className="flex items-center gap-2 text-pursue">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-3.5 w-3.5 shrink-0"
-                >
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-                <span className="mono text-[10px] tracking-[0.22em] font-bold">PRIMARY DRIVER</span>
+                <span className="mono text-[10px] tracking-[0.22em] font-bold">✔ PRIMARY DRIVER</span>
               </div>
-              <p className="mt-1 text-[14.5px] text-foreground font-medium">{primaryDriver}</p>
+              <p className="mt-1 text-[14px] text-foreground font-medium">{primaryDriver}</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">Strong alignment with proven strategies.</p>
             </div>
 
-            <div className="border-l-2 border-consider/60 pl-4 py-1.5 bg-consider-soft/20 rounded-r-md">
+            <div className="border-l-2 border-consider/60 pl-4 py-2 bg-consider-soft/20 rounded-r-md">
               <div className="flex items-center gap-2 text-consider">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-3.5 w-3.5 shrink-0"
-                >
-                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
-                  <path d="M12 9v4" />
-                  <path d="M12 17h.01" />
-                </svg>
-                <span className="mono text-[10px] tracking-[0.22em] font-bold">PRIMARY RISK</span>
+                <span className="mono text-[10px] tracking-[0.22em] font-bold">▲ PRIMARY RISK</span>
               </div>
-              <p className="mt-1 text-[14.5px] text-foreground font-medium">{primaryRisk}</p>
-            </div>
-          </div>
-
-          {/* ────────────────────────────────────────────────────────────────────────
-              NEW: APPLICATION EFFORT / TIME INVESTMENT CARD
-              ──────────────────────────────────────────────────────────────────────── */}
-          <div className="mt-6 border border-border/80 bg-muted/20 rounded-md p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <div className="flex items-center gap-2">
-                <span className="mono text-[10px] tracking-[0.22em] text-accent-ink bg-accent-ink/10 px-2 py-0.5 rounded-sm font-bold uppercase">
-                  APPLICATION EFFORT
-                </span>
-                <span className="text-[14px] text-foreground font-semibold">
-                  {tailoringEffort} IMPACT
-                </span>
-              </div>
-              <span className="mono text-[11px] tracking-[0.16em] text-foreground font-bold bg-background border border-border px-3 py-1 rounded-sm">
-                ESTIMATED TIME: {estimatedTimeText.toUpperCase()}
-              </span>
+              <p className="mt-1 text-[14px] text-foreground font-medium">{primaryRisk}</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">Verify decision-making scope in screening.</p>
             </div>
 
-            <p className="text-[13px] text-muted-foreground leading-relaxed mb-3">
-              Answers the key executive question: <span className="text-foreground font-medium">Is this opportunity worth your time today?</span>
-            </p>
-
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]">
-              <span className="inline-flex items-center gap-1.5 text-pursue font-medium">
-                <span className="text-[12px]">✓</span> Resume ready
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-pursue font-medium">
-                <span className="text-[12px]">✓</span> Cover letter optional
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-pursue font-medium">
-                <span className="text-[12px]">✓</span> Direct evidence match
-              </span>
+            <div className="border-l-2 border-accent-ink/60 pl-4 py-2 bg-accent-ink/10 rounded-r-md">
+              <div className="flex flex-wrap items-center justify-between gap-1 text-accent-ink">
+                <span className="mono text-[10px] tracking-[0.22em] font-bold">APPLICATION EFFORT</span>
+                <span className="mono text-[9px] tracking-[0.14em] text-foreground font-semibold">EST. {estimatedTimeText.toUpperCase()}</span>
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-foreground font-medium">
+                <span>✓ Resume ready</span>
+                <span>✓ Cover letter optional</span>
+              </div>
             </div>
           </div>
         </section>
@@ -491,91 +469,139 @@ function Brief() {
           </div>
 
           {trajectoryOpen && (
-            <div className="mt-6 space-y-6">
-              <p className="text-[15px] leading-relaxed text-foreground max-w-3xl font-normal">
+            <div className="mt-6">
+              <p className="text-[15px] leading-relaxed text-foreground max-w-3xl font-normal mb-6">
                 {envelope?.response.growth.careerAlignment.rationale ||
                   "A solid tactical fit. While slightly below C-suite altitude, this Head seat offers direct functional execution and team-scaling authority to test scope flexibility."}
               </p>
 
-              <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground mt-8 mb-3 font-bold uppercase">
-                Capability utilization coverage
-              </p>
-
-              {/* Progress Bars */}
-              <div className="space-y-4">
-                <div className="border-b border-border/40 pb-3">
-                  <div className="flex items-baseline justify-between mb-1.5">
-                    <span className="text-[14px] text-foreground font-semibold">Strategy</span>
-                    <span className="mono text-[10px] tracking-[0.18em] text-pursue font-semibold">
-                      HIGH UTILIZATION · 82%
-                    </span>
-                  </div>
-                  <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                    <div className="h-full bg-pursue" style={{ width: "82%" }} />
-                  </div>
-                  <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                    Exercises your positioning frameworks in a Head-level environment.
+              {/* 2-COLUMN SPLIT VIEW: PROGRESS BARS (LEFT) + WHY THIS MATCH MATTERS (RIGHT) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Left Column: 5 Trajectory Bars */}
+                <div className="lg:col-span-7 space-y-4">
+                  <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground mb-3 font-bold uppercase">
+                    Capability utilization coverage
                   </p>
+
+                  <div className="border-b border-border/40 pb-3">
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <span className="text-[14px] text-foreground font-semibold">Strategy</span>
+                      <span className="mono text-[10px] tracking-[0.18em] text-pursue font-semibold">
+                        HIGH UTILIZATION · 82%
+                      </span>
+                    </div>
+                    <div className="h-[6px] rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-pursue" style={{ width: "82%" }} />
+                    </div>
+                    <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+                      Exercises your positioning frameworks in a Head-level environment.
+                    </p>
+                  </div>
+
+                  <div className="border-b border-border/40 pb-3">
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <span className="text-[14px] text-foreground font-semibold">Commercial</span>
+                      <span className="mono text-[10px] tracking-[0.18em] text-consider font-semibold">
+                        MODERATE · 70%
+                      </span>
+                    </div>
+                    <div className="h-[6px] rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-consider" style={{ width: "70%" }} />
+                    </div>
+                    <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+                      Matches your budget-administration and contract-scale precedents.
+                    </p>
+                  </div>
+
+                  <div className="border-b border-border/40 pb-3">
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <span className="text-[14px] text-foreground font-semibold">Leadership</span>
+                      <span className="mono text-[10px] tracking-[0.18em] text-consider font-semibold">
+                        MODERATE · 68%
+                      </span>
+                    </div>
+                    <div className="h-[6px] rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-consider" style={{ width: "68%" }} />
+                    </div>
+                    <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+                      Managerial oversight expected for Head tier — under your prior span.
+                    </p>
+                  </div>
+
+                  <div className="border-b border-border/40 pb-3">
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <span className="text-[14px] text-foreground font-semibold">Technical</span>
+                      <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground font-semibold">
+                        LOW · 54%
+                      </span>
+                    </div>
+                    <div className="h-[6px] rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-pass/60" style={{ width: "54%" }} />
+                    </div>
+                    <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+                      Focus on brand strategy and growth rather than MarTech engineering.
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <span className="text-[14px] text-foreground font-semibold">Transformation</span>
+                      <span className="mono text-[10px] tracking-[0.18em] text-pursue font-semibold">
+                        HIGH UTILIZATION · 78%
+                      </span>
+                    </div>
+                    <div className="h-[6px] rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-pursue" style={{ width: "78%" }} />
+                    </div>
+                    <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+                      Applies organizational-transformation experience to drive growth.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="border-b border-border/40 pb-3">
-                  <div className="flex items-baseline justify-between mb-1.5">
-                    <span className="text-[14px] text-foreground font-semibold">Commercial</span>
-                    <span className="mono text-[10px] tracking-[0.18em] text-consider font-semibold">
-                      MODERATE · 70%
-                    </span>
+                {/* Right Column: WHY THIS MATCH MATTERS Rationale Box */}
+                <div className="lg:col-span-5 border border-border/80 bg-accent-ink/5 p-6 rounded-md">
+                  <div className="mono text-[10px] tracking-[0.22em] text-accent-ink font-bold uppercase mb-4">
+                    WHY THIS MATCH MATTERS
                   </div>
-                  <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                    <div className="h-full bg-consider" style={{ width: "70%" }} />
-                  </div>
-                  <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                    Matches your budget-administration and contract-scale precedents.
-                  </p>
-                </div>
 
-                <div className="border-b border-border/40 pb-3">
-                  <div className="flex items-baseline justify-between mb-1.5">
-                    <span className="text-[14px] text-foreground font-semibold">Leadership</span>
-                    <span className="mono text-[10px] tracking-[0.18em] text-consider font-semibold">
-                      MODERATE · 68%
-                    </span>
-                  </div>
-                  <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                    <div className="h-full bg-consider" style={{ width: "68%" }} />
-                  </div>
-                  <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                    Managerial oversight expected for Head tier — under your prior span.
-                  </p>
-                </div>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <span className="text-accent-ink text-[16px] leading-none mt-0.5">👤</span>
+                      <div>
+                        <p className="text-[13.5px] text-foreground font-semibold leading-snug">
+                          Direct functional execution with growth mandate.
+                        </p>
+                        <p className="text-[12px] text-muted-foreground mt-0.5">
+                          High autonomy in positioning strategy and P&amp;L execution.
+                        </p>
+                      </div>
+                    </div>
 
-                <div className="border-b border-border/40 pb-3">
-                  <div className="flex items-baseline justify-between mb-1.5">
-                    <span className="text-[14px] text-foreground font-semibold">Technical</span>
-                    <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground font-semibold">
-                      LOW · 54%
-                    </span>
-                  </div>
-                  <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                    <div className="h-full bg-pass/60" style={{ width: "54%" }} />
-                  </div>
-                  <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                    Focus on brand strategy and growth rather than MarTech engineering.
-                  </p>
-                </div>
+                    <div className="flex items-start gap-3">
+                      <span className="text-accent-ink text-[16px] leading-none mt-0.5">🏛️</span>
+                      <div>
+                        <p className="text-[13.5px] text-foreground font-semibold leading-snug">
+                          International exposure enhances leadership brand.
+                        </p>
+                        <p className="text-[12px] text-muted-foreground mt-0.5">
+                          Validates multi-market campaign orchestration across target regions.
+                        </p>
+                      </div>
+                    </div>
 
-                <div>
-                  <div className="flex items-baseline justify-between mb-1.5">
-                    <span className="text-[14px] text-foreground font-semibold">Transformation</span>
-                    <span className="mono text-[10px] tracking-[0.18em] text-pursue font-semibold">
-                      HIGH UTILIZATION · 78%
-                    </span>
+                    <div className="flex items-start gap-3">
+                      <span className="text-accent-ink text-[16px] leading-none mt-0.5">🚀</span>
+                      <div>
+                        <p className="text-[13.5px] text-foreground font-semibold leading-snug">
+                          Scope flexibility for future VP / CMO trajectory.
+                        </p>
+                        <p className="text-[12px] text-muted-foreground mt-0.5">
+                          Establishes quantifiable revenue attribution for C-suite stepping stone.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                    <div className="h-full bg-pursue" style={{ width: "78%" }} />
-                  </div>
-                  <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                    Applies organizational-transformation experience to drive growth.
-                  </p>
                 </div>
               </div>
             </div>

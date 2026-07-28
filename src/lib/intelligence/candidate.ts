@@ -1,6 +1,4 @@
-// Layer 2 — Understand. Four distinct concepts, deliberately split.
-
-import profile from "@/data/candidate-profile.json";
+import { candidateProfile as profile } from "@/data/candidate-profile";
 
 export type CandidateIdentity = {
   name: string;
