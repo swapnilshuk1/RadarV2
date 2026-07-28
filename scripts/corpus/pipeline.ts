@@ -9,52 +9,63 @@ import { JsonPublisher, SqlitePublisher } from "./publish";
  * Corpus Regeneration Pipeline orchestrator.
  * Fully idempotent and deterministic regeneration of the opportunity corpus from raw snapshots.
  */
-export async function runCorpusPipeline() {
+export async function runCorpusPipeline(
+  onProgress?: (msg: string, stage: string) => void
+) {
   const t0 = Date.now();
-  console.log("\n==================================================================");
-  console.log("             JOB INTELLIGENCE CORPUS REGENERATION PIPELINE");
-  console.log("==================================================================\n");
+  const notify = (msg: string, stage: string) => {
+    console.log(msg);
+    if (onProgress) onProgress(msg, stage);
+  };
+
+  notify("Initializing Job Intelligence Corpus Ingestion Stage...", "INGESTING");
 
   try {
     // 1. Ingest
-    console.log("--- STAGE 1: INGESTION ---");
+    notify("INGESTION: Reading immutable raw scraped snapshots from local cache storage...", "INGESTING");
     const rawSnapshots = ingestCorpus();
     if (rawSnapshots.length === 0) {
-      console.error("[Pipeline] No raw snapshots found. Pipeline aborted.");
+      notify("[Pipeline] CRITICAL: No raw snapshots found in cache storage. Pipeline aborted.", "FAILED");
       return { success: false, reason: "No raw snapshots" };
     }
+    notify(`INGESTION: Loaded ${rawSnapshots.length} raw scraped snapshots from cache.`, "INGESTING");
 
     // 2. Normalize
-    console.log("\n--- STAGE 2: NORMALIZATION ---");
+    notify("NORMALIZATION: Standardizing document structures, formatting rich text fields, sanitizing HTML nodes...", "NORMALIZING");
     const normalized = normalizeCorpus(rawSnapshots);
+    notify(`NORMALIZATION: Successfully standardized ${normalized.length} structured job listings.`, "NORMALIZING");
 
     // 3. Enrich (Dimension / Fact Extraction)
-    console.log("\n--- STAGE 3: ENRICHMENT ---");
+    notify("ENRICHMENT: Running deterministic core rules over 8 dimensional capability boundaries...", "ENRICHING");
+    notify("ENRICHMENT: Synthesizing confidence metrics, gathering verbatim evidence quotes, resolving missing criteria...", "ENRICHING");
     const enriched = await enrichCorpus(normalized, rawSnapshots);
+    notify(`ENRICHMENT: Successfully extracted dimensions and facts for ${enriched.length} opportunities.`, "ENRICHING");
 
     // 4. Publish (Write to targets)
-    console.log("\n--- STAGE 4: PUBLISHING ---");
+    notify("PUBLISHING: Invoking server-side database publisher and content-addressed JSON compiler...", "PUBLISHING");
     
     // Publish to local extraction JSONs and compiled live-scraped.json
     const jsonPub = new JsonPublisher();
     await jsonPub.publish(enriched);
+    notify(`PUBLISHING: Content-addressed JSON extractions written to disk and live-scraped.json compiled.`, "PUBLISHING");
 
     // Publish to active DatabaseAdapter (Turso Cloud / local SQLite)
+    notify("SQLITE: Publishing updated opportunities, documents, and facts tables to database...", "PUBLISHING");
     const sqlitePub = new SqlitePublisher();
     await sqlitePub.publish(enriched);
+    notify("SQLITE: Published updated opportunities, documents, and facts tables inside database.", "PUBLISHING");
 
     const durationSec = ((Date.now() - t0) / 1000).toFixed(1);
-    console.log("\n==================================================================");
-    console.log(`  PIPELINE COMPLETED SUCCESSFULLY in ${durationSec}s`);
-    console.log(`  Total Processed Opportunities : ${enriched.length}`);
-    console.log("==================================================================\n");
+    const successMsg = `SUCCESS: Job Intelligence Corpus successfully regenerated and derived from immutable source of truth in ${durationSec}s (${enriched.length} opportunities)!`;
+    notify(successMsg, "COMPLETE");
 
     return { success: true, processedCount: enriched.length };
 
   } catch (err: any) {
-    console.error("\n[Pipeline] PIPELINE CRITICAL FAILURE:", err.message);
+    const errorMsg = `CRITICAL ERROR: Corpus Regeneration failed: ${err.message || String(err)}`;
+    notify(errorMsg, "FAILED");
     console.error(err.stack);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message || String(err) };
   }
 }
 

@@ -206,16 +206,95 @@ export const getLiveScrapedFn = createServerFn({ method: "GET" })
     }
   });
 
+export interface CorpusJobState {
+  status: "idle" | "running" | "completed" | "failed";
+  stage: "IDLE" | "INGESTING" | "NORMALIZING" | "ENRICHING" | "PUBLISHING" | "COMPLETE" | "FAILED";
+  logs: string[];
+  processedCount: number;
+  error?: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+if (typeof globalThis !== "undefined") {
+  const g = globalThis as any;
+  if (!g.__RADAR_CORPUS_JOB__) {
+    g.__RADAR_CORPUS_JOB__ = {
+      status: "idle",
+      stage: "IDLE",
+      logs: [],
+      processedCount: 0,
+    } as CorpusJobState;
+  }
+}
+
+function getCorpusJob(): CorpusJobState {
+  const g = globalThis as any;
+  return g.__RADAR_CORPUS_JOB__ || { status: "idle", stage: "IDLE", logs: [], processedCount: 0 };
+}
+
 export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
   .handler(async () => {
     try {
-      console.log("[Server] triggerCorpusRegenerationFn: starting corpus pipeline...");
-      const { runCorpusPipeline } = await import("../../../scripts/corpus/pipeline");
-      return await runCorpusPipeline();
+      const job = getCorpusJob();
+      if (job.status === "running") {
+        return { success: true, running: true, message: "Corpus regeneration already in progress." };
+      }
+
+      job.status = "running";
+      job.stage = "INGESTING";
+      job.logs = [];
+      job.processedCount = 0;
+      job.error = undefined;
+      job.startedAt = new Date().toISOString();
+      job.completedAt = undefined;
+
+      const addLog = (msg: string, stage: string) => {
+        const time = new Date().toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        job.logs.push(`[${time}] ${msg}`);
+        job.stage = stage as any;
+      };
+
+      console.log("[Server] triggerCorpusRegenerationFn: launching corpus pipeline in background...");
+
+      // Launch background asynchronous task
+      void (async () => {
+        try {
+          const { runCorpusPipeline } = await import("../../../scripts/corpus/pipeline");
+          const result = await runCorpusPipeline((msg, stage) => {
+            addLog(msg, stage);
+          });
+
+          if (result && result.success) {
+            job.status = "completed";
+            job.stage = "COMPLETE";
+            job.processedCount = result.processedCount || 0;
+            job.completedAt = new Date().toISOString();
+          } else {
+            job.status = "failed";
+            job.stage = "FAILED";
+            job.error = result.error || result.reason || "Unknown error";
+            job.completedAt = new Date().toISOString();
+          }
+        } catch (err: any) {
+          console.error("[Server] Background corpus pipeline failed:", err);
+          job.status = "failed";
+          job.stage = "FAILED";
+          job.error = err.message || String(err);
+          job.completedAt = new Date().toISOString();
+        }
+      })();
+
+      return { success: true, running: true, message: "Corpus regeneration started in background." };
     } catch (err: any) {
       console.error("[Server] triggerCorpusRegenerationFn failed:", err.message);
       return { success: false, error: err.message };
     }
+  });
+
+export const getCorpusRegenerationStatusFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    return getCorpusJob();
   });
 
 export const getCorpusHealthFn = createServerFn({ method: "GET" })

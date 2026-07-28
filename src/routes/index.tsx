@@ -128,23 +128,23 @@ function Shortlist() {
         {/* ────────────────────────────────────────────────────────────────────────
             HERO & PIPELINE LEDGER
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-4 sm:pt-10 pb-4 sm:pb-6 border-b border-border">
-          <p className="mono text-[9px] sm:text-[10px] tracking-[0.2em] sm:tracking-[0.24em] text-muted-foreground mb-1.5 uppercase font-semibold">
+        <section className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-3 sm:pt-6 pb-2.5 sm:pb-4 border-b border-border">
+          <p className="mono text-[9px] sm:text-[10px] tracking-[0.2em] text-muted-foreground mb-1 uppercase font-semibold">
             PIPELINE LEDGER & EXECUTIVE SHORTLIST
           </p>
 
-          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 sm:gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-6">
             <div>
-              <h1 className="display text-[26px] sm:text-[44px] leading-tight text-foreground font-semibold">
+              <h1 className="display text-[22px] sm:text-[36px] leading-tight text-foreground font-semibold">
                 The shortlist.
               </h1>
-              <p className="mt-1 sm:mt-2 max-w-xl text-[12.5px] sm:text-[15px] leading-relaxed text-muted-foreground font-normal">
+              <p className="mt-0.5 max-w-xl text-[12px] sm:text-[14px] leading-relaxed text-muted-foreground font-normal">
                 Showing {visible.length} of {remaining.length} live briefs. Decide on one and the next in the queue takes its slot.
                 {queued > 0 && <> <span className="text-foreground font-semibold">{queued}</span> queued.</>}
               </p>
             </div>
 
-            <div className="flex items-center gap-6 sm:gap-8 border-t sm:border-t-0 sm:border-l border-border pt-2.5 sm:pt-0 pl-0 sm:pl-6 mt-1 sm:mt-0">
+            <div className="flex items-center gap-5 sm:gap-7 border-t sm:border-t-0 sm:border-l border-border pt-2 sm:pt-0 pl-0 sm:pl-6 mt-0.5 sm:mt-0">
               <Stat label="PURSUED" value={pursue} tint="text-pursue" />
               <Stat label="CONSIDERED" value={consider} tint="text-consider" />
               <Stat label="PASSED" value={pass} tint="text-muted-foreground" />
@@ -155,12 +155,12 @@ function Shortlist() {
         {/* ────────────────────────────────────────────────────────────────────────
             MAIN SHORTLIST QUEUE
             ──────────────────────────────────────────────────────────────────────── */}
-        <main className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-4 sm:pt-8 pb-12">
-          <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
-            <p className="mono text-[9px] sm:text-[10px] tracking-[0.16em] sm:tracking-[0.2em] text-muted-foreground uppercase font-semibold truncate">
+        <main className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-3 sm:pt-6 pb-12">
+          <div className="flex items-center justify-between mb-2.5 sm:mb-3.5 gap-2">
+            <p className="mono text-[9px] sm:text-[10px] tracking-[0.16em] text-muted-foreground uppercase font-semibold truncate">
               GESTURE CONTROL · SWIPE <span className="text-pursue font-bold">RIGHT TO PURSUE</span>, OR <span className="text-foreground font-bold">LEFT TO PASS</span>
             </p>
-            <span className="mono text-[9px] sm:text-[10px] tracking-[0.14em] sm:tracking-[0.18em] text-accent-ink uppercase font-semibold shrink-0">
+            <span className="mono text-[9px] sm:text-[10px] tracking-[0.14em] text-accent-ink uppercase font-semibold shrink-0">
               QUEUE STATUS · {remaining.length} ACTIVE
             </span>
           </div>
@@ -219,7 +219,7 @@ function Shortlist() {
                   await runSearch();
                 }
               }}
-              className="mono text-[10px] tracking-[0.2em] font-bold inline-flex items-center gap-1.5 rounded-sm border border-foreground bg-foreground px-2.5 py-1 text-background uppercase transition-opacity hover:opacity-90"
+              className="mono text-[10px] tracking-[0.2em] font-bold inline-flex items-center gap-1.5 rounded-sm border border-foreground bg-foreground px-2.5 py-1 text-background uppercase transition-opacity hover:opacity-90 cursor-pointer"
             >
               <span
                 aria-hidden
@@ -269,7 +269,7 @@ function Row({
     <div
       onClick={onToggle}
       className={`cursor-pointer group transition-all duration-200 ${
-        isOpen ? "bg-muted/30 border-l-4 border-foreground py-2 my-2 rounded-sm shadow-sm" : ""
+        isOpen ? "bg-card border-l-4 border-foreground shadow-md ring-1 ring-border/80 my-2.5 rounded-md" : ""
       }`}
     >
       <button
@@ -281,7 +281,7 @@ function Row({
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
         aria-expanded={isOpen}
-        className="w-full py-3.5 sm:py-4 text-left flex items-center justify-between gap-3 transition-colors group-hover:bg-muted/20 px-2.5 cursor-pointer"
+        className="w-full py-3 sm:py-3.5 text-left flex items-center justify-between gap-3 transition-colors group-hover:bg-muted/20 px-2.5 cursor-pointer"
       >
         <div className="min-w-0 flex-1">
           {/* Row 1: Role Title + Badges */}
@@ -298,18 +298,15 @@ function Row({
           </div>
 
           {/* Row 2: Company • Location • Portal • Relative Date */}
-          <p className="mt-1 text-[12px] sm:text-[13px] text-muted-foreground font-normal truncate">
-            <span className="text-foreground font-medium">{o.company}</span> · {o.location} ·{" "}
+          <p className="mt-0.5 text-[12px] sm:text-[13px] text-muted-foreground font-normal truncate">
+            <span className="text-foreground font-bold">{o.company}</span> · {o.location} ·{" "}
             <span className="mono text-[10px] uppercase tracking-wider">{o.scrapedFrom} · {o.postedRelative}</span>
           </p>
         </div>
 
-        {/* Priority Score & Expand Chevron */}
-        <div className="flex items-center gap-3 sm:gap-5 shrink-0">
+        {/* Score & Expand Chevron */}
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           <div className="text-right">
-            <span className="mono text-[8.5px] sm:text-[9.5px] tracking-[0.18em] text-muted-foreground uppercase font-bold block">
-              PRIORITY
-            </span>
             <span className="display text-[18px] sm:text-[22px] font-bold text-foreground tabular-nums leading-none">
               {score}<span className="mono text-[9px] sm:text-[10px] text-muted-foreground font-normal">/100</span>
             </span>
@@ -327,24 +324,19 @@ function Row({
       </button>
 
       {isOpen && (
-        <div className="pb-4 pt-1 px-2.5 animate-fade-in" onClick={(e) => e.stopPropagation()}>
-          <div className="border-l-2 border-foreground/15 pl-3 sm:pl-5 my-1 transition-all">
-            {/* Active Focus Header Badge */}
-            <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-border/50">
-              <span className="mono text-[10px] sm:text-[11px] font-bold tracking-[0.16em] uppercase text-foreground bg-foreground/10 px-2.5 py-1 rounded-sm">
+        <div className="pb-3 pt-1 px-2.5 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+          <div className="border-l-2 border-foreground/20 pl-2.5 sm:pl-4 my-1 transition-all">
+            {/* Header Badge */}
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/40">
+              <span className="mono text-[10px] sm:text-[11px] font-bold tracking-[0.16em] uppercase text-muted-foreground">
                 Reviewing {index} of {total}
-              </span>
-              <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase font-semibold">
-                ACTIVE FOCUS
               </span>
             </div>
 
-            <InlineBrief opportunity={o} />
-
-            {/* Inline Sticky Decision Bar */}
-            <div className="sticky bottom-0 z-20 bg-background/95 backdrop-blur-md py-3 px-1 mt-4 border-t border-border/80 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-              <div className="flex items-center gap-2">
-                <span className="mono text-[9.5px] sm:text-[10px] tracking-[0.18em] uppercase text-muted-foreground font-bold mr-1">
+            {/* Elevated Hero Decision Bar */}
+            <div className="bg-muted/30 p-2 sm:p-2.5 rounded-sm border border-border/60 flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="mono text-[9px] sm:text-[10px] tracking-[0.16em] uppercase text-muted-foreground font-bold mr-1">
                   YOUR DECISION:
                 </span>
                 <DecideButton verb="PURSUE" onClick={() => onDecide("PURSUE")} />
@@ -352,10 +344,12 @@ function Row({
                 <DecideButton verb="PASS" onClick={() => onDecide("PASS")} />
               </div>
 
-              <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase hidden sm:inline">
+              <span className="mono text-[8.5px] sm:text-[9.5px] tracking-[0.14em] text-muted-foreground uppercase hidden sm:inline font-medium">
                 PULLS NEXT BRIEF FROM QUEUE
               </span>
             </div>
+
+            <InlineBrief opportunity={o} />
           </div>
         </div>
       )}
@@ -366,10 +360,10 @@ function Row({
 function Stat({ label, value, tint = "text-foreground" }: { label: string; value: number; tint?: string }) {
   return (
     <div>
-      <span className="mono text-[9.5px] tracking-[0.2em] text-muted-foreground uppercase font-bold block mb-1">
+      <span className="mono text-[9px] tracking-[0.18em] text-muted-foreground uppercase font-bold block mb-0.5">
         {label}
       </span>
-      <span className={`display text-[28px] font-bold tabular-nums leading-none ${tint}`}>
+      <span className={`display text-[24px] sm:text-[28px] font-bold tabular-nums leading-none ${tint}`}>
         {value}
       </span>
     </div>
@@ -379,10 +373,10 @@ function Stat({ label, value, tint = "text-foreground" }: { label: string; value
 function DecideButton({ verb, onClick }: { verb: DecisionVerb; onClick: () => void }) {
   const style =
     verb === "PURSUE"
-      ? "border-pursue text-pursue bg-pursue-soft hover:opacity-90 font-bold"
+      ? "border-pursue text-pursue bg-pursue-soft hover:bg-pursue/20 font-bold shadow-sm"
       : verb === "CONSIDER"
-        ? "border-consider text-consider bg-consider-soft hover:opacity-90 font-bold"
-        : "border-border text-muted-foreground hover:bg-muted font-semibold";
+        ? "border-consider text-consider bg-consider-soft hover:bg-consider/20 font-bold shadow-sm"
+        : "border-border text-muted-foreground hover:text-foreground hover:bg-muted font-semibold";
 
   return (
     <button
@@ -391,7 +385,7 @@ function DecideButton({ verb, onClick }: { verb: DecisionVerb; onClick: () => vo
         e.stopPropagation();
         onClick();
       }}
-      className={`mono text-[10px] tracking-[0.18em] rounded-sm border px-3 py-1.5 uppercase transition-all ${style}`}
+      className={`mono text-[10px] sm:text-[10.5px] tracking-[0.18em] rounded-sm border px-3 sm:px-3.5 py-1 sm:py-1.5 uppercase transition-all cursor-pointer ${style}`}
     >
       {verb}
     </button>

@@ -68,20 +68,7 @@ export class SqlitePublisher implements Publisher {
 
     for (const item of enriched) {
       try {
-        // 1. Resolve Opportunity ID (id in opportunities table)
-        let oppId: string;
-        const existingOpp = await adapter.one<{ id: string }>(
-          "SELECT id FROM opportunities WHERE fingerprint = ?",
-          [item.jobHash]
-        );
-
-        if (existingOpp) {
-          oppId = existingOpp.id;
-        } else {
-          oppId = `opp_${item.jobHash}`;
-        }
-
-        // Resolve company_id
+        const oppId = `opp_${item.jobHash}`;
         const compNameClean = item.company.toLowerCase().replace(/[^a-z0-9]/g, "");
         const compId = `comp_${compNameClean || "confidential"}`;
 
@@ -134,18 +121,8 @@ export class SqlitePublisher implements Publisher {
           [srcId, srcId]
         );
 
-        // 2. Merge Document Record (documents table)
-        let docId: string;
-        const existingDoc = await adapter.one<{ id: string }>(
-          "SELECT id FROM documents WHERE opportunity_id = ?",
-          [oppId]
-        );
-        if (existingDoc) {
-          docId = existingDoc.id;
-        } else {
-          docId = `doc_${item.jobHash}`;
-        }
-
+        // Merge Document Record (documents table)
+        const docId = `doc_${item.jobHash}`;
         await adapter.execute(
           `INSERT INTO documents (
              id, source_id, opportunity_id, payload_type, content, lifecycle,
@@ -169,31 +146,19 @@ export class SqlitePublisher implements Publisher {
         );
         docMerged++;
 
-        // 3. Sync Fact records (facts table)
+        // Sync Fact records (facts table)
         if (item.dimensions) {
           for (const dim of item.dimensions) {
-            const existingFact = await adapter.one<{ id: string }>(
-              "SELECT id FROM facts WHERE opportunity_id = ? AND attribute = ?",
-              [oppId, dim.key]
-            );
-
             if (dim.jdEvidence?.value !== undefined && dim.jdEvidence?.value !== null) {
               const factValue = JSON.stringify(dim.jdEvidence.value);
+              const factId = `f_${dim.key.substring(0, 4)}_${oppId}`;
 
-              if (existingFact) {
-                await adapter.execute(
-                  "UPDATE facts SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                  [factValue, existingFact.id]
-                );
-              } else {
-                const factId = `f_${dim.key.substring(0, 4)}_${oppId}`;
-                await adapter.execute(
-                  `INSERT INTO facts (id, opportunity_id, attribute, value, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                   ON CONFLICT(id) DO UPDATE SET value = excluded.value`,
-                  [factId, oppId, dim.key, factValue]
-                );
-              }
+              await adapter.execute(
+                `INSERT INTO facts (id, opportunity_id, attribute, value, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                 ON CONFLICT(id) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`,
+                [factId, oppId, dim.key, factValue]
+              );
               factsMerged++;
             }
           }

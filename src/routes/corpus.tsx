@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { getCorpusHealthFn, triggerCorpusRegenerationFn } from "../lib/intelligence/scrape-server";
+import { useState, useEffect } from "react";
+import { getCorpusHealthFn, triggerCorpusRegenerationFn, getCorpusRegenerationStatusFn } from "../lib/intelligence/scrape-server";
 import type { CorpusHealthStats } from "../../scripts/corpus/health";
 
 const DEFAULT_STATS: CorpusHealthStats = {
@@ -51,54 +51,83 @@ function CorpusHealth() {
     }
   };
 
-  const handleRegenerate = async () => {
-    setRefreshing(true);
-    setConsoleLogs([]);
-    setCurrentStage("INGESTING");
+  // Poll background corpus status
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
 
-    const addLog = (msg: string) => {
-      const time = new Date().toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      setConsoleLogs((prev) => [...prev, `[${time}] ${msg}`]);
+    const pollStatus = async () => {
+      try {
+        const job = await getCorpusRegenerationStatusFn();
+        if (job) {
+          if (job.status === "running") {
+            setRefreshing(true);
+            setCurrentStage(job.stage);
+            setConsoleLogs(job.logs || []);
+            timer = setTimeout(pollStatus, 1500);
+          } else if (job.status === "completed") {
+            if (refreshing || currentStage === "PUBLISHING" || currentStage === "ENRICHING") {
+              setConsoleLogs(job.logs || []);
+              setCurrentStage("COMPLETE");
+              setRefreshing(false);
+              await fetchStats();
+            }
+          } else if (job.status === "failed") {
+            setConsoleLogs(job.logs || []);
+            setCurrentStage("FAILED");
+            setRefreshing(false);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to poll corpus status:", err);
+      }
     };
 
+    void pollStatus();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+
+  const handleRegenerate = async () => {
+    setRefreshing(true);
+    setConsoleLogs(["Initializing Job Intelligence Corpus Ingestion Stage..."]);
+    setCurrentStage("INGESTING");
+
     try {
-      // Step 1: Ingestion
-      addLog("Initializing Job Intelligence Corpus Ingestion Stage...");
-      await new Promise((r) => setTimeout(r, 1000));
-      addLog("INGESTION: Reading immutable raw scraped snapshots from local cache storage...");
-
-      // Step 2: Normalization
-      setCurrentStage("NORMALIZING");
-      await new Promise((r) => setTimeout(r, 1200));
-      addLog("NORMALIZATION: Standardizing document structures, formatting rich text fields, sanitizing HTML nodes...");
-
-      // Step 3: Enrichment
-      setCurrentStage("ENRICHING");
-      addLog("ENRICHMENT: Running deterministic core rules over 8 dimensional capability boundaries...");
-      await new Promise((r) => setTimeout(r, 1500));
-      addLog("ENRICHMENT: Synthesizing confidence metrics, gathering verbatim evidence quotes, resolving missing criteria...");
-
-      // Step 4: Server Trigger
-      setCurrentStage("PUBLISHING");
-      addLog("PUBLISHING: Invoking server-side database publisher and content-addressed JSON compiler...");
-
       const result = await triggerCorpusRegenerationFn();
-
-      if (result && "success" in result && result.success) {
-        addLog(`PUBLISHING: Successfully compiled and wrote JSON extractions.`);
-        addLog(`SQLITE: Published updated opportunities, documents, and facts tables inside local database.`);
-        setCurrentStage("COMPLETE");
-        addLog("SUCCESS: Job Intelligence Corpus successfully regenerated and derived from immutable source of truth!");
-        // Refresh local stats
-        await fetchStats();
-      } else {
-        throw new Error((result as any)?.error || "Server-side pipeline execution returned unsuccessful status.");
+      if (!result || !result.success) {
+        throw new Error((result as any)?.error || "Failed to trigger corpus regeneration on server.");
       }
+
+      // Start status polling interval
+      const interval = setInterval(async () => {
+        try {
+          const job = await getCorpusRegenerationStatusFn();
+          if (job) {
+            setConsoleLogs(job.logs || []);
+            setCurrentStage(job.stage);
+
+            if (job.status === "completed") {
+              clearInterval(interval);
+              setRefreshing(false);
+              setCurrentStage("COMPLETE");
+              await fetchStats();
+            } else if (job.status === "failed") {
+              clearInterval(interval);
+              setRefreshing(false);
+              setCurrentStage("FAILED");
+            }
+          }
+        } catch (pollErr) {
+          console.error("Error polling corpus status:", pollErr);
+        }
+      }, 1500);
     } catch (err: any) {
       console.error(err);
-      addLog(`CRITICAL ERROR: Corpus Regeneration failed: ${err.message || err}`);
+      const time = new Date().toLocaleTimeString([], { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setConsoleLogs((prev) => [...prev, `[${time}] CRITICAL ERROR: Corpus Regeneration failed: ${err.message || err}`]);
       setCurrentStage("FAILED");
-    } finally {
       setRefreshing(false);
     }
   };
