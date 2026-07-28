@@ -4,6 +4,7 @@ import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
 import { passesHardFilter } from "../utils/hard-filter";
+import { hydrateVirtualizedList } from "../utils/scroll";
 
 export const naukriHandler: PortalHandler = {
   name: "Naukri",
@@ -41,19 +42,15 @@ export const naukriHandler: PortalHandler = {
     const page = ctx.activePage;
     const cardsOut: FeedCard[] = [];
 
-    // Naukri CSS module hashes change on every deploy — use attribute-substring
-    // selectors so the scraper survives rebuilds without code changes.
+    // Target primary job tuple cards without matching outer wrapper parents
     const CARD_SELECTORS = [
-      "article.jobTuple",
-      "[class*='jobTuple']",
-      "[class*='job-tuple']",
-      ".srp-jobtuple-wrapper",
-      ".cust-job-tuple",
+      "div.cust-job-tuple",
       "div[data-job-id]",
-      "div.tuple",
-      "div[class*='tuple']",
+      "article.jobTuple",
+      "div.srp-jobtuple-wrapper",
+      "div[class*='jobTuple']",
+      "div[class*='srp-jobtuple-wrapper']",
       "[class*='styles_jcard']",
-      "[class*='jobCard']",
     ].join(", ");
 
     try {
@@ -70,7 +67,6 @@ export const naukriHandler: PortalHandler = {
       }
 
       await humanize(page);
-      await page.evaluate(() => window.scrollBy(0, 400)).catch(() => {});
       await sleep(1000);
 
       // Wait for at least one card to appear in the DOM.
@@ -83,17 +79,46 @@ export const naukriHandler: PortalHandler = {
       });
 
       const maxCards = CONFIG.getMaxCardsPerPage("Naukri");
+
+      // Scroll and hydrate full card list on Naukri SRP
+      await hydrateVirtualizedList(
+        page,
+        {
+          cardSelector: CARD_SELECTORS,
+          containerSelectors: [
+            "#listContainer",
+            ".list",
+            ".srp-jobtuple-wrapper",
+            ".search-result-container",
+            "main",
+          ],
+          targetCards: maxCards,
+          maxPasses: 10,
+          consecutiveStableLimit: 3,
+          minPassDelayMs: 1000,
+          maxPassDelayMs: 2000,
+        },
+        ctx.logger
+      );
+
       const cards = await page.locator(CARD_SELECTORS).all();
-      const sliced = cards.slice(0, maxCards);
-      for (const card of sliced) {
+      const seenHrefs = new Set<string>();
+
+      for (const card of cards) {
+        if (cardsOut.length >= maxCards) break;
         try {
-          const titleEl = card.locator("a.title, [class*='title'] a, a[class*='title']").first();
+          const titleEl = card.locator("a.title, [class*='title'] a, a[class*='title'], [class*='row1'] a").first();
           const title = ((await titleEl.textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const company = ((await card.locator("a.comp-name, [class*='comp-name'], [class*='companyName']").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const location = ((await card.locator(".locWdth, span.loc, [class*='loc'], [class*='location']").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const salary = ((await card.locator(".sal-wrap, span.sal, [class*='salary'], [class*='sal']").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
+          const company = ((await card.locator("a.comp-name, [class*='comp-name'], [class*='companyName'], a[class*='company'], [class*='company']").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
+          const location = ((await card.locator(".locWdth, span.loc, [class*='loc'], [class*='location'], [class*='loc-wrap']").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
+          const salary = ((await card.locator(".sal-wrap, span.sal, [class*='salary'], [class*='sal'], [class*='exp']").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
           const href = ((await titleEl.getAttribute("href", { timeout: 1000 }).catch(() => "")) || "").trim();
           if (!href || !title) continue;
+
+          // Naukri hrefs are sometimes relative — resolve absolutely
+          const detailUrl = href.startsWith("http") ? href : `https://www.naukri.com${href.startsWith("/") ? "" : "/"}${href}`;
+          if (seenHrefs.has(detailUrl)) continue;
+          seenHrefs.add(detailUrl);
 
           const filterRes = passesHardFilter({ title, company, location });
           if (!filterRes.pass) {
@@ -101,9 +126,6 @@ export const naukriHandler: PortalHandler = {
             continue;
           }
 
-          // Naukri hrefs are sometimes relative — always resolve absolutely
-          // (docs/scraper-quick-wins §8).
-          const detailUrl = href.startsWith("http") ? href : `https://www.naukri.com${href.startsWith("/") ? "" : "/"}${href}`;
           const cardHash = cardHashFor("Naukri", detailUrl);
           const rawHtml = await card.innerHTML().catch(() => "");
           const rawText = ((await card.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
@@ -139,7 +161,7 @@ import { fastFetchDetail } from "../utils/http-fetch";
 
 async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCard["detail"]> {
   const handler = naukriHandler;
-  const contentSelectors = "[class*='dang-inner-html'], .job-desc, #job-description, section.job-desc, [class*='job-desc-container'], [class*='jobDescription']";
+  const contentSelectors = "[class*='dang-inner-html'], section[class*='job-desc'], [class*='job-desc'], [class*='jobDescription'], div.styles_JDSummary, #job-description, main, article";
   
   if (handler.detailStrategy === "auto" || handler.detailStrategy === "http") {
     const skipHttp = ctx.isHttpDisabled?.(url) ?? false;
@@ -150,37 +172,60 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         "h1, header, .styles_job-header__container__b1Qf_", 
         contentSelectors
       );
-      if (httpRes.fetched) {
+      if (httpRes.fetched && httpRes.rawText && httpRes.rawText.length > 100) {
         ctx.recordTelemetry?.("httpSuccessful");
         ctx.logger(`[FastPath] Extracted detail from ${url}`);
         return httpRes;
       }
       
       const reason = httpRes.fetchError?.includes("403") ? "403" : 
-                    httpRes.fetchError?.includes("timeout") ? "Timeout" : "Unknown";
+                    httpRes.fetchError?.includes("timeout") ? "Timeout" : "EmptyBody";
       ctx.recordHttpFailure?.(url, reason);
       ctx.recordTelemetry?.("httpFallbacks");
-      ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError} [${reason}] — falling back to Playwright`);
+      ctx.logger(`[FastPath] Insufficient detail (${httpRes.rawText?.length ?? 0} chars) for ${url} — falling back to Playwright`);
     } else {
       ctx.logger(`[FastPath] Bypassed for ${url} due to circuit breaker or cache`);
     }
   }
 
   const t0 = Date.now();
-  // Naukri opens detail in a new tab from the card click — but we already have
-  // the absolute URL, so open it directly and close after read. This is the
-  // fix for the "tab bloat" issue called out in the plan.
   const page = await ctx.browserContext.newPage();
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
-    await jitter(700, 1500);
+    await jitter(1000, 2000);
 
-    // Avoid CSS-module hashed selectors (they change every deploy).
-    // Use attribute-substring or semantic selectors instead.
-    const container = page.locator(contentSelectors).first();
+    await page.waitForSelector(contentSelectors, { timeout: 6000 }).catch(() => {});
 
-    const rawHtml = await container.innerHTML().catch(() => "");
-    const rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+    let rawHtml = "";
+    let rawText = "";
+
+    const candidateSelectors = [
+      "[class*='dang-inner-html']",
+      "section[class*='job-desc']",
+      "[class*='job-desc']",
+      "div[class*='JDSummary']",
+      "[class*='jobDescription']",
+      "#job-description",
+      "main",
+      "article",
+      "body",
+    ];
+
+    for (const sel of candidateSelectors) {
+      const loc = page.locator(sel).first();
+      const txt = ((await loc.textContent({ timeout: 1000 }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
+      if (txt.length > 100) {
+        rawText = txt;
+        rawHtml = (await loc.innerHTML().catch(() => "")) || "";
+        break;
+      }
+    }
+
+    if (!rawText) {
+      rawText = ((await page.locator("body").textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+      rawHtml = await page.locator("body").innerHTML().catch(() => "");
+    }
+
     return { fetched: true, rawHtml, rawText, fetchDurationMs: Date.now() - t0 };
   } catch (err: any) {
     return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
