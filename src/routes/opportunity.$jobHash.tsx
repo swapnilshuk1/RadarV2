@@ -101,13 +101,14 @@ function Brief() {
   return (
     <div className="min-h-screen bg-background text-foreground pb-24 sm:pb-28">
       {/* ────────────────────────────────────────────────────────────────────────
-          STICKY SUB-NAVBAR (Clean Top Navigation)
+          STICKY SUB-NAVBAR (Clean Top Navigation & Precision Pagination)
           ──────────────────────────────────────────────────────────────────────── */}
       <div className="border-b border-border/70 bg-background/85 backdrop-blur sticky top-0 sm:top-[65px] z-20">
-        <div className="max-w-[1180px] mx-auto px-4 sm:px-8 py-3 flex items-center justify-between">
+        <div className="max-w-[1180px] mx-auto px-4 sm:px-8 py-2.5 flex items-center justify-between gap-4">
+          {/* Left: Clean Back to Shortlist Link */}
           <Link
             to="/"
-            className="mono text-[11px] tracking-[0.22em] text-muted-foreground hover:text-foreground inline-flex items-center gap-2 font-medium"
+            className="mono text-[11px] tracking-[0.2em] text-muted-foreground hover:text-foreground inline-flex items-center gap-2 font-semibold shrink-0"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -123,35 +124,44 @@ function Brief() {
             >
               <path d="m15 18-6-6 6-6" />
             </svg>
-            ONECK SHORTLIST
+            <span>SHORTLIST</span>
           </Link>
 
-          <div className="flex items-center gap-3">
-            <span className="mono text-[11px] tracking-[0.2em] text-muted-foreground hidden md:inline-flex items-center gap-2">
-              REVIEWING <span className="text-foreground font-bold">{String(currentIndex).padStart(2, "0")}</span> OF {String(totalCount).padStart(2, "0")}
-              <span className="inline-flex items-center gap-1 ml-1">
-                {Array.from({ length: totalCount }).map((_, i) => (
-                  <span
-                    key={i}
-                    className={`h-2 w-2 rounded-xs ${
-                      i + 1 === currentIndex ? "bg-pursue" : i + 1 < currentIndex ? "bg-foreground/40" : "bg-muted-foreground/20"
-                    }`}
-                  />
-                ))}
-              </span>
-            </span>
+          {/* Center: Sleek Executive Progress Indicator */}
+          <div className="hidden sm:flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 mono text-[11px] tracking-[0.18em]">
+              <span className="text-muted-foreground">BRIEF</span>
+              <span className="text-foreground font-bold">{String(currentIndex).padStart(2, "0")}</span>
+              <span className="text-muted-foreground">/</span>
+              <span className="text-muted-foreground font-medium">{String(totalCount).padStart(2, "0")}</span>
+            </div>
 
-            <div className="flex items-center gap-1.5">
+            {/* Precision Progress Track */}
+            <div className="w-24 md:w-36 h-1.5 bg-muted/60 rounded-full overflow-hidden flex items-center">
+              <div
+                className="h-full bg-pursue transition-all duration-300 rounded-full"
+                style={{ width: `${Math.min(100, Math.max(2, (currentIndex / totalCount) * 100))}%` }}
+              />
+            </div>
+
+            <span className="mono text-[10px] tracking-[0.14em] text-muted-foreground font-medium">
+              {Math.round((currentIndex / totalCount) * 100)}%
+            </span>
+          </div>
+
+          {/* Right: Pagination & Action Controls */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-1">
               {neighbors.prev ? (
                 <Link
                   to="/opportunity/$jobHash"
                   params={{ jobHash: neighbors.prev.jobHash }}
-                  className="mono text-[10px] tracking-[0.2em] text-muted-foreground hover:text-foreground border border-border rounded-sm px-2.5 py-1.5"
+                  className="mono text-[10px] tracking-[0.18em] text-muted-foreground hover:text-foreground border border-border hover:border-foreground/40 rounded-sm px-2.5 py-1.5 font-semibold transition-colors"
                 >
                   ← PREV
                 </Link>
               ) : (
-                <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground/40 border border-border/40 rounded-sm px-2.5 py-1.5 opacity-50 cursor-not-allowed">
+                <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground/30 border border-border/30 rounded-sm px-2.5 py-1.5 opacity-40 cursor-not-allowed">
                   ← PREV
                 </span>
               )}
@@ -160,12 +170,12 @@ function Brief() {
                 <Link
                   to="/opportunity/$jobHash"
                   params={{ jobHash: neighbors.next.jobHash }}
-                  className="mono text-[10px] tracking-[0.2em] text-muted-foreground hover:text-foreground border border-border rounded-sm px-2.5 py-1.5"
+                  className="mono text-[10px] tracking-[0.18em] text-muted-foreground hover:text-foreground border border-border hover:border-foreground/40 rounded-sm px-2.5 py-1.5 font-semibold transition-colors"
                 >
                   NEXT →
                 </Link>
               ) : (
-                <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground/40 border border-border/40 rounded-sm px-2.5 py-1.5 opacity-50 cursor-not-allowed">
+                <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground/30 border border-border/30 rounded-sm px-2.5 py-1.5 opacity-40 cursor-not-allowed">
                   NEXT →
                 </span>
               )}
@@ -175,9 +185,9 @@ function Brief() {
               href={applyUrlFor(o)}
               target="_blank"
               rel="noopener noreferrer"
-              className="mono text-[11px] tracking-[0.18em] bg-foreground text-background px-3.5 py-1.5 rounded-sm inline-flex items-center gap-1.5 hover:bg-foreground/90 font-medium"
+              className="mono text-[11px] tracking-[0.18em] bg-foreground text-background px-3.5 py-1.5 rounded-sm inline-flex items-center gap-1.5 hover:bg-foreground/90 font-medium shrink-0"
             >
-              APPLY <span className="hidden sm:inline">ON {o.scrapedFrom.toUpperCase()}</span> ↗
+              APPLY <span className="hidden md:inline">ON {o.scrapedFrom.toUpperCase()}</span> ↗
             </a>
           </div>
         </div>
