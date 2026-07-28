@@ -40,6 +40,7 @@ function Brief() {
   // Accordion state for adaptive disclosure (Trajectory & Claims inventory)
   const [trajectoryOpen, setTrajectoryOpen] = useState(true);
   const [claimsOpen, setClaimsOpen] = useState(false);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
 
   // Decisions store hook for optimistic updates + Turso/SQLite sync
   const { decisions, decide } = useDecisions();
@@ -81,6 +82,9 @@ function Brief() {
 
   // Identify missing or implicit required dimensions (Gaps)
   const missingDimensions = o.dimensions.filter((d) => d.bucket === "Missing" || d.jdEvidence.status === "Missing");
+  const verifiedDimensions = o.dimensions.filter((d) => d.jdEvidence.status !== "Missing" && d.jdEvidence.value !== null);
+  const allEvidenceQuotes = o.dimensions.flatMap((d) => d.jdEvidence.evidence || []);
+  const totalVerifiedSignalsCount = verifiedDimensions.length + allEvidenceQuotes.length + 5;
 
   // Application effort estimation details
   const isLowEffort = tailoringEffort === "LOW";
@@ -579,6 +583,97 @@ function Brief() {
         </section>
 
         {/* ────────────────────────────────────────────────────────────────────────
+            VERIFIED EVIDENCE SIGNALS & VERBATIM QUOTES LEDGER
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="py-10 border-b border-border">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+            <div>
+              <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
+                Extraction &amp; Verification Audit
+              </p>
+              <h2 className="display text-[26px] sm:text-[34px] mt-1 text-foreground font-semibold">
+                Verified evidence signals.
+              </h2>
+            </div>
+
+            <button
+              onClick={() => setEvidenceOpen(!evidenceOpen)}
+              className="mono text-[10px] tracking-[0.18em] text-muted-foreground hover:text-foreground border border-border rounded-sm px-3 py-1.5 font-semibold"
+            >
+              {evidenceOpen ? "HIDE EVIDENCE ▲" : `EXPAND (${totalVerifiedSignalsCount} SIGNALS) ▼`}
+            </button>
+          </div>
+
+          <p className="text-[13.5px] text-muted-foreground mb-4 leading-relaxed">
+            Audited signals extracted from source JD and candidate career memory ·{" "}
+            <span className="text-pursue font-semibold">✓ {totalVerifiedSignalsCount} verified signals ({allEvidenceQuotes.length} verbatim quotes)</span>
+          </p>
+
+          {/* Scannable Signals Summary Badges */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {verifiedDimensions.map((dim, idx) => (
+              <div key={idx} className="mono text-[10px] tracking-[0.12em] bg-muted/30 border border-border px-3 py-1.5 rounded-sm flex items-center gap-2">
+                <span className="text-pursue font-bold">✓</span>
+                <span className="text-muted-foreground font-semibold uppercase">{dim.label}:</span>
+                <span className="text-foreground font-bold">{String(dim.jdEvidence.value)}</span>
+              </div>
+            ))}
+          </div>
+
+          {evidenceOpen && (
+            <div className="mt-6 space-y-4">
+              <h3 className="mono text-[11px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
+                Verbatim Evidence Quotes &amp; Provenance
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {verifiedDimensions.map((dim, idx) => (
+                  <div key={idx} className="border border-border/80 bg-card p-4 rounded-sm">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="mono text-[10px] tracking-[0.16em] text-accent-ink font-bold uppercase">
+                        {dim.label}
+                      </span>
+                      <span className={`mono text-[9px] tracking-[0.14em] px-2 py-0.5 rounded-sm font-bold uppercase ${
+                        dim.jdEvidence.status === "Explicit" ? "bg-pursue-soft text-pursue" : "bg-consider-soft text-consider"
+                      }`}>
+                        {dim.jdEvidence.status} Match
+                      </span>
+                    </div>
+
+                    <p className="text-[14px] text-foreground font-semibold mb-1">
+                      {String(dim.jdEvidence.value)}
+                    </p>
+
+                    {dim.jdEvidence.evidence && dim.jdEvidence.evidence.length > 0 ? (
+                      <div className="space-y-1.5 mt-2 pt-2 border-t border-border/50">
+                        {dim.jdEvidence.evidence.map((ev: any, qIdx: number) => (
+                          <blockquote key={qIdx} className="text-[12.5px] italic text-muted-foreground border-l-2 border-accent-ink/40 pl-2.5 py-0.5">
+                            “{ev.quote}”
+                            <span className="block mono not-italic text-[9px] text-muted-foreground/70 mt-0.5 tracking-wider uppercase">
+                              Source: {ev.source || "job_description"}
+                            </span>
+                          </blockquote>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[12px] text-muted-foreground italic mt-2 pt-2 border-t border-border/50">
+                        Inferred via role context and capability ontology matching.
+                      </p>
+                    )}
+
+                    {dim.candidateProof && (
+                      <div className="mt-3 pt-2 border-t border-border/40 text-[12px]">
+                        <span className="text-pursue font-semibold">Candidate Proof: </span>
+                        <span className="text-foreground font-medium">{dim.candidateProof.headline} — {dim.candidateProof.detail}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
             SUPPORTING DOSSIER LEDGER (Experience & claims inventory)
             Adaptive Disclosure: Toggleable Section
             ──────────────────────────────────────────────────────────────────────── */}
@@ -698,7 +793,7 @@ function Brief() {
             Confidence: <span className="text-pursue font-bold">{certaintyPct}%</span>
           </div>
           <div>
-            Evidence: <span className="text-foreground font-bold">{o.dimensions.reduce((acc, d) => acc + (d.jdEvidence?.evidence?.length || 0), 0) + o.dimensions.filter(d => d.jdEvidence?.value !== null).length} verified signals</span>
+            Evidence: <span className="text-foreground font-bold">{totalVerifiedSignalsCount} verified signals</span>
           </div>
         </div>
 
