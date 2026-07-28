@@ -191,8 +191,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   const t0 = Date.now();
   const page = await ctx.browserContext.newPage();
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
-    await jitter(1000, 2000);
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 12000 }).catch(() => {});
+    await jitter(500, 1200);
 
     await page.waitForSelector(contentSelectors, { timeout: 6000 }).catch(() => {});
 
