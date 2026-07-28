@@ -10,6 +10,8 @@ export interface HydrateOptions {
   targetCards: number;
   /** Maximum scroll attempts before stopping (default: 6) */
   maxPasses?: number;
+  /** Number of consecutive scroll passes with 0 new cards to declare DOM stability (default: 2) */
+  consecutiveStableLimit?: number;
   /** Minimum delay in ms per scroll pass (default: 800) */
   minPassDelayMs?: number;
   /** Maximum delay in ms per scroll pass (default: 1500) */
