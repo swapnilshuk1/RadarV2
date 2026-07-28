@@ -127,60 +127,52 @@ function Brief() {
             <span>SHORTLIST</span>
           </Link>
 
-          {/* Center: Sleek Executive Progress Indicator */}
-          <div className="hidden sm:flex items-center gap-3 shrink-0">
-            <div className="flex items-center gap-1.5 mono text-[11px] tracking-[0.18em]">
-              <span className="text-muted-foreground">BRIEF</span>
+          {/* Center: Cohesive Pagination Control Unit */}
+          <div className="flex items-center gap-2.5 border border-border bg-card/60 px-3 py-1 rounded-sm shadow-2xs">
+            {neighbors.prev ? (
+              <Link
+                to="/opportunity/$jobHash"
+                params={{ jobHash: neighbors.prev.jobHash }}
+                className="mono text-[10px] sm:text-[11px] tracking-[0.18em] text-muted-foreground hover:text-foreground font-bold px-1.5 py-0.5 hover:bg-muted/60 rounded-xs transition-colors"
+                title="Previous Brief"
+              >
+                ← PREV
+              </Link>
+            ) : (
+              <span className="mono text-[10px] sm:text-[11px] tracking-[0.18em] text-muted-foreground/30 px-1.5 py-0.5 opacity-40 cursor-not-allowed">
+                ← PREV
+              </span>
+            )}
+
+            <span className="text-border/80 text-[12px]">|</span>
+
+            <div className="mono text-[10px] sm:text-[11px] tracking-[0.18em] text-muted-foreground flex items-center gap-1 font-medium">
+              <span>BRIEF</span>
               <span className="text-foreground font-bold">{String(currentIndex).padStart(2, "0")}</span>
-              <span className="text-muted-foreground">/</span>
-              <span className="text-muted-foreground font-medium">{String(totalCount).padStart(2, "0")}</span>
+              <span>OF</span>
+              <span className="text-foreground font-semibold">{String(totalCount).padStart(2, "0")}</span>
             </div>
 
-            {/* Precision Progress Track */}
-            <div className="w-24 md:w-36 h-1.5 bg-muted/60 rounded-full overflow-hidden flex items-center">
-              <div
-                className="h-full bg-pursue transition-all duration-300 rounded-full"
-                style={{ width: `${Math.min(100, Math.max(2, (currentIndex / totalCount) * 100))}%` }}
-              />
-            </div>
+            <span className="text-border/80 text-[12px]">|</span>
 
-            <span className="mono text-[10px] tracking-[0.14em] text-muted-foreground font-medium">
-              {Math.round((currentIndex / totalCount) * 100)}%
-            </span>
+            {neighbors.next ? (
+              <Link
+                to="/opportunity/$jobHash"
+                params={{ jobHash: neighbors.next.jobHash }}
+                className="mono text-[10px] sm:text-[11px] tracking-[0.18em] text-muted-foreground hover:text-foreground font-bold px-1.5 py-0.5 hover:bg-muted/60 rounded-xs transition-colors"
+                title="Next Brief"
+              >
+                NEXT →
+              </Link>
+            ) : (
+              <span className="mono text-[10px] sm:text-[11px] tracking-[0.18em] text-muted-foreground/30 px-1.5 py-0.5 opacity-40 cursor-not-allowed">
+                NEXT →
+              </span>
+            )}
           </div>
 
-          {/* Right: Pagination & Action Controls */}
+          {/* Right: Apply Action CTA */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <div className="flex items-center gap-1">
-              {neighbors.prev ? (
-                <Link
-                  to="/opportunity/$jobHash"
-                  params={{ jobHash: neighbors.prev.jobHash }}
-                  className="mono text-[10px] tracking-[0.18em] text-muted-foreground hover:text-foreground border border-border hover:border-foreground/40 rounded-sm px-2.5 py-1.5 font-semibold transition-colors"
-                >
-                  ← PREV
-                </Link>
-              ) : (
-                <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground/30 border border-border/30 rounded-sm px-2.5 py-1.5 opacity-40 cursor-not-allowed">
-                  ← PREV
-                </span>
-              )}
-
-              {neighbors.next ? (
-                <Link
-                  to="/opportunity/$jobHash"
-                  params={{ jobHash: neighbors.next.jobHash }}
-                  className="mono text-[10px] tracking-[0.18em] text-muted-foreground hover:text-foreground border border-border hover:border-foreground/40 rounded-sm px-2.5 py-1.5 font-semibold transition-colors"
-                >
-                  NEXT →
-                </Link>
-              ) : (
-                <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground/30 border border-border/30 rounded-sm px-2.5 py-1.5 opacity-40 cursor-not-allowed">
-                  NEXT →
-                </span>
-              )}
-            </div>
-
             <a
               href={applyUrlFor(o)}
               target="_blank"
