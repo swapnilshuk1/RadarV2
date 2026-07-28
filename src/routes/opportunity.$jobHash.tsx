@@ -46,8 +46,8 @@ function Brief() {
 
   // Accordion state for adaptive disclosure (Trajectory & Claims inventory)
   const [trajectoryOpen, setTrajectoryOpen] = useState(true);
-  const [claimsOpen, setClaimsOpen] = useState(false);
-  const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [claimsOpen, setClaimsOpen] = useState(true);
+  const [evidenceOpen, setEvidenceOpen] = useState(true);
 
   // Decisions store hook for optimistic updates + Turso/SQLite sync
   const { decisions, decide } = useDecisions();
@@ -119,28 +119,28 @@ function Brief() {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="h-3 w-3"
+              className="h-3.5 w-3.5"
             >
-              <path d="m12 19-7-7 7-7" />
-              <path d="M19 12H5" />
+              <path d="m15 18-6-6 6-6" />
             </svg>
-            BACK TO SHORTLIST
+            ONECK SHORTLIST
           </Link>
 
-          <div className="flex items-center gap-3 sm:gap-6">
+          <div className="flex items-center gap-3">
             <span className="mono text-[11px] tracking-[0.2em] text-muted-foreground hidden md:inline-flex items-center gap-2">
               REVIEWING <span className="text-foreground font-bold">{String(currentIndex).padStart(2, "0")}</span> OF {String(totalCount).padStart(2, "0")}
-              <span className="flex items-center gap-1 ml-1">
-                {Array.from({ length: totalCount }).slice(0, 8).map((_, idx) => (
+              <span className="inline-flex items-center gap-1 ml-1">
+                {Array.from({ length: totalCount }).map((_, i) => (
                   <span
-                    key={idx}
-                    className={`h-1.5 w-3 rounded-xs transition-colors ${
-                      idx < currentIndex ? "bg-pursue" : "bg-border"
+                    key={i}
+                    className={`h-2 w-2 rounded-xs ${
+                      i + 1 === currentIndex ? "bg-pursue" : i + 1 < currentIndex ? "bg-foreground/40" : "bg-muted-foreground/20"
                     }`}
                   />
                 ))}
               </span>
             </span>
+
             <div className="flex items-center gap-1.5">
               {neighbors.prev ? (
                 <Link
@@ -186,34 +186,45 @@ function Brief() {
       {/* ────────────────────────────────────────────────────────────────────────
           ARTICLE MAIN CONTAINER
           ──────────────────────────────────────────────────────────────────────── */}
-      <article className="max-w-[1180px] mx-auto px-4 sm:px-8 pt-8 sm:pt-12">
+      <article className="max-w-[1180px] mx-auto px-4 sm:px-8 pt-8 sm:pt-10">
         {/* HEADER & HERO RECOMMENDATION BOX */}
         <header className="border-b border-border pb-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             <div className="lg:col-span-8">
+              {/* STYLED METADATA MICRO-CHIPS */}
               <div className="flex flex-wrap items-center gap-2 mb-3">
-                <span className="mono text-[10px] tracking-[0.22em] text-accent-ink bg-accent-ink/8 px-2.5 py-1 rounded-sm uppercase font-semibold">
+                <span className="mono text-[10px] tracking-[0.18em] text-accent-ink bg-accent-ink/10 border border-accent-ink/20 px-2.5 py-1 rounded-sm uppercase font-bold">
                   {mandateTag}
                 </span>
-                <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground uppercase">
-                  {o.scrapedFrom} · {o.postedRelative.toUpperCase()}
+                <span className="mono text-[10px] tracking-[0.18em] text-foreground bg-muted/50 border border-border px-2.5 py-1 rounded-sm uppercase font-semibold">
+                  COMMERCIAL
                 </span>
-                <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground bg-muted/40 border border-border px-2 py-0.5 rounded-sm uppercase">
-                  201–500 EMPLOYEES · TECHNOLOGY
+                <span className="mono text-[10px] tracking-[0.18em] text-foreground bg-muted/50 border border-border px-2.5 py-1 rounded-sm uppercase font-semibold">
+                  TECHNOLOGY
+                </span>
+                <span className="mono text-[10px] tracking-[0.18em] text-foreground bg-muted/50 border border-border px-2.5 py-1 rounded-sm uppercase font-semibold">
+                  201–500 EMPLOYEES
+                </span>
+                <span className="mono text-[10px] tracking-[0.18em] text-foreground bg-muted/50 border border-border px-2.5 py-1 rounded-sm uppercase font-semibold">
+                  HYBRID / {o.location.toUpperCase()}
+                </span>
+                <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground border border-border/80 px-2 py-1 rounded-sm uppercase font-medium">
+                  {o.scrapedFrom}
                 </span>
               </div>
 
-              <h1 className="display text-[32px] sm:text-[52px] leading-[1.08] text-foreground font-semibold">
+              {/* COMPACT TITLE */}
+              <h1 className="display text-[26px] sm:text-[38px] leading-[1.12] text-foreground font-semibold">
                 {o.role}
               </h1>
 
-              <div className="mt-3 flex items-center gap-3 text-[14.5px]">
+              <div className="mt-2.5 flex items-center gap-2 text-[14px]">
                 <span className="text-foreground font-semibold">{o.company}</span>
                 <span className="text-border">·</span>
                 <span className="text-muted-foreground">{o.location}</span>
               </div>
 
-              <p className="mt-4 text-[15px] sm:text-[16px] text-muted-foreground leading-relaxed max-w-2xl font-normal">
+              <p className="mt-3 text-[14.5px] sm:text-[15px] text-muted-foreground leading-relaxed max-w-2xl font-normal">
                 Targeted executive opportunity in {o.role} capacity, aligned with your marketing growth and digital-stack precedents.
               </p>
             </div>
@@ -221,11 +232,11 @@ function Brief() {
             {/* HERO RECOMMENDATION BOX */}
             <div className="lg:col-span-4 border border-border bg-card/60 p-5 rounded-md shadow-2xs">
               <div className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-2">
-                RADAR RECOMMENDATION
+                EXECUTIVE SUMMARY
               </div>
               <div className="flex items-center gap-2 text-pursue mb-2">
-                <span className="text-[22px] font-bold">✔</span>
-                <span className="display text-[26px] font-bold tracking-tight">{currentVerdict}</span>
+                <span className="text-[20px] font-bold">✔</span>
+                <span className="display text-[24px] font-bold tracking-tight">{currentVerdict}</span>
               </div>
               <p className="text-[13px] text-muted-foreground leading-relaxed">
                 This opportunity0 meaningfully advances your executive trajectory with manageable application effort.
@@ -286,32 +297,47 @@ function Brief() {
             </div>
           </div>
 
-          {/* 3-CARD ROW: PRIMARY DRIVER / PRIMARY RISK / APPLICATION EFFORT */}
+          {/* 3-COLUMN EXECUTIVE FRICTION & ANALYSIS ROW */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="border-l-2 border-pursue/60 pl-4 py-2 bg-pursue-soft/20 rounded-r-md">
+            <div className="border-l-2 border-pursue/60 pl-4 py-2.5 bg-pursue-soft/20 rounded-r-md">
               <div className="flex items-center gap-2 text-pursue">
                 <span className="mono text-[10px] tracking-[0.22em] font-bold">✔ PRIMARY DRIVER</span>
               </div>
-              <p className="mt-1 text-[14px] text-foreground font-medium">{primaryDriver}</p>
-              <p className="text-[12px] text-muted-foreground mt-0.5">Strong alignment with proven strategies.</p>
+              <p className="mt-1 text-[14px] text-foreground font-semibold">{primaryDriver}</p>
+              <p className="text-[12px] text-muted-foreground mt-1">High leverage in positioning strategy and P&amp;L execution.</p>
             </div>
 
-            <div className="border-l-2 border-consider/60 pl-4 py-2 bg-consider-soft/20 rounded-r-md">
+            {/* NEW: FRICTION & TRADE-OFFS (REASONS NOT TO PURSUE) */}
+            <div className="border-l-2 border-consider/80 pl-4 py-2.5 bg-consider-soft/20 rounded-r-md">
               <div className="flex items-center gap-2 text-consider">
-                <span className="mono text-[10px] tracking-[0.22em] font-bold">▲ PRIMARY RISK</span>
+                <span className="mono text-[10px] tracking-[0.22em] font-bold">▲ REASONS NOT TO PURSUE (FRICTION)</span>
               </div>
-              <p className="mt-1 text-[14px] text-foreground font-medium">{primaryRisk}</p>
-              <p className="text-[12px] text-muted-foreground mt-0.5">Verify decision-making scope in screening.</p>
+              <ul className="mt-1.5 space-y-1 text-[12.5px] text-foreground font-medium">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-consider text-[11px] mt-0.5">•</span>
+                  <span>Slight scope regression vs. C-suite altitude</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-consider text-[11px] mt-0.5">•</span>
+                  <span>Hands-on team scaling required in first 90 days</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-consider text-[11px] mt-0.5">•</span>
+                  <span>Estimated comp 10-15% below top-quartile ceiling</span>
+                </li>
+              </ul>
             </div>
 
-            <div className="border-l-2 border-accent-ink/60 pl-4 py-2 bg-accent-ink/10 rounded-r-md">
+            <div className="border-l-2 border-accent-ink/60 pl-4 py-2.5 bg-accent-ink/10 rounded-r-md">
               <div className="flex flex-wrap items-center justify-between gap-1 text-accent-ink">
                 <span className="mono text-[10px] tracking-[0.22em] font-bold">APPLICATION EFFORT</span>
                 <span className="mono text-[9px] tracking-[0.14em] text-foreground font-semibold">EST. {estimatedTimeText.toUpperCase()}</span>
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-foreground font-medium">
+              <p className="text-[13px] text-foreground font-semibold mt-1">Low Tailoring Overhead</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground font-medium">
                 <span>✓ Resume ready</span>
                 <span>✓ Cover letter optional</span>
+                <span>✓ Direct web apply</span>
               </div>
             </div>
           </div>
@@ -749,77 +775,17 @@ function Brief() {
         </section>
 
         {/* ────────────────────────────────────────────────────────────────────────
-            NEW: RADAR RECOMMENDATION DECISION CLIMAX CARD
+            FOOTER META CLOSURE
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="my-10 border-2 border-border bg-card rounded-md p-6 sm:p-8 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <span className="mono text-[10px] tracking-[0.24em] text-accent-ink bg-accent-ink/10 px-2.5 py-1 rounded-sm font-bold uppercase">
-              RADAR RECOMMENDATION
-            </span>
-            <span className="mono text-[11px] tracking-[0.18em] text-muted-foreground font-semibold">
-              EXPECTED SHORTLIST PROBABILITY: <span className="text-pursue font-bold">HIGH</span>
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-baseline gap-4 mb-3">
-            <span className="mono text-[22px] sm:text-[28px] text-foreground font-bold tracking-tight">
-              ✔ {currentVerdict}
-            </span>
-            <span className="mono text-[12px] text-muted-foreground">
-              Certainty score: <strong className="text-foreground">{certaintyPct}%</strong>
-            </span>
-          </div>
-
-          <p className="text-[15px] sm:text-[16px] text-foreground font-medium leading-relaxed mb-6">
-            {isPursue && "PURSUE — This opportunity0 meaningfully advances your executive trajectory with manageable application effort."}
-            {isConsider && "CONSIDER — High capability match with minor title or location trade-offs; recommended for screening clarification."}
-            {isPass && "PASS — Does not meet minimum alignment criteria or target career trajectory."}
-          </p>
-
-          <div className="pt-4 border-t border-border flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => decide(o.jobHash, "PURSUE")}
-              className={`mono text-[11px] tracking-[0.18em] px-5 py-2.5 rounded-sm font-bold transition-colors ${
-                isPursue
-                  ? "bg-pursue text-background shadow-sm"
-                  : "bg-pursue-soft text-pursue hover:bg-pursue hover:text-background"
-              }`}
-            >
-              PURSUE
-            </button>
-            <button
-              onClick={() => decide(o.jobHash, "CONSIDER")}
-              className={`mono text-[11px] tracking-[0.18em] px-5 py-2.5 rounded-sm font-bold transition-colors ${
-                isConsider
-                  ? "bg-consider text-background shadow-sm"
-                  : "bg-consider-soft text-consider hover:bg-consider hover:text-background"
-              }`}
-            >
-              CONSIDER
-            </button>
-            <button
-              onClick={() => decide(o.jobHash, "PASS")}
-              className={`mono text-[11px] tracking-[0.18em] px-5 py-2.5 rounded-sm font-bold transition-colors ${
-                isPass
-                  ? "bg-pass text-foreground shadow-sm"
-                  : "bg-muted text-muted-foreground hover:bg-pass hover:text-foreground"
-              }`}
-            >
-              PASS
-            </button>
-          </div>
-        </section>
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            NEW: FOOTER CLOSURE CARD
-            ──────────────────────────────────────────────────────────────────────── */}
-        <div className="my-8 border-t border-b border-border py-4 flex flex-wrap items-center justify-between gap-3 text-muted-foreground mono text-[11px] tracking-[0.18em]">
+        <div className="my-8 border-t border-b border-border py-3.5 flex flex-wrap items-center justify-center gap-6 text-muted-foreground mono text-[11px] tracking-[0.18em]">
           <div>
             Generated: <span className="text-foreground font-bold">{new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
           </div>
+          <span className="text-border">·</span>
           <div>
             Confidence: <span className="text-pursue font-bold">{certaintyPct}%</span>
           </div>
+          <span className="text-border">·</span>
           <div>
             Evidence: <span className="text-foreground font-bold">{totalVerifiedSignalsCount} verified signals</span>
           </div>
@@ -918,9 +884,14 @@ function Brief() {
           ──────────────────────────────────────────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur border-t border-border/80 px-4 py-2.5 sm:py-3 shadow-2xl">
         <div className="max-w-[1180px] mx-auto flex items-center justify-between gap-3">
-          <div className="hidden sm:block truncate max-w-[320px]">
-            <p className="text-[13px] font-semibold text-foreground truncate">{o.role}</p>
-            <p className="mono text-[10px] text-muted-foreground truncate">{o.company} · {currentVerdict}</p>
+          {/* KPI METRIC ANCHORS INSTEAD OF REPEATING TITLE */}
+          <div className="hidden sm:flex items-center gap-2.5">
+            <span className="mono text-[11px] tracking-[0.18em] text-foreground bg-muted/50 border border-border px-2.5 py-1 rounded-sm font-bold">
+              PRIORITY {score}/100
+            </span>
+            <span className="mono text-[11px] tracking-[0.18em] text-pursue bg-pursue-soft/60 border border-pursue/30 px-2.5 py-1 rounded-sm font-bold">
+              {certaintyPct}% CONFIDENCE
+            </span>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
