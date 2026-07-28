@@ -4,6 +4,7 @@ import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
 import { passesHardFilter } from "../utils/hard-filter";
+import { hydrateVirtualizedList } from "../utils/scroll";
 
 const LINKEDIN_GEO_INDIA = "102713980";
 
@@ -83,9 +84,35 @@ export const linkedinHandler: PortalHandler = {
     try {
       await page.goto(ctx.searchUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
       await humanize(page);
-      await sleep(2500);
-      const cards = await page.locator("div.job-card-container, li.jobs-search-results__list-item").all();
-      const sliced = cards.slice(0, CONFIG.maxCardsPerPage);
+      await sleep(1500);
+
+      const targetMaxCards = CONFIG.getMaxCardsPerPage("LinkedIn");
+      const cardSelector = "div.job-card-container, li.jobs-search-results__list-item";
+      const containerSelectors = [
+        ".jobs-search-results-list",
+        ".scaffold-layout__list-container",
+        "div.jobs-search-results__list",
+        ".jobs-search-results",
+        "main",
+      ];
+
+      // Perform stabilized virtualized scrolling
+      const hydration = await hydrateVirtualizedList(
+        page,
+        {
+          cardSelector,
+          containerSelectors,
+          targetCards: targetMaxCards,
+          maxPasses: 6,
+          consecutiveStableLimit: 2,
+        },
+        ctx.logger
+      );
+
+      ctx.logger(`[LinkedIn Hydration Summary] Discovered ${hydration.finalCount} total cards (initial: ${hydration.initialCount}, passes: ${hydration.passesCompleted}, stabilized: ${hydration.stabilized})`);
+
+      const cards = await page.locator(cardSelector).all();
+      const sliced = cards.slice(0, targetMaxCards);
       for (const card of sliced) {
         try {
           const titleEl = card.locator('a.job-card-list__title, a.job-card-container__link').first();

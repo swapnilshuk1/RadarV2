@@ -75,6 +75,17 @@ export const CANDIDATE_PROFILE_JSON = path.join(DATA_DIR, "candidate-profile.jso
 export const CONFIG = {
   maxPages: 2,
   maxCardsPerPage: 10,
+  portalMaxCardsPerPage: {
+    LinkedIn: 25,
+    Naukri: 20,
+    Indeed: 15,
+  } as Record<string, number>,
+  getMaxCardsPerPage(portalName?: string): number {
+    if (portalName && this.portalMaxCardsPerPage[portalName]) {
+      return this.portalMaxCardsPerPage[portalName];
+    }
+    return this.maxCardsPerPage;
+  },
   portalConcurrency: Number(process.env.PORTAL_CONCURRENCY || 3),
   detailConcurrency: Number(process.env.DETAIL_CONCURRENCY || 8),
   llmConcurrency: Number(process.env.LLM_CONCURRENCY || 2),
