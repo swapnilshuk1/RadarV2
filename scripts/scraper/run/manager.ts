@@ -240,12 +240,14 @@ export class RunController {
     const elapsedFormatted = `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s`;
 
     const totalUnits = this.manifest.units.length;
-    const completedUnits = this.manifest.units.filter((u) => u.status === "done" || u.status === "empty").length;
+    const completedUnits = this.manifest.units.filter((u) => u.status === "done" || u.status === "skipped_empty" || u.status === "skipped_gated" || u.status === "skipped_pruned").length;
     const cardsDiscovered = this.manifest.cards.length;
 
     const portalBreakdown: Record<string, number> = {};
-    for (const card of this.manifest.cards) {
-      portalBreakdown[card.portal] = (portalBreakdown[card.portal] || 0) + 1;
+    for (const u of this.manifest.units) {
+      if (u.cardIds && u.cardIds.length > 0) {
+        portalBreakdown[u.portal] = (portalBreakdown[u.portal] || 0) + u.cardIds.length;
+      }
     }
 
     const telemetry = this.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
