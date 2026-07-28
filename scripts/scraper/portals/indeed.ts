@@ -81,21 +81,33 @@ export const indeedHandler: PortalHandler = {
           const location = ((await card.locator('[data-testid="text-location"], .companyLocation, [class*="companyLocation"]').first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
           const salary = ((await card.locator('[data-testid="attribute_snippet_testid"], .salary-snippet, [class*="salary"]').first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
 
-          // URL: href may be relative, and may carry an anchor fragment — strip it.
           const urlEl = card.locator("h2.jobTitle a, a[data-jk], a[href*='/rc/clk'], a[href*='/jobs/view'], a[href*='viewjob']").first();
           const rawHref = ((await urlEl.getAttribute("href", { timeout: 1000 }).catch(() => "")) || "").trim();
-          if (!rawHref || !title) continue;
 
-          // Strip query-string tracking params but keep the path; strip anchor.
-          const cleanHref = rawHref.split("#")[0].split("&")[0];
-
-          const filterRes = passesHardFilter({ title, company, location });
-          if (!filterRes.pass) {
-            ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
-            continue;
+          // Extract canonical Indeed Job Key (jk) to stay on in.indeed.com and avoid off-site redirects
+          let jk = ((await card.getAttribute("data-jk").catch(() => "")) || "").trim();
+          if (!jk) {
+            jk = ((await urlEl.getAttribute("data-jk", { timeout: 500 }).catch(() => "")) || "").trim();
+          }
+          if (!jk && rawHref) {
+            const match = rawHref.match(/[?&]jk=([a-f0-9]+)/i);
+            if (match) jk = match[1];
           }
 
-          const detailUrl = cleanHref.startsWith("http") ? cleanHref : `https://in.indeed.com${cleanHref}`;
+          let detailUrl = "";
+          if (jk) {
+            detailUrl = `https://in.indeed.com/viewjob?jk=${jk}`;
+          } else if (rawHref) {
+            try {
+              const parsed = new URL(rawHref, "https://in.indeed.com");
+              parsed.hash = "";
+              detailUrl = parsed.toString();
+            } catch {
+              detailUrl = rawHref.startsWith("http") ? rawHref : `https://in.indeed.com${rawHref}`;
+            }
+          }
+
+          if (!detailUrl || !title) continue;
 
           const cardHash = cardHashFor("Indeed", detailUrl);
           const rawHtml = await card.innerHTML().catch(() => "");
