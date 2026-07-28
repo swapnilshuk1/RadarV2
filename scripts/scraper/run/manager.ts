@@ -230,6 +230,39 @@ export class RunController {
     this.persistManifest();
     this.journal.append({ type: "run_finished", status: this.manifest.status });
     this.journal.close();
+    this.printRunHealthDashboard();
+  }
+
+  printRunHealthDashboard(): void {
+    const start = new Date(this.manifest.startedAt || Date.now()).getTime();
+    const end = this.manifest.finishedAt ? new Date(this.manifest.finishedAt).getTime() : Date.now();
+    const elapsedSec = Math.floor((end - start) / 1000);
+    const elapsedFormatted = `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s`;
+
+    const totalUnits = this.manifest.units.length;
+    const completedUnits = this.manifest.units.filter((u) => u.status === "done" || u.status === "empty").length;
+    const cardsDiscovered = this.manifest.cards.length;
+
+    const portalBreakdown: Record<string, number> = {};
+    for (const card of this.manifest.cards) {
+      portalBreakdown[card.portal] = (portalBreakdown[card.portal] || 0) + 1;
+    }
+
+    const telemetry = this.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
+
+    console.log(`
+================================================================================
+                       RADAR RUN HEALTH DASHBOARD
+================================================================================
+Run ID             : ${this.runId}
+Status             : ${(this.manifest.status || "completed").toUpperCase()}
+Elapsed Time       : ${elapsedFormatted}
+Work Units         : ${completedUnits} / ${totalUnits} units executed
+Cards Discovered   : ${cardsDiscovered} total
+Portal Yield       : ${Object.entries(portalBreakdown).map(([p, count]) => `${p}=${count}`).join(" | ") || "None"}
+FastPath Telemetry : Attempted=${telemetry.httpAttempted}, Success=${telemetry.httpSuccessful}, Fallbacks=${telemetry.httpFallbacks}
+================================================================================
+`);
   }
 
   private persistManifest(): void {

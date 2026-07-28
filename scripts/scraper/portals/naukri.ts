@@ -10,7 +10,7 @@ export const naukriHandler: PortalHandler = {
   detailStrategy: (process.env.NAUKRI_DETAIL_STRATEGY as "auto" | "http" | "browser") || "browser",
   buildSearchUrl(kw, page) {
     const slug = kw.toLowerCase().replace(/\s+/g, "-");
-    return `https://www.naukri.com/${slug}-jobs-in-india${page > 1 ? `-${page}` : ""}?k=${encodeURIComponent(kw)}`;
+    return `https://www.naukri.com/${slug}-jobs-in-india-${page}?k=${encodeURIComponent(kw)}`;
   },
   async ensureSession(ctx) {
     const page = ctx.activePage;

@@ -23,7 +23,7 @@ export function triggerDebouncedRebuild() {
     } catch (err: any) {
       console.error("[Server] Debounced rebuild failed:", err.message);
     }
-  }, 2000);
+  }, 20000);
 }
 
 // Vite HMR-safe singleton background daemon initialization

@@ -7,7 +7,7 @@ import { passesHardFilter } from "../utils/hard-filter";
 
 export const indeedHandler: PortalHandler = {
   name: "Indeed",
-  detailStrategy: "auto",
+  detailStrategy: "playwright",
   buildSearchUrl(kw, page) {
     const start = (page - 1) * 10;
     return `https://in.indeed.com/jobs?q=${encodeURIComponent(kw)}&l=India&start=${start}`;
