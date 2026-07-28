@@ -87,7 +87,13 @@ export const linkedinHandler: PortalHandler = {
       await sleep(1500);
 
       const targetMaxCards = CONFIG.getMaxCardsPerPage("LinkedIn");
-      const cardSelector = "div.job-card-container, li.jobs-search-results__list-item";
+      const cardSelector = [
+        "div.job-card-container",
+        "li.jobs-search-results__list-item",
+        "ul.jobs-search__results-list li",
+        "div.base-search-card",
+        "[class*='jobs-search__results-list'] li",
+      ].join(", ");
       const containerSelectors = [
         ".jobs-search-results-list",
         ".scaffold-layout__list-container",

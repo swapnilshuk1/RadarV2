@@ -76,19 +76,28 @@ export async function hydrateVirtualizedList(
   for (let pass = 1; pass <= maxPasses; pass++) {
     passesCompleted = pass;
 
-    // Scroll action: scroll container if found, else scroll window
+    // 1. Scroll the last rendered card into view (forces Playwright to scroll whichever ancestor container wraps it)
+    const cardsLocator = page.locator(cardSelector);
+    const countBeforeScroll = await cardsLocator.count().catch(() => 0);
+    if (countBeforeScroll > 0) {
+      await cardsLocator.nth(countBeforeScroll - 1).scrollIntoViewIfNeeded().catch(() => {});
+    }
+
+    // 2. Also scroll container and window incrementally with synthetic scroll events
     if (containerLocator) {
       await containerLocator.evaluate((el) => {
-        el.scrollTop = el.scrollHeight;
-      }).catch(() => {});
-    } else {
-      await page.evaluate(() => {
-        window.scrollBy(0, window.innerHeight * 0.8);
+        el.scrollTop += (el.clientHeight || 600);
+        el.dispatchEvent(new Event('scroll', { bubbles: true }));
       }).catch(() => {});
     }
 
+    await page.evaluate(() => {
+      window.scrollBy(0, 600);
+      window.dispatchEvent(new Event('scroll', { bubbles: true }));
+    }).catch(() => {});
+
     // Jitter delay for DOM rendering & IntersectionObserver triggers
-    await jitter(400, 800);
+    await jitter(600, 1000);
 
     // Re-count cards
     currentCards = await page.locator(cardSelector).count().catch(() => 0);
