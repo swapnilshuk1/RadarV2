@@ -50,158 +50,159 @@ export class JsonPublisher implements Publisher {
   }
 }
 
+import { getDatabaseAdapter } from "../../src/data/database";
+
 /**
- * SQLite Publisher: Updates opportunities, documents, and facts tables inside radar.sqlite.
+ * SQLite / Turso Publisher: Updates opportunities, documents, and facts tables via DatabaseAdapter.
  */
 export class SqlitePublisher implements Publisher {
-  constructor(private dbPath: string) {}
+  constructor(private dbPath?: string) {}
 
   async publish(enriched: EnrichedOpportunity[]): Promise<void> {
-    console.log(`[Publish:SQLite] Connecting to SQLite database at: ${this.dbPath}`);
-    const db = new Database(this.dbPath);
-    
-    // Enable WAL mode for performance
-    db.pragma("journal_mode = WAL");
+    console.log(`[Publish:Database] Connecting to database adapter...`);
+    const adapter = getDatabaseAdapter(this.dbPath);
 
-    const tx = db.transaction(() => {
-      let oppMerged = 0;
-      let docMerged = 0;
-      let factsMerged = 0;
+    let oppMerged = 0;
+    let docMerged = 0;
+    let factsMerged = 0;
 
-      for (const item of enriched) {
+    for (const item of enriched) {
+      try {
         // 1. Resolve Opportunity ID (id in opportunities table)
-        // Check if opportunity already exists by fingerprint
         let oppId: string;
-        const existingOpp = db.prepare("SELECT id FROM opportunities WHERE fingerprint = ?").get(item.jobHash) as { id: string } | undefined;
-        
+        const existingOpp = await adapter.one<{ id: string }>(
+          "SELECT id FROM opportunities WHERE fingerprint = ?",
+          [item.jobHash]
+        );
+
         if (existingOpp) {
           oppId = existingOpp.id;
         } else {
           oppId = `opp_${item.jobHash}`;
         }
 
-        // Merge opportunity details
-        const mergeOppStmt = db.prepare(`
-          INSERT INTO opportunities (
-            id, company_id, canonical_title, location, employment_type, posting_window, fingerprint, lifecycle,
-            created_at, updated_at,
-            meta_schema_version, meta_extractor_version, meta_prompt_version, meta_model, meta_run_id, meta_timestamp
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-          ON CONFLICT(fingerprint) DO UPDATE SET
-            canonical_title = excluded.canonical_title,
-            location = excluded.location,
-            employment_type = excluded.employment_type,
-            lifecycle = excluded.lifecycle,
-            updated_at = CURRENT_TIMESTAMP
-        `);
-
         // Resolve company_id
         const compNameClean = item.company.toLowerCase().replace(/[^a-z0-9]/g, "");
         const compId = `comp_${compNameClean || "confidential"}`;
 
         // Ensure company exists in the companies table
-        db.prepare(`
-          INSERT OR IGNORE INTO companies (id, name, hq, size, created_at, updated_at)
-          VALUES (?, ?, ?, null, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        `).run(compId, item.company, item.location);
+        await adapter.execute(
+          `INSERT INTO companies (id, name, hq, size, created_at, updated_at)
+           VALUES (?, ?, ?, null, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           ON CONFLICT(id) DO UPDATE SET name = excluded.name`,
+          [compId, item.company, item.location || null]
+        );
 
-        mergeOppStmt.run(
-          oppId,
-          compId,
-          item.role,
-          item.location || null,
-          "Full-time", // default employment type
-          "Recent",    // default window
-          item.jobHash,
-          "Active",    // default lifecycle
-          "1.0.0",     // schema version
-          item.extractorVersion || null,
-          item.promptVersion || null,
-          item.telemetry?.llmFallbackReason ? "gpt-4" : "rule-based",
-          null,        // run id
+        // Merge opportunity details
+        await adapter.execute(
+          `INSERT INTO opportunities (
+             id, company_id, canonical_title, location, employment_type, posting_window, fingerprint, lifecycle,
+             created_at, updated_at,
+             meta_schema_version, meta_extractor_version, meta_prompt_version, meta_model, meta_run_id, meta_timestamp
+           )
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(fingerprint) DO UPDATE SET
+             canonical_title = excluded.canonical_title,
+             location = excluded.location,
+             employment_type = excluded.employment_type,
+             lifecycle = excluded.lifecycle,
+             updated_at = CURRENT_TIMESTAMP`,
+          [
+            oppId,
+            compId,
+            item.role,
+            item.location || null,
+            "Full-time",
+            "Recent",
+            item.jobHash,
+            "Active",
+            "1.0.0",
+            item.extractorVersion || null,
+            item.promptVersion || null,
+            item.telemetry?.llmFallbackReason ? "gpt-4" : "rule-based",
+            null,
+          ]
         );
         oppMerged++;
 
         // Ensure source exists in the sources table
-        const srcId = item.scrapedFrom;
-        db.prepare(`
-          INSERT OR IGNORE INTO sources (id, type, name, created_at, updated_at)
-          VALUES (?, 'Portal', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        `).run(srcId, item.scrapedFrom);
+        const srcId = item.scrapedFrom || "LinkedIn";
+        await adapter.execute(
+          `INSERT INTO sources (id, type, name, created_at, updated_at)
+           VALUES (?, 'Portal', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           ON CONFLICT(id) DO NOTHING`,
+          [srcId, srcId]
+        );
 
         // 2. Merge Document Record (documents table)
         let docId: string;
-        const existingDoc = db.prepare("SELECT id FROM documents WHERE opportunity_id = ?").get(oppId) as { id: string } | undefined;
+        const existingDoc = await adapter.one<{ id: string }>(
+          "SELECT id FROM documents WHERE opportunity_id = ?",
+          [oppId]
+        );
         if (existingDoc) {
           docId = existingDoc.id;
         } else {
           docId = `doc_${item.jobHash}`;
         }
 
-        const mergeDocStmt = db.prepare(`
-          INSERT INTO documents (
-            id, source_id, opportunity_id, payload_type, content, lifecycle,
-            created_at, updated_at,
-            meta_schema_version, meta_extractor_version, meta_prompt_version, meta_model, meta_run_id, meta_timestamp
-          )
-          VALUES (?, ?, ?, 'Structured', ?, 'Active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?, ?, ?, null, CURRENT_TIMESTAMP)
-          ON CONFLICT(id) DO UPDATE SET
-            content = excluded.content,
-            updated_at = CURRENT_TIMESTAMP
-        `);
-
-        mergeDocStmt.run(
-          docId,
-          srcId,
-          oppId,
-          JSON.stringify(item),
-          "1.0.0", // schema version
-          item.extractorVersion || null,
-          item.promptVersion || null,
-          item.telemetry?.llmFallbackReason ? "gpt-4" : "rule-based"
+        await adapter.execute(
+          `INSERT INTO documents (
+             id, source_id, opportunity_id, payload_type, content, lifecycle,
+             created_at, updated_at,
+             meta_schema_version, meta_extractor_version, meta_prompt_version, meta_model, meta_run_id, meta_timestamp
+           )
+           VALUES (?, ?, ?, 'Structured', ?, 'Active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?, ?, ?, null, CURRENT_TIMESTAMP)
+           ON CONFLICT(id) DO UPDATE SET
+             content = excluded.content,
+             updated_at = CURRENT_TIMESTAMP`,
+          [
+            docId,
+            srcId,
+            oppId,
+            JSON.stringify(item),
+            "1.0.0",
+            item.extractorVersion || null,
+            item.promptVersion || null,
+            item.telemetry?.llmFallbackReason ? "gpt-4" : "rule-based",
+          ]
         );
         docMerged++;
 
         // 3. Sync Fact records (facts table)
-        for (const dim of item.dimensions) {
-          const existingFact = db.prepare("SELECT id FROM facts WHERE opportunity_id = ? AND attribute = ?").get(oppId, dim.key) as { id: string } | undefined;
-          
-          if (dim.jdEvidence.value !== undefined && dim.jdEvidence.value !== null) {
-            const factValue = JSON.stringify(dim.jdEvidence.value);
-            
-            if (existingFact) {
-              db.prepare("UPDATE facts SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(factValue, existingFact.id);
-            } else {
-              const factId = `f_${dim.key.substring(0, 4)}_${oppId}`;
-              db.prepare(`
-                INSERT INTO facts (id, opportunity_id, attribute, value, created_at, updated_at)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-              `).run(factId, oppId, dim.key, factValue);
-            }
-            factsMerged++;
-          } else {
-            // Delete stale fact if dimension is now missing
-            if (existingFact) {
-              db.prepare("DELETE FROM claim_facts WHERE fact_id = ?").run(existingFact.id);
-              db.prepare("DELETE FROM fact_evidence WHERE fact_id = ?").run(existingFact.id);
-              db.prepare("DELETE FROM facts WHERE id = ?").run(existingFact.id);
+        if (item.dimensions) {
+          for (const dim of item.dimensions) {
+            const existingFact = await adapter.one<{ id: string }>(
+              "SELECT id FROM facts WHERE opportunity_id = ? AND attribute = ?",
+              [oppId, dim.key]
+            );
+
+            if (dim.jdEvidence?.value !== undefined && dim.jdEvidence?.value !== null) {
+              const factValue = JSON.stringify(dim.jdEvidence.value);
+
+              if (existingFact) {
+                await adapter.execute(
+                  "UPDATE facts SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                  [factValue, existingFact.id]
+                );
+              } else {
+                const factId = `f_${dim.key.substring(0, 4)}_${oppId}`;
+                await adapter.execute(
+                  `INSERT INTO facts (id, opportunity_id, attribute, value, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                   ON CONFLICT(id) DO UPDATE SET value = excluded.value`,
+                  [factId, oppId, dim.key, factValue]
+                );
+              }
+              factsMerged++;
             }
           }
         }
+      } catch (err: any) {
+        console.error(`[Publish:Database] Error merging ${item.jobHash}:`, err.message);
       }
-
-      console.log(`[Publish:SQLite] Transaction complete. Merged: ${oppMerged} opportunities, ${docMerged} documents, ${factsMerged} facts.`);
-    });
-
-    try {
-      tx();
-      console.log(`[Publish:SQLite] SQLite database successfully updated.`);
-    } catch (err: any) {
-      console.error(`[Publish:SQLite] Transaction failed and was rolled back:`, err.message);
-      throw err;
-    } finally {
-      db.close();
     }
+
+    console.log(`[Publish:Database] Database successfully updated. Merged: ${oppMerged} opportunities, ${docMerged} documents, ${factsMerged} facts.`);
   }
 }

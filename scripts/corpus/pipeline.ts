@@ -39,14 +39,9 @@ export async function runCorpusPipeline() {
     const jsonPub = new JsonPublisher();
     await jsonPub.publish(enriched);
 
-    // Publish to radar.sqlite database
-    const dbPath = path.resolve(process.cwd(), "radar.sqlite");
-    if (fs.existsSync(dbPath)) {
-      const sqlitePub = new SqlitePublisher(dbPath);
-      await sqlitePub.publish(enriched);
-    } else {
-      console.warn(`[Pipeline] SQLite database not found at ${dbPath}. Skipping SQLite publishing.`);
-    }
+    // Publish to active DatabaseAdapter (Turso Cloud / local SQLite)
+    const sqlitePub = new SqlitePublisher();
+    await sqlitePub.publish(enriched);
 
     const durationSec = ((Date.now() - t0) / 1000).toFixed(1);
     console.log("\n==================================================================");
