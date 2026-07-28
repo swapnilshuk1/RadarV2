@@ -151,8 +151,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       ctx.recordTelemetry?.("httpAttempted");
       const httpRes = await fastFetchDetail(
         url, 
-        "h1.jobsearch-JobInfoHeader-title, .jobsearch-JobInfoHeader-title-container", 
-        "#jobDescriptionText, .jobsearch-jobDescriptionText"
+        "h1.jobsearch-JobInfoHeader-title, .jobsearch-JobInfoHeader-title-container, h1", 
+        "#jobDescriptionText, .jobsearch-jobDescriptionText, [class*='description'], [class*='job-detail'], main, article"
       );
       if (httpRes.fetched) {
         ctx.recordTelemetry?.("httpSuccessful");
@@ -175,7 +175,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
     await jitter(500, 1200);
-    const container = page.locator("#jobDescriptionText, .jobsearch-jobDescriptionText").first();
+    const container = page.locator("#jobDescriptionText, .jobsearch-jobDescriptionText, [class*='description'], [class*='job-detail'], main, article").first();
     const rawHtml = await container.innerHTML().catch(() => "");
     const rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
     return { fetched: true, rawHtml, rawText, fetchDurationMs: Date.now() - t0 };
