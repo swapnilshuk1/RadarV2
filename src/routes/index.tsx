@@ -123,13 +123,81 @@ function Shortlist() {
   const totalScraped = baseCounts.total + extraScraped;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
+      <div className="flex-1">
+        {/* ────────────────────────────────────────────────────────────────────────
+            HERO & PIPELINE LEDGER
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-4 sm:pt-10 pb-4 sm:pb-6 border-b border-border">
+          <p className="mono text-[9px] sm:text-[10px] tracking-[0.2em] sm:tracking-[0.24em] text-muted-foreground mb-1.5 uppercase font-semibold">
+            PIPELINE LEDGER & EXECUTIVE SHORTLIST
+          </p>
+
+          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 sm:gap-6">
+            <div>
+              <h1 className="display text-[26px] sm:text-[44px] leading-tight text-foreground font-semibold">
+                The shortlist.
+              </h1>
+              <p className="mt-1 sm:mt-2 max-w-xl text-[12.5px] sm:text-[15px] leading-relaxed text-muted-foreground font-normal">
+                Showing {visible.length} of {remaining.length} live briefs. Decide on one and the next in the queue takes its slot.
+                {queued > 0 && <> <span className="text-foreground font-semibold">{queued}</span> queued.</>}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-6 sm:gap-8 border-t sm:border-t-0 sm:border-l border-border pt-2.5 sm:pt-0 pl-0 sm:pl-6 mt-1 sm:mt-0">
+              <Stat label="PURSUED" value={pursue} tint="text-pursue" />
+              <Stat label="CONSIDERED" value={consider} tint="text-consider" />
+              <Stat label="PASSED" value={pass} tint="text-muted-foreground" />
+            </div>
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            MAIN SHORTLIST QUEUE
+            ──────────────────────────────────────────────────────────────────────── */}
+        <main className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-4 sm:pt-8 pb-12">
+          <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+            <p className="mono text-[9px] sm:text-[10px] tracking-[0.16em] sm:tracking-[0.2em] text-muted-foreground uppercase font-semibold truncate">
+              GESTURE CONTROL · SWIPE <span className="text-pursue font-bold">RIGHT TO PURSUE</span>, OR <span className="text-foreground font-bold">LEFT TO PASS</span>
+            </p>
+            <span className="mono text-[9px] sm:text-[10px] tracking-[0.14em] sm:tracking-[0.18em] text-accent-ink uppercase font-semibold shrink-0">
+              QUEUE STATUS · {remaining.length} ACTIVE
+            </span>
+          </div>
+
+          <ul className="divide-y divide-border border-y border-border">
+            {visible.map((o, idx) => (
+              <li key={o.jobHash} className="transition-colors">
+                <SwipeableRow onDecide={(verb) => decide(o.jobHash, verb)}>
+                  <Row
+                    o={o}
+                    index={idx + 1}
+                    total={remaining.length}
+                    isOpen={open === o.jobHash}
+                    onToggle={() => setOpen(open === o.jobHash ? null : o.jobHash)}
+                    onDecide={(verb) => decide(o.jobHash, verb)}
+                  />
+                </SwipeableRow>
+              </li>
+            ))}
+            {visible.length === 0 && (
+              <li className="py-20 text-center font-serif text-[15px] text-muted-foreground">
+                Queue cleared. Hit <span className="text-foreground font-semibold">SEARCH</span> to scan for more, or{" "}
+                <Link to="/decisions" className="text-foreground underline underline-offset-4 font-semibold">
+                  review your decisions
+                </Link>.
+              </li>
+            )}
+          </ul>
+        </main>
+      </div>
+
       {/* ────────────────────────────────────────────────────────────────────────
-          LIVE PIPELINE METADATA STRIP
+          LIVE PIPELINE METADATA & ACTIONS FOOTER
           ──────────────────────────────────────────────────────────────────────── */}
-      <div className="border-b border-border/80 bg-muted/20">
-        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-3 px-3 sm:px-8 py-2.5 font-mono text-[10px] sm:text-[11px]">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-muted-foreground">
+      <footer className="sticky bottom-0 z-40 border-t border-border/90 bg-background/95 backdrop-blur-md shadow-lg">
+        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-2 px-3.5 sm:px-8 py-2 font-mono text-[10px] sm:text-[11px]">
+          <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-5 gap-y-0.5 text-muted-foreground">
             <span>
               <span className="font-bold text-foreground tabular-nums">{totalScraped}</span> SCRAPED
             </span>
@@ -138,10 +206,10 @@ function Shortlist() {
             <span>· INDEED <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.Indeed}</span></span>
             <span>→ <span className="tabular-nums text-pursue font-bold">{remaining.length}</span> ON SHORTLIST</span>
             {lastScanAt && !activeRunId && (
-              <span className="text-muted-foreground/80">· LAST SCAN {lastScanAt}</span>
+              <span className="text-muted-foreground/80 hidden lg:inline">· LAST SCAN {lastScanAt}</span>
             )}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 ml-auto sm:ml-0">
             <button
               type="button"
               onClick={async () => {
@@ -151,7 +219,7 @@ function Shortlist() {
                   await runSearch();
                 }
               }}
-              className="mono text-[10px] tracking-[0.2em] font-bold inline-flex items-center gap-2 rounded-sm border border-foreground bg-foreground px-3 py-1 text-background uppercase transition-opacity hover:opacity-90"
+              className="mono text-[10px] tracking-[0.2em] font-bold inline-flex items-center gap-1.5 rounded-sm border border-foreground bg-foreground px-2.5 py-1 text-background uppercase transition-opacity hover:opacity-90"
             >
               <span
                 aria-hidden
@@ -166,73 +234,7 @@ function Shortlist() {
             </Link>
           </div>
         </div>
-      </div>
-
-      {/* ────────────────────────────────────────────────────────────────────────
-          HERO & PIPELINE LEDGER
-          ──────────────────────────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1180px] px-4 sm:px-8 pt-10 sm:pt-14 pb-8 border-b border-border">
-        <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground mb-3 uppercase font-semibold">
-          PIPELINE LEDGER & EXECUTIVE SHORTLIST
-        </p>
-
-        <div className="flex flex-wrap items-baseline justify-between gap-6">
-          <div>
-            <h1 className="display text-[38px] sm:text-[52px] leading-[1.05] text-foreground font-semibold">
-              The shortlist.
-            </h1>
-            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground font-normal">
-              Showing {visible.length} of {remaining.length} live briefs. Decide on one and the next in the queue takes its slot.
-              {queued > 0 && <> <span className="text-foreground font-semibold">{queued}</span> queued.</>}
-            </p>
-          </div>
-
-          <div className="flex gap-8 border-l border-border pl-6 py-1">
-            <Stat label="PURSUED" value={pursue} tint="text-pursue" />
-            <Stat label="CONSIDERED" value={consider} tint="text-consider" />
-            <Stat label="PASSED" value={pass} tint="text-muted-foreground" />
-          </div>
-        </div>
-      </section>
-
-      {/* ────────────────────────────────────────────────────────────────────────
-          MAIN SHORTLIST QUEUE
-          ──────────────────────────────────────────────────────────────────────── */}
-      <main className="mx-auto max-w-[1180px] px-4 sm:px-8 pt-8 pb-24">
-        <div className="flex items-center justify-between mb-4">
-          <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-semibold">
-            GESTURE CONTROL · SWIPE <span className="text-pursue font-bold">RIGHT TO PURSUE</span>, OR <span className="text-foreground font-bold">LEFT TO PASS</span>
-          </p>
-          <span className="mono text-[10px] tracking-[0.18em] text-accent-ink uppercase font-semibold">
-            QUEUE STATUS · {remaining.length} ACTIVE
-          </span>
-        </div>
-
-        <ul className="divide-y divide-border border-y border-border">
-          {visible.map((o, idx) => (
-            <li key={o.jobHash} className="transition-colors">
-              <SwipeableRow onDecide={(verb) => decide(o.jobHash, verb)}>
-                <Row
-                  o={o}
-                  index={idx + 1}
-                  total={remaining.length}
-                  isOpen={open === o.jobHash}
-                  onToggle={() => setOpen(open === o.jobHash ? null : o.jobHash)}
-                  onDecide={(verb) => decide(o.jobHash, verb)}
-                />
-              </SwipeableRow>
-            </li>
-          ))}
-          {visible.length === 0 && (
-            <li className="py-20 text-center font-serif text-[15px] text-muted-foreground">
-              Queue cleared. Hit <span className="text-foreground font-semibold">SEARCH</span> to scan for more, or{" "}
-              <Link to="/decisions" className="text-foreground underline underline-offset-4 font-semibold">
-                review your decisions
-              </Link>.
-            </li>
-          )}
-        </ul>
-      </main>
+      </footer>
 
       <ScraperConsole
         runId={activeRunId}
