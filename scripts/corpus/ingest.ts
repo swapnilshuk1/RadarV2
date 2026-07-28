@@ -48,14 +48,28 @@ export function ingestCorpus(): DetailedCard[] {
         for (const item of list) {
           snapshots.push({
             cardHash: item.jobHash || item.fingerprint || `j-${Math.random().toString(36).substring(2, 10)}`,
-            jobTitle: item.role || item.canonicalTitle || "Executive Role",
-            companyName: item.company || "Confidential",
+            portal: (item.scrapedFrom as any) || "LinkedIn",
+            keyword: "Executive",
+            searchUrl: item.applyUrl || "",
+            detailUrl: item.applyUrl || "",
+            discoveredAt: new Date().toISOString(),
+            title: item.role || item.canonicalTitle || "Executive Role",
+            company: item.company || "Confidential",
             location: item.location || "Remote",
-            source: item.scrapedFrom || "LinkedIn",
-            postedRelative: item.postedRelative || "Recently",
-            applyUrl: item.applyUrl || "",
-            descriptionText: item.description || item.recommendation || "",
-            rawDescriptionHtml: item.descriptionHtml || item.description || "",
+            rawHtml: item.descriptionHtml || item.description || "",
+            rawText: item.description || item.recommendation || "",
+            snapshotSchemaVersion: "1.0.0",
+            scraperVersion: "1.0.0",
+            detail: {
+              fetched: true,
+              rawHtml: item.descriptionHtml || item.description || "",
+              rawText: item.description || item.recommendation || "",
+            },
+            telemetry: {
+              cardExtractMs: 0,
+              detailExtractMs: 0,
+              totalMs: 0,
+            },
           });
         }
         console.log(`[Ingest] Fallback: Successfully loaded ${snapshots.length} snapshots from ${path.basename(targetJson)}.`);
