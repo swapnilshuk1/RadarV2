@@ -176,6 +176,8 @@ function Shortlist() {
                     isOpen={open === o.jobHash}
                     onToggle={() => setOpen(open === o.jobHash ? null : o.jobHash)}
                     onDecide={(verb) => decide(o.jobHash, verb)}
+                    onPrev={idx > 0 ? () => setOpen(visible[idx - 1].jobHash) : undefined}
+                    onNext={idx < visible.length - 1 ? () => setOpen(visible[idx + 1].jobHash) : undefined}
                   />
                 </SwipeableRow>
               </li>
@@ -254,6 +256,8 @@ function Row({
   isOpen,
   onToggle,
   onDecide,
+  onPrev,
+  onNext,
 }: {
   o: Opportunity;
   index: number;
@@ -261,6 +265,8 @@ function Row({
   isOpen: boolean;
   onToggle: () => void;
   onDecide: (verb: DecisionVerb) => void;
+  onPrev?: () => void;
+  onNext?: () => void;
 }) {
   const score = o.recommendationResult?.score ?? 80;
   const mandateTag = o.mandateArchetype || "Performance Marketing";
@@ -329,8 +335,34 @@ function Row({
             {/* Header Badge */}
             <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/40">
               <span className="mono text-[10px] sm:text-[11px] font-bold tracking-[0.16em] uppercase text-muted-foreground">
-                Reviewing {index} of {total}
+                Reviewing {String(index).padStart(2, "0")} of {total}
               </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={!onPrev}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPrev?.();
+                  }}
+                  className="mono text-[10px] font-bold px-2 py-0.5 rounded border border-border/80 bg-muted/30 hover:bg-muted/80 text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  title="Previous brief"
+                >
+                  ← PREV
+                </button>
+                <button
+                  type="button"
+                  disabled={!onNext}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNext?.();
+                  }}
+                  className="mono text-[10px] font-bold px-2 py-0.5 rounded border border-border/80 bg-muted/30 hover:bg-muted/80 text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  title="Next brief"
+                >
+                  NEXT →
+                </button>
+              </div>
             </div>
 
             {/* Elevated Hero Decision Bar */}
