@@ -103,15 +103,17 @@ export const linkedinHandler: PortalHandler = {
         "main",
       ];
 
-      // Perform stabilized virtualized scrolling
+      // Perform hyper-patient stabilized virtualized scrolling
       const hydration = await hydrateVirtualizedList(
         page,
         {
           cardSelector,
           containerSelectors,
           targetCards: targetMaxCards,
-          maxPasses: 15,
-          consecutiveStableLimit: 3,
+          maxPasses: 25,
+          consecutiveStableLimit: 5,
+          minPassDelayMs: 1500,
+          maxPassDelayMs: 3000,
         },
         ctx.logger
       );

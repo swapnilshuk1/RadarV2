@@ -10,8 +10,10 @@ export interface HydrateOptions {
   targetCards: number;
   /** Maximum scroll attempts before stopping (default: 6) */
   maxPasses?: number;
-  /** Number of consecutive scroll passes with 0 new cards to declare DOM stability (default: 2) */
-  consecutiveStableLimit?: number;
+  /** Minimum delay in ms per scroll pass (default: 800) */
+  minPassDelayMs?: number;
+  /** Maximum delay in ms per scroll pass (default: 1500) */
+  maxPassDelayMs?: number;
 }
 
 export interface HydrationResult {
@@ -37,6 +39,8 @@ export async function hydrateVirtualizedList(
     targetCards,
     maxPasses = 6,
     consecutiveStableLimit = 2,
+    minPassDelayMs = 800,
+    maxPassDelayMs = 1500,
   } = options;
 
   const log = logger || (() => {});
@@ -110,8 +114,8 @@ export async function hydrateVirtualizedList(
       window.dispatchEvent(new Event('scroll', { bubbles: true }));
     }).catch(() => {});
 
-    // Longer jitter delay to allow LinkedIn's API to respond and DOM to hydrate
-    await jitter(800, 1500);
+    // Configurable jitter delay to allow portal API to respond and DOM to hydrate
+    await jitter(minPassDelayMs, maxPassDelayMs);
 
     // Re-count cards
     currentCards = await page.locator(cardSelector).count().catch(() => 0);
