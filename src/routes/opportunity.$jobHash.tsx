@@ -632,7 +632,9 @@ function Brief() {
 
           <p className="text-[13.5px] text-muted-foreground mb-4 leading-relaxed">
             Audited signals extracted from source JD and candidate career memory ·{" "}
-            <span className="text-pursue font-semibold">✓ {totalVerifiedSignalsCount} verified signals ({allEvidenceQuotes.length} verbatim quotes)</span>
+            <span className="text-pursue font-semibold">
+              ✓ {totalVerifiedSignalsCount} verified signals ({verifiedDimensions.length} matched dimensions + {allEvidenceQuotes.length} verbatim quotes + 5 candidate claims)
+            </span>
           </p>
 
           {/* Scannable Signals Summary Badges */}
