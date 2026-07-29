@@ -10,8 +10,8 @@ reconstruct full context in under 5 minutes.
 
 **Last Updated**: 2026-07-30  
 **Active Branch**: `main`  
-**Completed Phases**: Phase 0, Phase 1, Phase 2, Phase 3, Phase 4  
-**In Progress**: Phase 5a — Formal Domain Types  
+**Completed Phases**: Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5a  
+**In Progress**: Phase 5a.5 — Projection Builder Interface  
 
 ---
 
@@ -28,9 +28,11 @@ Read these files FIRST, in order, before doing anything:
 3. docs/SESSION_HANDOFF.md            — where we left off (this file)
 4. docs/IMPLEMENTATION_LOG.md         — decisions made so far
 
-Current task: Execute Phase 5a — Formal Domain Types.
-Create `src/domain/candidate.ts` and update engine signatures to use typed sub-types. 
-Then run `npx tsc --noEmit` and commit the changes for Phase 5a.
+Current task: Execute Phase 5a.5 — Projection Builder Interface.
+Create `src/domain/builders.ts` with `ICandidateProjectionBuilder`.
+Implement this interface in `CandidateProjectionBuilder.ts`.
+Update `opportunity-provider.ts` to use `builder.fromDatabase()`.
+Then run `npx tsc --noEmit` and commit the changes for Phase 5a.5.
 ```
 
 ---

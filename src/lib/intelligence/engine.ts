@@ -15,6 +15,7 @@ import { V3EvaluationEngine } from "./V3EvaluationEngine";
 import { present, type Presented } from "./present";
 import type { RecommendationRecord } from "./record";
 import { loadDecisionPolicy, computeDecisionVerdict } from "../recommendation/EvaluationAdapter";
+import type { CandidateProfile } from "../../domain/candidate";
 
 // Phase 4 Semantic Imports
 import { CandidateProjectionBuilder } from "./builders/CandidateProjectionBuilder";
@@ -81,7 +82,7 @@ export function injectFreshRecords(records: any[]) {
 /**
  * Executes the full V4 pipeline: Candidate/Job Projections -> Assessments -> Rules Engine -> Presentation
  */
-export function runEngine(candidateProfile: any, activePursuits = 0): {
+export function runEngine(candidateProfile: CandidateProfile, activePursuits = 0): {
   presented: Presented[];
   records: RecommendationRecord[];
 } {
@@ -220,7 +221,7 @@ export function runEngine(candidateProfile: any, activePursuits = 0): {
   return result;
 }
 
-export function runEngineSingle(jobHash: string, candidateProfile: any, activePursuits = 0): Presented | undefined {
+export function runEngineSingle(jobHash: string, candidateProfile: CandidateProfile, activePursuits = 0): Presented | undefined {
   const currentAuthored = readOpportunities();
   const found = currentAuthored.find((o) => o.jobHash === jobHash);
   if (!found) return undefined;

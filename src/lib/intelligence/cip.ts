@@ -20,13 +20,15 @@ export function invalidateCandidateDossierCache() {
   cachedDossier = null;
 }
 
+import type { CandidateProfile } from "../../domain/candidate";
+
 export class CandidateIntelligencePipeline {
   private db = getDatabase();
 
   /**
    * Run compilation on raw candidate-profile to generate the Projection and Intent.
    */
-  public compile(profilePath?: string, providedProfile?: any): {
+  public compile(profilePath?: string, providedProfile?: CandidateProfile): {
     projection: CandidateProjection;
     intent: CandidateIntent;
   } {
@@ -222,7 +224,7 @@ export class CandidateIntelligencePipeline {
   /**
    * Helper to fetch active projection and intent. Compile on-the-fly to keep cache 100% in-sync.
    */
-  public getActiveDossier(profile?: any): {
+  public getActiveDossier(profile?: CandidateProfile): {
     projection: CandidateProjection;
     intent: CandidateIntent;
   } {

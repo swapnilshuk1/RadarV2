@@ -88,4 +88,19 @@ AI agents should read this to understand what has already been done and why.
 
 ---
 
+## Phase 5a — Formal Domain Types
+**Date**: 2026-07-30  
+**Branch**: `main`  
+**Status**: ✅ Complete
+
+### What Changed
+- Created `src/domain/candidate.ts` declaring strict interfaces for candidate profiles (`CandidateProfile`, `CandidateIdentity`, `CandidateExperience`, etc.).
+- Updated `src/lib/intelligence/engine.ts` and `src/lib/intelligence/cip.ts` to replace `any` types with the formal `CandidateProfile` domain type.
+- Updated `src/data/candidate-profile.ts` and `src/types/candidate.ts` to correctly import and export the newly typed schema.
+
+### Verified
+- `npx tsc --noEmit` runs completely clean with no type errors.
+
+---
+
 <!-- Add new entries below as phases complete -->
