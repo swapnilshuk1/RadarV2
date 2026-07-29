@@ -275,13 +275,13 @@ FastPath Telemetry : Attempted=${telemetry.httpAttempted}, Success=${telemetry.h
     const oldState = this.manifest.status;
     if (oldState === state) return;
     const validTransitions: Record<RunManifest["status"], RunManifest["status"][]> = {
-      initializing: ["waiting_for_confirmation", "running", "failed", "aborted"],
-      waiting_for_confirmation: ["running", "aborted"],
-      running: ["enriching", "completed", "failed", "aborted"],
-      enriching: ["completed", "failed", "aborted"],
-      completed: [],
-      failed: [],
-      aborted: []
+      initializing: ["initializing", "waiting_for_confirmation", "running", "failed", "aborted"],
+      waiting_for_confirmation: ["running", "aborted", "initializing"],
+      running: ["initializing", "enriching", "completed", "failed", "aborted"],
+      enriching: ["initializing", "completed", "failed", "aborted"],
+      completed: ["initializing"],
+      failed: ["initializing"],
+      aborted: ["initializing"]
     };
     if (!validTransitions[oldState].includes(state)) {
       throw new Error(`Invalid state transition from ${oldState} to ${state}`);
