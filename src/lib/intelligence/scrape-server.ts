@@ -19,6 +19,7 @@ export function triggerDebouncedRebuild() {
       const { collectRecords, writeLiveScraped } = await import("../../../scripts/scraper/persist/writer");
       const records = collectRecords();
       writeLiveScraped(records);
+      invalidateLiveScrapedCache();
       console.log(`[Server] Successfully rebuilt live-scraped.json cache with ${records.length} records.`);
     } catch (err: any) {
       console.error("[Server] Debounced rebuild failed:", err.message);
@@ -195,14 +196,52 @@ export const abortScrapeFn = createServerFn({ method: "POST" })
     }
   });
 
+let liveScrapedCache: { data: any[]; timestamp: number } | null = null;
+
+export function invalidateLiveScrapedCache() {
+  liveScrapedCache = null;
+}
+
 export const getLiveScrapedFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    const now = Date.now();
+    if (liveScrapedCache && (now - liveScrapedCache.timestamp < 30_000)) {
+      return liveScrapedCache.data;
+    }
+
     try {
+      const { collectRecords } = await import("../../../scripts/scraper/persist/writer");
+      const diskRecords = collectRecords();
+      
+      const p = path.join(process.cwd(), "src", "data", "live-scraped.json");
+      let diskJsonRecords: any[] = [];
+      if (fs.existsSync(p)) {
+        try {
+          diskJsonRecords = JSON.parse(fs.readFileSync(p, "utf-8"));
+        } catch {}
+      }
+
+      const recordMap = new Map<string, any>();
+      for (const r of diskJsonRecords) {
+        if (r && (r.jobHash || r.id)) recordMap.set(r.jobHash || r.id, r);
+      }
+      for (const r of diskRecords as any[]) {
+        if (r && (r.jobHash || r.id)) recordMap.set(r.jobHash || r.id, r);
+      }
+
+      const merged = Array.from(recordMap.values());
+      const result = merged.length > 0 ? merged : diskJsonRecords;
+      
+      liveScrapedCache = { data: result, timestamp: now };
+      return result;
+    } catch {
       const p = path.join(process.cwd(), "src", "data", "live-scraped.json");
       if (!fs.existsSync(p)) return [];
-      return JSON.parse(fs.readFileSync(p, "utf-8"));
-    } catch {
-      return [];
+      try {
+        return JSON.parse(fs.readFileSync(p, "utf-8"));
+      } catch {
+        return [];
+      }
     }
   });
 
