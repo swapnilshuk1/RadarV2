@@ -9,6 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRepositories } from "../../data/sqlite/provider";
 import { ProjectionPipeline } from "./pipeline/ProjectionPipeline";
 import { OpportunityService } from "./opportunity-service";
+import { EvaluationCoordinator } from "./EvaluationCoordinator";
 import type { CareerIntentRecord } from "../../data/sqlite/repositories/SqliteDocumentStore";
 
 const HARDCODED_DEV_USER = "swapnil-shukla";
@@ -102,8 +103,8 @@ export const saveIntentFn = createServerFn({ method: "POST" })
 
     await repos.documents.saveCareerIntent(intentRecord);
 
-    // Refresh evaluations for user
-    await OpportunityService.listForUser(userId);
+    // Refresh evaluations via EvaluationCoordinator
+    await EvaluationCoordinator.notify({ event: "INTENT_UPDATED", personId: userId });
 
     return {
       success: true,

@@ -14,6 +14,7 @@ import { OntologyResolver } from "../extraction/OntologyResolver";
 import { CandidateProjectionBuilderImpl } from "../builders/CandidateProjectionBuilder";
 import { OperatingLevelEngine } from "../engines/OperatingLevelEngine";
 import { OpportunityService } from "../opportunity-service";
+import { EvaluationCoordinator } from "../EvaluationCoordinator";
 import type { EvidenceGraph } from "../../../domain/evidence";
 
 import { parseDocumentText } from "../extraction/text-parser";
@@ -179,8 +180,8 @@ export class ProjectionPipeline {
       // 8. EVALUATED
       if (currentStage === "EVALUATED") {
         await this.repos.documents.updateDocumentStage(documentId, "EVALUATED", "PROCESSING");
-        // Trigger recommendation re-evaluation for user
-        await OpportunityService.listForUser(personId);
+        // Trigger evaluation refresh via EvaluationCoordinator
+        await EvaluationCoordinator.notify({ event: "PROJECTION_UPDATED", personId });
         currentStage = "COMPLETED";
       }
 

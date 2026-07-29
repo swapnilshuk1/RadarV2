@@ -184,4 +184,24 @@ AI agents should read this to understand what has already been done and why.
 - `npx tsc --noEmit` passed cleanly.
 - `npm run build` passed in 9.54s (Nitro + Vite SSR).
 
+---
+
+## Phase 8 — Live Scraper Orchestration, Audit Lineage & System Hardening (Final Phase)
+**Date**: 2026-07-30  
+**Branch**: `main`  
+**Status**: ✅ Complete (Platform Freeze)
+
+### What Changed
+- Created `src/lib/intelligence/EvaluationCoordinator.ts` as the central event-driven trigger for recommendation refreshes (`CORPUS_UPDATED`, `PROJECTION_UPDATED`, `INTENT_UPDATED`, `ONTOLOGY_UPGRADED`).
+- Decoupled scraping and upload transport adapters from evaluation execution logic.
+- Created `scripts/audit-phase8-lineage.ts` to assert 5 core structural invariants in Turso Cloud SQLite (Projection, Evidence, Document Content, Decision, Career Intent).
+- Verified full live scraper pipeline integration with Turso storage providers.
+
+### Verified
+- `npx tsx scripts/audit-phase8-lineage.ts`: **5/5 Invariants PASSED** (0 Failed).
+- `npx tsc --noEmit`: Clean static type compilation.
+- `npm run test:eqe`: **100% Certified** across all 4 extractors and policy calibration suites.
+- `npm run build`: Production Nitro + Vite SSR build completed in **6.75s**.
+
+
 

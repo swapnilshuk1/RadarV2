@@ -21,6 +21,10 @@ export function triggerDebouncedRebuild() {
       writeLiveScraped(records);
       invalidateLiveScrapedCache();
       console.log(`[Server] Successfully rebuilt live-scraped.json cache with ${records.length} records.`);
+
+      // Notify EvaluationCoordinator that corpus has expanded
+      const { EvaluationCoordinator } = await import("./EvaluationCoordinator");
+      await EvaluationCoordinator.notify({ event: "CORPUS_UPDATED" });
     } catch (err: any) {
       console.error("[Server] Debounced rebuild failed:", err.message);
     }
