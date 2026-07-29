@@ -14,15 +14,18 @@ export type ProviderOptions = {
 
 const builder = new CandidateProjectionBuilderImpl();
 
+/**
+ * @deprecated Use OpportunityService instead. This adapter is kept for backward compatibility during migration.
+ */
 export const OpportunityProvider = {
   /** List all dynamically computed opportunity DTOs, sorted by Pursuit Potential. */
   list(options?: ProviderOptions): Opportunity[] {
     const active = options?.activePursuits ?? activePursuits();
     // Pre-build the projection to satisfy Phase 5a.5
-    const projection = builder.fromDatabase(candidateProfile);
+    const projection = builder.fromProfile(candidateProfile);
     
-    // We still pass candidateProfile for now, but in the future engine might take projection
-    const { presented } = runEngine(candidateProfile, active);
+    // Pass projection directly into the V4 Engine
+    const { presented } = runEngine(projection, active);
     const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, PASS: 2 };
     return presented
       .map((p) => p.opportunity)
@@ -42,7 +45,8 @@ export const OpportunityProvider = {
 
     // Lazy, super-fast single-record fallback!
     const active = options?.activePursuits ?? activePursuits();
-    const presentedSingle = runEngineSingle(jobHash, candidateProfile, active);
+    const projection = builder.fromProfile(candidateProfile);
+    const presentedSingle = runEngineSingle(jobHash, projection, active);
     return presentedSingle?.opportunity;
   },
 

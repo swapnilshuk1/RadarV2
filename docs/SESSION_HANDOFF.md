@@ -10,8 +10,8 @@ reconstruct full context in under 5 minutes.
 
 **Last Updated**: 2026-07-30  
 **Active Branch**: `main`  
-**Completed Phases**: Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5a, Phase 5a.5  
-**In Progress**: Phase 5b — Profile to Database  
+**Completed Phases**: Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5a, Phase 5a.5, Phase 5b, Phase 5c, Phase 6 (Evidence Extraction Engine & Resumable Pipeline)
+**In Progress**: Phase 6 Complete — Ready for Phase 7 (UI Document Upload Gateway & Live User Integration)
 
 ---
 
@@ -28,12 +28,13 @@ Read these files FIRST, in order, before doing anything:
 3. docs/SESSION_HANDOFF.md            — where we left off (this file)
 4. docs/IMPLEMENTATION_LOG.md         — decisions made so far
 
-Current task: Execute Phase 5b — Profile to Database.
-Create `008_profile_queryable_columns.sql` to add queryable columns for the profile to `people` or `candidate_profiles`.
-Implement `SqlitePersonStore` stubs.
-Create `scripts/migrate-profile-to-db.ts` to hydrate the database from JSON.
-Refactor `IdentityEngine.loadState()` to use the database instead of the JSON file.
-Run the migration script, `npx tsc --noEmit` + `npm run build`, and commit.
+Current task: Execute the decoupling architecture for Phase 5b.
+1. Write `scripts/verify-migration-equality.ts` to perform a semantic deep equality check between the legacy JSON builder projection and the newly migrated DB projection.
+2. Rename `saveCandidateProfile` -> `saveProjection` and `getLatestCandidateProfile` -> `getLatestProjection` in `SqlitePersonStore.ts`.
+3. Create `OpportunityService` to act as the pure application orchestration boundary.
+4. Create `opportunity-server.ts` to expose transport adapters (server functions) that call the service.
+5. Update `engine.ts` to accept `CandidateProjection` directly.
+6. Update UI routes (`index.tsx`, etc.) to use TanStack loaders calling the server functions.
 ```
 
 ---

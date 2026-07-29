@@ -15,7 +15,7 @@ import { V3EvaluationEngine } from "./V3EvaluationEngine";
 import { present, type Presented } from "./present";
 import type { RecommendationRecord } from "./record";
 import { loadDecisionPolicy, computeDecisionVerdict } from "../recommendation/EvaluationAdapter";
-import type { CandidateProfile } from "../../domain/candidate";
+import type { CandidateProjection } from "../domain/candidate_projection";
 
 // Phase 4 Semantic Imports
 import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
@@ -84,7 +84,7 @@ const candidateBuilder = new CandidateProjectionBuilderImpl();
 /**
  * Executes the full V4 pipeline: Candidate/Job Projections -> Assessments -> Rules Engine -> Presentation
  */
-export function runEngine(candidateProfile: CandidateProfile, activePursuits = 0): {
+export function runEngine(projection: CandidateProjection, activePursuits = 0): {
   presented: Presented[];
   records: RecommendationRecord[];
 } {
@@ -100,12 +100,8 @@ export function runEngine(candidateProfile: CandidateProfile, activePursuits = 0
     return cached.result;
   }
 
-  // 1. Build Candidate V4 Projection Once
-  const candProjV4 = candidateBuilder.fromDatabase(candidateProfile);
-
-  // Fallback V3 Dossier if needed for backward compliance metrics
-  const cip = new CandidateIntelligencePipeline();
-  const { projection, intent } = cip.getActiveDossier(candidateProfile);
+  // Fallback V3 Dossier and CandidateProjectionBuilder removed since projection is already built
+  const candProjV4 = projection;
 
   const records: RecommendationRecord[] = [];
 
@@ -210,7 +206,7 @@ export function runEngine(candidateProfile: CandidateProfile, activePursuits = 0
     .map((r) => {
       // In V4 paradigm, we still present candidates in the view, but let the UI filter out PASS records or let presentation-boundary hide scores
       const a = byHash.get(r.jobHash);
-      return a ? present(a, r, candidateProfile) : null;
+      return a ? present(a, r, projection) : null;
     })
     .filter((x): x is Presented => x !== null);
 
@@ -223,11 +219,11 @@ export function runEngine(candidateProfile: CandidateProfile, activePursuits = 0
   return result;
 }
 
-export function runEngineSingle(jobHash: string, candidateProfile: CandidateProfile, activePursuits = 0): Presented | undefined {
+export function runEngineSingle(jobHash: string, projection: CandidateProjection, activePursuits = 0): Presented | undefined {
   const currentAuthored = readOpportunities();
   const found = currentAuthored.find((o) => o.jobHash === jobHash);
   if (!found) return undefined;
 
-  const { presented } = runEngine(candidateProfile, activePursuits);
+  const { presented } = runEngine(projection, activePursuits);
   return presented.find(p => p.opportunity.jobHash === jobHash);
 }

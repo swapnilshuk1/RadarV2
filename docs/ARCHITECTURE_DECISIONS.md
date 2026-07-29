@@ -187,6 +187,19 @@ replaying all migrations in sequence.
 
 ---
 
+## ADR-011: Evidence is Immutable
+
+**Status**: Active  
+**Date**: 2026-07-30
+
+### Decision
+Evidence graphs (`EvidenceGraph`) represent a point-in-time extraction from a source document. Once generated, they are **never edited in place**. Any corrections, re-extractions (due to improved prompts or models), or updates result in a *new* version of the `EvidenceGraph` being created.
+
+### Rationale
+This preserves data lineage and enables perfect auditability. By making evidence immutable, a downstream `CandidateProjection vX` can always be traced back to its exact `EvidenceGraph vY`, which points to the exact document and extraction logic used at that moment.
+
+---
+
 ## Supersession Log
 
 | Superseded ADR | Superseded By | Date | Reason |

@@ -1,6 +1,7 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { PersonStore } from "../../../domain/repositories";
-import type { Person, CandidateProfile, ResumeVersion } from "../../../domain/entities";
+import type { Person, ResumeVersion } from "../../../domain/entities";
+import type { CandidateProjection } from "../../../lib/domain/candidate_projection";
 
 export class SqlitePersonStore implements PersonStore {
   constructor(private db: DatabaseAdapter) {}
@@ -74,20 +75,61 @@ export class SqlitePersonStore implements PersonStore {
     );
   }
 
-  async saveCandidateProfile(profile: CandidateProfile): Promise<void> {
-    throw new Error("Method not implemented.");
+  async saveProjection(personId: string, projection: CandidateProjection): Promise<void> {
+    const profileId = `profile-${personId}`; // Enforce single active profile per user for now
+    const projectionJson = JSON.stringify(projection);
+    const now = new Date().toISOString();
+    
+    // Extract queryable scalar columns from projection
+    const currentTitle = "Executive"; // No longer in projection, stored in identity
+    const yearsExperience = projection.yearsOfExperience || 0;
+    const archetype = projection.executiveThemes?.[0] || "";
+    const preferredWorkModel = projection.preferredWorkModel || "ANY";
+
+    await this.db.execute(
+      `
+      INSERT INTO career_profiles (
+        id, person_id, timeline, skills, 
+        projection_json, projection_generated_at,
+        current_title, years_experience, archetype, preferred_work_model,
+        created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        projection_json = excluded.projection_json,
+        projection_generated_at = excluded.projection_generated_at,
+        current_title = excluded.current_title,
+        years_experience = excluded.years_experience,
+        archetype = excluded.archetype,
+        preferred_work_model = excluded.preferred_work_model,
+        updated_at = excluded.updated_at
+      `,
+      [
+        profileId, personId, "[]", "[]", // Dummy timeline/skills for NOT NULL constraints
+        projectionJson, now,
+        currentTitle, yearsExperience, archetype, preferredWorkModel,
+        now, now
+      ]
+    );
   }
   
   async saveResumeVersion(version: ResumeVersion): Promise<void> {
     throw new Error("Method not implemented.");
   }
 
-  async getCandidateProfile(personId: string, version: string): Promise<CandidateProfile | undefined> {
-    throw new Error("Method not implemented.");
-  }
-  
-  async getLatestCandidateProfile(personId: string): Promise<CandidateProfile | undefined> {
-    throw new Error("Method not implemented.");
+  async getLatestProjection(personId: string): Promise<CandidateProjection | undefined> {
+    const row = await this.db.one<{ projection_json: string }>(
+      `SELECT projection_json FROM career_profiles WHERE person_id = ? ORDER BY created_at DESC LIMIT 1`,
+      [personId]
+    );
+    if (!row || !row.projection_json) return undefined;
+    
+    try {
+      return JSON.parse(row.projection_json) as CandidateProjection;
+    } catch (e) {
+      console.error("[SqlitePersonStore] Failed to parse projection_json:", personId);
+      return undefined;
+    }
   }
   
   async getResumeVersions(candidateProfileId: string): Promise<ResumeVersion[]> {

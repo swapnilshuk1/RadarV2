@@ -13,6 +13,8 @@ import type {
   OpportunityAssessment,
   RecommendationRecord
 } from "./entities";
+import type { CandidateProjection } from "../lib/domain/candidate_projection";
+import type { CandidateDocumentRecord, SqliteDocumentStore } from "../data/sqlite/repositories/SqliteDocumentStore";
 
 /**
  * Repository Contracts
@@ -77,11 +79,10 @@ export interface PersonStore {
   registerPerson(person: Person): Promise<void>;
   getPersonByEmail(email: string): Promise<Person | undefined>;
   
-  saveCandidateProfile(profile: CandidateProfile): Promise<void>;
+  saveProjection(personId: string, projection: CandidateProjection): Promise<void>;
   saveResumeVersion(version: ResumeVersion): Promise<void>;
   
-  getCandidateProfile(personId: string, version: string): Promise<CandidateProfile | undefined>;
-  getLatestCandidateProfile(personId: string): Promise<CandidateProfile | undefined>;
+  getLatestProjection(personId: string): Promise<CandidateProjection | undefined>;
   getResumeVersions(candidateProfileId: string): Promise<ResumeVersion[]>;
 
   getCandidateState(personId: string): Promise<any | undefined>;
@@ -118,4 +119,5 @@ export interface StorageProvider {
   reasoning: ReasoningStore;
   people: PersonStore;
   decisions: DecisionSupportStore;
+  documents: SqliteDocumentStore;
 }

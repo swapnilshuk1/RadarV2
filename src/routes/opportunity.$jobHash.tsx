@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { applyUrlFor, type DecisionVerb } from "../data/opportunity-fixtures";
-import { OpportunityProvider } from "../lib/intelligence/opportunity-provider";
+import { getOpportunityFn, getOpportunitiesFn, getNeighboursFn } from "../lib/intelligence/opportunity-server";
 import { candidateProfile } from "../data/candidate-profile";
 import { MarkdownRenderer } from "../components/radar/MarkdownRenderer";
 import { DefaultEvaluationAdapter } from "../lib/recommendation/EvaluationAdapter";
@@ -9,12 +9,12 @@ import { useDecisions } from "../lib/decisions-store";
 import type { EvaluationEnvelope } from "../domain/v4";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
-  loader: ({ params }) => {
-    const opportunity = OpportunityProvider.get(params.jobHash);
+  loader: async ({ params }) => {
+    const opportunity = await getOpportunityFn({ data: params.jobHash });
     if (!opportunity) throw notFound();
-    const list = OpportunityProvider.list();
+    const list = await getOpportunitiesFn();
     const index = list.findIndex((o) => o.jobHash === params.jobHash);
-    const neighbors = OpportunityProvider.neighbours(params.jobHash);
+    const neighbors = await getNeighboursFn({ data: params.jobHash });
     return {
       opportunity,
       neighbors,

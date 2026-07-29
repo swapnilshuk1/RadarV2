@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { type DimensionResult, type Opportunity } from "../data/opportunity-fixtures";
-import { OpportunityProvider } from "../lib/intelligence/opportunity-provider";
+import { getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
 import { candidateProfile } from "../data/candidate-profile";
 
 export const Route = createFileRoute("/qa/mapping")({
@@ -11,6 +11,11 @@ export const Route = createFileRoute("/qa/mapping")({
       { name: "description", content: "Diagnostic view of which candidate-profile fields feed each radar dimension." },
     ],
   }),
+  loader: async () => {
+    return {
+      opportunitiesList: await getOpportunitiesFn()
+    };
+  },
   component: MappingQA,
 });
 
@@ -49,9 +54,8 @@ type Cell = {
   missing: boolean; // no candidateProof at all (excluding intentionally Missing JD)
 };
 
-function analyze(): Cell[] {
+function analyze(list: Opportunity[]): Cell[] {
   const rows: Cell[] = [];
-  const list = OpportunityProvider.list({ activePursuits: 0 });
   for (const opp of list) {
     for (const dim of opp.dimensions) {
       const proofText = dim.candidateProof ? `${dim.candidateProof.headline} ${dim.candidateProof.detail}` : "";
@@ -65,7 +69,8 @@ function analyze(): Cell[] {
 }
 
 function MappingQA() {
-  const rows = analyze();
+  const { opportunitiesList } = Route.useLoaderData();
+  const rows = analyze(opportunitiesList);
   const totalMappable = rows.filter((r) => r.dim.jdEvidence.status !== "Missing").length;
   const withProof = rows.filter((r) => r.dim.candidateProof).length;
   const withDetected = rows.filter((r) => r.paths.length > 0).length;

@@ -118,4 +118,50 @@ AI agents should read this to understand what has already been done and why.
 
 ---
 
-<!-- Add new entries below as phases complete -->
+---
+
+## Phase 5b — DB Migration & Persistence
+**Date**: 2026-07-30  
+**Branch**: `main`  
+**Status**: ✅ Complete
+
+### What Changed
+- Created `009_profile_queryable_columns.sql` to establish the `career_profiles` table storing `projection_json`.
+- Refactored `SqlitePersonStore.ts` with `saveProjection` and `getLatestProjection`.
+- Executed `scripts/migrate-profile-to-db.ts` to transition golden candidate profile into Turso.
+
+---
+
+## Phase 5c — Service Layer & Async Loaders
+**Date**: 2026-07-30  
+**Branch**: `main`  
+**Status**: ✅ Complete
+
+### What Changed
+- Created `src/lib/intelligence/opportunity-service.ts` as the primary application service boundary.
+- Created `src/lib/intelligence/opportunity-server.ts` providing TanStack Start transport adapters.
+- Refactored UI routes (`index.tsx`, `opportunity.$jobHash.tsx`, `decisions.tsx`, `qa.mapping.tsx`) to use async loaders.
+- Deprecated `OpportunityProvider` with JSDoc `@deprecated` flags.
+
+---
+
+## Phase 6 — Evidence Extraction Engine & Projection Pipeline
+**Date**: 2026-07-30  
+**Branch**: `main`  
+**Status**: ✅ Complete
+
+### What Changed
+- Added ADR-011: Evidence is Immutable (`docs/ARCHITECTURE_DECISIONS.md`).
+- Created `src/domain/evidence.ts` declaring `ExtractedFact`, `EvidenceGraph`, and `ExtractionProvenance` schemas.
+- Added migration `010_candidate_documents_and_evidence.sql` and `SqliteDocumentStore.ts` for candidate document metadata and evidence graph persistence.
+- Implemented `EvidenceExtractionService.ts` for LLM-based factual evidence extraction.
+- Implemented `EvidenceNormalizer.ts` and `OntologyResolver.ts` for deterministic acronym expansion and V4 Capability mapping.
+- Refactored `CandidateProjectionBuilderImpl.ts` and created `OperatingLevelEngine.ts` to infer operating level/altitude cleanly.
+- Implemented `ProjectionPipeline.ts` as a resumable stage-based orchestrator (`DOCUMENT_UPLOADED` -> `COMPLETED`).
+- Added end-to-end integration test `scripts/test-projection-pipeline.ts`.
+
+### Verified
+- `npx tsx scripts/test-projection-pipeline.ts` completed cleanly with full stage execution against Turso.
+- `npx tsc --noEmit` clean.
+- `npm run test:eqe` passes 100%.
+

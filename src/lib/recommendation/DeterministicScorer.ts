@@ -132,23 +132,25 @@ export class DeterministicScorer {
     let maxPossibleScore = 0;
 
     // === HARD CONSTRAINTS (deal-breakers) ===
-    for (const constraint of profile.hardConstraints) {
-      const violated = this.checkHardConstraint(constraint, job, profile);
-      if (violated) {
-        reasons.push({
-          type: "Risk",
-          severity: "High",
-          dimension: "HardConstraint",
-          score: -100,
-          message: `Hard constraint violated: ${constraint}`,
-        });
-        return {
-          rawScore: 0,
-          maxPossibleScore: 100,
-          normalisedScore: 0,
-          reasons,
-          missingEvidence,
-        };
+    if (profile.hardConstraints) {
+      for (const constraint of profile.hardConstraints) {
+        const violated = this.checkHardConstraint(constraint, job, profile);
+        if (violated) {
+          reasons.push({
+            type: "Risk",
+            severity: "High",
+            dimension: "HardConstraint",
+            score: -100,
+            message: `Hard constraint violated: ${constraint}`,
+          });
+          return {
+            rawScore: 0,
+            maxPossibleScore: 100,
+            normalisedScore: 0,
+            reasons,
+            missingEvidence,
+          };
+        }
       }
     }
 
@@ -377,7 +379,7 @@ export class DeterministicScorer {
       const geoScoring = (policy as any).geographyScoring || { exact: 1.0, regional: 0.75, country: 0.5, remote: 0.8 };
       let factor = geoScoring.country;
       
-      const profileLocations = (profile.preferences?.locations || []).map((l: string) => l.toLowerCase());
+      const profileLocations = ((profile.preferences?.locations || (profile as any).preferredLocations) || []).map((l: string) => l.toLowerCase());
       const jobLoc = value.toLowerCase();
       
       if (profileLocations.some((l: string) => l.includes(jobLoc) || jobLoc.includes(l))) {
@@ -403,7 +405,7 @@ export class DeterministicScorer {
 
     // === Technology Stack ===
     if (dimension === "technologyStack") {
-      const profileTech = profile.technology.map(t => t.toLowerCase());
+      const profileTech = (profile.technology || []).map(t => t.toLowerCase());
       const jobTech = value.split(/[\s,/;]+/).map(t => t.trim()).filter(Boolean);
       const overlap = jobTech.filter(t => profileTech.some(p => p.includes(t) || t.includes(p)));
       
@@ -426,7 +428,7 @@ export class DeterministicScorer {
 
     // === Functional Scope ===
     if (dimension === "functionalScope") {
-      const profileFunc = profile.functions.map(f => f.toLowerCase());
+      const profileFunc = (profile.functions || []).map(f => f.toLowerCase());
       const jobFunc = value.split(/[\s,/;]+/).map(f => f.trim()).filter(Boolean);
       
       const overlap = jobFunc.filter(f => profileFunc.some(p => p.includes(f) || f.includes(p)));

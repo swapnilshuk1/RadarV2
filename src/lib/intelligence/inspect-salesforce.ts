@@ -1,7 +1,10 @@
 import { runEngineSingle } from "./engine";
 import { candidateProfile } from "../../data/candidate-profile";
+import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
 
-const result = runEngineSingle("j-91004f14fb2f", candidateProfile, 0);
+const builder = new CandidateProjectionBuilderImpl();
+const projection = builder.fromProfile(candidateProfile);
+const result = runEngineSingle("j-91004f14fb2f", projection, 0);
 console.log("=========================================");
 console.log("INSPECTING SALESFORCE JOB");
 console.log("=========================================");

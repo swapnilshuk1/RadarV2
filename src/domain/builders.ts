@@ -3,5 +3,5 @@ import { CandidateProjection } from "../lib/domain/candidate_projection";
 import { CandidateProfile } from "./candidate";
 
 export interface ICandidateProjectionBuilder {
-  fromDatabase(profile: CandidateProfile): CandidateProjection;
+  fromProfile(profile: CandidateProfile): CandidateProjection;
 }

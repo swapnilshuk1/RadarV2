@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { type Opportunity, type DecisionVerb } from "../data/opportunity-fixtures";
 import { candidateSignature } from "../lib/personalization";
@@ -6,7 +6,7 @@ import { DecisionBadge } from "../components/radar/DecisionBadge";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { SwipeableRow } from "../components/radar/SwipeableRow";
 import { useDecisions } from "../lib/decisions-store";
-import { OpportunityProvider } from "../lib/intelligence/opportunity-provider";
+import { getOpportunitiesFn, injectFreshFn } from "../lib/intelligence/opportunity-server";
 import { getScrapedJobs, getScraperCounts } from "../data/scraped-jobs";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
@@ -22,6 +22,11 @@ export const Route = createFileRoute("/")({
       { property: "og:description", content: "Evidence-anchored career opportunity intelligence for experienced executives." },
     ],
   }),
+  loader: async () => {
+    return {
+      opportunitiesList: await getOpportunitiesFn()
+    };
+  },
   component: Shortlist,
 });
 
@@ -50,23 +55,10 @@ function Shortlist() {
 
   const [lastScanAt, setLastScanAt] = useState<string | null>(null);
   const [extraScraped, setExtraScraped] = useState(0);
-  const [opportunitiesVersion, setOpportunitiesVersion] = useState(0);
-
-  useEffect(() => {
-    const onChange = () => setOpportunitiesVersion((v) => v + 1);
-    window.addEventListener("radar:opportunities", onChange);
-    return () => window.removeEventListener("radar:opportunities", onChange);
-  }, []);
+  const router = useRouter();
 
   const baseCounts = getScraperCounts();
-
-  const activeCount = useMemo(() => {
-    return Object.values(decisions).filter((d) => d.verb === "PURSUE").length;
-  }, [decisions]);
-
-  const opportunitiesList = useMemo(() => {
-    return OpportunityProvider.list({ activePursuits: activeCount });
-  }, [activeCount, opportunitiesVersion]);
+  const { opportunitiesList } = Route.useLoaderData();
 
   const remaining = useMemo(
     () => opportunitiesList.filter((o) => !decisions[o.jobHash]),
@@ -111,7 +103,8 @@ function Shortlist() {
     try {
       const freshRecords = await getLiveScrapedFn();
       if (freshRecords && freshRecords.length > 0) {
-        OpportunityProvider.injectFresh(freshRecords);
+        await injectFreshFn({ data: freshRecords });
+        router.invalidate();
       }
     } catch (err) {
       console.error("Failed to fetch fresh records, falling back:", err);
