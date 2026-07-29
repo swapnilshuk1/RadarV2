@@ -30,7 +30,6 @@ export class OpportunityService {
     
     return presented
       .map((p) => p.opportunity)
-      .filter((o) => o.decision !== "PASS")
       .sort((a, b) => {
         const tierDiff = (decisionRank[a.decision] ?? 3) - (decisionRank[b.decision] ?? 3);
         if (tierDiff !== 0) return tierDiff;

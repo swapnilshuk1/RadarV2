@@ -3,22 +3,22 @@ import { OpportunityService } from "./opportunity-service";
 
 export const getOpportunitiesFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    // Hardcoded dev user for now; in the future this would come from ctx.session.userId
-    const userId = "swapnil-shukla-dev";
+    // Dev user matching decisions-server and document-server
+    const userId = "swapnil-shukla";
     return OpportunityService.listForUser(userId);
   });
 
 export const getOpportunityFn = createServerFn({ method: "GET" })
   .validator((d: string) => d)
   .handler(async ({ data: jobHash }) => {
-    const userId = "swapnil-shukla-dev";
+    const userId = "swapnil-shukla";
     return OpportunityService.getForUser(userId, jobHash);
   });
 
 export const getNeighboursFn = createServerFn({ method: "GET" })
   .validator((d: string) => d)
   .handler(async ({ data: jobHash }) => {
-    const userId = "swapnil-shukla-dev";
+    const userId = "swapnil-shukla";
     return OpportunityService.neighboursForUser(userId, jobHash);
   });
 
