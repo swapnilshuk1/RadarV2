@@ -7,9 +7,10 @@ import { WorkNatureClassifier } from "../classifiers/WorkNatureClassifier";
 import { DecisionAuthorityClassifier } from "../classifiers/DecisionAuthorityClassifier";
 import { CommercialScopeClassifier } from "../classifiers/CommercialScopeClassifier";
 import { OperatingLevel } from "../../domain/semantic";
+import { ICandidateProjectionBuilder } from "../../../domain/builders";
 
-export class CandidateProjectionBuilder {
-  public static build(profile: CandidateProfile): CandidateProjection {
+export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuilder {
+  public fromDatabase(profile: CandidateProfile): CandidateProjection {
     // Reconstruct dense resume text representation to feed into classifiers
     const candidateText = [
       profile.identity.currentTitle,

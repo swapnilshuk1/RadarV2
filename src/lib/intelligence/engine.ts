@@ -18,7 +18,7 @@ import { loadDecisionPolicy, computeDecisionVerdict } from "../recommendation/Ev
 import type { CandidateProfile } from "../../domain/candidate";
 
 // Phase 4 Semantic Imports
-import { CandidateProjectionBuilder } from "./builders/CandidateProjectionBuilder";
+import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
 import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
 import { CapabilityAssessmentEngine } from "./engines/CapabilityAssessmentEngine";
 import { OpportunityAssessmentEngine } from "./engines/OpportunityAssessmentEngine";
@@ -79,6 +79,8 @@ export function injectFreshRecords(records: any[]) {
   writeOpportunities([...(records as OpportunitySource[])]);
 }
 
+const candidateBuilder = new CandidateProjectionBuilderImpl();
+
 /**
  * Executes the full V4 pipeline: Candidate/Job Projections -> Assessments -> Rules Engine -> Presentation
  */
@@ -99,7 +101,7 @@ export function runEngine(candidateProfile: CandidateProfile, activePursuits = 0
   }
 
   // 1. Build Candidate V4 Projection Once
-  const candProjV4 = CandidateProjectionBuilder.build(candidateProfile);
+  const candProjV4 = candidateBuilder.fromDatabase(candidateProfile);
 
   // Fallback V3 Dossier if needed for backward compliance metrics
   const cip = new CandidateIntelligencePipeline();

@@ -103,4 +103,19 @@ AI agents should read this to understand what has already been done and why.
 
 ---
 
+## Phase 5a.5 — Projection Builder Interface
+**Date**: 2026-07-30  
+**Branch**: `main`  
+**Status**: ✅ Complete
+
+### What Changed
+- Created `src/domain/builders.ts` and defined the `ICandidateProjectionBuilder` interface.
+- Updated `src/lib/intelligence/builders/CandidateProjectionBuilder.ts` to export `CandidateProjectionBuilderImpl` that implements the new interface via `.fromDatabase()`.
+- Updated `src/lib/intelligence/engine.ts` and `src/lib/intelligence/opportunity-provider.ts` to instantiate and use `CandidateProjectionBuilderImpl.fromDatabase(candidateProfile)`.
+
+### Verified
+- `npx tsc --noEmit` runs completely clean with no type errors.
+
+---
+
 <!-- Add new entries below as phases complete -->

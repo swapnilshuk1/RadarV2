@@ -10,8 +10,8 @@ reconstruct full context in under 5 minutes.
 
 **Last Updated**: 2026-07-30  
 **Active Branch**: `main`  
-**Completed Phases**: Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5a  
-**In Progress**: Phase 5a.5 — Projection Builder Interface  
+**Completed Phases**: Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, Phase 5a, Phase 5a.5  
+**In Progress**: Phase 5b — Profile to Database  
 
 ---
 
@@ -28,11 +28,12 @@ Read these files FIRST, in order, before doing anything:
 3. docs/SESSION_HANDOFF.md            — where we left off (this file)
 4. docs/IMPLEMENTATION_LOG.md         — decisions made so far
 
-Current task: Execute Phase 5a.5 — Projection Builder Interface.
-Create `src/domain/builders.ts` with `ICandidateProjectionBuilder`.
-Implement this interface in `CandidateProjectionBuilder.ts`.
-Update `opportunity-provider.ts` to use `builder.fromDatabase()`.
-Then run `npx tsc --noEmit` and commit the changes for Phase 5a.5.
+Current task: Execute Phase 5b — Profile to Database.
+Create `008_profile_queryable_columns.sql` to add queryable columns for the profile to `people` or `candidate_profiles`.
+Implement `SqlitePersonStore` stubs.
+Create `scripts/migrate-profile-to-db.ts` to hydrate the database from JSON.
+Refactor `IdentityEngine.loadState()` to use the database instead of the JSON file.
+Run the migration script, `npx tsc --noEmit` + `npm run build`, and commit.
 ```
 
 ---

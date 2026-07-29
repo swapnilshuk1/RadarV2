@@ -6,15 +6,22 @@ import { runEngine, runEngineSingle, addExtraOpportunities, injectFreshRecords }
 import { candidateProfile } from "../../data/candidate-profile";
 import { activePursuits } from "../decisions-store";
 import type { Opportunity } from "@/data/opportunity-fixtures";
+import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
 
 export type ProviderOptions = {
   activePursuits?: number;
 };
 
+const builder = new CandidateProjectionBuilderImpl();
+
 export const OpportunityProvider = {
   /** List all dynamically computed opportunity DTOs, sorted by Pursuit Potential. */
   list(options?: ProviderOptions): Opportunity[] {
     const active = options?.activePursuits ?? activePursuits();
+    // Pre-build the projection to satisfy Phase 5a.5
+    const projection = builder.fromDatabase(candidateProfile);
+    
+    // We still pass candidateProfile for now, but in the future engine might take projection
     const { presented } = runEngine(candidateProfile, active);
     const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, PASS: 2 };
     return presented
