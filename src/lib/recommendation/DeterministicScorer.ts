@@ -17,8 +17,6 @@
  * - Consumes ExtractionResult dimensions only
  */
 
-import fs from "fs";
-import path from "path";
 import type {
   CandidateProfile,
   OpportunityAssessment,
@@ -61,13 +59,14 @@ export interface ScorerInput {
   policy: RecommendationPolicy;
   job: JobSlice;
   recommendationRunId: string;
+  calibrationConfig: any; // injected, no fs reads
 }
 
 export class DeterministicScorer {
   private resolver = new DimensionResolver();
 
   score(input: ScorerInput): OpportunityAssessment {
-    const { profile, policy, job, recommendationRunId } = input;
+    const { profile, policy, job, recommendationRunId, calibrationConfig } = input;
 
     // 1. Compute Raw Scores deterministically
     const {
@@ -93,7 +92,7 @@ export class DeterministicScorer {
     }
 
     // 3. Calibrate Decision Confidence Layer (Sprint 12)
-    const decisionConfidence = this.calculateDecisionConfidence(job, profile, policy, normalisedScore, decision);
+    const decisionConfidence = this.calculateDecisionConfidence(job, profile, policy, normalisedScore, decision, calibrationConfig);
 
     return this.buildAssessment({
       recommendationRunId,
@@ -193,10 +192,9 @@ export class DeterministicScorer {
     profile: CandidateProfile,
     policy: RecommendationPolicy,
     baseScore: number,
-    baseDecision: OpportunityAssessment["decision"]
+    baseDecision: OpportunityAssessment["decision"],
+    config: any
   ): DecisionConfidence {
-    const config = this.loadCalibrationConfig();
-
     const limitingDimensions: DecisionImpact[] = [];
     let sumCalibratedConfidence = 0;
     let sumWeights = 0;
@@ -301,36 +299,7 @@ export class DeterministicScorer {
     };
   }
 
-  private loadCalibrationConfig(): any {
-    const defaultConfig = {
-      coefficients: {
-        reportingLine: { inferredWeight: 0.90 },
-        budgetOwnership: { inferredWeight: 0.55 },
-        teamLeadership: { inferredWeight: 0.82 },
-        commercialAccountability: { inferredWeight: 0.75 },
-        technologyStack: { inferredWeight: 0.85 },
-        mandate: { inferredWeight: 0.70 },
-      },
-      thresholds: {
-        highImpactThreshold: 0.15,
-        confidenceVisibleThreshold: 0.80,
-        maxHighImpactQuestions: 2
-      }
-    };
 
-    if (typeof window === "undefined" && typeof process !== "undefined" && process.cwd) {
-      try {
-        const configPath = path.resolve(process.cwd(), "config", "calibration_coefficients.json");
-        if (fs.existsSync(configPath)) {
-          const content = fs.readFileSync(configPath, "utf8");
-          return JSON.parse(content);
-        }
-      } catch (err) {
-        // Fall back to default config if file is missing or unreadable
-      }
-    }
-    return defaultConfig;
-  }
 
   private getAdmissibleValuesForDimension(dimension: string): any[] {
     switch (dimension) {

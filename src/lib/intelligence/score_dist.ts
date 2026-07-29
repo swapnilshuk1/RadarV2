@@ -1,6 +1,7 @@
 import { runEngine } from "./engine";
+import { candidateProfile } from "../../data/candidate-profile";
 
-const { presented, records } = runEngine();
+const { presented, records } = runEngine(candidateProfile);
 console.log(`Scored ${records.length} opportunities. Here is the distribution of verdicts and scores:`);
 
 const counts: Record<string, number> = { PURSUE: 0, CONSIDER: 0, PASS: 0, NOT_EVALUABLE: 0 };

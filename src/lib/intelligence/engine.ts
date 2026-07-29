@@ -25,7 +25,6 @@ import { CareerAssessmentEngine } from "./engines/CareerAssessmentEngine";
 import { LifestyleAssessmentEngine } from "./engines/LifestyleAssessmentEngine";
 import { IdentityAssessmentEngine } from "./engines/IdentityAssessmentEngine";
 import { DecisionPolicyEngine } from "./policy/DecisionPolicyEngine";
-import { candidateProfile } from "../../data/candidate-profile";
 
 const KEY = "radar.opportunities.v3";
 const baseOpportunities = [...(liveScraped as OpportunitySource[])];
@@ -82,7 +81,7 @@ export function injectFreshRecords(records: any[]) {
 /**
  * Executes the full V4 pipeline: Candidate/Job Projections -> Assessments -> Rules Engine -> Presentation
  */
-export function runEngine(activePursuits = 0): {
+export function runEngine(candidateProfile: any, activePursuits = 0): {
   presented: Presented[];
   records: RecommendationRecord[];
 } {
@@ -208,7 +207,7 @@ export function runEngine(activePursuits = 0): {
     .map((r) => {
       // In V4 paradigm, we still present candidates in the view, but let the UI filter out PASS records or let presentation-boundary hide scores
       const a = byHash.get(r.jobHash);
-      return a ? present(a, r) : null;
+      return a ? present(a, r, candidateProfile) : null;
     })
     .filter((x): x is Presented => x !== null);
 
@@ -221,11 +220,11 @@ export function runEngine(activePursuits = 0): {
   return result;
 }
 
-export function runEngineSingle(jobHash: string, activePursuits = 0): Presented | undefined {
+export function runEngineSingle(jobHash: string, candidateProfile: any, activePursuits = 0): Presented | undefined {
   const currentAuthored = readOpportunities();
   const found = currentAuthored.find((o) => o.jobHash === jobHash);
   if (!found) return undefined;
 
-  const { presented } = runEngine(activePursuits);
+  const { presented } = runEngine(candidateProfile, activePursuits);
   return presented.find(p => p.opportunity.jobHash === jobHash);
 }

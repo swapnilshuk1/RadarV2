@@ -1,6 +1,7 @@
 import { runEngineSingle } from "./engine";
+import { candidateProfile } from "../../data/candidate-profile";
 
-const result = runEngineSingle("j-91004f14fb2f", 0);
+const result = runEngineSingle("j-91004f14fb2f", candidateProfile, 0);
 console.log("=========================================");
 console.log("INSPECTING SALESFORCE JOB");
 console.log("=========================================");

@@ -3,6 +3,7 @@
 // Exposes a repository pattern for UI consumers.
 
 import { runEngine, runEngineSingle, addExtraOpportunities, injectFreshRecords } from "./engine";
+import { candidateProfile } from "../../data/candidate-profile";
 import { activePursuits } from "../decisions-store";
 import type { Opportunity } from "@/data/opportunity-fixtures";
 
@@ -14,7 +15,7 @@ export const OpportunityProvider = {
   /** List all dynamically computed opportunity DTOs, sorted by Pursuit Potential. */
   list(options?: ProviderOptions): Opportunity[] {
     const active = options?.activePursuits ?? activePursuits();
-    const { presented } = runEngine(active);
+    const { presented } = runEngine(candidateProfile, active);
     const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, PASS: 2 };
     return presented
       .map((p) => p.opportunity)
@@ -34,7 +35,7 @@ export const OpportunityProvider = {
 
     // Lazy, super-fast single-record fallback!
     const active = options?.activePursuits ?? activePursuits();
-    const presentedSingle = runEngineSingle(jobHash, active);
+    const presentedSingle = runEngineSingle(jobHash, candidateProfile, active);
     return presentedSingle?.opportunity;
   },
 
