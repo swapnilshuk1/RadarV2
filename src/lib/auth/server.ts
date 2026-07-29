@@ -7,10 +7,10 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
-import { getWebRequest } from "@tanstack/react-start/server";
+import { getCookie } from "@tanstack/react-start/server";
 import {
   validateSessionToken,
-  getSessionCookieValue,
+  SESSION_COOKIE_NAME,
   type SessionUser,
 } from "./session";
 
@@ -21,9 +21,7 @@ import {
  */
 export const getSessionUserFn = createServerFn({ method: "GET" })
   .handler(async (): Promise<SessionUser | null> => {
-    const request = getWebRequest();
-    const cookieHeader = request?.headers.get("cookie") ?? null;
-    const token = getSessionCookieValue(cookieHeader);
+    const token = getCookie(SESSION_COOKIE_NAME);
     if (!token) return null;
 
     const { user } = await validateSessionToken(token);

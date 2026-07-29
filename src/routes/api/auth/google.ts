@@ -8,7 +8,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getWebRequest, setResponseHeaders } from "@tanstack/react-start/server";
+import { setCookie } from "@tanstack/react-start/server";
 import { generateState, generateCodeVerifier, Google } from "arctic";
 
 const initiateGoogleAuthFn = createServerFn({ method: "GET" }).handler(async () => {
@@ -33,16 +33,14 @@ const initiateGoogleAuthFn = createServerFn({ method: "GET" }).handler(async () 
   });
 
   // Store state + verifier in short-lived HttpOnly cookies for CSRF protection
-  const cookieOpts = "HttpOnly; SameSite=Lax; Path=/; Max-Age=600";
-  setResponseHeaders({
-    "Set-Cookie": [
-      `google_oauth_state=${state}; ${cookieOpts}`,
-      `google_code_verifier=${codeVerifier}; ${cookieOpts}`,
-    ].join(", "),
-    Location: url.toString(),
-  });
+  const isProd = process.env.NODE_ENV === "production";
+  setCookie("google_oauth_state", state, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 600, secure: isProd });
+  setCookie("google_code_verifier", codeVerifier, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 600, secure: isProd });
 
-  return new Response(null, { status: 302 });
+  return new Response(null, { 
+    status: 302, 
+    headers: { Location: url.toString() } 
+  });
 });
 
 export const Route = createFileRoute("/api/auth/google")({

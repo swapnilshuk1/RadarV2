@@ -8,28 +8,25 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getWebRequest, setResponseHeaders } from "@tanstack/react-start/server";
+import { getCookie, setCookie } from "@tanstack/react-start/server";
 import {
-  getSessionCookieValue,
   invalidateSession,
-  makeBlankSessionCookie,
+  SESSION_COOKIE_NAME
 } from "../../../lib/auth/session";
 
 const logoutFn = createServerFn({ method: "GET" }).handler(async () => {
-  const request = getWebRequest();
-  const cookieHeader = request?.headers.get("cookie") ?? null;
-  const token = getSessionCookieValue(cookieHeader);
+  const token = getCookie(SESSION_COOKIE_NAME);
 
   if (token) {
     await invalidateSession(token);
   }
 
-  setResponseHeaders({
-    "Set-Cookie": makeBlankSessionCookie(),
-    Location: "/login",
-  });
+  setCookie(SESSION_COOKIE_NAME, "", { maxAge: 0, path: "/" });
 
-  return new Response(null, { status: 302 });
+  return new Response(null, { 
+    status: 302,
+    headers: { Location: "/login" }
+  });
 });
 
 export const Route = createFileRoute("/api/auth/logout")({

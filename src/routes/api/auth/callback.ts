@@ -16,24 +16,17 @@
  * ADR-008: Auth resolves at this boundary. Only userId flows downstream.
  */
 
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getWebRequest, setResponseHeaders } from "@tanstack/react-start/server";
+import { getRequest, getCookie, setCookie } from "@tanstack/react-start/server";
 import { Google } from "arctic";
 import { getDatabaseAdapter } from "../../../data/database/index";
 import {
   generateSessionToken,
   createSession,
-  makeSessionCookie,
-  getSessionCookieValue,
+  SESSION_COOKIE_NAME
 } from "../../../lib/auth/session";
 import { fetchGoogleUserInfo } from "../../../lib/auth/google";
-
-function getCookieValue(cookieHeader: string | null, name: string): string | null {
-  if (!cookieHeader) return null;
-  const match = cookieHeader.match(new RegExp(`(?:^|; )${name}=([^;]+)`));
-  return match?.[1] ?? null;
-}
 
 function ulid(): string {
   // Simple ULID-style ID: timestamp prefix + random suffix
@@ -41,16 +34,13 @@ function ulid(): string {
 }
 
 const handleCallbackFn = createServerFn({ method: "GET" }).handler(async () => {
-  const request = getWebRequest();
-  if (!request) throw new Error("No request context");
-
+  const request = getRequest();
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
-  const cookieHeader = request.headers.get("cookie");
 
-  const storedState = getCookieValue(cookieHeader, "google_oauth_state");
-  const codeVerifier = getCookieValue(cookieHeader, "google_code_verifier");
+  const storedState = getCookie("google_oauth_state");
+  const codeVerifier = getCookie("google_code_verifier");
 
   // ── 1. CSRF validation ──────────────────────────────────────────────────
   if (!code || !state || !storedState || !codeVerifier || state !== storedState) {
@@ -126,17 +116,22 @@ const handleCallbackFn = createServerFn({ method: "GET" }).handler(async () => {
   const session = await createSession(token, personId);
 
   // Clear PKCE cookies + set session cookie
-  const clearCookieOpts = "HttpOnly; SameSite=Lax; Path=/; Max-Age=0";
-  setResponseHeaders({
-    "Set-Cookie": [
-      `google_oauth_state=; ${clearCookieOpts}`,
-      `google_code_verifier=; ${clearCookieOpts}`,
-      makeSessionCookie(token, session.expiresAt),
-    ].join(", "),
-    Location: isNewUser ? "/onboard" : "/",
+  setCookie("google_oauth_state", "", { maxAge: 0, path: "/" });
+  setCookie("google_code_verifier", "", { maxAge: 0, path: "/" });
+  
+  const isProd = process.env.NODE_ENV === "production";
+  setCookie(SESSION_COOKIE_NAME, token, { 
+    httpOnly: true, 
+    sameSite: "lax", 
+    path: "/", 
+    expires: session.expiresAt, 
+    secure: isProd 
   });
 
-  return new Response(null, { status: 302 });
+  return new Response(null, { 
+    status: 302, 
+    headers: { Location: isNewUser ? "/onboard" : "/" } 
+  });
 });
 
 export const Route = createFileRoute("/api/auth/callback")({

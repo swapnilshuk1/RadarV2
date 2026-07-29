@@ -6,7 +6,7 @@
  * ADR-008: Auth resolves user at boundary; never bleeds into business logic.
  */
 
-import { encodeBase32LowerCaseNoPadding, decodeBase32UpperCaseNoPadding } from "@oslojs/encoding";
+import { encodeBase32LowerCaseNoPadding } from "@oslojs/encoding";
 import { sha256 } from "@oslojs/crypto/sha2";
 import { getDatabaseAdapter } from "../../data/database/index";
 
