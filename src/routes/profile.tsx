@@ -26,8 +26,13 @@ function ProfilePage() {
   const router = useRouter();
 
   // Intent form state
-  const [minSalary, setMinSalary] = useState(intent?.minSalaryUsd || 150000);
-  const [locations, setLocations] = useState((intent?.preferredLocations || ["Gurugram", "Remote"]).join(", "));
+  const [currency, setCurrency] = useState<"INR" | "USD" | "EUR" | "GBP">(
+    (intent as any)?.currency || "INR"
+  );
+  const [targetSalary, setTargetSalary] = useState<number>(
+    (intent as any)?.targetSalaryAmount || (intent as any)?.minSalaryUsd || 8000000
+  );
+  const [locations, setLocations] = useState((intent?.preferredLocations || ["Gurugram", "Remote India"]).join(", "));
   const [targetTitles, setTargetTitles] = useState((intent?.targetTitles || ["Vice President", "CMO", "CGO"]).join(", "));
   const [workModel, setWorkModel] = useState<"HYBRID" | "REMOTE" | "ON_SITE" | "ANY">(intent?.preferredWorkModel || "ANY");
   const [isSavingIntent, setIsSavingIntent] = useState(false);
@@ -106,7 +111,9 @@ function ProfilePage() {
 
       await saveIntentFn({
         data: {
-          minSalaryUsd: Number(minSalary),
+          currency,
+          targetSalaryAmount: Number(targetSalary),
+          minSalaryUsd: currency === "USD" ? Number(targetSalary) : Math.round(Number(targetSalary) / 83),
           preferredLocations: locList,
           targetTitles: titleList,
           preferredWorkModel: workModel
@@ -226,14 +233,32 @@ function ProfilePage() {
           </p>
 
           <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium block mb-1">Target Minimum Annual Salary ($ USD)</label>
-              <input
-                type="number"
-                className="w-full p-2 text-sm rounded border bg-background"
-                value={minSalary}
-                onChange={(e) => setMinSalary(Number(e.target.value))}
-              />
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-medium block mb-1">Currency</label>
+                <select
+                  className="w-full p-2 text-sm rounded border bg-background"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value as any)}
+                >
+                  <option value="INR">INR (₹)</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="GBP">GBP (£)</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-medium block mb-1">
+                  Target Minimum Salary ({currency === "INR" ? "₹ INR" : currency === "EUR" ? "€ EUR" : currency === "GBP" ? "£ GBP" : "$ USD"})
+                </label>
+                <input
+                  type="number"
+                  className="w-full p-2 text-sm rounded border bg-background"
+                  placeholder={currency === "INR" ? "8000000 (80 Lakhs)" : "150000"}
+                  value={targetSalary}
+                  onChange={(e) => setTargetSalary(Number(e.target.value))}
+                />
+              </div>
             </div>
 
             <div>

@@ -82,6 +82,8 @@ export const getPipelineStatusFn = createServerFn({ method: "GET" })
  */
 export const saveIntentFn = createServerFn({ method: "POST" })
   .validator((intent: {
+    currency?: "INR" | "USD" | "EUR" | "GBP";
+    targetSalaryAmount?: number;
     minSalaryUsd?: number;
     preferredLocations: string[];
     targetTitles: string[];
@@ -94,7 +96,9 @@ export const saveIntentFn = createServerFn({ method: "POST" })
 
     const intentRecord: CareerIntentRecord = {
       personId: userId,
-      minSalaryUsd: intent.minSalaryUsd,
+      currency: intent.currency || "INR",
+      targetSalaryAmount: intent.targetSalaryAmount || intent.minSalaryUsd || 8000000,
+      minSalaryUsd: intent.minSalaryUsd || intent.targetSalaryAmount,
       preferredLocations: intent.preferredLocations,
       targetTitles: intent.targetTitles,
       preferredWorkModel: intent.preferredWorkModel || "ANY",
@@ -122,7 +126,9 @@ export const getLatestIntentFn = createServerFn({ method: "GET" })
     const intent = await repos.documents.getLatestCareerIntent(userId);
     return intent || {
       personId: userId,
-      preferredLocations: ["Gurugram", "Remote"],
+      currency: "INR",
+      targetSalaryAmount: 8000000, // ₹80 Lakhs INR
+      preferredLocations: ["Gurugram", "Remote India"],
       targetTitles: ["Vice President", "CMO", "CGO"],
       preferredWorkModel: "ANY",
       travelTolerance: "MEDIUM"

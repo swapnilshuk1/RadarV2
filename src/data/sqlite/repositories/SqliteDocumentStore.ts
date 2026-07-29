@@ -19,6 +19,8 @@ export interface CareerIntentRecord {
   id?: string;
   personId: string;
   version?: number;
+  currency?: "INR" | "USD" | "EUR" | "GBP";
+  targetSalaryAmount?: number;
   minSalaryUsd?: number;
   preferredLocations: string[];
   targetTitles: string[];
@@ -240,12 +242,23 @@ export class SqliteDocumentStore {
       [personId]
     );
     if (!row) return undefined;
+    const locations: string[] = JSON.parse(row.preferred_locations || "[]");
+    
+    // Infer currency: default to INR for India locations, otherwise USD
+    const isIndia = locations.some(l => 
+      /india|gurugram|gurgaon|bengaluru|bangalore|mumbai|delhi|noida|hyderabad/i.test(l)
+    );
+    const currency = row.currency || (isIndia ? "INR" : "USD");
+    const targetSalaryAmount = row.target_salary_amount || row.min_salary_usd || (isIndia ? 8000000 : 150000);
+
     return {
       id: row.id,
       personId: row.person_id,
       version: row.version,
+      currency,
+      targetSalaryAmount,
       minSalaryUsd: row.min_salary_usd || undefined,
-      preferredLocations: JSON.parse(row.preferred_locations || "[]"),
+      preferredLocations: locations,
       targetTitles: JSON.parse(row.target_titles || "[]"),
       preferredWorkModel: row.preferred_work_model,
       travelTolerance: row.travel_tolerance,
