@@ -165,3 +165,23 @@ AI agents should read this to understand what has already been done and why.
 - `npx tsc --noEmit` clean.
 - `npm run test:eqe` passes 100%.
 
+---
+
+## Phase 7 — UI Document Upload Gateway, Versioned Intent & Live Integration
+**Date**: 2026-07-30  
+**Branch**: `main`  
+**Status**: ✅ Complete
+
+### What Changed
+- Added `ADR-012: Intent is Explicit and Independent` (`docs/ARCHITECTURE_DECISIONS.md`).
+- Applied migration `011_document_contents_and_intent.sql` to Turso DB separating `document_contents` (storing `raw_text` & `text_hash`) from document metadata, and creating versioned `career_intents`.
+- Created `src/lib/intelligence/extraction/text-parser.ts` to compute SHA-256 `textHash` over extracted resume text.
+- Enhanced `ProjectionPipeline.ts` with instant `text_hash` deduplication and refined stages (`DOCUMENT_REGISTERED` -> `COMPLETED`).
+- Created `src/lib/intelligence/document-server.ts` providing non-blocking fire-and-forget transport adapters (`uploadDocumentFn`, `getPipelineStatusFn`, `saveIntentFn`, `getLatestIntentFn`).
+- Built `src/routes/profile.tsx` featuring drag-and-drop resume upload, live pipeline stage stepper, and versioned `IntentSettingsPanel`.
+
+### Verified
+- `npx tsc --noEmit` passed cleanly.
+- `npm run build` passed in 9.54s (Nitro + Vite SSR).
+
+

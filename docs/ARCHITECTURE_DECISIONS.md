@@ -200,6 +200,19 @@ This preserves data lineage and enables perfect auditability. By making evidence
 
 ---
 
+## ADR-012: Intent is Explicit and Independent
+
+**Status**: Active  
+**Date**: 2026-07-30
+
+### Decision
+Candidate Intent (`CareerIntent` — target salary minimum, target locations, target titles, work shift preferences) is **strictly explicit and human-configured**. Intent must **never be inferred or assumed** from historical resume evidence or CV documents.
+
+### Rationale
+A resume represents past accomplishments; intent represents future aspirations. Inferring desired salary or location from historical roles creates dangerous biases and breaks the executive's control over their career trajectory. Evidence belongs to documents; intent belongs to the human.
+
+---
+
 ## Supersession Log
 
 | Superseded ADR | Superseded By | Date | Reason |

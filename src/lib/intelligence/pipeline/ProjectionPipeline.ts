@@ -16,8 +16,11 @@ import { OperatingLevelEngine } from "../engines/OperatingLevelEngine";
 import { OpportunityService } from "../opportunity-service";
 import type { EvidenceGraph } from "../../../domain/evidence";
 
+import { parseDocumentText } from "../extraction/text-parser";
+
 export type PipelineStage =
-  | "DOCUMENT_UPLOADED"
+  | "DOCUMENT_REGISTERED"
+  | "TEXT_EXTRACTED"
   | "EVIDENCE_EXTRACTED"
   | "NORMALIZED"
   | "ONTOLOGY_RESOLVED"
@@ -33,7 +36,8 @@ export interface PipelineExecutionInput {
   storageUri: string;
   mimeType: string;
   documentHash: string;
-  documentText: string;
+  documentText?: string;
+  fileBuffer?: Buffer;
 }
 
 export class ProjectionPipeline {
@@ -41,17 +45,19 @@ export class ProjectionPipeline {
   private extractor = new EvidenceExtractionService();
   private builder = new CandidateProjectionBuilderImpl();
 
-  public async run(input: PipelineExecutionInput, startStage: PipelineStage = "DOCUMENT_UPLOADED"): Promise<{
+  public async run(input: PipelineExecutionInput, startStage: PipelineStage = "DOCUMENT_REGISTERED"): Promise<{
     success: boolean;
     stage: PipelineStage;
     error?: string;
+    deduplicated?: boolean;
   }> {
-    const { documentId, personId, filename, storageUri, mimeType, documentHash, documentText } = input;
+    const { documentId, personId, filename, storageUri, mimeType, documentHash } = input;
     let currentStage: PipelineStage = startStage;
+    let isDeduplicated = false;
 
     try {
-      // 1. DOCUMENT_UPLOADED
-      if (currentStage === "DOCUMENT_UPLOADED") {
+      // 1. DOCUMENT_REGISTERED
+      if (currentStage === "DOCUMENT_REGISTERED") {
         const docRecord: CandidateDocumentRecord = {
           id: documentId,
           personId,
@@ -60,24 +66,69 @@ export class ProjectionPipeline {
           mimeType,
           documentHash,
           status: "PROCESSING",
-          stage: "DOCUMENT_UPLOADED",
+          stage: "DOCUMENT_REGISTERED",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
         await this.repos.documents.saveDocument(docRecord);
-        currentStage = "EVIDENCE_EXTRACTED";
+        currentStage = "TEXT_EXTRACTED";
       }
 
-      // 2. EVIDENCE_EXTRACTED
+      // 2. TEXT_EXTRACTED
+      let rawText = input.documentText || "";
+      let textHash = "";
+
+      if (currentStage === "TEXT_EXTRACTED") {
+        await this.repos.documents.updateDocumentStage(documentId, "TEXT_EXTRACTED", "PROCESSING");
+        if (input.fileBuffer) {
+          const parsed = await parseDocumentText(input.fileBuffer, mimeType);
+          rawText = parsed.rawText;
+          textHash = parsed.textHash;
+        } else {
+          const parsed = await parseDocumentText(Buffer.from(rawText, "utf-8"), "text/plain");
+          textHash = parsed.textHash;
+        }
+        await this.repos.documents.saveDocumentContent(documentId, rawText, textHash);
+        currentStage = "EVIDENCE_EXTRACTED";
+      } else {
+        const content = await this.repos.documents.getDocumentContent(documentId);
+        if (content) {
+          rawText = content.rawText;
+          textHash = content.textHash;
+        }
+      }
+
+      // 3. EVIDENCE_EXTRACTED (with text_hash deduplication)
       let evidenceGraph: EvidenceGraph | undefined;
       if (currentStage === "EVIDENCE_EXTRACTED") {
         await this.repos.documents.updateDocumentStage(documentId, "EVIDENCE_EXTRACTED", "PROCESSING");
-        evidenceGraph = await this.extractor.extract({
-          personId,
-          documentId,
-          documentHash,
-          documentText
-        });
+
+        // Check if an EvidenceGraph with identical text_hash already exists
+        if (textHash) {
+          const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(textHash);
+          if (existingGraph) {
+            console.log(`[ProjectionPipeline] Instant deduplication match for textHash ${textHash.slice(0, 8)}...!`);
+            evidenceGraph = {
+              ...existingGraph,
+              id: `ev-graph-${documentId}-dedup`,
+              provenance: {
+                ...existingGraph.provenance,
+                documentId
+              }
+            };
+            isDeduplicated = true;
+          }
+        }
+
+        if (!evidenceGraph) {
+          evidenceGraph = await this.extractor.extract({
+            personId,
+            documentId,
+            documentHash: textHash || documentHash,
+            documentText: rawText
+          });
+        }
+
         await this.repos.documents.saveEvidenceGraph(evidenceGraph);
         currentStage = "NORMALIZED";
       } else {
@@ -88,7 +139,7 @@ export class ProjectionPipeline {
         throw new Error(`EvidenceGraph missing for document ${documentId}`);
       }
 
-      // 3. NORMALIZED
+      // 4. NORMALIZED
       let normalizedGraph = evidenceGraph;
       if (currentStage === "NORMALIZED") {
         await this.repos.documents.updateDocumentStage(documentId, "NORMALIZED", "PROCESSING");
@@ -96,7 +147,7 @@ export class ProjectionPipeline {
         currentStage = "ONTOLOGY_RESOLVED";
       }
 
-      // 4. ONTOLOGY_RESOLVED
+      // 5. ONTOLOGY_RESOLVED
       let resolvedOntology;
       if (currentStage === "ONTOLOGY_RESOLVED") {
         await this.repos.documents.updateDocumentStage(documentId, "ONTOLOGY_RESOLVED", "PROCESSING");
@@ -106,7 +157,7 @@ export class ProjectionPipeline {
         resolvedOntology = OntologyResolver.resolve(normalizedGraph);
       }
 
-      // 5. PROJECTION_BUILT
+      // 6. PROJECTION_BUILT
       let baseProjection;
       if (currentStage === "PROJECTION_BUILT") {
         await this.repos.documents.updateDocumentStage(documentId, "PROJECTION_BUILT", "PROCESSING");
@@ -116,16 +167,16 @@ export class ProjectionPipeline {
         baseProjection = this.builder.fromEvidence(normalizedGraph, resolvedOntology);
       }
 
-      // 6. INFERENCE_COMPLETE
+      // 7. INFERENCE_COMPLETE
       let finalProjection = baseProjection;
       if (currentStage === "INFERENCE_COMPLETE") {
         await this.repos.documents.updateDocumentStage(documentId, "INFERENCE_COMPLETE", "PROCESSING");
-        finalProjection = OperatingLevelEngine.evaluate(baseProjection, documentText);
+        finalProjection = OperatingLevelEngine.evaluate(baseProjection, rawText);
         await this.repos.people.saveProjection(personId, finalProjection);
         currentStage = "EVALUATED";
       }
 
-      // 7. EVALUATED
+      // 8. EVALUATED
       if (currentStage === "EVALUATED") {
         await this.repos.documents.updateDocumentStage(documentId, "EVALUATED", "PROCESSING");
         // Trigger recommendation re-evaluation for user
@@ -133,12 +184,13 @@ export class ProjectionPipeline {
         currentStage = "COMPLETED";
       }
 
-      // 8. COMPLETED
+      // 9. COMPLETED
       await this.repos.documents.updateDocumentStage(documentId, "COMPLETED", "COMPLETED");
 
       return {
         success: true,
-        stage: "COMPLETED"
+        stage: "COMPLETED",
+        deduplicated: isDeduplicated
       };
     } catch (err: any) {
       console.error(`[ProjectionPipeline] Failed at stage ${currentStage}:`, err.message);

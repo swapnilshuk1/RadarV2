@@ -15,6 +15,18 @@ export interface CandidateDocumentRecord {
   updatedAt: string;
 }
 
+export interface CareerIntentRecord {
+  id?: string;
+  personId: string;
+  version?: number;
+  minSalaryUsd?: number;
+  preferredLocations: string[];
+  targetTitles: string[];
+  preferredWorkModel?: "HYBRID" | "REMOTE" | "ON_SITE" | "ANY";
+  travelTolerance?: "HIGH" | "MEDIUM" | "LOW";
+  createdAt?: string;
+}
+
 export class SqliteDocumentStore {
   constructor(private db: DatabaseAdapter) {}
 
@@ -142,5 +154,102 @@ export class SqliteDocumentStore {
     } catch {
       return undefined;
     }
+  }
+
+  // --- document_contents methods ---
+
+  async saveDocumentContent(documentId: string, rawText: string, textHash: string): Promise<void> {
+    const contentId = `content-${documentId}`;
+    await this.db.execute(
+      `
+      INSERT INTO document_contents (id, document_id, raw_text, text_hash, created_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(document_id) DO UPDATE SET
+        raw_text = excluded.raw_text,
+        text_hash = excluded.text_hash
+      `,
+      [contentId, documentId, rawText, textHash]
+    );
+  }
+
+  async getDocumentContent(documentId: string): Promise<{ rawText: string; textHash: string } | undefined> {
+    const row = await this.db.one<any>(
+      `SELECT raw_text, text_hash FROM document_contents WHERE document_id = ?`,
+      [documentId]
+    );
+    if (!row) return undefined;
+    return { rawText: row.raw_text, textHash: row.text_hash };
+  }
+
+  async findExistingEvidenceGraphByTextHash(textHash: string): Promise<EvidenceGraph | undefined> {
+    const row = await this.db.one<any>(
+      `
+      SELECT eg.graph_json 
+      FROM document_contents dc
+      JOIN evidence_graphs eg ON dc.document_id = eg.document_id
+      WHERE dc.text_hash = ?
+      ORDER BY eg.created_at DESC LIMIT 1
+      `,
+      [textHash]
+    );
+    if (!row || !row.graph_json) return undefined;
+    try {
+      return JSON.parse(row.graph_json) as EvidenceGraph;
+    } catch {
+      return undefined;
+    }
+  }
+
+  // --- versioned career_intents methods (ADR-012) ---
+
+  async saveCareerIntent(intent: CareerIntentRecord): Promise<void> {
+    const now = new Date().toISOString();
+    
+    // Get highest version for person
+    const latest = await this.db.one<any>(
+      `SELECT version FROM career_intents WHERE person_id = ? ORDER BY version DESC LIMIT 1`,
+      [intent.personId]
+    );
+    const nextVersion = (latest?.version || 0) + 1;
+    const intentId = `intent-${intent.personId}-v${nextVersion}`;
+
+    await this.db.execute(
+      `
+      INSERT INTO career_intents (
+        id, person_id, version, min_salary_usd, preferred_locations, target_titles, preferred_work_model, travel_tolerance, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        intentId,
+        intent.personId,
+        nextVersion,
+        intent.minSalaryUsd || null,
+        JSON.stringify(intent.preferredLocations || []),
+        JSON.stringify(intent.targetTitles || []),
+        intent.preferredWorkModel || "ANY",
+        intent.travelTolerance || "MEDIUM",
+        now
+      ]
+    );
+  }
+
+  async getLatestCareerIntent(personId: string): Promise<CareerIntentRecord | undefined> {
+    const row = await this.db.one<any>(
+      `SELECT * FROM career_intents WHERE person_id = ? ORDER BY version DESC LIMIT 1`,
+      [personId]
+    );
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      personId: row.person_id,
+      version: row.version,
+      minSalaryUsd: row.min_salary_usd || undefined,
+      preferredLocations: JSON.parse(row.preferred_locations || "[]"),
+      targetTitles: JSON.parse(row.target_titles || "[]"),
+      preferredWorkModel: row.preferred_work_model,
+      travelTolerance: row.travel_tolerance,
+      createdAt: row.created_at
+    };
   }
 }
