@@ -58,7 +58,7 @@ const handleCallbackFn = createServerFn({ method: "GET" }).handler(async () => {
 
   const google = new Google(clientId, clientSecret, redirectUri);
   const tokens = await google.validateAuthorizationCode(code, codeVerifier);
-  const accessToken = tokens.accessToken();
+  const accessToken = tokens.accessToken;
 
   // ── 3. Fetch Google user profile ────────────────────────────────────────
   const googleUser = await fetchGoogleUserInfo(accessToken);
