@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
+import { getSessionUserFn } from "../lib/auth/server";
 
 import appCss from "../styles.css?url";
 
@@ -197,6 +198,13 @@ function GlobalHeader() {
           >
             Corpus
           </Link>
+          <a
+            href="/api/auth/logout"
+            id="sign-out-link"
+            className="font-medium uppercase tracking-wider sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors no-underline"
+          >
+            Sign&nbsp;Out
+          </a>
         </div>
       </div>
     </header>
@@ -209,15 +217,33 @@ function RootComponent() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const session = sessionStorage.getItem("radar_session");
-      if (!session && location.pathname !== "/login") {
-        navigate({ to: "/login" });
+    // Auth guard: check server session cookie first, then fall back to dev magic login
+    const isAuthRoute = location.pathname === "/login" ||
+      location.pathname.startsWith("/api/auth");
+    if (isAuthRoute) return;
+
+    // Async check: try server session first
+    getSessionUserFn().then((user) => {
+      if (!user) {
+        // No server session — check dev magic login sessionStorage fallback
+        if (typeof window !== "undefined") {
+          const devSession = sessionStorage.getItem("radar_session");
+          if (!devSession) {
+            navigate({ to: "/login" });
+          }
+        }
       }
-    }
+    }).catch(() => {
+      // Server fn failed — fall back to client-side sessionStorage check
+      if (typeof window !== "undefined") {
+        const devSession = sessionStorage.getItem("radar_session");
+        if (!devSession) navigate({ to: "/login" });
+      }
+    });
   }, [location.pathname, navigate]);
 
-  const showHeader = location.pathname !== "/login";
+  const showHeader = !location.pathname.startsWith("/login") &&
+    !location.pathname.startsWith("/api/auth");
 
   return (
     <QueryClientProvider client={queryClient}>

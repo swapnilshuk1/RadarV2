@@ -18,6 +18,9 @@ import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as QaMappingRouteImport } from './routes/qa.mapping'
 import { Route as OpportunityJobHashRouteImport } from './routes/opportunity.$jobHash'
+import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
+import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
+import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 
 const WorkbenchRoute = WorkbenchRouteImport.update({
   id: '/workbench',
@@ -64,6 +67,21 @@ const OpportunityJobHashRoute = OpportunityJobHashRouteImport.update({
   path: '/opportunity/$jobHash',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
+  id: '/api/auth/logout',
+  path: '/api/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthGoogleRoute = ApiAuthGoogleRouteImport.update({
+  id: '/api/auth/google',
+  path: '/api/auth/google',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
+  id: '/api/auth/callback',
+  path: '/api/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +93,9 @@ export interface FileRoutesByFullPath {
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/google': typeof ApiAuthGoogleRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +107,9 @@ export interface FileRoutesByTo {
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/google': typeof ApiAuthGoogleRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +122,9 @@ export interface FileRoutesById {
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/google': typeof ApiAuthGoogleRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +138,9 @@ export interface FileRouteTypes {
     | '/workbench'
     | '/opportunity/$jobHash'
     | '/qa/mapping'
+    | '/api/auth/callback'
+    | '/api/auth/google'
+    | '/api/auth/logout'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +152,9 @@ export interface FileRouteTypes {
     | '/workbench'
     | '/opportunity/$jobHash'
     | '/qa/mapping'
+    | '/api/auth/callback'
+    | '/api/auth/google'
+    | '/api/auth/logout'
   id:
     | '__root__'
     | '/'
@@ -133,6 +166,9 @@ export interface FileRouteTypes {
     | '/workbench'
     | '/opportunity/$jobHash'
     | '/qa/mapping'
+    | '/api/auth/callback'
+    | '/api/auth/google'
+    | '/api/auth/logout'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,6 +181,9 @@ export interface RootRouteChildren {
   WorkbenchRoute: typeof WorkbenchRoute
   OpportunityJobHashRoute: typeof OpportunityJobHashRoute
   QaMappingRoute: typeof QaMappingRoute
+  ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
+  ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
+  ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -212,6 +251,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpportunityJobHashRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/logout': {
+      id: '/api/auth/logout'
+      path: '/api/auth/logout'
+      fullPath: '/api/auth/logout'
+      preLoaderRoute: typeof ApiAuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/google': {
+      id: '/api/auth/google'
+      path: '/api/auth/google'
+      fullPath: '/api/auth/google'
+      preLoaderRoute: typeof ApiAuthGoogleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/callback': {
+      id: '/api/auth/callback'
+      path: '/api/auth/callback'
+      fullPath: '/api/auth/callback'
+      preLoaderRoute: typeof ApiAuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -225,6 +285,9 @@ const rootRouteChildren: RootRouteChildren = {
   WorkbenchRoute: WorkbenchRoute,
   OpportunityJobHashRoute: OpportunityJobHashRoute,
   QaMappingRoute: QaMappingRoute,
+  ApiAuthCallbackRoute: ApiAuthCallbackRoute,
+  ApiAuthGoogleRoute: ApiAuthGoogleRoute,
+  ApiAuthLogoutRoute: ApiAuthLogoutRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
