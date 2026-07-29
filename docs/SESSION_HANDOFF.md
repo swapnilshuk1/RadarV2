@@ -15,27 +15,25 @@ reconstruct full context in under 5 minutes.
 
 ---
 
-## Next Task
+## Post-Platform Roadmap — Three Independent Evolutionary Tracks
 
-> Copy-paste this as your first message to any new AI session:
+With the core platform foundation complete and frozen, future work naturally branches into three decoupled, parallel tracks:
 
-```
-You are continuing work on RADAR v2 — Executive Job Intelligence Radar.
+### Track A — Intelligence Quality
+- **Ontology**: Expand `CapabilityRegistry` and `TechnologyOntology` mappings.
+- **Inference**: Refine `OperatingLevelEngine` and work nature classification.
+- **Evidence Extraction**: Tune Groq LLM prompt versions and extraction schemas (ADR-011).
+- **Recommendation Quality**: Calibrate policy weights (`run-policy-calibration.ts`).
 
-Read these files FIRST, in order, before doing anything:
-1. AGENTS.md                          — architecture rules and invariants (MANDATORY)
-2. docs/ARCHITECTURE_DECISIONS.md     — 10 immutable ADRs (MANDATORY)  
-3. docs/SESSION_HANDOFF.md            — where we left off (this file)
-4. docs/IMPLEMENTATION_LOG.md         — decisions made so far
+### Track B — Product Experience & Headspace
+- **Dashboards**: Enhance `/` shortlist, `/scraped`, and `/decisions` views.
+- **Coaching & Explainability**: Add interactive reasoning chain inspector and decision rationale briefs.
+- **Workflows**: Multi-device sync and executive application tracking.
 
-Current task: Execute the decoupling architecture for Phase 5b.
-1. Write `scripts/verify-migration-equality.ts` to perform a semantic deep equality check between the legacy JSON builder projection and the newly migrated DB projection.
-2. Rename `saveCandidateProfile` -> `saveProjection` and `getLatestCandidateProfile` -> `getLatestProjection` in `SqlitePersonStore.ts`.
-3. Create `OpportunityService` to act as the pure application orchestration boundary.
-4. Create `opportunity-server.ts` to expose transport adapters (server functions) that call the service.
-5. Update `engine.ts` to accept `CandidateProjection` directly.
-6. Update UI routes (`index.tsx`, etc.) to use TanStack loaders calling the server functions.
-```
+### Track C — Scale & Observability
+- **Acquisition Throughput**: Parallel portal scrapers (`LinkedIn`, `Naukri`, `Workday`).
+- **Caching & Indexing**: Optimize Turso DB query indices and text hash lookups.
+- **Observability**: Metrics dashboard for extraction accuracy and pipeline latency.
 
 ---
 
