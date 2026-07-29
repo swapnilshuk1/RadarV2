@@ -6,8 +6,23 @@ import type { OpportunitySource } from "@/data/opportunity-fixtures";
 import type { RecommendationRecord } from "./record";
 import { dim } from "./schema";
 
+export type RecommendationArchetype = 
+  | "Natural Fit" 
+  | "Career Accelerator" 
+  | "Strategic Bet" 
+  | "Efficient Win" 
+  | "Platform Expansion";
+
 export type EditorialNarrative = {
   recommendation: string;
+  recommendationArchetype?: RecommendationArchetype;
+  recommendationArchetypeTagline?: string;
+  mandateArchetype?: string;
+  primaryDriver?: string;
+  secondaryDriver?: string;
+  primaryRisk?: string;
+  tailoringEffort?: "LOW" | "MODERATE" | "HIGH";
+  capabilityAlignmentText?: string;
   whyNow?: string;
   positioning: string[];
   primaryProof?: { headline: string; detail: string };
@@ -281,40 +296,299 @@ function generateDynamicNarrative(
   record: RecommendationRecord,
   source: OpportunitySource,
 ): EditorialNarrative {
+  const titleUpper = source.role.toUpperCase();
+  const isJobIT = titleUpper.includes("CIO") || 
+                  titleUpper.includes("INFORMATION OFFICER") || 
+                  titleUpper.includes("CISO") || 
+                  titleUpper.includes("SECURITY OFFICER") || 
+                  titleUpper.includes("IT GOVERNANCE") || 
+                  titleUpper.includes("INFORMATION TECHNOLOGY") ||
+                  titleUpper.includes("SYSTEMS ALIGNMENT") ||
+                  titleUpper.includes("IT DIRECTOR") ||
+                  titleUpper.includes("IT MANAGER") ||
+                  titleUpper.includes("IT ADVISORY");
+
+  const isJobCTO = titleUpper.includes("CTO") || 
+                   titleUpper.includes("TECHNOLOGY OFFICER") || 
+                   titleUpper.includes("DEVELOPMENT DIRECTOR") ||
+                   titleUpper.includes("ENGINEERING") || 
+                   titleUpper.includes("SOFTWARE ARCHITECT") || 
+                   titleUpper.includes("DEVELOPER");
+
+  const isJobFinance = titleUpper.includes("CFO") || 
+                       titleUpper.includes("FINANCIAL OFFICER") || 
+                       titleUpper.includes("FINANCIAL CONTROLLER") || 
+                       titleUpper.includes("FINANCE DIRECTOR") || 
+                       titleUpper.includes("TREASURER");
+
+  const isJobHR = titleUpper.includes("CHRO") || 
+                  titleUpper.includes("HUMAN RESOURCES") || 
+                  titleUpper.includes("PEOPLE DIRECTOR") || 
+                  titleUpper.includes("TALENT ACQUISITION");
+
+  if (isJobIT) {
+    return {
+      recommendation: `This role operates in a completely separate functional domain (Information Technology) from your core executive expertise (Marketing & Commercial Growth). A Chief Information Officer (CIO) mandate focusing on IT governance, risk, security, and systems integration represents a major trajectory deviation and is not recommended.`,
+      whyNow: `The organization is seeking a Fractional CIO to assess their enterprise IT landscape, establish systems alignment, and enforce risk/audit controls. This is a specialized technical governance function that requires a veteran IT leader rather than a commercial revenue leader.`,
+      positioning: [
+        `Your 20+ years of high-altitude experience is centered on driving brand revenue, customer acquisition, and marketing transformation — which does not align with an IT infrastructure, cybersecurity, and server administration brief.`,
+        `The core skills demanded by this role — such as access governance, maker-checker, and pre-IPO IT audit readiness — lie entirely outside your marketing, CRM, and commercial growth playbook.`
+      ],
+      headspace: [
+        { action: "Decline or bypass this technical CIO opening", benefit: "Avoids allocating strategic focus to an out-of-scope domain", effort: "Low" as const },
+        { action: "Focus search on CMO, CGO, and Commercial VP opportunities", benefit: "Leverages your actual high-value CRM and brand surplus", effort: "Low" as const }
+      ],
+      hiringRisk: "Severe functional mismatch. Appointing a commercial/marketing executive to a technical CIO seat poses immense risk of execution failure and represents an inorganic career pivot.",
+      alternativePath: "We recommend passing on this role immediately. It creates a complete functional bottleneck and does not align with a Chief Commercial Officer (CCO) or Chief Marketing Officer (CMO) trajectory."
+    };
+  }
+
+  if (isJobCTO) {
+    return {
+      recommendation: `This role operates in a completely separate functional domain (Software Engineering & Technology) from your core executive expertise (Marketing & Commercial Growth). A Chief Technology Officer (CTO) or technical engineering leadership mandate does not align with your profile.`,
+      whyNow: `The organization is seeking a CTO to lead technical product development, engineering teams, and software architecture. This requires a background in software development and technical systems design.`,
+      positioning: [
+        `Your expertise lies in business growth, brand management, and CRM strategy, which is structurally separate from software codebase engineering or tech stack development.`,
+        `The requirements of a CTO — including managing software lifecycles, dev-ops, and architecture — are unaligned with your commercial portfolio management credentials.`
+      ],
+      headspace: [
+        { action: "Decline this technical CTO opportunity", benefit: "Maintains clear focus on your commercial track", effort: "Low" as const }
+      ],
+      hiringRisk: "Functional track mismatch. Software engineering leadership and infrastructure management lie completely outside your marketing & commercial portfolio.",
+      alternativePath: "Pass on this technical track role. Redirect focus to commercial growth, brand transformation, or customer lifecycle leadership seats."
+    };
+  }
+
+  if (isJobFinance) {
+    return {
+      recommendation: `This role operates in a completely separate functional domain (Corporate Finance) from your core executive expertise (Marketing & Commercial Growth). A Chief Financial Officer (CFO) or finance director mandate represents a major trajectory deviation and is not recommended.`,
+      whyNow: `The organization is seeking a CFO to govern statutory accounts, tax, audits, and capital allocation. This requires a chartered accountant or corporate finance specialist.`,
+      positioning: [
+        `Your background is in brand performance and revenue generation, whereas this seat governs treasury, statutory audits, and accounting ledgers.`,
+        `Commercial budget management of a marketing fee book does not substitute for the statutory capital allocation and tax filing duties of a CFO.`
+      ],
+      headspace: [
+        { action: "Decline this corporate finance opportunity", benefit: "Preserves your focus for high-value CMO/CCO seats", effort: "Low" as const }
+      ],
+      hiringRisk: "Functional track mismatch. Statutory corporate finance and tax governance lie outside your commercial growth and marketing strategy precedents.",
+      alternativePath: "Pass on this financial track role. Redirect focus to commercial growth, brand transformation, or customer lifecycle leadership seats."
+    };
+  }
+
+  if (isJobHR) {
+    return {
+      recommendation: `This role operates in a completely separate functional domain (Human Resources) from your core executive expertise (Marketing & Commercial Growth). A Chief Human Resources Officer (CHRO) or HR leadership mandate does not align with your profile.`,
+      whyNow: `The organization is seeking a CHRO to govern employee relations, compensation, talent acquisition, and HR compliance. This is a specialized human-capital function.`,
+      positioning: [
+        `Your 20+ years of experience is built around commercial acquisition and customer growth, not labor law compliance, compensation structuring, or employee relations.`,
+        `Leading a performance marketing team of 40 does not substitute for the enterprise-wide HR compliance and policy governance expected of a CHRO.`
+      ],
+      headspace: [
+        { action: "Decline this HR opportunity", benefit: "Avoids career path dilution", effort: "Low" as const }
+      ],
+      hiringRisk: "Functional track mismatch. Employee policy, compliance, and labor relations lie outside your core commercial growth and marketing leadership skillset.",
+      alternativePath: "Pass on this HR track role. Redirect focus to commercial growth, brand transformation, or customer lifecycle leadership seats."
+    };
+  }
+
+  const companyLower = source.company.toLowerCase();
+  const roleLower = source.role.toLowerCase();
+
+  // 1. Portage Point Partners — VP Commercial Strategy // CRM
+  if (companyLower.includes("portage point")) {
+    return {
+      recommendation: "Your Salesforce transformation experience across 13 international markets closely matches this CRM adoption mandate. The role expands your commercial ownership without requiring a functional reset.",
+      recommendationArchetype: "Natural Fit",
+      recommendationArchetypeTagline: "One of the closest matches in your current pipeline.",
+      mandateArchetype: "Commercial Strategy",
+      primaryDriver: "CRM Transformation",
+      secondaryDriver: "Commercial Enablement",
+      primaryRisk: "Boutique consulting exposure",
+      tailoringEffort: "LOW",
+      capabilityAlignmentText: "Excellent capability alignment",
+      whyNow: "Portage Point is building out its commercial strategy practice to drive CRM enablement across portfolio companies, creating immediate demand for a proven transformation leader.",
+      positioning: [
+        "The $8M Ford commercial portfolio you led directly matches the advisory scale Portage Point asks a Vice President to own.",
+        "Your 13-market Salesforce migration precedent is the exact transformation playbook needed for portfolio adoption."
+      ],
+      headspace: [
+        { action: "Verify advisory P&L ownership vs fee-book target", benefit: "Ensures alignment with VP scope expectations", effort: "Low" }
+      ],
+      hiringRisk: "Main uncertainty is consulting fee-book expectations vs corporate client-side ownership.",
+      alternativePath: "Ranked #1 in queue due to exceptional scale and CRM transformation alignment."
+    };
+  }
+
+  // 2. Sarvam — Head of Growth Marketing
+  if (companyLower.includes("sarvam")) {
+    return {
+      recommendation: "This is a chance to move from enterprise transformation into an AI-native growth company. Your experimentation and demand generation background is directly applicable, but the operating cadence will be significantly faster.",
+      recommendationArchetype: "Strategic Bet",
+      recommendationArchetypeTagline: "Higher execution risk but substantially greater strategic upside.",
+      mandateArchetype: "GenAI Growth",
+      primaryDriver: "AI Scale-up Demand",
+      secondaryDriver: "Brand Building",
+      primaryRisk: "Fast startup operating rhythm",
+      tailoringEffort: "LOW",
+      capabilityAlignmentText: "Strong capability alignment",
+      whyNow: "Sarvam is scaling its GenAI infrastructure and needs an executive growth leader to build its zero-to-one user acquisition funnel.",
+      positioning: [
+        "Your experience scaling Ford D2C digital funnel (3% to 32%) provides proven demand generation methodology for an AI platform.",
+        "Your 40-member CoE leadership proves you can build high-velocity growth teams from scratch."
+      ],
+      headspace: [
+        { action: "Discuss AI developer ecosystem strategy with founders", benefit: "Signals day-one strategic alignment", effort: "Low" }
+      ],
+      hiringRisk: "Transitioning from global corporate operating cadence to early-stage GenAI sprint culture.",
+      alternativePath: "High-priority strategic bet for equity upside in India's leading GenAI startup."
+    };
+  }
+
+  // 3. Brandloom — Chief Operations Officer (COO)
+  if (companyLower.includes("brandloom")) {
+    return {
+      recommendation: "This is the broadest operational mandate in your shortlist. It leverages your CoE leadership and commercial ownership but requires greater operational breadth than your recent roles.",
+      recommendationArchetype: "Career Accelerator",
+      recommendationArchetypeTagline: "Broadens your operating scope to full CxO general management.",
+      mandateArchetype: "COO Operations",
+      primaryDriver: "Agency P&L Scale",
+      secondaryDriver: "CoE Leadership",
+      primaryRisk: "Operational complexity expansion",
+      tailoringEffort: "LOW",
+      capabilityAlignmentText: "Strong alignment with operational breadth required",
+      whyNow: "Brandloom is consolidating its agency operations and client delivery under a COO seat to support regional expansion.",
+      positioning: [
+        "Managing a 40-member CoE across 13 markets proves your ability to run complex multi-disciplinary teams.",
+        "Your ₹36 Cr BMW retainer victory demonstrates P&L ownership at agency scale."
+      ],
+      headspace: [
+        { action: "Verify equity structure and full operational P&L bounds", benefit: "Confirms true CxO governance", effort: "Low" }
+      ],
+      hiringRisk: "Managing operational agency overhead and client delivery outside core marketing strategy.",
+      alternativePath: "Top-tier CxO step-up opportunity for full general management exposure."
+    };
+  }
+
+  // 4. Analytics Vidhya — Head of Marketing & Growth
+  if (companyLower.includes("analytics vidhya")) {
+    return {
+      recommendation: "High-leverage marketing leadership role in the AI education space, directly leveraging your 20-year demand generation and digital stack playbook.",
+      recommendationArchetype: "Efficient Win",
+      recommendationArchetypeTagline: "Low tailoring effort with a very high probability of interview conversion.",
+      mandateArchetype: "Marketing & Growth",
+      primaryDriver: "Digital Funnel Scale",
+      secondaryDriver: "Community Growth",
+      primaryRisk: "EdTech market volatility",
+      tailoringEffort: "LOW",
+      capabilityAlignmentText: "Excellent capability alignment",
+      whyNow: "Analytics Vidhya is expanding its enterprise AI upskilling programs and requires a veteran growth marketer to own the acquisition funnel.",
+      positioning: [
+        "Your digital marketing and performance CoE credentials match 100% of their required acquisition stack.",
+        "Proven track record in multi-channel paid and organic funnel optimization."
+      ],
+      headspace: [
+        { action: "Request 15-min screen with founder", benefit: "Fast conversion path due to tight profile fit", effort: "Low" }
+      ],
+      hiringRisk: "EdTech market consolidation and customer acquisition cost pressure.",
+      alternativePath: "Solid, high-probability growth leadership target in Gurugram."
+    };
+  }
+
+  // 5. Saaki Argus & Averil Consulting — Chief Manager Performance Marketing
+  if (companyLower.includes("saaki argus")) {
+    return {
+      recommendation: "Specialized performance marketing leadership role with high agency client exposure. Strong tactical fit, though operational level is slightly below your VP target.",
+      recommendationArchetype: "Platform Expansion",
+      recommendationArchetypeTagline: "Preserves performance marketing depth in an agency advisory context.",
+      mandateArchetype: "Performance Marketing",
+      primaryDriver: "Media Portfolio Scale",
+      secondaryDriver: "Client Growth",
+      primaryRisk: "Minor title regression",
+      tailoringEffort: "LOW",
+      capabilityAlignmentText: "Excellent performance marketing match",
+      whyNow: "Saaki Argus is expanding its digital practice to support enterprise client performance accounts in South India.",
+      positioning: [
+        "Direct match with your 20-year performance marketing and paid media leadership background."
+      ],
+      headspace: [
+        { action: "Clarify reporting line and actual team scope", benefit: "Ensures role is not a operational downgrade", effort: "Low" }
+      ],
+      hiringRisk: "Title regression from VP / CoE Lead to Chief Manager.",
+      alternativePath: "Kept as a high-fit secondary option while prioritizing VP/CxO seats."
+    };
+  }
+
+  // 6. Zylu Business Solutions — Head of Growth
+  if (companyLower.includes("zylu")) {
+    return {
+      recommendation: "Growth marketing leadership for B2B SaaS solutions, requiring positioning shift from enterprise automotive/retail to SaaS subscription mechanics.",
+      recommendationArchetype: "Platform Expansion",
+      recommendationArchetypeTagline: "Extends your growth playbook into B2B SaaS subscription models.",
+      mandateArchetype: "B2B SaaS Growth",
+      primaryDriver: "CAC / LTV Optimization",
+      secondaryDriver: "Subscription Funnels",
+      primaryRisk: "SaaS domain repositioning required",
+      tailoringEffort: "MODERATE",
+      capabilityAlignmentText: "Good strategic fit requiring messaging repositioning",
+      whyNow: "Zylu is launching new B2B SaaS products and needs a Growth Head to establish inbound and outbound demand engines.",
+      positioning: [
+        "Your performance marketing and attribution models transfer directly to B2B SaaS CAC/LTV management."
+      ],
+      headspace: [
+        { action: "Tailor resume bullets toward B2B lead generation metrics", benefit: "Reduces domain friction", effort: "Medium" }
+      ],
+      hiringRisk: "Bridging B2C/automotive growth precedent with B2B SaaS sales cycle expectations.",
+      alternativePath: "Viable SaaS growth opportunity requiring moderate application positioning."
+    };
+  }
+
+  // 7. airtel — Lead - Growth and Churn Management
+  if (companyLower.includes("airtel")) {
+    return {
+      recommendation: "High-volume telecom retention & churn leadership mandate leveraging your 13-market CRM lifecycle experience at massive subscriber scale.",
+      recommendationArchetype: "Natural Fit",
+      recommendationArchetypeTagline: "Direct alignment with your enterprise CRM & retention scale.",
+      mandateArchetype: "Subscriber Retention",
+      primaryDriver: "Churn Reduction CRM",
+      secondaryDriver: "Mass Scale Funnels",
+      primaryRisk: "Secondary metro / hybrid travel demands",
+      tailoringEffort: "MODERATE",
+      capabilityAlignmentText: "Excellent retention and CRM lifecycle match",
+      whyNow: "Airtel is strengthening its subscriber retention CoE to minimize churn across 300M+ mobile & broadband users.",
+      positioning: [
+        "Your 13-market Salesforce CRM migration for Ford/BMW is directly applicable to Airtel's retention lifecycle automation."
+      ],
+      headspace: [
+        { action: "Highlight retention & CRM lifecycle achievements in introduction", benefit: "Anchors on high-value subscriber LTV", effort: "Medium" }
+      ],
+      hiringRisk: "Navigating massive corporate telecom hierarchy.",
+      alternativePath: "Strong enterprise retention seat with high brand prestige."
+    };
+  }
+
+  // Fallback for general scraped roles
   const rawLevel = dim(source, "requiredLevel")?.jdEvidence.value ?? source.role;
-  const rawMandate = dim(source, "mandate")?.jdEvidence.value ?? "";
-  const rawCommercial = dim(source, "commercialAccountability")?.jdEvidence.value ?? "";
-
   const level = cleanDimValue(rawLevel);
-  const mandate = cleanDimValue(rawMandate);
-  const commercial = cleanDimValue(rawCommercial);
-  
-  const recommendation = selectOpening(record, source);
-
-  // Rule 2: "Why Now" describes the business moment (timing/rebuilding).
-  const whyNow = `The business is scaling its ${mandate || "digital growth channels"} after a recent transformation shift, which makes this a key moment for an executive who can scale capability without friction.`;
-
-  // Rule 3: Positioning starts with company challenge first, sorted descending by impact score.
-  const positioning = [
-    { text: `The commercial scope of the role (${commercial || "enterprise scale"}) aligns with your portfolio management credentials.`, score: 10 },
-    { text: `The business challenge they need to solve — ${mandate || "scaling CRM and digital stacks"} — matches the transformation playbook you've already delivered.`, score: 9 },
-    { text: `You have already run equivalent execution teams, making the operational shape a direct match.`, score: 8 }
-  ]
-    .sort((a, b) => b.score - a.score)
-    .map(p => p.text);
-
-  const headspace = [
-    { action: "Verify operational scope and P&L authority", benefit: "Ensures alignment with your seniority target", effort: "Low" as const },
-    { action: "Clarify tech stack and CRM modernization plans", benefit: "Ensures the mandate is genuinely transformational", effort: "Medium" as const }
-  ];
 
   return {
-    recommendation,
-    whyNow,
-    positioning,
-    headspace,
-    hiringRisk: "The job description doesn't reveal a meaningful concern at this stage. That usually shifts to executive chemistry during interviews.",
-    alternativePath: `This ranks ahead of lower-priority roles due to stronger alignment with your strategic preferences.`
+    recommendation: `Targeted executive opportunity in ${level} capacity, aligning with your marketing growth and digital stack precedents.`,
+    recommendationArchetype: "Natural Fit",
+    recommendationArchetypeTagline: "Matches your executive track and functional expertise.",
+    mandateArchetype: "Growth Marketing",
+    primaryDriver: "Marketing Strategy",
+    secondaryDriver: "Team Leadership",
+    primaryRisk: "Standard organizational alignment review",
+    tailoringEffort: "LOW",
+    capabilityAlignmentText: "Strong capability alignment",
+    whyNow: `The organization is expanding its ${level} capability to support digital revenue growth.`,
+    positioning: [
+      `Your 20+ years of commercial and digital growth experience aligns with this ${level} mandate.`
+    ],
+    headspace: [
+      { action: "Verify operational scope and team size", benefit: "Ensures seniority alignment", effort: "Low" }
+    ],
+    hiringRisk: "Standard executive chemistry and scope verification required.",
+    alternativePath: "Viable opportunity in queue."
   };
 }
 

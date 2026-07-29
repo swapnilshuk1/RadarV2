@@ -1,12 +1,13 @@
-import type { Database } from "better-sqlite3";
+import type { DatabaseAdapter } from "../../database/adapter";
 import type { SourceStore } from "../../../domain/repositories";
 import type { Source } from "../../../domain/entities";
 
 export class SqliteSourceStore implements SourceStore {
-  constructor(private db: Database) {}
+  constructor(private db: DatabaseAdapter) {}
 
-  recordSource(source: Source): void {
-    const stmt = this.db.prepare(`
+  async recordSource(source: Source): Promise<void> {
+    await this.db.execute(
+      `
       INSERT INTO sources (
         id, type, url, name, created_at, updated_at,
         meta_schema_version, meta_extractor_version, meta_prompt_version, meta_model, meta_run_id, meta_timestamp
@@ -17,26 +18,26 @@ export class SqliteSourceStore implements SourceStore {
         url = excluded.url,
         name = excluded.name,
         updated_at = excluded.updated_at
-    `);
-
-    stmt.run(
-      source.id,
-      source.type,
-      source.url ?? null,
-      source.name ?? null,
-      source.createdAt,
-      source.updatedAt,
-      source.provenance.schemaVersion,
-      source.provenance.extractorVersion ?? null,
-      source.provenance.promptVersion ?? null,
-      source.provenance.model ?? null,
-      source.provenance.runId ?? null,
-      source.provenance.timestamp
+      `,
+      [
+        source.id,
+        source.type,
+        source.url ?? null,
+        source.name ?? null,
+        source.createdAt,
+        source.updatedAt,
+        source.provenance.schemaVersion,
+        source.provenance.extractorVersion ?? null,
+        source.provenance.promptVersion ?? null,
+        source.provenance.model ?? null,
+        source.provenance.runId ?? null,
+        source.provenance.timestamp
+      ]
     );
   }
 
-  getSource(id: string): Source | undefined {
-    const row = this.db.prepare(`SELECT * FROM sources WHERE id = ?`).get(id) as any;
+  async getSource(id: string): Promise<Source | undefined> {
+    const row = await this.db.one<any>(`SELECT * FROM sources WHERE id = ?`, [id]);
     if (!row) return undefined;
 
     return {

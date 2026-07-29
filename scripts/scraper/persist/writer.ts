@@ -45,3 +45,26 @@ export function writeExtraction(cardHash: string, ex: ExtractionResult): string 
 export function writeLiveScraped(records: unknown[]): void {
   writeJsonAtomic(LIVE_SCRAPED_JSON, records);
 }
+
+export function collectRecords(): unknown[] {
+  const records: unknown[] = [];
+  const seenJobHash = new Set<string>();
+  
+  if (!fs.existsSync(EXTRACTION_DIR)) return records;
+  
+  const files = fs.readdirSync(EXTRACTION_DIR);
+  for (const f of files) {
+    if (!f.endsWith(".json")) continue;
+    try {
+      const ex = fs.readFileSync(path.join(EXTRACTION_DIR, f), "utf-8");
+      const parsed = JSON.parse(ex);
+      if (seenJobHash.has(parsed.jobHash)) continue;
+      seenJobHash.add(parsed.jobHash);
+      records.push(parsed);
+    } catch (err: any) { 
+      console.error(`collectRecords error for ${f}:`, err);
+    }
+  }
+  return records;
+}
+

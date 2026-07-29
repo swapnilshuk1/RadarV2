@@ -17,6 +17,8 @@
  * - Consumes ExtractionResult dimensions only
  */
 
+import fs from "fs";
+import path from "path";
 import type {
   CandidateProfile,
   OpportunityAssessment,
@@ -25,10 +27,8 @@ import type {
   DecisionConfidence,
   DecisionImpact,
 } from "../../domain/entities";
-import type { RecommendationPolicy } from "./RecommendationPolicy";
 import { DimensionResolver, type ResolvedEvidence } from "./DimensionResolver";
-import * as fs from "fs";
-import * as path from "path";
+import type { RecommendationPolicy } from "./RecommendationPolicy";
 
 function generateUUID(): string {
   if (typeof globalThis !== "undefined" && globalThis.crypto?.randomUUID) {

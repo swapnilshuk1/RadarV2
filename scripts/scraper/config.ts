@@ -33,7 +33,13 @@ loadEnvFile("gemini.env");
 loadEnvFile("groq.env");
 
 export const DATA_DIR = path.join(ROOT, "src", "data");
-export const ARTIFACTS_DIR = process.env.SCRAPER_ARTIFACTS_DIR || path.join(ROOT, ".scraper-artifacts");
+
+const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY);
+const defaultArtifactsDir = isServerless 
+  ? path.join("/tmp", ".scraper-artifacts")
+  : path.join(ROOT, ".scraper-artifacts");
+
+export const ARTIFACTS_DIR = process.env.SCRAPER_ARTIFACTS_DIR || defaultArtifactsDir;
 export const RUNS_DIR = path.join(ARTIFACTS_DIR, "runs");
 export const PROFILES_DIR = path.join(ARTIFACTS_DIR, "profiles");
 export const LINKEDIN_PROFILE_DIR = path.join(PROFILES_DIR, "linkedin-primary");
@@ -42,9 +48,15 @@ export const EXTRACTION_DIR = path.join(ARTIFACTS_DIR, "extractions");
 export const ENRICHMENT_CACHE_DIR = path.join(ARTIFACTS_DIR, "enrichment-cache");
 export const METRICS_DIR = path.join(ARTIFACTS_DIR, "metrics");
 
-// Ensure structure exists
+// Ensure structure exists safely (using /tmp on serverless or catch EROFS errors)
 for (const dir of [ARTIFACTS_DIR, RUNS_DIR, PROFILES_DIR, SNAPSHOT_DIR, EXTRACTION_DIR, ENRICHMENT_CACHE_DIR, METRICS_DIR]) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (err: any) {
+    console.warn(`[Config] Failed to ensure directory exists: ${dir}. Error: ${err.message}`);
+  }
 }
 
 export const SEARCH_METRICS_NDJSON = path.join(METRICS_DIR, "search-metrics.ndjson");
@@ -63,6 +75,17 @@ export const CANDIDATE_PROFILE_JSON = path.join(DATA_DIR, "candidate-profile.jso
 export const CONFIG = {
   maxPages: 2,
   maxCardsPerPage: 10,
+  portalMaxCardsPerPage: {
+    LinkedIn: 25,
+    Naukri: 20,
+    Indeed: 15,
+  } as Record<string, number>,
+  getMaxCardsPerPage(portalName?: string): number {
+    if (portalName && this.portalMaxCardsPerPage[portalName]) {
+      return this.portalMaxCardsPerPage[portalName];
+    }
+    return this.maxCardsPerPage;
+  },
   portalConcurrency: Number(process.env.PORTAL_CONCURRENCY || 3),
   detailConcurrency: Number(process.env.DETAIL_CONCURRENCY || 8),
   llmConcurrency: Number(process.env.LLM_CONCURRENCY || 2),

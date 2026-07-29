@@ -1,12 +1,13 @@
-import type { Database } from "better-sqlite3";
+import type { DatabaseAdapter } from "../../database/adapter";
 import type { OpportunityStore } from "../../../domain/repositories";
 import type { Opportunity } from "../../../domain/entities";
 
 export class SqliteOpportunityStore implements OpportunityStore {
-  constructor(private db: Database) {}
+  constructor(private db: DatabaseAdapter) {}
 
-  mergeOpportunity(opportunity: Opportunity): void {
-    const stmt = this.db.prepare(`
+  async mergeOpportunity(opportunity: Opportunity): Promise<void> {
+    await this.db.execute(
+      `
       INSERT INTO opportunities (
         id, company_id, canonical_title, location, employment_type, posting_window, fingerprint, lifecycle,
         created_at, updated_at,
@@ -20,40 +21,40 @@ export class SqliteOpportunityStore implements OpportunityStore {
         posting_window = excluded.posting_window,
         lifecycle = excluded.lifecycle,
         updated_at = excluded.updated_at
-    `);
-
-    stmt.run(
-      opportunity.id,
-      opportunity.companyId,
-      opportunity.canonicalTitle,
-      opportunity.location ?? null,
-      opportunity.employmentType ?? null,
-      opportunity.postingWindow ?? null,
-      opportunity.fingerprint,
-      opportunity.lifecycle,
-      opportunity.createdAt,
-      opportunity.updatedAt,
-      opportunity.provenance.schemaVersion,
-      opportunity.provenance.extractorVersion ?? null,
-      opportunity.provenance.promptVersion ?? null,
-      opportunity.provenance.model ?? null,
-      opportunity.provenance.runId ?? null,
-      opportunity.provenance.timestamp
+      `,
+      [
+        opportunity.id,
+        opportunity.companyId,
+        opportunity.canonicalTitle,
+        opportunity.location ?? null,
+        opportunity.employmentType ?? null,
+        opportunity.postingWindow ?? null,
+        opportunity.fingerprint,
+        opportunity.lifecycle,
+        opportunity.createdAt,
+        opportunity.updatedAt,
+        opportunity.provenance.schemaVersion,
+        opportunity.provenance.extractorVersion ?? null,
+        opportunity.provenance.promptVersion ?? null,
+        opportunity.provenance.model ?? null,
+        opportunity.provenance.runId ?? null,
+        opportunity.provenance.timestamp
+      ]
     );
   }
 
-  getOpportunity(id: string): Opportunity | undefined {
-    const row = this.db.prepare(`SELECT * FROM opportunities WHERE id = ?`).get(id) as any;
+  async getOpportunity(id: string): Promise<Opportunity | undefined> {
+    const row = await this.db.one<any>(`SELECT * FROM opportunities WHERE id = ?`, [id]);
     if (!row) return undefined;
     return this.mapRow(row);
   }
 
-  listActiveOpportunities(): Opportunity[] {
-    const rows = this.db.prepare(`SELECT * FROM opportunities WHERE lifecycle != 'Archived'`).all() as any[];
+  async listActiveOpportunities(): Promise<Opportunity[]> {
+    const rows = await this.db.many<any>(`SELECT * FROM opportunities WHERE lifecycle != 'Archived'`);
     return rows.map(r => this.mapRow(r));
   }
 
-  findOpportunities(criteria: { companyId?: string; lifecycle?: string; }): Opportunity[] {
+  async findOpportunities(criteria: { companyId?: string; lifecycle?: string; }): Promise<Opportunity[]> {
     let sql = `SELECT * FROM opportunities WHERE 1=1`;
     const params: any[] = [];
     if (criteria.companyId) {
@@ -64,7 +65,7 @@ export class SqliteOpportunityStore implements OpportunityStore {
       sql += ` AND lifecycle = ?`;
       params.push(criteria.lifecycle);
     }
-    const rows = this.db.prepare(sql).all(...params) as any[];
+    const rows = await this.db.many<any>(sql, params);
     return rows.map(r => this.mapRow(r));
   }
 

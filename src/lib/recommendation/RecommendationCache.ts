@@ -11,8 +11,25 @@
  * - Full audit trail (old assessments are never mutated)
  */
 
-import { createHash } from "crypto";
 import type { OpportunityAssessment } from "../../domain/entities";
+
+function sha256(data: string): string {
+  if (typeof window === "undefined") {
+    try {
+      const req = typeof require !== "undefined" ? require : null;
+      if (req) {
+        return req("crypto").createHash("sha256").update(data).digest("hex");
+      }
+    } catch {}
+  }
+  let hash = 0;
+  for (let i = 0; i < data.length; i++) {
+    const char = data.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(16).padStart(8, '0');
+}
 
 export interface CacheKey {
   candidateProfileVersion: string;
@@ -34,7 +51,7 @@ export class RecommendationCache {
       key.recommendationPolicyVersion,
     ].join("|");
 
-    return createHash("sha256").update(content).digest("hex").slice(0, 16);
+    return sha256(content).slice(0, 16);
   }
 
   /**

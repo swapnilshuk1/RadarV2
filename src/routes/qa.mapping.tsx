@@ -86,27 +86,16 @@ function MappingQA() {
 
   return (
     <div className="min-h-screen bg-parchment text-ink">
-      <header className="border-b border-hairline">
-        <div className="mx-auto flex max-w-6xl items-baseline justify-between gap-6 px-8 py-6">
-          <Link to="/" className="font-mono text-[11px] uppercase tracking-[0.24em] text-ink-muted hover:text-ink">
-            ← Shortlist
-          </Link>
-          <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-muted">
-            QA · Candidate → Dimension mapping · {candidateProfile.identity.name}
-          </span>
-        </div>
-      </header>
-
       <section className="border-b border-hairline">
-        <div className="mx-auto max-w-6xl px-8 py-10">
+        <div className="mx-auto max-w-6xl px-4 sm:px-8 py-10">
           <h1 className="font-serif text-3xl leading-tight">Mapping QA report</h1>
           <p className="mt-3 max-w-3xl text-sm text-ink-muted">
-            For each opportunity × radar dimension, this view shows the JD evidence, the personalization proof rendered
+             For each opportunity × radar dimension, this view shows the JD evidence, the personalization proof rendered
             in the brief, and which <code className="font-mono text-[12px]">candidate-profile.json</code> paths that
             proof references (heuristic match on the proof text).
           </p>
 
-          <dl className="mt-6 grid grid-cols-3 gap-6 text-sm">
+          <dl className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
             <div>
               <dt className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-ink-muted">Dimension coverage</dt>
               <dd className="mt-1 font-serif text-2xl">
@@ -148,7 +137,7 @@ function MappingQA() {
         const missingCount = cells.filter((c) => c.missing).length;
         return (
           <section key={hash} className="border-b border-hairline">
-            <div className="mx-auto max-w-6xl px-8 py-8">
+            <div className="mx-auto max-w-6xl px-4 sm:px-8 py-8">
               <div className="flex items-baseline justify-between gap-4">
                 <h2 className="font-serif text-xl">
                   <Link to="/opportunity/$jobHash" params={{ jobHash: hash }} className="hover:underline">

@@ -51,35 +51,26 @@ function DecisionsPage() {
     PURSUE: rows.filter((r) => r.record.verb === "PURSUE"),
     CONSIDER: rows.filter((r) => r.record.verb === "CONSIDER"),
     PASS: rows.filter((r) => r.record.verb === "PASS"),
+    NOT_EVALUABLE: rows.filter((r) => r.record.verb === "NOT_EVALUABLE"),
   };
 
   return (
     <div className="min-h-screen bg-background text-ink">
-      <header className="border-b border-hairline">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-6 px-8 py-5">
-          <div className="flex items-center gap-2">
-            <Link to="/" className="font-mono text-[11px] uppercase tracking-[0.32em] text-ink hover:text-ink-muted">
-              ← RADAR
-            </Link>
-            <span className="text-ink-muted">·</span>
-            <span className="text-[12.5px] text-ink-muted">Your decisions</span>
-          </div>
+      <section className="mx-auto max-w-4xl px-4 sm:px-8 pb-10 pt-14">
+        <div className="flex items-baseline justify-between">
+          <h1 className="text-[38px] font-medium leading-[1.05] tracking-[-0.025em] text-ink">Your decisions.</h1>
           {rows.length > 0 && (
             <button
-              type="button"
-              onClick={() => {
-                if (confirm("Clear all decisions? This can't be undone.")) clear();
-              }}
-              className="text-[11.5px] uppercase tracking-[0.14em] text-ink-muted hover:text-ink"
+               type="button"
+               onClick={() => {
+                 if (confirm("Clear all decisions? This can't be undone.")) clear();
+               }}
+               className="text-[11.5px] font-medium uppercase tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
             >
               Clear all
             </button>
           )}
         </div>
-      </header>
-
-      <section className="mx-auto max-w-4xl px-8 pb-10 pt-14">
-        <h1 className="text-[38px] font-medium leading-[1.05] tracking-[-0.025em] text-ink">Your decisions.</h1>
         <p className="mt-3 max-w-xl text-[14.5px] leading-relaxed text-ink-muted">
           {rows.length === 0
             ? "No calls made yet. Swipe a brief on the shortlist to add it here."
@@ -89,14 +80,15 @@ function DecisionsPage() {
           <Stat label="Pursued" value={groups.PURSUE.length} tint="text-decision-pursue" />
           <Stat label="Considered" value={groups.CONSIDER.length} tint="text-decision-consider" />
           <Stat label="Passed" value={groups.PASS.length} />
+          <Stat label="Not Evaluable" value={groups.NOT_EVALUABLE.length} />
         </div>
       </section>
 
-      <main className="mx-auto max-w-4xl px-8 pb-24">
+      <main className="mx-auto max-w-4xl px-4 sm:px-8 pb-24">
         {!hydrated ? (
           <p className="pt-10 text-[13px] text-ink-muted">Loading…</p>
         ) : (
-          (["PURSUE", "CONSIDER", "PASS"] as const).map((verb) => (
+          (["PURSUE", "CONSIDER", "PASS", "NOT_EVALUABLE"] as const).map((verb) => (
             <Group
               key={verb}
               verb={verb}

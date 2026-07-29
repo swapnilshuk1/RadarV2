@@ -1,6 +1,6 @@
 import { getRepositories } from "../../../data/sqlite/provider";
 import type { StorageProvider } from "../../../domain/repositories";
-import type { Opportunity, Source, Document, Fact, Claim, RecommendationRecord, OpportunityAssessment } from "../../../domain/entities";
+import type { Opportunity } from "../../../domain/entities";
 
 /**
  * Application Service Layer: OpportunityService
@@ -18,9 +18,9 @@ export class OpportunityService {
    * Retrieves all active opportunities that are ready for presentation to a candidate.
    * This handles the business logic of filtering out archived or raw discovered opportunities.
    */
-  public getActiveOpportunities(): Opportunity[] {
-    // Only return Normalized or Verified opportunities
-    return this.repos.opportunities.listActiveOpportunities().filter(
+  public async getActiveOpportunities(): Promise<Opportunity[]> {
+    const opps = await this.repos.opportunities.listActiveOpportunities();
+    return opps.filter(
       opp => opp.lifecycle === "Normalized" || opp.lifecycle === "Verified"
     );
   }
@@ -28,17 +28,13 @@ export class OpportunityService {
   /**
    * Generates the "Explain" trace for an opportunity.
    */
-  public explainOpportunity(opportunityId: string, personId: string): any {
+  public async explainOpportunity(opportunityId: string, personId: string): Promise<any> {
     // 1. Fetch Recommendation Record
-    const record = this.repos.decisions.getRecommendationRecordForOpportunity(personId, opportunityId);
+    const record = await this.repos.decisions.getRecommendationRecordForOpportunity(personId, opportunityId);
     if (!record) return null;
 
-    // 2. Fetch Assessment
-    // Since record doesn't point to assessment directly, we'd need a lookup or just return record.
-    // For now, let's just return the new record.
-    
-    // 3. Fetch Claims
-    const allClaims = this.repos.reasoning.findClaimsForOpportunity(opportunityId);
+    // 2. Fetch Claims
+    const allClaims = await this.repos.reasoning.findClaimsForOpportunity(opportunityId);
 
     // Provide a richly nested view for the UI Graph Visualization
     const enrichedClaims = allClaims.map(claim => {

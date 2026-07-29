@@ -1,26 +1,45 @@
-// Convenience entry point — wires the pipeline to the current fixtures.
-// Consumers (tests, future UI hooks) import from here.
+/**
+ * engine.ts
+ *
+ * RADAR V4 Core Engine Orchestrator.
+ * Fully integrates the Type-Safe Ontological Pipeline:
+ * CandidateProjection -> JobProjections -> Standalone Assessments -> DecisionPolicyEngine -> RecommendationViewModel -> UI Presenter
+ */
 
 import { rawOpportunities as authored, type Opportunity, type OpportunitySource } from "@/data/opportunity-fixtures";
 import { extraOpportunities } from "@/data/extra-fixtures";
 import liveScraped from "../../data/live-scraped.json";
-import {
-  buildHeadspace,
-  loadIdentity,
-  loadPreferences,
-  loadStrategy,
-} from "./candidate";
-import { marketFor } from "./market-service";
-import { runPipeline } from "./pipeline";
+import { CandidateIntelligencePipeline } from "./cip";
+import { JobIntelligencePipeline } from "./jip";
+import { V3EvaluationEngine } from "./V3EvaluationEngine";
 import { present, type Presented } from "./present";
 import type { RecommendationRecord } from "./record";
-import type { OpportunityIntelligence } from "./schema";
+import { loadDecisionPolicy, computeDecisionVerdict } from "../recommendation/EvaluationAdapter";
+
+// Phase 4 Semantic Imports
+import { CandidateProjectionBuilder } from "./builders/CandidateProjectionBuilder";
+import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
+import { CapabilityAssessmentEngine } from "./engines/CapabilityAssessmentEngine";
+import { OpportunityAssessmentEngine } from "./engines/OpportunityAssessmentEngine";
+import { CareerAssessmentEngine } from "./engines/CareerAssessmentEngine";
+import { LifestyleAssessmentEngine } from "./engines/LifestyleAssessmentEngine";
+import { IdentityAssessmentEngine } from "./engines/IdentityAssessmentEngine";
+import { DecisionPolicyEngine } from "./policy/DecisionPolicyEngine";
+import { candidateProfile } from "../../data/candidate-profile";
 
 const KEY = "radar.opportunities.v3";
-
 const baseOpportunities = [...(liveScraped as OpportunitySource[])];
-
 let memoryCache: OpportunitySource[] | null = null;
+
+let cachedRuns = new Map<number, {
+  currentAuthoredLength: number;
+  currentAuthoredHashes: string;
+  result: { presented: Presented[]; records: RecommendationRecord[] };
+}>();
+
+export function invalidateEngineCache() {
+  cachedRuns.clear();
+}
 
 export function readOpportunities(): OpportunitySource[] {
   if (typeof window === "undefined") return memoryCache ?? baseOpportunities;
@@ -28,9 +47,6 @@ export function readOpportunities(): OpportunitySource[] {
     const raw = window.localStorage.getItem(KEY);
     const cached = raw ? JSON.parse(raw) : [];
     
-    // Merge local storage with freshly imported base opportunities.
-    // This ensures that when live-scraped.json updates on disk and Vite reloads,
-    // the new items are immediately available without being shadowed by the old cache.
     const merged = new Map<string, OpportunitySource>();
     for (const item of cached) merged.set(item.jobHash, item);
     for (const item of baseOpportunities) merged.set(item.jobHash, item);
@@ -42,6 +58,7 @@ export function readOpportunities(): OpportunitySource[] {
 }
 
 export function writeOpportunities(next: OpportunitySource[]) {
+  invalidateEngineCache();
   if (typeof window === "undefined") {
     memoryCache = next;
     return;
@@ -55,55 +72,153 @@ export function writeOpportunities(next: OpportunitySource[]) {
 }
 
 export function addExtraOpportunities() {
-  // Fallback for mock data if nothing was scraped
   writeOpportunities(extraOpportunities);
 }
 
 export function injectFreshRecords(records: any[]) {
-    writeOpportunities([...(records as OpportunitySource[])]);
+  writeOpportunities([...(records as OpportunitySource[])]);
 }
 
-function toOI(a: OpportunitySource): OpportunityIntelligence {
-  return {
-    jobHash: a.jobHash,
-    role: a.role,
-    company: a.company,
-    location: a.location,
-    postedRelative: a.postedRelative,
-    source: a.scrapedFrom,
-    applyUrl: a.applyUrl,
-    dimensions: a.dimensions,
-  };
-}
-
+/**
+ * Executes the full V4 pipeline: Candidate/Job Projections -> Assessments -> Rules Engine -> Presentation
+ */
 export function runEngine(activePursuits = 0): {
   presented: Presented[];
   records: RecommendationRecord[];
 } {
   const currentAuthored = readOpportunities();
-  const opportunities = currentAuthored.map(toOI);
-  const result = runPipeline({
-    opportunities,
-    identity: loadIdentity(),
-    preferences: loadPreferences(),
-    strategy: loadStrategy(),
-    market: marketFor,
-    headspace: buildHeadspace(activePursuits),
-  });
+  const currentHashes = currentAuthored.map(o => o.jobHash).join(",");
 
+  const cached = cachedRuns.get(activePursuits);
+  if (
+    cached &&
+    cached.currentAuthoredLength === currentAuthored.length &&
+    cached.currentAuthoredHashes === currentHashes
+  ) {
+    return cached.result;
+  }
+
+  // 1. Build Candidate V4 Projection Once
+  const candProjV4 = CandidateProjectionBuilder.build(candidateProfile);
+
+  // Fallback V3 Dossier if needed for backward compliance metrics
+  const cip = new CandidateIntelligencePipeline();
+  const { projection, intent } = cip.getActiveDossier();
+
+  const records: RecommendationRecord[] = [];
+
+  for (const raw of currentAuthored) {
+    // 2. Build Job V4 Projection
+    const jobProjV4 = JobProjectionBuilder.build(raw);
+
+    // 3. Evaluate Isolated Assessments
+    const identity = IdentityAssessmentEngine.evaluate(candProjV4, jobProjV4);
+    const capability = CapabilityAssessmentEngine.evaluate(candProjV4, jobProjV4);
+    const opportunityAssess = OpportunityAssessmentEngine.evaluate(candProjV4, jobProjV4);
+    const career = CareerAssessmentEngine.evaluate(candProjV4, jobProjV4);
+    const lifestyle = LifestyleAssessmentEngine.evaluate(candProjV4, jobProjV4);
+
+    // 4. Resolve Verdict via Rules-Based Decision Policy Engine
+    const policyResult = DecisionPolicyEngine.evaluate(
+      identity,
+      capability,
+      opportunityAssess,
+      career,
+      lifestyle
+    );
+
+    const finalVerb = policyResult.verdict;
+
+    // Use Continuous Priority Score directly from DecisionPolicyEngine
+    const finalScore = policyResult.priorityScore;
+
+    // Extract actual missing dimensions directly from the scraped database
+    const dims = raw.dimensions || [];
+    const rawGaps = dims.filter(
+      (d: any) => d.bucket === "Missing" || d.bucket === "Gap" || d.jdEvidence?.status === "Missing"
+    );
+
+    // Backwards compatibility translation
+    const record: RecommendationRecord = {
+      jobHash: raw.jobHash,
+      engineVersion: "4.0.0",
+      recommendationVersion: `v4:${raw.jobHash}:${finalVerb}`,
+      verb: finalVerb,
+      priority: finalScore,
+      factors: {
+        careerValue: capability.overallFit,
+        shortlistingPotential: capability.overallFit,
+        pursuitFriction: 1.0
+      },
+      confidence: finalScore,
+      stability: "High",
+      headspace: {
+        finalVerb,
+        downgraded: false,
+        reason: undefined
+      },
+      comparison: {
+        higherThan: [],
+        lowerThan: [],
+        differentiators: [],
+        tradeOffs: []
+      },
+      explanation: {
+        reason: "composite-evidence-sufficiency",
+        dominantFactor: "shortlistingPotential",
+        missingEvidence: rawGaps.map((g: any) => g.key),
+        unknowns: []
+      },
+      trace: {
+        priority: finalScore,
+        factors: {
+          careerValue: capability.overallFit,
+          shortlistingPotential: capability.overallFit,
+          pursuitFriction: 1.0
+        },
+        verb0: finalVerb,
+        finalVerb,
+        confidence: finalScore,
+        stability: "High",
+        headspace: {
+          finalVerb,
+          downgraded: false,
+          reason: undefined
+        },
+        missing: rawGaps.map((g: any) => g.key),
+        timestamp: new Date().toISOString()
+      },
+      esi: capability.overallFit,
+      diligenceStatus: "READY"
+    };
+
+    records.push(record);
+  }
+
+  // Populate comparative queue ranking
+  for (const r of records) {
+    const higherThan = records.filter(other => other.priority < r.priority).map(other => other.jobHash);
+    const lowerThan = records.filter(other => other.priority > r.priority).map(other => other.jobHash);
+    (r as any).comparison = { higherThan, lowerThan, differentiators: [], tradeOffs: [] };
+  }
+
+  // Generate Presented mappings
   const byHash = new Map(currentAuthored.map((a) => [a.jobHash, a]));
-  const presented = result.records
+  const presented = records
     .map((r) => {
-      // MASSIVE OPTIMIZATION: Skip executing the heavy McKinsey-grade narrative 
-      // formatter on the 700+ PASS records during bulk list loading!
-      if (r.verb === "PASS") return null;
-      
+      // In V4 paradigm, we still present candidates in the view, but let the UI filter out PASS records or let presentation-boundary hide scores
       const a = byHash.get(r.jobHash);
       return a ? present(a, r) : null;
     })
     .filter((x): x is Presented => x !== null);
 
-  return { presented, records: result.records };
+  const result = { presented, records };
+  cachedRuns.set(activePursuits, {
+    currentAuthoredLength: currentAuthored.length,
+    currentAuthoredHashes: currentHashes,
+    result
+  });
+  return result;
 }
 
 export function runEngineSingle(jobHash: string, activePursuits = 0): Presented | undefined {
@@ -111,18 +226,6 @@ export function runEngineSingle(jobHash: string, activePursuits = 0): Presented 
   const found = currentAuthored.find((o) => o.jobHash === jobHash);
   if (!found) return undefined;
 
-  const opportunities = [toOI(found)];
-  const result = runPipeline({
-    opportunities,
-    identity: loadIdentity(),
-    preferences: loadPreferences(),
-    strategy: loadStrategy(),
-    market: marketFor,
-    headspace: buildHeadspace(activePursuits),
-  });
-
-  const record = result.records[0];
-  if (!record) return undefined;
-
-  return present(found, record);
+  const { presented } = runEngine(activePursuits);
+  return presented.find(p => p.opportunity.jobHash === jobHash);
 }

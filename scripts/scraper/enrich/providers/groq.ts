@@ -77,6 +77,7 @@ async function enrichWithGroq(input: EnrichInput): Promise<EnrichPatch | null> {
   const model = process.env.GROQ_MODEL || DEFAULT_MODEL;
   const prompt = buildPrompt(input);
 
+  try {
     console.info(`\n[enrich:groq] Enriching "${input.title}" at "${input.company}"`);
     console.info(`[enrich:groq] Missing dimensions: ${input.missingKeys.join(", ")}`);
     

@@ -1,7 +1,16 @@
-import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 import type { PolicyComparison } from "../RecommendationPolicy";
+
+function getReq() {
+  if (typeof window !== "undefined") return null;
+  try {
+    const mod = eval('require("module")');
+    return mod && mod.createRequire ? mod.createRequire(import.meta.url) : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface CalibrationRunMetadata {
   id: string;
@@ -20,15 +29,31 @@ export interface CalibrationRunMetadata {
 }
 
 export class CalibrationStore {
-  private db: Database.Database;
+  private db: any = null;
 
   constructor() {
-    const dbPath = path.resolve(process.cwd(), "radar.sqlite");
-    this.db = new Database(dbPath);
-    this.initializeTables();
+    if (typeof window !== "undefined") return;
+
+    try {
+      const dbPath = path.resolve(process.cwd(), "radar.sqlite");
+      let DatabaseConstructor: any = null;
+      const req = getReq();
+      if (req) {
+        try {
+          DatabaseConstructor = req("better-sqlite3");
+        } catch {}
+      }
+      if (DatabaseConstructor) {
+        this.db = new DatabaseConstructor(dbPath);
+        this.initializeTables();
+      }
+    } catch (err) {
+      console.warn("[CalibrationStore] SQLite unavailable:", err);
+    }
   }
 
   private initializeTables() {
+    if (!this.db) return;
     this.db.prepare(`
       CREATE TABLE IF NOT EXISTS calibration_runs (
         id TEXT PRIMARY KEY,
@@ -68,6 +93,7 @@ export class CalibrationStore {
   }
 
   public saveRun(run: CalibrationRunMetadata): void {
+    if (!this.db) return;
     this.db.prepare(`
       INSERT OR REPLACE INTO calibration_runs (
         id, timestamp, policy_version, profile_hash, corpus_hash, volatility,
@@ -92,6 +118,7 @@ export class CalibrationStore {
   }
 
   public saveComparison(comparison: PolicyComparison): void {
+    if (!this.db) return;
     this.db.prepare(`
       INSERT OR REPLACE INTO policy_comparisons (
         id, timestamp, champion_policy_id, candidate_policy_id, corpus_hash, profile_hash,
@@ -117,6 +144,8 @@ export class CalibrationStore {
   }
 
   public close(): void {
-    this.db.close();
+    if (this.db) {
+      this.db.close();
+    }
   }
 }

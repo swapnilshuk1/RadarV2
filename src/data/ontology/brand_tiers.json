@@ -1,0 +1,14 @@
+{
+  "tier1": {
+    "bonusPoints": 15,
+    "keywords": ["google", "meta", "apple", "amazon", "microsoft", "weekday", "yc", "y combinator", "unicorn"]
+  },
+  "tier2": {
+    "bonusPoints": 8,
+    "keywords": ["parksons", "bmw", "ford", "antal", "unison", "consulting", "wpp", "accenture", "deloitte"]
+  },
+  "tier3": {
+    "bonusPoints": 0,
+    "keywords": ["sme", "agency", "regional"]
+  }
+}

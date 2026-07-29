@@ -12,27 +12,27 @@ export class ReadModelRebuilder {
   /**
    * Drops and recreates the read model tables, then replays the timeline.
    */
-  public rebuildAll(workspaceId: string) {
+  public async rebuildAll(workspaceId: string) {
     for (const rm of this.readModels) {
       rm.rebuild(this.db);
     }
     
-    this.replay(workspaceId);
+    await this.replay(workspaceId);
   }
 
   /**
    * Only clears and replays the timeline (useful for certification where we don't want to drop tables)
    */
-  public clearAndReplay(workspaceId: string) {
+  public async clearAndReplay(workspaceId: string) {
     for (const rm of this.readModels) {
       rm.clear(this.db);
     }
 
-    this.replay(workspaceId);
+    await this.replay(workspaceId);
   }
 
-  private replay(workspaceId: string) {
-    const events = this.timelineStore.getEventStream(workspaceId);
+  private async replay(workspaceId: string) {
+    const events = await this.timelineStore.getEventStream(workspaceId);
     
     // Begin a transaction for the entire replay to ensure consistency and speed
     const applyTransaction = this.db.transaction(() => {

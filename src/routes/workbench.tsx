@@ -13,17 +13,6 @@ export const Route = createFileRoute("/workbench")({
 function AcquisitionWorkbench() {
   return (
     <div className="min-h-screen bg-sand-50/50 pb-20">
-      <header>
-        <div className="border-b border-sand-200/50 bg-white/50 backdrop-blur-md sticky top-0 z-30">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="font-semibold text-ink">Acquisition Workbench</span>
-              <span className="text-sand-500 text-sm">Control Tower</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-8 space-y-12">
         {/* Campaign Overview Section */}
         <section>

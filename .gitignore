@@ -41,6 +41,7 @@ groq.env
 
 # RADAR local data
 .scraper-artifacts/
+.scraper-cache/
 radar.sqlite
 radar.sqlite-shm
 radar.sqlite-wal

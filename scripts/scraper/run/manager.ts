@@ -230,6 +230,41 @@ export class RunController {
     this.persistManifest();
     this.journal.append({ type: "run_finished", status: this.manifest.status });
     this.journal.close();
+    this.printRunHealthDashboard();
+  }
+
+  printRunHealthDashboard(): void {
+    const start = new Date(this.manifest.startedAt || Date.now()).getTime();
+    const end = this.manifest.finishedAt ? new Date(this.manifest.finishedAt).getTime() : Date.now();
+    const elapsedSec = Math.floor((end - start) / 1000);
+    const elapsedFormatted = `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s`;
+
+    const totalUnits = this.manifest.units.length;
+    const completedUnits = this.manifest.units.filter((u) => u.status === "done" || u.status === "skipped_empty" || u.status === "skipped_gated" || u.status === "skipped_pruned").length;
+    const cardsDiscovered = this.manifest.cards.length;
+
+    const portalBreakdown: Record<string, number> = {};
+    for (const u of this.manifest.units) {
+      if (u.cardIds && u.cardIds.length > 0) {
+        portalBreakdown[u.portal] = (portalBreakdown[u.portal] || 0) + u.cardIds.length;
+      }
+    }
+
+    const telemetry = this.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
+
+    console.log(`
+================================================================================
+                       RADAR RUN HEALTH DASHBOARD
+================================================================================
+Run ID             : ${this.runId}
+Status             : ${(this.manifest.status || "completed").toUpperCase()}
+Elapsed Time       : ${elapsedFormatted}
+Work Units         : ${completedUnits} / ${totalUnits} units executed
+Cards Discovered   : ${cardsDiscovered} total
+Portal Yield       : ${Object.entries(portalBreakdown).map(([p, count]) => `${p}=${count}`).join(" | ") || "None"}
+FastPath Telemetry : Attempted=${telemetry.httpAttempted}, Success=${telemetry.httpSuccessful}, Fallbacks=${telemetry.httpFallbacks}
+================================================================================
+`);
   }
 
   private persistManifest(): void {
@@ -240,12 +275,13 @@ export class RunController {
     const oldState = this.manifest.status;
     if (oldState === state) return;
     const validTransitions: Record<RunManifest["status"], RunManifest["status"][]> = {
-      initializing: ["waiting_for_confirmation", "running", "failed", "aborted"],
-      waiting_for_confirmation: ["running", "aborted"],
-      running: ["completed", "failed", "aborted"],
-      completed: [],
-      failed: [],
-      aborted: []
+      initializing: ["initializing", "waiting_for_confirmation", "running", "failed", "aborted"],
+      waiting_for_confirmation: ["running", "aborted", "initializing"],
+      running: ["initializing", "enriching", "completed", "failed", "aborted"],
+      enriching: ["initializing", "completed", "failed", "aborted"],
+      completed: ["initializing"],
+      failed: ["initializing"],
+      aborted: ["initializing"]
     };
     if (!validTransitions[oldState].includes(state)) {
       throw new Error(`Invalid state transition from ${oldState} to ${state}`);

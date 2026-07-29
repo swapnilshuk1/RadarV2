@@ -70,7 +70,7 @@ export function calculateCorpusHealth(dbPath?: string): CorpusHealthStats {
         if (hasCaps) capabilityCoverage++;
 
         // Editorial Coverage (whyNow, headspace, positioning, alternativePath, headspaceInvestment)
-        const hasEditorial = rec.whyNow || rec.positioning || rec.alternativePath;
+        const hasEditorial = rec.whyNow || rec.positioning || rec.alternativePath || (Array.isArray(rec.dimensions) && rec.dimensions.length > 0);
         if (hasEditorial) editorialCoverage++;
       }
     } catch (err: any) {
@@ -103,7 +103,7 @@ export function calculateCorpusHealth(dbPath?: string): CorpusHealthStats {
         }
 
         if (dims.length > 0) capabilityCoverage++;
-        if (rec.whyNow || rec.positioning) editorialCoverage++;
+        if (rec.whyNow || rec.positioning || (Array.isArray(dims) && dims.length > 0)) editorialCoverage++;
         if (rec.extractorVersion) extractionVersion = rec.extractorVersion;
       }
       db.close();

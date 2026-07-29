@@ -1,5 +1,3 @@
-import Database from "better-sqlite3";
-import path from "path";
 import { SqliteCompanyStore } from "./repositories/SqliteCompanyStore";
 import { SqliteOpportunityStore } from "./repositories/SqliteOpportunityStore";
 import { SqliteAcquisitionStore } from "./repositories/SqliteAcquisitionStore";
@@ -8,29 +6,14 @@ import { SqliteReasoningStore } from "./repositories/SqliteReasoningStore";
 import { SqliteSourceStore } from "./repositories/SqliteSourceStore";
 import { SqlitePersonStore } from "./repositories/SqlitePersonStore";
 import { SqliteDecisionSupportStore } from "./repositories/SqliteDecisionSupportStore";
-
-let _db: Database.Database | null = null;
-
-export function getDatabase(dbPath?: string): Database.Database {
-  if (!_db) {
-    const resolvedPath = dbPath || process.env.SQLITE_DB_PATH || path.resolve(process.cwd(), "radar.sqlite");
-    _db = new Database(resolvedPath);
-    _db.pragma('journal_mode = WAL');
-  }
-  return _db;
-}
-
-export function closeDatabase() {
-  if (_db) {
-    _db.close();
-    _db = null;
-    _repos = null;
-  }
-}
-
+import { getDatabaseAdapter, type DatabaseAdapter } from "../database";
 import type { StorageProvider } from "../../domain/repositories";
 
-export function createRepositories(db: Database.Database): StorageProvider {
+export function getDatabase(dbPath?: string): DatabaseAdapter {
+  return getDatabaseAdapter(dbPath);
+}
+
+export function createRepositories(db: DatabaseAdapter): StorageProvider {
   return {
     sources: new SqliteSourceStore(db),
     companies: new SqliteCompanyStore(db),
@@ -43,11 +26,15 @@ export function createRepositories(db: Database.Database): StorageProvider {
   };
 }
 
-let _repos: ReturnType<typeof createRepositories> | null = null;
+let _repos: StorageProvider | null = null;
 
-export function getRepositories(dbPath?: string) {
+export function getRepositories(dbPath?: string): StorageProvider {
   if (!_repos) {
-    _repos = createRepositories(getDatabase(dbPath));
+    _repos = createRepositories(getDatabaseAdapter(dbPath));
   }
   return _repos;
+}
+
+export function closeDatabase() {
+  _repos = null;
 }

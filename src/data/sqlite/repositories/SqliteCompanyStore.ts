@@ -1,12 +1,13 @@
-import type { Database } from "better-sqlite3";
+import type { DatabaseAdapter } from "../../database/adapter";
 import type { CompanyStore } from "../../../domain/repositories";
 import type { Company } from "../../../domain/entities";
 
 export class SqliteCompanyStore implements CompanyStore {
-  constructor(private db: Database) {}
+  constructor(private db: DatabaseAdapter) {}
 
-  registerCompany(company: Company): void {
-    const stmt = this.db.prepare(`
+  async registerCompany(company: Company): Promise<void> {
+    await this.db.execute(
+      `
       INSERT INTO companies (
         id, name, industry, hq, size, tech_stack, hiring_velocity, growth_signal,
         created_at, updated_at,
@@ -21,30 +22,30 @@ export class SqliteCompanyStore implements CompanyStore {
         hiring_velocity = excluded.hiring_velocity,
         growth_signal = excluded.growth_signal,
         updated_at = excluded.updated_at
-    `);
-
-    stmt.run(
-      company.id,
-      company.name,
-      company.industry ?? null,
-      company.hq ?? null,
-      company.size ?? null,
-      company.techStack ? JSON.stringify(company.techStack) : null,
-      company.hiringVelocity ?? null,
-      company.growthSignal ?? null,
-      company.createdAt,
-      company.updatedAt,
-      company.provenance.schemaVersion,
-      company.provenance.extractorVersion ?? null,
-      company.provenance.promptVersion ?? null,
-      company.provenance.model ?? null,
-      company.provenance.runId ?? null,
-      company.provenance.timestamp
+      `,
+      [
+        company.id,
+        company.name,
+        company.industry ?? null,
+        company.hq ?? null,
+        company.size ?? null,
+        company.techStack ? JSON.stringify(company.techStack) : null,
+        company.hiringVelocity ?? null,
+        company.growthSignal ?? null,
+        company.createdAt,
+        company.updatedAt,
+        company.provenance.schemaVersion,
+        company.provenance.extractorVersion ?? null,
+        company.provenance.promptVersion ?? null,
+        company.provenance.model ?? null,
+        company.provenance.runId ?? null,
+        company.provenance.timestamp
+      ]
     );
   }
 
-  findByName(name: string): Company | undefined {
-    const row = this.db.prepare(`SELECT * FROM companies WHERE name = ? COLLATE NOCASE`).get(name) as any;
+  async findByName(name: string): Promise<Company | undefined> {
+    const row = await this.db.one<any>(`SELECT * FROM companies WHERE name = ? COLLATE NOCASE`, [name]);
     if (!row) return undefined;
     return this.mapRow(row);
   }

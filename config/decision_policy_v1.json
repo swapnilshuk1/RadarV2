@@ -1,0 +1,15 @@
+{
+  "version": "policy-v1.0",
+  "rules": {
+    "pursue": {
+      "minFit": 80,
+      "minAlignment": "HIGH",
+      "minStrategicAdvantages": 2
+    },
+    "consider": {
+      "minFit": 60,
+      "minAlignment": "MEDIUM",
+      "minStrategicAdvantages": 1
+    }
+  }
+}

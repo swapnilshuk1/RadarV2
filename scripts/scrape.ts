@@ -71,9 +71,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       fs.writeFileSync(searchPlanOutputPath, JSON.stringify(searchPlan, null, 2), "utf-8");
       log(`Generated and persisted Search Plan first-class artifact to: ${searchPlanOutputPath}`);
       
-      // Select the top 10 ranked queries to prevent crawler bloat, while maintaining high diversity!
-      keywords = searchPlan.rankedQueries.slice(0, 10).map(q => q.query);
-      log(`Search Planner compiled top portal queries: ${keywords.join(", ")}`);
+      // Select all ranked queries to fully capture the environment!
+      keywords = searchPlan.rankedQueries.map(q => q.query);
+      log(`Search Planner compiled all ${keywords.length} portal queries: ${keywords.join(", ")}`);
     } catch (e: any) {
       log(`Search Planner failed to dynamically generate Search Plan (${e.message}). Falling back to static defaults.`, "warn");
       keywords = DEFAULT_KEYWORDS;
@@ -265,7 +265,6 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       log(`Enqueued ${ingestedCount} cards for enrichment.`);
-      mgr.finalize("completed");
 
       // Certification: Ensure no units are left running
       const runningUnits = mgr.manifest.units.filter(u => u.status === "running");
@@ -274,6 +273,32 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         mgr.manifest.status = "failed";
         mgr.finalize("failed");
       }
+
+      // Transition to enriching state so the UI tracks it in real-time
+      mgr.transitionTo("enriching");
+      
+      try {
+        log(`[Scrape] Automatically starting inline AI enrichment for run ${mgr.runId}...`);
+        const { enrichJobsForRun } = await import("./enrich");
+        await enrichJobsForRun(mgr.runId);
+      } catch (enrichErr: any) {
+        log(`[Scrape] Enrichment phase failed: ${enrichErr.message}`, "error");
+      }
+
+      // Rebuild read models and JSON models
+      try {
+        log(`[Scrape] Rebuilding SQLite read models...`);
+        const { runRebuildReadModels } = await import("./rebuild-read-models");
+        runRebuildReadModels();
+
+        const records = collectRecords();
+        writeLiveScraped(records);
+        log(`Rebuilt live-scraped.json cache with ${records.length} total records.`);
+      } catch (rebuildErr: any) {
+        log(`[Scrape] Rebuild phase failed: ${rebuildErr.message}`, "error");
+      }
+
+      mgr.finalize("completed");
       const runDurationS = ((new Date().getTime() - new Date(mgr.manifest.startedAt).getTime()) / 1000).toFixed(1);
       
       const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
@@ -281,12 +306,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       const { generateAcquisitionReport } = await import("./scraper/run/report");
       generateAcquisitionReport(mgr.runId);
 
-      // Rebuild the UI's system of record
-      const records = collectRecords();
-      writeLiveScraped(records);
-      log(`Rebuilt live-scraped.json with ${records.length} total records.`);
-
       printAcquisitionTelemetry(mgr);
+
 
       console.log(`
 ============================================================
