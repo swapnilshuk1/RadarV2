@@ -1,12 +1,23 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getCookie } from "@tanstack/react-start/server";
 import { getRepositories } from "../../data/sqlite/provider";
+import { validateSessionToken, SESSION_COOKIE_NAME } from "../auth/session";
 
-const DEFAULT_PERSON_ID = "swapnil-shukla";
+async function getAuthenticatedUserId(): Promise<string> {
+  const token = getCookie(SESSION_COOKIE_NAME);
+  if (!token) throw new Error("Unauthorized");
+  
+  const { session } = await validateSessionToken(token);
+  if (!session) throw new Error("Unauthorized");
+  
+  return session.userId;
+}
 
 export const getDecisionsFn = createServerFn({ method: "GET" }).handler(async () => {
   try {
+    const userId = await getAuthenticatedUserId();
     const repos = getRepositories();
-    const map = await repos.decisions.getUserDecisions(DEFAULT_PERSON_ID);
+    const map = await repos.decisions.getUserDecisions(userId);
     return { success: true, decisions: map };
   } catch (err: any) {
     console.error("[decisions-server] Error fetching decisions:", err);
@@ -18,8 +29,9 @@ export const saveDecisionFn = createServerFn({ method: "POST" })
   .validator((d: { jobHash: string; verb: string; reason?: string }) => d)
   .handler(async ({ data }) => {
     try {
+      const userId = await getAuthenticatedUserId();
       const repos = getRepositories();
-      await repos.decisions.recordUserDecision(DEFAULT_PERSON_ID, data.jobHash, data.verb, data.reason);
+      await repos.decisions.recordUserDecision(userId, data.jobHash, data.verb, data.reason);
       return { success: true };
     } catch (err: any) {
       console.error("[decisions-server] Error saving decision:", err);
@@ -31,10 +43,11 @@ export const syncDecisionsFn = createServerFn({ method: "POST" })
   .validator((d: { decisions: Record<string, { verb: string }> }) => d)
   .handler(async ({ data }) => {
     try {
+      const userId = await getAuthenticatedUserId();
       const repos = getRepositories();
       for (const [jobHash, entry] of Object.entries(data.decisions)) {
         if (entry && entry.verb) {
-          await repos.decisions.recordUserDecision(DEFAULT_PERSON_ID, jobHash, entry.verb);
+          await repos.decisions.recordUserDecision(userId, jobHash, entry.verb);
         }
       }
       return { success: true };
@@ -48,8 +61,9 @@ export const undoDecisionFn = createServerFn({ method: "POST" })
   .validator((d: { jobHash: string }) => d)
   .handler(async ({ data }) => {
     try {
+      const userId = await getAuthenticatedUserId();
       const repos = getRepositories();
-      await repos.decisions.deleteUserDecision(DEFAULT_PERSON_ID, data.jobHash);
+      await repos.decisions.deleteUserDecision(userId, data.jobHash);
       return { success: true };
     } catch (err: any) {
       console.error("[decisions-server] Error deleting decision:", err);
@@ -59,8 +73,9 @@ export const undoDecisionFn = createServerFn({ method: "POST" })
 
 export const clearDecisionsFn = createServerFn({ method: "POST" }).handler(async () => {
   try {
+    const userId = await getAuthenticatedUserId();
     const repos = getRepositories();
-    await repos.decisions.clearUserDecisions(DEFAULT_PERSON_ID);
+    await repos.decisions.clearUserDecisions(userId);
     return { success: true };
   } catch (err: any) {
     console.error("[decisions-server] Error clearing decisions:", err);

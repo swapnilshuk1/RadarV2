@@ -6,7 +6,7 @@
  * Stores PKCE state + verifier in a short-lived cookie.
  */
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { setCookie } from "@tanstack/react-start/server";
 import { generateState, generateCodeVerifier, Google } from "arctic";
@@ -32,17 +32,16 @@ const initiateGoogleAuthFn = createServerFn({ method: "GET" }).handler(async () 
     scopes: ["openid", "email", "profile"],
   });
 
-  // Store state + verifier in short-lived HttpOnly cookies for CSRF protection
   const isProd = process.env.NODE_ENV === "production";
   setCookie("google_oauth_state", state, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 600, secure: isProd });
   setCookie("google_code_verifier", codeVerifier, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 600, secure: isProd });
 
-  return new Response(null, { 
-    status: 302, 
-    headers: { Location: url.toString() } 
-  });
+  return url.toString();
 });
 
 export const Route = createFileRoute("/api/auth/google")({
-  loader: () => initiateGoogleAuthFn(),
+  loader: async () => {
+    const url = await initiateGoogleAuthFn();
+    throw redirect({ href: url });
+  },
 });

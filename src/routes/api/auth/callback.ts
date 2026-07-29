@@ -16,7 +16,7 @@
  * ADR-008: Auth resolves at this boundary. Only userId flows downstream.
  */
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest, getCookie, setCookie } from "@tanstack/react-start/server";
 import { Google } from "arctic";
@@ -128,12 +128,12 @@ const handleCallbackFn = createServerFn({ method: "GET" }).handler(async () => {
     secure: isProd 
   });
 
-  return new Response(null, { 
-    status: 302, 
-    headers: { Location: isNewUser ? "/onboard" : "/" } 
-  });
+  return { isNewUser };
 });
 
 export const Route = createFileRoute("/api/auth/callback")({
-  loader: () => handleCallbackFn(),
+  loader: async () => {
+    const { isNewUser } = await handleCallbackFn();
+    throw redirect({ to: isNewUser ? "/profile" : "/" });
+  },
 });

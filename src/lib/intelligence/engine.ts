@@ -102,7 +102,7 @@ export function runEngine(candidateProfile: any, activePursuits = 0): {
 
   // Fallback V3 Dossier if needed for backward compliance metrics
   const cip = new CandidateIntelligencePipeline();
-  const { projection, intent } = cip.getActiveDossier();
+  const { projection, intent } = cip.getActiveDossier(candidateProfile);
 
   const records: RecommendationRecord[] = [];
 

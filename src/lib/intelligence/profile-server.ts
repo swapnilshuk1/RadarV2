@@ -2,10 +2,13 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { createServerFn } from "@tanstack/react-start";
+import { getCookie } from "@tanstack/react-start/server";
 import mammoth from "mammoth";
 import { IdentityEngine } from "./identity-engine";
 import { invalidateCandidateDossierCache } from "./cip";
 import { invalidateEngineCache } from "./engine";
+import { getRepositories } from "../../data/sqlite/provider";
+import { validateSessionToken, SESSION_COOKIE_NAME } from "../auth/session";
 import { 
   type CandidateState, 
   type ExtractedFact, 
@@ -122,10 +125,32 @@ async function fetchGeminiContent(prompt: string, inlineFile?: { mimeType: strin
   return content;
 }
 
+async function getAuthenticatedUser(): Promise<UserSession> {
+  const token = getCookie(SESSION_COOKIE_NAME);
+  if (!token) throw new Error("Unauthorized: Missing session cookie");
+  
+  const { user } = await validateSessionToken(token);
+  if (!user) throw new Error("Unauthorized: Invalid session");
+  
+  return {
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    avatarUrl: user.avatarUrl || undefined,
+    onboarded: user.onboarded
+  };
+}
+
 // ─── API: DYNAMIC STATE LOAD ───────────────────────────────────────────────
 export const getCandidateStateFn = createServerFn({ method: "GET" })
   .handler(async (): Promise<CandidateState> => {
-    return IdentityEngine.loadState();
+    const user = await getAuthenticatedUser();
+    const repos = getRepositories();
+    const state = await repos.people.getCandidateState(user.userId);
+    if (!state) {
+      throw new Error("Candidate state not found for user. Please complete onboarding.");
+    }
+    return state;
   });
 
 // ─── API: RESUME / LINKEDIN FACT EXTRACTION ──────────────────────────────────
@@ -142,6 +167,7 @@ export const ingestEvidenceFn = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ success: boolean; state?: CandidateState; error?: string }> => {
     const { sourceName, sourceText, sourceFileBase64, sourceMimeType, sourceType } = data;
     try {
+      const activeSession = await getAuthenticatedUser();
       console.log(`[profile-server] Ingesting ${sourceType} (${sourceName})…`);
       
       let finalTextForSource = sourceText || "";
@@ -149,7 +175,6 @@ export const ingestEvidenceFn = createServerFn({ method: "POST" })
 
       if (sourceFileBase64 && sourceMimeType) {
         if (sourceMimeType === "application/pdf") {
-          // Pass PDF base64 directly to Gemini
           inlineFile = {
             mimeType: "application/pdf",
             data: sourceFileBase64
@@ -159,12 +184,10 @@ export const ingestEvidenceFn = createServerFn({ method: "POST" })
           sourceMimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
           sourceName.endsWith(".docx")
         ) {
-          // Extract Word document text
           const buffer = Buffer.from(sourceFileBase64, "base64");
           const result = await mammoth.extractRawText({ buffer });
           finalTextForSource = result.value;
         } else {
-          // Decodes other files as raw text
           finalTextForSource = Buffer.from(sourceFileBase64, "base64").toString("utf-8");
         }
       }
@@ -206,8 +229,12 @@ Return ONLY a valid JSON object matching the following structure:
         ? parsed.candidateName 
         : "";
 
-      // Load active state
-      const currentState = IdentityEngine.loadState();
+      const repos = getRepositories();
+      let currentState = await repos.people.getCandidateState(activeSession.userId);
+      
+      if (!currentState) {
+        throw new Error("Cannot ingest evidence on an uninitialized profile. Complete onboarding first.");
+      }
       
       const sourceId = `source-${Date.now()}`;
       const newSource: EvidenceSource = {
@@ -228,16 +255,10 @@ Return ONLY a valid JSON object matching the following structure:
       }));
 
       // Combine sources, facts
-      const updatedSources = [newSource, ...currentState.sources.filter(s => s.id !== "seed-resume-legacy")];
-      const updatedFacts = [...extractedFacts, ...currentState.facts.filter(f => f.evidenceId !== "seed-resume-legacy")];
+      const updatedSources = [newSource, ...currentState.sources.filter((s: any) => s.id !== "seed-resume-legacy")];
+      const updatedFacts = [...extractedFacts, ...currentState.facts.filter((f: any) => f.evidenceId !== "seed-resume-legacy")];
 
-      const activeSession: UserSession = {
-        userId: currentState.session?.userId || "swapnil-shukla-dev",
-        email: currentState.session?.email || "candidate@radar.advisory",
-        name: parsedName || currentState.session?.name || "Anonymous Candidate",
-        avatarUrl: currentState.session?.avatarUrl || "https://lh3.googleusercontent.com/a/default-user=s100",
-        onboarded: true
-      };
+      if (parsedName) activeSession.name = parsedName;
 
       // Compile state using IdentityEngine
       const compiledState = IdentityEngine.compile(
@@ -246,6 +267,8 @@ Return ONLY a valid JSON object matching the following structure:
         updatedFacts,
         currentState.intent
       );
+
+      await repos.people.saveCandidateState(activeSession.userId, compiledState);
 
       return { success: true, state: compiledState };
     } catch (e: any) {
@@ -269,9 +292,12 @@ interface UpdateProfileInput {
 export const updateIdentityStateFn = createServerFn({ method: "POST" })
   .validator((d: UpdateProfileInput) => d)
   .handler(async ({ data }): Promise<CandidateState> => {
-    const currentState = IdentityEngine.loadState();
+    const user = await getAuthenticatedUser();
+    const repos = getRepositories();
+    const currentState = await repos.people.getCandidateState(user.userId);
     
-    // Update identity directly
+    if (!currentState) throw new Error("State not found");
+    
     currentState.identity.identity.archetype = data.archetype;
     currentState.identity.identity.valueProposition = data.valueProposition;
     currentState.identity.identity.executiveThemes = data.themes;
@@ -286,7 +312,7 @@ export const updateIdentityStateFn = createServerFn({ method: "POST" })
     }
     
     currentState.updatedAt = new Date().toISOString();
-    IdentityEngine.saveState(currentState);
+    await repos.people.saveCandidateState(user.userId, currentState);
     
     return currentState;
   });
@@ -302,7 +328,11 @@ interface UpdateIntentInput {
 export const updateIntentSessionFn = createServerFn({ method: "POST" })
   .validator((d: UpdateIntentInput) => d)
   .handler(async ({ data }): Promise<CandidateState> => {
-    const currentState = IdentityEngine.loadState();
+    const user = await getAuthenticatedUser();
+    const repos = getRepositories();
+    const currentState = await repos.people.getCandidateState(user.userId);
+    
+    if (!currentState) throw new Error("State not found");
     
     const updatedIntent: CareerIntentSession = {
       sessionId: `intent-${Date.now()}`,
@@ -319,8 +349,7 @@ export const updateIntentSessionFn = createServerFn({ method: "POST" })
     currentState.intent = updatedIntent;
     currentState.updatedAt = new Date().toISOString();
     
-    // Save updated state & legacy compensation
-    IdentityEngine.saveState(currentState);
+    await repos.people.saveCandidateState(user.userId, currentState);
 
     // DYNAMIC RE-PLANNING: Invoke CareerIntent extraction and SearchPlanner!
     try {
@@ -328,19 +357,56 @@ export const updateIntentSessionFn = createServerFn({ method: "POST" })
       const path = getNodePath();
       const fs = getNodeFs();
       if (path && fs) {
-        const profilePath = path.join(process.cwd(), "src", "data", "candidate-profile.json");
+        // Create a temporary mock of the profile file for the scraper
+        const tempProfilePath = path.join(process.cwd(), ".radar", `temp-profile-${user.userId}.json`);
+        
+        const legacyProfileComp = {
+          identity: {
+            name: currentState.session?.name || currentState.identity.identity.archetype,
+            currentTitle: currentState.intent.targetRoles[0]?.title || "Executive Leader"
+          },
+          executiveIdentity: currentState.identity.identity,
+          experience: {
+            yearsExperience: 20,
+            teamSizeManaged: currentState.identity.leadership.largestTeam,
+            feeBookScale: currentState.identity.leadership.budgetScale,
+            plOwnership: true,
+            boardInteraction: currentState.identity.leadership.boardExposure,
+            achievements: currentState.identity.achievements
+          },
+          leadershipProfile: {
+            largestTeam: currentState.identity.leadership.largestTeam,
+            globalMarkets: currentState.identity.leadership.globalMarketsCount,
+            regions: currentState.intent.locations,
+            budgetResponsibility: currentState.identity.leadership.budgetScale,
+            commercialOwnership: true,
+            boardExposure: currentState.identity.leadership.boardExposure,
+            globalPrograms: true,
+            peopleLeadership: true,
+            matrixLeadership: true,
+            vendorManagement: true,
+            clientLeadership: true
+          },
+          evidence: currentState.identity.evidence,
+          capabilities: currentState.identity.capabilities.categories,
+          headspaceCapacityPerMonth: currentState.intent.maxMonthlyPursuits
+        };
+        fs.writeFileSync(tempProfilePath, JSON.stringify(legacyProfileComp, null, 2), "utf-8");
+        
         const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
         const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
         const searchPlanOutputPath = path.join(process.cwd(), "src", "data", "search-plan.json");
         
         const { CareerIntentModel } = await import("../../../scripts/scraper/run/career-intent");
-        const intent = CareerIntentModel.extractIntent(profilePath, taxonomyPath);
+        const intent = CareerIntentModel.extractIntent(tempProfilePath, taxonomyPath);
         
         const { SearchPlanner } = await import("../../../scripts/scraper/run/search-planner");
         const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
         
         fs.writeFileSync(searchPlanOutputPath, JSON.stringify(searchPlan, null, 2), "utf-8");
         console.log(`[profile-server] Successfully regenerated search-plan.json with ${searchPlan.rankedQueries.length} compiled queries!`);
+        
+        fs.unlinkSync(tempProfilePath);
       }
     } catch (e: any) {
       console.error("[profile-server] Automated search planning failed:", e.message);
@@ -358,129 +424,59 @@ export const initializeSessionFn = createServerFn({ method: "POST" })
   .validator((d: InitializeSessionInput) => d)
   .handler(async ({ data }): Promise<{ success: boolean }> => {
     try {
-      const path = getNodePath();
-      const fs = getNodeFs();
-      const cp = getNodeChildProcess();
-      if (!path || !fs) {
-        return { success: false };
-      }
+      const user = await getAuthenticatedUser();
+      const repos = getRepositories();
 
-      const statePath = path.join(process.cwd(), "src", "data", "candidate-state.json");
-      const backupPath = path.join(process.cwd(), ".radar", "candidate-state.json");
-      const profilePath = path.join(process.cwd(), "src", "data", "candidate-profile.json");
+      console.log("[profile-server] Initializing Fresh Blank Session for candidate...");
+      
+      // Create an empty skeleton state
+      const skeletonIntent: CareerIntentSession = {
+        sessionId: `intent-${Date.now()}`,
+        targetRoles: [],
+        locations: [],
+        workModel: "Hybrid",
+        maxMonthlyPursuits: 5,
+        isActive: true
+      };
 
-      if (data.mode === "swapnil") {
-        console.log("[profile-server] Resetting to Swapnil Shukla (Golden) profile...");
-        // Revert candidate-profile.json to git HEAD
-        try {
-          if (cp) {
-            cp.execSync("git checkout src/data/candidate-profile.json", { stdio: "ignore" });
-          }
-        } catch (e: any) {
-          console.warn("[profile-server] Failed git checkout of legacy profile, proceeding:", e.message);
-        }
-        
-        // Remove existing state files
-        if (fs.existsSync(statePath)) fs.unlinkSync(statePath);
-        if (fs.existsSync(backupPath)) fs.unlinkSync(backupPath);
-        
-        console.log("[profile-server] Successfully restored Swapnil Shukla (Golden) seed.");
-      } else {
-        console.log("[profile-server] Initializing Fresh Blank Session for new candidate...");
-        
-        // Create an empty skeleton state
-        const skeletonSession: UserSession = {
-          userId: `user-${Date.now()}`,
-          email: "candidate@radar.advisory",
-          name: "Guest Executive",
-          avatarUrl: "https://lh3.googleusercontent.com/a/default-user=s100",
-          onboarded: false
-        };
-
-        const skeletonIntent: CareerIntentSession = {
-          sessionId: `intent-${Date.now()}`,
-          targetRoles: [],
-          locations: [],
-          workModel: "Hybrid",
-          maxMonthlyPursuits: 5,
-          isActive: true
-        };
-
-        const skeletonState: CandidateState = {
-          version: "1.0.0",
-          session: skeletonSession,
-          sources: [],
-          facts: [],
-          claims: [],
+      const skeletonState: CandidateState = {
+        version: "1.0.0",
+        session: user,
+        sources: [],
+        facts: [],
+        claims: [],
+        identity: {
           identity: {
-            identity: {
-              archetype: "Executive Leader",
-              valueProposition: "",
-              executiveThemes: []
-            },
-            capabilities: {
-              categories: {
-                growth: [],
-                crm: [],
-                analytics: [],
-                transformation: []
-              }
-            },
-            leadership: {
-              largestTeam: 0,
-              budgetScale: "$0M",
-              boardExposure: false,
-              globalMarketsCount: 0
-            },
-            evidence: [],
-            achievements: [],
-            identityConfidence: 50,
-            evidenceCount: 0,
-            quantifiedOutcomesCount: 0
-          },
-          intent: skeletonIntent,
-          updatedAt: new Date().toISOString()
-        };
-
-        // Write both state paths and the legacy profile JSON so all layers are synchronized
-        fs.writeFileSync(statePath, JSON.stringify(skeletonState, null, 2), "utf-8");
-        fs.writeFileSync(backupPath, JSON.stringify(skeletonState, null, 2), "utf-8");
-
-        const legacyProfileComp = {
-          identity: {
-            name: "Guest Executive",
-            currentTitle: "Executive Leader"
-          },
-          executiveIdentity: {
             archetype: "Executive Leader",
             valueProposition: "",
             executiveThemes: []
           },
-          experience: {
-            yearsExperience: 10,
-            teamSizeManaged: 0,
-            feeBookScale: "$0M",
-            plOwnership: false,
-            boardInteraction: false,
-            achievements: []
+          capabilities: {
+            categories: {
+              growth: [],
+              crm: [],
+              analytics: [],
+              transformation: []
+            }
           },
-          leadershipProfile: {
+          leadership: {
             largestTeam: 0,
-            globalMarkets: 0,
-            regions: [],
-            budgetResponsibility: "$0M",
-            commercialOwnership: false,
+            budgetScale: "$0M",
             boardExposure: false,
-            globalPrograms: false,
-            peopleLeadership: false,
-            matrixLeadership: false,
-            headspaceCapacityPerMonth: 5
-          }
-        };
-        fs.writeFileSync(profilePath, JSON.stringify(legacyProfileComp, null, 2), "utf-8");
-        console.log("[profile-server] Successfully initialized Guest Candidate empty skeleton.");
-      }
+            globalMarketsCount: 0
+          },
+          evidence: [],
+          achievements: [],
+          identityConfidence: 50,
+          evidenceCount: 0,
+          quantifiedOutcomesCount: 0
+        },
+        intent: skeletonIntent,
+        updatedAt: new Date().toISOString()
+      };
 
+      await repos.people.saveCandidateState(user.userId, skeletonState);
+      
       try {
         invalidateCandidateDossierCache();
         invalidateEngineCache();

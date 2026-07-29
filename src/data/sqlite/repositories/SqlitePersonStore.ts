@@ -52,6 +52,28 @@ export class SqlitePersonStore implements PersonStore {
     };
   }
 
+  async getCandidateState(personId: string): Promise<any | undefined> {
+    const row = await this.db.one<{ candidate_state: string }>(
+      `SELECT candidate_state FROM people WHERE id = ?`,
+      [personId]
+    );
+    if (!row || !row.candidate_state) return undefined;
+    try {
+      return JSON.parse(row.candidate_state);
+    } catch (e) {
+      console.error("[SqlitePersonStore] Failed to parse candidate_state JSON for user:", personId);
+      return undefined;
+    }
+  }
+
+  async saveCandidateState(personId: string, state: any): Promise<void> {
+    const stateStr = JSON.stringify(state);
+    await this.db.execute(
+      `UPDATE people SET candidate_state = ? WHERE id = ?`,
+      [stateStr, personId]
+    );
+  }
+
   async saveCandidateProfile(profile: CandidateProfile): Promise<void> {
     throw new Error("Method not implemented.");
   }

@@ -24,18 +24,18 @@ export class CandidateIntelligencePipeline {
   private db = getDatabase();
 
   /**
-   * Run compilation on raw candidate-profile.json to generate the Projection and Intent.
+   * Run compilation on raw candidate-profile to generate the Projection and Intent.
    */
-  public compile(profilePath?: string): {
+  public compile(profilePath?: string, providedProfile?: any): {
     projection: CandidateProjection;
     intent: CandidateIntent;
   } {
-    if (cachedDossier && !profilePath) {
+    if (cachedDossier && !profilePath && !providedProfile) {
       return cachedDossier;
     }
-    let raw: any = rawProfile;
+    let raw: any = providedProfile || rawProfile;
 
-    if (typeof window === "undefined") {
+    if (!providedProfile && typeof window === "undefined") {
       try {
         const req = typeof require !== "undefined" ? require : null;
         if (req) {
@@ -51,8 +51,9 @@ export class CandidateIntelligencePipeline {
       }
     }
 
-    const candidateId = "swapnil-shukla"; // Signature candidate ID
+    const candidateId = raw.userId || raw.session?.userId || "guest-user";
     const personId = candidateId;
+    const email = raw.email || raw.session?.email || "guest@radar.advisory";
 
     // 1. Compile Evidence array from achievements and evidence array
     const evidenceList: Evidence[] = [];
@@ -110,9 +111,9 @@ export class CandidateIntelligencePipeline {
     const timeline = [
       {
         id: "exp_1",
-        role: raw.identity?.currentTitle || "Chief Marketing Officer",
-        company: "BMX & Ford Portfolios",
-        location: "APAC & Middle East",
+        role: raw.identity?.currentTitle || "Executive Leader",
+        company: "Executive Portfolio",
+        location: "Global",
         startDate: "2018-01-01",
         endDate: undefined,
         description: raw.executiveIdentity?.valueProposition
@@ -137,22 +138,22 @@ export class CandidateIntelligencePipeline {
     const intent: CandidateIntent = {
       id: `intent_${candidateId}`,
       candidateId,
-      desiredRoles: raw.strategy?.targetTitles || ["Chief Marketing Officer", "Commercial Growth Leader", "VP Marketing"],
-      preferredLocations: raw.preferences?.locations || ["APAC", "Middle East", "Remote"],
+      desiredRoles: raw.strategy?.targetTitles || ["Executive Leader"],
+      preferredLocations: raw.preferences?.locations || ["Global"],
       salaryBand: {
         min: parseInt(raw.preferences?.targetMinSalary?.replace(/[^0-9]/g, "") || "18000000"),
         max: parseInt(raw.preferences?.targetMinSalary?.replace(/[^0-9]/g, "") || "18000000") * 1.5,
         currency: "INR"
       },
-      industries: raw.preferences?.industries || ["Automotive", "Digital Transformation", "Performance Marketing"],
+      industries: raw.preferences?.industries || ["Various"],
       updatedAt: new Date().toISOString()
     };
 
     // 5. Persist to Database asynchronously (fire and forget or background sync)
-    this.persist(projection, intent).catch(() => {});
+    this.persist(projection, intent, email).catch(() => {});
 
     const result = { projection, intent };
-    if (!profilePath) {
+    if (!profilePath && !providedProfile) {
       cachedDossier = result;
     }
 
@@ -162,7 +163,7 @@ export class CandidateIntelligencePipeline {
   /**
    * Save compiled projection & intent to database tables.
    */
-  private async persist(projection: CandidateProjection, intent: CandidateIntent): Promise<void> {
+  private async persist(projection: CandidateProjection, intent: CandidateIntent, email: string): Promise<void> {
     // Upsert people record first to avoid foreign key errors
     await this.db.execute(
       `
@@ -170,7 +171,7 @@ export class CandidateIntelligencePipeline {
       VALUES (?, ?)
       ON CONFLICT(id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP
       `,
-      [projection.id, "swapnil@radar.io"]
+      [projection.id, email]
     );
 
     // Upsert candidate_projection table
@@ -221,10 +222,10 @@ export class CandidateIntelligencePipeline {
   /**
    * Helper to fetch active projection and intent. Compile on-the-fly to keep cache 100% in-sync.
    */
-  public getActiveDossier(): {
+  public getActiveDossier(profile?: any): {
     projection: CandidateProjection;
     intent: CandidateIntent;
   } {
-    return this.compile();
+    return this.compile(undefined, profile);
   }
 }

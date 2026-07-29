@@ -6,7 +6,7 @@
  * Redirects to /login.
  */
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie } from "@tanstack/react-start/server";
 import {
@@ -23,12 +23,12 @@ const logoutFn = createServerFn({ method: "GET" }).handler(async () => {
 
   setCookie(SESSION_COOKIE_NAME, "", { maxAge: 0, path: "/" });
 
-  return new Response(null, { 
-    status: 302,
-    headers: { Location: "/login" }
-  });
+  return true;
 });
 
 export const Route = createFileRoute("/api/auth/logout")({
-  loader: () => logoutFn(),
+  loader: async () => {
+    await logoutFn();
+    throw redirect({ to: "/login" });
+  },
 });

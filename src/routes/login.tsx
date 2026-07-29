@@ -89,36 +89,6 @@ function Login() {
               </svg>
               Continue with Google
             </a>
-
-            {/* Divider */}
-            <div className="relative flex items-center justify-center py-2">
-              <div className="absolute w-full border-t border-hairline" />
-              <span className="relative bg-card px-4 font-mono text-[9px] uppercase tracking-widest text-ink-muted">Developer Console</span>
-            </div>
-
-            {/* Developer Magic Options */}
-            <div className="space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-ink-muted">Magic Profile Seed</label>
-                <select
-                  value={selectedUser}
-                  onChange={(e) => setSelectedUser(e.target.value)}
-                  className="w-full rounded-md border border-hairline bg-parchment py-2.5 px-3 text-[13px] text-ink focus:border-ink/30 focus:outline-none cursor-pointer"
-                >
-                  <option value="swapnil">Swapnil Shukla (Commercial Growth CoE)</option>
-                  <option value="new_user">Fresh Blank Session (Upload Custom CV)</option>
-                </select>
-              </div>
-
-              <button
-                onClick={handleMagicLogin}
-                disabled={loading}
-                className="w-full rounded-md bg-ink py-3 text-center text-xs font-semibold uppercase tracking-[0.16em] text-parchment border border-ink transition-all hover:bg-parchment hover:text-ink active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-              >
-                Launch Magic Session
-              </button>
-            </div>
-
           </div>
 
           {/* Policy disclaimer */}

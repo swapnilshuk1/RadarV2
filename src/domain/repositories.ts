@@ -83,6 +83,9 @@ export interface PersonStore {
   getCandidateProfile(personId: string, version: string): Promise<CandidateProfile | undefined>;
   getLatestCandidateProfile(personId: string): Promise<CandidateProfile | undefined>;
   getResumeVersions(candidateProfileId: string): Promise<ResumeVersion[]>;
+
+  getCandidateState(personId: string): Promise<any | undefined>;
+  saveCandidateState(personId: string, state: any): Promise<void>;
 }
 
 export interface DecisionSupportStore {

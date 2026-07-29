@@ -64,6 +64,6 @@ export default defineConfig((async ({ command, mode }: any) => {
         : []),
       react(),
     ],
-    server: { host: "::", port: process.env.PORT ? Number(process.env.PORT) : 8080 },
+    server: { host: "::", port: process.env.PORT ? Number(process.env.PORT) : 3000 },
   };
 }) as any);

@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS oauth_accounts (
 );
 
 -- Extend people table with auth metadata
+ALTER TABLE people ADD COLUMN IF NOT EXISTS name          TEXT;
 ALTER TABLE people ADD COLUMN IF NOT EXISTS avatar_url    TEXT;
 ALTER TABLE people ADD COLUMN IF NOT EXISTS onboarded     INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE people ADD COLUMN IF NOT EXISTS role          TEXT    NOT NULL DEFAULT 'user';

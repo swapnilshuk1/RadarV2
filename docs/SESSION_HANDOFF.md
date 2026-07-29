@@ -8,10 +8,10 @@ reconstruct full context in under 5 minutes.
 
 ## Current Status
 
-**Last Updated**: 2026-07-29  
-**Active Branch**: `feature/phase-0-documentation`  
-**Completed Phases**: Phase 0 (documentation)  
-**In Progress**: Phase 1 — Schema Repair  
+**Last Updated**: 2026-07-30  
+**Active Branch**: `main`  
+**Completed Phases**: Phase 0, Phase 1, Phase 2, Phase 3, Phase 4  
+**In Progress**: Phase 5a — Formal Domain Types  
 
 ---
 
@@ -28,12 +28,9 @@ Read these files FIRST, in order, before doing anything:
 3. docs/SESSION_HANDOFF.md            — where we left off (this file)
 4. docs/IMPLEMENTATION_LOG.md         — decisions made so far
 
-Current task: Execute Phase 1 — Schema Repair.
-Create src/data/sqlite/migrations/006_recreate_decisions.sql to recreate the
-decisions table that was dropped by migration 002. Use CREATE TABLE IF NOT EXISTS
-for safety. Apply migration to Turso. Confirm the 38 existing decisions 
-(person_id: "swapnil-shukla") are still present after migration.
-Then move to Phase 2 — Google OAuth.
+Current task: Execute Phase 5a — Formal Domain Types.
+Create `src/domain/candidate.ts` and update engine signatures to use typed sub-types. 
+Then run `npx tsc --noEmit` and commit the changes for Phase 5a.
 ```
 
 ---
