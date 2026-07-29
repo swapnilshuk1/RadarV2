@@ -83,6 +83,7 @@ Rules:
 2. DO NOT infer future intent or candidate preferences.
 3. DO NOT perform internal ontology mappings or level classifications.
 4. Provide the exact "sourceSpan" (verbatim or near-verbatim quote from the document text).
+5. PRESERVE exact raw wording, original currency (e.g. ₹ INR, $ USD), and original magnitude (e.g. "₹500 crore", "$50M"). DO NOT perform early currency conversion or unit normalization.
 
 Return ONLY a JSON object formatted as:
 {
