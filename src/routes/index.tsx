@@ -10,6 +10,7 @@ import { getOpportunitiesFn, injectFreshFn } from "../lib/intelligence/opportuni
 import { getScrapedJobs, getScraperCounts } from "../data/scraped-jobs";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
+import { EditorialEngine } from "../lib/intelligence/editorial/EditorialEngine";
 
 const VISIBLE_LIMIT = 6;
 
@@ -263,6 +264,7 @@ function Row({
 }) {
   const score = o.recommendationResult?.score ?? 80;
   const mandateTag = o.mandateArchetype || "Performance Marketing";
+  const ed = EditorialEngine.process(o);
 
   return (
     <div
@@ -296,11 +298,35 @@ function Row({
             </div>
           </div>
 
-          {/* Row 2: Company • Location • Portal • Relative Date */}
+          {/* Row 2: Company • Location • Portal • Compensation Target */}
           <p className="mt-0.5 text-[12px] sm:text-[13px] text-muted-foreground font-normal truncate">
             <span className="text-foreground font-bold">{o.company}</span> · {o.location} ·{" "}
-            <span className="mono text-[10px] uppercase tracking-wider">{o.scrapedFrom} · {o.postedRelative}</span>
+            <span className="mono text-[10px] uppercase tracking-wider">{o.scrapedFrom} · Target: ₹80L INR</span>
           </p>
+
+          {/* Row 3: Primary Focus Reasoning Sentence */}
+          <p className="mt-1 text-[12.5px] text-foreground/90 font-medium flex items-center gap-1.5 truncate">
+            <span className="mono text-[9px] tracking-[0.12em] bg-accent-ink/10 text-accent-ink px-1.5 py-0.5 rounded-sm uppercase font-bold shrink-0">
+              {ed.focusTitle}
+            </span>
+            <span className="truncate">{ed.headline}</span>
+          </p>
+
+          {/* Row 4: Friction & Top Unknown Badges */}
+          {(ed.frictionPreview || ed.topUnknownPreview) && (
+            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+              {ed.frictionPreview && (
+                <span className="mono text-[9px] tracking-[0.1em] text-consider bg-consider-soft px-2 py-0.5 rounded-sm font-semibold">
+                  {ed.frictionPreview}
+                </span>
+              )}
+              {ed.topUnknownPreview && (
+                <span className="mono text-[9px] tracking-[0.1em] text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-sm font-semibold">
+                  {ed.topUnknownPreview}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Score & Expand Chevron */}

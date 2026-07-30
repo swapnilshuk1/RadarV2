@@ -7,6 +7,7 @@ import { MarkdownRenderer } from "../components/radar/MarkdownRenderer";
 import { DefaultEvaluationAdapter } from "../lib/recommendation/EvaluationAdapter";
 import { useDecisions } from "../lib/decisions-store";
 import type { EvaluationEnvelope } from "../domain/v4";
+import { EditorialEngine } from "../lib/intelligence/editorial/EditorialEngine";
 
 function formatValue(val: any): string {
   if (!val) return "";
@@ -105,6 +106,7 @@ function Brief() {
   const primaryRisk = o.primaryRisk || "Minor title regression";
   const tailoringEffort = o.tailoringEffort || "LOW";
   const alignmentText = o.capabilityAlignmentText || "EXCELLENT PERFORMANCE-MARKETING MATCH";
+  const ed = EditorialEngine.process(o, envelope ?? undefined);
 
   const isPursue = currentVerdict === "PURSUE";
   const isConsider = currentVerdict === "CONSIDER";
@@ -369,7 +371,7 @@ function Brief() {
         </section>
 
         {/* ────────────────────────────────────────────────────────────────────────
-            CAN YOU DO THIS JOB? (Capability alignment & surpluses)
+            WHY THIS ROLE FITS YOUR EXPERIENCE (Capability alignment & surpluses)
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="py-10 border-b border-border">
           <div className="flex flex-wrap items-baseline justify-between gap-4 mb-6">
@@ -378,7 +380,7 @@ function Brief() {
                 Capability alignment &amp; surpluses
               </p>
               <h2 className="display text-[26px] sm:text-[34px] mt-1 text-foreground font-semibold">
-                Can you do this job?
+                Why this role fits your experience
               </h2>
             </div>
             <span className="mono text-[11px] tracking-[0.18em] text-pursue bg-pursue-soft px-3 py-1 rounded-sm font-semibold">
@@ -411,6 +413,96 @@ function Brief() {
                 </p>
               </div>
             </div>
+                 {/* ────────────────────────────────────────────────────────────────────────
+            WHAT WILL YOU BE EXPECTED TO DELIVER? (Work vs Expected Business Outcomes)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="py-10 border-b border-border">
+          <div className="flex flex-wrap items-baseline justify-between gap-4 mb-6">
+            <div>
+              <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
+                Executive Delivery Mandate
+              </p>
+              <h2 className="display text-[26px] sm:text-[34px] mt-1 text-foreground font-semibold">
+                What will you be expected to deliver?
+              </h2>
+            </div>
+            <span className="mono text-[10px] tracking-[0.18em] text-foreground bg-muted border border-border px-3 py-1 rounded-sm font-semibold uppercase">
+              {ed.focusTitle}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Column 1: Your First 12 Months (Work) */}
+            <div className="border border-border/80 bg-card p-5 rounded-md">
+              <p className="mono text-[10px] tracking-[0.22em] text-accent-ink font-bold uppercase mb-3">
+                YOUR FIRST 12 MONTHS (WORK)
+              </p>
+              <ul className="space-y-2.5 text-[13.5px] text-foreground font-medium">
+                {ed.first12MonthsWork.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="text-accent-ink font-bold">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Column 2: Expected Business Outcomes (Value) */}
+            <div className="border border-border/80 bg-card p-5 rounded-md">
+              <p className="mono text-[10px] tracking-[0.22em] text-pursue font-bold uppercase mb-3">
+                EXPECTED BUSINESS OUTCOMES (VALUE)
+              </p>
+              <ul className="space-y-2.5 text-[13.5px] text-foreground font-medium">
+                {ed.expectedBusinessOutcomes.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="text-pursue font-bold">✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            WHERE ARE THE BIGGEST UNKNOWNS? (Screening verification ledger)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="py-10 border-b border-border bg-muted/10 px-4 rounded-md my-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-4 mb-4">
+            <div>
+              <p className="mono text-[10px] tracking-[0.24em] text-consider font-semibold uppercase">
+                Screening Verification Ledger
+              </p>
+              <h2 className="display text-[24px] sm:text-[30px] mt-1 text-foreground font-semibold">
+                Where are the biggest unknowns?
+              </h2>
+            </div>
+            <span className="mono text-[10px] tracking-[0.16em] text-consider bg-consider-soft px-2.5 py-1 rounded-sm font-bold uppercase">
+              {ed.certaintyLevel} CERTAINTY
+            </span>
+          </div>
+
+          <p className="text-[13px] text-muted-foreground mb-4">
+            {ed.certaintyGuidance}
+          </p>
+
+          <div className="space-y-3">
+            {ed.unknownsToVerify.map((item, idx) => (
+              <div key={idx} className="border border-border/80 bg-background p-3.5 rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="mono text-[9px] tracking-[0.16em] text-consider font-bold uppercase bg-consider-soft px-2 py-0.5 rounded-sm mr-2">
+                    {item.importance}
+                  </span>
+                  <span className="text-[13.5px] text-foreground font-semibold">{item.label}</span>
+                  <p className="text-[12.5px] text-muted-foreground mt-0.5">{item.question}</p>
+                </div>
+                <span className="mono text-[9.5px] tracking-[0.14em] text-muted-foreground border border-border px-2 py-1 rounded-sm uppercase shrink-0">
+                  VERIFY AT SCREENING
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
 
             <div className="flex gap-3">
               <span className="mono text-[14px] text-consider font-bold mt-0.5 shrink-0">▲</span>
