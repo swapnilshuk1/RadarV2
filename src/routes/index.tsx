@@ -150,12 +150,9 @@ function Shortlist() {
             MAIN SHORTLIST QUEUE
             ──────────────────────────────────────────────────────────────────────── */}
         <main className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-3 sm:pt-6 pb-12">
-          <div className="flex items-center justify-between mb-2.5 sm:mb-3.5 gap-2">
-            <p className="mono text-[9px] sm:text-[10px] tracking-[0.16em] text-muted-foreground uppercase font-semibold truncate">
-              GESTURE CONTROL · SWIPE <span className="text-pursue font-bold">RIGHT TO PURSUE</span>, OR <span className="text-foreground font-bold">LEFT TO PASS</span>
-            </p>
+          <div className="flex items-center justify-end mb-2.5 sm:mb-3.5 gap-2">
             <span className="mono text-[9px] sm:text-[10px] tracking-[0.14em] text-accent-ink uppercase font-semibold shrink-0">
-              QUEUE STATUS · {remaining.length} ACTIVE
+              QUEUE STATUS · {remaining.length} AWAITING REVIEW
             </span>
           </div>
 
@@ -282,7 +279,7 @@ function Row({
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
         aria-expanded={isOpen}
-        className="w-full py-3 sm:py-3.5 text-left flex items-center justify-between gap-3 transition-colors group-hover:bg-muted/20 px-2.5 cursor-pointer"
+        className="w-full py-4 sm:py-5 text-left flex items-center justify-between gap-4 transition-colors group-hover:bg-muted/10 px-3 cursor-pointer"
       >
         <div className="min-w-0 flex-1">
           {/* Row 1: Role Title + Badges */}
@@ -299,30 +296,34 @@ function Row({
           </div>
 
           {/* Row 2: Company • Location • Portal • Compensation Target */}
-          <p className="mt-0.5 text-[12px] sm:text-[13px] text-muted-foreground font-normal truncate">
-            <span className="text-foreground font-bold">{o.company}</span> · {o.location} ·{" "}
-            <span className="mono text-[10px] uppercase tracking-wider">{o.scrapedFrom} · Target: ₹80L INR</span>
+          <p className="mt-2 flex flex-wrap items-center gap-1.5 mono text-[9px] sm:text-[9.5px] uppercase tracking-[0.18em] text-muted-foreground font-bold truncate">
+            <span>{o.company}</span>
+            <span>·</span>
+            <span>{o.location}</span>
+            <span>·</span>
+            <span className="text-foreground">{o.scrapedFrom}</span>
+            <span>·</span>
+            <span>Target: ₹80L INR</span>
           </p>
 
           {/* Row 3: Semantic Recall Cue */}
-          <p className="mt-1.5 text-[12.5px] text-foreground font-medium flex items-center gap-2 truncate bg-muted/30 border border-border/40 px-2.5 py-1 rounded-sm">
-            <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase font-bold shrink-0">
-              RECALL CUE
-            </span>
-            <span className="truncate italic text-foreground/90 font-sans font-semibold">“{brief.memory.retentionSentence}”</span>
+          <p className="mt-2.5 font-serif italic text-[15.5px] text-muted-foreground/90 leading-relaxed truncate">
+            {brief.memory.retentionSentence}
           </p>
 
           {/* Row 4: Friction & Top Unknown Badges */}
           {(brief.frictionPreview || brief.topUnknownPreview) && (
             <div className="flex flex-wrap items-center gap-2 mt-1.5">
               {brief.frictionPreview && (
-                <span className="mono text-[9px] tracking-[0.1em] text-consider bg-consider-soft px-2 py-0.5 rounded-sm font-semibold">
+                <span className="mono text-[9px] tracking-[0.12em] text-consider uppercase font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-consider shrink-0"></span>
                   {brief.frictionPreview}
                 </span>
               )}
               {brief.topUnknownPreview && (
-                <span className="mono text-[9px] tracking-[0.1em] text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-sm font-semibold">
-                  {brief.topUnknownPreview}
+                <span className="mono text-[9px] tracking-[0.12em] text-muted-foreground uppercase font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground shrink-0"></span>
+                  Needs verification: {brief.topUnknownPreview}
                 </span>
               )}
             </div>
@@ -332,8 +333,8 @@ function Row({
         {/* Score & Expand Chevron */}
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           <div className="text-right">
-            <span className="display text-[18px] sm:text-[22px] font-bold text-foreground tabular-nums leading-none">
-              {score}<span className="mono text-[9px] sm:text-[10px] text-muted-foreground font-normal">/100</span>
+            <span className="display text-[24px] sm:text-[28px] font-bold text-foreground tabular-nums leading-none">
+              {score}<span className="mono text-[9px] text-muted-foreground font-normal ml-0.5">/100</span>
             </span>
           </div>
 
@@ -385,7 +386,7 @@ function Row({
             </div>
 
             {/* Elevated Hero Decision Bar */}
-            <div className="bg-muted/30 p-2 sm:p-2.5 rounded-sm border border-border/60 flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div className="py-5 flex flex-wrap items-center justify-between gap-2 mt-2">
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="mono text-[9px] sm:text-[10px] tracking-[0.16em] uppercase text-muted-foreground font-bold mr-1">
                   YOUR DECISION:

@@ -2,148 +2,88 @@ import { Link } from "@tanstack/react-router";
 import type { Opportunity } from "../../data/opportunity-fixtures";
 import { applyUrlFor } from "../../data/opportunity-fixtures";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { PreviewCompositionEngine } from "../../lib/intelligence/editorial/PreviewCompositionEngine";
 
 /**
  * Compact brief rendered inline when a shortlist row expands.
- * Aligned 100% with the Executive Advisory Brief layout.
+ * Answers the executive question: "Is this worth opening right now?"
+ * Avoids dashboard aesthetics in favor of authoritative editorial components.
  */
 export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
-  const score = o.recommendationResult?.score ?? 80;
-  const decisionConfidence = o.recommendationResult?.decisionConfidence;
-  const certaintyScore = decisionConfidence?.overall ?? (score >= 60 ? 0.85 : 0.65);
-  const certaintyPct = Math.round(certaintyScore * 100);
-
-  const archetype = o.recommendationArchetype || "Natural Fit";
-  const mandateTag = o.mandateArchetype || "Performance Marketing";
-  const primaryDriver = o.primaryDriver || "Media Portfolio Scale (Client Growth)";
-  const primaryRisk = o.primaryRisk || "Minor title regression";
-  const tailoringEffort = o.tailoringEffort || "LOW";
-  const alignmentText = o.capabilityAlignmentText || "EXCELLENT PERFORMANCE-MARKETING MATCH";
+  const preview = PreviewCompositionEngine.compose(o);
 
   return (
-    <div className="animate-fade-in space-y-3 sm:space-y-4 pt-1 pb-1">
-      {/* 1. Concise Recommendation Narrative */}
-      <div className="text-[13.5px] sm:text-[15px] leading-relaxed text-foreground font-normal line-clamp-3 sm:line-clamp-none">
-        <MarkdownRenderer content={o.recommendation} isHero={false} />
-      </div>
-
-      {/* 2. Coordinated Tag Row with Elevated Alignment Badge */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5 border-y border-border/40 py-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mono text-[9px] sm:text-[10px] tracking-[0.16em] text-primary-foreground bg-foreground px-2 py-0.5 rounded-sm uppercase font-bold">
-            {archetype.toUpperCase()} PATH
-          </span>
-          <span className="mono text-[9px] sm:text-[10px] tracking-[0.16em] text-accent-ink bg-accent-ink/8 px-2 py-0.5 rounded-sm uppercase font-semibold">
-            {mandateTag}
-          </span>
-        </div>
-        <span className="mono text-[9.5px] sm:text-[10.5px] tracking-[0.14em] text-pursue bg-pursue/12 px-2.5 py-0.5 rounded-sm font-bold uppercase border border-pursue/20">
-          ✓ {alignmentText}
-        </span>
-      </div>
-
-      {/* 3. Deduplicated Metrics Bar (Certainty & Fatigue) */}
-      <div className="grid grid-cols-2 gap-4 border-b border-border/30 pb-2.5">
-        <div className="flex items-baseline gap-2">
-          <span className="mono text-[9px] sm:text-[10px] tracking-[0.16em] text-muted-foreground uppercase font-semibold shrink-0">
-            CERTAINTY
-          </span>
-          <span className="display text-[20px] sm:text-[24px] leading-none tabular-nums text-pursue font-bold">
-            {certaintyPct}<span className="mono text-[10px] text-muted-foreground font-normal">%</span>
-          </span>
-        </div>
-
-        <div className="flex items-baseline gap-2">
-          <span className="mono text-[9px] sm:text-[10px] tracking-[0.16em] text-muted-foreground uppercase font-semibold shrink-0">
-            FATIGUE
-          </span>
-          <span className="display text-[20px] sm:text-[24px] leading-none tabular-nums text-foreground font-bold">
-            {tailoringEffort}
-          </span>
+    <div className="animate-fade-in pb-1 mt-2">
+      
+      {/* ────────────────────────────────────────────────────────────────────────
+          BLOCK 1: THE CASE (Editorial Heading & Narrative)
+          ──────────────────────────────────────────────────────────────────────── */}
+      <div className="mb-8 max-w-4xl">
+        <h3 className="font-serif text-[20px] sm:text-[22px] text-foreground font-semibold leading-tight mb-3">
+          {preview.headline}
+        </h3>
+        <div className="text-[14.5px] sm:text-[15.5px] leading-[1.6] text-muted-foreground/90 font-normal">
+          <MarkdownRenderer content={preview.narrative} isHero={false} />
         </div>
       </div>
 
-      {/* 4. Primary Driver & Primary Risk Inline Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
-        <div className="border-l-2 border-pursue/50 pl-2.5 py-0.5 bg-pursue-soft/30 rounded-r-sm">
-          <div className="flex items-center gap-1 text-pursue mb-0.5">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-3 w-3 shrink-0"
-            >
-              <path d="M20 6 9 17l-5-5" />
-            </svg>
-            <span className="mono text-[8.5px] sm:text-[9.5px] tracking-[0.16em] font-bold">PRIMARY DRIVER</span>
-          </div>
-          <p className="text-[12.5px] sm:text-[13.5px] text-foreground font-medium leading-snug">{primaryDriver}</p>
-        </div>
-
-        <div className="border-l-2 border-consider/50 pl-2.5 py-0.5 bg-consider-soft/30 rounded-r-sm">
-          <div className="flex items-center gap-1 text-consider mb-0.5">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-3 w-3 shrink-0"
-            >
-              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
-              <path d="M12 9v4" />
-              <path d="M12 17h.01" />
-            </svg>
-            <span className="mono text-[8.5px] sm:text-[9.5px] tracking-[0.16em] font-bold">PRIMARY RISK</span>
-          </div>
-          <p className="text-[12.5px] sm:text-[13.5px] text-foreground font-medium leading-snug">{primaryRisk}</p>
-        </div>
+      {/* ────────────────────────────────────────────────────────────────────────
+          BLOCK 2: PRIMARY REASONING (Clean, untinted bullet points)
+          ──────────────────────────────────────────────────────────────────────── */}
+      <div className="mb-8 border-t border-border/40 pt-5 max-w-4xl">
+        <h4 className="mono text-[10px] tracking-[0.24em] font-bold uppercase text-muted-foreground mb-5">
+          WHY RADAR RECOMMENDS THIS
+        </h4>
+        
+        <ul className="space-y-4 sm:space-y-5">
+          <li className="flex items-start gap-3 sm:gap-4 group">
+            <span className="text-pursue font-bold mt-0.5 select-none">✓</span>
+            <div>
+              <span className="mono text-[9px] sm:text-[10px] tracking-wider font-bold block text-foreground uppercase mb-1">
+                WHY THIS WORKS
+              </span>
+              <span className="text-[14px] sm:text-[15px] text-muted-foreground leading-relaxed block">
+                {preview.whyItWorks}
+              </span>
+            </div>
+          </li>
+          
+          <li className="flex items-start gap-3 sm:gap-4 group">
+            <span className="text-consider font-bold mt-0.5 select-none">⚠️</span>
+            <div>
+              <span className="mono text-[9px] sm:text-[10px] tracking-wider font-bold block text-foreground uppercase mb-1">
+                WATCH FOR
+              </span>
+              <span className="text-[14px] sm:text-[15px] text-muted-foreground leading-relaxed block">
+                {preview.watchFor}
+              </span>
+            </div>
+          </li>
+        </ul>
       </div>
 
-      {/* 5. Compact Secondary CTAs */}
-      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
+      {/* ────────────────────────────────────────────────────────────────────────
+          BLOCK 4: ADVISORY DOSSIER PORTAL
+          ──────────────────────────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-border/50 mt-8">
         <Link
           to="/opportunity/$jobHash"
           params={{ jobHash: o.jobHash }}
-          className="mono text-[9.5px] sm:text-[10px] tracking-[0.14em] text-foreground hover:bg-muted/40 px-2.5 py-1.5 rounded-sm font-bold uppercase transition-colors flex items-center gap-1 group shrink-0 border border-border/60"
+          className="mono text-[10px] sm:text-[11px] tracking-[0.16em] text-foreground hover:bg-muted/40 px-4 py-2.5 rounded-sm font-bold uppercase transition-colors flex items-center gap-2 group shrink-0 border border-border/60 shadow-sm"
           onClick={(e) => e.stopPropagation()}
         >
           <span>ADVISORY DOSSIER</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
-          >
-            <path d="M5 12h14" />
-            <path d="m12 5 7 7-7 7" />
-          </svg>
+          <span className="transition-transform group-hover:translate-x-1">→</span>
         </Link>
 
         <a
           href={applyUrlFor(o)}
           target="_blank"
           rel="noopener noreferrer"
-          className="mono text-[9.5px] sm:text-[10px] tracking-[0.14em] text-muted-foreground hover:text-foreground px-2.5 py-1.5 rounded-sm font-semibold uppercase transition-colors flex items-center gap-1 shrink-0"
+          className="mono text-[9.5px] sm:text-[10px] tracking-[0.16em] text-muted-foreground hover:text-foreground font-semibold uppercase transition-colors flex items-center gap-1.5 shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
-          APPLY ON {o.scrapedFrom.toUpperCase()}{" "}
+          APPLY ON {o.scrapedFrom.toUpperCase()}
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="24"
