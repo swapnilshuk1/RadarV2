@@ -139,23 +139,47 @@ export class BriefCompositionEngine {
       weights.unknown > 0.6
         ? "Reporting line hierarchy unstated"
         : weights.risk > 0.6
-        ? "Travel requirement 50%+"
-        : "Moderate scope overlap requiring hands-on team scaling";
+        ? "Travel commitment or location constraints"
+        : "Minor team size regression";
 
     const recommendedAction =
       decision === "PURSUE"
-        ? "PURSUE — Submit direct application"
+        ? "PURSUE — Submit direct application (20 mins)"
         : decision === "CONSIDER"
-        ? "CONSIDER — Verify reporting line & compensation during screening"
-        : "PASS — Lower capability alignment or scope mismatch";
+        ? "CONSIDER — Verify reporting line before applying"
+        : "PASS — Maintain focus on top-tier mandates";
+
+    const tradeoff =
+      strategy.primaryFocus === "CAREER"
+        ? "Smaller team span (-15%) for direct Board & C-suite visibility"
+        : strategy.primaryFocus === "COMMERCIAL"
+        ? "Higher travel commitment for $50M direct P&L ownership"
+        : "Lateral functional scope for immediate regional growth leverage";
+
+    const first90Days =
+      strategy.primaryFocus === "COMMERCIAL"
+        ? "Restructure performance-marketing agency roster & optimize ROAS before Q2 campaign launch"
+        : strategy.primaryFocus === "CAREER"
+        ? "Build executive alignment on regional digital-transformation roadmap with BU leaders"
+        : "Audit existing MarTech stack & establish lead attribution baseline within first 60 days";
+
+    const whyNow =
+      strategy.primaryFocus === "CAREER"
+        ? "Company entering $50M regional expansion phase following CEO hire"
+        : strategy.primaryFocus === "COMMERCIAL"
+        ? "Recent Series B funding round driving aggressive go-to-market scaling"
+        : "Post-reorganization transformation mandate approved by Board";
 
     const memory: BriefMemory = {
-      headline: strategy.focusTitle,
+      headline: `${decision}: ${opportunity.role} at ${opportunity.company}`,
       retentionSentence,
       primaryOpportunity,
       primaryRisk,
       recommendedAction,
       decision,
+      tradeoff,
+      first90Days,
+      whyNow,
     };
 
     const headline = `${strategy.focusTitle}: ${strategy.heroAnchor}`;

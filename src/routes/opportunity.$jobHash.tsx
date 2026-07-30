@@ -258,17 +258,51 @@ function Brief() {
               </p>
             </div>
 
-            {/* HERO RECOMMENDATION BOX */}
-            <div className="lg:col-span-4 border border-accent-ink/40 bg-accent-ink/5 p-5 rounded-md shadow-sm">
-              <div className="mono text-[10px] tracking-[0.22em] text-accent-ink font-bold uppercase mb-2">
+          </div>
+
+          {/* DECISION SUMMARY CARD: RADAR'S BOTTOM LINE */}
+          <div className="mt-6 border-2 border-accent-ink/40 bg-card p-6 rounded-xl shadow-md ring-1 ring-accent-ink/20">
+            {/* Tier 1: Recommendation & Takeaway */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+              <span className="mono text-[11px] tracking-[0.2em] font-bold bg-pursue-soft text-pursue px-2.5 py-1 rounded-sm uppercase">
+                {currentVerdict} · {brief.certaintyPct >= 85 ? "High Confidence" : brief.certaintyPct >= 65 ? "Moderate Confidence" : "Low Confidence"}
+              </span>
+              <span className="mono text-[10px] tracking-[0.22em] text-accent-ink font-bold uppercase">
                 RADAR'S BOTTOM LINE
+              </span>
+            </div>
+
+            <p className="text-[17px] sm:text-[19px] text-foreground font-semibold leading-relaxed italic my-4">
+              “{brief.memory.retentionSentence}”
+            </p>
+
+            {/* Tier 2: Career Trade-off & Why Now Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-border/60 pt-4 my-2">
+              <div>
+                <p className="mono text-[10px] tracking-[0.18em] text-accent-ink font-bold uppercase mb-1">
+                  🔄 CAREER TRADE-OFF
+                </p>
+                <p className="text-[13.5px] text-foreground font-medium leading-snug">
+                  {brief.memory.tradeoff}
+                </p>
               </div>
-              <div className="flex items-center gap-2 text-pursue mb-2">
-                <span className="text-[20px] font-bold">✔</span>
-                <span className="display text-[24px] font-bold tracking-tight">{currentVerdict}</span>
+              <div>
+                <p className="mono text-[10px] tracking-[0.18em] text-muted-foreground font-bold uppercase mb-1">
+                  ⏱ WHY NOW? (CATALYST)
+                </p>
+                <p className="text-[13.5px] text-foreground font-medium leading-snug">
+                  {brief.memory.whyNow}
+                </p>
               </div>
-              <p className="text-[14px] text-foreground font-semibold leading-relaxed italic border-l-2 border-accent-ink pl-3 py-1 bg-background/60 rounded-r-sm">
-                “{brief.memory.retentionSentence}”
+            </div>
+
+            {/* Tier 3: First 90-Day Success Factor */}
+            <div className="border-t border-border/60 pt-3 mt-3">
+              <p className="mono text-[10px] tracking-[0.18em] text-pursue font-bold uppercase mb-1">
+                🎯 FIRST 90-DAY SUCCESS FACTOR
+              </p>
+              <p className="text-[13.5px] text-foreground font-medium leading-snug">
+                {brief.memory.first90Days}
               </p>
             </div>
           </div>
@@ -332,311 +366,238 @@ function Brief() {
         </section>
 
         {/* ────────────────────────────────────────────────────────────────────────
-            SECTION 1: WHAT WILL YOU BE EXPECTED TO DELIVER? (Work vs Business Outcomes)
+            DYNAMIC RHYTHMIC SECTIONS ORCHESTRATED BY PRESENTATION ENGINE
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-10 border-b border-border">
-          <div className="flex flex-wrap items-baseline justify-between gap-4 mb-6">
-            <div>
-              <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
-                Executive Delivery Mandate
-              </p>
-              <h2 className="display text-[26px] sm:text-[34px] mt-1 text-foreground font-semibold">
-                What will you be expected to deliver?
-              </h2>
-            </div>
-            <span className="mono text-[10px] tracking-[0.18em] text-foreground bg-muted border border-border px-3 py-1 rounded-sm font-semibold uppercase">
-              {brief.strategy.focusTitle}
-            </span>
-          </div>
+        {presentation.sections.map((sec) => {
+          const style = PresentationEngine.mapTokensToClasses(sec);
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Column 1: Your First 12 Months (Work) */}
-            <div className="border border-border/80 bg-card p-5 rounded-md">
-              <p className="mono text-[10px] tracking-[0.22em] text-accent-ink font-bold uppercase mb-3">
-                YOUR FIRST 12 MONTHS (WORK)
-              </p>
-              <ul className="space-y-2.5 text-[13.5px] text-foreground font-medium">
-                {brief.deliverablesWork.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="text-accent-ink font-bold">•</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Column 2: Expected Business Outcomes (Value) */}
-            <div className="border border-border/80 bg-card p-5 rounded-md">
-              <p className="mono text-[10px] tracking-[0.22em] text-pursue font-bold uppercase mb-3">
-                EXPECTED BUSINESS OUTCOMES (VALUE)
-              </p>
-              <ul className="space-y-2.5 text-[13.5px] text-foreground font-medium">
-                {brief.deliverablesValue.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="text-pursue font-bold">✓</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            SECTION 2: WHY THIS ROLE FITS YOUR EXPERIENCE (Capability alignment & surpluses)
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-10 border-b border-border">
-          <div className="flex flex-wrap items-baseline justify-between gap-4 mb-6">
-            <div>
-              <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
-                Capability alignment &amp; surpluses
-              </p>
-              <h2 className="display text-[26px] sm:text-[34px] mt-1 text-foreground font-semibold">
-                {presentation.capabilityTitle}
-              </h2>
-            </div>
-            <span className="mono text-[11px] tracking-[0.18em] text-pursue bg-pursue-soft px-3 py-1 rounded-sm font-semibold">
-              ✓ {alignmentText.toUpperCase()}
-            </span>
-          </div>
-
-          {/* Scannable Match List Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
-            {brief.fitProofs.map((proof, i) => (
-              <div key={i} className="flex gap-3">
-                <span className="mono text-[14px] text-pursue font-bold mt-0.5 shrink-0">✔</span>
-                <div>
-                  <p className="text-[14px] font-semibold text-foreground">
-                    {proof}
-                  </p>
-                  <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
-                    Direct alignment with candidate career memory and verified historical achievements.
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            SECTION 3: WHERE ARE THE BIGGEST UNKNOWNS? (Screening verification ledger)
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-10 border-b border-border">
-          <div className="flex flex-wrap items-baseline justify-between gap-4 mb-4">
-            <div>
-              <p className="mono text-[10px] tracking-[0.24em] text-consider font-semibold uppercase">
-                Screening Verification Ledger
-              </p>
-              <h2 className="display text-[24px] sm:text-[30px] mt-1 text-foreground font-semibold">
-                Where are the biggest unknowns?
-              </h2>
-            </div>
-            <span className="mono text-[10px] tracking-[0.16em] text-consider bg-consider-soft px-2.5 py-1 rounded-sm font-bold uppercase">
-              {brief.certaintyLevel} CERTAINTY
-            </span>
-          </div>
-
-          <p className="text-[13px] text-muted-foreground mb-4">
-            {brief.certaintyGuidance}
-          </p>
-
-          <div className="space-y-3">
-            {brief.rankedUnknowns.map((item, idx) => (
-              <div key={idx} className="border border-border/80 bg-background p-3.5 rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <span className={`mono text-[9px] tracking-[0.16em] font-bold uppercase px-2 py-0.5 rounded-sm mr-2 ${
-                    item.rank === "CRITICAL" ? "bg-consider text-background" : item.rank === "IMPORTANT" ? "bg-consider-soft text-consider" : "bg-muted text-muted-foreground"
-                  }`}>
-                    {item.rank} UNKNOWN
-                  </span>
-                  <span className="text-[13.5px] text-foreground font-semibold">{item.label}</span>
-                  <p className="text-[12.5px] text-muted-foreground mt-0.5">{item.question}</p>
-                </div>
-                <span className="mono text-[9.5px] tracking-[0.14em] text-muted-foreground border border-border px-2 py-1 rounded-sm uppercase shrink-0">
-                  VERIFY AT SCREENING
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Epistemic Transparency Ledger Footer */}
-          <div className="mt-6 border-t border-border/60 pt-4 flex items-center justify-between gap-4 text-muted-foreground">
-            <p className="text-[12.5px] italic">
-              ℹ Unstated brief details reduce decision certainty, not candidate capability.
-            </p>
-            <span className="mono text-[9.5px] tracking-[0.14em] uppercase shrink-0">
-              SINGLE UNCERTAINTY AUTHORITY
-            </span>
-          </div>
-        </section>
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            WILL THIS MOVE YOUR CAREER FORWARD? (Executive growth trajectory)
-            Adaptive Disclosure: Toggleable Section Header
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-10 border-b border-border">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <div>
-              <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
-                Executive growth trajectory
-              </p>
-              <h2 className="display text-[26px] sm:text-[34px] mt-1 text-foreground font-semibold">
-                Will this move your career forward?
-              </h2>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="mono text-[11px] tracking-[0.18em] text-consider bg-consider-soft px-3 py-1 rounded-sm font-semibold">
-                ASPIRATION MATCH · MEDIUM ({envelope?.response.growth.careerAlignment.score ?? 72}%)
-              </span>
-              <button
-                onClick={() => setTrajectoryOpen(!trajectoryOpen)}
-                className="mono text-[10px] tracking-[0.18em] text-muted-foreground hover:text-foreground border border-border rounded-sm px-2.5 py-1"
-              >
-                {trajectoryOpen ? "HIDE ▲" : "EXPAND ▼"}
-              </button>
-            </div>
-          </div>
-
-          {trajectoryOpen && (
-            <div className="mt-6">
-              <p className="text-[15px] leading-relaxed text-foreground max-w-3xl font-normal mb-6">
-                {envelope?.response.growth.careerAlignment.rationale ||
-                  "A solid tactical fit. While slightly below C-suite altitude, this Head seat offers direct functional execution and team-scaling authority to test scope flexibility."}
-              </p>
-
-              {/* 2-COLUMN SPLIT VIEW: PROGRESS BARS (LEFT) + WHY THIS MATCH MATTERS (RIGHT) */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                {/* Left Column: 5 Trajectory Bars */}
-                <div className="lg:col-span-7 space-y-4">
-                  <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground mb-3 font-bold uppercase">
-                    Capability utilization coverage
-                  </p>
-
-                  <div className="border-b border-border/40 pb-3">
-                    <div className="flex items-baseline justify-between mb-1.5">
-                      <span className="text-[14px] text-foreground font-semibold">Strategy</span>
-                      <span className="mono text-[10px] tracking-[0.18em] text-pursue font-semibold">
-                        HIGH UTILIZATION · 82%
-                      </span>
-                    </div>
-                    <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                      <div className="h-full bg-pursue" style={{ width: "82%" }} />
-                    </div>
-                    <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                      Exercises your positioning frameworks in a Head-level environment.
-                    </p>
-                  </div>
-
-                  <div className="border-b border-border/40 pb-3">
-                    <div className="flex items-baseline justify-between mb-1.5">
-                      <span className="text-[14px] text-foreground font-semibold">Commercial</span>
-                      <span className="mono text-[10px] tracking-[0.18em] text-consider font-semibold">
-                        MODERATE · 70%
-                      </span>
-                    </div>
-                    <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                      <div className="h-full bg-consider" style={{ width: "70%" }} />
-                    </div>
-                    <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                      Matches your budget-administration and contract-scale precedents.
-                    </p>
-                  </div>
-
-                  <div className="border-b border-border/40 pb-3">
-                    <div className="flex items-baseline justify-between mb-1.5">
-                      <span className="text-[14px] text-foreground font-semibold">Leadership</span>
-                      <span className="mono text-[10px] tracking-[0.18em] text-consider font-semibold">
-                        MODERATE · 68%
-                      </span>
-                    </div>
-                    <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                      <div className="h-full bg-consider" style={{ width: "68%" }} />
-                    </div>
-                    <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                      Managerial oversight expected for Head tier — under your prior span.
-                    </p>
-                  </div>
-
-                  <div className="border-b border-border/40 pb-3">
-                    <div className="flex items-baseline justify-between mb-1.5">
-                      <span className="text-[14px] text-foreground font-semibold">Technical</span>
-                      <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground font-semibold">
-                        LOW · 54%
-                      </span>
-                    </div>
-                    <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                      <div className="h-full bg-pass/60" style={{ width: "54%" }} />
-                    </div>
-                    <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                      Focus on brand strategy and growth rather than MarTech engineering.
-                    </p>
-                  </div>
-
+          if (sec.id === "CAREER") {
+            return (
+              <section key={sec.id} className={style.container}>
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                   <div>
-                    <div className="flex items-baseline justify-between mb-1.5">
-                      <span className="text-[14px] text-foreground font-semibold">Transformation</span>
-                      <span className="mono text-[10px] tracking-[0.18em] text-pursue font-semibold">
-                        HIGH UTILIZATION · 78%
-                      </span>
-                    </div>
-                    <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                      <div className="h-full bg-pursue" style={{ width: "78%" }} />
-                    </div>
-                    <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-                      Applies organizational-transformation experience to drive growth.
+                    <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
+                      Executive growth trajectory
                     </p>
+                    <h2 className={`display ${style.titleSize} mt-1 text-foreground font-semibold`}>
+                      Will this move your career forward?
+                    </h2>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="mono text-[11px] tracking-[0.18em] text-consider bg-consider-soft px-3 py-1 rounded-sm font-semibold">
+                      ASPIRATION MATCH · MEDIUM ({envelope?.response.growth.careerAlignment.score ?? 72}%)
+                    </span>
+                    <button
+                      onClick={() => setTrajectoryOpen(!trajectoryOpen)}
+                      className="mono text-[10px] tracking-[0.18em] text-muted-foreground hover:text-foreground border border-border rounded-sm px-2.5 py-1"
+                    >
+                      {trajectoryOpen ? "HIDE ▲" : "EXPAND ▼"}
+                    </button>
                   </div>
                 </div>
 
-                {/* Right Column: WHY THIS MATCH MATTERS Rationale Box */}
-                <div className="lg:col-span-5 border border-border/80 bg-accent-ink/5 p-6 rounded-md">
-                  <div className="mono text-[10px] tracking-[0.22em] text-accent-ink font-bold uppercase mb-4">
-                    WHY THIS MATCH MATTERS
-                  </div>
+                {trajectoryOpen && (
+                  <div className="mt-6">
+                    <p className="text-[15px] leading-relaxed text-foreground max-w-3xl font-normal mb-6">
+                      {envelope?.response.growth.careerAlignment.rationale ||
+                        "A solid tactical fit. While slightly below C-suite altitude, this Head seat offers direct functional execution and team-scaling authority to test scope flexibility."}
+                    </p>
 
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <span className="text-accent-ink text-[16px] leading-none mt-0.5">👤</span>
-                      <div>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                      <div className="lg:col-span-7 space-y-4">
+                        <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground mb-3 font-bold uppercase">
+                          Capability utilization coverage
+                        </p>
+
+                        <div className="border-b border-border/40 pb-3">
+                          <div className="flex items-baseline justify-between mb-1.5">
+                            <span className="text-[14px] text-foreground font-semibold">Strategy</span>
+                            <span className="mono text-[10px] tracking-[0.18em] text-pursue font-semibold">
+                              HIGH UTILIZATION · 82%
+                            </span>
+                          </div>
+                          <div className="h-[6px] rounded-full bg-muted overflow-hidden">
+                            <div className="h-full bg-pursue" style={{ width: "82%" }} />
+                          </div>
+                        </div>
+
+                        <div className="border-b border-border/40 pb-3">
+                          <div className="flex items-baseline justify-between mb-1.5">
+                            <span className="text-[14px] text-foreground font-semibold">Commercial</span>
+                            <span className="mono text-[10px] tracking-[0.18em] text-consider font-semibold">
+                              MODERATE · 70%
+                            </span>
+                          </div>
+                          <div className="h-[6px] rounded-full bg-muted overflow-hidden">
+                            <div className="h-full bg-consider" style={{ width: "70%" }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-baseline justify-between mb-1.5">
+                            <span className="text-[14px] text-foreground font-semibold">Transformation</span>
+                            <span className="mono text-[10px] tracking-[0.18em] text-pursue font-semibold">
+                              HIGH UTILIZATION · 78%
+                            </span>
+                          </div>
+                          <div className="h-[6px] rounded-full bg-muted overflow-hidden">
+                            <div className="h-full bg-pursue" style={{ width: "78%" }} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="lg:col-span-5 border border-border/80 bg-accent-ink/5 p-6 rounded-md">
+                        <div className="mono text-[10px] tracking-[0.22em] text-accent-ink font-bold uppercase mb-4">
+                          WHY THIS MATCH MATTERS
+                        </div>
                         <p className="text-[13.5px] text-foreground font-semibold leading-snug">
                           Direct functional execution with growth mandate.
                         </p>
-                        <p className="text-[12px] text-muted-foreground mt-0.5">
-                          High autonomy in positioning strategy and P&amp;L execution.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <span className="text-accent-ink text-[16px] leading-none mt-0.5">🏛️</span>
-                      <div>
-                        <p className="text-[13.5px] text-foreground font-semibold leading-snug">
-                          International exposure enhances leadership brand.
-                        </p>
-                        <p className="text-[12px] text-muted-foreground mt-0.5">
-                          Validates multi-market campaign orchestration across target regions.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <span className="text-accent-ink text-[16px] leading-none mt-0.5">🚀</span>
-                      <div>
-                        <p className="text-[13.5px] text-foreground font-semibold leading-snug">
-                          Scope flexibility for future VP / CMO trajectory.
-                        </p>
-                        <p className="text-[12px] text-muted-foreground mt-0.5">
-                          Establishes quantifiable revenue attribution for C-suite stepping stone.
-                        </p>
                       </div>
                     </div>
                   </div>
+                )}
+              </section>
+            );
+          }
+
+          if (sec.id === "DELIVERABLES") {
+            return (
+              <section key={sec.id} className={style.container}>
+                <div className="flex flex-wrap items-baseline justify-between gap-4 mb-6">
+                  <div>
+                    <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
+                      Executive Delivery Mandate
+                    </p>
+                    <h2 className={`display ${style.titleSize} mt-1 text-foreground font-semibold`}>
+                      What will you be expected to deliver?
+                    </h2>
+                  </div>
+                  <span className="mono text-[10px] tracking-[0.18em] text-foreground bg-muted border border-border px-3 py-1 rounded-sm font-semibold uppercase">
+                    {brief.strategy.focusTitle}
+                  </span>
                 </div>
-              </div>
-            </div>
-          )}
-        </section>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className={`border p-5 rounded-md ${style.cardBorder} ${style.bgTint}`}>
+                    <p className="mono text-[10px] tracking-[0.22em] text-accent-ink font-bold uppercase mb-3">
+                      YOUR FIRST 12 MONTHS (WORK)
+                    </p>
+                    <ul className="space-y-2.5 text-[13.5px] text-foreground font-medium">
+                      {brief.deliverablesWork.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-accent-ink font-bold">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className={`border p-5 rounded-md ${style.cardBorder} ${style.bgTint}`}>
+                    <p className="mono text-[10px] tracking-[0.22em] text-pursue font-bold uppercase mb-3">
+                      EXPECTED BUSINESS OUTCOMES (VALUE)
+                    </p>
+                    <ul className="space-y-2.5 text-[13.5px] text-foreground font-medium">
+                      {brief.deliverablesValue.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-pursue font-bold">✓</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </section>
+            );
+          }
+
+          if (sec.id === "FIT") {
+            return (
+              <section key={sec.id} className={style.container}>
+                <div className="flex flex-wrap items-baseline justify-between gap-4 mb-6">
+                  <div>
+                    <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
+                      Capability alignment &amp; surpluses
+                    </p>
+                    <h2 className={`display ${style.titleSize} mt-1 text-foreground font-semibold`}>
+                      {presentation.capabilityTitle}
+                    </h2>
+                  </div>
+                  <span className="mono text-[11px] tracking-[0.18em] text-pursue bg-pursue-soft px-3 py-1 rounded-sm font-semibold">
+                    ✓ {alignmentText.toUpperCase()}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+                  {brief.fitProofs.map((proof, i) => (
+                    <div key={i} className="flex gap-3">
+                      <span className="mono text-[14px] text-pursue font-bold mt-0.5 shrink-0">✔</span>
+                      <div>
+                        <p className="text-[14px] font-semibold text-foreground">{proof}</p>
+                        <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
+                          Direct alignment with candidate career memory and verified historical achievements.
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          }
+
+          if (sec.id === "UNKNOWNS") {
+            return (
+              <section key={sec.id} className={style.container}>
+                <div className="flex flex-wrap items-baseline justify-between gap-4 mb-4">
+                  <div>
+                    <p className="mono text-[10px] tracking-[0.24em] text-consider font-semibold uppercase">
+                      Screening Verification Ledger
+                    </p>
+                    <h2 className={`display ${style.titleSize} mt-1 text-foreground font-semibold`}>
+                      Where are the biggest unknowns?
+                    </h2>
+                  </div>
+                  <span className="mono text-[10px] tracking-[0.16em] text-consider bg-consider-soft px-2.5 py-1 rounded-sm font-bold uppercase">
+                    {brief.certaintyLevel} CERTAINTY
+                  </span>
+                </div>
+
+                <p className="text-[13px] text-muted-foreground mb-4">{brief.certaintyGuidance}</p>
+
+                <div className="space-y-3">
+                  {brief.rankedUnknowns.map((item, idx) => (
+                    <div key={idx} className="border border-border/80 bg-background p-3.5 rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <span className={`mono text-[9px] tracking-[0.16em] font-bold uppercase px-2 py-0.5 rounded-sm mr-2 ${
+                          item.rank === "CRITICAL" ? "bg-consider text-background" : item.rank === "IMPORTANT" ? "bg-consider-soft text-consider" : "bg-muted text-muted-foreground"
+                        }`}>
+                          {item.rank} UNKNOWN
+                        </span>
+                        <span className="text-[13.5px] text-foreground font-semibold">{item.label}</span>
+                        <p className="text-[12.5px] text-muted-foreground mt-0.5">{item.question}</p>
+                      </div>
+                      <span className="mono text-[9.5px] tracking-[0.14em] text-muted-foreground border border-border px-2 py-1 rounded-sm uppercase shrink-0">
+                        VERIFY AT SCREENING
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 border-t border-border/60 pt-4 flex items-center justify-between gap-4 text-muted-foreground">
+                  <p className="text-[12.5px] italic">
+                    ℹ Unstated brief details reduce decision certainty, not candidate capability.
+                  </p>
+                  <span className="mono text-[9.5px] tracking-[0.14em] uppercase shrink-0">
+                    SINGLE UNCERTAINTY AUTHORITY
+                  </span>
+                </div>
+              </section>
+            );
+          }
+
+          return null;
+        })}
 
         {/* ────────────────────────────────────────────────────────────────────────
             VERIFIED EVIDENCE SIGNALS & VERBATIM QUOTES LEDGER

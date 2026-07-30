@@ -39,6 +39,9 @@ export interface BriefMemory {
   primaryRisk: string;         // e.g. "Reporting line hierarchy unstated"
   recommendedAction: string;   // e.g. "PURSUE — Submit direct application"
   decision: "PURSUE" | "CONSIDER" | "PASS";
+  tradeoff: string;            // e.g. "Smaller team (-15% span) for direct C-suite visibility"
+  first90Days: string;         // e.g. "Restructure marketing agency roster before Q2 launch"
+  whyNow: string;              // e.g. "Company entering $50M regional expansion phase following CEO hire"
 }
 
 export interface RankedUnknown {

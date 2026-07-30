@@ -304,12 +304,12 @@ function Row({
             <span className="mono text-[10px] uppercase tracking-wider">{o.scrapedFrom} · Target: ₹80L INR</span>
           </p>
 
-          {/* Row 3: Single Memorable Takeaway Retention Sentence */}
-          <p className="mt-1 text-[12.5px] text-foreground font-medium flex items-center gap-1.5 truncate">
-            <span className="mono text-[9px] tracking-[0.12em] bg-accent-ink/10 text-accent-ink px-1.5 py-0.5 rounded-sm uppercase font-bold shrink-0">
-              {brief.strategy.focusTitle}
+          {/* Row 3: Memory Anchor Chip */}
+          <p className="mt-1.5 text-[12.5px] text-foreground font-medium flex items-center gap-2 truncate bg-card/60 border border-border/80 px-2.5 py-1 rounded-sm">
+            <span className="mono text-[9px] tracking-[0.14em] bg-accent-ink/10 text-accent-ink px-1.5 py-0.5 rounded-sm uppercase font-bold shrink-0">
+              🧠 MEMORY ANCHOR
             </span>
-            <span className="truncate italic text-foreground/90 font-sans">“{brief.memory.retentionSentence}”</span>
+            <span className="truncate italic text-foreground/90 font-sans font-semibold">“{brief.memory.retentionSentence}”</span>
           </p>
 
           {/* Row 4: Friction & Top Unknown Badges */}
