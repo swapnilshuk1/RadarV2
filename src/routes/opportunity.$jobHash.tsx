@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { applyUrlFor, type DecisionVerb } from "../data/opportunity-fixtures";
 import { getOpportunityFn, getOpportunitiesFn, getNeighboursFn } from "../lib/intelligence/opportunity-server";
@@ -11,7 +11,39 @@ import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompo
 import { PresentationEngine } from "../lib/intelligence/editorial/PresentationEngine";
 import { PresentationTokens } from "../lib/intelligence/editorial/PresentationTokens";
 
+function RevealSection({ children, className = "", delayMs = 0 }: { children: React.ReactNode; className?: string; delayMs?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(el);
+        }
+      },
+      { threshold: 0.10 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      style={{ transitionDelay: `${delayMs}ms` }}
+      className={`reveal-section ${isVisible ? "is-visible" : ""} ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 function formatValue(val: any): string {
+
   if (!val) return "";
   if (typeof val === "object") {
     if (val.rawValue) return String(val.rawValue);
@@ -250,7 +282,7 @@ function Brief() {
         {/* ────────────────────────────────────────────────────────────────────────
             VIEWPORT CHAPTER 2: QUESTION INTELLIGENCE CONSOLE (FULL VIEWPORT)
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+        <RevealSection delayMs={100} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
           <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-8">
             CHAPTER 1: EXECUTIVE DECISION CONSOLE
           </p>
@@ -305,7 +337,7 @@ function Brief() {
               <p className="text-[13px] text-muted-foreground mt-2">Est. {estimatedTimeText} to apply</p>
             </div>
           </div>
-        </section>
+        </RevealSection>
 
         {/* ────────────────────────────────────────────────────────────────────────
             VIEWPORT CHAPTER 3: DOMINANT PRIMARY STORY (70% SPATIAL ELASTICITY)
@@ -315,7 +347,7 @@ function Brief() {
 
           if (sec.id === "CAREER") {
             return (
-              <section key={sec.id} className={`min-h-[85vh] flex flex-col justify-center border-b border-border/40 ${isPrimary ? "py-24" : "py-12"} animate-in fade-in slide-in-from-bottom-8 duration-700`}>
+              <RevealSection key={sec.id} delayMs={150} className={`min-h-[85vh] flex flex-col justify-center border-b border-border/40 ${isPrimary ? "py-24" : "py-12"}`}>
                 <div className="mb-8">
                   <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
                     CHAPTER 2: EXECUTIVE GROWTH TRAJECTORY
@@ -384,13 +416,13 @@ function Brief() {
                     </div>
                   </div>
                 </div>
-              </section>
+              </RevealSection>
             );
           }
 
           if (sec.id === "DELIVERABLES") {
             return (
-              <section key={sec.id} className={`min-h-[85vh] flex flex-col justify-center border-b border-border/40 ${isPrimary ? "py-24" : "py-12"} animate-in fade-in slide-in-from-bottom-8 duration-700`}>
+              <RevealSection key={sec.id} delayMs={150} className={`min-h-[85vh] flex flex-col justify-center border-b border-border/40 ${isPrimary ? "py-24" : "py-12"}`}>
                 <div className="mb-8">
                   <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
                     CHAPTER 2: EXECUTIVE DELIVERY MANDATE
@@ -429,13 +461,13 @@ function Brief() {
                     </ul>
                   </div>
                 </div>
-              </section>
+              </RevealSection>
             );
           }
 
           if (sec.id === "FIT") {
             return (
-              <section key={sec.id} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <RevealSection key={sec.id} delayMs={150} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
                 <div className="mb-8">
                   <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
                     CHAPTER 3: CAPABILITY SURPLUSES
@@ -455,13 +487,13 @@ function Brief() {
                     </div>
                   ))}
                 </div>
-              </section>
+              </RevealSection>
             );
           }
 
           if (sec.id === "UNKNOWNS") {
             return (
-              <section key={sec.id} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <RevealSection key={sec.id} delayMs={150} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
                 <div className="mb-8">
                   <p className="mono text-[11px] tracking-[0.25em] text-consider font-bold uppercase mb-2">
                     CHAPTER 4: SINGLE UNCERTAINTY AUTHORITY
@@ -495,7 +527,7 @@ function Brief() {
                 <p className="text-[13.5px] text-muted-foreground italic mt-8">
                   ℹ Unstated brief details reduce decision certainty, not candidate capability.
                 </p>
-              </section>
+              </RevealSection>
             );
           }
 
@@ -505,7 +537,7 @@ function Brief() {
         {/* ────────────────────────────────────────────────────────────────────────
             VIEWPORT CHAPTER 5: EVIDENCE BEHIND THIS RECOMMENDATION (100% COLLAPSED)
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-16 border-b border-border/40">
+        <RevealSection delayMs={150} className="py-16 border-b border-border/40">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div>
               <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
@@ -590,7 +622,7 @@ function Brief() {
               </div>
             </div>
           )}
-        </section>
+        </RevealSection>
 
         {/* ────────────────────────────────────────────────────────────────────────
             SUPPORTING DOSSIER LEDGER (Experience & claims inventory)
