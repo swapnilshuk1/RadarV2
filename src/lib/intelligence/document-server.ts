@@ -2,22 +2,39 @@
  * document-server.ts
  *
  * TanStack Start transport adapters for candidate documents, pipeline execution, and versioned intent.
- * Strict Downward Layering: Acts purely as a transport adapter.
+ * Dynamic Multi-User Session Resolution with fallback safety.
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { getCookie } from "@tanstack/react-start/server";
 import { getRepositories } from "../../data/sqlite/provider";
 import { ProjectionPipeline } from "./pipeline/ProjectionPipeline";
-import { OpportunityService } from "./opportunity-service";
 import { EvaluationCoordinator } from "./EvaluationCoordinator";
+import { validateSessionToken, SESSION_COOKIE_NAME } from "../auth/session";
 import type { CareerIntentRecord } from "../../data/sqlite/repositories/SqliteDocumentStore";
 
 const HARDCODED_DEV_USER = "swapnil-shukla";
 
 /**
+ * Resolves active authenticated user ID from session cookie or defaults safely.
+ */
+async function getAuthenticatedUserId(): Promise<string> {
+  try {
+    const token = getCookie(SESSION_COOKIE_NAME);
+    if (token) {
+      const { user } = await validateSessionToken(token);
+      if (user?.id) return user.id;
+    }
+  } catch (err) {
+    console.warn("[document-server] Session lookup fallback triggered:", err);
+  }
+  return HARDCODED_DEV_USER;
+}
+
+/**
  * Fire-and-forget document upload transport adapter.
  * Accepts document upload, saves record in Turso, returns 202-style ACCEPTED status,
- * and initiates ProjectionPipeline asynchronously.
+ * and initiates ProjectionPipeline asynchronously for the authenticated user.
  */
 export const uploadDocumentFn = createServerFn({ method: "POST" })
   .validator((data: {
@@ -27,8 +44,7 @@ export const uploadDocumentFn = createServerFn({ method: "POST" })
     base64Buffer?: string;
   }) => data)
   .handler(async ({ data }) => {
-    const repos = getRepositories();
-    const userId = HARDCODED_DEV_USER;
+    const userId = await getAuthenticatedUserId();
     const documentId = `doc-${Date.now()}`;
     const fileBuffer = data.base64Buffer ? Buffer.from(data.base64Buffer, "base64") : undefined;
 
@@ -51,6 +67,7 @@ export const uploadDocumentFn = createServerFn({ method: "POST" })
     return {
       success: true,
       documentId,
+      personId: userId,
       status: "ACCEPTED",
       message: "Document received. Pipeline execution initiated asynchronously."
     };
@@ -92,7 +109,7 @@ export const saveIntentFn = createServerFn({ method: "POST" })
   }) => intent)
   .handler(async ({ data: intent }) => {
     const repos = getRepositories();
-    const userId = HARDCODED_DEV_USER;
+    const userId = await getAuthenticatedUserId();
 
     const intentRecord: CareerIntentRecord = {
       personId: userId,
@@ -122,12 +139,12 @@ export const saveIntentFn = createServerFn({ method: "POST" })
 export const getLatestIntentFn = createServerFn({ method: "GET" })
   .handler(async () => {
     const repos = getRepositories();
-    const userId = HARDCODED_DEV_USER;
+    const userId = await getAuthenticatedUserId();
     const intent = await repos.documents.getLatestCareerIntent(userId);
     return intent || {
       personId: userId,
       currency: "INR",
-      targetSalaryAmount: 8000000, // ₹80 Lakhs INR
+      targetSalaryAmount: 8000000,
       preferredLocations: ["Gurugram", "Remote India"],
       targetTitles: ["Vice President", "CMO", "CGO"],
       preferredWorkModel: "ANY",
