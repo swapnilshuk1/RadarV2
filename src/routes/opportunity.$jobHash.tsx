@@ -8,6 +8,29 @@ import { DefaultEvaluationAdapter } from "../lib/recommendation/EvaluationAdapte
 import { useDecisions } from "../lib/decisions-store";
 import type { EvaluationEnvelope } from "../domain/v4";
 
+function formatValue(val: any): string {
+  if (!val) return "";
+  if (typeof val === "object") {
+    if (val.rawValue) return String(val.rawValue);
+    if (val.value) return String(val.value);
+    if (val.products && Array.isArray(val.products)) return val.products.join(", ");
+    return JSON.stringify(val);
+  }
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        return formatValue(parsed);
+      } catch {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  }
+  return String(val);
+}
+
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }) => {
     const opportunity = await getOpportunityFn({ data: params.jobHash });
@@ -671,7 +694,7 @@ function Brief() {
               <div key={idx} className="mono text-[10px] tracking-[0.12em] bg-muted/30 border border-border px-3 py-1.5 rounded-sm flex items-center gap-2">
                 <span className="text-pursue font-bold">✓</span>
                 <span className="text-muted-foreground font-semibold uppercase">{dim.label}:</span>
-                <span className="text-foreground font-bold">{String(dim.jdEvidence.value)}</span>
+                <span className="text-foreground font-bold">{formatValue(dim.jdEvidence.value)}</span>
               </div>
             ))}
           </div>
@@ -696,7 +719,7 @@ function Brief() {
                     </div>
 
                     <p className="text-[14px] text-foreground font-semibold mb-1">
-                      {String(dim.jdEvidence.value)}
+                      {formatValue(dim.jdEvidence.value)}
                     </p>
 
                     {dim.jdEvidence.evidence && dim.jdEvidence.evidence.length > 0 ? (
