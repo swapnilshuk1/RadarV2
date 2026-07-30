@@ -11,7 +11,7 @@ export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
       { title: "Profile & Executive Intent — RADAR" },
-      { name: "description", content: "Upload executive resume and configure career intent." }
+      { name: "description", content: "Upload executive resume (PDF, DOCX, TXT) and configure career intent." }
     ]
   }),
   loader: async () => {
@@ -40,6 +40,7 @@ function ProfilePage() {
 
   // Upload & Pipeline state
   const [pasteText, setPasteText] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [pipelineStage, setPipelineStage] = useState<string | null>(null);
   const [pipelineStatus, setPipelineStatus] = useState<string | null>(null);
@@ -58,7 +59,6 @@ function ProfilePage() {
           setPipelineStatus(res.status || "PROCESSING");
 
           if (res.status === "COMPLETED") {
-            // Trigger automatic router revalidation to refresh dashboard feeds
             await router.invalidate();
           } else if (res.status === "FAILED") {
             setUploadError(res.errorMessage || "Pipeline processing failed.");
@@ -67,10 +67,40 @@ function ProfilePage() {
       } catch (err: any) {
         console.error("Status check error:", err);
       }
-    }, 1500);
+    }, 1200);
 
     return () => clearInterval(interval);
   }, [activeDocId, pipelineStatus, router]);
+
+  const handleFileUpload = async (file: File) => {
+    setIsUploading(true);
+    setUploadError(null);
+    setPipelineStage("DOCUMENT_REGISTERED");
+    setPipelineStatus("PROCESSING");
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const base64Buffer = Buffer.from(arrayBuffer).toString("base64");
+
+      const res = await uploadDocumentFn({
+        data: {
+          filename: file.name,
+          mimeType: file.type || "application/pdf",
+          base64Buffer
+        }
+      });
+
+      if (res.success && res.documentId) {
+        setActiveDocId(res.documentId);
+      } else {
+        setUploadError("Failed to initiate file upload.");
+        setIsUploading(false);
+      }
+    } catch (err: any) {
+      setUploadError(err.message || "File upload error");
+      setIsUploading(false);
+    }
+  };
 
   const handleTextUpload = async () => {
     if (!pasteText.trim()) return;
@@ -91,7 +121,7 @@ function ProfilePage() {
       if (res.success && res.documentId) {
         setActiveDocId(res.documentId);
       } else {
-        setUploadError("Failed to initiate upload.");
+        setUploadError("Failed to initiate text upload.");
         setIsUploading(false);
       }
     } catch (err: any) {
@@ -131,13 +161,13 @@ function ProfilePage() {
 
   const stages = [
     { id: "DOCUMENT_REGISTERED", label: "Document Registered" },
-    { id: "TEXT_EXTRACTED", label: "Text & Hash Deduplication" },
-    { id: "EVIDENCE_EXTRACTED", label: "Evidence Graph Extracted" },
-    { id: "NORMALIZED", label: "Acronyms & Values Normalized" },
-    { id: "ONTOLOGY_RESOLVED", label: "Mapped to V4 Ontology" },
+    { id: "TEXT_EXTRACTED", label: "Text Extraction & SHA-256 Hash" },
+    { id: "EVIDENCE_EXTRACTED", label: "Immutable Evidence Graph Built" },
+    { id: "NORMALIZED", label: "Concepts Normalized" },
+    { id: "ONTOLOGY_RESOLVED", label: "Hierarchical Concept Resolution (v14.2.1)" },
     { id: "PROJECTION_BUILT", label: "Candidate Projection Assembled" },
-    { id: "INFERENCE_COMPLETE", label: "Altitude & Level Inferred" },
-    { id: "EVALUATED", label: "Dashboard Recommendations Refreshed" },
+    { id: "INFERENCE_COMPLETE", label: "Executive Level & Scope Inferred" },
+    { id: "EVALUATED", label: "Executive Briefs & Similarity Scores Refreshed" },
     { id: "COMPLETED", label: "Complete" }
   ];
 
@@ -154,35 +184,68 @@ function ProfilePage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Executive Profile & Intent</h1>
         <p className="text-muted-foreground mt-1">
-          Upload your resume to extract immutable evidence, and explicitly configure your strategic career intent.
+          Upload your resume (PDF, Word DOCX, Plain Text) to extract immutable evidence, and explicitly configure your strategic career intent.
         </p>
       </div>
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Document Upload Zone */}
-        <div className="p-6 rounded-xl border bg-card shadow-sm space-y-4">
+        <div className="p-6 rounded-xl border bg-card shadow-sm space-y-5">
           <h2 className="text-xl font-semibold flex items-center gap-2">
-            📄 Resume & Evidence Extraction
+            📄 Resume & Evidence Ingestion
           </h2>
-          <p className="text-xs text-muted-foreground">
-            ADR-011: Document evidence is extracted into an immutable graph. Deduplication skips redundant LLM calls automatically.
-          </p>
+
+          {/* Native File Upload Dropzone */}
+          <div className="border-2 border-dashed rounded-lg p-6 text-center space-y-3 bg-muted/20 hover:border-primary transition-colors">
+            <div className="text-3xl">📥</div>
+            <div className="text-xs font-medium text-foreground">
+              Upload PDF or Word Document (`.pdf`, `.docx`, `.doc`, `.txt`)
+            </div>
+            <input
+              type="file"
+              accept=".pdf,.docx,.doc,.txt,.md"
+              className="hidden"
+              id="resume-file-input"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  const file = e.target.files[0];
+                  setSelectedFile(file);
+                  void handleFileUpload(file);
+                }
+              }}
+            />
+            <label
+              htmlFor="resume-file-input"
+              className="inline-block cursor-pointer py-2 px-4 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+            >
+              Choose PDF / DOCX File
+            </label>
+            {selectedFile && (
+              <p className="text-xs text-emerald-500 font-mono">
+                Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)
+              </p>
+            )}
+          </div>
+
+          <div className="relative flex items-center justify-center my-2">
+            <span className="bg-card px-2 text-xs text-muted-foreground uppercase">OR PASTE TEXT</span>
+            <div className="absolute inset-0 flex items-center -z-10"><div className="w-full border-t border-border"></div></div>
+          </div>
 
           <div className="space-y-3">
-            <label className="text-sm font-medium">Paste CV / Resume Text</label>
             <textarea
-              className="w-full h-40 p-3 text-xs font-mono rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="Paste Executive CV / Resume text here..."
+              className="w-full h-32 p-3 text-xs font-mono rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Or paste raw CV text here..."
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
             />
             <button
               onClick={handleTextUpload}
               disabled={isUploading || !pasteText.trim()}
-              className="w-full py-2.5 px-4 rounded-md bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="w-full py-2.5 px-4 rounded-md bg-secondary text-secondary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition-opacity text-xs"
             >
-              {isUploading ? "Uploading & Processing..." : "Process Executive Resume ➔"}
+              {isUploading ? "Uploading & Processing..." : "Process Text Resume ➔"}
             </button>
           </div>
 
@@ -196,7 +259,7 @@ function ProfilePage() {
           {activeDocId && (
             <div className="mt-6 pt-4 border-t space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Live Resumable Pipeline Execution
+                Live Pipeline Execution
               </h3>
               <div className="space-y-1.5">
                 {stages.map((st, idx) => {
@@ -223,7 +286,7 @@ function ProfilePage() {
           )}
         </div>
 
-        {/* Career Intent Panel (ADR-012) */}
+        {/* Career Intent Panel */}
         <form onSubmit={handleSaveIntent} className="p-6 rounded-xl border bg-card shadow-sm space-y-4">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             🎯 Strategic Career Intent
