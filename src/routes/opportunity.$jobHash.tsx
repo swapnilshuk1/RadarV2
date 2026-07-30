@@ -280,59 +280,67 @@ function Brief() {
             ──────────────────────────────────────────────────────────────────────── */}
         {presentation.sections.filter(sec => sec.id === "CAREER").map((sec) => (
           <SemanticReveal key={sec.id} delayMs={150} className="py-24 sm:py-32">
-            <div className="max-w-4xl mb-12">
-              <p className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase mb-3">
-                CHAPTER 1: EXECUTIVE GROWTH TRAJECTORY
-              </p>
-              <h2 className="text-[34px] sm:text-[46px] text-foreground font-bold tracking-tight leading-tight">
-                Yes — but for a very specific reason.
-              </h2>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
+              <div className="md:col-span-4 lg:col-span-3">
+                <div className="sticky top-24">
+                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-4">I</span>
+                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-4 mb-4">THE CASE</h3>
+                  <p className="font-serif italic text-[14px] text-muted-foreground leading-relaxed">Should you pursue this opportunity?</p>
+                </div>
+              </div>
+              <div className="md:col-span-8 lg:col-span-9">
+                <div className="max-w-4xl mb-12">
+                  <h2 className="text-[34px] sm:text-[46px] text-foreground font-bold font-serif tracking-tight leading-tight">
+                    Yes — but for a very specific reason.
+                  </h2>
+                </div>
 
-            <div className="space-y-12 max-w-5xl">
-              <p className="text-[20px] sm:text-[26px] leading-[1.35] text-foreground font-medium font-serif italic">
-                {envelope?.response.growth.careerAlignment.rationale ||
-                  "This role narrows your operating scope today, but meaningfully strengthens your commercial leadership profile—making it a credible stepping stone toward a future CCO position."}
-              </p>
+                <div className="space-y-12 max-w-5xl">
+                  <p className="text-[20px] sm:text-[26px] leading-[1.35] text-foreground font-medium font-serif italic">
+                    {envelope?.response.growth.careerAlignment.rationale ||
+                      "This role narrows your operating scope today, but meaningfully strengthens your commercial leadership profile—making it a credible stepping stone toward a future CCO position."}
+                  </p>
 
-              <div className="pt-8">
-                <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-6">
-                  CAPABILITY UTILIZATION & STRATEGIC FIT COVERAGE
-                </p>
+                  <div className="pt-8">
+                    <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-6">
+                      CAPABILITY UTILIZATION & STRATEGIC FIT COVERAGE
+                    </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/40 border border-border/40 bg-card/40 rounded-sm">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[16px] text-foreground font-semibold">Strategy</span>
-                      <span className="mono text-[9.5px] tracking-[0.16em] text-pursue bg-pursue-soft px-2 py-0.5 rounded-sm font-bold">
-                        ADVANTAGE
-                      </span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/40 border border-border/40 bg-card/40 rounded-sm">
+                      <div className="p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[16px] text-foreground font-semibold">Strategy</span>
+                          <span className="mono text-[9.5px] tracking-[0.16em] text-pursue bg-pursue-soft px-2 py-0.5 rounded-sm font-bold">
+                            ADVANTAGE
+                          </span>
+                        </div>
+                        <p className="text-[14px] text-muted-foreground leading-relaxed">
+                          Directly aligns with your historical mandate of P&L execution and positioning strategy.
+                        </p>
+                      </div>
+                      <div className="p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[16px] text-foreground font-semibold">Commercial</span>
+                          <span className="mono text-[9.5px] tracking-[0.16em] text-muted-foreground bg-muted px-2 py-0.5 rounded-sm font-bold">
+                            MODERATE FIT
+                          </span>
+                        </div>
+                        <p className="text-[14px] text-muted-foreground leading-relaxed">
+                          Requires adaptation to a different revenue model, though core acquisition principles apply.
+                        </p>
+                      </div>
+                      <div className="p-6">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[16px] text-foreground font-semibold">Transformation</span>
+                          <span className="mono text-[9.5px] tracking-[0.16em] text-pursue bg-pursue-soft px-2 py-0.5 rounded-sm font-bold">
+                            ADVANTAGE
+                          </span>
+                        </div>
+                        <p className="text-[14px] text-muted-foreground leading-relaxed">
+                          Leverages your experience in restructuring teams for digital scale and commercial agility.
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-[14px] text-muted-foreground leading-relaxed">
-                      Directly aligns with your historical mandate of P&L execution and positioning strategy.
-                    </p>
-                  </div>
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[16px] text-foreground font-semibold">Commercial</span>
-                      <span className="mono text-[9.5px] tracking-[0.16em] text-muted-foreground bg-muted px-2 py-0.5 rounded-sm font-bold">
-                        MODERATE FIT
-                      </span>
-                    </div>
-                    <p className="text-[14px] text-muted-foreground leading-relaxed">
-                      Requires adaptation to a different revenue model, though core acquisition principles apply.
-                    </p>
-                  </div>
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-[16px] text-foreground font-semibold">Transformation</span>
-                      <span className="mono text-[9.5px] tracking-[0.16em] text-pursue bg-pursue-soft px-2 py-0.5 rounded-sm font-bold">
-                        ADVANTAGE
-                      </span>
-                    </div>
-                    <p className="text-[14px] text-muted-foreground leading-relaxed">
-                      Leverages your experience in restructuring teams for digital scale and commercial agility.
-                    </p>
                   </div>
                 </div>
               </div>
