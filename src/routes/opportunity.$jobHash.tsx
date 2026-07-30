@@ -290,7 +290,7 @@ function Brief() {
                 </span>
                 <span className="mono text-[11px] text-muted-foreground">/100</span>
                 <span className="mono text-[10px] text-pursue bg-pursue-soft px-2 py-0.5 rounded-sm font-bold ml-auto">
-                  {currentVerdict}
+                  {currentVerdict} · {brief.certaintyPct >= 85 ? "High Confidence" : brief.certaintyPct >= 65 ? "Moderate Confidence" : "Low Confidence"}
                 </span>
               </div>
               <p className="text-[12px] text-muted-foreground mt-1.5">{brief.certaintyPct}% decision confidence</p>
@@ -327,51 +327,6 @@ function Brief() {
                 {brief.memory.recommendedAction}
               </p>
               <p className="text-[12px] text-muted-foreground mt-1.5">Est. {estimatedTimeText} to apply</p>
-            </div>
-          </div>
-
-          {/* 3-COLUMN EXECUTIVE FRICTION & ANALYSIS ROW */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="border-l-2 border-pursue/60 pl-4 py-2.5 bg-pursue-soft/20 rounded-r-md">
-              <div className="flex items-center gap-2 text-pursue">
-                <span className="mono text-[10px] tracking-[0.22em] font-bold">✔ PRIMARY DRIVER</span>
-              </div>
-              <p className="mt-1 text-[14px] text-foreground font-semibold">{primaryDriver}</p>
-              <p className="text-[12px] text-muted-foreground mt-1">High leverage in positioning strategy and P&amp;L execution.</p>
-            </div>
-
-            {/* NEW: FRICTION & TRADE-OFFS (REASONS NOT TO PURSUE) */}
-            <div className="border-l-2 border-consider/80 pl-4 py-2.5 bg-consider-soft/20 rounded-r-md">
-              <div className="flex items-center gap-2 text-consider">
-                <span className="mono text-[10px] tracking-[0.22em] font-bold">▲ REASONS NOT TO PURSUE (FRICTION)</span>
-              </div>
-              <ul className="mt-1.5 space-y-1 text-[12.5px] text-foreground font-medium">
-                <li className="flex items-start gap-1.5">
-                  <span className="text-consider text-[11px] mt-0.5">•</span>
-                  <span>Slight scope regression vs. C-suite altitude</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-consider text-[11px] mt-0.5">•</span>
-                  <span>Hands-on team scaling required in first 90 days</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-consider text-[11px] mt-0.5">•</span>
-                  <span>Estimated comp 10-15% below top-quartile ceiling</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="border-l-2 border-accent-ink/60 pl-4 py-2.5 bg-accent-ink/10 rounded-r-md">
-              <div className="flex flex-wrap items-center justify-between gap-1 text-accent-ink">
-                <span className="mono text-[10px] tracking-[0.22em] font-bold">APPLICATION EFFORT</span>
-                <span className="mono text-[9px] tracking-[0.14em] text-foreground font-semibold">EST. {estimatedTimeText.toUpperCase()}</span>
-              </div>
-              <p className="text-[13px] text-foreground font-semibold mt-1">Low Tailoring Overhead</p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground font-medium">
-                <span>✓ Resume ready</span>
-                <span>✓ Cover letter optional</span>
-                <span>✓ Direct web apply</span>
-              </div>
             </div>
           </div>
         </section>
@@ -504,57 +459,14 @@ function Brief() {
             ))}
           </div>
 
-          {/* Amber Explicit Required Gaps Box */}
-          <div className="mt-8 border-l-2 border-consider bg-muted/20 rounded-r-md p-5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-              <div className="flex items-center gap-2">
-                <span className="mono text-[14px] text-consider font-bold">!</span>
-                <span className="mono text-[11px] tracking-[0.18em] text-consider font-bold uppercase">
-                  {missingDimensions.length || 6} UNSTATED IN BRIEF · VERIFY DURING SCREENING
-                </span>
-              </div>
-              <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground font-semibold">
-                CERTAINTY ADJUSTMENT
-              </span>
-            </div>
-
-            <p className="text-[13px] text-muted-foreground leading-relaxed max-w-3xl font-normal">
-              Unstated brief details do <span className="text-foreground font-semibold">not</span> penalize your capability score — they simply lower decision certainty until verified during screening.
+          {/* Epistemic Transparency Ledger Footer */}
+          <div className="mt-6 border-t border-border/60 pt-4 flex items-center justify-between gap-4 text-muted-foreground">
+            <p className="text-[12.5px] italic">
+              ℹ Unstated brief details reduce decision certainty, not candidate capability.
             </p>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {missingDimensions.length > 0 ? (
-                missingDimensions.map((dim, idx) => (
-                  <span
-                    key={idx}
-                    className="mono text-[10px] tracking-[0.14em] uppercase text-foreground bg-background border border-border px-2.5 py-1 rounded-sm font-medium"
-                  >
-                    {dim.label}
-                  </span>
-                ))
-              ) : (
-                <>
-                  <span className="mono text-[10px] tracking-[0.14em] uppercase text-foreground bg-background border border-border px-2.5 py-1 rounded-sm font-medium">
-                    Reporting line
-                  </span>
-                  <span className="mono text-[10px] tracking-[0.14em] uppercase text-foreground bg-background border border-border px-2.5 py-1 rounded-sm font-medium">
-                    Mandate
-                  </span>
-                  <span className="mono text-[10px] tracking-[0.14em] uppercase text-foreground bg-background border border-border px-2.5 py-1 rounded-sm font-medium">
-                    Commercial accountability
-                  </span>
-                  <span className="mono text-[10px] tracking-[0.14em] uppercase text-foreground bg-background border border-border px-2.5 py-1 rounded-sm font-medium">
-                    Functional scope
-                  </span>
-                  <span className="mono text-[10px] tracking-[0.14em] uppercase text-foreground bg-background border border-border px-2.5 py-1 rounded-sm font-medium">
-                    Work model
-                  </span>
-                  <span className="mono text-[10px] tracking-[0.14em] uppercase text-foreground bg-background border border-border px-2.5 py-1 rounded-sm font-medium">
-                    Technology stack
-                  </span>
-                </>
-              )}
-            </div>
+            <span className="mono text-[9.5px] tracking-[0.14em] uppercase shrink-0">
+              SINGLE UNCERTAINTY AUTHORITY
+            </span>
           </div>
         </section>
 
