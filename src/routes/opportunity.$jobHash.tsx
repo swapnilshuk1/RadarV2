@@ -129,99 +129,52 @@ function Brief() {
   return (
     <div className="min-h-screen bg-background text-foreground pb-24 sm:pb-28">
       {/* ────────────────────────────────────────────────────────────────────────
-          STICKY SUB-NAVBAR (Clean Top Navigation & Precision Pagination)
-          ──────────────────────────────────────────────────────────────────────── */}
-      <div className="border-b border-border/70 bg-background/85 backdrop-blur sticky top-0 sm:top-[65px] z-20">
-        <div className="max-w-[1180px] mx-auto px-4 sm:px-8 py-2.5 flex items-center justify-between gap-4">
-          {/* Left: Clean Back to Shortlist Link */}
-          <Link
-            to="/"
-            className="mono text-[11px] tracking-[0.2em] text-muted-foreground hover:text-foreground inline-flex items-center gap-2 font-semibold shrink-0"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-3.5 w-3.5"
-            >
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-            <span>SHORTLIST</span>
-          </Link>
-
-          {/* Center: Cohesive Pagination Control Unit */}
-          <div className="flex items-center gap-2.5 border border-border bg-card/60 px-3 py-1 rounded-sm shadow-2xs">
-            {neighbors.prev ? (
-              <Link
-                to="/opportunity/$jobHash"
-                params={{ jobHash: neighbors.prev.jobHash }}
-                className="mono text-[10px] sm:text-[11px] tracking-[0.18em] text-muted-foreground hover:text-foreground font-bold px-1.5 py-0.5 hover:bg-muted/60 rounded-xs transition-colors"
-                title="Previous Brief"
-              >
-                ← PREV
-              </Link>
-            ) : (
-              <span className="mono text-[10px] sm:text-[11px] tracking-[0.18em] text-muted-foreground/30 px-1.5 py-0.5 opacity-40 cursor-not-allowed">
-                ← PREV
-              </span>
-            )}
-
-            <span className="text-border/80 text-[12px]">|</span>
-
-            <div className="mono text-[10px] sm:text-[11px] tracking-[0.18em] text-muted-foreground flex items-center gap-1 font-medium">
-              <span>BRIEF</span>
-              <span className="text-foreground font-bold">{String(currentIndex).padStart(2, "0")}</span>
-              <span>OF</span>
-              <span className="text-foreground font-semibold">{String(totalCount).padStart(2, "0")}</span>
-            </div>
-
-            <span className="text-border/80 text-[12px]">|</span>
-
-            {neighbors.next ? (
-              <Link
-                to="/opportunity/$jobHash"
-                params={{ jobHash: neighbors.next.jobHash }}
-                className="mono text-[10px] sm:text-[11px] tracking-[0.18em] text-muted-foreground hover:text-foreground font-bold px-1.5 py-0.5 hover:bg-muted/60 rounded-xs transition-colors"
-                title="Next Brief"
-              >
-                NEXT →
-              </Link>
-            ) : (
-              <span className="mono text-[10px] sm:text-[11px] tracking-[0.18em] text-muted-foreground/30 px-1.5 py-0.5 opacity-40 cursor-not-allowed">
-                NEXT →
-              </span>
-            )}
-          </div>
-
-          {/* Right: Apply Action CTA */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <a
-              href={applyUrlFor(o)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mono text-[11px] tracking-[0.18em] bg-foreground text-background px-3.5 py-1.5 rounded-sm inline-flex items-center gap-1.5 hover:bg-foreground/90 font-medium shrink-0"
-            >
-              APPLY <span className="hidden md:inline">ON {o.scrapedFrom.toUpperCase()}</span> ↗
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* ────────────────────────────────────────────────────────────────────────
           ARTICLE MAIN CONTAINER
           ──────────────────────────────────────────────────────────────────────── */}
-      <article className="max-w-[1180px] mx-auto px-4 sm:px-8 pt-8 sm:pt-10">
+      <article className="max-w-[1180px] mx-auto px-4 sm:px-8 pt-6 sm:pt-8">
         {/* ────────────────────────────────────────────────────────────────────────
             VIEWPORT CHAPTER 1: TITLE & CHIEF OF STAFF DECISION SUMMARY
             ──────────────────────────────────────────────────────────────────────── */}
-        <header className="min-h-[85vh] flex flex-col justify-center py-16 border-b border-border/40 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <header className="min-h-[85vh] flex flex-col justify-center py-12 border-b border-border/40 animate-in fade-in slide-in-from-bottom-8 duration-700">
           <div className="max-w-5xl">
+            {/* INTEGRATED QUIET BREADCRUMB & PRECISION PAGINATION */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 text-muted-foreground mono text-[11px] tracking-[0.2em] font-semibold border-b border-border/30 pb-3">
+              <Link
+                to="/"
+                className="hover:text-foreground inline-flex items-center gap-1.5 transition-colors"
+              >
+                ← SHORTLIST
+              </Link>
+
+              <div className="flex items-center gap-2">
+                {neighbors.prev ? (
+                  <Link
+                    to="/opportunity/$jobHash"
+                    params={{ jobHash: neighbors.prev.jobHash }}
+                    className="hover:text-foreground transition-colors"
+                  >
+                    ← PREV
+                  </Link>
+                ) : (
+                  <span className="opacity-30 cursor-not-allowed">← PREV</span>
+                )}
+                <span className="text-border/60">|</span>
+                <span>BRIEF <strong className="text-foreground">{String(currentIndex).padStart(2, "0")}</strong> OF {String(totalCount).padStart(2, "0")}</span>
+                <span className="text-border/60">|</span>
+                {neighbors.next ? (
+                  <Link
+                    to="/opportunity/$jobHash"
+                    params={{ jobHash: neighbors.next.jobHash }}
+                    className="hover:text-foreground transition-colors"
+                  >
+                    NEXT →
+                  </Link>
+                ) : (
+                  <span className="opacity-30 cursor-not-allowed">NEXT →</span>
+                )}
+              </div>
+            </div>
+
             {/* STYLED METADATA MICRO-CHIPS */}
             <div className="flex flex-wrap items-center gap-2 mb-6">
               <span className="mono text-[11px] tracking-[0.22em] text-foreground bg-muted border border-border/60 px-3 py-1 rounded-sm uppercase font-bold">
@@ -796,7 +749,7 @@ function Brief() {
           ──────────────────────────────────────────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur border-t border-border/80 px-4 py-2.5 sm:py-3 shadow-2xl">
         <div className="max-w-[1180px] mx-auto flex items-center justify-between gap-3">
-          {/* KPI METRIC ANCHORS INSTEAD OF REPEATING TITLE */}
+          {/* KPI METRIC ANCHORS */}
           <div className="hidden sm:flex items-center gap-2.5">
             <span className="mono text-[11px] tracking-[0.18em] text-foreground bg-muted/50 border border-border px-2.5 py-1 rounded-sm font-bold">
               PRIORITY {score}/100
@@ -806,10 +759,7 @@ function Brief() {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-            <span className="mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase font-bold sm:hidden">
-              DECISION:
-            </span>
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 onClick={() => decide(o.jobHash, "PURSUE")}
@@ -842,6 +792,18 @@ function Brief() {
                 PASS
               </button>
             </div>
+
+            <span className="text-border/80 text-[14px]">|</span>
+
+            {/* APPLY ACTION DIRECTLY IN BOTTOM DECISION BAR */}
+            <a
+              href={applyUrlFor(o)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mono text-[10px] sm:text-[11px] tracking-[0.16em] bg-foreground text-background px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold hover:bg-foreground/90 transition-all shrink-0 inline-flex items-center gap-1"
+            >
+              APPLY <span className="hidden md:inline">ON {o.scrapedFrom.toUpperCase()}</span> ↗
+            </a>
           </div>
         </div>
       </div>
