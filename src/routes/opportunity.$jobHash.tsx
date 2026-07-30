@@ -355,50 +355,58 @@ function Brief() {
             ──────────────────────────────────────────────────────────────────────── */}
         {presentation.sections.filter(sec => sec.id === "DELIVERABLES").map((sec) => (
           <SemanticReveal key={sec.id} delayMs={150} className="py-16 sm:py-20">
-            <div className="mb-10">
-              <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
-                CHAPTER 2: TEMPORAL ROADMAP (12 MONTHS)
-              </p>
-              <h2 className="text-[26px] sm:text-[32px] text-foreground font-bold tracking-tight mt-2">
-                What will you be expected to deliver?
-              </h2>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
+              <div className="md:col-span-4 lg:col-span-3">
+                <div className="sticky top-24">
+                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-4">II</span>
+                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-4 mb-4">THE ROLE</h3>
+                  <p className="font-serif italic text-[14px] text-muted-foreground leading-relaxed">What success looks like.</p>
+                </div>
+              </div>
+              <div className="md:col-span-8 lg:col-span-9">
+                <div className="mb-10">
+                  <h2 className="text-[26px] sm:text-[32px] text-foreground font-bold font-serif tracking-tight mt-2">
+                    What will you be expected to deliver?
+                  </h2>
+                </div>
 
-            <div className="max-w-4xl relative pl-6 sm:pl-10 ml-2 border-l-2 border-border/50 space-y-12 py-2">
-              {brief.deliverablesWork.map((item, i) => (
-                <div key={i} className="relative group">
-                  <div className="absolute -left-[31px] sm:-left-[47px] top-0 bg-background border-2 border-accent-ink text-accent-ink mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center justify-center min-w-[28px]">
-                    {i * 3 + 3}
-                  </div>
-
-                  <div className="pl-4">
-                    <div className="flex items-center gap-3">
-                      <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">
-                        MONTH {i * 3 + 3}
-                      </span>
-                    </div>
-                    <p className="text-[17px] sm:text-[20px] text-foreground font-semibold leading-relaxed mt-1">
-                      {item}
-                    </p>
-                    {brief.deliverablesValue[i] && (
-                      <div className="mt-3 p-3.5 bg-muted/30 border border-border/40 rounded-sm">
-                        <p className="text-[13.5px] text-foreground font-medium flex items-start gap-2 leading-relaxed">
-                          <span className="text-accent-ink font-bold shrink-0">🎯 OUTCOME:</span>
-                          <span>{brief.deliverablesValue[i]}</span>
-                        </p>
+                <div className="max-w-4xl relative pl-6 sm:pl-10 ml-2 border-l-2 border-border/50 space-y-12 py-2">
+                  {brief.deliverablesWork.map((item, i) => (
+                    <div key={i} className="relative group">
+                      <div className="absolute -left-[31px] sm:-left-[47px] top-0 bg-background border-2 border-accent-ink text-accent-ink mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center justify-center min-w-[28px]">
+                        {i * 3 + 3}
                       </div>
-                    )}
+
+                      <div className="pl-4">
+                        <div className="flex items-center gap-3">
+                          <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">
+                            MONTH {i * 3 + 3}
+                          </span>
+                        </div>
+                        <p className="text-[17px] sm:text-[20px] text-foreground font-semibold leading-relaxed mt-1">
+                          {item}
+                        </p>
+                        {brief.deliverablesValue[i] && (
+                          <div className="mt-3 p-3.5 bg-muted/30 border border-border/40 rounded-sm">
+                            <p className="text-[13.5px] text-foreground font-medium flex items-start gap-2 leading-relaxed">
+                              <span className="text-accent-ink font-bold shrink-0">🎯 OUTCOME:</span>
+                              <span>{brief.deliverablesValue[i]}</span>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="pt-6 mt-6 border-t border-border/30 pl-4">
+                    <p className="mono text-[10px] tracking-[0.22em] text-pursue font-bold uppercase mb-2">
+                      🎯 FIRST 90-DAY SUCCESS FACTOR
+                    </p>
+                    <p className="text-[15px] sm:text-[16.5px] text-foreground font-normal leading-relaxed">
+                      {brief.memory.first90Days}
+                    </p>
                   </div>
                 </div>
-              ))}
-              
-              <div className="pt-6 mt-6 border-t border-border/30 pl-4">
-                <p className="mono text-[10px] tracking-[0.22em] text-pursue font-bold uppercase mb-2">
-                  🎯 FIRST 90-DAY SUCCESS FACTOR
-                </p>
-                <p className="text-[15px] sm:text-[16.5px] text-foreground font-normal leading-relaxed">
-                  {brief.memory.first90Days}
-                </p>
               </div>
             </div>
           </SemanticReveal>
@@ -415,52 +423,60 @@ function Brief() {
 
           return (
             <SemanticReveal key={sec.id} delayMs={150} className="py-16 sm:py-24">
-              <div className="mb-10">
-                <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
-                  CHAPTER 3: ASYMMETRIC ADVANTAGES
-                </p>
-                <h2 className="text-[26px] sm:text-[32px] text-foreground font-bold tracking-tight mt-2">
-                  Why you will win this role
-                </h2>
-              </div>
-
-              <div className="max-w-5xl space-y-10">
-                {primaryAdvantage && (
-                  <div className="p-6 sm:p-8 bg-card border-l-4 border-pursue border-y border-r border-border/50 rounded-r-md shadow-sm">
-                    <span className="mono text-[10px] tracking-[0.22em] text-pursue font-bold uppercase block mb-2">
-                      ★ DOMINANT UNFAIR ADVANTAGE
-                    </span>
-                    <p className="text-[22px] sm:text-[28px] font-bold text-foreground leading-snug">
-                      {primaryAdvantage}
-                    </p>
-                    <p className="text-[15px] text-muted-foreground mt-3 leading-relaxed max-w-3xl">
-                      This is your primary wedge. Historical career memory demonstrates proven authority in this dimension beyond typical market candidates.
-                    </p>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
+                <div className="md:col-span-4 lg:col-span-3">
+                  <div className="sticky top-24">
+                    <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-4">III</span>
+                    <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-4 mb-4">YOUR ADVANTAGE</h3>
+                    <p className="font-serif italic text-[14px] text-muted-foreground leading-relaxed">Why you're unusually well positioned.</p>
                   </div>
-                )}
+                </div>
+                <div className="md:col-span-8 lg:col-span-9">
+                  <div className="mb-10">
+                    <h2 className="text-[26px] sm:text-[32px] text-foreground font-bold font-serif tracking-tight mt-2">
+                      Why you will win this role
+                    </h2>
+                  </div>
 
-                {secondaryAdvantages.length > 0 && (
-                  <div className="pt-4">
-                    <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase mb-4">
-                      SUPPORTING SURPLUSES
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {secondaryAdvantages.map((proof, i) => (
-                        <div key={i} className="p-5 border border-border/40 bg-card/30 rounded-sm">
-                          <span className="mono text-[9.5px] tracking-[0.18em] text-foreground font-bold uppercase block mb-2">
-                            SURPLUS 0{i + 2}
-                          </span>
-                          <p className="text-[16px] sm:text-[18px] font-semibold text-foreground leading-snug">
-                            {proof}
-                          </p>
-                          <p className="text-[13.5px] text-muted-foreground mt-2 leading-relaxed">
-                            Verified against candidate claims inventory and role mandate.
-                          </p>
+                  <div className="max-w-5xl space-y-10">
+                    {primaryAdvantage && (
+                      <div className="p-6 sm:p-8 bg-card border-l-4 border-pursue border-y border-r border-border/50 rounded-r-md shadow-sm">
+                        <span className="mono text-[10px] tracking-[0.22em] text-pursue font-bold uppercase block mb-2">
+                          ★ DOMINANT UNFAIR ADVANTAGE
+                        </span>
+                        <p className="text-[22px] sm:text-[28px] font-bold text-foreground leading-snug">
+                          {primaryAdvantage}
+                        </p>
+                        <p className="text-[15px] text-muted-foreground mt-3 leading-relaxed max-w-3xl">
+                          This is your primary wedge. Historical career memory demonstrates proven authority in this dimension beyond typical market candidates.
+                        </p>
+                      </div>
+                    )}
+
+                    {secondaryAdvantages.length > 0 && (
+                      <div className="pt-4">
+                        <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase mb-4">
+                          SUPPORTING SURPLUSES
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {secondaryAdvantages.map((proof, i) => (
+                            <div key={i} className="p-5 border border-border/40 bg-card/30 rounded-sm">
+                              <span className="mono text-[9.5px] tracking-[0.18em] text-foreground font-bold uppercase block mb-2">
+                                SURPLUS 0{i + 2}
+                              </span>
+                              <p className="text-[16px] sm:text-[18px] font-semibold text-foreground leading-snug">
+                                {proof}
+                              </p>
+                              <p className="text-[13.5px] text-muted-foreground mt-2 leading-relaxed">
+                                Verified against candidate claims inventory and role mandate.
+                              </p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </SemanticReveal>
           );
@@ -473,28 +489,36 @@ function Brief() {
             ──────────────────────────────────────────────────────────────────────── */}
         {presentation.sections.filter(sec => sec.id === "UNKNOWNS").map((sec) => (
           <SemanticReveal key={sec.id} delayMs={150} className="py-12 sm:py-16">
-            <div className="mb-8">
-              <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
-                CHAPTER 4: SCREENING CHECKLIST
-              </p>
-              <h2 className="text-[22px] sm:text-[26px] text-foreground font-bold tracking-tight mt-2">
-                Where are the biggest unknowns?
-              </h2>
-            </div>
-
-            <p className="text-[15px] text-muted-foreground mb-8 max-w-4xl leading-relaxed">{brief.certaintyGuidance}</p>
-
-            <div className="max-w-4xl divide-y divide-border/30 border-y border-border/30">
-              {brief.rankedUnknowns.map((item, idx) => (
-                <div key={idx} className="flex items-start gap-4 py-4">
-                  <div className="mt-1">
-                    <div className="w-4 h-4 rounded-sm border border-border/60 bg-transparent flex items-center justify-center"></div>
-                  </div>
-                  <div className="flex-1">
-                    <span className="text-[15px] text-foreground font-medium">{item.question}</span>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
+              <div className="md:col-span-4 lg:col-span-3">
+                <div className="sticky top-24">
+                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-4">IV</span>
+                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-4 mb-4">OPEN QUESTIONS</h3>
+                  <p className="font-serif italic text-[14px] text-muted-foreground leading-relaxed">What remains uncertain.</p>
                 </div>
-              ))}
+              </div>
+              <div className="md:col-span-8 lg:col-span-9">
+                <div className="mb-8">
+                  <h2 className="text-[22px] sm:text-[26px] text-foreground font-bold font-serif tracking-tight mt-2">
+                    Where are the biggest unknowns?
+                  </h2>
+                </div>
+
+                <p className="text-[15px] text-muted-foreground mb-8 max-w-4xl leading-relaxed">{brief.certaintyGuidance}</p>
+
+                <div className="max-w-4xl divide-y divide-border/30 border-y border-border/30">
+                  {brief.rankedUnknowns.map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-4 py-4">
+                      <div className="mt-1">
+                        <div className="w-4 h-4 rounded-sm border border-border/60 bg-transparent flex items-center justify-center"></div>
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-[15px] text-foreground font-medium">{item.question}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </SemanticReveal>
         ))}
@@ -505,90 +529,96 @@ function Brief() {
             CHAPTER 5: EVIDENCE BEHIND THIS RECOMMENDATION (100% COLLAPSED)
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="py-10">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <div>
-              <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
-                SUPPORTING VALIDATION APPENDIX
-              </p>
-              <h2 className="display text-[28px] sm:text-[38px] text-foreground font-bold tracking-tight">
-                Evidence Behind This Recommendation
-              </h2>
-            </div>
-
-            <button
-              onClick={() => setEvidenceOpen(!evidenceOpen)}
-              className="mono text-[11px] tracking-[0.2em] text-muted-foreground hover:text-foreground border border-border/60 rounded-sm px-4 py-2 font-bold"
-            >
-              {evidenceOpen ? "HIDE EVIDENCE ▲" : `EXPAND FORENSIC EVIDENCE (${totalVerifiedSignalsCount} SIGNALS) ▼`}
-            </button>
-          </div>
-
-          <p className="text-[15px] text-muted-foreground mb-6 leading-relaxed max-w-4xl">
-            RADAR based this recommendation on <span className="text-pursue font-bold">✓ {totalVerifiedSignalsCount} verified signals</span> ({verifiedDimensions.length} matched dimensions + {allEvidenceQuotes.length} verbatim quotes + 5 candidate claims).
-          </p>
-
-          {/* Scannable Signals Summary Badges */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {verifiedDimensions.map((dim, idx) => (
-              <div key={idx} className="mono text-[10px] tracking-[0.12em] bg-muted/30 border border-border px-3 py-1.5 rounded-sm flex items-center gap-2">
-                <span className="text-pursue font-bold">✓</span>
-                <span className="text-muted-foreground font-semibold uppercase">{dim.label}:</span>
-                <span className="text-foreground font-bold">{formatValue(dim.jdEvidence.value)}</span>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
+            <div className="md:col-span-4 lg:col-span-3">
+              <div className="sticky top-24">
+                <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-4">V</span>
+                <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-4 mb-4">SUPPORTING EVIDENCE</h3>
+                <p className="font-serif italic text-[14px] text-muted-foreground leading-relaxed">How RADAR reached this conclusion.</p>
               </div>
-            ))}
-          </div>
+            </div>
+            <div className="md:col-span-8 lg:col-span-9">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                <h2 className="display text-[28px] sm:text-[38px] text-foreground font-bold font-serif tracking-tight">
+                  Evidence Behind This Recommendation
+                </h2>
 
-          {evidenceOpen && (
-            <div className="mt-6 space-y-4">
-              <h3 className="mono text-[11px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
-                Verbatim Evidence Quotes &amp; Provenance
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  onClick={() => setEvidenceOpen(!evidenceOpen)}
+                  className="mono text-[11px] tracking-[0.2em] text-muted-foreground hover:text-foreground border border-border/60 rounded-sm px-4 py-2 font-bold"
+                >
+                  {evidenceOpen ? "HIDE EVIDENCE ▲" : `EXPAND FORENSIC EVIDENCE (${totalVerifiedSignalsCount} SIGNALS) ▼`}
+                </button>
+              </div>
+
+              <p className="text-[15px] text-muted-foreground mb-6 leading-relaxed max-w-4xl">
+                RADAR based this recommendation on <span className="text-pursue font-bold">✓ {totalVerifiedSignalsCount} verified signals</span> ({verifiedDimensions.length} matched dimensions + {allEvidenceQuotes.length} verbatim quotes + 5 candidate claims).
+              </p>
+
+              {/* Scannable Signals Summary Badges */}
+              <div className="flex flex-wrap gap-2 mb-4">
                 {verifiedDimensions.map((dim, idx) => (
-                  <div key={idx} className="border border-border/80 bg-card p-4 rounded-sm">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="mono text-[10px] tracking-[0.16em] text-accent-ink font-bold uppercase">
-                        {dim.label}
-                      </span>
-                      <span className={`mono text-[9px] tracking-[0.14em] px-2 py-0.5 rounded-sm font-bold uppercase ${
-                        dim.jdEvidence.status === "Explicit" ? "bg-pursue-soft text-pursue" : "bg-consider-soft text-consider"
-                      }`}>
-                        {dim.jdEvidence.status} Match
-                      </span>
-                    </div>
-
-                    <p className="text-[14px] text-foreground font-semibold mb-1">
-                      {formatValue(dim.jdEvidence.value)}
-                    </p>
-
-                    {dim.jdEvidence.evidence && dim.jdEvidence.evidence.length > 0 ? (
-                      <div className="space-y-1.5 mt-2 pt-2 border-t border-border/50">
-                        {dim.jdEvidence.evidence.map((ev: any, qIdx: number) => (
-                          <blockquote key={qIdx} className="text-[12.5px] italic text-muted-foreground border-l-2 border-accent-ink/40 pl-2.5 py-0.5">
-                            “{ev.quote}”
-                            <span className="block mono not-italic text-[9px] text-muted-foreground/70 mt-0.5 tracking-wider uppercase">
-                              Source: {ev.source || "job_description"}
-                            </span>
-                          </blockquote>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[12px] text-muted-foreground italic mt-2 pt-2 border-t border-border/50">
-                        Inferred via role context and capability ontology matching.
-                      </p>
-                    )}
-
-                    {dim.candidateProof && (
-                      <div className="mt-3 pt-2 border-t border-border/40 text-[12px]">
-                        <span className="text-pursue font-semibold">Candidate Proof: </span>
-                        <span className="text-foreground font-medium">{dim.candidateProof.headline} — {dim.candidateProof.detail}</span>
-                      </div>
-                    )}
+                  <div key={idx} className="mono text-[10px] tracking-[0.12em] bg-muted/30 border border-border px-3 py-1.5 rounded-sm flex items-center gap-2">
+                    <span className="text-pursue font-bold">✓</span>
+                    <span className="text-muted-foreground font-semibold uppercase">{dim.label}:</span>
+                    <span className="text-foreground font-bold">{formatValue(dim.jdEvidence.value)}</span>
                   </div>
                 ))}
               </div>
+
+              {evidenceOpen && (
+                <div className="mt-6 space-y-4">
+                  <h3 className="mono text-[11px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
+                    Verbatim Evidence Quotes &amp; Provenance
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {verifiedDimensions.map((dim, idx) => (
+                      <div key={idx} className="border border-border/80 bg-card p-4 rounded-sm">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="mono text-[10px] tracking-[0.16em] text-accent-ink font-bold uppercase">
+                            {dim.label}
+                          </span>
+                          <span className={`mono text-[9px] tracking-[0.14em] px-2 py-0.5 rounded-sm font-bold uppercase ${
+                            dim.jdEvidence.status === "Explicit" ? "bg-pursue-soft text-pursue" : "bg-consider-soft text-consider"
+                          }`}>
+                            {dim.jdEvidence.status} Match
+                          </span>
+                        </div>
+
+                        <p className="text-[14px] text-foreground font-semibold mb-1">
+                          {formatValue(dim.jdEvidence.value)}
+                        </p>
+
+                        {dim.jdEvidence.evidence && dim.jdEvidence.evidence.length > 0 ? (
+                          <div className="space-y-1.5 mt-2 pt-2 border-t border-border/50">
+                            {dim.jdEvidence.evidence.map((ev: any, qIdx: number) => (
+                              <blockquote key={qIdx} className="text-[12.5px] italic text-muted-foreground border-l-2 border-accent-ink/40 pl-2.5 py-0.5">
+                                “{ev.quote}”
+                                <span className="block mono not-italic text-[9px] text-muted-foreground/70 mt-0.5 tracking-wider uppercase">
+                                  Source: {ev.source || "job_description"}
+                                </span>
+                              </blockquote>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[12px] text-muted-foreground italic mt-2 pt-2 border-t border-border/50">
+                            Inferred via role context and capability ontology matching.
+                          </p>
+                        )}
+
+                        {dim.candidateProof && (
+                          <div className="mt-3 pt-2 border-t border-border/40 text-[12px]">
+                            <span className="text-pursue font-semibold">Candidate Proof: </span>
+                            <span className="text-foreground font-medium">{dim.candidateProof.headline} — {dim.candidateProof.detail}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </section>
 
         {/* ────────────────────────────────────────────────────────────────────────
