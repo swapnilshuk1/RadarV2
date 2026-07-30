@@ -304,12 +304,12 @@ function Row({
             <span className="mono text-[10px] uppercase tracking-wider">{o.scrapedFrom} · Target: ₹80L INR</span>
           </p>
 
-          {/* Row 3: Primary Focus Reasoning Sentence */}
-          <p className="mt-1 text-[12.5px] text-foreground/90 font-medium flex items-center gap-1.5 truncate">
+          {/* Row 3: Single Memorable Takeaway Retention Sentence */}
+          <p className="mt-1 text-[12.5px] text-foreground font-medium flex items-center gap-1.5 truncate">
             <span className="mono text-[9px] tracking-[0.12em] bg-accent-ink/10 text-accent-ink px-1.5 py-0.5 rounded-sm uppercase font-bold shrink-0">
               {ed.focusTitle}
             </span>
-            <span className="truncate">{ed.headline}</span>
+            <span className="truncate italic text-foreground/90 font-sans">“{ed.memorableTakeaway}”</span>
           </p>
 
           {/* Row 4: Friction & Top Unknown Badges */}

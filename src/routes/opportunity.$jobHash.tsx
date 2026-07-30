@@ -265,8 +265,8 @@ function Brief() {
                 <span className="text-[20px] font-bold">✔</span>
                 <span className="display text-[24px] font-bold tracking-tight">{currentVerdict}</span>
               </div>
-              <p className="text-[13px] text-muted-foreground leading-relaxed">
-                This opportunity0 meaningfully advances your executive trajectory with manageable application effort.
+              <p className="text-[13.5px] text-foreground font-medium leading-relaxed italic border-l-2 border-accent-ink/60 pl-2.5 py-0.5">
+                “{ed.memorableTakeaway}”
               </p>
             </div>
           </div>
@@ -480,11 +480,13 @@ function Brief() {
           </p>
 
           <div className="space-y-3">
-            {ed.unknownsToVerify.map((item, idx) => (
+            {ed.rankedUnknowns.map((item, idx) => (
               <div key={idx} className="border border-border/80 bg-background p-3.5 rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <span className="mono text-[9px] tracking-[0.16em] text-consider font-bold uppercase bg-consider-soft px-2 py-0.5 rounded-sm mr-2">
-                    {item.importance}
+                  <span className={`mono text-[9px] tracking-[0.16em] font-bold uppercase px-2 py-0.5 rounded-sm mr-2 ${
+                    item.rank === "CRITICAL" ? "bg-consider text-background" : item.rank === "IMPORTANT" ? "bg-consider-soft text-consider" : "bg-muted text-muted-foreground"
+                  }`}>
+                    {item.rank} UNKNOWN
                   </span>
                   <span className="text-[13.5px] text-foreground font-semibold">{item.label}</span>
                   <p className="text-[12.5px] text-muted-foreground mt-0.5">{item.question}</p>

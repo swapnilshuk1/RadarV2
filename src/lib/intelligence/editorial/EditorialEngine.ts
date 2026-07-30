@@ -1,3 +1,5 @@
+// src/lib/intelligence/editorial/EditorialEngine.ts
+
 import type { Opportunity } from "../../../data/opportunity-fixtures";
 
 export type PrimaryFocus =
@@ -10,6 +12,12 @@ export type PrimaryFocus =
   | "UPSIDE"
   | "CRITICAL_UNKNOWN";
 
+export type NarrativeBlueprint =
+  | "CAREER_ASCENT"
+  | "EXECUTION_HEAVY"
+  | "HIGH_UNCERTAINTY"
+  | "COMMERCIAL_LEAP";
+
 export interface InformationBudget {
   maxHeadline: number;
   maxEvidence: number;
@@ -18,16 +26,24 @@ export interface InformationBudget {
   maxActions: number;
 }
 
+export interface RankedUnknown {
+  rank: "CRITICAL" | "IMPORTANT" | "SECONDARY";
+  label: string;
+  question: string;
+}
+
 export interface EditorialOutput {
   primaryFocus: PrimaryFocus;
   focusTitle: string;
+  blueprint: NarrativeBlueprint;
   headline: string;
+  memorableTakeaway: string; // The single memorable sentence that stays in executive memory
   frictionPreview?: string;
   topUnknownPreview?: string;
   first12MonthsWork: string[];
   expectedBusinessOutcomes: string[];
   whyWellSuited: string[];
-  unknownsToVerify: Array<{ label: string; importance: "CRITICAL" | "HIGH" | "MEDIUM"; question: string }>;
+  rankedUnknowns: RankedUnknown[];
   certaintyLevel: "HIGH" | "MEDIUM" | "LOW";
   certaintyGuidance: string;
 }
@@ -73,45 +89,69 @@ export class EditorialEngine {
     return "EXECUTION_READINESS";
   }
 
-  /** Stages 3, 4, 5: Apply Information Budget, Select Content & Format Presentation */
+  /** Stage 3: Select Dynamic Narrative Blueprint for Section Re-orchestration */
+  public static selectBlueprint(focus: PrimaryFocus, score: number): NarrativeBlueprint {
+    if (focus === "PRIMARY_RISK" || focus === "CRITICAL_UNKNOWN" || score < 50) {
+      return "HIGH_UNCERTAINTY";
+    }
+    if (focus === "COMMERCIAL_SCOPE" || focus === "LEADERSHIP_SCOPE") {
+      return "COMMERCIAL_LEAP";
+    }
+    if (focus === "CAREER_ACCELERATION") {
+      return "CAREER_ASCENT";
+    }
+    return "EXECUTION_HEAVY";
+  }
+
+  /** Stages 4, 5, 6: Apply Information Budget, Select Content & Format Presentation */
   public static process(
     opportunity: Opportunity,
     envelope?: any
   ): EditorialOutput {
     const focus = this.selectPrimaryFocus(opportunity, envelope);
     const score = opportunity.recommendationResult?.score ?? 50;
+    const blueprint = this.selectBlueprint(focus, score);
 
-    // 1. Headline Generation based on Primary Focus
+    // 1. Headline & Memorable Takeaway Generation
     let headline = "";
     let focusTitle = "";
+    let memorableTakeaway = "";
+
     switch (focus) {
       case "CAREER_ACCELERATION":
         focusTitle = "Career Acceleration";
         headline = `Strong career fit: Extends your strategic scope and team leadership at ${opportunity.company}.`;
+        memorableTakeaway = "Essentially a CCO stepping-stone role with strong regional growth leverage.";
         break;
       case "COMMERCIAL_SCOPE":
         focusTitle = "Commercial Scale";
         headline = `Commercial alignment: Direct ownership over growth strategies and revenue execution.`;
+        memorableTakeaway = "High-impact commercial scale role with direct P&L and revenue expansion accountability.";
         break;
       case "TRANSFORMATION":
         focusTitle = "Operating Transformation";
         headline = `Transformation focus: High-leverage opportunity to modernize operations and scale capability.`;
+        memorableTakeaway = "Key operating transformation role — excellent leverage if you want to modernize core infrastructure.";
         break;
       case "LEADERSHIP_SCOPE":
         focusTitle = "Executive Leadership";
         headline = `Leadership alignment: Directly leverages your proven track record in multi-team management.`;
+        memorableTakeaway = "Solid executive leadership mandate with established team oversight and clear organizational authority.";
         break;
       case "PRIMARY_RISK":
         focusTitle = "Key Operating Constraint";
         headline = `Substantial match with an explicit constraint: Significant travel or location requirement to evaluate.`;
+        memorableTakeaway = "High-upside functional fit with one primary constraint: Travel requirement to verify.";
         break;
       case "CRITICAL_UNKNOWN":
         focusTitle = "Screening Priority";
         headline = `Strategic alignment with key unknown: Verify compensation and reporting hierarchy during initial screening.`;
+        memorableTakeaway = "Strong capability fit with unstated compensation and reporting scope — verify during initial screening.";
         break;
       default:
         focusTitle = "Execution Capability";
         headline = `Solid execution fit: Direct application of your core functional competencies.`;
+        memorableTakeaway = "Tactical execution fit with low tailoring overhead and high shortlisting probability.";
         break;
     }
 
@@ -125,8 +165,26 @@ export class EditorialEngine {
       frictionPreview = "Friction: On-site office requirement";
     }
 
-    // 3. Top Unknown Preview (Max 1)
-    let topUnknownPreview: string | undefined = "Unknown: Compensation target not disclosed";
+    // 3. Top Unknown Preview & Ranked Unknowns
+    let topUnknownPreview: string | undefined = "Critical Unknown: Compensation target not disclosed";
+    const rankedUnknowns: RankedUnknown[] = [
+      {
+        rank: "CRITICAL" as const,
+        label: "Compensation Target",
+        question: "What is the exact base, variable, and equity structure for this role?",
+      },
+      {
+        rank: "IMPORTANT" as const,
+        label: "Reporting Line Hierarchy",
+        question: "Does this role report directly to the CEO, C-suite, or Regional VP?",
+      },
+      {
+        rank: "SECONDARY" as const,
+        label: "Team Scale & Resources",
+        question: "What is the current headcount and approved hiring headcount for the next 12 months?",
+      },
+    ].slice(0, this.BUDGET.maxUnknowns);
+
     if (opportunity.dimensions.some((d) => d.key === "reportingLine" && d.bucket === "Missing")) {
       topUnknownPreview = "Unknown: Reporting line hierarchy";
     }
@@ -150,24 +208,6 @@ export class EditorialEngine {
       `✓ Prior experience scaling enterprise operations across global or regional hubs.`,
     ].slice(0, this.BUDGET.maxEvidence);
 
-    const unknownsToVerify = [
-      {
-        label: "Compensation Target",
-        importance: "CRITICAL" as const,
-        question: "What is the exact base, variable, and equity structure for this role?",
-      },
-      {
-        label: "Reporting Line Hierarchy",
-        importance: "HIGH" as const,
-        question: "Does this role report directly to the CEO, C-suite, or Regional VP?",
-      },
-      {
-        label: "Team Scale & Resources",
-        importance: "MEDIUM" as const,
-        question: "What is the current headcount and approved hiring headcount for the next 12 months?",
-      },
-    ].slice(0, this.BUDGET.maxUnknowns);
-
     // 5. Actionable Certainty Level
     let certaintyLevel: "HIGH" | "MEDIUM" | "LOW" = "HIGH";
     let certaintyGuidance = "Strong evidence across candidate memory and job description.";
@@ -182,13 +222,15 @@ export class EditorialEngine {
     return {
       primaryFocus: focus,
       focusTitle,
+      blueprint,
       headline,
+      memorableTakeaway,
       frictionPreview,
       topUnknownPreview,
       first12MonthsWork,
       expectedBusinessOutcomes,
       whyWellSuited,
-      unknownsToVerify,
+      rankedUnknowns,
       certaintyLevel,
       certaintyGuidance,
     };
