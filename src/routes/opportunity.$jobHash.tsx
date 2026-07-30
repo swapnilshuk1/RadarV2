@@ -156,11 +156,11 @@ function Brief() {
       {/* ────────────────────────────────────────────────────────────────────────
           ARTICLE MAIN CONTAINER
           ──────────────────────────────────────────────────────────────────────── */}
-      <article className="max-w-[1180px] mx-auto px-4 sm:px-8 pt-6 sm:pt-8">
+      <article className="max-w-[1080px] mx-auto px-4 sm:px-8 pt-6 sm:pt-8">
         {/* ────────────────────────────────────────────────────────────────────────
-            VIEWPORT CHAPTER 1: TITLE & CHIEF OF STAFF DECISION SUMMARY
+            VIEWPORT CHAPTER 0: ADVISORY OPENING (HERO)
             ──────────────────────────────────────────────────────────────────────── */}
-        <SemanticFocus delayMs={0} className="min-h-[85vh] flex flex-col justify-center py-12 border-b border-border/40">
+        <SemanticFocus delayMs={0} className="min-h-[85vh] flex flex-col justify-center py-12">
           <div className="max-w-5xl">
             {/* INTEGRATED QUIET BREADCRUMB & PRECISION PAGINATION */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6 text-muted-foreground mono text-[11px] tracking-[0.2em] font-semibold border-b border-border/30 pb-3">
@@ -200,21 +200,22 @@ function Brief() {
               </div>
             </div>
 
-            {/* STYLED METADATA MICRO-CHIPS */}
-            <div className="flex flex-wrap items-center gap-2 mb-6">
-              <span className="mono text-[11px] tracking-[0.22em] text-foreground bg-muted border border-border/60 px-3 py-1 rounded-sm uppercase font-bold">
+            {/* VERDICT BADGE AND QUIET METADATA */}
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+              <span className="mono text-[11px] tracking-[0.24em] font-bold bg-pursue-soft text-pursue px-3 py-1 rounded-sm uppercase">
+                {currentVerdict}
+              </span>
+              <span className="text-border/60">|</span>
+              <span className="mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase font-semibold">
                 {mandateTag}
               </span>
-              <span className="mono text-[11px] tracking-[0.22em] text-foreground bg-muted border border-border/60 px-3 py-1 rounded-sm uppercase font-semibold">
-                COMMERCIAL
-              </span>
-              <span className="mono text-[11px] tracking-[0.22em] text-foreground bg-muted border border-border/60 px-3 py-1 rounded-sm uppercase font-semibold">
-                HYBRID / {o.location.toUpperCase()}
+              <span className="mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase font-semibold">
+                · {o.location.toUpperCase()}
               </span>
             </div>
 
-            {/* MASSIVE APPLE-LEVEL TITLE */}
-            <h1 className="display text-[48px] sm:text-[68px] lg:text-[84px] font-bold tracking-tight text-foreground leading-[1.02]">
+            {/* ADVISORY TITLE */}
+            <h1 className="display text-[42px] sm:text-[56px] lg:text-[68px] font-bold tracking-tight text-foreground leading-[1.05]">
               {o.role}
             </h1>
 
@@ -224,43 +225,166 @@ function Brief() {
               <span className="text-muted-foreground">{o.location}</span>
             </div>
 
-            {/* BOLD UNFRAMED DECISION SUMMARY */}
-            <div className="mt-10 py-6 border-y border-border/40">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <span className="mono text-[11px] tracking-[0.24em] font-bold bg-pursue-soft text-pursue px-3 py-1 rounded-sm uppercase">
-                  {currentVerdict} · {brief.certaintyPct >= 85 ? "High Confidence" : brief.certaintyPct >= 65 ? "Moderate Confidence" : "Low Confidence"}
-                </span>
-                <span className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-bold uppercase">
-                  RADAR'S BOTTOM LINE
-                </span>
-              </div>
+            {/* ADVISORY NARRATIVE */}
+            <div className="mt-10 max-w-3xl">
+              <p className="text-[18px] sm:text-[22px] text-foreground leading-relaxed font-normal">
+                {brief.strategy.heroAnchor} {brief.memory.tradeoff} {brief.memory.whyNow}
+              </p>
+            </div>
 
-              <p className="text-[22px] sm:text-[28px] lg:text-[34px] text-foreground font-serif italic font-medium leading-[1.25] my-6 border-l-4 border-pursue pl-6 py-2">
+            {/* RETENTION QUOTE */}
+            <blockquote className="mt-8 border-l-4 border-pursue pl-6 py-2">
+              <p className="text-[20px] sm:text-[24px] text-foreground font-serif italic font-medium leading-[1.3]">
                 “{brief.memory.retentionSentence}”
               </p>
+            </blockquote>
 
-              {/* 2-Column Trade-off & Why Now Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-border/30">
-                <div>
-                  <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-2">
-                    🔄 CAREER TRADE-OFF
-                  </p>
-                  <p className="text-[15px] sm:text-[16.5px] text-foreground font-normal leading-relaxed">
-                    {brief.memory.tradeoff}
-                  </p>
-                </div>
-                <div>
-                  <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-2">
-                    ⏱ WHY NOW? (CATALYST)
-                  </p>
-                  <p className="text-[15px] sm:text-[16.5px] text-foreground font-normal leading-relaxed">
-                    {brief.memory.whyNow}
-                  </p>
+            {/* COMPACT DECISION METRICS (3-COLUMN) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-10 mt-10 border-t border-border/30">
+              <div>
+                <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-2">
+                  SCORE & CONFIDENCE
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[24px] font-bold text-foreground leading-none">{brief.score}</span>
+                  <span className="text-[13px] text-muted-foreground">/100 ({brief.certaintyPct}%)</span>
                 </div>
               </div>
+              <div>
+                <p className="mono text-[10px] tracking-[0.22em] text-consider font-bold uppercase mb-2">
+                  PRIMARY RISK
+                </p>
+                <p className="text-[14px] text-foreground font-medium leading-snug">
+                  {brief.memory.primaryRisk}
+                </p>
+              </div>
+              <div>
+                <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-2">
+                  TIME TO APPLY
+                </p>
+                <p className="text-[14px] text-foreground font-medium leading-snug">
+                  Est. {estimatedTimeText}
+                </p>
+              </div>
+            </div>
+          </div>
+        </SemanticFocus>
 
-              {/* First 90-Day Success Factor */}
-              <div className="pt-6 mt-6 border-t border-border/30">
+        {/* ────────────────────────────────────────────────────────────────────────
+            VIEWPORT CHAPTER 3: DOMINANT PRIMARY STORY (70% SPATIAL ELASTICITY)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <div className="border-t border-border/40" />
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            CHAPTER 1: CAREER (CENTERPIECE)
+            ──────────────────────────────────────────────────────────────────────── */}
+        {presentation.sections.filter(sec => sec.id === "CAREER").map((sec) => (
+          <SemanticReveal key={sec.id} delayMs={150} className="py-24 sm:py-32">
+            <div className="max-w-4xl mb-12">
+              <p className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase mb-3">
+                CHAPTER 1: EXECUTIVE GROWTH TRAJECTORY
+              </p>
+              <h2 className="text-[34px] sm:text-[46px] text-foreground font-bold tracking-tight leading-tight">
+                Yes — but for a very specific reason.
+              </h2>
+            </div>
+
+            <div className="space-y-12 max-w-5xl">
+              <p className="text-[20px] sm:text-[26px] leading-[1.35] text-foreground font-medium font-serif italic">
+                {envelope?.response.growth.careerAlignment.rationale ||
+                  "This role narrows your operating scope today, but meaningfully strengthens your commercial leadership profile—making it a credible stepping stone toward a future CCO position."}
+              </p>
+
+              <div className="pt-8">
+                <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-6">
+                  CAPABILITY UTILIZATION & STRATEGIC FIT COVERAGE
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/40 border border-border/40 bg-card/40 rounded-sm">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[16px] text-foreground font-semibold">Strategy</span>
+                      <span className="mono text-[9.5px] tracking-[0.16em] text-pursue bg-pursue-soft px-2 py-0.5 rounded-sm font-bold">
+                        ADVANTAGE
+                      </span>
+                    </div>
+                    <p className="text-[14px] text-muted-foreground leading-relaxed">
+                      Directly aligns with your historical mandate of P&L execution and positioning strategy.
+                    </p>
+                  </div>
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[16px] text-foreground font-semibold">Commercial</span>
+                      <span className="mono text-[9.5px] tracking-[0.16em] text-muted-foreground bg-muted px-2 py-0.5 rounded-sm font-bold">
+                        MODERATE FIT
+                      </span>
+                    </div>
+                    <p className="text-[14px] text-muted-foreground leading-relaxed">
+                      Requires adaptation to a different revenue model, though core acquisition principles apply.
+                    </p>
+                  </div>
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[16px] text-foreground font-semibold">Transformation</span>
+                      <span className="mono text-[9.5px] tracking-[0.16em] text-pursue bg-pursue-soft px-2 py-0.5 rounded-sm font-bold">
+                        ADVANTAGE
+                      </span>
+                    </div>
+                    <p className="text-[14px] text-muted-foreground leading-relaxed">
+                      Leverages your experience in restructuring teams for digital scale and commercial agility.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </SemanticReveal>
+        ))}
+
+        <div className="border-t border-border/40" />
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            CHAPTER 2: DELIVERABLES
+            ──────────────────────────────────────────────────────────────────────── */}
+        {presentation.sections.filter(sec => sec.id === "DELIVERABLES").map((sec) => (
+          <SemanticReveal key={sec.id} delayMs={150} className="py-16 sm:py-20">
+            <div className="mb-10">
+              <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
+                CHAPTER 2: TEMPORAL ROADMAP (12 MONTHS)
+              </p>
+              <h2 className="text-[26px] sm:text-[32px] text-foreground font-bold tracking-tight mt-2">
+                What will you be expected to deliver?
+              </h2>
+            </div>
+
+            <div className="max-w-4xl relative pl-6 sm:pl-10 ml-2 border-l-2 border-border/50 space-y-12 py-2">
+              {brief.deliverablesWork.map((item, i) => (
+                <div key={i} className="relative group">
+                  <div className="absolute -left-[31px] sm:-left-[47px] top-0 bg-background border-2 border-accent-ink text-accent-ink mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center justify-center min-w-[28px]">
+                    {i * 3 + 3}
+                  </div>
+
+                  <div className="pl-4">
+                    <div className="flex items-center gap-3">
+                      <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">
+                        MONTH {i * 3 + 3}
+                      </span>
+                    </div>
+                    <p className="text-[17px] sm:text-[20px] text-foreground font-semibold leading-relaxed mt-1">
+                      {item}
+                    </p>
+                    {brief.deliverablesValue[i] && (
+                      <div className="mt-3 p-3.5 bg-muted/30 border border-border/40 rounded-sm">
+                        <p className="text-[13.5px] text-foreground font-medium flex items-start gap-2 leading-relaxed">
+                          <span className="text-accent-ink font-bold shrink-0">🎯 OUTCOME:</span>
+                          <span>{brief.deliverablesValue[i]}</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              <div className="pt-6 mt-6 border-t border-border/30 pl-4">
                 <p className="mono text-[10px] tracking-[0.22em] text-pursue font-bold uppercase mb-2">
                   🎯 FIRST 90-DAY SUCCESS FACTOR
                 </p>
@@ -269,309 +393,110 @@ function Brief() {
                 </p>
               </div>
             </div>
-          </div>
-        </SemanticFocus>
+          </SemanticReveal>
+        ))}
+
+        <div className="border-t border-border/40" />
 
         {/* ────────────────────────────────────────────────────────────────────────
-            VIEWPORT CHAPTER 1: ASYMMETRIC EXECUTIVE DECISION STRIP
+            CHAPTER 3: ADVANTAGES (FIT)
             ──────────────────────────────────────────────────────────────────────── */}
-        <SemanticReveal delayMs={100} className="py-20 sm:py-24 border-b border-border/40">
-          <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-8">
-            CHAPTER 1: EXECUTIVE DECISION STRIP
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-start">
-            {/* Column 1: The Verdict & Score (3 cols) */}
-            <div className="md:col-span-3 pr-4 md:border-r border-border/30">
-              <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground uppercase font-bold">
-                RECOMMENDED VERDICT
-              </p>
-              <div className="mt-4 flex items-baseline gap-2">
-                <span className="display text-[52px] sm:text-[64px] leading-none tabular-nums text-foreground font-bold tracking-tight">
-                  {brief.score}
-                </span>
-                <span className="mono text-[13px] text-muted-foreground">/100</span>
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="mono text-[10px] text-pursue bg-pursue-soft px-2.5 py-1 rounded-sm font-bold uppercase tracking-wider">
-                  {currentVerdict}
-                </span>
-                <span className="mono text-[11px] text-muted-foreground font-medium">
-                  {brief.certaintyPct}% CONFIDENCE
-                </span>
-              </div>
-            </div>
+        {presentation.sections.filter(sec => sec.id === "FIT").map((sec) => {
+          const primaryAdvantage = brief.fitProofs[0];
+          const secondaryAdvantages = brief.fitProofs.slice(1);
 
-            {/* Column 2: Dominant Narrative Focus (5 cols) */}
-            <div className="md:col-span-5 pr-4 md:border-r border-border/30">
-              <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground uppercase font-bold">
-                WHY PURSUE THIS SEAT?
-              </p>
-              <p className="text-[22px] sm:text-[26px] leading-snug text-foreground font-semibold mt-3">
-                {brief.strategy.focusTitle}
-              </p>
-              <p className="text-[14.5px] text-muted-foreground mt-3 leading-relaxed">
-                {brief.memory.primaryOpportunity}
-              </p>
-            </div>
-
-            {/* Column 3: Stacked Risk & Logistics (4 cols) */}
-            <div className="md:col-span-4 space-y-6">
-              <div>
-                <p className="mono text-[10px] tracking-[0.22em] text-consider uppercase font-bold">
-                  PRIMARY RISK / UNCERTAINTY
+          return (
+            <SemanticReveal key={sec.id} delayMs={150} className="py-16 sm:py-24">
+              <div className="mb-10">
+                <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
+                  CHAPTER 3: ASYMMETRIC ADVANTAGES
                 </p>
-                <p className="text-[15px] leading-snug text-foreground font-medium mt-2">
-                  {brief.memory.primaryRisk}
-                </p>
-                <span className="inline-block mono text-[9.5px] text-consider bg-consider-soft px-2 py-0.5 rounded-sm font-bold mt-1.5 uppercase">
-                  VERIFY AT SCREENING
-                </span>
+                <h2 className="text-[26px] sm:text-[32px] text-foreground font-bold tracking-tight mt-2">
+                  Why you will win this role
+                </h2>
               </div>
 
-              <div className="pt-4 border-t border-border/30">
-                <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground uppercase font-bold">
-                  RECOMMENDED ACTION
-                </p>
-                <p className="text-[14.5px] leading-snug text-foreground font-medium mt-1.5">
-                  {brief.memory.recommendedAction}
-                </p>
-                <p className="text-[12px] text-muted-foreground mt-1">Est. {estimatedTimeText} to apply</p>
-              </div>
-            </div>
-          </div>
-        </SemanticReveal>
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            VIEWPORT CHAPTER 3: DOMINANT PRIMARY STORY (70% SPATIAL ELASTICITY)
-            ──────────────────────────────────────────────────────────────────────── */}
-        {presentation.sections.map((sec) => {
-          const isPrimary = sec.id === brief.strategy.primaryFocus;
-
-          if (sec.id === "CAREER") {
-            return (
-              <SemanticReveal key={sec.id} delayMs={150} className="py-28 sm:py-36 border-b border-border/40">
-                <div className="max-w-4xl mb-12">
-                  <p className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase mb-3">
-                    CHAPTER 2: EXECUTIVE GROWTH TRAJECTORY (THE NARRATIVE CRESCENDO)
-                  </p>
-                  <h2 className="text-[32px] sm:text-[42px] text-foreground font-bold tracking-tight leading-tight">
-                    Will this move your career forward?
-                  </h2>
-                </div>
-
-                <div className="space-y-12 max-w-5xl">
-                  {/* EMOTIONAL NARRATIVE LEAD */}
-                  <div className="border-l-4 border-accent-ink pl-6 sm:pl-8 py-2">
-                    <p className="text-[20px] sm:text-[26px] leading-[1.35] text-foreground font-medium font-serif italic">
-                      “{envelope?.response.growth.careerAlignment.rationale ||
-                        "This role narrows your operating scope today, but meaningfully strengthens your commercial leadership profile—making it a credible stepping stone toward a future CCO position."}”
+              <div className="max-w-5xl space-y-10">
+                {primaryAdvantage && (
+                  <div className="p-6 sm:p-8 bg-card border-l-4 border-pursue border-y border-r border-border/50 rounded-r-md shadow-sm">
+                    <span className="mono text-[10px] tracking-[0.22em] text-pursue font-bold uppercase block mb-2">
+                      ★ DOMINANT UNFAIR ADVANTAGE
+                    </span>
+                    <p className="text-[22px] sm:text-[28px] font-bold text-foreground leading-snug">
+                      {primaryAdvantage}
+                    </p>
+                    <p className="text-[15px] text-muted-foreground mt-3 leading-relaxed max-w-3xl">
+                      This is your primary wedge. Historical career memory demonstrates proven authority in this dimension beyond typical market candidates.
                     </p>
                   </div>
+                )}
 
-                  {/* SECONDARY ANALYTICAL CAPABILITY BREAKDOWN */}
-                  <div className="pt-8 border-t border-border/30">
-                    <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-6">
-                      CAPABILITY UTILIZATION &amp; STRATEGIC FIT COVERAGE
+                {secondaryAdvantages.length > 0 && (
+                  <div className="pt-4">
+                    <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase mb-4">
+                      SUPPORTING SURPLUSES
                     </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                      <div className="p-5 border border-border/40 bg-card/40 rounded-sm">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[15px] text-foreground font-semibold">Strategy</span>
-                          <span className="mono text-[9.5px] tracking-[0.16em] text-pursue bg-pursue-soft px-2 py-0.5 rounded-sm font-bold">
-                            ADVANTAGE
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {secondaryAdvantages.map((proof, i) => (
+                        <div key={i} className="p-5 border border-border/40 bg-card/30 rounded-sm">
+                          <span className="mono text-[9.5px] tracking-[0.18em] text-foreground font-bold uppercase block mb-2">
+                            SURPLUS 0{i + 2}
                           </span>
+                          <p className="text-[16px] sm:text-[18px] font-semibold text-foreground leading-snug">
+                            {proof}
+                          </p>
+                          <p className="text-[13.5px] text-muted-foreground mt-2 leading-relaxed">
+                            Verified against candidate claims inventory and role mandate.
+                          </p>
                         </div>
-                        <p className="text-[13.5px] text-muted-foreground leading-relaxed mt-2">
-                          Directly aligns with your historical mandate of P&amp;L execution and positioning strategy.
-                        </p>
-                      </div>
-
-                      <div className="p-5 border border-border/40 bg-card/40 rounded-sm">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[15px] text-foreground font-semibold">Commercial</span>
-                          <span className="mono text-[9.5px] tracking-[0.16em] text-muted-foreground bg-muted px-2 py-0.5 rounded-sm font-bold">
-                            MODERATE FIT
-                          </span>
-                        </div>
-                        <p className="text-[13.5px] text-muted-foreground leading-relaxed mt-2">
-                          Requires adaptation to a different revenue model, though core acquisition principles apply.
-                        </p>
-                      </div>
-
-                      <div className="p-5 border border-border/40 bg-card/40 rounded-sm">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[15px] text-foreground font-semibold">Transformation</span>
-                          <span className="mono text-[9.5px] tracking-[0.16em] text-pursue bg-pursue-soft px-2 py-0.5 rounded-sm font-bold">
-                            ADVANTAGE
-                          </span>
-                        </div>
-                        <p className="text-[13.5px] text-muted-foreground leading-relaxed mt-2">
-                          Leverages your experience in restructuring teams for digital scale and commercial agility.
-                        </p>
-                      </div>
+                      ))}
                     </div>
                   </div>
-                </div>
-              </SemanticReveal>
-            );
-          }
-
-          if (sec.id === "DELIVERABLES") {
-            return (
-              <SemanticReveal key={sec.id} delayMs={150} className="py-20 sm:py-28 border-b border-border/40">
-                <div className="mb-10">
-                  <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
-                    CHAPTER 3: EXECUTIVE DELIVERY ROADMAP (FIRST 12 MONTHS)
-                  </p>
-                  <h2 className="text-[28px] sm:text-[36px] text-foreground font-bold tracking-tight mt-2">
-                    What will you be expected to deliver?
-                  </h2>
-                </div>
-
-                {/* TEMPORAL ROADMAP TIMELINE SPINE */}
-                <div className="max-w-4xl relative pl-6 sm:pl-10 ml-2 border-l-2 border-border/60 space-y-12 py-2">
-                  {brief.deliverablesWork.map((item, i) => (
-                    <div key={i} className="relative group">
-                      {/* Milestone Node on Timeline */}
-                      <div className="absolute -left-[31px] sm:-left-[47px] top-0 bg-background border-2 border-accent-ink text-accent-ink mono text-[10px] font-bold px-2 py-0.5 rounded-sm shadow-sm uppercase tracking-wider">
-                        M{i * 3 + 3}
-                      </div>
-
-                      <div className="pl-4">
-                        <div className="flex items-center gap-3">
-                          <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">
-                            MILESTONE PHASE {i + 1}
-                          </span>
-                        </div>
-
-                        <p className="text-[17px] sm:text-[20px] text-foreground font-semibold leading-relaxed mt-1">
-                          {item}
-                        </p>
-
-                        {brief.deliverablesValue[i] && (
-                          <div className="mt-3 p-3.5 bg-muted/30 border border-border/40 rounded-sm">
-                            <p className="text-[13.5px] text-foreground font-medium flex items-start gap-2 leading-relaxed">
-                              <span className="text-accent-ink font-bold shrink-0">🎯 TARGET OUTCOME:</span>
-                              <span>{brief.deliverablesValue[i]}</span>
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </SemanticReveal>
-            );
-          }
-
-          if (sec.id === "FIT") {
-            const primaryAdvantage = brief.fitProofs[0];
-            const secondaryAdvantages = brief.fitProofs.slice(1);
-
-            return (
-              <SemanticReveal key={sec.id} delayMs={150} className="py-20 sm:py-28 border-b border-border/40">
-                <div className="mb-10">
-                  <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
-                    CHAPTER 4: ASYMMETRIC UNFAIR ADVANTAGES
-                  </p>
-                  <h2 className="text-[28px] sm:text-[36px] text-foreground font-bold tracking-tight mt-2">
-                    Why you will win this role
-                  </h2>
-                </div>
-
-                <div className="max-w-5xl space-y-10">
-                  {/* DOMINANT PRIMARY ADVANTAGE */}
-                  {primaryAdvantage && (
-                    <div className="p-6 sm:p-8 bg-card border-l-4 border-pursue border-y border-r border-border/50 rounded-r-md shadow-sm">
-                      <span className="mono text-[10px] tracking-[0.22em] text-pursue font-bold uppercase block mb-2">
-                        ★ DOMINANT UNFAIR ADVANTAGE
-                      </span>
-                      <p className="text-[22px] sm:text-[28px] font-bold text-foreground leading-snug">
-                        {primaryAdvantage}
-                      </p>
-                      <p className="text-[15px] text-muted-foreground mt-3 leading-relaxed max-w-3xl">
-                        This is your primary wedge. Historical career memory demonstrates proven authority in this dimension beyond typical market candidates.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* SECONDARY ADVANTAGES GRID */}
-                  {secondaryAdvantages.length > 0 && (
-                    <div className="pt-4">
-                      <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase mb-4">
-                        SUPPORTING SURPLUSES
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {secondaryAdvantages.map((proof, i) => (
-                          <div key={i} className="p-5 border border-border/40 bg-card/30 rounded-sm">
-                            <span className="mono text-[9.5px] tracking-[0.18em] text-foreground font-bold uppercase block mb-2">
-                              SURPLUS 0{i + 2}
-                            </span>
-                            <p className="text-[16px] sm:text-[18px] font-semibold text-foreground leading-snug">
-                              {proof}
-                            </p>
-                            <p className="text-[13.5px] text-muted-foreground mt-2 leading-relaxed">
-                              Verified against candidate claims inventory and role mandate.
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </SemanticReveal>
-            );
-          }
-
-          if (sec.id === "UNKNOWNS") {
-            return (
-              <SemanticReveal key={sec.id} delayMs={150} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
-                <div className="mb-8">
-                  <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
-                    CHAPTER 4: SINGLE UNCERTAINTY AUTHORITY
-                  </p>
-                  <h2 className="text-[28px] sm:text-[34px] text-foreground font-bold tracking-tight mt-2">
-                    Where are the biggest unknowns?
-                  </h2>
-                </div>
-
-                <p className="text-[16px] text-muted-foreground mb-10 max-w-4xl leading-relaxed">{brief.certaintyGuidance}</p>
-
-                <div className="max-w-4xl space-y-4">
-                  {brief.rankedUnknowns.map((item, idx) => (
-                    <div key={idx} className="group flex items-start gap-4 py-4 border-b border-border/30">
-                      <div className="mt-1">
-                        <div className="w-4 h-4 rounded-sm border border-border/60 bg-transparent flex items-center justify-center"></div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-baseline justify-between gap-4">
-                          <span className="text-[16px] text-foreground font-semibold">{item.label}</span>
-                          <span className="mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase shrink-0 font-medium">
-                            VERIFY AT SCREENING
-                          </span>
-                        </div>
-                        <p className="text-[14.5px] text-muted-foreground mt-2 leading-relaxed">{item.question}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <p className="text-[13.5px] text-muted-foreground italic mt-8">
-                  ℹ Unstated brief details reduce decision certainty, not candidate capability.
-                </p>
-              </SemanticReveal>
-            );
-          }
-
-          return null;
+                )}
+              </div>
+            </SemanticReveal>
+          );
         })}
 
+        <div className="border-t border-border/40" />
+
         {/* ────────────────────────────────────────────────────────────────────────
-            VIEWPORT CHAPTER 5: EVIDENCE BEHIND THIS RECOMMENDATION (100% COLLAPSED)
+            CHAPTER 4: UNKNOWNS
             ──────────────────────────────────────────────────────────────────────── */}
-        <SemanticReveal delayMs={150} className="py-16 border-b border-border/40">
+        {presentation.sections.filter(sec => sec.id === "UNKNOWNS").map((sec) => (
+          <SemanticReveal key={sec.id} delayMs={150} className="py-12 sm:py-16">
+            <div className="mb-8">
+              <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
+                CHAPTER 4: SCREENING CHECKLIST
+              </p>
+              <h2 className="text-[22px] sm:text-[26px] text-foreground font-bold tracking-tight mt-2">
+                Where are the biggest unknowns?
+              </h2>
+            </div>
+
+            <p className="text-[15px] text-muted-foreground mb-8 max-w-4xl leading-relaxed">{brief.certaintyGuidance}</p>
+
+            <div className="max-w-4xl divide-y divide-border/30 border-y border-border/30">
+              {brief.rankedUnknowns.map((item, idx) => (
+                <div key={idx} className="flex items-start gap-4 py-4">
+                  <div className="mt-1">
+                    <div className="w-4 h-4 rounded-sm border border-border/60 bg-transparent flex items-center justify-center"></div>
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-[15px] text-foreground font-medium">{item.question}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SemanticReveal>
+        ))}
+
+        <div className="border-t border-border/40" />
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            CHAPTER 5: EVIDENCE BEHIND THIS RECOMMENDATION (100% COLLAPSED)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="py-10">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div>
               <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
@@ -656,7 +581,7 @@ function Brief() {
               </div>
             </div>
           )}
-        </SemanticReveal>
+        </section>
 
         {/* ────────────────────────────────────────────────────────────────────────
             SUPPORTING DOSSIER LEDGER (Experience & claims inventory)
