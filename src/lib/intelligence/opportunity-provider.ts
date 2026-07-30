@@ -3,18 +3,29 @@
 // Exposes a repository pattern for UI consumers.
 
 import { runEngine, runEngineSingle, addExtraOpportunities, injectFreshRecords } from "./engine";
+import { candidateProfile } from "../../data/candidate-profile";
 import { activePursuits } from "../decisions-store";
 import type { Opportunity } from "@/data/opportunity-fixtures";
+import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
 
 export type ProviderOptions = {
   activePursuits?: number;
 };
 
+const builder = new CandidateProjectionBuilderImpl();
+
+/**
+ * @deprecated Use OpportunityService instead. This adapter is kept for backward compatibility during migration.
+ */
 export const OpportunityProvider = {
   /** List all dynamically computed opportunity DTOs, sorted by Pursuit Potential. */
   list(options?: ProviderOptions): Opportunity[] {
     const active = options?.activePursuits ?? activePursuits();
-    const { presented } = runEngine(active);
+    // Pre-build the projection to satisfy Phase 5a.5
+    const projection = builder.fromProfile(candidateProfile);
+    
+    // Pass projection directly into the V4 Engine
+    const { presented } = runEngine(projection, active);
     const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, PASS: 2 };
     return presented
       .map((p) => p.opportunity)
@@ -34,7 +45,8 @@ export const OpportunityProvider = {
 
     // Lazy, super-fast single-record fallback!
     const active = options?.activePursuits ?? activePursuits();
-    const presentedSingle = runEngineSingle(jobHash, active);
+    const projection = builder.fromProfile(candidateProfile);
+    const presentedSingle = runEngineSingle(jobHash, projection, active);
     return presentedSingle?.opportunity;
   },
 

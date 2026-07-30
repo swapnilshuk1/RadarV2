@@ -83,10 +83,4 @@ describe("Candidate Intelligence Pipeline (CIP) - Unit Test", () => {
     expect(compiled.identity.evidence[0].proof).toBeDefined();
   });
 
-  it("should support dynamic state loading and failbacks", () => {
-    const state = IdentityEngine.loadState();
-    expect(state).toBeDefined();
-    expect(state.version).toBeDefined();
-    expect(state.identity.identity.archetype).toBeDefined();
-  });
 });

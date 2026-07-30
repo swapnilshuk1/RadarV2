@@ -73,10 +73,11 @@ function Login() {
 
           {/* Social Google Login Card */}
           <div className="space-y-6">
-            <button
-              onClick={() => handleMagicLogin()}
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-3 rounded-md border border-hairline bg-parchment py-3 px-4 text-[13px] font-medium tracking-wide text-ink transition-all hover:bg-muted active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+            {/* Real Google OAuth button — points to OAuth initiation route */}
+            <a
+              href="/api/auth/google"
+              id="google-oauth-btn"
+              className="flex w-full items-center justify-center gap-3 rounded-md border border-hairline bg-parchment py-3 px-4 text-[13px] font-medium tracking-wide text-ink transition-all hover:bg-muted active:scale-[0.98] cursor-pointer no-underline"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" width="24" height="24">
                 <g transform="matrix(1, 0, 0, 1, 0, 0)">
@@ -86,38 +87,8 @@ function Login() {
                   <path fill="#FBBC05" d="M12,5c1.7,0,3.3,0.6,4.6,1.8l3.4-3.4C17.9,1.5,15,0.7,12,0.7C7.4,0.7,3.3,3.5,1.3,7.2l4.1,3.2C6.4,7.6,9,5,12,5z" />
                 </g>
               </svg>
-              {loading ? "Establishing session..." : "Continue with Google"}
-            </button>
-
-            {/* Divider */}
-            <div className="relative flex items-center justify-center py-2">
-              <div className="absolute w-full border-t border-hairline" />
-              <span className="relative bg-card px-4 font-mono text-[9px] uppercase tracking-widest text-ink-muted">Developer Console</span>
-            </div>
-
-            {/* Developer Magic Options */}
-            <div className="space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-mono font-semibold uppercase tracking-widest text-ink-muted">Magic Profile Seed</label>
-                <select
-                  value={selectedUser}
-                  onChange={(e) => setSelectedUser(e.target.value)}
-                  className="w-full rounded-md border border-hairline bg-parchment py-2.5 px-3 text-[13px] text-ink focus:border-ink/30 focus:outline-none cursor-pointer"
-                >
-                  <option value="swapnil">Swapnil Shukla (Commercial Growth CoE)</option>
-                  <option value="new_user">Fresh Blank Session (Upload Custom CV)</option>
-                </select>
-              </div>
-
-              <button
-                onClick={handleMagicLogin}
-                disabled={loading}
-                className="w-full rounded-md bg-ink py-3 text-center text-xs font-semibold uppercase tracking-[0.16em] text-parchment border border-ink transition-all hover:bg-parchment hover:text-ink active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-              >
-                Launch Magic Session
-              </button>
-            </div>
-
+              Continue with Google
+            </a>
           </div>
 
           {/* Policy disclaimer */}

@@ -12,6 +12,8 @@ import type { ComparativeAnalysis } from "./comparative";
 import type { ExplanationObject } from "./explain";
 import type { DecisionTrace } from "./trace";
 import type { HeadspaceOutcome } from "./headspace-filter";
+import type { DecisionDriver, PipelineStage } from "./policy/DecisionPolicyEngine";
+import type { EvidenceMatch, CareerValueBreakdown } from "../domain/semantic";
 
 export const ENGINE_VERSION = "1.0.0";
 
@@ -21,13 +23,27 @@ export type RecommendationRecord = Readonly<{
   recommendationVersion: string; // fingerprint of inputs + engine
   verb: DecisionVerb;
   priority: number;
-  factors: PriorityResult["factors"];
-  confidence: number;
+  decisionSummary: {
+    careerValue: number;
+    shortlistingPotential: number;
+    pursuitFriction: number;
+  };
+  decisionDrivers: DecisionDriver[];
+  decisionRisks: DecisionDriver[];
+  confidences: {
+    parsing: number;
+    matching: number;
+    recommendation: number;
+  };
   stability: Stability;
   headspace: HeadspaceOutcome;
   comparison: ComparativeAnalysis;
   explanation: ExplanationObject;
-  trace: DecisionTrace;
+  trace: DecisionTrace & {
+    pipeline: PipelineStage[];
+    evidenceMapping: EvidenceMatch[];
+    careerValueBreakdown: CareerValueBreakdown;
+  };
   esi?: number;
   diligenceStatus?: "READY" | "INSUFFICIENT" | "STALE" | "FAILED" | "UNKNOWN";
 }>;

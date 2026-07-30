@@ -109,7 +109,27 @@ async function main() {
         dimensions: jobSliceDims
       };
 
-      const assessment = scorer.score({ profile, policy, job: slice, recommendationRunId: "calibration" });
+      const assessment = scorer.score({ 
+        profile, 
+        policy, 
+        job: slice, 
+        recommendationRunId: "calibration",
+        calibrationConfig: {
+          coefficients: {
+            reportingLine: { inferredWeight: 0.90 },
+            budgetOwnership: { inferredWeight: 0.55 },
+            teamLeadership: { inferredWeight: 0.82 },
+            commercialAccountability: { inferredWeight: 0.75 },
+            technologyStack: { inferredWeight: 0.85 },
+            mandate: { inferredWeight: 0.70 },
+          },
+          thresholds: {
+            highImpactThreshold: 0.15,
+            confidenceVisibleThreshold: 0.80,
+            maxHighImpactQuestions: 2
+          }
+        }
+      });
       decisions.set(job.id, {
         decision: assessment.decision,
         score: assessment.score,

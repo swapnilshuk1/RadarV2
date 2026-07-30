@@ -6,8 +6,10 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  redirect,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
+import { getSessionUserFn } from "../lib/auth/server";
 
 import appCss from "../styles.css?url";
 
@@ -65,6 +67,32 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: async ({ location }) => {
+    const isAuthRoute = location.pathname === "/login" || location.pathname.startsWith("/api/auth");
+    if (isAuthRoute) return;
+
+    try {
+      const user = await getSessionUserFn();
+      if (!user) {
+        if (typeof window !== "undefined") {
+          if (!sessionStorage.getItem("radar_session")) {
+            throw redirect({ to: '/login' });
+          }
+        } else {
+          throw redirect({ to: '/login' });
+        }
+      }
+    } catch (e: any) {
+      if (e?.isRedirect) throw e;
+      if (typeof window !== "undefined") {
+        if (!sessionStorage.getItem("radar_session")) {
+          throw redirect({ to: '/login' });
+        }
+      } else {
+        throw redirect({ to: '/login' });
+      }
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -105,6 +133,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { candidateSignature } from "../lib/personalization";
+import { candidateProfile } from "../data/candidate-profile";
 
 function GlobalHeader() {
   const location = useLocation();
@@ -141,28 +170,31 @@ function GlobalHeader() {
 
   return (
     <header className="border-b border-hairline bg-parchment/85 sticky top-0 z-50 backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-2 sm:gap-6 px-3 sm:px-8 py-3 sm:py-4">
+      <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2.5">
+        {/* Brand & Page Name */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <Link to="/" className="font-mono text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.32em] text-ink hover:opacity-80 transition-opacity">
+          <Link to="/" className="font-mono text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.28em] text-ink hover:opacity-80 transition-opacity">
             RADAR
           </Link>
           <span className="text-ink-muted hidden sm:inline">·</span>
-          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.12em] text-ink-muted font-medium truncate hidden sm:inline max-w-[140px] md:max-w-none">
+          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.12em] text-ink-muted font-medium truncate hidden sm:inline max-w-[120px] lg:max-w-[180px]">
             {pageName}
           </span>
         </div>
-        <div className="flex items-center gap-2 sm:gap-5 text-[10px] sm:text-[11.5px] font-mono shrink-0">
-          <span className="hidden md:inline mr-1 text-[12px] text-ink-muted">
-            <Link to="/profile" className="hover:text-ink transition-colors">
-              👤 {signature}
+
+        {/* User Identity & Navigation Links */}
+        <div className="flex items-center gap-3 sm:gap-5 text-[10px] sm:text-[11.5px] font-mono shrink-0">
+          <span className="hidden md:inline-flex items-center text-[11.5px] text-ink-muted max-w-[160px] lg:max-w-[220px] truncate" title={signature}>
+            <Link to="/profile" className="hover:text-ink transition-colors truncate">
+              👤 {sessionName || candidateProfile.identity.name}
             </Link>
           </span>
           <Link
             to="/"
             className={
               isSelected("/")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/80 pb-0.5"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
             }
           >
             Shortlist
@@ -171,8 +203,8 @@ function GlobalHeader() {
             to="/profile"
             className={
               isSelected("/profile")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/80 pb-0.5"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
             }
           >
             Profile
@@ -181,8 +213,8 @@ function GlobalHeader() {
             to="/decisions"
             className={
               isSelected("/decisions")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/80 pb-0.5"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
             }
           >
             Decisions
@@ -191,12 +223,19 @@ function GlobalHeader() {
             to="/corpus"
             className={
               isSelected("/corpus")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.14em] text-ink transition-colors border-b border-ink/80 pb-0.5"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
             }
           >
             Corpus
           </Link>
+          <a
+            href="/api/auth/logout"
+            id="sign-out-link"
+            className="font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors whitespace-nowrap pl-1"
+          >
+            Sign Out
+          </a>
         </div>
       </div>
     </header>
@@ -208,16 +247,8 @@ function RootComponent() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const session = sessionStorage.getItem("radar_session");
-      if (!session && location.pathname !== "/login") {
-        navigate({ to: "/login" });
-      }
-    }
-  }, [location.pathname, navigate]);
-
-  const showHeader = location.pathname !== "/login";
+const showHeader = !location.pathname.startsWith("/login") &&
+    !location.pathname.startsWith("/api/auth");
 
   return (
     <QueryClientProvider client={queryClient}>

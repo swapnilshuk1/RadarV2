@@ -41,6 +41,8 @@ export interface AssessmentMetadata {
   evidenceCount: number;
   evidenceSummary?: EvidenceSummary;
   failureCode?: FailureCode;
+  parsingConfidence?: number;
+  matchingConfidence?: number;
 }
 
 export interface IdentityAssessment extends AssessmentMetadata {
@@ -50,10 +52,19 @@ export interface IdentityAssessment extends AssessmentMetadata {
   verdict: "MATCH" | "MISMATCH";    // Determined by coverage threshold (>= 0.30)
 }
 
+export interface EvidenceMatch {
+  jobCapability: string;
+  candidateCapability: string;
+  confidence: number;
+  reason: string;
+}
+
 export interface CapabilityAssessment extends AssessmentMetadata {
   overallFit: number;               // Numeric score (0.0 to 1.0)
   matchedCapabilities: string[];
   missingCapabilities: string[];
+  missingInferredCapabilities?: string[];
+  matches?: EvidenceMatch[];
 }
 
 export interface OpportunityAssessment extends AssessmentMetadata {
@@ -73,6 +84,20 @@ export interface LifestyleAssessment extends AssessmentMetadata {
   travelFit: boolean;
   scheduleFit: boolean;
   compensationFit: boolean;
+}
+
+export interface DimensionHeuristic {
+  value: number;
+  reason: string;
+  status?: "KNOWN" | "UNKNOWN" | "ESTIMATED";
+}
+
+export interface CareerValueBreakdown {
+  titleProgression: DimensionHeuristic;
+  scopeExpansion: DimensionHeuristic;
+  commercialScale: DimensionHeuristic;
+  futureOptionality: DimensionHeuristic;
+  brandSignal: DimensionHeuristic;
 }
 
 // Immutable Type-Safe Condition Field Unions

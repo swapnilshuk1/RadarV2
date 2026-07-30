@@ -1,4 +1,4 @@
-import { type CandidateEvidence } from "@/data/candidate-profile";
+import type { CandidateEvidence } from "../domain/candidate";
 
 export interface UserSession {
   userId: string;

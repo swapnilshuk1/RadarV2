@@ -17,8 +17,6 @@
  * - Consumes ExtractionResult dimensions only
  */
 
-import fs from "fs";
-import path from "path";
 import type {
   CandidateProfile,
   OpportunityAssessment,
@@ -61,13 +59,14 @@ export interface ScorerInput {
   policy: RecommendationPolicy;
   job: JobSlice;
   recommendationRunId: string;
+  calibrationConfig: any; // injected, no fs reads
 }
 
 export class DeterministicScorer {
   private resolver = new DimensionResolver();
 
   score(input: ScorerInput): OpportunityAssessment {
-    const { profile, policy, job, recommendationRunId } = input;
+    const { profile, policy, job, recommendationRunId, calibrationConfig } = input;
 
     // 1. Compute Raw Scores deterministically
     const {
@@ -93,7 +92,7 @@ export class DeterministicScorer {
     }
 
     // 3. Calibrate Decision Confidence Layer (Sprint 12)
-    const decisionConfidence = this.calculateDecisionConfidence(job, profile, policy, normalisedScore, decision);
+    const decisionConfidence = this.calculateDecisionConfidence(job, profile, policy, normalisedScore, decision, calibrationConfig);
 
     return this.buildAssessment({
       recommendationRunId,
@@ -133,23 +132,25 @@ export class DeterministicScorer {
     let maxPossibleScore = 0;
 
     // === HARD CONSTRAINTS (deal-breakers) ===
-    for (const constraint of profile.hardConstraints) {
-      const violated = this.checkHardConstraint(constraint, job, profile);
-      if (violated) {
-        reasons.push({
-          type: "Risk",
-          severity: "High",
-          dimension: "HardConstraint",
-          score: -100,
-          message: `Hard constraint violated: ${constraint}`,
-        });
-        return {
-          rawScore: 0,
-          maxPossibleScore: 100,
-          normalisedScore: 0,
-          reasons,
-          missingEvidence,
-        };
+    if (profile.hardConstraints) {
+      for (const constraint of profile.hardConstraints) {
+        const violated = this.checkHardConstraint(constraint, job, profile);
+        if (violated) {
+          reasons.push({
+            type: "Risk",
+            severity: "High",
+            dimension: "HardConstraint",
+            score: -100,
+            message: `Hard constraint violated: ${constraint}`,
+          });
+          return {
+            rawScore: 0,
+            maxPossibleScore: 100,
+            normalisedScore: 0,
+            reasons,
+            missingEvidence,
+          };
+        }
       }
     }
 
@@ -193,10 +194,9 @@ export class DeterministicScorer {
     profile: CandidateProfile,
     policy: RecommendationPolicy,
     baseScore: number,
-    baseDecision: OpportunityAssessment["decision"]
+    baseDecision: OpportunityAssessment["decision"],
+    config: any
   ): DecisionConfidence {
-    const config = this.loadCalibrationConfig();
-
     const limitingDimensions: DecisionImpact[] = [];
     let sumCalibratedConfidence = 0;
     let sumWeights = 0;
@@ -301,36 +301,7 @@ export class DeterministicScorer {
     };
   }
 
-  private loadCalibrationConfig(): any {
-    const defaultConfig = {
-      coefficients: {
-        reportingLine: { inferredWeight: 0.90 },
-        budgetOwnership: { inferredWeight: 0.55 },
-        teamLeadership: { inferredWeight: 0.82 },
-        commercialAccountability: { inferredWeight: 0.75 },
-        technologyStack: { inferredWeight: 0.85 },
-        mandate: { inferredWeight: 0.70 },
-      },
-      thresholds: {
-        highImpactThreshold: 0.15,
-        confidenceVisibleThreshold: 0.80,
-        maxHighImpactQuestions: 2
-      }
-    };
 
-    if (typeof window === "undefined" && typeof process !== "undefined" && process.cwd) {
-      try {
-        const configPath = path.resolve(process.cwd(), "config", "calibration_coefficients.json");
-        if (fs.existsSync(configPath)) {
-          const content = fs.readFileSync(configPath, "utf8");
-          return JSON.parse(content);
-        }
-      } catch (err) {
-        // Fall back to default config if file is missing or unreadable
-      }
-    }
-    return defaultConfig;
-  }
 
   private getAdmissibleValuesForDimension(dimension: string): any[] {
     switch (dimension) {
@@ -408,7 +379,7 @@ export class DeterministicScorer {
       const geoScoring = (policy as any).geographyScoring || { exact: 1.0, regional: 0.75, country: 0.5, remote: 0.8 };
       let factor = geoScoring.country;
       
-      const profileLocations = (profile.preferences?.locations || []).map((l: string) => l.toLowerCase());
+      const profileLocations = ((profile.preferences?.locations || (profile as any).preferredLocations) || []).map((l: string) => l.toLowerCase());
       const jobLoc = value.toLowerCase();
       
       if (profileLocations.some((l: string) => l.includes(jobLoc) || jobLoc.includes(l))) {
@@ -434,7 +405,7 @@ export class DeterministicScorer {
 
     // === Technology Stack ===
     if (dimension === "technologyStack") {
-      const profileTech = profile.technology.map(t => t.toLowerCase());
+      const profileTech = (profile.technology || []).map(t => t.toLowerCase());
       const jobTech = value.split(/[\s,/;]+/).map(t => t.trim()).filter(Boolean);
       const overlap = jobTech.filter(t => profileTech.some(p => p.includes(t) || t.includes(p)));
       
@@ -457,7 +428,7 @@ export class DeterministicScorer {
 
     // === Functional Scope ===
     if (dimension === "functionalScope") {
-      const profileFunc = profile.functions.map(f => f.toLowerCase());
+      const profileFunc = (profile.functions || []).map(f => f.toLowerCase());
       const jobFunc = value.split(/[\s,/;]+/).map(f => f.trim()).filter(Boolean);
       
       const overlap = jobFunc.filter(f => profileFunc.some(p => p.includes(f) || f.includes(p)));

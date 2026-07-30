@@ -87,4 +87,39 @@ export class WorkNatureClassifier {
     }
     return { value: "SPECIALIST_WORK", evidenceIds, confidence: 0.85 };
   }
+
+  /**
+   * Refined 3-Axis Structured Work Nature classification.
+   * Returns independent situation, context, and pattern tags.
+   */
+  public static classifyStructured(text: string, title: string): {
+    situation: ("TURNAROUND" | "HYPERGROWTH" | "CRISIS" | "STABILIZATION")[];
+    context: ("GREENFIELD" | "M_AND_A" | "DIVESTITURE" | "PE_BACKED")[];
+    pattern: ("STRATEGIC_TRANSFORMATION" | "OPERATIONAL_SCALING" | "ADVISORY")[];
+  } {
+    const textLower = `${title} ${text}`.toLowerCase();
+    
+    const situation: ("TURNAROUND" | "HYPERGROWTH" | "CRISIS" | "STABILIZATION")[] = [];
+    if (/turnaround|restructure|distressed|margin recovery/i.test(textLower)) situation.push("TURNAROUND");
+    if (/hypergrowth|scale 10x|rapid expansion/i.test(textLower)) situation.push("HYPERGROWTH");
+    if (/stabiliz|crisis|decline recovery/i.test(textLower)) situation.push("STABILIZATION");
+
+    const context: ("GREENFIELD" | "M_AND_A" | "DIVESTITURE" | "PE_BACKED")[] = [];
+    if (/greenfield|0 to 1|0-to-1|launch division/i.test(textLower)) context.push("GREENFIELD");
+    if (/m&a|merger|acquisition|post-merger|pmi/i.test(textLower)) context.push("M_AND_A");
+    if (/divestiture|carve-out|spin-off/i.test(textLower)) context.push("DIVESTITURE");
+    if (/pe-backed|private equity|lbo|value creation plan/i.test(textLower)) context.push("PE_BACKED");
+
+    const pattern: ("STRATEGIC_TRANSFORMATION" | "OPERATIONAL_SCALING" | "ADVISORY")[] = [];
+    if (/transform|operating model|re-platform|moderniz/i.test(textLower)) pattern.push("STRATEGIC_TRANSFORMATION");
+    if (/scale|expand|grow team|increase capacity/i.test(textLower)) pattern.push("OPERATIONAL_SCALING");
+    if (/advisor|steering|board advisor|consult/i.test(textLower)) pattern.push("ADVISORY");
+
+    // Fallbacks if empty
+    if (situation.length === 0) situation.push("HYPERGROWTH");
+    if (context.length === 0) context.push("GREENFIELD");
+    if (pattern.length === 0) pattern.push("STRATEGIC_TRANSFORMATION");
+
+    return { situation, context, pattern };
+  }
 }

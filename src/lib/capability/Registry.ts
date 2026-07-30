@@ -73,6 +73,27 @@ export class CapabilityRegistry {
       description: "Experience building product divisions or regional branches from 0 to 1.",
       aliases: ["greenfield building", "0 to 1", "new divisions", "division launch", "geographical expansion", "entity launch"],
       relatedTerms: ["hiring pipeline", "market entry", "mvp launch"]
+    },
+    {
+      id: "cap_ma_integration",
+      name: "M&A Integration & Post-Merger Governance",
+      description: "Proven expertise in managing post-merger integrations, technology consolidation, and synergies realization.",
+      aliases: ["m&a", "mergers and acquisitions", "post-merger integration", "due diligence", "m&a integration", "synergies realization", "portfolio integration"],
+      relatedTerms: ["corp dev", "integration roadmap", "value creation"]
+    },
+    {
+      id: "cap_pe_scale",
+      name: "Private Equity Value Creation & PE-backed Scaling",
+      description: "Track record of driving value creation, margin expansion, and exit readiness for PE/VC portfolio companies.",
+      aliases: ["private equity", "pe-backed", "value creation plan", "exit readiness", "vc-backed", "portfolio scale", "growth equity"],
+      relatedTerms: ["ebitda expansion", "board governance", "lbo"]
+    },
+    {
+      id: "cap_global_commercial",
+      name: "Global Commercial & Multi-brand Leadership",
+      description: "Leadership across multi-region commercial operations, multi-brand go-to-market strategies, and P&L allocations.",
+      aliases: ["global commercial", "multi-brand", "international expansion", "cross-border gtm", "regional p&l", "global gtm strategy"],
+      relatedTerms: ["multi-region", "channel strategy", "global alignment"]
     }
   ];
 

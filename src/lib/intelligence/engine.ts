@@ -15,17 +15,18 @@ import { V3EvaluationEngine } from "./V3EvaluationEngine";
 import { present, type Presented } from "./present";
 import type { RecommendationRecord } from "./record";
 import { loadDecisionPolicy, computeDecisionVerdict } from "../recommendation/EvaluationAdapter";
+import type { CandidateProjection } from "../domain/candidate_projection";
 
 // Phase 4 Semantic Imports
-import { CandidateProjectionBuilder } from "./builders/CandidateProjectionBuilder";
+import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
 import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
 import { CapabilityAssessmentEngine } from "./engines/CapabilityAssessmentEngine";
 import { OpportunityAssessmentEngine } from "./engines/OpportunityAssessmentEngine";
 import { CareerAssessmentEngine } from "./engines/CareerAssessmentEngine";
+import { CareerValueEngine } from "./engines/CareerValueEngine";
 import { LifestyleAssessmentEngine } from "./engines/LifestyleAssessmentEngine";
 import { IdentityAssessmentEngine } from "./engines/IdentityAssessmentEngine";
 import { DecisionPolicyEngine } from "./policy/DecisionPolicyEngine";
-import { candidateProfile } from "../../data/candidate-profile";
 
 const KEY = "radar.opportunities.v3";
 const baseOpportunities = [...(liveScraped as OpportunitySource[])];
@@ -79,10 +80,12 @@ export function injectFreshRecords(records: any[]) {
   writeOpportunities([...(records as OpportunitySource[])]);
 }
 
+const candidateBuilder = new CandidateProjectionBuilderImpl();
+
 /**
  * Executes the full V4 pipeline: Candidate/Job Projections -> Assessments -> Rules Engine -> Presentation
  */
-export function runEngine(activePursuits = 0): {
+export function runEngine(projection: CandidateProjection, activePursuits = 0): {
   presented: Presented[];
   records: RecommendationRecord[];
 } {
@@ -98,12 +101,8 @@ export function runEngine(activePursuits = 0): {
     return cached.result;
   }
 
-  // 1. Build Candidate V4 Projection Once
-  const candProjV4 = CandidateProjectionBuilder.build(candidateProfile);
-
-  // Fallback V3 Dossier if needed for backward compliance metrics
-  const cip = new CandidateIntelligencePipeline();
-  const { projection, intent } = cip.getActiveDossier();
+  // Fallback V3 Dossier and CandidateProjectionBuilder removed since projection is already built
+  const candProjV4 = projection;
 
   const records: RecommendationRecord[] = [];
 
@@ -119,12 +118,15 @@ export function runEngine(activePursuits = 0): {
     const lifestyle = LifestyleAssessmentEngine.evaluate(candProjV4, jobProjV4);
 
     // 4. Resolve Verdict via Rules-Based Decision Policy Engine
+    const careerValueBreakdown = CareerValueEngine.evaluate(candProjV4, jobProjV4);
+
     const policyResult = DecisionPolicyEngine.evaluate(
       identity,
       capability,
       opportunityAssess,
       career,
-      lifestyle
+      lifestyle,
+      jobProjV4.executiveIdentity.value
     );
 
     const finalVerb = policyResult.verdict;
@@ -145,12 +147,14 @@ export function runEngine(activePursuits = 0): {
       recommendationVersion: `v4:${raw.jobHash}:${finalVerb}`,
       verb: finalVerb,
       priority: finalScore,
-      factors: {
+      decisionSummary: {
         careerValue: capability.overallFit,
-        shortlistingPotential: capability.overallFit,
-        pursuitFriction: 1.0
+        shortlistingPotential: finalScore / 100,
+        pursuitFriction: (lifestyle as any).locationFrictionPenalty || 0
       },
-      confidence: finalScore,
+      decisionDrivers: policyResult.decisionDrivers,
+      decisionRisks: policyResult.decisionRisks,
+      confidences: policyResult.confidences,
       stability: "High",
       headspace: {
         finalVerb,
@@ -178,8 +182,11 @@ export function runEngine(activePursuits = 0): {
         },
         verb0: finalVerb,
         finalVerb,
-        confidence: finalScore,
+        confidence: policyResult.confidences.recommendation,
         stability: "High",
+        pipeline: policyResult.pipeline,
+        evidenceMapping: capability.matches || [],
+        careerValueBreakdown,
         headspace: {
           finalVerb,
           downgraded: false,
@@ -208,7 +215,7 @@ export function runEngine(activePursuits = 0): {
     .map((r) => {
       // In V4 paradigm, we still present candidates in the view, but let the UI filter out PASS records or let presentation-boundary hide scores
       const a = byHash.get(r.jobHash);
-      return a ? present(a, r) : null;
+      return a ? present(a, r, projection) : null;
     })
     .filter((x): x is Presented => x !== null);
 
@@ -221,11 +228,11 @@ export function runEngine(activePursuits = 0): {
   return result;
 }
 
-export function runEngineSingle(jobHash: string, activePursuits = 0): Presented | undefined {
+export function runEngineSingle(jobHash: string, projection: CandidateProjection, activePursuits = 0): Presented | undefined {
   const currentAuthored = readOpportunities();
   const found = currentAuthored.find((o) => o.jobHash === jobHash);
   if (!found) return undefined;
 
-  const { presented } = runEngine(activePursuits);
+  const { presented } = runEngine(projection, activePursuits);
   return presented.find(p => p.opportunity.jobHash === jobHash);
 }

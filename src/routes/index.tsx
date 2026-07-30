@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { type Opportunity, type DecisionVerb } from "../data/opportunity-fixtures";
 import { candidateSignature } from "../lib/personalization";
@@ -6,10 +6,11 @@ import { DecisionBadge } from "../components/radar/DecisionBadge";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { SwipeableRow } from "../components/radar/SwipeableRow";
 import { useDecisions } from "../lib/decisions-store";
-import { OpportunityProvider } from "../lib/intelligence/opportunity-provider";
+import { getOpportunitiesFn, injectFreshFn } from "../lib/intelligence/opportunity-server";
 import { getScrapedJobs, getScraperCounts } from "../data/scraped-jobs";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
+import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
 
 const VISIBLE_LIMIT = 6;
 
@@ -22,6 +23,11 @@ export const Route = createFileRoute("/")({
       { property: "og:description", content: "Evidence-anchored career opportunity intelligence for experienced executives." },
     ],
   }),
+  loader: async () => {
+    return {
+      opportunitiesList: await getOpportunitiesFn()
+    };
+  },
   component: Shortlist,
 });
 
@@ -50,23 +56,10 @@ function Shortlist() {
 
   const [lastScanAt, setLastScanAt] = useState<string | null>(null);
   const [extraScraped, setExtraScraped] = useState(0);
-  const [opportunitiesVersion, setOpportunitiesVersion] = useState(0);
-
-  useEffect(() => {
-    const onChange = () => setOpportunitiesVersion((v) => v + 1);
-    window.addEventListener("radar:opportunities", onChange);
-    return () => window.removeEventListener("radar:opportunities", onChange);
-  }, []);
+  const router = useRouter();
 
   const baseCounts = getScraperCounts();
-
-  const activeCount = useMemo(() => {
-    return Object.values(decisions).filter((d) => d.verb === "PURSUE").length;
-  }, [decisions]);
-
-  const opportunitiesList = useMemo(() => {
-    return OpportunityProvider.list({ activePursuits: activeCount });
-  }, [activeCount, opportunitiesVersion]);
+  const { opportunitiesList } = Route.useLoaderData();
 
   const remaining = useMemo(
     () => opportunitiesList.filter((o) => !decisions[o.jobHash]),
@@ -111,7 +104,8 @@ function Shortlist() {
     try {
       const freshRecords = await getLiveScrapedFn();
       if (freshRecords && freshRecords.length > 0) {
-        OpportunityProvider.injectFresh(freshRecords);
+        await injectFreshFn({ data: freshRecords });
+        router.invalidate();
       }
     } catch (err) {
       console.error("Failed to fetch fresh records, falling back:", err);
@@ -156,12 +150,9 @@ function Shortlist() {
             MAIN SHORTLIST QUEUE
             ──────────────────────────────────────────────────────────────────────── */}
         <main className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-3 sm:pt-6 pb-12">
-          <div className="flex items-center justify-between mb-2.5 sm:mb-3.5 gap-2">
-            <p className="mono text-[9px] sm:text-[10px] tracking-[0.16em] text-muted-foreground uppercase font-semibold truncate">
-              GESTURE CONTROL · SWIPE <span className="text-pursue font-bold">RIGHT TO PURSUE</span>, OR <span className="text-foreground font-bold">LEFT TO PASS</span>
-            </p>
+          <div className="flex items-center justify-end mb-2.5 sm:mb-3.5 gap-2">
             <span className="mono text-[9px] sm:text-[10px] tracking-[0.14em] text-accent-ink uppercase font-semibold shrink-0">
-              QUEUE STATUS · {remaining.length} ACTIVE
+              QUEUE STATUS · {remaining.length} AWAITING REVIEW
             </span>
           </div>
 
@@ -270,6 +261,7 @@ function Row({
 }) {
   const score = o.recommendationResult?.score ?? 80;
   const mandateTag = o.mandateArchetype || "Performance Marketing";
+  const brief = BriefCompositionEngine.compose(o);
 
   return (
     <div
@@ -287,7 +279,7 @@ function Row({
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
         aria-expanded={isOpen}
-        className="w-full py-3 sm:py-3.5 text-left flex items-center justify-between gap-3 transition-colors group-hover:bg-muted/20 px-2.5 cursor-pointer"
+        className="w-full py-4 sm:py-5 text-left flex items-center justify-between gap-4 transition-colors group-hover:bg-muted/10 px-3 cursor-pointer"
       >
         <div className="min-w-0 flex-1">
           {/* Row 1: Role Title + Badges */}
@@ -303,18 +295,46 @@ function Row({
             </div>
           </div>
 
-          {/* Row 2: Company • Location • Portal • Relative Date */}
-          <p className="mt-0.5 text-[12px] sm:text-[13px] text-muted-foreground font-normal truncate">
-            <span className="text-foreground font-bold">{o.company}</span> · {o.location} ·{" "}
-            <span className="mono text-[10px] uppercase tracking-wider">{o.scrapedFrom} · {o.postedRelative}</span>
+          {/* Row 2: Company • Location • Portal • Compensation Target */}
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 mono text-[9px] sm:text-[9.5px] uppercase tracking-[0.18em] text-muted-foreground font-bold truncate">
+            <span>{o.company}</span>
+            <span>·</span>
+            <span>{o.location}</span>
+            <span>·</span>
+            <span className="text-foreground">{o.scrapedFrom}</span>
+            <span>·</span>
+            <span>Target: ₹80L INR</span>
           </p>
+
+          {/* Row 3: Semantic Recall Cue */}
+          <p className="mt-2.5 font-serif italic text-[15.5px] text-muted-foreground/90 leading-relaxed truncate">
+            {brief.memory.retentionSentence}
+          </p>
+
+          {/* Row 4: Friction & Top Unknown Badges */}
+          {(brief.frictionPreview || brief.topUnknownPreview) && (
+            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+              {brief.frictionPreview && (
+                <span className="mono text-[9px] tracking-[0.12em] text-consider uppercase font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-consider shrink-0"></span>
+                  {brief.frictionPreview}
+                </span>
+              )}
+              {brief.topUnknownPreview && (
+                <span className="mono text-[9px] tracking-[0.12em] text-muted-foreground uppercase font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground shrink-0"></span>
+                  Needs verification: {brief.topUnknownPreview}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Score & Expand Chevron */}
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           <div className="text-right">
-            <span className="display text-[18px] sm:text-[22px] font-bold text-foreground tabular-nums leading-none">
-              {score}<span className="mono text-[9px] sm:text-[10px] text-muted-foreground font-normal">/100</span>
+            <span className="display text-[24px] sm:text-[28px] font-bold text-foreground tabular-nums leading-none">
+              {score}<span className="mono text-[9px] text-muted-foreground font-normal ml-0.5">/100</span>
             </span>
           </div>
 
@@ -365,21 +385,6 @@ function Row({
               </div>
             </div>
 
-            {/* Elevated Hero Decision Bar */}
-            <div className="bg-muted/30 p-2 sm:p-2.5 rounded-sm border border-border/60 flex flex-wrap items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="mono text-[9px] sm:text-[10px] tracking-[0.16em] uppercase text-muted-foreground font-bold mr-1">
-                  YOUR DECISION:
-                </span>
-                <DecideButton verb="PURSUE" onClick={() => onDecide("PURSUE")} />
-                <DecideButton verb="CONSIDER" onClick={() => onDecide("CONSIDER")} />
-                <DecideButton verb="PASS" onClick={() => onDecide("PASS")} />
-              </div>
-
-              <span className="mono text-[8.5px] sm:text-[9.5px] tracking-[0.14em] text-muted-foreground uppercase hidden sm:inline font-medium">
-                PULLS NEXT BRIEF FROM QUEUE
-              </span>
-            </div>
 
             <InlineBrief opportunity={o} />
           </div>

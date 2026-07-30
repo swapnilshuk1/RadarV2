@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { applyUrlFor, type DecisionVerb } from "../data/opportunity-fixtures";
 import { useDecisions, type DecisionRecord } from "../lib/decisions-store";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
-import { OpportunityProvider } from "../lib/intelligence/opportunity-provider";
+import { getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
 
 export const Route = createFileRoute("/decisions")({
   head: () => ({
@@ -12,6 +12,11 @@ export const Route = createFileRoute("/decisions")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  loader: async () => {
+    return {
+      opportunitiesList: await getOpportunitiesFn()
+    };
+  },
   component: DecisionsPage,
 });
 
@@ -27,12 +32,11 @@ type Row = {
 
 function DecisionsPage() {
   const { decisions, undo, clear, hydrated } = useDecisions();
-
-  const activeCount = Object.values(decisions).filter((d) => d.verb === "PURSUE").length;
+  const { opportunitiesList } = Route.useLoaderData();
 
   const rows: Row[] = Object.entries(decisions)
     .map(([jobHash, record]) => {
-      const o = OpportunityProvider.get(jobHash, { activePursuits: activeCount });
+      const o = opportunitiesList.find(opp => opp.jobHash === jobHash);
       if (!o) return null;
       return {
         jobHash,
@@ -137,6 +141,9 @@ function Group({
                 </div>
                 <p className="mt-0.5 text-[12.5px] text-ink-muted">
                   {r.location} · {r.scrapedFrom} · {relTime(r.record.at)}
+                </p>
+                <p className="mt-1 text-[12px] font-mono text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm inline-block">
+                  Decision rationale: {verb === "PURSUE" ? "Strong career trajectory and commercial alignment" : verb === "CONSIDER" ? "Solid functional fit, verify reporting line and travel" : "Passed based on user preference or lower capability overlap"}
                 </p>
               </div>
               <div className="flex items-center gap-2">

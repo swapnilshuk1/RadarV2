@@ -1,12 +1,6 @@
 import raw from "./candidate-profile.json";
+import { CandidateProfile as DomainCandidateProfile } from "../domain/candidate";
 
-export type CandidateEvidence = { type: string; proof: string };
-export type CandidateProfile = typeof raw & {
-  evidence: CandidateEvidence[];
-  executiveCompetencies?: string[];
-  preferences?: { remote?: string; [key: string]: any };
-  strategy?: any;
-  capabilities?: Record<string, string[]>;
-};
-
-export const candidateProfile = raw as unknown as CandidateProfile;
+// Cast the raw JSON directly to the new formal domain type
+export const candidateProfile = raw as unknown as DomainCandidateProfile;
+export type CandidateProfile = DomainCandidateProfile;

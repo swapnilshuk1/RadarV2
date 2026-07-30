@@ -1,67 +1,95 @@
-// src/lib/intelligence/classifiers/DecisionAuthorityClassifier.ts
-
-import { ClassifierResult, DecisionAuthority } from "../../domain/semantic";
+﻿import { ClassifierResult, DecisionAuthority } from "../../domain/semantic";
 
 function hasWord(text: string, word: string): boolean {
-  // Safe regex boundary checking to avoid false substring matches (e.g., matching "bu" inside "bengaluru")
-  const escaped = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-  const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+  const escaped = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+  const regex = new RegExp(`\\b${escaped}\\b`, "i");
   return regex.test(text);
 }
 
 export class DecisionAuthorityClassifier {
   public static classify(text: string, title: string): ClassifierResult<DecisionAuthority> {
     const textLower = `${title} ${text}`.toLowerCase();
+    const titleLower = title.toLowerCase();
     const evidenceIds: string[] = [];
 
-    // Heuristics for Decision Authority
-    const enterpriseKeywords = [
-      "board", "ceo", "c-suite", "enterprise-wide", "corporate", "managing director",
-      "executive committee", "global strategy", "shareholders"
-    ];
+    // Explicit Title Hierarchy Booster
+    const isExecutiveTitle = hasWord(titleLower, "head") || 
+                             hasWord(titleLower, "director") || 
+                             hasWord(titleLower, "vice president") || 
+                             hasWord(titleLower, "vp") || 
+                             hasWord(titleLower, "avp") || 
+                             hasWord(titleLower, "gm") || 
+                             hasWord(titleLower, "chief") || 
+                             hasWord(titleLower, "cmo") || 
+                             hasWord(titleLower, "cto") || 
+                             hasWord(titleLower, "coo");
 
-    const buKeywords = [
-      "business unit", "bu", "division", "country head", "regional head", "segment lead"
-    ];
+    // Cumulative 5-Dimensional Evidence Scoring
+    let authorityPoints = 0;
 
-    const functionalKeywords = [
-      "department", "functional", "practice lead", "center of excellence", "coe",
-      "functional head", "marketing operations", "engineering head"
-    ];
+    // 1. People Dimension
+    const peopleKws = ["lead team", "manage team", "direct reports", "mentor", "hiring", "team management", "build team", "team leadership"];
+    const matchedPeople = peopleKws.filter(kw => hasWord(textLower, kw));
+    if (matchedPeople.length > 0) {
+      authorityPoints++;
+      evidenceIds.push("da_dim_people");
+    }
 
-    const teamKeywords = [
-      "team lead", "pod", "scrum master", "daily stand-up", "backlog manager", "squad", "scrum"
-    ];
+    // 2. Budget & P&L Dimension
+    const budgetKws = ["p&l", "budget", "roi", "ad spend", "revenue target", "financial discipline", "profitability"];
+    const matchedBudget = budgetKws.filter(kw => hasWord(textLower, kw));
+    if (matchedBudget.length > 0) {
+      authorityPoints++;
+      evidenceIds.push("da_dim_budget");
+    }
 
-    // Find evidence matching enterprise
-    const matchesEnterprise = enterpriseKeywords.filter(kw => hasWord(textLower, kw));
-    if (matchesEnterprise.length >= 1) {
-      matchesEnterprise.forEach(m => evidenceIds.push(`da_ent_${m.replace(/\s+/g, "_")}`));
+    // 3. Strategy Dimension
+    const strategyKws = ["strategy", "roadmap", "gtm", "go-to-market", "strategic planning", "business development", "vision"];
+    const matchedStrategy = strategyKws.filter(kw => hasWord(textLower, kw));
+    if (matchedStrategy.length > 0) {
+      authorityPoints++;
+      evidenceIds.push("da_dim_strategy");
+    }
+
+    // 4. Governance & Metrics Dimension
+    const governanceKws = ["kpis", "metrics", "compliance", "sla", "governance", "executive reporting", "accountability"];
+    const matchedGov = governanceKws.filter(kw => hasWord(textLower, kw));
+    if (matchedGov.length > 0) {
+      authorityPoints++;
+      evidenceIds.push("da_dim_governance");
+    }
+
+    // 5. External & Stakeholder Dimension
+    const externalKws = ["key clients", "stakeholders", "agencies", "board", "investors", "partnerships", "public relations"];
+    const matchedExt = externalKws.filter(kw => hasWord(textLower, kw));
+    if (matchedExt.length > 0) {
+      authorityPoints++;
+      evidenceIds.push("da_dim_external");
+    }
+
+    // Title boost
+    if (isExecutiveTitle && authorityPoints < 2) {
+      authorityPoints = 2; // Executive titles carry at least Functional authority
+      evidenceIds.push("da_title_boost");
+    }
+
+    // Classification Mapping
+    if (hasWord(textLower, "board") || hasWord(textLower, "ceo") || hasWord(textLower, "c-suite") || authorityPoints >= 5) {
       return { value: "ENTERPRISE", evidenceIds, confidence: 0.9 };
     }
 
-    // Find evidence matching business unit
-    const matchesBU = buKeywords.filter(kw => hasWord(textLower, kw));
-    if (matchesBU.length >= 1) {
-      matchesBU.forEach(m => evidenceIds.push(`da_bu_${m.replace(/\s+/g, "_")}`));
+    if (hasWord(textLower, "business unit") || hasWord(textLower, "bu") || hasWord(textLower, "division") || authorityPoints >= 3) {
       return { value: "BUSINESS_UNIT", evidenceIds, confidence: 0.85 };
     }
 
-    // Find evidence matching function
-    const matchesFunctional = functionalKeywords.filter(kw => hasWord(textLower, kw));
-    if (matchesFunctional.length >= 1) {
-      matchesFunctional.forEach(m => evidenceIds.push(`da_func_${m.replace(/\s+/g, "_")}`));
+    if (authorityPoints >= 2) {
       return { value: "FUNCTION", evidenceIds, confidence: 0.8 };
     }
 
-    // Find evidence matching team
-    const matchesTeam = teamKeywords.filter(kw => hasWord(textLower, kw));
-    if (matchesTeam.length >= 1) {
-      matchesTeam.forEach(m => evidenceIds.push(`da_team_${m.replace(/\s+/g, "_")}`));
+    if (authorityPoints === 1) {
       return { value: "TEAM", evidenceIds, confidence: 0.75 };
     }
 
-    // Default self / unknown
     evidenceIds.push("da_default_self");
     return { value: "SELF", evidenceIds, confidence: 0.5 };
   }

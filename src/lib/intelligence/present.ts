@@ -35,11 +35,11 @@ export function opportunityToJobSlice(source: OpportunitySource): JobSlice {
 }
 
 import { DeterministicScorer } from "../recommendation/DeterministicScorer";
-import { candidateProfile } from "../../data/candidate-profile";
 
 export function present(
   source: OpportunitySource,
   record: RecommendationRecord,
+  dynamicProfile: any
 ): Presented {
   const narrative = format(record, source);
 
@@ -92,7 +92,6 @@ export function present(
 
   // Run DeterministicScorer to compute calibrated Decision Confidence (Sprint 12)
   let decisionConfidence;
-  const dynamicProfile = candidateProfile;
 
   try {
     const deterministicScorer = new DeterministicScorer();
@@ -111,7 +110,22 @@ export function present(
       profile: dynamicProfile as any,
       policy: policy,
       job: jobSlice,
-      recommendationRunId: "run-present"
+      recommendationRunId: "run-present",
+      calibrationConfig: {
+        coefficients: {
+          reportingLine: { inferredWeight: 0.90 },
+          budgetOwnership: { inferredWeight: 0.55 },
+          teamLeadership: { inferredWeight: 0.82 },
+          commercialAccountability: { inferredWeight: 0.75 },
+          technologyStack: { inferredWeight: 0.85 },
+          mandate: { inferredWeight: 0.70 },
+        },
+        thresholds: {
+          highImpactThreshold: 0.15,
+          confidenceVisibleThreshold: 0.80,
+          maxHighImpactQuestions: 2
+        }
+      }
     });
     decisionConfidence = assessment.decisionConfidence;
   } catch (err) {

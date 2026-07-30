@@ -1,10 +1,9 @@
-// src/lib/intelligence/engines/CareerAssessmentEngine.ts
-
-import { CandidateProjection } from "../../domain/candidate_projection";
+﻿import { CandidateProjection } from "../../domain/candidate_projection";
 import { JobProjection } from "../../domain/job_projection";
 import { CareerAssessment, OperatingLevel } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
-import brandTiers from '@/data/ontology/brand_tiers.json';
+import { CareerValueEngine } from "./CareerValueEngine";
+import brandTiers from "@/data/ontology/brand_tiers.json";
 
 const LEVEL_HIERARCHY: Record<Exclude<OperatingLevel, "UNKNOWN">, number> = {
   EXECUTIVE: 5,
@@ -39,44 +38,47 @@ export class CareerAssessmentEngine {
 
     const candVal = LEVEL_HIERARCHY[candidate.operatingLevel.value] || 1;
     const jobVal = LEVEL_HIERARCHY[job.operatingLevel.value] || 1;
-
     const diff = candVal - jobVal;
 
-    let trajectory: "FORWARD" | "LATERAL" | "BACKWARD" | "UNKNOWN" = "LATERAL";
-    let regressionScore = 0;
+    const cvb = CareerValueEngine.evaluate(candidate, job);
 
-    if (diff > 0) {
-      trajectory = "BACKWARD";
-      // Deterministic linear mapping: Regression Score = LevelDifference * 25
-      regressionScore = diff * 25; 
-    } else if (diff < 0) {
-      trajectory = "FORWARD";
-      regressionScore = 0;
-    } else {
-      trajectory = "LATERAL";
-      regressionScore = 0;
-    }
-
-    let growthPotential: "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" = "MEDIUM";
-    if (jobVal > candVal) {
-      growthPotential = "HIGH";
-    } else if (jobVal < candVal) {
-      growthPotential = "LOW";
-    }
-
-    // Evaluate Brand Equity & Platform Quality Bonus from brand_tiers.json
+    // 1. Evaluate Career Capital Gain
     const companyText = (job.company + " " + job.role + " " + (job.originalOpportunity?.normalizedText || "")).toLowerCase();
-    let brandEquityBonus = 0;
+    let brandCapitalGain = 10;
 
     const bt: any = brandTiers;
     if (bt.tier1?.keywords?.some((kw: string) => companyText.includes(kw.toLowerCase()))) {
-      brandEquityBonus = bt.tier1.bonusPoints || 15;
+      brandCapitalGain = 25; // High Tier-1 Brand Capital Gain (OpenAI, Google, etc.)
     } else if (bt.tier2?.keywords?.some((kw: string) => companyText.includes(kw.toLowerCase()))) {
-      brandEquityBonus = bt.tier2.bonusPoints || 8;
+      brandCapitalGain = 15;
     }
 
-    // Calculate composite career score
-    const careerScore = Math.min(100, Math.max(0, 80 - regressionScore + brandEquityBonus));
+    const platformScaleGain = cvb.commercialScale.value * 20;
+    const scopeOwnershipGain = cvb.scopeExpansion.value * 20;
+    const totalCareerCapitalGain = brandCapitalGain + platformScaleGain + scopeOwnershipGain;
+
+    // 2. Evaluate Independent Career Risk
+    let titleRegressionRisk = diff > 0 ? diff * 15 : 0;
+    let executionAmbiguityRisk = 10;
+    
+    if (job.operatingContext.pnlResponsibility === false) executionAmbiguityRisk += 5;
+    if (job.operatingContext.directReports === false) executionAmbiguityRisk += 5;
+
+    const totalCareerRisk = titleRegressionRisk + executionAmbiguityRisk;
+
+    // 3. Compute Net Dual-Balance Career Value
+    const netCareerValue = Math.min(100, Math.max(0, Math.round(totalCareerCapitalGain - totalCareerRisk + 40)));
+
+    let trajectory: "FORWARD" | "LATERAL" | "BACKWARD" | "UNKNOWN" = "LATERAL";
+    if (totalCareerCapitalGain > totalCareerRisk + 15) {
+      trajectory = "FORWARD";
+    } else if (totalCareerRisk > totalCareerCapitalGain + 15) {
+      trajectory = "BACKWARD";
+    } else {
+      trajectory = "LATERAL";
+    }
+
+    const regressionScore = Math.max(0, totalCareerRisk - brandCapitalGain);
 
     return {
       status: "COMPLETE",
@@ -89,9 +91,11 @@ export class CareerAssessmentEngine {
         conflictingSignals: 0
       },
       trajectory,
-      growthPotential,
+      growthPotential: netCareerValue >= 75 ? "HIGH" : netCareerValue >= 55 ? "MEDIUM" : "LOW",
       regressionScore,
-      careerScore
+      careerScore: netCareerValue,
+      careerCapitalGain: totalCareerCapitalGain,
+      careerRisk: totalCareerRisk
     } as any;
   }
 }
