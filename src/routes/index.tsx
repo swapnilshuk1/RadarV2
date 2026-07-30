@@ -304,10 +304,10 @@ function Row({
             <span className="mono text-[10px] uppercase tracking-wider">{o.scrapedFrom} · Target: ₹80L INR</span>
           </p>
 
-          {/* Row 3: Memory Anchor Chip */}
-          <p className="mt-1.5 text-[12.5px] text-foreground font-medium flex items-center gap-2 truncate bg-card/60 border border-border/80 px-2.5 py-1 rounded-sm">
-            <span className="mono text-[9px] tracking-[0.14em] bg-accent-ink/10 text-accent-ink px-1.5 py-0.5 rounded-sm uppercase font-bold shrink-0">
-              🧠 MEMORY ANCHOR
+          {/* Row 3: Semantic Recall Cue */}
+          <p className="mt-1.5 text-[12.5px] text-foreground font-medium flex items-center gap-2 truncate bg-muted/30 border border-border/40 px-2.5 py-1 rounded-sm">
+            <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase font-bold shrink-0">
+              RECALL CUE
             </span>
             <span className="truncate italic text-foreground/90 font-sans font-semibold">“{brief.memory.retentionSentence}”</span>
           </p>

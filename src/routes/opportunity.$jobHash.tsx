@@ -9,6 +9,7 @@ import { useDecisions } from "../lib/decisions-store";
 import type { EvaluationEnvelope } from "../domain/v4";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
 import { PresentationEngine } from "../lib/intelligence/editorial/PresentationEngine";
+import { PresentationTokens } from "../lib/intelligence/editorial/PresentationTokens";
 
 function formatValue(val: any): string {
   if (!val) return "";
@@ -261,13 +262,13 @@ function Brief() {
           </div>
 
           {/* DECISION SUMMARY CARD: RADAR'S BOTTOM LINE */}
-          <div className="mt-6 border-2 border-accent-ink/40 bg-card p-6 rounded-xl shadow-md ring-1 ring-accent-ink/20">
+          <div className={PresentationTokens.decisionSummaryContainer}>
             {/* Tier 1: Recommendation & Takeaway */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
               <span className="mono text-[11px] tracking-[0.2em] font-bold bg-pursue-soft text-pursue px-2.5 py-1 rounded-sm uppercase">
                 {currentVerdict} · {brief.certaintyPct >= 85 ? "High Confidence" : brief.certaintyPct >= 65 ? "Moderate Confidence" : "Low Confidence"}
               </span>
-              <span className="mono text-[10px] tracking-[0.22em] text-accent-ink font-bold uppercase">
+              <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase">
                 RADAR'S BOTTOM LINE
               </span>
             </div>
@@ -600,16 +601,16 @@ function Brief() {
         })}
 
         {/* ────────────────────────────────────────────────────────────────────────
-            VERIFIED EVIDENCE SIGNALS & VERBATIM QUOTES LEDGER
+            EVIDENCE BEHIND THIS RECOMMENDATION (SUPPORTING APPENDIX)
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-10 border-b border-border">
+        <section className="py-10 border-b border-border/40">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
             <div>
               <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
-                Extraction &amp; Verification Audit
+                Supporting Validation Appendix
               </p>
               <h2 className="display text-[26px] sm:text-[34px] mt-1 text-foreground font-semibold">
-                Verified evidence signals.
+                Evidence Behind This Recommendation
               </h2>
             </div>
 
