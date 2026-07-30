@@ -18,7 +18,7 @@ export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
       {/* ────────────────────────────────────────────────────────────────────────
           BLOCK 1: THE CASE (Editorial Heading & Narrative)
           ──────────────────────────────────────────────────────────────────────── */}
-      <div className="mb-8 max-w-4xl">
+      <div className="mb-6 max-w-4xl">
         <h3 className="font-serif text-[20px] sm:text-[22px] text-foreground font-semibold leading-tight mb-3">
           {preview.headline}
         </h3>
@@ -30,7 +30,7 @@ export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
       {/* ────────────────────────────────────────────────────────────────────────
           BLOCK 2: PRIMARY REASONING (Clean, untinted bullet points)
           ──────────────────────────────────────────────────────────────────────── */}
-      <div className="mb-8 border-t border-border/40 pt-5 max-w-4xl">
+      <div className="mb-6 border-t border-border/40 pt-4 max-w-4xl">
         <h4 className="mono text-[10px] tracking-[0.24em] font-bold uppercase text-muted-foreground mb-5">
           WHY RADAR RECOMMENDS THIS
         </h4>
@@ -69,7 +69,7 @@ export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
         <Link
           to="/opportunity/$jobHash"
           params={{ jobHash: o.jobHash }}
-          className="mono text-[10px] sm:text-[11.5px] tracking-[0.2em] bg-foreground text-background hover:bg-foreground/90 px-6 py-3 rounded-sm font-bold uppercase transition-all flex items-center gap-2.5 group shrink-0 shadow-md"
+          className="mono text-[10px] sm:text-[11px] tracking-[0.2em] border border-foreground bg-transparent hover:bg-muted/40 text-foreground px-5 py-2.5 rounded-sm font-bold uppercase transition-all flex items-center gap-2 group shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
           <span>OPEN ADVISORY DOSSIER</span>
@@ -80,7 +80,7 @@ export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
           href={applyUrlFor(o)}
           target="_blank"
           rel="noopener noreferrer"
-          className="mono text-[9.5px] sm:text-[10px] tracking-[0.16em] text-muted-foreground hover:text-foreground font-semibold uppercase transition-colors flex items-center gap-1.5 shrink-0"
+          className="mono text-[9.5px] sm:text-[10px] tracking-[0.16em] text-muted-foreground hover:text-foreground font-semibold uppercase transition-colors flex items-center gap-1.5 shrink-0 border border-border/60 hover:border-border/80 px-3 py-1.5 rounded-sm bg-muted/10"
           onClick={(e) => e.stopPropagation()}
         >
           APPLY ON {o.scrapedFrom.toUpperCase()}

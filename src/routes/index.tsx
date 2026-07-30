@@ -296,7 +296,7 @@ function Row({
           </div>
 
           {/* Row 2: Company • Location • Portal • Compensation Target */}
-          <p className="mt-2 flex flex-wrap items-center gap-1.5 mono text-[9px] sm:text-[9.5px] uppercase tracking-[0.18em] text-muted-foreground font-bold truncate">
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 mono text-[9px] sm:text-[9.5px] uppercase tracking-[0.18em] text-muted-foreground font-bold truncate">
             <span>{o.company}</span>
             <span>·</span>
             <span>{o.location}</span>
