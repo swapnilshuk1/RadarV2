@@ -6,6 +6,7 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  redirect,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { getSessionUserFn } from "../lib/auth/server";
@@ -66,6 +67,32 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: async ({ location }) => {
+    const isAuthRoute = location.pathname === "/login" || location.pathname.startsWith("/api/auth");
+    if (isAuthRoute) return;
+
+    try {
+      const user = await getSessionUserFn();
+      if (!user) {
+        if (typeof window !== "undefined") {
+          if (!sessionStorage.getItem("radar_session")) {
+            throw redirect({ to: '/login' });
+          }
+        } else {
+          throw redirect({ to: '/login' });
+        }
+      }
+    } catch (e: any) {
+      if (e?.isRedirect) throw e;
+      if (typeof window !== "undefined") {
+        if (!sessionStorage.getItem("radar_session")) {
+          throw redirect({ to: '/login' });
+        }
+      } else {
+        throw redirect({ to: '/login' });
+      }
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -220,33 +247,7 @@ function RootComponent() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Auth guard: check server session cookie first, then fall back to dev magic login
-    const isAuthRoute = location.pathname === "/login" ||
-      location.pathname.startsWith("/api/auth");
-    if (isAuthRoute) return;
-
-    // Async check: try server session first
-    getSessionUserFn().then((user) => {
-      if (!user) {
-        // No server session — check dev magic login sessionStorage fallback
-        if (typeof window !== "undefined") {
-          const devSession = sessionStorage.getItem("radar_session");
-          if (!devSession) {
-            navigate({ to: "/login" });
-          }
-        }
-      }
-    }).catch(() => {
-      // Server fn failed — fall back to client-side sessionStorage check
-      if (typeof window !== "undefined") {
-        const devSession = sessionStorage.getItem("radar_session");
-        if (!devSession) navigate({ to: "/login" });
-      }
-    });
-  }, [location.pathname, navigate]);
-
-  const showHeader = !location.pathname.startsWith("/login") &&
+const showHeader = !location.pathname.startsWith("/login") &&
     !location.pathname.startsWith("/api/auth");
 
   return (
