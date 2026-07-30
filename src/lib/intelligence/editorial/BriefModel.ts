@@ -50,10 +50,46 @@ export interface RankedUnknown {
   question: string;
 }
 
+export interface ProofPointItem {
+  category: "Direct Evidence" | "Transferable Experience";
+  headline: string;
+  detail: string;
+}
+
+export interface QualitativeReasoningRow {
+  layer: "Identity Alignment" | "Capability Coverage" | "Career Capital Value";
+  ratingLabel: "Exceptional" | "Strong Alignment" | "Adjacent Alignment" | "Moderate";
+  becausePoints: string[];
+  evidenceSnippet: string;
+}
+
+export interface OpportunityInOneMinute {
+  whyPursue: string[];
+  watchFor: string[];
+  bottomLine: string;
+}
+
+export interface DecisionSensitivity {
+  becomesPursueIf: string[];
+  becomesPassIf: string[];
+}
+
+export interface StrategicUpside {
+  headline: string;
+  points: string[];
+}
+
 export interface BriefModel {
   opportunityId: string;
   score: number;
   certaintyPct: number;
+  evidenceQuality: "High Evidence Quality" | "Medium Evidence Quality" | "Inferred Evidence";
+  qualitativeRecommendation: "Strong Pursue Recommendation" | "Conditional Consideration" | "Strategic Pass";
+  whyNotStronger: string;
+  oneMinuteTLDR: OpportunityInOneMinute;
+  qualitativeReasoningChain: QualitativeReasoningRow[];
+  strategicUpside: StrategicUpside;
+  decisionSensitivity: DecisionSensitivity;
   strategy: BriefStrategy;
   weights: FocusWeights;
   memory: BriefMemory;
@@ -62,6 +98,8 @@ export interface BriefModel {
   topUnknownPreview?: string;
   deliverablesWork: string[];
   deliverablesValue: string[];
+  deliverablesProvenance: Array<"Observed in JD" | "Inferred from Role Pattern">;
+  proofPoints: ProofPointItem[];
   fitProofs: string[];
   rankedUnknowns: RankedUnknown[];
   certaintyLevel: "HIGH" | "MEDIUM" | "LOW";

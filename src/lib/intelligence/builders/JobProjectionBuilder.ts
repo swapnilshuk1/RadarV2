@@ -1,189 +1,212 @@
-// src/lib/intelligence/builders/JobProjectionBuilder.ts
-
-import { JobProjection } from "../../domain/job_projection";
+﻿import { JobProjection, ProjectedCapability, ExecutiveIdentity, OperatingContext } from "../../domain/job_projection";
 import { OperatingLevelClassifier } from "../classifiers/OperatingLevelClassifier";
 import { WorkNatureClassifier } from "../classifiers/WorkNatureClassifier";
 import { DecisionAuthorityClassifier } from "../classifiers/DecisionAuthorityClassifier";
 import { CommercialScopeClassifier } from "../classifiers/CommercialScopeClassifier";
-import capabilityRules from '@/data/ontology/capability_rules.json';
+import executiveOntology from "@/data/ontology/executive_ontology.json";
 
 export class JobProjectionBuilder {
-  private static extractTextFromOpportunity(opportunity: any): string {
-    const parts: string[] = [];
-    
-    if (opportunity.role) parts.push(opportunity.role);
-    if (opportunity.company) parts.push(opportunity.company);
-    if (opportunity.location) parts.push(opportunity.location);
-    if (opportunity.normalizedText) parts.push(opportunity.normalizedText);
-    if (opportunity.description) parts.push(opportunity.description);
-    if (opportunity.primaryConcern?.jdQuote) parts.push(opportunity.primaryConcern.jdQuote);
+  
+  private static segmentDocument(opportunity: any): Record<string, string> {
+    const text = opportunity.description || opportunity.normalizedText || "";
+    return {
+      TITLE: opportunity.role || "",
+      SUMMARY: "",
+      RESPONSIBILITIES: text,
+      REQUIREMENTS: "",
+      COMPANY: opportunity.company || "",
+      BENEFITS: ""
+    };
+  }
 
-    if (Array.isArray(opportunity.dimensions)) {
-      opportunity.dimensions.forEach((dim: any) => {
-        if (dim.jdEvidence) {
-          if (dim.jdEvidence.value) parts.push(dim.jdEvidence.value);
-          if (Array.isArray(dim.jdEvidence.evidence)) {
-            dim.jdEvidence.evidence.forEach((ev: any) => {
-              if (ev.quote) parts.push(ev.quote);
-            });
-          }
-        }
-      });
-    }
-
-    return parts.join("\n");
+  private static testKeyword(text: string, kw: string): boolean {
+    if (!kw) return false;
+    return new RegExp("\\b" + kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i").test(text);
   }
 
   public static build(opportunity: any): JobProjection {
     const title = opportunity.role || "";
-    const desc = this.extractTextFromOpportunity(opportunity);
+    const fullText = (opportunity.description || opportunity.normalizedText || "").toLowerCase();
+    const fullContext = (title + "\n" + fullText);
+    const titleLower = title.toLowerCase();
 
-    // Run our classifiers
-    const operatingLevel = OperatingLevelClassifier.classify(desc, title);
-    const workNature = WorkNatureClassifier.classify(desc, title);
-    const decisionAuthority = DecisionAuthorityClassifier.classify(desc, title);
-    const commercialScope = CommercialScopeClassifier.classify(desc, title);
+    // 1. Executive Identity Classification from ESG (Title + Body Signal Weighting)
+    let primaryIdentity = "Commercial & Marketing Leadership";
+    let identityConf = 0.85;
 
-    // Extract required capabilities
-    const rawCapabilities: string[] = [];
+    // Technical / Product triggers in Title or Body
+    const isTitleTech = this.testKeyword(titleLower, "technology") || 
+                        this.testKeyword(titleLower, "cto") || 
+                        this.testKeyword(titleLower, "engineering") || 
+                        this.testKeyword(titleLower, "architect") || 
+                        this.testKeyword(titleLower, "product manager") || 
+                        this.testKeyword(titleLower, "group product manager") || 
+                        this.testKeyword(titleLower, "gpm") || 
+                        this.testKeyword(titleLower, "gen ai") || 
+                        this.testKeyword(titleLower, "agentic");
+
+    const isBodyTech = this.testKeyword(fullText, "salesforce architect") || 
+                       this.testKeyword(fullText, "software architect") || 
+                       this.testKeyword(fullText, "quote-to-cash") || 
+                       (this.testKeyword(fullText, "apex") && this.testKeyword(fullText, "lwc"));
+
+    const isTitleOps = this.testKeyword(titleLower, "operations") || 
+                       this.testKeyword(titleLower, "delivery") || 
+                       this.testKeyword(titleLower, "coo");
+
+    const isBodyOps = this.testKeyword(fullText, "substations") || 
+                      this.testKeyword(fullText, "transmission business") || 
+                      this.testKeyword(fullText, "epc projects") || 
+                      this.testKeyword(fullText, "power transmission");
+
+    if (isTitleTech || isBodyTech) {
+      primaryIdentity = "Technology & Engineering Leadership";
+      identityConf = 0.90;
+    } else if (isTitleOps || isBodyOps) {
+      primaryIdentity = "Operations & Delivery Leadership";
+      identityConf = 0.90;
+    } else if (this.testKeyword(titleLower, "clinical") || this.testKeyword(titleLower, "medical")) {
+      primaryIdentity = "Clinical & Medical Leadership";
+      identityConf = 0.95;
+    } else if (this.testKeyword(titleLower, "marketing") || this.testKeyword(titleLower, "cmo") || this.testKeyword(titleLower, "sales") || this.testKeyword(titleLower, "commercial")) {
+      primaryIdentity = "Commercial & Marketing Leadership";
+      identityConf = 0.90;
+    }
+
+    const executiveIdentity: ExecutiveIdentity = {
+      value: primaryIdentity,
+      confidence: identityConf,
+      evidence: [`Primary classification from title/body and ESG graph`]
+    };
+
+    // 2. Deterministic Capability & Platform Extraction from ESG
+    const capabilitiesMap = new Map<string, ProjectedCapability>();
+
+    // Structured scraper metadata extraction
     if (Array.isArray(opportunity.dimensions)) {
       opportunity.dimensions.forEach((dim: any) => {
         if (dim.key === "technologyStack" || dim.key === "functionalScope" || dim.key === "mandate" || dim.key === "requiredCapabilities") {
           const val = dim.jdEvidence?.value;
-          if (val) rawCapabilities.push(val);
-          if (Array.isArray(dim.jdEvidence?.evidence)) {
-            dim.jdEvidence.evidence.forEach((ev: any) => {
-              if (ev.quote) rawCapabilities.push(ev.quote);
+          if (typeof val === "string" && val.trim().length > 0 && val.trim().length < 80) {
+            capabilitiesMap.set(val.trim(), {
+              name: val.trim(),
+              source: "explicit",
+              confidence: 0.95,
+              evidence: ["Structured scraper evidence"]
             });
           }
         }
       });
     }
 
-    // Sanitize stringified JSON leaks and extract clean capability names
-    const requiredCapabilities: string[] = [];
-    rawCapabilities.forEach((item) => {
-      if (typeof item === "string") {
-        const trimmed = item.trim();
-        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-          try {
-            const parsed = JSON.parse(trimmed);
-            const clean = parsed.rawValue || parsed.value || parsed.canonicalValue?.products?.[0];
-            if (clean && typeof clean === "string") requiredCapabilities.push(clean);
-          } catch {
-            // Ignore malformed JSON string
-          }
-        } else if (trimmed.length > 0 && trimmed.length < 80) {
-          requiredCapabilities.push(trimmed);
-        }
-      }
-    });
-
-    // Extract keyword-based capabilities dynamically from capability_rules.json
-    const fullTextForCaps = (title + "\n" + desc).toLowerCase();
-    if (Array.isArray(capabilityRules)) {
-      capabilityRules.forEach((rule: any) => {
-        if (Array.isArray(rule.keywords) && rule.keywords.some((kw: string) => fullTextForCaps.includes(kw.toLowerCase()))) {
-          requiredCapabilities.push(rule.canonicalCapability);
+    // Traverse Executive Semantic Graph for deterministic keyword extraction
+    const esg = executiveOntology as any;
+    if (Array.isArray(esg.domains)) {
+      esg.domains.forEach((dom: any) => {
+        if (Array.isArray(dom.disciplines)) {
+          dom.disciplines.forEach((disc: any) => {
+            // Capabilities
+            if (Array.isArray(disc.capabilities)) {
+              disc.capabilities.forEach((cap: any) => {
+                if (Array.isArray(cap.keywords) && cap.keywords.some((kw: string) => this.testKeyword(fullContext, kw))) {
+                  if (!capabilitiesMap.has(cap.name)) {
+                    capabilitiesMap.set(cap.name, {
+                      name: cap.name,
+                      source: "explicit",
+                      confidence: 0.90,
+                      evidence: ["Explicitly observed in JD text match"]
+                    });
+                  }
+                }
+              });
+            }
+            // Disambiguated Platforms
+            if (Array.isArray(disc.platforms)) {
+              disc.platforms.forEach((plat: any) => {
+                if (Array.isArray(plat.keywords) && plat.keywords.some((kw: string) => this.testKeyword(fullContext, kw))) {
+                  if (!capabilitiesMap.has(plat.product)) {
+                    capabilitiesMap.set(plat.product, {
+                      name: plat.product,
+                      source: "explicit",
+                      confidence: 0.95,
+                      evidence: [`Observed product platform: ${plat.vendor} ${plat.product}`]
+                    });
+                  }
+                }
+              });
+            }
+          });
         }
       });
     }
 
-    const capabilityExtractionStatus = requiredCapabilities.length === 0 ? "FAILED" : "COMPLETE";
+    const capabilities = Array.from(capabilitiesMap.values());
+    const capabilityExtractionStatus = capabilities.length === 0 ? "FAILED" : "COMPLETE";
 
-    // Extract canonical theme IDs using robust, deterministic keyword matching
-    const executiveThemes: string[] = [];
-    const fullText = (title + "\n" + desc).toLowerCase();
+    // 3. Theme Dimensions
+    const executiveFunction = new Set<string>();
+    const businessObjectives = new Set<string>();
+    const executionStyle = new Set<string>();
 
-    if (
-      fullText.includes("marketing") ||
-      fullText.includes("growth") ||
-      fullText.includes("demand") ||
-      fullText.includes("sales") ||
-      fullText.includes("acquisition") ||
-      fullText.includes("brand") ||
-      fullText.includes("cmo") ||
-      fullText.includes("revenue") ||
-      fullText.includes("commercial")
-    ) {
-      executiveThemes.push("theme_growth", "theme_commercial", "theme_customer");
+    if (this.testKeyword(titleLower, "marketing") || this.testKeyword(titleLower, "sales") || this.testKeyword(titleLower, "commercial")) {
+      executiveFunction.add("Commercial & Marketing");
+    } else if (this.testKeyword(titleLower, "technology") || this.testKeyword(titleLower, "it") || this.testKeyword(titleLower, "architect") || isTitleTech) {
+      executiveFunction.add("Technology");
+    } else if (this.testKeyword(titleLower, "operations") || this.testKeyword(titleLower, "delivery") || isTitleOps) {
+      executiveFunction.add("Operations");
     }
 
-    if (
-      fullText.includes("transformation") ||
-      fullText.includes("digital") ||
-      fullText.includes("strategy") ||
-      fullText.includes("coe") ||
-      fullText.includes("gcc") ||
-      fullText.includes("platforms") ||
-      fullText.includes("cloud")
-    ) {
-      executiveThemes.push("theme_transformation", "theme_digital");
+    if (this.testKeyword(fullText, "growth") || this.testKeyword(fullText, "expansion") || this.testKeyword(fullText, "acquisition")) {
+      businessObjectives.add("Growth");
+    }
+    if (this.testKeyword(fullText, "efficiency") || this.testKeyword(fullText, "optimization") || this.testKeyword(fullText, "margin")) {
+      businessObjectives.add("Efficiency");
     }
 
-    if (
-      fullText.includes("cio") ||
-      fullText.includes("it") ||
-      fullText.includes("infrastructure") ||
-      fullText.includes("risk") ||
-      fullText.includes("governance") ||
-      fullText.includes("security") ||
-      fullText.includes("architecture") ||
-      fullText.includes("cybersecurity") ||
-      fullText.includes("cto") ||
-      fullText.includes("tech")
-    ) {
-      executiveThemes.push("theme_technology", "theme_operations");
+    if (this.testKeyword(fullText, "transformation") || this.testKeyword(fullText, "change management") || this.testKeyword(fullText, "modernization")) {
+      executionStyle.add("Transformation");
+    } else {
+      executionStyle.add("Delivery");
     }
 
-    if (
-      fullText.includes("finance") ||
-      fullText.includes("cfo") ||
-      fullText.includes("budget") ||
-      fullText.includes("p&l") ||
-      fullText.includes("accounts") ||
-      fullText.includes("treasury")
-    ) {
-      executiveThemes.push("theme_finance");
-    }
+    // 4. Factual Operating Context & Structural Metadata
+    const operatingContext: OperatingContext = {
+      pnlResponsibility: this.testKeyword(fullText, "p&l") || this.testKeyword(fullText, "profit and loss") || this.testKeyword(fullText, "profit & loss"),
+      budgetOwnership: this.testKeyword(fullText, "budget"),
+      vendorManagement: this.testKeyword(fullText, "vendor") || this.testKeyword(fullText, "vendors") || this.testKeyword(fullText, "agency"),
+      complianceAudit: this.testKeyword(fullText, "compliance") || this.testKeyword(fullText, "sebi") || this.testKeyword(fullText, "audit"),
+      directReports: this.testKeyword(fullText, "direct reports") || this.testKeyword(fullText, "manage a team") || this.testKeyword(fullText, "lead a team"),
+      remote: this.testKeyword(fullText, "remote"),
+      hybrid: this.testKeyword(fullText, "hybrid"),
+      travel: this.testKeyword(fullText, "travel") || this.testKeyword(fullText, "willingness to travel")
+    };
 
-    if (
-      fullText.includes("hr") ||
-      fullText.includes("people") ||
-      fullText.includes("talent") ||
-      fullText.includes("culture") ||
-      fullText.includes("recruitment") ||
-      fullText.includes("human resources")
-    ) {
-      executiveThemes.push("theme_hr");
-    }
-
-    // Determine work model
     let workModel: "HYBRID" | "REMOTE" | "ON_SITE" | "UNKNOWN" = "UNKNOWN";
-    if (Array.isArray(opportunity.dimensions)) {
-      const wmDim = opportunity.dimensions.find((dim: any) => dim.key === "workModel");
-      const wmVal = (wmDim?.jdEvidence?.value || "").toLowerCase();
-      if (wmVal.includes("hybrid") || wmVal.includes("flexible")) {
-        workModel = "HYBRID";
-      } else if (wmVal.includes("remote")) {
-        workModel = "REMOTE";
-      } else if (wmVal.includes("on-site") || wmVal.includes("office")) {
-        workModel = "ON_SITE";
-      }
-    }
+    if (operatingContext.hybrid) workModel = "HYBRID";
+    else if (operatingContext.remote) workModel = "REMOTE";
+
+    // Standard Semantic Classifiers
+    const operatingLevel = OperatingLevelClassifier.classify(fullContext, title);
+    const workNature = WorkNatureClassifier.classify(fullContext, title);
+    const decisionAuthority = DecisionAuthorityClassifier.classify(fullContext, title);
+    const commercialScope = CommercialScopeClassifier.classify(fullContext, title);
 
     return {
       jobHash: opportunity.jobHash || "",
-      role: opportunity.role || "",
+      role: title,
       company: opportunity.company || "",
+      executiveIdentity,
       operatingLevel,
       workNature,
       decisionAuthority,
       commercialScope,
-      requiredCapabilities: Array.from(new Set(requiredCapabilities)),
+      capabilities,
+      executiveFunction: Array.from(executiveFunction),
+      businessObjectives: Array.from(businessObjectives),
+      executionStyle: Array.from(executionStyle),
+      operatingContext,
       location: opportunity.location || "",
       workModel,
-      executiveThemes: Array.from(new Set(executiveThemes)),
       capabilityExtractionStatus,
       originalOpportunity: opportunity
     };

@@ -1,0 +1,244 @@
+﻿{
+  "version": "3.0.0",
+  "systemName": "Executive Semantic Graph (ESG Tripartite Topology)",
+  "domains": [
+    {
+      "id": "commercial_marketing",
+      "name": "Commercial & Marketing Leadership",
+      "disciplines": [
+        {
+          "id": "performance_growth",
+          "name": "Performance & Growth Marketing",
+          "capabilities": [
+            {
+              "id": "perf_mkt",
+              "name": "Performance Marketing",
+              "keywords": ["performance marketing", "roas", "paid search", "google ads", "meta ads", "paid media", "campaign optimization", "biddable media"]
+            },
+            {
+              "id": "growth_acq",
+              "name": "Growth Marketing & Acquisition",
+              "keywords": ["growth marketing", "user acquisition", "paid growth", "customer acquisition", "growth strategy", "lead generation", "cac/ltv", "cac", "ltv"]
+            },
+            {
+              "id": "seo_content",
+              "name": "SEO & Content Strategy",
+              "keywords": ["seo", "sem", "search engine optimization", "content marketing", "inbound marketing"]
+            }
+          ],
+          "responsibilities": ["Customer Acquisition", "Paid Budget Allocation", "Channel ROI Optimization", "Conversion Funnel Optimization"]
+        },
+        {
+          "id": "brand_communications",
+          "name": "Brand & Communications",
+          "capabilities": [
+            {
+              "id": "brand_strat",
+              "name": "Brand Strategy & Marketing",
+              "keywords": ["brand marketing", "brand strategy", "brand positioning", "brand equity", "branding"]
+            },
+            {
+              "id": "corp_comms",
+              "name": "Corporate Communications & PR",
+              "keywords": ["corporate communications", "public relations", "pr", "media relations", "reputation management", "crisis communications", "brand storytelling"]
+            }
+          ],
+          "responsibilities": ["Executive Storytelling", "PR & Media Relations", "Brand Positioning", "Reputation & Crisis Management"]
+        },
+        {
+          "id": "martech_automation",
+          "name": "MarTech & Customer Data",
+          "capabilities": [
+            {
+              "id": "mkt_auto_crm",
+              "name": "Marketing Automation & CRM",
+              "keywords": ["martech", "marketing automation", "crm strategy", "crm transformation", "leadsquared", "hubspot"]
+            },
+            {
+              "id": "customer_data_analytics",
+              "name": "Customer Data & Analytics",
+              "keywords": ["cdp", "customer data platform", "google analytics", "ga4", "tableau", "attribution models"]
+            }
+          ],
+          "responsibilities": ["CDP & MarTech Infrastructure", "Data Attribution Modeling", "Automation Workflows"],
+          "platforms": [
+            {
+              "vendor": "Salesforce",
+              "product": "Salesforce Marketing Cloud (SFMC)",
+              "keywords": ["salesforce marketing cloud", "sfmc", "exacttarget"]
+            },
+            {
+              "vendor": "Adobe",
+              "product": "Adobe Experience Cloud / Marketo",
+              "keywords": ["adobe experience cloud", "marketo", "adobe analytics"]
+            }
+          ]
+        },
+        {
+          "id": "sales_revops",
+          "name": "Sales & Revenue Operations",
+          "capabilities": [
+            {
+              "id": "sales_gtm",
+              "name": "Sales & GTM Strategy",
+              "keywords": ["sales strategy", "gtm strategy", "go-to-market", "business development", "b2b sales", "revenue growth", "product marketing"]
+            },
+            {
+              "id": "revops",
+              "name": "Revenue Operations (RevOps)",
+              "keywords": ["revops", "revenue operations", "sales intelligence", "sales enablement"]
+            },
+            {
+              "id": "trade_customer_mkt",
+              "name": "Trade & Customer Marketing",
+              "keywords": ["trade marketing", "customer marketing", "shopper marketing", "category management", "route-to-market", "rtm"]
+            }
+          ],
+          "responsibilities": ["P&L & Revenue Generation", "Sales Pipeline Execution", "GTM Route-to-Market Strategy"]
+        },
+        {
+          "id": "customer_success",
+          "name": "Customer Success & Retention",
+          "capabilities": [
+            {
+              "id": "cs_mgmt",
+              "name": "Customer Success Leadership",
+              "keywords": ["customer success", "client success", "account management", "nrr", "retention strategy"]
+            },
+            {
+              "id": "retention_expansion",
+              "name": "Retention & Expansion (NRR)",
+              "keywords": ["retention & expansion", "upsell", "cross-sell", "churn reduction", "nrr expansion"]
+            }
+          ],
+          "responsibilities": ["Net Revenue Retention (NRR)", "Churn Reduction", "Customer Advocacy & Health"]
+        }
+      ]
+    },
+    {
+      "id": "technology_engineering",
+      "name": "Technology & Engineering Leadership",
+      "disciplines": [
+        {
+          "id": "software_architecture",
+          "name": "Software & Platform Architecture",
+          "capabilities": [
+            {
+              "id": "sw_eng",
+              "name": "Software Engineering & Architecture",
+              "keywords": ["software engineering", "software architecture", "full stack", "backend", "system design", "distributed systems", "apex"]
+            },
+            {
+              "id": "cloud_devops",
+              "name": "Cloud Infrastructure & DevOps",
+              "keywords": ["aws", "azure", "gcp", "devops", "kubernetes", "cloud architecture", "ci/cd"]
+            }
+          ],
+          "responsibilities": ["Platform Scalability", "Software Architecture Design", "Codebase Integrity"],
+          "platforms": [
+            {
+              "vendor": "Salesforce",
+              "product": "Salesforce CPQ & Quote-to-Cash",
+              "keywords": ["salesforce cpq", "cpq architect", "quote to cash", "cpq developer", "steelbrick"]
+            }
+          ]
+        },
+        {
+          "id": "it_delivery_ops",
+          "name": "Enterprise IT & Delivery Operations",
+          "capabilities": [
+            {
+              "id": "it_delivery",
+              "name": "IT Delivery Management",
+              "keywords": ["it delivery", "service delivery", "it operations", "sla management", "vois", "vendor delivery"]
+            }
+          ],
+          "responsibilities": ["Global IT SLA Adherence", "Enterprise Vendor Governance"]
+        }
+      ]
+    },
+    {
+      "id": "operations_delivery",
+      "name": "Operations & Delivery Leadership",
+      "disciplines": [
+        {
+          "id": "it_delivery_automation",
+          "name": "IT Delivery & Process Governance",
+          "capabilities": [
+            {
+              "id": "safe_agile",
+              "name": "SAFe / Enterprise Agile Delivery",
+              "keywords": ["safe", "agile scrum", "programme delivery", "system integration", "it delivery"]
+            },
+            {
+              "id": "proc_auto",
+              "name": "Process Automation & Shared Services",
+              "keywords": ["power automate", "low-code", "no-code", "process automation", "shared services", "vois"]
+            }
+          ],
+          "responsibilities": ["Global Programme Delivery", "SLA & Governance Controls", "Shared Services Operations"]
+        },
+        {
+          "id": "supply_chain_ops",
+          "name": "Supply Chain & Operations",
+          "capabilities": [
+            {
+              "id": "supply_chain",
+              "name": "Supply Chain & Logistics",
+              "keywords": ["supply chain", "logistics", "fleet management", "sla compliance", "vendor management"]
+            }
+          ],
+          "responsibilities": ["Logistics & Fleet Operations", "Vendor SLA Management"]
+        }
+      ]
+    },
+    {
+      "id": "clinical_medical",
+      "name": "Clinical & Medical Leadership",
+      "disciplines": [
+        {
+          "id": "medical_affairs",
+          "name": "Medical Affairs & Clinical Research",
+          "capabilities": [
+            {
+              "id": "clinical_res",
+              "name": "Clinical Research & Governance",
+              "keywords": ["clinical research", "medical affairs", "medical governance", "pharma governance"]
+            }
+          ],
+          "responsibilities": ["Clinical Trial Governance", "Pharma Compliance & Medical Advisory"]
+        }
+      ]
+    }
+  ],
+  "relationshipGraph": [
+    { "source": "Performance Marketing", "target": "Growth Marketing & Acquisition", "relation": "SUPPORTS", "cost": 0.08 },
+    { "source": "Performance Marketing", "target": "Sales & GTM Strategy", "relation": "DRIVES", "cost": 0.28 },
+    { "source": "Performance Marketing", "target": "Trade & Customer Marketing", "relation": "SUPPORTS", "cost": 0.42 },
+    { "source": "Marketing Automation & CRM", "target": "Customer Data & Analytics", "relation": "ENABLES", "cost": 0.12 },
+    { "source": "Marketing Automation & CRM", "target": "Customer Success Leadership", "relation": "ENABLES", "cost": 0.22 },
+    { "source": "Customer Success Leadership", "target": "Retention & Expansion (NRR)", "relation": "DRIVES", "cost": 0.08 },
+    { "source": "Customer Success Leadership", "target": "Customer Data Platform", "relation": "ENABLES", "cost": 0.65 },
+    { "source": "Software Engineering & Architecture", "target": "Salesforce CPQ & Quote-to-Cash", "relation": "DRIVES", "cost": 0.10 }
+  ],
+  "transitionGraph": [
+    { "source": "Performance Marketing", "target": "Growth Marketing & Acquisition", "relation": "TRANSITIONS_TO", "frictionCost": 0.05 },
+    { "source": "Performance Marketing", "target": "Marketing Automation & CRM", "relation": "TRANSITIONS_TO", "frictionCost": 0.18 },
+    { "source": "Growth Marketing & Acquisition", "target": "Sales & GTM Strategy", "relation": "TRANSITIONS_TO", "frictionCost": 0.22 },
+    { "source": "Marketing Automation & CRM", "target": "Customer Success Leadership", "relation": "TRANSITIONS_TO", "frictionCost": 0.25 }
+  ],
+  "hybridBridges": [
+    {
+      "name": "MarTech / Digital Transformation",
+      "domains": ["commercial_marketing", "technology_engineering"],
+      "disciplines": ["martech_automation", "software_architecture"],
+      "effectiveDistanceOffset": 0.40
+    },
+    {
+      "name": "Customer Experience Transformation",
+      "domains": ["commercial_marketing", "operations_delivery"],
+      "disciplines": ["customer_success", "it_delivery_automation"],
+      "effectiveDistanceOffset": 0.45
+    }
+  ]
+}

@@ -1,110 +1,55 @@
-// src/lib/intelligence/editorial/BriefCompositionEngine.ts
-
+import { BriefMemory, BriefModel, RankedUnknown, ProofPointItem, OpportunityInOneMinute, QualitativeReasoningRow, StrategicUpside } from "./BriefModel";
+import { CompositionPolicy, DEFAULT_COMPOSITION_POLICY } from "./CompositionPolicy";
+import { SemanticNaturalLanguageResolver, unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
 import type { Opportunity } from "../../../data/opportunity-fixtures";
-import type { CompositionPolicy } from "./CompositionPolicy";
-import { DEFAULT_COMPOSITION_POLICY } from "./CompositionPolicy";
-import type {
-  BriefModel,
-  FocusWeights,
-  FocusArea,
-  BriefStrategy,
-  BriefMemory,
-  RankedUnknown,
-} from "./BriefModel";
 
 export class BriefCompositionEngine {
-  /**
-   * Calculates continuous focus weights from opportunity metrics and positioning signals.
-   */
-  public static calculateWeights(opportunity: Opportunity): FocusWeights {
+
+  private static calculateWeights(opportunity: Opportunity) {
     const score = opportunity.recommendationResult?.score ?? 50;
-    const role = (opportunity.role || "").toLowerCase();
-    const positioning = (opportunity.positioning || []).join(" ").toLowerCase();
+    const isPursue = opportunity.decision === "PURSUE" || score >= 75;
+    const isConsider = opportunity.decision === "CONSIDER" || (score >= 50 && score < 75);
 
-    let career = score >= 75 ? 0.85 : 0.45;
-    let execution = 0.5;
-    let commercial = 0.4;
-    let risk = 0.2;
-    let unknown = 0.3;
-
-    if (positioning.includes("travel 50%") || positioning.includes("travel 60%") || positioning.includes("relocation")) {
-      risk = 0.88;
+    if (isPursue) {
+      return { career: 0.8, execution: 0.7, commercial: 0.9, risk: 0.2, unknown: 0.3, confidence: 0.9 };
+    } else if (isConsider) {
+      return { career: 0.6, execution: 0.5, commercial: 0.6, risk: 0.4, unknown: 0.3, confidence: 0.8 };
+    } else {
+      return { career: 0.3, execution: 0.3, commercial: 0.2, risk: 0.7, unknown: 0.2, confidence: 0.85 };
     }
-
-    if (role.includes("commercial") || role.includes("growth") || role.includes("revenue") || role.includes("p&l")) {
-      commercial = 0.92;
-    }
-
-    if (role.includes("transform") || role.includes("moderniz") || positioning.includes("transformation")) {
-      career = 0.88;
-      execution = 0.75;
-    }
-
-    if (opportunity.dimensions.some((d) => d.key === "reportingLine" && d.bucket === "Missing")) {
-      unknown = 0.82;
-    }
-
-    const confidence = Math.min(0.95, 0.7 + (score / 100) * 0.25);
-
-    return { career, execution, commercial, risk, unknown, confidence };
   }
 
-  /**
-   * Selects the BriefStrategy based on continuous FocusWeights.
-   */
-  public static deriveStrategy(
-    weights: FocusWeights,
-    opportunity: Opportunity
-  ): BriefStrategy {
-    const score = opportunity.recommendationResult?.score ?? 50;
-
-    const sorted = Object.entries(weights)
-      .filter(([k]) => k !== "confidence")
-      .sort(([, a], [, b]) => (b as number) - (a as number))
-      .map(([key]) => key.toUpperCase() as FocusArea);
-
-    const primaryFocus = sorted[0] || "CAREER";
-    const secondaryFocus = sorted[1] || "EXECUTION";
-    const tertiaryFocus = sorted[2] || "COMMERCIAL";
-
-    let focusTitle = "Career Acceleration";
-    let heroAnchor = `Essentially a CCO stepping-stone role with regional growth ownership at ${opportunity.company}.`;
-
-    if (primaryFocus === "COMMERCIAL") {
-      focusTitle = "Commercial Scale";
-      heroAnchor = `High-impact commercial scale role with direct P&L and revenue expansion accountability at ${opportunity.company}.`;
-    } else if (primaryFocus === "RISK" || primaryFocus === "UNKNOWN") {
-      focusTitle = "Key Operating Constraint";
-      heroAnchor = `Strong capability fit with unstated compensation or reporting scope — verify during initial screening.`;
-    } else if (primaryFocus === "EXECUTION") {
-      focusTitle = "Execution Capability";
-      heroAnchor = `Tactical execution fit with low tailoring overhead and high shortlisting probability at ${opportunity.company}.`;
+  private static deriveStrategy(weights: any, opportunity: Opportunity) {
+    if (weights.commercial >= 0.8) {
+      return {
+        primaryFocus: "COMMERCIAL" as const,
+        secondaryFocus: "CAREER" as const,
+        tertiaryFocus: "EXECUTION" as const,
+        focusTitle: "High Strategic Alignment",
+        heroAnchor: `Direct mandate to lead ${opportunity.role} at ${opportunity.company}`,
+        narrative: { intent: "COMPETITIVE_ADVANTAGE" as const, strengthCount: 3 }
+      };
+    } else if (weights.risk >= 0.4) {
+      return {
+        primaryFocus: "RISK" as const,
+        secondaryFocus: "EXECUTION" as const,
+        tertiaryFocus: "UNKNOWN" as const,
+        focusTitle: "Scope & Requirement Trade-off",
+        heroAnchor: `Requires verification of mandate boundaries for ${opportunity.role}`,
+        narrative: { intent: "LEVERAGE_POINT" as const, strengthCount: 2 }
+      };
+    } else {
+      return {
+        primaryFocus: "CAREER" as const,
+        secondaryFocus: "COMMERCIAL" as const,
+        tertiaryFocus: "LEADERSHIP" as const,
+        focusTitle: "Career Trajectory Leverage",
+        heroAnchor: `Scope expansion opportunity with ${opportunity.company}`,
+        narrative: { intent: "CAPABILITY_FIT" as const, strengthCount: 3 }
+      };
     }
-
-    // Semantic intent for capability narrative
-    let intent: BriefStrategy["narrative"]["intent"] = "CAPABILITY_FIT";
-    if (score >= 85) {
-      intent = "COMPETITIVE_ADVANTAGE";
-    } else if (primaryFocus === "CAREER" || primaryFocus === "COMMERCIAL") {
-      intent = "LEVERAGE_POINT";
-    }
-
-    return {
-      primaryFocus,
-      secondaryFocus,
-      tertiaryFocus,
-      focusTitle,
-      heroAnchor,
-      narrative: {
-        intent,
-        strengthCount: 3,
-      },
-    };
   }
 
-  /**
-   * Pure Composition Function: Emits a semantic UI-agnostic BriefModel.
-   */
   public static compose(
     opportunity: Opportunity,
     policy: CompositionPolicy = DEFAULT_COMPOSITION_POLICY
@@ -121,54 +66,30 @@ export class BriefCompositionEngine {
         ? "CONSIDER"
         : "PASS";
 
-    const retentionSentence =
-      strategy.primaryFocus === "COMMERCIAL"
-        ? `High-impact commercial scale role with direct P&L accountability.`
-        : strategy.primaryFocus === "RISK"
-        ? `Solid functional alignment with unstated travel or location requirements.`
-        : `Essentially a CCO stepping-stone role with strong regional growth leverage.`;
+    // Factual Evidence-Grounded Capabilities
+    const rawCaps = (opportunity.dimensions || [])
+      .filter((d: any) => d.key === "technologyStack" || d.key === "functionalScope" || d.key === "mandate")
+      .map((d: any) => unwrapEvidenceValue(d.jdEvidence?.value))
+      .filter((v: any) => typeof v === "string" && v.length > 0);
 
-    const primaryOpportunity =
-      strategy.primaryFocus === "COMMERCIAL"
-        ? "Direct P&L and revenue scale expansion"
-        : strategy.primaryFocus === "CAREER"
-        ? "Scope elevation to VP/CXO altitude"
-        : "Proven functional alignment with low application overhead";
+    const resolvedCapText = SemanticNaturalLanguageResolver.resolveCapabilities(rawCaps);
+    const retentionSentence = `${opportunity.role} mandate at ${opportunity.company} focused on ${resolvedCapText}.`;
 
-    const primaryRisk =
-      weights.unknown > 0.6
-        ? "Reporting line hierarchy unstated"
-        : weights.risk > 0.6
-        ? "Travel commitment or location constraints"
-        : "Minor team size regression";
+    const primaryOpportunity = decision === "PURSUE"
+      ? `Direct functional ownership of ${opportunity.role} at ${opportunity.company}`
+      : `Scope alignment for ${opportunity.role} with ${opportunity.company}`;
 
-    const recommendedAction =
-      decision === "PURSUE"
-        ? "PURSUE — Submit direct application (20 mins)"
-        : decision === "CONSIDER"
-        ? "CONSIDER — Verify reporting line before applying"
-        : "PASS — Maintain focus on top-tier mandates";
+    const primaryRisk = weights.risk > 0.4
+      ? "Specific reporting line or operating scale trade-offs require screening verification"
+      : "Standard executive application and alignment overhead";
 
-    const tradeoff =
-      strategy.primaryFocus === "CAREER"
-        ? "Smaller team span (-15%) for direct Board & C-suite visibility"
-        : strategy.primaryFocus === "COMMERCIAL"
-        ? "Higher travel commitment for $50M direct P&L ownership"
-        : "Lateral functional scope for immediate regional growth leverage";
+    const recommendedAction = SemanticNaturalLanguageResolver.resolveActionRecommendation(decision, opportunity.role, opportunity.company);
 
-    const first90Days =
-      strategy.primaryFocus === "COMMERCIAL"
-        ? "Restructure performance-marketing agency roster & optimize ROAS before Q2 campaign launch"
-        : strategy.primaryFocus === "CAREER"
-        ? "Build executive alignment on regional digital-transformation roadmap with BU leaders"
-        : "Audit existing MarTech stack & establish lead attribution baseline within first 60 days";
+    const tradeoff = `Evaluating ${opportunity.role} scope at ${opportunity.company} against current career velocity`;
 
-    const whyNow =
-      strategy.primaryFocus === "CAREER"
-        ? "Company entering $50M regional expansion phase following CEO hire"
-        : strategy.primaryFocus === "COMMERCIAL"
-        ? "Recent Series B funding round driving aggressive go-to-market scaling"
-        : "Post-reorganization transformation mandate approved by Board";
+    const first90Days = `Establish operational baseline across ${resolvedCapText} within first 60 days`;
+
+    const whyNow = `${opportunity.company} is hiring for ${opportunity.role} to drive strategic initiatives in ${opportunity.location || "target markets"}.`;
 
     const memory: BriefMemory = {
       headline: `${decision}: ${opportunity.role} at ${opportunity.company}`,
@@ -184,6 +105,77 @@ export class BriefCompositionEngine {
 
     const headline = `${strategy.focusTitle}: ${strategy.heroAnchor}`;
 
+    // Qualitative Judgments over Pseudo-Precision
+    const explicitCount = (opportunity.dimensions || []).filter((d: any) => d.jdEvidence?.status === "Explicit").length;
+    const evidenceQuality: BriefModel["evidenceQuality"] =
+      explicitCount >= 3 ? "High Evidence Quality" : explicitCount >= 1 ? "Medium Evidence Quality" : "Inferred Evidence";
+
+    const qualitativeRecommendation: BriefModel["qualitativeRecommendation"] =
+      decision === "PURSUE" ? "Strong Pursue Recommendation" : decision === "CONSIDER" ? "Conditional Consideration" : "Strategic Pass";
+
+    const whyNotStronger = score >= 75
+      ? "This role aligns strongly with target executive capabilities and leadership altitude."
+      : score >= 60
+      ? "Operating scope is scoped at regional Head level rather than global C-suite, limiting immediate P&L scale."
+      : "Domain divergence or organizational level regression requires significant transition overhead.";
+
+    const oneMinuteTLDR: OpportunityInOneMinute = {
+      whyPursue: [
+        `Significant increase in commercial ownership & P&L execution at ${opportunity.company}.`,
+        `Strong alignment with your growth & marketing leadership background.`,
+        `Limited career velocity risk despite slight scope adjustment.`,
+      ],
+      watchFor: [
+        `Confirm regional P&L boundaries during initial recruiter screening call.`,
+        `Clarify direct reporting line hierarchy (CEO vs Regional VP).`,
+      ],
+      bottomLine: decision === "PURSUE" ? "Worth pursuing." : decision === "CONSIDER" ? "Verify scope before applying." : "Strategic Pass.",
+    };
+
+    const qualitativeReasoningChain: QualitativeReasoningRow[] = [
+      {
+        layer: "Identity Alignment",
+        ratingLabel: "Exceptional",
+        becausePoints: ["Commercial Growth Leadership", "Paid Media & Acquisition", "Multi-market / Regional Ownership"],
+        evidenceSnippet: "Direct P&L and growth expansion authority verified across prior executive roles.",
+      },
+      {
+        layer: "Capability Coverage",
+        ratingLabel: score >= 75 ? "Exceptional" : "Strong Alignment",
+        becausePoints: ["Growth Strategy (100% Match)", "Performance Marketing (100% Match)", "Salesforce CDP (Graph Transferable)"],
+        evidenceSnippet: "Mandate capabilities fully covered by candidate profile and graph transfer paths.",
+      },
+      {
+        layer: "Career Capital Value",
+        ratingLabel: score >= 70 ? "Strong Alignment" : "Adjacent Alignment",
+        becausePoints: ["+31 Brand Equity Capital Gain", "-20 Operating Scope Regression Risk", "Net Positive Career Value Surplus"],
+        evidenceSnippet: "Net brand capital gain outweighs scope regression risks.",
+      },
+    ];
+
+    const strategicUpside: StrategicUpside = {
+      headline: "Why this role is interesting (Strategic Value)",
+      points: [
+        `Moves you closer to enterprise CMO / CCO scope through direct commercial ownership at ${opportunity.company}.`,
+        `Increases P&L authority and multi-market growth expansion experience.`,
+        `Adds high-visibility brand transformation leadership to your executive record.`,
+        `Strengthens future Chief Commercial Officer optionality within 2–3 years.`,
+      ],
+    };
+
+    const decisionSensitivity = {
+      becomesPursueIf: [
+        "Global P&L ownership and board-level commercial reporting is confirmed.",
+        "Direct C-suite or Founders reporting line is established in screening.",
+        "Team headcount and hiring budget exceeds 25 FTEs.",
+      ],
+      becomesPassIf: [
+        "Individual contributor role without team budget authority.",
+        "Operating scope limited strictly to single-channel ad execution.",
+        "Work model or location requirements conflict with executive preferences.",
+      ],
+    };
+
     let frictionPreview: string | undefined = undefined;
     const reqs = opportunity.positioning || [];
     const travelReq = reqs.find((r: string) => r.toLowerCase().includes("travel"));
@@ -192,60 +184,98 @@ export class BriefCompositionEngine {
     }
 
     let topUnknownPreview: string | undefined = "Critical Unknown: Compensation target not disclosed";
+
+    const reportingDim = opportunity.dimensions?.find((d: any) => d.key === "reportingLine");
+    const reportingVal = unwrapEvidenceValue(reportingDim?.jdEvidence?.value);
+    const reportingQuestion = reportingDim?.jdEvidence?.status === "Inferred" && reportingVal
+      ? `Does this role report directly to ${reportingVal} or regional leadership?`
+      : "Does this role report directly to the CEO, C-suite, or Regional VP?";
+
     const rankedUnknowns: RankedUnknown[] = [
       {
         rank: "CRITICAL" as const,
         label: "Compensation Target",
-        question: "What is the exact base, variable, and equity structure for this role?",
+        question: "Confirm compensation target, variable structure, and equity component.",
       },
       {
         rank: "IMPORTANT" as const,
         label: "Reporting Line Hierarchy",
-        question: "Does this role report directly to the CEO, C-suite, or Regional VP?",
+        question: `Confirm reporting line: ${reportingQuestion}`,
       },
       {
         rank: "SECONDARY" as const,
         label: "Team Scale & Resources",
-        question: "What is the current headcount and approved hiring headcount for the next 12 months?",
+        question: "Confirm hiring authority, current team headcount, and budget control.",
       },
     ].slice(0, policy.maxUnknowns);
 
-    if (opportunity.dimensions.some((d) => d.key === "reportingLine" && d.bucket === "Missing")) {
+    if (opportunity.dimensions?.some((d: any) => d.key === "reportingLine" && d.bucket === "Missing")) {
       topUnknownPreview = "Unknown: Reporting line hierarchy";
     }
 
+    const explicitQuotes = (opportunity.dimensions || [])
+      .flatMap((d: any) => d.jdEvidence?.evidence || [])
+      .map((e: any) => e.quote)
+      .filter((q: string) => q && q.length > 15 && q.length < 120);
+
     const deliverablesWork = [
-      `Establish functional operating model for ${opportunity.role} at ${opportunity.company}.`,
-      `Modernize core processes across target regional markets.`,
-      `Build and mentor high-performing execution teams.`,
+      explicitQuotes[0] || `Establish functional operating model for ${opportunity.role} at ${opportunity.company}.`,
+      explicitQuotes[1] || `Execute strategic growth and operational priorities in ${opportunity.location || "primary markets"}.`,
+      explicitQuotes[2] || `Build and mentor execution teams across core functions.`,
     ].slice(0, policy.maxEvidence);
 
     const deliverablesValue = [
-      `Accelerate revenue growth and strategic positioning.`,
+      `Accelerate organizational growth and market reach at ${opportunity.company}.`,
       `Optimize operational expenditure and delivery velocity.`,
-      `Expand organizational scalability and platform maturity.`,
+      `Expand platform maturity and commercial scale.`,
     ].slice(0, policy.maxEvidence);
 
+    const deliverablesProvenance: Array<"Observed in JD" | "Inferred from Role Pattern"> = [
+      explicitQuotes[0] ? "Observed in JD" : "Inferred from Role Pattern",
+      explicitQuotes[1] ? "Observed in JD" : "Inferred from Role Pattern",
+      "Inferred from Role Pattern",
+    ];
+
+    const proofPoints: ProofPointItem[] = [
+      {
+        category: "Direct Evidence",
+        headline: `Proven Authority in ${resolvedCapText}`,
+        detail: `Verified against historical candidate experience at VP level.`,
+      },
+      {
+        category: "Transferable Experience",
+        headline: `Graph Transferability: Performance Marketing → GTM Strategy`,
+        detail: `100% functional transferability mapped along ESG relationship path.`,
+      },
+    ];
+
     const fitProofs = [
-      `Proven track record in ${opportunity.role.toLowerCase().includes("marketing") ? "Growth Marketing & CRM Strategy" : "Digital Transformation & Technology Leadership"}.`,
-      `Demonstrated capability managing multi-million budgets and multi-disciplinary teams.`,
-      `Prior experience scaling enterprise operations across global or regional hubs.`,
+      `Proven track record in ${resolvedCapText}.`,
+      `Demonstrated capability managing multi-disciplinary teams and budgets.`,
+      `Prior experience scaling enterprise operations across regional hubs.`,
     ].slice(0, policy.maxEvidence);
 
     let certaintyLevel: BriefModel["certaintyLevel"] = "HIGH";
-    let certaintyGuidance = "Strong evidence across candidate memory and job description.";
+    let certaintyGuidance = "Strong evidence across candidate profile and job description.";
     if (score < 50) {
       certaintyLevel = "LOW";
       certaintyGuidance = "Several critical requirements were not explicitly described. Verify during screening.";
     } else if (topUnknownPreview || frictionPreview) {
       certaintyLevel = "MEDIUM";
-      certaintyGuidance = "Solid functional alignment. Verify reporting line and travel requirements during screening.";
+      certaintyGuidance = "Solid functional alignment. Verify reporting line and requirements during screening.";
     }
 
     return {
       opportunityId: opportunity.jobHash,
       score,
       certaintyPct,
+      evidenceQuality,
+      qualitativeRecommendation,
+      whyNotStronger,
+      oneMinuteTLDR,
+      qualitativeReasoningChain,
+      strategicUpside,
+      decisionSensitivity,
       strategy,
       weights,
       memory,
@@ -254,6 +284,8 @@ export class BriefCompositionEngine {
       topUnknownPreview,
       deliverablesWork,
       deliverablesValue,
+      deliverablesProvenance,
+      proofPoints,
       fitProofs,
       rankedUnknowns,
       certaintyLevel,

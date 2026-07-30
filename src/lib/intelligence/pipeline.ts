@@ -255,13 +255,30 @@ export function runPipeline(input: PipelineInput): PipelineOutput {
       }),
       verb: headspaceOutcome.finalVerb,
       priority: r.priority,
-      factors: r.priorityResult.factors,
-      confidence: r.completeness,
+      decisionSummary: r.priorityResult.factors,
+      decisionDrivers: [],
+      decisionRisks: [],
+      confidences: {
+        parsing: 0.9,
+        matching: 0.8,
+        recommendation: r.completeness
+      },
       stability,
       headspace: headspaceOutcome,
       comparison: comparisons.get(r.oi.jobHash)!,
       explanation,
-      trace,
+      trace: {
+        ...trace,
+        pipeline: [],
+        evidenceMapping: [],
+        careerValueBreakdown: {
+          titleProgression: { value: 0, reason: "" },
+          scopeExpansion: { value: 0, reason: "" },
+          commercialScale: { value: 0, reason: "" },
+          brandSignal: { value: 0, reason: "" },
+          futureOptionality: { value: 0, reason: "" }
+        }
+      } as any,
       esi: r.esi,
       diligenceStatus: r.diligenceStatus,
     });

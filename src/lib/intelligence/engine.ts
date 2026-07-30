@@ -23,6 +23,7 @@ import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
 import { CapabilityAssessmentEngine } from "./engines/CapabilityAssessmentEngine";
 import { OpportunityAssessmentEngine } from "./engines/OpportunityAssessmentEngine";
 import { CareerAssessmentEngine } from "./engines/CareerAssessmentEngine";
+import { CareerValueEngine } from "./engines/CareerValueEngine";
 import { LifestyleAssessmentEngine } from "./engines/LifestyleAssessmentEngine";
 import { IdentityAssessmentEngine } from "./engines/IdentityAssessmentEngine";
 import { DecisionPolicyEngine } from "./policy/DecisionPolicyEngine";
@@ -117,12 +118,15 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
     const lifestyle = LifestyleAssessmentEngine.evaluate(candProjV4, jobProjV4);
 
     // 4. Resolve Verdict via Rules-Based Decision Policy Engine
+    const careerValueBreakdown = CareerValueEngine.evaluate(candProjV4, jobProjV4);
+
     const policyResult = DecisionPolicyEngine.evaluate(
       identity,
       capability,
       opportunityAssess,
       career,
-      lifestyle
+      lifestyle,
+      jobProjV4.executiveIdentity.value
     );
 
     const finalVerb = policyResult.verdict;
@@ -143,12 +147,14 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
       recommendationVersion: `v4:${raw.jobHash}:${finalVerb}`,
       verb: finalVerb,
       priority: finalScore,
-      factors: {
+      decisionSummary: {
         careerValue: capability.overallFit,
-        shortlistingPotential: capability.overallFit,
-        pursuitFriction: 1.0
+        shortlistingPotential: finalScore / 100,
+        pursuitFriction: (lifestyle as any).locationFrictionPenalty || 0
       },
-      confidence: finalScore,
+      decisionDrivers: policyResult.decisionDrivers,
+      decisionRisks: policyResult.decisionRisks,
+      confidences: policyResult.confidences,
       stability: "High",
       headspace: {
         finalVerb,
@@ -176,8 +182,11 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
         },
         verb0: finalVerb,
         finalVerb,
-        confidence: finalScore,
+        confidence: policyResult.confidences.recommendation,
         stability: "High",
+        pipeline: policyResult.pipeline,
+        evidenceMapping: capability.matches || [],
+        careerValueBreakdown,
         headspace: {
           finalVerb,
           downgraded: false,

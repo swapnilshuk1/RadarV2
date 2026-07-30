@@ -34,5 +34,5 @@ for (const verb of ["PURSUE", "CONSIDER", "PASS", "NOT_EVALUABLE"]) {
 console.log("\nSAMPLE PURSUE JOBS:");
 const pursueJobs = records.filter(r => r.verb === "PURSUE").slice(0, 10);
 for (const r of pursueJobs) {
-  console.log(`- ${r.jobHash}: ${r.priority} | ${r.verb} | careerValue=${r.factors.careerValue} | shortlistingPotential=${r.factors.shortlistingPotential}`);
+  console.log(`- ${r.jobHash}: ${r.priority} | ${r.verb} | careerValue=${r.decisionSummary.careerValue} | shortlistingPotential=${r.decisionSummary.shortlistingPotential}`);
 }

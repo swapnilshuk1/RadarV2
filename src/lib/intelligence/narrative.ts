@@ -20,10 +20,11 @@ export function format(
 ): Narrative {
   const editorial = playbookNarrative(record, source);
 
+  const recConf = record.confidences?.recommendation || 0;
   const confidenceLine =
-    record.confidence < 0.5
-      ? `Confidence is ${pct(record.confidence)} — several important details are unavailable, but the recommendation stands.`
-      : `Confidence ${pct(record.confidence)}.`;
+    recConf < 0.5
+      ? `Confidence is ${pct(recConf)} — several important details are unavailable, but the recommendation stands.`
+      : `Confidence ${pct(recConf)}.`;
 
   const stabilityLine =
     record.stability === "High"

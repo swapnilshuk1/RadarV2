@@ -1,36 +1,36 @@
 [
   {
-    "keywords": ["e-commerce", "ecommerce", "marketplace"],
+    "keywords": ["e-commerce strategy", "ecommerce strategy", "marketplace management", "digital storefront", "e-commerce"],
     "canonicalCapability": "E-Commerce Strategy",
     "confidence": 0.90,
     "priority": 1
   },
   {
-    "keywords": ["growth", "acquisition", "lead generation"],
+    "keywords": ["growth marketing", "user acquisition", "paid growth", "customer acquisition", "growth strategy", "lead generation strategy"],
     "canonicalCapability": "Growth Marketing",
     "confidence": 0.90,
     "priority": 1
   },
   {
-    "keywords": ["performance", "roas", "paid search", "google ads"],
+    "keywords": ["performance marketing", "roas", "paid search", "google ads", "paid media", "campaign optimization", "biddable media"],
     "canonicalCapability": "Performance Marketing",
     "confidence": 0.90,
     "priority": 1
   },
   {
-    "keywords": ["crm", "salesforce", "lifecycle"],
+    "keywords": ["crm strategy", "crm transformation", "customer lifecycle", "salesforce implementation", "retention strategy", "loyalty program"],
     "canonicalCapability": "CRM Transformation",
     "confidence": 0.90,
     "priority": 1
   },
   {
-    "keywords": ["brand", "branding", "positioning"],
+    "keywords": ["brand marketing", "brand strategy", "brand positioning", "corporate communications", "brand equity"],
     "canonicalCapability": "Brand Marketing",
     "confidence": 0.85,
     "priority": 2
   },
   {
-    "keywords": ["coe", "gcc", "center of excellence"],
+    "keywords": ["center of excellence", "gcc strategy", "global capability center", "coe setup"],
     "canonicalCapability": "Center of Excellence",
     "confidence": 0.95,
     "priority": 1
