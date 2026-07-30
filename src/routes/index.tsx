@@ -385,21 +385,6 @@ function Row({
               </div>
             </div>
 
-            {/* Elevated Hero Decision Bar */}
-            <div className="py-5 flex flex-wrap items-center justify-between gap-2 mt-2">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="mono text-[9px] sm:text-[10px] tracking-[0.16em] uppercase text-muted-foreground font-bold mr-1">
-                  YOUR DECISION:
-                </span>
-                <DecideButton verb="PURSUE" onClick={() => onDecide("PURSUE")} />
-                <DecideButton verb="CONSIDER" onClick={() => onDecide("CONSIDER")} />
-                <DecideButton verb="PASS" onClick={() => onDecide("PASS")} />
-              </div>
-
-              <span className="mono text-[8.5px] sm:text-[9.5px] tracking-[0.14em] text-muted-foreground uppercase hidden sm:inline font-medium">
-                PULLS NEXT BRIEF FROM QUEUE
-              </span>
-            </div>
 
             <InlineBrief opportunity={o} />
           </div>

@@ -69,11 +69,11 @@ export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
         <Link
           to="/opportunity/$jobHash"
           params={{ jobHash: o.jobHash }}
-          className="mono text-[10px] sm:text-[11px] tracking-[0.16em] text-foreground hover:bg-muted/40 px-4 py-2.5 rounded-sm font-bold uppercase transition-colors flex items-center gap-2 group shrink-0 border border-border/60 shadow-sm"
+          className="mono text-[10px] sm:text-[11.5px] tracking-[0.2em] bg-foreground text-background hover:bg-foreground/90 px-6 py-3 rounded-sm font-bold uppercase transition-all flex items-center gap-2.5 group shrink-0 shadow-md"
           onClick={(e) => e.stopPropagation()}
         >
-          <span>ADVISORY DOSSIER</span>
-          <span className="transition-transform group-hover:translate-x-1">→</span>
+          <span>OPEN ADVISORY DOSSIER</span>
+          <span className="transition-transform group-hover:translate-x-1 font-sans">→</span>
         </Link>
 
         <a
