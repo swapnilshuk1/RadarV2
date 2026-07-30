@@ -11,15 +11,31 @@ export class IdentityAssessmentEngine {
     job: JobProjection
   ): IdentityAssessment {
     // Canonical themes on candidate mapped to canonical theme IDs
-    const candidateThemes = candidate.executiveThemes.map(t => {
+    const candidateThemes = new Set<string>();
+    for (const t of candidate.executiveThemes) {
       const lower = t.toLowerCase();
-      if (lower === "growth") return "theme_growth";
-      if (lower === "commercial") return "theme_commercial";
-      if (lower === "customer") return "theme_customer";
-      if (lower === "transformation") return "theme_transformation";
-      if (lower === "digital") return "theme_digital";
-      return t;
-    });
+      candidateThemes.add(t);
+      if (lower.includes("growth") || lower.includes("marketing") || lower.includes("demand") || lower.includes("sales")) {
+        candidateThemes.add("theme_growth");
+      }
+      if (lower.includes("commercial") || lower.includes("revenue") || lower.includes("gtm")) {
+        candidateThemes.add("theme_commercial");
+      }
+      if (lower.includes("customer") || lower.includes("crm") || lower.includes("retention") || lower.includes("d2c")) {
+        candidateThemes.add("theme_customer");
+      }
+      if (lower.includes("transform") || lower.includes("strategy") || lower.includes("coe") || lower.includes("gcc")) {
+        candidateThemes.add("theme_transformation");
+      }
+      if (lower.includes("digital") || lower.includes("platform") || lower.includes("cloud") || lower.includes("tech")) {
+        candidateThemes.add("theme_digital");
+      }
+      if (lower.includes("it") || lower.includes("infrastructure") || lower.includes("ops") || lower.includes("operation")) {
+        candidateThemes.add("theme_operations");
+        candidateThemes.add("theme_technology");
+      }
+    }
+    const candidateThemeSet = Array.from(candidateThemes);
 
     const jobThemes = job.executiveThemes;
     const richness = EvidenceRichnessCalculator.calculate(job.originalOpportunity);
@@ -38,8 +54,8 @@ export class IdentityAssessmentEngine {
       };
     }
 
-    const matchedThemes = jobThemes.filter(theme => candidateThemes.includes(theme));
-    const missingThemes = jobThemes.filter(theme => !candidateThemes.includes(theme));
+    const matchedThemes = jobThemes.filter(theme => candidateThemeSet.includes(theme));
+    const missingThemes = jobThemes.filter(theme => !candidateThemeSet.includes(theme));
 
     const rawCoverage = matchedThemes.length / jobThemes.length;
     /**

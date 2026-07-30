@@ -17,9 +17,9 @@ export class OpportunityService {
       return [];
     }
 
+    const userDecisions = await repos.decisions.getUserDecisions(userId);
     let active = options?.activePursuits;
     if (active === undefined) {
-      const userDecisions = await repos.decisions.getUserDecisions(userId);
       active = Object.values(userDecisions).filter((d) => d.verb === "PURSUE").length;
     }
     
@@ -29,7 +29,13 @@ export class OpportunityService {
     const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, PASS: 2 };
     
     return presented
-      .map((p) => p.opportunity)
+      .map((p) => {
+        const opp = { ...p.opportunity };
+        if (userDecisions[opp.jobHash]) {
+          opp.decision = userDecisions[opp.jobHash].verb as any;
+        }
+        return opp;
+      })
       .sort((a, b) => {
         const tierDiff = (decisionRank[a.decision] ?? 3) - (decisionRank[b.decision] ?? 3);
         if (tierDiff !== 0) return tierDiff;

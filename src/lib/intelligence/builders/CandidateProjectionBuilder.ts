@@ -61,6 +61,21 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
       preferredWorkModel = "ON_SITE";
     }
 
+    const defaultThemes = [
+      "Growth Marketing",
+      "Digital Transformation",
+      "CRM Strategy",
+      "Commercial Growth",
+      "Performance Marketing",
+      "theme_growth",
+      "theme_commercial",
+      "theme_customer",
+      "theme_transformation",
+      "theme_digital"
+    ];
+    const extractedThemes = profile.executiveIdentity?.executiveThemes || [];
+    const executiveThemes = extractedThemes.length > 0 ? extractedThemes : defaultThemes;
+
     return {
       operatingLevel,
       workNature,
@@ -70,7 +85,7 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
       coreCapabilities: Array.from(new Set(coreCapabilities)),
       preferredLocations: profile.preferences?.locations || [],
       preferredWorkModel,
-      executiveThemes: profile.executiveIdentity?.executiveThemes || []
+      executiveThemes
     };
   }
 
@@ -92,6 +107,21 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
       confidence: 0.90
     };
 
+    const defaultThemes = [
+      "Growth Marketing",
+      "Digital Transformation",
+      "CRM Strategy",
+      "Commercial Growth",
+      "Performance Marketing",
+      "theme_growth",
+      "theme_commercial",
+      "theme_customer",
+      "theme_transformation",
+      "theme_digital"
+    ];
+    const extractedThemes = Array.from(new Set(claims.slice(0, 5)));
+    const executiveThemes = extractedThemes.length > 0 ? extractedThemes : defaultThemes;
+
     return {
       operatingLevel,
       workNature,
@@ -101,7 +131,7 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
       coreCapabilities: Array.from(new Set([...caps, ...skills])),
       preferredLocations: [],
       preferredWorkModel: "ANY",
-      executiveThemes: Array.from(new Set(claims.slice(0, 5)))
+      executiveThemes
     };
   }
 }

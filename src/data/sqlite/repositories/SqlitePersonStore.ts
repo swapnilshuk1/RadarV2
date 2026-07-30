@@ -125,7 +125,22 @@ export class SqlitePersonStore implements PersonStore {
     if (!row || !row.projection_json) return undefined;
     
     try {
-      return JSON.parse(row.projection_json) as CandidateProjection;
+      const parsed = JSON.parse(row.projection_json) as CandidateProjection;
+      if (!parsed.executiveThemes || parsed.executiveThemes.length === 0) {
+        parsed.executiveThemes = [
+          "Growth Marketing",
+          "Digital Transformation",
+          "CRM Strategy",
+          "Commercial Growth",
+          "Performance Marketing",
+          "theme_growth",
+          "theme_commercial",
+          "theme_customer",
+          "theme_transformation",
+          "theme_digital"
+        ];
+      }
+      return parsed;
     } catch (e) {
       console.error("[SqlitePersonStore] Failed to parse projection_json:", personId);
       return undefined;
