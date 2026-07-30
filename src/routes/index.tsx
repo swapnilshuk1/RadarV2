@@ -10,7 +10,7 @@ import { getOpportunitiesFn, injectFreshFn } from "../lib/intelligence/opportuni
 import { getScrapedJobs, getScraperCounts } from "../data/scraped-jobs";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
-import { EditorialEngine } from "../lib/intelligence/editorial/EditorialEngine";
+import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
 
 const VISIBLE_LIMIT = 6;
 
@@ -264,7 +264,7 @@ function Row({
 }) {
   const score = o.recommendationResult?.score ?? 80;
   const mandateTag = o.mandateArchetype || "Performance Marketing";
-  const ed = EditorialEngine.process(o);
+  const brief = BriefCompositionEngine.compose(o);
 
   return (
     <div
@@ -307,22 +307,22 @@ function Row({
           {/* Row 3: Single Memorable Takeaway Retention Sentence */}
           <p className="mt-1 text-[12.5px] text-foreground font-medium flex items-center gap-1.5 truncate">
             <span className="mono text-[9px] tracking-[0.12em] bg-accent-ink/10 text-accent-ink px-1.5 py-0.5 rounded-sm uppercase font-bold shrink-0">
-              {ed.focusTitle}
+              {brief.strategy.focusTitle}
             </span>
-            <span className="truncate italic text-foreground/90 font-sans">“{ed.memorableTakeaway}”</span>
+            <span className="truncate italic text-foreground/90 font-sans">“{brief.memory.retentionSentence}”</span>
           </p>
 
           {/* Row 4: Friction & Top Unknown Badges */}
-          {(ed.frictionPreview || ed.topUnknownPreview) && (
+          {(brief.frictionPreview || brief.topUnknownPreview) && (
             <div className="flex flex-wrap items-center gap-2 mt-1.5">
-              {ed.frictionPreview && (
+              {brief.frictionPreview && (
                 <span className="mono text-[9px] tracking-[0.1em] text-consider bg-consider-soft px-2 py-0.5 rounded-sm font-semibold">
-                  {ed.frictionPreview}
+                  {brief.frictionPreview}
                 </span>
               )}
-              {ed.topUnknownPreview && (
+              {brief.topUnknownPreview && (
                 <span className="mono text-[9px] tracking-[0.1em] text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-sm font-semibold">
-                  {ed.topUnknownPreview}
+                  {brief.topUnknownPreview}
                 </span>
               )}
             </div>

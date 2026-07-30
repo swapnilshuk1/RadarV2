@@ -7,7 +7,8 @@ import { MarkdownRenderer } from "../components/radar/MarkdownRenderer";
 import { DefaultEvaluationAdapter } from "../lib/recommendation/EvaluationAdapter";
 import { useDecisions } from "../lib/decisions-store";
 import type { EvaluationEnvelope } from "../domain/v4";
-import { EditorialEngine } from "../lib/intelligence/editorial/EditorialEngine";
+import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
+import { PresentationEngine } from "../lib/intelligence/editorial/PresentationEngine";
 
 function formatValue(val: any): string {
   if (!val) return "";
@@ -106,7 +107,8 @@ function Brief() {
   const primaryRisk = o.primaryRisk || "Minor title regression";
   const tailoringEffort = o.tailoringEffort || "LOW";
   const alignmentText = o.capabilityAlignmentText || "EXCELLENT PERFORMANCE-MARKETING MATCH";
-  const ed = EditorialEngine.process(o, envelope ?? undefined);
+  const brief = BriefCompositionEngine.compose(o);
+  const presentation = PresentationEngine.compose(brief);
 
   const isPursue = currentVerdict === "PURSUE";
   const isConsider = currentVerdict === "CONSIDER";
@@ -257,70 +259,74 @@ function Brief() {
             </div>
 
             {/* HERO RECOMMENDATION BOX */}
-            <div className="lg:col-span-4 border border-border bg-card/60 p-5 rounded-md shadow-2xs">
-              <div className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-2">
-                EXECUTIVE SUMMARY
+            <div className="lg:col-span-4 border border-accent-ink/40 bg-accent-ink/5 p-5 rounded-md shadow-sm">
+              <div className="mono text-[10px] tracking-[0.22em] text-accent-ink font-bold uppercase mb-2">
+                RADAR'S BOTTOM LINE
               </div>
               <div className="flex items-center gap-2 text-pursue mb-2">
                 <span className="text-[20px] font-bold">✔</span>
                 <span className="display text-[24px] font-bold tracking-tight">{currentVerdict}</span>
               </div>
-              <p className="text-[13.5px] text-foreground font-medium leading-relaxed italic border-l-2 border-accent-ink/60 pl-2.5 py-0.5">
-                “{ed.memorableTakeaway}”
+              <p className="text-[14px] text-foreground font-semibold leading-relaxed italic border-l-2 border-accent-ink pl-3 py-1 bg-background/60 rounded-r-sm">
+                “{brief.memory.retentionSentence}”
               </p>
             </div>
           </div>
         </header>
 
         {/* ────────────────────────────────────────────────────────────────────────
-            4-CARD QUANTITATIVE KPI METRIC STRIP
+            QUESTION-DRIVEN HERO INTELLIGENCE CONSOLE
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="py-8 border-b border-border">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {/* Question 1: Worth Pursuing? */}
             <div className="border border-border/80 bg-muted/15 p-5 rounded-md">
-              <div className="flex items-baseline gap-1">
-                <span className="display text-[36px] sm:text-[44px] leading-none tabular-nums text-foreground font-bold">
-                  {score}
+              <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">
+                1. WORTH PURSUING?
+              </p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="display text-[32px] sm:text-[38px] leading-none tabular-nums text-foreground font-bold">
+                  {brief.score}
                 </span>
-                <span className="mono text-[12px] text-muted-foreground">/100</span>
-              </div>
-              <p className="mono text-[10px] tracking-[0.2em] text-foreground mt-2 uppercase font-bold">
-                PRIORITY
-              </p>
-              <p className="text-[12px] text-muted-foreground mt-0.5">High opportunity fit</p>
-            </div>
-
-            <div className="border border-border/80 bg-muted/15 p-5 rounded-md">
-              <div className="flex items-baseline gap-1">
-                <span className="display text-[36px] sm:text-[44px] leading-none tabular-nums text-pursue font-bold">
-                  {certaintyPct}
+                <span className="mono text-[11px] text-muted-foreground">/100</span>
+                <span className="mono text-[10px] text-pursue bg-pursue-soft px-2 py-0.5 rounded-sm font-bold ml-auto">
+                  {currentVerdict}
                 </span>
-                <span className="mono text-[12px] text-muted-foreground">%</span>
               </div>
-              <p className="mono text-[10px] tracking-[0.2em] text-foreground mt-2 uppercase font-bold">
-                CONFIDENCE
-              </p>
-              <p className="text-[12px] text-muted-foreground mt-0.5">In assessment</p>
+              <p className="text-[12px] text-muted-foreground mt-1.5">{brief.certaintyPct}% decision confidence</p>
             </div>
 
+            {/* Question 2: Why? */}
             <div className="border border-border/80 bg-muted/15 p-5 rounded-md">
-              <div className="display text-[36px] sm:text-[44px] leading-none text-foreground font-bold">
-                {tailoringEffort}
-              </div>
-              <p className="mono text-[10px] tracking-[0.2em] text-foreground mt-2 uppercase font-bold">
-                EFFORT
+              <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">
+                2. WHY THIS ROLE?
               </p>
-              <p className="text-[12px] text-muted-foreground mt-0.5">~{estimatedTimeText} to apply</p>
+              <p className="display text-[20px] leading-snug text-foreground font-bold mt-2 truncate">
+                {brief.strategy.focusTitle}
+              </p>
+              <p className="text-[12px] text-muted-foreground mt-1.5 truncate">{brief.memory.primaryOpportunity}</p>
             </div>
 
+            {/* Question 3: Primary Risk? */}
             <div className="border border-border/80 bg-muted/15 p-5 rounded-md">
-              <div className="display text-[36px] sm:text-[44px] leading-none text-pursue font-bold">
-                HIGH
-              </div>
-              <p className="mono text-[10px] tracking-[0.2em] text-foreground mt-2 uppercase font-bold">
-                SHORTLIST PROBABILITY
+              <p className="mono text-[10px] tracking-[0.2em] text-consider uppercase font-bold">
+                3. PRIMARY UNKNOWN / RISK
               </p>
-              <p className="text-[12px] text-muted-foreground mt-0.5">Based on role fit &amp; signals</p>
+              <p className="text-[14px] leading-tight text-foreground font-semibold mt-2">
+                {brief.memory.primaryRisk}
+              </p>
+              <p className="text-[12px] text-consider mt-1.5 font-medium">Verify during screening</p>
+            </div>
+
+            {/* Question 4: Next Action? */}
+            <div className="border border-border/80 bg-muted/15 p-5 rounded-md">
+              <p className="mono text-[10px] tracking-[0.2em] text-accent-ink uppercase font-bold">
+                4. RECOMMENDED ACTION
+              </p>
+              <p className="text-[13.5px] leading-tight text-foreground font-semibold mt-2">
+                {brief.memory.recommendedAction}
+              </p>
+              <p className="text-[12px] text-muted-foreground mt-1.5">Est. {estimatedTimeText} to apply</p>
             </div>
           </div>
 
@@ -384,7 +390,7 @@ function Brief() {
               </h2>
             </div>
             <span className="mono text-[10px] tracking-[0.18em] text-foreground bg-muted border border-border px-3 py-1 rounded-sm font-semibold uppercase">
-              {ed.focusTitle}
+              {brief.strategy.focusTitle}
             </span>
           </div>
 
@@ -395,7 +401,7 @@ function Brief() {
                 YOUR FIRST 12 MONTHS (WORK)
               </p>
               <ul className="space-y-2.5 text-[13.5px] text-foreground font-medium">
-                {ed.first12MonthsWork.map((item, i) => (
+                {brief.deliverablesWork.map((item, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="text-accent-ink font-bold">•</span>
                     <span>{item}</span>
@@ -410,7 +416,7 @@ function Brief() {
                 EXPECTED BUSINESS OUTCOMES (VALUE)
               </p>
               <ul className="space-y-2.5 text-[13.5px] text-foreground font-medium">
-                {ed.expectedBusinessOutcomes.map((item, i) => (
+                {brief.deliverablesValue.map((item, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="text-pursue font-bold">✓</span>
                     <span>{item}</span>
@@ -431,7 +437,7 @@ function Brief() {
                 Capability alignment &amp; surpluses
               </p>
               <h2 className="display text-[26px] sm:text-[34px] mt-1 text-foreground font-semibold">
-                Why this role fits your experience
+                {presentation.capabilityTitle}
               </h2>
             </div>
             <span className="mono text-[11px] tracking-[0.18em] text-pursue bg-pursue-soft px-3 py-1 rounded-sm font-semibold">
@@ -441,7 +447,7 @@ function Brief() {
 
           {/* Scannable Match List Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
-            {ed.whyWellSuited.map((proof, i) => (
+            {brief.fitProofs.map((proof, i) => (
               <div key={i} className="flex gap-3">
                 <span className="mono text-[14px] text-pursue font-bold mt-0.5 shrink-0">✔</span>
                 <div>
@@ -471,16 +477,16 @@ function Brief() {
               </h2>
             </div>
             <span className="mono text-[10px] tracking-[0.16em] text-consider bg-consider-soft px-2.5 py-1 rounded-sm font-bold uppercase">
-              {ed.certaintyLevel} CERTAINTY
+              {brief.certaintyLevel} CERTAINTY
             </span>
           </div>
 
           <p className="text-[13px] text-muted-foreground mb-4">
-            {ed.certaintyGuidance}
+            {brief.certaintyGuidance}
           </p>
 
           <div className="space-y-3">
-            {ed.rankedUnknowns.map((item, idx) => (
+            {brief.rankedUnknowns.map((item, idx) => (
               <div key={idx} className="border border-border/80 bg-background p-3.5 rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <span className={`mono text-[9px] tracking-[0.16em] font-bold uppercase px-2 py-0.5 rounded-sm mr-2 ${

@@ -1,0 +1,66 @@
+// src/lib/intelligence/editorial/BriefModel.ts
+
+export interface FocusWeights {
+  career: number;      // 0.0 - 1.0 (e.g. 0.82)
+  execution: number;   // 0.0 - 1.0 (e.g. 0.64)
+  commercial: number;  // 0.0 - 1.0 (e.g. 0.91)
+  risk: number;        // 0.0 - 1.0 (e.g. 0.22)
+  unknown: number;     // 0.0 - 1.0 (e.g. 0.31)
+  confidence: number;  // Editorial choice confidence (0.0 - 1.0)
+}
+
+export type FocusArea =
+  | "CAREER"
+  | "COMMERCIAL"
+  | "EXECUTION"
+  | "LEADERSHIP"
+  | "TRANSFORMATION"
+  | "RISK"
+  | "UNKNOWN";
+
+export interface CapabilityNarrative {
+  intent: "COMPETITIVE_ADVANTAGE" | "LEVERAGE_POINT" | "CAPABILITY_FIT";
+  strengthCount: number;
+}
+
+export interface BriefStrategy {
+  primaryFocus: FocusArea;
+  secondaryFocus: FocusArea;
+  tertiaryFocus: FocusArea;
+  focusTitle: string;
+  heroAnchor: string;
+  narrative: CapabilityNarrative;
+}
+
+export interface BriefMemory {
+  headline: string;
+  retentionSentence: string;    // e.g. "Essentially a CCO stepping-stone role with regional ownership"
+  primaryOpportunity: string;  // e.g. "Direct P&L and regional growth expansion"
+  primaryRisk: string;         // e.g. "Reporting line hierarchy unstated"
+  recommendedAction: string;   // e.g. "PURSUE — Submit direct application"
+  decision: "PURSUE" | "CONSIDER" | "PASS";
+}
+
+export interface RankedUnknown {
+  rank: "CRITICAL" | "IMPORTANT" | "SECONDARY";
+  label: string;
+  question: string;
+}
+
+export interface BriefModel {
+  opportunityId: string;
+  score: number;
+  certaintyPct: number;
+  strategy: BriefStrategy;
+  weights: FocusWeights;
+  memory: BriefMemory;
+  headline: string;
+  frictionPreview?: string;
+  topUnknownPreview?: string;
+  deliverablesWork: string[];
+  deliverablesValue: string[];
+  fitProofs: string[];
+  rankedUnknowns: RankedUnknown[];
+  certaintyLevel: "HIGH" | "MEDIUM" | "LOW";
+  certaintyGuidance: string;
+}
