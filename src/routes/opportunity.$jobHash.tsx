@@ -26,16 +26,12 @@ function SemanticFocus({ children, className = "", delayMs = 0 }: { children: Re
 }
 
 function SemanticReveal({ children, className = "", delayMs = 0 }: { children: React.ReactNode; className?: string; delayMs?: number }) {
+  // Removed scroll-driven opacity animations based on executive cognition principles.
+  // Static content should be immediately readable when reached.
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 25 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-10%" }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: delayMs / 1000 }}
-      className={className}
-    >
+    <section className={className}>
       {children}
-    </motion.div>
+    </section>
   );
 }
 
@@ -280,7 +276,7 @@ function Brief() {
             VIEWPORT CHAPTER 2: QUESTION INTELLIGENCE CONSOLE (FULL VIEWPORT)
             ──────────────────────────────────────────────────────────────────────── */}
         <SemanticReveal delayMs={100} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
-          <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-8">
+          <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase mb-8">
             CHAPTER 1: EXECUTIVE DECISION CONSOLE
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -346,10 +342,10 @@ function Brief() {
             return (
               <SemanticReveal key={sec.id} delayMs={150} className={`min-h-[85vh] flex flex-col justify-center border-b border-border/40 ${isPrimary ? "py-24" : "py-12"}`}>
                 <div className="mb-8">
-                  <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
+                  <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
                     CHAPTER 2: EXECUTIVE GROWTH TRAJECTORY
                   </p>
-                  <h2 className={`display ${isPrimary ? "text-[42px] sm:text-[58px] lg:text-[72px] leading-[1.08]" : "text-[28px] sm:text-[36px]"} text-foreground font-bold tracking-tight`}>
+                  <h2 className="text-[28px] sm:text-[34px] text-foreground font-bold tracking-tight mt-2">
                     Will this move your career forward?
                   </h2>
                 </div>
@@ -415,10 +411,10 @@ function Brief() {
             return (
               <SemanticReveal key={sec.id} delayMs={150} className={`min-h-[85vh] flex flex-col justify-center border-b border-border/40 ${isPrimary ? "py-24" : "py-12"}`}>
                 <div className="mb-8">
-                  <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
+                  <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
                     CHAPTER 2: EXECUTIVE DELIVERY MANDATE
                   </p>
-                  <h2 className={`display ${isPrimary ? "text-[42px] sm:text-[58px] lg:text-[72px] leading-[1.08]" : "text-[28px] sm:text-[36px]"} text-foreground font-bold tracking-tight`}>
+                  <h2 className="text-[28px] sm:text-[34px] text-foreground font-bold tracking-tight mt-2">
                     What will you be expected to deliver?
                   </h2>
                 </div>
@@ -451,10 +447,10 @@ function Brief() {
             return (
               <SemanticReveal key={sec.id} delayMs={150} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
                 <div className="mb-8">
-                  <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
+                  <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
                     CHAPTER 3: CAPABILITY SURPLUSES
                   </p>
-                  <h2 className="display text-[32px] sm:text-[44px] text-foreground font-bold tracking-tight">
+                  <h2 className="text-[28px] sm:text-[34px] text-foreground font-bold tracking-tight mt-2">
                     Your Three Unfair Advantages
                   </h2>
                 </div>
@@ -477,10 +473,10 @@ function Brief() {
             return (
               <SemanticReveal key={sec.id} delayMs={150} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
                 <div className="mb-8">
-                  <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
+                  <p className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase">
                     CHAPTER 4: SINGLE UNCERTAINTY AUTHORITY
                   </p>
-                  <h2 className="display text-[32px] sm:text-[44px] text-foreground font-bold tracking-tight">
+                  <h2 className="text-[28px] sm:text-[34px] text-foreground font-bold tracking-tight mt-2">
                     Where are the biggest unknowns?
                   </h2>
                 </div>
