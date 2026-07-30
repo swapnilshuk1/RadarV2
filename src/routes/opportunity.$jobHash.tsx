@@ -8,6 +8,7 @@ import { DefaultEvaluationAdapter } from "../lib/recommendation/EvaluationAdapte
 import { useDecisions } from "../lib/decisions-store";
 import type { EvaluationEnvelope } from "../domain/v4";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
+import { EditorialCompositionEngine } from "../lib/intelligence/editorial/EditorialCompositionEngine";
 import { PresentationEngine } from "../lib/intelligence/editorial/PresentationEngine";
 import { PresentationTokens } from "../lib/intelligence/editorial/PresentationTokens";
 import { motion, AnimatePresence } from "framer-motion";
@@ -134,7 +135,8 @@ function Brief() {
   const tailoringEffort = o.tailoringEffort || "LOW";
   const alignmentText = o.capabilityAlignmentText || "EXCELLENT PERFORMANCE-MARKETING MATCH";
   const brief = BriefCompositionEngine.compose(o);
-  const presentation = PresentationEngine.compose(brief);
+  const narrative = EditorialCompositionEngine.compose(brief);
+  const presentation = PresentationEngine.compose(brief, narrative);
 
   const isPursue = currentVerdict === "PURSUE";
   const isConsider = currentVerdict === "CONSIDER";
@@ -284,8 +286,8 @@ function Brief() {
               <div className="md:col-span-4 lg:col-span-3">
                 <div className="sticky top-24">
                   <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-4">I</span>
-                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-4 mb-4">THE CASE</h3>
-                  <p className="font-serif italic text-[14px] text-muted-foreground leading-relaxed">Should you pursue this opportunity?</p>
+                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-4 mb-4">{sec.editorial.identity}</h3>
+                  <p className="font-serif italic text-[14px] text-muted-foreground leading-relaxed">{sec.editorial.expression}</p>
                 </div>
               </div>
               <div className="md:col-span-8 lg:col-span-9">
@@ -528,15 +530,16 @@ function Brief() {
         {/* ────────────────────────────────────────────────────────────────────────
             CHAPTER 5: EVIDENCE BEHIND THIS RECOMMENDATION (100% COLLAPSED)
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-10">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-            <div className="md:col-span-4 lg:col-span-3">
-              <div className="sticky top-24">
-                <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-4">V</span>
-                <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-4 mb-4">SUPPORTING EVIDENCE</h3>
-                <p className="font-serif italic text-[14px] text-muted-foreground leading-relaxed">How RADAR reached this conclusion.</p>
+        {presentation.sections.filter(sec => sec.id === "EVIDENCE").map((sec) => (
+          <section key={sec.id} className="py-10">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
+              <div className="md:col-span-4 lg:col-span-3">
+                <div className="sticky top-24">
+                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-4">V</span>
+                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-4 mb-4">{sec.editorial.identity}</h3>
+                  <p className="font-serif italic text-[14px] text-muted-foreground leading-relaxed">{sec.editorial.expression}</p>
+                </div>
               </div>
-            </div>
             <div className="md:col-span-8 lg:col-span-9">
               <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                 <h2 className="display text-[28px] sm:text-[38px] text-foreground font-bold font-serif tracking-tight">
@@ -620,6 +623,7 @@ function Brief() {
             </div>
           </div>
         </section>
+        ))}
 
         {/* ────────────────────────────────────────────────────────────────────────
             SUPPORTING DOSSIER LEDGER (Experience & claims inventory)
