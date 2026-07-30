@@ -371,50 +371,7 @@ function Brief() {
         </section>
 
         {/* ────────────────────────────────────────────────────────────────────────
-            WHY THIS ROLE FITS YOUR EXPERIENCE (Capability alignment & surpluses)
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-10 border-b border-border">
-          <div className="flex flex-wrap items-baseline justify-between gap-4 mb-6">
-            <div>
-              <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
-                Capability alignment &amp; surpluses
-              </p>
-              <h2 className="display text-[26px] sm:text-[34px] mt-1 text-foreground font-semibold">
-                Why this role fits your experience
-              </h2>
-            </div>
-            <span className="mono text-[11px] tracking-[0.18em] text-pursue bg-pursue-soft px-3 py-1 rounded-sm font-semibold">
-              ✓ {alignmentText.toUpperCase()}
-            </span>
-          </div>
-
-          {/* Scannable Match List Grid with Scan Micro-Icons */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
-            <div className="flex gap-3">
-              <span className="mono text-[14px] text-pursue font-bold mt-0.5 shrink-0">✔</span>
-              <div>
-                <p className="text-[14px] font-semibold text-foreground">
-                  Direct match with your 20+ years performance-marketing leadership track record.
-                </p>
-                <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
-                  Full alignment with written brief requirements and digital media stack strategy.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <span className="mono text-[14px] text-pursue font-bold mt-0.5 shrink-0">✔</span>
-              <div>
-                <p className="text-[14px] font-semibold text-foreground">
-                  Multi-market CRM transformation experience already proven.
-                </p>
-                <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
-                  Salesforce migration execution across 13 international regions.
-                </p>
-              </div>
-            </div>
-                 {/* ────────────────────────────────────────────────────────────────────────
-            WHAT WILL YOU BE EXPECTED TO DELIVER? (Work vs Expected Business Outcomes)
+            SECTION 1: WHAT WILL YOU BE EXPECTED TO DELIVER? (Work vs Business Outcomes)
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="py-10 border-b border-border">
           <div className="flex flex-wrap items-baseline justify-between gap-4 mb-6">
@@ -465,9 +422,45 @@ function Brief() {
         </section>
 
         {/* ────────────────────────────────────────────────────────────────────────
-            WHERE ARE THE BIGGEST UNKNOWNS? (Screening verification ledger)
+            SECTION 2: WHY THIS ROLE FITS YOUR EXPERIENCE (Capability alignment & surpluses)
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-10 border-b border-border bg-muted/10 px-4 rounded-md my-4">
+        <section className="py-10 border-b border-border">
+          <div className="flex flex-wrap items-baseline justify-between gap-4 mb-6">
+            <div>
+              <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
+                Capability alignment &amp; surpluses
+              </p>
+              <h2 className="display text-[26px] sm:text-[34px] mt-1 text-foreground font-semibold">
+                Why this role fits your experience
+              </h2>
+            </div>
+            <span className="mono text-[11px] tracking-[0.18em] text-pursue bg-pursue-soft px-3 py-1 rounded-sm font-semibold">
+              ✓ {alignmentText.toUpperCase()}
+            </span>
+          </div>
+
+          {/* Scannable Match List Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+            {ed.whyWellSuited.map((proof, i) => (
+              <div key={i} className="flex gap-3">
+                <span className="mono text-[14px] text-pursue font-bold mt-0.5 shrink-0">✔</span>
+                <div>
+                  <p className="text-[14px] font-semibold text-foreground">
+                    {proof}
+                  </p>
+                  <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
+                    Direct alignment with candidate career memory and verified historical achievements.
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 3: WHERE ARE THE BIGGEST UNKNOWNS? (Screening verification ledger)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="py-10 border-b border-border">
           <div className="flex flex-wrap items-baseline justify-between gap-4 mb-4">
             <div>
               <p className="mono text-[10px] tracking-[0.24em] text-consider font-semibold uppercase">
@@ -501,32 +494,6 @@ function Brief() {
                 </span>
               </div>
             ))}
-          </div>
-        </section>
-
-            <div className="flex gap-3">
-              <span className="mono text-[14px] text-consider font-bold mt-0.5 shrink-0">▲</span>
-              <div>
-                <p className="text-[14px] font-semibold text-foreground">
-                  You have led larger marketing budgets and teams than this role requires.
-                </p>
-                <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
-                  Clear capability surplus — positions you as an over-qualified, low-risk hire.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <span className="mono text-[14px] text-pursue font-bold mt-0.5 shrink-0">✔</span>
-              <div>
-                <p className="text-[14px] font-semibold text-foreground">
-                  Reporting-line structure matches target tier.
-                </p>
-                <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
-                  CxO / Managing Director reporting proven for Head tier accountability.
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* Amber Explicit Required Gaps Box */}
