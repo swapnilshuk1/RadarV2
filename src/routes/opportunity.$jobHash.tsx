@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { applyUrlFor, type DecisionVerb } from "../data/opportunity-fixtures";
 import { getOpportunityFn, getOpportunitiesFn, getNeighboursFn } from "../lib/intelligence/opportunity-server";
@@ -10,35 +10,32 @@ import type { EvaluationEnvelope } from "../domain/v4";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
 import { PresentationEngine } from "../lib/intelligence/editorial/PresentationEngine";
 import { PresentationTokens } from "../lib/intelligence/editorial/PresentationTokens";
+import { motion, AnimatePresence } from "framer-motion";
 
-function RevealSection({ children, className = "", delayMs = 0 }: { children: React.ReactNode; className?: string; delayMs?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(el);
-        }
-      },
-      { threshold: 0.10 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
+function SemanticFocus({ children, className = "", delayMs = 0 }: { children: React.ReactNode; className?: string; delayMs?: number }) {
   return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: `${delayMs}ms` }}
-      className={`reveal-section ${isVisible ? "is-visible" : ""} ${className}`}
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: "easeOut", delay: delayMs / 1000 }}
+      className={className}
     >
       {children}
-    </div>
+    </motion.div>
+  );
+}
+
+function SemanticReveal({ children, className = "", delayMs = 0 }: { children: React.ReactNode; className?: string; delayMs?: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 25 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-10%" }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: delayMs / 1000 }}
+      className={className}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -167,7 +164,7 @@ function Brief() {
         {/* ────────────────────────────────────────────────────────────────────────
             VIEWPORT CHAPTER 1: TITLE & CHIEF OF STAFF DECISION SUMMARY
             ──────────────────────────────────────────────────────────────────────── */}
-        <header className="min-h-[85vh] flex flex-col justify-center py-12 border-b border-border/40 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <SemanticFocus delayMs={0} className="min-h-[85vh] flex flex-col justify-center py-12 border-b border-border/40">
           <div className="max-w-5xl">
             {/* INTEGRATED QUIET BREADCRUMB & PRECISION PAGINATION */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6 text-muted-foreground mono text-[11px] tracking-[0.2em] font-semibold border-b border-border/30 pb-3">
@@ -277,12 +274,12 @@ function Brief() {
               </div>
             </div>
           </div>
-        </header>
+        </SemanticFocus>
 
         {/* ────────────────────────────────────────────────────────────────────────
             VIEWPORT CHAPTER 2: QUESTION INTELLIGENCE CONSOLE (FULL VIEWPORT)
             ──────────────────────────────────────────────────────────────────────── */}
-        <RevealSection delayMs={100} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
+        <SemanticReveal delayMs={100} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
           <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-8">
             CHAPTER 1: EXECUTIVE DECISION CONSOLE
           </p>
@@ -337,7 +334,7 @@ function Brief() {
               <p className="text-[13px] text-muted-foreground mt-2">Est. {estimatedTimeText} to apply</p>
             </div>
           </div>
-        </RevealSection>
+        </SemanticReveal>
 
         {/* ────────────────────────────────────────────────────────────────────────
             VIEWPORT CHAPTER 3: DOMINANT PRIMARY STORY (70% SPATIAL ELASTICITY)
@@ -347,7 +344,7 @@ function Brief() {
 
           if (sec.id === "CAREER") {
             return (
-              <RevealSection key={sec.id} delayMs={150} className={`min-h-[85vh] flex flex-col justify-center border-b border-border/40 ${isPrimary ? "py-24" : "py-12"}`}>
+              <SemanticReveal key={sec.id} delayMs={150} className={`min-h-[85vh] flex flex-col justify-center border-b border-border/40 ${isPrimary ? "py-24" : "py-12"}`}>
                 <div className="mb-8">
                   <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
                     CHAPTER 2: EXECUTIVE GROWTH TRAJECTORY
@@ -357,8 +354,8 @@ function Brief() {
                   </h2>
                 </div>
 
-                <div className="space-y-10">
-                  <p className={`${isPrimary ? "text-[18px] sm:text-[22px]" : "text-[16px]"} leading-relaxed text-foreground/90 max-w-5xl font-normal`}>
+                <div className="space-y-12 max-w-5xl">
+                  <p className={`${isPrimary ? "text-[18px] sm:text-[22px]" : "text-[16px]"} leading-relaxed text-foreground/90 font-normal`}>
                     {envelope?.response.growth.careerAlignment.rationale ||
                       "A solid tactical fit. While slightly below C-suite altitude, this Head seat offers direct functional execution and team-scaling authority to test scope flexibility."}
                   </p>
@@ -373,40 +370,34 @@ function Brief() {
                         <div className="flex items-baseline justify-between mb-2">
                           <span className="text-[16px] text-foreground font-semibold">Strategy</span>
                           <span className="mono text-[11px] tracking-[0.18em] text-pursue font-bold">
-                            HIGH UTILIZATION · 82%
+                            STRONG ADVANTAGE
                           </span>
                         </div>
-                        <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                          <div className="h-full bg-pursue" style={{ width: "82%" }} />
-                        </div>
+                        <p className="text-[14px] text-muted-foreground mt-1">Directly aligns with your historical mandate of P&amp;L execution and positioning strategy.</p>
                       </div>
 
                       <div className="border-b border-border/30 pb-4">
                         <div className="flex items-baseline justify-between mb-2">
                           <span className="text-[16px] text-foreground font-semibold">Commercial</span>
-                          <span className="mono text-[11px] tracking-[0.18em] text-consider font-bold">
-                            MODERATE · 70%
+                          <span className="mono text-[11px] tracking-[0.18em] text-foreground font-bold">
+                            MODERATE FIT
                           </span>
                         </div>
-                        <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                          <div className="h-full bg-consider" style={{ width: "70%" }} />
-                        </div>
+                        <p className="text-[14px] text-muted-foreground mt-1">Requires adaptation to a different revenue model, though core acquisition principles apply.</p>
                       </div>
 
-                      <div>
+                      <div className="border-b border-border/30 pb-4">
                         <div className="flex items-baseline justify-between mb-2">
                           <span className="text-[16px] text-foreground font-semibold">Transformation</span>
                           <span className="mono text-[11px] tracking-[0.18em] text-pursue font-bold">
-                            HIGH UTILIZATION · 78%
+                            STRONG ADVANTAGE
                           </span>
                         </div>
-                        <div className="h-[6px] rounded-full bg-muted overflow-hidden">
-                          <div className="h-full bg-pursue" style={{ width: "78%" }} />
-                        </div>
+                        <p className="text-[14px] text-muted-foreground mt-1">Leverages your experience in restructuring teams for digital scale.</p>
                       </div>
                     </div>
 
-                    <div className="lg:col-span-5 border-l-2 border-border/50 pl-8 py-2">
+                    <div className="lg:col-span-5 py-2">
                       <p className="mono text-[11px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-3">
                         WHY THIS MATCH MATTERS
                       </p>
@@ -416,13 +407,13 @@ function Brief() {
                     </div>
                   </div>
                 </div>
-              </RevealSection>
+              </SemanticReveal>
             );
           }
 
           if (sec.id === "DELIVERABLES") {
             return (
-              <RevealSection key={sec.id} delayMs={150} className={`min-h-[85vh] flex flex-col justify-center border-b border-border/40 ${isPrimary ? "py-24" : "py-12"}`}>
+              <SemanticReveal key={sec.id} delayMs={150} className={`min-h-[85vh] flex flex-col justify-center border-b border-border/40 ${isPrimary ? "py-24" : "py-12"}`}>
                 <div className="mb-8">
                   <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
                     CHAPTER 2: EXECUTIVE DELIVERY MANDATE
@@ -432,42 +423,33 @@ function Brief() {
                   </h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-4">
-                  <div className="border-l-2 border-muted-foreground/40 pl-8 py-2">
-                    <p className="mono text-[11px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-6">
-                      YOUR FIRST 12 MONTHS (WORK)
-                    </p>
-                    <ul className="space-y-5 text-[16px] sm:text-[18px] text-foreground font-medium leading-relaxed">
-                      {brief.deliverablesWork.map((item, i) => (
-                        <li key={i} className="flex items-start gap-4">
-                          <span className="text-muted-foreground font-bold">•</span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="border-l-2 border-pursue pl-8 py-2">
-                    <p className="mono text-[11px] tracking-[0.22em] text-pursue font-bold uppercase mb-6">
-                      EXPECTED BUSINESS OUTCOMES (VALUE)
-                    </p>
-                    <ul className="space-y-5 text-[16px] sm:text-[18px] text-foreground font-medium leading-relaxed">
-                      {brief.deliverablesValue.map((item, i) => (
-                        <li key={i} className="flex items-start gap-4">
-                          <span className="text-pursue font-bold">✓</span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                <div className="max-w-3xl pt-8 space-y-0">
+                  {brief.deliverablesWork.map((item, i) => (
+                    <div key={i} className="flex items-start gap-6 group">
+                      <div className="flex flex-col items-center">
+                        <div className="w-9 h-9 rounded-full border border-border/60 bg-background flex items-center justify-center mono text-[10px] text-muted-foreground font-bold transition-colors">
+                          M{i * 3 + 3}
+                        </div>
+                        {i < brief.deliverablesWork.length - 1 && <div className="w-[1px] h-20 bg-border/40 my-3"></div>}
+                      </div>
+                      <div className="pt-1.5 pb-8">
+                        <p className="text-[16px] sm:text-[18px] text-foreground font-medium leading-relaxed">{item}</p>
+                        {brief.deliverablesValue[i] && (
+                          <p className="text-[14.5px] text-muted-foreground mt-3 font-medium flex items-start gap-2.5">
+                            <span className="text-foreground mt-0.5">↳</span> {brief.deliverablesValue[i]}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </RevealSection>
+              </SemanticReveal>
             );
           }
 
           if (sec.id === "FIT") {
             return (
-              <RevealSection key={sec.id} delayMs={150} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
+              <SemanticReveal key={sec.id} delayMs={150} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
                 <div className="mb-8">
                   <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
                     CHAPTER 3: CAPABILITY SURPLUSES
@@ -477,25 +459,25 @@ function Brief() {
                   </h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                <div className="space-y-12 max-w-4xl pt-4">
                   {brief.fitProofs.map((proof, i) => (
-                    <div key={i} className="border-l-2 border-pursue pl-6 py-2">
-                      <p className="text-[17px] sm:text-[19px] font-bold text-foreground leading-snug">{proof}</p>
-                      <p className="text-[14.5px] text-muted-foreground mt-2 leading-relaxed">
+                    <div key={i} className="py-2">
+                      <p className="text-[18px] sm:text-[22px] font-medium text-foreground leading-snug">{proof}</p>
+                      <p className="text-[15px] text-muted-foreground mt-3 leading-relaxed">
                         Direct alignment with candidate career memory and verified historical achievements.
                       </p>
                     </div>
                   ))}
                 </div>
-              </RevealSection>
+              </SemanticReveal>
             );
           }
 
           if (sec.id === "UNKNOWNS") {
             return (
-              <RevealSection key={sec.id} delayMs={150} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
+              <SemanticReveal key={sec.id} delayMs={150} className="min-h-[70vh] flex flex-col justify-center py-16 border-b border-border/40">
                 <div className="mb-8">
-                  <p className="mono text-[11px] tracking-[0.25em] text-consider font-bold uppercase mb-2">
+                  <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
                     CHAPTER 4: SINGLE UNCERTAINTY AUTHORITY
                   </p>
                   <h2 className="display text-[32px] sm:text-[44px] text-foreground font-bold tracking-tight">
@@ -503,23 +485,23 @@ function Brief() {
                   </h2>
                 </div>
 
-                <p className="text-[16px] text-muted-foreground mb-8 max-w-4xl leading-relaxed">{brief.certaintyGuidance}</p>
+                <p className="text-[16px] text-muted-foreground mb-10 max-w-4xl leading-relaxed">{brief.certaintyGuidance}</p>
 
-                <div className="space-y-6">
+                <div className="max-w-4xl space-y-4">
                   {brief.rankedUnknowns.map((item, idx) => (
-                    <div key={idx} className="border-b border-border/30 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <span className={`mono text-[10px] tracking-[0.18em] font-bold uppercase px-2.5 py-0.5 rounded-sm mr-3 ${
-                          item.rank === "CRITICAL" ? "bg-consider text-background" : "bg-consider-soft text-consider"
-                        }`}>
-                          {item.rank} UNKNOWN
-                        </span>
-                        <span className="text-[16px] text-foreground font-semibold">{item.label}</span>
-                        <p className="text-[14px] text-muted-foreground mt-1">{item.question}</p>
+                    <div key={idx} className="group flex items-start gap-4 py-4 border-b border-border/30">
+                      <div className="mt-1">
+                        <div className="w-4 h-4 rounded-sm border border-border/60 bg-transparent flex items-center justify-center"></div>
                       </div>
-                      <span className="mono text-[10px] tracking-[0.16em] text-muted-foreground border border-border/60 px-3 py-1.5 rounded-sm uppercase shrink-0 font-medium">
-                        VERIFY AT SCREENING
-                      </span>
+                      <div className="flex-1">
+                        <div className="flex items-baseline justify-between gap-4">
+                          <span className="text-[16px] text-foreground font-semibold">{item.label}</span>
+                          <span className="mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase shrink-0 font-medium">
+                            VERIFY AT SCREENING
+                          </span>
+                        </div>
+                        <p className="text-[14.5px] text-muted-foreground mt-2 leading-relaxed">{item.question}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -527,7 +509,7 @@ function Brief() {
                 <p className="text-[13.5px] text-muted-foreground italic mt-8">
                   ℹ Unstated brief details reduce decision certainty, not candidate capability.
                 </p>
-              </RevealSection>
+              </SemanticReveal>
             );
           }
 
@@ -537,7 +519,7 @@ function Brief() {
         {/* ────────────────────────────────────────────────────────────────────────
             VIEWPORT CHAPTER 5: EVIDENCE BEHIND THIS RECOMMENDATION (100% COLLAPSED)
             ──────────────────────────────────────────────────────────────────────── */}
-        <RevealSection delayMs={150} className="py-16 border-b border-border/40">
+        <SemanticReveal delayMs={150} className="py-16 border-b border-border/40">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div>
               <p className="mono text-[11px] tracking-[0.25em] text-muted-foreground font-bold uppercase mb-2">
@@ -622,7 +604,7 @@ function Brief() {
               </div>
             </div>
           )}
-        </RevealSection>
+        </SemanticReveal>
 
         {/* ────────────────────────────────────────────────────────────────────────
             SUPPORTING DOSSIER LEDGER (Experience & claims inventory)
