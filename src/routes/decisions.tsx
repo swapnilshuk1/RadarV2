@@ -142,6 +142,9 @@ function Group({
                 <p className="mt-0.5 text-[12.5px] text-ink-muted">
                   {r.location} · {r.scrapedFrom} · {relTime(r.record.at)}
                 </p>
+                <p className="mt-1 text-[12px] font-mono text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm inline-block">
+                  Decision rationale: {verb === "PURSUE" ? "Strong career trajectory and commercial alignment" : verb === "CONSIDER" ? "Solid functional fit, verify reporting line and travel" : "Passed based on user preference or lower capability overlap"}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 {verb === "PURSUE" && (
