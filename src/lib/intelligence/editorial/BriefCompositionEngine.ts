@@ -265,12 +265,13 @@ export class BriefCompositionEngine {
       certaintyGuidance = "Solid functional alignment. Verify reporting line and requirements during screening.";
     }
 
-    // Dynamic 9 Page Hierarchy Sections Meta
+    // Dynamic 9 Page Hierarchy Sections Meta with Consecutive Roman Numerals I through IX
     const sections: BriefSectionMeta[] = [
       {
         id: "STRATEGIC_CAREER_VALUE",
         name: "Strategic Career Value",
         eyebrow: "STRATEGIC CAREER VALUE",
+        numeral: "I",
         title: "Why this role is interesting",
         expression: "Key strategic levers and career capital upside.",
       },
@@ -278,6 +279,7 @@ export class BriefCompositionEngine {
         id: "EXPLAINABLE_REASONING",
         name: "Explainable Reasoning",
         eyebrow: "EXPLAINABLE REASONING",
+        numeral: "II",
         title: "Why this recommendation?",
         expression: "Multi-layer reasoning chain backed by evidence precedent.",
       },
@@ -285,7 +287,7 @@ export class BriefCompositionEngine {
         id: "THE_CASE",
         name: "The Case",
         eyebrow: "THE CASE",
-        numeral: "I",
+        numeral: "III",
         title: "Yes — but for a very specific reason.",
         expression: "Consider this recommendation against your long-term trajectory.",
       },
@@ -293,7 +295,7 @@ export class BriefCompositionEngine {
         id: "THE_ROLE",
         name: "The Role",
         eyebrow: "THE ROLE",
-        numeral: "II",
+        numeral: "IV",
         title: "What will you be expected to deliver?",
         expression: "What success looks like.",
       },
@@ -301,7 +303,7 @@ export class BriefCompositionEngine {
         id: "YOUR_ADVANTAGE",
         name: "Your Advantage",
         eyebrow: "YOUR ADVANTAGE",
-        numeral: "III",
+        numeral: "V",
         title: "Why RADAR believes you're well positioned",
         expression: "Evidence-backed alignment.",
       },
@@ -309,7 +311,7 @@ export class BriefCompositionEngine {
         id: "OPEN_QUESTIONS",
         name: "Open Questions",
         eyebrow: "OPEN QUESTIONS",
-        numeral: "IV",
+        numeral: "VI",
         title: "Recruiter Call Checklist",
         expression: "Screening priorities & key uncertainties.",
       },
@@ -317,6 +319,7 @@ export class BriefCompositionEngine {
         id: "DECISION_BOUNDARIES",
         name: "Decision Boundaries",
         eyebrow: "DECISION BOUNDARIES",
+        numeral: "VII",
         title: "What would change this decision?",
         expression: "Actionable boundary conditions and trade-off limits.",
       },
@@ -324,7 +327,7 @@ export class BriefCompositionEngine {
         id: "SUPPORTING_EVIDENCE",
         name: "Supporting Evidence",
         eyebrow: "SUPPORTING EVIDENCE",
-        numeral: "V",
+        numeral: "VIII",
         title: "Evidence Behind This Recommendation",
         expression: "Forensic evidence signals verified across JD and candidate profile.",
       },
@@ -332,6 +335,7 @@ export class BriefCompositionEngine {
         id: "DOSSIER_LEDGER",
         name: "Dossier Ledger",
         eyebrow: "DOSSIER LEDGER",
+        numeral: "IX",
         title: "Experience & claim summary.",
         expression: "Supporting dossier ledger & verified claims inventory.",
       },
