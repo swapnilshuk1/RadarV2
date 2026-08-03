@@ -193,7 +193,7 @@ function GlobalHeader() {
         </div>
 
         {/* User Identity & Navigation Links */}
-        <nav className="flex items-center gap-2.5 sm:gap-4 text-[10.5px] sm:text-[11.5px] font-mono shrink-0 overflow-x-auto no-scrollbar py-0.5 max-w-[calc(100vw-80px)] sm:max-w-none">
+        <nav className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-[11.5px] font-mono shrink-0 overflow-x-auto no-scrollbar py-0.5 max-w-[calc(100vw-65px)] sm:max-w-none">
           <span className="hidden lg:inline-flex items-center text-[11.5px] text-ink-muted max-w-[160px] lg:max-w-[220px] truncate" title={signature}>
             <Link to="/profile" className="hover:text-ink transition-colors truncate">
               👤 {sessionName || candidateProfile.identity.name}

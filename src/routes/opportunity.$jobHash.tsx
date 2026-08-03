@@ -261,11 +261,11 @@ function Brief() {
           </div>
 
           <div className="grid gap-px border-t border-border/60 bg-border/60 md:grid-cols-2">
-            <div className="bg-card p-8">
-              <div className="mono text-[10px] tracking-[0.22em] text-emerald-800 font-bold uppercase mb-5">WHY PURSUE</div>
-              <ul className="space-y-4 text-[0.9375rem] leading-relaxed text-foreground/90">
+            <div className="bg-card p-4 sm:p-8">
+              <div className="mono text-[10px] tracking-[0.22em] text-emerald-800 font-bold uppercase mb-4 sm:mb-5">WHY PURSUE</div>
+              <ul className="space-y-3.5 text-[0.9375rem] leading-relaxed text-foreground/90">
                 {brief.oneMinuteTLDR.whyPursue.map((item, i) => (
-                  <li key={i} className="flex gap-3.5 items-start">
+                  <li key={i} className="flex gap-3 items-start">
                     <span className="text-emerald-700 font-bold shrink-0 mt-0.5">✓</span>
                     <span>{item}</span>
                   </li>
@@ -273,9 +273,9 @@ function Brief() {
               </ul>
             </div>
 
-            <div className="bg-card p-8">
-              <div className="mono text-[10px] tracking-[0.22em] text-amber-800 font-bold uppercase mb-5">BEFORE YOU REPLY</div>
-              <ul className="space-y-4 text-[0.9375rem] leading-relaxed text-foreground/90">
+            <div className="bg-card p-4 sm:p-8">
+              <div className="mono text-[10px] tracking-[0.22em] text-amber-800 font-bold uppercase mb-4 sm:mb-5">BEFORE YOU REPLY</div>
+              <ul className="space-y-3.5 text-[0.9375rem] leading-relaxed text-foreground/90">
                 {brief.oneMinuteTLDR.watchFor.map((item, i) => (
                   <li key={i} className="flex gap-3.5 items-start">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-600 shrink-0 mt-2" />
