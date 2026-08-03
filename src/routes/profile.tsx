@@ -6,6 +6,7 @@ import {
   saveIntentFn,
   getLatestIntentFn
 } from "../lib/intelligence/document-server";
+import { triggerDeployFn } from "./api/webhooks/deploy";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/profile")({
 
 function ProfilePage() {
   const { intent } = Route.useLoaderData();
+  const [deploying, setDeploying] = useState(false);
   const router = useRouter();
 
   // Intent form state
@@ -304,6 +306,36 @@ function ProfilePage() {
               </div>
             </div>
           )}
+
+          <div className="mt-6 pt-5 border-t border-border/60 space-y-3">
+            <span className="mono text-[10px] tracking-[0.2em] font-bold uppercase text-foreground/80 block">
+              RENDER-STYLE GIT DEPLOYMENT
+            </span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-muted/30 border border-border/60 rounded-sm">
+              <div>
+                <p className="mono text-[11px] font-bold text-foreground">AUTO-PULL & REBUILD</p>
+                <p className="text-[11.5px] text-muted-foreground mt-0.5">Pulls latest code from GitHub & restarts live server</p>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  setDeploying(true);
+                  try {
+                    await triggerDeployFn();
+                    alert("Git pull & build initiated on server! Server will rebuild and restart in ~10 seconds.");
+                  } catch (e: any) {
+                    alert("Deploy error: " + e.message);
+                  } finally {
+                    setDeploying(false);
+                  }
+                }}
+                disabled={deploying}
+                className="mono text-[10px] tracking-[0.16em] font-bold uppercase bg-foreground text-background px-3.5 py-2 rounded-xs hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                {deploying ? "SYNCING..." : "SYNC & REBUILD"}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Career Intent Panel */}
