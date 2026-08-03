@@ -212,14 +212,13 @@ function Shortlist() {
           LIVE PIPELINE METADATA & ACTIONS FOOTER
           ──────────────────────────────────────────────────────────────────────── */}
       <footer className="sticky bottom-0 z-40 border-t border-border/90 bg-background/95 backdrop-blur-md shadow-lg">
-        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-2 px-3.5 sm:px-8 py-2 font-mono text-[10px] sm:text-[11px]">
-          <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-5 gap-y-0.5 text-muted-foreground">
+        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-2 px-3 sm:px-8 py-1.5 font-mono text-[9.5px] sm:text-[11px] overflow-hidden">
+          <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-5 gap-y-0.5 text-muted-foreground max-w-full">
             <span>
               <span className="font-bold text-foreground tabular-nums">{totalScraped}</span> SCRAPED
             </span>
-            <span>· LINKEDIN <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.LinkedIn}</span></span>
-            <span>· NAUKRI <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.Naukri}</span></span>
-            <span>· INDEED <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.Indeed}</span></span>
+            <span className="hidden xs:inline">· LINKEDIN <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.LinkedIn}</span></span>
+            <span className="hidden xs:inline">· NAUKRI <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.Naukri}</span></span>
             <span>→ <span className="tabular-nums text-pursue font-bold">{remaining.length}</span> ON SHORTLIST</span>
             {lastScanAt && !activeRunId && (
               <span className="text-muted-foreground/80 hidden lg:inline">· LAST SCAN {lastScanAt}</span>

@@ -148,12 +148,12 @@ function Brief() {
             ──────────────────────────────────────────────────────────────────────── */}
         <SemanticFocus delayMs={0} className="min-h-[40vh] flex flex-col justify-center py-6">
           <div className="max-w-5xl">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 text-muted-foreground mono text-[11px] tracking-[0.2em] font-semibold border-b border-border/30 pb-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 mb-6 text-muted-foreground mono text-[10px] sm:text-[11px] tracking-[0.1em] sm:tracking-[0.2em] font-semibold border-b border-border/30 pb-3 w-full">
               <Link to="/" className="hover:text-foreground inline-flex items-center gap-1.5 transition-colors">
                 ← SHORTLIST
               </Link>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px]">
                 {neighbors.prev ? (
                   <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.prev.jobHash }} className="hover:text-foreground transition-colors">
                     ← PREV

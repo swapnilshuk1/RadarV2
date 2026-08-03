@@ -132,9 +132,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <head><HeadContent /></head>
-      <body>
+    <html lang="en" className="overflow-x-hidden">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <HeadContent />
+      </head>
+      <body className="overflow-x-hidden max-w-full">
         {children}
         <Scripts />
       </body>
@@ -176,7 +179,7 @@ function GlobalHeader() {
   else if (location.pathname === "/qa/mapping") pageName = "QA Mapping";
 
   return (
-    <header className="border-b border-hairline bg-parchment/95 sticky top-0 z-50 backdrop-blur-md">
+    <header className="border-b border-hairline bg-parchment/95 sticky top-0 z-50 backdrop-blur-md w-full max-w-full overflow-hidden">
       <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2">
         {/* Brand & Page Name */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -190,7 +193,7 @@ function GlobalHeader() {
         </div>
 
         {/* User Identity & Navigation Links */}
-        <div className="flex items-center gap-2.5 sm:gap-4 text-[10px] sm:text-[11.5px] font-mono shrink-0 overflow-x-auto no-scrollbar py-0.5">
+        <nav className="flex items-center gap-2.5 sm:gap-4 text-[10.5px] sm:text-[11.5px] font-mono shrink-0 overflow-x-auto no-scrollbar py-0.5 max-w-[calc(100vw-80px)] sm:max-w-none">
           <span className="hidden lg:inline-flex items-center text-[11.5px] text-ink-muted max-w-[160px] lg:max-w-[220px] truncate" title={signature}>
             <Link to="/profile" className="hover:text-ink transition-colors truncate">
               👤 {sessionName || candidateProfile.identity.name}
@@ -200,8 +203,8 @@ function GlobalHeader() {
             to="/"
             className={
               isSelected("/")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0 whitespace-nowrap"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0 whitespace-nowrap"
             }
           >
             Shortlist
@@ -210,8 +213,8 @@ function GlobalHeader() {
             to="/profile"
             className={
               isSelected("/profile")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0 whitespace-nowrap"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0 whitespace-nowrap"
             }
           >
             Profile
@@ -220,8 +223,8 @@ function GlobalHeader() {
             to="/decisions"
             className={
               isSelected("/decisions")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0 whitespace-nowrap"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0 whitespace-nowrap"
             }
           >
             Decisions
@@ -230,8 +233,8 @@ function GlobalHeader() {
             to="/corpus"
             className={
               isSelected("/corpus")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0 whitespace-nowrap"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0 whitespace-nowrap"
             }
           >
             Corpus
@@ -243,7 +246,7 @@ function GlobalHeader() {
           >
             Sign Out
           </a>
-        </div>
+        </nav>
       </div>
     </header>
   );
