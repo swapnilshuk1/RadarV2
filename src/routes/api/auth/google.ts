@@ -21,7 +21,8 @@ const initiateGoogleAuthFn = createServerFn({ method: "GET" }).handler(async () 
       : "http://localhost:3000/api/auth/callback");
 
   if (!clientId || !clientSecret) {
-    throw new Error("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set.");
+    console.warn("[Auth] GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET not configured.");
+    return "/login?error=missing_google_credentials";
   }
 
   const google = new Google(clientId, clientSecret, redirectUri);
