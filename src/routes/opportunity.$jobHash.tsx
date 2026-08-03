@@ -268,22 +268,22 @@ function Brief() {
           const presSec = presentation.sections.find(s => s.id === "STRATEGIC_CAREER_VALUE");
           return (
             <SemanticReveal key="STRATEGIC_CAREER_VALUE" delayMs={100} className="py-10 sm:py-14 border-b border-border/40">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-                <div className="md:col-span-4 lg:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
+                <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
                     {sec?.numeral && (
-                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                      <span className="font-serif font-light text-[30px] sm:text-[36px] text-muted-foreground/35 block leading-none mb-1.5">{sec.numeral}</span>
                     )}
                     <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
                       {sec?.eyebrow || presSec?.editorial.identity || "STRATEGIC CAREER VALUE"}
                     </h3>
-                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                    <p className="font-serif italic text-[13px] text-muted-foreground leading-relaxed">
                       {sec?.expression || presSec?.editorial.expression}
                     </p>
                   </div>
                 </div>
-                <div className="md:col-span-8 lg:col-span-9">
-                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-bold font-serif tracking-tight mb-4">
+                <div className="md:col-span-9 lg:col-span-10">
+                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-normal font-serif tracking-tight mb-4">
                     {sec?.title || "Why this role is interesting"}
                   </h2>
                   <div className="pl-4 border-l-2 border-accent-ink space-y-3 max-w-4xl py-1">
@@ -307,22 +307,22 @@ function Brief() {
           const presSec = presentation.sections.find(s => s.id === "EXPLAINABLE_REASONING");
           return (
             <SemanticReveal key="EXPLAINABLE_REASONING" delayMs={120} className="py-10 sm:py-14 border-b border-border/40">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-                <div className="md:col-span-4 lg:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
+                <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
                     {sec?.numeral && (
-                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                      <span className="font-serif font-light text-[30px] sm:text-[36px] text-muted-foreground/35 block leading-none mb-1.5">{sec.numeral}</span>
                     )}
                     <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
                       {sec?.eyebrow || presSec?.editorial.identity || "EXPLAINABLE REASONING"}
                     </h3>
-                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                    <p className="font-serif italic text-[13px] text-muted-foreground leading-relaxed">
                       {sec?.expression || presSec?.editorial.expression}
                     </p>
                   </div>
                 </div>
-                <div className="md:col-span-8 lg:col-span-9">
-                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-bold font-serif tracking-tight mb-4">
+                <div className="md:col-span-9 lg:col-span-10">
+                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-normal font-serif tracking-tight mb-4">
                     {sec?.title || "Why this recommendation?"}
                   </h2>
                   <div className="space-y-4 max-w-4xl">
@@ -388,27 +388,27 @@ function Brief() {
           const presSec = presentation.sections.find(s => s.id === "THE_CASE");
           return (
             <SemanticReveal key="THE_CASE" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-                <div className="md:col-span-4 lg:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
+                <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
                     {sec?.numeral && (
-                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                      <span className="font-serif font-light text-[30px] sm:text-[36px] text-muted-foreground/35 block leading-none mb-1.5">{sec.numeral}</span>
                     )}
                     <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
                       {sec?.eyebrow || presSec?.editorial.identity || "THE CASE"}
                     </h3>
-                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                    <p className="font-serif italic text-[13px] text-muted-foreground leading-relaxed">
                       {sec?.expression || presSec?.editorial.expression}
                     </p>
                   </div>
                 </div>
-                <div className="md:col-span-8 lg:col-span-9">
-                  <h2 className="text-[26px] sm:text-[32px] text-foreground font-bold font-serif tracking-tight leading-tight mb-4">
+                <div className="md:col-span-9 lg:col-span-10">
+                  <h2 className="text-[26px] sm:text-[32px] text-foreground font-normal font-serif tracking-tight leading-tight mb-4">
                     {sec?.title || "Yes — but for a very specific reason."}
                   </h2>
 
                   <div className="space-y-4 max-w-5xl">
-                    <p className="text-[16px] sm:text-[19px] leading-relaxed text-foreground font-serif italic">
+                    <p className="text-[16px] sm:text-[19px] leading-relaxed text-foreground font-serif italic font-normal">
                       {envelope?.response.growth.careerAlignment.rationale ||
                         "This role narrows your operating scope today, but meaningfully strengthens your commercial leadership profile—making it a credible stepping stone toward a future CCO position."}
                     </p>
@@ -465,22 +465,22 @@ function Brief() {
           const presSec = presentation.sections.find(s => s.id === "THE_ROLE");
           return (
             <SemanticReveal key="THE_ROLE" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-                <div className="md:col-span-4 lg:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
+                <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
                     {sec?.numeral && (
-                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                      <span className="font-serif font-light text-[30px] sm:text-[36px] text-muted-foreground/35 block leading-none mb-1.5">{sec.numeral}</span>
                     )}
                     <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
                       {sec?.eyebrow || presSec?.editorial.identity || "THE ROLE"}
                     </h3>
-                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                    <p className="font-serif italic text-[13px] text-muted-foreground leading-relaxed">
                       {sec?.expression || presSec?.editorial.expression}
                     </p>
                   </div>
                 </div>
-                <div className="md:col-span-8 lg:col-span-9">
-                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-bold font-serif tracking-tight mb-6">
+                <div className="md:col-span-9 lg:col-span-10">
+                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-normal font-serif tracking-tight mb-6">
                     {sec?.title || "What will you be expected to deliver?"}
                   </h2>
 
@@ -526,22 +526,22 @@ function Brief() {
           const presSec = presentation.sections.find(s => s.id === "YOUR_ADVANTAGE");
           return (
             <SemanticReveal key="YOUR_ADVANTAGE" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-                <div className="md:col-span-4 lg:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
+                <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
                     {sec?.numeral && (
-                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                      <span className="font-serif font-light text-[30px] sm:text-[36px] text-muted-foreground/35 block leading-none mb-1.5">{sec.numeral}</span>
                     )}
                     <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
                       {sec?.eyebrow || presSec?.editorial.identity || "YOUR ADVANTAGE"}
                     </h3>
-                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                    <p className="font-serif italic text-[13px] text-muted-foreground leading-relaxed">
                       {sec?.expression || presSec?.editorial.expression}
                     </p>
                   </div>
                 </div>
-                <div className="md:col-span-8 lg:col-span-9">
-                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-bold font-serif tracking-tight mb-6">
+                <div className="md:col-span-9 lg:col-span-10">
+                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-normal font-serif tracking-tight mb-6">
                     {sec?.title || "Why RADAR believes you're well positioned"}
                   </h2>
 
@@ -592,21 +592,21 @@ function Brief() {
           const presSec = presentation.sections.find(s => s.id === "OPEN_QUESTIONS");
           return (
             <SemanticReveal key="OPEN_QUESTIONS" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-                <div className="md:col-span-4 lg:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
+                <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
                     {sec?.numeral && (
-                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                      <span className="font-serif font-light text-[30px] sm:text-[36px] text-muted-foreground/35 block leading-none mb-1.5">{sec.numeral}</span>
                     )}
                     <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
                       {sec?.eyebrow || presSec?.editorial.identity || "OPEN QUESTIONS"}
                     </h3>
-                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                    <p className="font-serif italic text-[13px] text-muted-foreground leading-relaxed">
                       {sec?.expression || presSec?.editorial.expression}
                     </p>
                   </div>
                 </div>
-                <div className="md:col-span-8 lg:col-span-9">
+                <div className="md:col-span-9 lg:col-span-10">
                   <div className="mb-4">
                     <span className="mono text-[11px] tracking-[0.2em] text-consider font-bold uppercase block mb-1">
                       🚩 RECRUITER CALL CHECKLIST: CLARIFY THESE {brief.rankedUnknowns.length} QUESTIONS
@@ -651,22 +651,22 @@ function Brief() {
           const presSec = presentation.sections.find(s => s.id === "DECISION_BOUNDARIES");
           return (
             <section className="py-10 sm:py-14 border-b border-border/40">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-                <div className="md:col-span-4 lg:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
+                <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
                     {sec?.numeral && (
-                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                      <span className="font-serif font-light text-[30px] sm:text-[36px] text-muted-foreground/35 block leading-none mb-1.5">{sec.numeral}</span>
                     )}
                     <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
                       {sec?.eyebrow || presSec?.editorial.identity || "DECISION BOUNDARIES"}
                     </h3>
-                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                    <p className="font-serif italic text-[13px] text-muted-foreground leading-relaxed">
                       {sec?.expression || presSec?.editorial.expression}
                     </p>
                   </div>
                 </div>
-                <div className="md:col-span-8 lg:col-span-9">
-                  <h2 className="text-[22px] sm:text-[26px] text-foreground font-bold font-serif tracking-tight mb-4">
+                <div className="md:col-span-9 lg:col-span-10">
+                  <h2 className="text-[22px] sm:text-[26px] text-foreground font-normal font-serif tracking-tight mb-4">
                     {sec?.title || "What would change this decision?"}
                   </h2>
 
@@ -713,23 +713,23 @@ function Brief() {
           const presSec = presentation.sections.find(s => s.id === "SUPPORTING_EVIDENCE");
           return (
             <section key="SUPPORTING_EVIDENCE" className="py-10 sm:py-14 border-b border-border/40">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-                <div className="md:col-span-4 lg:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
+                <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
                     {sec?.numeral && (
-                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                      <span className="font-serif font-light text-[30px] sm:text-[36px] text-muted-foreground/35 block leading-none mb-1.5">{sec.numeral}</span>
                     )}
                     <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
                       {sec?.eyebrow || presSec?.editorial.identity || "SUPPORTING EVIDENCE"}
                     </h3>
-                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                    <p className="font-serif italic text-[13px] text-muted-foreground leading-relaxed">
                       {sec?.expression || presSec?.editorial.expression}
                     </p>
                   </div>
                 </div>
-                <div className="md:col-span-8 lg:col-span-9">
+                <div className="md:col-span-9 lg:col-span-10">
                   <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                    <h2 className="display text-[24px] sm:text-[30px] text-foreground font-bold font-serif tracking-tight">
+                    <h2 className="display text-[24px] sm:text-[30px] text-foreground font-normal font-serif tracking-tight">
                       {sec?.title || "Evidence Behind This Recommendation"}
                     </h2>
 
@@ -795,23 +795,23 @@ function Brief() {
           const presSec = presentation.sections.find(s => s.id === "DOSSIER_LEDGER");
           return (
             <section className="py-10 sm:py-14 border-b border-border/40">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-                <div className="md:col-span-4 lg:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
+                <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
                     {sec?.numeral && (
-                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                      <span className="font-serif font-light text-[30px] sm:text-[36px] text-muted-foreground/35 block leading-none mb-1.5">{sec.numeral}</span>
                     )}
                     <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
                       {sec?.eyebrow || presSec?.editorial.identity || "DOSSIER LEDGER"}
                     </h3>
-                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                    <p className="font-serif italic text-[13px] text-muted-foreground leading-relaxed">
                       {sec?.expression || presSec?.editorial.expression}
                     </p>
                   </div>
                 </div>
-                <div className="md:col-span-8 lg:col-span-9">
+                <div className="md:col-span-9 lg:col-span-10">
                   <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
-                    <h2 className="display text-[22px] sm:text-[26px] text-foreground font-semibold">
+                    <h2 className="display text-[22px] sm:text-[26px] text-foreground font-normal font-serif">
                       {sec?.title || "Experience & claim summary."}
                     </h2>
 
