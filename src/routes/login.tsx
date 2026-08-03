@@ -71,9 +71,16 @@ function Login() {
             </p>
           </div>
 
-          {/* Social Google Login Card */}
-          <div className="space-y-6">
-            {/* Real Google OAuth button — points to OAuth initiation route */}
+          {/* Error Banner */}
+          {typeof window !== "undefined" && window.location.search.includes("missing_google_credentials") && (
+            <div className="mb-6 border border-amber-500/30 bg-amber-500/5 p-3 rounded-md text-[12px] text-amber-900 leading-relaxed font-normal">
+              Google OAuth client keys are not set in your <code>.env</code> file. Use <strong>Direct Executive Access</strong> below to log in immediately.
+            </div>
+          )}
+
+          {/* Login Options */}
+          <div className="space-y-3">
+            {/* Real Google OAuth button */}
             <a
               href="/api/auth/google"
               id="google-oauth-btn"
@@ -89,6 +96,15 @@ function Login() {
               </svg>
               Continue with Google
             </a>
+
+            {/* Direct Executive Access Button */}
+            <button
+              onClick={handleMagicLogin}
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-hairline bg-card py-3 px-4 text-[13px] font-semibold tracking-wide text-ink transition-all hover:bg-muted active:scale-[0.98] cursor-pointer"
+            >
+              {loading ? "Accessing Advisory Radar..." : "Direct Executive Access (Swapnil Shukla)"}
+            </button>
           </div>
 
           {/* Policy disclaimer */}
