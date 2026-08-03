@@ -1,4 +1,4 @@
-import { BriefMemory, BriefModel, RankedUnknown, ProofPointItem, OpportunityInOneMinute, QualitativeReasoningRow, StrategicUpside } from "./BriefModel";
+import { BriefMemory, BriefModel, BriefSectionMeta, RankedUnknown, ProofPointItem, OpportunityInOneMinute, QualitativeReasoningRow, StrategicUpside } from "./BriefModel";
 import { CompositionPolicy, DEFAULT_COMPOSITION_POLICY } from "./CompositionPolicy";
 import { SemanticNaturalLanguageResolver, unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
 import type { Opportunity } from "../../../data/opportunity-fixtures";
@@ -154,7 +154,7 @@ export class BriefCompositionEngine {
     ];
 
     const strategicUpside: StrategicUpside = {
-      headline: "Why this role is interesting (Strategic Value)",
+      headline: "Why this role is interesting",
       points: [
         `Moves you closer to enterprise CMO / CCO scope through direct commercial ownership at ${opportunity.company}.`,
         `Increases P&L authority and multi-market growth expansion experience.`,
@@ -265,6 +265,78 @@ export class BriefCompositionEngine {
       certaintyGuidance = "Solid functional alignment. Verify reporting line and requirements during screening.";
     }
 
+    // Dynamic 9 Page Hierarchy Sections Meta
+    const sections: BriefSectionMeta[] = [
+      {
+        id: "STRATEGIC_CAREER_VALUE",
+        name: "Strategic Career Value",
+        eyebrow: "STRATEGIC CAREER VALUE",
+        title: "Why this role is interesting",
+        expression: "Key strategic levers and career capital upside.",
+      },
+      {
+        id: "EXPLAINABLE_REASONING",
+        name: "Explainable Reasoning",
+        eyebrow: "EXPLAINABLE REASONING",
+        title: "Why this recommendation?",
+        expression: "Multi-layer reasoning chain backed by evidence precedent.",
+      },
+      {
+        id: "THE_CASE",
+        name: "The Case",
+        eyebrow: "THE CASE",
+        numeral: "I",
+        title: "Yes — but for a very specific reason.",
+        expression: "Consider this recommendation against your long-term trajectory.",
+      },
+      {
+        id: "THE_ROLE",
+        name: "The Role",
+        eyebrow: "THE ROLE",
+        numeral: "II",
+        title: "What will you be expected to deliver?",
+        expression: "What success looks like.",
+      },
+      {
+        id: "YOUR_ADVANTAGE",
+        name: "Your Advantage",
+        eyebrow: "YOUR ADVANTAGE",
+        numeral: "III",
+        title: "Why RADAR believes you're well positioned",
+        expression: "Evidence-backed alignment.",
+      },
+      {
+        id: "OPEN_QUESTIONS",
+        name: "Open Questions",
+        eyebrow: "OPEN QUESTIONS",
+        numeral: "IV",
+        title: "Recruiter Call Checklist",
+        expression: "Screening priorities & key uncertainties.",
+      },
+      {
+        id: "DECISION_BOUNDARIES",
+        name: "Decision Boundaries",
+        eyebrow: "DECISION BOUNDARIES",
+        title: "What would change this decision?",
+        expression: "Actionable boundary conditions and trade-off limits.",
+      },
+      {
+        id: "SUPPORTING_EVIDENCE",
+        name: "Supporting Evidence",
+        eyebrow: "SUPPORTING EVIDENCE",
+        numeral: "V",
+        title: "Evidence Behind This Recommendation",
+        expression: "Forensic evidence signals verified across JD and candidate profile.",
+      },
+      {
+        id: "DOSSIER_LEDGER",
+        name: "Dossier Ledger",
+        eyebrow: "DOSSIER LEDGER",
+        title: "Experience & claim summary.",
+        expression: "Supporting dossier ledger & verified claims inventory.",
+      },
+    ];
+
     return {
       opportunityId: opportunity.jobHash,
       score,
@@ -272,6 +344,7 @@ export class BriefCompositionEngine {
       evidenceQuality,
       qualitativeRecommendation,
       whyNotStronger,
+      sections,
       oneMinuteTLDR,
       qualitativeReasoningChain,
       strategicUpside,

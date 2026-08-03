@@ -1,14 +1,12 @@
 // src/lib/intelligence/editorial/PresentationEngine.ts
 
-import type { BriefModel } from "./BriefModel";
+import type { BriefModel, SectionId } from "./BriefModel";
 import type { NarrativeModel, EditorialFragment } from "./NarrativeModel";
 
 export type SectionEmphasis = "HERO" | "PRIMARY" | "SECONDARY" | "SUPPORTING" | "COLLAPSED";
 export type DensityToken = "SPACIOUS" | "STANDARD" | "COMPACT";
 export type ContrastToken = "ACCENT" | "CARD" | "SUBTLE" | "GHOST";
 export type DisclosureToken = "EXPANDED" | "COLLAPSED" | "HIDDEN";
-
-export type SectionId = "CAREER" | "DELIVERABLES" | "FIT" | "UNKNOWNS" | "EVIDENCE";
 
 export interface PresentationSection {
   id: SectionId;
@@ -35,33 +33,37 @@ export interface PresentationModel {
 
 export class PresentationEngine {
   /**
-   * Pure Semantic Presentation Function: Emits a declarative PresentationModel with zero CSS coupling.
+   * Pure Semantic Presentation Function: Emits a declarative PresentationModel across all 9 sections.
    */
   public static compose(brief: BriefModel, narrative: NarrativeModel): PresentationModel {
     const { primaryFocus } = brief.strategy;
 
-    // Default base sections (always this order)
+    // Default 9 base sections in exact page hierarchy order
     let sections: PresentationSection[] = [
-      { id: "CAREER", priority: 1, emphasis: "SECONDARY", density: "STANDARD", contrast: "SUBTLE", disclosure: "EXPANDED", editorial: narrative.sections.CAREER },
-      { id: "DELIVERABLES", priority: 2, emphasis: "PRIMARY", density: "STANDARD", contrast: "CARD", disclosure: "EXPANDED", editorial: narrative.sections.DELIVERABLES },
-      { id: "FIT", priority: 3, emphasis: "PRIMARY", density: "STANDARD", contrast: "CARD", disclosure: "EXPANDED", editorial: narrative.sections.FIT },
-      { id: "UNKNOWNS", priority: 4, emphasis: "SECONDARY", density: "STANDARD", contrast: "SUBTLE", disclosure: "EXPANDED", editorial: narrative.sections.UNKNOWNS },
-      { id: "EVIDENCE", priority: 5, emphasis: "COLLAPSED", density: "COMPACT", contrast: "GHOST", disclosure: "COLLAPSED", editorial: narrative.sections.EVIDENCE },
+      { id: "STRATEGIC_CAREER_VALUE", priority: 1, emphasis: "SECONDARY", density: "STANDARD", contrast: "SUBTLE", disclosure: "EXPANDED", editorial: narrative.sections.STRATEGIC_CAREER_VALUE },
+      { id: "EXPLAINABLE_REASONING", priority: 2, emphasis: "SECONDARY", density: "STANDARD", contrast: "SUBTLE", disclosure: "EXPANDED", editorial: narrative.sections.EXPLAINABLE_REASONING },
+      { id: "THE_CASE", priority: 3, emphasis: "PRIMARY", density: "STANDARD", contrast: "CARD", disclosure: "EXPANDED", editorial: narrative.sections.THE_CASE },
+      { id: "THE_ROLE", priority: 4, emphasis: "PRIMARY", density: "STANDARD", contrast: "CARD", disclosure: "EXPANDED", editorial: narrative.sections.THE_ROLE },
+      { id: "YOUR_ADVANTAGE", priority: 5, emphasis: "PRIMARY", density: "STANDARD", contrast: "CARD", disclosure: "EXPANDED", editorial: narrative.sections.YOUR_ADVANTAGE },
+      { id: "OPEN_QUESTIONS", priority: 6, emphasis: "SECONDARY", density: "STANDARD", contrast: "SUBTLE", disclosure: "EXPANDED", editorial: narrative.sections.OPEN_QUESTIONS },
+      { id: "DECISION_BOUNDARIES", priority: 7, emphasis: "SECONDARY", density: "STANDARD", contrast: "SUBTLE", disclosure: "EXPANDED", editorial: narrative.sections.DECISION_BOUNDARIES },
+      { id: "SUPPORTING_EVIDENCE", priority: 8, emphasis: "COLLAPSED", density: "COMPACT", contrast: "GHOST", disclosure: "COLLAPSED", editorial: narrative.sections.SUPPORTING_EVIDENCE },
+      { id: "DOSSIER_LEDGER", priority: 9, emphasis: "SECONDARY", density: "STANDARD", contrast: "SUBTLE", disclosure: "EXPANDED", editorial: narrative.sections.DOSSIER_LEDGER },
     ];
 
-    // Modify emphasis based on primary focus (but keep order exactly the same)
+    // Modify emphasis based on primary focus
     if (primaryFocus === "CAREER") {
-      sections[0].emphasis = "HERO";
-      sections[0].density = "SPACIOUS";
-      sections[0].contrast = "ACCENT";
+      sections[2].emphasis = "HERO";
+      sections[2].density = "SPACIOUS";
+      sections[2].contrast = "ACCENT";
     } else if (primaryFocus === "COMMERCIAL" || primaryFocus === "EXECUTION") {
-      sections[1].emphasis = "HERO";
-      sections[1].density = "SPACIOUS";
-      sections[1].contrast = "ACCENT";
-    } else if (primaryFocus === "RISK" || primaryFocus === "UNKNOWN") {
       sections[3].emphasis = "HERO";
       sections[3].density = "SPACIOUS";
       sections[3].contrast = "ACCENT";
+    } else if (primaryFocus === "RISK" || primaryFocus === "UNKNOWN") {
+      sections[5].emphasis = "HERO";
+      sections[5].density = "SPACIOUS";
+      sections[5].contrast = "ACCENT";
     }
 
     let capabilityTitle = "Why this role fits your experience";
@@ -78,7 +80,7 @@ export class PresentationEngine {
   }
 
   /**
-   * Mapping Layer: Maps semantic presentation tokens to Tailwind design system tokens.
+   * Mapping Layer: Maps semantic presentation tokens to design system tokens.
    */
   public static mapTokensToClasses(section: PresentationSection): SemanticStyleMapping {
     const { emphasis } = section;

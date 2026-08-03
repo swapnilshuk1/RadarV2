@@ -79,6 +79,26 @@ export interface StrategicUpside {
   points: string[];
 }
 
+export type SectionId =
+  | "STRATEGIC_CAREER_VALUE"
+  | "EXPLAINABLE_REASONING"
+  | "THE_CASE"
+  | "THE_ROLE"
+  | "YOUR_ADVANTAGE"
+  | "OPEN_QUESTIONS"
+  | "DECISION_BOUNDARIES"
+  | "SUPPORTING_EVIDENCE"
+  | "DOSSIER_LEDGER";
+
+export interface BriefSectionMeta {
+  id: SectionId;
+  name: string;          // e.g. "Strategic Career Value"
+  eyebrow: string;       // e.g. "STRATEGIC CAREER VALUE"
+  numeral?: string;      // e.g. "I", "II", "III", "IV", "V"
+  title: string;         // e.g. "Why this role is interesting"
+  expression?: string;   // Editorial subtitle or description
+}
+
 export interface BriefModel {
   opportunityId: string;
   score: number;
@@ -86,6 +106,7 @@ export interface BriefModel {
   evidenceQuality: "High Evidence Quality" | "Medium Evidence Quality" | "Inferred Evidence";
   qualitativeRecommendation: "Strong Pursue Recommendation" | "Conditional Consideration" | "Strategic Pass";
   whyNotStronger: string;
+  sections: BriefSectionMeta[];
   oneMinuteTLDR: OpportunityInOneMinute;
   qualitativeReasoningChain: QualitativeReasoningRow[];
   strategicUpside: StrategicUpside;

@@ -5,30 +5,35 @@ import type { NarrativeModel } from "./NarrativeModel";
 
 export class EditorialCompositionEngine {
   /**
-   * Translates the BriefModel strategy into human-readable editorial expression.
-   * Maintains completely stable identity for chapters, but adapts expression
-   * and selectively injects Decision Bridges based on strategy.
+   * Translates the BriefModel strategy into human-readable editorial expression
+   * across all 9 page-hierarchy sections.
    */
   public static compose(brief: BriefModel): NarrativeModel {
     const { primaryFocus, narrative } = brief.strategy;
     const score = brief.score;
 
-    // 1. CAREER (THE CASE)
-    let careerExpression = "Should you pursue this opportunity?";
+    // 1. STRATEGIC_CAREER_VALUE
+    const strategicValueExpression = "Key strategic levers and career capital upside.";
+
+    // 2. EXPLAINABLE_REASONING
+    const reasoningExpression = "Multi-layer reasoning chain backed by evidence precedent.";
+
+    // 3. THE_CASE
+    let caseExpression = "Should you pursue this opportunity?";
     if (primaryFocus === "CAREER") {
-      careerExpression = "Consider this recommendation against your long-term trajectory.";
+      caseExpression = "Consider this recommendation against your long-term trajectory.";
     } else if (primaryFocus === "COMMERCIAL") {
-      careerExpression = "Read against the ambition of scaling P&L and commercial authority.";
+      caseExpression = "Read against the ambition of scaling P&L and commercial authority.";
     }
 
-    let careerDecisionBridge: string | undefined = undefined;
+    let caseDecisionBridge: string | undefined = undefined;
     if (primaryFocus === "CAREER") {
-      careerDecisionBridge = "If you accept this trajectory, the next question is whether the day-to-day mandate aligns with your operating style.";
+      caseDecisionBridge = "If you accept this trajectory, the next question is whether the day-to-day mandate aligns with your operating style.";
     } else {
-      careerDecisionBridge = "You've decided this career trade is worthwhile. Now ask whether the operating model matches your strengths.";
+      caseDecisionBridge = "You've decided this career trade is worthwhile. Now ask whether the operating model matches your strengths.";
     }
 
-    // 2. DELIVERABLES (THE ROLE)
+    // 4. THE_ROLE
     let roleExpression = "What success looks like.";
     if (primaryFocus === "COMMERCIAL") {
       roleExpression = "The commercial scale and P&L mandate you will inherit.";
@@ -41,48 +46,70 @@ export class EditorialCompositionEngine {
       roleDecisionBridge = "Assuming you can deliver against that mandate, what gives you an unfair advantage over competing candidates?";
     }
 
-    // 3. FIT (YOUR ADVANTAGE)
-    let fitExpression = "Why you're unusually well positioned.";
+    // 5. YOUR_ADVANTAGE
+    let advantageExpression = "Evidence-backed alignment.";
     if (narrative.intent === "COMPETITIVE_ADVANTAGE") {
-      fitExpression = "Where your experience creates a moat that will be difficult for competing candidates to match.";
+      advantageExpression = "Where your experience creates a moat that will be difficult for competing candidates to match.";
     } else if (narrative.intent === "LEVERAGE_POINT") {
-      fitExpression = "Why this company is likely to trust you quickly.";
+      advantageExpression = "Why this company is likely to trust you quickly.";
     }
 
-    // 4. UNKNOWNS (OPEN QUESTIONS)
-    let unknownsExpression = "What remains uncertain.";
+    // 6. OPEN_QUESTIONS
+    let questionsExpression = "Screening priorities & recruiter call checklist.";
     if (brief.certaintyLevel === "LOW") {
-      unknownsExpression = "These are critical uncertainties that must be resolved before committing.";
+      questionsExpression = "These are critical uncertainties that must be resolved before committing.";
     } else if (brief.topUnknownPreview) {
-      unknownsExpression = "These answers could strengthen—or weaken—the recommendation.";
+      questionsExpression = "These answers could strengthen—or weaken—the recommendation.";
     }
 
-    // 5. EVIDENCE (SUPPORTING EVIDENCE)
-    const evidenceExpression = "How RADAR reached this conclusion.";
+    // 7. DECISION_BOUNDARIES
+    const boundariesExpression = "Actionable boundary conditions and trade-off limits.";
+
+    // 8. SUPPORTING_EVIDENCE
+    const evidenceExpression = "Forensic evidence signals verified across JD and candidate profile.";
+
+    // 9. DOSSIER_LEDGER
+    const ledgerExpression = "Supporting dossier ledger & verified claims inventory.";
 
     return {
       sections: {
-        CAREER: {
-          identity: "THE CASE",
-          expression: careerExpression,
-          decisionBridge: careerDecisionBridge,
+        STRATEGIC_CAREER_VALUE: {
+          identity: "STRATEGIC CAREER VALUE",
+          expression: strategicValueExpression,
         },
-        DELIVERABLES: {
+        EXPLAINABLE_REASONING: {
+          identity: "EXPLAINABLE REASONING",
+          expression: reasoningExpression,
+        },
+        THE_CASE: {
+          identity: "THE CASE",
+          expression: caseExpression,
+          decisionBridge: caseDecisionBridge,
+        },
+        THE_ROLE: {
           identity: "THE ROLE",
           expression: roleExpression,
           decisionBridge: roleDecisionBridge,
         },
-        FIT: {
+        YOUR_ADVANTAGE: {
           identity: "YOUR ADVANTAGE",
-          expression: fitExpression,
+          expression: advantageExpression,
         },
-        UNKNOWNS: {
+        OPEN_QUESTIONS: {
           identity: "OPEN QUESTIONS",
-          expression: unknownsExpression,
+          expression: questionsExpression,
         },
-        EVIDENCE: {
+        DECISION_BOUNDARIES: {
+          identity: "DECISION BOUNDARIES",
+          expression: boundariesExpression,
+        },
+        SUPPORTING_EVIDENCE: {
           identity: "SUPPORTING EVIDENCE",
           expression: evidenceExpression,
+        },
+        DOSSIER_LEDGER: {
+          identity: "DOSSIER LEDGER",
+          expression: ledgerExpression,
         },
       },
     };

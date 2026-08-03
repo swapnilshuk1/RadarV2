@@ -121,6 +121,8 @@ function Brief() {
   const narrative = EditorialCompositionEngine.compose(brief);
   const presentation = PresentationEngine.compose(brief, narrative);
 
+  const secMap = new Map(brief.sections.map((s) => [s.id, s]));
+
   const isPursue = currentVerdict === "PURSUE";
   const isConsider = currentVerdict === "CONSIDER";
   const isPass = currentVerdict === "PASS";
@@ -259,477 +261,547 @@ function Brief() {
         </section>
 
         {/* ────────────────────────────────────────────────────────────────────────
-            NEW SECTION: WHY THIS ROLE IS INTERESTING (STRATEGIC CAREER UPSIDE)
+            SECTION 1: STRATEGIC CAREER VALUE
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-8 border-b border-border/40">
-          <div className="mb-4">
-            <span className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase block mb-1">
-              STRATEGIC CAREER VALUE
-            </span>
-            <h2 className="text-[22px] sm:text-[28px] text-foreground font-bold font-serif">
-              Why this role is interesting
-            </h2>
-          </div>
-
-          <div className="pl-4 border-l-2 border-accent-ink space-y-3 max-w-4xl py-1">
-            {brief.strategicUpside.points.map((point, i) => (
-              <p key={i} className="text-[15px] sm:text-[16.5px] text-foreground font-medium leading-relaxed">
-                • {point}
-              </p>
-            ))}
-          </div>
-        </section>
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            INTERACTIVE REASONING CHAIN (INSPECTABLE BECAUSE / EVIDENCE)
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-8 border-b border-border/40">
-          <div className="mb-4">
-            <span className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase">
-              EXPLAINABLE REASONING CHAIN
-            </span>
-            <h3 className="text-[22px] sm:text-[26px] text-foreground font-bold font-serif mt-1">
-              Why this recommendation?
-            </h3>
-          </div>
-
-          <div className="space-y-4 max-w-4xl">
-            {brief.qualitativeReasoningChain.map((row, idx) => (
-              <div key={idx} className="border-b border-border/40 pb-4">
-                <div
-                  onClick={() => setExpandedReasoningRow(expandedReasoningRow === idx ? null : idx)}
-                  className="flex items-center justify-between cursor-pointer py-1 group"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="mono text-[11px] font-bold text-foreground uppercase w-36 sm:w-48">
-                      {row.layer}
-                    </span>
-                    <span className="mono text-[11px] tracking-[0.16em] text-foreground font-bold uppercase bg-muted/60 px-2.5 py-0.5 rounded-sm">
-                      {row.ratingLabel}
-                    </span>
-                  </div>
-                  <span className="mono text-[10px] text-muted-foreground group-hover:text-foreground font-bold">
-                    {expandedReasoningRow === idx ? "▲ HIDE" : "▼ WHY?"}
-                  </span>
-                </div>
-
-                {expandedReasoningRow === idx && (
-                  <div className="mt-3 p-4 bg-card border border-border/60 rounded-sm space-y-3">
-                    <div>
-                      <span className="mono text-[9.5px] text-muted-foreground font-bold uppercase block mb-1">
-                        BECAUSE:
-                      </span>
-                      <div className="space-y-1">
-                        {row.becausePoints.map((b, bIdx) => (
-                          <p key={bIdx} className="text-[13.5px] text-foreground font-medium flex items-center gap-2">
-                            <span className="text-pursue font-bold">✓</span>
-                            <span>{b}</span>
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-border/40">
-                      <span className="mono text-[9.5px] text-muted-foreground font-bold uppercase block mb-0.5">
-                        EVIDENCE PRECEDENT:
-                      </span>
-                      <p className="text-[12.5px] text-muted-foreground italic">
-                        “{row.evidenceSnippet}”
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            CHAPTER 1: CAREER CENTERPIECE & STRENGTH CLASSIFICATION
-            ──────────────────────────────────────────────────────────────────────── */}
-        {presentation.sections.filter(sec => sec.id === "CAREER").map((sec) => (
-          <SemanticReveal key={sec.id} delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-              <div className="md:col-span-4 lg:col-span-3">
-                <div className="sticky top-24">
-                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">I</span>
-                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">{sec.editorial.identity}</h3>
-                  <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">{sec.editorial.expression}</p>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-9">
-                <h2 className="text-[26px] sm:text-[32px] text-foreground font-bold font-serif tracking-tight leading-tight mb-4">
-                  Yes — but for a very specific reason.
-                </h2>
-
-                <div className="space-y-4 max-w-5xl">
-                  <p className="text-[16px] sm:text-[19px] leading-relaxed text-foreground font-serif italic">
-                    {envelope?.response.growth.careerAlignment.rationale ||
-                      "This role narrows your operating scope today, but meaningfully strengthens your commercial leadership profile—making it a credible stepping stone toward a future CCO position."}
-                  </p>
-
-                  <div className="pl-4 border-l-2 border-consider py-1">
-                    <p className="mono text-[10px] tracking-[0.22em] text-consider font-bold uppercase mb-0.5">
-                      WHY NOT A STRONGER RECOMMENDATION?
-                    </p>
-                    <p className="text-[14px] text-foreground font-normal">
-                      {brief.whyNotStronger}
-                    </p>
-                  </div>
-
-                  <div className="pt-4">
-                    <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-3">
-                      CAPABILITY STRENGTH CLASSIFICATION
-                    </p>
-
-                    <div className="space-y-3">
-                      <div className="pl-3 border-l-2 border-border">
-                        <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
-                          CORE STRENGTH: Growth &amp; Acquisition Strategy
-                        </span>
-                        <p className="text-[13px] text-muted-foreground mt-0.5">Direct alignment with historical P&amp;L precedent.</p>
-                      </div>
-
-                      <div className="pl-3 border-l-2 border-border">
-                        <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
-                          ADJACENT STRENGTH: Commercial Revenue Models
-                        </span>
-                        <p className="text-[13px] text-muted-foreground mt-0.5">Core acquisition principles apply to new channels.</p>
-                      </div>
-
-                      <div className="pl-3 border-l-2 border-border">
-                        <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
-                          TRANSFERABLE STRENGTH: Digital Transformation
-                        </span>
-                        <p className="text-[13px] text-muted-foreground mt-0.5">Restructuring teams along ESG relationship paths.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </SemanticReveal>
-        ))}
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            CHAPTER 2: DELIVERABLES WITH PROVENANCE BADGES
-            ──────────────────────────────────────────────────────────────────────── */}
-        {presentation.sections.filter(sec => sec.id === "DELIVERABLES").map((sec) => (
-          <SemanticReveal key={sec.id} delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-              <div className="md:col-span-4 lg:col-span-3">
-                <div className="sticky top-24">
-                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">II</span>
-                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">THE ROLE</h3>
-                  <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">What success looks like.</p>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-9">
-                <h2 className="text-[24px] sm:text-[28px] text-foreground font-bold font-serif tracking-tight mb-6">
-                  What will you be expected to deliver?
-                </h2>
-
-                <div className="max-w-4xl relative pl-6 sm:pl-8 ml-2 border-l-2 border-border/50 space-y-8 py-1">
-                  {brief.deliverablesWork.map((item, i) => (
-                    <div key={i} className="relative group">
-                      <div className="absolute -left-[31px] sm:-left-[43px] top-0 bg-background border-2 border-accent-ink text-accent-ink mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center justify-center min-w-[26px]">
-                        {i * 3 + 3}
-                      </div>
-
-                      <div className="pl-3">
-                        <div className="flex items-center gap-3">
-                          <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">
-                            MONTH {i * 3 + 3}
-                          </span>
-                          <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase">
-                            {brief.deliverablesProvenance[i] === "Observed in JD" ? "✓ Observed in JD" : "⚡ Inferred from Role Pattern"}
-                          </span>
-                        </div>
-                        <p className="text-[15.5px] sm:text-[18px] text-foreground font-semibold leading-relaxed mt-1">
-                          {item}
-                        </p>
-                        {brief.deliverablesValue[i] && (
-                          <p className="text-[13px] text-muted-foreground mt-1 font-medium">
-                            <span className="text-foreground font-bold">🎯 OUTCOME:</span> {brief.deliverablesValue[i]}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </SemanticReveal>
-        ))}
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            CHAPTER 3: WHY RADAR BELIEVES YOU'RE WELL POSITIONED
-            ──────────────────────────────────────────────────────────────────────── */}
-        {presentation.sections.filter(sec => sec.id === "FIT").map((sec) => (
-          <SemanticReveal key={sec.id} delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-              <div className="md:col-span-4 lg:col-span-3">
-                <div className="sticky top-24">
-                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">III</span>
-                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">YOUR ADVANTAGE</h3>
-                  <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">Evidence-backed alignment.</p>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-9">
-                <h2 className="text-[24px] sm:text-[28px] text-foreground font-bold font-serif tracking-tight mb-6">
-                  Why RADAR believes you're well positioned
-                </h2>
-
-                <div className="max-w-5xl space-y-6">
-                  <div>
-                    <span className="mono text-[10px] tracking-[0.22em] text-foreground font-bold uppercase block mb-2">
-                      ✓ DIRECT EVIDENCE
-                    </span>
-                    {brief.proofPoints.filter(p => p.category === "Direct Evidence").map((proof, i) => (
-                      <div key={i} className="pl-4 border-l-2 border-foreground py-1 mb-3">
-                        <p className="text-[17px] sm:text-[19px] font-bold text-foreground leading-snug">
-                          {proof.headline}
-                        </p>
-                        <p className="text-[13.5px] text-muted-foreground mt-1 leading-relaxed">
-                          {proof.detail}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-2">
-                    <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase block mb-2">
-                      ⚡ TRANSFERABLE EXPERIENCE
-                    </span>
-                    {brief.proofPoints.filter(p => p.category === "Transferable Experience").map((proof, i) => (
-                      <div key={i} className="pl-4 border-l-2 border-border py-1">
-                        <p className="text-[15px] sm:text-[17px] font-semibold text-foreground leading-snug">
-                          {proof.headline}
-                        </p>
-                        <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
-                          {proof.detail}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </SemanticReveal>
-        ))}
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            CHAPTER 4: RECRUITER CALL CHECKLIST (DECISION-CRITICAL UNKNOWNS)
-            ──────────────────────────────────────────────────────────────────────── */}
-        {presentation.sections.filter(sec => sec.id === "UNKNOWNS").map((sec) => (
-          <SemanticReveal key={sec.id} delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-              <div className="md:col-span-4 lg:col-span-3">
-                <div className="sticky top-24">
-                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">IV</span>
-                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">OPEN QUESTIONS</h3>
-                  <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">Screening priorities.</p>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-9">
-                <div className="mb-4">
-                  <span className="mono text-[11px] tracking-[0.2em] text-consider font-bold uppercase block mb-1">
-                    🚩 RECRUITER CALL CHECKLIST: CLARIFY THESE 3 QUESTIONS
-                  </span>
-                  <p className="text-[13.5px] text-muted-foreground leading-relaxed">
-                    Use these decision-critical items during your initial screening conversation.
-                  </p>
-                </div>
-
-                <div className="max-w-4xl space-y-3 pt-2">
-                  {brief.rankedUnknowns.map((item, idx) => {
-                    const isChecked = !!checkedUnknowns[idx];
-                    return (
-                      <div
-                        key={idx}
-                        onClick={() => toggleCheck(idx)}
-                        className="flex items-start gap-3 p-3.5 border border-border/60 bg-card rounded-sm cursor-pointer hover:border-foreground transition-colors"
-                      >
-                        <div className="mt-0.5 text-[16px] font-bold text-foreground">
-                          {isChecked ? "☑" : "☐"}
-                        </div>
-                        <div className="flex-1">
-                          <span className={`text-[14.5px] ${isChecked ? "line-through text-muted-foreground" : "text-foreground font-semibold"}`}>
-                            {item.question}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </SemanticReveal>
-        ))}
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            SENSITIVITY BOUNDARIES (WHAT WOULD CHANGE THIS DECISION?)
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-10 border-b border-border/40">
-          <div className="max-w-[1080px]">
-            <div className="mb-4">
-              <span className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase block mb-1">
-                ACTIONABLE BOUNDARY CONDITIONS
-              </span>
-              <h2 className="text-[22px] sm:text-[26px] text-foreground font-bold font-serif tracking-tight">
-                What would change this decision?
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="pl-4 border-l-2 border-foreground py-1">
-                <span className="mono text-[10px] tracking-[0.2em] text-foreground font-bold uppercase block mb-2">
-                  ▲ THIS ROLE BECOMES A STRONG PURSUE IF:
+        {(() => {
+          const sec = secMap.get("STRATEGIC_CAREER_VALUE");
+          return (
+            <section className="py-8 border-b border-border/40">
+              <div className="mb-4">
+                <span className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase block mb-1">
+                  {sec?.eyebrow || "STRATEGIC CAREER VALUE"}
                 </span>
-                <ul className="space-y-1.5 text-[13.5px] text-foreground">
-                  {brief.decisionSensitivity.becomesPursueIf.map((cond, i) => (
-                    <li key={i} className="flex items-start gap-2 leading-relaxed">
-                      <span className="text-foreground font-bold shrink-0">•</span>
-                      <span>{cond}</span>
-                    </li>
-                  ))}
-                </ul>
+                <h2 className="text-[22px] sm:text-[28px] text-foreground font-bold font-serif">
+                  {sec?.title || "Why this role is interesting"}
+                </h2>
               </div>
 
-              <div className="pl-4 border-l-2 border-border py-1">
-                <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase block mb-2">
-                  ▼ THIS ROLE BECOMES A PASS IF:
-                </span>
-                <ul className="space-y-1.5 text-[13.5px] text-foreground">
-                  {brief.decisionSensitivity.becomesPassIf.map((cond, i) => (
-                    <li key={i} className="flex items-start gap-2 leading-relaxed">
-                      <span className="text-muted-foreground font-bold shrink-0">•</span>
-                      <span>{cond}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="pl-4 border-l-2 border-accent-ink space-y-3 max-w-4xl py-1">
+                {brief.strategicUpside.points.map((point, i) => (
+                  <p key={i} className="text-[15px] sm:text-[16.5px] text-foreground font-medium leading-relaxed">
+                    • {point}
+                  </p>
+                ))}
               </div>
-            </div>
-          </div>
-        </section>
+            </section>
+          );
+        })()}
 
         {/* ────────────────────────────────────────────────────────────────────────
-            CHAPTER 5: ASYMMETRIC EVIDENCE HIGHLIGHTS
+            SECTION 2: EXPLAINABLE REASONING
             ──────────────────────────────────────────────────────────────────────── */}
-        {presentation.sections.filter(sec => sec.id === "EVIDENCE").map((sec) => (
-          <section key={sec.id} className="py-10 border-b border-border/40">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-              <div className="md:col-span-4 lg:col-span-3">
-                <div className="sticky top-24">
-                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">V</span>
-                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">{sec.editorial.identity}</h3>
-                  <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">{sec.editorial.expression}</p>
-                </div>
+        {(() => {
+          const sec = secMap.get("EXPLAINABLE_REASONING");
+          return (
+            <section className="py-8 border-b border-border/40">
+              <div className="mb-4">
+                <span className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase block">
+                  {sec?.eyebrow || "EXPLAINABLE REASONING"}
+                </span>
+                <h3 className="text-[22px] sm:text-[26px] text-foreground font-bold font-serif mt-1">
+                  {sec?.title || "Why this recommendation?"}
+                </h3>
               </div>
-              <div className="md:col-span-8 lg:col-span-9">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                  <h2 className="display text-[24px] sm:text-[30px] text-foreground font-bold font-serif tracking-tight">
-                    Evidence Behind This Recommendation
+
+              <div className="space-y-4 max-w-4xl">
+                {brief.qualitativeReasoningChain.map((row, idx) => (
+                  <div key={idx} className="border-b border-border/40 pb-4">
+                    <div
+                      onClick={() => setExpandedReasoningRow(expandedReasoningRow === idx ? null : idx)}
+                      className="flex items-center justify-between cursor-pointer py-1 group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="mono text-[11px] font-bold text-foreground uppercase w-36 sm:w-48">
+                          {row.layer}
+                        </span>
+                        <span className="mono text-[11px] tracking-[0.16em] text-foreground font-bold uppercase bg-muted/60 px-2.5 py-0.5 rounded-sm">
+                          {row.ratingLabel}
+                        </span>
+                      </div>
+                      <span className="mono text-[10px] text-muted-foreground group-hover:text-foreground font-bold">
+                        {expandedReasoningRow === idx ? "▲ HIDE" : "▼ WHY?"}
+                      </span>
+                    </div>
+
+                    {expandedReasoningRow === idx && (
+                      <div className="mt-3 p-4 bg-card border border-border/60 rounded-sm space-y-3">
+                        <div>
+                          <span className="mono text-[9.5px] text-muted-foreground font-bold uppercase block mb-1">
+                            BECAUSE:
+                          </span>
+                          <div className="space-y-1">
+                            {row.becausePoints.map((b, bIdx) => (
+                              <p key={bIdx} className="text-[13.5px] text-foreground font-medium flex items-center gap-2">
+                                <span className="text-pursue font-bold">✓</span>
+                                <span>{b}</span>
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-border/40">
+                          <span className="mono text-[9.5px] text-muted-foreground font-bold uppercase block mb-0.5">
+                            EVIDENCE PRECEDENT:
+                          </span>
+                          <p className="text-[12.5px] text-muted-foreground italic">
+                            “{row.evidenceSnippet}”
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 3: THE CASE (CHAPTER I)
+            ──────────────────────────────────────────────────────────────────────── */}
+        {(() => {
+          const sec = secMap.get("THE_CASE");
+          const presSec = presentation.sections.find(s => s.id === "THE_CASE");
+          return (
+            <SemanticReveal key="THE_CASE" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
+                <div className="md:col-span-4 lg:col-span-3">
+                  <div className="sticky top-24">
+                    {sec?.numeral && (
+                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                    )}
+                    <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
+                      {sec?.eyebrow || presSec?.editorial.identity || "THE CASE"}
+                    </h3>
+                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                      {sec?.expression || presSec?.editorial.expression}
+                    </p>
+                  </div>
+                </div>
+                <div className="md:col-span-8 lg:col-span-9">
+                  <h2 className="text-[26px] sm:text-[32px] text-foreground font-bold font-serif tracking-tight leading-tight mb-4">
+                    {sec?.title || "Yes — but for a very specific reason."}
                   </h2>
 
-                  <button
-                    onClick={() => setEvidenceOpen(!evidenceOpen)}
-                    className="mono text-[11px] tracking-[0.2em] text-muted-foreground hover:text-foreground border border-border/60 rounded-sm px-3 py-1 font-bold"
-                  >
-                    {evidenceOpen ? "HIDE EVIDENCE ▲" : `EXPAND FORENSIC EVIDENCE (${allVerifiedCount} SIGNALS) ▼`}
-                  </button>
-                </div>
+                  <div className="space-y-4 max-w-5xl">
+                    <p className="text-[16px] sm:text-[19px] leading-relaxed text-foreground font-serif italic">
+                      {envelope?.response.growth.careerAlignment.rationale ||
+                        "This role narrows your operating scope today, but meaningfully strengthens your commercial leadership profile—making it a credible stepping stone toward a future CCO position."}
+                    </p>
 
-                {evidenceOpen && (
-                  <div className="mt-4 space-y-6">
-                    {/* TIER 1: STRONG EXPLICIT EVIDENCE HIGHLIGHTS (BORDERED CARDS) */}
-                    {strongEvidenceDimensions.length > 0 && (
-                      <div>
-                        <span className="mono text-[10px] tracking-[0.22em] text-foreground font-bold uppercase block mb-2">
-                          ✓ STRONG EXPLICIT EVIDENCE HIGHLIGHTS ({strongEvidenceDimensions.length})
-                        </span>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {strongEvidenceDimensions.map((dim, idx) => (
-                            <div key={idx} className="border border-border bg-card p-4 rounded-sm shadow-sm">
-                              <span className="mono text-[10px] tracking-[0.16em] text-foreground font-bold uppercase block mb-1">
-                                {dim.label}
-                              </span>
-                              <p className="text-[14.5px] text-foreground font-bold">
-                                {formatValue(dim.jdEvidence.value)}
-                              </p>
-                            </div>
-                          ))}
+                    <div className="pl-4 border-l-2 border-consider py-1">
+                      <p className="mono text-[10px] tracking-[0.22em] text-consider font-bold uppercase mb-0.5">
+                        WHY NOT A STRONGER RECOMMENDATION?
+                      </p>
+                      <p className="text-[14px] text-foreground font-normal">
+                        {brief.whyNotStronger}
+                      </p>
+                    </div>
+
+                    <div className="pt-4">
+                      <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-3">
+                        CAPABILITY STRENGTH CLASSIFICATION
+                      </p>
+
+                      <div className="space-y-3">
+                        <div className="pl-3 border-l-2 border-border">
+                          <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
+                            CORE STRENGTH: Growth &amp; Acquisition Strategy
+                          </span>
+                          <p className="text-[13px] text-muted-foreground mt-0.5">Direct alignment with historical P&amp;L precedent.</p>
+                        </div>
+
+                        <div className="pl-3 border-l-2 border-border">
+                          <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
+                            ADJACENT STRENGTH: Commercial Revenue Models
+                          </span>
+                          <p className="text-[13px] text-muted-foreground mt-0.5">Core acquisition principles apply to new channels.</p>
+                        </div>
+
+                        <div className="pl-3 border-l-2 border-border">
+                          <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
+                            TRANSFERABLE STRENGTH: Digital Transformation
+                          </span>
+                          <p className="text-[13px] text-muted-foreground mt-0.5">Restructuring teams along ESG relationship paths.</p>
                         </div>
                       </div>
-                    )}
-
-                    {/* TIER 2: PARTIAL EVIDENCE (UNBOXED LIST) */}
-                    {partialEvidenceDimensions.length > 0 && (
-                      <div className="pt-2">
-                        <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase block mb-2">
-                          ⚡ PARTIAL / INFERRED EVIDENCE ({partialEvidenceDimensions.length})
-                        </span>
-                        <div className="space-y-1.5 pl-3 border-l-2 border-border">
-                          {partialEvidenceDimensions.map((dim, idx) => (
-                            <p key={idx} className="text-[13px] text-foreground font-medium">
-                              <span className="font-bold text-muted-foreground uppercase">{dim.label}:</span> {formatValue(dim.jdEvidence.value)}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-          </section>
-        ))}
+            </SemanticReveal>
+          );
+        })()}
 
         {/* ────────────────────────────────────────────────────────────────────────
-            EXPERIENCE & CLAIMS INVENTORY
+            SECTION 4: THE ROLE (CHAPTER II)
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-8 border-b border-border">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
-            <div>
-              <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
-                Supporting dossier ledger
-              </p>
-              <h2 className="display text-[22px] sm:text-[26px] mt-1 text-foreground font-semibold">
-                Experience &amp; claims inventory.
-              </h2>
-            </div>
-
-            <button
-              onClick={() => setClaimsOpen(!claimsOpen)}
-              className="mono text-[10px] tracking-[0.18em] text-muted-foreground hover:text-foreground border border-border rounded-sm px-2.5 py-1"
-            >
-              {claimsOpen ? "HIDE ▲" : "EXPAND (5 CLAIMS) ▼"}
-            </button>
-          </div>
-
-          {claimsOpen && (
-            <ol className="divide-y divide-border/40 mt-3">
-              {candidateProfile.experience.achievements.slice(0, 5).map((achievement: string, idx: number) => (
-                <li key={idx} className="py-3 flex items-start gap-4">
-                  <span className="mono text-[11px] tracking-[0.18em] text-muted-foreground mt-0.5 tabular-nums font-semibold">
-                    {(idx + 1).toString().padStart(2, "0")}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-[13.5px] text-foreground leading-relaxed font-normal">
-                      {achievement}
+        {(() => {
+          const sec = secMap.get("THE_ROLE");
+          const presSec = presentation.sections.find(s => s.id === "THE_ROLE");
+          return (
+            <SemanticReveal key="THE_ROLE" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
+                <div className="md:col-span-4 lg:col-span-3">
+                  <div className="sticky top-24">
+                    {sec?.numeral && (
+                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                    )}
+                    <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
+                      {sec?.eyebrow || presSec?.editorial.identity || "THE ROLE"}
+                    </h3>
+                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                      {sec?.expression || presSec?.editorial.expression}
                     </p>
-                    <span className="mono text-[10px] text-muted-foreground font-semibold mt-0.5 block">
-                      Transferability Path: Performance Marketing → GTM Strategy
-                    </span>
                   </div>
-                  <span className="mono text-[10px] tracking-[0.14em] text-foreground font-medium shrink-0 bg-muted px-2 py-0.5 rounded-sm">
-                    ✓ Verified
+                </div>
+                <div className="md:col-span-8 lg:col-span-9">
+                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-bold font-serif tracking-tight mb-6">
+                    {sec?.title || "What will you be expected to deliver?"}
+                  </h2>
+
+                  <div className="max-w-4xl relative pl-6 sm:pl-8 ml-2 border-l-2 border-border/50 space-y-8 py-1">
+                    {brief.deliverablesWork.map((item, i) => (
+                      <div key={i} className="relative group">
+                        <div className="absolute -left-[31px] sm:-left-[43px] top-0 bg-background border-2 border-accent-ink text-accent-ink mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center justify-center min-w-[26px]">
+                          {i * 3 + 3}
+                        </div>
+
+                        <div className="pl-3">
+                          <div className="flex items-center gap-3">
+                            <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">
+                              MONTH {i * 3 + 3}
+                            </span>
+                            <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase">
+                              {brief.deliverablesProvenance[i] === "Observed in JD" ? "✓ Observed in JD" : "⚡ Inferred from Role Pattern"}
+                            </span>
+                          </div>
+                          <p className="text-[15.5px] sm:text-[18px] text-foreground font-semibold leading-relaxed mt-1">
+                            {item}
+                          </p>
+                          {brief.deliverablesValue[i] && (
+                            <p className="text-[13px] text-muted-foreground mt-1 font-medium">
+                              <span className="text-foreground font-bold">🎯 OUTCOME:</span> {brief.deliverablesValue[i]}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </SemanticReveal>
+          );
+        })()}
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 5: YOUR ADVANTAGE (CHAPTER III)
+            ──────────────────────────────────────────────────────────────────────── */}
+        {(() => {
+          const sec = secMap.get("YOUR_ADVANTAGE");
+          const presSec = presentation.sections.find(s => s.id === "YOUR_ADVANTAGE");
+          return (
+            <SemanticReveal key="YOUR_ADVANTAGE" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
+                <div className="md:col-span-4 lg:col-span-3">
+                  <div className="sticky top-24">
+                    {sec?.numeral && (
+                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                    )}
+                    <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
+                      {sec?.eyebrow || presSec?.editorial.identity || "YOUR ADVANTAGE"}
+                    </h3>
+                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                      {sec?.expression || presSec?.editorial.expression}
+                    </p>
+                  </div>
+                </div>
+                <div className="md:col-span-8 lg:col-span-9">
+                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-bold font-serif tracking-tight mb-6">
+                    {sec?.title || "Why RADAR believes you're well positioned"}
+                  </h2>
+
+                  <div className="max-w-5xl space-y-6">
+                    <div>
+                      <span className="mono text-[10px] tracking-[0.22em] text-foreground font-bold uppercase block mb-2">
+                        ✓ DIRECT EVIDENCE
+                      </span>
+                      {brief.proofPoints.filter(p => p.category === "Direct Evidence").map((proof, i) => (
+                        <div key={i} className="pl-4 border-l-2 border-foreground py-1 mb-3">
+                          <p className="text-[17px] sm:text-[19px] font-bold text-foreground leading-snug">
+                            {proof.headline}
+                          </p>
+                          <p className="text-[13.5px] text-muted-foreground mt-1 leading-relaxed">
+                            {proof.detail}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-2">
+                      <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase block mb-2">
+                        ⚡ TRANSFERABLE EXPERIENCE
+                      </span>
+                      {brief.proofPoints.filter(p => p.category === "Transferable Experience").map((proof, i) => (
+                        <div key={i} className="pl-4 border-l-2 border-border py-1">
+                          <p className="text-[15px] sm:text-[17px] font-semibold text-foreground leading-snug">
+                            {proof.headline}
+                          </p>
+                          <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
+                            {proof.detail}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </SemanticReveal>
+          );
+        })()}
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 6: OPEN QUESTIONS (CHAPTER IV)
+            ──────────────────────────────────────────────────────────────────────── */}
+        {(() => {
+          const sec = secMap.get("OPEN_QUESTIONS");
+          const presSec = presentation.sections.find(s => s.id === "OPEN_QUESTIONS");
+          return (
+            <SemanticReveal key="OPEN_QUESTIONS" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
+                <div className="md:col-span-4 lg:col-span-3">
+                  <div className="sticky top-24">
+                    {sec?.numeral && (
+                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                    )}
+                    <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
+                      {sec?.eyebrow || presSec?.editorial.identity || "OPEN QUESTIONS"}
+                    </h3>
+                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                      {sec?.expression || presSec?.editorial.expression}
+                    </p>
+                  </div>
+                </div>
+                <div className="md:col-span-8 lg:col-span-9">
+                  <div className="mb-4">
+                    <span className="mono text-[11px] tracking-[0.2em] text-consider font-bold uppercase block mb-1">
+                      🚩 RECRUITER CALL CHECKLIST: CLARIFY THESE {brief.rankedUnknowns.length} QUESTIONS
+                    </span>
+                    <p className="text-[13.5px] text-muted-foreground leading-relaxed">
+                      Use these decision-critical items during your initial screening conversation.
+                    </p>
+                  </div>
+
+                  <div className="max-w-4xl space-y-3 pt-2">
+                    {brief.rankedUnknowns.map((item, idx) => {
+                      const isChecked = !!checkedUnknowns[idx];
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => toggleCheck(idx)}
+                          className="flex items-start gap-3 p-3.5 border border-border/60 bg-card rounded-sm cursor-pointer hover:border-foreground transition-colors"
+                        >
+                          <div className="mt-0.5 text-[16px] font-bold text-foreground">
+                            {isChecked ? "☑" : "☐"}
+                          </div>
+                          <div className="flex-1">
+                            <span className={`text-[14.5px] ${isChecked ? "line-through text-muted-foreground" : "text-foreground font-semibold"}`}>
+                              {item.question}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </SemanticReveal>
+          );
+        })()}
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 7: DECISION BOUNDARIES
+            ──────────────────────────────────────────────────────────────────────── */}
+        {(() => {
+          const sec = secMap.get("DECISION_BOUNDARIES");
+          return (
+            <section className="py-10 border-b border-border/40">
+              <div className="max-w-[1080px]">
+                <div className="mb-4">
+                  <span className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase block mb-1">
+                    {sec?.eyebrow || "DECISION BOUNDARIES"}
                   </span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
+                  <h2 className="text-[22px] sm:text-[26px] text-foreground font-bold font-serif tracking-tight">
+                    {sec?.title || "What would change this decision?"}
+                  </h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="pl-4 border-l-2 border-foreground py-1">
+                    <span className="mono text-[10px] tracking-[0.2em] text-foreground font-bold uppercase block mb-2">
+                      ▲ THIS ROLE BECOMES A STRONG PURSUE IF:
+                    </span>
+                    <ul className="space-y-1.5 text-[13.5px] text-foreground">
+                      {brief.decisionSensitivity.becomesPursueIf.map((cond, i) => (
+                        <li key={i} className="flex items-start gap-2 leading-relaxed">
+                          <span className="text-foreground font-bold shrink-0">•</span>
+                          <span>{cond}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="pl-4 border-l-2 border-border py-1">
+                    <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase block mb-2">
+                      ▼ THIS ROLE BECOMES A PASS IF:
+                    </span>
+                    <ul className="space-y-1.5 text-[13.5px] text-foreground">
+                      {brief.decisionSensitivity.becomesPassIf.map((cond, i) => (
+                        <li key={i} className="flex items-start gap-2 leading-relaxed">
+                          <span className="text-muted-foreground font-bold shrink-0">•</span>
+                          <span>{cond}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 8: SUPPORTING EVIDENCE (CHAPTER V)
+            ──────────────────────────────────────────────────────────────────────── */}
+        {(() => {
+          const sec = secMap.get("SUPPORTING_EVIDENCE");
+          const presSec = presentation.sections.find(s => s.id === "SUPPORTING_EVIDENCE");
+          return (
+            <section key="SUPPORTING_EVIDENCE" className="py-10 border-b border-border/40">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
+                <div className="md:col-span-4 lg:col-span-3">
+                  <div className="sticky top-24">
+                    {sec?.numeral && (
+                      <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">{sec.numeral}</span>
+                    )}
+                    <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">
+                      {sec?.eyebrow || presSec?.editorial.identity || "SUPPORTING EVIDENCE"}
+                    </h3>
+                    <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">
+                      {sec?.expression || presSec?.editorial.expression}
+                    </p>
+                  </div>
+                </div>
+                <div className="md:col-span-8 lg:col-span-9">
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <h2 className="display text-[24px] sm:text-[30px] text-foreground font-bold font-serif tracking-tight">
+                      {sec?.title || "Evidence Behind This Recommendation"}
+                    </h2>
+
+                    <button
+                      onClick={() => setEvidenceOpen(!evidenceOpen)}
+                      className="mono text-[11px] tracking-[0.2em] text-muted-foreground hover:text-foreground border border-border/60 rounded-sm px-3 py-1 font-bold"
+                    >
+                      {evidenceOpen ? "HIDE EVIDENCE ▲" : `EXPAND FORENSIC EVIDENCE (${allVerifiedCount} SIGNALS) ▼`}
+                    </button>
+                  </div>
+
+                  {evidenceOpen && (
+                    <div className="mt-4 space-y-6">
+                      {/* TIER 1: STRONG EXPLICIT EVIDENCE HIGHLIGHTS (BORDERED CARDS) */}
+                      {strongEvidenceDimensions.length > 0 && (
+                        <div>
+                          <span className="mono text-[10px] tracking-[0.22em] text-foreground font-bold uppercase block mb-2">
+                            ✓ STRONG EXPLICIT EVIDENCE HIGHLIGHTS ({strongEvidenceDimensions.length})
+                          </span>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {strongEvidenceDimensions.map((dim, idx) => (
+                              <div key={idx} className="border border-border bg-card p-4 rounded-sm shadow-sm">
+                                <span className="mono text-[10px] tracking-[0.16em] text-foreground font-bold uppercase block mb-1">
+                                  {dim.label}
+                                </span>
+                                <p className="text-[14.5px] text-foreground font-bold">
+                                  {formatValue(dim.jdEvidence.value)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* TIER 2: PARTIAL EVIDENCE (UNBOXED LIST) */}
+                      {partialEvidenceDimensions.length > 0 && (
+                        <div className="pt-2">
+                          <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase block mb-2">
+                            ⚡ PARTIAL / INFERRED EVIDENCE ({partialEvidenceDimensions.length})
+                          </span>
+                          <div className="space-y-1.5 pl-3 border-l-2 border-border">
+                            {partialEvidenceDimensions.map((dim, idx) => (
+                              <p key={idx} className="text-[13px] text-foreground font-medium">
+                                <span className="font-bold text-muted-foreground uppercase">{dim.label}:</span> {formatValue(dim.jdEvidence.value)}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          );
+        })()}
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 9: DOSSIER LEDGER
+            ──────────────────────────────────────────────────────────────────────── */}
+        {(() => {
+          const sec = secMap.get("DOSSIER_LEDGER");
+          return (
+            <section className="py-8 border-b border-border">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                <div>
+                  <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
+                    {sec?.eyebrow || "DOSSIER LEDGER"}
+                  </p>
+                  <h2 className="display text-[22px] sm:text-[26px] mt-1 text-foreground font-semibold">
+                    {sec?.title || "Experience & claim summary."}
+                  </h2>
+                </div>
+
+                <button
+                  onClick={() => setClaimsOpen(!claimsOpen)}
+                  className="mono text-[10px] tracking-[0.18em] text-muted-foreground hover:text-foreground border border-border rounded-sm px-2.5 py-1"
+                >
+                  {claimsOpen ? "HIDE ▲" : "EXPAND (5 CLAIMS) ▼"}
+                </button>
+              </div>
+
+              {claimsOpen && (
+                <ol className="divide-y divide-border/40 mt-3">
+                  {candidateProfile.experience.achievements.slice(0, 5).map((achievement: string, idx: number) => (
+                    <li key={idx} className="py-3 flex items-start gap-4">
+                      <span className="mono text-[11px] tracking-[0.18em] text-muted-foreground mt-0.5 tabular-nums font-semibold">
+                        {(idx + 1).toString().padStart(2, "0")}
+                      </span>
+                      <div className="flex-1">
+                        <p className="text-[13.5px] text-foreground leading-relaxed font-normal">
+                          {achievement}
+                        </p>
+                        <span className="mono text-[10px] text-muted-foreground font-semibold mt-0.5 block">
+                          Transferability Path: Performance Marketing → GTM Strategy
+                        </span>
+                      </div>
+                      <span className="mono text-[10px] tracking-[0.14em] text-foreground font-medium shrink-0 bg-muted px-2 py-0.5 rounded-sm">
+                        ✓ Verified
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          );
+        })()}
 
         {/* ────────────────────────────────────────────────────────────────────────
             FOOTER META CLOSURE
@@ -794,64 +866,17 @@ function Brief() {
                 <span className="text-foreground font-semibold">{currentVerdict}</span>
               </div>
               <div>
-                <span className="block text-muted-foreground text-[10px] uppercase">Priority Score</span>
-                <span className="text-foreground font-semibold">{score} / 100</span>
+                <span className="block text-muted-foreground text-[10px] uppercase">Certainty</span>
+                <span className="text-foreground font-semibold">{brief.certaintyPct}%</span>
               </div>
               <div>
-                <span className="block text-muted-foreground text-[10px] uppercase">Evidence Quality</span>
+                <span className="block text-muted-foreground text-[10px] uppercase">Quality</span>
                 <span className="text-foreground font-semibold">{brief.evidenceQuality}</span>
               </div>
             </div>
           </div>
         )}
       </article>
-
-      {/* ────────────────────────────────────────────────────────────────────────
-          MINIMALIST STICKY BOTTOM DECISION BAR
-          ──────────────────────────────────────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur border-t border-border/80 px-4 py-2.5 sm:py-3 shadow-2xl">
-        <div className="max-w-[1080px] mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="mono text-[11px] tracking-[0.18em] text-pursue bg-pursue-soft/80 border border-pursue/40 px-3 py-1 rounded-sm font-bold uppercase">
-              {currentVerdict}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button
-                onClick={() => decide(o.jobHash, "PURSUE")}
-                className={isPursue ? "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-pursue text-background ring-2 ring-pursue shadow-md" : "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-pursue-soft text-pursue hover:bg-pursue hover:text-background"}
-              >
-                PURSUE
-              </button>
-              <button
-                onClick={() => decide(o.jobHash, "CONSIDER")}
-                className={isConsider ? "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-consider text-background ring-2 ring-consider shadow-md" : "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-consider-soft text-consider hover:bg-consider hover:text-background"}
-              >
-                CONSIDER
-              </button>
-              <button
-                onClick={() => decide(o.jobHash, "PASS")}
-                className={isPass ? "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-pass text-foreground ring-2 ring-pass shadow-md" : "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-muted text-muted-foreground hover:bg-pass hover:text-foreground"}
-              >
-                PASS
-              </button>
-            </div>
-
-            <span className="text-border/80 text-[14px]">|</span>
-
-            <a
-              href={applyUrlFor(o)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mono text-[10px] sm:text-[11px] tracking-[0.16em] bg-foreground text-background px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold hover:bg-foreground/90 transition-all shrink-0 inline-flex items-center gap-1"
-            >
-              APPLY <span className="hidden md:inline">ON LINKEDIN</span> ↗
-            </a>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
