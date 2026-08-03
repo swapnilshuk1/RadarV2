@@ -13,7 +13,7 @@ export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
   const preview = PreviewCompositionEngine.compose(o);
 
   return (
-    <div className="animate-fade-in border-t border-border/60 px-6 sm:px-10 pb-10 pt-8 mt-6 mb-2 bg-card/60 rounded-b-sm">
+    <div className="animate-fade-in border-t border-border/60 px-4 sm:px-10 pb-8 sm:pb-10 pt-6 sm:pt-8 mt-4 sm:mt-6 mb-2 bg-card/60 rounded-b-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border/40 pb-4 mb-8">
         <div className="mono text-[11px] tracking-[0.22em] font-bold text-foreground uppercase">
           ◆ EXECUTIVE BRIEF

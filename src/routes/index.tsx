@@ -145,7 +145,7 @@ function Shortlist() {
               <span className="text-muted-foreground/30 font-serif text-[22px] mb-2 hidden sm:inline">→</span>
               <div className="flex items-end gap-4">
                 <div>
-                  <div className="font-serif leading-none tabular-nums text-[4.25rem] font-medium text-emerald-800">
+                  <div className="font-serif leading-none tabular-nums text-[3rem] sm:text-[4.25rem] font-medium text-emerald-800">
                     {remaining.filter((o) => o.decision === "PURSUE").length}
                   </div>
                   <div className="mono text-[10px] tracking-[0.18em] uppercase text-foreground mt-2 max-w-[9rem] leading-relaxed font-bold">

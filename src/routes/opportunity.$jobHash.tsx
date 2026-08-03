@@ -362,17 +362,17 @@ function Brief() {
                       <div key={idx} className="bg-card border border-border/60 rounded-sm p-4 transition-colors">
                         <div
                           onClick={() => setExpandedReasoningRow(expandedReasoningRow === idx ? null : idx)}
-                          className="flex items-center justify-between cursor-pointer group"
+                          className="flex flex-wrap xs:flex-nowrap items-center justify-between gap-2 cursor-pointer group"
                         >
-                          <div className="flex items-center gap-4">
-                            <span className="mono text-[11px] font-bold text-foreground uppercase w-36 sm:w-48">
+                          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+                            <span className="mono text-[10.5px] sm:text-[11px] font-bold text-foreground uppercase truncate">
                               {row.layer}
                             </span>
-                            <span className="mono text-[11px] tracking-[0.16em] text-foreground font-bold uppercase bg-muted/60 px-2.5 py-0.5 rounded-sm">
+                            <span className="mono text-[10px] sm:text-[11px] tracking-[0.12em] sm:tracking-[0.16em] text-foreground font-bold uppercase bg-muted/60 px-2 py-0.5 rounded-sm shrink-0">
                               {row.ratingLabel}
                             </span>
                           </div>
-                          <span className="mono text-[10px] text-muted-foreground group-hover:text-foreground font-bold">
+                          <span className="mono text-[10px] text-muted-foreground group-hover:text-foreground font-bold shrink-0 ml-auto">
                             {expandedReasoningRow === idx ? "▲ HIDE" : "▼ WHY?"}
                           </span>
                         </div>
@@ -440,14 +440,14 @@ function Brief() {
                   </h2>
 
                   <div className="space-y-6 max-w-5xl">
-                    <div className="border-l-[3px] border-foreground/90 pl-8 sm:pl-12 py-3 my-8 bg-transparent">
-                      <p className="text-[1.25rem] sm:text-[1.375rem] leading-relaxed text-foreground font-serif italic font-normal">
+                    <div className="border-l-[3px] border-foreground/90 pl-4 sm:pl-12 py-3 my-6 sm:my-8 bg-transparent">
+                      <p className="text-[1.125rem] sm:text-[1.375rem] leading-relaxed text-foreground font-serif italic font-normal">
                         {envelope?.response.growth.careerAlignment.rationale ||
                           "This role narrows your operating scope today, but meaningfully strengthens your commercial leadership profile—making it a credible stepping stone toward a future CCO position."}
                       </p>
                     </div>
 
-                    <div className="p-5 bg-card/60 border-l-4 border-consider border-y border-r border-border/60 rounded-sm">
+                    <div className="p-4 sm:p-5 bg-card/60 border-l-4 border-consider border-y border-r border-border/60 rounded-sm">
                       <p className="mono text-[10px] tracking-[0.22em] text-consider font-bold uppercase mb-1">
                         WHY NOT A STRONGER RECOMMENDATION?
                       </p>
@@ -463,7 +463,7 @@ function Brief() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {brief.proofPoints.slice(0, 3).map((proof, i) => (
-                          <div key={i} className="p-6 bg-card border border-border/70 rounded-sm">
+                          <div key={i} className="p-4 sm:p-6 bg-card border border-border/70 rounded-sm">
                             <span className="mono text-[9px] tracking-[0.16em] text-accent-ink font-bold block uppercase mb-1">
                               {proof.category === "Direct Evidence" ? "CORE STRENGTH" : "TRANSFERABLE STRENGTH"}
                             </span>
@@ -509,7 +509,7 @@ function Brief() {
 
                   <div className="max-w-4xl space-y-4">
                     {brief.deliverablesWork.map((item, i) => (
-                      <div key={i} className="bg-card border border-border/70 p-6 rounded-sm shadow-2xs">
+                      <div key={i} className="bg-card border border-border/70 p-4 sm:p-6 rounded-sm shadow-2xs">
                         <div className="flex items-center justify-between gap-4 mb-3 border-b border-border/40 pb-2">
                           <span className="mono text-[10px] tracking-[0.2em] text-foreground/80 uppercase font-bold">
                             0{i + 1} · MONTH {i * 3 + 3} DELIVERABLE
@@ -878,7 +878,7 @@ function Brief() {
         {/* ────────────────────────────────────────────────────────────────────────
             PARTNER EDITORIAL RECOMMENDATION PULL QUOTE
             ──────────────────────────────────────────────────────────────────────── */}
-        <div className="my-16 bg-card border border-border/80 border-l-4 border-l-emerald-800 p-8 sm:p-10 rounded-sm shadow-xs max-w-4xl">
+        <div className="my-10 sm:my-16 bg-card border border-border/80 border-l-4 border-l-emerald-800 p-5 sm:p-10 rounded-sm shadow-xs max-w-4xl">
           <div className="flex items-center gap-3 mb-3">
             <span className="mono text-[10px] tracking-[0.24em] text-emerald-800 font-bold uppercase">
               ◆ PARTNER ADVISORY RECOMMENDATION
