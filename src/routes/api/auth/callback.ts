@@ -27,6 +27,7 @@ import {
   SESSION_COOKIE_NAME
 } from "../../../lib/auth/session";
 import { fetchGoogleUserInfo } from "../../../lib/auth/google";
+import { verifySignedOAuthState } from "../../../lib/auth/oauth-state";
 
 function ulid(): string {
   // Simple ULID-style ID: timestamp prefix + random suffix
@@ -37,13 +38,16 @@ const handleCallbackFn = createServerFn({ method: "GET" }).handler(async () => {
   const request = getRequest();
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
+  const stateParam = url.searchParams.get("state");
 
+  // ── 1. CSRF & PKCE validation via signed state or cookie fallback ────────
+  const oauthState = verifySignedOAuthState(stateParam);
   const storedState = getCookie("google_oauth_state");
-  const codeVerifier = getCookie("google_code_verifier");
+  const storedVerifier = getCookie("google_code_verifier");
 
-  // ── 1. CSRF validation ──────────────────────────────────────────────────
-  if (!code || !state || !storedState || !codeVerifier || state !== storedState) {
+  const codeVerifier = oauthState?.verifier || storedVerifier;
+
+  if (!code || (!oauthState && (!storedState || storedState !== stateParam || !storedVerifier)) || !codeVerifier) {
     throw new Error("[Auth] Invalid OAuth state. Possible CSRF attempt.");
   }
 

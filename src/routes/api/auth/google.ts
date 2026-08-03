@@ -8,8 +8,9 @@
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { setCookie } from "@tanstack/react-start/server";
+import { getRequest, setCookie } from "@tanstack/react-start/server";
 import { generateState, generateCodeVerifier, Google } from "arctic";
+import { createSignedOAuthState } from "../../../lib/auth/oauth-state";
 
 const initiateGoogleAuthFn = createServerFn({ method: "GET" }).handler(async () => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -27,16 +28,13 @@ const initiateGoogleAuthFn = createServerFn({ method: "GET" }).handler(async () 
   }
 
   const google = new Google(clientId, clientSecret, redirectUri);
-  const state = generateState();
+  const rawState = generateState();
   const codeVerifier = generateCodeVerifier();
+  const compositeState = createSignedOAuthState(rawState, codeVerifier);
 
-  const url = await google.createAuthorizationURL(state, codeVerifier, {
+  const url = await google.createAuthorizationURL(compositeState, codeVerifier, {
     scopes: ["openid", "email", "profile"],
   });
-
-  const isSecure = proto === "https";
-  setCookie("google_oauth_state", state, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 600, secure: isSecure });
-  setCookie("google_code_verifier", codeVerifier, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 600, secure: isSecure });
 
   return url.toString();
 });
