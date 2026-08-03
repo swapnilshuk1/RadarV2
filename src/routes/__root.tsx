@@ -8,9 +8,13 @@ import {
   Scripts,
   redirect,
   isRedirect,
+  useLocation,
+  useNavigate
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { getSessionUserFn } from "../lib/auth/server";
+import { candidateSignature } from "../lib/personalization";
+import { candidateProfile } from "../data/candidate-profile";
 
 import appCss from "../styles.css?url";
 
@@ -103,7 +107,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1" },
       { title: "RADAR — Executive Opportunity Intelligence" },
       { name: "description", content: "Evidence-anchored recommendations on where an experienced executive should invest their limited career headspace." },
       { name: "author", content: "RADAR" },
@@ -137,10 +141,6 @@ function RootShell({ children }: { children: ReactNode }) {
     </html>
   );
 }
-
-import { useLocation, useNavigate } from "@tanstack/react-router";
-import { candidateSignature } from "../lib/personalization";
-import { candidateProfile } from "../data/candidate-profile";
 
 function GlobalHeader() {
   const location = useLocation();
@@ -176,8 +176,8 @@ function GlobalHeader() {
   else if (location.pathname === "/qa/mapping") pageName = "QA Mapping";
 
   return (
-    <header className="border-b border-hairline bg-parchment/85 sticky top-0 z-50 backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2.5">
+    <header className="border-b border-hairline bg-parchment/95 sticky top-0 z-50 backdrop-blur-md">
+      <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2">
         {/* Brand & Page Name */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <Link to="/" className="font-mono text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.2em] sm:tracking-[0.28em] text-ink hover:opacity-80 transition-opacity">
@@ -190,8 +190,8 @@ function GlobalHeader() {
         </div>
 
         {/* User Identity & Navigation Links */}
-        <div className="flex items-center gap-3 sm:gap-5 text-[10px] sm:text-[11.5px] font-mono shrink-0">
-          <span className="hidden md:inline-flex items-center text-[11.5px] text-ink-muted max-w-[160px] lg:max-w-[220px] truncate" title={signature}>
+        <div className="flex items-center gap-2.5 sm:gap-4 text-[10px] sm:text-[11.5px] font-mono shrink-0 overflow-x-auto no-scrollbar py-0.5">
+          <span className="hidden lg:inline-flex items-center text-[11.5px] text-ink-muted max-w-[160px] lg:max-w-[220px] truncate" title={signature}>
             <Link to="/profile" className="hover:text-ink transition-colors truncate">
               👤 {sessionName || candidateProfile.identity.name}
             </Link>
@@ -200,8 +200,8 @@ function GlobalHeader() {
             to="/"
             className={
               isSelected("/")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0"
             }
           >
             Shortlist
@@ -210,8 +210,8 @@ function GlobalHeader() {
             to="/profile"
             className={
               isSelected("/profile")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0"
             }
           >
             Profile
@@ -220,8 +220,8 @@ function GlobalHeader() {
             to="/decisions"
             className={
               isSelected("/decisions")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0"
             }
           >
             Decisions
@@ -230,8 +230,8 @@ function GlobalHeader() {
             to="/corpus"
             className={
               isSelected("/corpus")
-                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5"
-                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
+                ? "font-bold uppercase tracking-wider sm:tracking-[0.12em] text-ink transition-colors border-b border-ink/80 pb-0.5 shrink-0"
+                : "font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0"
             }
           >
             Corpus
@@ -239,7 +239,7 @@ function GlobalHeader() {
           <a
             href="/api/auth/logout"
             id="sign-out-link"
-            className="font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors whitespace-nowrap pl-1"
+            className="font-medium uppercase tracking-wider sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors whitespace-nowrap shrink-0 pl-0.5"
           >
             Sign Out
           </a>
@@ -252,9 +252,8 @@ function GlobalHeader() {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
-  const navigate = useNavigate();
 
-const showHeader = !location.pathname.startsWith("/login") &&
+  const showHeader = !location.pathname.startsWith("/login") &&
     !location.pathname.startsWith("/api/auth");
 
   return (

@@ -295,13 +295,13 @@ function Row({
           e.stopPropagation();
           onToggle();
         }}
-        className="flex w-full items-stretch gap-6 px-4 sm:px-8 py-5 sm:py-6 text-left cursor-pointer"
+        className="flex flex-col sm:flex-row w-full items-start sm:items-stretch gap-4 sm:gap-6 px-4 sm:px-8 py-5 sm:py-6 text-left cursor-pointer"
       >
         <span className="mono w-7 shrink-0 pt-1 text-sm tabular-nums text-muted-foreground/40 hidden md:block font-normal">
           {String(index).padStart(2, "0")}
         </span>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 w-full">
           <div className="flex items-center gap-3">
             <span className={`inline-flex shrink-0 items-center gap-1.5 border px-2.5 py-[2px] font-mono text-[0.5625rem] tracking-[0.16em] uppercase font-bold ${
               o.decision === "PURSUE" ? "bg-emerald-950/5 text-emerald-800 border-emerald-600/30" :
@@ -313,11 +313,11 @@ function Row({
             </span>
           </div>
 
-          <h2 className="font-serif mt-2 text-[1.625rem] leading-snug text-foreground font-light tracking-tight">
+          <h2 className="font-serif mt-2 text-[1.35rem] sm:text-[1.625rem] leading-snug text-foreground font-light tracking-tight break-words">
             {o.role}
           </h2>
 
-          <p className="font-serif mt-1 text-[1.0625rem] italic leading-snug text-muted-foreground/85">
+          <p className="font-serif mt-1 text-[0.95rem] sm:text-[1.0625rem] italic leading-snug text-muted-foreground/85">
             {brief.memory.retentionSentence || "Worth your time first."}
           </p>
 
@@ -329,29 +329,29 @@ function Row({
             <span>{o.scrapedFrom}</span>
           </div>
 
-          <div className="mt-3.5 flex items-baseline gap-2 text-[14px] leading-relaxed">
+          <div className="mt-3.5 flex flex-col xs:flex-row items-start xs:items-baseline gap-1 xs:gap-2 text-[13.5px] sm:text-[14px] leading-relaxed">
             <span className="font-serif italic text-muted-foreground/60 text-[13px] shrink-0">Why now:</span>
             <span className="font-serif text-foreground/95 font-normal">{o.whyNow || brief.memory.retentionSentence || `Market signal captured from ${o.scrapedFrom}.`}</span>
           </div>
 
           {(brief.frictionPreview || brief.topUnknownPreview || o.hiringRisk) && (
-            <div className="mt-3 inline-flex flex-wrap items-center gap-x-3 gap-y-1 border-l-2 border-amber-600/80 bg-amber-950/5 py-1 px-3">
+            <div className="mt-3 inline-flex flex-wrap items-center gap-x-3 gap-y-1 border-l-2 border-amber-600/80 bg-amber-950/5 py-1 px-3 w-full sm:w-auto">
               <span className="mono text-[9px] tracking-[0.16em] text-amber-800 font-bold uppercase">NEEDS VERIFICATION</span>
               <span className="text-[12.5px] leading-snug text-muted-foreground">{brief.topUnknownPreview || brief.frictionPreview || o.hiringRisk}</span>
             </div>
           )}
         </div>
 
-        <div className="w-[10rem] shrink-0 border-l border-border/50 pl-5 ml-2 text-left flex flex-col justify-between self-stretch py-0.5">
+        <div className="w-full sm:w-[10rem] shrink-0 border-t sm:border-t-0 sm:border-l border-border/50 pt-3 sm:pt-0 sm:pl-5 sm:ml-2 text-left flex flex-row sm:flex-col items-center sm:items-start justify-between self-stretch py-0.5 mt-2 sm:mt-0">
           <div>
-            <div className="font-serif text-[1.25rem] leading-tight font-medium text-emerald-800">
+            <div className="font-serif text-[1.1rem] sm:text-[1.25rem] leading-tight font-medium text-emerald-800">
               {o.decision === "PURSUE" ? "Pursue" : o.decision === "CONSIDER" ? "Consider" : "Pass"}
             </div>
-            <div className="font-serif text-[0.875rem] leading-snug font-normal text-muted-foreground mt-0.5">{conviction}</div>
-            <div className="mono mt-1 text-[10px] text-muted-foreground/50 font-medium">Score {score}</div>
+            <div className="font-serif text-[0.85rem] sm:text-[0.875rem] leading-snug font-normal text-muted-foreground mt-0.5">{conviction}</div>
+            <div className="mono mt-0.5 sm:mt-1 text-[10px] text-muted-foreground/50 font-medium">Score {score}</div>
           </div>
 
-          <span className="mono mt-3 inline-flex items-center gap-1.5 rounded-sm border border-foreground/30 bg-muted/30 px-2.5 py-1 text-[10px] text-foreground font-bold uppercase tracking-wider transition-colors hover:bg-foreground hover:text-background w-fit">
+          <span className="mono mt-0 sm:mt-3 inline-flex items-center gap-1.5 rounded-sm border border-foreground/30 bg-muted/30 px-2.5 py-1 text-[10px] text-foreground font-bold uppercase tracking-wider transition-colors hover:bg-foreground hover:text-background w-fit">
             {isOpen ? "- CLOSE" : "+ BRIEF"}
           </span>
         </div>

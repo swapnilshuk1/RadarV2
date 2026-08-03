@@ -183,13 +183,13 @@ function Brief() {
               </span>
             </div>
 
-            <h1 className="font-serif text-[2.75rem] sm:text-[3.5rem] lg:text-[3.85rem] leading-[1.03] text-foreground font-light max-w-5xl tracking-tight">
+            <h1 className="font-serif text-[1.65rem] xs:text-[2rem] sm:text-[3rem] lg:text-[3.85rem] leading-[1.08] sm:leading-[1.03] text-foreground font-light max-w-5xl tracking-tight break-words">
               {brief.memory.retentionSentence || o.recommendation || "High-priority executive mandate."}
             </h1>
 
-            <div className="mt-14 sm:mt-18 grid gap-8 border-t border-border/50 pt-10 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div className="mt-8 sm:mt-18 grid gap-6 sm:gap-8 border-t border-border/50 pt-8 sm:pt-10 lg:grid-cols-[1fr_auto] lg:items-end">
               <div>
-                <h2 className="font-serif text-[2rem] sm:text-[2.25rem] leading-[1.1] text-foreground font-light">
+                <h2 className="font-serif text-[1.35rem] sm:text-[2.25rem] leading-[1.1] text-foreground font-light break-words">
                   {o.role} <span className="text-muted-foreground/50">·</span> {o.company}
                 </h2>
                 <div className="mono mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[11px] text-muted-foreground/60 font-medium">
@@ -216,7 +216,7 @@ function Brief() {
             RECOMMENDATION MEMO PAPER CARD (ASYMMETRIC PROPORTIONS: 30% / 23% / 23% / 24%)
             ──────────────────────────────────────────────────────────────────────── */}
         <div className="bg-card border border-border/80 my-16 sm:my-20 rounded-sm shadow-xs overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 px-8 py-5 bg-muted/15">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 px-4 sm:px-8 py-4 sm:py-5 bg-muted/15">
             <div className="mono text-[11px] tracking-[0.22em] text-foreground font-bold uppercase">
               ◆ RECOMMENDATION MEMO
             </div>
@@ -226,9 +226,9 @@ function Brief() {
           </div>
 
           <div className="grid gap-px bg-border/60 md:grid-cols-[30%_23%_23%_24%] items-stretch">
-            <div className="bg-card p-8 border-r border-border/40 flex flex-col justify-start">
+            <div className="bg-card p-5 sm:p-8 border-r-0 md:border-r border-border/40 flex flex-col justify-start">
               <div className="mono text-[10px] tracking-[0.18em] uppercase text-muted-foreground/60 font-medium">RECOMMENDATION</div>
-              <div className="font-serif mt-3 text-[1.85rem] leading-none text-emerald-800 font-medium">
+              <div className="font-serif mt-3 text-[1.6rem] sm:text-[1.85rem] leading-none text-emerald-800 font-medium">
                 {currentVerdict === "PURSUE" ? "Worth pursuing" : currentVerdict === "CONSIDER" ? "Worth considering" : "Pass"}
               </div>
               <div className="mono mt-3 text-[11px] text-emerald-800/80 font-bold tracking-wider">
@@ -236,7 +236,7 @@ function Brief() {
               </div>
             </div>
 
-            <div className="bg-card p-8 flex flex-col justify-start">
+            <div className="bg-card p-5 sm:p-8 flex flex-col justify-start">
               <div className="mono text-[10px] tracking-[0.18em] uppercase text-muted-foreground/60 font-medium">FIT DRIVERS</div>
               <ul className="mt-3 space-y-2 font-serif text-[0.9375rem] leading-snug text-foreground/90">
                 {brief.strategicUpside.points.slice(0, 2).map((point, i) => (
@@ -245,14 +245,14 @@ function Brief() {
               </ul>
             </div>
 
-            <div className="bg-card p-8 flex flex-col justify-start">
+            <div className="bg-card p-5 sm:p-8 flex flex-col justify-start">
               <div className="mono text-[10px] tracking-[0.18em] uppercase text-muted-foreground/60 font-medium">RISK FACTOR</div>
               <div className="font-serif mt-3 text-[1rem] leading-snug text-foreground/90">
                 {brief.frictionPreview || brief.whyNotStronger || "Key terms require verification during recruiter call."}
               </div>
             </div>
 
-            <div className="bg-card p-8 flex flex-col justify-start">
+            <div className="bg-card p-5 sm:p-8 flex flex-col justify-start">
               <div className="mono text-[10px] tracking-[0.18em] uppercase text-muted-foreground/60 font-medium">EVIDENCE CONFIDENCE</div>
               <div className="font-serif mt-3 text-[1rem] leading-snug text-foreground/90">
                 {brief.evidenceQuality} · {allVerifiedCount} verified claims
