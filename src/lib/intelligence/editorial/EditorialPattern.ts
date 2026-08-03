@@ -19,6 +19,14 @@ export type ExecutiveIdentity =
   | "Global Executive"
   | "Category Leader";
 
+export type EditorialRisk =
+  | "execution"
+  | "governance"
+  | "commercial"
+  | "political"
+  | "technical"
+  | "career";
+
 export interface EditorialVariableMap {
   role: string;
   company: string;
@@ -44,10 +52,11 @@ export interface EditorialPattern {
   id: string;
   strategyId: "GROWTH_EXPANSION" | "SCALE_TRANSFORMATION" | "FOUNDER_EXPOSURE" | "CAREER_CAPITAL";
   angleId: "COMMERCIAL_OWNERSHIP" | "CAREER_ACCELERATION" | "FOUNDER_ACCESS" | "CATEGORY_LEADERSHIP" | "TURNAROUND_EXECUTION";
-  executiveIdentity: ExecutiveIdentity;
-  editorialPurpose: EditorialPurpose;
+  executiveIdentity: ExecutiveIdentity; // Author / Analytics Metadata
+  editorialPurpose: EditorialPurpose;  // Author Intent
+  editorialRisk?: EditorialRisk;      // Editorial Risk Emphasis
   editorialThesis: string;
-  primaryQuestion: string;
+  primaryQuestion?: string;           // Author Documentation
   editorialIntent: {
     primaryMessage: string;
     supportingThemes: string[];
@@ -56,12 +65,12 @@ export interface EditorialPattern {
   constraints: EditorialPatternConstraints;
   slots: {
     headline: (v: EditorialVariableMap) => string;
-    opening: (v: EditorialVariableMap) => string;
-    editorialBridge: (v: EditorialVariableMap) => string;
+    opening?: (v: EditorialVariableMap) => string;          // Optional
+    editorialBridge?: (v: EditorialVariableMap) => string;  // Optional
     decisionGuidance: {
       proceedIf: (v: EditorialVariableMap) => string;
       pauseIf: (v: EditorialVariableMap) => string;
-      closing: (v: EditorialVariableMap) => string;
+      closing?: (v: EditorialVariableMap) => string;        // Optional
     };
   };
 }

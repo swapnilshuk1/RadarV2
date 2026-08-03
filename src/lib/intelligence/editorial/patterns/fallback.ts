@@ -6,22 +6,21 @@ export const fallbackPattern: EditorialPattern = {
   angleId: "CAREER_ACCELERATION",
   executiveIdentity: "Operator",
   editorialPurpose: "Frame career move",
-  editorialThesis: "Strategic Executive Career Alignment",
-  primaryQuestion: "How does this role align with your operating mandate?",
+  editorialRisk: "governance",
+  editorialThesis: "Strategic Executive Scope Alignment",
   editorialIntent: {
-    primaryMessage: "executive_alignment",
-    supportingThemes: ["scope_match", "capability_fit"],
+    primaryMessage: "career_alignment",
+    supportingThemes: ["operating_domain"],
     avoidThemes: []
   },
   constraints: {},
   slots: {
-    headline: (v) => `Targeted executive opportunity in ${v.role} capacity at ${v.company}.`,
-    opening: (v) => `Executive mandate for ${v.role} at ${v.company}, aligning with your leadership experience and career trajectory.`,
-    editorialBridge: (v) => `Presents a structured executive opportunity at ${v.company} matching your target profile.`,
+    headline: (v) => `This opportunity aligns broadly with your current executive scope, although several aspects of the operating model should be clarified during initial discussions.`,
+    opening: (v) => `The position for ${v.role} at ${v.company} presents a structured commercial role within your core operating domain.`,
+    editorialBridge: (v) => `Primary alignment rests on functional capability match, though direct budget boundaries and reporting authority warrant early verification.`,
     decisionGuidance: {
-      proceedIf: (v) => `Scope and operating parameters at ${v.company} align with your target mandate.`,
-      pauseIf: () => `Confirm organizational reporting structure and role scope during initial call.`,
-      closing: (v) => `Proceed with standard review. Validate reporting authority for ${v.role} at ${v.company} before advancing.`
+      proceedIf: (v) => `Functional scope and operational scale at ${v.company} align with your target operating mandate.`,
+      pauseIf: () => `Clarify direct reporting lines and regional budget allocation before committing further time.`
     }
   }
 };

@@ -7,8 +7,8 @@ export const transformationTurnaroundLeaderPattern: EditorialPattern = {
   angleId: "TURNAROUND_EXECUTION",
   executiveIdentity: "Turnaround Leader",
   editorialPurpose: "Surface hidden risk",
+  editorialRisk: "execution",
   editorialThesis: "Operational Reset & System Modernization",
-  primaryQuestion: "How does this role shift accountability from functional maintenance to an enterprise reset?",
   editorialIntent: {
     primaryMessage: "operational_reset",
     supportingThemes: ["systemic_modernization", "board_sponsorship"],
@@ -39,8 +39,8 @@ export const transformationSystemsArchitectPattern: EditorialPattern = {
   angleId: "TURNAROUND_EXECUTION",
   executiveIdentity: "Operator",
   editorialPurpose: "Highlight trade-off",
+  editorialRisk: "technical",
   editorialThesis: "Technical Debt Decoupling & Architecture Resilience",
-  primaryQuestion: "Why does technical debt reduction take precedence over short-term feature speed?",
   editorialIntent: {
     primaryMessage: "technical_debt_decoupling",
     supportingThemes: ["architecture_resilience", "cloud_decoupling"],
@@ -70,8 +70,8 @@ export const transformationOrgArchitectPattern: EditorialPattern = {
   angleId: "TURNAROUND_EXECUTION",
   executiveIdentity: "Operator",
   editorialPurpose: "Explain recommendation",
+  editorialRisk: "political",
   editorialThesis: "Target Operating Model & Friction Reduction",
-  primaryQuestion: "How will this role re-architect reporting boundaries to eliminate operational friction?",
   editorialIntent: {
     primaryMessage: "operating_model_rearchitecture",
     supportingThemes: ["friction_elimination", "accountability_clarity"],

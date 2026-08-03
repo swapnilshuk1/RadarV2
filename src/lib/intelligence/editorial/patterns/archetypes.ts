@@ -7,8 +7,8 @@ export const archetypePeOperatorPattern: EditorialPattern = {
   angleId: "COMMERCIAL_OWNERSHIP",
   executiveIdentity: "Operator",
   editorialPurpose: "Highlight trade-off",
+  editorialRisk: "commercial",
   editorialThesis: "Private Equity 100-Day Value Creation Plan",
-  primaryQuestion: "Why do financial returns depend on executing the sponsor's 100-day EBITDA expansion plan?",
   editorialIntent: {
     primaryMessage: "pe_value_creation",
     supportingThemes: ["ebitda_expansion", "sponsor_alignment"],
@@ -38,8 +38,8 @@ export const archetypeGlobalExecutivePattern: EditorialPattern = {
   angleId: "CATEGORY_LEADERSHIP",
   executiveIdentity: "Global Executive",
   editorialPurpose: "Explain recommendation",
+  editorialRisk: "political",
   editorialThesis: "Cross-Border Matrix Influence & Local Execution",
-  primaryQuestion: "How does this role expand international matrix influence more than direct headcount authority?",
   editorialIntent: {
     primaryMessage: "global_matrix_influence",
     supportingThemes: ["hq_alignment", "cross_geo_execution"],

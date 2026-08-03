@@ -7,8 +7,8 @@ export const founderPartnerPattern: EditorialPattern = {
   angleId: "FOUNDER_ACCESS",
   executiveIdentity: "Builder",
   editorialPurpose: "Surface hidden risk",
+  editorialRisk: "political",
   editorialThesis: "Direct Founder Proximity & Decision Velocity",
-  primaryQuestion: "Why does direct founder proximity accelerate execution while requiring ongoing alignment?",
   editorialIntent: {
     primaryMessage: "founder_proximity",
     supportingThemes: ["unbureaucratic_speed", "alignment_navigation"],
@@ -41,8 +41,8 @@ export const founderGovernanceAnchorPattern: EditorialPattern = {
   angleId: "FOUNDER_ACCESS",
   executiveIdentity: "Operator",
   editorialPurpose: "Explain recommendation",
+  editorialRisk: "governance",
   editorialThesis: "Professional Governance Transition",
-  primaryQuestion: "How do you professionalize operations without stifling founder vision?",
   editorialIntent: {
     primaryMessage: "governance_transition",
     supportingThemes: ["professional_management", "founder_trust"],

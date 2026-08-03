@@ -6,20 +6,19 @@ export interface ComposedNarrative {
   strategyId: string;
   angleId: string;
   editorialThesis: string;
-  primaryQuestion: string;
+  editorialRisk?: string;
   headline: string;
-  opening: string;
-  editorialBridge: string;
+  opening?: string;
+  editorialBridge?: string;
   decisionGuidance: {
     proceedIf: string;
     pauseIf: string;
-    closing: string;
+    closing?: string;
   };
 }
 
 export class NarrativeComposer {
   public static compose(pattern: EditorialPattern, opportunity: Opportunity): ComposedNarrative {
-    // Build clean variable map
     const vars: EditorialVariableMap = {
       role: opportunity.role || "Executive Role",
       company: opportunity.company || "Target Enterprise",
@@ -28,18 +27,18 @@ export class NarrativeComposer {
 
     try {
       const headline = pattern.slots.headline(vars);
-      const opening = pattern.slots.opening(vars);
-      const editorialBridge = pattern.slots.editorialBridge(vars);
+      const opening = pattern.slots.opening ? pattern.slots.opening(vars) : undefined;
+      const editorialBridge = pattern.slots.editorialBridge ? pattern.slots.editorialBridge(vars) : undefined;
       const proceedIf = pattern.slots.decisionGuidance.proceedIf(vars);
       const pauseIf = pattern.slots.decisionGuidance.pauseIf(vars);
-      const closing = pattern.slots.decisionGuidance.closing(vars);
+      const closing = pattern.slots.decisionGuidance.closing ? pattern.slots.decisionGuidance.closing(vars) : undefined;
 
       return {
         patternId: pattern.id,
         strategyId: pattern.strategyId,
         angleId: pattern.angleId,
         editorialThesis: pattern.editorialThesis,
-        primaryQuestion: pattern.primaryQuestion,
+        editorialRisk: pattern.editorialRisk,
         headline,
         opening,
         editorialBridge,
@@ -51,20 +50,18 @@ export class NarrativeComposer {
       };
     } catch (err) {
       console.error("NarrativeComposer composition error:", err);
-      // Fallback interpolation guarantee
       return {
         patternId: pattern.id,
         strategyId: pattern.strategyId,
         angleId: pattern.angleId,
         editorialThesis: pattern.editorialThesis,
-        primaryQuestion: pattern.primaryQuestion,
-        headline: `Targeted opportunity for ${vars.role} at ${vars.company}.`,
-        opening: `Executive mandate for ${vars.role} at ${vars.company}.`,
-        editorialBridge: `Aligns with your executive background and operating scale.`,
+        editorialRisk: pattern.editorialRisk,
+        headline: `This opportunity aligns broadly with your executive scope at ${vars.company}.`,
+        opening: `The mandate presents a structured commercial role within your core operating domain.`,
+        editorialBridge: `Primary alignment rests on functional capability match, though direct budget boundaries warrant verification.`,
         decisionGuidance: {
-          proceedIf: `Scope and alignment for ${vars.role} fit your target trajectory.`,
-          pauseIf: `Confirm reporting authority and role boundaries during screening call.`,
-          closing: `Proceed with initial recruiter screening for ${vars.role} at ${vars.company}.`
+          proceedIf: `Scope and functional parameters at ${vars.company} align with your target mandate.`,
+          pauseIf: `Clarify reporting boundaries and direct budget authority during initial discussions.`
         }
       };
     }

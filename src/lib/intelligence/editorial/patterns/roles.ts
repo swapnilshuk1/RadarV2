@@ -7,8 +7,8 @@ export const roleBoardAdvisorPattern: EditorialPattern = {
   angleId: "CATEGORY_LEADERSHIP",
   executiveIdentity: "Board Executive",
   editorialPurpose: "Frame career move",
+  editorialRisk: "governance",
   editorialThesis: "Non-Executive Governance & Capital Allocation",
-  primaryQuestion: "Why is this board advisory appointment a landmark governance milestone?",
   editorialIntent: {
     primaryMessage: "board_governance",
     supportingThemes: ["fiduciary_oversight", "capital_allocation"],
@@ -38,8 +38,8 @@ export const roleRevenueOwnerPattern: EditorialPattern = {
   angleId: "COMMERCIAL_OWNERSHIP",
   executiveIdentity: "Scaler",
   editorialPurpose: "Explain recommendation",
+  editorialRisk: "commercial",
   editorialThesis: "Full-Funnel Commercial Unification",
-  primaryQuestion: "How does this role consolidate sales, marketing, and customer success under a single structure?",
   editorialIntent: {
     primaryMessage: "full_funnel_cro",
     supportingThemes: ["revenue_architecture", "commercial_unification"],
@@ -70,8 +70,8 @@ export const roleTechnologyStrategistPattern: EditorialPattern = {
   angleId: "TURNAROUND_EXECUTION",
   executiveIdentity: "Operator",
   editorialPurpose: "Increase conviction",
+  editorialRisk: "technical",
   editorialThesis: "Enterprise AI & Architecture Modernization",
-  primaryQuestion: "How will this role prepare core data infrastructure for enterprise AI integration?",
   editorialIntent: {
     primaryMessage: "cto_ai_architecture",
     supportingThemes: ["data_mesh", "ai_readiness"],
@@ -101,8 +101,8 @@ export const roleCsuiteSuccessorPattern: EditorialPattern = {
   angleId: "CAREER_ACCELERATION",
   executiveIdentity: "Scaler",
   editorialPurpose: "Frame career move",
+  editorialRisk: "career",
   editorialThesis: "Executive Scope Expansion & C-Suite Trajectory",
-  primaryQuestion: "Why is this SVP role the direct stepping stone to C-suite succession?",
   editorialIntent: {
     primaryMessage: "csuite_succession",
     supportingThemes: ["scope_expansion", "board_exposure"],

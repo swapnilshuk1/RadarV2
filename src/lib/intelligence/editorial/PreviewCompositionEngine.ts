@@ -23,7 +23,7 @@ export class PreviewCompositionEngine {
 
       return {
         headline: composed.headline,
-        narrative: composed.opening,
+        narrative: composed.opening || composed.headline,
         whyItWorks: composed.decisionGuidance.proceedIf,
         watchFor: composed.decisionGuidance.pauseIf,
       };

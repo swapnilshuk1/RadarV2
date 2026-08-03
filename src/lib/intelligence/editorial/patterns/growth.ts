@@ -7,8 +7,8 @@ export const growthCommercialBuilderPattern: EditorialPattern = {
   angleId: "COMMERCIAL_OWNERSHIP",
   executiveIdentity: "Builder",
   editorialPurpose: "Frame career move",
+  editorialRisk: "commercial",
   editorialThesis: "Commercial Ownership Concentration",
-  primaryQuestion: "Why is commercial execution unusually concentrated in this role?",
   editorialIntent: {
     primaryMessage: "commercial_concentration",
     supportingThemes: ["pnl_scope", "ununified_growth"],
@@ -39,8 +39,8 @@ export const growthScaleOperatorPattern: EditorialPattern = {
   angleId: "CATEGORY_LEADERSHIP",
   executiveIdentity: "Scaler",
   editorialPurpose: "Highlight trade-off",
+  editorialRisk: "commercial",
   editorialThesis: "Category Market Share & Unit Economics",
-  primaryQuestion: "How does this role balance growth velocity with margin discipline?",
   editorialIntent: {
     primaryMessage: "growth_margin_balance",
     supportingThemes: ["unit_economics", "market_penetration"],
@@ -70,8 +70,8 @@ export const growthCategoryLeaderPattern: EditorialPattern = {
   angleId: "CATEGORY_LEADERSHIP",
   executiveIdentity: "Category Leader",
   editorialPurpose: "Increase conviction",
+  editorialRisk: "commercial",
   editorialThesis: "Category Dominance & Pricing Power",
-  primaryQuestion: "Why does this role offer unusual market positioning leverage?",
   editorialIntent: {
     primaryMessage: "category_positioning",
     supportingThemes: ["pricing_power", "market_dominance"],
