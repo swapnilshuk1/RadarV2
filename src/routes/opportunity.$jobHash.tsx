@@ -888,7 +888,7 @@ function Brief() {
             </span>
           </div>
           <p className="font-serif text-[1.25rem] sm:text-[1.375rem] italic leading-relaxed text-foreground font-normal">
-            Proceed this week. This opportunity meaningfully advances your path toward commercial leadership while remaining closely aligned with your operating experience. Validate reporting authority before tailoring your résumé.
+            {brief.memory.recommendedAction || "Proceed this week. This opportunity meaningfully advances your commercial P&L trajectory while remaining closely aligned with your operating experience."}
           </p>
         </div>
 
