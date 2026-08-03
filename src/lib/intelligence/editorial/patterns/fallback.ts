@@ -4,6 +4,8 @@ export const fallbackPattern: EditorialPattern = {
   id: "fallback-baseline-0a",
   strategyId: "CAREER_CAPITAL",
   angleId: "CAREER_ACCELERATION",
+  executiveIdentity: "Operator",
+  editorialPurpose: "Frame career move",
   editorialThesis: "Strategic Executive Career Alignment",
   primaryQuestion: "How does this role align with your operating mandate?",
   editorialIntent: {
