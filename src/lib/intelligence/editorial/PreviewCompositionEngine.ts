@@ -1,5 +1,7 @@
 import type { Opportunity } from "../../../data/opportunity-fixtures";
-import { BriefCompositionEngine } from "./BriefCompositionEngine";
+import { EditorialContextBuilder } from "./EditorialContext";
+import { EditorialPatternSelector } from "./EditorialPatternSelector";
+import { NarrativeComposer } from "./NarrativeComposer";
 
 export interface PreviewFragment {
   headline: string;
@@ -10,22 +12,35 @@ export interface PreviewFragment {
 
 export class PreviewCompositionEngine {
   /**
-   * Translates the core truth (Opportunity) into the "Preview" cognitive stage.
-   * Answers: "Should I invest five minutes reading this?"
+   * Translates the core truth (Opportunity) into the "Preview" cognitive stage using
+   * the Editorial Pattern & Narrative Composition pipeline.
    */
   static compose(opportunity: Opportunity): PreviewFragment {
-    const brief = BriefCompositionEngine.compose(opportunity);
+    try {
+      const ctx = EditorialContextBuilder.build(opportunity);
+      const pattern = EditorialPatternSelector.select(ctx, opportunity.jobHash);
+      const composed = NarrativeComposer.compose(pattern, opportunity);
 
-    let headline = opportunity.mandateArchetype || "Commercial expansion opportunity.";
-    if (!headline.endsWith(".") && !headline.endsWith("!") && !headline.endsWith("?")) {
-      headline = headline + ".";
+      return {
+        headline: composed.headline,
+        narrative: composed.opening,
+        whyItWorks: composed.decisionGuidance.proceedIf,
+        watchFor: composed.decisionGuidance.pauseIf,
+      };
+    } catch (err) {
+      console.error("PreviewCompositionEngine error:", err);
+      // Safe fallback
+      let headline = opportunity.mandateArchetype || "Commercial expansion opportunity.";
+      if (!headline.endsWith(".") && !headline.endsWith("!") && !headline.endsWith("?")) {
+        headline = headline + ".";
+      }
+
+      return {
+        headline,
+        narrative: opportunity.recommendation || "",
+        whyItWorks: opportunity.primaryDriver || "Strategic alignment with your profile.",
+        watchFor: opportunity.primaryRisk || "Standard organizational alignment review.",
+      };
     }
-
-    return {
-      headline,
-      narrative: opportunity.recommendation || "",
-      whyItWorks: opportunity.primaryDriver || "Strategic alignment with your profile.",
-      watchFor: opportunity.primaryRisk || "Standard organizational alignment review.",
-    };
   }
 }

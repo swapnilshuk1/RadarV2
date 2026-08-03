@@ -2,6 +2,9 @@ import { BriefMemory, BriefModel, BriefSectionMeta, RankedUnknown, ProofPointIte
 import { CompositionPolicy, DEFAULT_COMPOSITION_POLICY } from "./CompositionPolicy";
 import { SemanticNaturalLanguageResolver, unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
 import type { Opportunity } from "../../../data/opportunity-fixtures";
+import { EditorialContextBuilder } from "./EditorialContext";
+import { EditorialPatternSelector } from "./EditorialPatternSelector";
+import { NarrativeComposer } from "./NarrativeComposer";
 
 export class BriefCompositionEngine {
 
@@ -75,15 +78,33 @@ export class BriefCompositionEngine {
     const resolvedCapText = SemanticNaturalLanguageResolver.resolveCapabilities(rawCaps);
     const retentionSentence = `${opportunity.role} mandate at ${opportunity.company} focused on ${resolvedCapText}.`;
 
-    const primaryOpportunity = decision === "PURSUE"
+    let primaryOpportunity = decision === "PURSUE"
       ? `Direct functional ownership of ${opportunity.role} at ${opportunity.company}`
       : `Scope alignment for ${opportunity.role} with ${opportunity.company}`;
 
-    const primaryRisk = weights.risk > 0.4
+    let primaryRisk = weights.risk > 0.4
       ? "Specific reporting line or operating scale trade-offs require screening verification"
       : "Standard executive application and alignment overhead";
 
-    const recommendedAction = SemanticNaturalLanguageResolver.resolveActionRecommendation(decision, opportunity.role, opportunity.company);
+    let recommendedAction = SemanticNaturalLanguageResolver.resolveActionRecommendation(decision, opportunity.role, opportunity.company);
+
+    try {
+      const ctx = EditorialContextBuilder.build(opportunity);
+      const pattern = EditorialPatternSelector.select(ctx, opportunity.jobHash);
+      const composed = NarrativeComposer.compose(pattern, opportunity);
+
+      if (composed.decisionGuidance.proceedIf) {
+        primaryOpportunity = composed.decisionGuidance.proceedIf;
+      }
+      if (composed.decisionGuidance.pauseIf) {
+        primaryRisk = composed.decisionGuidance.pauseIf;
+      }
+      if (composed.decisionGuidance.closing) {
+        recommendedAction = composed.decisionGuidance.closing;
+      }
+    } catch (composedErr) {
+      console.error("BriefCompositionEngine narrative composition fallback:", composedErr);
+    }
 
     const tradeoff = `Evaluating ${opportunity.role} scope at ${opportunity.company} against current career velocity`;
 
