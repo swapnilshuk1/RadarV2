@@ -193,8 +193,8 @@ function Brief() {
               </span>
             </div>
 
-            <h1 className="display text-[36px] sm:text-[48px] lg:text-[56px] font-bold tracking-tight text-foreground leading-[1.05]">
-              {o.role.toUpperCase()}
+            <h1 className="text-[36px] sm:text-[48px] lg:text-[54px] font-light font-serif tracking-tight text-foreground leading-[1.05]">
+              {o.role}
             </h1>
 
             <div className="mt-2 flex items-center gap-3 text-[17px] sm:text-[19px]">
