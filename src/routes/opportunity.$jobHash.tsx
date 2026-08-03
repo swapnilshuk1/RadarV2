@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { applyUrlFor, type DecisionVerb } from "../data/opportunity-fixtures";
-import { getOpportunityFn, getOpportunitiesFn, getNeighboursFn } from "../lib/intelligence/opportunity-server";
+import { getOpportunityFn, getNeighboursFn, getQueueMetricsFn } from "../lib/intelligence/opportunity-server";
 import { candidateProfile } from "../data/candidate-profile";
 import { DefaultEvaluationAdapter } from "../lib/recommendation/EvaluationAdapter";
 import { useDecisions } from "../lib/decisions-store";
@@ -60,14 +60,13 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }) => {
     const opportunity = await getOpportunityFn({ data: params.jobHash });
     if (!opportunity) throw notFound();
-    const list = await getOpportunitiesFn();
-    const index = list.findIndex((o) => o.jobHash === params.jobHash);
+    const metrics = await getQueueMetricsFn({ data: params.jobHash });
     const neighbors = await getNeighboursFn({ data: params.jobHash });
     return {
       opportunity,
       neighbors,
-      currentIndex: index >= 0 ? index + 1 : 1,
-      totalCount: list.length || 1,
+      currentIndex: metrics.currentIndex,
+      totalCount: metrics.totalCount,
     };
   },
   head: ({ loaderData }) => {
@@ -175,90 +174,118 @@ function Brief() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 mb-3">
-              <span className="mono text-[11px] tracking-[0.22em] font-bold bg-pursue-soft text-pursue px-3 py-1 rounded-sm uppercase border border-pursue/30">
+            <div className="flex flex-wrap items-center gap-3 mb-10 sm:mb-12">
+              <span className="mono text-[10px] tracking-[0.2em] font-bold bg-emerald-950/5 text-emerald-800 border border-emerald-600/30 px-3 py-1 uppercase rounded-xs">
                 {currentVerdict}
               </span>
-              <span className="text-border/60">|</span>
-              <span className="mono text-[11px] text-foreground font-medium">
-                Strong strategic fit
-              </span>
-              <span className="text-border/60">·</span>
-              <span className="mono text-[11px] text-foreground font-medium">
-                {brief.evidenceQuality}
-              </span>
-              <span className="text-border/60">·</span>
-              <span className="mono text-[11px] text-muted-foreground font-medium">
-                ~{estimatedTimeText} application
+              <span className="mono text-[11px] text-muted-foreground/70 uppercase font-medium">
+                {o.mandateArchetype || "Executive Mandate"}
               </span>
             </div>
 
-            <h1 className="text-[36px] sm:text-[48px] lg:text-[54px] font-light font-serif tracking-tight text-foreground leading-[1.05]">
-              {o.role}
+            <h1 className="font-serif text-[2.75rem] sm:text-[3.5rem] lg:text-[3.85rem] leading-[1.03] text-foreground font-light max-w-5xl tracking-tight">
+              {brief.memory.retentionSentence || o.recommendation || "High-priority executive mandate."}
             </h1>
 
-            <div className="mt-2 flex items-center gap-3 text-[17px] sm:text-[19px]">
-              <span className="text-foreground font-semibold">{o.company}</span>
-              <span className="text-border">·</span>
-              <span className="text-muted-foreground">{o.location}</span>
-            </div>
+            <div className="mt-14 sm:mt-18 grid gap-8 border-t border-border/50 pt-10 lg:grid-cols-[1fr_auto] lg:items-end">
+              <div>
+                <h2 className="font-serif text-[2rem] sm:text-[2.25rem] leading-[1.1] text-foreground font-light">
+                  {o.role} <span className="text-muted-foreground/50">·</span> {o.company}
+                </h2>
+                <div className="mono mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[11px] text-muted-foreground/60 font-medium">
+                  <span>{o.location}</span>
+                  <span>·</span>
+                  <span>{o.scrapedFrom}</span>
+                  {o.postedRelative && (
+                    <>
+                      <span>·</span>
+                      <span>{o.postedRelative}</span>
+                    </>
+                  )}
+                </div>
+              </div>
 
-            <p className="mt-4 text-[16px] sm:text-[18px] text-foreground font-normal leading-snug">
-              {brief.memory.retentionSentence}
-            </p>
-          </div>
-        </SemanticFocus>
-
-        <div className="border-t border-border/40" />
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            PROMINENT HERO HERO: THE OPPORTUNITY IN ONE MINUTE (TL;DR)
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-8 my-8 bg-card border-2 border-border p-6 sm:p-8 rounded-sm shadow-md">
-          <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border/50">
-            <span className="mono text-[11px] tracking-[0.26em] text-accent-ink font-bold uppercase">
-              ⚡ IF YOU ONLY READ ONE THING, READ THIS
-            </span>
-            <span className="mono text-[10px] text-muted-foreground font-semibold uppercase">
-              1-MINUTE EXECUTIVE BRIEF
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-            <div className="md:col-span-6 space-y-3">
-              <p className="mono text-[10px] tracking-[0.2em] text-pursue font-bold uppercase mb-2">
-                WHY PURSUE?
-              </p>
-              <ul className="space-y-2 text-[14.5px] text-foreground">
-                {brief.oneMinuteTLDR.whyPursue.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 leading-relaxed">
-                    <span className="text-pursue font-bold shrink-0">•</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="md:col-span-6 space-y-3">
-              <p className="mono text-[10px] tracking-[0.2em] text-consider font-bold uppercase mb-2">
-                WATCH FOR
-              </p>
-              <ul className="space-y-2 text-[14.5px] text-foreground mb-6">
-                {brief.oneMinuteTLDR.watchFor.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 leading-relaxed">
-                    <span className="text-consider font-bold shrink-0">•</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="pt-3 border-t border-border/40 flex items-center justify-between">
-                <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">BOTTOM LINE</span>
-                <span className="text-[17px] text-foreground font-bold font-serif">{brief.oneMinuteTLDR.bottomLine}</span>
+              <div className="mono text-[10.5px] text-muted-foreground/60 lg:text-right font-normal">
+                Compiled {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} · Quality: {brief.evidenceQuality} · {allVerifiedCount} signals
               </div>
             </div>
           </div>
-        </section>
+        </SemanticFocus>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            RECOMMENDATION MEMO PAPER CARD (ASYMMETRIC PROPORTIONS: 30% / 23% / 23% / 24%)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <div className="bg-card border border-border/80 my-16 sm:my-20 rounded-sm shadow-xs overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 px-8 py-5 bg-muted/15">
+            <div className="mono text-[11px] tracking-[0.22em] text-foreground font-bold uppercase">
+              ◆ RECOMMENDATION MEMO
+            </div>
+            <div className="mono text-[10px] text-muted-foreground/70 uppercase font-medium">
+              Three-minute executive read
+            </div>
+          </div>
+
+          <div className="grid gap-px bg-border/60 md:grid-cols-[30%_23%_23%_24%] items-stretch">
+            <div className="bg-card p-8 border-r border-border/40 flex flex-col justify-start">
+              <div className="mono text-[10px] tracking-[0.18em] uppercase text-muted-foreground/60 font-medium">RECOMMENDATION</div>
+              <div className="font-serif mt-3 text-[1.85rem] leading-none text-emerald-800 font-medium">
+                {currentVerdict === "PURSUE" ? "Worth pursuing" : currentVerdict === "CONSIDER" ? "Worth considering" : "Pass"}
+              </div>
+              <div className="mono mt-3 text-[11px] text-emerald-800/80 font-bold tracking-wider">
+                ★★★★★ EXCEPTIONAL FIT
+              </div>
+            </div>
+
+            <div className="bg-card p-8 flex flex-col justify-start">
+              <div className="mono text-[10px] tracking-[0.18em] uppercase text-muted-foreground/60 font-medium">FIT DRIVERS</div>
+              <ul className="mt-3 space-y-2 font-serif text-[0.9375rem] leading-snug text-foreground/90">
+                {brief.strategicUpside.points.slice(0, 2).map((point, i) => (
+                  <li key={i} className="line-clamp-2">• {point}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="bg-card p-8 flex flex-col justify-start">
+              <div className="mono text-[10px] tracking-[0.18em] uppercase text-muted-foreground/60 font-medium">RISK FACTOR</div>
+              <div className="font-serif mt-3 text-[1rem] leading-snug text-foreground/90">
+                {brief.frictionPreview || brief.whyNotStronger || "Key terms require verification during recruiter call."}
+              </div>
+            </div>
+
+            <div className="bg-card p-8 flex flex-col justify-start">
+              <div className="mono text-[10px] tracking-[0.18em] uppercase text-muted-foreground/60 font-medium">EVIDENCE CONFIDENCE</div>
+              <div className="font-serif mt-3 text-[1rem] leading-snug text-foreground/90">
+                {brief.evidenceQuality} · {allVerifiedCount} verified claims
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-px border-t border-border/60 bg-border/60 md:grid-cols-2">
+            <div className="bg-card p-8">
+              <div className="mono text-[10px] tracking-[0.22em] text-emerald-800 font-bold uppercase mb-5">WHY PURSUE</div>
+              <ul className="space-y-4 text-[0.9375rem] leading-relaxed text-foreground/90">
+                {brief.oneMinuteTLDR.whyPursue.map((item, i) => (
+                  <li key={i} className="flex gap-3.5 items-start">
+                    <span className="text-emerald-700 font-bold shrink-0 mt-0.5">✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="bg-card p-8">
+              <div className="mono text-[10px] tracking-[0.22em] text-amber-800 font-bold uppercase mb-5">BEFORE YOU REPLY</div>
+              <ul className="space-y-4 text-[0.9375rem] leading-relaxed text-foreground/90">
+                {brief.oneMinuteTLDR.watchFor.map((item, i) => (
+                  <li key={i} className="flex gap-3.5 items-start">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-600 shrink-0 mt-2" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
 
         {/* ────────────────────────────────────────────────────────────────────────
             SECTION 1: STRATEGIC CAREER VALUE (CHAPTER I)
@@ -267,7 +294,7 @@ function Brief() {
           const sec = secMap.get("STRATEGIC_CAREER_VALUE");
           const presSec = presentation.sections.find(s => s.id === "STRATEGIC_CAREER_VALUE");
           return (
-            <SemanticReveal key="STRATEGIC_CAREER_VALUE" delayMs={100} className="py-10 sm:py-14 border-b border-border/40">
+            <SemanticReveal key="STRATEGIC_CAREER_VALUE" delayMs={100} className="py-8 sm:py-10 border-b border-border/40">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
                 <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
@@ -283,14 +310,19 @@ function Brief() {
                   </div>
                 </div>
                 <div className="md:col-span-9 lg:col-span-10">
-                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-normal font-serif tracking-tight mb-4">
+                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-normal font-serif tracking-tight mb-6">
                     {sec?.title || "Why this role is interesting"}
                   </h2>
-                  <div className="pl-4 border-l-2 border-accent-ink space-y-3 max-w-4xl py-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-4xl">
                     {brief.strategicUpside.points.map((point, i) => (
-                      <p key={i} className="text-[15px] sm:text-[16.5px] text-foreground font-medium leading-relaxed">
-                        • {point}
-                      </p>
+                      <div key={i} className="h-full flex flex-col justify-between bg-card border border-border/70 p-6 rounded-sm shadow-2xs hover:border-foreground/40 transition-colors">
+                        <span className="mono text-[9.5px] tracking-[0.2em] text-accent-ink font-bold uppercase block mb-3">
+                          0{i + 1} · STRATEGIC DRIVER
+                        </span>
+                        <p className="text-[14.5px] text-foreground font-medium leading-relaxed">
+                          {point}
+                        </p>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -306,7 +338,7 @@ function Brief() {
           const sec = secMap.get("EXPLAINABLE_REASONING");
           const presSec = presentation.sections.find(s => s.id === "EXPLAINABLE_REASONING");
           return (
-            <SemanticReveal key="EXPLAINABLE_REASONING" delayMs={120} className="py-10 sm:py-14 border-b border-border/40">
+            <SemanticReveal key="EXPLAINABLE_REASONING" delayMs={120} className="py-8 sm:py-10 border-b border-border/40">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
                 <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
@@ -322,15 +354,15 @@ function Brief() {
                   </div>
                 </div>
                 <div className="md:col-span-9 lg:col-span-10">
-                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-normal font-serif tracking-tight mb-4">
+                  <h2 className="text-[24px] sm:text-[28px] text-foreground font-normal font-serif tracking-tight mb-6">
                     {sec?.title || "Why this recommendation?"}
                   </h2>
-                  <div className="space-y-4 max-w-4xl">
+                  <div className="space-y-3 max-w-4xl">
                     {brief.qualitativeReasoningChain.map((row, idx) => (
-                      <div key={idx} className="border-b border-border/40 pb-4">
+                      <div key={idx} className="bg-card border border-border/60 rounded-sm p-4 transition-colors">
                         <div
                           onClick={() => setExpandedReasoningRow(expandedReasoningRow === idx ? null : idx)}
-                          className="flex items-center justify-between cursor-pointer py-1 group"
+                          className="flex items-center justify-between cursor-pointer group"
                         >
                           <div className="flex items-center gap-4">
                             <span className="mono text-[11px] font-bold text-foreground uppercase w-36 sm:w-48">
@@ -346,7 +378,7 @@ function Brief() {
                         </div>
 
                         {expandedReasoningRow === idx && (
-                          <div className="mt-3 p-4 bg-card border border-border/60 rounded-sm space-y-3">
+                          <div className="mt-3 pt-3 border-t border-border/40 space-y-3">
                             <div>
                               <span className="mono text-[9.5px] text-muted-foreground font-bold uppercase block mb-1">
                                 BECAUSE:
@@ -387,7 +419,7 @@ function Brief() {
           const sec = secMap.get("THE_CASE");
           const presSec = presentation.sections.find(s => s.id === "THE_CASE");
           return (
-            <SemanticReveal key="THE_CASE" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
+            <SemanticReveal key="THE_CASE" delayMs={150} className="py-8 sm:py-10 border-b border-border/40">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
                 <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
@@ -403,51 +435,42 @@ function Brief() {
                   </div>
                 </div>
                 <div className="md:col-span-9 lg:col-span-10">
-                  <h2 className="text-[26px] sm:text-[32px] text-foreground font-normal font-serif tracking-tight leading-tight mb-4">
+                  <h2 className="text-[26px] sm:text-[32px] text-foreground font-normal font-serif tracking-tight leading-tight mb-6">
                     {sec?.title || "Yes — but for a very specific reason."}
                   </h2>
 
-                  <div className="space-y-4 max-w-5xl">
-                    <p className="text-[16px] sm:text-[19px] leading-relaxed text-foreground font-serif italic font-normal">
-                      {envelope?.response.growth.careerAlignment.rationale ||
-                        "This role narrows your operating scope today, but meaningfully strengthens your commercial leadership profile—making it a credible stepping stone toward a future CCO position."}
-                    </p>
+                  <div className="space-y-6 max-w-5xl">
+                    <div className="border-l-[3px] border-foreground/90 pl-8 sm:pl-12 py-3 my-8 bg-transparent">
+                      <p className="text-[1.25rem] sm:text-[1.375rem] leading-relaxed text-foreground font-serif italic font-normal">
+                        {envelope?.response.growth.careerAlignment.rationale ||
+                          "This role narrows your operating scope today, but meaningfully strengthens your commercial leadership profile—making it a credible stepping stone toward a future CCO position."}
+                      </p>
+                    </div>
 
-                    <div className="pl-4 border-l-2 border-consider py-1">
-                      <p className="mono text-[10px] tracking-[0.22em] text-consider font-bold uppercase mb-0.5">
+                    <div className="p-5 bg-card/60 border-l-4 border-consider border-y border-r border-border/60 rounded-sm">
+                      <p className="mono text-[10px] tracking-[0.22em] text-consider font-bold uppercase mb-1">
                         WHY NOT A STRONGER RECOMMENDATION?
                       </p>
-                      <p className="text-[14px] text-foreground font-normal">
+                      <p className="text-[14px] text-foreground font-normal leading-relaxed">
                         {brief.whyNotStronger}
                       </p>
                     </div>
 
-                    <div className="pt-4">
+                    <div className="pt-2">
                       <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-3">
                         CAPABILITY STRENGTH CLASSIFICATION
                       </p>
 
-                      <div className="space-y-3">
-                        <div className="pl-3 border-l-2 border-border">
-                          <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
-                            CORE STRENGTH: Growth &amp; Acquisition Strategy
-                          </span>
-                          <p className="text-[13px] text-muted-foreground mt-0.5">Direct alignment with historical P&amp;L precedent.</p>
-                        </div>
-
-                        <div className="pl-3 border-l-2 border-border">
-                          <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
-                            ADJACENT STRENGTH: Commercial Revenue Models
-                          </span>
-                          <p className="text-[13px] text-muted-foreground mt-0.5">Core acquisition principles apply to new channels.</p>
-                        </div>
-
-                        <div className="pl-3 border-l-2 border-border">
-                          <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
-                            TRANSFERABLE STRENGTH: Digital Transformation
-                          </span>
-                          <p className="text-[13px] text-muted-foreground mt-0.5">Restructuring teams along ESG relationship paths.</p>
-                        </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {brief.proofPoints.slice(0, 3).map((proof, i) => (
+                          <div key={i} className="p-6 bg-card border border-border/70 rounded-sm">
+                            <span className="mono text-[9px] tracking-[0.16em] text-accent-ink font-bold block uppercase mb-1">
+                              {proof.category === "Direct Evidence" ? "CORE STRENGTH" : "TRANSFERABLE STRENGTH"}
+                            </span>
+                            <p className="text-[14px] text-foreground font-semibold">{proof.headline}</p>
+                            <p className="text-[12.5px] text-muted-foreground/80 mt-1 line-clamp-2">{proof.detail}</p>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -464,7 +487,7 @@ function Brief() {
           const sec = secMap.get("THE_ROLE");
           const presSec = presentation.sections.find(s => s.id === "THE_ROLE");
           return (
-            <SemanticReveal key="THE_ROLE" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
+            <SemanticReveal key="THE_ROLE" delayMs={150} className="py-8 sm:py-10 border-b border-border/40">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
                 <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
@@ -484,31 +507,26 @@ function Brief() {
                     {sec?.title || "What will you be expected to deliver?"}
                   </h2>
 
-                  <div className="max-w-4xl relative pl-6 sm:pl-8 ml-2 border-l-2 border-border/50 space-y-8 py-1">
+                  <div className="max-w-4xl space-y-4">
                     {brief.deliverablesWork.map((item, i) => (
-                      <div key={i} className="relative group">
-                        <div className="absolute -left-[31px] sm:-left-[43px] top-0 bg-background border-2 border-accent-ink text-accent-ink mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center justify-center min-w-[26px]">
-                          {i * 3 + 3}
+                      <div key={i} className="bg-card border border-border/70 p-6 rounded-sm shadow-2xs">
+                        <div className="flex items-center justify-between gap-4 mb-3 border-b border-border/40 pb-2">
+                          <span className="mono text-[10px] tracking-[0.2em] text-foreground/80 uppercase font-bold">
+                            0{i + 1} · MONTH {i * 3 + 3} DELIVERABLE
+                          </span>
+                          <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground/60 uppercase font-medium">
+                            {brief.deliverablesProvenance[i] === "Observed in JD" ? "✓ Observed in JD" : "⚡ Inferred Pattern"}
+                          </span>
                         </div>
-
-                        <div className="pl-3">
-                          <div className="flex items-center gap-3">
-                            <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">
-                              MONTH {i * 3 + 3}
-                            </span>
-                            <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase">
-                              {brief.deliverablesProvenance[i] === "Observed in JD" ? "✓ Observed in JD" : "⚡ Inferred from Role Pattern"}
-                            </span>
+                        <p className="font-serif text-[1.125rem] text-foreground font-light leading-relaxed">
+                          {item}
+                        </p>
+                        {brief.deliverablesValue[i] && (
+                          <div className="mt-3 pt-3 border-t border-border/30 flex items-center gap-2 text-[12.5px] text-muted-foreground font-medium">
+                            <span className="mono text-[9.5px] tracking-[0.16em] text-foreground/80 font-bold uppercase">OUTCOME:</span>
+                            <span>{brief.deliverablesValue[i]}</span>
                           </div>
-                          <p className="text-[15.5px] sm:text-[18px] text-foreground font-semibold leading-relaxed mt-1">
-                            {item}
-                          </p>
-                          {brief.deliverablesValue[i] && (
-                            <p className="text-[13px] text-muted-foreground mt-1 font-medium">
-                              <span className="text-foreground font-bold">🎯 OUTCOME:</span> {brief.deliverablesValue[i]}
-                            </p>
-                          )}
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -525,7 +543,7 @@ function Brief() {
           const sec = secMap.get("YOUR_ADVANTAGE");
           const presSec = presentation.sections.find(s => s.id === "YOUR_ADVANTAGE");
           return (
-            <SemanticReveal key="YOUR_ADVANTAGE" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
+            <SemanticReveal key="YOUR_ADVANTAGE" delayMs={150} className="py-8 sm:py-10 border-b border-border/40">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
                 <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
@@ -547,35 +565,39 @@ function Brief() {
 
                   <div className="max-w-5xl space-y-6">
                     <div>
-                      <span className="mono text-[10px] tracking-[0.22em] text-foreground font-bold uppercase block mb-2">
-                        ✓ DIRECT EVIDENCE
+                      <span className="mono text-[10px] tracking-[0.22em] text-foreground font-bold uppercase block mb-3">
+                        ✓ DIRECT EVIDENCE PROOF CARDS
                       </span>
-                      {brief.proofPoints.filter(p => p.category === "Direct Evidence").map((proof, i) => (
-                        <div key={i} className="pl-4 border-l-2 border-foreground py-1 mb-3">
-                          <p className="text-[17px] sm:text-[19px] font-bold text-foreground leading-snug">
-                            {proof.headline}
-                          </p>
-                          <p className="text-[13.5px] text-muted-foreground mt-1 leading-relaxed">
-                            {proof.detail}
-                          </p>
-                        </div>
-                      ))}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {brief.proofPoints.filter(p => p.category === "Direct Evidence").map((proof, i) => (
+                          <div key={i} className="bg-card border border-border/80 p-5 rounded-sm shadow-xs">
+                            <p className="text-[16px] font-bold text-foreground leading-snug mb-2">
+                              {proof.headline}
+                            </p>
+                            <p className="text-[13.5px] text-muted-foreground leading-relaxed">
+                              {proof.detail}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="pt-2">
-                      <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase block mb-2">
-                        ⚡ TRANSFERABLE EXPERIENCE
+                      <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase block mb-3">
+                        ⚡ TRANSFERABLE EXPERIENCE CARDS
                       </span>
-                      {brief.proofPoints.filter(p => p.category === "Transferable Experience").map((proof, i) => (
-                        <div key={i} className="pl-4 border-l-2 border-border py-1">
-                          <p className="text-[15px] sm:text-[17px] font-semibold text-foreground leading-snug">
-                            {proof.headline}
-                          </p>
-                          <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
-                            {proof.detail}
-                          </p>
-                        </div>
-                      ))}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {brief.proofPoints.filter(p => p.category === "Transferable Experience").map((proof, i) => (
+                          <div key={i} className="bg-card/70 border border-border/60 p-4 sm:p-5 rounded-sm">
+                            <p className="text-[15px] font-semibold text-foreground leading-snug mb-1.5">
+                              {proof.headline}
+                            </p>
+                            <p className="text-[13px] text-muted-foreground leading-relaxed">
+                              {proof.detail}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -591,7 +613,7 @@ function Brief() {
           const sec = secMap.get("OPEN_QUESTIONS");
           const presSec = presentation.sections.find(s => s.id === "OPEN_QUESTIONS");
           return (
-            <SemanticReveal key="OPEN_QUESTIONS" delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
+            <SemanticReveal key="OPEN_QUESTIONS" delayMs={150} className="py-8 sm:py-10 border-b border-border/40">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
                 <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
@@ -623,9 +645,9 @@ function Brief() {
                         <div
                           key={idx}
                           onClick={() => toggleCheck(idx)}
-                          className="flex items-start gap-3 p-3.5 border border-border/60 bg-card rounded-sm cursor-pointer hover:border-foreground transition-colors"
+                          className="flex items-start gap-3.5 p-4 border border-border/70 bg-card rounded-sm cursor-pointer hover:border-foreground transition-all shadow-2xs"
                         >
-                          <div className="mt-0.5 text-[16px] font-bold text-foreground">
+                          <div className="mt-[3px] text-[16px] font-bold text-foreground">
                             {isChecked ? "☑" : "☐"}
                           </div>
                           <div className="flex-1">
@@ -650,7 +672,7 @@ function Brief() {
           const sec = secMap.get("DECISION_BOUNDARIES");
           const presSec = presentation.sections.find(s => s.id === "DECISION_BOUNDARIES");
           return (
-            <section className="py-10 sm:py-14 border-b border-border/40">
+            <section className="py-8 sm:py-10 border-b border-border/40">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
                 <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
@@ -666,33 +688,33 @@ function Brief() {
                   </div>
                 </div>
                 <div className="md:col-span-9 lg:col-span-10">
-                  <h2 className="text-[22px] sm:text-[26px] text-foreground font-normal font-serif tracking-tight mb-4">
+                  <h2 className="text-[22px] sm:text-[26px] text-foreground font-normal font-serif tracking-tight mb-6">
                     {sec?.title || "What would change this decision?"}
                   </h2>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="pl-4 border-l-2 border-foreground py-1">
-                      <span className="mono text-[10px] tracking-[0.2em] text-foreground font-bold uppercase block mb-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl">
+                    <div className="bg-card border border-border/80 border-l-4 border-l-emerald-700 p-6 rounded-sm shadow-2xs">
+                      <span className="mono text-[10px] tracking-[0.2em] text-emerald-800 font-bold uppercase block mb-3">
                         ▲ THIS ROLE BECOMES A STRONG PURSUE IF:
                       </span>
-                      <ul className="space-y-1.5 text-[13.5px] text-foreground">
+                      <ul className="space-y-2.5 text-[13.5px] text-foreground font-serif leading-relaxed">
                         {brief.decisionSensitivity.becomesPursueIf.map((cond, i) => (
-                          <li key={i} className="flex items-start gap-2 leading-relaxed">
-                            <span className="text-foreground font-bold shrink-0">•</span>
+                          <li key={i} className="flex items-start gap-2.5">
+                            <span className="text-emerald-700 font-bold shrink-0">•</span>
                             <span>{cond}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
 
-                    <div className="pl-4 border-l-2 border-border py-1">
-                      <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase block mb-2">
+                    <div className="bg-card border border-border/80 border-l-4 border-l-amber-700 p-6 rounded-sm shadow-2xs">
+                      <span className="mono text-[10px] tracking-[0.2em] text-amber-800 font-bold uppercase block mb-3">
                         ▼ THIS ROLE BECOMES A PASS IF:
                       </span>
-                      <ul className="space-y-1.5 text-[13.5px] text-foreground">
+                      <ul className="space-y-2.5 text-[13.5px] text-foreground font-serif leading-relaxed">
                         {brief.decisionSensitivity.becomesPassIf.map((cond, i) => (
-                          <li key={i} className="flex items-start gap-2 leading-relaxed">
-                            <span className="text-muted-foreground font-bold shrink-0">•</span>
+                          <li key={i} className="flex items-start gap-2.5">
+                            <span className="text-amber-700 font-bold shrink-0">•</span>
                             <span>{cond}</span>
                           </li>
                         ))}
@@ -712,7 +734,7 @@ function Brief() {
           const sec = secMap.get("SUPPORTING_EVIDENCE");
           const presSec = presentation.sections.find(s => s.id === "SUPPORTING_EVIDENCE");
           return (
-            <section key="SUPPORTING_EVIDENCE" className="py-10 sm:py-14 border-b border-border/40">
+            <section key="SUPPORTING_EVIDENCE" className="py-8 sm:py-10 border-b border-border/40">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-w-[1080px]">
                 <div className="md:col-span-3 lg:col-span-2">
                   <div className="sticky top-24">
@@ -751,11 +773,11 @@ function Brief() {
                           </span>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {strongEvidenceDimensions.map((dim, idx) => (
-                              <div key={idx} className="border border-border bg-card p-4 rounded-sm shadow-sm">
-                                <span className="mono text-[10px] tracking-[0.16em] text-foreground font-bold uppercase block mb-1">
+                              <div key={idx} className="border border-border/80 bg-card p-5 rounded-sm shadow-xs">
+                                <span className="mono text-[10px] tracking-[0.18em] text-muted-foreground/50 uppercase font-mono block mb-1">
                                   {dim.label}
                                 </span>
-                                <p className="text-[14.5px] text-foreground font-bold">
+                                <p className="text-[15px] text-foreground font-semibold">
                                   {formatValue(dim.jdEvidence.value)}
                                 </p>
                               </div>
@@ -826,21 +848,23 @@ function Brief() {
                   {claimsOpen && (
                     <ol className="divide-y divide-border/40 mt-3">
                       {candidateProfile.experience.achievements.slice(0, 5).map((achievement: string, idx: number) => (
-                        <li key={idx} className="py-3 flex items-start gap-4">
-                          <span className="mono text-[11px] tracking-[0.18em] text-muted-foreground mt-0.5 tabular-nums font-semibold">
+                        <li key={idx} className="py-4 flex items-start gap-4">
+                          <span className="mono text-[11px] tracking-[0.18em] text-muted-foreground/60 mt-0.5 tabular-nums font-semibold">
                             {(idx + 1).toString().padStart(2, "0")}
                           </span>
                           <div className="flex-1">
-                            <p className="text-[13.5px] text-foreground leading-relaxed font-normal">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="mono text-[9px] tracking-[0.18em] text-emerald-800 font-bold uppercase bg-emerald-950/5 border border-emerald-600/30 px-2 py-0.5 rounded-xs">
+                                ✓ VERIFIED ACHIEVEMENT
+                              </span>
+                              <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground/60 uppercase">
+                                HIGH TRANSFERABILITY
+                              </span>
+                            </div>
+                            <p className="text-[14px] text-foreground leading-relaxed font-normal">
                               {achievement}
                             </p>
-                            <span className="mono text-[10px] text-muted-foreground font-semibold mt-0.5 block">
-                              Transferability Path: Performance Marketing → GTM Strategy
-                            </span>
                           </div>
-                          <span className="mono text-[10px] tracking-[0.14em] text-foreground font-medium shrink-0 bg-muted px-2 py-0.5 rounded-sm">
-                            ✓ Verified
-                          </span>
                         </li>
                       ))}
                     </ol>
@@ -850,6 +874,23 @@ function Brief() {
             </section>
           );
         })()}
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            PARTNER EDITORIAL RECOMMENDATION PULL QUOTE
+            ──────────────────────────────────────────────────────────────────────── */}
+        <div className="my-16 bg-card border border-border/80 border-l-4 border-l-emerald-800 p-8 sm:p-10 rounded-sm shadow-xs max-w-4xl">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="mono text-[10px] tracking-[0.24em] text-emerald-800 font-bold uppercase">
+              ◆ PARTNER ADVISORY RECOMMENDATION
+            </span>
+            <span className="mono text-[10px] text-muted-foreground/60 uppercase">
+              EXECUTIVE VERDICT
+            </span>
+          </div>
+          <p className="font-serif text-[1.25rem] sm:text-[1.375rem] italic leading-relaxed text-foreground font-normal">
+            Proceed this week. This opportunity meaningfully advances your path toward commercial leadership while remaining closely aligned with your operating experience. Validate reporting authority before tailoring your résumé.
+          </p>
+        </div>
 
         {/* ────────────────────────────────────────────────────────────────────────
             FOOTER META CLOSURE

@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
   redirect,
+  isRedirect,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { getSessionUserFn } from "../lib/auth/server";
@@ -36,17 +37,23 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error("Root error boundary caught:", error);
+  console.error("[Root Error Boundary]", error);
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-ink-muted">RADAR · System</p>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+      <div className="max-w-xl text-center">
+        <p className="font-mono text-xs uppercase tracking-[0.24em] text-ink-muted">RADAR · System Error</p>
         <h1 className="mt-3 font-serif text-3xl text-ink">Recommendation unavailable</h1>
         <p className="mt-3 text-sm text-ink-muted">
-          The advisory couldn't render this brief. Refresh, or return to the shortlist.
+          The advisory couldn't render this brief.
         </p>
+        {error && (
+          <div className="mt-4 p-4 rounded bg-red-950/10 border border-red-500/20 text-left overflow-auto max-h-60 text-xs font-mono text-red-600">
+            <p className="font-bold">{error.name || "Error"}: {error.message || String(error)}</p>
+            {error.stack && <pre className="mt-2 text-[10px] whitespace-pre-wrap">{error.stack}</pre>}
+          </div>
+        )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => { router.invalidate(); reset(); }}
@@ -83,7 +90,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         }
       }
     } catch (e: any) {
-      if (e?.isRedirect) throw e;
+      if (isRedirect(e)) throw e;
       if (typeof window !== "undefined") {
         if (!sessionStorage.getItem("radar_session")) {
           throw redirect({ to: '/login' });
@@ -108,7 +115,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;1,400&family=Inter+Tight:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" },
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.gif", type: "image/gif" },
     ],

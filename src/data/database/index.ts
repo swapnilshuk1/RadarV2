@@ -4,11 +4,12 @@ import { TursoAdapter } from "./turso";
 import path from "path";
 import fs from "fs";
 
+import { createRequire } from "module";
+
 function getReq() {
   if (typeof window !== "undefined") return null;
   try {
-    const mod = eval('require("module")');
-    return mod && mod.createRequire ? mod.createRequire(import.meta.url) : null;
+    return createRequire(import.meta.url);
   } catch {
     return null;
   }

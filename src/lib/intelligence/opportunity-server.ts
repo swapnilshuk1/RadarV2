@@ -15,6 +15,18 @@ export const getOpportunityFn = createServerFn({ method: "GET" })
     return OpportunityService.getForUser(userId, jobHash);
   });
 
+export const getQueueMetricsFn = createServerFn({ method: "GET" })
+  .validator((d: string) => d)
+  .handler(async ({ data: jobHash }) => {
+    const userId = "swapnil-shukla";
+    const list = await OpportunityService.listForUser(userId);
+    const index = list.findIndex((o) => o.jobHash === jobHash);
+    return {
+      currentIndex: index >= 0 ? index + 1 : 1,
+      totalCount: list.length || 1,
+    };
+  });
+
 export const getNeighboursFn = createServerFn({ method: "GET" })
   .validator((d: string) => d)
   .handler(async ({ data: jobHash }) => {

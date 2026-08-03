@@ -120,28 +120,48 @@ function Shortlist() {
     <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
       <div className="flex-1">
         {/* ────────────────────────────────────────────────────────────────────────
-            HERO & PIPELINE LEDGER
+            HERO & PIPELINE LEDGER (MATCHING SHORTLIST.MHTML)
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-3 sm:pt-6 pb-2.5 sm:pb-4 border-b border-border">
-          <p className="mono text-[9px] sm:text-[10px] tracking-[0.2em] text-muted-foreground mb-1 uppercase font-semibold">
-            PIPELINE LEDGER & EXECUTIVE SHORTLIST
-          </p>
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-6">
-            <div>
-              <h1 className="display text-[22px] sm:text-[36px] leading-tight text-foreground font-semibold">
+        <section className="mx-auto max-w-[1280px] px-4 sm:px-8 py-10 border-b border-border">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="mono text-[11px] tracking-[0.2em] text-muted-foreground uppercase font-bold">
+                TODAY'S EXECUTIVE BRIEFING · {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+              </div>
+              <h1 className="font-serif text-[3.25rem] sm:text-[3.75rem] leading-[0.95] text-foreground font-light mt-3 tracking-tight">
                 The shortlist.
               </h1>
-              <p className="mt-0.5 max-w-xl text-[12px] sm:text-[14px] leading-relaxed text-muted-foreground font-normal">
-                Showing {visible.length} of {remaining.length} live briefs. Decide on one and the next in the queue takes its slot.
-                {queued > 0 && <> <span className="text-foreground font-semibold">{queued}</span> queued.</>}
-              </p>
             </div>
 
-            <div className="flex items-center gap-5 sm:gap-7 border-t sm:border-t-0 sm:border-l border-border pt-2 sm:pt-0 pl-0 sm:pl-6 mt-0.5 sm:mt-0">
-              <Stat label="PURSUED" value={pursue} tint="text-pursue" />
-              <Stat label="CONSIDERED" value={consider} tint="text-consider" />
-              <Stat label="PASSED" value={pass} tint="text-muted-foreground" />
+            <div className="flex flex-wrap items-end gap-x-10 gap-y-5 sm:flex-nowrap">
+              <div className="flex items-end gap-4">
+                <div>
+                  <div className="font-serif leading-none tabular-nums text-[2.25rem] font-light text-foreground/90">{totalScraped}</div>
+                  <div className="mono text-[10px] tracking-[0.16em] uppercase text-muted-foreground/80 mt-2 max-w-[8.5rem] leading-relaxed font-semibold">
+                    reviewed
+                  </div>
+                </div>
+              </div>
+              <span className="text-muted-foreground/30 font-serif text-[22px] mb-2 hidden sm:inline">→</span>
+              <div className="flex items-end gap-4">
+                <div>
+                  <div className="font-serif leading-none tabular-nums text-[4.25rem] font-medium text-emerald-800">
+                    {remaining.filter((o) => o.decision === "PURSUE").length}
+                  </div>
+                  <div className="mono text-[10px] tracking-[0.18em] uppercase text-foreground mt-2 max-w-[9rem] leading-relaxed font-bold">
+                    recommendations to act on
+                  </div>
+                </div>
+              </div>
+              <span className="text-muted-foreground/30 font-serif text-[22px] mb-2 hidden sm:inline">→</span>
+              <div className="flex items-end gap-4">
+                <div>
+                  <div className="font-serif leading-none tabular-nums text-[1.75rem] font-light text-muted-foreground/60">{remaining.length}</div>
+                  <div className="mono text-[10px] tracking-[0.16em] uppercase text-muted-foreground/60 mt-2 max-w-[8.5rem] leading-relaxed font-normal">
+                    read this week
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -149,14 +169,17 @@ function Shortlist() {
         {/* ────────────────────────────────────────────────────────────────────────
             MAIN SHORTLIST QUEUE
             ──────────────────────────────────────────────────────────────────────── */}
-        <main className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-3 sm:pt-6 pb-12">
-          <div className="flex items-center justify-end mb-2.5 sm:mb-3.5 gap-2">
-            <span className="mono text-[9px] sm:text-[10px] tracking-[0.14em] text-accent-ink uppercase font-semibold shrink-0">
-              QUEUE STATUS · {remaining.length} AWAITING REVIEW
+        <main className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-2 pb-16">
+          <div className="flex items-center justify-between border-b border-border/80 pb-2 mb-0">
+            <span className="mono text-[10px] tracking-[0.18em] text-foreground/80 uppercase font-bold">
+              SHORTLIST QUEUE
+            </span>
+            <span className="mono text-[10px] tracking-[0.16em] text-muted-foreground/70 uppercase font-semibold">
+              {remaining.length} AWAITING REVIEW
             </span>
           </div>
 
-          <ul className="divide-y divide-border border-y border-border">
+          <ul className="divide-y divide-border/60 border-b border-border/80">
             {visible.map((o, idx) => (
               <li key={o.jobHash} className="transition-colors">
                 <SwipeableRow onDecide={(verb) => decide(o.jobHash, verb)}>
@@ -260,137 +283,86 @@ function Row({
   onNext?: () => void;
 }) {
   const score = o.recommendationResult?.score ?? 80;
-  const mandateTag = o.mandateArchetype || "Performance Marketing";
   const brief = BriefCompositionEngine.compose(o);
+  const conviction = score >= 92 ? "Exceptional" : score >= 85 ? "Strong" : "Adequate";
 
   return (
-    <div
-      onClick={onToggle}
-      className={`cursor-pointer group transition-all duration-200 ${
-        isOpen ? "bg-card border-l-4 border-foreground shadow-md ring-1 ring-border/80 my-2.5 rounded-md" : ""
-      }`}
-    >
+    <article className={`relative transition-colors ${isOpen ? "bg-card shadow-xs" : "hover:bg-muted/15"}`}>
+      {isOpen && <span className="absolute inset-y-0 left-0 w-[3px] bg-emerald-800" />}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           onToggle();
         }}
-        onPointerDown={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-        aria-expanded={isOpen}
-        className="w-full py-4 sm:py-5 text-left flex items-center justify-between gap-4 transition-colors group-hover:bg-muted/10 px-3 cursor-pointer"
+        className="flex w-full items-stretch gap-6 px-4 sm:px-8 py-5 sm:py-6 text-left cursor-pointer"
       >
+        <span className="mono w-7 shrink-0 pt-1 text-sm tabular-nums text-muted-foreground/40 hidden md:block font-normal">
+          {String(index).padStart(2, "0")}
+        </span>
+
         <div className="min-w-0 flex-1">
-          {/* Row 1: Role Title + Badges */}
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="display text-[15px] sm:text-[18px] font-semibold text-foreground leading-snug tracking-tight truncate">
-              {o.role}
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex shrink-0 items-center gap-1.5 border px-2.5 py-[2px] font-mono text-[0.5625rem] tracking-[0.16em] uppercase font-bold ${
+              o.decision === "PURSUE" ? "bg-emerald-950/5 text-emerald-800 border-emerald-600/30" :
+              o.decision === "CONSIDER" ? "bg-amber-950/5 text-amber-800 border-amber-600/30" :
+              "bg-muted text-muted-foreground border-border"
+            }`}>
+              <span className="size-1 rounded-full bg-current" />
+              {o.decision}
             </span>
-            <div className="inline-flex items-center gap-1.5 shrink-0">
-              <DecisionBadge verb={o.decision} size="sm" />
-              <span className="mono text-[9px] tracking-[0.14em] text-accent-ink bg-accent-ink/8 px-1.5 py-0.5 rounded-sm uppercase font-semibold hidden sm:inline-block">
-                {mandateTag}
-              </span>
-            </div>
           </div>
 
-          {/* Row 2: Company • Location • Portal • Compensation Target */}
-          <p className="mt-1 flex flex-wrap items-center gap-1.5 mono text-[9px] sm:text-[9.5px] uppercase tracking-[0.18em] text-muted-foreground font-bold truncate">
-            <span>{o.company}</span>
+          <h2 className="font-serif mt-2 text-[1.625rem] leading-snug text-foreground font-light tracking-tight">
+            {o.role}
+          </h2>
+
+          <p className="font-serif mt-1 text-[1.0625rem] italic leading-snug text-muted-foreground/85">
+            {brief.memory.retentionSentence || "Worth your time first."}
+          </p>
+
+          <div className="mono mt-3.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground/65 font-medium">
+            <span className="text-foreground font-semibold">{o.company}</span>
             <span>·</span>
             <span>{o.location}</span>
             <span>·</span>
-            <span className="text-foreground">{o.scrapedFrom}</span>
-            <span>·</span>
-            <span>Target: ₹80L INR</span>
-          </p>
+            <span>{o.scrapedFrom}</span>
+          </div>
 
-          {/* Row 3: Semantic Recall Cue */}
-          <p className="mt-2.5 font-serif italic text-[15.5px] text-muted-foreground/90 leading-relaxed truncate">
-            {brief.memory.retentionSentence}
-          </p>
+          <div className="mt-3.5 flex items-baseline gap-2 text-[14px] leading-relaxed">
+            <span className="font-serif italic text-muted-foreground/60 text-[13px] shrink-0">Why now:</span>
+            <span className="font-serif text-foreground/95 font-normal">{o.whyNow || brief.memory.retentionSentence || `Market signal captured from ${o.scrapedFrom}.`}</span>
+          </div>
 
-          {/* Row 4: Friction & Top Unknown Badges */}
-          {(brief.frictionPreview || brief.topUnknownPreview) && (
-            <div className="flex flex-wrap items-center gap-2 mt-1.5">
-              {brief.frictionPreview && (
-                <span className="mono text-[9px] tracking-[0.12em] text-consider uppercase font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-consider shrink-0"></span>
-                  {brief.frictionPreview}
-                </span>
-              )}
-              {brief.topUnknownPreview && (
-                <span className="mono text-[9px] tracking-[0.12em] text-muted-foreground uppercase font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground shrink-0"></span>
-                  Needs verification: {brief.topUnknownPreview}
-                </span>
-              )}
+          {(brief.frictionPreview || brief.topUnknownPreview || o.hiringRisk) && (
+            <div className="mt-3 inline-flex flex-wrap items-center gap-x-3 gap-y-1 border-l-2 border-amber-600/80 bg-amber-950/5 py-1 px-3">
+              <span className="mono text-[9px] tracking-[0.16em] text-amber-800 font-bold uppercase">NEEDS VERIFICATION</span>
+              <span className="text-[12.5px] leading-snug text-muted-foreground">{brief.topUnknownPreview || brief.frictionPreview || o.hiringRisk}</span>
             </div>
           )}
         </div>
 
-        {/* Score & Expand Chevron */}
-        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-          <div className="text-right">
-            <span className="display text-[24px] sm:text-[28px] font-bold text-foreground tabular-nums leading-none">
-              {score}<span className="mono text-[9px] text-muted-foreground font-normal ml-0.5">/100</span>
-            </span>
+        <div className="w-[10rem] shrink-0 border-l border-border/50 pl-5 ml-2 text-left flex flex-col justify-between self-stretch py-0.5">
+          <div>
+            <div className="font-serif text-[1.25rem] leading-tight font-medium text-emerald-800">
+              {o.decision === "PURSUE" ? "Pursue" : o.decision === "CONSIDER" ? "Consider" : "Pass"}
+            </div>
+            <div className="font-serif text-[0.875rem] leading-snug font-normal text-muted-foreground mt-0.5">{conviction}</div>
+            <div className="mono mt-1 text-[10px] text-muted-foreground/50 font-medium">Score {score}</div>
           </div>
 
-          <span
-            aria-hidden
-            className={`mono text-[16px] sm:text-[18px] text-muted-foreground transition-transform duration-300 ${
-              isOpen ? "rotate-45 text-foreground font-bold" : "rotate-0 group-hover:text-foreground"
-            }`}
-          >
-            +
+          <span className="mono mt-3 inline-flex items-center gap-1.5 rounded-sm border border-foreground/30 bg-muted/30 px-2.5 py-1 text-[10px] text-foreground font-bold uppercase tracking-wider transition-colors hover:bg-foreground hover:text-background w-fit">
+            {isOpen ? "- CLOSE" : "+ BRIEF"}
           </span>
         </div>
       </button>
 
       {isOpen && (
-        <div className="pb-3 pt-1 px-2.5 animate-fade-in" onClick={(e) => e.stopPropagation()}>
-          <div className="border-l-2 border-foreground/20 pl-2.5 sm:pl-4 my-1 transition-all">
-            {/* Header Badge */}
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/40">
-              <span className="mono text-[10px] sm:text-[11px] font-bold tracking-[0.16em] uppercase text-muted-foreground">
-                Reviewing {String(index).padStart(2, "0")} of {total}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={!onPrev}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPrev?.();
-                  }}
-                  className="mono text-[10px] font-bold px-2 py-0.5 rounded border border-border/80 bg-muted/30 hover:bg-muted/80 text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  title="Previous brief"
-                >
-                  ← PREV
-                </button>
-                <button
-                  type="button"
-                  disabled={!onNext}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onNext?.();
-                  }}
-                  className="mono text-[10px] font-bold px-2 py-0.5 rounded border border-border/80 bg-muted/30 hover:bg-muted/80 text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  title="Next brief"
-                >
-                  NEXT →
-                </button>
-              </div>
-            </div>
-
-
-            <InlineBrief opportunity={o} />
-          </div>
+        <div onClick={(e) => e.stopPropagation()}>
+          <InlineBrief opportunity={o} />
         </div>
       )}
-    </div>
+    </article>
   );
 }
 

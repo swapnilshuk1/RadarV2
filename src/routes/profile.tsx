@@ -179,28 +179,43 @@ function ProfilePage() {
   const currentStageIdx = getStageIndex(pipelineStage);
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8 space-y-10 text-foreground">
+    <div className="mx-auto max-w-[1080px] px-4 sm:px-8 py-10 sm:py-14 space-y-12 text-foreground">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Executive Profile & Intent</h1>
-        <p className="text-muted-foreground mt-1">
-          Upload your resume (PDF, Word DOCX, Plain Text) to extract immutable evidence, and explicitly configure your strategic career intent.
+      <div className="border-b border-border/60 pb-8">
+        <span className="mono text-[10px] tracking-[0.24em] font-bold uppercase text-foreground/80 block mb-2">
+          ◆ EXECUTIVE ADVISORY PROFILE
+        </span>
+        <h1 className="font-serif text-[2.75rem] sm:text-[3.25rem] font-light tracking-tight leading-[1.05] text-foreground">
+          Executive Profile &amp; Intent
+        </h1>
+        <p className="mt-3 font-serif text-[15px] italic text-muted-foreground max-w-3xl leading-relaxed">
+          Upload your executive résumé (PDF, Word DOCX, Plain Text) to extract immutable evidence claims, and explicitly configure your target career intent.
         </p>
       </div>
 
       {/* Grid Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         {/* Document Upload Zone */}
-        <div className="p-6 rounded-xl border bg-card shadow-sm space-y-5">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            📄 Resume & Evidence Ingestion
-          </h2>
+        <div className="p-8 rounded-sm border border-border/80 bg-card shadow-xs space-y-6">
+          <div className="flex items-center justify-between border-b border-border/50 pb-3">
+            <span className="mono text-[11px] tracking-[0.22em] text-foreground font-bold uppercase">
+              ◆ RÉSUMÉ &amp; EVIDENCE INGESTION
+            </span>
+            <span className="mono text-[10px] text-muted-foreground/70 uppercase">
+              Stage 1 / 2
+            </span>
+          </div>
 
           {/* Native File Upload Dropzone */}
-          <div className="border-2 border-dashed rounded-lg p-6 text-center space-y-3 bg-muted/20 hover:border-primary transition-colors">
-            <div className="text-3xl">📥</div>
-            <div className="text-xs font-medium text-foreground">
-              Upload PDF or Word Document (`.pdf`, `.docx`, `.doc`, `.txt`)
+          <div className="border border-dashed border-border/80 rounded-sm p-8 text-center space-y-4 bg-muted/10 hover:border-foreground transition-all cursor-pointer">
+            <div className="mono text-[22px]">📄</div>
+            <div>
+              <p className="text-[13.5px] font-semibold text-foreground">
+                Upload Executive Résumé
+              </p>
+              <p className="text-[11.5px] text-muted-foreground mt-0.5">
+                Supports `.pdf`, `.docx`, `.doc`, `.txt`, `.md`
+              </p>
             </div>
             <input
               type="file"
@@ -217,63 +232,68 @@ function ProfilePage() {
             />
             <label
               htmlFor="resume-file-input"
-              className="inline-block cursor-pointer py-2 px-4 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+              className="mono inline-block cursor-pointer py-2.5 px-5 rounded-sm border border-foreground bg-foreground text-background text-[11px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
             >
               Choose PDF / DOCX File
             </label>
             {selectedFile && (
-              <p className="text-xs text-emerald-500 font-mono">
-                Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)
+              <p className="mono text-[11px] text-emerald-800 font-bold mt-2">
+                ✓ Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(0)} KB)
               </p>
             )}
           </div>
 
           <div className="relative flex items-center justify-center my-2">
-            <span className="bg-card px-2 text-xs text-muted-foreground uppercase">OR PASTE TEXT</span>
-            <div className="absolute inset-0 flex items-center -z-10"><div className="w-full border-t border-border"></div></div>
+            <span className="mono bg-card px-3 text-[10px] text-muted-foreground uppercase font-bold tracking-widest z-10">
+              OR PASTE CV TEXT
+            </span>
+            <div className="absolute inset-0 flex items-center -z-0">
+              <div className="w-full border-t border-border/60"></div>
+            </div>
           </div>
 
           <div className="space-y-3">
             <textarea
-              className="w-full h-32 p-3 text-xs font-mono rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full h-32 p-3 text-[12px] font-mono rounded-xs border border-border/80 bg-background focus:outline-none focus:border-foreground"
               placeholder="Or paste raw CV text here..."
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
             />
             <button
+              type="button"
               onClick={handleTextUpload}
               disabled={isUploading || !pasteText.trim()}
-              className="w-full py-2.5 px-4 rounded-md bg-secondary text-secondary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition-opacity text-xs"
+              className="mono w-full py-2.5 px-4 rounded-sm border border-foreground bg-foreground text-background font-bold text-[11px] uppercase tracking-wider hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
               {isUploading ? "Uploading & Processing..." : "Process Text Resume ➔"}
             </button>
           </div>
 
           {uploadError && (
-            <div className="p-3 text-xs rounded border border-red-500/50 bg-red-500/10 text-red-500">
-              {uploadError}
+            <div className="mono p-3 text-[11px] rounded-xs border border-red-500/50 bg-red-950/5 text-red-700 font-medium">
+              ⚠ {uploadError}
             </div>
           )}
 
           {/* Pipeline Stage Stepper */}
           {activeDocId && (
-            <div className="mt-6 pt-4 border-t space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Live Pipeline Execution
-              </h3>
-              <div className="space-y-1.5">
+            <div className="mt-6 pt-5 border-t border-border/60 space-y-3">
+              <span className="mono text-[10px] tracking-[0.2em] font-bold uppercase text-foreground/80 block">
+                LIVE PIPELINE EXECUTION
+              </span>
+              <div className="space-y-2">
                 {stages.map((st, idx) => {
                   const isDone = currentStageIdx > idx || pipelineStatus === "COMPLETED";
                   const isCurrent = currentStageIdx === idx && pipelineStatus !== "COMPLETED";
                   return (
                     <div
                       key={st.id}
-                      className={`flex items-center gap-2 text-xs p-1.5 rounded transition-colors ${
+                      className={`mono flex items-center gap-2.5 text-[11px] p-2 rounded-xs transition-colors ${
                         isDone
-                          ? "text-emerald-500 font-medium"
+                          ? "text-emerald-800 font-bold bg-emerald-950/5"
                           : isCurrent
-                          ? "text-primary font-bold bg-primary/10 animate-pulse"
-                          : "text-muted-foreground/50"
+                          ? "text-foreground font-bold bg-muted/60 animate-pulse border border-border/60"
+                          : "text-muted-foreground/50 font-normal"
                       }`}
                     >
                       <span>{isDone ? "✓" : isCurrent ? "⏳" : "○"}</span>
@@ -287,20 +307,28 @@ function ProfilePage() {
         </div>
 
         {/* Career Intent Panel */}
-        <form onSubmit={handleSaveIntent} className="p-6 rounded-xl border bg-card shadow-sm space-y-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            🎯 Strategic Career Intent
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            ADR-012: Intent is explicit and human-configured. It is never assumed or inferred from past CV evidence.
+        <form onSubmit={handleSaveIntent} className="p-8 rounded-sm border border-border/80 bg-card shadow-xs space-y-6">
+          <div className="flex items-center justify-between border-b border-border/50 pb-3">
+            <span className="mono text-[11px] tracking-[0.22em] text-emerald-800 font-bold uppercase">
+              ◆ STRATEGIC CAREER INTENT
+            </span>
+            <span className="mono text-[10px] text-muted-foreground/70 uppercase">
+              HUMAN CONFIG
+            </span>
+          </div>
+
+          <p className="text-[13px] text-muted-foreground leading-relaxed font-serif italic">
+            Career intent is explicitly configured by you. It is never assumed or inferred from past CV evidence.
           </p>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-xs font-medium block mb-1">Currency</label>
+                <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">
+                  CURRENCY
+                </label>
                 <select
-                  className="w-full p-2 text-sm rounded border bg-background"
+                  className="w-full p-2.5 text-[13px] font-mono rounded-xs border border-border/80 bg-background focus:outline-none focus:border-foreground"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value as any)}
                 >
@@ -311,12 +339,12 @@ function ProfilePage() {
                 </select>
               </div>
               <div className="col-span-2">
-                <label className="text-xs font-medium block mb-1">
-                  Target Minimum Salary ({currency === "INR" ? "₹ INR" : currency === "EUR" ? "€ EUR" : currency === "GBP" ? "£ GBP" : "$ USD"})
+                <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">
+                  TARGET MIN SALARY ({currency === "INR" ? "₹ INR" : currency === "EUR" ? "€ EUR" : currency === "GBP" ? "£ GBP" : "$ USD"})
                 </label>
                 <input
                   type="number"
-                  className="w-full p-2 text-sm rounded border bg-background"
+                  className="w-full p-2.5 text-[13px] font-mono rounded-xs border border-border/80 bg-background focus:outline-none focus:border-foreground"
                   placeholder={currency === "INR" ? "8000000 (80 Lakhs)" : "150000"}
                   value={targetSalary}
                   onChange={(e) => setTargetSalary(Number(e.target.value))}
@@ -325,29 +353,35 @@ function ProfilePage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium block mb-1">Preferred Target Locations (comma separated)</label>
+              <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">
+                PREFERRED LOCATIONS
+              </label>
               <input
                 type="text"
-                className="w-full p-2 text-sm rounded border bg-background"
+                className="w-full p-2.5 text-[13px] font-sans rounded-xs border border-border/80 bg-background focus:outline-none focus:border-foreground"
                 value={locations}
                 onChange={(e) => setLocations(e.target.value)}
               />
             </div>
 
             <div>
-              <label className="text-xs font-medium block mb-1">Target Executive Titles (comma separated)</label>
+              <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">
+                TARGET EXECUTIVE TITLES
+              </label>
               <input
                 type="text"
-                className="w-full p-2 text-sm rounded border bg-background"
+                className="w-full p-2.5 text-[13px] font-sans rounded-xs border border-border/80 bg-background focus:outline-none focus:border-foreground"
                 value={targetTitles}
                 onChange={(e) => setTargetTitles(e.target.value)}
               />
             </div>
 
             <div>
-              <label className="text-xs font-medium block mb-1">Preferred Work Model</label>
+              <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">
+                PREFERRED WORK MODEL
+              </label>
               <select
-                className="w-full p-2 text-sm rounded border bg-background"
+                className="w-full p-2.5 text-[13px] font-mono rounded-xs border border-border/80 bg-background focus:outline-none focus:border-foreground"
                 value={workModel}
                 onChange={(e) => setWorkModel(e.target.value as any)}
               >
@@ -361,13 +395,15 @@ function ProfilePage() {
             <button
               type="submit"
               disabled={isSavingIntent}
-              className="w-full py-2.5 px-4 rounded-md bg-secondary text-secondary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="mono w-full py-3 px-4 rounded-sm border border-foreground bg-foreground text-background font-bold text-[11px] uppercase tracking-wider hover:opacity-90 disabled:opacity-50 transition-opacity mt-2"
             >
               {isSavingIntent ? "Saving Intent Version..." : "Save Career Intent Version ➔"}
             </button>
 
             {intentSavedMsg && (
-              <p className="text-xs text-emerald-500 font-medium text-center">{intentSavedMsg}</p>
+              <p className="mono text-[11px] text-emerald-800 font-bold text-center mt-2">
+                ✓ {intentSavedMsg}
+              </p>
             )}
           </div>
         </form>

@@ -54,6 +54,27 @@ export class SqliteOpportunityStore implements OpportunityStore {
     return rows.map(r => this.mapRow(r));
   }
 
+  async getQueueOpportunities(personId: string, limit = 20): Promise<Opportunity[]> {
+    const sql = `
+      SELECT o.*
+      FROM opportunities o
+      LEFT JOIN decisions d ON d.opportunity_id = o.fingerprint AND d.person_id = ?
+      WHERE o.lifecycle != 'Archived' AND (d.action IS NULL OR d.action != 'PASS')
+      ORDER BY o.created_at DESC
+      LIMIT ?
+    `;
+    try {
+      const rows = await this.db.many<any>(sql, [personId, limit]);
+      if (!rows || rows.length === 0) {
+        return this.listActiveOpportunities();
+      }
+      return rows.map(r => this.mapRow(r));
+    } catch (err: any) {
+      console.error("⚠️ [SqliteOpportunityStore] getQueueOpportunities failed:", err.message);
+      return this.listActiveOpportunities();
+    }
+  }
+
   async findOpportunities(criteria: { companyId?: string; lifecycle?: string; }): Promise<Opportunity[]> {
     let sql = `SELECT * FROM opportunities WHERE 1=1`;
     const params: any[] = [];
