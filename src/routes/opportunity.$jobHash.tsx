@@ -147,6 +147,7 @@ function Brief() {
             CHAPTER 0: ULTRA-CLEAN HEADER (<5-SECOND SCAN RULE)
             ──────────────────────────────────────────────────────────────────────── */}
         <SemanticFocus delayMs={0} className="min-h-[40vh] flex flex-col justify-center py-6">
+          <div className="max-w-5xl">
             <div className="flex flex-row items-center justify-between gap-2 mb-6 text-muted-foreground mono text-[10px] sm:text-[11px] tracking-[0.08em] sm:tracking-[0.2em] font-semibold border-b border-border/30 pb-3 w-full">
               <Link to="/" className="hover:text-foreground inline-flex items-center gap-1 transition-colors shrink-0">
                 ← SHORTLIST

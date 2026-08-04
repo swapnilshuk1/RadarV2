@@ -247,8 +247,6 @@ function GlobalHeader() {
       </div>
     </header>
   );
-}ader>
-  );
 }
 
 function RootComponent() {
