@@ -79,8 +79,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ location }) => {
-    const isAuthRoute = location.pathname === "/login" || location.pathname.startsWith("/api/auth");
-    if (isAuthRoute) return;
+    const isPublicRoute =
+      location.pathname === "/login" ||
+      location.pathname.startsWith("/api/auth") ||
+      location.pathname.startsWith("/assets") ||
+      /\.(css|js|gif|png|jpg|jpeg|ico|svg|woff|woff2|ttf|eot)$/i.test(location.pathname);
+    if (isPublicRoute) return;
 
     try {
       const user = await getSessionUserFn();
