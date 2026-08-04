@@ -174,41 +174,34 @@ function GlobalHeader() {
     return location.pathname.startsWith(path);
   };
 
-  let pageName = "Executive advisory";
-  if (location.pathname === "/profile") pageName = "Candidate Profile";
-  else if (location.pathname === "/decisions") pageName = "Decision Ledger";
-  else if (location.pathname === "/corpus") pageName = "Corpus Health";
-  else if (location.pathname.startsWith("/opportunity/")) pageName = "Opportunity Brief";
-  else if (location.pathname === "/scraped") pageName = "Scraped Feed";
-  else if (location.pathname === "/qa/mapping") pageName = "QA Mapping";
+  let pageName = "Advisory";
+  if (location.pathname === "/profile") pageName = "Profile";
+  else if (location.pathname === "/decisions") pageName = "Decisions";
+  else if (location.pathname === "/corpus") pageName = "Corpus";
+  else if (location.pathname.startsWith("/opportunity/")) pageName = "Brief";
 
   return (
-    <header className="border-b border-hairline bg-parchment/95 sticky top-0 z-50 backdrop-blur-md w-full max-w-full overflow-hidden">
-      <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-1.5 sm:gap-4 px-2.5 sm:px-6 py-2">
-        {/* Brand & Page Name */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <Link to="/" className="font-mono text-[11px] sm:text-[12px] font-bold uppercase tracking-[0.16em] sm:tracking-[0.28em] text-ink hover:opacity-80 transition-opacity">
+    <header className="border-b border-hairline bg-parchment/95 sticky top-0 z-50 backdrop-blur-md w-full">
+      <div className="mx-auto flex max-w-[1280px] items-center justify-between px-3 sm:px-6 py-2.5">
+        {/* Brand */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Link to="/" className="font-mono text-[12px] sm:text-[13px] font-bold uppercase tracking-[0.2em] text-ink hover:opacity-80 transition-opacity">
             RADAR
           </Link>
-          <span className="text-ink-muted hidden sm:inline">·</span>
-          <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.12em] text-ink-muted font-medium truncate hidden sm:inline max-w-[120px] lg:max-w-[180px]">
+          <span className="text-ink-muted text-[11px] hidden xs:inline">·</span>
+          <span className="text-[11px] uppercase tracking-[0.14em] text-ink-muted font-medium hidden xs:inline">
             {pageName}
           </span>
         </div>
 
-        {/* User Identity & Navigation Links */}
-        <nav className="flex items-center gap-2 sm:gap-4 text-[9.5px] sm:text-[11.5px] font-mono shrink-0 overflow-x-auto no-scrollbar py-0.5 max-w-[calc(100vw-70px)] sm:max-w-none">
-          <span className="hidden lg:inline-flex items-center text-[11.5px] text-ink-muted max-w-[160px] lg:max-w-[220px] truncate" title={signature}>
-            <Link to="/profile" className="hover:text-ink transition-colors truncate">
-              👤 {sessionName || candidateProfile.identity.name}
-            </Link>
-          </span>
+        {/* Navigation Bar */}
+        <nav className="flex items-center gap-2 xs:gap-3.5 sm:gap-6 text-[10px] sm:text-[11.5px] font-mono shrink-0">
           <Link
             to="/"
             className={
               isSelected("/")
-                ? "font-bold uppercase tracking-tight sm:tracking-[0.12em] text-ink transition-colors border-b-2 border-ink pb-0.5 shrink-0 whitespace-nowrap"
-                : "font-medium uppercase tracking-tight sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0 whitespace-nowrap"
+                ? "font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink border-b-2 border-ink pb-0.5"
+                : "font-medium uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
             }
           >
             Shortlist
@@ -217,8 +210,8 @@ function GlobalHeader() {
             to="/profile"
             className={
               isSelected("/profile")
-                ? "font-bold uppercase tracking-tight sm:tracking-[0.12em] text-ink transition-colors border-b-2 border-ink pb-0.5 shrink-0 whitespace-nowrap"
-                : "font-medium uppercase tracking-tight sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0 whitespace-nowrap"
+                ? "font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink border-b-2 border-ink pb-0.5"
+                : "font-medium uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
             }
           >
             Profile
@@ -227,8 +220,8 @@ function GlobalHeader() {
             to="/decisions"
             className={
               isSelected("/decisions")
-                ? "font-bold uppercase tracking-tight sm:tracking-[0.12em] text-ink transition-colors border-b-2 border-ink pb-0.5 shrink-0 whitespace-nowrap"
-                : "font-medium uppercase tracking-tight sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0 whitespace-nowrap"
+                ? "font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink border-b-2 border-ink pb-0.5"
+                : "font-medium uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
             }
           >
             Decisions
@@ -237,8 +230,8 @@ function GlobalHeader() {
             to="/corpus"
             className={
               isSelected("/corpus")
-                ? "font-bold uppercase tracking-tight sm:tracking-[0.12em] text-ink transition-colors border-b-2 border-ink pb-0.5 shrink-0 whitespace-nowrap"
-                : "font-medium uppercase tracking-tight sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors shrink-0 whitespace-nowrap"
+                ? "font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink border-b-2 border-ink pb-0.5"
+                : "font-medium uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors hidden sm:inline"
             }
           >
             Corpus
@@ -246,13 +239,15 @@ function GlobalHeader() {
           <a
             href="/api/auth/logout"
             id="sign-out-link"
-            className="font-medium uppercase tracking-tight sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors whitespace-nowrap shrink-0 pl-0.5"
+            className="font-medium uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors pl-1"
           >
-            Sign Out
+            Exit
           </a>
         </nav>
       </div>
     </header>
+  );
+}ader>
   );
 }
 

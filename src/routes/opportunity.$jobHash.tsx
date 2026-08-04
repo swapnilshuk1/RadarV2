@@ -147,13 +147,12 @@ function Brief() {
             CHAPTER 0: ULTRA-CLEAN HEADER (<5-SECOND SCAN RULE)
             ──────────────────────────────────────────────────────────────────────── */}
         <SemanticFocus delayMs={0} className="min-h-[40vh] flex flex-col justify-center py-6">
-          <div className="max-w-5xl">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 mb-6 text-muted-foreground mono text-[10px] sm:text-[11px] tracking-[0.1em] sm:tracking-[0.2em] font-semibold border-b border-border/30 pb-3 w-full">
-              <Link to="/" className="hover:text-foreground inline-flex items-center gap-1.5 transition-colors">
+            <div className="flex flex-row items-center justify-between gap-2 mb-6 text-muted-foreground mono text-[10px] sm:text-[11px] tracking-[0.08em] sm:tracking-[0.2em] font-semibold border-b border-border/30 pb-3 w-full">
+              <Link to="/" className="hover:text-foreground inline-flex items-center gap-1 transition-colors shrink-0">
                 ← SHORTLIST
               </Link>
 
-              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px]">
+              <div className="flex items-center gap-1 sm:gap-2 text-[9.5px] sm:text-[11px] shrink-0">
                 {neighbors.prev ? (
                   <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.prev.jobHash }} className="hover:text-foreground transition-colors">
                     ← PREV
@@ -174,7 +173,7 @@ function Brief() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 mb-10 sm:mb-12">
+            <div className="flex flex-wrap items-center gap-3 mb-6 sm:mb-12">
               <span className="mono text-[10px] tracking-[0.2em] font-bold bg-emerald-950/5 text-emerald-800 border border-emerald-600/30 px-3 py-1 uppercase rounded-xs">
                 {currentVerdict}
               </span>
@@ -187,7 +186,7 @@ function Brief() {
               {brief.memory.retentionSentence || o.recommendation || "High-priority executive mandate."}
             </h1>
 
-            <div className="mt-8 sm:mt-18 grid gap-6 sm:gap-8 border-t border-border/50 pt-8 sm:pt-10 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div className="mt-6 sm:mt-18 grid gap-6 sm:gap-8 border-t border-border/50 pt-6 sm:pt-10 lg:grid-cols-[1fr_auto] lg:items-end">
               <div>
                 <h2 className="font-serif text-[1.35rem] sm:text-[2.25rem] leading-[1.1] text-foreground font-light break-words">
                   {o.role} <span className="text-muted-foreground/50">·</span> {o.company}
@@ -215,7 +214,7 @@ function Brief() {
         {/* ────────────────────────────────────────────────────────────────────────
             RECOMMENDATION MEMO PAPER CARD (ASYMMETRIC PROPORTIONS: 30% / 23% / 23% / 24%)
             ──────────────────────────────────────────────────────────────────────── */}
-        <div className="bg-card border border-border/80 my-16 sm:my-20 rounded-sm shadow-xs overflow-hidden">
+        <div className="bg-card border border-border/80 my-8 sm:my-20 rounded-sm shadow-xs overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 px-4 sm:px-8 py-4 sm:py-5 bg-muted/15">
             <div className="mono text-[11px] tracking-[0.22em] text-foreground font-bold uppercase">
               ◆ RECOMMENDATION MEMO
