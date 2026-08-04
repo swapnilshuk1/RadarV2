@@ -297,42 +297,42 @@ function Row({
         <div className="min-w-0 flex-1">
           {/* Row 1: Role Title + Badges */}
           <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <span className="display text-[15px] sm:text-[18px] font-semibold text-foreground leading-snug tracking-tight">
+            <span className="display text-[17px] sm:text-[20px] font-bold text-foreground leading-snug tracking-tight">
               {o.role}
             </span>
             <div className="inline-flex items-center gap-1.5 shrink-0">
               <DecisionBadge verb={o.decision} size="sm" />
-              <span className="mono text-[9px] tracking-[0.14em] text-accent-ink bg-accent-ink/8 px-1.5 py-0.5 rounded-sm uppercase font-semibold hidden sm:inline-block">
+              <span className="mono text-[10.5px] tracking-[0.14em] text-accent-ink bg-accent-ink/10 px-2 py-0.5 rounded-sm uppercase font-semibold hidden sm:inline-block">
                 {mandateTag}
               </span>
             </div>
           </div>
 
           {/* Row 2: Company • Location • Portal */}
-          <p className="mt-1 flex flex-wrap items-center gap-1.5 mono text-[9px] sm:text-[9.5px] uppercase tracking-[0.18em] text-muted-foreground font-bold truncate">
-            <span>{o.company}</span>
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 mono text-[11px] sm:text-[12px] uppercase tracking-[0.14em] text-muted-foreground font-bold">
+            <span className="text-foreground">{o.company}</span>
             <span>·</span>
             <span>{o.location}</span>
             <span>·</span>
-            <span className="text-foreground">{o.scrapedFrom}</span>
+            <span className="text-foreground/80">{o.scrapedFrom}</span>
           </p>
 
           {/* Row 3: Semantic Retention Sentence */}
-          <p className="mt-2 font-serif italic text-[13.5px] sm:text-[15.5px] text-muted-foreground/90 leading-snug sm:leading-relaxed">
+          <p className="mt-2 font-serif italic text-[15px] sm:text-[17px] text-foreground/90 leading-snug sm:leading-relaxed">
             {brief.memory.retentionSentence || o.whyNow}
           </p>
 
           {/* Row 4: Friction & Verification Badges */}
           {(brief.frictionPreview || brief.topUnknownPreview) && (
-            <div className="flex flex-wrap items-center gap-2 mt-2">
+            <div className="flex flex-wrap items-center gap-2 mt-2.5">
               {brief.frictionPreview && (
-                <span className="mono text-[8.5px] sm:text-[9px] tracking-[0.12em] text-consider uppercase font-bold flex items-center gap-1.5">
+                <span className="mono text-[10.5px] sm:text-[11px] tracking-[0.12em] text-consider uppercase font-bold flex items-center gap-1.5 bg-consider-soft/60 px-2 py-0.5 rounded-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-consider shrink-0"></span>
                   {brief.frictionPreview}
                 </span>
               )}
               {brief.topUnknownPreview && (
-                <span className="mono text-[8.5px] sm:text-[9px] tracking-[0.12em] text-muted-foreground uppercase font-bold flex items-center gap-1.5">
+                <span className="mono text-[10.5px] sm:text-[11px] tracking-[0.12em] text-muted-foreground uppercase font-bold flex items-center gap-1.5 bg-muted/40 px-2 py-0.5 rounded-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground shrink-0"></span>
                   Needs verification: {brief.topUnknownPreview}
                 </span>
@@ -344,8 +344,8 @@ function Row({
         {/* Score & Expand Chevron */}
         <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
           <div className="text-right">
-            <span className="display text-[20px] sm:text-[28px] font-bold text-foreground tabular-nums leading-none">
-              {score}<span className="mono text-[9px] text-muted-foreground font-normal ml-0.5">/100</span>
+            <span className="display text-[24px] sm:text-[30px] font-bold text-foreground tabular-nums leading-none">
+              {score}<span className="mono text-[10px] sm:text-[12px] text-muted-foreground font-normal ml-0.5">/100</span>
             </span>
           </div>
 

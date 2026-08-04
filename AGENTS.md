@@ -75,6 +75,7 @@ To balance system stability with rapid iteration, agents must distinguish betwee
 
 To maintain a lean, high-performing codebase without unnecessary complexity:
 
+0. **ABSOLUTE FIRST COMMANDMENT (NO BANDAID WORKAROUNDS)**: NEVER offer temporary workarounds, alternative menus, or bypasses when an underlying system failure or connection issue occurs. ALWAYS investigate the exact root cause, diagnose the underlying logs and configuration, and resolve the primary issue directly.
 1. **Extend Existing Abstractions First**: Before creating a new service, helper, or class, search the codebase. Extend existing repositories (`StorageProvider`) and services rather than writing duplicate or parallel infrastructure.
 2. **Single Source of Persistence**: All persistent domain state (opportunities, companies, documents, user decisions) MUST use `DatabaseAdapter` (Turso/SQLite). NEVER introduce parallel file-based storage (`.json` or `.txt`) for persistent user state.
 3. **Ephemeral Cloud Safe**: Assume production runs on ephemeral cloud containers (e.g. Render, Vercel). NEVER write mutable application data to local container filesystems.
