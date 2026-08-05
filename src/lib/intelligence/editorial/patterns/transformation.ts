@@ -1,17 +1,19 @@
 import type { EditorialPattern } from "../EditorialPattern";
 
-// 1. The Turnaround Leader
-export const transformationTurnaroundLeaderPattern: EditorialPattern = {
-  id: "transformation-turnaround-2a",
+// 1. The Digital Modernizer
+export const transformationDigitalModernizerPattern: EditorialPattern = {
+  id: "transform-digital-2a",
+  patternFamily: "transformation",
+  skeleton: "consequence-first",
   strategyId: "SCALE_TRANSFORMATION",
   angleId: "TURNAROUND_EXECUTION",
-  executiveIdentity: "Turnaround Leader",
+  executiveIdentity: "Operator",
   editorialPurpose: "Surface hidden risk",
   editorialRisk: "execution",
-  editorialThesis: "Operational Reset & System Modernization",
+  editorialThesis: "Operational Reset & Digital Modernization",
   editorialIntent: {
     primaryMessage: "operational_reset",
-    supportingThemes: ["systemic_modernization", "board_sponsorship"],
+    supportingThemes: ["digital_modernization", "acquisition_automation"],
     avoidThemes: ["superficial_change"]
   },
   constraints: {
@@ -21,44 +23,47 @@ export const transformationTurnaroundLeaderPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `The mandate at ${v.company} shifts accountability from functional maintenance to an operational reset.`,
-    opening: (v) => `Rather than managing incremental improvements, this ${v.role} position requires restructuring legacy workflows and establishing new performance baselines.`,
-    editorialBridge: (v) => `The role carries direct board visibility, though success depends on overcoming embedded organizational inertia and legacy process friction.`,
+    headline: (v) => `${v.company} is losing commercial speed to digital-native competitors; this ${v.role} mandate automates customer acquisition workflows.`,
+    opening: (v) => `Legacy manual processes are choking transaction throughput. The board has prioritized an operational reset across primary commercial channels.`,
+    editorialBridge: (v) => `This role shifts your focus from managing operational volume to building automated commercial infrastructure.`,
     decisionGuidance: {
-      proceedIf: (v) => `Leading complex operational resets and enforcing new execution standards align with your background.`,
-      pauseIf: () => `Confirm executive sponsorship and budget commitment for systemic change before proceeding.`,
-      closing: (v) => `Recommended with clear boundaries. High operational visibility, provided restructuring authority is explicitly defined.`
+      proceedIf: (v) => `Leading enterprise digital modernization and process automation matches your track record.`,
+      pauseIf: (v) => `Evaluate legacy technical debt and IT budget allocations before proceeding.`,
+      closing: (v) => `Pursue. High-impact commercial modernization with clear board sponsorship.`
     }
   }
 };
 
-// 2. The Systems Architect
-export const transformationSystemsArchitectPattern: EditorialPattern = {
-  id: "transformation-systems-2b",
+// 2. The Turnaround Operator
+export const transformationTurnaroundLeaderPattern: EditorialPattern = {
+  id: "transform-turnaround-2b",
+  patternFamily: "transformation",
+  skeleton: "fact-first",
   strategyId: "SCALE_TRANSFORMATION",
   angleId: "TURNAROUND_EXECUTION",
-  executiveIdentity: "Operator",
-  editorialPurpose: "Highlight trade-off",
-  editorialRisk: "technical",
-  editorialThesis: "Technical Debt Decoupling & Architecture Resilience",
+  executiveIdentity: "Turnaround Leader",
+  editorialPurpose: "Surface hidden risk",
+  editorialRisk: "execution",
+  editorialThesis: "Commercial Restructuring & Margin Optimization",
   editorialIntent: {
-    primaryMessage: "technical_debt_decoupling",
-    supportingThemes: ["architecture_resilience", "cloud_decoupling"],
-    avoidThemes: ["patchwork_fixes"]
+    primaryMessage: "operational_reset",
+    supportingThemes: ["margin_optimization", "cost_restructuring"],
+    avoidThemes: ["superficial_change"]
   },
   constraints: {
     requires: {
-      transformationStage: ["modernization"]
+      transformationStage: ["turnaround"],
+      minScore: 50
     }
   },
   slots: {
-    headline: (v) => `Technical debt reduction takes explicit precedence over short-term feature velocity in this ${v.role} mandate at ${v.company}.`,
-    opening: (v) => `The business is decoupling monolithic legacy systems to rebuild core operational reliability and data flow integrity.`,
-    editorialBridge: (v) => `This operational shift reduces system fragility over time, though it creates near-term friction with business units accustomed to rapid feature delivery.`,
+    headline: (v) => `Executing a commercial turnaround at ${v.company} requires immediate margin optimization and operational restructuring.`,
+    opening: (v) => `The business needs a decisive operator to streamline cost structures and restore top-line profitability.`,
+    editorialBridge: (v) => `This mandate carries high risk, but successful execution establishes an undeniable turnaround track record.`,
     decisionGuidance: {
-      proceedIf: (v) => `Decoupling legacy architecture and building resilient technical infrastructure match your core capabilities.`,
-      pauseIf: () => `Validate executive patience for foundational infrastructure work versus commercial product requests.`,
-      closing: (v) => `A solid technical mandate. Offers long-term architecture ownership for leaders comfortable managing stakeholder trade-offs.`
+      proceedIf: (v) => `Driving commercial turnarounds under tight financial constraints fits your risk profile.`,
+      pauseIf: (v) => `Debt covenants leave fewer than twelve months to achieve positive cash flow.`,
+      closing: (v) => `Consider. High operational visibility, provided restructuring authority is explicitly defined.`
     }
   }
 };
@@ -66,6 +71,8 @@ export const transformationSystemsArchitectPattern: EditorialPattern = {
 // 3. The Org Architect
 export const transformationOrgArchitectPattern: EditorialPattern = {
   id: "transformation-org-2c",
+  patternFamily: "transformation",
+  skeleton: "consequence-first",
   strategyId: "SCALE_TRANSFORMATION",
   angleId: "TURNAROUND_EXECUTION",
   executiveIdentity: "Operator",
@@ -88,7 +95,7 @@ export const transformationOrgArchitectPattern: EditorialPattern = {
     editorialBridge: (v) => `Unlike traditional restructuring roles, this effort prioritizes workflow velocity and cross-functional alignment over headcount reductions.`,
     decisionGuidance: {
       proceedIf: (v) => `Redesigning operating models and establishing clear organizational accountabilities suit your leadership style.`,
-      pauseIf: () => `Verify CEO backing for proposed structural changes across business units.`,
+      pauseIf: (v) => `Verify CEO backing for proposed structural changes across business units.`,
       closing: (v) => `Proceed to screening. High operational impact for executives skilled in organizational design.`
     }
   }

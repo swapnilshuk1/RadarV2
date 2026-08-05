@@ -8,8 +8,8 @@ import {
 } from "./growth";
 
 import {
+  transformationDigitalModernizerPattern,
   transformationTurnaroundLeaderPattern,
-  transformationSystemsArchitectPattern,
   transformationOrgArchitectPattern
 } from "./transformation";
 
@@ -39,8 +39,8 @@ export const allEditorialPatterns: EditorialPattern[] = [
   growthCategoryLeaderPattern,
 
   // Transformation
+  transformationDigitalModernizerPattern,
   transformationTurnaroundLeaderPattern,
-  transformationSystemsArchitectPattern,
   transformationOrgArchitectPattern,
 
   // Founder

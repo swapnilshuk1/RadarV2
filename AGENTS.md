@@ -214,8 +214,10 @@ npx tsx scripts/audit-lineage.ts
 
 All AI coding agents MUST strictly follow these UI & component architectural invariants:
 
-### A. Golden Rule of Component Restraint
+### A. Golden Rule of Component Restraint & Constitutional Dependency
 > **NEVER invent a new UI component if an existing editorial component can express the information.**
+>
+> **Constitutional Dependency**: All executive prose MUST originate from the Editorial Repository (`src/lib/intelligence/editorial/`). Components may NEVER author ad-hoc executive language outside registered editorial patterns.
 
 ### B. Component Hierarchy Architecture
 Every view in RADAR v2 MUST adhere to the 5-tier structural hierarchy:
@@ -227,12 +229,23 @@ Page (e.g. Executive Dossier, Shortlist Queue)
                     └── Primitive (e.g. Label, Badge, Divider)
 ```
 
-### C. Editorial Principles
+### C. Editorial Invariants (Version 2.1 Standard)
+1. **Evidence-Grounded Truth**: Never claim evidence, reporting lines, P&L scale, or founder proximity that is not explicitly verified by the evidence graph or job projections.
+2. **Certainty Matched to Confidence**: Editorial confidence tracks assessment confidence exactly. Superlatives require benchmark data.
+3. **Advice Over Description**: Frame insights as a trusted executive partner would ("Proceed this week; validate reporting line on initial call").
+4. **Document-Level Coherence**: Every pattern tells a unified story across headline, opening, bridge, and closing.
+5. **Frozen Navigation Landmarks**: Structural section headers (`EXECUTIVE BRIEF`, `STRATEGIC CAREER VALUE`, `THE CASE`, `THE ROLE`, `YOUR ADVANTAGE`, `OPEN QUESTIONS`, `DECISION BOUNDARIES`, `SUPPORTING EVIDENCE`, `DOSSIER LEDGER`) are permanent UI landmarks and must **never** be altered.
+6. **Name the Consequence**: Every brief states what changes if the reader acts, and what is forfeited if they do not.
+7. **One Concrete Anchor Per Brief**: At least one number, named function, counterparty, or dated event must appear in the composed narrative.
+8. **Risk in the First Clause**: State material risk before qualifying it in pause-if lines.
+9. **No Two Patterns Share a Skeleton**: Sentence architecture is part of the voice. Registered patterns must declare one of 4 Headline Skeletons (`fact-first`, `comparison-first`, `consequence-first`, `observation-first`), with a maximum 40% distribution cap across any single session.
+
+### D. Visual System & Color Jobs
 1. **One Idea Per Screen**: Each viewport section conveys a single advisory statement or proof point.
 2. **Evidence Before Recommendation**: Claims and score cards must precede executive verdict controls.
 3. **Whitespace Communicates Confidence**: Spacing is calibrated using semantic tokens (`space-1` to `space-7`).
-4. **Typography Carries Hierarchy, Not Decoration**: `font-serif` (Instrument Serif) is used for editorial headlines, `font-sans` (Manrope) for body copy, and `font-mono` (JetBrains Mono) for quantitative metadata.
-5. **Every Component Answers an Executive Question**: Components must state purpose (e.g., *Proceed If*, *Pause If*, *Watch For*).
+4. **Typography Carries Hierarchy, Not Decoration**: `font-serif` (Instrument Serif) for editorial headlines, `font-sans` (Manrope) for body copy, and `font-mono` (JetBrains Mono) for quantitative metadata.
+5. **Every Component Answers an Executive Question**: Components must state purpose (*Proceed If*, *Pause If*, *Watch For*).
 6. **Color Indicates Judgement—Not Branding**:
    - 🟢 **Green (`--signal`)**: *Confidence* (High match alignment)
    - 🟡 **Amber (`--caution`)**: *Unknown* (Friction / Verification required)

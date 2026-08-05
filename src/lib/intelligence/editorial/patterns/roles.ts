@@ -3,6 +3,8 @@ import type { EditorialPattern } from "../EditorialPattern";
 // 1. The Board Advisor
 export const roleBoardAdvisorPattern: EditorialPattern = {
   id: "role-board-director-4a",
+  patternFamily: "role",
+  skeleton: "fact-first",
   strategyId: "CAREER_CAPITAL",
   angleId: "CATEGORY_LEADERSHIP",
   executiveIdentity: "Board Executive",
@@ -21,12 +23,12 @@ export const roleBoardAdvisorPattern: EditorialPattern = {
   },
   slots: {
     headline: (v) => `A non-executive board directorship at ${v.company} focused on fiduciary oversight, capital allocation, and risk management.`,
-    opening: (v) => `This appointment provides non-executive governance advisory to executive leadership without operational management responsibility.`,
+    opening: (v) => `This appointment provides strategic governance to executive leadership without operational management responsibility.`,
     editorialBridge: (v) => `The position expands your non-executive governance network, providing strategic board exposure in a growing enterprise segment.`,
     decisionGuidance: {
-      proceedIf: (v) => `Stepping into non-executive governance and strategic capital allocation advisory align with your career stage.`,
-      pauseIf: () => `Confirm D&O insurance coverage terms and committee cadence expectations.`,
-      closing: (v) => `Highest strategic fit. A landmark governance appointment for senior leaders.`
+      proceedIf: (v) => `Board oversight and strategic capital allocation advisory align with your career stage.`,
+      pauseIf: (v) => `Confirm D&O insurance coverage terms and committee cadence expectations.`,
+      closing: (v) => `Pursue. A landmark governance appointment with high strategic visibility.`
     }
   }
 };
@@ -34,6 +36,8 @@ export const roleBoardAdvisorPattern: EditorialPattern = {
 // 2. The Revenue Owner (CRO)
 export const roleRevenueOwnerPattern: EditorialPattern = {
   id: "role-cro-4b",
+  patternFamily: "role",
+  skeleton: "consequence-first",
   strategyId: "GROWTH_EXPANSION",
   angleId: "COMMERCIAL_OWNERSHIP",
   executiveIdentity: "Scaler",
@@ -54,11 +58,11 @@ export const roleRevenueOwnerPattern: EditorialPattern = {
   slots: {
     headline: (v) => `This ${v.role} mandate consolidates sales, marketing, and customer success at ${v.company} under a single commercial structure.`,
     opening: (v) => `The organization is unifying top-line revenue strategy to eliminate handoff friction between customer acquisition and retention teams.`,
-    editorialBridge: (v) => `Placing full-funnel revenue ownership under one executive owner establishes clear commercial accountability across all go-to-market channels.`,
+    editorialBridge: (v) => `Unifying these functions under one leader creates the commercial authority missing from your recent scope.`,
     decisionGuidance: {
-      proceedIf: (v) => `Unifying sales, marketing, and customer success into a cohesive revenue engine matches your CRO background.`,
-      pauseIf: () => `Examine sales compensation structures and cross-team incentive alignment.`,
-      closing: (v) => `Strong recommendation. Total commercial revenue ownership with direct P&L leverage.`
+      proceedIf: (v) => `Integrating sales, marketing and customer success into one revenue engine matches your CRO background.`,
+      pauseIf: (v) => `Sales compensation and customer success incentives remain managed in separate silos.`,
+      closing: (v) => `Pursue. Total commercial revenue ownership with direct P&L leverage.`
     }
   }
 };
@@ -66,6 +70,8 @@ export const roleRevenueOwnerPattern: EditorialPattern = {
 // 3. The Technology Strategist (CTO)
 export const roleTechnologyStrategistPattern: EditorialPattern = {
   id: "role-cto-4c",
+  patternFamily: "role",
+  skeleton: "consequence-first",
   strategyId: "SCALE_TRANSFORMATION",
   angleId: "TURNAROUND_EXECUTION",
   executiveIdentity: "Operator",
@@ -83,13 +89,13 @@ export const roleTechnologyStrategistPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `This ${v.role} position prepares core data infrastructure at ${v.company} for enterprise AI model integration.`,
-    opening: (v) => `The mandate focuses on modernizing software architecture, cloud data pipelines, and engineering governance.`,
-    editorialBridge: (v) => `Lays the technical foundation for automated decision intelligence across core operational and customer-facing workflows.`,
+    headline: (v) => `${v.company} cannot integrate AI models until its data pipelines are rebuilt; this ${v.role} role leads that modernization.`,
+    opening: (v) => `The technical debt is in the core architecture. The mandate requires decoupling legacy systems before new capabilities can ship.`,
+    editorialBridge: (v) => `Lays the technical foundation for automated decision intelligence across core operational workflows.`,
     decisionGuidance: {
-      proceedIf: (v) => `Building enterprise data pipelines and preparing legacy software architectures for AI scale suit your technical depth.`,
-      pauseIf: () => `Confirm R&D resource allocations and cloud infrastructure commitments.`,
-      closing: (v) => `Recommended for review. Foundational technology architecture mandate.`
+      proceedIf: (v) => `Rebuilding enterprise data pipelines and decoupling legacy software architectures suit your technical depth.`,
+      pauseIf: (v) => `Confirm R&D resource allocations and cloud infrastructure commitments before proceeding.`,
+      closing: (v) => `Consider. Foundational technology architecture mandate with high technical leverage.`
     }
   }
 };
@@ -97,6 +103,8 @@ export const roleTechnologyStrategistPattern: EditorialPattern = {
 // 4. The C-Suite Successor
 export const roleCsuiteSuccessorPattern: EditorialPattern = {
   id: "role-vp-expansion-4d",
+  patternFamily: "role",
+  skeleton: "consequence-first",
   strategyId: "CAREER_CAPITAL",
   angleId: "CAREER_ACCELERATION",
   executiveIdentity: "Scaler",
@@ -120,8 +128,8 @@ export const roleCsuiteSuccessorPattern: EditorialPattern = {
     editorialBridge: (v) => `Serves as a deliberate career stepping stone, broadening your executive scope beyond single-function leadership.`,
     decisionGuidance: {
       proceedIf: (v) => `Expanding P&L scope while positioning for C-suite succession align with your long-term goals.`,
-      pauseIf: () => `Clarify written succession review timelines and executive development support.`,
-      closing: (v) => `Proceed to screening. Excellent career acceleration role with clear C-suite trajectory.`
+      pauseIf: (v) => `Clarify written succession review timelines and executive development support.`,
+      closing: (v) => `Pursue. Direct executive committee visibility with clear succession trajectory.`
     }
   }
 };

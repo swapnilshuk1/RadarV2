@@ -2,6 +2,8 @@ import type { EditorialPattern } from "../EditorialPattern";
 
 export const fallbackPattern: EditorialPattern = {
   id: "fallback-baseline-0a",
+  patternFamily: "fallback",
+  skeleton: "fact-first",
   strategyId: "CAREER_CAPITAL",
   angleId: "CAREER_ACCELERATION",
   executiveIdentity: "Operator",
@@ -20,7 +22,8 @@ export const fallbackPattern: EditorialPattern = {
     editorialBridge: (v) => `Primary alignment rests on functional capability match, though direct budget boundaries and reporting authority warrant early verification.`,
     decisionGuidance: {
       proceedIf: (v) => `Functional scope and operational scale at ${v.company} align with your target operating mandate.`,
-      pauseIf: () => `Clarify direct reporting lines and regional budget allocation before committing further time.`
+      pauseIf: (v) => `Clarify direct reporting lines and regional budget allocation before committing further time.`,
+      closing: (v) => `Consider. Evaluate operating scope and budget authority during initial screening.`
     }
   }
 };

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Unwraps raw stringified JSON extractor payloads (e.g. from technologyStack or mandate)
  * into clean, human-readable display values, stripping large snippets or metadata.
  */
@@ -32,43 +32,60 @@ export function unwrapEvidenceValue(raw: any): string {
 /**
  * Compile-time boundary: Translates raw ESG ontology nodes and trace constants
  * into clean natural language concepts before passing to editorial presentation.
- * Ensures prose NEVER leaks raw JSON keys or ontology constants.
+ * Ensures prose NEVER leaks raw JSON keys, ampersands in running text, or generic placeholders.
  */
 export class SemanticNaturalLanguageResolver {
   public static resolveCapabilities(caps: string[]): string {
-    if (!caps || caps.length === 0) return "strategic growth & execution";
+    if (!caps || caps.length === 0) {
+      console.warn("[EDITORIAL DEFECT] Suppressed generic capability fallback for empty capability list");
+      return "";
+    }
 
     const cleanedList = caps
       .map((c) => unwrapEvidenceValue(c))
       .map((c) => {
-        let clean = c.replace(/PURPOSE_[A-Z_]+/g, "")
-                     .replace(/fit\)/g, "")
-                     .replace(/\([0-9]+%/g, "")
-                     .replace(/_/g, " ")
-                     .trim();
-        if (clean.length === 0 || clean.length > 80) return "growth strategy";
+        let clean = c
+          .replace(/PURPOSE_[A-Z_]+/g, "")
+          .replace(/fit\)/g, "")
+          .replace(/\([0-9]+%/g, "")
+          .replace(/_/g, " ")
+          .replace(/&/g, "and")
+          .trim();
+        if (clean.length === 0 || clean.length > 80) return "";
         return clean.charAt(0).toUpperCase() + clean.slice(1);
       })
       .filter((v) => v.length > 0 && v.length <= 80)
       .filter((v, i, a) => a.indexOf(v) === i)
       .slice(0, 3);
 
-    return cleanedList.length > 0 ? cleanedList.join(", ") : "strategic growth & execution";
+    if (cleanedList.length === 0) {
+      console.warn("[EDITORIAL DEFECT] Suppressed generic capability fallback due to unresolvable capability strings");
+      return "";
+    }
+
+    return cleanedList.join(", ");
   }
 
   public static resolveIdentity(identityValue: string): string {
-    if (!identityValue) return "Commercial & Marketing Leadership";
+    if (!identityValue) return "Commercial and Marketing Leadership";
     const unwrapped = unwrapEvidenceValue(identityValue);
-    return unwrapped.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+    return unwrapped
+      .replace(/_/g, " ")
+      .replace(/&/g, "and")
+      .replace(/\b\w/g, (l) => l.toUpperCase());
   }
 
-  public static resolveActionRecommendation(decision: "PURSUE" | "CONSIDER" | "PASS", role: string, company: string): string {
+  public static resolveActionRecommendation(
+    decision: "PURSUE" | "CONSIDER" | "PASS",
+    role: string,
+    company: string
+  ): string {
     if (decision === "PURSUE") {
-      return `PURSUE — Submit direct application for ${role} at ${company} (Priority Executive Lead)`;
+      return `Pursue. Submit direct application for ${role} at ${company}; position justifies immediate screening.`;
     }
     if (decision === "CONSIDER") {
-      return `CONSIDER — Verify operating scope and reporting line at ${company} before applying`;
+      return `Consider. Verify operating scope and reporting line at ${company} before advancing.`;
     }
-    return `PASS — Mandate scope for ${role} does not align with target executive profile`;
+    return `Pass. Mandate scope for ${role} does not align with target executive profile.`;
   }
 }

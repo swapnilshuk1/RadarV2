@@ -3,6 +3,8 @@ import type { EditorialPattern } from "../EditorialPattern";
 // 1. The Founder Partner
 export const founderPartnerPattern: EditorialPattern = {
   id: "founder-partner-3a",
+  patternFamily: "founder",
+  skeleton: "observation-first",
   strategyId: "FOUNDER_EXPOSURE",
   angleId: "FOUNDER_ACCESS",
   executiveIdentity: "Builder",
@@ -23,13 +25,13 @@ export const founderPartnerPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `Direct proximity to the founder office at ${v.company} provides unbureaucratic decision speed, though strategic alignment requires ongoing navigation.`,
-    opening: (v) => `This ${v.role} mandate offers immediate operational latitude, bypassing conventional corporate steering committees.`,
-    editorialBridge: (v) => `The primary execution leverage stems from rapid capital and hiring decisions, balanced against the need to build deep trust with the founder.`,
+    headline: (v) => `Working directly with the founders of ${v.company}, this ${v.role} role balances strategic vision with operational scaling.`,
+    opening: (v) => `The founders are handing over day-to-day execution to build a professional management layer.`,
+    editorialBridge: (v) => `Success requires introducing corporate discipline without slowing the decision speed that built the business.`,
     decisionGuidance: {
-      proceedIf: (v) => `Thriving in founder-led environments with high decision velocity and informal governance matches your working style.`,
-      pauseIf: () => `Confirm founder willingness to delegate written P&L authority during initial discussions.`,
-      closing: (v) => `Worth pursuing. High-autonomy mandate for executives who navigate founder partnerships effectively.`
+      proceedIf: (v) => `Partnering with founder-owners while building scalable operating processes fits your style.`,
+      pauseIf: (v) => `Establish clear decision rights between founder vision and executive execution.`,
+      closing: (v) => `Pursue. High-autonomy mandate for executives who navigate founder partnerships effectively.`
     }
   }
 };
@@ -37,6 +39,8 @@ export const founderPartnerPattern: EditorialPattern = {
 // 2. The Governance Anchor
 export const founderGovernanceAnchorPattern: EditorialPattern = {
   id: "founder-governance-3b",
+  patternFamily: "founder",
+  skeleton: "consequence-first",
   strategyId: "FOUNDER_EXPOSURE",
   angleId: "FOUNDER_ACCESS",
   executiveIdentity: "Operator",
@@ -59,8 +63,8 @@ export const founderGovernanceAnchorPattern: EditorialPattern = {
     editorialBridge: (v) => `Success in this role depends on introducing corporate discipline while preserving the agile, entrepreneurial culture that drove early growth.`,
     decisionGuidance: {
       proceedIf: (v) => `Professionalizing operating frameworks and building high-trust founder partnerships suit your experience.`,
-      pauseIf: () => `Assess founder readiness to relinquish operational veto power over key functions.`,
-      closing: (v) => `Recommended for screening. A high-impact transition role for seasoned operating executives.`
+      pauseIf: (v) => `Assess founder readiness to relinquish operational veto power over key functions.`,
+      closing: (v) => `Consider. A high-impact transition role for seasoned operating executives.`
     }
   }
 };

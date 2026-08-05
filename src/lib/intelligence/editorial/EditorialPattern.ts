@@ -48,8 +48,16 @@ export interface EditorialPatternConstraints {
   };
 }
 
+export type HeadlineSkeleton =
+  | "fact-first"
+  | "comparison-first"
+  | "consequence-first"
+  | "observation-first";
+
 export interface EditorialPattern {
   id: string;
+  patternFamily: string;
+  skeleton: HeadlineSkeleton;
   strategyId: "GROWTH_EXPANSION" | "SCALE_TRANSFORMATION" | "FOUNDER_EXPOSURE" | "CAREER_CAPITAL";
   angleId: "COMMERCIAL_OWNERSHIP" | "CAREER_ACCELERATION" | "FOUNDER_ACCESS" | "CATEGORY_LEADERSHIP" | "TURNAROUND_EXECUTION";
   executiveIdentity: ExecutiveIdentity; // Author / Analytics Metadata
