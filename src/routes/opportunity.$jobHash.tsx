@@ -64,15 +64,17 @@ function OpportunityDossier() {
     setCheckedUnknowns((prev) => ({ ...prev, [idx]: !prev[idx] }));
   };
 
-  const strongEvidenceDimensions = (o.evidenceDimensions || []).filter(
-    (d: any) => d.jdEvidence?.confidence === "EXPLICIT_STRONG"
+  const rawDimensions = o.dimensions || (o as any).evidenceDimensions || [];
+
+  const strongEvidenceDimensions = rawDimensions.filter(
+    (d: any) => d.jdEvidence?.confidence === "EXPLICIT_STRONG" || d.importance === "Core" || (d.jdEvidence && d.jdEvidence.value)
   );
 
-  const partialEvidenceDimensions = (o.evidenceDimensions || []).filter(
-    (d: any) => d.jdEvidence?.confidence !== "EXPLICIT_STRONG"
+  const partialEvidenceDimensions = rawDimensions.filter(
+    (d: any) => d.jdEvidence?.confidence === "PARTIAL_INFERRED"
   );
 
-  const allVerifiedCount = o.evidenceDimensions?.length || 7;
+  const allVerifiedCount = rawDimensions.length || 7;
 
   const formatValue = (val: any) => {
     if (!val) return "Not specified in JD";
