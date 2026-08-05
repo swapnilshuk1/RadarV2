@@ -1,62 +1,106 @@
-import { BriefMemory, BriefModel, BriefSectionMeta, RankedUnknown, ProofPointItem, OpportunityInOneMinute, QualitativeReasoningRow, StrategicUpside } from "./BriefModel";
-import { CompositionPolicy, DEFAULT_COMPOSITION_POLICY } from "./CompositionPolicy";
-import { SemanticNaturalLanguageResolver, unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
-import type { Opportunity } from "../../../data/opportunity-fixtures";
+import type { Opportunity } from "../../data/opportunity-fixtures";
 import { EditorialContextBuilder } from "./EditorialContext";
 import { EditorialPatternSelector } from "./EditorialPatternSelector";
 import { NarrativeComposer } from "./NarrativeComposer";
+import { SemanticNaturalLanguageResolver, unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
+
+export interface BriefSectionMeta {
+  id: string;
+  name: string;
+  eyebrow: string;
+  numeral: string;
+  title: string;
+  expression: string;
+}
+
+export interface BriefMemory {
+  headline: string;
+  retentionSentence: string;
+  primaryOpportunity: string;
+  primaryRisk: string;
+  recommendedAction: string;
+  decision: "PURSUE" | "CONSIDER" | "PASS";
+  tradeoff: string;
+  first90Days: string;
+  whyNow: string;
+}
+
+export interface OpportunityInOneMinute {
+  whyPursue: string[];
+  watchFor: string[];
+  bottomLine: string;
+}
+
+export interface QualitativeReasoningRow {
+  layer: string;
+  ratingLabel: "Exceptional" | "Strong Alignment" | "Adjacent Alignment" | "Requires Verification";
+  becausePoints: string[];
+  evidenceSnippet: string;
+}
+
+export interface StrategicUpside {
+  headline: string;
+  points: string[];
+}
+
+export interface RankedUnknown {
+  rank: "CRITICAL" | "IMPORTANT" | "SECONDARY";
+  label: string;
+  question: string;
+}
+
+export interface ProofPointItem {
+  category: "Direct Evidence" | "Transferable Experience" | "Structural Risk";
+  headline: string;
+  detail: string;
+}
+
+export interface BriefModel {
+  memory: BriefMemory;
+  sections: BriefSectionMeta[];
+  oneMinuteTLDR: OpportunityInOneMinute;
+  qualitativeReasoning: QualitativeReasoningRow[];
+  strategicUpside: StrategicUpside;
+  decisionSensitivity: {
+    becomesPursueIf: string[];
+    becomesPassIf: string[];
+  };
+  rankedUnknowns: RankedUnknown[];
+  deliverables: {
+    workRequired: string[];
+    businessValue: string[];
+    provenance: Array<"Observed in JD" | "Inferred from Role Pattern">;
+  };
+  proofPoints: ProofPointItem[];
+  fitProofs: string[];
+  certaintyLevel: "HIGH" | "MEDIUM" | "LOW";
+  certaintyGuidance: string;
+  evidenceQuality: "High Evidence Quality" | "Medium Evidence Quality" | "Inferred Evidence";
+  qualitativeRecommendation: "Strong Pursue Recommendation" | "Conditional Consideration" | "Strategic Pass";
+  whyNotStronger?: string;
+
+  strategy: {
+    focusTitle: string;
+    heroAnchor: string;
+  };
+  narrative: {
+    intent: string;
+  };
+  verdictGuidance: {
+    actionNotice: string;
+    tradeoffStatement: string;
+    pauseTrigger: string;
+  };
+}
 
 export class BriefCompositionEngine {
+  public static compose(opportunity: Opportunity, options?: { brevityPolicy?: any }): BriefModel {
+    const policy = options?.brevityPolicy || {
+      maxUnknowns: 3,
+      maxEvidence: 3,
+      maxDeliverables: 3,
+    };
 
-  private static calculateWeights(opportunity: Opportunity) {
-    const score = opportunity.recommendationResult?.score ?? 50;
-    const isPursue = opportunity.decision === "PURSUE" || score >= 75;
-    const isConsider = opportunity.decision === "CONSIDER" || (score >= 50 && score < 75);
-
-    if (isPursue) {
-      return { career: 0.8, execution: 0.7, commercial: 0.9, risk: 0.2, unknown: 0.3, confidence: 0.9 };
-    } else if (isConsider) {
-      return { career: 0.6, execution: 0.5, commercial: 0.6, risk: 0.4, unknown: 0.3, confidence: 0.8 };
-    } else {
-      return { career: 0.3, execution: 0.3, commercial: 0.2, risk: 0.7, unknown: 0.2, confidence: 0.85 };
-    }
-  }
-
-  private static deriveStrategy(weights: any, opportunity: Opportunity) {
-    if (weights.commercial >= 0.8) {
-      return {
-        primaryFocus: "COMMERCIAL" as const,
-        secondaryFocus: "CAREER" as const,
-        tertiaryFocus: "EXECUTION" as const,
-        focusTitle: "High Strategic Alignment",
-        heroAnchor: `Direct mandate to lead ${opportunity.role} at ${opportunity.company}`,
-        narrative: { intent: "COMPETITIVE_ADVANTAGE" as const, strengthCount: 3 }
-      };
-    } else if (weights.risk >= 0.4) {
-      return {
-        primaryFocus: "RISK" as const,
-        secondaryFocus: "EXECUTION" as const,
-        tertiaryFocus: "UNKNOWN" as const,
-        focusTitle: "Scope & Requirement Trade-off",
-        heroAnchor: `Requires verification of mandate boundaries for ${opportunity.role}`,
-        narrative: { intent: "LEVERAGE_POINT" as const, strengthCount: 2 }
-      };
-    } else {
-      return {
-        primaryFocus: "CAREER" as const,
-        secondaryFocus: "COMMERCIAL" as const,
-        tertiaryFocus: "LEADERSHIP" as const,
-        focusTitle: "Career Trajectory Leverage",
-        heroAnchor: `Scope expansion opportunity with ${opportunity.company}`,
-        narrative: { intent: "CAPABILITY_FIT" as const, strengthCount: 3 }
-      };
-    }
-  }
-
-  public static compose(
-    opportunity: Opportunity,
-    policy: CompositionPolicy = DEFAULT_COMPOSITION_POLICY
-  ): BriefModel {
     const score = opportunity.recommendationResult?.score ?? 50;
     const certaintyPct = Math.min(95, Math.max(60, score + 5));
     const weights = this.calculateWeights(opportunity);
@@ -76,7 +120,14 @@ export class BriefCompositionEngine {
       .filter((v: any) => typeof v === "string" && v.length > 0);
 
     const resolvedCapText = SemanticNaturalLanguageResolver.resolveCapabilities(rawCaps);
-    const retentionSentence = `${opportunity.role} mandate at ${opportunity.company} focused on ${resolvedCapText}.`;
+    const capItems = resolvedCapText ? resolvedCapText.split(",").map((s) => s.trim()) : [];
+    const primaryCap = capItems[0] || opportunity.role;
+    const secondaryCap = capItems[1] || "Commercial Strategy";
+    const tertiaryCap = capItems[2] || "Execution Operations";
+
+    const retentionSentence = resolvedCapText
+      ? `${opportunity.role} mandate at ${opportunity.company} focused on ${resolvedCapText}.`
+      : `${opportunity.role} mandate at ${opportunity.company} in ${opportunity.location || "target location"}.`;
 
     let primaryOpportunity = decision === "PURSUE"
       ? `Direct functional ownership of ${opportunity.role} at ${opportunity.company}`
@@ -108,9 +159,11 @@ export class BriefCompositionEngine {
 
     const tradeoff = `Evaluating ${opportunity.role} scope at ${opportunity.company} against current career velocity`;
 
-    const first90Days = `Establish operational baseline across ${resolvedCapText} within first 60 days`;
+    const first90Days = resolvedCapText
+      ? `Establish operational baseline across ${resolvedCapText} within first 60 days`
+      : `Establish operational baseline for ${opportunity.role} mandate within first 60 days`;
 
-    const whyNow = `${opportunity.company} is hiring for ${opportunity.role} to drive strategic initiatives in ${opportunity.location || "target markets"}.`;
+    const whyNow = `${opportunity.company} is hiring for ${opportunity.role} in ${opportunity.location || "target region"} to drive strategic initiatives.`;
 
     const memory: BriefMemory = {
       headline: `${decision}: ${opportunity.role} at ${opportunity.company}`,
@@ -135,19 +188,19 @@ export class BriefCompositionEngine {
       decision === "PURSUE" ? "Strong Pursue Recommendation" : decision === "CONSIDER" ? "Conditional Consideration" : "Strategic Pass";
 
     const whyNotStronger = score >= 75
-      ? "This role aligns strongly with target executive capabilities and leadership altitude."
+      ? `This role aligns strongly with target executive capabilities and leadership scope for ${opportunity.role}.`
       : score >= 60
-      ? "Operating scope is scoped at regional Head level rather than global C-suite, limiting immediate P&L scale."
+      ? `Operating scope at ${opportunity.company} is scoped at regional Head level rather than global C-suite, limiting immediate P&L scale.`
       : "Domain divergence or organizational level regression requires significant transition overhead.";
 
     const oneMinuteTLDR: OpportunityInOneMinute = {
       whyPursue: [
-        `Significant increase in commercial ownership & P&L execution at ${opportunity.company}.`,
-        `Strong alignment with your growth & marketing leadership background.`,
-        `Limited career velocity risk despite slight scope adjustment.`,
+        `Direct functional ownership of ${opportunity.role} mandate at ${opportunity.company}.`,
+        `Strategic alignment with your ${primaryCap} background.`,
+        `Favorable career velocity surplus in ${opportunity.location || "target markets"}.`,
       ],
       watchFor: [
-        `Confirm regional P&L boundaries during initial recruiter screening call.`,
+        `Confirm direct P&L boundaries and budget authority during initial call with ${opportunity.company}.`,
         `Clarify direct reporting line hierarchy (CEO vs Regional VP).`,
       ],
       bottomLine: decision === "PURSUE" ? "Worth pursuing." : decision === "CONSIDER" ? "Verify scope before applying." : "Strategic Pass.",
@@ -156,43 +209,55 @@ export class BriefCompositionEngine {
     const qualitativeReasoningChain: QualitativeReasoningRow[] = [
       {
         layer: "Identity Alignment",
-        ratingLabel: "Exceptional",
-        becausePoints: ["Commercial Growth Leadership", "Paid Media & Acquisition", "Multi-market / Regional Ownership"],
-        evidenceSnippet: "Direct P&L and growth expansion authority verified across prior executive roles.",
+        ratingLabel: score >= 75 ? "Exceptional" : "Strong Alignment",
+        becausePoints: [
+          `${opportunity.role} Scoping`,
+          `${opportunity.company} Mandate`,
+          `${opportunity.location || "Regional"} Presence`
+        ],
+        evidenceSnippet: `Direct executive alignment for ${opportunity.role} verified at ${opportunity.company}.`,
       },
       {
         layer: "Capability Coverage",
         ratingLabel: score >= 75 ? "Exceptional" : "Strong Alignment",
-        becausePoints: ["Growth Strategy (100% Match)", "Performance Marketing (100% Match)", "Salesforce CDP (Graph Transferable)"],
-        evidenceSnippet: "Mandate capabilities fully covered by candidate profile and graph transfer paths.",
+        becausePoints: [
+          `${primaryCap} (Direct Match)`,
+          `${secondaryCap} (Verified)`,
+          `${tertiaryCap} (Graph Mapped)`
+        ],
+        evidenceSnippet: `Capabilities for ${opportunity.role} mapped directly to candidate experience graph.`,
       },
       {
         layer: "Career Capital Value",
         ratingLabel: score >= 70 ? "Strong Alignment" : "Adjacent Alignment",
-        becausePoints: ["+31 Brand Equity Capital Gain", "-20 Operating Scope Regression Risk", "Net Positive Career Value Surplus"],
-        evidenceSnippet: "Net brand capital gain outweighs scope regression risks.",
+        becausePoints: [
+          `+${Math.round(score * 0.4)} Brand Capital Gain`,
+          `-${Math.round((100 - score) * 0.2)} Operating Scope Risk`,
+          `Net Positive Career Value Surplus`
+        ],
+        evidenceSnippet: `Executive positioning at ${opportunity.company} expands long-term leadership leverage.`,
       },
     ];
 
     const strategicUpside: StrategicUpside = {
       headline: "Why this role is interesting",
       points: [
-        `Moves you closer to enterprise CMO / CCO scope through direct commercial ownership at ${opportunity.company}.`,
-        `Increases P&L authority and multi-market growth expansion experience.`,
-        `Adds high-visibility brand transformation leadership to your executive record.`,
+        `Establishes key leadership leverage as ${opportunity.role} at ${opportunity.company}.`,
+        `Expands direct P&L and commercial execution experience in ${opportunity.location || "primary markets"}.`,
+        `Adds high-visibility transformation leadership to your executive record.`,
         `Strengthens future Chief Commercial Officer optionality within 2–3 years.`,
       ],
     };
 
     const decisionSensitivity = {
       becomesPursueIf: [
-        "Global P&L ownership and board-level commercial reporting is confirmed.",
+        `Global P&L ownership and board-level commercial reporting at ${opportunity.company} is confirmed.`,
         "Direct C-suite or Founders reporting line is established in screening.",
         "Team headcount and hiring budget exceeds 25 FTEs.",
       ],
       becomesPassIf: [
         "Individual contributor role without team budget authority.",
-        "Operating scope limited strictly to single-channel ad execution.",
+        "Operating scope limited strictly to single-channel execution.",
         "Work model or location requirements conflict with executive preferences.",
       ],
     };
@@ -240,9 +305,9 @@ export class BriefCompositionEngine {
       .filter((q: string) => q && q.length > 15 && q.length < 120);
 
     const deliverablesWork = [
-      explicitQuotes[0] || `Establish functional operating model for ${opportunity.role} at ${opportunity.company}.`,
-      explicitQuotes[1] || `Execute strategic growth and operational priorities in ${opportunity.location || "primary markets"}.`,
-      explicitQuotes[2] || `Build and mentor execution teams across core functions.`,
+      explicitQuotes[0] || `Drive ${opportunity.role} strategy and execution roadmap at ${opportunity.company}.`,
+      explicitQuotes[1] || `Accelerate growth and operational priorities in ${opportunity.location || "core markets"}.`,
+      explicitQuotes[2] || `Scale operating model and cross-functional execution teams.`,
     ].slice(0, policy.maxEvidence);
 
     const deliverablesValue = [
@@ -260,20 +325,20 @@ export class BriefCompositionEngine {
     const proofPoints: ProofPointItem[] = [
       {
         category: "Direct Evidence",
-        headline: `Proven Authority in ${resolvedCapText}`,
-        detail: `Verified against historical candidate experience at VP level.`,
+        headline: `Proven Authority in ${primaryCap}`,
+        detail: `Verified against historical candidate experience for ${opportunity.company}.`,
       },
       {
         category: "Transferable Experience",
-        headline: `Graph Transferability: Performance Marketing → GTM Strategy`,
+        headline: `Graph Transferability: ${primaryCap} → ${opportunity.role}`,
         detail: `100% functional transferability mapped along ESG relationship path.`,
       },
     ];
 
     const fitProofs = [
-      `Proven track record in ${resolvedCapText}.`,
-      `Demonstrated capability managing multi-disciplinary teams and budgets.`,
-      `Prior experience scaling enterprise operations across regional hubs.`,
+      `Proven track record in ${primaryCap}.`,
+      `Demonstrated capability leading ${opportunity.role} operations.`,
+      `Prior experience scaling enterprise execution in ${opportunity.location || "primary markets"}.`,
     ].slice(0, policy.maxEvidence);
 
     let certaintyLevel: BriefModel["certaintyLevel"] = "HIGH";
@@ -286,7 +351,6 @@ export class BriefCompositionEngine {
       certaintyGuidance = "Solid functional alignment. Verify reporting line and requirements during screening.";
     }
 
-    // Dynamic 9 Page Hierarchy Sections Meta with Consecutive Roman Numerals I through IX
     const sections: BriefSectionMeta[] = [
       {
         id: "STRATEGIC_CAREER_VALUE",
@@ -302,92 +366,122 @@ export class BriefCompositionEngine {
         eyebrow: "EXPLAINABLE REASONING",
         numeral: "II",
         title: "Why this recommendation?",
-        expression: "Multi-layer reasoning chain backed by evidence precedent.",
+        expression: "Structured breakdown of identity, capability, and value.",
       },
       {
-        id: "THE_CASE",
-        name: "The Case",
-        eyebrow: "THE CASE",
+        id: "EXECUTIVE_DOSSIER",
+        name: "Executive Dossier",
+        eyebrow: "EXECUTIVE DOSSIER",
         numeral: "III",
-        title: "Yes — but for a very specific reason.",
-        expression: "Consider this recommendation against your long-term trajectory.",
+        title: `Yes — but for a very specific reason.`,
+        expression: "Synthesis of mandate, requirements, and key risks.",
       },
       {
-        id: "THE_ROLE",
-        name: "The Role",
-        eyebrow: "THE ROLE",
+        id: "MANDATE_DELIVERABLES",
+        name: "Mandate Deliverables",
+        eyebrow: "MANDATE DELIVERABLES",
         numeral: "IV",
         title: "What will you be expected to deliver?",
-        expression: "What success looks like.",
+        expression: "Operational deliverables and expected business value.",
       },
       {
-        id: "YOUR_ADVANTAGE",
-        name: "Your Advantage",
-        eyebrow: "YOUR ADVANTAGE",
+        id: "CANDIDATE_MATCH",
+        name: "Candidate Match",
+        eyebrow: "CANDIDATE MATCH",
         numeral: "V",
         title: "Why RADAR believes you're well positioned",
-        expression: "Evidence-backed alignment.",
+        expression: "Direct evidence and graph transferability proof points.",
       },
       {
-        id: "OPEN_QUESTIONS",
-        name: "Open Questions",
-        eyebrow: "OPEN QUESTIONS",
+        id: "REASONING_AND_RISKS",
+        name: "Reasoning & Risks",
+        eyebrow: "REASONING & RISKS",
         numeral: "VI",
-        title: "Recruiter Call Checklist",
-        expression: "Screening priorities & key uncertainties.",
+        title: "Clarify these before the call",
+        expression: "Key unknowns and critical screening questions.",
       },
       {
-        id: "DECISION_BOUNDARIES",
-        name: "Decision Boundaries",
-        eyebrow: "DECISION BOUNDARIES",
+        id: "DECISION_SENSITIVITY",
+        name: "Decision Sensitivity",
+        eyebrow: "DECISION SENSITIVITY",
         numeral: "VII",
         title: "What would change this decision?",
-        expression: "Actionable boundary conditions and trade-off limits.",
+        expression: "Explicit boundaries that shift Pursue to Pass.",
       },
       {
         id: "SUPPORTING_EVIDENCE",
         name: "Supporting Evidence",
         eyebrow: "SUPPORTING EVIDENCE",
         numeral: "VIII",
-        title: "Evidence Behind This Recommendation",
-        expression: "Forensic evidence signals verified across JD and candidate profile.",
+        title: "Evidence behind this recommendation",
+        expression: "Direct excerpts and extracted job dimensions.",
       },
       {
         id: "DOSSIER_LEDGER",
         name: "Dossier Ledger",
         eyebrow: "DOSSIER LEDGER",
         numeral: "IX",
-        title: "Experience & claim summary.",
-        expression: "Supporting dossier ledger & verified claims inventory.",
+        title: "Experience & claims inventory",
+        expression: "Verified candidate experience signals.",
       },
     ];
 
     return {
-      opportunityId: opportunity.jobHash,
-      score,
-      certaintyPct,
+      memory,
+      sections,
+      oneMinuteTLDR,
+      qualitativeReasoning: qualitativeReasoningChain,
+      strategicUpside,
+      decisionSensitivity,
+      rankedUnknowns,
+      deliverables: {
+        workRequired: deliverablesWork,
+        businessValue: deliverablesValue,
+        provenance: deliverablesProvenance,
+      },
+      proofPoints,
+      fitProofs,
+      certaintyLevel,
+      certaintyGuidance,
       evidenceQuality,
       qualitativeRecommendation,
       whyNotStronger,
-      sections,
-      oneMinuteTLDR,
-      qualitativeReasoningChain,
-      strategicUpside,
-      decisionSensitivity,
       strategy,
-      weights,
-      memory,
-      headline,
-      frictionPreview,
-      topUnknownPreview,
-      deliverablesWork,
-      deliverablesValue,
-      deliverablesProvenance,
-      proofPoints,
-      fitProofs,
-      rankedUnknowns,
-      certaintyLevel,
-      certaintyGuidance,
+      narrative: { intent: strategy.heroAnchor },
+      verdictGuidance: {
+        actionNotice: memory.recommendedAction,
+        tradeoffStatement: memory.tradeoff,
+        pauseTrigger: memory.primaryRisk,
+      },
+    };
+  }
+
+  private static calculateWeights(opportunity: Opportunity) {
+    const score = opportunity.recommendationResult?.score ?? 50;
+    const base = score / 100;
+    return {
+      fit: Math.min(0.95, base + 0.1),
+      upside: Math.min(0.9, base * 0.8 + 0.15),
+      risk: Math.max(0.1, 1 - base),
+    };
+  }
+
+  private static deriveStrategy(weights: { fit: number; upside: number; risk: number }, opportunity: Opportunity) {
+    if (weights.fit > 0.75) {
+      return {
+        focusTitle: "Direct Functional Ownership",
+        heroAnchor: `Accelerate top-line commercial growth as ${opportunity.role} at ${opportunity.company}`,
+      };
+    }
+    if (weights.upside > 0.6) {
+      return {
+        focusTitle: "Strategic Platform Expansion",
+        heroAnchor: `Expand multi-market leadership and executive reach at ${opportunity.company}`,
+      };
+    }
+    return {
+      focusTitle: "Scope Verification Required",
+      heroAnchor: `Validate functional reporting line and budget authority at ${opportunity.company}`,
     };
   }
 }
