@@ -1,94 +1,126 @@
 import { Link } from "@tanstack/react-router";
-import type { Opportunity } from "../../data/opportunity-fixtures";
+import type { Opportunity, DecisionVerb } from "../../data/opportunity-fixtures";
 import { applyUrlFor } from "../../data/opportunity-fixtures";
-import { MarkdownRenderer } from "./MarkdownRenderer";
 import { PreviewCompositionEngine } from "../../lib/intelligence/editorial/PreviewCompositionEngine";
 
-/**
- * Compact brief rendered inline when a shortlist row expands.
- * Answers the executive question: "Is this worth opening right now?"
- * Avoids dashboard aesthetics in favor of authoritative editorial components.
- */
-export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
+export function InlineBrief({
+  opportunity: o,
+  onDecide,
+}: {
+  opportunity: Opportunity;
+  onDecide: (verb: DecisionVerb) => void;
+}) {
   const preview = PreviewCompositionEngine.compose(o);
 
   return (
-    <div className="animate-fade-in border-t border-border/60 px-4 sm:px-10 pb-8 sm:pb-10 pt-6 sm:pt-8 mt-4 sm:mt-6 mb-2 bg-card/60 rounded-b-sm">
-      <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border/40 pb-4 mb-8">
-        <div className="mono text-[11px] tracking-[0.22em] font-bold text-foreground uppercase">
-          ◆ EXECUTIVE BRIEF
+    <div className="grid gap-8 border-t border-dashed border-border bg-surface-raised px-4 py-7 sm:px-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      {/* Left Column: Executive Narrative & Drivers */}
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="label-mono font-bold text-foreground">◆ Executive brief</span>
+          <span className="font-display text-lg text-primary font-medium">Worth pursuing.</span>
         </div>
-        <div className="font-serif text-[1.25rem] font-medium text-emerald-800">
-          Worth pursuing.
+
+        <p className="mt-4 max-w-xl font-display text-[1.6rem] leading-[1.25] sm:text-3xl text-foreground">
+          {preview.headline || "Closest match to your operating mandate."}
+        </p>
+
+        <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          <div className="border-l-2 border-signal pl-4">
+            <p className="label-mono text-signal font-bold">Proceed if</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-foreground">
+              {preview.whyItWorks || o.primaryDriver || "Direct P&L ownership aligned to your marketing strategy precedents."}
+            </p>
+          </div>
+
+          <div className="border-l-2 border-caution pl-4">
+            <p className="label-mono text-caution font-bold">Pause if</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-foreground">
+              {preview.watchFor || "Standard organizational alignment review."}
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr] items-stretch">
-        <div className="flex flex-col justify-between space-y-6">
-          <div>
-            <h3 className="font-serif text-[22px] sm:text-[26px] leading-snug font-light text-foreground mb-3">
-              {preview.headline || "Closest match to your operating mandate."}
-            </h3>
-            <p className="text-[14.5px] leading-relaxed text-muted-foreground font-normal">
-              {preview.narrative}
-            </p>
+      {/* Right Column: Metadata & Actions */}
+      <div className="min-w-0 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+        <p className="label-mono font-bold text-foreground">Watch for</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          {preview.watchFor || "Compensation target or reporting hierarchy requires verification."}
+        </p>
+
+        <dl className="mt-5 space-y-2 border-t border-border pt-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="label-mono font-bold">Target</dt>
+            <dd className="truncate font-mono text-xs text-foreground font-medium">
+              {(o as any).compensation || (o as any).targetRemuneration || "Confidential Executive Compensation"}
+            </dd>
           </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 pt-2">
-            <div className="bg-card border border-border/80 border-l-4 border-l-emerald-700 p-4.5 sm:p-5 rounded-sm shadow-2xs flex flex-col justify-between">
-              <div className="mono text-[10px] tracking-[0.2em] text-emerald-800 font-bold uppercase mb-2">
-                PROCEED IF
-              </div>
-              <p className="text-[13.5px] leading-relaxed text-foreground font-serif">
-                {preview.whyItWorks || o.primaryDriver || "Scope and strategic fit align with your target mandate."}
-              </p>
-            </div>
-
-            <div className="bg-card border border-border/80 border-l-4 border-l-amber-700 p-4.5 sm:p-5 rounded-sm shadow-2xs flex flex-col justify-between">
-              <div className="mono text-[10px] tracking-[0.2em] text-amber-800 font-bold uppercase mb-2">
-                PAUSE IF
-              </div>
-              <p className="text-[13.5px] leading-relaxed text-foreground font-serif">
-                {preview.watchFor}
-              </p>
-            </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="label-mono font-bold">Track</dt>
+            <dd className="truncate font-mono text-xs text-foreground font-medium">
+              {o.mandateArchetype || "Growth Marketing"}
+            </dd>
           </div>
-        </div>
-
-        <div className="bg-card border border-border/80 p-6 rounded-sm shadow-2xs flex flex-col justify-between space-y-6">
-          <div>
-            <div className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold border-b border-border/40 pb-2 mb-3">
-              WATCH FOR
-            </div>
-            <p className="text-[13.5px] leading-relaxed text-foreground font-normal">
-              {preview.watchFor}
-            </p>
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="label-mono font-bold">Source</dt>
+            <dd className="truncate font-mono text-xs text-foreground font-medium">
+              {o.scrapedFrom || "LinkedIn"}
+            </dd>
           </div>
+        </dl>
 
-          <div className="pt-4 border-t border-border/60 space-y-2.5">
-            <div className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold mb-2">
-              NEXT STEP
-            </div>
-            <Link
-              to="/opportunity/$jobHash"
-              params={{ jobHash: o.jobHash }}
-              className="mono inline-flex items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-2.5 text-[11px] font-bold text-background transition-opacity hover:opacity-85 uppercase tracking-wider rounded-sm w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <span>OPEN FULL DOSSIER</span>
-              <span className="font-sans text-[14px]">↗</span>
-            </Link>
+        <p className="label-mono mt-6 font-bold text-foreground">Next step</p>
+        <Link
+          to="/opportunity/$jobHash"
+          params={{ jobHash: o.jobHash }}
+          className="mt-2 flex items-center justify-center rounded-[4px] bg-foreground px-4 py-3 font-mono text-[0.68rem] tracking-[0.18em] uppercase text-background font-bold transition-opacity hover:opacity-90 w-full"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Open full dossier ↗
+        </Link>
 
-            <a
-              href={applyUrlFor(o)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mono block text-center text-[10.5px] text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground font-medium pt-1"
-              onClick={(e) => e.stopPropagation()}
-            >
-              Apply directly on {o.scrapedFrom}
-            </a>
-          </div>
+        <a
+          href={applyUrlFor(o)}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 block text-center font-mono text-[0.68rem] text-muted-foreground underline underline-offset-4 hover:text-foreground font-medium"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Apply directly on {o.scrapedFrom || "LinkedIn"}
+        </a>
+
+        <div className="mt-5 grid grid-cols-3 gap-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDecide("PURSUE");
+            }}
+            className="rounded-[4px] border border-signal/40 px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase text-signal font-bold transition-colors hover:bg-signal/10 cursor-pointer"
+          >
+            Pursue
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDecide("CONSIDER");
+            }}
+            className="rounded-[4px] border border-caution/40 px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase text-caution font-bold transition-colors hover:bg-caution/10 cursor-pointer"
+          >
+            Consider
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDecide("PASS");
+            }}
+            className="rounded-[4px] border border-border px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase text-muted-foreground font-bold transition-colors hover:bg-muted cursor-pointer"
+          >
+            Pass
+          </button>
         </div>
       </div>
     </div>
