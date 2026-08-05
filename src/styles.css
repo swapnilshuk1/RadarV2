@@ -82,9 +82,9 @@
 
   /* Decision & Signal Colors */
   --signal: oklch(0.42 0.12 155);            /* Deep Emerald */
-  --signal-foreground: oklch(0.985 0.005 85);
+  --signal-foreground: #ffffff;
   --caution: oklch(0.55 0.12 65);            /* Warm Amber */
-  --caution-foreground: oklch(0.22 0.01 85);
+  --caution-foreground: #ffffff;
   
   --pursue: oklch(0.42 0.12 155);
   --pursue-soft: oklch(0.96 0.03 155);
@@ -94,11 +94,11 @@
   --accent-ink: oklch(0.42 0.12 250);
 
   --decision-pursue: oklch(0.42 0.12 155);
-  --decision-pursue-fg: oklch(0.985 0.005 85);
+  --decision-pursue-fg: #ffffff;
   --decision-consider: oklch(0.55 0.12 65);
-  --decision-consider-fg: oklch(0.22 0.01 85);
+  --decision-consider-fg: #ffffff;
   --decision-pass: oklch(0.62 0.008 85);
-  --decision-pass-fg: oklch(0.985 0.005 85);
+  --decision-pass-fg: #ffffff;
 
   /* Evidence chips */
   --evidence-matched: oklch(0.42 0.12 155);

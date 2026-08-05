@@ -125,10 +125,10 @@ function DesignSystemPage() {
             <div>
               <span className="label-mono block text-muted-foreground mb-3">Status Badges</span>
               <div className="flex flex-wrap gap-3 items-center">
-                <span className="label-mono rounded-[3px] bg-signal px-2 py-1 text-signal-foreground font-normal uppercase">
+                <span className="label-mono rounded-[3px] bg-signal px-2 py-1 text-white font-normal uppercase">
                   Pursue
                 </span>
-                <span className="label-mono rounded-[3px] bg-caution px-2 py-1 text-caution-foreground font-normal uppercase">
+                <span className="label-mono rounded-[3px] bg-caution px-2 py-1 text-white font-normal uppercase">
                   Consider
                 </span>
                 <span className="label-mono rounded-[3px] bg-muted px-2 py-1 text-muted-foreground font-normal uppercase">
@@ -140,7 +140,7 @@ function DesignSystemPage() {
             <div>
               <span className="label-mono block text-muted-foreground mb-3">Executive Action Buttons</span>
               <div className="flex flex-wrap gap-3 items-center">
-                <button className="rounded-[4px] bg-signal px-5 py-2.5 label-mono text-signal-foreground font-normal uppercase">
+                <button className="rounded-[4px] bg-signal px-5 py-2.5 label-mono text-white font-normal uppercase">
                   Pursue
                 </button>
                 <button className="rounded-[4px] border border-caution/50 px-5 py-2.5 label-mono text-caution font-normal uppercase">
@@ -149,7 +149,7 @@ function DesignSystemPage() {
                 <button className="rounded-[4px] border border-border px-5 py-2.5 label-mono text-muted-foreground font-normal uppercase">
                   Pass
                 </button>
-                <button className="rounded-[4px] bg-foreground px-5 py-2.5 label-mono text-background font-normal uppercase">
+                <button className="rounded-[4px] bg-foreground px-5 py-2.5 label-mono text-white font-normal uppercase">
                   Apply ↗
                 </button>
               </div>

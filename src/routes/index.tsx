@@ -166,7 +166,9 @@ function Shortlist() {
                         <span className="font-display text-2xl leading-tight sm:text-[1.7rem] text-foreground font-normal">
                           {o.role}
                         </span>
-                        <span className="label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none bg-signal text-signal-foreground font-normal uppercase">
+                        <span className={`label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none font-normal uppercase ${
+                          o.decision === "CONSIDER" ? "bg-caution text-white" : o.decision === "PASS" ? "bg-muted text-muted-foreground" : "bg-signal text-white"
+                        }`}>
                           {o.decision?.toLowerCase() || "pursue"}
                         </span>
                         <span className="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline font-normal">

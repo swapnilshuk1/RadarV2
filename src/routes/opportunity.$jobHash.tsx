@@ -106,7 +106,13 @@ function OpportunityDossier() {
 
           {/* Badges & Verbs */}
           <div className="mt-7 flex flex-wrap items-center gap-2">
-            <span className="label-mono rounded-[3px] bg-signal px-1.5 py-[3px] leading-none text-signal-foreground font-normal">
+            <span className={`label-mono rounded-[3px] px-1.5 py-[3px] leading-none uppercase font-normal ${
+              currentVerdict === "PURSUE"
+                ? "bg-signal text-white"
+                : currentVerdict === "CONSIDER"
+                ? "bg-caution text-white"
+                : "bg-muted text-muted-foreground"
+            }`}>
               {currentVerdict === "PURSUE" ? "Pursue" : currentVerdict === "CONSIDER" ? "Consider" : "Pass"}
             </span>
             <span className="label-mono font-normal">Strong strategic fit</span>
@@ -589,7 +595,7 @@ function OpportunityDossier() {
             onClick={() => decide("PURSUE")}
             className={`flex-1 rounded-[4px] px-3 py-2.5 label-mono uppercase font-normal sm:flex-none sm:px-5 transition-colors cursor-pointer ${
               currentVerdict === "PURSUE"
-                ? "bg-signal text-signal-foreground"
+                ? "bg-signal text-white"
                 : "border border-border text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -601,7 +607,7 @@ function OpportunityDossier() {
             onClick={() => decide("CONSIDER")}
             className={`flex-1 rounded-[4px] px-3 py-2.5 label-mono uppercase font-normal sm:flex-none sm:px-5 transition-colors cursor-pointer ${
               currentVerdict === "CONSIDER"
-                ? "bg-caution text-caution-foreground"
+                ? "bg-caution text-white"
                 : "border border-caution/50 text-caution"
             }`}
           >
@@ -613,7 +619,7 @@ function OpportunityDossier() {
             onClick={() => decide("PASS")}
             className={`flex-1 rounded-[4px] px-3 py-2.5 label-mono uppercase font-normal sm:flex-none sm:px-5 transition-colors cursor-pointer ${
               currentVerdict === "PASS"
-                ? "bg-muted-foreground text-background"
+                ? "bg-muted-foreground text-white"
                 : "border border-border text-muted-foreground"
             }`}
           >
@@ -624,7 +630,7 @@ function OpportunityDossier() {
             href={applyUrlFor(o)}
             target="_blank"
             rel="noreferrer"
-            className="hidden rounded-[4px] bg-foreground px-5 py-2.5 label-mono text-background font-normal uppercase sm:block hover:opacity-90 transition-opacity"
+            className="hidden rounded-[4px] bg-foreground px-5 py-2.5 label-mono text-white font-normal uppercase sm:block hover:opacity-90 transition-opacity"
           >
             Apply ↗
           </a>
