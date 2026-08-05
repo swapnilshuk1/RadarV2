@@ -1,4 +1,4 @@
-import type { Opportunity } from "../../data/opportunity-fixtures";
+import type { Opportunity } from "../../../data/opportunity-fixtures";
 import { EditorialContextBuilder } from "./EditorialContext";
 import { EditorialPatternSelector } from "./EditorialPatternSelector";
 import { NarrativeComposer } from "./NarrativeComposer";
@@ -60,12 +60,16 @@ export interface BriefModel {
   sections: BriefSectionMeta[];
   oneMinuteTLDR: OpportunityInOneMinute;
   qualitativeReasoning: QualitativeReasoningRow[];
+  qualitativeReasoningChain: QualitativeReasoningRow[];
   strategicUpside: StrategicUpside;
   decisionSensitivity: {
     becomesPursueIf: string[];
     becomesPassIf: string[];
   };
   rankedUnknowns: RankedUnknown[];
+  deliverablesWork: string[];
+  deliverablesValue: string[];
+  deliverablesProvenance: Array<"Observed in JD" | "Inferred from Role Pattern">;
   deliverables: {
     workRequired: string[];
     businessValue: string[];
@@ -78,6 +82,8 @@ export interface BriefModel {
   evidenceQuality: "High Evidence Quality" | "Medium Evidence Quality" | "Inferred Evidence";
   qualitativeRecommendation: "Strong Pursue Recommendation" | "Conditional Consideration" | "Strategic Pass";
   whyNotStronger?: string;
+  frictionPreview?: string;
+  topUnknownPreview?: string;
 
   strategy: {
     focusTitle: string;
@@ -431,9 +437,13 @@ export class BriefCompositionEngine {
       sections,
       oneMinuteTLDR,
       qualitativeReasoning: qualitativeReasoningChain,
+      qualitativeReasoningChain,
       strategicUpside,
       decisionSensitivity,
       rankedUnknowns,
+      deliverablesWork,
+      deliverablesValue,
+      deliverablesProvenance,
       deliverables: {
         workRequired: deliverablesWork,
         businessValue: deliverablesValue,
@@ -446,6 +456,8 @@ export class BriefCompositionEngine {
       evidenceQuality,
       qualitativeRecommendation,
       whyNotStronger,
+      frictionPreview,
+      topUnknownPreview,
       strategy,
       narrative: { intent: strategy.heroAnchor },
       verdictGuidance: {
