@@ -304,12 +304,20 @@ function cleanOntologyConstants(val: string): string {
     .replace(/HYBRID/gi, "Hybrid")
     .replace(/REMOTE/gi, "Remote")
     .replace(/_/g, " ")
-    .replace(/&/g, "and")
+    .replace(/\s+&\s+/g, " and ")
     .trim();
 
   if (/^[A-Z\s]+$/.test(s) && s.length > 3) {
     s = s.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
   }
+
+  s = s
+    .replace(/\bPandl\b/gi, "P&L")
+    .replace(/\bPandL\b/gi, "P&L")
+    .replace(/\bP and L\b/gi, "P&L")
+    .replace(/\bRandd\b/gi, "R&D")
+    .replace(/\bMandA\b/gi, "M&A")
+    .replace(/\bDando\b/gi, "D&O");
 
   return s;
 }

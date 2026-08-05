@@ -13,13 +13,22 @@ export function cleanOntologyConstants(val: string): string {
     .replace(/HYBRID/gi, "Hybrid")
     .replace(/REMOTE/gi, "Remote")
     .replace(/_/g, " ")
-    .replace(/&/g, "and")
+    .replace(/\s+&\s+/g, " and ")
     .trim();
 
   // Convert ALL-CAPS constant strings (e.g. "MARKETING STRATEGY") to Title Case
   if (/^[A-Z\s]+$/.test(s) && s.length > 3) {
     s = s.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
   }
+
+  // Preserve standard executive acronyms
+  s = s
+    .replace(/\bPandl\b/gi, "P&L")
+    .replace(/\bPandL\b/gi, "P&L")
+    .replace(/\bP and L\b/gi, "P&L")
+    .replace(/\bRandd\b/gi, "R&D")
+    .replace(/\bMandA\b/gi, "M&A")
+    .replace(/\bDando\b/gi, "D&O");
 
   return s;
 }
@@ -90,7 +99,6 @@ export class SemanticNaturalLanguageResolver {
           .replace(/fit\)/g, "")
           .replace(/\([0-9]+%/g, "")
           .replace(/_/g, " ")
-          .replace(/&/g, "and")
           .trim();
         if (clean.length === 0 || clean.length > 80) return "";
         return clean.charAt(0).toUpperCase() + clean.slice(1);
@@ -112,7 +120,6 @@ export class SemanticNaturalLanguageResolver {
     const unwrapped = unwrapEvidenceValue(identityValue);
     return unwrapped
       .replace(/_/g, " ")
-      .replace(/&/g, "and")
       .replace(/\b\w/g, (l) => l.toUpperCase());
   }
 
