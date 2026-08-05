@@ -5,6 +5,9 @@ import { getOpportunityFn, getNeighboursFn, getQueueMetricsFn } from "../lib/int
 import { candidateProfile } from "../data/candidate-profile";
 import { useDecisions } from "../lib/decisions-store";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
+import { EditorialContextBuilder } from "../lib/intelligence/editorial/EditorialContext";
+import { EditorialPatternSelector } from "../lib/intelligence/editorial/EditorialPatternSelector";
+import { NarrativeComposer } from "../lib/intelligence/editorial/NarrativeComposer";
 import { unwrapEvidenceValue } from "../lib/intelligence/editorial/SemanticNaturalLanguageResolver";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
@@ -29,24 +32,15 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
       meta: [
         { title: `${o.decision} · ${o.role} — RADAR Executive Dossier` },
         { name: "description", content: o.recommendation || "Executive advisory dossier" },
-        { property: "og:title", content: `${o.decision} · ${o.role} at ${o.company}` },
-        { property: "og:description", content: o.recommendation || "Executive advisory dossier" },
       ],
     };
   },
-  component: OpportunityDossier,
+  component: OpportunityBriefView,
 });
 
-function OpportunityDossier() {
-  const loaderData = Route.useLoaderData() as {
-    opportunity: any;
-    neighbors: { prev: any | null; next: any | null };
-    currentIndex: number;
-    totalCount: number;
-  };
-
-  const { opportunity: o, neighbors, currentIndex, totalCount } = loaderData;
-  const { decisions, decide: recordDecision } = useDecisions();
+function OpportunityBriefView() {
+  const { opportunity: o, neighbors, currentIndex, totalCount } = Route.useLoaderData();
+  const { decisions, recordDecision } = useDecisions();
   const router = useRouter();
 
   const currentVerdict: DecisionVerb = (decisions[o.jobHash]?.verb as DecisionVerb) || o.decision;
@@ -57,6 +51,9 @@ function OpportunityDossier() {
   };
 
   const brief = BriefCompositionEngine.compose(o);
+  const ctx = EditorialContextBuilder.build(o);
+  const pattern = EditorialPatternSelector.select(ctx, o.jobHash);
+  const composed = NarrativeComposer.compose(pattern, o);
 
   const [expandedReasoningRow, setExpandedReasoningRow] = useState<number | null>(0);
   const [checkedUnknowns, setCheckedUnknowns] = useState<Record<number, boolean>>({});
@@ -116,14 +113,14 @@ function OpportunityDossier() {
             <span className="label-mono hidden sm:inline font-normal">· 20 minute application</span>
           </div>
 
-          {/* Headline Title */}
+          {/* Main Title */}
           <h1 className="mt-4 max-w-4xl font-display text-[2.6rem] leading-[1.02] tracking-tight sm:text-6xl text-foreground font-normal">
-            {o.role} mandate at {o.company} focused on {o.primaryDriver || "growth strategy and commercial performance."}
+            {o.role} mandate at {o.company} focused on {formatValue(rawDimensions[0]?.jdEvidence?.value) || o.primaryDriver || "commercial growth"}
           </h1>
 
           {/* Subtitle Company Line */}
           <p className="mt-4 border-t border-border pt-4 font-mono text-xs tracking-[0.12em] uppercase text-muted-foreground font-normal">
-            <span className="text-foreground font-medium">{o.company}</span> · {o.location} (On-site)
+            <span className="text-foreground font-medium">{o.company}</span> · {o.location} ({o.workModel || "Hybrid"})
           </p>
         </div>
       </header>
@@ -261,7 +258,7 @@ function OpportunityDossier() {
         </section>
 
         {/* ────────────────────────────────────────────────────────────────────────
-            SECTION 3: THE CASE (CHAPTER III)
+            SECTION 3: THE CASE (CHAPTER III) — FULL EDITORIAL REPOSITORY BINDING
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="grid gap-5 border-t border-border pt-8 sm:gap-8 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-12 w-full items-start">
           <div className="lg:sticky lg:top-24 lg:self-start">
@@ -273,13 +270,19 @@ function OpportunityDossier() {
           </div>
           <div className="min-w-0">
             <h2 className="font-display text-[1.9rem] leading-tight sm:text-4xl text-foreground font-normal">
-              Yes — but for a very specific reason.
+              {composed.headline}
             </h2>
 
             <div className="mt-5">
-              <p className="max-w-2xl font-display text-xl leading-relaxed sm:text-2xl text-foreground font-normal">
-                A solid tactical fit. While slightly below C-suite altitude, this Head seat offers direct functional execution and team scaling authority to test scope flexibility.
+              <p className="max-w-3xl font-display text-xl leading-relaxed sm:text-2xl text-foreground font-normal">
+                {composed.opening}
               </p>
+
+              {composed.editorialBridge && (
+                <p className="mt-4 border-l-2 border-border-strong pl-4 text-sm leading-relaxed text-muted-foreground font-normal italic">
+                  {composed.editorialBridge}
+                </p>
+              )}
 
               <p className="mt-5 border-l-2 border-caution pl-4 text-sm leading-relaxed text-muted-foreground font-normal">
                 <span className="label-mono block text-caution font-normal mb-1">Why it is not a stronger call</span>
@@ -287,27 +290,19 @@ function OpportunityDossier() {
               </p>
 
               <dl className="mt-7 divide-y divide-border border-y border-border">
-                <div className="grid gap-1 py-4 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-6">
-                  <dt className="label-mono text-muted-foreground font-normal">Core strength</dt>
-                  <dd className="min-w-0">
-                    <p className="font-display text-lg leading-snug text-foreground font-normal">Growth &amp; acquisition strategy</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground font-normal">Direct alignment with historical P&amp;L precedents.</p>
-                  </dd>
-                </div>
-                <div className="grid gap-1 py-4 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-6">
-                  <dt className="label-mono text-muted-foreground font-normal">Adjacent strength</dt>
-                  <dd className="min-w-0">
-                    <p className="font-display text-lg leading-snug text-foreground font-normal">Commercial revenue models</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground font-normal">Core acquisition principles apply to new channels.</p>
-                  </dd>
-                </div>
-                <div className="grid gap-1 py-4 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-6">
-                  <dt className="label-mono text-muted-foreground font-normal">Transferable</dt>
-                  <dd className="min-w-0">
-                    <p className="font-display text-lg leading-snug text-foreground font-normal">Digital transformation</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground font-normal">Rooted in the same team's deep D2C relationship gains.</p>
-                  </dd>
-                </div>
+                {rawDimensions.slice(0, 3).map((dim: any, idx: number) => (
+                  <div key={idx} className="grid gap-1 py-4 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-6">
+                    <dt className="label-mono text-muted-foreground font-normal">
+                      {idx === 0 ? "Core strength" : idx === 1 ? "Adjacent strength" : "Transferable"}
+                    </dt>
+                    <dd className="min-w-0">
+                      <p className="font-display text-lg leading-snug text-foreground font-normal">{dim.label}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground font-normal">
+                        {formatValue(dim.jdEvidence?.value)}
+                      </p>
+                    </dd>
+                  </div>
+                ))}
               </dl>
             </div>
           </div>
@@ -550,7 +545,7 @@ function OpportunityDossier() {
                     <div className="min-w-0">
                       <p className="text-sm leading-relaxed text-foreground font-normal">{achievement}</p>
                       <p className="label-mono mt-1.5 truncate font-normal text-muted-foreground">
-                        Transferability · Performance Marketing → GTM Strategy
+                        Transferability · {formatValue(rawDimensions[idx % (rawDimensions.length || 1)]?.jdEvidence?.value) || "Executive Leadership"} → {o.role}
                       </p>
                     </div>
                     <span className="label-mono self-start text-signal font-normal">✓ Verified</span>
@@ -582,17 +577,14 @@ function OpportunityDossier() {
           ──────────────────────────────────────────────────────────────────────── */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1180px] items-center gap-2 px-5 py-2.5 sm:px-8">
-          <span className="label-mono mr-auto hidden sm:block font-normal text-muted-foreground">
-            Decide · brief {o.jobHash}
-          </span>
-
+          <span className="label-mono text-muted-foreground font-normal mr-2 hidden sm:inline">Verdict</span>
           <button
             type="button"
             onClick={() => decide("PURSUE")}
-            className={`flex-1 rounded-[4px] px-3 py-2.5 label-mono uppercase font-normal sm:flex-none sm:px-5 transition-colors cursor-pointer ${
+            className={`btn flex-1 sm:flex-initial py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
               currentVerdict === "PURSUE"
-                ? "bg-signal text-white"
-                : "border border-border text-muted-foreground hover:text-foreground"
+                ? "bg-signal text-white font-medium shadow-xs"
+                : "bg-surface-raised text-foreground border border-border hover:border-signal"
             }`}
           >
             Pursue
@@ -601,10 +593,10 @@ function OpportunityDossier() {
           <button
             type="button"
             onClick={() => decide("CONSIDER")}
-            className={`flex-1 rounded-[4px] px-3 py-2.5 label-mono uppercase font-normal sm:flex-none sm:px-5 transition-colors cursor-pointer ${
+            className={`btn flex-1 sm:flex-initial py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
               currentVerdict === "CONSIDER"
-                ? "bg-caution text-white"
-                : "border border-caution/50 text-caution"
+                ? "bg-caution text-white font-medium shadow-xs"
+                : "bg-surface-raised text-foreground border border-border hover:border-caution"
             }`}
           >
             Consider
@@ -613,23 +605,25 @@ function OpportunityDossier() {
           <button
             type="button"
             onClick={() => decide("PASS")}
-            className={`flex-1 rounded-[4px] px-3 py-2.5 label-mono uppercase font-normal sm:flex-none sm:px-5 transition-colors cursor-pointer ${
+            className={`btn flex-1 sm:flex-initial py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
               currentVerdict === "PASS"
-                ? "bg-muted-foreground text-white"
-                : "border border-border text-muted-foreground"
+                ? "bg-foreground text-background font-medium shadow-xs"
+                : "bg-surface-raised text-foreground border border-border hover:border-foreground"
             }`}
           >
             Pass
           </button>
 
-          <a
-            href={applyUrlFor(o)}
-            target="_blank"
-            rel="noreferrer"
-            className="hidden rounded-[4px] bg-foreground px-5 py-2.5 label-mono text-white font-normal uppercase sm:block hover:opacity-90 transition-opacity"
-          >
-            Apply ↗
-          </a>
+          {o.applyUrl ? (
+            <a
+              href={applyUrlFor(o.applyUrl, o.scrapedFrom)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn ml-auto hidden sm:inline-flex items-center gap-2 bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal"
+            >
+              Apply direct →
+            </a>
+          ) : null}
         </div>
       </div>
     </div>
