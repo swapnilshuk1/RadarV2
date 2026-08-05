@@ -156,7 +156,7 @@ function Shortlist() {
                     type="button"
                     aria-expanded={isOpen}
                     onClick={() => setOpen(isOpen ? null : o.jobHash)}
-                    className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-5 text-left transition-colors sm:gap-8 cursor-pointer hover:bg-muted/10"
+                    className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-3.5 text-left transition-colors sm:gap-8 cursor-pointer hover:bg-muted/10"
                   >
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">

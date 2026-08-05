@@ -207,3 +207,50 @@ npx tsx scripts/scrape.ts
 # Audit Database Lineage & Health
 npx tsx scripts/audit-lineage.ts
 ```
+
+---
+
+## 13. Executive Advisory Design Constitution & Component Invariants
+
+All AI coding agents MUST strictly follow these UI & component architectural invariants:
+
+### A. Golden Rule of Component Restraint
+> **NEVER invent a new UI component if an existing editorial component can express the information.**
+
+### B. Component Hierarchy Architecture
+Every view in RADAR v2 MUST adhere to the 5-tier structural hierarchy:
+```
+Page (e.g. Executive Dossier, Shortlist Queue)
+  └── Chapter (e.g. Executive Brief, Proof Chain)
+        └── Section (e.g. Mandate Overlap, Watch For)
+              └── Component (e.g. Recommendation Panel, Proceed Block)
+                    └── Primitive (e.g. Label, Badge, Divider)
+```
+
+### C. Editorial Principles
+1. **One Idea Per Screen**: Each viewport section conveys a single advisory statement or proof point.
+2. **Evidence Before Recommendation**: Claims and score cards must precede executive verdict controls.
+3. **Whitespace Communicates Confidence**: Spacing is calibrated using semantic tokens (`space-1` to `space-7`).
+4. **Typography Carries Hierarchy, Not Decoration**: `font-serif` (Instrument Serif) is used for editorial headlines, `font-sans` (Manrope) for body copy, and `font-mono` (JetBrains Mono) for quantitative metadata.
+5. **Every Component Answers an Executive Question**: Components must state purpose (e.g., *Proceed If*, *Pause If*, *Watch For*).
+6. **Color Indicates Judgement—Not Branding**:
+   - 🟢 **Green (`--signal`)**: *Confidence* (High match alignment)
+   - 🟡 **Amber (`--caution`)**: *Unknown* (Friction / Verification required)
+   - 🔴 **Red / Neutral (`--pass`)**: *Contradiction* (Strategic divergence)
+   - ⚪ **Grey (`--muted`)**: *Evidence* (Fact provenance & metadata)
+   - ⚫ **Black (`--foreground`)**: *Action* (Primary user decision triggers)
+
+### D. Paper Surface & Elevation Philosophy
+- Components exist as sheets of paper. Separation is achieved strictly through rhythm, spacing (`space-1` to `space-7`), typography hierarchy, and subtle ruled hairlines—NEVER heavy drop shadows or floating SaaS cards.
+
+### E. Motion Restraint Protocol
+- *Motion never entertains. Motion only explains. Motion is always interruptible. Motion never blocks reading.*
+- Standard transitions: `fade-in` (150ms), `expand-drawer` (200ms ease-out). No spring bounces, flips, or sliding animations.
+
+### F. Data Formatting Standards
+- **Currency**: `₹2.4 Cr` or `$250K` (Never raw unformatted integers like `24000000`).
+- **Dates**: `06 Aug 2026` (DD MMM YYYY).
+- **Percentages**: `94% fit overlap`.
+- **Confidence**: `High (Verified provenance)`.
+- **Locations**: `Bengaluru (Hybrid)` or `San Francisco, CA`.
+

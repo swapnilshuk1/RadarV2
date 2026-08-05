@@ -52,11 +52,28 @@
   --color-consider-soft: var(--consider-soft);
   --color-pass: var(--pass);
   --color-accent-ink: var(--accent-ink);
+
+  --spacing-space-1: 0.5rem;
+  --spacing-space-2: 0.75rem;
+  --spacing-space-3: 1rem;
+  --spacing-space-4: 1.5rem;
+  --spacing-space-5: 2.5rem;
+  --spacing-space-6: 4rem;
+  --spacing-space-7: 6rem;
 }
 
 /* Radar Reference Palette — Executive Advisory Register */
 :root {
   --radius: 0.375rem;
+
+  /* Semantic Spacing Scale */
+  --space-1: 0.5rem;    /* 8px - Tight micro-spacing */
+  --space-2: 0.75rem;   /* 12px - Compact inline gap */
+  --space-3: 1rem;      /* 16px - Default element spacing */
+  --space-4: 1.5rem;    /* 24px - Comfortable container padding */
+  --space-5: 2.5rem;    /* 40px - Section spacing */
+  --space-6: 4rem;      /* 64px - Chapter / mandate break */
+  --space-7: 6rem;      /* 96px - Page transition */
 
   --background: oklch(0.985 0.005 85);       /* #FAF8F5 Warm Parchment */
   --foreground: oklch(0.22 0.01 85);        /* #222222 Deep Ink */

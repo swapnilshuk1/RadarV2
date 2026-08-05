@@ -13,7 +13,7 @@ export function InlineBrief({
   const preview = PreviewCompositionEngine.compose(o);
 
   return (
-    <div className="grid gap-8 border-t border-dashed border-border bg-surface-raised px-4 py-7 sm:px-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+    <div className="grid gap-8 border border-border/80 rounded-md bg-card shadow-[0_2px_12px_rgba(0,0,0,0.03)] px-5 py-7 sm:px-8 my-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       {/* Left Column: Executive Narrative & Drivers */}
       <div className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
