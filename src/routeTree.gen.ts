@@ -13,6 +13,7 @@ import { Route as WorkbenchRouteImport } from './routes/workbench'
 import { Route as ScrapedRouteImport } from './routes/scraped'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as DecisionsRouteImport } from './routes/decisions'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
@@ -41,6 +42,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DesignSystemRoute = DesignSystemRouteImport.update({
+  id: '/design-system',
+  path: '/design-system',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DecisionsRoute = DecisionsRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
+  '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
+  '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
+  '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/'
     | '/corpus'
     | '/decisions'
+    | '/design-system'
     | '/login'
     | '/profile'
     | '/scraped'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/'
     | '/corpus'
     | '/decisions'
+    | '/design-system'
     | '/login'
     | '/profile'
     | '/scraped'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/'
     | '/corpus'
     | '/decisions'
+    | '/design-system'
     | '/login'
     | '/profile'
     | '/scraped'
@@ -187,6 +199,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CorpusRoute: typeof CorpusRoute
   DecisionsRoute: typeof DecisionsRoute
+  DesignSystemRoute: typeof DesignSystemRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   ScrapedRoute: typeof ScrapedRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/design-system': {
+      id: '/design-system'
+      path: '/design-system'
+      fullPath: '/design-system'
+      preLoaderRoute: typeof DesignSystemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/decisions': {
@@ -299,6 +319,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CorpusRoute: CorpusRoute,
   DecisionsRoute: DecisionsRoute,
+  DesignSystemRoute: DesignSystemRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   ScrapedRoute: ScrapedRoute,

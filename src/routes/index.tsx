@@ -92,13 +92,13 @@ function Shortlist() {
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="grid gap-8 border-b border-border py-9 sm:py-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
-            <p className="label-mono font-bold">
+            <p className="label-mono font-normal">
               Today's executive briefing · {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
             </p>
-            <h1 className="mt-3 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-7xl text-foreground">
+            <h1 className="mt-3 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-7xl text-foreground font-normal">
               The shortlist.
             </h1>
-            <p className="mt-4 max-w-lg text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-4 max-w-lg text-sm leading-relaxed text-muted-foreground font-normal">
               Six mandates cleared the bar out of {totalScraped} scraped this week. Decide on one and the next in line takes its slot.
             </p>
           </div>
@@ -106,30 +106,30 @@ function Shortlist() {
           <dl className="flex items-end gap-4 overflow-x-auto sm:gap-7">
             <div className="flex shrink-0 items-end gap-4 sm:gap-7">
               <div>
-                <dd className="font-display text-4xl leading-none sm:text-5xl text-foreground tabular-nums">
+                <dd className="font-display text-4xl leading-none sm:text-5xl text-foreground tabular-nums font-normal">
                   40
                 </dd>
-                <dt className="label-mono mt-2 block font-bold">Reviewed</dt>
+                <dt className="label-mono mt-2 block font-normal">Reviewed</dt>
               </div>
             </div>
 
             <div className="flex shrink-0 items-end gap-4 sm:gap-7">
               <span className="pb-3 font-mono text-xs text-border-strong">→</span>
               <div>
-                <dd className="font-display text-4xl leading-none sm:text-5xl text-primary tabular-nums font-bold">
+                <dd className="font-display text-4xl leading-none sm:text-5xl text-primary tabular-nums font-normal">
                   {remaining.filter((o) => o.decision === "PURSUE").length || 6}
                 </dd>
-                <dt className="label-mono mt-2 block font-bold text-primary">To act on</dt>
+                <dt className="label-mono mt-2 block font-normal text-primary">To act on</dt>
               </div>
             </div>
 
             <div className="flex shrink-0 items-end gap-4 sm:gap-7">
               <span className="pb-3 font-mono text-xs text-border-strong">→</span>
               <div>
-                <dd className="font-display text-4xl leading-none sm:text-5xl text-muted-foreground/70 tabular-nums">
+                <dd className="font-display text-4xl leading-none sm:text-5xl text-muted-foreground/70 tabular-nums font-normal">
                   {totalScraped}
                 </dd>
-                <dt className="label-mono mt-2 block font-bold">Read this week</dt>
+                <dt className="label-mono mt-2 block font-normal">Read this week</dt>
               </div>
             </div>
           </dl>
@@ -140,8 +140,8 @@ function Shortlist() {
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="py-6 sm:py-8">
           <div className="flex items-center justify-between gap-3 pb-3">
-            <h2 className="label-mono font-bold text-foreground">Shortlist queue · sorted by fit</h2>
-            <span className="label-mono font-bold">{remaining.length} awaiting review</span>
+            <h2 className="label-mono text-foreground font-normal">Shortlist queue · sorted by fit</h2>
+            <span className="label-mono font-normal">{remaining.length} awaiting review</span>
           </div>
 
           <ul className="border-t border-border">
@@ -160,32 +160,32 @@ function Shortlist() {
                   >
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-                        <span className="label-mono tabular-nums text-border-strong font-bold">
+                        <span className="label-mono tabular-nums text-border-strong font-normal">
                           {(idx + 1).toString().padStart(2, "0")}
                         </span>
-                        <span className="font-display text-2xl leading-tight sm:text-[1.7rem] text-foreground">
+                        <span className="font-display text-2xl leading-tight sm:text-[1.7rem] text-foreground font-normal">
                           {o.role}
                         </span>
-                        <span className="label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none bg-signal text-signal-foreground font-bold">
+                        <span className="label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none bg-signal text-signal-foreground font-normal uppercase">
                           {o.decision?.toLowerCase() || "pursue"}
                         </span>
-                        <span className="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline font-bold">
+                        <span className="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline font-normal">
                           {o.mandateArchetype || "Growth Marketing"}
                         </span>
                       </span>
 
-                      <span className="label-mono mt-2 block truncate">
+                      <span className="label-mono mt-2 block truncate font-normal">
                         {o.company} · {o.location} ({(o as any).workModel || "On-site"}) · {o.scrapedFrom}
                       </span>
 
-                      <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground">
+                      <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
                         {brief.memory.retentionSentence || o.whyNow}
                       </span>
 
                       {(brief.frictionPreview || brief.topUnknownPreview) && (
                         <span className="mt-2.5 flex items-center gap-2">
                           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
-                          <span className="label-mono truncate font-bold text-destructive">
+                          <span className="label-mono truncate text-destructive font-normal">
                             Needs verification: {brief.frictionPreview || brief.topUnknownPreview}
                           </span>
                         </span>
@@ -194,10 +194,10 @@ function Shortlist() {
 
                     <span className="flex shrink-0 flex-col items-end gap-2">
                       <span className="flex shrink-0 items-baseline gap-0.5 tabular-nums">
-                        <span className="font-display text-3xl leading-none text-foreground font-bold">{score}</span>
-                        <span className="font-mono text-[0.6rem] text-muted-foreground">/100</span>
+                        <span className="font-display text-3xl leading-none text-foreground font-normal">{score}</span>
+                        <span className="font-mono text-[0.6rem] text-muted-foreground font-normal">/100</span>
                       </span>
-                      <span className="label-mono transition-colors group-hover:text-foreground font-bold">
+                      <span className="label-mono transition-colors group-hover:text-foreground font-normal">
                         {isOpen ? "— Close" : "+ Brief"}
                       </span>
                     </span>

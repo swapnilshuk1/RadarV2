@@ -224,6 +224,16 @@ function GlobalHeader() {
                 Corpus
               </Link>
             </li>
+            <li>
+              <Link
+                to="/design-system"
+                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
+                  isSelected("/design-system") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                }`}
+              >
+                Design System
+              </Link>
+            </li>
           </ul>
 
           <span className="ml-2 hidden shrink-0 items-center gap-2 border-l border-border pl-3 sm:flex">
