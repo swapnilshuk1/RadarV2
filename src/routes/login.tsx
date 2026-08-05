@@ -11,11 +11,16 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState("swapnil");
 
+  const [showWarning, setShowWarning] = useState(false);
+
   useEffect(() => {
     // If already logged in, redirect to home
     const session = sessionStorage.getItem("radar_session");
     if (session) {
       navigate({ to: "/" });
+    }
+    if (typeof window !== "undefined" && window.location.search.includes("missing_google_credentials")) {
+      setShowWarning(true);
     }
   }, [navigate]);
 
@@ -72,7 +77,7 @@ function Login() {
           </div>
 
           {/* Error Banner */}
-          {typeof window !== "undefined" && window.location.search.includes("missing_google_credentials") && (
+          {showWarning && (
             <div className="mb-6 border border-amber-500/30 bg-amber-500/5 p-3 rounded-md text-[12px] text-amber-900 leading-relaxed font-normal">
               Google OAuth client keys are not set in your <code>.env</code> file. Use <strong>Direct Executive Access</strong> below to log in immediately.
             </div>

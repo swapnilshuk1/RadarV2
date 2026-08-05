@@ -569,7 +569,7 @@ function OpportunityDossier() {
             FOOTER SUMMARY & NEXT BRIEF NAV
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="flex flex-wrap items-end justify-between gap-4 border-t border-border pt-6">
-          <p className="label-mono font-normal text-muted-foreground">
+          <p className="label-mono font-normal text-muted-foreground" suppressHydrationWarning>
             Generated {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} · {brief.evidenceQuality} · {allVerifiedCount} verified signals
           </p>
           {neighbors.next ? (

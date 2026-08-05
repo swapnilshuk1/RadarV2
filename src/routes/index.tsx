@@ -92,7 +92,7 @@ function Shortlist() {
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="grid gap-8 border-b border-border py-9 sm:py-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
-            <p className="label-mono font-normal">
+            <p className="label-mono font-normal" suppressHydrationWarning>
               Today's executive briefing · {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
             </p>
             <h1 className="mt-3 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-7xl text-foreground font-normal">

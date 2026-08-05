@@ -154,7 +154,6 @@
   font-family: var(--font-mono);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-muted-foreground);
   font-size: 0.65rem;
 }
 
