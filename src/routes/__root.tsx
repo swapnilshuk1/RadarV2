@@ -165,81 +165,78 @@ function GlobalHeader() {
     }
   }, []);
 
-  const signature = sessionName || candidateSignature();
+  const name = sessionName || candidateProfile.identity.name;
+  const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "SS";
 
   const isSelected = (path: string) => {
-    if (path === "/") {
-      return location.pathname === "/";
-    }
+    if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
 
-  let pageName = "Advisory";
-  if (location.pathname === "/profile") pageName = "Profile";
-  else if (location.pathname === "/decisions") pageName = "Decisions";
-  else if (location.pathname === "/corpus") pageName = "Corpus";
-  else if (location.pathname.startsWith("/opportunity/")) pageName = "Brief";
-
   return (
-    <header className="border-b border-hairline bg-parchment/95 sticky top-0 z-50 backdrop-blur-md w-full">
-      <div className="mx-auto flex max-w-[1280px] items-center justify-between px-3 sm:px-6 py-2.5">
+    <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md w-full">
+      <div className="mx-auto grid max-w-[1180px] grid-cols-[auto_minmax(0,1fr)] items-center gap-4 px-5 py-3 sm:px-8">
         {/* Brand */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Link to="/" className="font-mono text-[12px] sm:text-[13px] font-bold uppercase tracking-[0.2em] text-ink hover:opacity-80 transition-opacity">
-            RADAR
-          </Link>
-          <span className="text-ink-muted text-[11px] hidden xs:inline">·</span>
-          <span className="text-[11px] uppercase tracking-[0.14em] text-ink-muted font-medium hidden xs:inline">
-            {pageName}
-          </span>
-        </div>
+        <Link to="/" className="flex shrink-0 items-center gap-2">
+          <span className="font-mono text-[0.78rem] font-medium tracking-[0.34em] text-foreground">RADAR</span>
+        </Link>
 
         {/* Navigation Bar */}
-        <nav className="flex items-center gap-2 xs:gap-3.5 sm:gap-6 text-[10px] sm:text-[11.5px] font-mono shrink-0">
-          <Link
-            to="/"
-            className={
-              isSelected("/")
-                ? "font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink border-b-2 border-ink pb-0.5"
-                : "font-medium uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
-            }
-          >
-            Shortlist
-          </Link>
-          <Link
-            to="/profile"
-            className={
-              isSelected("/profile")
-                ? "font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink border-b-2 border-ink pb-0.5"
-                : "font-medium uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
-            }
-          >
-            Profile
-          </Link>
-          <Link
-            to="/decisions"
-            className={
-              isSelected("/decisions")
-                ? "font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink border-b-2 border-ink pb-0.5"
-                : "font-medium uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors"
-            }
-          >
-            Decisions
-          </Link>
-          <Link
-            to="/corpus"
-            className={
-              isSelected("/corpus")
-                ? "font-bold uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink border-b-2 border-ink pb-0.5"
-                : "font-medium uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors hidden sm:inline"
-            }
-          >
-            Corpus
-          </Link>
+        <nav className="flex items-center justify-end gap-1 overflow-x-auto">
+          <ul className="flex items-center gap-1">
+            <li>
+              <Link
+                to="/"
+                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
+                  isSelected("/") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                }`}
+              >
+                Shortlist
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/profile"
+                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
+                  isSelected("/profile") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                }`}
+              >
+                Profile
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/decisions"
+                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
+                  isSelected("/decisions") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                }`}
+              >
+                Decisions
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/corpus"
+                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
+                  isSelected("/corpus") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                }`}
+              >
+                Corpus
+              </Link>
+            </li>
+          </ul>
+
+          <span className="ml-2 hidden shrink-0 items-center gap-2 border-l border-border pl-3 sm:flex">
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-foreground font-mono text-[0.55rem] text-background font-bold">
+              {initials}
+            </span>
+            <span className="text-xs text-muted-foreground truncate max-w-[140px]">{name}</span>
+          </span>
+
           <a
             href="/api/auth/logout"
             id="sign-out-link"
-            className="font-medium uppercase tracking-[0.08em] sm:tracking-[0.12em] text-ink-muted hover:text-ink transition-colors pl-1"
+            className="label-mono ml-2 block whitespace-nowrap px-2 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
           >
             Exit
           </a>
