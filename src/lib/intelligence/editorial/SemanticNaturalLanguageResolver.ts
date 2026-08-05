@@ -1,32 +1,73 @@
 /**
+ * Cleans up raw ontology constants (e.g. PL_OWNERSHIP -> P&L Ownership, ON_SITE -> On-site)
+ */
+export function cleanOntologyConstants(val: string): string {
+  if (!val) return "";
+  let s = val
+    .replace(/PL_OWNERSHIP/gi, "P&L Ownership")
+    .replace(/GROWTH_EXPANSION/gi, "Growth Expansion")
+    .replace(/SCALE_TRANSFORMATION/gi, "Scale Transformation")
+    .replace(/FOUNDER_EXPOSURE/gi, "Founder Exposure")
+    .replace(/CAREER_CAPITAL/gi, "Career Capital")
+    .replace(/ON_SITE/gi, "On-site")
+    .replace(/HYBRID/gi, "Hybrid")
+    .replace(/REMOTE/gi, "Remote")
+    .replace(/_/g, " ")
+    .replace(/&/g, "and")
+    .trim();
+
+  // Convert ALL-CAPS constant strings (e.g. "MARKETING STRATEGY") to Title Case
+  if (/^[A-Z\s]+$/.test(s) && s.length > 3) {
+    s = s.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+  }
+
+  return s;
+}
+
+/**
  * Unwraps raw stringified JSON extractor payloads (e.g. from technologyStack or mandate)
  * into clean, human-readable display values, stripping large snippets or metadata.
  */
 export function unwrapEvidenceValue(raw: any): string {
   if (!raw) return "";
-  if (typeof raw === "object") {
-    if (typeof raw.value === "string" && !raw.value.startsWith("{")) return raw.value;
-    if (raw.rawValue && typeof raw.rawValue === "string") return raw.rawValue;
-    if (raw.canonicalValue) {
-      if (typeof raw.canonicalValue === "string") return raw.canonicalValue;
-      if (typeof raw.canonicalValue === "object" && Array.isArray(raw.canonicalValue.products)) {
-        return raw.canonicalValue.products.join(", ");
-      }
-    }
-  }
+  if (typeof raw === "boolean") return raw ? "Required" : "Optional";
+  if (Array.isArray(raw)) return raw.map((r) => unwrapEvidenceValue(r)).join(", ");
+
+  let obj = raw;
   if (typeof raw === "string") {
     const trimmed = raw.trim();
     if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
       try {
-        const parsed = JSON.parse(trimmed);
-        return unwrapEvidenceValue(parsed);
+        obj = JSON.parse(trimmed);
       } catch {
-        return trimmed;
+        return cleanOntologyConstants(trimmed);
+      }
+    } else {
+      return cleanOntologyConstants(trimmed);
+    }
+  }
+
+  if (typeof obj === "object" && obj !== null) {
+    if (obj.rawValue && typeof obj.rawValue === "string" && !obj.rawValue.startsWith("{")) {
+      return cleanOntologyConstants(obj.rawValue);
+    }
+    if (obj.value && typeof obj.value === "string" && !obj.value.startsWith("{")) {
+      return cleanOntologyConstants(obj.value);
+    }
+    if (obj.canonicalValue) {
+      if (typeof obj.canonicalValue === "string") {
+        return cleanOntologyConstants(obj.canonicalValue);
+      }
+      if (typeof obj.canonicalValue === "object" && Array.isArray(obj.canonicalValue.products)) {
+        return obj.canonicalValue.products.map((p: any) => cleanOntologyConstants(String(p))).join(", ");
       }
     }
-    return trimmed;
+    // Fall back to first readable string property if value/rawValue not found
+    const stringVal = Object.values(obj).find((v) => typeof v === "string" && !v.startsWith("{") && !v.includes("extractorVersion"));
+    if (stringVal) return cleanOntologyConstants(String(stringVal));
   }
-  return String(raw);
+
+  return cleanOntologyConstants(String(raw));
 }
 
 /**

@@ -279,16 +279,39 @@ export function cleanDimValue(val: any): string {
       try {
         obj = JSON.parse(val);
       } catch {
-        return val;
+        return cleanOntologyConstants(trimmed);
       }
     } else {
-      return val;
+      return cleanOntologyConstants(trimmed);
     }
   }
   if (typeof obj === "object" && obj !== null) {
-    return obj.rawValue || obj.canonicalValue || obj.value || "";
+    const extracted = obj.rawValue || obj.canonicalValue || obj.value || "";
+    return cleanOntologyConstants(String(extracted));
   }
-  return String(val);
+  return cleanOntologyConstants(String(val));
+}
+
+function cleanOntologyConstants(val: string): string {
+  if (!val) return "";
+  let s = val
+    .replace(/PL_OWNERSHIP/gi, "P&L Ownership")
+    .replace(/GROWTH_EXPANSION/gi, "Growth Expansion")
+    .replace(/SCALE_TRANSFORMATION/gi, "Scale Transformation")
+    .replace(/FOUNDER_EXPOSURE/gi, "Founder Exposure")
+    .replace(/CAREER_CAPITAL/gi, "Career Capital")
+    .replace(/ON_SITE/gi, "On-site")
+    .replace(/HYBRID/gi, "Hybrid")
+    .replace(/REMOTE/gi, "Remote")
+    .replace(/_/g, " ")
+    .replace(/&/g, "and")
+    .trim();
+
+  if (/^[A-Z\s]+$/.test(s) && s.length > 3) {
+    s = s.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+  }
+
+  return s;
 }
 
 /** Generate dynamic narrative using general editorial playbook templates */

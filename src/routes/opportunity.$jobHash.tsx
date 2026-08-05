@@ -5,6 +5,7 @@ import { getOpportunityFn, getNeighboursFn, getQueueMetricsFn } from "../lib/int
 import { candidateProfile } from "../data/candidate-profile";
 import { useDecisions } from "../lib/decisions-store";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
+import { unwrapEvidenceValue } from "../lib/intelligence/editorial/SemanticNaturalLanguageResolver";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }: { params: { jobHash: string } }) => {
@@ -78,15 +79,8 @@ function OpportunityDossier() {
 
   const formatValue = (val: any) => {
     if (!val) return "Not specified in JD";
-    if (typeof val === "string") return val;
-    if (typeof val === "boolean") return val ? "Required" : "Optional";
-    if (Array.isArray(val)) return val.join(", ");
-    if (typeof val === "object") {
-      return Object.entries(val)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(" | ");
-    }
-    return String(val);
+    const unwrapped = unwrapEvidenceValue(val);
+    return unwrapped || "Not specified in JD";
   };
 
   return (
