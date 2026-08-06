@@ -1,106 +1,129 @@
 import { Link } from "@tanstack/react-router";
-import type { Opportunity } from "../../data/opportunity-fixtures";
+import type { Opportunity, DecisionVerb } from "../../data/opportunity-fixtures";
 import { applyUrlFor } from "../../data/opportunity-fixtures";
-import { MarkdownRenderer } from "./MarkdownRenderer";
 import { PreviewCompositionEngine } from "../../lib/intelligence/editorial/PreviewCompositionEngine";
 
-/**
- * Compact brief rendered inline when a shortlist row expands.
- * Answers the executive question: "Is this worth opening right now?"
- * Avoids dashboard aesthetics in favor of authoritative editorial components.
- */
-export function InlineBrief({ opportunity: o }: { opportunity: Opportunity }) {
+export function InlineBrief({
+  opportunity: o,
+  onDecide,
+}: {
+  opportunity: Opportunity;
+  onDecide: (verb: DecisionVerb) => void;
+}) {
   const preview = PreviewCompositionEngine.compose(o);
 
   return (
-    <div className="animate-fade-in pb-1 mt-2">
-      
-      {/* ────────────────────────────────────────────────────────────────────────
-          BLOCK 1: THE CASE (Editorial Heading & Narrative)
-          ──────────────────────────────────────────────────────────────────────── */}
-      <div className="mb-6 max-w-4xl">
-        <h3 className="font-serif text-[20px] sm:text-[22px] text-foreground font-semibold leading-tight mb-3">
-          {preview.headline}
-        </h3>
-        <div className="text-[14.5px] sm:text-[15.5px] leading-[1.6] text-muted-foreground/90 font-normal">
-          <MarkdownRenderer content={preview.narrative} isHero={false} />
+    <div className="grid gap-8 border border-border/80 rounded-md bg-card shadow-[0_2px_12px_rgba(0,0,0,0.03)] px-5 py-7 sm:px-8 my-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      {/* Left Column: Executive Narrative & Drivers */}
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="label-mono font-normal text-muted-foreground">◆ Executive brief</span>
+          <span className="font-display text-lg text-primary font-normal">
+            {o.decision === "PURSUE" ? "Worth pursuing." : o.decision === "CONSIDER" ? "Worth considering." : "Pass on mandate."}
+          </span>
+        </div>
+
+        <p className="mt-4 max-w-xl font-display text-[1.6rem] leading-[1.25] sm:text-3xl text-foreground font-normal">
+          {preview.headline || "Closest match to your operating mandate."}
+        </p>
+
+        <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          <div className="border-l-2 border-signal pl-4">
+            <p className="label-mono text-signal font-normal">Proceed if</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-foreground font-normal">
+              {preview.whyItWorks || o.primaryDriver || "Direct P&L ownership aligned to your marketing strategy precedents."}
+            </p>
+          </div>
+
+          <div className="border-l-2 border-caution pl-4">
+            <p className="label-mono text-caution font-normal">Pause if</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-foreground font-normal">
+              {preview.watchFor || "Standard organizational alignment review."}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* ────────────────────────────────────────────────────────────────────────
-          BLOCK 2: PRIMARY REASONING (Clean, untinted bullet points)
-          ──────────────────────────────────────────────────────────────────────── */}
-      <div className="mb-6 border-t border-border/40 pt-4 max-w-4xl">
-        <h4 className="mono text-[10px] tracking-[0.24em] font-bold uppercase text-muted-foreground mb-5">
-          WHY RADAR RECOMMENDS THIS
-        </h4>
-        
-        <ul className="space-y-4 sm:space-y-5">
-          <li className="flex items-start gap-3 sm:gap-4 group">
-            <span className="text-pursue font-bold mt-0.5 select-none">✓</span>
-            <div>
-              <span className="mono text-[9px] sm:text-[10px] tracking-wider font-bold block text-foreground uppercase mb-1">
-                WHY THIS WORKS
-              </span>
-              <span className="text-[14px] sm:text-[15px] text-muted-foreground leading-relaxed block">
-                {preview.whyItWorks}
-              </span>
-            </div>
-          </li>
-          
-          <li className="flex items-start gap-3 sm:gap-4 group">
-            <span className="text-consider font-bold mt-0.5 select-none">⚠️</span>
-            <div>
-              <span className="mono text-[9px] sm:text-[10px] tracking-wider font-bold block text-foreground uppercase mb-1">
-                WATCH FOR
-              </span>
-              <span className="text-[14px] sm:text-[15px] text-muted-foreground leading-relaxed block">
-                {preview.watchFor}
-              </span>
-            </div>
-          </li>
-        </ul>
-      </div>
+      {/* Right Column: Metadata & Actions */}
+      <div className="min-w-0 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
+        <p className="label-mono font-normal text-muted-foreground">Watch for</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground font-normal">
+          {preview.watchFor || "Compensation target or reporting hierarchy requires verification."}
+        </p>
 
-      {/* ────────────────────────────────────────────────────────────────────────
-          BLOCK 4: ADVISORY DOSSIER PORTAL
-          ──────────────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-border/50 mt-8">
+        <dl className="mt-5 space-y-2 border-t border-border pt-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="label-mono font-normal">Target</dt>
+            <dd className="truncate font-mono text-xs text-foreground font-normal">
+              {(o as any).compensation || (o as any).targetRemuneration || "Confidential Executive Compensation"}
+            </dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="label-mono font-normal">Track</dt>
+            <dd className="truncate font-mono text-xs text-foreground font-normal">
+              {o.mandateArchetype || "Growth Marketing"}
+            </dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="label-mono font-normal">Source</dt>
+            <dd className="truncate font-mono text-xs text-foreground font-normal">
+              {o.scrapedFrom || "LinkedIn"}
+            </dd>
+          </div>
+        </dl>
+
+        <p className="label-mono mt-6 font-normal">Next step</p>
         <Link
           to="/opportunity/$jobHash"
           params={{ jobHash: o.jobHash }}
-          className="mono text-[10px] sm:text-[11px] tracking-[0.2em] border border-foreground bg-transparent hover:bg-muted/40 text-foreground px-5 py-2.5 rounded-sm font-bold uppercase transition-all flex items-center gap-2 group shrink-0"
+          className="mt-2 flex items-center justify-center rounded-[4px] bg-foreground px-4 py-3 font-mono text-[0.68rem] tracking-[0.18em] uppercase text-background font-normal transition-opacity hover:opacity-90 w-full cursor-pointer"
           onClick={(e) => e.stopPropagation()}
         >
-          <span>OPEN ADVISORY DOSSIER</span>
-          <span className="transition-transform group-hover:translate-x-1 font-sans">→</span>
+          Open full dossier ↗
         </Link>
 
         <a
           href={applyUrlFor(o)}
           target="_blank"
-          rel="noopener noreferrer"
-          className="mono text-[9.5px] sm:text-[10px] tracking-[0.16em] text-muted-foreground hover:text-foreground font-semibold uppercase transition-colors flex items-center gap-1.5 shrink-0 border border-border/60 hover:border-border/80 px-3 py-1.5 rounded-sm bg-muted/10"
+          rel="noreferrer"
+          className="mt-2 block text-center font-mono text-[0.68rem] text-muted-foreground underline underline-offset-4 hover:text-foreground font-normal"
           onClick={(e) => e.stopPropagation()}
         >
-          APPLY ON {o.scrapedFrom.toUpperCase()}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-3 w-3"
-          >
-            <path d="M15 3h6v6" />
-            <path d="M10 14 21 3" />
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-          </svg>
+          Apply directly on {o.scrapedFrom || "LinkedIn"}
         </a>
+
+        <div className="mt-5 grid grid-cols-3 gap-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDecide("PURSUE");
+            }}
+            className="rounded-[4px] border border-signal/40 px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase text-signal font-normal transition-colors hover:bg-signal/10 cursor-pointer"
+          >
+            Pursue
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDecide("CONSIDER");
+            }}
+            className="rounded-[4px] border border-caution/40 px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase text-caution font-normal transition-colors hover:bg-caution/10 cursor-pointer"
+          >
+            Consider
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDecide("PASS");
+            }}
+            className="rounded-[4px] border border-border px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase text-muted-foreground font-normal transition-colors hover:bg-muted cursor-pointer"
+          >
+            Pass
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -13,11 +13,13 @@ import { Route as WorkbenchRouteImport } from './routes/workbench'
 import { Route as ScrapedRouteImport } from './routes/scraped'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as DecisionsRouteImport } from './routes/decisions'
 import { Route as CorpusRouteImport } from './routes/corpus'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as QaMappingRouteImport } from './routes/qa.mapping'
 import { Route as OpportunityJobHashRouteImport } from './routes/opportunity.$jobHash'
+import { Route as ApiWebhooksDeployRouteImport } from './routes/api/webhooks/deploy'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
@@ -40,6 +42,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DesignSystemRoute = DesignSystemRouteImport.update({
+  id: '/design-system',
+  path: '/design-system',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DecisionsRoute = DecisionsRouteImport.update({
@@ -67,6 +74,11 @@ const OpportunityJobHashRoute = OpportunityJobHashRouteImport.update({
   path: '/opportunity/$jobHash',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebhooksDeployRoute = ApiWebhooksDeployRouteImport.update({
+  id: '/api/webhooks/deploy',
+  path: '/api/webhooks/deploy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
   id: '/api/auth/logout',
   path: '/api/auth/logout',
@@ -87,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
+  '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
@@ -96,11 +109,13 @@ export interface FileRoutesByFullPath {
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/webhooks/deploy': typeof ApiWebhooksDeployRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
+  '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
@@ -110,12 +125,14 @@ export interface FileRoutesByTo {
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/webhooks/deploy': typeof ApiWebhooksDeployRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
+  '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
@@ -125,6 +142,7 @@ export interface FileRoutesById {
   '/api/auth/callback': typeof ApiAuthCallbackRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/webhooks/deploy': typeof ApiWebhooksDeployRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -132,6 +150,7 @@ export interface FileRouteTypes {
     | '/'
     | '/corpus'
     | '/decisions'
+    | '/design-system'
     | '/login'
     | '/profile'
     | '/scraped'
@@ -141,11 +160,13 @@ export interface FileRouteTypes {
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
+    | '/api/webhooks/deploy'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/corpus'
     | '/decisions'
+    | '/design-system'
     | '/login'
     | '/profile'
     | '/scraped'
@@ -155,11 +176,13 @@ export interface FileRouteTypes {
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
+    | '/api/webhooks/deploy'
   id:
     | '__root__'
     | '/'
     | '/corpus'
     | '/decisions'
+    | '/design-system'
     | '/login'
     | '/profile'
     | '/scraped'
@@ -169,12 +192,14 @@ export interface FileRouteTypes {
     | '/api/auth/callback'
     | '/api/auth/google'
     | '/api/auth/logout'
+    | '/api/webhooks/deploy'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CorpusRoute: typeof CorpusRoute
   DecisionsRoute: typeof DecisionsRoute
+  DesignSystemRoute: typeof DesignSystemRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   ScrapedRoute: typeof ScrapedRoute
@@ -184,6 +209,7 @@ export interface RootRouteChildren {
   ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
+  ApiWebhooksDeployRoute: typeof ApiWebhooksDeployRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -214,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/design-system': {
+      id: '/design-system'
+      path: '/design-system'
+      fullPath: '/design-system'
+      preLoaderRoute: typeof DesignSystemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/decisions': {
@@ -251,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpportunityJobHashRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhooks/deploy': {
+      id: '/api/webhooks/deploy'
+      path: '/api/webhooks/deploy'
+      fullPath: '/api/webhooks/deploy'
+      preLoaderRoute: typeof ApiWebhooksDeployRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/logout': {
       id: '/api/auth/logout'
       path: '/api/auth/logout'
@@ -279,6 +319,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CorpusRoute: CorpusRoute,
   DecisionsRoute: DecisionsRoute,
+  DesignSystemRoute: DesignSystemRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   ScrapedRoute: ScrapedRoute,
@@ -288,6 +329,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthCallbackRoute: ApiAuthCallbackRoute,
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
+  ApiWebhooksDeployRoute: ApiWebhooksDeployRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

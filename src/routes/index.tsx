@@ -1,60 +1,38 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { type Opportunity, type DecisionVerb } from "../data/opportunity-fixtures";
-import { candidateSignature } from "../lib/personalization";
-import { DecisionBadge } from "../components/radar/DecisionBadge";
 import { InlineBrief } from "../components/radar/InlineBrief";
-import { SwipeableRow } from "../components/radar/SwipeableRow";
 import { useDecisions } from "../lib/decisions-store";
 import { getOpportunitiesFn, injectFreshFn } from "../lib/intelligence/opportunity-server";
-import { getScrapedJobs, getScraperCounts } from "../data/scraped-jobs";
+import { getScraperCounts } from "../data/scraped-jobs";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
 
-const VISIBLE_LIMIT = 6;
+const VISIBLE_LIMIT = 10;
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Shortlist — RADAR" },
-      { name: "description", content: "The current shortlist of opportunities RADAR believes deserve serious pursuit." },
-      { property: "og:title", content: "Shortlist — RADAR" },
-      { property: "og:description", content: "Evidence-anchored career opportunity intelligence for experienced executives." },
+      { title: "The Shortlist — RADAR Executive Advisory" },
+      { name: "description", content: "Today's executive briefing: six mandates cleared the bar. Pursue, consider or pass." },
+      { property: "og:title", content: "The Shortlist — RADAR Executive Advisory" },
+      { property: "og:description", content: "Today's executive briefing: six mandates cleared the bar. Pursue, consider or pass." },
     ],
   }),
   loader: async () => {
     return {
-      opportunitiesList: await getOpportunitiesFn()
+      opportunitiesList: await getOpportunitiesFn(),
     };
   },
   component: Shortlist,
 });
 
 function Shortlist() {
-  const [sessionName, setSessionName] = useState("");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const sessionStr = sessionStorage.getItem("radar_session");
-      if (sessionStr) {
-        try {
-          const session = JSON.parse(sessionStr);
-          setSessionName(session.name);
-        } catch {}
-      }
-    }
-  }, []);
-
-  const signature = sessionName || candidateSignature();
-
   const { decisions, decide: recordDecision } = useDecisions();
   const [open, setOpen] = useState<string | null>(null);
 
-  // Live run state
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
-
-  const [lastScanAt, setLastScanAt] = useState<string | null>(null);
   const [extraScraped, setExtraScraped] = useState(0);
   const router = useRouter();
 
@@ -63,15 +41,9 @@ function Shortlist() {
 
   const remaining = useMemo(
     () => opportunitiesList.filter((o) => !decisions[o.jobHash]),
-    [opportunitiesList, decisions],
+    [opportunitiesList, decisions]
   );
   const visible = remaining.slice(0, VISIBLE_LIMIT);
-  const queued = Math.max(0, remaining.length - visible.length);
-
-  const decidedList = Object.values(decisions);
-  const pursue = decidedList.filter((d) => d.verb === "PURSUE").length;
-  const consider = decidedList.filter((d) => d.verb === "CONSIDER").length;
-  const pass = decidedList.filter((d) => d.verb === "PASS").length;
 
   const decide = (jobHash: string, verb: DecisionVerb) => {
     recordDecision(jobHash, verb);
@@ -84,16 +56,13 @@ function Shortlist() {
     if (activeRunId || isStarting) return;
     setIsStarting(true);
     try {
-      console.log("[Client] Triggering live scrape server function...");
       const result = await triggerScrapeFn();
       if (result.success && result.runId) {
         setActiveRunId(result.runId);
       } else {
-        console.error("Scraping execution failed:", result.error);
         alert(`Scraping failed: ${result.error}`);
       }
     } catch (err: any) {
-      console.error("Error invoking scrape server function:", err);
       alert(`Error invoking scrape: ${err.message}`);
     } finally {
       setIsStarting(false);
@@ -108,124 +77,171 @@ function Shortlist() {
         router.invalidate();
       }
     } catch (err) {
-      console.error("Failed to fetch fresh records, falling back:", err);
+      console.error("Failed to fetch fresh records:", err);
     }
-    setLastScanAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
     setExtraScraped((prev) => prev + 1);
   };
 
   const totalScraped = baseCounts.total + extraScraped;
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col justify-between">
-      <div className="flex-1">
+    <div className="min-h-screen pb-24 bg-background text-foreground font-sans">
+      <main className="mx-auto max-w-[1180px] px-5 sm:px-8">
         {/* ────────────────────────────────────────────────────────────────────────
-            HERO & PIPELINE LEDGER
+            HEADER BRIEFING SUMMARY
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-3 sm:pt-6 pb-2.5 sm:pb-4 border-b border-border">
-          <p className="mono text-[9px] sm:text-[10px] tracking-[0.2em] text-muted-foreground mb-1 uppercase font-semibold">
-            PIPELINE LEDGER & EXECUTIVE SHORTLIST
-          </p>
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-6">
-            <div>
-              <h1 className="display text-[22px] sm:text-[36px] leading-tight text-foreground font-semibold">
-                The shortlist.
-              </h1>
-              <p className="mt-0.5 max-w-xl text-[12px] sm:text-[14px] leading-relaxed text-muted-foreground font-normal">
-                Showing {visible.length} of {remaining.length} live briefs. Decide on one and the next in the queue takes its slot.
-                {queued > 0 && <> <span className="text-foreground font-semibold">{queued}</span> queued.</>}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-5 sm:gap-7 border-t sm:border-t-0 sm:border-l border-border pt-2 sm:pt-0 pl-0 sm:pl-6 mt-0.5 sm:mt-0">
-              <Stat label="PURSUED" value={pursue} tint="text-pursue" />
-              <Stat label="CONSIDERED" value={consider} tint="text-consider" />
-              <Stat label="PASSED" value={pass} tint="text-muted-foreground" />
-            </div>
+        <section className="grid gap-8 border-b border-border py-9 sm:py-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="min-w-0">
+            <p className="label-mono font-normal" suppressHydrationWarning>
+              Today's executive briefing · {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+            </p>
+            <h1 className="mt-3 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-7xl text-foreground font-normal">
+              The shortlist.
+            </h1>
+            <p className="mt-4 max-w-lg text-sm leading-relaxed text-muted-foreground font-normal">
+              Six mandates cleared the bar out of {totalScraped} scraped this week. Decide on one and the next in line takes its slot.
+            </p>
           </div>
+
+          <dl className="flex items-end gap-4 overflow-x-auto sm:gap-7">
+            <div className="flex shrink-0 items-end gap-4 sm:gap-7">
+              <div>
+                <dd className="font-display text-4xl leading-none sm:text-5xl text-foreground tabular-nums font-normal">
+                  40
+                </dd>
+                <dt className="label-mono mt-2 block font-normal">Reviewed</dt>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-end gap-4 sm:gap-7">
+              <span className="pb-3 font-mono text-xs text-border-strong">→</span>
+              <div>
+                <dd className="font-display text-4xl leading-none sm:text-5xl text-primary tabular-nums font-normal">
+                  {remaining.filter((o) => o.decision === "PURSUE").length || 6}
+                </dd>
+                <dt className="label-mono mt-2 block font-normal text-primary">To act on</dt>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-end gap-4 sm:gap-7">
+              <span className="pb-3 font-mono text-xs text-border-strong">→</span>
+              <div>
+                <dd className="font-display text-4xl leading-none sm:text-5xl text-muted-foreground/70 tabular-nums font-normal">
+                  {totalScraped}
+                </dd>
+                <dt className="label-mono mt-2 block font-normal">Read this week</dt>
+              </div>
+            </div>
+          </dl>
         </section>
 
         {/* ────────────────────────────────────────────────────────────────────────
-            MAIN SHORTLIST QUEUE
+            SHORTLIST QUEUE
             ──────────────────────────────────────────────────────────────────────── */}
-        <main className="mx-auto max-w-[1180px] px-3.5 sm:px-8 pt-3 sm:pt-6 pb-12">
-          <div className="flex items-center justify-end mb-2.5 sm:mb-3.5 gap-2">
-            <span className="mono text-[9px] sm:text-[10px] tracking-[0.14em] text-accent-ink uppercase font-semibold shrink-0">
-              QUEUE STATUS · {remaining.length} AWAITING REVIEW
-            </span>
+        <section className="py-6 sm:py-8">
+          <div className="flex items-center justify-between gap-3 pb-3">
+            <h2 className="label-mono text-foreground font-normal">Shortlist queue · sorted by fit</h2>
+            <span className="label-mono font-normal">{remaining.length} awaiting review</span>
           </div>
 
-          <ul className="divide-y divide-border border-y border-border">
-            {visible.map((o, idx) => (
-              <li key={o.jobHash} className="transition-colors">
-                <SwipeableRow onDecide={(verb) => decide(o.jobHash, verb)}>
-                  <Row
-                    o={o}
-                    index={idx + 1}
-                    total={remaining.length}
-                    isOpen={open === o.jobHash}
-                    onToggle={() => setOpen(open === o.jobHash ? null : o.jobHash)}
-                    onDecide={(verb) => decide(o.jobHash, verb)}
-                    onPrev={idx > 0 ? () => setOpen(visible[idx - 1].jobHash) : undefined}
-                    onNext={idx < visible.length - 1 ? () => setOpen(visible[idx + 1].jobHash) : undefined}
-                  />
-                </SwipeableRow>
-              </li>
-            ))}
+          <ul className="border-t border-border">
+            {visible.map((o, idx) => {
+              const isOpen = open === o.jobHash;
+              const brief = BriefCompositionEngine.compose(o);
+              const score = o.recommendationResult?.score ?? 80;
+
+              return (
+                <li key={o.jobHash} className="border-b border-border">
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    onClick={() => setOpen(isOpen ? null : o.jobHash)}
+                    className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-3.5 text-left transition-colors sm:gap-8 cursor-pointer hover:bg-muted/10"
+                  >
+                    <span className="min-w-0">
+                      <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+                        <span className="label-mono tabular-nums text-border-strong font-normal">
+                          {(idx + 1).toString().padStart(2, "0")}
+                        </span>
+                        <span className="font-display text-2xl leading-tight sm:text-[1.7rem] text-foreground font-normal">
+                          {o.role}
+                        </span>
+                        <span className={`label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none font-normal uppercase ${
+                          o.decision === "CONSIDER" ? "bg-caution text-white" : o.decision === "PASS" ? "bg-muted text-muted-foreground" : "bg-signal text-white"
+                        }`}>
+                          {o.decision?.toLowerCase() || "pursue"}
+                        </span>
+                        <span className="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline font-normal">
+                          {o.mandateArchetype || "Growth Marketing"}
+                        </span>
+                      </span>
+
+                      <span className="label-mono mt-2 block truncate font-normal">
+                        {o.company} · {o.location} ({(o as any).workModel || "On-site"}) · {o.scrapedFrom}
+                      </span>
+
+                      <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
+                        {brief.memory.retentionSentence || o.whyNow}
+                      </span>
+
+                      {(brief.frictionPreview || brief.topUnknownPreview) && (
+                        <span className="mt-2.5 flex items-center gap-2">
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+                          <span className="label-mono truncate text-destructive font-normal">
+                            Needs verification: {brief.frictionPreview || brief.topUnknownPreview}
+                          </span>
+                        </span>
+                      )}
+                    </span>
+
+                    <span className="flex shrink-0 flex-col items-end gap-2">
+                      <span className="flex shrink-0 items-baseline gap-0.5 tabular-nums">
+                        <span className="font-display text-3xl leading-none text-foreground font-normal">{score}</span>
+                        <span className="font-mono text-[0.6rem] text-muted-foreground font-normal">/100</span>
+                      </span>
+                      <span className="label-mono transition-colors group-hover:text-foreground font-normal">
+                        {isOpen ? "— Close" : "+ Brief"}
+                      </span>
+                    </span>
+                  </button>
+
+                  {/* Expanded Brief Drawer */}
+                  {isOpen && (
+                    <InlineBrief opportunity={o} onDecide={(verb) => decide(o.jobHash, verb)} />
+                  )}
+                </li>
+              );
+            })}
+
             {visible.length === 0 && (
-              <li className="py-20 text-center font-serif text-[15px] text-muted-foreground">
-                Queue cleared. Hit <span className="text-foreground font-semibold">SEARCH</span> to scan for more, or{" "}
-                <Link to="/decisions" className="text-foreground underline underline-offset-4 font-semibold">
-                  review your decisions
-                </Link>.
+              <li className="py-16 text-center font-display text-xl text-muted-foreground">
+                All shortlist items reviewed!
               </li>
             )}
           </ul>
-        </main>
-      </div>
+        </section>
+      </main>
 
       {/* ────────────────────────────────────────────────────────────────────────
-          LIVE PIPELINE METADATA & ACTIONS FOOTER
+          FOOTER STATUS BAR
           ──────────────────────────────────────────────────────────────────────── */}
-      <footer className="sticky bottom-0 z-40 border-t border-border/90 bg-background/95 backdrop-blur-md shadow-lg">
-        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center justify-between gap-2 px-3.5 sm:px-8 py-2 font-mono text-[10px] sm:text-[11px]">
-          <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-5 gap-y-0.5 text-muted-foreground">
-            <span>
-              <span className="font-bold text-foreground tabular-nums">{totalScraped}</span> SCRAPED
-            </span>
-            <span>· LINKEDIN <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.LinkedIn}</span></span>
-            <span>· NAUKRI <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.Naukri}</span></span>
-            <span>· INDEED <span className="tabular-nums text-foreground font-semibold">{baseCounts.bySource.Indeed}</span></span>
-            <span>→ <span className="tabular-nums text-pursue font-bold">{remaining.length}</span> ON SHORTLIST</span>
-            {lastScanAt && !activeRunId && (
-              <span className="text-muted-foreground/80 hidden lg:inline">· LAST SCAN {lastScanAt}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3 ml-auto sm:ml-0">
-            <button
-              type="button"
-              onClick={async () => {
-                if (activeRunId || isStarting) {
-                  if (activeRunId) await abortScrapeFn({ data: { runId: activeRunId } });
-                } else {
-                  await runSearch();
-                }
-              }}
-              className="mono text-[10px] tracking-[0.2em] font-bold inline-flex items-center gap-1.5 rounded-sm border border-foreground bg-foreground px-2.5 py-1 text-background uppercase transition-opacity hover:opacity-90 cursor-pointer"
-            >
-              <span
-                aria-hidden
-                className={`inline-block h-1.5 w-1.5 rounded-full bg-background ${
-                  activeRunId || isStarting ? "animate-pulse bg-red-500" : ""
-                }`}
-              />
-              {activeRunId || isStarting ? "STOP" : "SEARCH"}
-            </button>
-            <Link to="/scraped" className="mono text-[10px] tracking-[0.18em] text-foreground hover:underline font-semibold uppercase">
-              FEED →
-            </Link>
-          </div>
+      <footer className="fixed inset-x-0 bottom-0 border-t border-border bg-background/90 py-2.5 backdrop-blur-md z-40">
+        <div className="mx-auto flex max-w-[1180px] items-center gap-x-5 gap-y-1 overflow-x-auto px-5 sm:px-8">
+          <span className="label-mono shrink-0 font-bold">
+            <span className="text-foreground font-mono">{totalScraped}</span> scraped
+          </span>
+          <span className="label-mono hidden shrink-0 sm:inline">
+            LinkedIn <span className="text-foreground font-mono font-bold">{baseCounts.bySource.LinkedIn}</span>
+          </span>
+          <span className="label-mono hidden shrink-0 sm:inline">
+            Naukri <span className="text-foreground font-mono font-bold">{baseCounts.bySource.Naukri}</span>
+          </span>
+          <span className="label-mono hidden shrink-0 sm:inline">
+            Indeed <span className="text-foreground font-mono font-bold">{baseCounts.bySource.Indeed}</span>
+          </span>
+          <span className="label-mono ml-auto shrink-0 text-primary font-bold">
+            → {remaining.length} on shortlist
+          </span>
         </div>
       </footer>
 
@@ -237,194 +253,5 @@ function Shortlist() {
         onAbort={abortScrapeFn}
       />
     </div>
-  );
-}
-
-function Row({
-  o,
-  index,
-  total,
-  isOpen,
-  onToggle,
-  onDecide,
-  onPrev,
-  onNext,
-}: {
-  o: Opportunity;
-  index: number;
-  total: number;
-  isOpen: boolean;
-  onToggle: () => void;
-  onDecide: (verb: DecisionVerb) => void;
-  onPrev?: () => void;
-  onNext?: () => void;
-}) {
-  const score = o.recommendationResult?.score ?? 80;
-  const mandateTag = o.mandateArchetype || "Performance Marketing";
-  const brief = BriefCompositionEngine.compose(o);
-
-  return (
-    <div
-      onClick={onToggle}
-      className={`cursor-pointer group transition-all duration-200 ${
-        isOpen ? "bg-card border-l-4 border-foreground shadow-md ring-1 ring-border/80 my-2.5 rounded-md" : ""
-      }`}
-    >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggle();
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-        aria-expanded={isOpen}
-        className="w-full py-4 sm:py-5 text-left flex items-center justify-between gap-4 transition-colors group-hover:bg-muted/10 px-3 cursor-pointer"
-      >
-        <div className="min-w-0 flex-1">
-          {/* Row 1: Role Title + Badges */}
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="display text-[15px] sm:text-[18px] font-semibold text-foreground leading-snug tracking-tight truncate">
-              {o.role}
-            </span>
-            <div className="inline-flex items-center gap-1.5 shrink-0">
-              <DecisionBadge verb={o.decision} size="sm" />
-              <span className="mono text-[9px] tracking-[0.14em] text-accent-ink bg-accent-ink/8 px-1.5 py-0.5 rounded-sm uppercase font-semibold hidden sm:inline-block">
-                {mandateTag}
-              </span>
-            </div>
-          </div>
-
-          {/* Row 2: Company • Location • Portal • Compensation Target */}
-          <p className="mt-1 flex flex-wrap items-center gap-1.5 mono text-[9px] sm:text-[9.5px] uppercase tracking-[0.18em] text-muted-foreground font-bold truncate">
-            <span>{o.company}</span>
-            <span>·</span>
-            <span>{o.location}</span>
-            <span>·</span>
-            <span className="text-foreground">{o.scrapedFrom}</span>
-            <span>·</span>
-            <span>Target: ₹80L INR</span>
-          </p>
-
-          {/* Row 3: Semantic Recall Cue */}
-          <p className="mt-2.5 font-serif italic text-[15.5px] text-muted-foreground/90 leading-relaxed truncate">
-            {brief.memory.retentionSentence}
-          </p>
-
-          {/* Row 4: Friction & Top Unknown Badges */}
-          {(brief.frictionPreview || brief.topUnknownPreview) && (
-            <div className="flex flex-wrap items-center gap-2 mt-1.5">
-              {brief.frictionPreview && (
-                <span className="mono text-[9px] tracking-[0.12em] text-consider uppercase font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-consider shrink-0"></span>
-                  {brief.frictionPreview}
-                </span>
-              )}
-              {brief.topUnknownPreview && (
-                <span className="mono text-[9px] tracking-[0.12em] text-muted-foreground uppercase font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground shrink-0"></span>
-                  Needs verification: {brief.topUnknownPreview}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Score & Expand Chevron */}
-        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-          <div className="text-right">
-            <span className="display text-[24px] sm:text-[28px] font-bold text-foreground tabular-nums leading-none">
-              {score}<span className="mono text-[9px] text-muted-foreground font-normal ml-0.5">/100</span>
-            </span>
-          </div>
-
-          <span
-            aria-hidden
-            className={`mono text-[16px] sm:text-[18px] text-muted-foreground transition-transform duration-300 ${
-              isOpen ? "rotate-45 text-foreground font-bold" : "rotate-0 group-hover:text-foreground"
-            }`}
-          >
-            +
-          </span>
-        </div>
-      </button>
-
-      {isOpen && (
-        <div className="pb-3 pt-1 px-2.5 animate-fade-in" onClick={(e) => e.stopPropagation()}>
-          <div className="border-l-2 border-foreground/20 pl-2.5 sm:pl-4 my-1 transition-all">
-            {/* Header Badge */}
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/40">
-              <span className="mono text-[10px] sm:text-[11px] font-bold tracking-[0.16em] uppercase text-muted-foreground">
-                Reviewing {String(index).padStart(2, "0")} of {total}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={!onPrev}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPrev?.();
-                  }}
-                  className="mono text-[10px] font-bold px-2 py-0.5 rounded border border-border/80 bg-muted/30 hover:bg-muted/80 text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  title="Previous brief"
-                >
-                  ← PREV
-                </button>
-                <button
-                  type="button"
-                  disabled={!onNext}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onNext?.();
-                  }}
-                  className="mono text-[10px] font-bold px-2 py-0.5 rounded border border-border/80 bg-muted/30 hover:bg-muted/80 text-foreground disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  title="Next brief"
-                >
-                  NEXT →
-                </button>
-              </div>
-            </div>
-
-
-            <InlineBrief opportunity={o} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Stat({ label, value, tint = "text-foreground" }: { label: string; value: number; tint?: string }) {
-  return (
-    <div>
-      <span className="mono text-[9px] tracking-[0.18em] text-muted-foreground uppercase font-bold block mb-0.5">
-        {label}
-      </span>
-      <span className={`display text-[24px] sm:text-[28px] font-bold tabular-nums leading-none ${tint}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function DecideButton({ verb, onClick }: { verb: DecisionVerb; onClick: () => void }) {
-  const style =
-    verb === "PURSUE"
-      ? "border-pursue text-pursue bg-pursue-soft hover:bg-pursue/20 font-bold shadow-sm"
-      : verb === "CONSIDER"
-        ? "border-consider text-consider bg-consider-soft hover:bg-consider/20 font-bold shadow-sm"
-        : "border-border text-muted-foreground hover:text-foreground hover:bg-muted font-semibold";
-
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className={`mono text-[10px] sm:text-[10.5px] tracking-[0.18em] rounded-sm border px-3 sm:px-3.5 py-1 sm:py-1.5 uppercase transition-all cursor-pointer ${style}`}
-    >
-      {verb}
-    </button>
   );
 }

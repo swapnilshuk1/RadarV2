@@ -8,7 +8,8 @@
 
 import { rawOpportunities as authored, type Opportunity, type OpportunitySource } from "@/data/opportunity-fixtures";
 import { extraOpportunities } from "@/data/extra-fixtures";
-import liveScraped from "../../data/live-scraped.json";
+import path from "path";
+import fs from "fs";
 import { CandidateIntelligencePipeline } from "./cip";
 import { JobIntelligencePipeline } from "./jip";
 import { V3EvaluationEngine } from "./V3EvaluationEngine";
@@ -29,7 +30,24 @@ import { IdentityAssessmentEngine } from "./engines/IdentityAssessmentEngine";
 import { DecisionPolicyEngine } from "./policy/DecisionPolicyEngine";
 
 const KEY = "radar.opportunities.v3";
-const baseOpportunities = [...(liveScraped as OpportunitySource[])];
+let baseOpportunitiesCache: OpportunitySource[] | null = null;
+
+function getBaseOpportunities(): OpportunitySource[] {
+  if (baseOpportunitiesCache) return baseOpportunitiesCache;
+  if (typeof window !== "undefined") return [];
+  try {
+    const jsonPath = path.resolve(process.cwd(), "src/data/live-scraped.json");
+    if (fs.existsSync(jsonPath)) {
+      const content = fs.readFileSync(jsonPath, "utf-8");
+      baseOpportunitiesCache = JSON.parse(content) as OpportunitySource[];
+      return baseOpportunitiesCache;
+    }
+  } catch (err) {
+    console.warn("[Engine] Failed to load live-scraped.json dynamically:", err);
+  }
+  return [];
+}
+
 let memoryCache: OpportunitySource[] | null = null;
 
 let cachedRuns = new Map<number, {
@@ -39,22 +57,24 @@ let cachedRuns = new Map<number, {
 }>();
 
 export function invalidateEngineCache() {
+  baseOpportunitiesCache = null;
   cachedRuns.clear();
 }
 
 export function readOpportunities(): OpportunitySource[] {
-  if (typeof window === "undefined") return memoryCache ?? baseOpportunities;
+  const baseOps = getBaseOpportunities();
+  if (typeof window === "undefined") return memoryCache ?? baseOps;
   try {
     const raw = window.localStorage.getItem(KEY);
     const cached = raw ? JSON.parse(raw) : [];
     
     const merged = new Map<string, OpportunitySource>();
     for (const item of cached) merged.set(item.jobHash, item);
-    for (const item of baseOpportunities) merged.set(item.jobHash, item);
+    for (const item of baseOps) merged.set(item.jobHash, item);
     
     return Array.from(merged.values());
   } catch {
-    return baseOpportunities;
+    return baseOps;
   }
 }
 
@@ -82,6 +102,29 @@ export function injectFreshRecords(records: any[]) {
 
 const candidateBuilder = new CandidateProjectionBuilderImpl();
 
+const ONTOLOGY_VERSION = "14.2.0";
+const ENGINE_VERSION = "4.0.0";
+
+function simpleStringHash(str: string): string {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 33) ^ str.charCodeAt(i);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+export function computeEvaluationSignature(
+  jobHash: string,
+  projectionTimestamp: string | number = "v1",
+  ontologyVersion: string = ONTOLOGY_VERSION,
+  engineVersion: string = ENGINE_VERSION
+): string {
+  const raw = `${jobHash}:${projectionTimestamp}:${ontologyVersion}:${engineVersion}`;
+  return simpleStringHash(raw);
+}
+
+const itemEvaluationCache = new Map<string, { record: RecommendationRecord; presented: Presented }>();
+
 /**
  * Executes the full V4 pipeline: Candidate/Job Projections -> Assessments -> Rules Engine -> Presentation
  */
@@ -103,10 +146,21 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
 
   // Fallback V3 Dossier and CandidateProjectionBuilder removed since projection is already built
   const candProjV4 = projection;
+  const projTimestamp = (projection as any).updatedAt || (projection as any).createdAt || "v1";
 
   const records: RecommendationRecord[] = [];
+  const presentedList: Presented[] = [];
 
   for (const raw of currentAuthored) {
+    const signature = computeEvaluationSignature(raw.jobHash, projTimestamp);
+    const existing = itemEvaluationCache.get(signature);
+
+    if (existing) {
+      records.push(existing.record);
+      presentedList.push(existing.presented);
+      continue;
+    }
+
     // 2. Build Job V4 Projection
     const jobProjV4 = JobProjectionBuilder.build(raw);
 
@@ -213,9 +267,12 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
   const byHash = new Map(currentAuthored.map((a) => [a.jobHash, a]));
   const presented = records
     .map((r) => {
-      // In V4 paradigm, we still present candidates in the view, but let the UI filter out PASS records or let presentation-boundary hide scores
       const a = byHash.get(r.jobHash);
-      return a ? present(a, r, projection) : null;
+      if (!a) return null;
+      const pres = present(a, r, projection);
+      const signature = computeEvaluationSignature(r.jobHash, projTimestamp);
+      itemEvaluationCache.set(signature, { record: r, presented: pres });
+      return pres;
     })
     .filter((x): x is Presented => x !== null);
 

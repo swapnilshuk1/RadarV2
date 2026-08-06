@@ -1,9 +1,9 @@
 import type { DecisionVerb } from "../../data/opportunity-fixtures";
 
 const STYLES: Record<DecisionVerb, string> = {
-  PURSUE: "bg-decision-pursue text-decision-pursue-fg",
-  CONSIDER: "bg-decision-consider text-decision-consider-fg",
-  PASS: "bg-decision-pass text-decision-pass-fg",
+  PURSUE: "bg-decision-pursue text-white",
+  CONSIDER: "bg-decision-consider text-white",
+  PASS: "bg-decision-pass text-white",
   NOT_EVALUABLE: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
 };
 

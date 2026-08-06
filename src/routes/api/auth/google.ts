@@ -8,33 +8,33 @@
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { setCookie } from "@tanstack/react-start/server";
+import { getRequest, setCookie } from "@tanstack/react-start/server";
 import { generateState, generateCodeVerifier, Google } from "arctic";
+import { createSignedOAuthState } from "../../../lib/auth/oauth-state";
 
 const initiateGoogleAuthFn = createServerFn({ method: "GET" }).handler(async () => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const request = getRequest();
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "130.210.40.98";
+  const proto = request.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "http");
+
   const redirectUri =
-    process.env.GOOGLE_REDIRECT_URI ??
-    (process.env.NODE_ENV === "production"
-      ? "https://radarv2.onrender.com/api/auth/callback"
-      : "http://localhost:3000/api/auth/callback");
+    process.env.GOOGLE_REDIRECT_URI ?? `${proto}://${host}/api/auth/callback`;
 
   if (!clientId || !clientSecret) {
-    throw new Error("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set.");
+    console.warn("[Auth] GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET not configured.");
+    return "/login?error=missing_google_credentials";
   }
 
   const google = new Google(clientId, clientSecret, redirectUri);
-  const state = generateState();
+  const rawState = generateState();
   const codeVerifier = generateCodeVerifier();
+  const compositeState = createSignedOAuthState(rawState, codeVerifier);
 
-  const url = await google.createAuthorizationURL(state, codeVerifier, {
+  const url = await google.createAuthorizationURL(compositeState, codeVerifier, {
     scopes: ["openid", "email", "profile"],
   });
-
-  const isProd = process.env.NODE_ENV === "production";
-  setCookie("google_oauth_state", state, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 600, secure: isProd });
-  setCookie("google_code_verifier", codeVerifier, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 600, secure: isProd });
 
   return url.toString();
 });

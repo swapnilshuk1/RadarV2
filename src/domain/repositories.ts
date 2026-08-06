@@ -39,6 +39,7 @@ export interface OpportunityStore {
   mergeOpportunity(opportunity: Opportunity): Promise<void>;
   getOpportunity(id: string): Promise<Opportunity | undefined>;
   listActiveOpportunities(): Promise<Opportunity[]>;
+  getQueueOpportunities?(personId: string, limit?: number): Promise<Opportunity[]>;
   
   findOpportunities(criteria: {
     companyId?: string;

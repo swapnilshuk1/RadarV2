@@ -27,6 +27,7 @@ import {
   SESSION_COOKIE_NAME
 } from "../../../lib/auth/session";
 import { fetchGoogleUserInfo } from "../../../lib/auth/google";
+import { verifySignedOAuthState } from "../../../lib/auth/oauth-state";
 
 function ulid(): string {
   // Simple ULID-style ID: timestamp prefix + random suffix
@@ -37,24 +38,27 @@ const handleCallbackFn = createServerFn({ method: "GET" }).handler(async () => {
   const request = getRequest();
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
+  const stateParam = url.searchParams.get("state");
 
+  // ── 1. CSRF & PKCE validation via signed state or cookie fallback ────────
+  const oauthState = verifySignedOAuthState(stateParam);
   const storedState = getCookie("google_oauth_state");
-  const codeVerifier = getCookie("google_code_verifier");
+  const storedVerifier = getCookie("google_code_verifier");
 
-  // ── 1. CSRF validation ──────────────────────────────────────────────────
-  if (!code || !state || !storedState || !codeVerifier || state !== storedState) {
+  const codeVerifier = oauthState?.verifier || storedVerifier;
+
+  if (!code || (!oauthState && (!storedState || storedState !== stateParam || !storedVerifier)) || !codeVerifier) {
     throw new Error("[Auth] Invalid OAuth state. Possible CSRF attempt.");
   }
 
   // ── 2. Exchange code for tokens ─────────────────────────────────────────
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "130.210.40.98";
+  const proto = request.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "http");
+
   const redirectUri =
-    process.env.GOOGLE_REDIRECT_URI ??
-    (process.env.NODE_ENV === "production"
-      ? "https://radarv2.onrender.com/api/auth/callback"
-      : "http://localhost:3000/api/auth/callback");
+    process.env.GOOGLE_REDIRECT_URI ?? `${proto}://${host}/api/auth/callback`;
 
   const google = new Google(clientId, clientSecret, redirectUri);
   const tokens = await google.validateAuthorizationCode(code, codeVerifier);
@@ -119,13 +123,13 @@ const handleCallbackFn = createServerFn({ method: "GET" }).handler(async () => {
   setCookie("google_oauth_state", "", { maxAge: 0, path: "/" });
   setCookie("google_code_verifier", "", { maxAge: 0, path: "/" });
   
-  const isProd = process.env.NODE_ENV === "production";
+  const isSecure = proto === "https";
   setCookie(SESSION_COOKIE_NAME, token, { 
     httpOnly: true, 
     sameSite: "lax", 
     path: "/", 
     expires: session.expiresAt, 
-    secure: isProd 
+    secure: isSecure 
   });
 
   return { isNewUser };

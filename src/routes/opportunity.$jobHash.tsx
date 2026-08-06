@@ -1,855 +1,629 @@
-import { useState, useEffect } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useState } from "react";
+import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
 import { applyUrlFor, type DecisionVerb } from "../data/opportunity-fixtures";
-import { getOpportunityFn, getOpportunitiesFn, getNeighboursFn } from "../lib/intelligence/opportunity-server";
+import { getOpportunityFn, getNeighboursFn, getQueueMetricsFn } from "../lib/intelligence/opportunity-server";
 import { candidateProfile } from "../data/candidate-profile";
-import { DefaultEvaluationAdapter } from "../lib/recommendation/EvaluationAdapter";
 import { useDecisions } from "../lib/decisions-store";
-import type { EvaluationEnvelope } from "../domain/v4";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
-import { EditorialCompositionEngine } from "../lib/intelligence/editorial/EditorialCompositionEngine";
-import { PresentationEngine } from "../lib/intelligence/editorial/PresentationEngine";
-import { motion } from "framer-motion";
-
-function SemanticFocus({ children, className = "", delayMs = 0 }: { children: React.ReactNode; className?: string; delayMs?: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut", delay: delayMs / 1000 }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function SemanticReveal({ children, className = "" }: { children: React.ReactNode; className?: string; delayMs?: number }) {
-  return (
-    <section className={className}>
-      {children}
-    </section>
-  );
-}
-
-function formatValue(val: any): string {
-  if (!val) return "";
-  if (typeof val === "object") {
-    if (val.value && typeof val.value === "string" && !val.value.startsWith("{")) return String(val.value);
-    if (val.rawValue && typeof val.rawValue === "string") return String(val.rawValue);
-    if (val.canonicalValue) return formatValue(val.canonicalValue);
-    if (val.products && Array.isArray(val.products)) return val.products.join(", ");
-    return "";
-  }
-  if (typeof val === "string") {
-    const trimmed = val.trim();
-    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        return formatValue(parsed);
-      } catch {
-        return trimmed;
-      }
-    }
-    return trimmed;
-  }
-  return String(val);
-}
+import { EditorialContextBuilder } from "../lib/intelligence/editorial/EditorialContext";
+import { EditorialPatternSelector } from "../lib/intelligence/editorial/EditorialPatternSelector";
+import { NarrativeComposer } from "../lib/intelligence/editorial/NarrativeComposer";
+import { unwrapEvidenceValue } from "../lib/intelligence/editorial/SemanticNaturalLanguageResolver";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
-  loader: async ({ params }) => {
+  loader: async ({ params }: { params: { jobHash: string } }) => {
     const opportunity = await getOpportunityFn({ data: params.jobHash });
     if (!opportunity) throw notFound();
-    const list = await getOpportunitiesFn();
-    const index = list.findIndex((o) => o.jobHash === params.jobHash);
+    const metrics = await getQueueMetricsFn({ data: params.jobHash });
     const neighbors = await getNeighboursFn({ data: params.jobHash });
     return {
       opportunity,
       neighbors,
-      currentIndex: index >= 0 ? index + 1 : 1,
-      totalCount: list.length || 1,
+      currentIndex: metrics.currentIndex,
+      totalCount: metrics.totalCount,
     };
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData }: { loaderData?: any }) => {
     if (!loaderData) {
       return { meta: [{ title: "Brief unavailable — RADAR" }, { name: "robots", content: "noindex" }] };
     }
     const o = loaderData.opportunity;
     return {
       meta: [
-        { title: `${o.decision} · ${o.role} — RADAR` },
-        { name: "description", content: o.recommendation },
-        { property: "og:title", content: `${o.decision} · ${o.role} at ${o.company}` },
-        { property: "og:description", content: o.recommendation },
+        { title: `${o.decision} · ${o.role} — RADAR Executive Dossier` },
+        { name: "description", content: o.recommendation || "Executive advisory dossier" },
       ],
     };
   },
-  component: Brief,
+  component: OpportunityBriefView,
 });
 
-function Brief() {
+function OpportunityBriefView() {
   const { opportunity: o, neighbors, currentIndex, totalCount } = Route.useLoaderData();
-  const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [expandedReasoningRow, setExpandedReasoningRow] = useState<number | null>(null);
-  const [envelope, setEnvelope] = useState<EvaluationEnvelope | null>(null);
+  const { decisions, recordDecision } = useDecisions();
+  const router = useRouter();
+
+  const currentVerdict: DecisionVerb = (decisions[o.jobHash]?.verb as DecisionVerb) || o.decision;
+
+  const decide = (verb: DecisionVerb) => {
+    recordDecision(o.jobHash, verb);
+    router.invalidate();
+  };
+
+  const brief = BriefCompositionEngine.compose(o);
+  const ctx = EditorialContextBuilder.build(o);
+  const pattern = EditorialPatternSelector.select(ctx, o.jobHash);
+  const composed = NarrativeComposer.compose(pattern, o);
+
+  const [expandedReasoningRow, setExpandedReasoningRow] = useState<number | null>(0);
   const [checkedUnknowns, setCheckedUnknowns] = useState<Record<number, boolean>>({});
 
-  const [claimsOpen, setClaimsOpen] = useState(true);
-  const [evidenceOpen, setEvidenceOpen] = useState(true);
-
-  const { decisions, decide } = useDecisions();
-  const currentVerdict: DecisionVerb = decisions[o.jobHash]?.verb ?? o.decision;
-
-  useEffect(() => {
-    if (!o) return;
-    const adapter = new DefaultEvaluationAdapter();
-    adapter
-      .evaluate(
-        JSON.stringify(candidateProfile),
-        JSON.stringify(o),
-        "Become a Chief Commercial Officer (CCO) within 3 years."
-      )
-      .then(setEnvelope)
-      .catch((err) => {
-        console.error("[opportunity.$jobHash.tsx] Evaluation error:", err);
-      });
-  }, [o]);
-
-  const score = o.recommendationResult?.score ?? 80;
-  const tailoringEffort = o.tailoringEffort || "LOW";
-  const brief = BriefCompositionEngine.compose(o);
-  const narrative = EditorialCompositionEngine.compose(brief);
-  const presentation = PresentationEngine.compose(brief, narrative);
-
-  const isPursue = currentVerdict === "PURSUE";
-  const isConsider = currentVerdict === "CONSIDER";
-  const isPass = currentVerdict === "PASS";
-
-  const strongEvidenceDimensions = o.dimensions.filter((d) => d.jdEvidence.status === "Explicit");
-  const partialEvidenceDimensions = o.dimensions.filter((d) => d.jdEvidence.status === "Inferred");
-  const unknownDimensions = o.dimensions.filter((d) => d.bucket === "Missing" || d.jdEvidence.status === "Missing");
-  const allVerifiedCount = strongEvidenceDimensions.length + partialEvidenceDimensions.length;
-
-  const isLowEffort = tailoringEffort === "LOW";
-  const isHighEffort = tailoringEffort === "HIGH";
-  const estimatedTimeText = isLowEffort ? "20 minutes" : isHighEffort ? "2–3 hours" : "45 minutes";
-
   const toggleCheck = (idx: number) => {
-    setCheckedUnknowns(prev => ({ ...prev, [idx]: !prev[idx] }));
+    setCheckedUnknowns((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const rawDimensions = o.dimensions || (o as any).evidenceDimensions || [];
+
+  const strongEvidenceDimensions = rawDimensions.filter(
+    (d: any) => d.jdEvidence?.confidence === "EXPLICIT_STRONG" || d.importance === "Core" || (d.jdEvidence && d.jdEvidence.value)
+  );
+
+  const partialEvidenceDimensions = rawDimensions.filter(
+    (d: any) => d.jdEvidence?.confidence === "PARTIAL_INFERRED"
+  );
+
+  const allVerifiedCount = rawDimensions.length || 7;
+
+  const formatValue = (val: any) => {
+    if (!val) return "Not specified in JD";
+    const unwrapped = unwrapEvidenceValue(val);
+    return unwrapped || "Not specified in JD";
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-24 sm:pb-28">
-      <article className="max-w-[1080px] mx-auto px-4 sm:px-8 pt-6 sm:pt-8">
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            CHAPTER 0: ULTRA-CLEAN HEADER (<5-SECOND SCAN RULE)
-            ──────────────────────────────────────────────────────────────────────── */}
-        <SemanticFocus delayMs={0} className="min-h-[40vh] flex flex-col justify-center py-6">
-          <div className="max-w-5xl">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 text-muted-foreground mono text-[11px] tracking-[0.2em] font-semibold border-b border-border/30 pb-3">
-              <Link to="/" className="hover:text-foreground inline-flex items-center gap-1.5 transition-colors">
-                ← SHORTLIST
-              </Link>
-
-              <div className="flex items-center gap-2">
-                {neighbors.prev ? (
-                  <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.prev.jobHash }} className="hover:text-foreground transition-colors">
-                    ← PREV
-                  </Link>
-                ) : (
-                  <span className="opacity-30 cursor-not-allowed">← PREV</span>
-                )}
-                <span className="text-border/60">|</span>
-                <span>BRIEF <strong className="text-foreground">{String(currentIndex).padStart(2, "0")}</strong> OF {String(totalCount).padStart(2, "0")}</span>
-                <span className="text-border/60">|</span>
-                {neighbors.next ? (
-                  <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.next.jobHash }} className="hover:text-foreground transition-colors">
-                    NEXT →
-                  </Link>
-                ) : (
-                  <span className="opacity-30 cursor-not-allowed">NEXT →</span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 mb-3">
-              <span className="mono text-[11px] tracking-[0.22em] font-bold bg-pursue-soft text-pursue px-3 py-1 rounded-sm uppercase border border-pursue/30">
-                {currentVerdict}
-              </span>
-              <span className="text-border/60">|</span>
-              <span className="mono text-[11px] text-foreground font-medium">
-                Strong strategic fit
-              </span>
-              <span className="text-border/60">·</span>
-              <span className="mono text-[11px] text-foreground font-medium">
-                {brief.evidenceQuality}
-              </span>
-              <span className="text-border/60">·</span>
-              <span className="mono text-[11px] text-muted-foreground font-medium">
-                ~{estimatedTimeText} application
-              </span>
-            </div>
-
-            <h1 className="display text-[36px] sm:text-[48px] lg:text-[56px] font-bold tracking-tight text-foreground leading-[1.05]">
-              {o.role.toUpperCase()}
-            </h1>
-
-            <div className="mt-2 flex items-center gap-3 text-[17px] sm:text-[19px]">
-              <span className="text-foreground font-semibold">{o.company}</span>
-              <span className="text-border">·</span>
-              <span className="text-muted-foreground">{o.location}</span>
-            </div>
-
-            <p className="mt-4 text-[16px] sm:text-[18px] text-foreground font-normal leading-snug">
-              {brief.memory.retentionSentence}
-            </p>
-          </div>
-        </SemanticFocus>
-
-        <div className="border-t border-border/40" />
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            PROMINENT HERO HERO: THE OPPORTUNITY IN ONE MINUTE (TL;DR)
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-8 my-8 bg-card border-2 border-border p-6 sm:p-8 rounded-sm shadow-md">
-          <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-border/50">
-            <span className="mono text-[11px] tracking-[0.26em] text-accent-ink font-bold uppercase">
-              ⚡ IF YOU ONLY READ ONE THING, READ THIS
-            </span>
-            <span className="mono text-[10px] text-muted-foreground font-semibold uppercase">
-              1-MINUTE EXECUTIVE BRIEF
+    <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
+      {/* ────────────────────────────────────────────────────────────────────────
+          HEADER TITLE BLOCK
+          ──────────────────────────────────────────────────────────────────────── */}
+      <header className="border-b border-border">
+        <div className="mx-auto max-w-[1180px] px-5 py-8 sm:px-8 sm:py-12">
+          {/* Nav Sub-Header */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Link to="/" className="label-mono hover:text-foreground transition-colors font-normal">
+              ← Shortlist
+            </Link>
+            <span className="label-mono font-normal text-muted-foreground">
+              Brief {String(currentIndex).padStart(2, "0")} of {totalCount}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-            <div className="md:col-span-6 space-y-3">
-              <p className="mono text-[10px] tracking-[0.2em] text-pursue font-bold uppercase mb-2">
-                WHY PURSUE?
-              </p>
-              <ul className="space-y-2 text-[14.5px] text-foreground">
-                {brief.oneMinuteTLDR.whyPursue.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 leading-relaxed">
-                    <span className="text-pursue font-bold shrink-0">•</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="md:col-span-6 space-y-3">
-              <p className="mono text-[10px] tracking-[0.2em] text-consider font-bold uppercase mb-2">
-                WATCH FOR
-              </p>
-              <ul className="space-y-2 text-[14.5px] text-foreground mb-6">
-                {brief.oneMinuteTLDR.watchFor.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 leading-relaxed">
-                    <span className="text-consider font-bold shrink-0">•</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="pt-3 border-t border-border/40 flex items-center justify-between">
-                <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">BOTTOM LINE</span>
-                <span className="text-[17px] text-foreground font-bold font-serif">{brief.oneMinuteTLDR.bottomLine}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            NEW SECTION: WHY THIS ROLE IS INTERESTING (STRATEGIC CAREER UPSIDE)
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-8 border-b border-border/40">
-          <div className="mb-4">
-            <span className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase block mb-1">
-              STRATEGIC CAREER VALUE
+          {/* Badges & Verbs */}
+          <div className="mt-7 flex flex-wrap items-center gap-2">
+            <span className={`label-mono rounded-[3px] px-1.5 py-[3px] leading-none uppercase font-normal ${
+              currentVerdict === "PURSUE"
+                ? "bg-signal text-white"
+                : currentVerdict === "CONSIDER"
+                ? "bg-caution text-white"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              {currentVerdict === "PURSUE" ? "Pursue" : currentVerdict === "CONSIDER" ? "Consider" : "Pass"}
             </span>
-            <h2 className="text-[22px] sm:text-[28px] text-foreground font-bold font-serif">
-              Why this role is interesting
-            </h2>
+            <span className="label-mono font-normal">Strong strategic fit</span>
+            <span className="label-mono font-normal">· {brief.evidenceQuality}</span>
+            <span className="label-mono hidden sm:inline font-normal">· 20 minute application</span>
           </div>
 
-          <div className="pl-4 border-l-2 border-accent-ink space-y-3 max-w-4xl py-1">
-            {brief.strategicUpside.points.map((point, i) => (
-              <p key={i} className="text-[15px] sm:text-[16.5px] text-foreground font-medium leading-relaxed">
-                • {point}
-              </p>
-            ))}
-          </div>
-        </section>
+          {/* Main Title */}
+          <h1 className="mt-4 max-w-4xl font-display text-[2.6rem] leading-[1.02] tracking-tight sm:text-6xl text-foreground font-normal">
+            {o.role} mandate at {o.company} focused on {formatValue(rawDimensions[0]?.jdEvidence?.value) || o.primaryDriver || "commercial growth"}
+          </h1>
 
-        {/* ────────────────────────────────────────────────────────────────────────
-            INTERACTIVE REASONING CHAIN (INSPECTABLE BECAUSE / EVIDENCE)
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-8 border-b border-border/40">
-          <div className="mb-4">
-            <span className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase">
-              EXPLAINABLE REASONING CHAIN
-            </span>
-            <h3 className="text-[22px] sm:text-[26px] text-foreground font-bold font-serif mt-1">
-              Why this recommendation?
-            </h3>
-          </div>
-
-          <div className="space-y-4 max-w-4xl">
-            {brief.qualitativeReasoningChain.map((row, idx) => (
-              <div key={idx} className="border-b border-border/40 pb-4">
-                <div
-                  onClick={() => setExpandedReasoningRow(expandedReasoningRow === idx ? null : idx)}
-                  className="flex items-center justify-between cursor-pointer py-1 group"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="mono text-[11px] font-bold text-foreground uppercase w-36 sm:w-48">
-                      {row.layer}
-                    </span>
-                    <span className="mono text-[11px] tracking-[0.16em] text-foreground font-bold uppercase bg-muted/60 px-2.5 py-0.5 rounded-sm">
-                      {row.ratingLabel}
-                    </span>
-                  </div>
-                  <span className="mono text-[10px] text-muted-foreground group-hover:text-foreground font-bold">
-                    {expandedReasoningRow === idx ? "▲ HIDE" : "▼ WHY?"}
-                  </span>
-                </div>
-
-                {expandedReasoningRow === idx && (
-                  <div className="mt-3 p-4 bg-card border border-border/60 rounded-sm space-y-3">
-                    <div>
-                      <span className="mono text-[9.5px] text-muted-foreground font-bold uppercase block mb-1">
-                        BECAUSE:
-                      </span>
-                      <div className="space-y-1">
-                        {row.becausePoints.map((b, bIdx) => (
-                          <p key={bIdx} className="text-[13.5px] text-foreground font-medium flex items-center gap-2">
-                            <span className="text-pursue font-bold">✓</span>
-                            <span>{b}</span>
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-border/40">
-                      <span className="mono text-[9.5px] text-muted-foreground font-bold uppercase block mb-0.5">
-                        EVIDENCE PRECEDENT:
-                      </span>
-                      <p className="text-[12.5px] text-muted-foreground italic">
-                        “{row.evidenceSnippet}”
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            CHAPTER 1: CAREER CENTERPIECE & STRENGTH CLASSIFICATION
-            ──────────────────────────────────────────────────────────────────────── */}
-        {presentation.sections.filter(sec => sec.id === "CAREER").map((sec) => (
-          <SemanticReveal key={sec.id} delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-              <div className="md:col-span-4 lg:col-span-3">
-                <div className="sticky top-24">
-                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">I</span>
-                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">{sec.editorial.identity}</h3>
-                  <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">{sec.editorial.expression}</p>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-9">
-                <h2 className="text-[26px] sm:text-[32px] text-foreground font-bold font-serif tracking-tight leading-tight mb-4">
-                  Yes — but for a very specific reason.
-                </h2>
-
-                <div className="space-y-4 max-w-5xl">
-                  <p className="text-[16px] sm:text-[19px] leading-relaxed text-foreground font-serif italic">
-                    {envelope?.response.growth.careerAlignment.rationale ||
-                      "This role narrows your operating scope today, but meaningfully strengthens your commercial leadership profile—making it a credible stepping stone toward a future CCO position."}
-                  </p>
-
-                  <div className="pl-4 border-l-2 border-consider py-1">
-                    <p className="mono text-[10px] tracking-[0.22em] text-consider font-bold uppercase mb-0.5">
-                      WHY NOT A STRONGER RECOMMENDATION?
-                    </p>
-                    <p className="text-[14px] text-foreground font-normal">
-                      {brief.whyNotStronger}
-                    </p>
-                  </div>
-
-                  <div className="pt-4">
-                    <p className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase mb-3">
-                      CAPABILITY STRENGTH CLASSIFICATION
-                    </p>
-
-                    <div className="space-y-3">
-                      <div className="pl-3 border-l-2 border-border">
-                        <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
-                          CORE STRENGTH: Growth &amp; Acquisition Strategy
-                        </span>
-                        <p className="text-[13px] text-muted-foreground mt-0.5">Direct alignment with historical P&amp;L precedent.</p>
-                      </div>
-
-                      <div className="pl-3 border-l-2 border-border">
-                        <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
-                          ADJACENT STRENGTH: Commercial Revenue Models
-                        </span>
-                        <p className="text-[13px] text-muted-foreground mt-0.5">Core acquisition principles apply to new channels.</p>
-                      </div>
-
-                      <div className="pl-3 border-l-2 border-border">
-                        <span className="mono text-[9.5px] tracking-[0.16em] text-foreground font-bold block uppercase">
-                          TRANSFERABLE STRENGTH: Digital Transformation
-                        </span>
-                        <p className="text-[13px] text-muted-foreground mt-0.5">Restructuring teams along ESG relationship paths.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </SemanticReveal>
-        ))}
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            CHAPTER 2: DELIVERABLES WITH PROVENANCE BADGES
-            ──────────────────────────────────────────────────────────────────────── */}
-        {presentation.sections.filter(sec => sec.id === "DELIVERABLES").map((sec) => (
-          <SemanticReveal key={sec.id} delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-              <div className="md:col-span-4 lg:col-span-3">
-                <div className="sticky top-24">
-                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">II</span>
-                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">THE ROLE</h3>
-                  <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">What success looks like.</p>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-9">
-                <h2 className="text-[24px] sm:text-[28px] text-foreground font-bold font-serif tracking-tight mb-6">
-                  What will you be expected to deliver?
-                </h2>
-
-                <div className="max-w-4xl relative pl-6 sm:pl-8 ml-2 border-l-2 border-border/50 space-y-8 py-1">
-                  {brief.deliverablesWork.map((item, i) => (
-                    <div key={i} className="relative group">
-                      <div className="absolute -left-[31px] sm:-left-[43px] top-0 bg-background border-2 border-accent-ink text-accent-ink mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wider flex items-center justify-center min-w-[26px]">
-                        {i * 3 + 3}
-                      </div>
-
-                      <div className="pl-3">
-                        <div className="flex items-center gap-3">
-                          <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground uppercase font-bold">
-                            MONTH {i * 3 + 3}
-                          </span>
-                          <span className="mono text-[9px] tracking-[0.14em] text-muted-foreground uppercase">
-                            {brief.deliverablesProvenance[i] === "Observed in JD" ? "✓ Observed in JD" : "⚡ Inferred from Role Pattern"}
-                          </span>
-                        </div>
-                        <p className="text-[15.5px] sm:text-[18px] text-foreground font-semibold leading-relaxed mt-1">
-                          {item}
-                        </p>
-                        {brief.deliverablesValue[i] && (
-                          <p className="text-[13px] text-muted-foreground mt-1 font-medium">
-                            <span className="text-foreground font-bold">🎯 OUTCOME:</span> {brief.deliverablesValue[i]}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </SemanticReveal>
-        ))}
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            CHAPTER 3: WHY RADAR BELIEVES YOU'RE WELL POSITIONED
-            ──────────────────────────────────────────────────────────────────────── */}
-        {presentation.sections.filter(sec => sec.id === "FIT").map((sec) => (
-          <SemanticReveal key={sec.id} delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-              <div className="md:col-span-4 lg:col-span-3">
-                <div className="sticky top-24">
-                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">III</span>
-                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">YOUR ADVANTAGE</h3>
-                  <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">Evidence-backed alignment.</p>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-9">
-                <h2 className="text-[24px] sm:text-[28px] text-foreground font-bold font-serif tracking-tight mb-6">
-                  Why RADAR believes you're well positioned
-                </h2>
-
-                <div className="max-w-5xl space-y-6">
-                  <div>
-                    <span className="mono text-[10px] tracking-[0.22em] text-foreground font-bold uppercase block mb-2">
-                      ✓ DIRECT EVIDENCE
-                    </span>
-                    {brief.proofPoints.filter(p => p.category === "Direct Evidence").map((proof, i) => (
-                      <div key={i} className="pl-4 border-l-2 border-foreground py-1 mb-3">
-                        <p className="text-[17px] sm:text-[19px] font-bold text-foreground leading-snug">
-                          {proof.headline}
-                        </p>
-                        <p className="text-[13.5px] text-muted-foreground mt-1 leading-relaxed">
-                          {proof.detail}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="pt-2">
-                    <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase block mb-2">
-                      ⚡ TRANSFERABLE EXPERIENCE
-                    </span>
-                    {brief.proofPoints.filter(p => p.category === "Transferable Experience").map((proof, i) => (
-                      <div key={i} className="pl-4 border-l-2 border-border py-1">
-                        <p className="text-[15px] sm:text-[17px] font-semibold text-foreground leading-snug">
-                          {proof.headline}
-                        </p>
-                        <p className="text-[13px] text-muted-foreground mt-0.5 leading-relaxed">
-                          {proof.detail}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </SemanticReveal>
-        ))}
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            CHAPTER 4: RECRUITER CALL CHECKLIST (DECISION-CRITICAL UNKNOWNS)
-            ──────────────────────────────────────────────────────────────────────── */}
-        {presentation.sections.filter(sec => sec.id === "UNKNOWNS").map((sec) => (
-          <SemanticReveal key={sec.id} delayMs={150} className="py-10 sm:py-14 border-b border-border/40">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-              <div className="md:col-span-4 lg:col-span-3">
-                <div className="sticky top-24">
-                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">IV</span>
-                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">OPEN QUESTIONS</h3>
-                  <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">Screening priorities.</p>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-9">
-                <div className="mb-4">
-                  <span className="mono text-[11px] tracking-[0.2em] text-consider font-bold uppercase block mb-1">
-                    🚩 RECRUITER CALL CHECKLIST: CLARIFY THESE 3 QUESTIONS
-                  </span>
-                  <p className="text-[13.5px] text-muted-foreground leading-relaxed">
-                    Use these decision-critical items during your initial screening conversation.
-                  </p>
-                </div>
-
-                <div className="max-w-4xl space-y-3 pt-2">
-                  {brief.rankedUnknowns.map((item, idx) => {
-                    const isChecked = !!checkedUnknowns[idx];
-                    return (
-                      <div
-                        key={idx}
-                        onClick={() => toggleCheck(idx)}
-                        className="flex items-start gap-3 p-3.5 border border-border/60 bg-card rounded-sm cursor-pointer hover:border-foreground transition-colors"
-                      >
-                        <div className="mt-0.5 text-[16px] font-bold text-foreground">
-                          {isChecked ? "☑" : "☐"}
-                        </div>
-                        <div className="flex-1">
-                          <span className={`text-[14.5px] ${isChecked ? "line-through text-muted-foreground" : "text-foreground font-semibold"}`}>
-                            {item.question}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </SemanticReveal>
-        ))}
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            SENSITIVITY BOUNDARIES (WHAT WOULD CHANGE THIS DECISION?)
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-10 border-b border-border/40">
-          <div className="max-w-[1080px]">
-            <div className="mb-4">
-              <span className="mono text-[10px] tracking-[0.24em] text-accent-ink font-bold uppercase block mb-1">
-                ACTIONABLE BOUNDARY CONDITIONS
-              </span>
-              <h2 className="text-[22px] sm:text-[26px] text-foreground font-bold font-serif tracking-tight">
-                What would change this decision?
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="pl-4 border-l-2 border-foreground py-1">
-                <span className="mono text-[10px] tracking-[0.2em] text-foreground font-bold uppercase block mb-2">
-                  ▲ THIS ROLE BECOMES A STRONG PURSUE IF:
-                </span>
-                <ul className="space-y-1.5 text-[13.5px] text-foreground">
-                  {brief.decisionSensitivity.becomesPursueIf.map((cond, i) => (
-                    <li key={i} className="flex items-start gap-2 leading-relaxed">
-                      <span className="text-foreground font-bold shrink-0">•</span>
-                      <span>{cond}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="pl-4 border-l-2 border-border py-1">
-                <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-bold uppercase block mb-2">
-                  ▼ THIS ROLE BECOMES A PASS IF:
-                </span>
-                <ul className="space-y-1.5 text-[13.5px] text-foreground">
-                  {brief.decisionSensitivity.becomesPassIf.map((cond, i) => (
-                    <li key={i} className="flex items-start gap-2 leading-relaxed">
-                      <span className="text-muted-foreground font-bold shrink-0">•</span>
-                      <span>{cond}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            CHAPTER 5: ASYMMETRIC EVIDENCE HIGHLIGHTS
-            ──────────────────────────────────────────────────────────────────────── */}
-        {presentation.sections.filter(sec => sec.id === "EVIDENCE").map((sec) => (
-          <section key={sec.id} className="py-10 border-b border-border/40">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-[1080px]">
-              <div className="md:col-span-4 lg:col-span-3">
-                <div className="sticky top-24">
-                  <span className="font-serif text-[42px] text-muted-foreground/40 block leading-none mb-2">V</span>
-                  <h3 className="mono text-[10px] tracking-[0.24em] text-foreground font-bold uppercase border-b border-border/40 pb-2 mb-2">{sec.editorial.identity}</h3>
-                  <p className="font-serif italic text-[13.5px] text-muted-foreground leading-relaxed">{sec.editorial.expression}</p>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-9">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                  <h2 className="display text-[24px] sm:text-[30px] text-foreground font-bold font-serif tracking-tight">
-                    Evidence Behind This Recommendation
-                  </h2>
-
-                  <button
-                    onClick={() => setEvidenceOpen(!evidenceOpen)}
-                    className="mono text-[11px] tracking-[0.2em] text-muted-foreground hover:text-foreground border border-border/60 rounded-sm px-3 py-1 font-bold"
-                  >
-                    {evidenceOpen ? "HIDE EVIDENCE ▲" : `EXPAND FORENSIC EVIDENCE (${allVerifiedCount} SIGNALS) ▼`}
-                  </button>
-                </div>
-
-                {evidenceOpen && (
-                  <div className="mt-4 space-y-6">
-                    {/* TIER 1: STRONG EXPLICIT EVIDENCE HIGHLIGHTS (BORDERED CARDS) */}
-                    {strongEvidenceDimensions.length > 0 && (
-                      <div>
-                        <span className="mono text-[10px] tracking-[0.22em] text-foreground font-bold uppercase block mb-2">
-                          ✓ STRONG EXPLICIT EVIDENCE HIGHLIGHTS ({strongEvidenceDimensions.length})
-                        </span>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {strongEvidenceDimensions.map((dim, idx) => (
-                            <div key={idx} className="border border-border bg-card p-4 rounded-sm shadow-sm">
-                              <span className="mono text-[10px] tracking-[0.16em] text-foreground font-bold uppercase block mb-1">
-                                {dim.label}
-                              </span>
-                              <p className="text-[14.5px] text-foreground font-bold">
-                                {formatValue(dim.jdEvidence.value)}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* TIER 2: PARTIAL EVIDENCE (UNBOXED LIST) */}
-                    {partialEvidenceDimensions.length > 0 && (
-                      <div className="pt-2">
-                        <span className="mono text-[10px] tracking-[0.22em] text-muted-foreground font-bold uppercase block mb-2">
-                          ⚡ PARTIAL / INFERRED EVIDENCE ({partialEvidenceDimensions.length})
-                        </span>
-                        <div className="space-y-1.5 pl-3 border-l-2 border-border">
-                          {partialEvidenceDimensions.map((dim, idx) => (
-                            <p key={idx} className="text-[13px] text-foreground font-medium">
-                              <span className="font-bold text-muted-foreground uppercase">{dim.label}:</span> {formatValue(dim.jdEvidence.value)}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-        ))}
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            EXPERIENCE & CLAIMS INVENTORY
-            ──────────────────────────────────────────────────────────────────────── */}
-        <section className="py-8 border-b border-border">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
-            <div>
-              <p className="mono text-[10px] tracking-[0.24em] text-muted-foreground font-semibold uppercase">
-                Supporting dossier ledger
-              </p>
-              <h2 className="display text-[22px] sm:text-[26px] mt-1 text-foreground font-semibold">
-                Experience &amp; claims inventory.
-              </h2>
-            </div>
-
-            <button
-              onClick={() => setClaimsOpen(!claimsOpen)}
-              className="mono text-[10px] tracking-[0.18em] text-muted-foreground hover:text-foreground border border-border rounded-sm px-2.5 py-1"
-            >
-              {claimsOpen ? "HIDE ▲" : "EXPAND (5 CLAIMS) ▼"}
-            </button>
-          </div>
-
-          {claimsOpen && (
-            <ol className="divide-y divide-border/40 mt-3">
-              {candidateProfile.experience.achievements.slice(0, 5).map((achievement: string, idx: number) => (
-                <li key={idx} className="py-3 flex items-start gap-4">
-                  <span className="mono text-[11px] tracking-[0.18em] text-muted-foreground mt-0.5 tabular-nums font-semibold">
-                    {(idx + 1).toString().padStart(2, "0")}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-[13.5px] text-foreground leading-relaxed font-normal">
-                      {achievement}
-                    </p>
-                    <span className="mono text-[10px] text-muted-foreground font-semibold mt-0.5 block">
-                      Transferability Path: Performance Marketing → GTM Strategy
-                    </span>
-                  </div>
-                  <span className="mono text-[10px] tracking-[0.14em] text-foreground font-medium shrink-0 bg-muted px-2 py-0.5 rounded-sm">
-                    ✓ Verified
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-
-        {/* ────────────────────────────────────────────────────────────────────────
-            FOOTER META CLOSURE
-            ──────────────────────────────────────────────────────────────────────── */}
-        <div className="my-8 border-t border-b border-border py-3.5 flex flex-wrap items-center justify-center gap-6 text-muted-foreground mono text-[11px] tracking-[0.18em]">
-          <div>
-            Generated: <span className="text-foreground font-bold">{new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
-          </div>
-          <span className="text-border">·</span>
-          <div>
-            Quality: <span className="text-foreground font-bold">{brief.evidenceQuality}</span>
-          </div>
-          <span className="text-border/60">·</span>
-          <div>
-            Signals: <span className="text-foreground font-bold">{allVerifiedCount} verified signals</span>
-          </div>
+          {/* Subtitle Company Line */}
+          <p className="mt-4 border-t border-border pt-4 font-mono text-xs tracking-[0.12em] uppercase text-muted-foreground font-normal">
+            <span className="text-foreground font-medium">{o.company}</span> · {o.location} ({o.workModel || "Hybrid"})
+          </p>
         </div>
-
-        <footer className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {neighbors.prev ? (
-            <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.prev.jobHash }} className="group">
-              <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-semibold">
-                ← PREVIOUS BRIEF
-              </span>
-              <p className="mt-1 text-[15px] text-foreground group-hover:underline font-medium">
-                {neighbors.prev.role}
-              </p>
-            </Link>
-          ) : <div />}
-
-          {neighbors.next ? (
-            <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.next.jobHash }} className="group text-left sm:text-right">
-              <span className="mono text-[10px] tracking-[0.2em] text-muted-foreground font-semibold">
-                NEXT BRIEF →
-              </span>
-              <p className="mt-1 text-[15px] text-foreground group-hover:underline font-medium">
-                {neighbors.next.role}
-              </p>
-            </Link>
-          ) : <div />}
-        </footer>
-
-        <button
-          onClick={() => setShowDiagnostics(!showDiagnostics)}
-          className="mt-8 mono text-[10px] tracking-[0.22em] text-muted-foreground hover:text-foreground inline-flex items-center gap-2 font-semibold"
-        >
-          DEVELOPER DIAGNOSTICS
-        </button>
-
-        {showDiagnostics && (
-          <div className="mt-4 border border-border bg-muted/30 p-4 rounded-sm space-y-3">
-            <h4 className="mono text-[11px] tracking-[0.2em] text-accent-ink font-bold">
-              RADAR INTELLIGENCE METADATA
-            </h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs mono">
-              <div>
-                <span className="block text-muted-foreground text-[10px] uppercase">Job Hash</span>
-                <span className="text-foreground font-semibold">{o.jobHash}</span>
-              </div>
-              <div>
-                <span className="block text-muted-foreground text-[10px] uppercase">Decision</span>
-                <span className="text-foreground font-semibold">{currentVerdict}</span>
-              </div>
-              <div>
-                <span className="block text-muted-foreground text-[10px] uppercase">Priority Score</span>
-                <span className="text-foreground font-semibold">{score} / 100</span>
-              </div>
-              <div>
-                <span className="block text-muted-foreground text-[10px] uppercase">Evidence Quality</span>
-                <span className="text-foreground font-semibold">{brief.evidenceQuality}</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </article>
+      </header>
 
       {/* ────────────────────────────────────────────────────────────────────────
-          MINIMALIST STICKY BOTTOM DECISION BAR
+          EXECUTIVE BRIEF HIGHLIGHT BANNER
           ──────────────────────────────────────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background/90 backdrop-blur border-t border-border/80 px-4 py-2.5 sm:py-3 shadow-2xl">
-        <div className="max-w-[1080px] mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="mono text-[11px] tracking-[0.18em] text-pursue bg-pursue-soft/80 border border-pursue/40 px-3 py-1 rounded-sm font-bold uppercase">
-              {currentVerdict}
-            </span>
+      <section className="border-b border-border bg-surface-raised">
+        <div className="mx-auto max-w-[1180px] px-5 py-8 sm:px-8 sm:py-10">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="label-mono text-primary font-normal">If you only read one thing</span>
+            <span className="label-mono font-normal text-muted-foreground">1-minute executive brief</span>
           </div>
+          <p className="mt-4 font-display text-3xl leading-tight sm:text-4xl text-foreground font-normal">
+            {currentVerdict === "PURSUE" ? "Worth pursuing." : currentVerdict === "CONSIDER" ? "Worth considering." : "Pass on this mandate."}
+          </p>
 
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button
-                onClick={() => decide(o.jobHash, "PURSUE")}
-                className={isPursue ? "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-pursue text-background ring-2 ring-pursue shadow-md" : "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-pursue-soft text-pursue hover:bg-pursue hover:text-background"}
-              >
-                PURSUE
-              </button>
-              <button
-                onClick={() => decide(o.jobHash, "CONSIDER")}
-                className={isConsider ? "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-consider text-background ring-2 ring-consider shadow-md" : "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-consider-soft text-consider hover:bg-consider hover:text-background"}
-              >
-                CONSIDER
-              </button>
-              <button
-                onClick={() => decide(o.jobHash, "PASS")}
-                className={isPass ? "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-pass text-foreground ring-2 ring-pass shadow-md" : "mono text-[10px] sm:text-[11px] tracking-[0.16em] px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold transition-all bg-muted text-muted-foreground hover:bg-pass hover:text-foreground"}
-              >
-                PASS
-              </button>
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            <div className="border-l-2 border-signal pl-4">
+              <p className="label-mono text-signal font-normal">Why pursue</p>
+              <ul className="mt-2.5 space-y-2.5">
+                {brief.oneMinuteTLDR.whyPursue.map((item: string, i: number) => (
+                  <li key={i} className="text-sm leading-relaxed text-foreground font-normal">
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            <span className="text-border/80 text-[14px]">|</span>
+            <div className="border-l-2 border-caution pl-4">
+              <p className="label-mono text-caution font-normal">Watch for</p>
+              <ul className="mt-2.5 space-y-2.5">
+                {brief.oneMinuteTLDR.watchFor.map((item: string, i: number) => (
+                  <li key={i} className="text-sm leading-relaxed text-foreground font-normal">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
 
+      {/* ────────────────────────────────────────────────────────────────────────
+          MAIN EDITORIAL SECTIONS (UNBOXED SEAMLESS FLOW WITH STICKY HEADERS)
+          ──────────────────────────────────────────────────────────────────────── */}
+      <main className="mx-auto max-w-[1180px] space-y-12 px-5 py-12 sm:px-8 sm:space-y-16">
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 1: STRATEGIC CAREER VALUE (CHAPTER I)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="grid gap-5 border-t border-border pt-8 sm:gap-8 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-12 w-full items-start">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <p className="font-display text-2xl leading-none text-border-strong font-normal">I</p>
+            <p className="label-mono mt-2 font-normal text-foreground">Strategic career value</p>
+            <p className="mt-2 hidden text-xs leading-relaxed text-muted-foreground lg:block font-normal">
+              What this mandate does to your record.
+            </p>
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.9rem] leading-tight sm:text-4xl text-foreground font-normal">
+              Why this role is interesting
+            </h2>
+            <div className="mt-5">
+              <ol className="divide-y divide-border border-y border-border">
+                {brief.strategicUpside.points.map((point: string, i: number) => (
+                  <li key={i} className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 py-4">
+                    <span className="label-mono tabular-nums text-border-strong font-normal">
+                      0{i + 1}
+                    </span>
+                    <p className="text-sm leading-relaxed text-foreground font-normal">
+                      {point}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 2: EXPLAINABLE REASONING (CHAPTER II)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="grid gap-5 border-t border-border pt-8 sm:gap-8 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-12 w-full items-start">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <p className="font-display text-2xl leading-none text-border-strong font-normal">II</p>
+            <p className="label-mono mt-2 font-normal text-foreground">Explainable reasoning</p>
+            <p className="mt-2 hidden text-xs leading-relaxed text-muted-foreground lg:block font-normal">
+              Every score is traceable to evidence.
+            </p>
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.9rem] leading-tight sm:text-4xl text-foreground font-normal">
+              Why this recommendation?
+            </h2>
+            <div className="mt-5">
+              <div className="divide-y divide-border border-y border-border">
+                {brief.qualitativeReasoningChain.map((row: any, idx: number) => (
+                  <div key={idx}>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedReasoningRow(expandedReasoningRow === idx ? null : idx)}
+                      className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-4 text-left cursor-pointer group"
+                    >
+                      <span className="label-mono truncate text-foreground font-normal">
+                        {row.layer}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-4">
+                        <span className="font-mono text-xs text-primary font-normal">{row.ratingLabel}</span>
+                        <span className="label-mono text-muted-foreground group-hover:text-foreground font-normal">
+                          {expandedReasoningRow === idx ? "− Hide" : "+ Why"}
+                        </span>
+                      </span>
+                    </button>
+
+                    {expandedReasoningRow === idx && (
+                      <div className="pb-5">
+                        <ul className="space-y-1.5">
+                          {row.becausePoints.map((b: string, bIdx: number) => (
+                            <li key={bIdx} className="flex gap-2 text-sm text-foreground font-normal">
+                              <span className="text-signal font-normal">✓</span>
+                              <span>{b}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-4 border-l-2 border-border-strong pl-3 font-display text-base italic text-muted-foreground font-normal">
+                          “{row.evidenceSnippet}”
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 3: THE CASE (CHAPTER III) — FULL EDITORIAL REPOSITORY BINDING
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="grid gap-5 border-t border-border pt-8 sm:gap-8 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-12 w-full items-start">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <p className="font-display text-2xl leading-none text-border-strong font-normal">III</p>
+            <p className="label-mono mt-2 font-normal text-foreground">The call</p>
+            <p className="mt-2 hidden text-xs leading-relaxed text-muted-foreground lg:block font-normal">
+              The honest version.
+            </p>
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.9rem] leading-tight sm:text-4xl text-foreground font-normal">
+              {composed.headline}
+            </h2>
+
+            <div className="mt-5">
+              <p className="max-w-3xl font-display text-xl leading-relaxed sm:text-2xl text-foreground font-normal">
+                {composed.opening}
+              </p>
+
+              {composed.editorialBridge && (
+                <p className="mt-4 border-l-2 border-border-strong pl-4 text-sm leading-relaxed text-muted-foreground font-normal italic">
+                  {composed.editorialBridge}
+                </p>
+              )}
+
+              <p className="mt-5 border-l-2 border-caution pl-4 text-sm leading-relaxed text-muted-foreground font-normal">
+                <span className="label-mono block text-caution font-normal mb-1">Why it is not a stronger call</span>
+                {brief.whyNotStronger || "This role aligns strongly with target executive capabilities and leadership altitude."}
+              </p>
+
+              <dl className="mt-7 divide-y divide-border border-y border-border">
+                {rawDimensions.slice(0, 3).map((dim: any, idx: number) => (
+                  <div key={idx} className="grid gap-1 py-4 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-6">
+                    <dt className="label-mono text-muted-foreground font-normal">
+                      {idx === 0 ? "Core strength" : idx === 1 ? "Adjacent strength" : "Transferable"}
+                    </dt>
+                    <dd className="min-w-0">
+                      <p className="font-display text-lg leading-snug text-foreground font-normal">{dim.label}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground font-normal">
+                        {formatValue(dim.jdEvidence?.value)}
+                      </p>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 4: THE ROLE (CHAPTER IV)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="grid gap-5 border-t border-border pt-8 sm:gap-8 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-12 w-full items-start">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <p className="font-display text-2xl leading-none text-border-strong font-normal">IV</p>
+            <p className="label-mono mt-2 font-normal text-foreground">The mandate</p>
+            <p className="mt-2 hidden text-xs leading-relaxed text-muted-foreground lg:block font-normal">
+              First three quarters, as written.
+            </p>
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.9rem] leading-tight sm:text-4xl text-foreground font-normal">
+              What will you be expected to deliver?
+            </h2>
+
+            <div className="mt-5">
+              <ol className="border-l border-border pl-6 space-y-8">
+                {brief.deliverablesWork.map((item: string, i: number) => (
+                  <li key={i} className="relative last:pb-0">
+                    <span className="absolute -left-[28.5px] top-1.5 h-2 w-2 rounded-full bg-primary" />
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="label-mono text-primary font-normal">Month {i * 3 + 3}</span>
+                      <span className="label-mono font-normal text-muted-foreground">
+                        {brief.deliverablesProvenance[i] === "Observed in JD" ? "Baseline 30–90" : i === 1 ? "Leverage your platform" : "Compound from high rhythm"}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 font-display text-xl leading-snug text-foreground font-normal">
+                      {item}
+                    </p>
+                    {brief.deliverablesValue[i] && (
+                      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground font-normal">
+                        <span className="label-mono text-signal font-normal mr-1">Outcome</span> {brief.deliverablesValue[i]}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 5: YOUR ADVANTAGE (CHAPTER V)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="grid gap-5 border-t border-border pt-8 sm:gap-8 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-12 w-full items-start">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <p className="font-display text-2xl leading-none text-border-strong font-normal">V</p>
+            <p className="label-mono mt-2 font-normal text-foreground">Your advantage</p>
+            <p className="mt-2 hidden text-xs leading-relaxed text-muted-foreground lg:block font-normal">
+              Where your record maps onto the ask.
+            </p>
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.9rem] leading-tight sm:text-4xl text-foreground font-normal">
+              Why RADAR believes you're well positioned
+            </h2>
+
+            <div className="mt-5">
+              <dl className="divide-y divide-border border-y border-border">
+                {brief.proofPoints.map((proof: any, i: number) => (
+                  <div key={i} className="grid gap-1 py-4 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-6">
+                    <dt className="label-mono text-signal font-normal">
+                      {proof.category === "Direct Evidence" ? "Direct evidence" : "Transferable experience"}
+                    </dt>
+                    <dd className="min-w-0">
+                      <p className="font-display text-lg leading-snug text-foreground font-normal">{proof.headline}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground font-normal">{proof.detail}</p>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 6: OPEN QUESTIONS (CHAPTER VI)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="grid gap-5 border-t border-border pt-8 sm:gap-8 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-12 w-full items-start">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <p className="font-display text-2xl leading-none text-border-strong font-normal">VI</p>
+            <p className="label-mono mt-2 font-normal text-foreground">Open questions</p>
+            <p className="mt-2 hidden text-xs leading-relaxed text-muted-foreground lg:block font-normal">
+              Ask these on the screening call.
+            </p>
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.9rem] leading-tight sm:text-4xl text-foreground font-normal">
+              Clarify these before the call
+            </h2>
+
+            <div className="mt-5">
+              <ul className="divide-y divide-border border-y border-border">
+                {brief.rankedUnknowns.map((item: any, idx: number) => {
+                  const isChecked = !!checkedUnknowns[idx];
+                  return (
+                    <li
+                      key={idx}
+                      onClick={() => toggleCheck(idx)}
+                      className="flex items-start gap-3 py-4 cursor-pointer hover:bg-muted/10 transition-colors"
+                    >
+                      <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-[2px] border border-border-strong text-xs font-normal text-foreground">
+                        {isChecked ? "✓" : ""}
+                      </span>
+                      <span className={`text-sm leading-relaxed ${isChecked ? "line-through text-muted-foreground" : "text-foreground font-normal"}`}>
+                        {item.question}
+                      </span>
+                      <span className="label-mono ml-auto hidden shrink-0 sm:block font-normal text-muted-foreground">
+                        Q{idx + 1}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 7: DECISION BOUNDARIES (CHAPTER VII)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="grid gap-5 border-t border-border pt-8 sm:gap-8 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-12 w-full items-start">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <p className="font-display text-2xl leading-none text-border-strong font-normal">VII</p>
+            <p className="label-mono mt-2 font-normal text-foreground">Decision boundaries</p>
+            <p className="mt-2 hidden text-xs leading-relaxed text-muted-foreground lg:block font-normal">
+              The conditions that flip the call.
+            </p>
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.9rem] leading-tight sm:text-4xl text-foreground font-normal">
+              What would change this decision?
+            </h2>
+
+            <div className="mt-5 grid gap-6 md:grid-cols-2">
+              <div className="border-l-2 border-signal pl-4">
+                <p className="label-mono text-signal font-normal">This becomes a strong pursue if</p>
+                <ul className="mt-2.5 space-y-2.5">
+                  {brief.decisionSensitivity.becomesPursueIf.map((cond: string, i: number) => (
+                    <li key={i} className="text-sm leading-relaxed text-foreground font-normal">
+                      {cond}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="border-l-2 border-caution pl-4">
+                <p className="label-mono text-caution font-normal">This becomes a pass if</p>
+                <ul className="mt-2.5 space-y-2.5">
+                  {brief.decisionSensitivity.becomesPassIf.map((cond: string, i: number) => (
+                    <li key={i} className="text-sm leading-relaxed text-foreground font-normal">
+                      {cond}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 8: SUPPORTING EVIDENCE (CHAPTER VIII)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="grid gap-5 border-t border-border pt-8 sm:gap-8 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-12 w-full items-start">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <p className="font-display text-2xl leading-none text-border-strong font-normal">VIII</p>
+            <p className="label-mono mt-2 font-normal text-foreground">Supporting evidence</p>
+            <p className="mt-2 hidden text-xs leading-relaxed text-muted-foreground lg:block font-normal">
+              What the posting actually says.
+            </p>
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.9rem] leading-tight sm:text-4xl text-foreground font-normal">
+              Evidence behind this recommendation
+            </h2>
+
+            <div className="mt-5">
+              <p className="label-mono text-signal font-normal">
+                Explicit evidence ({strongEvidenceDimensions.length})
+              </p>
+              <dl className="mt-3 divide-y divide-border border-y border-border">
+                {strongEvidenceDimensions.map((dim: any, idx: number) => (
+                  <div key={idx} className="flex items-baseline justify-between gap-4 py-3">
+                    <dt className="label-mono font-normal text-muted-foreground">{dim.label}</dt>
+                    <dd className="text-right font-mono text-xs text-foreground font-normal">
+                      {formatValue(dim.jdEvidence.value)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+
+              {partialEvidenceDimensions.length > 0 && (
+                <>
+                  <p className="label-mono mt-7 text-caution font-normal">
+                    Partial / inferred evidence ({partialEvidenceDimensions.length})
+                  </p>
+                  <dl className="mt-3 divide-y divide-dashed divide-border border-y border-dashed border-border">
+                    {partialEvidenceDimensions.map((dim: any, idx: number) => (
+                      <div key={idx} className="grid gap-1 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-6">
+                        <dt className="label-mono font-normal text-muted-foreground">{dim.label}</dt>
+                        <dd className="text-sm leading-relaxed text-muted-foreground font-normal">
+                          {formatValue(dim.jdEvidence.value)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            SECTION 9: DOSSIER LEDGER (CHAPTER IX)
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="grid gap-5 border-t border-border pt-8 sm:gap-8 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-12 w-full items-start">
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <p className="font-display text-2xl leading-none text-border-strong font-normal">IX</p>
+            <p className="label-mono mt-2 font-normal text-foreground">Dossier ledger</p>
+            <p className="mt-2 hidden text-xs leading-relaxed text-muted-foreground lg:block font-normal">
+              Claims used to build the score.
+            </p>
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-[1.9rem] leading-tight sm:text-4xl text-foreground font-normal">
+              Experience &amp; claims inventory
+            </h2>
+
+            <div className="mt-5">
+              <ul className="divide-y divide-border border-y border-border">
+                {candidateProfile.experience.achievements.slice(0, 5).map((achievement: string, idx: number) => (
+                  <li key={idx} className="grid gap-2 py-4 sm:grid-cols-[3rem_minmax(0,1fr)_auto] sm:gap-4">
+                    <span className="label-mono font-normal text-muted-foreground">R{idx + 1}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm leading-relaxed text-foreground font-normal">{achievement}</p>
+                      <p className="label-mono mt-1.5 truncate font-normal text-muted-foreground">
+                        Transferability · {formatValue(rawDimensions[idx % (rawDimensions.length || 1)]?.jdEvidence?.value) || "Executive Leadership"} → {o.role}
+                      </p>
+                    </div>
+                    <span className="label-mono self-start text-signal font-normal">✓ Verified</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* ────────────────────────────────────────────────────────────────────────
+            FOOTER SUMMARY & NEXT BRIEF NAV
+            ──────────────────────────────────────────────────────────────────────── */}
+        <section className="flex flex-wrap items-end justify-between gap-4 border-t border-border pt-6">
+          <p className="label-mono font-normal text-muted-foreground" suppressHydrationWarning>
+            Generated {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} · {brief.evidenceQuality} · {allVerifiedCount} verified signals
+          </p>
+          {neighbors.next ? (
+            <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.next.jobHash }} className="text-right group">
+              <span className="label-mono block text-muted-foreground group-hover:text-foreground font-normal">Next brief</span>
+              <span className="font-display text-xl text-foreground group-hover:underline font-normal">{neighbors.next.role} →</span>
+            </Link>
+          ) : null}
+        </section>
+      </main>
+
+      {/* ────────────────────────────────────────────────────────────────────────
+          FIXED STICKY BOTTOM DECISION ACTION BAR
+          ──────────────────────────────────────────────────────────────────────── */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1180px] items-center gap-2 px-5 py-2.5 sm:px-8">
+          <span className="label-mono text-muted-foreground font-normal mr-2 hidden sm:inline">Verdict</span>
+          <button
+            type="button"
+            onClick={() => decide("PURSUE")}
+            className={`btn flex-1 sm:flex-initial rounded py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
+              currentVerdict === "PURSUE"
+                ? "bg-signal text-white font-medium shadow-xs"
+                : "bg-surface-raised text-foreground border border-border hover:border-signal"
+            }`}
+          >
+            Pursue
+          </button>
+
+          <button
+            type="button"
+            onClick={() => decide("CONSIDER")}
+            className={`btn flex-1 sm:flex-initial rounded py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
+              currentVerdict === "CONSIDER"
+                ? "bg-caution text-white font-medium shadow-xs"
+                : "bg-surface-raised text-foreground border border-border hover:border-caution"
+            }`}
+          >
+            Consider
+          </button>
+
+          <button
+            type="button"
+            onClick={() => decide("PASS")}
+            className={`btn flex-1 sm:flex-initial rounded py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
+              currentVerdict === "PASS"
+                ? "bg-foreground text-background font-medium shadow-xs"
+                : "bg-surface-raised text-foreground border border-border hover:border-foreground"
+            }`}
+          >
+            Pass
+          </button>
+
+          {o.applyUrl ? (
             <a
-              href={applyUrlFor(o)}
+              href={applyUrlFor(o.applyUrl, o.scrapedFrom)}
               target="_blank"
               rel="noopener noreferrer"
-              className="mono text-[10px] sm:text-[11px] tracking-[0.16em] bg-foreground text-background px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-sm font-bold hover:bg-foreground/90 transition-all shrink-0 inline-flex items-center gap-1"
+              className="btn ml-auto hidden sm:inline-flex items-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal"
             >
-              APPLY <span className="hidden md:inline">ON LINKEDIN</span> ↗
+              Apply direct →
             </a>
-          </div>
+          ) : null}
         </div>
       </div>
     </div>

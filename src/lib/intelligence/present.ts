@@ -148,9 +148,11 @@ export function present(
   // as the primary advisory recommendation, while keeping the structural explanation in the result view model
   const finalRecommendation = narrative.recommendation;
 
+  const { normalizedText, html, rawText, payload, ...cleanSource } = source as any;
+
   return {
     opportunity: {
-      ...source,
+      ...cleanSource,
       decision: record.verb,
       recommendation: finalRecommendation,
       whyNow: narrative.whyNow,

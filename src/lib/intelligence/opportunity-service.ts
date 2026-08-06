@@ -10,14 +10,15 @@ export class OpportunityService {
   /** List all dynamically computed opportunity DTOs for a specific user, sorted by Pursuit Potential. */
   static async listForUser(userId: string, options?: ServiceOptions): Promise<Opportunity[]> {
     const repos = getRepositories();
-    const projection = await repos.people.getLatestProjection(userId);
+    const [projection, userDecisions] = await Promise.all([
+      repos.people.getLatestProjection(userId),
+      repos.decisions.getUserDecisions(userId),
+    ]);
     
     if (!projection) {
       console.warn(`[OpportunityService] No projection found for user: ${userId}`);
       return [];
     }
-
-    const userDecisions = await repos.decisions.getUserDecisions(userId);
     let active = options?.activePursuits;
     if (active === undefined) {
       active = Object.values(userDecisions).filter((d) => d.verb === "PURSUE").length;

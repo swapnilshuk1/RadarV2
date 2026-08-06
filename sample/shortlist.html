@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<!-- saved from url=(0071)https://id-preview-%2D3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app/ -->
+<html lang="en" data-tsd-source="/src/routes/__root.tsx:107:5" style=""><head data-tsd-source="/src/routes/__root.tsx:108:7"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="./shortlist_files/styles-WXonn9cs.css" data-precedence="default"><link rel="stylesheet" href="./shortlist_files/css2" data-precedence="default"><meta name="author" content="RADAR"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"><link rel="modulepreload" href="./shortlist_files/index-BmhKTq66.js.download"><link rel="preconnect" href="https://fonts.googleapis.com/"><link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="anonymous"><link rel="icon" href="https://id-preview--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app/favicon.ico" type="image/x-icon">
+<style>
+	@font-face {
+		font-family: 'CameraPlainVariable';
+		src: url('https://cdn.gpteng.co/mcp-widgets/v1/fonts/CameraPlainVariable.woff2') format('woff2');
+		font-weight: 100 900;
+		font-style: normal;
+		font-display: swap;
+	}
+
+	#lovable-badge {
+		--badge-bg: #1b1b1b;
+		--badge-text: #c5c1b9;
+		--badge-text-hover: #dcdad5;
+		--badge-radius: 6px;
+		--badge-padding: 8px;
+		--badge-gap: 6px;
+		--badge-shadow: 
+			0 0 0 1px rgba(0, 0, 0, 0.88),
+			0 1px 0 0 rgba(0, 0, 0, 0.04),
+			0 2px 2px -1px rgba(0, 0, 0, 0.08),
+			0 4px 4px -2px rgba(0, 0, 0, 0.08),
+			0 8px 8px -4px rgba(0, 0, 0, 0.08),
+			0 16px 16px -8px rgba(0, 0, 0, 0.08);
+		--badge-transition-duration: 0.2s;
+		--badge-transition-easing: cubic-bezier(0.16, 1, 0.32, 1);
+		--focus-color: #575ECF;
+		--focus-offset: 2px;
+		--focus-width: 2px;
+		
+		position: fixed;
+		bottom: 12px;
+		right: 12px;
+		height: 24px;
+		display: flex;
+		align-items: center;
+		z-index: 1000000;
+		background-color: var(--badge-bg) !important;
+		color: var(--badge-text) !important;
+		border-radius: var(--badge-radius);
+		box-shadow: var(--badge-shadow) !important;
+		font-size: 12px;
+		font-family: CameraPlainVariable, "CameraPlainVariable Fallback", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		font-weight: 400 !important;
+		text-transform: none !important;
+		font-feature-settings: normal !important;
+		transform: translateZ(0);
+		will-change: transform, opacity;
+	}
+
+	#lovable-badge-cta {
+		display: flex;
+		align-items: center;
+		gap: var(--badge-gap);
+		padding: 0 var(--badge-padding);
+		height: 100%;
+		color: inherit;
+		text-decoration: none;
+		white-space: nowrap;
+		border-radius: var(--badge-radius) 0 0 var(--badge-radius);
+		transition: 
+			background-color var(--badge-transition-duration) ease,
+			color var(--badge-transition-duration) ease,
+			transform 0.1s ease;
+	}
+
+	#lovable-badge-cta:hover {
+		background: rgba(255, 255, 255, 0.04);
+		color: var(--badge-text-hover);
+	}
+
+	#lovable-badge-cta:active {
+		transform: scale(0.98);
+	}
+
+	#lovable-badge-cta:focus {
+		outline: none;
+	}
+
+	#lovable-badge-cta:focus-visible {
+		outline: var(--focus-width) solid var(--focus-color);
+		outline-offset: var(--focus-offset);
+		z-index: 1;
+	}
+
+	#lovable-badge-text {
+		line-height: 1;
+	}
+
+	#lovable-badge-divider {
+		width: 1px;
+		height: 24px;
+		background-color: rgba(255, 255, 255, 0.04);
+		flex-shrink: 0;
+	}
+
+	#lovable-badge-close {
+		width: 24px;
+		height: 24px;
+		min-width: 24px;
+		min-height: 24px;
+		cursor: pointer;
+		background: none;
+		border: none;
+		padding: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 0 var(--badge-radius) var(--badge-radius) 0;
+		flex-shrink: 0;
+		transition: 
+			background-color var(--badge-transition-duration) ease,
+			transform 0.1s ease;
+	}
+
+	#lovable-badge-close:hover {
+		background: rgba(255, 255, 255, 0.04);
+	}
+
+	#lovable-badge-close:active {
+		transform: scale(0.92);
+	}
+
+	#lovable-badge-close:focus {
+		outline: none;
+	}
+
+	#lovable-badge-close:focus-visible {
+		outline: var(--focus-width) solid var(--focus-color);
+		outline-offset: calc(var(--focus-offset) * -1);
+		z-index: 1;
+	}
+
+	#lovable-badge-close svg path {
+		fill: var(--badge-text);
+		transition: fill var(--badge-transition-duration) ease;
+	}
+
+	#lovable-badge-close:hover svg path {
+		fill: var(--badge-text-hover);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		#lovable-badge-cta,
+		#lovable-badge-close,
+		#lovable-badge-close svg path {
+			transition: none;
+		}
+		
+		#lovable-badge-cta:active,
+		#lovable-badge-close:active {
+			transform: none;
+		}
+	}
+
+	@media (prefers-contrast: high) {
+		#lovable-badge {
+			--badge-bg: #000;
+			--badge-text: #fff;
+			--badge-text-hover: #fff;
+			border: 2px solid currentColor;
+		}
+		
+		#lovable-badge-cta:focus-visible,
+		#lovable-badge-close:focus-visible {
+			outline-width: 3px;
+		}
+	}
+</style>
+<meta name="twitter:title" content="The Shortlist — RADAR Executive Advisory"><meta name="twitter:description" content="Today&amp;#x27;s executive briefing: six mandates cleared the bar. Pursue, consider or pass."><meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/85b405ba-9e69-4658-b9c6-55b850a5fd9c/id-preview-de2bc18c--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app-1785781500465.png"><meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/85b405ba-9e69-4658-b9c6-55b850a5fd9c/id-preview-de2bc18c--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app-1785781500465.png"><link rel="modulepreload" as="script" crossorigin="" href="https://id-preview--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app/assets/brief._briefId-BeiGcnoa.js"><title>The Shortlist — RADAR Executive Advisory</title><meta name="description" content="Today&#39;s executive briefing: six mandates cleared the bar. Pursue, consider or pass — each decision refills the queue."><meta property="og:title" content="The Shortlist — RADAR Executive Advisory"><meta property="og:description" content="Today&#39;s executive briefing: six mandates cleared the bar. Pursue, consider or pass."><link rel="modulepreload" href="https://id-preview--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app/assets/routes-DKOvQlS_.js"><link rel="modulepreload" href="https://id-preview--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app/assets/radar-data-C03qpN6o.js"></head><body data-tsd-source="/src/routes/__root.tsx:111:7" style=""><!--$--><!--/$--><script type="module" async="" src="./shortlist_files/index-BmhKTq66.js.download"></script><script src="./shortlist_files/lovable.js.download" type="module"></script>
+<aside id="lovable-badge" role="complementary" dir="ltr" lang="en" aria-label="Edit with Lovable" class="closing" style="display: none;">
+	<a id="lovable-badge-cta" target="_blank" href="https://lovable.dev/projects/lovp_4kgg08tnne8ee9bmnm7tp14477?utm_source=lovable-badge" rel="noopener nofollow" aria-label="Edit with Lovable">
+		<span id="lovable-badge-text">Edit with</span>
+		<svg xmlns="http://www.w3.org/2000/svg" width="52" height="16" fill="none" viewBox="0 0 52 16">
+  <path fill="#FCFBF8" fill-rule="evenodd" d="M20.318 5.25c.643 0 1.206.14 1.69.418a2.81 2.81 0 0 1 1.118 1.191c.266.513.4 1.115.4 1.807s-.134 1.296-.4 1.812a2.81 2.81 0 0 1-1.118 1.193c-.484.278-1.047.418-1.69.418s-1.208-.14-1.695-.418a2.85 2.85 0 0 1-1.125-1.193c-.262-.516-.393-1.12-.393-1.812s.131-1.294.393-1.807a2.848 2.848 0 0 1 1.125-1.191c.487-.279 1.052-.418 1.695-.418Zm0 1.425c-.27 0-.504.076-.7.228-.193.147-.34.37-.443.67-.102.295-.153.66-.153 1.093 0 .435.05.801.153 1.1.102.3.25.524.443.676.196.147.43.22.7.22.27 0 .502-.073.694-.22.193-.152.341-.375.443-.67.103-.299.153-.667.153-1.106 0-.65-.112-1.145-.337-1.481a1.08 1.08 0 0 0-.953-.51ZM32.7 5.25c.61 0 1.127.1 1.549.3.422.197.74.48.953.849.217.368.325.809.325 1.32v2.704c0 .29.02.562.062.812.044.245.108.4.19.466V12h-1.935a5.895 5.895 0 0 1-.105-.684 7.745 7.745 0 0 1-.02-.228 2.293 2.293 0 0 1-.151.203c-.205.242-.47.437-.793.584-.32.143-.685.215-1.094.215-.406 0-.77-.08-1.094-.24a1.845 1.845 0 0 1-.756-.682 1.984 1.984 0 0 1-.27-1.045c0-.606.178-1.069.535-1.388.356-.324.87-.534 1.542-.633l1.125-.16c.225-.032.403-.074.534-.123a.622.622 0 0 0 .288-.196.549.549 0 0 0 .093-.327.65.65 0 0 0-.11-.367.702.702 0 0 0-.32-.27c-.14-.07-.31-.105-.51-.105-.32 0-.576.083-.768.251-.193.164-.298.39-.314.676h-1.923c.016-.434.147-.82.393-1.155.25-.34.596-.604 1.039-.792.442-.189.954-.283 1.535-.283Zm.99 3.498a.98.98 0 0 1-.215.14 2.49 2.49 0 0 1-.584.178l-.473.092c-.315.061-.553.156-.713.283-.155.127-.233.305-.233.534 0 .23.084.412.252.547.168.135.383.203.645.203s.494-.058.694-.173c.201-.118.355-.282.461-.49.11-.21.166-.448.166-.714v-.6Zm4.526-2.375c.065-.125.138-.243.221-.349.197-.25.437-.44.719-.571.282-.135.6-.203.952-.203.528 0 .988.138 1.377.412.389.275.688.67.896 1.186.21.512.314 1.12.314 1.824 0 .7-.107 1.309-.32 1.825-.213.512-.518.906-.915 1.18-.393.275-.854.412-1.383.412-.352 0-.667-.062-.946-.184a1.832 1.832 0 0 1-.7-.554 2.2 2.2 0 0 1-.234-.383V12h-1.843V3h1.862v3.373Zm1.284.296c-.274 0-.51.085-.707.253-.192.163-.338.397-.436.7a3.376 3.376 0 0 0-.148 1.05c0 .406.05.759.148 1.058.098.299.243.53.436.694.197.164.433.246.707.246.279 0 .512-.082.7-.246.193-.164.336-.395.43-.694.099-.3.148-.652.148-1.058 0-.405-.05-.757-.147-1.056-.095-.299-.238-.53-.43-.694a1.015 1.015 0 0 0-.7-.253Zm9.416-1.419c.602 0 1.136.131 1.604.393.466.262.829.643 1.086 1.143.263.5.394 1.097.394 1.794 0 .25-.002.449-.006.596H47.51c.018.288.071.538.164.75a1.3 1.3 0 0 0 .491.596c.214.13.465.196.757.196.319 0 .583-.082.792-.246.209-.167.34-.403.393-.706h1.862a2.48 2.48 0 0 1-.485 1.235 2.54 2.54 0 0 1-1.051.805c-.439.188-.949.283-1.53.283-.655 0-1.225-.125-1.708-.375a2.672 2.672 0 0 1-1.13-1.143c-.267-.508-.4-1.137-.4-1.887 0-.712.14-1.327.418-1.843a2.86 2.86 0 0 1 1.155-1.186c.491-.27 1.051-.405 1.678-.405Zm-.044 1.345c-.274 0-.516.068-.725.203a1.29 1.29 0 0 0-.479.59 2.045 2.045 0 0 0-.132.498h2.562a1.873 1.873 0 0 0-.138-.602 1.061 1.061 0 0 0-.418-.516 1.243 1.243 0 0 0-.67-.173Z" clip-rule="evenodd"></path>
+  <path fill="#FCFBF8" d="m26.605 9.995 1.342-4.566h1.924L27.628 12h-2.07l-2.33-6.57h1.98l1.397 4.565Zm-13.013.143h2.256c1.632 0 1.421 1.837 1.418 1.861h-5.603V3h1.93v7.138Zm31.516 1.861h-1.862V3h1.862v8.999Z"></path>
+  <path fill="url(#a)" fill-rule="evenodd" d="M2.7 3c1.492 0 2.7 1.192 2.7 2.663v1.012h.9c1.49 0 2.7 1.192 2.7 2.662S7.791 12 6.3 12H0V5.663C0 4.193 1.209 3 2.7 3Z" clip-rule="evenodd"></path>
+  <defs>
+    <radialgradient id="a" cx="0" cy="0" r="1" gradientTransform="matrix(-1.54236 7.07838 -10.231 -2.15602 4.627 5.022)" gradientUnits="userSpaceOnUse">
+      <stop offset=".106" stop-color="#FE7B02"></stop>
+      <stop offset=".394" stop-color="#FE3F21"></stop>
+      <stop offset=".608" stop-color="#F858BC"></stop>
+      <stop offset=".929" stop-color="#575ECF"></stop>
+    </radialgradient>
+  </defs>
+</svg>
+
+
+	</a>
+	
+	<span id="lovable-badge-divider" aria-hidden="true"></span>
+	
+	<button id="lovable-badge-close" aria-label="Dismiss" title="Dismiss" type="button">
+		<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 16 16" aria-hidden="true">
+			<path d="M10.646 4.646a.5.5 0 1 1 .707.708L8.707 8l2.646 2.646a.5.5 0 1 1-.707.707L8 8.707l-2.646 2.646a.5.5 0 1 1-.708-.707L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708L8 7.293l2.646-2.647Z"></path>
+		</svg>
+	</button>
+</aside>
+<script>
+	// Don't show the lovable-badge if the page is in an iframe or if it's being rendered by puppeteer (screenshot service)
+	if (window.self !== window.top || navigator.userAgent.includes('puppeteer')) {
+		var badge = document.getElementById('lovable-badge');
+		if (badge) {
+			badge.style.display = 'none';
+		}
+	}
+
+	// Add click event listener to close button with animation
+	var closeButton = document.getElementById('lovable-badge-close');
+	if (closeButton) {
+		closeButton.addEventListener('click', function(event) {
+			event.preventDefault();
+			event.stopPropagation();
+			var badge = document.getElementById('lovable-badge');
+			if (badge) {
+				badge.classList.add('closing');
+				setTimeout(function() {
+					if (badge) {
+						badge.style.display = 'none';
+					}
+				}, 240);
+			}
+		});
+	}
+</script>
+<div class="min-h-screen pb-24" data-tsd-source="/src/routes/index.tsx:54:5"><header class="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md" data-tsd-source="/src/components/radar/TopNav.tsx:12:5" id="__FPSC_ID_11_1785953497218" style=""><div class="mx-auto grid max-w-[1180px] grid-cols-[auto_minmax(0,1fr)] items-center gap-4 px-5 py-3 sm:px-8" data-tsd-source="/src/components/radar/TopNav.tsx:13:7"><a data-tsd-source="/src/components/radar/TopNav.tsx:14:9" class="flex shrink-0 items-center gap-2 active" href="https://id-preview--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app/" data-status="active" aria-current="page"><span class="font-mono text-[0.78rem] font-medium tracking-[0.34em] text-foreground" data-tsd-source="/src/components/radar/TopNav.tsx:15:11">RADAR</span></a><nav class="flex items-center justify-start gap-1 overflow-x-auto sm:justify-end" data-tsd-source="/src/components/radar/TopNav.tsx:20:9"><ul class="flex items-center gap-1" data-tsd-source="/src/components/radar/TopNav.tsx:21:11"><li data-tsd-source="/src/components/radar/TopNav.tsx:23:15"><a data-tsd-source="/src/components/radar/TopNav.tsx:24:17" class="label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 border-b border-foreground text-foreground active" href="https://id-preview--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app/" data-status="active" aria-current="page">Shortlist</a></li><li data-tsd-source="/src/components/radar/TopNav.tsx:23:15"><a data-tsd-source="/src/components/radar/TopNav.tsx:24:17" class="label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 hover:text-foreground active" href="https://id-preview--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app/" data-status="active" aria-current="page">Profile</a></li><li data-tsd-source="/src/components/radar/TopNav.tsx:23:15"><a data-tsd-source="/src/components/radar/TopNav.tsx:24:17" class="label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 hover:text-foreground active" href="https://id-preview--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app/" data-status="active" aria-current="page">Decisions</a></li><li data-tsd-source="/src/components/radar/TopNav.tsx:23:15"><a data-tsd-source="/src/components/radar/TopNav.tsx:24:17" class="label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 hover:text-foreground active" href="https://id-preview--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app/" data-status="active" aria-current="page">Corpus</a></li></ul><span class="ml-2 hidden shrink-0 items-center gap-2 border-l border-border pl-3 sm:flex" data-tsd-source="/src/components/radar/TopNav.tsx:37:11"><span class="grid h-6 w-6 place-items-center rounded-full bg-foreground font-mono text-[0.55rem] text-background" data-tsd-source="/src/components/radar/TopNav.tsx:38:13">SS</span><span class="text-xs text-muted-foreground" data-tsd-source="/src/components/radar/TopNav.tsx:41:13">Swapnil Shukla</span></span></nav></div></header><main class="mx-auto max-w-[1180px] px-5 sm:px-8" data-tsd-source="/src/routes/index.tsx:57:7"><section class="grid gap-8 border-b border-border py-9 sm:py-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end" data-tsd-source="/src/routes/index.tsx:59:9"><div class="min-w-0" data-tsd-source="/src/routes/index.tsx:60:11"><p class="label-mono" data-tsd-source="/src/routes/index.tsx:61:13">Today's executive briefing · 05 Aug 2026</p><h1 class="mt-3 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-7xl" data-tsd-source="/src/routes/index.tsx:62:13">The shortlist.</h1><p class="mt-4 max-w-lg text-sm leading-relaxed text-muted-foreground" data-tsd-source="/src/routes/index.tsx:65:13">Six mandates cleared the bar out of 738 scraped this week. Decide on one and the next in line takes its slot.</p></div><dl class="flex items-end gap-4 overflow-x-auto sm:gap-7" data-tsd-source="/src/routes/index.tsx:71:11"><div class="flex shrink-0 items-end gap-4 sm:gap-7" data-tsd-source="/src/routes/index.tsx:77:15"><div data-tsd-source="/src/routes/index.tsx:79:17"><dd class="font-display text-4xl leading-none sm:text-5xl text-foreground" data-tsd-source="/src/routes/index.tsx:80:19">40</dd><dt class="label-mono mt-2 block" data-tsd-source="/src/routes/index.tsx:83:19">Reviewed</dt></div></div><div class="flex shrink-0 items-end gap-4 sm:gap-7" data-tsd-source="/src/routes/index.tsx:77:15"><span class="pb-3 font-mono text-xs text-border-strong" data-tsd-source="/src/routes/index.tsx:78:27">→</span><div data-tsd-source="/src/routes/index.tsx:79:17"><dd class="font-display text-4xl leading-none sm:text-5xl text-primary" data-tsd-source="/src/routes/index.tsx:80:19">6</dd><dt class="label-mono mt-2 block" data-tsd-source="/src/routes/index.tsx:83:19">To act on</dt></div></div><div class="flex shrink-0 items-end gap-4 sm:gap-7" data-tsd-source="/src/routes/index.tsx:77:15"><span class="pb-3 font-mono text-xs text-border-strong" data-tsd-source="/src/routes/index.tsx:78:27">→</span><div data-tsd-source="/src/routes/index.tsx:79:17"><dd class="font-display text-4xl leading-none sm:text-5xl text-muted-foreground/70" data-tsd-source="/src/routes/index.tsx:80:19">738</dd><dt class="label-mono mt-2 block" data-tsd-source="/src/routes/index.tsx:83:19">Read this week</dt></div></div></dl></section><section class="py-6 sm:py-8" data-tsd-source="/src/routes/index.tsx:91:9"><div class="flex items-center justify-between gap-3 pb-3" data-tsd-source="/src/routes/index.tsx:92:11"><h2 class="label-mono" data-tsd-source="/src/routes/index.tsx:93:13">Shortlist queue · sorted by fit</h2><span class="label-mono" data-tsd-source="/src/routes/index.tsx:94:13">683 awaiting review</span></div><ul class="border-t border-border" data-tsd-source="/src/routes/index.tsx:97:11"><li class="border-b border-border" data-tsd-source="/src/routes/index.tsx:101:17"><button type="button" aria-expanded="true" class="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-5 text-left transition-colors sm:gap-8" data-tsd-source="/src/routes/index.tsx:102:19"><span class="min-w-0" data-tsd-source="/src/routes/index.tsx:108:21"><span class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5" data-tsd-source="/src/routes/index.tsx:109:23"><span class="label-mono tabular-nums text-border-strong" data-tsd-source="/src/routes/index.tsx:110:25">01</span><span class="font-display text-2xl leading-tight sm:text-[1.7rem]" data-tsd-source="/src/routes/index.tsx:113:25">Head of Growth</span><span class="label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none bg-signal text-signal-foreground" data-tsd-source="/src/routes/index.tsx:33:5">pursue</span><span class="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline" data-tsd-source="/src/routes/index.tsx:117:25">Growth Marketing</span></span><span class="label-mono mt-2 block truncate" data-tsd-source="/src/routes/index.tsx:121:23">DaMENSCH · Bengaluru, Karnataka, India (On-site) · LinkedIn</span><span class="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground" data-tsd-source="/src/routes/index.tsx:124:23">Head of Growth mandate at DaMENSCH focused on growth strategy and performance ownership.</span><span class="mt-2.5 flex items-center gap-2" data-tsd-source="/src/routes/index.tsx:127:23"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" data-tsd-source="/src/routes/index.tsx:128:25"></span><span class="label-mono truncate" data-tsd-source="/src/routes/index.tsx:133:25">Needs verification: critical · Compensation target not disclosed</span></span></span><span class="flex shrink-0 flex-col items-end gap-2" data-tsd-source="/src/routes/index.tsx:139:21"><span class="flex shrink-0 items-baseline gap-0.5 tabular-nums" data-tsd-source="/src/routes/index.tsx:43:5"><span class="font-display text-3xl leading-none" data-tsd-source="/src/routes/index.tsx:44:7">94</span><span class="font-mono text-[0.6rem] text-muted-foreground" data-tsd-source="/src/routes/index.tsx:45:7">/100</span></span><span class="label-mono transition-colors group-hover:text-foreground" data-tsd-source="/src/routes/index.tsx:141:23">— Close</span></span></button><div class="grid gap-8 border-t border-dashed border-border bg-surface-raised px-4 py-7 sm:px-8 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]" data-tsd-source="/src/routes/index.tsx:148:21"><div class="min-w-0" data-tsd-source="/src/routes/index.tsx:149:23"><div class="flex flex-wrap items-center justify-between gap-2" data-tsd-source="/src/routes/index.tsx:150:25"><span class="label-mono" data-tsd-source="/src/routes/index.tsx:151:27">◆ Executive brief</span><span class="font-display text-lg text-primary" data-tsd-source="/src/routes/index.tsx:152:27">Worth pursuing.</span></div><p class="mt-4 max-w-xl font-display text-[1.6rem] leading-[1.25] sm:text-3xl" data-tsd-source="/src/routes/index.tsx:161:25">Head of Growth mandate at DaMENSCH focused on growth strategy and performance ownership.</p><div class="mt-6 grid gap-5 sm:grid-cols-2" data-tsd-source="/src/routes/index.tsx:165:25"><div class="border-l-2 border-signal pl-4" data-tsd-source="/src/routes/index.tsx:166:27"><p class="label-mono text-signal" data-tsd-source="/src/routes/index.tsx:167:29">Proceed if</p><p class="mt-1.5 text-sm leading-relaxed" data-tsd-source="/src/routes/index.tsx:168:29">Direct P&amp;L ownership aligned to your marketing strategy precedents.</p></div><div class="border-l-2 border-caution pl-4" data-tsd-source="/src/routes/index.tsx:170:27"><p class="label-mono text-caution" data-tsd-source="/src/routes/index.tsx:171:29">Pause if</p><p class="mt-1.5 text-sm leading-relaxed" data-tsd-source="/src/routes/index.tsx:172:29">Standard organizational alignment review</p></div></div></div><div class="min-w-0 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0" data-tsd-source="/src/routes/index.tsx:177:23"><p class="label-mono" data-tsd-source="/src/routes/index.tsx:178:25">Watch for</p><p class="mt-1.5 text-sm leading-relaxed text-muted-foreground" data-tsd-source="/src/routes/index.tsx:179:25">Compensation target not disclosed.</p><dl class="mt-5 space-y-2 border-t border-border pt-4" data-tsd-source="/src/routes/index.tsx:183:25"><div class="flex items-baseline justify-between gap-3" data-tsd-source="/src/routes/index.tsx:189:29"><dt class="label-mono" data-tsd-source="/src/routes/index.tsx:190:31">Target</dt><dd class="truncate font-mono text-xs text-foreground" data-tsd-source="/src/routes/index.tsx:191:31">₹80L INR</dd></div><div class="flex items-baseline justify-between gap-3" data-tsd-source="/src/routes/index.tsx:189:29"><dt class="label-mono" data-tsd-source="/src/routes/index.tsx:190:31">Track</dt><dd class="truncate font-mono text-xs text-foreground" data-tsd-source="/src/routes/index.tsx:191:31">Growth Marketing</dd></div><div class="flex items-baseline justify-between gap-3" data-tsd-source="/src/routes/index.tsx:189:29"><dt class="label-mono" data-tsd-source="/src/routes/index.tsx:190:31">Source</dt><dd class="truncate font-mono text-xs text-foreground" data-tsd-source="/src/routes/index.tsx:191:31">LinkedIn</dd></div></dl><p class="label-mono mt-6" data-tsd-source="/src/routes/index.tsx:196:25">Next step</p><a data-tsd-source="/src/routes/index.tsx:197:25" href="https://id-preview--3ff3629c-b8ed-45ab-bd1c-b060920b03c6.lovable.app/brief/j-008f74870e2a" class="mt-2 flex items-center justify-center rounded-[4px] bg-foreground px-4 py-3 font-mono text-[0.68rem] tracking-[0.18em] uppercase text-background transition-opacity hover:opacity-90">Open full dossier ↗</a><a href="https://www.linkedin.com/jobs" target="_blank" rel="noreferrer" class="mt-2 block text-center font-mono text-[0.68rem] text-muted-foreground underline underline-offset-4 hover:text-foreground" data-tsd-source="/src/routes/index.tsx:204:25">Apply directly on LinkedIn</a><div class="mt-5 grid grid-cols-3 gap-1.5" data-tsd-source="/src/routes/index.tsx:213:25"><button class="rounded-[4px] border px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase transition-colors border-signal/40 text-signal hover:bg-signal/8" data-tsd-source="/src/routes/index.tsx:215:29">Pursue</button><button class="rounded-[4px] border px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase transition-colors border-caution/40 text-caution hover:bg-caution/8" data-tsd-source="/src/routes/index.tsx:215:29">Consider</button><button class="rounded-[4px] border px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase transition-colors border-border text-muted-foreground hover:bg-muted" data-tsd-source="/src/routes/index.tsx:215:29">Pass</button></div></div></div></li><li class="border-b border-border" data-tsd-source="/src/routes/index.tsx:101:17"><button type="button" aria-expanded="false" class="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-5 text-left transition-colors sm:gap-8" data-tsd-source="/src/routes/index.tsx:102:19"><span class="min-w-0" data-tsd-source="/src/routes/index.tsx:108:21"><span class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5" data-tsd-source="/src/routes/index.tsx:109:23"><span class="label-mono tabular-nums text-border-strong" data-tsd-source="/src/routes/index.tsx:110:25">02</span><span class="font-display text-2xl leading-tight sm:text-[1.7rem]" data-tsd-source="/src/routes/index.tsx:113:25">Senior Director — Performance Marketing</span><span class="label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none bg-signal text-signal-foreground" data-tsd-source="/src/routes/index.tsx:33:5">pursue</span><span class="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline" data-tsd-source="/src/routes/index.tsx:117:25">Performance Marketing</span></span><span class="label-mono mt-2 block truncate" data-tsd-source="/src/routes/index.tsx:121:23">Confidential · Mumbai, Maharashtra, India (Remote) · LinkedIn</span><span class="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground" data-tsd-source="/src/routes/index.tsx:124:23">Turnaround mandate at a confidential principal, performance-led.</span><span class="mt-2.5 flex items-center gap-2" data-tsd-source="/src/routes/index.tsx:127:23"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" data-tsd-source="/src/routes/index.tsx:128:25"></span><span class="label-mono truncate" data-tsd-source="/src/routes/index.tsx:133:25">Needs verification: critical · Compensation target not disclosed</span></span></span><span class="flex shrink-0 flex-col items-end gap-2" data-tsd-source="/src/routes/index.tsx:139:21"><span class="flex shrink-0 items-baseline gap-0.5 tabular-nums" data-tsd-source="/src/routes/index.tsx:43:5"><span class="font-display text-3xl leading-none" data-tsd-source="/src/routes/index.tsx:44:7">91</span><span class="font-mono text-[0.6rem] text-muted-foreground" data-tsd-source="/src/routes/index.tsx:45:7">/100</span></span><span class="label-mono transition-colors group-hover:text-foreground" data-tsd-source="/src/routes/index.tsx:141:23">+ Brief</span></span></button></li><li class="border-b border-border" data-tsd-source="/src/routes/index.tsx:101:17"><button type="button" aria-expanded="false" class="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-5 text-left transition-colors sm:gap-8" data-tsd-source="/src/routes/index.tsx:102:19"><span class="min-w-0" data-tsd-source="/src/routes/index.tsx:108:21"><span class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5" data-tsd-source="/src/routes/index.tsx:109:23"><span class="label-mono tabular-nums text-border-strong" data-tsd-source="/src/routes/index.tsx:110:25">03</span><span class="font-display text-2xl leading-tight sm:text-[1.7rem]" data-tsd-source="/src/routes/index.tsx:113:25">AD — Performance Marketing</span><span class="label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none bg-signal text-signal-foreground" data-tsd-source="/src/routes/index.tsx:33:5">pursue</span><span class="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline" data-tsd-source="/src/routes/index.tsx:117:25">Growth Marketing</span></span><span class="label-mono mt-2 block truncate" data-tsd-source="/src/routes/index.tsx:121:23">Simplilearn · Greater Bengaluru Area (On-site) · LinkedIn</span><span class="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground" data-tsd-source="/src/routes/index.tsx:124:23">Growth strategy and performance mandate across education demand engine.</span><span class="mt-2.5 flex items-center gap-2" data-tsd-source="/src/routes/index.tsx:127:23"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-caution" data-tsd-source="/src/routes/index.tsx:128:25"></span><span class="label-mono truncate" data-tsd-source="/src/routes/index.tsx:133:25">Needs verification: standard · Reporting line hierarchy</span></span></span><span class="flex shrink-0 flex-col items-end gap-2" data-tsd-source="/src/routes/index.tsx:139:21"><span class="flex shrink-0 items-baseline gap-0.5 tabular-nums" data-tsd-source="/src/routes/index.tsx:43:5"><span class="font-display text-3xl leading-none" data-tsd-source="/src/routes/index.tsx:44:7">90</span><span class="font-mono text-[0.6rem] text-muted-foreground" data-tsd-source="/src/routes/index.tsx:45:7">/100</span></span><span class="label-mono transition-colors group-hover:text-foreground" data-tsd-source="/src/routes/index.tsx:141:23">+ Brief</span></span></button></li><li class="border-b border-border" data-tsd-source="/src/routes/index.tsx:101:17"><button type="button" aria-expanded="false" class="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-5 text-left transition-colors sm:gap-8" data-tsd-source="/src/routes/index.tsx:102:19"><span class="min-w-0" data-tsd-source="/src/routes/index.tsx:108:21"><span class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5" data-tsd-source="/src/routes/index.tsx:109:23"><span class="label-mono tabular-nums text-border-strong" data-tsd-source="/src/routes/index.tsx:110:25">04</span><span class="font-display text-2xl leading-tight sm:text-[1.7rem]" data-tsd-source="/src/routes/index.tsx:113:25">Head of Growth, International</span><span class="label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none bg-signal text-signal-foreground" data-tsd-source="/src/routes/index.tsx:33:5">pursue</span><span class="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline" data-tsd-source="/src/routes/index.tsx:117:25">Growth Marketing</span></span><span class="label-mono mt-2 block truncate" data-tsd-source="/src/routes/index.tsx:121:23">FRND · Bengaluru, Karnataka, India (On-site) · LinkedIn</span><span class="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground" data-tsd-source="/src/routes/index.tsx:124:23">International scale mandate at FRND across growth and Meta channels.</span><span class="mt-2.5 flex items-center gap-2" data-tsd-source="/src/routes/index.tsx:127:23"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" data-tsd-source="/src/routes/index.tsx:128:25"></span><span class="label-mono truncate" data-tsd-source="/src/routes/index.tsx:133:25">Needs verification: critical · Compensation target not disclosed</span></span></span><span class="flex shrink-0 flex-col items-end gap-2" data-tsd-source="/src/routes/index.tsx:139:21"><span class="flex shrink-0 items-baseline gap-0.5 tabular-nums" data-tsd-source="/src/routes/index.tsx:43:5"><span class="font-display text-3xl leading-none" data-tsd-source="/src/routes/index.tsx:44:7">90</span><span class="font-mono text-[0.6rem] text-muted-foreground" data-tsd-source="/src/routes/index.tsx:45:7">/100</span></span><span class="label-mono transition-colors group-hover:text-foreground" data-tsd-source="/src/routes/index.tsx:141:23">+ Brief</span></span></button></li><li class="border-b border-border" data-tsd-source="/src/routes/index.tsx:101:17"><button type="button" aria-expanded="false" class="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-5 text-left transition-colors sm:gap-8" data-tsd-source="/src/routes/index.tsx:102:19"><span class="min-w-0" data-tsd-source="/src/routes/index.tsx:108:21"><span class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5" data-tsd-source="/src/routes/index.tsx:109:23"><span class="label-mono tabular-nums text-border-strong" data-tsd-source="/src/routes/index.tsx:110:25">05</span><span class="font-display text-2xl leading-tight sm:text-[1.7rem]" data-tsd-source="/src/routes/index.tsx:113:25">Director — Growth &amp; Subscription Revenue</span><span class="label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none bg-signal text-signal-foreground" data-tsd-source="/src/routes/index.tsx:33:5">pursue</span><span class="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline" data-tsd-source="/src/routes/index.tsx:117:25">Performance Marketing</span></span><span class="label-mono mt-2 block truncate" data-tsd-source="/src/routes/index.tsx:121:23">Lokal · Bengaluru, Karnataka, India (On-site) · LinkedIn</span><span class="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground" data-tsd-source="/src/routes/index.tsx:124:23">Subscription revenue ownership paired with growth strategy at Lokal.</span><span class="mt-2.5 flex items-center gap-2" data-tsd-source="/src/routes/index.tsx:127:23"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-caution" data-tsd-source="/src/routes/index.tsx:128:25"></span><span class="label-mono truncate" data-tsd-source="/src/routes/index.tsx:133:25">Needs verification: standard · Reporting line hierarchy</span></span></span><span class="flex shrink-0 flex-col items-end gap-2" data-tsd-source="/src/routes/index.tsx:139:21"><span class="flex shrink-0 items-baseline gap-0.5 tabular-nums" data-tsd-source="/src/routes/index.tsx:43:5"><span class="font-display text-3xl leading-none" data-tsd-source="/src/routes/index.tsx:44:7">90</span><span class="font-mono text-[0.6rem] text-muted-foreground" data-tsd-source="/src/routes/index.tsx:45:7">/100</span></span><span class="label-mono transition-colors group-hover:text-foreground" data-tsd-source="/src/routes/index.tsx:141:23">+ Brief</span></span></button></li><li class="border-b border-border" data-tsd-source="/src/routes/index.tsx:101:17"><button type="button" aria-expanded="false" class="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-5 text-left transition-colors sm:gap-8" data-tsd-source="/src/routes/index.tsx:102:19"><span class="min-w-0" data-tsd-source="/src/routes/index.tsx:108:21"><span class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5" data-tsd-source="/src/routes/index.tsx:109:23"><span class="label-mono tabular-nums text-border-strong" data-tsd-source="/src/routes/index.tsx:110:25">06</span><span class="font-display text-2xl leading-tight sm:text-[1.7rem]" data-tsd-source="/src/routes/index.tsx:113:25">Performance Marketing Lead</span><span class="label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none bg-caution text-caution-foreground" data-tsd-source="/src/routes/index.tsx:33:5">consider</span><span class="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline" data-tsd-source="/src/routes/index.tsx:117:25">Growth Marketing</span></span><span class="label-mono mt-2 block truncate" data-tsd-source="/src/routes/index.tsx:121:23">biz4group.com · Jaipur, Rajasthan, India · Indeed</span><span class="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground" data-tsd-source="/src/routes/index.tsx:124:23">Performance marketing leadership across services growth motion.</span><span class="mt-2.5 flex items-center gap-2" data-tsd-source="/src/routes/index.tsx:127:23"><span class="h-1.5 w-1.5 shrink-0 rounded-full bg-caution" data-tsd-source="/src/routes/index.tsx:128:25"></span><span class="label-mono truncate" data-tsd-source="/src/routes/index.tsx:133:25">Needs verification: standard · Reporting line hierarchy</span></span></span><span class="flex shrink-0 flex-col items-end gap-2" data-tsd-source="/src/routes/index.tsx:139:21"><span class="flex shrink-0 items-baseline gap-0.5 tabular-nums" data-tsd-source="/src/routes/index.tsx:43:5"><span class="font-display text-3xl leading-none" data-tsd-source="/src/routes/index.tsx:44:7">89</span><span class="font-mono text-[0.6rem] text-muted-foreground" data-tsd-source="/src/routes/index.tsx:45:7">/100</span></span><span class="label-mono transition-colors group-hover:text-foreground" data-tsd-source="/src/routes/index.tsx:141:23">+ Brief</span></span></button></li></ul></section></main><footer class="fixed inset-x-0 bottom-0 border-t border-border bg-background/90 py-2.5 backdrop-blur-md" data-tsd-source="/src/routes/index.tsx:239:7" style=""><div class="mx-auto flex max-w-[1180px] items-center gap-x-5 gap-y-1 overflow-x-auto px-5 sm:px-8" data-tsd-source="/src/routes/index.tsx:240:9"><span class="label-mono shrink-0" data-tsd-source="/src/routes/index.tsx:241:11"><span class="text-foreground" data-tsd-source="/src/routes/index.tsx:242:13">738</span> scraped</span><span class="label-mono hidden shrink-0 sm:inline" data-tsd-source="/src/routes/index.tsx:245:13">LinkedIn <span class="text-foreground" data-tsd-source="/src/routes/index.tsx:246:24">439</span></span><span class="label-mono hidden shrink-0 sm:inline" data-tsd-source="/src/routes/index.tsx:245:13">Naukri <span class="text-foreground" data-tsd-source="/src/routes/index.tsx:246:24">94</span></span><span class="label-mono hidden shrink-0 sm:inline" data-tsd-source="/src/routes/index.tsx:245:13">Indeed <span class="text-foreground" data-tsd-source="/src/routes/index.tsx:246:24">205</span></span><span class="label-mono ml-auto shrink-0 text-primary" data-tsd-source="/src/routes/index.tsx:249:11">→ 6 on shortlist</span></div></footer></div></body></html>
