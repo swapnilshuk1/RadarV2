@@ -277,8 +277,8 @@ function OpportunityBriefView() {
               </div>
 
               <div className="rounded border border-border bg-surface-raised p-4 space-y-2">
-                <p className="label-mono text-xs uppercase tracking-wider text-caution font-normal">Recommendation Conditions</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">This recommendation assumes the following operational conditions hold true:</p>
+                <p className="label-mono text-xs uppercase tracking-wider text-caution font-normal">This recommendation assumes</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">The following operational conditions hold true:</p>
                 <ul className="space-y-1.5 text-xs text-foreground">
                   {executionPkg.recommendationConditions.map((cond, i) => (
                     <li key={i}>• {cond}</li>
@@ -331,15 +331,18 @@ function OpportunityBriefView() {
               <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Evidence</p>
               <h2 className="mt-1 font-display text-2xl font-normal text-foreground leading-tight">Evidence Supporting This Recommendation</h2>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-5">
               <p className="text-xs text-muted-foreground font-normal">Verified evidence demonstrating executive operation at this level:</p>
-              <ul className="space-y-3 border-l-2 border-signal pl-4 pt-1">
-                {(brief.proofPoints || []).slice(0, 3).map((pt: any, i: number) => (
-                  <li key={i} className="text-xs text-foreground font-normal space-y-0.5">
-                    <span className="font-semibold text-primary block">{pt.headline}:</span>
-                    <span className="text-muted-foreground leading-relaxed">{pt.detail}</span>
-                  </li>
-                ))}
+              <ul className="space-y-4 border-l-2 border-signal pl-4 pt-1">
+                {(brief.proofPoints || []).slice(0, 3).map((pt: any, i: number) => {
+                  const categoryTitle = i === 0 ? "Commercial Leadership" : i === 1 ? "Platform Transformation" : "Executive Governance";
+                  return (
+                    <li key={i} className="text-xs text-foreground font-normal space-y-1">
+                      <span className="font-semibold text-foreground text-sm block font-display">{categoryTitle}</span>
+                      <p className="text-muted-foreground leading-relaxed">{pt.detail}</p>
+                    </li>
+                  );
+                })}
               </ul>
               <div className="rounded border border-border/80 bg-background p-3.5 space-y-1 text-xs">
                 <span className="label-mono text-[11px] text-caution font-normal uppercase">Potential Concern</span>
