@@ -299,9 +299,18 @@ function OpportunityBriefView() {
               <p className="text-xs text-muted-foreground font-mono pt-1 italic">
                 <span className="text-foreground font-semibold">Action:</span> Validate these operational assumptions during your first recruiter conversation before committing to full interviews.
               </p>
+
+              {/* Memorable Moment: Partner Observation */}
+              <div className="rounded border-l-2 border-primary bg-surface-raised p-4 space-y-1">
+                <span className="label-mono text-xs uppercase tracking-wider text-primary font-semibold">Partner Observation</span>
+                <p className="text-sm text-foreground italic leading-relaxed">
+                  “The title is less important than the operating latitude. If the commercial mandate proves genuine, this role is materially stronger than its title suggests.”
+                </p>
+              </div>
             </div>
           </div>
 
+          {/* EXECUTIVE OPINION BOX ("Here's what I think") */}
           <div className="rounded-lg border-2 border-primary/30 bg-surface-raised p-6 space-y-3 my-6">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <span className="label-mono text-xs uppercase tracking-wider text-primary font-semibold">Executive Opinion</span>
@@ -309,13 +318,14 @@ function OpportunityBriefView() {
             </div>
             <p className="font-display text-lg sm:text-xl leading-relaxed text-foreground font-normal">
               {currentVerdict === "PURSUE"
-                ? `This appears to be one of the stronger opportunities in your current search because it builds directly on your verified growth leadership without requiring a change in executive identity. The principal uncertainty is whether the commercial mandate includes genuine budget authority or remains an advisory function. Resolve that question during the recruiter conversation before investing further time.`
+                ? `This is one of the stronger mandates in your current search because it compounds your existing growth leadership narrative rather than asking you to reinvent it. I would invest time in this opportunity—but only after confirming that commercial authority is genuine rather than advisory at ${o.company}.`
                 : currentVerdict === "CONSIDER"
                 ? `This role presents solid domain alignment, but the operational altitude sits closer to functional execution than board-level strategy. Consider advancing if you seek immediate category leadership at ${o.company}, but clarify direct C-suite reporting before committing to formal interviews.`
                 : `While ${o.company} is a notable brand, the required responsibilities represent a functional regression from your verified executive track record. Pass on this mandate to preserve search bandwidth for opportunities offering true P&L scope.`}
             </p>
           </div>
 
+          {/* SECTION 3: Evidence Supporting This Recommendation */}
           <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
             <div>
               <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Evidence</p>
@@ -341,6 +351,7 @@ function OpportunityBriefView() {
             </div>
           </div>
 
+          {/* SECTION 4: Present your experience effectively */}
           <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
             <div>
               <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Strategy</p>
@@ -353,6 +364,11 @@ function OpportunityBriefView() {
                   {currentVerdict === "PURSUE" ? "Your experience aligns directly. Focus your narrative on your track record of scaling commercial governance." : "Ensure your resume explicitly highlights P&L responsibility to bridge gaps in functional domain coverage."}
                 </p>
               </div>
+
+              {/* Tailoring Intro Statement */}
+              <p className="text-xs text-muted-foreground italic font-mono">
+                The following revisions strengthen the parts of your narrative most likely to influence shortlisting for this specific mandate at {o.company}.
+              </p>
 
               <div className="rounded-lg border border-border bg-surface-raised p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">

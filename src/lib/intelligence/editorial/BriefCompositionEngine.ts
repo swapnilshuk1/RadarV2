@@ -206,8 +206,9 @@ export class BriefCompositionEngine {
         `Favorable career velocity surplus in ${opportunity.location || "target markets"}.`,
       ],
       watchFor: [
-        `Confirm direct P&L boundaries and budget authority during initial call with ${opportunity.company}.`,
-        `Clarify direct reporting line hierarchy (CEO vs Regional VP).`,
+        `Strategic Risk: Regional leadership or founders may retain unwritten veto authority over commercial strategy.`,
+        `Execution Risk: Confirm whether commercial mandate carries dedicated budget control vs shared matrix allocation.`,
+        `Market Risk: Clarify reporting line hierarchy and whether team budget supports 24-month expansion targets.`,
       ],
       bottomLine: decision === "PURSUE" ? "Worth pursuing." : decision === "CONSIDER" ? "Verify scope before applying." : "Strategic Pass.",
     };
@@ -246,12 +247,11 @@ export class BriefCompositionEngine {
     ];
 
     const strategicUpside: StrategicUpside = {
-      headline: "Why this role is interesting",
+      headline: "Strategic Career Value",
       points: [
-        `Establishes key leadership leverage as ${opportunity.role} at ${opportunity.company}.`,
-        `Expands direct P&L and commercial execution experience in ${opportunity.location || "primary markets"}.`,
-        `Adds high-visibility transformation leadership to your executive record.`,
-        `Strengthens future Chief Commercial Officer optionality within 2–3 years.`,
+        `This role broadens your record from functional ${primaryCap} leadership to full country-level commercial ownership.`,
+        `This is likely to become one of the strongest P&L acceleration signals on your executive résumé.`,
+        `Establishes multi-region platform governance experience positioning you for future regional CXO searches.`
       ],
     };
 
