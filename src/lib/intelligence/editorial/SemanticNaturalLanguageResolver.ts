@@ -84,6 +84,8 @@ export function unwrapEvidenceValue(raw: any): string {
  * into clean natural language concepts before passing to editorial presentation.
  * Ensures prose NEVER leaks raw JSON keys, ampersands in running text, or generic placeholders.
  */
+import { ExecutiveKnowledgeNormalizationPipeline } from "../ekb/ExecutiveKnowledgeNormalizationPipeline";
+
 export class SemanticNaturalLanguageResolver {
   public static resolveCapabilities(caps: string[]): string {
     if (!caps || caps.length === 0) {
@@ -91,28 +93,21 @@ export class SemanticNaturalLanguageResolver {
       return "";
     }
 
-    const cleanedList = caps
-      .map((c) => unwrapEvidenceValue(c))
-      .map((c) => {
-        let clean = c
-          .replace(/PURPOSE_[A-Z_]+/g, "")
-          .replace(/fit\)/g, "")
-          .replace(/\([0-9]+%/g, "")
-          .replace(/_/g, " ")
-          .trim();
-        if (clean.length === 0 || clean.length > 80) return "";
-        return clean.charAt(0).toUpperCase() + clean.slice(1);
-      })
-      .filter((v) => v.length > 0 && v.length <= 80)
-      .filter((v, i, a) => a.indexOf(v) === i)
-      .slice(0, 3);
+    // Convert flat list of capability strings to expected pipeline dimension format for clean backwards compatibility
+    const mockDimensions = caps.map((c) => ({
+      key: "functionalScope",
+      jdEvidence: { value: c }
+    }));
 
-    if (cleanedList.length === 0) {
+    const normalized = ExecutiveKnowledgeNormalizationPipeline.normalize(mockDimensions);
+    const resolvedList = normalized.map((c) => c.label);
+
+    if (resolvedList.length === 0) {
       console.warn("[EDITORIAL DEFECT] Suppressed generic capability fallback due to unresolvable capability strings");
       return "";
     }
 
-    return cleanedList.join(", ");
+    return resolvedList.join(", ");
   }
 
   public static resolveIdentity(identityValue: string): string {
@@ -129,11 +124,11 @@ export class SemanticNaturalLanguageResolver {
     company: string
   ): string {
     if (decision === "PURSUE") {
-      return `Pursue. Submit direct application for ${role} at ${company}; position justifies immediate screening.`;
+      return `Proceed. Priority mandate for ${role} at ${company}; position justifies immediate screening call to confirm reporting line and capital allocation.`;
     }
     if (decision === "CONSIDER") {
-      return `Consider. Verify operating scope and reporting line at ${company} before advancing.`;
+      return `Consider. Conduct a single screening conversation to verify true P&L scope and budget authority at ${company} before allocating further prep time.`;
     }
-    return `Pass. Mandate scope for ${role} does not align with target executive profile.`;
+    return `Pass. Operating remit for ${role} at ${company} sits below your target commercial altitude; preserve search bandwidth for full-scope mandates.`;
   }
 }

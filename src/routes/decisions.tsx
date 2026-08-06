@@ -62,25 +62,25 @@ function DecisionsPage() {
     <div className="min-h-screen bg-background text-ink">
       <section className="mx-auto max-w-4xl px-4 sm:px-8 pb-10 pt-14">
         <div className="flex items-baseline justify-between">
-          <h1 className="text-[38px] font-medium leading-[1.05] tracking-[-0.025em] text-ink">Your decisions.</h1>
+          <h1 className="text-4xl font-medium leading-[1.05] tracking-[-0.025em] text-ink">Your decisions.</h1>
           {rows.length > 0 && (
             <button
                type="button"
                onClick={() => {
                  if (confirm("Clear all decisions? This can't be undone.")) clear();
                }}
-               className="text-[11.5px] font-medium uppercase tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+               className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
             >
               Clear all
             </button>
           )}
         </div>
-        <p className="mt-3 max-w-xl text-[14.5px] leading-relaxed text-ink-muted">
+        <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-muted">
           {rows.length === 0
             ? "No calls made yet. Swipe a brief on the shortlist to add it here."
             : `${rows.length} call${rows.length === 1 ? "" : "s"} on record. Undo to put a brief back on the shortlist.`}
         </p>
-        <div className="mt-6 flex gap-8 text-[13px] text-ink-muted">
+        <div className="mt-6 flex gap-8 text-sm text-ink-muted">
           <Stat label="Pursued" value={groups.PURSUE.length} tint="text-decision-pursue" />
           <Stat label="Considered" value={groups.CONSIDER.length} tint="text-decision-consider" />
           <Stat label="Passed" value={groups.PASS.length} />
@@ -90,7 +90,7 @@ function DecisionsPage() {
 
       <main className="mx-auto max-w-4xl px-4 sm:px-8 pb-24">
         {!hydrated ? (
-          <p className="pt-10 text-[13px] text-ink-muted">Loading…</p>
+          <p className="pt-10 text-sm text-ink-muted">Loading…</p>
         ) : (
           (["PURSUE", "CONSIDER", "PASS", "NOT_EVALUABLE"] as const).map((verb) => (
             <Group
@@ -120,7 +120,7 @@ function Group({
     <section className="mt-10 first:mt-0">
       <div className="flex items-baseline gap-3 border-b border-hairline pb-3">
         <DecisionBadge verb={verb} size="sm" />
-        <span className="text-[11px] uppercase tracking-[0.18em] text-ink-muted">
+        <span className="label-mono text-ink-muted">
           {rows.length} {rows.length === 1 ? "brief" : "briefs"}
         </span>
       </div>
@@ -133,16 +133,16 @@ function Group({
                   <Link
                     to="/opportunity/$jobHash"
                     params={{ jobHash: r.jobHash }}
-                    className="truncate text-[16px] font-medium tracking-[-0.01em] text-ink hover:underline"
+                    className="truncate text-base font-medium tracking-[-0.01em] text-ink hover:underline"
                   >
                     {r.role}
                   </Link>
-                  <span className="text-[13px] text-ink-muted">{r.company}</span>
+                  <span className="text-sm text-ink-muted">{r.company}</span>
                 </div>
-                <p className="mt-0.5 text-[12.5px] text-ink-muted">
+                <p className="mt-0.5 text-sm text-ink-muted">
                   {r.location} · {r.scrapedFrom} · {relTime(r.record.at)}
                 </p>
-                <p className="mt-1 text-[12px] font-mono text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm inline-block">
+                <p className="mt-1 text-xs font-mono text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm inline-block">
                   Decision rationale: {verb === "PURSUE" ? "Strong career trajectory and commercial alignment" : verb === "CONSIDER" ? "Solid functional fit, verify reporting line and travel" : "Passed based on user preference or lower capability overlap"}
                 </p>
               </div>
@@ -152,7 +152,7 @@ function Group({
                     href={r.applyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-sm border border-decision-pursue bg-decision-pursue px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-decision-pursue-fg hover:opacity-90"
+                    className="rounded-sm border border-decision-pursue bg-decision-pursue px-3 py-1.5 label-mono text-decision-pursue-fg hover:opacity-90"
                   >
                     Apply ↗
                   </a>
@@ -160,7 +160,7 @@ function Group({
                 <button
                   type="button"
                   onClick={() => onUndo(r.jobHash)}
-                  className="rounded-sm border border-hairline px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-muted hover:bg-muted hover:text-ink"
+                  className="rounded-sm border border-hairline px-3 py-1.5 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted hover:bg-muted hover:text-ink"
                 >
                   Undo
                 </button>
@@ -176,8 +176,8 @@ function Group({
 function Stat({ label, value, tint = "text-ink" }: { label: string; value: number; tint?: string }) {
   return (
     <div className="flex items-baseline gap-1.5">
-      <span className={`text-[17px] font-medium tabular-nums ${tint}`}>{value}</span>
-      <span className="text-[12px] uppercase tracking-[0.14em] text-ink-muted">{label}</span>
+      <span className={`text-lg font-medium tabular-nums ${tint}`}>{value}</span>
+      <span className="text-xs uppercase tracking-[0.14em] text-ink-muted">{label}</span>
     </div>
   );
 }

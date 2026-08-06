@@ -23,13 +23,13 @@ export const transformationDigitalModernizerPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `${v.company} is losing commercial speed to digital-native competitors; this ${v.role} mandate automates customer acquisition workflows.`,
-    opening: (v) => `Legacy manual processes are choking transaction throughput. The board has prioritized an operational reset across primary commercial channels.`,
-    editorialBridge: (v) => `This role shifts your focus from managing operational volume to building automated commercial infrastructure.`,
+    headline: (v) => `${v.company} is losing commercial speed to agile peers; this ${v.role} mandate automates customer acquisition workflows.`,
+    opening: (v) => `Manual processes are bottlenecking transaction throughput. The board has prioritized an operational reset across commercial channels.`,
+    editorialBridge: (v) => `This seat shifts your focus from managing operational volume to building automated commercial infrastructure.`,
     decisionGuidance: {
-      proceedIf: (v) => `Leading enterprise digital modernization and process automation matches your track record.`,
-      pauseIf: (v) => `Evaluate legacy technical debt and IT budget allocations before proceeding.`,
-      closing: (v) => `Pursue. High-impact commercial modernization with clear board sponsorship.`
+      proceedIf: (v) => `Leading enterprise digital modernization and process automation matches your execution track.`,
+      pauseIf: (v) => `Evaluate legacy technical debt and IT budget allocations before allocating interview time.`,
+      closing: (v) => `Proceed. High-impact commercial modernization with explicit board sponsorship.`
     }
   }
 };
@@ -57,11 +57,11 @@ export const transformationTurnaroundLeaderPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `Executing a commercial turnaround at ${v.company} requires immediate margin optimization and operational restructuring.`,
-    opening: (v) => `The business needs a decisive operator to streamline cost structures and restore top-line profitability.`,
-    editorialBridge: (v) => `This mandate carries high risk, but successful execution establishes an undeniable turnaround track record.`,
+    headline: (v) => `Commercial turnaround at ${v.company} requires immediate margin optimization and operational restructuring.`,
+    opening: (v) => `The business requires a decisive operator to streamline cost structures and restore margin profitability.`,
+    editorialBridge: (v) => `This mandate carries execution risk, but successful delivery establishes an undeniable turnaround track record.`,
     decisionGuidance: {
-      proceedIf: (v) => `Driving commercial turnarounds under tight financial constraints fits your risk profile.`,
+      proceedIf: (v) => `Driving commercial turnarounds under tight capital constraints fits your risk tolerance.`,
       pauseIf: (v) => `Debt covenants leave fewer than twelve months to achieve positive cash flow.`,
       closing: (v) => `Consider. High operational visibility, provided restructuring authority is explicitly defined.`
     }
@@ -90,13 +90,13 @@ export const transformationOrgArchitectPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `This position re-architects reporting boundaries at ${v.company} to eliminate operational friction between product and commercial teams.`,
+    headline: (v) => `This seat re-architects reporting boundaries at ${v.company} to eliminate friction between product and commercial teams.`,
     opening: (v) => `The mandate focuses on redesigning the target operating model to clarify team accountabilities and decision rights.`,
-    editorialBridge: (v) => `Unlike traditional restructuring roles, this effort prioritizes workflow velocity and cross-functional alignment over headcount reductions.`,
+    editorialBridge: (v) => `Unlike traditional restructuring roles, this effort prioritizes workflow velocity over headcount reductions.`,
     decisionGuidance: {
       proceedIf: (v) => `Redesigning operating models and establishing clear organizational accountabilities suit your leadership style.`,
-      pauseIf: (v) => `Verify CEO backing for proposed structural changes across business units.`,
-      closing: (v) => `Proceed to screening. High operational impact for executives skilled in organizational design.`
+      pauseIf: (v) => `Verify C-suite backing for proposed structural changes across business units.`,
+      closing: (v) => `Proceed. High operational impact for executives skilled in organizational design.`
     }
   }
 };

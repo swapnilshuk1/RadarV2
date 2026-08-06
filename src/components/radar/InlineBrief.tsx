@@ -23,7 +23,7 @@ export function InlineBrief({
           </span>
         </div>
 
-        <p className="mt-4 max-w-xl font-display text-[1.6rem] leading-[1.25] sm:text-3xl text-foreground font-normal">
+        <p className="mt-4 max-w-xl font-display text-3xl leading-[1.25] text-foreground font-normal">
           {preview.headline || "Closest match to your operating mandate."}
         </p>
 
@@ -76,7 +76,7 @@ export function InlineBrief({
         <Link
           to="/opportunity/$jobHash"
           params={{ jobHash: o.jobHash }}
-          className="mt-2 flex items-center justify-center rounded-[4px] bg-foreground px-4 py-3 font-mono text-[0.68rem] tracking-[0.18em] uppercase text-background font-normal transition-opacity hover:opacity-90 w-full cursor-pointer"
+          className="mt-2 flex items-center justify-center rounded-sm bg-foreground px-4 py-3 label-mono text-background font-normal transition-opacity hover:opacity-90 w-full cursor-pointer"
           onClick={(e) => e.stopPropagation()}
         >
           Open full dossier ↗
@@ -86,7 +86,7 @@ export function InlineBrief({
           href={applyUrlFor(o)}
           target="_blank"
           rel="noreferrer"
-          className="mt-2 block text-center font-mono text-[0.68rem] text-muted-foreground underline underline-offset-4 hover:text-foreground font-normal"
+          className="mt-2 block text-center font-mono text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground font-normal"
           onClick={(e) => e.stopPropagation()}
         >
           Apply directly on {o.scrapedFrom || "LinkedIn"}
@@ -99,7 +99,7 @@ export function InlineBrief({
               e.stopPropagation();
               onDecide("PURSUE");
             }}
-            className="rounded-[4px] border border-signal/40 px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase text-signal font-normal transition-colors hover:bg-signal/10 cursor-pointer"
+            className="rounded-sm border border-signal/40 px-2 py-2 label-mono text-signal font-normal transition-colors hover:bg-signal/10 cursor-pointer"
           >
             Pursue
           </button>
@@ -109,7 +109,7 @@ export function InlineBrief({
               e.stopPropagation();
               onDecide("CONSIDER");
             }}
-            className="rounded-[4px] border border-caution/40 px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase text-caution font-normal transition-colors hover:bg-caution/10 cursor-pointer"
+            className="rounded-sm border border-caution/40 px-2 py-2 label-mono text-caution font-normal transition-colors hover:bg-caution/10 cursor-pointer"
           >
             Consider
           </button>
@@ -119,7 +119,7 @@ export function InlineBrief({
               e.stopPropagation();
               onDecide("PASS");
             }}
-            className="rounded-[4px] border border-border px-2 py-2 font-mono text-[0.6rem] tracking-[0.14em] uppercase text-muted-foreground font-normal transition-colors hover:bg-muted cursor-pointer"
+            className="rounded-sm border border-border px-2 py-2 label-mono text-muted-foreground font-normal transition-colors hover:bg-muted cursor-pointer"
           >
             Pass
           </button>

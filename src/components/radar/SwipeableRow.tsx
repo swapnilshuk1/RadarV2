@@ -98,7 +98,7 @@ export function SwipeableRow({
         className="pointer-events-none absolute inset-y-0 left-0 flex w-full items-center justify-start bg-gradient-to-r from-decision-pursue/15 to-transparent pl-6"
         style={{ opacity: showRight ? progress : 0 }}
       >
-        <span className="rounded-sm border border-decision-pursue/40 bg-background/60 px-2 py-1 text-[10.5px] font-medium uppercase tracking-[0.18em] text-decision-pursue">
+        <span className="rounded-sm border border-decision-pursue/40 bg-background/60 px-2 py-1 label-mono text-decision-pursue">
           → Pursue
         </span>
       </div>
@@ -108,7 +108,7 @@ export function SwipeableRow({
         className="pointer-events-none absolute inset-y-0 right-0 flex w-full items-center justify-end bg-gradient-to-l from-muted to-transparent pr-6"
         style={{ opacity: showLeft ? progress : 0 }}
       >
-        <span className="rounded-sm border border-hairline bg-background/60 px-2 py-1 text-[10.5px] font-medium uppercase tracking-[0.18em] text-ink-muted">
+        <span className="rounded-sm border border-hairline bg-background/60 px-2 py-1 label-mono text-ink-muted">
           Pass ←
         </span>
       </div>

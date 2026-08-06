@@ -140,13 +140,13 @@ function CorpusHealth() {
         <div className="border-b border-border/60 pb-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
             <div className="max-w-2xl">
-              <span className="mono text-[10px] uppercase tracking-[0.24em] font-bold text-foreground/80">
+              <span className="label-mono font-bold text-foreground/80">
                 SYSTEM OF RECORD
               </span>
-              <h1 className="mt-1 font-serif text-[2.75rem] sm:text-[3.25rem] font-light tracking-tight text-foreground leading-[1.05]">
+              <h1 className="mt-1 font-serif text-4xl sm:text-5xl font-light tracking-tight text-foreground leading-[1.05]">
                 Job Intelligence Corpus
               </h1>
-              <p className="mt-3 font-serif text-[15px] italic leading-relaxed text-muted-foreground">
+              <p className="mt-3 font-serif text-base italic leading-relaxed text-muted-foreground">
                 The centralized system-of-record housing processed, validated, and enriched executive role listings.
                 Derived fully deterministically as read-only materializations from immutable scraped JSON snapshots.
               </p>
@@ -154,7 +154,7 @@ function CorpusHealth() {
             <button
               onClick={handleRegenerate}
               disabled={refreshing}
-              className="mono inline-flex h-11 items-center justify-center rounded-sm bg-foreground px-6 text-[11px] font-bold uppercase tracking-wider text-background border border-foreground transition-all hover:opacity-90 disabled:opacity-40 disabled:pointer-events-none cursor-pointer whitespace-nowrap"
+              className="label-mono inline-flex h-11 items-center justify-center rounded-sm bg-foreground px-6 font-bold text-background border border-foreground transition-all hover:opacity-90 disabled:opacity-40 disabled:pointer-events-none cursor-pointer whitespace-nowrap"
             >
               {refreshing ? (
                 <span className="flex items-center gap-2">
@@ -173,15 +173,15 @@ function CorpusHealth() {
               <div className="flex items-center justify-between border-b border-border/60 bg-muted/20 px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse" />
-                  <span className="mono text-[10px] uppercase tracking-wider text-foreground font-bold">
+                  <span className="label-mono text-foreground font-bold">
                     Pipeline Console Logs
                   </span>
                 </div>
-                <span className="mono text-[10px] text-muted-foreground uppercase font-bold">
+                <span className="label-mono text-muted-foreground font-bold">
                   {currentStage === "COMPLETE" ? "Success" : currentStage === "FAILED" ? "Failed" : "Processing"}
                 </span>
               </div>
-              <div className="max-h-60 overflow-y-auto p-4 font-mono text-[11.5px] leading-relaxed text-muted-foreground space-y-1 bg-background/50">
+              <div className="max-h-60 overflow-y-auto p-4 font-mono text-xs leading-relaxed text-muted-foreground space-y-1 bg-background/50">
                 {consoleLogs.map((log, idx) => {
                   const isSuccess = log.includes("SUCCESS") || log.includes("Successfully");
                   const isError = log.includes("ERROR");
@@ -201,7 +201,7 @@ function CorpusHealth() {
                   );
                 })}
                 {refreshing && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60 italic animate-pulse pt-1">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 italic animate-pulse pt-1">
                     <span>running stage [{currentStage}]</span>
                     <span className="inline-block animate-bounce">.</span>
                     <span className="inline-block animate-bounce delay-75">.</span>
@@ -217,7 +217,7 @@ function CorpusHealth() {
           {/* Metrics Dashboard */}
           <div>
             <div className="flex items-center gap-3 mb-6">
-              <span className="mono text-[10px] uppercase tracking-[0.2em] font-bold text-foreground/80">
+              <span className="label-mono font-bold text-foreground/80">
                 HEALTH INDICATORS
               </span>
               <div className="flex-1 h-px bg-border/60" />
@@ -276,11 +276,11 @@ function CorpusHealth() {
 
           {/* Pipeline Architecture Panel */}
           <div className="rounded-sm border border-border/80 bg-card p-8 sm:p-10 shadow-xs space-y-6">
-            <span className="mono text-[10px] uppercase tracking-[0.24em] font-bold text-foreground/80 block">
+            <span className="label-mono font-bold text-foreground/80 block">
               TECHNICAL ARCHITECTURE
             </span>
-            <h2 className="font-serif text-[1.75rem] font-light text-foreground">The Idempotent Regeneration Flow</h2>
-            <p className="font-serif text-[15px] italic text-muted-foreground leading-relaxed">
+            <h2 className="font-serif text-3xl font-light text-foreground">The Idempotent Regeneration Flow</h2>
+            <p className="font-serif text-base italic text-muted-foreground leading-relaxed">
               Rather than treating the active SQLite database as a manually editable or mutable source of truth,
               RADAR operates on a fully deterministic compiler pipeline. The local SQLite read models and search feeds
               are compiled down as 100% derived structures from raw scraping snapshots.
@@ -297,7 +297,7 @@ function CorpusHealth() {
 
             {/* Health Assessment Alert */}
             <div className="mt-8 border-t border-border/60 pt-6">
-              <span className="mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/70 font-bold block mb-3">
+              <span className="label-mono text-muted-foreground/70 font-bold block mb-3">
                 HEALTH ASSESSMENT
               </span>
               <div className="flex items-center gap-3 bg-card border-l-4 border-l-emerald-800 p-4 rounded-xs border border-border/60">
@@ -308,7 +308,7 @@ function CorpusHealth() {
                       : "bg-amber-600"
                   }`}
                 />
-                <p className="text-[13.5px] font-serif leading-relaxed text-foreground">
+                <p className="text-sm font-serif leading-relaxed text-foreground">
                   {stats.textCoveragePercent > 95
                     ? "EXCELLENT — The intelligence corpus is fully generated and aligned. 100% of the active database contains rich detail text, capability indexes, and dynamic editorial briefs."
                     : "WARNING — The intelligence corpus is partially un-regenerated. Some records are missing raw description text or contain legacy schema data."}
@@ -332,9 +332,9 @@ interface MetricCardProps {
 function MetricCard({ title, value, subtitle, accentColor = "text-foreground" }: MetricCardProps) {
   return (
     <div className="rounded-sm border border-border/80 bg-card p-6 shadow-2xs hover:border-foreground/40 transition-all">
-      <span className="mono text-[9.5px] uppercase tracking-[0.18em] text-muted-foreground/60 font-bold block mb-1">{title}</span>
-      <h3 className={`mt-2 font-serif text-[2.25rem] font-light tracking-tight tabular-nums ${accentColor}`}>{value}</h3>
-      <p className="mt-1 text-[11.5px] text-muted-foreground leading-relaxed font-medium">{subtitle}</p>
+      <span className="label-mono text-muted-foreground/60 font-bold block mb-1">{title}</span>
+      <h3 className={`mt-2 font-serif text-3xl font-light tracking-tight tabular-nums ${accentColor}`}>{value}</h3>
+      <p className="mt-1 text-xs text-muted-foreground leading-relaxed font-medium">{subtitle}</p>
     </div>
   );
 }
@@ -348,11 +348,11 @@ interface PipelineStageProps {
 function PipelineStage({ number, label, desc }: PipelineStageProps) {
   return (
     <div className="relative rounded-sm border border-border/70 bg-muted/10 p-4 flex flex-col items-center">
-      <span className="h-6 w-6 rounded-full bg-foreground text-background flex items-center justify-center mono text-[10px] font-bold">
+      <span className="h-6 w-6 rounded-full bg-foreground text-background flex items-center justify-center font-mono text-xs font-bold">
         {number}
       </span>
-      <span className="mt-2 text-[12.5px] font-bold text-foreground">{label}</span>
-      <p className="mt-1 text-[11px] text-muted-foreground leading-snug font-normal">{desc}</p>
+      <span className="mt-2 text-sm font-bold text-foreground">{label}</span>
+      <p className="mt-1 text-xs text-muted-foreground leading-snug font-normal">{desc}</p>
     </div>
   );
 }

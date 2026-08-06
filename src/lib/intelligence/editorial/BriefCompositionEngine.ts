@@ -3,6 +3,7 @@ import { EditorialContextBuilder } from "./EditorialContext";
 import { EditorialPatternSelector } from "./EditorialPatternSelector";
 import { NarrativeComposer } from "./NarrativeComposer";
 import { SemanticNaturalLanguageResolver, unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
+import { ExecutiveKnowledgeNormalizationPipeline } from "../ekb/ExecutiveKnowledgeNormalizationPipeline";
 
 export interface BriefSectionMeta {
   id: string;
@@ -97,6 +98,13 @@ export interface BriefModel {
     tradeoffStatement: string;
     pauseTrigger: string;
   };
+  executiveOpinion?: string;
+  directives?: {
+    reflection?: string;
+    action?: string;
+    observation?: string;
+    positioning?: string;
+  };
 }
 
 export class BriefCompositionEngine {
@@ -119,17 +127,16 @@ export class BriefCompositionEngine {
         ? "CONSIDER"
         : "PASS";
 
-    // Factual Evidence-Grounded Capabilities
-    const rawCaps = (opportunity.dimensions || [])
-      .filter((d: any) => d.key === "technologyStack" || d.key === "functionalScope" || d.key === "mandate")
-      .map((d: any) => unwrapEvidenceValue(d.jdEvidence?.value))
-      .filter((v: any) => typeof v === "string" && v.length > 0);
+    // Factual Evidence-Grounded Capabilities - parsed through the Executive Knowledge Normalization Pipeline
+    const capDimensions = (opportunity.dimensions || [])
+      .filter((d: any) => d.key === "technologyStack" || d.key === "functionalScope" || d.key === "mandate");
 
-    const resolvedCapText = SemanticNaturalLanguageResolver.resolveCapabilities(rawCaps);
-    const capItems = resolvedCapText ? resolvedCapText.split(",").map((s) => s.trim()) : [];
-    const primaryCap = capItems[0] || opportunity.role;
-    const secondaryCap = capItems[1] || "Commercial Strategy";
-    const tertiaryCap = capItems[2] || "Execution Operations";
+    const normalizedCaps = ExecutiveKnowledgeNormalizationPipeline.normalize(capDimensions);
+    const resolvedCapText = normalizedCaps.map((c) => c.label).join(", ");
+    
+    const primaryCap = normalizedCaps[0]?.label || opportunity.role;
+    const secondaryCap = normalizedCaps[1]?.label || "Commercial Strategy";
+    const tertiaryCap = normalizedCaps[2]?.label || "Execution Operations";
 
     const retentionSentence = resolvedCapText
       ? `${opportunity.role} mandate at ${opportunity.company} focused on ${resolvedCapText}.`
@@ -206,9 +213,9 @@ export class BriefCompositionEngine {
         `Favorable career velocity surplus in ${opportunity.location || "target markets"}.`,
       ],
       watchFor: [
-        `Strategic Risk: Regional leadership or founders may retain unwritten veto authority over commercial strategy.`,
-        `Execution Risk: Confirm whether commercial mandate carries dedicated budget control vs shared matrix allocation.`,
-        `Market Risk: Clarify reporting line hierarchy and whether team budget supports 24-month expansion targets.`,
+        `Strategic Risk: Evaluate if the mandate carries genuine P&L authority or functions merely as an operational execution arm.`,
+        `Execution Risk: Verify if the team budget and headcount are formally approved for the requested 24-month expansion targets.`,
+        `Market Risk: Assess if the organization has moved beyond founder-led decision making into scalable governance.`,
       ],
       bottomLine: decision === "PURSUE" ? "Worth pursuing." : decision === "CONSIDER" ? "Verify scope before applying." : "Strategic Pass.",
     };
@@ -238,9 +245,9 @@ export class BriefCompositionEngine {
         layer: "Career Capital Value",
         ratingLabel: score >= 70 ? "Strong Alignment" : "Adjacent Alignment",
         becausePoints: [
-          `+${Math.round(score * 0.4)} Brand Capital Gain`,
-          `-${Math.round((100 - score) * 0.2)} Operating Scope Risk`,
-          `Net Positive Career Value Surplus`
+          `Direct P&L & Scale Alignment`,
+          `Operating Scope & Mandate Overlap`,
+          `Long-Term Career Leverage`
         ],
         evidenceSnippet: `Executive positioning at ${opportunity.company} expands long-term leadership leverage.`,
       },
@@ -336,8 +343,8 @@ export class BriefCompositionEngine {
       },
       {
         category: "Transferable Experience",
-        headline: `Graph Transferability: ${primaryCap} → ${opportunity.role}`,
-        detail: `100% functional transferability mapped along ESG relationship path.`,
+        headline: `Functional Capability Transferability`,
+        detail: `Core leadership competencies align directly with required mandate responsibilities for ${opportunity.role}.`,
       },
     ];
 
@@ -395,7 +402,7 @@ export class BriefCompositionEngine {
         name: "Candidate Match",
         eyebrow: "CANDIDATE MATCH",
         numeral: "V",
-        title: "Why RADAR believes you're well positioned",
+        title: "The Evidence for Alignment",
         expression: "Direct evidence and graph transferability proof points.",
       },
       {
@@ -432,7 +439,24 @@ export class BriefCompositionEngine {
       },
     ];
 
+    const executiveOpinion = decision === "PURSUE"
+      ? `This is one of the stronger mandates in your current search because it compounds your existing growth leadership narrative rather than asking you to reinvent it. I would invest time in this opportunity—but only after confirming that commercial authority is genuine rather than advisory at ${opportunity.company}.`
+      : decision === "CONSIDER"
+      ? `This role presents solid domain alignment, but the operational altitude sits closer to functional execution than board-level strategy. Consider advancing if you seek immediate category leadership at ${opportunity.company}, but clarify direct C-suite reporting before committing to formal interviews.`
+      : `While ${opportunity.company} is a notable brand, the required responsibilities represent a functional regression from your verified executive track record. Pass on this mandate to preserve search bandwidth for opportunities offering true P&L scope.`;
+
+    const directives = {
+      reflection: `Consider whether this market trajectory strengthens your executive record over a 3-year horizon.`,
+      action: `Validate these operational assumptions during your first recruiter conversation before committing to full interviews.`,
+      observation: `The recommendation remains strong unless commercial ownership proves narrower than expected.`,
+      positioning: decision === "PURSUE" 
+        ? "Your experience aligns directly. Focus your narrative on your track record of scaling commercial governance." 
+        : "Ensure your resume explicitly highlights P&L responsibility to bridge gaps in functional domain coverage."
+    };
+
     return {
+      executiveOpinion,
+      directives,
       memory,
       sections,
       oneMinuteTLDR,

@@ -83,121 +83,153 @@ export class V3EvaluationEngine {
 
     let capabilityFitScore = Math.round((matchedCapabilities.length / requiredCaps.length) * 100);
 
-    // Apply capability fit scale discount for sparse descriptions to reflect unverified data risk
+    // Apply density discount for sparse descriptions
     if (requiredCaps.length === 1) {
       capabilityFitScore = Math.round(capabilityFitScore * 0.70);
     } else if (requiredCaps.length === 2) {
       capabilityFitScore = Math.round(capabilityFitScore * 0.85);
     }
 
-    // 2. Calculate Alignment Score (Intent matching) with deep, granular executive attributes
-    let locationMatchScore = 0;
+    // --- THE THREE INDEPENDENT EXECUTIVE QUESTIONS ENGINE ---
+    const titleLower = opportunity.canonicalTitle.toLowerCase();
+    const roleLower = titleLower;
+
+    // QUESTION 1: CAN THIS ROLE MATERIALLY ADVANCE AN EXECUTIVE CAREER?
+    // Component 1A: Role Altitude (R_A) - Organizational Position & Authority (0-100)
+    let reportingScore = 15;
+    if (titleLower.includes("country head") || titleLower.includes("chief") || titleLower.includes("founder") || titleLower.includes("cmo") || titleLower.includes("cgo") || titleLower.includes("coo")) {
+      reportingScore = 40; // Board/CEO Direct
+    } else if (titleLower.includes("vp") || titleLower.includes("vice president") || titleLower.includes("svp")) {
+      reportingScore = 35; // Executive Committee
+    } else if (titleLower.includes("director") || titleLower.includes("associate director")) {
+      reportingScore = 25; // Division/Regional Director
+    } else if (titleLower.includes("head") || titleLower.includes("lead")) {
+      reportingScore = 18;
+    }
+
+    let pnlScore = 15;
+    if (titleLower.includes("country head") || titleLower.includes("chief") || titleLower.includes("coo") || titleLower.includes("cmo") || titleLower.includes("cro") || titleLower.includes("p&l")) {
+      pnlScore = 35; // Division/Country P&L
+    } else if (titleLower.includes("director") || titleLower.includes("vp") || titleLower.includes("commercial")) {
+      pnlScore = 25; // Portfolio/BU Revenue
+    } else if (titleLower.includes("head") || titleLower.includes("growth")) {
+      pnlScore = 18;
+    } else {
+      pnlScore = 10;
+    }
+
+    let scopeScore = 10;
+    if (titleLower.includes("global") || titleLower.includes("international")) {
+      scopeScore = 25;
+    } else if (titleLower.includes("enterprise") || titleLower.includes("country")) {
+      scopeScore = 20;
+    } else {
+      scopeScore = 15;
+    }
+
+    const roleAltitudeScore = Math.min(100, Math.max(20, reportingScore + pnlScore + scopeScore));
+
+    // Component 1B: Observable Mandate Value (M_V) - Derived from Evidence, Not Opinion (0-100)
+    let cTransformation = 15;
+    if (titleLower.includes("transformation") || titleLower.includes("re-architecture") || titleLower.includes("modernization")) cTransformation = 30;
+    else if (titleLower.includes("turnaround") || titleLower.includes("pivot")) cTransformation = 25;
+
+    let cCommercialChange = 15;
+    if (titleLower.includes("growth") || titleLower.includes("expansion") || titleLower.includes("cro") || titleLower.includes("demand")) cCommercialChange = 30;
+    else if (titleLower.includes("commercial") || titleLower.includes("revenue")) cCommercialChange = 25;
+
+    let cVisibility = 15;
+    if (titleLower.includes("chief") || titleLower.includes("country head") || titleLower.includes("advisor") || titleLower.includes("board")) cVisibility = 25;
+    else if (titleLower.includes("vp") || titleLower.includes("director")) cVisibility = 20;
+
+    let cAccountability = 10;
+    if (titleLower.includes("head") || titleLower.includes("director") || titleLower.includes("chief") || titleLower.includes("lead")) cAccountability = 15;
+
+    const observableMandateValue = Math.min(100, Math.max(20, cTransformation + cCommercialChange + cVisibility + cAccountability));
+    const careerAdvancementValue = Math.round(0.50 * roleAltitudeScore + 0.50 * observableMandateValue);
+
+    // QUESTION 2: CAN THIS EXECUTIVE SUCCESSFULLY DELIVER? (Execution Confidence E_C)
+    const strongClaimsCount = strengths.filter(s => s.matchingEvidenceIds.length > 0).length;
+    const capabilityProofIndex = matchedCapabilities.length > 0 ? (strongClaimsCount / matchedCapabilities.length) * 100 : 80;
+    const graphTransferability = capabilityFitScore;
+    const evidenceCertaintyScore = 90; // Lexical/semantic extraction confidence
+
+    const executionConfidenceScore = Math.round(0.45 * capabilityProofIndex + 0.35 * graphTransferability + 0.20 * evidenceCertaintyScore);
+
+    // QUESTION 3: ARE THE PRACTICAL CONDITIONS ACCEPTABLE? (Practical Compatibility P_C)
+    let salaryGatePassed = true;
+    if (opportunity.salaryBounds && opportunity.salaryBounds.max) {
+      if (opportunity.salaryBounds.max < intent.salaryBand.min) {
+        salaryGatePassed = false;
+      }
+    }
+
+    let locationFriction: "COMPATIBLE" | "MODERATE_FRICTION" | "HIGH_FRICTION" = "COMPATIBLE";
     if (opportunity.location) {
       const jobLocLower = opportunity.location.toLowerCase();
       const isRemote = jobLocLower.includes("remote");
       const isIndianMetro = ["india", "mumbai", "bengaluru", "bangalore", "gurugram", "gurgaon", "delhi", "noida", "hyderabad", "pune", "chennai"].some(city => jobLocLower.includes(city));
-      const isMiddleEastOrAPAC = ["apac", "middle east", "dubai", "singapore", "malaysia", "thailand", "vietnam", "indonesia"].some(region => jobLocLower.includes(region));
 
-      if (isRemote) {
-        locationMatchScore = 35; // Perfect match
-      } else if (isIndianMetro) {
-        locationMatchScore = 32; // Excellent local target alignment
-      } else if (isMiddleEastOrAPAC) {
-        locationMatchScore = 28; // Standard target region
-      } else {
-        locationMatchScore = 5; // Onsite in unpreferred geography (heavy mismatch penalty)
-      }
-    } else {
-      locationMatchScore = 35; // default remote/unstated
-    }
-
-    const locationMatch = locationMatchScore >= 25;
-
-    let roleMatchScore = 0;
-    const titleLower = opportunity.canonicalTitle.toLowerCase();
-    const roleLower = titleLower;
-
-    // Executive Seniority mapping
-    const hasCSuite = ["chief", "cmo", "cgo", "cco", "coo"].some(kw => roleLower.includes(kw) || titleLower.includes(kw));
-    const hasVP = ["vp", "vice president", "svp", "avp"].some(kw => roleLower.includes(kw) || titleLower.includes(kw));
-    const hasDirector = ["director"].some(kw => roleLower.includes(kw) || titleLower.includes(kw));
-    const hasHead = ["head"].some(kw => roleLower.includes(kw) || titleLower.includes(kw));
-
-    // Target Marketing/Commercial/Strategy Domains
-    const hasMarketingGrowth = ["marketing", "growth", "commercial", "acquisition", "demand", "brand", "sales"].some(kw => roleLower.includes(kw) || titleLower.includes(kw));
-    const hasStrategyTransformation = ["strategy", "transformation", "pivot", "migration"].some(kw => roleLower.includes(kw) || titleLower.includes(kw));
-
-    // IC / Junior Penalties
-    const isJuniorOrIC = ["associate", "analyst", "intern", "specialist", "coordinator", "consultant"].some(kw => roleLower.includes(kw) || titleLower.includes(kw)) ||
-      ((roleLower.includes("executive") || titleLower.includes("executive")) && !["chief", "director", "head", "vp", "senior"].some(kw => roleLower.includes(kw) || titleLower.includes(kw)));
-
-    if (isJuniorOrIC) {
-      roleMatchScore = 5; // Heavy individual contributor penalty
-    } else if (hasMarketingGrowth || hasStrategyTransformation) {
-      if (hasCSuite) {
-        roleMatchScore = 35; // Perfect alignment for a prospective CCO track
-      } else if (hasVP) {
-        roleMatchScore = 33;
-      } else if (hasDirector) {
-        roleMatchScore = 28;
-      } else if (hasHead) {
-        roleMatchScore = 22;
-      } else {
-        roleMatchScore = 15; // Manager
-      }
-    } else {
-      // General senior leadership but not core growth domain
-      if (hasCSuite || hasVP) {
-        roleMatchScore = 20;
-      } else if (hasDirector || hasHead) {
-        roleMatchScore = 15;
-      } else {
-        roleMatchScore = 8;
+      if (!isRemote && !isIndianMetro) {
+        locationFriction = "HIGH_FRICTION";
       }
     }
 
-    const roleMatch = roleMatchScore >= 15;
+    // CONTINUOUS ARCHETYPE AFFINITY WEIGHTING VECTOR
+    const pTransformation = (titleLower.includes("transformation") || titleLower.includes("turnaround")) ? 0.80 : 0.20;
+    const pGovernance = (titleLower.includes("chief") || titleLower.includes("board") || titleLower.includes("successor")) ? 0.75 : 0.25;
+    const pFounder = (titleLower.includes("country head") || titleLower.includes("founder")) ? 0.70 : 0.20;
+    const pGrowth = 0.50;
 
-    let salaryMatch = true;
-    if (opportunity.salaryBounds && opportunity.salaryBounds.max) {
-      // Check if job's max is below candidate's min preference
-      if (opportunity.salaryBounds.max < intent.salaryBand.min) {
-        salaryMatch = false;
-      }
+    // Compute continuous blended weights
+    const sumP = pTransformation + pGovernance + pFounder + pGrowth;
+    const wEC = (0.50 * pTransformation + 0.25 * pGovernance + 0.45 * pFounder + 0.40 * pGrowth) / sumP;
+    const wMV = (0.35 * pTransformation + 0.35 * pGovernance + 0.30 * pFounder + 0.30 * pGrowth) / sumP;
+    const wRA = (0.15 * pTransformation + 0.40 * pGovernance + 0.25 * pFounder + 0.30 * pGrowth) / sumP;
+
+    const baseScore = Math.round((wEC * executionConfidenceScore) + (wMV * observableMandateValue) + (wRA * roleAltitudeScore));
+
+    // INTERACTION POLICY FRAMEWORK & SCORE DERIVATION
+    let derivedScore = baseScore;
+
+    // Execution Floor Policy: Weak execution confidence dominates and caps score
+    if (executionConfidenceScore < 50) {
+      derivedScore = Math.min(derivedScore, 70);
     }
 
-    let alignmentScoreSum = locationMatchScore + roleMatchScore;
-    if (salaryMatch) alignmentScoreSum += 30;
-    const alignmentScore = alignmentScoreSum;
+    // Mandate Floor Policy: Low advancement value caps overall score
+    if (careerAdvancementValue < 50) {
+      derivedScore = Math.min(derivedScore, 75);
+    }
 
-    // 3. Evidence Sufficiency Index (ESI) & Certainty
-    // ESI represents % of matched capabilities that have valid proof anchors (confidence >= 0.90)
-    const strongClaimsCount = strengths.filter(s => s.matchingEvidenceIds.length > 0).length;
+    // Strategic Synergy Policy: High advancement + high execution confidence amplification
+    if (executionConfidenceScore >= 85 && careerAdvancementValue >= 80) {
+      derivedScore = Math.min(100, derivedScore + 5);
+    }
+
+    const overallScore = derivedScore;
+    const alignmentScore = careerAdvancementValue;
     const evidenceSufficiencyIndex = matchedCapabilities.length > 0 
       ? Math.round((strongClaimsCount / matchedCapabilities.length) * 100) / 100
       : 1.0;
+    const certainty = Math.round(evidenceCertaintyScore) / 100;
 
-    const certainty = 0.90; // Lexical confidence constant
-
-    // 4. Overall Score
-    const overallScore = Math.round((0.5 * capabilityFitScore) + (0.5 * alignmentScore));
-
-    // 5. Build Metrics
+    // Build Metrics
     const metrics: EvaluationMetrics = {
       overallScore,
-      capabilityFitScore,
+      capabilityFitScore: executionConfidenceScore,
       alignmentScore,
       evidenceSufficiencyIndex,
       certainty
     };
 
-    // 6. Build Findings
+    // Build Findings & Friction Callouts
     const contextualRisks: string[] = [];
-    if (!salaryMatch) {
-      contextualRisks.push("Opportunity salary bounds are below preferred minimum salary target.");
+    if (!salaryGatePassed) {
+      contextualRisks.push("Opportunity salary bounds fall below preferred target threshold.");
     }
-    if (!locationMatch) {
-      contextualRisks.push("Location does not match preferred geographical intent.");
+    if (locationFriction === "HIGH_FRICTION") {
+      contextualRisks.push("On-site location in unlisted geography requires relocation or remote negotiation.");
     }
     if (gaps.length > 0) {
       contextualRisks.push(`Missing core competency validation for ${unmatchedCapabilities.length} required capability domains.`);
@@ -210,30 +242,30 @@ export class V3EvaluationEngine {
       marketUrgencyNotes: opportunity.postingWindow ? `Job is highly active, posted ${opportunity.postingWindow}.` : undefined
     };
 
-    // 7. Resolve Recommendation Verb
+    // Resolve Recommendation Verb
     let verb: "PURSUE" | "CONSIDER" | "PASS" = "PASS";
     let rationale = "";
     let primaryConcern: string | undefined = undefined;
 
-    if (overallScore >= 75 && evidenceSufficiencyIndex >= 0.40) {
+    if (!salaryGatePassed) {
+      verb = "PASS";
+      rationale = `Disqualified by hard compensation gate. Max offer falls below minimum required threshold.`;
+      primaryConcern = "Salary below target threshold.";
+    } else if (overallScore >= 78 && executionConfidenceScore >= 50) {
       verb = "PURSUE";
-      rationale = `Exceptional matching profile. Strong capability match (${capabilityFitScore}%) and complete alignment with active future career intent.`;
-    } else if (overallScore >= 45) {
+      rationale = `High execution confidence (${executionConfidenceScore}%) and strong career advancement value (${careerAdvancementValue}%).`;
+    } else if (overallScore >= 50) {
       verb = "CONSIDER";
-      rationale = `Moderate match score. Fits career boundaries, but has competency development gaps or unstated salary brackets.`;
-      if (gaps.length > 0) {
+      rationale = `Solid candidate capability overlap, but mandate scope or reporting line warrants verification.`;
+      if (locationFriction === "HIGH_FRICTION") {
+        primaryConcern = "Geographical location friction.";
+      } else if (gaps.length > 0) {
         primaryConcern = `Competency gaps in: ${gaps.map(g => g.capability).join(", ")}`;
       }
     } else {
       verb = "PASS";
-      rationale = `Insufficient overall alignment with capability expectations and career target bounds.`;
-      if (!roleMatch) {
-        primaryConcern = "Functional role title mismatch.";
-      } else if (!locationMatch) {
-        primaryConcern = "Geographical location mismatch.";
-      } else {
-        primaryConcern = "Low competency fit score.";
-      }
+      rationale = `Insufficient career advancement value or execution confidence. Preserve executive bandwidth.`;
+      primaryConcern = "Low intrinsic fit score.";
     }
 
     return {

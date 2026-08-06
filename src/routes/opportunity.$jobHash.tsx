@@ -137,7 +137,7 @@ function OpportunityBriefView() {
   };
 
   return (
-    <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
+    <div className="min-h-screen pb-36 sm:pb-28 bg-background text-foreground font-sans">
       {/* ────────────────────────────────────────────────────────────────────────
           HEADER TITLE BLOCK
           ──────────────────────────────────────────────────────────────────────── */}
@@ -182,14 +182,10 @@ function OpportunityBriefView() {
             <span className="label-mono font-normal text-muted-foreground">1-minute executive brief</span>
           </div>
           <p className="mt-4 font-display text-3xl leading-tight sm:text-4xl text-foreground font-normal">
-            {currentVerdict === "PURSUE" ? "Worth pursuing." : currentVerdict === "CONSIDER" ? "Worth considering." : "Pass on this mandate."}
+            {brief.oneMinuteTLDR.bottomLine}
           </p>
           <p className="mt-3 text-xs sm:text-sm text-foreground/90 font-mono border-l-2 border-primary/60 pl-3 leading-relaxed">
-            {currentVerdict === "PURSUE"
-              ? `Proceed assuming recruiter confirms commercial budget control and direct executive sponsorship at ${o.company}.`
-              : currentVerdict === "CONSIDER"
-              ? `Proceed only if the regional role carries genuine decision authority rather than advisory responsibility.`
-              : `Pass unless board mandates structural restructuring or direct P&L ownership.`}
+            {brief.verdictGuidance.actionNotice}
           </p>
 
           <div className="mt-6 grid gap-6 md:grid-cols-2">
@@ -317,11 +313,7 @@ function OpportunityBriefView() {
               <span className="label-mono text-xs text-muted-foreground">Synthesized Advisory Lead</span>
             </div>
             <p className="font-display text-lg sm:text-xl leading-relaxed text-foreground font-normal">
-              {currentVerdict === "PURSUE"
-                ? `This is one of the stronger mandates in your current search because it compounds your existing growth leadership narrative rather than asking you to reinvent it. I would invest time in this opportunity—but only after confirming that commercial authority is genuine rather than advisory at ${o.company}.`
-                : currentVerdict === "CONSIDER"
-                ? `This role presents solid domain alignment, but the operational altitude sits closer to functional execution than board-level strategy. Consider advancing if you seek immediate category leadership at ${o.company}, but clarify direct C-suite reporting before committing to formal interviews.`
-                : `While ${o.company} is a notable brand, the required responsibilities represent a functional regression from your verified executive track record. Pass on this mandate to preserve search bandwidth for opportunities offering true P&L scope.`}
+              {brief.executiveOpinion || "Evaluating executive alignment..."}
             </p>
           </div>
 
@@ -364,13 +356,13 @@ function OpportunityBriefView() {
               <div className="space-y-2 border-l-2 border-caution pl-4">
                 <p className="label-mono text-xs uppercase tracking-wider text-caution font-normal">Positioning Advisory</p>
                 <p className="text-sm leading-relaxed text-foreground font-normal">
-                  {currentVerdict === "PURSUE" ? "Your experience aligns directly. Focus your narrative on your track record of scaling commercial governance." : "Ensure your resume explicitly highlights P&L responsibility to bridge gaps in functional domain coverage."}
+                  {brief.directives?.positioning || "Tailor your narrative to emphasize executive scale and operational governance."}
                 </p>
               </div>
 
               {/* Tailoring Intro Statement */}
               <p className="text-xs text-muted-foreground italic font-mono">
-                The following revisions strengthen the parts of your narrative most likely to influence shortlisting for this specific mandate at {o.company}.
+                {brief.directives?.reflection || "Consider whether this market trajectory strengthens your executive record over a 3-year horizon."}
               </p>
 
               <div className="memo-card space-y-4">
@@ -513,50 +505,56 @@ function OpportunityBriefView() {
       </footer>
 
       {/* STICKY BOTTOM ACTION BAR */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1180px] items-center gap-2 px-5 py-2.5 sm:px-8">
-          <span className="label-mono text-muted-foreground font-normal mr-2 hidden sm:inline">Verdict</span>
-          <ExecutiveActionButton
-            verdict="PURSUE"
-            isActive={currentVerdict === "PURSUE"}
-            onClick={() => decide("PURSUE")}
-            className="flex-1 sm:flex-initial"
-          >
-            Pursue
-          </ExecutiveActionButton>
-
-          <ExecutiveActionButton
-            verdict="CONSIDER"
-            isActive={currentVerdict === "CONSIDER"}
-            onClick={() => decide("CONSIDER")}
-            className="flex-1 sm:flex-initial"
-          >
-            Consider
-          </ExecutiveActionButton>
-
-          <ExecutiveActionButton
-            verdict="PASS"
-            isActive={currentVerdict === "PASS"}
-            onClick={() => decide("PASS")}
-            className="flex-1 sm:flex-initial"
-          >
-            Pass
-          </ExecutiveActionButton>
-
-          {o.applyUrl ? (
-            <Button
-              asChild
-              className="ml-auto hidden sm:inline-flex items-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal h-auto"
-            >
-              <a
-                href={applyUrlFor(o)}
-                target="_blank"
-                rel="noopener noreferrer"
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 backdrop-blur-md py-3 sm:py-2.5">
+        <div className="mx-auto max-w-[1180px] px-5 sm:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            {/* Left Column: Verdict Controls */}
+            <div className="flex flex-1 items-center gap-2">
+              <span className="label-mono text-muted-foreground font-normal mr-2 hidden sm:inline">Verdict</span>
+              <ExecutiveActionButton
+                verdict="PURSUE"
+                isActive={currentVerdict === "PURSUE"}
+                onClick={() => decide("PURSUE")}
+                className="flex-1 sm:flex-initial"
               >
-                Apply direct →
-              </a>
-            </Button>
-          ) : null}
+                Pursue
+              </ExecutiveActionButton>
+
+              <ExecutiveActionButton
+                verdict="CONSIDER"
+                isActive={currentVerdict === "CONSIDER"}
+                onClick={() => decide("CONSIDER")}
+                className="flex-1 sm:flex-initial"
+              >
+                Consider
+              </ExecutiveActionButton>
+
+              <ExecutiveActionButton
+                verdict="PASS"
+                isActive={currentVerdict === "PASS"}
+                onClick={() => decide("PASS")}
+                className="flex-1 sm:flex-initial"
+              >
+                Pass
+              </ExecutiveActionButton>
+            </div>
+
+            {/* Right Column: Apply button (visible on all breakpoints) */}
+            {o.applyUrl ? (
+              <Button
+                asChild
+                className="w-full sm:w-auto sm:ml-auto flex items-center justify-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal h-auto"
+              >
+                <a
+                  href={applyUrlFor(o)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Apply direct →
+                </a>
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

@@ -25,13 +25,13 @@ export const founderPartnerPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `Working directly with the founders of ${v.company}, this ${v.role} role balances strategic vision with operational scaling.`,
-    opening: (v) => `The founders are handing over day-to-day execution to build a professional management layer.`,
-    editorialBridge: (v) => `Success requires introducing corporate discipline without slowing the decision speed that built the business.`,
+    headline: (v) => `Reporting directly to the founders of ${v.company}, this ${v.role} mandate pairs strategic vision with operational scaling.`,
+    opening: (v) => `The founders are delegating day-to-day execution to establish a professional executive layer.`,
+    editorialBridge: (v) => `Success hinges on instituting operational cadence without impeding the decision velocity that built the company.`,
     decisionGuidance: {
-      proceedIf: (v) => `Partnering with founder-owners while building scalable operating processes fits your style.`,
-      pauseIf: (v) => `Establish clear decision rights between founder vision and executive execution.`,
-      closing: (v) => `Pursue. High-autonomy mandate for executives who navigate founder partnerships effectively.`
+      proceedIf: (v) => `Partnering with founder-owners to build scalable operating frameworks matches your operating style.`,
+      pauseIf: (v) => `Establish explicit decision rights between founder vision and executive execution during initial screening.`,
+      closing: (v) => `Proceed. High-autonomy mandate for executives who navigate founder partnerships effectively.`
     }
   }
 };
@@ -58,13 +58,13 @@ export const founderGovernanceAnchorPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `This mandate guides ${v.company} through its transition from founder-led operation to professional management structure.`,
-    opening: (v) => `The business requires an executive to establish formal operating cadence, reporting rigor, and team accountability.`,
-    editorialBridge: (v) => `Success in this role depends on introducing corporate discipline while preserving the agile, entrepreneurial culture that drove early growth.`,
+    headline: (v) => `This mandate guides ${v.company} through its transition from founder-led execution to a structured management framework.`,
+    opening: (v) => `The enterprise requires an operator to institute formal reporting cadence, financial rigor, and executive accountability.`,
+    editorialBridge: (v) => `Success depends on embedding governance rigor while preserving the entrepreneurial speed that drove initial scale.`,
     decisionGuidance: {
-      proceedIf: (v) => `Professionalizing operating frameworks and building high-trust founder partnerships suit your experience.`,
-      pauseIf: (v) => `Assess founder readiness to relinquish operational veto power over key functions.`,
-      closing: (v) => `Consider. A high-impact transition role for seasoned operating executives.`
+      proceedIf: (v) => `Professionalizing operating frameworks and building high-trust founder alignment suit your background.`,
+      pauseIf: (v) => `Verify founder readiness to relinquish operational veto power over primary commercial functions.`,
+      closing: (v) => `Consider. High-impact transition seat for experienced operating executives.`
     }
   }
 };

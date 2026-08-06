@@ -203,9 +203,9 @@ function DesignSystemPage() {
                   <span className="label-mono text-foreground font-medium block mb-1">Dense Layout</span>
                   <p className="text-xs text-muted-foreground mb-3">Compact table/list view (`py-3.5`). Fits +1 mandate per viewport in Shortlist Queue.</p>
                   <div className="space-y-1 h-16 overflow-hidden">
-                    <div className="h-4 border-b border-border bg-background flex items-center px-2 text-[10px] text-muted-foreground">01 · VP Growth Mandate · $250K</div>
-                    <div className="h-4 border-b border-border bg-background flex items-center px-2 text-[10px] text-muted-foreground">02 · Chief Commercial Officer · $320K</div>
-                    <div className="h-4 border-b border-border bg-background flex items-center px-2 text-[10px] text-muted-foreground">03 · Head of Digital Strategy · $210K</div>
+                    <div className="h-4 border-b border-border bg-background flex items-center px-2 text-xs text-muted-foreground">01 · VP Growth Mandate · $250K</div>
+                    <div className="h-4 border-b border-border bg-background flex items-center px-2 text-xs text-muted-foreground">02 · Chief Commercial Officer · $320K</div>
+                    <div className="h-4 border-b border-border bg-background flex items-center px-2 text-xs text-muted-foreground">03 · Head of Digital Strategy · $210K</div>
                   </div>
                 </div>
               </div>
@@ -274,7 +274,7 @@ function DesignSystemPage() {
                     </div>
                     <div className="flex items-center justify-between p-3">
                       <span className="text-xs text-foreground font-normal">Scale P&amp;L from $10M to $50M</span>
-                      <span className="label-mono rounded px-2 py-0.5 bg-signal/15 text-signal text-[10px]">Verified (94%)</span>
+                      <span className="label-mono rounded px-2 py-0.5 bg-signal/15 text-signal text-xs">Verified (94%)</span>
                     </div>
                   </div>
                 </div>
@@ -352,19 +352,19 @@ function DesignSystemPage() {
                 <div className="p-3 border border-border rounded">
                   <span className="label-mono text-muted-foreground block mb-1">Currency</span>
                   <span className="font-mono text-foreground font-medium">₹2.4 Cr · $250K</span>
-                  <span className="text-[10px] text-muted-foreground block mt-1">Never raw unformatted integers like `24000000`.</span>
+                  <span className="text-xs text-muted-foreground block mt-1">Never raw unformatted integers like `24000000`.</span>
                 </div>
 
                 <div className="p-3 border border-border rounded">
                   <span className="label-mono text-muted-foreground block mb-1">Dates</span>
                   <span className="font-mono text-foreground font-medium">06 Aug 2026</span>
-                  <span className="text-[10px] text-muted-foreground block mt-1">Standardized DD MMM YYYY format.</span>
+                  <span className="text-xs text-muted-foreground block mt-1">Standardized DD MMM YYYY format.</span>
                 </div>
 
                 <div className="p-3 border border-border rounded">
                   <span className="label-mono text-muted-foreground block mb-1">Percentages</span>
                   <span className="font-mono text-foreground font-medium">94% overlap</span>
-                  <span className="text-[10px] text-muted-foreground block mt-1">Evidence fit coverage ratio.</span>
+                  <span className="text-xs text-muted-foreground block mt-1">Evidence fit coverage ratio.</span>
                 </div>
               </div>
             </section>

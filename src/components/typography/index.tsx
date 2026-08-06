@@ -5,7 +5,7 @@ const Eyebrow = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTML
   ({ className, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn("font-mono text-[11px] uppercase tracking-wider text-ink-muted", className)}
+      className={cn("label-mono tracking-wider text-ink-muted", className)}
       {...props}
     />
   )
@@ -16,7 +16,7 @@ const SectionTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<H
   ({ className, ...props }, ref) => (
     <h2
       ref={ref}
-      className={cn("font-display text-[1.9rem] leading-tight sm:text-4xl text-foreground font-normal", className)}
+      className={cn("font-display text-3xl leading-tight sm:text-4xl text-foreground font-normal", className)}
       {...props}
     />
   )
@@ -27,7 +27,7 @@ const ExecutiveHeadline = React.forwardRef<HTMLHeadingElement, React.HTMLAttribu
   ({ className, ...props }, ref) => (
     <h1
       ref={ref}
-      className={cn("font-display text-[2.6rem] leading-[1.02] tracking-tight sm:text-6xl text-foreground font-normal", className)}
+      className={cn("font-display text-4xl leading-[1.02] tracking-tight sm:text-6xl text-foreground font-normal", className)}
       {...props}
     />
   )
@@ -38,7 +38,7 @@ const MetricLabel = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<
   ({ className, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn("text-[11px] font-mono uppercase tracking-[0.16em] text-ink-muted", className)}
+      className={cn("label-mono text-ink-muted", className)}
       {...props}
     />
   )

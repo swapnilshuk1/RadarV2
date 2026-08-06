@@ -22,13 +22,13 @@ export const roleBoardAdvisorPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `A non-executive board directorship at ${v.company} focused on fiduciary oversight, capital allocation, and risk management.`,
-    opening: (v) => `This appointment provides strategic governance to executive leadership without operational management responsibility.`,
-    editorialBridge: (v) => `The position expands your non-executive governance network, providing strategic board exposure in a growing enterprise segment.`,
+    headline: (v) => `A non-executive board directorship at ${v.company} centered on fiduciary oversight and capital allocation.`,
+    opening: (v) => `This appointment provides strategic governance to executive leadership without day-to-day operational responsibilities.`,
+    editorialBridge: (v) => `The position expands your non-executive governance network, offering board exposure in an expanding enterprise category.`,
     decisionGuidance: {
-      proceedIf: (v) => `Board oversight and strategic capital allocation advisory align with your career stage.`,
-      pauseIf: (v) => `Confirm D&O insurance coverage terms and committee cadence expectations.`,
-      closing: (v) => `Pursue. A landmark governance appointment with high strategic visibility.`
+      proceedIf: (v) => `Board oversight and strategic capital allocation advisory align with your career horizon.`,
+      pauseIf: (v) => `Confirm D&O indemnification terms and committee cadence expectations during initial screening.`,
+      closing: (v) => `Proceed. Landmark governance appointment with high strategic visibility.`
     }
   }
 };
@@ -56,13 +56,13 @@ export const roleRevenueOwnerPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `This ${v.role} mandate consolidates sales, marketing, and customer success at ${v.company} under a single commercial structure.`,
-    opening: (v) => `The organization is unifying top-line revenue strategy to eliminate handoff friction between customer acquisition and retention teams.`,
-    editorialBridge: (v) => `Unifying these functions under one leader creates the commercial authority missing from your recent scope.`,
+    headline: (v) => `This ${v.role} mandate consolidates sales, marketing, and customer success at ${v.company} under a unified commercial architecture.`,
+    opening: (v) => `The enterprise is unifying top-line revenue strategy to eliminate friction between acquisition and retention teams.`,
+    editorialBridge: (v) => `Unifying these commercial levers under one leader establishes the structural authority missing from your recent scope.`,
     decisionGuidance: {
-      proceedIf: (v) => `Integrating sales, marketing and customer success into one revenue engine matches your CRO background.`,
-      pauseIf: (v) => `Sales compensation and customer success incentives remain managed in separate silos.`,
-      closing: (v) => `Pursue. Total commercial revenue ownership with direct P&L leverage.`
+      proceedIf: (v) => `Integrating sales, marketing, and customer success into a single revenue engine matches your CRO track.`,
+      pauseIf: (v) => `Sales compensation and customer success incentives remain managed in separate operational silos.`,
+      closing: (v) => `Proceed. Total commercial revenue ownership with direct P&L leverage.`
     }
   }
 };
@@ -89,9 +89,9 @@ export const roleTechnologyStrategistPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `${v.company} cannot integrate AI models until its data pipelines are rebuilt; this ${v.role} role leads that modernization.`,
-    opening: (v) => `The technical debt is in the core architecture. The mandate requires decoupling legacy systems before new capabilities can ship.`,
-    editorialBridge: (v) => `Lays the technical foundation for automated decision intelligence across core operational workflows.`,
+    headline: (v) => `${v.company} cannot integrate decision intelligence models until its core data architecture is rebuilt; this ${v.role} seat leads that modernization.`,
+    opening: (v) => `Technical debt resides in the core infrastructure. The mandate requires decoupling legacy systems before new capabilities can ship.`,
+    editorialBridge: (v) => `Lays the technical foundation for automated decision intelligence across primary operational workflows.`,
     decisionGuidance: {
       proceedIf: (v) => `Rebuilding enterprise data pipelines and decoupling legacy software architectures suit your technical depth.`,
       pauseIf: (v) => `Confirm R&D resource allocations and cloud infrastructure commitments before proceeding.`,
@@ -128,8 +128,8 @@ export const roleCsuiteSuccessorPattern: EditorialPattern = {
     editorialBridge: (v) => `Serves as a deliberate career stepping stone, broadening your executive scope beyond single-function leadership.`,
     decisionGuidance: {
       proceedIf: (v) => `Expanding P&L scope while positioning for C-suite succession align with your long-term goals.`,
-      pauseIf: (v) => `Clarify written succession review timelines and executive development support.`,
-      closing: (v) => `Pursue. Direct executive committee visibility with clear succession trajectory.`
+      pauseIf: (v) => `Clarify written succession review timelines and executive development support during initial screening.`,
+      closing: (v) => `Proceed. Direct executive committee visibility with clear succession trajectory.`
     }
   }
 };

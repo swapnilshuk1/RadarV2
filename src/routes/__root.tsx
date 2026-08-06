@@ -22,7 +22,7 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-ink-muted">RADAR · 404</p>
+        <p className="label-mono text-ink-muted">RADAR · 404</p>
         <h1 className="mt-3 font-serif text-5xl text-ink">Signal lost</h1>
         <p className="mt-3 text-sm text-ink-muted">
           This opportunity is not on the shortlist.
@@ -30,7 +30,7 @@ function NotFoundComponent() {
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center rounded-sm border border-ink bg-ink px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-parchment transition-colors hover:bg-parchment hover:text-ink"
+            className="inline-flex items-center rounded-sm border border-ink bg-ink px-4 py-2 label-mono text-parchment transition-colors hover:bg-parchment hover:text-ink"
           >
             Return to shortlist
           </Link>
@@ -47,7 +47,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
       <div className="max-w-xl text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-ink-muted">RADAR · System Error</p>
+        <p className="label-mono text-ink-muted">RADAR · System Error</p>
         <h1 className="mt-3 font-serif text-3xl text-ink">Recommendation unavailable</h1>
         <p className="mt-3 text-sm text-ink-muted">
           The advisory couldn't render this brief.
@@ -55,19 +55,19 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         {error && (
           <div className="mt-4 p-4 rounded bg-red-950/10 border border-red-500/20 text-left overflow-auto max-h-60 text-xs font-mono text-red-600">
             <p className="font-bold">{error.name || "Error"}: {error.message || String(error)}</p>
-            {error.stack && <pre className="mt-2 text-[10px] whitespace-pre-wrap">{error.stack}</pre>}
+            {error.stack && <pre className="mt-2 text-[0.65rem] whitespace-pre-wrap">{error.stack}</pre>}
           </div>
         )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => { router.invalidate(); reset(); }}
-            className="inline-flex items-center rounded-sm border border-ink bg-ink px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-parchment"
+            className="inline-flex items-center rounded-sm border border-ink bg-ink px-4 py-2 label-mono text-parchment"
           >
             Try again
           </button>
           <a
             href="/"
-            className="inline-flex items-center rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-ink"
+            className="inline-flex items-center rounded-sm border border-ink/20 px-4 py-2 label-mono text-ink"
           >
             Shortlist
           </a>
@@ -175,7 +175,7 @@ function GlobalHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md w-full">
-      <div className="mx-auto grid max-w-[1180px] grid-cols-[auto_minmax(0,1fr)] items-center gap-4 px-5 py-3 sm:px-8">
+      <div className="memo-container grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 py-3">
         {/* Brand */}
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <span className="font-mono text-[0.78rem] font-medium tracking-[0.34em] text-foreground">RADAR</span>
@@ -250,7 +250,7 @@ function GlobalHeader() {
             <span className="grid h-6 w-6 place-items-center rounded-full bg-foreground font-mono text-[0.55rem] text-background font-bold">
               {initials}
             </span>
-            <span className="text-xs text-muted-foreground truncate max-w-[140px]">{name}</span>
+            <span className="text-xs text-muted-foreground truncate w-[140px] block">{name}</span>
           </span>
 
           <a

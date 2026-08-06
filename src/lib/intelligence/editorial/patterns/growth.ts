@@ -23,13 +23,13 @@ export const growthCommercialBuilderPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `Commercial execution is unusually concentrated in this ${v.role} position at ${v.company}.`,
-    opening: (v) => `Unlike conventional functional roles, this position unifies pricing authority, channel expansion, and P&L accountability under one owner.`,
-    editorialBridge: (v) => `The organization is shifting from distributed sales efforts to a single commercial accountability model, increasing decision speed without broadening administrative overhead.`,
+    headline: (v) => `Commercial accountability is unified under this ${v.role} mandate at ${v.company}.`,
+    opening: (v) => `Unlike conventional functional roles, this seat consolidates pricing authority, channel expansion, and P&L accountability under a single owner.`,
+    editorialBridge: (v) => `The organization is shifting from fragmented sales efforts to a centralized commercial model, accelerating decision velocity without adding management layers.`,
     decisionGuidance: {
-      proceedIf: (v) => `Direct commercial ownership and top-line accountability align with your operating history.`,
-      pauseIf: (v) => `Clarify the boundaries of direct budget authority versus regional matrix approvals during initial conversations.`,
-      closing: (v) => `Proceed to screening. Direct commercial authority without the organizational bureaucracy typical of similar mandates.`
+      proceedIf: (v) => `Direct P&L ownership and top-line expansion align with your operating history.`,
+      pauseIf: (v) => `Verify direct budget authority versus regional matrix approvals during initial discussions.`,
+      closing: (v) => `Proceed. Direct commercial authority with minimal organizational bureaucracy.`
     }
   }
 };
@@ -56,12 +56,12 @@ export const growthScaleOperatorPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `${v.company} requires a ${v.role} who can expand market share without eroding contribution margins.`,
-    opening: (v) => `Rather than pursuing top-line volume at any cost, the business requires an operator who can expand market share while protecting gross margins.`,
-    editorialBridge: (v) => `Compared with your recent operating scope, this mandate demands tighter integration between acquisition spend and customer lifetime value.`,
+    headline: (v) => `${v.company} requires a ${v.role} to expand market share without eroding contribution margins.`,
+    opening: (v) => `Rather than pursuing top-line volume at any cost, the business demands an operator who expands customer reach while defending gross margins.`,
+    editorialBridge: (v) => `This mandate requires tight coordination between customer acquisition expenditure and long-term cohort value.`,
     decisionGuidance: {
-      proceedIf: (v) => `Scaling customer acquisition while enforcing contribution margin discipline matches your playbook.`,
-      pauseIf: (v) => `Ask for CAC and payback by cohort for the last eight quarters before advancing.`,
+      proceedIf: (v) => `Scaling acquisition while enforcing contribution margin discipline matches your playbook.`,
+      pauseIf: (v) => `Request CAC trends and payback by cohort for the last eight quarters before advancing.`,
       closing: (v) => `Consider. A structured commercial role for executives who pair growth velocity with financial rigor.`
     }
   }
@@ -89,13 +89,13 @@ export const growthCategoryLeaderPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `${v.company} holds market share in its core segment; this ${v.role} mandate is about translating that position into pricing power.`,
-    opening: (v) => `The business has established distribution. The task is consolidating market presence and raising gross margins across primary channels.`,
-    editorialBridge: (v) => `The position leverages brand equity to expand into adjacent categories with lower customer acquisition friction.`,
+    headline: (v) => `${v.company} holds distribution in its core segment; this ${v.role} mandate translates that reach into pricing power.`,
+    opening: (v) => `The distribution infrastructure is established; the objective is consolidating category presence and raising gross margins.`,
+    editorialBridge: (v) => `The position leverages brand equity to enter adjacent categories with lower customer acquisition friction.`,
     decisionGuidance: {
-      proceedIf: (v) => `Defending margin pricing power and expanding category boundaries fit your strategic trajectory.`,
-      pauseIf: (v) => `Gross margins are under pressure from low-cost regional competitors.`,
-      closing: (v) => `Pursue. Clear market leverage and immediate category visibility.`
+      proceedIf: (v) => `Defending pricing power and expanding category boundaries fit your trajectory.`,
+      pauseIf: (v) => `Gross margins face persistent pressure from low-cost regional competitors.`,
+      closing: (v) => `Proceed. Strong market leverage and immediate category visibility.`
     }
   }
 };

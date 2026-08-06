@@ -22,13 +22,13 @@ export const archetypePeOperatorPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `Financial returns in this PE-backed ${v.role} role at ${v.company} depend on executing a structured 100-day EBITDA expansion plan.`,
-    opening: (v) => `The sponsor requires disciplined margin improvement, working capital optimization, and rigorous reporting cadence.`,
-    editorialBridge: (v) => `Operating rhythm is closely tied to PE investment thesis milestones, offering meaningful equity upside in exchange for compressed execution timelines.`,
+    headline: (v) => `Returns in this PE-backed ${v.role} mandate at ${v.company} depend on executing a structured 100-day EBITDA expansion plan.`,
+    opening: (v) => `The sponsor requires disciplined contribution margin improvement, working capital optimization, and quarterly reporting cadence.`,
+    editorialBridge: (v) => `Operating rhythm aligns directly with sponsor investment thesis milestones, offering equity upside in exchange for compressed execution timelines.`,
     decisionGuidance: {
       proceedIf: (v) => `Executing sponsor value creation roadmaps under compressed timelines matches your financial discipline.`,
-      pauseIf: (v) => `Confirm equity package vesting terms and sponsor investment horizon before advancing.`,
-      closing: (v) => `Pursue if equity upside compensates for compressed execution timelines.`
+      pauseIf: (v) => `Confirm equity package vesting terms and sponsor investment horizon during initial screening.`,
+      closing: (v) => `Proceed. High capital leverage if equity upside compensates for compressed execution timelines.`
     }
   }
 };
@@ -55,12 +55,12 @@ export const archetypeGlobalExecutivePattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `Compared with domestic VP roles, this position at ${v.company} expands international matrix influence more than direct headcount authority.`,
-    opening: (v) => `Global sets the agenda; local teams execute. The role acts as the primary interface between corporate strategy and regional delivery.`,
-    editorialBridge: (v) => `Success requires translating global corporate directives into locally adapted commercial programs without relying solely on hierarchical authority.`,
+    headline: (v) => `Compared with regional VP roles, this position at ${v.company} expands international matrix influence more than direct headcount authority.`,
+    opening: (v) => `Global headquarters sets strategy; regional units execute. The seat acts as the primary bridge between corporate intent and regional delivery.`,
+    editorialBridge: (v) => `Success requires translating global directives into locally adapted commercial programs without relying solely on hierarchical authority.`,
     decisionGuidance: {
       proceedIf: (v) => `Navigating international matrix dynamics and building cross-geographic consensus fit your executive maturity.`,
-      pauseIf: (v) => `Regional managing directors hold veto power over functional strategy.`,
+      pauseIf: (v) => `Regional managing directors hold unilateral veto power over functional strategy.`,
       closing: (v) => `Consider. Expands global corporate capital and multi-market leadership visibility.`
     }
   }
