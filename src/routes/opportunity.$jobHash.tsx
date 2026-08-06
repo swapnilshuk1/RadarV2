@@ -581,7 +581,7 @@ function OpportunityBriefView() {
           <button
             type="button"
             onClick={() => decide("PURSUE")}
-            className={`btn flex-1 sm:flex-initial py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
+            className={`btn flex-1 sm:flex-initial rounded py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
               currentVerdict === "PURSUE"
                 ? "bg-signal text-white font-medium shadow-xs"
                 : "bg-surface-raised text-foreground border border-border hover:border-signal"
@@ -593,7 +593,7 @@ function OpportunityBriefView() {
           <button
             type="button"
             onClick={() => decide("CONSIDER")}
-            className={`btn flex-1 sm:flex-initial py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
+            className={`btn flex-1 sm:flex-initial rounded py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
               currentVerdict === "CONSIDER"
                 ? "bg-caution text-white font-medium shadow-xs"
                 : "bg-surface-raised text-foreground border border-border hover:border-caution"
@@ -605,7 +605,7 @@ function OpportunityBriefView() {
           <button
             type="button"
             onClick={() => decide("PASS")}
-            className={`btn flex-1 sm:flex-initial py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
+            className={`btn flex-1 sm:flex-initial rounded py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
               currentVerdict === "PASS"
                 ? "bg-foreground text-background font-medium shadow-xs"
                 : "bg-surface-raised text-foreground border border-border hover:border-foreground"
@@ -619,7 +619,7 @@ function OpportunityBriefView() {
               href={applyUrlFor(o.applyUrl, o.scrapedFrom)}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn ml-auto hidden sm:inline-flex items-center gap-2 bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal"
+              className="btn ml-auto hidden sm:inline-flex items-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal"
             >
               Apply direct →
             </a>
