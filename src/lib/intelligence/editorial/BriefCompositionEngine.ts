@@ -108,7 +108,7 @@ export interface BriefModel {
 }
 
 export class BriefCompositionEngine {
-  public static compose(opportunity: Opportunity, options?: { brevityPolicy?: any }): BriefModel {
+  public static compose(opportunity: Opportunity, options?: { brevityPolicy?: any; bypassHistory?: boolean }): BriefModel {
     const policy = options?.brevityPolicy || {
       maxUnknowns: 3,
       maxEvidence: 3,
@@ -154,7 +154,7 @@ export class BriefCompositionEngine {
 
     try {
       const ctx = EditorialContextBuilder.build(opportunity);
-      const pattern = EditorialPatternSelector.select(ctx, opportunity.jobHash);
+      const pattern = EditorialPatternSelector.select(ctx, opportunity.jobHash, options?.bypassHistory);
       const composed = NarrativeComposer.compose(pattern, opportunity);
 
       if (composed.decisionGuidance.proceedIf) {

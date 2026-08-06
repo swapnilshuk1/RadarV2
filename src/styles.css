@@ -263,3 +263,16 @@
 .animate-reveal {
   animation: revealUp 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Context-Aware Adaptive Layout Gating (Ensures SSR stability and zero mobile/desktop layout duplication) */
+@media (max-width: 1023px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+@media (min-width: 1024px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+

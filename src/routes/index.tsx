@@ -147,7 +147,7 @@ function Shortlist() {
           <ul className="border-t border-border">
             {visible.map((o, idx) => {
               const isOpen = open === o.jobHash;
-              const brief = BriefCompositionEngine.compose(o);
+              const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
               const score = o.recommendationResult?.score ?? 80;
 
               return (

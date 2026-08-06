@@ -95,7 +95,7 @@ function OpportunityBriefView() {
     router.invalidate();
   };
 
-  const brief = BriefCompositionEngine.compose(o);
+  const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
   const jobProj = JobProjectionBuilder.build(o);
   const candidateProj = {
     operatingLevel: { value: "EXECUTIVE" as const, confidence: 0.9, evidence: [], evidenceIds: [] },
@@ -129,10 +129,10 @@ function OpportunityBriefView() {
 
   return (
     <>
-      <div className="hidden lg:block">
+      <div className="desktop-only">
         <ReadingSurface {...surfaceProps} />
       </div>
-      <div className="block lg:hidden">
+      <div className="mobile-only">
         <ExecutiveBriefingSurface {...surfaceProps} />
       </div>
     </>
