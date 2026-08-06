@@ -70,12 +70,13 @@ export class EditorialPatternSelector {
         ? unshownPatterns
         : validPatterns;
 
-    // 3. Deterministic hash selection from candidate pool
+    // 3. Deterministic hash selection from candidate pool using company + role seed for pattern diversity
     let selectedIndex = 0;
-    if (opportunityId) {
+    const seedString = opportunityId || "editorial_pattern_seed";
+    if (seedString) {
       let hash = 0;
-      for (let i = 0; i < opportunityId.length; i++) {
-        hash = (hash << 5) - hash + opportunityId.charCodeAt(i);
+      for (let i = 0; i < seedString.length; i++) {
+        hash = (hash << 5) - hash + seedString.charCodeAt(i);
         hash |= 0;
       }
       selectedIndex = Math.abs(hash) % candidatePool.length;

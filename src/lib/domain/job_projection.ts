@@ -10,10 +10,17 @@ export type DocumentRegion =
   | "COMPANY"
   | "BENEFITS";
 
+export type CapabilityTaxonomyTier = 
+  | "CORE_MANDATE" 
+  | "EXECUTION_CAPABILITY" 
+  | "TECHNOLOGY_STACK" 
+  | "DOMAIN_FAMILIARITY";
+
 export interface ProjectedCapability {
   name: string;
   source: "explicit" | "inferred";
   confidence: number;
+  tier?: CapabilityTaxonomyTier;
   evidence?: string[];
 }
 
@@ -35,6 +42,30 @@ export interface OperatingContext {
   travel?: boolean;
 }
 
+export type TrueExecutiveMandate = 
+  | "SCALE" 
+  | "TRANSFORMATION" 
+  | "TURNAROUND" 
+  | "GOVERNANCE" 
+  | "COMMERCIAL_EXPANSION";
+
+export type OrganizationalIntent = 
+  | "REPLACE_FAILED_LEADER"
+  | "BUILD_NEW_CAPABILITY"
+  | "PROFESSIONALIZE_FOUNDER_COMPANY"
+  | "PREPARE_IPO"
+  | "INTEGRATE_ACQUISITION"
+  | "REPAIR_EXECUTION"
+  | "ACCELERATE_GROWTH"
+  | "EXPAND_GEOGRAPHY"
+  | "COMMERCIALIZE_TECHNOLOGY";
+
+export interface ExecutiveMission {
+  intent: OrganizationalIntent;
+  statement: string;
+  successConditions: string[];
+}
+
 export interface JobProjection {
   jobHash: string;
   role: string;
@@ -43,6 +74,10 @@ export interface JobProjection {
   // High-level professional identity
   executiveIdentity: ExecutiveIdentity;
   
+  // Inferred True Executive Mandate & Intent
+  trueExecutiveMandate?: TrueExecutiveMandate;
+  executiveMission?: ExecutiveMission;
+
   // Standard semantic classifiers
   operatingLevel: ClassifierResult<OperatingLevel>;
   workNature: ClassifierResult<WorkNature>;

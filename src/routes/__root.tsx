@@ -234,6 +234,16 @@ function GlobalHeader() {
                 Design System
               </Link>
             </li>
+            <li>
+              <Link
+                to="/font-sandbox"
+                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
+                  isSelected("/font-sandbox") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                }`}
+              >
+                Font Lab
+              </Link>
+            </li>
           </ul>
 
           <span className="ml-2 hidden shrink-0 items-center gap-2 border-l border-border pl-3 sm:flex">

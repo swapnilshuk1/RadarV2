@@ -9,6 +9,14 @@ import { EditorialContextBuilder } from "../lib/intelligence/editorial/Editorial
 import { EditorialPatternSelector } from "../lib/intelligence/editorial/EditorialPatternSelector";
 import { NarrativeComposer } from "../lib/intelligence/editorial/NarrativeComposer";
 import { unwrapEvidenceValue } from "../lib/intelligence/editorial/SemanticNaturalLanguageResolver";
+import { JobProjectionBuilder } from "../lib/intelligence/builders/JobProjectionBuilder";
+import { CapabilityAssessmentEngine } from "../lib/intelligence/engines/CapabilityAssessmentEngine";
+import { AdvisoryConstitution } from "../lib/intelligence/editorial/AdvisoryConstitution";
+import { ExecutionEngine } from "../lib/intelligence/engines/ExecutionEngine";
+import { Button } from "@/components/ui/button";
+import { ExecutiveActionButton } from "@/components/radar/actions";
+import { ExecutiveSection, ExecutiveSectionProps } from "@/components/radar/layout";
+import { Eyebrow, SectionTitle, ExecutiveHeadline, Caption } from "@/components/typography";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }: { params: { jobHash: string } }) => {
@@ -40,7 +48,7 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
 
 function OpportunityBriefView() {
   const { opportunity: o, neighbors, currentIndex, totalCount } = Route.useLoaderData();
-  const { decisions, recordDecision } = useDecisions();
+  const { decisions, decide: recordDecision } = useDecisions();
   const router = useRouter();
 
   const currentVerdict: DecisionVerb = (decisions[o.jobHash]?.verb as DecisionVerb) || o.decision;
@@ -54,6 +62,27 @@ function OpportunityBriefView() {
   const ctx = EditorialContextBuilder.build(o);
   const pattern = EditorialPatternSelector.select(ctx, o.jobHash);
   const composed = NarrativeComposer.compose(pattern, o);
+
+  const jobProj = JobProjectionBuilder.build(o);
+  const candidateProj = {
+    operatingLevel: { value: "EXECUTIVE" as const, confidence: 0.9, evidence: [], evidenceIds: [] },
+    workNature: { value: "STRATEGIC_WORK" as const, confidence: 0.9, evidence: [], evidenceIds: [] },
+    decisionAuthority: { value: "ENTERPRISE" as const, confidence: 0.9, evidence: [], evidenceIds: [] },
+    commercialScope: { value: "ENTERPRISE" as const, confidence: 0.9, evidence: [], evidenceIds: [] },
+    yearsOfExperience: 15,
+    coreCapabilities: ["CRM Governance", "GTM Strategy", "Performance Marketing", "Revenue Operations", "Customer Intelligence"],
+    preferredLocations: ["Bengaluru"],
+    preferredWorkModel: "HYBRID" as const,
+    executiveThemes: ["Enterprise Growth", "Commercial Leadership", "Digital Transformation"]
+  };
+  const capEval = CapabilityAssessmentEngine.evaluate(candidateProj, jobProj);
+  const executionPkg = ExecutionEngine.validateDecision(candidateProj, jobProj);
+
+  const delta = (capEval.capabilityPotential || 0.50) - (capEval.evidenceStrength || 0.00);
+  const isProofGap = delta >= 0.25;
+  const isDivergence = delta <= -0.20;
+
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<"resume" | "linkedin" | "screening" | "interview">("resume");
 
   const [expandedReasoningRow, setExpandedReasoningRow] = useState<number | null>(0);
   const [checkedUnknowns, setCheckedUnknowns] = useState<Record<number, boolean>>({});
@@ -108,7 +137,7 @@ function OpportunityBriefView() {
             }`}>
               {currentVerdict === "PURSUE" ? "Pursue" : currentVerdict === "CONSIDER" ? "Consider" : "Pass"}
             </span>
-            <span className="label-mono font-normal">Strong strategic fit</span>
+            <span className="label-mono font-normal">Strong Executive Fit</span>
             <span className="label-mono font-normal">· {brief.evidenceQuality}</span>
             <span className="label-mono hidden sm:inline font-normal">· 20 minute application</span>
           </div>
@@ -120,7 +149,7 @@ function OpportunityBriefView() {
 
           {/* Subtitle Company Line */}
           <p className="mt-4 border-t border-border pt-4 font-mono text-xs tracking-[0.12em] uppercase text-muted-foreground font-normal">
-            <span className="text-foreground font-medium">{o.company}</span> · {o.location} ({o.workModel || "Hybrid"})
+            <span className="text-foreground font-medium">{o.company}</span> · {o.location} ({(o as any).workModel || "Hybrid"})
           </p>
         </div>
       </header>
@@ -161,6 +190,265 @@ function OpportunityBriefView() {
               </ul>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ────────────────────────────────────────────────────────────────────────
+          QUESTION-DRIVEN EXECUTIVE MEMO FLOW
+          ──────────────────────────────────────────────────────────────────────── */}
+      <section className="border-b border-border bg-background py-10">
+        <div className="mx-auto max-w-[1180px] space-y-12 px-5 sm:px-8">
+          
+          {/* SECTION 1: Why is the company hiring for this role now? */}
+          <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
+            <div>
+              <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Context</p>
+              <h2 className="mt-1 font-display text-2xl font-normal text-foreground leading-tight">
+                Why is the company hiring for this role now?
+              </h2>
+            </div>
+            <div className="space-y-3 text-base leading-relaxed text-foreground font-normal">
+              <p className="font-medium text-lg text-primary font-display">
+                Why this role exists
+              </p>
+              <p>
+                {(() => {
+                  const dataCheck = AdvisoryConstitution.validateDataSufficiency(o);
+                  if (!dataCheck.isSufficient) {
+                    return dataCheck.message;
+                  }
+                  return jobProj.executiveMission?.statement || `Leadership at ${o.company} is hiring an executive to drive ${jobProj.trueExecutiveMandate?.toLowerCase() || "commercial expansion"} and establish predictable operating governance.`;
+                })()}
+              </p>
+            </div>
+          </div>
+
+          {/* SECTION 2: What would I actually be expected to accomplish? */}
+          <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
+            <div>
+              <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Mandate</p>
+              <h2 className="mt-1 font-display text-2xl font-normal text-foreground leading-tight">
+                What would I actually be expected to accomplish?
+              </h2>
+            </div>
+            <div className="space-y-6">
+              <div>
+                <p className="label-mono text-xs uppercase tracking-wider text-primary font-normal">Your Mandate</p>
+                <p className="mt-1.5 text-base leading-relaxed text-foreground font-normal">
+                  {jobProj.executiveMission?.statement || `Drive revenue growth and commercial execution at ${o.company}.`}
+                </p>
+              </div>
+
+              <div>
+                <p className="label-mono text-xs uppercase tracking-wider text-primary font-normal">How success will be measured</p>
+                <p className="mt-1 text-xs text-muted-foreground font-mono">Within 18–24 months leadership will likely expect you to:</p>
+                <ul className="mt-2.5 space-y-2 border-l-2 border-border pl-4">
+                  {(jobProj.executiveMission?.successConditions || [
+                    `Deliver 24-month revenue & P&L targets under ${jobProj.trueExecutiveMandate || "COMMERCIAL"} mandate`,
+                    `Establish operational governance and cross-functional leadership alignment at ${o.company}`,
+                    `Build scalable GTM & customer retention infrastructure`
+                  ]).map((cond, i) => (
+                    <li key={i} className="text-sm text-foreground font-normal">
+                      • {cond}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Recommendation Conditions */}
+              <div className="rounded-md border border-border bg-surface-raised p-4">
+                <p className="label-mono text-xs uppercase tracking-wider text-primary font-normal">Recommendation Conditions</p>
+                <p className="mt-1 text-xs text-muted-foreground font-normal">This recommendation assumes the following operational conditions hold true:</p>
+                <ul className="mt-2 space-y-1.5 text-xs text-foreground font-normal">
+                  {executionPkg.recommendationConditions.map((cond, i) => (
+                    <li key={i}>• {cond}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Questions to Validate During Your Screening Call */}
+              <div className="space-y-3">
+                <p className="label-mono text-xs uppercase tracking-wider text-primary font-normal">Questions to Validate During Your Screening Call</p>
+                <p className="text-xs text-muted-foreground font-normal">Validate these key operational factors before investing further time:</p>
+                <div className="space-y-3">
+                  {executionPkg.screeningQuestions.map((q, i) => (
+                    <div key={i} className="border-l-2 border-primary/40 pl-3.5 py-1">
+                      <p className="text-sm font-medium text-foreground font-normal">
+                        {i + 1}. {q.question}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground leading-relaxed font-normal">
+                        <span className="font-semibold text-primary/80">Why it matters:</span> {q.whyItMatters}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 3: Which parts of my background are most relevant? */}
+          <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
+            <div>
+              <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Alignment</p>
+              <h2 className="mt-1 font-display text-2xl font-normal text-foreground leading-tight">
+                Which parts of my background are most relevant?
+              </h2>
+            </div>
+            <div className="space-y-3">
+              <p className="label-mono text-xs uppercase tracking-wider text-primary font-normal">
+                Why this opportunity was shortlisted for your record
+              </p>
+              <p className="text-sm text-muted-foreground font-normal">
+                This role was surfaced because your background repeatedly demonstrates three capabilities the organization is currently seeking:
+              </p>
+              <ul className="space-y-2.5 border-l-2 border-signal pl-4 pt-1">
+                {(brief.proofPoints || []).slice(0, 3).map((pt: any, i: number) => (
+                  <li key={i} className="text-sm text-foreground font-normal">
+                    <span className="font-medium text-foreground">{pt.headline}:</span> {pt.detail}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* SECTION 4: What should I improve before applying? */}
+          <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
+            <div>
+              <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Strategy</p>
+              <h2 className="mt-1 font-display text-2xl font-normal text-foreground leading-tight">
+                What should I improve before applying?
+              </h2>
+            </div>
+            <div className="space-y-6">
+              <div className="space-y-2 border-l-2 border-caution pl-4">
+                <p className="label-mono text-xs uppercase tracking-wider text-caution font-normal">Positioning Advisory</p>
+                <p className="text-sm leading-relaxed text-foreground font-normal">
+                  {isProofGap 
+                    ? "Your experience appears well suited to this role, but your résumé does not fully demonstrate the breadth of that experience. Strengthening the commercial governance and revenue ownership narrative before applying would materially improve your positioning."
+                    : isDivergence 
+                    ? "You possess tool execution experience here, but the role lacks the executive altitude and commercial scope matching your career trajectory."
+                    : "Your executive background and verified proof points align directly with this mission. Submit your application directly with high confidence."}
+                </p>
+              </div>
+
+              {/* Positioning Workspace */}
+              <div className="rounded-lg border border-border bg-surface-raised p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                  <p className="label-mono text-xs uppercase tracking-wider text-foreground font-normal">
+                    Positioning Workspace
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setActiveWorkspaceTab("resume")}
+                      className={`px-2.5 py-1 text-[11px] rounded font-mono transition-colors ${
+                        activeWorkspaceTab === "resume" ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Resume Narrative
+                    </button>
+                    <button
+                      onClick={() => setActiveWorkspaceTab("linkedin")}
+                      className={`px-2.5 py-1 text-[11px] rounded font-mono transition-colors ${
+                        activeWorkspaceTab === "linkedin" ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      LinkedIn Strategy
+                    </button>
+                    <button
+                      onClick={() => setActiveWorkspaceTab("screening")}
+                      className={`px-2.5 py-1 text-[11px] rounded font-mono transition-colors ${
+                        activeWorkspaceTab === "screening" ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Screening Call
+                    </button>
+                    <button
+                      onClick={() => setActiveWorkspaceTab("interview")}
+                      className={`px-2.5 py-1 text-[11px] rounded font-mono transition-colors ${
+                        activeWorkspaceTab === "interview" ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Interview Strategy
+                    </button>
+                  </div>
+                </div>
+
+                {activeWorkspaceTab === "resume" && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-muted-foreground font-normal">
+                      Evidence-backed narrative revisions to strengthen your application before applying:
+                    </p>
+                    {executionPkg.resumeGaps.map((gap, i) => (
+                      <div key={i} className="rounded border border-border/60 bg-background p-3.5 space-y-2 text-xs">
+                        <p className="font-semibold text-primary">{gap.category}</p>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="space-y-1 border-r border-border/40 pr-2">
+                            <span className="text-[10px] uppercase text-muted-foreground font-mono">Current Resume Narrative</span>
+                            <p className="text-muted-foreground leading-relaxed">{gap.currentNarrative}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[10px] uppercase text-signal font-mono">Suggested Executive Revision</span>
+                            <p className="text-foreground font-medium leading-relaxed">{gap.suggestedRevision}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {activeWorkspaceTab === "linkedin" && (
+                  <div className="space-y-3.5 text-xs">
+                    <p className="text-xs text-muted-foreground font-normal">
+                      Optimize your LinkedIn profile positioning for C-suite executive searches:
+                    </p>
+                    <div className="rounded border border-border/60 bg-background p-3.5 space-y-2">
+                      <span className="text-[10px] uppercase text-primary font-mono">Recommended LinkedIn Headline</span>
+                      <p className="text-foreground font-medium">{executionPkg.linkedInStrategy.recommendedHeadline}</p>
+                    </div>
+                    <div className="rounded border border-border/60 bg-background p-3.5 space-y-2">
+                      <span className="text-[10px] uppercase text-primary font-mono">Executive About Section Framing</span>
+                      <p className="text-muted-foreground leading-relaxed">{executionPkg.linkedInStrategy.executiveAboutFraming}</p>
+                    </div>
+                  </div>
+                )}
+
+                {activeWorkspaceTab === "screening" && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground font-normal">
+                      Targeted questions for initial recruiter screening calls:
+                    </p>
+                    {executionPkg.screeningQuestions.map((q, i) => (
+                      <div key={i} className="rounded border border-border/60 bg-background p-3 text-xs space-y-1">
+                        <p className="font-medium text-foreground">• {q.question}</p>
+                        <p className="text-muted-foreground text-[11px]"><span className="text-primary font-semibold">Why it matters:</span> {q.whyItMatters}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {activeWorkspaceTab === "interview" && (
+                  <div className="space-y-3.5 text-xs">
+                    <p className="text-xs text-muted-foreground font-normal">
+                      Strategic positioning for C-suite panel interviews:
+                    </p>
+                    <div className="rounded border border-border/60 bg-background p-3.5 space-y-1.5">
+                      <span className="text-[10px] uppercase text-primary font-mono">60-Second Opening Hook</span>
+                      <p className="text-foreground italic">{executionPkg.interviewPrep.openingHook}</p>
+                    </div>
+                    <div className="rounded border border-border/60 bg-background p-3.5 space-y-1.5">
+                      <span className="text-[10px] uppercase text-primary font-mono">Key Track Record Theme to Emphasize</span>
+                      <p className="text-muted-foreground">{executionPkg.interviewPrep.keyThemeToEmphasize}</p>
+                    </div>
+                    <div className="rounded border border-border/60 bg-background p-3.5 space-y-1.5">
+                      <span className="text-[10px] uppercase text-signal font-mono">Strategic Question for the Panel</span>
+                      <p className="text-foreground font-medium">{executionPkg.interviewPrep.panelQuestion}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -578,51 +866,46 @@ function OpportunityBriefView() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 backdrop-blur-md">
         <div className="mx-auto flex max-w-[1180px] items-center gap-2 px-5 py-2.5 sm:px-8">
           <span className="label-mono text-muted-foreground font-normal mr-2 hidden sm:inline">Verdict</span>
-          <button
-            type="button"
+          <ExecutiveActionButton
+            verdict="PURSUE"
+            isActive={currentVerdict === "PURSUE"}
             onClick={() => decide("PURSUE")}
-            className={`btn flex-1 sm:flex-initial rounded py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
-              currentVerdict === "PURSUE"
-                ? "bg-signal text-white font-medium shadow-xs"
-                : "bg-surface-raised text-foreground border border-border hover:border-signal"
-            }`}
+            className="flex-1 sm:flex-initial"
           >
             Pursue
-          </button>
+          </ExecutiveActionButton>
 
-          <button
-            type="button"
+          <ExecutiveActionButton
+            verdict="CONSIDER"
+            isActive={currentVerdict === "CONSIDER"}
             onClick={() => decide("CONSIDER")}
-            className={`btn flex-1 sm:flex-initial rounded py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
-              currentVerdict === "CONSIDER"
-                ? "bg-caution text-white font-medium shadow-xs"
-                : "bg-surface-raised text-foreground border border-border hover:border-caution"
-            }`}
+            className="flex-1 sm:flex-initial"
           >
             Consider
-          </button>
+          </ExecutiveActionButton>
 
-          <button
-            type="button"
+          <ExecutiveActionButton
+            verdict="PASS"
+            isActive={currentVerdict === "PASS"}
             onClick={() => decide("PASS")}
-            className={`btn flex-1 sm:flex-initial rounded py-2.5 text-xs font-mono uppercase tracking-[0.14em] transition-all cursor-pointer ${
-              currentVerdict === "PASS"
-                ? "bg-foreground text-background font-medium shadow-xs"
-                : "bg-surface-raised text-foreground border border-border hover:border-foreground"
-            }`}
+            className="flex-1 sm:flex-initial"
           >
             Pass
-          </button>
+          </ExecutiveActionButton>
 
           {o.applyUrl ? (
-            <a
-              href={applyUrlFor(o.applyUrl, o.scrapedFrom)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn ml-auto hidden sm:inline-flex items-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal"
+            <Button
+              asChild
+              className="ml-auto hidden sm:inline-flex items-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal h-auto"
             >
-              Apply direct →
-            </a>
+              <a
+                href={applyUrlFor(o)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Apply direct →
+              </a>
+            </Button>
           ) : null}
         </div>
       </div>

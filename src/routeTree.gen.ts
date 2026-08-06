@@ -13,6 +13,7 @@ import { Route as WorkbenchRouteImport } from './routes/workbench'
 import { Route as ScrapedRouteImport } from './routes/scraped'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as FontSandboxRouteImport } from './routes/font-sandbox'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as DecisionsRouteImport } from './routes/decisions'
 import { Route as CorpusRouteImport } from './routes/corpus'
@@ -42,6 +43,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FontSandboxRoute = FontSandboxRouteImport.update({
+  id: '/font-sandbox',
+  path: '/font-sandbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DesignSystemRoute = DesignSystemRouteImport.update({
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
   '/design-system': typeof DesignSystemRoute
+  '/font-sandbox': typeof FontSandboxRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
   '/design-system': typeof DesignSystemRoute
+  '/font-sandbox': typeof FontSandboxRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
   '/design-system': typeof DesignSystemRoute
+  '/font-sandbox': typeof FontSandboxRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/decisions'
     | '/design-system'
+    | '/font-sandbox'
     | '/login'
     | '/profile'
     | '/scraped'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/decisions'
     | '/design-system'
+    | '/font-sandbox'
     | '/login'
     | '/profile'
     | '/scraped'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/decisions'
     | '/design-system'
+    | '/font-sandbox'
     | '/login'
     | '/profile'
     | '/scraped'
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   CorpusRoute: typeof CorpusRoute
   DecisionsRoute: typeof DecisionsRoute
   DesignSystemRoute: typeof DesignSystemRoute
+  FontSandboxRoute: typeof FontSandboxRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   ScrapedRoute: typeof ScrapedRoute
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/font-sandbox': {
+      id: '/font-sandbox'
+      path: '/font-sandbox'
+      fullPath: '/font-sandbox'
+      preLoaderRoute: typeof FontSandboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/design-system': {
@@ -320,6 +340,7 @@ const rootRouteChildren: RootRouteChildren = {
   CorpusRoute: CorpusRoute,
   DecisionsRoute: DecisionsRoute,
   DesignSystemRoute: DesignSystemRoute,
+  FontSandboxRoute: FontSandboxRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   ScrapedRoute: ScrapedRoute,
