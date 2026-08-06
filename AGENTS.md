@@ -267,3 +267,16 @@ Page (e.g. Executive Dossier, Shortlist Queue)
 - **Confidence**: `High (Verified provenance)`.
 - **Locations**: `Bengaluru (Hybrid)` or `San Francisco, CA`.
 
+### G. Strict Design System & Token Discipline Invariant
+> **ABSOLUTE PROHIBITION OF AD-HOC INLINE TAILWIND MAGIC VALUES**
+1. **No Magic Pixel Dimensions or Arbitrary Offsets**: NEVER write ad-hoc arbitrary Tailwind values in JSX such as `text-[11px]`, `text-[10px]`, `max-w-[1180px]`, or `p-[3px]`.
+2. **No Arbitrary Opacity Hacks**: NEVER write ad-hoc opacity modifiers like `border-border/60`, `border-border/40`, `border-primary/30`, `bg-surface-raised/40`, or `text-foreground/90`. Always use established semantic CSS tokens (`var(--border)`, `var(--border-strong)`, `var(--surface-raised)`).
+3. **Mandatory Use of Registered Design System Classes**: All UI views MUST use centralized design utility classes defined in `src/styles.css`:
+   - `.memo-container` (Centralized 1180px container with responsive `space-y-12`)
+   - `.memo-card` (`border border-border bg-surface-raised p-5 rounded-md`)
+   - `.memo-callout` (`border-l-2 border-primary bg-surface-raised p-4`)
+   - `.memo-opinion-box` (`border-2 border-primary/30 bg-surface-raised p-6 my-6 rounded-lg`)
+   - `.label-mono` / `.memo-badge` (`font-mono uppercase tracking-[0.18em] text-[0.65rem]`)
+4. **Audit First Rule**: Before writing or modifying any UI route/component, agents MUST inspect `src/styles.css` to verify available design system classes and enforce 100% token reuse.
+
+
