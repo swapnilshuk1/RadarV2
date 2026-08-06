@@ -15,8 +15,45 @@ import { AdvisoryConstitution } from "../lib/intelligence/editorial/AdvisoryCons
 import { ExecutionEngine } from "../lib/intelligence/engines/ExecutionEngine";
 import { Button } from "@/components/ui/button";
 import { ExecutiveActionButton } from "@/components/radar/actions";
-import { ExecutiveSection, ExecutiveSectionProps } from "@/components/radar/layout";
-import { Eyebrow, SectionTitle, ExecutiveHeadline, Caption } from "@/components/typography";
+
+export interface EditorialSurfacePolicy {
+  readingMode: "deliberate" | "rapid";
+  maxNarrativeDensity: "comprehensive" | "high-density";
+  maxEvidenceDepth: number;
+  interactionStyle: "immersive" | "drilldown";
+  emphasisOrder: Array<"verdict" | "opinion" | "before-proceed" | "opportunities" | "uncertainties" | "evidence" | "workspace">;
+}
+
+export const ReadingSurfacePolicy: EditorialSurfacePolicy = {
+  readingMode: "deliberate",
+  maxNarrativeDensity: "comprehensive",
+  maxEvidenceDepth: 10,
+  interactionStyle: "immersive",
+  emphasisOrder: ["verdict", "opinion", "opportunities", "before-proceed", "evidence", "workspace"]
+};
+
+export const ExecutiveBriefingPolicy: EditorialSurfacePolicy = {
+  readingMode: "rapid",
+  maxNarrativeDensity: "high-density",
+  maxEvidenceDepth: 3,
+  interactionStyle: "drilldown",
+  emphasisOrder: ["verdict", "before-proceed", "opinion", "opportunities", "uncertainties", "workspace", "evidence"]
+};
+
+interface SurfaceProps {
+  opportunity: any;
+  brief: any;
+  currentVerdict: DecisionVerb;
+  decide: (verb: DecisionVerb) => void;
+  neighbors: any;
+  currentIndex: number;
+  totalCount: number;
+  jobProj: any;
+  candidateProj: any;
+  capEval: any;
+  executionPkg: any;
+  rawDimensions: any[];
+}
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }: { params: { jobHash: string } }) => {
@@ -59,10 +96,6 @@ function OpportunityBriefView() {
   };
 
   const brief = BriefCompositionEngine.compose(o);
-  const ctx = EditorialContextBuilder.build(o);
-  const pattern = EditorialPatternSelector.select(ctx, o.jobHash);
-  const composed = NarrativeComposer.compose(pattern, o);
-
   const jobProj = JobProjectionBuilder.build(o);
   const candidateProj = {
     operatingLevel: { value: "EXECUTIVE" as const, confidence: 0.9, evidence: [], evidenceIds: [] },
@@ -77,31 +110,51 @@ function OpportunityBriefView() {
   };
   const capEval = CapabilityAssessmentEngine.evaluate(candidateProj, jobProj);
   const executionPkg = ExecutionEngine.validateDecision(candidateProj, jobProj);
-
-  const delta = (capEval.capabilityPotential || 0.50) - (capEval.evidenceStrength || 0.00);
-  const isProofGap = delta >= 0.25;
-  const isDivergence = delta <= -0.20;
-
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<"resume" | "linkedin" | "screening" | "interview">("resume");
-
-  const [expandedReasoningRow, setExpandedReasoningRow] = useState<number | null>(0);
-  const [checkedUnknowns, setCheckedUnknowns] = useState<Record<number, boolean>>({});
-
-  const toggleCheck = (idx: number) => {
-    setCheckedUnknowns((prev) => ({ ...prev, [idx]: !prev[idx] }));
-  };
-
   const rawDimensions = o.dimensions || (o as any).evidenceDimensions || [];
 
-  const strongEvidenceDimensions = rawDimensions.filter(
-    (d: any) => d.jdEvidence?.confidence === "EXPLICIT_STRONG" || d.importance === "Core" || (d.jdEvidence && d.jdEvidence.value)
-  );
+  const surfaceProps: SurfaceProps = {
+    opportunity: o,
+    brief,
+    currentVerdict,
+    decide,
+    neighbors,
+    currentIndex,
+    totalCount,
+    jobProj,
+    candidateProj,
+    capEval,
+    executionPkg,
+    rawDimensions,
+  };
 
-  const partialEvidenceDimensions = rawDimensions.filter(
-    (d: any) => d.jdEvidence?.confidence === "PARTIAL_INFERRED"
+  return (
+    <>
+      <div className="hidden lg:block">
+        <ReadingSurface {...surfaceProps} />
+      </div>
+      <div className="block lg:hidden">
+        <ExecutiveBriefingSurface {...surfaceProps} />
+      </div>
+    </>
   );
+}
 
-  const allVerifiedCount = rawDimensions.length || 7;
+/* ────────────────────────────────────────────────────────────────────────
+   1. READING SURFACE (Desktop Reading Mode - Immersive & Deliberate)
+   ──────────────────────────────────────────────────────────────────────── */
+function ReadingSurface({
+  opportunity: o,
+  brief,
+  currentVerdict,
+  decide,
+  neighbors,
+  currentIndex,
+  totalCount,
+  jobProj,
+  executionPkg,
+  rawDimensions,
+}: SurfaceProps) {
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<"resume" | "linkedin" | "screening" | "interview">("resume");
 
   const formatValue = (val: any) => {
     if (!val) return "Not specified in JD";
@@ -137,14 +190,12 @@ function OpportunityBriefView() {
   };
 
   return (
-    <div className="min-h-screen pb-36 sm:pb-28 bg-background text-foreground font-sans">
-      {/* ────────────────────────────────────────────────────────────────────────
-          HEADER TITLE BLOCK
-          ──────────────────────────────────────────────────────────────────────── */}
+    <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
+      {/* HEADER TITLE BLOCK */}
       <header className="border-b border-border">
-        <div className="mx-auto max-w-[1180px] px-5 py-8 sm:px-8 sm:py-12">
+        <div className="mx-auto max-w-[1180px] px-8 py-12">
           {/* Nav Sub-Header */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <Link to="/" className="label-mono hover:text-foreground transition-colors font-normal">
               ← Shortlist
             </Link>
@@ -154,7 +205,7 @@ function OpportunityBriefView() {
           </div>
 
           {/* Badges & Verbs */}
-          <div className="mt-7 flex flex-wrap items-center gap-2">
+          <div className="mt-7 flex items-center gap-2">
             <span className={`label-mono rounded-[3px] px-1.5 py-[3px] leading-none uppercase font-normal ${
               currentVerdict === "PURSUE"
                 ? "bg-signal text-white"
@@ -166,25 +217,26 @@ function OpportunityBriefView() {
             </span>
             <span className="label-mono font-normal">Strong Executive Fit</span>
             <span className="label-mono font-normal">· {brief.evidenceQuality}</span>
-            <span className="label-mono hidden sm:inline font-normal">· 20 minute application</span>
+            <span className="label-mono font-normal">· 20 minute application</span>
           </div>
 
-          <h1 className="mt-4 max-w-4xl font-display text-[2.6rem] leading-[1.02] tracking-tight sm:text-6xl text-foreground font-normal">
+          <h1 className="mt-4 max-w-4xl font-display text-6xl leading-[1.02] tracking-tight text-foreground font-normal">
             {o.role} mandate at {o.company} focused on {getFocusTopic()}
           </h1>
         </div>
       </header>
 
+      {/* BOTTOM-LINE TLDR */}
       <section className="border-b border-border bg-surface-raised">
-        <div className="mx-auto max-w-[1180px] px-5 py-8 sm:px-8 sm:py-10">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="mx-auto max-w-[1180px] px-8 py-10">
+          <div className="flex items-baseline justify-between gap-2">
             <span className="label-mono text-primary font-normal">If you only read one thing</span>
             <span className="label-mono font-normal text-muted-foreground">1-minute executive brief</span>
           </div>
-          <p className="mt-4 font-display text-3xl leading-tight sm:text-4xl text-foreground font-normal">
+          <p className="mt-4 font-display text-4xl leading-tight text-foreground font-normal">
             {brief.oneMinuteTLDR.bottomLine}
           </p>
-          <p className="mt-3 text-xs sm:text-sm text-foreground/90 font-mono border-l-2 border-primary/60 pl-3 leading-relaxed">
+          <p className="mt-3 text-sm text-foreground/90 font-mono border-l-2 border-primary/60 pl-3 leading-relaxed">
             {brief.verdictGuidance.actionNotice}
           </p>
 
@@ -214,8 +266,10 @@ function OpportunityBriefView() {
         </div>
       </section>
 
-      <section className="border-b border-border bg-background py-10">
+      {/* CORE MEMORANDUM GRID */}
+      <section className="py-10">
         <div className="memo-container space-y-12">
+          {/* SECTION 1: Context */}
           <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
             <div>
               <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Context</p>
@@ -250,6 +304,7 @@ function OpportunityBriefView() {
             </div>
           </div>
 
+          {/* SECTION 2: Mandate */}
           <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
             <div>
               <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Mandate</p>
@@ -266,7 +321,7 @@ function OpportunityBriefView() {
                     `Deliver 24-month revenue & P&L targets under commercial growth mandate`,
                     `Establish operational governance and cross-functional leadership alignment at ${o.company}`,
                     `Build scalable GTM & customer retention infrastructure`
-                  ]).map((cond, i) => (
+                  ]).map((cond: string, i: number) => (
                     <li key={i} className="text-sm text-foreground font-normal">• {cond}</li>
                   ))}
                 </ul>
@@ -276,7 +331,7 @@ function OpportunityBriefView() {
                 <p className="label-mono text-xs uppercase tracking-wider text-caution font-normal">This recommendation assumes</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">The following operational conditions hold true:</p>
                 <ul className="space-y-1.5 text-xs text-foreground">
-                  {executionPkg.recommendationConditions.map((cond, i) => (
+                  {executionPkg.recommendationConditions.map((cond: string, i: number) => (
                     <li key={i}>• {cond}</li>
                   ))}
                 </ul>
@@ -284,7 +339,7 @@ function OpportunityBriefView() {
 
               <div className="space-y-3">
                 <p className="label-mono text-xs uppercase tracking-wider text-foreground font-normal">Questions to Validate During Your Screening Call</p>
-                {executionPkg.screeningQuestions.map((sq, i) => (
+                {executionPkg.screeningQuestions.map((sq: any, i: number) => (
                   <div key={i} className="memo-card p-3.5 space-y-1.5 text-xs">
                     <p className="font-semibold text-foreground">{i + 1}. {sq.question}</p>
                     <p className="text-muted-foreground leading-relaxed"><span className="text-primary font-medium">Why it matters:</span> {sq.whyItMatters}</p>
@@ -292,11 +347,7 @@ function OpportunityBriefView() {
                 ))}
               </div>
 
-              <p className="text-xs text-muted-foreground font-mono pt-1 italic">
-                <span className="text-foreground font-semibold">Action:</span> Validate these operational assumptions during your first recruiter conversation before committing to full interviews.
-              </p>
-
-              {/* Memorable Moment: Partner Observation */}
+              {/* Partner Observation */}
               <div className="memo-callout space-y-1">
                 <span className="label-mono text-xs uppercase tracking-wider text-primary font-semibold">Partner Observation</span>
                 <p className="text-sm text-foreground italic leading-relaxed">
@@ -306,18 +357,18 @@ function OpportunityBriefView() {
             </div>
           </div>
 
-          {/* EXECUTIVE OPINION BOX ("Here's what I think") */}
+          {/* EXECUTIVE OPINION BOX */}
           <div className="memo-opinion-box space-y-3">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <span className="label-mono text-xs uppercase tracking-wider text-primary font-semibold">Executive Opinion</span>
               <span className="label-mono text-xs text-muted-foreground">Synthesized Advisory Lead</span>
             </div>
-            <p className="font-display text-lg sm:text-xl leading-relaxed text-foreground font-normal">
+            <p className="font-display text-xl leading-relaxed text-foreground font-normal">
               {brief.executiveOpinion || "Evaluating executive alignment..."}
             </p>
           </div>
 
-          {/* SECTION 3: Evidence Supporting This Recommendation */}
+          {/* SECTION 3: Evidence */}
           <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
             <div>
               <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Evidence</p>
@@ -340,13 +391,10 @@ function OpportunityBriefView() {
                 <span className="label-mono text-[11px] text-caution font-normal uppercase">Potential Concern</span>
                 <p className="text-muted-foreground leading-relaxed">{brief.whyNotStronger || "Limited direct evidence of enterprise RevOps ownership in current record; verify during initial screening call."}</p>
               </div>
-              <p className="text-xs text-muted-foreground font-mono pt-1 italic">
-                <span className="text-foreground font-semibold">Observation:</span> The recommendation remains strong unless commercial ownership proves narrower than expected.
-              </p>
             </div>
           </div>
 
-          {/* SECTION 4: Present your experience effectively */}
+          {/* SECTION 4: Strategy Workspace */}
           <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
             <div>
               <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Strategy</p>
@@ -360,15 +408,10 @@ function OpportunityBriefView() {
                 </p>
               </div>
 
-              {/* Tailoring Intro Statement */}
-              <p className="text-xs text-muted-foreground italic font-mono">
-                {brief.directives?.reflection || "Consider whether this market trajectory strengthens your executive record over a 3-year horizon."}
-              </p>
-
               <div className="memo-card space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+                <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
                   <p className="label-mono text-xs uppercase tracking-wider text-foreground font-normal">Positioning Workspace</p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex gap-1.5">
                     {["resume", "linkedin", "screening", "interview"].map((tab) => (
                       <button
                         key={tab}
@@ -385,7 +428,7 @@ function OpportunityBriefView() {
 
                 {activeWorkspaceTab === "resume" && (
                   <div className="space-y-4">
-                    {executionPkg.resumeGaps.map((gap, i) => (
+                    {executionPkg.resumeGaps.map((gap: any, i: number) => (
                       <div key={i} className="rounded border border-border bg-background p-3.5 text-xs space-y-2">
                         <p className="font-semibold text-primary">{gap.category}</p>
                         <div className="grid gap-2 sm:grid-cols-2">
@@ -418,7 +461,7 @@ function OpportunityBriefView() {
 
                 {activeWorkspaceTab === "screening" && (
                   <div className="space-y-3">
-                    {executionPkg.screeningQuestions.map((q, i) => (
+                    {executionPkg.screeningQuestions.map((q: any, i: number) => (
                       <div key={i} className="rounded border border-border bg-background p-3 text-xs space-y-1">
                         <p className="font-medium text-foreground">• {q.question}</p>
                         <p className="text-muted-foreground text-xs"><span className="text-primary font-semibold">Why it matters:</span> {q.whyItMatters}</p>
@@ -444,19 +487,12 @@ function OpportunityBriefView() {
                   </div>
                 )}
               </div>
-
-              <p className="text-xs text-muted-foreground font-mono pt-1 italic">
-                <span className="text-foreground font-semibold">Action:</span> Incorporate these narrative revisions before engaging the search partner.
-              </p>
             </div>
           </div>
-
         </div>
       </section>
 
-      {/* ────────────────────────────────────────────────────────────────────────
-          APPENDIX FOOTER DRAWER: EVIDENCE, METHODOLOGY & CLAIM LINEAGE
-          ──────────────────────────────────────────────────────────────────────── */}
+      {/* APPENDIX FOOTER DRAWER */}
       <footer className="border-t border-border bg-surface-raised py-8 text-xs">
         <div className="memo-container">
           <details className="group cursor-pointer">
@@ -505,17 +541,379 @@ function OpportunityBriefView() {
       </footer>
 
       {/* STICKY BOTTOM ACTION BAR */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 backdrop-blur-md py-3 sm:py-2.5">
-        <div className="mx-auto max-w-[1180px] px-5 sm:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 backdrop-blur-md py-2.5">
+        <div className="mx-auto max-w-[1180px] px-8 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="label-mono text-muted-foreground font-normal mr-2">Verdict</span>
+            <ExecutiveActionButton
+              verdict="PURSUE"
+              isActive={currentVerdict === "PURSUE"}
+              onClick={() => decide("PURSUE")}
+            >
+              Pursue
+            </ExecutiveActionButton>
+
+            <ExecutiveActionButton
+              verdict="CONSIDER"
+              isActive={currentVerdict === "CONSIDER"}
+              onClick={() => decide("CONSIDER")}
+            >
+              Consider
+            </ExecutiveActionButton>
+
+            <ExecutiveActionButton
+              verdict="PASS"
+              isActive={currentVerdict === "PASS"}
+              onClick={() => decide("PASS")}
+            >
+              Pass
+            </ExecutiveActionButton>
+          </div>
+
+          {o.applyUrl ? (
+            <Button
+              asChild
+              className="flex items-center justify-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal h-auto"
+            >
+              <a href={applyUrlFor(o)} target="_blank" rel="noopener noreferrer">
+                Apply direct →
+              </a>
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   2. EXECUTIVE BRIEFING SURFACE (Small Display - High Velocity, Action Oriented)
+   ──────────────────────────────────────────────────────────────────────── */
+function ExecutiveBriefingSurface({
+  opportunity: o,
+  brief,
+  currentVerdict,
+  decide,
+  neighbors,
+  currentIndex,
+  totalCount,
+  jobProj,
+  executionPkg,
+}: SurfaceProps) {
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<"resume" | "linkedin" | "screening" | "interview">("resume");
+
+  const primaryQuestion = executionPkg.screeningQuestions[0];
+  const secondaryQuestions = executionPkg.screeningQuestions.slice(1);
+
+  // Recomposed thesis statements for high density on small display
+  const recomposedMission = jobProj.executiveMission?.statement
+    ? `${jobProj.executiveMission.statement.split('.')[0]}.`
+    : `Leadership at ${o.company} is hiring an executive with full commercial accountability to drive expansion and establish operating governance.`;
+
+  return (
+    <div className="min-h-screen pb-36 bg-background text-foreground font-sans">
+      {/* HEADER TITLE BLOCK - Scaled proportionately */}
+      <header className="border-b border-border">
+        <div className="mx-auto max-w-[1180px] px-5 py-6">
+          <div className="flex items-center justify-between gap-3">
+            <Link to="/" className="label-mono hover:text-foreground transition-colors font-normal">
+              ← Shortlist
+            </Link>
+            <span className="label-mono font-normal text-muted-foreground">
+              Brief {String(currentIndex).padStart(2, "0")}/{totalCount}
+            </span>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <span className={`label-mono rounded-[3px] px-1.5 py-[2px] leading-none uppercase font-normal text-[10px] ${
+              currentVerdict === "PURSUE"
+                ? "bg-signal text-white"
+                : currentVerdict === "CONSIDER"
+                ? "bg-caution text-white"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              {currentVerdict === "PURSUE" ? "Pursue" : currentVerdict === "CONSIDER" ? "Consider" : "Pass"}
+            </span>
+            <span className="label-mono font-normal text-[10px]">Executive Briefing</span>
+          </div>
+
+          <h1 className="mt-3 font-display text-3xl leading-[1.1] tracking-tight text-foreground font-normal">
+            {o.role} mandate at {o.company}
+          </h1>
+        </div>
+      </header>
+
+      {/* EXECUTIVE SUMMARY TRADE-OFF CARD */}
+      <section className="border-b border-border bg-surface-raised py-6">
+        <div className="mx-auto max-w-[1180px] px-5">
+          <p className="font-display text-2xl leading-snug text-foreground font-normal">
+            {brief.oneMinuteTLDR.bottomLine}
+          </p>
+          <p className="mt-2 text-xs text-foreground/90 font-mono border-l-2 border-primary pl-2.5 leading-relaxed">
+            {brief.verdictGuidance.actionNotice}
+          </p>
+
+          <div className="mt-5 memo-card p-4 space-y-4 bg-background border border-border/80">
+            <div>
+              <p className="label-mono text-signal font-semibold text-[10px] tracking-wider">Opportunity</p>
+              <ul className="mt-1.5 space-y-1.5 pl-1.5 text-xs">
+                {brief.oneMinuteTLDR.whyPursue.slice(0, 3).map((item: string, i: number) => (
+                  <li key={i} className="leading-relaxed text-foreground font-normal">• {item}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="border-t border-border/40 pt-3">
+              <p className="label-mono text-caution font-semibold text-[10px] tracking-wider">Validate</p>
+              <ul className="mt-1.5 space-y-1.5 pl-1.5 text-xs">
+                {brief.oneMinuteTLDR.watchFor.slice(0, 3).map((item: string, i: number) => (
+                  <li key={i} className="leading-relaxed text-foreground/90 font-normal">• {item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CORE INTEL STREAM - With Generous Spacing for Rhythm */}
+      <section className="py-8 space-y-10">
+        <div className="mx-auto max-w-[1180px] px-5 space-y-10">
+          
+          {/* SECTION 1: Before You Proceed (The Critical Unknown) */}
+          <div className="space-y-2.5">
+            <div className="memo-callout border-l-2 border-caution bg-surface-raised p-4 space-y-2">
+              <p className="label-mono text-caution font-semibold text-[10px] tracking-wider">Before You Proceed</p>
+              <p className="font-display text-lg leading-relaxed text-foreground font-normal">
+                {primaryQuestion?.question || "Does this role carry genuine commercial budget authority?"}
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed font-mono">
+                <span className="text-primary font-semibold">Why it matters:</span> {primaryQuestion?.whyItMatters || "This single answer is most likely to change today's recommendation."}
+              </p>
+            </div>
+
+            {secondaryQuestions.length > 0 && (
+              <details className="group cursor-pointer mt-1">
+                <summary className="text-[11px] text-muted-foreground hover:text-foreground font-mono transition-colors flex items-center justify-between py-1 px-1">
+                  <span>+ {secondaryQuestions.length} remaining validation questions</span>
+                  <span className="text-[9px] group-open:rotate-180 transition-transform">▼</span>
+                </summary>
+                <div className="mt-3.5 space-y-3.5 pl-3.5 border-l border-border/80">
+                  {secondaryQuestions.map((q: any, idx: number) => (
+                    <div key={idx} className="space-y-1 text-xs">
+                      <p className="font-semibold text-foreground">{q.question}</p>
+                      <p className="text-muted-foreground text-[11px] leading-relaxed">
+                        <span className="text-primary font-medium">Why it matters:</span> {q.whyItMatters}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+
+          {/* SECTION 2: Why Hiring (Context) */}
+          <div className="space-y-2">
+            <h2 className="font-display text-xl font-normal text-foreground leading-tight">
+              Why is the company hiring?
+            </h2>
+            <p className="text-sm leading-relaxed text-foreground font-normal">
+              {recomposedMission}
+            </p>
+          </div>
+
+          {/* SECTION 3: Recommendation Assumptions (No-box Inset Checklist) */}
+          <div className="space-y-2.5">
+            <p className="label-mono text-xs uppercase tracking-wider text-caution font-semibold text-[10px]">This recommendation assumes</p>
+            <ul className="space-y-2 text-xs text-foreground pl-0.5">
+              {executionPkg.recommendationConditions.map((cond: string, i: number) => (
+                <li key={i} className="flex items-start gap-2 leading-relaxed font-normal">
+                  <span className="text-signal font-bold">✓</span>
+                  <span>{cond}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Partner Observation Pull-Quote (Financial Times style visual interrupter) */}
+          <div className="py-6 my-2 border-y border-border/50">
+            <div className="border-l-2 border-primary pl-4 py-1 space-y-1">
+              <span className="label-mono text-[9px] uppercase tracking-wider text-primary font-semibold">Partner Observation</span>
+              <p className="text-lg italic font-serif leading-relaxed text-foreground font-normal">
+                “The title is less important than the operating latitude. If the commercial mandate proves genuine, this role is materially stronger than its title suggests.”
+              </p>
+            </div>
+          </div>
+
+          {/* SECTION 4: Executive Opinion (Condensed box padding) */}
+          <div className="memo-opinion-box p-4 my-2 space-y-2 border border-border/80">
+            <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <span className="label-mono text-[9px] uppercase tracking-wider text-primary font-semibold">Executive Opinion</span>
+              <span className="label-mono text-[9px] text-muted-foreground">Advisory Lead</span>
+            </div>
+            <p className="font-display text-base leading-relaxed text-foreground font-normal">
+              {brief.executiveOpinion || "Evaluating executive alignment..."}
+            </p>
+          </div>
+
+          {/* SECTION 5: Evidence Ledger (Simplified vertical list) */}
+          <div className="space-y-4">
+            <h2 className="font-display text-xl font-normal text-foreground leading-tight">
+              Evidence Supporting Recommendation
+            </h2>
+            <div className="space-y-3">
+              <div>
+                <p className="label-mono text-signal font-semibold text-[10px] tracking-wider">Why we're confident</p>
+                <ul className="mt-1.5 space-y-2 text-xs text-foreground pl-0.5 leading-relaxed">
+                  {(brief.proofPoints || []).slice(0, 3).map((pt: any, i: number) => {
+                    const categoryTitle = i === 0 ? "Commercial Leadership" : i === 1 ? "Platform Transformation" : "Executive Governance";
+                    return (
+                      <li key={i} className="flex items-start gap-1.5">
+                        <span className="text-signal">•</span>
+                        <span><strong>{categoryTitle}:</strong> {pt.detail}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              <div className="border-t border-border/40 pt-3">
+                <p className="label-mono text-caution font-semibold text-[10px] tracking-wider">Remaining uncertainty</p>
+                <ul className="mt-1.5 space-y-1.5 text-xs text-foreground pl-0.5 leading-relaxed">
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-caution">•</span>
+                    <span>{brief.whyNotStronger || "Limited direct evidence of enterprise RevOps ownership in current record; verify during initial screening call."}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 6: Strategy (2x2 Segment Grid perspective selector) */}
+          <div className="space-y-4">
+            <h2 className="font-display text-xl font-normal text-foreground leading-tight">
+              Present your experience effectively
+            </h2>
+            <p className="text-xs text-muted-foreground border-l border-caution pl-2.5 leading-relaxed font-normal">
+              {brief.directives?.positioning || "Tailor your narrative to emphasize executive scale and operational governance."}
+            </p>
+
+            <div className="memo-card p-3 space-y-4 bg-surface-raised border border-border/60">
+              <div className="grid grid-cols-2 gap-1.5 border-b border-border/40 pb-3">
+                {[
+                  { id: "resume", label: "Resume" },
+                  { id: "linkedin", label: "LinkedIn" },
+                  { id: "screening", label: "Screening Call" },
+                  { id: "interview", label: "Interview" }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveWorkspaceTab(tab.id as any)}
+                    className={`py-2 px-1 text-center label-mono rounded-[3px] transition-colors border text-[9px] tracking-wider ${
+                      activeWorkspaceTab === tab.id
+                        ? "bg-foreground text-background border-foreground font-semibold"
+                        : "bg-background text-muted-foreground border-border hover:text-foreground"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {activeWorkspaceTab === "resume" && (
+                <div className="space-y-3 text-[11px] leading-relaxed">
+                  {executionPkg.resumeGaps.map((gap: any, i: number) => (
+                    <div key={i} className="rounded border border-border bg-background p-3 space-y-2">
+                      <p className="font-semibold text-primary">{gap.category}</p>
+                      <div className="space-y-2">
+                        <div className="space-y-0.5 border-b border-border/40 pb-1.5">
+                          <span className="label-mono text-muted-foreground text-[8px] tracking-wide">Current Resume Narrative</span>
+                          <p className="text-muted-foreground">{gap.currentNarrative}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <span className="label-mono text-signal text-[8px] tracking-wide">Suggested Revision</span>
+                          <p className="text-foreground font-semibold">{gap.suggestedRevision}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {activeWorkspaceTab === "linkedin" && (
+                <div className="space-y-2.5 text-[11px] leading-relaxed">
+                  <div className="rounded border border-border bg-background p-3 space-y-1.5">
+                    <span className="label-mono text-primary text-[8px]">Headline</span>
+                    <p className="text-foreground font-semibold">{executionPkg.linkedInStrategy.recommendedHeadline}</p>
+                  </div>
+                  <div className="rounded border border-border bg-background p-3 space-y-1.5">
+                    <span className="label-mono text-primary text-[8px]">Framing</span>
+                    <p className="text-muted-foreground leading-relaxed">{executionPkg.linkedInStrategy.executiveAboutFraming}</p>
+                  </div>
+                </div>
+              )}
+
+              {activeWorkspaceTab === "screening" && (
+                <div className="space-y-2.5 text-[11px] leading-relaxed">
+                  {executionPkg.screeningQuestions.map((q: any, i: number) => (
+                    <div key={i} className="rounded border border-border bg-background p-3 space-y-1">
+                      <p className="font-semibold text-foreground">• {q.question}</p>
+                      <p className="text-muted-foreground text-[10px] leading-relaxed">
+                        <span className="text-primary font-medium">Why:</span> {q.whyItMatters}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {activeWorkspaceTab === "interview" && (
+                <div className="space-y-2.5 text-[11px] leading-relaxed">
+                  <div className="rounded border border-border bg-background p-3 space-y-1">
+                    <span className="label-mono text-primary text-[8px]">60-Sec Opening Hook</span>
+                    <p className="text-foreground italic">{executionPkg.interviewPrep.openingHook}</p>
+                  </div>
+                  <div className="rounded border border-border bg-background p-3 space-y-1">
+                    <span className="label-mono text-primary text-[8px]">Theme to Emphasize</span>
+                    <p className="text-muted-foreground">{executionPkg.interviewPrep.keyThemeToEmphasize}</p>
+                  </div>
+                  <div className="rounded border border-border bg-background p-3 space-y-1">
+                    <span className="label-mono text-signal text-[8px]">Panel Question</span>
+                    <p className="text-foreground font-semibold">{executionPkg.interviewPrep.panelQuestion}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* APPENDIX FOOTER - Kept in disclosure where it belongs */}
+          <footer className="border-t border-border pt-4 text-[10px] leading-relaxed font-mono text-muted-foreground">
+            <details className="group cursor-pointer">
+              <summary className="label-mono text-[9px] uppercase tracking-wider text-muted-foreground hover:text-foreground flex items-center justify-between">
+                <span>Appendix</span>
+                <span className="text-primary group-open:rotate-180 transition-transform">▼</span>
+              </summary>
+              <div className="mt-4 space-y-4 border-t border-border/40 pt-4">
+                <p><strong>Methodology:</strong> Multi-hop evidence graph traversal, dual-vector alignment, and policy scoring.</p>
+                <p><strong>Provenance:</strong> {brief.evidenceQuality} · Verified against 5 core capability ontologies.</p>
+                <p><strong>Engine:</strong> RADAR v2.4 Editorial Engine · Protocol INV-DATA-SUFFICIENCY active.</p>
+              </div>
+            </details>
+          </footer>
+
+        </div>
+      </section>
+
+      {/* STICKY BOTTOM ACTION BAR */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/92 backdrop-blur-md py-3">
+        <div className="mx-auto max-w-[1180px] px-5">
+          <div className="flex flex-col gap-3">
             {/* Left Column: Verdict Controls */}
             <div className="flex flex-1 items-center gap-2">
-              <span className="label-mono text-muted-foreground font-normal mr-2 hidden sm:inline">Verdict</span>
+              <span className="label-mono text-muted-foreground font-normal mr-1 text-[10px] tracking-wider uppercase hidden sm:inline">Verdict</span>
               <ExecutiveActionButton
                 verdict="PURSUE"
                 isActive={currentVerdict === "PURSUE"}
                 onClick={() => decide("PURSUE")}
-                className="flex-1 sm:flex-initial"
+                className="flex-1 text-[10px]"
               >
                 Pursue
               </ExecutiveActionButton>
@@ -524,7 +922,7 @@ function OpportunityBriefView() {
                 verdict="CONSIDER"
                 isActive={currentVerdict === "CONSIDER"}
                 onClick={() => decide("CONSIDER")}
-                className="flex-1 sm:flex-initial"
+                className="flex-1 text-[10px]"
               >
                 Consider
               </ExecutiveActionButton>
@@ -533,23 +931,19 @@ function OpportunityBriefView() {
                 verdict="PASS"
                 isActive={currentVerdict === "PASS"}
                 onClick={() => decide("PASS")}
-                className="flex-1 sm:flex-initial"
+                className="flex-1 text-[10px]"
               >
                 Pass
               </ExecutiveActionButton>
             </div>
 
-            {/* Right Column: Apply button (visible on all breakpoints) */}
+            {/* Right Column: Apply button */}
             {o.applyUrl ? (
               <Button
                 asChild
-                className="w-full sm:w-auto sm:ml-auto flex items-center justify-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal h-auto"
+                className="w-full flex items-center justify-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal h-auto"
               >
-                <a
-                  href={applyUrlFor(o)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a href={applyUrlFor(o)} target="_blank" rel="noopener noreferrer">
                   Apply direct →
                 </a>
               </Button>
