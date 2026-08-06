@@ -174,6 +174,54 @@
   font-size: 0.65rem;
 }
 
+/* Executive Advisory Design System Utilities */
+.memo-container {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+@media (min-width: 640px) {
+  .memo-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.memo-card {
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-raised);
+  padding: 1.25rem;
+}
+
+.memo-callout {
+  border-radius: var(--radius);
+  border-left: 2px solid var(--color-primary);
+  background-color: var(--color-surface-raised);
+  padding: 1rem;
+}
+
+.memo-opinion-box {
+  border-radius: var(--radius-lg);
+  border: 2px solid oklch(0.22 0.01 85 / 0.2);
+  background-color: var(--color-surface-raised);
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.memo-badge {
+  font-family: var(--font-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  border-radius: 3px;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+}
+
 @utility font-display {
   font-family: "Instrument Serif", Georgia, serif;
 }

@@ -219,7 +219,7 @@ function OpportunityBriefView() {
       </section>
 
       <section className="border-b border-border bg-background py-10">
-        <div className="mx-auto max-w-[1180px] space-y-12 px-5 sm:px-8">
+        <div className="memo-container space-y-12">
           <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
             <div>
               <p className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-normal">Context</p>
@@ -239,7 +239,7 @@ function OpportunityBriefView() {
                 </p>
               </div>
 
-              <div className="border-t border-border/60 pt-4 space-y-2">
+              <div className="border-t border-border pt-4 space-y-2">
                 <p className="font-medium text-lg text-primary font-display">What this means for your career</p>
                 <ul className="space-y-2">
                   {brief.strategicUpside.points.slice(0, 2).map((pt: string, idx: number) => (
@@ -276,7 +276,7 @@ function OpportunityBriefView() {
                 </ul>
               </div>
 
-              <div className="rounded border border-border bg-surface-raised p-4 space-y-2">
+              <div className="memo-card space-y-2">
                 <p className="label-mono text-xs uppercase tracking-wider text-caution font-normal">This recommendation assumes</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">The following operational conditions hold true:</p>
                 <ul className="space-y-1.5 text-xs text-foreground">
@@ -289,7 +289,7 @@ function OpportunityBriefView() {
               <div className="space-y-3">
                 <p className="label-mono text-xs uppercase tracking-wider text-foreground font-normal">Questions to Validate During Your Screening Call</p>
                 {executionPkg.screeningQuestions.map((sq, i) => (
-                  <div key={i} className="rounded border border-border/60 bg-background p-3.5 space-y-1.5 text-xs">
+                  <div key={i} className="memo-card p-3.5 space-y-1.5 text-xs">
                     <p className="font-semibold text-foreground">{i + 1}. {sq.question}</p>
                     <p className="text-muted-foreground leading-relaxed"><span className="text-primary font-medium">Why it matters:</span> {sq.whyItMatters}</p>
                   </div>
@@ -301,7 +301,7 @@ function OpportunityBriefView() {
               </p>
 
               {/* Memorable Moment: Partner Observation */}
-              <div className="rounded border-l-2 border-primary bg-surface-raised p-4 space-y-1">
+              <div className="memo-callout space-y-1">
                 <span className="label-mono text-xs uppercase tracking-wider text-primary font-semibold">Partner Observation</span>
                 <p className="text-sm text-foreground italic leading-relaxed">
                   “The title is less important than the operating latitude. If the commercial mandate proves genuine, this role is materially stronger than its title suggests.”
@@ -311,10 +311,10 @@ function OpportunityBriefView() {
           </div>
 
           {/* EXECUTIVE OPINION BOX ("Here's what I think") */}
-          <div className="rounded-lg border-2 border-primary/30 bg-surface-raised p-6 space-y-3 my-6">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+          <div className="memo-opinion-box space-y-3">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <span className="label-mono text-xs uppercase tracking-wider text-primary font-semibold">Executive Opinion</span>
-              <span className="label-mono text-[11px] text-muted-foreground">Synthesized Advisory Lead</span>
+              <span className="label-mono text-xs text-muted-foreground">Synthesized Advisory Lead</span>
             </div>
             <p className="font-display text-lg sm:text-xl leading-relaxed text-foreground font-normal">
               {currentVerdict === "PURSUE"
@@ -373,7 +373,7 @@ function OpportunityBriefView() {
                 The following revisions strengthen the parts of your narrative most likely to influence shortlisting for this specific mandate at {o.company}.
               </p>
 
-              <div className="rounded-lg border border-border bg-surface-raised p-5 space-y-4">
+              <div className="memo-card space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                   <p className="label-mono text-xs uppercase tracking-wider text-foreground font-normal">Positioning Workspace</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -381,7 +381,7 @@ function OpportunityBriefView() {
                       <button
                         key={tab}
                         onClick={() => setActiveWorkspaceTab(tab as any)}
-                        className={`px-2.5 py-1 text-[11px] rounded font-mono transition-colors ${
+                        className={`px-2.5 py-1 label-mono rounded transition-colors ${
                           activeWorkspaceTab === tab ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
@@ -394,15 +394,15 @@ function OpportunityBriefView() {
                 {activeWorkspaceTab === "resume" && (
                   <div className="space-y-4">
                     {executionPkg.resumeGaps.map((gap, i) => (
-                      <div key={i} className="rounded border border-border/60 bg-background p-3.5 text-xs space-y-2">
+                      <div key={i} className="rounded border border-border bg-background p-3.5 text-xs space-y-2">
                         <p className="font-semibold text-primary">{gap.category}</p>
                         <div className="grid gap-2 sm:grid-cols-2">
-                          <div className="space-y-1 border-r border-border/40 pr-2">
-                            <span className="text-[10px] uppercase text-muted-foreground font-mono">Current Resume Narrative</span>
+                          <div className="space-y-1 border-r border-border pr-2">
+                            <span className="label-mono text-muted-foreground">Current Resume Narrative</span>
                             <p className="text-muted-foreground leading-relaxed">{gap.currentNarrative}</p>
                           </div>
                           <div className="space-y-1">
-                            <span className="text-[10px] uppercase text-signal font-mono">Suggested Executive Revision</span>
+                            <span className="label-mono text-signal">Suggested Executive Revision</span>
                             <p className="text-foreground font-medium leading-relaxed">{gap.suggestedRevision}</p>
                           </div>
                         </div>
@@ -413,12 +413,12 @@ function OpportunityBriefView() {
 
                 {activeWorkspaceTab === "linkedin" && (
                   <div className="space-y-3.5 text-xs">
-                    <div className="rounded border border-border/60 bg-background p-3.5 space-y-2">
-                      <span className="text-[10px] uppercase text-primary font-mono">Recommended LinkedIn Headline</span>
+                    <div className="rounded border border-border bg-background p-3.5 space-y-2">
+                      <span className="label-mono text-primary">Recommended LinkedIn Headline</span>
                       <p className="text-foreground font-medium">{executionPkg.linkedInStrategy.recommendedHeadline}</p>
                     </div>
-                    <div className="rounded border border-border/60 bg-background p-3.5 space-y-2">
-                      <span className="text-[10px] uppercase text-primary font-mono">Executive About Section Framing</span>
+                    <div className="rounded border border-border bg-background p-3.5 space-y-2">
+                      <span className="label-mono text-primary">Executive About Section Framing</span>
                       <p className="text-muted-foreground leading-relaxed">{executionPkg.linkedInStrategy.executiveAboutFraming}</p>
                     </div>
                   </div>
@@ -427,9 +427,9 @@ function OpportunityBriefView() {
                 {activeWorkspaceTab === "screening" && (
                   <div className="space-y-3">
                     {executionPkg.screeningQuestions.map((q, i) => (
-                      <div key={i} className="rounded border border-border/60 bg-background p-3 text-xs space-y-1">
+                      <div key={i} className="rounded border border-border bg-background p-3 text-xs space-y-1">
                         <p className="font-medium text-foreground">• {q.question}</p>
-                        <p className="text-muted-foreground text-[11px]"><span className="text-primary font-semibold">Why it matters:</span> {q.whyItMatters}</p>
+                        <p className="text-muted-foreground text-xs"><span className="text-primary font-semibold">Why it matters:</span> {q.whyItMatters}</p>
                       </div>
                     ))}
                   </div>
@@ -437,16 +437,16 @@ function OpportunityBriefView() {
 
                 {activeWorkspaceTab === "interview" && (
                   <div className="space-y-3.5 text-xs">
-                    <div className="rounded border border-border/60 bg-background p-3.5 space-y-1.5">
-                      <span className="text-[10px] uppercase text-primary font-mono">60-Second Opening Hook</span>
+                    <div className="rounded border border-border bg-background p-3.5 space-y-1.5">
+                      <span className="label-mono text-primary">60-Second Opening Hook</span>
                       <p className="text-foreground italic">{executionPkg.interviewPrep.openingHook}</p>
                     </div>
-                    <div className="rounded border border-border/60 bg-background p-3.5 space-y-1.5">
-                      <span className="text-[10px] uppercase text-primary font-mono">Key Track Record Theme to Emphasize</span>
+                    <div className="rounded border border-border bg-background p-3.5 space-y-1.5">
+                      <span className="label-mono text-primary">Key Track Record Theme to Emphasize</span>
                       <p className="text-muted-foreground">{executionPkg.interviewPrep.keyThemeToEmphasize}</p>
                     </div>
-                    <div className="rounded border border-border/60 bg-background p-3.5 space-y-1.5">
-                      <span className="text-[10px] uppercase text-signal font-mono">Strategic Question for the Panel</span>
+                    <div className="rounded border border-border bg-background p-3.5 space-y-1.5">
+                      <span className="label-mono text-signal">Strategic Question for the Panel</span>
                       <p className="text-foreground font-medium">{executionPkg.interviewPrep.panelQuestion}</p>
                     </div>
                   </div>
@@ -465,19 +465,19 @@ function OpportunityBriefView() {
       {/* ────────────────────────────────────────────────────────────────────────
           APPENDIX FOOTER DRAWER: EVIDENCE, METHODOLOGY & CLAIM LINEAGE
           ──────────────────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border bg-surface-raised/40 py-8 text-xs">
-        <div className="mx-auto max-w-[1180px] px-5 sm:px-8">
+      <footer className="border-t border-border bg-surface-raised py-8 text-xs">
+        <div className="memo-container">
           <details className="group cursor-pointer">
             <summary className="label-mono text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors flex items-center justify-between">
               <span>Appendix: Evidence, Methodology & Claim Lineage</span>
               <span className="text-primary font-normal group-open:rotate-180 transition-transform">▼</span>
             </summary>
             
-            <div className="mt-6 space-y-6 border-t border-border/60 pt-6 text-xs text-muted-foreground font-mono">
+            <div className="mt-6 space-y-6 border-t border-border pt-6 text-xs text-muted-foreground font-mono">
               <div className="grid gap-6 sm:grid-cols-3">
                 <div className="space-y-2">
                   <p className="text-foreground font-semibold uppercase tracking-wider">Methodology</p>
-                  <p className="leading-relaxed text-[11px]">
+                  <p className="leading-relaxed text-xs">
                     Multi-hop evidence graph traversal, dual-vector capability vs. mandate alignment, and deterministic policy scoring.
                   </p>
                 </div>
