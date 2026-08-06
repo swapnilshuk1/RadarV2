@@ -109,6 +109,33 @@ function OpportunityBriefView() {
     return unwrapped || "Not specified in JD";
   };
 
+  const getFocusTopic = () => {
+    const driver = o.primaryDriver;
+    if (driver && typeof driver === "string" && !driver.toLowerCase().startsWith("head") && driver.length > 5) {
+      return driver;
+    }
+
+    if (jobProj.trueExecutiveMandate) {
+      const mandateMap: Record<string, string> = {
+        COMMERCIAL_EXPANSION: "commercial growth & market expansion",
+        TRANSFORMATION: "digital & operational transformation",
+        TURNAROUND: "operational restructuring & revenue repair",
+        GOVERNANCE: "pipeline & platform governance",
+        SCALE_UP: "scaling GTM infrastructure"
+      };
+      if (mandateMap[jobProj.trueExecutiveMandate]) {
+        return mandateMap[jobProj.trueExecutiveMandate];
+      }
+    }
+
+    const coreCap = jobProj.capabilities?.find((c: any) => c.importance === "Core" || c.confidence > 0.7);
+    if (coreCap && coreCap.name) {
+      return coreCap.name.toLowerCase();
+    }
+
+    return "commercial growth and market expansion";
+  };
+
   return (
     <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
       {/* ────────────────────────────────────────────────────────────────────────
@@ -144,7 +171,7 @@ function OpportunityBriefView() {
 
           {/* Main Title */}
           <h1 className="mt-4 max-w-4xl font-display text-[2.6rem] leading-[1.02] tracking-tight sm:text-6xl text-foreground font-normal">
-            {o.role} mandate at {o.company} focused on {formatValue(rawDimensions[0]?.jdEvidence?.value) || o.primaryDriver || "commercial growth"}
+            {o.role} mandate at {o.company} focused on {getFocusTopic()}
           </h1>
 
           {/* Subtitle Company Line */}
