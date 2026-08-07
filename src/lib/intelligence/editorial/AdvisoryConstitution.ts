@@ -37,4 +37,37 @@ export class AdvisoryConstitution {
 
     return { isSufficient: true };
   }
+
+  /**
+   * Translates organizational intent and job parameters into a highly tailored, non-repetitive corporate-driver paragraph.
+   */
+  public static getWhyThisRoleExistsParagraph(opportunity: any, jobProj: any, focusTopic: string): string {
+    const company = jobProj?.company || opportunity.company || "the company";
+    const role = jobProj?.role || opportunity.role || "this role";
+    const topic = focusTopic || "commercial growth & market expansion";
+
+    // 1. Dynamic sparse data handling - premium partner tone rather than flat error message
+    const text = (opportunity.description || opportunity.normalizedText || "").trim();
+    if (!text || text.length < 200) {
+      return `Published details for the ${role} seat at ${company} remain highly sparse, suggesting either a stealth-mandate or an unformed organizational charter. Senior leadership typically creates this role to establish operational rigor where founder-led processes have reached their structural ceiling. In the absence of a detailed GTM brief, your immediate priority during screening must be to clarify if this is an active transformation mandate or a steady-state maintenance function.`;
+    }
+
+    // 2. High-altitude organizational driver generation
+    const intent = jobProj?.executiveMission?.intent || "ACCELERATE_GROWTH";
+    const missionStatement = jobProj?.executiveMission?.statement || "";
+
+    const intentParagraphs: Record<string, string> = {
+      REPLACE_FAILED_LEADER: `${company} is prioritizing immediate stabilization of its ${topic} function following a period of leadership disruption. This seat is being structured with direct team oversight and clear operational metrics to repair execution bottlenecks, rather than merely maintaining existing department operations.`,
+      BUILD_NEW_CAPABILITY: `${company} is building its dedicated ${topic} capabilities from the ground up to capture unaddressed enterprise demand. This is a greenfield 0-to-1 mandate that requires an operator comfortable with establishing team structures and vendor standards from scratch, rather than managing a legacy hierarchy.`,
+      PROFESSIONALIZE_FOUNDER_COMPANY: `${company} is professionalizing its commercial operations to transition away from founder-dependent decision-making. The mandate is to establish institutional processes and standard GTM governance to ensure commercial repeatability and clean pipeline visibility.`,
+      PREPARE_IPO: `${company} is aligning its commercial systems and financial transparency for public market readiness. This seat functions as a critical governance anchor, requiring clean compliance records, auditable CRM practices, and institutional P&L maturity ahead of their upcoming listing.`,
+      INTEGRATE_ACQUISITION: `${company} is consolidating its post-merger operations to capture immediate revenue synergies across its expanded portfolio. The executive in this seat will merge legacy team cultures and align redundant software stacks onto a single commercial playbook.`,
+      REPAIR_EXECUTION: `${company} is correcting fragmented commercial delivery and rebuilding operational rigor under a consolidated leader. Success requires auditing current client delivery pipelines, pruning low-yield channels, and enforcing strict operating standards.`,
+      EXPAND_GEOGRAPHY: `${company} is launching localized commercial hubs to scale its footprint in ${opportunity.location || "new regional markets"}. This is an expansion-led mandate where regional cultural fluency and local network leverage are prioritized over corporate headquarters pedigree.`,
+      COMMERCIALIZE_TECHNOLOGY: `${company} is translating its core technology assets into distinct, high-yield commercial offerings. The mission is to transform a product-centric organization into an outbound enterprise engine with scalable pricing, clear contract governance, and proactive GTM execution.`,
+      ACCELERATE_GROWTH: `${company} is scaling its outbound velocity to sustain high growth. The mandate is to transition from opportunistic sales into a systematic, repeatable customer acquisition engine with full operational accountability.`
+    };
+
+    return intentParagraphs[intent] || `${company} is consolidating its ${topic} function under a unified leader to capture emerging market demand. This seat exists to drive immediate commercial expansion and establish predictable operating governance across the region.`;
+  }
 }

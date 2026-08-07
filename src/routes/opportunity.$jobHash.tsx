@@ -139,6 +139,33 @@ function OpportunityBriefView() {
   );
 }
 
+function getFocusTopic(o: any, jobProj: any) {
+  const driver = o.primaryDriver;
+  if (driver && typeof driver === "string" && !driver.toLowerCase().startsWith("head") && driver.length > 5) {
+    return driver;
+  }
+
+  if (jobProj.trueExecutiveMandate) {
+    const mandateMap: Record<string, string> = {
+      COMMERCIAL_EXPANSION: "commercial growth & market expansion",
+      TRANSFORMATION: "digital & operational transformation",
+      TURNAROUND: "operational restructuring & revenue repair",
+      GOVERNANCE: "pipeline & platform governance",
+      SCALE_UP: "scaling GTM infrastructure"
+    };
+    if (mandateMap[jobProj.trueExecutiveMandate]) {
+      return mandateMap[jobProj.trueExecutiveMandate];
+    }
+  }
+
+  const coreCap = jobProj.capabilities?.find((c: any) => c.importance === "Core" || c.confidence > 0.7);
+  if (coreCap && coreCap.name) {
+    return coreCap.name.toLowerCase();
+  }
+
+  return "commercial growth and market expansion";
+}
+
 /* ────────────────────────────────────────────────────────────────────────
    1. READING SURFACE (Desktop Reading Mode - Immersive & Deliberate)
    ──────────────────────────────────────────────────────────────────────── */
@@ -162,38 +189,11 @@ function ReadingSurface({
     return unwrapped || "Not specified in JD";
   };
 
-  const getFocusTopic = () => {
-    const driver = o.primaryDriver;
-    if (driver && typeof driver === "string" && !driver.toLowerCase().startsWith("head") && driver.length > 5) {
-      return driver;
-    }
-
-    if (jobProj.trueExecutiveMandate) {
-      const mandateMap: Record<string, string> = {
-        COMMERCIAL_EXPANSION: "commercial growth & market expansion",
-        TRANSFORMATION: "digital & operational transformation",
-        TURNAROUND: "operational restructuring & revenue repair",
-        GOVERNANCE: "pipeline & platform governance",
-        SCALE_UP: "scaling GTM infrastructure"
-      };
-      if (mandateMap[jobProj.trueExecutiveMandate]) {
-        return mandateMap[jobProj.trueExecutiveMandate];
-      }
-    }
-
-    const coreCap = jobProj.capabilities?.find((c: any) => c.importance === "Core" || c.confidence > 0.7);
-    if (coreCap && coreCap.name) {
-      return coreCap.name.toLowerCase();
-    }
-
-    return "commercial growth and market expansion";
-  };
-
   return (
     <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
-      {/* HEADER TITLE BLOCK */}
-      <header className="border-b border-border">
-        <div className="mx-auto max-w-[1180px] px-8 py-12">
+      {/* EXECUTIVE SUMMARY HERO FOLD */}
+      <header className="border-b border-border bg-background">
+        <div className="mx-auto max-w-[1180px] px-8 py-10">
           {/* Nav Sub-Header */}
           <div className="flex items-center justify-between gap-3">
             <Link to="/" className="label-mono hover:text-foreground transition-colors font-normal">
@@ -204,67 +204,83 @@ function ReadingSurface({
             </span>
           </div>
 
-          {/* Badges & Verbs */}
-          <div className="mt-7 flex items-center gap-2">
-            <span className={`label-mono rounded-[3px] px-1.5 py-[3px] leading-none uppercase font-normal ${
-              currentVerdict === "PURSUE"
-                ? "bg-signal text-white"
-                : currentVerdict === "CONSIDER"
-                ? "bg-caution text-white"
-                : "bg-muted text-muted-foreground"
-            }`}>
-              {currentVerdict === "PURSUE" ? "Pursue" : currentVerdict === "CONSIDER" ? "Consider" : "Pass"}
-            </span>
-            <span className="label-mono font-normal">Strong Executive Fit</span>
-            <span className="label-mono font-normal">· {brief.evidenceQuality}</span>
-            <span className="label-mono font-normal">· 20 minute application</span>
-          </div>
+          <div className="mt-8 grid gap-10 lg:grid-cols-[1.5fr_1fr]">
+            {/* Left Column: Strategic Mandate & Core Advisory Thesis */}
+            <div className="space-y-6">
+              {/* Badges & Verbs */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`label-mono rounded-[3px] px-1.5 py-[3px] leading-none uppercase font-normal ${
+                  currentVerdict === "PURSUE"
+                    ? "bg-signal text-white"
+                    : currentVerdict === "CONSIDER"
+                    ? "bg-caution text-white"
+                    : "bg-muted text-muted-foreground"
+                }`}>
+                  {currentVerdict === "PURSUE" ? "Pursue" : currentVerdict === "CONSIDER" ? "Consider" : "Pass"}
+                </span>
+                <span className="label-mono font-normal">Strong Executive Fit</span>
+                <span className="label-mono font-normal">· {brief.evidenceQuality}</span>
+                <span className="label-mono font-normal">· 20 minute application</span>
+              </div>
 
-          <h1 className="mt-4 max-w-4xl font-display text-6xl leading-[1.02] tracking-tight text-foreground font-normal">
-            {o.role} mandate at {o.company} focused on {getFocusTopic()}
-          </h1>
+              <h1 className="font-display text-5xl leading-[1.05] tracking-tight text-foreground font-normal">
+                {o.role} mandate at {o.company} focused on {getFocusTopic(o, jobProj)}
+              </h1>
+
+              {/* High-Altitude Strategic Thesis (The Decision Partner's Core Insight) */}
+              <div className="border-t border-border/80 pt-5 space-y-3">
+                <p className="label-mono text-xs text-primary font-normal uppercase tracking-wider">Executive Advisory Thesis</p>
+                <p className="font-serif text-2xl italic leading-relaxed text-foreground font-normal">
+                  “{brief.executiveOpinion || "Evaluating strategic executive alignment..."}”
+                </p>
+              </div>
+            </div>
+
+            {/* Right Column: Instant Action Card */}
+            <div className="memo-card bg-surface-raised p-6 flex flex-col justify-between border border-border">
+              <div>
+                <div className="flex items-baseline justify-between gap-2 border-b border-border pb-3">
+                  <span className="label-mono text-primary font-normal text-[10px]">Verdict Overview</span>
+                  <span className="label-mono font-normal text-muted-foreground text-[10px]">1-Minute TL;DR</span>
+                </div>
+                
+                <p className="mt-4 font-display text-3xl leading-snug text-foreground font-normal">
+                  {brief.oneMinuteTLDR.bottomLine}
+                </p>
+                
+                <p className="mt-3 text-xs leading-relaxed text-foreground/90 font-mono border-l-2 border-primary/60 pl-3">
+                  {brief.verdictGuidance.actionNotice}
+                </p>
+
+                <div className="mt-5 space-y-4">
+                  <div className="space-y-1">
+                    <p className="label-mono text-signal font-normal text-[10px] tracking-wider">Why Pursue</p>
+                    <ul className="space-y-1">
+                      {brief.oneMinuteTLDR.whyPursue.slice(0, 2).map((item: string, i: number) => (
+                        <li key={i} className="text-[12px] leading-relaxed text-muted-foreground font-normal">
+                          • {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="label-mono text-caution font-normal text-[10px] tracking-wider">Key Risk</p>
+                    <ul className="space-y-1">
+                      {brief.oneMinuteTLDR.watchFor.slice(0, 1).map((item: string, i: number) => (
+                        <li key={i} className="text-[12px] leading-relaxed text-muted-foreground font-normal flex items-start gap-1">
+                          <span className="text-caution/80 font-bold">•</span>
+                          <span>{item.replace(/^(Strategic|Execution|Market) Risk:\s*/i, '')}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
-
-      {/* BOTTOM-LINE TLDR */}
-      <section className="border-b border-border bg-surface-raised">
-        <div className="mx-auto max-w-[1180px] px-8 py-10">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="label-mono text-primary font-normal">If you only read one thing</span>
-            <span className="label-mono font-normal text-muted-foreground">1-minute executive brief</span>
-          </div>
-          <p className="mt-4 font-display text-4xl leading-tight text-foreground font-normal">
-            {brief.oneMinuteTLDR.bottomLine}
-          </p>
-          <p className="mt-3 text-sm text-foreground/90 font-mono border-l-2 border-primary/60 pl-3 leading-relaxed">
-            {brief.verdictGuidance.actionNotice}
-          </p>
-
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            <div className="border-l-2 border-signal pl-4">
-              <p className="label-mono text-signal font-normal">Why pursue</p>
-              <ul className="mt-2.5 space-y-2.5">
-                {brief.oneMinuteTLDR.whyPursue.map((item: string, i: number) => (
-                  <li key={i} className="text-sm leading-relaxed text-foreground font-normal">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="border-l-2 border-caution pl-4">
-              <p className="label-mono text-caution font-normal">Watch for</p>
-              <ul className="mt-2.5 space-y-2.5">
-                {brief.oneMinuteTLDR.watchFor.map((item: string, i: number) => (
-                  <li key={i} className="text-sm leading-relaxed text-foreground font-normal">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* CORE MEMORANDUM GRID */}
       <section className="py-10">
@@ -281,11 +297,7 @@ function ReadingSurface({
               <div className="space-y-2">
                 <p className="font-medium text-lg text-primary font-display">Why this role exists</p>
                 <p className="text-sm leading-relaxed text-foreground font-normal">
-                  {(() => {
-                    const dataCheck = AdvisoryConstitution.validateDataSufficiency(o);
-                    if (!dataCheck.isSufficient) return dataCheck.message;
-                    return jobProj.executiveMission?.statement || `Leadership at ${o.company} is hiring an executive to drive ${getFocusTopic()} and establish predictable operating governance.`;
-                  })()}
+                  {AdvisoryConstitution.getWhyThisRoleExistsParagraph(o, jobProj, getFocusTopic(o, jobProj))}
                 </p>
               </div>
 
@@ -327,14 +339,25 @@ function ReadingSurface({
                 </ul>
               </div>
 
-              <div className="memo-card space-y-2">
-                <p className="label-mono text-xs uppercase tracking-wider text-caution font-normal">This recommendation assumes</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">The following operational conditions hold true:</p>
-                <ul className="space-y-1.5 text-xs text-foreground">
+              <div className="border border-border bg-surface-raised/40 p-5 rounded-md space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="label-mono text-caution font-semibold tracking-wider text-[10px]">Calibrated Recommendation Scoping Boundaries</span>
+                  <span className="label-mono text-[9px] text-muted-foreground uppercase">Verified Gating Criteria</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground italic font-serif leading-relaxed">
+                  This advisory evaluation remains valid subject to the following operating parameters being verified during screening:
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2 pt-1 border-t border-border/40">
                   {executionPkg.recommendationConditions.map((cond: string, i: number) => (
-                    <li key={i}>• {cond}</li>
+                    <div key={i} className="flex items-start gap-2.5 border-l border-border/80 pl-2.5 py-0.5">
+                      <span className="text-signal text-xs leading-none font-bold">✓</span>
+                      <div className="space-y-0.5">
+                        <p className="text-[9px] font-mono text-muted-foreground leading-none">Condition {String(i + 1).padStart(2, "0")}</p>
+                        <p className="text-[12px] text-foreground font-normal leading-normal">{cond}</p>
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -378,7 +401,11 @@ function ReadingSurface({
               <p className="text-xs text-muted-foreground font-normal">Verified evidence demonstrating executive operation at this level:</p>
               <ul className="space-y-4 border-l-2 border-signal pl-4 pt-1">
                 {(brief.proofPoints || []).slice(0, 3).map((pt: any, i: number) => {
-                  const categoryTitle = i === 0 ? "Commercial Leadership" : i === 1 ? "Platform Transformation" : "Executive Governance";
+                  const categoryTitle = i === 0 
+                    ? "Commercial leadership at enterprise scale" 
+                    : i === 1 
+                    ? "Global platform transformation" 
+                    : "Cross-functional operating governance";
                   return (
                     <li key={i} className="text-xs text-foreground font-normal space-y-1">
                       <span className="font-semibold text-foreground text-sm block font-display">{categoryTitle}</span>
@@ -605,10 +632,8 @@ function ExecutiveBriefingSurface({
   const primaryQuestion = executionPkg.screeningQuestions[0];
   const secondaryQuestions = executionPkg.screeningQuestions.slice(1);
 
-  // Recomposed thesis statements for high density on small display
-  const recomposedMission = jobProj.executiveMission?.statement
-    ? `${jobProj.executiveMission.statement.split('.')[0]}.`
-    : `Leadership at ${o.company} is hiring an executive with full commercial accountability to drive expansion and establish operating governance.`;
+  // Generate highly customized dynamic corporate driver copy for why-hiring
+  const recomposedMission = AdvisoryConstitution.getWhyThisRoleExistsParagraph(o, jobProj, getFocusTopic(o, jobProj));
 
   return (
     <div className="min-h-screen pb-36 bg-background text-foreground font-sans">
@@ -675,11 +700,33 @@ function ExecutiveBriefingSurface({
         </div>
       </section>
 
-      {/* CORE INTEL STREAM - With Generous Spacing for Rhythm */}
-      <section className="py-8 space-y-10">
-        <div className="mx-auto max-w-[1180px] px-5 space-y-10">
-          
-          {/* SECTION 1: Before You Proceed (The Critical Unknown) */}
+      {/* CORE INTEL STREAM - Prioritized with Collapsed Supporting Ledger */}
+      <section className="py-8 space-y-8">
+        <div className="mx-auto max-w-[1180px] px-5 space-y-8">
+
+          {/* HIGH-PRIORITY 1: Executive Opinion & Partner Voice */}
+          <div className="space-y-3">
+            <div className="memo-opinion-box p-4 my-0 space-y-2 border border-border/80">
+              <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                <span className="label-mono text-[9px] uppercase tracking-wider text-primary font-semibold">Executive Opinion</span>
+                <span className="label-mono text-[9px] text-muted-foreground">Advisory Lead</span>
+              </div>
+              <p className="font-display text-base leading-relaxed text-foreground font-normal">
+                {brief.executiveOpinion || "Evaluating executive alignment..."}
+              </p>
+            </div>
+
+            <div className="py-4 border-y border-border/40">
+              <div className="border-l-2 border-primary pl-4 py-0.5 space-y-1">
+                <span className="label-mono text-[9px] uppercase tracking-wider text-primary font-semibold">Partner Observation</span>
+                <p className="text-base italic font-serif leading-relaxed text-foreground font-normal">
+                  “The title is less important than the operating latitude. If the commercial mandate proves genuine, this role is materially stronger than its title suggests.”
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* HIGH-PRIORITY 2: Before You Proceed (The Critical Unknown) */}
           <div className="space-y-2.5">
             <div className="memo-callout border-l-2 border-caution bg-surface-raised p-4 space-y-2">
               <p className="label-mono text-caution font-semibold text-[10px] tracking-wider">Before You Proceed</p>
@@ -711,82 +758,75 @@ function ExecutiveBriefingSurface({
             )}
           </div>
 
-          {/* SECTION 2: Why Hiring (Context) */}
-          <div className="space-y-2">
-            <h2 className="font-display text-xl font-normal text-foreground leading-tight">
-              Why is the company hiring?
-            </h2>
-            <p className="text-sm leading-relaxed text-foreground font-normal">
-              {recomposedMission}
-            </p>
-          </div>
+          {/* COLLAPSIBLE SECONDARY DETAILS: Context, Scoping, and Supporting Evidence Ledger */}
+          <details className="group border border-border/80 rounded bg-surface-raised/20 p-4 space-y-4">
+            <summary className="label-mono text-[10px] uppercase tracking-wider text-muted-foreground group-open:text-foreground hover:text-foreground flex items-center justify-between cursor-pointer list-none select-none">
+              <span>+ Strategic Context & Evidence Ledger</span>
+              <span className="text-primary group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            
+            <div className="mt-4 pt-4 border-t border-border/40 space-y-6">
+              {/* SECTION A: Why Hiring (Context) */}
+              <div className="space-y-2">
+                <h3 className="font-display text-base font-normal text-foreground leading-tight">
+                  Why is the company hiring?
+                </h3>
+                <p className="text-xs leading-relaxed text-muted-foreground font-normal">
+                  {recomposedMission}
+                </p>
+              </div>
 
-          {/* SECTION 3: Recommendation Assumptions (No-box Inset Checklist) */}
-          <div className="space-y-2.5">
-            <p className="label-mono text-xs uppercase tracking-wider text-caution font-semibold text-[10px]">This recommendation assumes</p>
-            <ul className="space-y-2 text-xs text-foreground pl-0.5">
-              {executionPkg.recommendationConditions.map((cond: string, i: number) => (
-                <li key={i} className="flex items-start gap-2 leading-relaxed font-normal">
-                  <span className="text-signal font-bold">✓</span>
-                  <span>{cond}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+              {/* SECTION B: Recommendation Assumptions Checklist */}
+              <div className="space-y-2.5">
+                <p className="label-mono text-xs uppercase tracking-wider text-caution font-semibold text-[9px]">Recommendation Assumptions</p>
+                <ul className="space-y-2 text-xs text-foreground pl-0.5">
+                  {executionPkg.recommendationConditions.map((cond: string, i: number) => (
+                    <li key={i} className="flex items-start gap-2 leading-relaxed font-normal">
+                      <span className="text-signal font-bold">✓</span>
+                      <span className="text-xs text-muted-foreground">{cond}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-          {/* Partner Observation Pull-Quote (Financial Times style visual interrupter) */}
-          <div className="py-6 my-2 border-y border-border/50">
-            <div className="border-l-2 border-primary pl-4 py-1 space-y-1">
-              <span className="label-mono text-[9px] uppercase tracking-wider text-primary font-semibold">Partner Observation</span>
-              <p className="text-lg italic font-serif leading-relaxed text-foreground font-normal">
-                “The title is less important than the operating latitude. If the commercial mandate proves genuine, this role is materially stronger than its title suggests.”
-              </p>
-            </div>
-          </div>
+              {/* SECTION C: Evidence Ledger */}
+              <div className="space-y-4">
+                <h3 className="font-display text-base font-normal text-foreground leading-tight">
+                  Evidence Supporting Recommendation
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="label-mono text-signal font-semibold text-[9px] tracking-wider">Why we're confident</p>
+                    <ul className="mt-1.5 space-y-2 text-xs text-foreground pl-0.5 leading-relaxed">
+                      {(brief.proofPoints || []).slice(0, 3).map((pt: any, i: number) => {
+                        const categoryTitle = i === 0 
+                          ? "Commercial leadership at enterprise scale" 
+                          : i === 1 
+                          ? "Global platform transformation" 
+                          : "Cross-functional operating governance";
+                        return (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <span className="text-signal">•</span>
+                            <span className="text-xs text-muted-foreground"><strong>{categoryTitle}:</strong> {pt.detail}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
 
-          {/* SECTION 4: Executive Opinion (Condensed box padding) */}
-          <div className="memo-opinion-box p-4 my-2 space-y-2 border border-border/80">
-            <div className="flex items-center justify-between border-b border-border/40 pb-2">
-              <span className="label-mono text-[9px] uppercase tracking-wider text-primary font-semibold">Executive Opinion</span>
-              <span className="label-mono text-[9px] text-muted-foreground">Advisory Lead</span>
-            </div>
-            <p className="font-display text-base leading-relaxed text-foreground font-normal">
-              {brief.executiveOpinion || "Evaluating executive alignment..."}
-            </p>
-          </div>
-
-          {/* SECTION 5: Evidence Ledger (Simplified vertical list) */}
-          <div className="space-y-4">
-            <h2 className="font-display text-xl font-normal text-foreground leading-tight">
-              Evidence Supporting Recommendation
-            </h2>
-            <div className="space-y-3">
-              <div>
-                <p className="label-mono text-signal font-semibold text-[10px] tracking-wider">Why we're confident</p>
-                <ul className="mt-1.5 space-y-2 text-xs text-foreground pl-0.5 leading-relaxed">
-                  {(brief.proofPoints || []).slice(0, 3).map((pt: any, i: number) => {
-                    const categoryTitle = i === 0 ? "Commercial Leadership" : i === 1 ? "Platform Transformation" : "Executive Governance";
-                    return (
-                      <li key={i} className="flex items-start gap-1.5">
-                        <span className="text-signal">•</span>
-                        <span><strong>{categoryTitle}:</strong> {pt.detail}</span>
+                  <div className="border-t border-border/40 pt-3">
+                    <p className="label-mono text-caution font-semibold text-[9px] tracking-wider">Remaining uncertainty</p>
+                    <ul className="mt-1.5 space-y-1.5 text-xs text-foreground pl-0.5 leading-relaxed">
+                      <li className="flex items-start gap-1.5">
+                        <span className="text-caution">•</span>
+                        <span className="text-xs text-muted-foreground">{brief.whyNotStronger || "Limited direct evidence of enterprise RevOps ownership in current record; verify during initial screening call."}</span>
                       </li>
-                    );
-                  })}
-                </ul>
-              </div>
-
-              <div className="border-t border-border/40 pt-3">
-                <p className="label-mono text-caution font-semibold text-[10px] tracking-wider">Remaining uncertainty</p>
-                <ul className="mt-1.5 space-y-1.5 text-xs text-foreground pl-0.5 leading-relaxed">
-                  <li className="flex items-start gap-1.5">
-                    <span className="text-caution">•</span>
-                    <span>{brief.whyNotStronger || "Limited direct evidence of enterprise RevOps ownership in current record; verify during initial screening call."}</span>
-                  </li>
-                </ul>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          </details>
 
           {/* SECTION 6: Strategy (2x2 Segment Grid perspective selector) */}
           <div className="space-y-4">
