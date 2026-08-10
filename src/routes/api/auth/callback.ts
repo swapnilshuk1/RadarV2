@@ -54,11 +54,13 @@ const handleCallbackFn = createServerFn({ method: "GET" }).handler(async () => {
   // ── 2. Exchange code for tokens ─────────────────────────────────────────
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
-  const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "130.210.40.98";
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "localhost:3000";
   const proto = request.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "http");
 
-  const redirectUri =
-    process.env.GOOGLE_REDIRECT_URI ?? `${proto}://${host}/api/auth/callback`;
+  const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+  const redirectUri = isLocal
+    ? `${proto}://${host}/api/auth/callback`
+    : (process.env.GOOGLE_REDIRECT_URI || `${proto}://${host}/api/auth/callback`);
 
   const google = new Google(clientId, clientSecret, redirectUri);
   const tokens = await google.validateAuthorizationCode(code, codeVerifier);

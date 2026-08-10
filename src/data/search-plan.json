@@ -1,28 +1,28 @@
 {
-  "version": "1.0.0",
-  "generatedAt": "2026-07-28T23:53:05.185Z",
+  "version": "2.0.0",
+  "generatedAt": "2026-08-10T08:29:19.814Z",
   "candidateIntent": {
     "targetLevel": [
-      "CMO",
+      "Chief",
       "VP",
       "SVP",
       "Head",
       "Director"
     ],
     "functions": [
-      "Marketing Leadership",
-      "Growth",
-      "CRM",
-      "Lifecycle Marketing",
-      "Digital Marketing",
       "Marketing",
+      "Growth",
       "Digital",
+      "CRM",
       "Transformation",
-      "Commercial"
+      "Commercial",
+      "Marketing Leadership",
+      "Growth Strategy",
+      "Commercial Operations"
     ],
     "operatingModels": [
-      "GCC",
-      "CoE"
+      "CoE",
+      "GCC"
     ],
     "ownership": [
       "Transformation",
@@ -43,278 +43,772 @@
       "General Management",
       "Consulting",
       "Other"
+    ],
+    "targetTitles": [
+      "Chief Marketing Officer",
+      "Chief Growth Officer",
+      "Chief Customer Officer",
+      "Chief Digital Officer",
+      "SVP Marketing",
+      "SVP Marketing & Transformation",
+      "Senior Vice President Marketing",
+      "Vice President Marketing",
+      "Vice President Growth",
+      "Vice President Digital",
+      "Vice President Customer Experience",
+      "Head of Marketing",
+      "Head of Growth",
+      "Head of Digital",
+      "Head of CRM",
+      "Head of Customer Experience",
+      "Head of MarTech",
+      "Marketing Director",
+      "Global Marketing Director",
+      "Transformation Director"
+    ],
+    "preferredLocations": [
+      "Gurugram",
+      "Remote India"
     ]
   },
   "searchHypotheses": [
     {
-      "name": "Marketing & Growth Leadership Core",
-      "description": "High-priority executive titles matching the candidate's target career levels.",
+      "name": "Dynamic Executive Target Titles & Locations",
+      "description": "High-priority portal search queries dynamically compiled from user profile career intent.",
       "queries": [
-        "Transformation Director",
-        "VP Marketing",
-        "Vice President Marketing",
-        "Head of Growth",
-        "VP Growth",
-        "Marketing Director",
-        "Director of Marketing",
-        "SVP Marketing",
-        "Head of Marketing",
         "Chief Marketing Officer",
-        "CMO",
+        "Chief Marketing Officer Gurugram",
+        "Chief Marketing Officer Remote India",
         "Chief Growth Officer",
+        "Chief Growth Officer Gurugram",
+        "Chief Growth Officer Remote India",
+        "Chief Customer Officer",
+        "Chief Customer Officer Gurugram",
+        "Chief Customer Officer Remote India",
         "Chief Digital Officer",
-        "Chief Customer Officer"
+        "Chief Digital Officer Gurugram",
+        "Chief Digital Officer Remote India",
+        "SVP Marketing",
+        "SVP Marketing Gurugram",
+        "SVP Marketing Remote India",
+        "SVP Marketing & Transformation",
+        "SVP Marketing & Transformation Gurugram",
+        "SVP Marketing & Transformation Remote India",
+        "Senior Vice President Marketing",
+        "Senior Vice President Marketing Gurugram",
+        "Senior Vice President Marketing Remote India",
+        "Vice President Marketing",
+        "Vice President Marketing Gurugram",
+        "Vice President Marketing Remote India",
+        "Vice President Growth",
+        "Vice President Growth Gurugram",
+        "Vice President Growth Remote India",
+        "Vice President Digital",
+        "Vice President Digital Gurugram",
+        "Vice President Digital Remote India",
+        "Vice President Customer Experience",
+        "Vice President Customer Experience Gurugram",
+        "Vice President Customer Experience Remote India",
+        "Head of Marketing",
+        "Head of Marketing Gurugram",
+        "Head of Marketing Remote India",
+        "Head of Growth",
+        "Head of Growth Gurugram",
+        "Head of Growth Remote India",
+        "Head of Digital",
+        "Head of Digital Gurugram",
+        "Head of Digital Remote India",
+        "Head of CRM",
+        "Head of CRM Gurugram",
+        "Head of CRM Remote India",
+        "Head of Customer Experience",
+        "Head of Customer Experience Gurugram",
+        "Head of Customer Experience Remote India",
+        "Head of MarTech",
+        "Head of MarTech Gurugram",
+        "Head of MarTech Remote India",
+        "Marketing Director",
+        "Marketing Director Gurugram",
+        "Marketing Director Remote India",
+        "Global Marketing Director",
+        "Global Marketing Director Gurugram",
+        "Global Marketing Director Remote India",
+        "Transformation Director",
+        "Transformation Director Gurugram",
+        "Transformation Director Remote India"
       ]
     },
     {
-      "name": "Global Capability & CoE Operating Models",
-      "description": "CoE and GCC operating models matching the candidate's executive scaling intent.",
+      "name": "Lexicon targetRoles",
+      "description": "Lexicon queries for targetRoles",
       "queries": [
-        "Global Marketing Director",
+        "CMO",
+        "VP Marketing",
+        "VP Growth",
+        "Director of Marketing"
+      ]
+    },
+    {
+      "name": "Lexicon leadershipModel",
+      "description": "Lexicon queries for leadershipModel",
+      "queries": [
+        "CoE Lead",
+        "CoE Director",
+        "Center of Excellence",
+        "GCC Lead",
+        "GCC Head",
+        "Global Capability Center",
+        "Shared Services Marketing",
+        "Shared Services Director",
         "Head of Global Marketing"
       ]
     },
     {
-      "name": "High-Yield Functional Domains",
-      "description": "Targeted performance marketing, CRM, and functional domains aligning with growth intent.",
+      "name": "Lexicon functionalExpertise",
+      "description": "Lexicon queries for functionalExpertise",
       "queries": [
         "VP Performance Marketing",
         "Director Performance Marketing",
         "Head of Performance Marketing",
+        "VP Demand Gen",
+        "Head of Demand Generation",
+        "Demand Generation Director",
         "CRM Director",
-        "Head of CRM",
-        "Lifecycle Marketing Director"
+        "Lifecycle Marketing Director",
+        "VP Martech",
+        "Head of Martech",
+        "Martech Director"
       ]
     },
     {
-      "name": "Platform & Digital Product Ownership",
-      "description": "MarTech, AdTech, and transformation platform ownership targets.",
+      "name": "Lexicon platformOwnership",
+      "description": "Lexicon queries for platformOwnership",
       "queries": [
         "Digital Platform Lead",
         "VP Digital Platforms",
         "Marketing Technology Lead",
-        "Director Marketing Technology"
+        "Director Marketing Technology",
+        "Product Owner Marketing",
+        "Product Director Marketing Platforms",
+        "Customer Experience Platform Lead",
+        "CX Platform Director"
       ]
     },
     {
-      "name": "Enterprise Transformation Mandates",
-      "description": "Transformation, commercial excellence, and customer growth mandates.",
+      "name": "Lexicon strategicMandate",
+      "description": "Lexicon queries for strategicMandate",
       "queries": [
         "Digital Transformation Director",
         "Head of Digital Transformation",
-        "Marketing Transformation Lead",
-        "VP Marketing Transformation",
         "Commercial Excellence Director",
         "VP Commercial Excellence",
         "VP Customer Growth",
-        "Customer Growth Director"
+        "Customer Growth Director",
+        "Marketing Transformation Lead",
+        "VP Marketing Transformation"
       ]
     }
   ],
   "rankedQueries": [
     {
-      "query": "Transformation Director",
-      "score": 130,
-      "dimension": "targetRoles",
-      "concept": "Transformation Director"
-    },
-    {
-      "query": "VP Marketing",
-      "score": 105,
-      "dimension": "targetRoles",
-      "concept": "VP Marketing"
-    },
-    {
-      "query": "Vice President Marketing",
-      "score": 105,
-      "dimension": "targetRoles",
-      "concept": "VP Marketing"
-    },
-    {
-      "query": "Head of Growth",
-      "score": 105,
-      "dimension": "targetRoles",
-      "concept": "Head of Growth"
-    },
-    {
-      "query": "VP Growth",
-      "score": 105,
-      "dimension": "targetRoles",
-      "concept": "Head of Growth"
-    },
-    {
-      "query": "Marketing Director",
-      "score": 105,
-      "dimension": "targetRoles",
-      "concept": "Marketing Director"
-    },
-    {
-      "query": "Director of Marketing",
-      "score": 105,
-      "dimension": "targetRoles",
-      "concept": "Marketing Director"
-    },
-    {
-      "query": "SVP Marketing",
-      "score": 105,
-      "dimension": "targetRoles",
-      "concept": "SVP Marketing"
-    },
-    {
-      "query": "Head of Marketing",
-      "score": 105,
-      "dimension": "targetRoles",
-      "concept": "Head of Marketing"
-    },
-    {
       "query": "Chief Marketing Officer",
-      "score": 65,
-      "dimension": "targetRoles",
-      "concept": "Chief Marketing Officer"
-    },
-    {
-      "query": "CMO",
-      "score": 65,
+      "score": 95,
       "dimension": "targetRoles",
       "concept": "Chief Marketing Officer"
     },
     {
       "query": "Chief Growth Officer",
-      "score": 65,
+      "score": 95,
       "dimension": "targetRoles",
       "concept": "Chief Growth Officer"
     },
     {
+      "query": "Chief Customer Officer",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Chief Customer Officer"
+    },
+    {
       "query": "Chief Digital Officer",
-      "score": 65,
+      "score": 95,
       "dimension": "targetRoles",
       "concept": "Chief Digital Officer"
     },
     {
-      "query": "Digital Transformation Director",
-      "score": 60,
-      "dimension": "strategicMandate",
-      "concept": "Digital Transformation"
+      "query": "SVP Marketing",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "SVP Marketing"
     },
     {
-      "query": "Head of Digital Transformation",
-      "score": 60,
-      "dimension": "strategicMandate",
-      "concept": "Digital Transformation"
+      "query": "SVP Marketing & Transformation",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "SVP Marketing & Transformation"
     },
     {
-      "query": "Marketing Transformation Lead",
-      "score": 60,
-      "dimension": "strategicMandate",
-      "concept": "Marketing Transformation"
+      "query": "Senior Vice President Marketing",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Senior Vice President Marketing"
     },
     {
-      "query": "VP Marketing Transformation",
-      "score": 60,
-      "dimension": "strategicMandate",
-      "concept": "Marketing Transformation"
+      "query": "Vice President Marketing",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Vice President Marketing"
+    },
+    {
+      "query": "Vice President Growth",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Vice President Growth"
+    },
+    {
+      "query": "Vice President Digital",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Vice President Digital"
+    },
+    {
+      "query": "Vice President Customer Experience",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Vice President Customer Experience"
+    },
+    {
+      "query": "Head of Marketing",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Head of Marketing"
+    },
+    {
+      "query": "Head of Growth",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Head of Growth"
+    },
+    {
+      "query": "Head of Digital",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Head of Digital"
+    },
+    {
+      "query": "Head of CRM",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Head of CRM"
+    },
+    {
+      "query": "Head of Customer Experience",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Head of Customer Experience"
+    },
+    {
+      "query": "Head of MarTech",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Head of MarTech"
+    },
+    {
+      "query": "Marketing Director",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Marketing Director"
     },
     {
       "query": "Global Marketing Director",
-      "score": 35,
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Global Marketing Director"
+    },
+    {
+      "query": "Transformation Director",
+      "score": 95,
+      "dimension": "targetRoles",
+      "concept": "Transformation Director"
+    },
+    {
+      "query": "Chief Marketing Officer Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Chief Marketing Officer Gurugram"
+    },
+    {
+      "query": "Chief Marketing Officer Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Chief Marketing Officer Remote India"
+    },
+    {
+      "query": "Chief Growth Officer Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Chief Growth Officer Gurugram"
+    },
+    {
+      "query": "Chief Growth Officer Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Chief Growth Officer Remote India"
+    },
+    {
+      "query": "Chief Customer Officer Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Chief Customer Officer Gurugram"
+    },
+    {
+      "query": "Chief Customer Officer Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Chief Customer Officer Remote India"
+    },
+    {
+      "query": "Chief Digital Officer Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Chief Digital Officer Gurugram"
+    },
+    {
+      "query": "Chief Digital Officer Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Chief Digital Officer Remote India"
+    },
+    {
+      "query": "SVP Marketing Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "SVP Marketing Gurugram"
+    },
+    {
+      "query": "SVP Marketing Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "SVP Marketing Remote India"
+    },
+    {
+      "query": "SVP Marketing & Transformation Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "SVP Marketing & Transformation Gurugram"
+    },
+    {
+      "query": "SVP Marketing & Transformation Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "SVP Marketing & Transformation Remote India"
+    },
+    {
+      "query": "Senior Vice President Marketing Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Senior Vice President Marketing Gurugram"
+    },
+    {
+      "query": "Senior Vice President Marketing Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Senior Vice President Marketing Remote India"
+    },
+    {
+      "query": "Vice President Marketing Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Vice President Marketing Gurugram"
+    },
+    {
+      "query": "Vice President Marketing Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Vice President Marketing Remote India"
+    },
+    {
+      "query": "Vice President Growth Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Vice President Growth Gurugram"
+    },
+    {
+      "query": "Vice President Growth Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Vice President Growth Remote India"
+    },
+    {
+      "query": "Vice President Digital Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Vice President Digital Gurugram"
+    },
+    {
+      "query": "Vice President Digital Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Vice President Digital Remote India"
+    },
+    {
+      "query": "Vice President Customer Experience Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Vice President Customer Experience Gurugram"
+    },
+    {
+      "query": "Vice President Customer Experience Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Vice President Customer Experience Remote India"
+    },
+    {
+      "query": "Head of Marketing Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of Marketing Gurugram"
+    },
+    {
+      "query": "Head of Marketing Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of Marketing Remote India"
+    },
+    {
+      "query": "Head of Growth Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of Growth Gurugram"
+    },
+    {
+      "query": "Head of Growth Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of Growth Remote India"
+    },
+    {
+      "query": "Head of Digital Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of Digital Gurugram"
+    },
+    {
+      "query": "Head of Digital Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of Digital Remote India"
+    },
+    {
+      "query": "Head of CRM Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of CRM Gurugram"
+    },
+    {
+      "query": "Head of CRM Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of CRM Remote India"
+    },
+    {
+      "query": "Head of Customer Experience Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of Customer Experience Gurugram"
+    },
+    {
+      "query": "Head of Customer Experience Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of Customer Experience Remote India"
+    },
+    {
+      "query": "Head of MarTech Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of MarTech Gurugram"
+    },
+    {
+      "query": "Head of MarTech Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Head of MarTech Remote India"
+    },
+    {
+      "query": "Marketing Director Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Marketing Director Gurugram"
+    },
+    {
+      "query": "Marketing Director Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Marketing Director Remote India"
+    },
+    {
+      "query": "Global Marketing Director Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Global Marketing Director Gurugram"
+    },
+    {
+      "query": "Global Marketing Director Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Global Marketing Director Remote India"
+    },
+    {
+      "query": "Transformation Director Gurugram",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Transformation Director Gurugram"
+    },
+    {
+      "query": "Transformation Director Remote India",
+      "score": 90,
+      "dimension": "targetRolesAndLocations",
+      "concept": "Transformation Director Remote India"
+    },
+    {
+      "query": "CMO",
+      "score": 70,
+      "dimension": "targetRoles",
+      "concept": "Chief Marketing Officer"
+    },
+    {
+      "query": "VP Marketing",
+      "score": 70,
+      "dimension": "targetRoles",
+      "concept": "VP Marketing"
+    },
+    {
+      "query": "VP Growth",
+      "score": 70,
+      "dimension": "targetRoles",
+      "concept": "Head of Growth"
+    },
+    {
+      "query": "Director of Marketing",
+      "score": 70,
+      "dimension": "targetRoles",
+      "concept": "Marketing Director"
+    },
+    {
+      "query": "CoE Lead",
+      "score": 70,
       "dimension": "leadershipModel",
-      "concept": "Global Marketing"
+      "concept": "Center of Excellence"
+    },
+    {
+      "query": "CoE Director",
+      "score": 70,
+      "dimension": "leadershipModel",
+      "concept": "Center of Excellence"
+    },
+    {
+      "query": "Center of Excellence",
+      "score": 70,
+      "dimension": "leadershipModel",
+      "concept": "Center of Excellence"
+    },
+    {
+      "query": "GCC Lead",
+      "score": 70,
+      "dimension": "leadershipModel",
+      "concept": "Global Capability Center"
+    },
+    {
+      "query": "GCC Head",
+      "score": 70,
+      "dimension": "leadershipModel",
+      "concept": "Global Capability Center"
+    },
+    {
+      "query": "Global Capability Center",
+      "score": 70,
+      "dimension": "leadershipModel",
+      "concept": "Global Capability Center"
+    },
+    {
+      "query": "Shared Services Marketing",
+      "score": 70,
+      "dimension": "leadershipModel",
+      "concept": "Shared Services"
+    },
+    {
+      "query": "Shared Services Director",
+      "score": 70,
+      "dimension": "leadershipModel",
+      "concept": "Shared Services"
     },
     {
       "query": "Head of Global Marketing",
-      "score": 35,
+      "score": 70,
       "dimension": "leadershipModel",
       "concept": "Global Marketing"
     },
     {
       "query": "VP Performance Marketing",
-      "score": 35,
+      "score": 70,
       "dimension": "functionalExpertise",
       "concept": "Performance Marketing"
     },
     {
       "query": "Director Performance Marketing",
-      "score": 35,
+      "score": 70,
       "dimension": "functionalExpertise",
       "concept": "Performance Marketing"
     },
     {
       "query": "Head of Performance Marketing",
-      "score": 35,
+      "score": 70,
       "dimension": "functionalExpertise",
       "concept": "Performance Marketing"
     },
     {
-      "query": "CRM Director",
-      "score": 35,
+      "query": "VP Demand Gen",
+      "score": 70,
       "dimension": "functionalExpertise",
-      "concept": "CRM"
+      "concept": "Demand Generation"
     },
     {
-      "query": "Head of CRM",
-      "score": 35,
+      "query": "Head of Demand Generation",
+      "score": 70,
+      "dimension": "functionalExpertise",
+      "concept": "Demand Generation"
+    },
+    {
+      "query": "Demand Generation Director",
+      "score": 70,
+      "dimension": "functionalExpertise",
+      "concept": "Demand Generation"
+    },
+    {
+      "query": "CRM Director",
+      "score": 70,
       "dimension": "functionalExpertise",
       "concept": "CRM"
     },
     {
       "query": "Lifecycle Marketing Director",
-      "score": 35,
+      "score": 70,
       "dimension": "functionalExpertise",
       "concept": "CRM"
     },
     {
+      "query": "VP Martech",
+      "score": 70,
+      "dimension": "functionalExpertise",
+      "concept": "MarTech"
+    },
+    {
+      "query": "Head of Martech",
+      "score": 70,
+      "dimension": "functionalExpertise",
+      "concept": "MarTech"
+    },
+    {
+      "query": "Martech Director",
+      "score": 70,
+      "dimension": "functionalExpertise",
+      "concept": "MarTech"
+    },
+    {
       "query": "Digital Platform Lead",
-      "score": 35,
+      "score": 70,
       "dimension": "platformOwnership",
       "concept": "Digital Platform"
     },
     {
       "query": "VP Digital Platforms",
-      "score": 35,
+      "score": 70,
       "dimension": "platformOwnership",
       "concept": "Digital Platform"
     },
     {
       "query": "Marketing Technology Lead",
-      "score": 35,
+      "score": 70,
       "dimension": "platformOwnership",
       "concept": "Marketing Technology"
     },
     {
       "query": "Director Marketing Technology",
-      "score": 35,
+      "score": 70,
       "dimension": "platformOwnership",
       "concept": "Marketing Technology"
     },
     {
+      "query": "Product Owner Marketing",
+      "score": 70,
+      "dimension": "platformOwnership",
+      "concept": "Product Owner"
+    },
+    {
+      "query": "Product Director Marketing Platforms",
+      "score": 70,
+      "dimension": "platformOwnership",
+      "concept": "Product Owner"
+    },
+    {
+      "query": "Customer Experience Platform Lead",
+      "score": 70,
+      "dimension": "platformOwnership",
+      "concept": "Customer Experience Platform"
+    },
+    {
+      "query": "CX Platform Director",
+      "score": 70,
+      "dimension": "platformOwnership",
+      "concept": "Customer Experience Platform"
+    },
+    {
+      "query": "Digital Transformation Director",
+      "score": 70,
+      "dimension": "strategicMandate",
+      "concept": "Digital Transformation"
+    },
+    {
+      "query": "Head of Digital Transformation",
+      "score": 70,
+      "dimension": "strategicMandate",
+      "concept": "Digital Transformation"
+    },
+    {
       "query": "Commercial Excellence Director",
-      "score": 35,
+      "score": 70,
       "dimension": "strategicMandate",
       "concept": "Commercial Excellence"
     },
     {
       "query": "VP Commercial Excellence",
-      "score": 35,
+      "score": 70,
       "dimension": "strategicMandate",
       "concept": "Commercial Excellence"
     },
     {
       "query": "VP Customer Growth",
-      "score": 35,
+      "score": 70,
       "dimension": "strategicMandate",
       "concept": "Customer Growth"
     },
     {
       "query": "Customer Growth Director",
-      "score": 35,
+      "score": 70,
       "dimension": "strategicMandate",
       "concept": "Customer Growth"
     },
     {
-      "query": "Chief Customer Officer",
-      "score": 30,
-      "dimension": "targetRoles",
-      "concept": "Chief Customer Officer"
+      "query": "Marketing Transformation Lead",
+      "score": 70,
+      "dimension": "strategicMandate",
+      "concept": "Marketing Transformation"
+    },
+    {
+      "query": "VP Marketing Transformation",
+      "score": 70,
+      "dimension": "strategicMandate",
+      "concept": "Marketing Transformation"
     }
   ]
 }
