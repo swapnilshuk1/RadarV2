@@ -120,6 +120,9 @@ export class V3EvaluationEngine {
     const isSubTierTitle = 
       (titleLower.includes("executive") && !titleLower.includes("chief executive")) ||
       titleLower.includes("assistant manager") ||
+      titleLower.includes("team lead") ||
+      titleLower.includes("tech lead") ||
+      titleLower.includes("project lead") ||
       titleLower.includes("bde") ||
       titleLower.includes("junior") ||
       titleLower.includes("intern") ||

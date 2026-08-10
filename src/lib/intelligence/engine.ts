@@ -101,6 +101,7 @@ let cachedRuns = new Map<number, {
 export function invalidateEngineCache() {
   baseOpportunitiesCache = null;
   cachedRuns.clear();
+  itemEvaluationCache.clear();
 }
 
 export function readOpportunities(): OpportunitySource[] {
