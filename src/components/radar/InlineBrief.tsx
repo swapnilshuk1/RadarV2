@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { Opportunity, DecisionVerb } from "../../data/opportunity-fixtures";
 import { applyUrlFor } from "../../data/opportunity-fixtures";
 import { PreviewCompositionEngine } from "../../lib/intelligence/editorial/PreviewCompositionEngine";
+import { inferExecutiveMandateArchetype } from "../../lib/intelligence/editorial";
 
 export function InlineBrief({
   opportunity: o,
@@ -61,7 +62,7 @@ export function InlineBrief({
           <div className="flex items-baseline justify-between gap-3">
             <dt className="label-mono text-[0.65rem] text-muted-foreground">Track</dt>
             <dd className="truncate font-mono text-[0.7rem] text-foreground font-medium">
-              {o.mandateArchetype || "Growth Marketing"}
+              {o.mandateArchetype && o.mandateArchetype !== "Growth Marketing" ? o.mandateArchetype : inferExecutiveMandateArchetype(o.role, (o as any).rawText || (o as any).description)}
             </dd>
           </div>
           <div className="flex items-baseline justify-between gap-3">

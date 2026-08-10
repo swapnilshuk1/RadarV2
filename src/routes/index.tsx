@@ -11,6 +11,7 @@ import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompo
 import { JobProjectionBuilder } from "../lib/intelligence/builders/JobProjectionBuilder";
 import { logTelemetry } from "../lib/telemetry";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
+import { inferExecutiveMandateArchetype } from "../lib/intelligence/editorial";
 
 const VISIBLE_LIMIT = 10;
 
@@ -469,7 +470,7 @@ function ShortlistCardRow({
               {o.decision?.toLowerCase() || "pursue"}
             </span>
             <span className="label-mono hidden rounded-full bg-muted/80 px-2.5 py-0.5 text-[0.62rem] text-muted-foreground sm:inline font-medium">
-              {o.mandateArchetype || "Growth Marketing"}
+              {o.mandateArchetype && o.mandateArchetype !== "Growth Marketing" ? o.mandateArchetype : inferExecutiveMandateArchetype(o.role, (o as any).rawText || (o as any).description)}
             </span>
           </span>
 

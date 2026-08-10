@@ -37,6 +37,37 @@ export type EditorialNarrative = {
   alternativePath?: string;
 };
 
+export function inferExecutiveMandateArchetype(role: string, description?: string): string {
+  const text = (role + " " + (description || "")).toLowerCase();
+
+  if (text.includes("transformation") || text.includes("innovation") || text.includes("modernize") || text.includes("overhaul")) {
+    return "Digital Transformation";
+  }
+  if (text.includes("cro") || text.includes("revenue") || text.includes("monetization") || text.includes("commercial")) {
+    return "Commercial Scale";
+  }
+  if (text.includes("growth") || text.includes("acquisition") || text.includes("demand")) {
+    return "Commercial Growth";
+  }
+  if (text.includes("cmo") || text.includes("brand") || text.includes("marketing")) {
+    return "Marketing Leadership";
+  }
+  if (text.includes("customer") || text.includes("client") || text.includes("onboarding") || text.includes("success") || text.includes("experience") || text.includes("retention")) {
+    return "Customer Experience";
+  }
+  if (text.includes("vendor") || text.includes("partner") || text.includes("operations") || text.includes("supply") || text.includes("coo")) {
+    return "Operations & Scale";
+  }
+  if (text.includes("strategy") || text.includes("cgo") || text.includes("alliance") || text.includes("chief of staff")) {
+    return "Strategic Growth";
+  }
+  if (text.includes("director") || text.includes("head") || text.includes("president") || text.includes("vp") || text.includes("lead")) {
+    return "Executive Leadership";
+  }
+
+  return "Commercial Leadership";
+}
+
 // Benchmark Editorial Playbook Cases with dynamic overrides
 const BENCHMARK_DATABASE: Record<string, Omit<EditorialNarrative, "recommendation">> = {
   "j-bmw-india-cmo": {
@@ -597,6 +628,13 @@ function generateDynamicNarrative(
     };
   }
 
+  return fallbackForScrapedRole(record, source);
+}
+
+function fallbackForScrapedRole(
+  record: RecommendationRecord,
+  source: OpportunitySource,
+): EditorialNarrative {
   // Fallback for general scraped roles
   const rawLevel = dim(source, "requiredLevel")?.jdEvidence.value ?? source.role;
   const level = cleanDimValue(rawLevel);
@@ -605,7 +643,7 @@ function generateDynamicNarrative(
     recommendation: `Targeted executive mandate in ${level} capacity; aligns with your commercial growth and enterprise stack precedents. Verify direct reporting boundaries and budget authority.`,
     recommendationArchetype: "Natural Fit",
     recommendationArchetypeTagline: "Aligns with your executive trajectory and operating track record.",
-    mandateArchetype: "Growth Marketing",
+    mandateArchetype: inferExecutiveMandateArchetype(source.role, source.normalizedText || source.rawText),
     primaryDriver: "Commercial Expansion",
     secondaryDriver: "Operating Execution",
     primaryRisk: "Reporting line & budget authority clarification",
