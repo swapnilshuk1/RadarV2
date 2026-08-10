@@ -211,7 +211,7 @@ async function runDiagnosticAudit() {
       ? "COMMERCIAL_MARKETING" : "NON_COMMERCIAL";
 
     const radarAltitude: "EXECUTIVE" | "SUB_EXECUTIVE" = 
-      (oppAssessment.mandateSeniority === "EXECUTIVE" || oppAssessment.mandateSeniority === "STRATEGIC") 
+      (jobProj.operatingLevel.value === "EXECUTIVE" || jobProj.operatingLevel.value === "STRATEGIC") 
       ? "EXECUTIVE" : "SUB_EXECUTIVE";
 
     const ma = (oppAssessment as any).mandateAssessment;

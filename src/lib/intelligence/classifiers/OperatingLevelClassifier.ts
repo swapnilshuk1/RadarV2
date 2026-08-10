@@ -19,52 +19,71 @@ export class OperatingLevelClassifier {
     evidenceIds.push(...commScope.evidenceIds);
     evidenceIds.push(...workNature.evidenceIds);
 
-    // Core Logical Decision Table for Operating Level
-    if (workNature.value === "UNKNOWN") {
-      evidenceIds.push("ol_rule_fallback_managerial");
-      return { value: "MANAGERIAL", evidenceIds, confidence: 0.5 };
-    }
+    const tLower = title.toLowerCase();
+    const textLower = (title + " " + text).toLowerCase();
 
-    // EXECUTIVE
-    if (
-      (decAuth.value === "ENTERPRISE" || decAuth.value === "BUSINESS_UNIT") &&
-      (commScope.value === "ENTERPRISE" || commScope.value === "PORTFOLIO") &&
-      (workNature.value === "EXECUTIVE_WORK" || workNature.value === "STRATEGIC_WORK")
-    ) {
-      evidenceIds.push("ol_rule_exec_hq");
+    // 1. Title Seniority Prior Classification
+    const isExecutiveTitle = 
+      tLower.includes("cmo") || 
+      tLower.includes("cgo") || 
+      tLower.includes("cro") || 
+      tLower.includes("coo") || 
+      tLower.includes("chief") || 
+      tLower.includes("vice president") || 
+      tLower.includes("vp") || 
+      tLower.includes("svp") || 
+      tLower.includes("country head") || 
+      tLower.includes("head of") || 
+      tLower.includes("head -") || 
+      tLower.includes("director");
+
+    const isExplicitMidTierTitle = 
+      (tLower.includes("manager") || 
+       tLower.includes("senior manager") || 
+       tLower.includes("specialist") || 
+       tLower.includes("analyst") || 
+       tLower.includes("coordinator") || 
+       tLower.includes("associate") || 
+       tLower.includes("copywriter")) && 
+      !tLower.includes("general manager") && 
+      !tLower.includes("country manager") && 
+      !tLower.includes("managing director") && 
+      !tLower.includes("p&l manager");
+
+    // 2. Contradiction Checks for Executive Prior
+    const hasLowYoEContradiction = 
+      isExecutiveTitle && 
+      (/(?:3-5|3-7|4-6|5-7|4-7|3-6)\s*years/i.test(textLower) || textLower.includes("3-5 years") || textLower.includes("3-7 years"));
+
+    const isTacticalExecutionOnly = 
+      workNature.value === "TACTICAL_WORK" || workNature.value === "SPECIALIST_WORK";
+
+    const isNarrowUnitScope = 
+      tLower.includes("site strategy") || tLower.includes("digital trading") || tLower.includes("cluster head");
+
+    // 3. Apply Asymmetric Prior Rule
+    if (isExecutiveTitle && !hasLowYoEContradiction && !isTacticalExecutionOnly && !isNarrowUnitScope) {
+      evidenceIds.push("ol_asymmetric_exec_prior");
       return { value: "EXECUTIVE", evidenceIds, confidence: 0.9 };
     }
 
-    // STRATEGIC
-    if (
-      decAuth.value === "BUSINESS_UNIT" || 
-      workNature.value === "STRATEGIC_WORK" ||
-      workNature.value === "EXECUTIVE_WORK"
-    ) {
-      evidenceIds.push("ol_rule_strategic");
-      return { value: "STRATEGIC", evidenceIds, confidence: 0.85 };
+    if (hasLowYoEContradiction || isTacticalExecutionOnly || isNarrowUnitScope) {
+      evidenceIds.push("ol_contradiction_downgrade");
+      return { value: "STRATEGIC", evidenceIds, confidence: 0.8 };
     }
 
-    // MANAGERIAL
-    if (
-      decAuth.value === "TEAM" ||
-      (decAuth.value as string) === "FUNCTION" ||
-      workNature.value === "MANAGERIAL_WORK"
-    ) {
-      evidenceIds.push("ol_rule_managerial");
-      return { value: "MANAGERIAL", evidenceIds, confidence: 0.8 };
+    if (isExplicitMidTierTitle) {
+      evidenceIds.push("ol_midtier_prior_sub_exec");
+      return { value: "MANAGERIAL", evidenceIds, confidence: 0.85 };
     }
 
-    // TACTICAL
-    if (
-      workNature.value === "TACTICAL_WORK"
-    ) {
-      evidenceIds.push("ol_rule_tactical");
-      return { value: "TACTICAL", evidenceIds, confidence: 0.85 };
+    // Fallback based on work nature and decision authority
+    if (decAuth.value === "ENTERPRISE" || decAuth.value === "BUSINESS_UNIT" || workNature.value === "EXECUTIVE_WORK") {
+      evidenceIds.push("ol_rule_exec_fallback");
+      return { value: "EXECUTIVE", evidenceIds, confidence: 0.85 };
     }
 
-    // INDIVIDUAL CONTRIBUTOR
-    evidenceIds.push("ol_rule_ic");
-    return { value: "INDIVIDUAL_CONTRIBUTOR", evidenceIds, confidence: 0.8 };
+    evidenceIds.push("ol_rule_default_strategic");
+    return { value: "STRATEGIC", evidenceIds, confidence: 0.8 };
   }
 }
