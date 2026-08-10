@@ -69,10 +69,31 @@ export interface CapabilityAssessment extends AssessmentMetadata {
   matches?: EvidenceMatch[];
 }
 
+export type ScopeType = "STRATEGIC_MANDATE" | "MIXED" | "EXECUTION" | "UNKNOWN";
+
+export type SenioritySignalType = 
+  | "QUALIFIED_EXECUTIVE" 
+  | "BORDERLINE_MANDATE" 
+  | "SUB_TIER_SIGNAL" 
+  | "CRITICAL_SENIORITY_CONTRADICTION";
+
+export interface ExecutiveSeniorityAssessment {
+  minYearsExperience?: number;
+  maxYearsExperience?: number;
+  scopeType: ScopeType;
+  signalType: SenioritySignalType;
+  mandateSeniority: "QUALIFIED" | "BORDERLINE" | "SUB_TIER";
+  evidence: string[];
+  contradictions: string[];
+}
+
 export interface OpportunityAssessment extends AssessmentMetadata {
   operatingLevelAssessment: "MATCH" | "PROMOTION" | "REGRESSION_MINOR" | "REGRESSION_MAJOR" | "UNKNOWN";
   workNatureAssessment: "MATCH" | "PROMOTION" | "REGRESSION" | "UNKNOWN";
   scopeAssessment: "MATCH" | "PROMOTION" | "REGRESSION" | "UNKNOWN";
+  mandateSeniority?: "QUALIFIED" | "BORDERLINE" | "SUB_TIER";
+  seniorityAssessment?: ExecutiveSeniorityAssessment;
+  opportunityScore?: number;
 }
 
 export interface CareerAssessment extends AssessmentMetadata {
