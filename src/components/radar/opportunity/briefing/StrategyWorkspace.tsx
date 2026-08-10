@@ -18,8 +18,8 @@ export function StrategyWorkspace({ executionPkg, layout = "desktop" }: Strategy
   ] as const;
 
   return (
-    <div className={isMobile ? "memo-card p-3 space-y-4 bg-surface-raised border border-border/60" : "space-y-4"}>
-      <div className={isMobile ? "grid grid-cols-2 gap-1.5 border-b border-border/40 pb-3" : "flex items-center justify-between border-b border-border pb-3"}>
+    <div className={isMobile ? "memo-card p-3 space-y-4 bg-surface-raised border border-border" : "space-y-4"}>
+      <div className={isMobile ? "grid grid-cols-2 gap-1.5 border-b border-border pb-3" : "flex items-center justify-between border-b border-border pb-3"}>
         {!isMobile && <p className="label-mono text-xs uppercase tracking-wider text-foreground font-normal">Positioning Workspace</p>}
         <div className={isMobile ? "col-span-2 grid grid-cols-2 gap-1.5" : "flex gap-1.5"}>
           {tabs.map((tab) => (
@@ -27,15 +27,15 @@ export function StrategyWorkspace({ executionPkg, layout = "desktop" }: Strategy
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={isMobile 
-                ? `py-2 px-1 text-center label-mono rounded-[3px] transition-colors border text-[9px] tracking-wider ${
+                ? `py-2 px-1 text-center label-mono rounded-[3px] transition-colors border tracking-wider ${
                     activeTab === tab.id
                       ? "bg-foreground text-background border-foreground font-semibold"
                       : "bg-background text-muted-foreground border-border hover:text-foreground"
                   }`
-                : `px-2.5 py-1 label-mono rounded transition-colors text-xs ${
+                : `px-2.5 py-1.5 label-mono transition-colors text-xs border-b-2 ${
                     activeTab === tab.id 
-                      ? "bg-primary text-primary-foreground font-medium" 
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "border-foreground text-foreground font-medium" 
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
                   }`
               }
             >

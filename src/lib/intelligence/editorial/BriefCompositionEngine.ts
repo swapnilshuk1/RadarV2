@@ -58,7 +58,13 @@ export interface ProofPointItem {
 
 export interface BriefModel {
   memory: BriefMemory;
-  sections: BriefSectionMeta[];
+  structuredSections: {
+    context: { thesis: string; body?: string; transition?: string };
+    mandate: { thesis: string; body?: string; transition?: string };
+    synthesis: { thesis: string };
+    evidence: { thesis: string; body?: string; transition?: string };
+    strategy: { thesis: string; body?: string };
+  };
   oneMinuteTLDR: OpportunityInOneMinute;
   qualitativeReasoning: QualitativeReasoningRow[];
   qualitativeReasoningChain: QualitativeReasoningRow[];
@@ -440,10 +446,34 @@ export class BriefCompositionEngine {
     ];
 
     const executiveOpinion = decision === "PURSUE"
-      ? `This is one of the stronger mandates in your current search because it compounds your existing growth leadership narrative rather than asking you to reinvent it. I would invest time in this opportunity—but only after confirming that commercial authority is genuine rather than advisory at ${opportunity.company}.`
+      ? `This is the strongest commercial transformation mandate on your desk this month. It directly compounds your proven growth leadership record at this operating scale rather than asking you to reinvent it. I would invest time here immediately—but only after confirming board-level reporting is formally approved at ${opportunity.company}.`
       : decision === "CONSIDER"
-      ? `This role presents solid domain alignment, but the operational altitude sits closer to functional execution than board-level strategy. Consider advancing if you seek immediate category leadership at ${opportunity.company}, but clarify direct C-suite reporting before committing to formal interviews.`
-      : `While ${opportunity.company} is a notable brand, the required responsibilities represent a functional regression from your verified executive track record. Pass on this mandate to preserve search bandwidth for opportunities offering true P&L scope.`;
+      ? `A solid tactical growth opportunity, though the operating scale sits closer to regional execution than global strategy. Your background makes you highly competitive, but you must clarify during screening if the mandate carries genuine P&L authority or functions merely as an operational extension.`
+      : `While ${opportunity.company} is a visible enterprise brand, the required altitude represents a structural regression from your verified career capital. I recommend a strategic pass on this mandate to preserve search bandwidth for opportunities offering true board-level commercial ownership.`;
+
+    const structuredSections = {
+      context: {
+        thesis: "There is enough strategic signal here to justify immediate investigation, but not enough operational detail to commit without recruiter validation.",
+        transition: "If those assumptions prove true, the question becomes whether the mandate itself justifies your time."
+      },
+      mandate: {
+        thesis: `Deliver strategic growth and cross-functional leadership alignment at ${opportunity.company}.`,
+        transition: "It does—provided the first 18 months look like this."
+      },
+      synthesis: {
+        thesis: decision === "PURSUE" 
+          ? "Proceed. The strategic upside outweighs the remaining uncertainty, provided the reporting structure confirms genuine commercial ownership."
+          : decision === "CONSIDER"
+          ? "Proceed with caution. The domain alignment is strong, but the actual P&L authority must be verified before investing significant time."
+          : "Pass. The required altitude represents a structural regression from your current career velocity."
+      },
+      evidence: {
+        thesis: `Why you are well-positioned: You possess proven growth authority and direct domain match for this ${opportunity.role} seat.`,
+      },
+      strategy: {
+        thesis: `How to position: Frame your background around high-velocity market scaling, downplaying single-channel execution.`,
+      }
+    };
 
     const directives = {
       reflection: `Consider whether this market trajectory strengthens your executive record over a 3-year horizon.`,
@@ -458,7 +488,7 @@ export class BriefCompositionEngine {
       executiveOpinion,
       directives,
       memory,
-      sections,
+      structuredSections,
       oneMinuteTLDR,
       qualitativeReasoning: qualitativeReasoningChain,
       qualitativeReasoningChain,

@@ -46,14 +46,59 @@ function Login() {
 
       sessionStorage.setItem("radar_session", JSON.stringify(sessionData));
       
+      if (selectedUser === "new_user") {
+        sessionStorage.setItem("radar_onboarding", JSON.stringify({
+          orientationSeen: false,
+          evidenceStatus: 'pending',
+          intentStatus: 'pending',
+          arrivalSeen: false
+        }));
+      }
+      
       // Redirect to onboard/profile if new, or home if existing
       if (selectedUser === "new_user") {
-        navigate({ to: "/profile" });
+        navigate({ to: "/welcome" });
       } else {
         navigate({ to: "/" });
       }
     } catch (err: any) {
       console.error("Failed to initialize session:", err);
+      alert(`Initialization failed: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTestOnboarding = async () => {
+    setLoading(true);
+    try {
+      const initResult = await initializeSessionFn({
+        data: { mode: "swapnil" }
+      });
+
+      if (!initResult.success) {
+        throw new Error("Server failed to initialize session.");
+      }
+
+      let sessionData = {
+        userId: "swapnil-shukla-dev",
+        email: "swapnil@radar.advisory",
+        name: "Swapnil Shukla",
+        avatarUrl: "https://lh3.googleusercontent.com/a/default-user=s100",
+        onboarded: false
+      };
+
+      sessionStorage.setItem("radar_session", JSON.stringify(sessionData));
+      sessionStorage.setItem("radar_onboarding", JSON.stringify({
+        orientationSeen: false,
+        evidenceStatus: 'pending',
+        intentStatus: 'pending',
+        arrivalSeen: false
+      }));
+
+      navigate({ to: "/welcome" });
+    } catch (err: any) {
+      console.error("Failed to start onboarding test:", err);
       alert(`Initialization failed: ${err.message}`);
     } finally {
       setLoading(false);
@@ -109,6 +154,15 @@ function Login() {
               className="flex w-full items-center justify-center gap-2 rounded-md border border-hairline bg-card py-3 px-4 text-[13px] font-semibold tracking-wide text-ink transition-all hover:bg-muted active:scale-[0.98] cursor-pointer"
             >
               {loading ? "Accessing Advisory Radar..." : "Direct Executive Access (Swapnil Shukla)"}
+            </button>
+
+            {/* Test Onboarding Journey Button */}
+            <button
+              onClick={handleTestOnboarding}
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 py-2.5 px-4 text-[12px] font-mono uppercase tracking-wider text-amber-900 transition-all hover:bg-amber-500/10 active:scale-[0.98] cursor-pointer"
+            >
+              ⚡ Test Onboarding Journey (Existing Profile)
             </button>
           </div>
 

@@ -15,6 +15,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { getSessionUserFn } from "../lib/auth/server";
 import { candidateSignature } from "../lib/personalization";
 import { candidateProfile } from "../data/candidate-profile";
+import { OnboardingProvider, useOnboarding } from "../components/onboarding/OnboardingProvider";
 
 import appCss from "../styles.css?url";
 
@@ -151,10 +152,14 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function GlobalHeader() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { resetOnboarding } = useOnboarding();
   const [sessionName, setSessionName] = useState<string | null>(null);
+  const [isDev, setIsDev] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      setIsDev(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
       const sessionStr = sessionStorage.getItem("radar_session");
       if (sessionStr) {
         try {
@@ -211,7 +216,7 @@ function GlobalHeader() {
                   isSelected("/decisions") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
                 }`}
               >
-                Decisions
+                Opportunities
               </Link>
             </li>
             <li>
@@ -225,25 +230,42 @@ function GlobalHeader() {
               </Link>
             </li>
             <li>
-              <Link
-                to="/design-system"
-                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
-                  isSelected("/design-system") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
-                }`}
+              <button
+                type="button"
+                onClick={() => {
+                  resetOnboarding();
+                  navigate({ to: "/welcome" });
+                }}
+                className="label-mono block whitespace-nowrap px-2.5 py-1.5 text-amber-800 font-semibold hover:text-foreground transition-colors cursor-pointer"
+                title="Test the executive onboarding journey without creating or modifying your profile"
               >
-                Design System
-              </Link>
+                ⚡ Test Onboarding
+              </button>
             </li>
-            <li>
-              <Link
-                to="/font-sandbox"
-                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
-                  isSelected("/font-sandbox") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
-                }`}
-              >
-                Font Lab
-              </Link>
-            </li>
+            {isDev && (
+              <>
+                <li>
+                  <Link
+                    to="/design-system"
+                    className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
+                      isSelected("/design-system") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                    }`}
+                  >
+                    Design System
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/font-sandbox"
+                    className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
+                      isSelected("/font-sandbox") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                    }`}
+                  >
+                    Font Lab
+                  </Link>
+                </li>
+              </>
+            )}
           </ul>
 
           <span className="ml-2 hidden shrink-0 items-center gap-2 border-l border-border pl-3 sm:flex">
@@ -271,12 +293,15 @@ function RootComponent() {
   const location = useLocation();
 
   const showHeader = !location.pathname.startsWith("/login") &&
-    !location.pathname.startsWith("/api/auth");
+    !location.pathname.startsWith("/api/auth") &&
+    !location.pathname.startsWith("/welcome");
 
   return (
     <QueryClientProvider client={queryClient}>
-      {showHeader && <GlobalHeader />}
-      <Outlet />
+      <OnboardingProvider>
+        {showHeader && <GlobalHeader />}
+        <Outlet />
+      </OnboardingProvider>
     </QueryClientProvider>
   );
 }
