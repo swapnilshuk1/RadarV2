@@ -132,6 +132,13 @@ export class JobProjectionBuilder {
     let identityConf = 0.85;
 
     const isTitleTech = this.testKeyword(titleLower, "technology") || 
+                        this.testKeyword(titleLower, "information technology") || 
+                        this.testKeyword(titleLower, "it head") || 
+                        this.testKeyword(titleLower, "head of it") || 
+                        this.testKeyword(titleLower, "head - it") || 
+                        this.testKeyword(titleLower, "it director") || 
+                        this.testKeyword(titleLower, "it manager") || 
+                        this.testKeyword(titleLower, "cio") || 
                         this.testKeyword(titleLower, "cto") || 
                         this.testKeyword(titleLower, "engineering") || 
                         this.testKeyword(titleLower, "architect") || 

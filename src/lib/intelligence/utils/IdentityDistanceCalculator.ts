@@ -1,4 +1,4 @@
-﻿import executiveOntology from "@/data/ontology/executive_ontology.json";
+import executiveOntology from "@/data/ontology/executive_ontology.json";
 
 export class IdentityDistanceCalculator {
   public static calculate(candidateIdentity: string, jobIdentity: string, jobText?: string): number {
@@ -18,7 +18,19 @@ export class IdentityDistanceCalculator {
 
     // Map job string to ontology domain ID
     let jobDomain = "commercial_marketing";
-    if (jobLower.includes("technology") || jobLower.includes("engineering") || fullTextLower.includes("salesforce architect") || fullTextLower.includes("quote-to-cash")) {
+    if (
+      jobLower.includes("technology") || 
+      jobLower.includes("information technology") || 
+      jobLower.includes("it head") || 
+      jobLower.includes("head of it") || 
+      jobLower.includes("head - it") || 
+      jobLower.includes("it director") || 
+      jobLower.includes("cio") || 
+      jobLower.includes("cto") || 
+      jobLower.includes("engineering") || 
+      fullTextLower.includes("salesforce architect") || 
+      fullTextLower.includes("quote-to-cash")
+    ) {
       jobDomain = "technology_engineering";
     } else if (jobLower.includes("operational excellence") || jobLower.includes("delivery management") || fullTextLower.includes("programme delivery") || fullTextLower.includes("shared services")) {
       jobDomain = "operations_delivery";
