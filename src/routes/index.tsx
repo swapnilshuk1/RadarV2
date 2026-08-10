@@ -187,26 +187,9 @@ function Shortlist() {
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="grid gap-8 border-b border-border py-9 sm:py-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <p className="label-mono font-normal" suppressHydrationWarning>
-                Today's executive briefing · {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-              </p>
-              
-              <button
-                type="button"
-                onClick={runSearch}
-                disabled={isStarting || !!activeRunId}
-                className={`label-mono text-xs font-semibold px-3.5 py-1.5 rounded-xs border transition-all flex items-center gap-2 cursor-pointer ${
-                  activeRunId
-                    ? "bg-primary/10 border-primary text-primary"
-                    : "bg-foreground text-background border-foreground hover:opacity-90"
-                }`}
-                title="Start Playwright multi-portal live job scraping across LinkedIn, Naukri, and Indeed"
-              >
-                <span className={`inline-block h-2 w-2 rounded-full ${activeRunId ? "bg-primary animate-ping" : "bg-signal"}`} />
-                {isStarting ? "Starting Scraper..." : activeRunId ? "Scraper Active..." : "⚡ Run Search & Scrape"}
-              </button>
-            </div>
+            <p className="label-mono font-normal" suppressHydrationWarning>
+              Today's executive briefing · {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+            </p>
             <h1 className="mt-3 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-7xl text-foreground font-normal">
               The shortlist.
             </h1>
