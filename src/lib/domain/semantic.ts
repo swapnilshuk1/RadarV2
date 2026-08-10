@@ -59,8 +59,11 @@ export interface EvidenceMatch {
   reason: string;
 }
 
+export type CapabilityEvidenceState = "SUFFICIENT" | "PARTIAL" | "UNAVAILABLE";
+
 export interface CapabilityAssessment extends AssessmentMetadata {
   overallFit: number;               // Composite balanced score (0.0 to 1.0)
+  evidenceState?: CapabilityEvidenceState; // Explicit 3-state evidence tracker
   capabilityPotential?: number;     // Executive potential fit (0.0 to 1.0)
   evidenceStrength?: number;        // Direct proof evidence density (0.0 to 1.0)
   matchedCapabilities: string[];

@@ -108,7 +108,8 @@ export class DecisionPolicyEngine {
     const t = policyConfig.thresholds;
 
     const identityScore = Math.round((identity.coverage || (1.0 - identityDistance)) * 100);
-    const capabilityScore = Math.round((capability.overallFit || 0) * 100);
+    const isCapUnavailable = (capability as any).evidenceState === "UNAVAILABLE" || capability.sufficiency === "INSUFFICIENT" || capability.overallFit === null;
+    const capabilityScore = isCapUnavailable ? 50 : Math.round((capability.overallFit || 0) * 100);
     const careerScore = (career as any).careerScore || Math.max(0, 80 - (career.regressionScore || 0));
     const opportunityScore = (opportunity as any).opportunityScore || 80;
     const locationFriction = (lifestyle as any).locationFrictionPenalty || 0;

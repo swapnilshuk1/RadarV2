@@ -159,12 +159,13 @@ export class CapabilityAssessmentEngine {
       return {
         status: "FAILED",
         sufficiency: "INSUFFICIENT",
+        evidenceState: "UNAVAILABLE",
         evidenceCount: 0,
         failureCode: "EMPTY_CAPABILITIES",
         evidenceSummary: { extractedSignals: 0, inferredSignals: 0, ignoredSignals: 0, conflictingSignals: 0 },
-        overallFit: 0.0,
+        overallFit: 0.50, // Neutral uncertainty baseline
         capabilityPotential: 0.50,
-        evidenceStrength: 0.00,
+        evidenceStrength: 0.50,
         matchingConfidence: 0.50,
         matchedCapabilities: [],
         missingCapabilities: [],
@@ -198,7 +199,6 @@ export class CapabilityAssessmentEngine {
       const jobCapName = jobCapObj.name;
       const tier: CapabilityTaxonomyTier = jobCapObj.tier || "EXECUTION_CAPABILITY";
       
-      // Structural Capability Taxonomy Weights
       let weight = 0.30;
       if (tier === "CORE_MANDATE") weight = 0.40;
       else if (tier === "EXECUTION_CAPABILITY") weight = 0.30;
@@ -229,7 +229,16 @@ export class CapabilityAssessmentEngine {
     const capabilityPotential = totalWeightSum > 0 ? Number((totalPotentialScoreSum / totalWeightSum).toFixed(3)) : 0.50;
 
     // Dual-Vector Balanced Overall Fit: Potential x 0.70 + Evidence x 0.30
-    const overallFit = Number((capabilityPotential * 0.70 + evidenceStrength * 0.30).toFixed(3));
+    const rawFit = Number((capabilityPotential * 0.70 + evidenceStrength * 0.30).toFixed(3));
+
+    // Determine 3-state Capability Evidence
+    const hasParsedCapabilities = capsToEvaluate.length > 0 && capsToEvaluate.some(c => c.name && c.name.length > 2);
+    const evidenceState = !hasParsedCapabilities || richness.sufficiency === "INSUFFICIENT" 
+      ? "UNAVAILABLE" 
+      : (matchedCapabilities.length > 0 ? "SUFFICIENT" : "PARTIAL");
+
+    // If evidence is unavailable, overallFit is neutral 0.50 (Uncertainty)
+    const overallFit = evidenceState === "UNAVAILABLE" ? 0.50 : rawFit;
 
     const rawConf = Number((0.92 - (missingCapabilities.length * 0.02)).toFixed(2));
     const matchingConfidence = isNaN(rawConf) ? 0.80 : Math.max(0.20, rawConf);
@@ -237,6 +246,7 @@ export class CapabilityAssessmentEngine {
     return {
       status: "COMPLETE",
       sufficiency: richness.sufficiency,
+      evidenceState,
       evidenceCount: richness.count,
       matchingConfidence: Math.max(0.2, matchingConfidence),
       evidenceSummary: {

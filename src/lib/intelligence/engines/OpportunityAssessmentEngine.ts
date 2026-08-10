@@ -211,16 +211,11 @@ export class OpportunityAssessmentEngine {
       contradictions.push("Sub-tier mandate: Role scope is below executive baseline.");
     } else if (
       isExecutiveTitle &&
-      scopeType !== "EXECUTION" &&
-      (
-        (minExp !== null && minExp >= 12) ||
-        (minExp !== null && minExp >= 8 && (scopeType === "STRATEGIC_MANDATE" || hasStrategicSignals)) ||
-        (minExp === null && (scopeType === "STRATEGIC_MANDATE" || hasStrategicSignals))
-      )
+      scopeType !== "EXECUTION"
     ) {
       signalType = "QUALIFIED_EXECUTIVE";
       mandateSeniority = "QUALIFIED";
-      evidence.push("Verified executive mandate matching or exceeding experience baseline.");
+      evidence.push("Executive title prior: Qualified executive mandate by default.");
     } else if (
       (minExp !== null && minExp >= 8) ||
       (minExp !== null && minExp < 8 && (scopeType === "STRATEGIC_MANDATE" || hasStrategicSignals)) ||
