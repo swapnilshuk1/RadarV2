@@ -14,7 +14,7 @@ export function InlineBrief({
   const preview = PreviewCompositionEngine.compose(o);
 
   return (
-    <div className="grid gap-5 border border-amber-900/15 dark:border-amber-700/25 rounded-lg bg-[#FAF5EC] dark:bg-[#25201A] shadow-xs px-4 py-4 sm:px-6 my-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+    <div className="grid gap-5 border border-border/80 dark:border-amber-900/30 rounded-lg bg-[#FAF8F3] dark:bg-[#231E1A] shadow-xs px-4 py-4 sm:px-6 my-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       {/* Left Column: Executive Narrative & Drivers */}
       <div className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-2">

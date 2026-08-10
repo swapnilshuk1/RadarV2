@@ -125,14 +125,14 @@
 }
 
 .dark {
-  --background: oklch(0.15 0.022 55);
+  --background: oklch(0.14 0.022 55);
   --foreground: oklch(0.96 0.012 75);
-  --card: oklch(0.19 0.025 55);
+  --card: oklch(0.18 0.025 55);
   --card-foreground: oklch(0.96 0.012 75);
-  --muted: oklch(0.23 0.028 55);
+  --muted: oklch(0.22 0.028 55);
   --muted-foreground: oklch(0.72 0.035 65);
-  --surface-raised: oklch(0.22 0.03 55);
-  --accent: oklch(0.23 0.028 55);
+  --surface-raised: oklch(0.20 0.028 55);
+  --accent: oklch(0.22 0.028 55);
   --accent-foreground: oklch(0.96 0.012 75);
   --primary: oklch(0.96 0.012 75);
   --primary-foreground: oklch(0.18 0.025 55);
@@ -140,7 +140,7 @@
   --border-strong: oklch(0.96 0.012 75 / 28%);
   --input: oklch(0.96 0.012 75 / 15%);
   --ring: oklch(0.68 0.08 65);
-  --parchment: oklch(0.15 0.022 55);
+  --parchment: oklch(0.14 0.022 55);
   --ink: oklch(0.96 0.012 75);
   --ink-muted: oklch(0.72 0.035 65);
   --hairline: oklch(0.96 0.012 75 / 12%);
@@ -272,7 +272,7 @@
 }
 
 .dark .glass-header {
-  background: oklch(0.14 0.04 260 / 0.85);
+  background: oklch(0.14 0.022 55 / 0.85);
 }
 
 .glass-card {
@@ -284,9 +284,9 @@
 }
 
 .dark .glass-card {
-  background: oklch(0.19 0.05 260 / 0.7);
-  border: 1px solid oklch(1 0 0 / 0.12);
-  box-shadow: 0 4px 20px -2px oklch(0 0 0 / 0.3);
+  background: oklch(0.18 0.025 55 / 0.75);
+  border: 1px solid oklch(0.96 0.012 75 / 0.12);
+  box-shadow: 0 4px 20px -2px oklch(0 0 0 / 0.35);
 }
 
 .card-lift {
@@ -301,7 +301,7 @@
 
 .dark .card-lift:hover {
   box-shadow: 0 8px 30px -4px oklch(0 0 0 / 0.5);
-  border-color: oklch(1 0 0 / 0.3);
+  border-color: oklch(0.96 0.012 75 / 0.25);
 }
 
 /* Floating Navigation Action Dock */
@@ -321,8 +321,8 @@
 }
 
 .dark .floating-dock {
-  background: oklch(0.12 0.04 260 / 0.92);
-  border: 1px solid oklch(1 0 0 / 0.2);
+  background: oklch(0.14 0.022 55 / 0.92);
+  border: 1px solid oklch(0.96 0.012 75 / 0.2);
 }
 
 /* Glowing Decision Badges */

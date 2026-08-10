@@ -503,7 +503,7 @@ function ShortlistCardRow({
       {/* Expanded Brief Drawer with smooth CSS grid expansion */}
       <div
         className={`grid transition-all duration-300 ease-out overflow-hidden ${
-          isOpen ? "grid-rows-[1fr] opacity-100 p-3 sm:p-4 border-t border-amber-900/15 dark:border-amber-700/20 bg-amber-500/[0.02] dark:bg-amber-950/20" : "grid-rows-[0fr] opacity-0 p-0"
+          isOpen ? "grid-rows-[1fr] opacity-100 p-3 sm:p-4 border-t border-border/60 bg-muted/20 dark:bg-muted/10" : "grid-rows-[0fr] opacity-0 p-0"
         }`}
       >
         <div className="min-h-0">
