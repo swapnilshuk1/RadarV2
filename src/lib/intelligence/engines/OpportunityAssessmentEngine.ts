@@ -36,22 +36,111 @@ export class OpportunityAssessmentEngine {
   ): OpportunityAssessment {
     const richness = EvidenceRichnessCalculator.calculate(job.originalOpportunity);
 
-    if (
-      job.operatingLevel.value === "UNKNOWN" ||
-      job.workNature.value === "UNKNOWN" ||
-      candidate.operatingLevel.value === "UNKNOWN" ||
-      candidate.workNature.value === "UNKNOWN"
+    const titleLower = (job.role || job.originalOpportunity?.role || "").toLowerCase();
+    const descLower = (job.originalOpportunity?.normalizedText || job.originalOpportunity?.rawText || job.originalOpportunity?.description || "").toLowerCase();
+
+    // Parse experience range from description
+    let minExp: number | null = null;
+    let maxExp: number | null = null;
+    const expMatch = descLower.match(/(?:(\d{1,2})\s*(?:-|–|to|\+)\s*(\d{1,2})?|\b(\d{1,2})\b)\s*(?:years?|yrs?)(?:\s*(?:of\s*)?exp)?/i);
+    if (expMatch) {
+      if (expMatch[1]) minExp = parseInt(expMatch[1], 10);
+      if (expMatch[2]) maxExp = parseInt(expMatch[2], 10);
+      else if (expMatch[3] && !minExp) minExp = parseInt(expMatch[3], 10);
+    }
+
+    const isExecutiveTitle = 
+      titleLower.includes("chief") || 
+      titleLower.includes("cmo") || 
+      titleLower.includes("cgo") || 
+      titleLower.includes("coo") || 
+      titleLower.includes("cro") || 
+      titleLower.includes("vp") || 
+      titleLower.includes("vice president") || 
+      titleLower.includes("svp") || 
+      titleLower.includes("director") || 
+      titleLower.includes("country head") ||
+      (titleLower.includes("head") && !titleLower.includes("assistant"));
+
+    const isSubTierTitle = 
+      (titleLower.includes("executive") && !titleLower.includes("chief executive")) ||
+      titleLower.includes("assistant manager") ||
+      titleLower.includes("team lead") ||
+      titleLower.includes("tech lead") ||
+      titleLower.includes("project lead") ||
+      titleLower.includes("bde") ||
+      titleLower.includes("junior") ||
+      titleLower.includes("intern") ||
+      titleLower.includes("analyst") ||
+      titleLower.includes("specialist") ||
+      titleLower.includes("coordinator") ||
+      (titleLower.includes("associate") && !titleLower.includes("associate director"));
+
+    const hasStrategicSignals = 
+      descLower.includes("p&l") || 
+      descLower.includes("profit and loss") || 
+      descLower.includes("ebitda") || 
+      descLower.includes("board of directors") || 
+      descLower.includes("c-suite") || 
+      descLower.includes("direct report to ceo") || 
+      descLower.includes("global capability center") || 
+      descLower.includes("enterprise transformation") || 
+      descLower.includes("revenue ownership");
+
+    const hasExecutionSignals = 
+      descLower.includes("hands-on") || 
+      descLower.includes("campaign execution") || 
+      descLower.includes("a/b testing") || 
+      descLower.includes("lead generation") || 
+      descLower.includes("paid media") || 
+      descLower.includes("social media") || 
+      descLower.includes("form capture") || 
+      descLower.includes("list import") || 
+      descLower.includes("day-to-day");
+
+    let scopeType: "STRATEGIC_MANDATE" | "MIXED" | "EXECUTION" | "UNKNOWN" = "UNKNOWN";
+    if (hasStrategicSignals && !hasExecutionSignals) scopeType = "STRATEGIC_MANDATE";
+    else if (hasExecutionSignals && !hasStrategicSignals) scopeType = "EXECUTION";
+    else if (hasStrategicSignals || hasExecutionSignals) scopeType = "MIXED";
+
+    let signalType: "QUALIFIED_EXECUTIVE" | "BORDERLINE_MANDATE" | "SUB_TIER_SIGNAL" | "CRITICAL_SENIORITY_CONTRADICTION" = "BORDERLINE_MANDATE";
+    let mandateSeniority: "QUALIFIED" | "BORDERLINE" | "SUB_TIER" = "BORDERLINE";
+    const contradictions: string[] = [];
+    const evidence: string[] = [];
+
+    if (isExecutiveTitle && minExp !== null && minExp < 8 && scopeType === "EXECUTION") {
+      signalType = "CRITICAL_SENIORITY_CONTRADICTION";
+      mandateSeniority = "SUB_TIER";
+      contradictions.push("Seniority contradiction: Executive title conflicts with required 3–7 year execution-oriented scope.");
+    } else if (isSubTierTitle || (minExp !== null && minExp < 8 && scopeType === "EXECUTION")) {
+      signalType = "SUB_TIER_SIGNAL";
+      mandateSeniority = "SUB_TIER";
+      contradictions.push("Sub-tier mandate: Role scope is below executive baseline.");
+    } else if (
+      isExecutiveTitle &&
+      scopeType !== "EXECUTION" &&
+      (
+        (minExp !== null && minExp >= 12) ||
+        (minExp !== null && minExp >= 8 && (scopeType === "STRATEGIC_MANDATE" || hasStrategicSignals)) ||
+        (minExp === null && (scopeType === "STRATEGIC_MANDATE" || hasStrategicSignals))
+      )
     ) {
-      return {
-        status: "FAILED",
-        sufficiency: "INSUFFICIENT",
-        evidenceCount: 0,
-        failureCode: "UNKNOWN_WORK_NATURE",
-        evidenceSummary: { extractedSignals: 0, inferredSignals: 0, ignoredSignals: 0, conflictingSignals: 0 },
-        operatingLevelAssessment: "UNKNOWN",
-        workNatureAssessment: "UNKNOWN",
-        scopeAssessment: "UNKNOWN"
-      };
+      signalType = "QUALIFIED_EXECUTIVE";
+      mandateSeniority = "QUALIFIED";
+      evidence.push("Verified executive mandate matching or exceeding experience baseline.");
+    } else if (
+      (minExp !== null && minExp >= 8) ||
+      (minExp !== null && minExp < 8 && (scopeType === "STRATEGIC_MANDATE" || hasStrategicSignals)) ||
+      scopeType === "MIXED" ||
+      scopeType === "EXECUTION"
+    ) {
+      signalType = "BORDERLINE_MANDATE";
+      mandateSeniority = "BORDERLINE";
+      evidence.push("Borderline mandate seniority: Requires verification of strategic scope.");
+    } else {
+      signalType = "SUB_TIER_SIGNAL";
+      mandateSeniority = "SUB_TIER";
+      contradictions.push("Role scope or experience is below executive baseline.");
     }
 
     const candOL = LEVEL_VAL[candidate.operatingLevel.value] || 1;
@@ -105,7 +194,6 @@ export class OpportunityAssessmentEngine {
     const candidateCompositeScale = (candidateCommercialScale + candidateOrganizationalScale + candidateTransformationScale) / 3; // 81.67
 
     // Job Required Scale Vector based on mandate level:
-    const titleLower = job.role.toLowerCase();
     let jobRequiredScale = 45; // Default managerial baseline
     if (titleLower.includes("chief") || titleLower.includes("coo") || titleLower.includes("cmo")) {
       jobRequiredScale = 85;
@@ -139,7 +227,9 @@ export class OpportunityAssessmentEngine {
     else if (titleLower.includes("churn")) mandateModifier -= 3;
     else if (titleLower.includes("lead-") || titleLower.includes("chief manager")) mandateModifier -= 5;
 
-    const opportunityScore = Math.min(100, Math.max(0, baseOpportunityScore + continuousScaleBonus + mandateModifier));
+    const opportunityScore = mandateSeniority === "SUB_TIER"
+      ? 25
+      : Math.min(100, Math.max(0, baseOpportunityScore + continuousScaleBonus + mandateModifier));
 
     return {
       status: "COMPLETE",
@@ -154,6 +244,16 @@ export class OpportunityAssessmentEngine {
       operatingLevelAssessment,
       workNatureAssessment,
       scopeAssessment,
+      mandateSeniority,
+      seniorityAssessment: {
+        minYearsExperience: minExp ?? undefined,
+        maxYearsExperience: maxExp ?? undefined,
+        scopeType,
+        signalType,
+        mandateSeniority,
+        evidence,
+        contradictions
+      },
       opportunityScore
     } as any;
   }

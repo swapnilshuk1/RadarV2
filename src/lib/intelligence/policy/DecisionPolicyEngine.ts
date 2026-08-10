@@ -1,4 +1,4 @@
-﻿import { IdentityAssessment, CapabilityAssessment, OpportunityAssessment, CareerAssessment, LifestyleAssessment, DecisionVerdict } from "../../domain/semantic";
+import { IdentityAssessment, CapabilityAssessment, OpportunityAssessment, CareerAssessment, LifestyleAssessment, DecisionVerdict } from "../../domain/semantic";
 import decisionPolicy from "@/data/ontology/decision_policy.json";
 import { IdentityDistanceCalculator } from "../utils/IdentityDistanceCalculator";
 
@@ -203,6 +203,26 @@ export class DecisionPolicyEngine {
     pipeline.push({ stage: "Ranking", status: "COMPLETE", score: priorityScore });
 
     // Exclusion Gates
+    if (
+      opportunity.mandateSeniority === "SUB_TIER" || 
+      (opportunity as any).seniorityAssessment?.mandateSeniority === "SUB_TIER"
+    ) {
+      return {
+        verdict: "PASS",
+        priorityScore: Math.min(priorityScore, 40),
+        confidences,
+        tailoringEffort: "HIGH",
+        trajectoryUpside: "Sub-tier Mandate",
+        relativeDifferentiator: (opportunity as any).seniorityAssessment?.signalType === "CRITICAL_SENIORITY_CONTRADICTION"
+          ? "Seniority contradiction: Executive title conflicts with required 3–7 year execution-oriented scope."
+          : "Sub-tier mandate: Role scope is below executive baseline.",
+        triggeredRuleIds: ["G-SUB-TIER-MANDATE-VETO"],
+        pipeline,
+        decisionDrivers,
+        decisionRisks: [...decisionRisks, { factor: "Sub-Tier Mandate Veto", impact: "negative", strength: "high", evidence: "Role scope is below executive baseline" }]
+      };
+    }
+
     if (identity.verdict === "MISMATCH" || identityScore < t.identityCutoff) {
       return {
         verdict: "PASS",
