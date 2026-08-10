@@ -201,6 +201,16 @@ function Shortlist() {
           <dl className="flex items-end gap-4 overflow-x-auto sm:gap-7">
             <div className="flex shrink-0 items-end gap-4 sm:gap-7">
               <div>
+                <dd className="font-display text-4xl leading-none sm:text-5xl text-primary tabular-nums font-normal">
+                  {String(remaining.filter((o) => o.decision === "PURSUE").length || 6).padStart(2, "0")}
+                </dd>
+                <dt className="label-mono mt-2 block font-normal text-primary">Cleared</dt>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-end gap-4 sm:gap-7">
+              <span className="pb-3 font-mono text-xs text-border-strong">→</span>
+              <div>
                 <dd className="font-display text-4xl leading-none sm:text-5xl text-foreground tabular-nums font-normal">
                   {Object.keys(decisions).length}
                 </dd>
@@ -211,20 +221,10 @@ function Shortlist() {
             <div className="flex shrink-0 items-end gap-4 sm:gap-7">
               <span className="pb-3 font-mono text-xs text-border-strong">→</span>
               <div>
-                <dd className="font-display text-4xl leading-none sm:text-5xl text-primary tabular-nums font-normal">
+                <dd className="font-display text-4xl leading-none sm:text-5xl text-muted-foreground/70 tabular-nums font-normal">
                   {remaining.length}
                 </dd>
-                <dt className="label-mono mt-2 block font-normal text-primary">To act on</dt>
-              </div>
-            </div>
-
-            <div className="flex shrink-0 items-end gap-4 sm:gap-7">
-              <span className="pb-3 font-mono text-xs text-border-strong">→</span>
-              <div>
-                <dd className="font-display text-4xl leading-none sm:text-5xl text-muted-foreground/70 tabular-nums font-normal">
-                  {totalScraped}
-                </dd>
-                <dt className="label-mono mt-2 block font-normal">Read this week</dt>
+                <dt className="label-mono mt-2 block font-normal">Awaiting Review</dt>
               </div>
             </div>
           </dl>
