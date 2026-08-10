@@ -13,31 +13,31 @@ export function InlineBrief({
   const preview = PreviewCompositionEngine.compose(o);
 
   return (
-    <div className="grid gap-8 border border-border/80 rounded-md bg-card shadow-[0_2px_12px_rgba(0,0,0,0.03)] px-5 py-7 sm:px-8 my-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+    <div className="grid gap-5 border border-border/60 rounded-lg bg-card/60 shadow-xs px-4 py-4 sm:px-6 my-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
       {/* Left Column: Executive Narrative & Drivers */}
       <div className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="label-mono font-normal text-muted-foreground">◆ Executive brief</span>
-          <span className="font-display text-lg text-primary font-normal">
+          <span className="label-mono font-medium text-muted-foreground text-[0.68rem]">◆ Executive brief</span>
+          <span className="font-display text-base text-primary font-normal">
             {o.decision === "PURSUE" ? "Worth pursuing." : o.decision === "CONSIDER" ? "Worth considering." : "Pass on mandate."}
           </span>
         </div>
 
-        <p className="mt-4 max-w-xl font-display text-3xl leading-[1.25] text-foreground font-normal">
+        <p className="mt-2 max-w-xl font-display text-2xl leading-[1.25] text-foreground font-normal">
           {preview.headline || "Closest match to your operating mandate."}
         </p>
 
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          <div className="border-l-2 border-signal pl-4">
-            <p className="label-mono text-signal font-normal">Proceed if</p>
-            <p className="mt-1.5 text-sm leading-relaxed text-foreground font-normal">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="border-l-2 border-emerald-500 pl-3">
+            <p className="label-mono text-emerald-600 dark:text-emerald-400 font-bold text-[0.68rem] uppercase">Proceed if</p>
+            <p className="mt-1 text-xs leading-relaxed text-foreground font-normal">
               {preview.whyItWorks || o.primaryDriver || "Direct P&L ownership aligned to your marketing strategy precedents."}
             </p>
           </div>
 
-          <div className="border-l-2 border-caution pl-4">
-            <p className="label-mono text-caution font-normal">Pause if</p>
-            <p className="mt-1.5 text-sm leading-relaxed text-foreground font-normal">
+          <div className="border-l-2 border-amber-500 pl-3">
+            <p className="label-mono text-amber-600 dark:text-amber-400 font-bold text-[0.68rem] uppercase">Pause if</p>
+            <p className="mt-1 text-xs leading-relaxed text-foreground font-normal">
               {preview.watchFor || "Standard organizational alignment review."}
             </p>
           </div>
@@ -45,52 +45,53 @@ export function InlineBrief({
       </div>
 
       {/* Right Column: Metadata & Actions */}
-      <div className="min-w-0 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-        <p className="label-mono font-normal text-muted-foreground">Watch for</p>
-        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground font-normal">
+      <div className="min-w-0 border-t border-border/60 pt-3 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+        <p className="label-mono text-[0.68rem] font-bold text-muted-foreground uppercase">Watch for</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground font-normal">
           {preview.watchFor || "Compensation target or reporting hierarchy requires verification."}
         </p>
 
-        <dl className="mt-5 space-y-2 border-t border-border pt-4">
+        <dl className="mt-3 space-y-1.5 border-t border-border/60 pt-2.5">
           <div className="flex items-baseline justify-between gap-3">
-            <dt className="label-mono font-normal">Target</dt>
-            <dd className="truncate font-mono text-xs text-foreground font-normal">
+            <dt className="label-mono text-[0.65rem] text-muted-foreground">Target</dt>
+            <dd className="truncate font-mono text-[0.7rem] text-foreground font-medium">
               {(o as any).compensation || (o as any).targetRemuneration || "Confidential Executive Compensation"}
             </dd>
           </div>
           <div className="flex items-baseline justify-between gap-3">
-            <dt className="label-mono font-normal">Track</dt>
-            <dd className="truncate font-mono text-xs text-foreground font-normal">
+            <dt className="label-mono text-[0.65rem] text-muted-foreground">Track</dt>
+            <dd className="truncate font-mono text-[0.7rem] text-foreground font-medium">
               {o.mandateArchetype || "Growth Marketing"}
             </dd>
           </div>
           <div className="flex items-baseline justify-between gap-3">
-            <dt className="label-mono font-normal">Source</dt>
-            <dd className="truncate font-mono text-xs text-foreground font-normal">
+            <dt className="label-mono text-[0.65rem] text-muted-foreground">Source</dt>
+            <dd className="truncate font-mono text-[0.7rem] text-foreground font-medium">
               {o.scrapedFrom || "LinkedIn"}
             </dd>
           </div>
         </dl>
 
-        <p className="label-mono mt-6 font-normal">Next step</p>
-        <Link
-          to="/opportunity/$jobHash"
-          params={{ jobHash: o.jobHash }}
-          className="mt-2 flex items-center justify-center rounded-sm bg-foreground px-4 py-3 label-mono text-background font-normal transition-opacity hover:opacity-90 w-full cursor-pointer"
-          onClick={(e) => e.stopPropagation()}
-        >
-          Open full dossier ↗
-        </Link>
+        <div className="mt-3 flex items-center gap-2">
+          <Link
+            to="/opportunity/$jobHash"
+            params={{ jobHash: o.jobHash }}
+            className="flex-1 flex items-center justify-center rounded-full bg-foreground px-3 py-2 label-mono text-background text-xs font-bold transition-opacity hover:opacity-90 cursor-pointer shadow-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Open full dossier ↗
+          </Link>
 
-        <a
-          href={applyUrlFor(o)}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 block text-center font-mono text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground font-normal"
-          onClick={(e) => e.stopPropagation()}
-        >
-          Apply directly on {o.scrapedFrom || "LinkedIn"}
-        </a>
+          <a
+            href={applyUrlFor(o)}
+            target="_blank"
+            rel="noreferrer"
+            className="px-3 py-2 rounded-full border border-border/60 font-mono text-xs text-foreground hover:bg-muted font-semibold cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Apply direct
+          </a>
+        </div>
 
         <div className="mt-5 grid grid-cols-3 gap-1.5">
           <button

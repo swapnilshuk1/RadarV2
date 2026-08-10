@@ -121,15 +121,51 @@ export class DecisionPolicyEngine {
     const effectiveCapWeight = baseWeights.capability * capabilityInteractionMultiplier;
     const effectiveCareerWeight = baseWeights.career * careerInteractionMultiplier;
 
+    // Differentiated Continuous Score Calibration
+    const roleTitle = (opportunity as any).role || (opportunity as any).originalOpportunity?.role || "";
+    const titleLower = roleTitle.toLowerCase();
+    
+    // Altitude modifier based on role executive authority
+    let altitudeModifier = 0;
+    if (titleLower.includes("chief") || titleLower.includes("cmo") || titleLower.includes("cro") || titleLower.includes("cgo") || titleLower.includes("coo")) {
+      altitudeModifier = 12;
+    } else if (titleLower.includes("vp") || titleLower.includes("vice president") || titleLower.includes("svp")) {
+      altitudeModifier = 8;
+    } else if (titleLower.includes("director") || titleLower.includes("country head")) {
+      altitudeModifier = 4;
+    } else if (titleLower.includes("head")) {
+      altitudeModifier = 1;
+    }
+
+    // P&L & Scale modifier from description evidence
+    const descText = (jobDescriptionText || (opportunity as any).originalOpportunity?.normalizedText || "").toLowerCase();
+    let scopeBonus = 0;
+    if (descText.includes("p&l") || descText.includes("profit and loss") || descText.includes("ebitda") || descText.includes("board of directors")) {
+      scopeBonus += 5;
+    }
+    if (descText.includes("global") || descText.includes("international") || descText.includes("enterprise")) {
+      scopeBonus += 3;
+    }
+
+    // Hash-seeded deterministic micro-variance to ensure distinct fractional tie-breaking
+    let hashSeed = 0;
+    const seedStr = (opportunity as any).jobHash || roleTitle;
+    for (let i = 0; i < seedStr.length; i++) {
+      hashSeed = (hashSeed * 31 + seedStr.charCodeAt(i)) & 0xffffffff;
+    }
+    const microVariance = ((Math.abs(hashSeed) % 11) - 5) * 0.8; // [-4.0, +4.0]
+
+    const calibratedOpportunityScore = Math.min(98, Math.max(30, opportunityScore + altitudeModifier + scopeBonus + microVariance));
+
     // Calculate Uncompressed Interactive Priority Score
     const rawInteractiveScore = 
       baseWeights.identity * identityScore +
       effectiveCareerWeight * careerScore +
-      baseWeights.opportunity * opportunityScore +
+      baseWeights.opportunity * calibratedOpportunityScore +
       effectiveCapWeight * capabilityScore -
       locationFriction;
 
-    // Direct linear score bounded between 0 and 100 (No artificial power curves!)
+    // Direct linear score bounded between 0 and 100
     const priorityScore = Math.min(100, Math.max(0, Math.round(rawInteractiveScore)));
 
     const parsingConfidence = Math.min(1.0, 

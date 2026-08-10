@@ -22,13 +22,18 @@ export const roleBoardAdvisorPattern: EditorialPattern = {
     }
   },
   slots: {
-    headline: (v) => `A non-executive board directorship at ${v.company} centered on fiduciary oversight and capital allocation.`,
-    opening: (v) => `This appointment provides strategic governance to executive leadership without day-to-day operational responsibilities.`,
-    editorialBridge: (v) => `The position expands your non-executive governance network, offering board exposure in an expanding enterprise category.`,
+    headline: (v) => {
+      const isBoard = /board|governance|fiduciary|non-executive|advisory board/i.test(v.role || "");
+      return isBoard
+        ? `A non-executive board directorship at ${v.company} centered on fiduciary oversight and capital allocation.`
+        : `This ${v.role} mandate at ${v.company} combines strategic governance with executive leadership.`;
+    },
+    opening: (v) => `This appointment provides strategic guidance to executive leadership without day-to-day operational friction.`,
+    editorialBridge: (v) => `The position expands your executive governance network, offering high-visibility exposure in an expanding category.`,
     decisionGuidance: {
-      proceedIf: (v) => `Board oversight and strategic capital allocation advisory align with your career horizon.`,
-      pauseIf: (v) => `Confirm D&O indemnification terms and committee cadence expectations during initial screening.`,
-      closing: (v) => `Proceed. Landmark governance appointment with high strategic visibility.`
+      proceedIf: (v) => `Executive oversight and strategic capital allocation advisory align with your career horizon.`,
+      pauseIf: (v) => `Confirm governance structure and committee cadence expectations during initial screening.`,
+      closing: (v) => `Proceed. Landmark executive mandate with high strategic visibility.`
     }
   }
 };

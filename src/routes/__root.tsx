@@ -203,7 +203,7 @@ function GlobalHeader() {
           </Link>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.62rem] font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            1,285 LIVE
+            1,285 ACTIVE
           </span>
         </div>
 

@@ -96,6 +96,14 @@ export class EditorialValidator {
       }
     }
 
+    // Check specific role pattern constraints
+    if (pattern.id === "role-board-director-4a") {
+      const isBoardRole = /board|governance|fiduciary|non-executive|advisory board/i.test(ctx.executiveIdentity || "");
+      if (!isBoardRole) {
+        return { isValid: false, reason: `Board pattern 'role-board-director-4a' requires board/governance identity` };
+      }
+    }
+
     return { isValid: true };
   }
 }

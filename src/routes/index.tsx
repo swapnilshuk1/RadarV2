@@ -201,26 +201,26 @@ function Shortlist() {
             </p>
           </div>
 
-          <dl className="flex items-center gap-3 overflow-x-auto sm:gap-4">
-            <div className="glass-card rounded-lg p-3.5 sm:p-4 min-w-[110px] text-center border border-emerald-500/20 bg-emerald-500/5">
-              <dd className="font-display text-3xl sm:text-4xl text-emerald-600 dark:text-emerald-400 tabular-nums font-medium">
+          <dl className="flex items-center gap-6 overflow-x-auto sm:gap-8">
+            <div className="border-r border-border/40 pr-6 sm:pr-8">
+              <dd className="font-display text-4xl sm:text-5xl text-emerald-600 dark:text-emerald-400 tabular-nums font-normal">
                 {String(remaining.filter((o) => o.decision === "PURSUE").length || 6).padStart(2, "0")}
               </dd>
-              <dt className="label-mono mt-1 text-[0.65rem] text-emerald-700 dark:text-emerald-300 font-semibold">Cleared</dt>
+              <dt className="label-mono mt-1 text-[0.68rem] text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">Cleared</dt>
             </div>
 
-            <div className="glass-card rounded-lg p-3.5 sm:p-4 min-w-[110px] text-center border border-border/60">
-              <dd className="font-display text-3xl sm:text-4xl text-foreground tabular-nums font-medium">
+            <div className="border-r border-border/40 pr-6 sm:pr-8">
+              <dd className="font-display text-4xl sm:text-5xl text-foreground tabular-nums font-normal">
                 {Object.keys(decisions).length}
               </dd>
-              <dt className="label-mono mt-1 text-[0.65rem] text-muted-foreground font-medium">Reviewed</dt>
+              <dt className="label-mono mt-1 text-[0.68rem] text-muted-foreground font-semibold uppercase tracking-wider">Reviewed</dt>
             </div>
 
-            <div className="glass-card rounded-lg p-3.5 sm:p-4 min-w-[110px] text-center border border-border/60">
-              <dd className="font-display text-3xl sm:text-4xl text-muted-foreground tabular-nums font-medium">
-                {remaining.length}
+            <div>
+              <dd className="font-display text-4xl sm:text-5xl text-muted-foreground tabular-nums font-normal">
+                {totalScraped}
               </dd>
-              <dt className="label-mono mt-1 text-[0.65rem] text-muted-foreground font-medium">Awaiting</dt>
+              <dt className="label-mono mt-1 text-[0.68rem] text-muted-foreground font-semibold uppercase tracking-wider">Screened</dt>
             </div>
           </dl>
         </section>
@@ -277,7 +277,7 @@ function Shortlist() {
             <div>
               <h2 className="label-mono text-foreground font-semibold tracking-wider">Shortlist queue · sorted by fit</h2>
               <span className="label-mono text-xs text-muted-foreground mt-0.5 block">
-                Showing {filteredRemaining.length} of {remaining.length} opportunities
+                {filteredRemaining.length} opportunities evaluated by RADAR
               </span>
             </div>
 
