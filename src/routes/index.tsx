@@ -283,13 +283,13 @@ function Shortlist() {
             </div>
 
             {/* Human-Friendly Category Filters */}
-            <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto p-1 bg-muted/40 rounded-full border border-border/40">
+            <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap p-1 bg-muted/40 rounded-full border border-border/40 max-w-full scrollbar-none shrink-0">
               {["All", "Transformation", "Commercial Growth", "Country Leadership", "Platform & Digital", "Founder-led", "Private Equity"].map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
-                  className={`text-[0.65rem] font-mono uppercase tracking-wider px-3 py-1 transition-all rounded-full cursor-pointer ${
+                  className={`text-[0.62rem] font-mono uppercase tracking-wider px-2.5 py-0.5 whitespace-nowrap shrink-0 transition-all rounded-full cursor-pointer ${
                     selectedCategory === cat
                       ? "bg-foreground text-background font-bold shadow-xs"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
