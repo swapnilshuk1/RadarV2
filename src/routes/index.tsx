@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { type Opportunity, type DecisionVerb } from "../data/opportunity-fixtures";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
@@ -312,81 +312,17 @@ function Shortlist() {
               const score = o.recommendationResult?.score ?? 80;
 
               return (
-                <li key={o.jobHash} className={`border-b border-border transition-all ${showArrivalBanner && idx === 0 ? "border-l-2 border-l-primary bg-muted/20 pl-2 sm:pl-3" : ""}`}>
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    onClick={() => {
-                      if (isOpen) {
-                        const openTime = openedTimes[o.jobHash];
-                        const duration = openTime ? Date.now() - openTime : 0;
-                        logTelemetry(o.jobHash, "CLOSE", duration);
-                        setOpenedTimes((prev) => {
-                          const next = { ...prev };
-                          delete next[o.jobHash];
-                          return next;
-                        });
-                        setOpen(null);
-                      } else {
-                        setOpenedTimes((prev) => ({ ...prev, [o.jobHash]: Date.now() }));
-                        logTelemetry(o.jobHash, "EXPAND", 0);
-                        setOpen(o.jobHash);
-                      }
-                    }}
-                    className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-3.5 text-left transition-colors sm:gap-8 cursor-pointer hover:bg-muted/10"
-                  >
-                    <span className="min-w-0">
-                      <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-                        <span className="label-mono tabular-nums text-border-strong font-normal">
-                          {(idx + 1).toString().padStart(2, "0")}
-                        </span>
-                        <span className="font-display text-2xl leading-tight sm:text-[1.7rem] text-foreground font-normal">
-                          {o.role}
-                        </span>
-                        <span className={`label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none font-normal uppercase ${
-                          o.decision === "CONSIDER" ? "bg-caution text-white" : o.decision === "PASS" ? "bg-muted text-muted-foreground" : "bg-signal text-white"
-                        }`}>
-                          {o.decision?.toLowerCase() || "pursue"}
-                        </span>
-                        <span className="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline font-normal">
-                          {o.mandateArchetype || "Growth Marketing"}
-                        </span>
-                      </span>
-
-                      <span className="label-mono mt-2 block truncate font-normal">
-                        {o.company} · {o.location} ({(o as any).workModel || "On-site"}) · {o.scrapedFrom}
-                      </span>
-
-                      <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
-                        {brief.memory.retentionSentence || o.whyNow}
-                      </span>
-
-                      {(brief.frictionPreview || brief.topUnknownPreview) && (
-                        <span className="mt-2.5 flex items-center gap-2">
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
-                          <span className="label-mono truncate text-destructive font-normal">
-                            Needs verification: {brief.frictionPreview || brief.topUnknownPreview}
-                          </span>
-                        </span>
-                      )}
-                    </span>
-
-                    <span className="flex shrink-0 flex-col items-end gap-2">
-                      <span className="flex shrink-0 items-baseline gap-0.5 tabular-nums">
-                        <span className="font-display text-3xl leading-none text-foreground font-normal">{score}</span>
-                        <span className="font-mono text-[0.6rem] text-muted-foreground font-normal">/100</span>
-                      </span>
-                      <span className="label-mono transition-colors group-hover:text-foreground font-normal">
-                        {isOpen ? "— Close" : "+ Brief"}
-                      </span>
-                    </span>
-                  </button>
-
-                  {/* Expanded Brief Drawer */}
-                  {isOpen && (
-                    <InlineBrief opportunity={o} onDecide={(verb) => decide(o.jobHash, verb)} />
-                  )}
-                </li>
+                <ShortlistCardRow
+                  key={o.jobHash}
+                  o={o}
+                  idx={idx}
+                  isOpen={isOpen}
+                  openedTimes={openedTimes}
+                  setOpenedTimes={setOpenedTimes}
+                  setOpen={setOpen}
+                  decide={decide}
+                  showArrivalBanner={showArrivalBanner}
+                />
               );
             })}
 
@@ -445,5 +381,132 @@ function Shortlist() {
         onAbort={abortScrapeFn}
       />
     </div>
+  );
+}
+
+function ShortlistCardRow({
+  o,
+  idx,
+  isOpen,
+  openedTimes,
+  setOpenedTimes,
+  setOpen,
+  decide,
+  showArrivalBanner,
+}: {
+  o: Opportunity;
+  idx: number;
+  isOpen: boolean;
+  openedTimes: Record<string, number>;
+  setOpenedTimes: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  setOpen: React.Dispatch<React.SetStateAction<string | null>>;
+  decide: (jobHash: string, verb: DecisionVerb) => void;
+  showArrivalBanner: boolean;
+}) {
+  const rowRef = useRef<HTMLLIElement>(null);
+  const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
+  const score = o.recommendationResult?.score ?? 80;
+
+  useEffect(() => {
+    if (isOpen && rowRef.current) {
+      const timer = setTimeout(() => {
+        rowRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  return (
+    <li
+      ref={rowRef}
+      className={`scroll-mt-24 border-b border-border transition-all ${
+        showArrivalBanner && idx === 0 ? "border-l-2 border-l-primary bg-muted/20 pl-2 sm:pl-3" : ""
+      }`}
+    >
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        onClick={() => {
+          if (isOpen) {
+            const openTime = openedTimes[o.jobHash];
+            const duration = openTime ? Date.now() - openTime : 0;
+            logTelemetry(o.jobHash, "CLOSE", duration);
+            setOpenedTimes((prev) => {
+              const next = { ...prev };
+              delete next[o.jobHash];
+              return next;
+            });
+            setOpen(null);
+          } else {
+            setOpenedTimes((prev) => ({ ...prev, [o.jobHash]: Date.now() }));
+            logTelemetry(o.jobHash, "EXPAND", 0);
+            setOpen(o.jobHash);
+          }
+        }}
+        className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-3.5 text-left transition-colors sm:gap-8 cursor-pointer hover:bg-muted/10"
+      >
+        <span className="min-w-0">
+          <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            <span className="label-mono tabular-nums text-border-strong font-normal">
+              {(idx + 1).toString().padStart(2, "0")}
+            </span>
+            <span className="font-display text-2xl leading-tight sm:text-[1.7rem] text-foreground font-normal">
+              {o.role}
+            </span>
+            <span className={`label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none font-normal uppercase ${
+              o.decision === "CONSIDER" ? "bg-caution text-white" : o.decision === "PASS" ? "bg-muted text-muted-foreground" : "bg-signal text-white"
+            }`}>
+              {o.decision?.toLowerCase() || "pursue"}
+            </span>
+            <span className="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline font-normal">
+              {o.mandateArchetype || "Growth Marketing"}
+            </span>
+          </span>
+
+          <span className="label-mono mt-2 block truncate font-normal">
+            {o.company} · {o.location} ({(o as any).workModel || "On-site"}) · {o.scrapedFrom}
+          </span>
+
+          <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
+            {brief.memory.retentionSentence || o.whyNow}
+          </span>
+
+          {(brief.frictionPreview || brief.topUnknownPreview) && (
+            <span className="mt-2.5 flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
+              <span className="label-mono truncate text-destructive font-normal">
+                Needs verification: {brief.frictionPreview || brief.topUnknownPreview}
+              </span>
+            </span>
+          )}
+        </span>
+
+        <span className="flex shrink-0 flex-col items-end gap-2">
+          <span className="flex shrink-0 items-baseline gap-0.5 tabular-nums">
+            <span className="font-display text-3xl leading-none text-foreground font-normal">{score}</span>
+            <span className="font-mono text-[0.6rem] text-muted-foreground font-normal">/100</span>
+          </span>
+          <span className="label-mono transition-colors group-hover:text-foreground font-normal">
+            {isOpen ? "— Close" : "+ Brief"}
+          </span>
+        </span>
+      </button>
+
+      {/* Expanded Brief Drawer with smooth CSS grid expansion */}
+      <div
+        className={`grid transition-all duration-300 ease-out overflow-hidden ${
+          isOpen ? "grid-rows-[1fr] opacity-100 mt-2 mb-4" : "grid-rows-[0fr] opacity-0 mt-0 mb-0"
+        }`}
+      >
+        <div className="min-h-0">
+          {isOpen && (
+            <InlineBrief opportunity={o} onDecide={(verb) => decide(o.jobHash, verb)} />
+          )}
+        </div>
+      </div>
+    </li>
   );
 }

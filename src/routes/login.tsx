@@ -53,6 +53,13 @@ function Login() {
           intentStatus: 'pending',
           arrivalSeen: false
         }));
+      } else if (selectedUser === "swapnil") {
+        sessionStorage.setItem("radar_onboarding", JSON.stringify({
+          orientationSeen: true,
+          evidenceStatus: 'provided',
+          intentStatus: 'set',
+          arrivalSeen: true
+        }));
       }
       
       // Redirect to onboard/profile if new, or home if existing

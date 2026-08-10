@@ -229,19 +229,6 @@ function GlobalHeader() {
                 Corpus
               </Link>
             </li>
-            <li>
-              <button
-                type="button"
-                onClick={() => {
-                  resetOnboarding();
-                  navigate({ to: "/welcome" });
-                }}
-                className="label-mono block whitespace-nowrap px-2.5 py-1.5 text-amber-800 font-semibold hover:text-foreground transition-colors cursor-pointer"
-                title="Test the executive onboarding journey without creating or modifying your profile"
-              >
-                ⚡ Test Onboarding
-              </button>
-            </li>
             {isDev && (
               <>
                 <li>

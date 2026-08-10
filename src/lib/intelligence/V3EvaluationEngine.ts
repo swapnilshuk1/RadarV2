@@ -92,34 +92,65 @@ export class V3EvaluationEngine {
 
     // --- THE THREE INDEPENDENT EXECUTIVE QUESTIONS ENGINE ---
     const titleLower = opportunity.canonicalTitle.toLowerCase();
-    const roleLower = titleLower;
+    const descLower = (opportunity.description || "").toLowerCase();
+
+    // Parse experience range from description (e.g. "3-7 years", "3 to 6 yrs", "0-2 years", "10+ years")
+    let minExp: number | null = null;
+    let maxExp: number | null = null;
+    const expMatch = descLower.match(/(?:(\d{1,2})\s*(?:-|–|to|\+)\s*(\d{1,2})?|\b(\d{1,2})\b)\s*(?:years?|yrs?)(?:\s*(?:of\s*)?exp)?/i);
+    if (expMatch) {
+      if (expMatch[1]) minExp = parseInt(expMatch[1], 10);
+      if (expMatch[2]) maxExp = parseInt(expMatch[2], 10);
+      else if (expMatch[3] && !minExp) minExp = parseInt(expMatch[3], 10);
+    }
+
+    const isExplicitlyJunior = 
+      (titleLower.includes("executive") && !titleLower.includes("chief executive")) ||
+      titleLower.includes("assistant manager") ||
+      titleLower.includes("bde") ||
+      titleLower.includes("junior") ||
+      titleLower.includes("intern") ||
+      titleLower.includes("analyst") ||
+      titleLower.includes("specialist") ||
+      titleLower.includes("coordinator") ||
+      (titleLower.includes("associate") && !titleLower.includes("associate director"));
+
+    const isSubExecutiveExperience = 
+      (maxExp !== null && maxExp <= 7) || 
+      (minExp !== null && minExp < 8 && maxExp === null);
 
     // QUESTION 1: CAN THIS ROLE MATERIALLY ADVANCE AN EXECUTIVE CAREER?
     // Component 1A: Role Altitude (R_A) - Organizational Position & Authority (0-100)
     let reportingScore = 15;
-    if (titleLower.includes("country head") || titleLower.includes("chief") || titleLower.includes("founder") || titleLower.includes("cmo") || titleLower.includes("cgo") || titleLower.includes("coo")) {
-      reportingScore = 40; // Board/CEO Direct
+    if (isExplicitlyJunior) {
+      reportingScore = 5;
+    } else if (titleLower.includes("country head") || titleLower.includes("chief") || titleLower.includes("founder") || titleLower.includes("cmo") || titleLower.includes("cgo") || titleLower.includes("coo")) {
+      reportingScore = isSubExecutiveExperience ? 20 : 40; // Board/CEO Direct (demoted if 3-7 yrs exp)
     } else if (titleLower.includes("vp") || titleLower.includes("vice president") || titleLower.includes("svp")) {
       reportingScore = 35; // Executive Committee
     } else if (titleLower.includes("director") || titleLower.includes("associate director")) {
       reportingScore = 25; // Division/Regional Director
     } else if (titleLower.includes("head") || titleLower.includes("lead")) {
-      reportingScore = 18;
+      reportingScore = isSubExecutiveExperience ? 10 : 18;
     }
 
     let pnlScore = 15;
-    if (titleLower.includes("country head") || titleLower.includes("chief") || titleLower.includes("coo") || titleLower.includes("cmo") || titleLower.includes("cro") || titleLower.includes("p&l")) {
-      pnlScore = 35; // Division/Country P&L
+    if (isExplicitlyJunior) {
+      pnlScore = 5;
+    } else if (titleLower.includes("country head") || titleLower.includes("chief") || titleLower.includes("coo") || titleLower.includes("cmo") || titleLower.includes("cro") || titleLower.includes("p&l")) {
+      pnlScore = isSubExecutiveExperience ? 15 : 35;
     } else if (titleLower.includes("director") || titleLower.includes("vp") || titleLower.includes("commercial")) {
-      pnlScore = 25; // Portfolio/BU Revenue
+      pnlScore = 25;
     } else if (titleLower.includes("head") || titleLower.includes("growth")) {
-      pnlScore = 18;
+      pnlScore = isSubExecutiveExperience ? 10 : 18;
     } else {
       pnlScore = 10;
     }
 
     let scopeScore = 10;
-    if (titleLower.includes("global") || titleLower.includes("international")) {
+    if (isExplicitlyJunior) {
+      scopeScore = 5;
+    } else if (titleLower.includes("global") || titleLower.includes("international")) {
       scopeScore = 25;
     } else if (titleLower.includes("enterprise") || titleLower.includes("country")) {
       scopeScore = 20;
@@ -127,7 +158,15 @@ export class V3EvaluationEngine {
       scopeScore = 15;
     }
 
-    const roleAltitudeScore = Math.min(100, Math.max(20, reportingScore + pnlScore + scopeScore));
+    let calculatedAltitude = reportingScore + pnlScore + scopeScore;
+    if (isSubExecutiveExperience) {
+      calculatedAltitude = Math.min(35, calculatedAltitude);
+    }
+    if (isExplicitlyJunior) {
+      calculatedAltitude = Math.min(15, calculatedAltitude);
+    }
+
+    const roleAltitudeScore = Math.min(100, Math.max(15, calculatedAltitude));
 
     // Component 1B: Observable Mandate Value (M_V) - Derived from Evidence, Not Opinion (0-100)
     let cTransformation = 15;
@@ -145,7 +184,12 @@ export class V3EvaluationEngine {
     let cAccountability = 10;
     if (titleLower.includes("head") || titleLower.includes("director") || titleLower.includes("chief") || titleLower.includes("lead")) cAccountability = 15;
 
-    const observableMandateValue = Math.min(100, Math.max(20, cTransformation + cCommercialChange + cVisibility + cAccountability));
+    let calculatedMandate = cTransformation + cCommercialChange + cVisibility + cAccountability;
+    if (isExplicitlyJunior || isSubExecutiveExperience) {
+      calculatedMandate = Math.min(30, calculatedMandate);
+    }
+
+    const observableMandateValue = Math.min(100, Math.max(15, calculatedMandate));
     const careerAdvancementValue = Math.round(0.50 * roleAltitudeScore + 0.50 * observableMandateValue);
 
     // QUESTION 2: CAN THIS EXECUTIVE SUCCESSFULLY DELIVER? (Execution Confidence E_C)
@@ -202,6 +246,13 @@ export class V3EvaluationEngine {
       derivedScore = Math.min(derivedScore, 75);
     }
 
+    // Junior / Sub-Executive Hard Cap Policy
+    if (isExplicitlyJunior || (minExp !== null && minExp <= 3)) {
+      derivedScore = Math.min(derivedScore, 45);
+    } else if (isSubExecutiveExperience) {
+      derivedScore = Math.min(derivedScore, 65);
+    }
+
     // Strategic Synergy Policy: High advancement + high execution confidence amplification
     if (executionConfidenceScore >= 85 && careerAdvancementValue >= 80) {
       derivedScore = Math.min(100, derivedScore + 5);
@@ -234,6 +285,9 @@ export class V3EvaluationEngine {
     if (gaps.length > 0) {
       contextualRisks.push(`Missing core competency validation for ${unmatchedCapabilities.length} required capability domains.`);
     }
+    if (isSubExecutiveExperience) {
+      contextualRisks.push(`Role experience requirement (${minExp ?? 0}-${maxExp ?? 7} years) is below executive benchmark threshold (8+ years).`);
+    }
 
     const findings: EvaluationFindings = {
       strengths,
@@ -251,21 +305,27 @@ export class V3EvaluationEngine {
       verb = "PASS";
       rationale = `Disqualified by hard compensation gate. Max offer falls below minimum required threshold.`;
       primaryConcern = "Salary below target threshold.";
-    } else if (overallScore >= 78 && executionConfidenceScore >= 50) {
+    } else if (isExplicitlyJunior || (minExp !== null && minExp <= 3)) {
+      verb = "PASS";
+      rationale = `Disqualified by seniority floor. Role is junior/mid-level IC (${minExp ?? 0}-${maxExp ?? 3} years exp).`;
+      primaryConcern = "Below executive seniority floor.";
+    } else if (overallScore >= 78 && executionConfidenceScore >= 50 && roleAltitudeScore >= 45 && !isSubExecutiveExperience) {
       verb = "PURSUE";
       rationale = `High execution confidence (${executionConfidenceScore}%) and strong career advancement value (${careerAdvancementValue}%).`;
     } else if (overallScore >= 50) {
       verb = "CONSIDER";
-      rationale = `Solid candidate capability overlap, but mandate scope or reporting line warrants verification.`;
-      if (locationFriction === "HIGH_FRICTION") {
+      rationale = `Solid capability overlap, but mandate scope or reporting line warrants verification (${roleAltitudeScore}% altitude).`;
+      if (isSubExecutiveExperience) {
+        primaryConcern = `Sub-executive experience requirement (${minExp ?? 0}-${maxExp ?? 7} years exp).`;
+      } else if (locationFriction === "HIGH_FRICTION") {
         primaryConcern = "Geographical location friction.";
       } else if (gaps.length > 0) {
         primaryConcern = `Competency gaps in: ${gaps.map(g => g.capability).join(", ")}`;
       }
     } else {
       verb = "PASS";
-      rationale = `Insufficient career advancement value or execution confidence. Preserve executive bandwidth.`;
-      primaryConcern = "Low intrinsic fit score.";
+      rationale = `Insufficient career advancement value (${careerAdvancementValue}%) or executive altitude (${roleAltitudeScore}%). Preserve bandwidth.`;
+      primaryConcern = "Low intrinsic fit score or sub-executive altitude.";
     }
 
     return {
