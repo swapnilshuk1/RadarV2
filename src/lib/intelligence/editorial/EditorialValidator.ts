@@ -98,7 +98,7 @@ export class EditorialValidator {
 
     // Check specific role pattern constraints
     if (pattern.id === "role-board-director-4a") {
-      const isBoardRole = /board|governance|fiduciary|non-executive|advisory board/i.test(ctx.executiveIdentity || "");
+      const isBoardRole = /board|governance|fiduciary|non-executive|advisory board/i.test((ctx as any).executiveIdentity || (ctx as any).jobTitle || (ctx as any).role || "");
       if (!isBoardRole) {
         return { isValid: false, reason: `Board pattern 'role-board-director-4a' requires board/governance identity` };
       }

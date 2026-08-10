@@ -643,7 +643,7 @@ function fallbackForScrapedRole(
     recommendation: `Targeted executive mandate in ${level} capacity; aligns with your commercial growth and enterprise stack precedents. Verify direct reporting boundaries and budget authority.`,
     recommendationArchetype: "Natural Fit",
     recommendationArchetypeTagline: "Aligns with your executive trajectory and operating track record.",
-    mandateArchetype: inferExecutiveMandateArchetype(source.role, source.normalizedText || source.rawText),
+    mandateArchetype: inferExecutiveMandateArchetype(source.role, (source as any).normalizedText || (source as any).rawText || (source as any).description || ""),
     primaryDriver: "Commercial Expansion",
     secondaryDriver: "Operating Execution",
     primaryRisk: "Reporting line & budget authority clarification",

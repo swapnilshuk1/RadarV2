@@ -29,7 +29,100 @@ const SCOPE_VAL: Record<Exclude<CommercialScope, "UNKNOWN">, number> = {
   NONE: 1
 };
 
+export type MandateType = 
+  | "BUSINESS_GROWTH"        // P&L, revenue growth, commercial expansion, scale, CAC/LTV
+  | "TRANSFORMATION"         // Turnaround, re-platforming, digital modernization, operating model
+  | "FUNCTIONAL_LEADERSHIP"  // Department/discipline strategy, lifecycle architecture, retention roadmap, team CoE
+  | "PLATFORM"               // MarTech, SFMC journey building, CDP, GA4, technical infrastructure configuration
+  | "DELIVERY"               // Client services, agency account delivery, project retainers
+  | "EXECUTION";             // Tactical task execution (copywriting, campaign setup, lead gen, email deployment)
+
+export interface MandateAssessment {
+  type: MandateType;
+  level: "EXECUTIVE" | "FUNCTIONAL" | "EXECUTION";
+}
+
 export class OpportunityAssessmentEngine {
+  public static assessMandate(text: string, title: string): MandateAssessment {
+    const fullText = (title + " " + text).toLowerCase();
+
+    let growthScore = 0;
+    let transformScore = 0;
+    let functionalScore = 0;
+    let platformScore = 0;
+    let deliveryScore = 0;
+    let executionScore = 0;
+
+    // 1. BUSINESS_GROWTH: P&L, Revenue, EBITDA, CAC/LTV, Commercial expansion, Scale
+    if (/p&l|profit and loss|profit & loss|revenue growth|annual revenue|commercial growth|gtm strategy|market expansion|regional gtm|cac\/ltv|unit economics|ebitda/i.test(fullText)) {
+      growthScore += 3;
+    }
+
+    // 2. TRANSFORMATION: Re-platforming, turnaround, digital transformation, modernizing operating model
+    if (/digital transformation|re-platform|turnaround|operating model|modernize|cloud migration|enterprise transformation|restructure/i.test(fullText)) {
+      transformScore += 3;
+    }
+
+    // 3. FUNCTIONAL_LEADERSHIP: Lifecycle architecture, retention roadmap, department strategy, CoE leadership, agency ecosystem
+    if (/crm strategy|lifecycle architecture|retention roadmap|center of excellence|coe|discipline strategy|agency ecosystem|marketing strategy|brand strategy/i.test(fullText)) {
+      functionalScore += 3;
+    }
+
+    // 4. PLATFORM: SFMC journey configuration, CDP, GA4 setup, MarTech stack, data pipelines, technical implementation
+    if (/sfmc|salesforce marketing cloud|cdp|customer data platform|ga4|google analytics 4|martech|data pipeline|configure journeys|mixpanel|appsflyer|segment|hubspot/i.test(fullText)) {
+      platformScore += 3;
+    }
+
+    // 5. DELIVERY: Client services, agency retainer, account management, client relationship
+    if (/client services|agency retainer|account management|client delivery|project retainer|client relationship/i.test(fullText)) {
+      deliveryScore += 3;
+    }
+
+    // 6. EXECUTION: Campaign execution, daily email deployment, copywriting, SEO/PPC execution, backlog, lead gen
+    if (/campaign execution|email deployment|copywriting|seo execution|ppc execution|lead gen|lead generation|daily stand-up|sprint backlog|content creation|social media posts/i.test(fullText)) {
+      executionScore += 3;
+    }
+
+    // Secondary indicators from full text
+    if (/manage team|lead department|head of|director|vp|chief/i.test(fullText)) {
+      growthScore += 1;
+      functionalScore += 1;
+    }
+    if (/hands-on|individual contributor|copywriter|specialist|coordinator|executive/i.test(fullText)) {
+      executionScore += 2;
+    }
+
+    const maxScore = Math.max(growthScore, transformScore, functionalScore, platformScore, deliveryScore, executionScore);
+
+    let type: MandateType = "FUNCTIONAL_LEADERSHIP";
+    if (maxScore === 0) {
+      type = "FUNCTIONAL_LEADERSHIP";
+    } else if (maxScore === executionScore) {
+      type = "EXECUTION";
+    } else if (maxScore === growthScore) {
+      type = "BUSINESS_GROWTH";
+    } else if (maxScore === transformScore) {
+      type = "TRANSFORMATION";
+    } else if (maxScore === platformScore) {
+      type = "PLATFORM";
+    } else if (maxScore === deliveryScore) {
+      type = "DELIVERY";
+    } else if (maxScore === functionalScore) {
+      type = "FUNCTIONAL_LEADERSHIP";
+    }
+
+    // Operating Level determination
+    let level: "EXECUTIVE" | "FUNCTIONAL" | "EXECUTION" = "FUNCTIONAL";
+    if (type === "EXECUTION") {
+      level = "EXECUTION";
+    } else if (type === "BUSINESS_GROWTH" || type === "TRANSFORMATION") {
+      level = "EXECUTIVE";
+    } else {
+      level = "FUNCTIONAL";
+    }
+
+    return { type, level };
+  }
   public static evaluate(
     candidate: CandidateProjection,
     job: JobProjection
@@ -231,6 +324,8 @@ export class OpportunityAssessmentEngine {
       ? 25
       : Math.min(100, Math.max(0, baseOpportunityScore + continuousScaleBonus + mandateModifier));
 
+    const mandateAssessment = OpportunityAssessmentEngine.assessMandate(descLower, titleLower);
+
     return {
       status: "COMPLETE",
       sufficiency: richness.sufficiency,
@@ -245,6 +340,7 @@ export class OpportunityAssessmentEngine {
       workNatureAssessment,
       scopeAssessment,
       mandateSeniority,
+      mandateAssessment,
       seniorityAssessment: {
         minYearsExperience: minExp ?? undefined,
         maxYearsExperience: maxExp ?? undefined,

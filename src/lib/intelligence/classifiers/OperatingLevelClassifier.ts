@@ -21,8 +21,8 @@ export class OperatingLevelClassifier {
 
     // Core Logical Decision Table for Operating Level
     if (workNature.value === "UNKNOWN") {
-      evidenceIds.push("ol_rule_unknown");
-      return { value: "UNKNOWN", evidenceIds, confidence: 0.0 };
+      evidenceIds.push("ol_rule_fallback_managerial");
+      return { value: "MANAGERIAL", evidenceIds, confidence: 0.5 };
     }
 
     // EXECUTIVE
