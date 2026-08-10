@@ -37,9 +37,12 @@ export type MandateType =
   | "DELIVERY"               // Client services, agency account delivery, project retainers
   | "EXECUTION";             // Tactical task execution (copywriting, campaign setup, lead gen, email deployment)
 
+export type MandateScope = "ENTERPRISE" | "BUSINESS_UNIT" | "CHANNEL" | "FUNCTIONAL";
+
 export interface MandateAssessment {
   type: MandateType;
   level: "EXECUTIVE" | "FUNCTIONAL" | "EXECUTION";
+  scope: MandateScope;
 }
 
 export class OpportunityAssessmentEngine {
@@ -121,7 +124,19 @@ export class OpportunityAssessmentEngine {
       level = "FUNCTIONAL";
     }
 
-    return { type, level };
+    // Mandate Scope Determination
+    let scope: MandateScope = "FUNCTIONAL";
+    if (/global|multi-market|enterprise-wide|company-wide|enterprise p&l|global growth|organization-wide|cmo|chief marketing officer|chief growth officer|chief business officer|vp growth|vice president - marketing/i.test(fullText)) {
+      scope = "ENTERPRISE";
+    } else if (/retail head|d2c head|head of retail|head of d2c|paid media|seo head|crm manager|growth accelerator|digital trading|site strategy|cluster head/i.test(fullText)) {
+      scope = "CHANNEL";
+    } else if (/business unit|category manager|subsidiary|single brand|brand manager/i.test(fullText)) {
+      scope = "BUSINESS_UNIT";
+    } else {
+      scope = "FUNCTIONAL";
+    }
+
+    return { type, level, scope };
   }
   public static evaluate(
     candidate: CandidateProjection,
@@ -300,8 +315,14 @@ export class OpportunityAssessmentEngine {
     const continuousScaleBonus = Math.round(Math.min(15, Math.max(-15, scaleDelta / 2.0)));
 
     // Continuous Base Opportunity Score with Role Mandate Scope Variance
+    const ma = OpportunityAssessmentEngine.assessMandate(descLower, titleLower);
     let baseOpportunityScore = 75;
-    if (operatingLevelAssessment === "MATCH" || operatingLevelAssessment === "PROMOTION") baseOpportunityScore += 10;
+    if (ma.scope === "ENTERPRISE" && ma.level === "EXECUTIVE") baseOpportunityScore = 85;
+    else if (ma.scope === "CHANNEL") baseOpportunityScore = 70;
+    else if (ma.scope === "BUSINESS_UNIT") baseOpportunityScore = 75;
+    else if (ma.scope === "FUNCTIONAL") baseOpportunityScore = 68;
+
+    if (operatingLevelAssessment === "MATCH" || operatingLevelAssessment === "PROMOTION") baseOpportunityScore += 5;
     else if (operatingLevelAssessment === "REGRESSION_MINOR") baseOpportunityScore -= 10;
     else if (operatingLevelAssessment === "REGRESSION_MAJOR") baseOpportunityScore -= 25;
 
