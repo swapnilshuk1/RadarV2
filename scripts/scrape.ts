@@ -18,16 +18,24 @@ import { CONFIG, DEFAULT_KEYWORDS, DEFAULT_PORTALS, SNAPSHOT_DIR, EXTRACTION_DIR
 import { makeLogger } from "./scraper/utils/logger";
 import { pool } from "./scraper/utils/concurrency";
 import { jitter } from "./scraper/utils/jitter";
-import { RunController } from "./scraper/run/manager";
+import { RunController, type RunControllerOptions } from "./scraper/run/manager";
 import { linkedinHandler } from "./scraper/portals/linkedin";
 import { indeedHandler } from "./scraper/portals/indeed";
 import { naukriHandler } from "./scraper/portals/naukri";
 import { closeAllPortalContexts, getPortalContext } from "./scraper/portals/base";
+import { PageManager } from "./scraper/run/page-manager";
 import type { FeedCard, PortalHandler, PortalName, WorkUnit } from "./scraper/types";
 
 import { sanitizeCompanyName } from "./scraper/utils/sanitize";
 import { normalizeUrl } from "./scraper/utils/url";
 import { EnrichmentQueue } from "./scraper/persist/queue";
+import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
+import { FailurePolicyEngine } from "../src/lib/acquisition/failure-taxonomy";
+import { ResponseValidator } from "../src/lib/acquisition/validator";
+import { CheapFilter } from "./scraper/run/cheap-filter";
+import { HealthManager } from "./scraper/run/health-manager";
+import { QueryMetricsStore } from "./scraper/run/metrics";
+import { getRepositories } from "../src/data/sqlite/provider";
 
 import {
   readSnapshotIfFresh,
@@ -129,8 +137,6 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     try {
       // Phase 1: Initializing
       mgr.transitionTo("initializing");
-      const activeContexts = new Map<PortalName, any>();
-      const activePages = new Map<PortalName, any>();
 
       await pool(portals, CONFIG.portalConcurrency, async (portal) => {
         const plog = makeLogger(`scrape:${portal}`);
@@ -147,13 +153,15 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         }
         
         activeContexts.set(portal, browserContext);
-        const pages = browserContext.pages();
-        const initialPage = pages.length > 0 ? pages[0] : await browserContext.newPage();
-        activePages.set(portal, initialPage);
+        const pageManager = new PageManager(portal, browserContext);
+        activePageManagers.set(portal, pageManager);
+        const { searchPage, detailPage, searchMutex, detailMutex } = await pageManager.initialize();
+        activePages.set(portal, searchPage);
 
         const t0 = Date.now();
         const sessionStatus = await handler.ensureSession({
-          runId: mgr.runId, portal, keyword: "-", page: 0, searchUrl: "-", browserContext, activePage: initialPage, logger: plog,
+          runId: mgr.runId, portal, keyword: "-", page: 0, searchUrl: "-", browserContext,
+          searchPage, detailPage, searchMutex, detailMutex, pageManager, activePage: searchPage, logger: plog,
         });
         
         if (sessionStatus === "error") {
@@ -169,7 +177,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           const searchUrl = handler.buildSearchUrl(units[0].keyword, units[0].page);
           try {
             mgr.updatePortalHealth(portal, { status: "navigating", details: "Loading search page..." });
-            await initialPage.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
+            await searchPage.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
             // Intentionally NOT closing the page here. We leave it open so the user 
             // can visually verify the page, solve captchas, or log in during the pause.
             const elapsed = Date.now() - t0;
@@ -244,6 +252,16 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
                break;
             }
           } catch {}
+
+          // Adaptive Novelty Scheduler: Skip query page if historical novelty rate is < 5% on this portal (after page 1)
+          if (unit.page > 1) {
+            const avgNovelty = QueryMetricsStore.getAverageNoveltyRate(unit.portal, unit.keyword);
+            if (avgNovelty < 0.05) {
+              plog(`Adaptive Scheduler: Pruning page ${unit.page} for "${unit.keyword}" on ${unit.portal} (historical novelty ${(avgNovelty * 100).toFixed(1)}%)`, "info");
+              mgr.updateUnit(unit.id, { status: "skipped_pruned", error: "Pruned by adaptive novelty scheduler (<5% historical novelty)" });
+              continue;
+            }
+          }
 
           const outcome = await processUnit(mgr, handler, unit, browserContext, activePage, seenCardKeys, seenUrls, plog);
           if (outcome) {
@@ -342,7 +360,11 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
   return { runId: mgr.runId, completion };
 }
 
-export async function run(opts: RunOptions = {}): Promise<{ success: boolean; count: number; runId: string }> {
+const activeContexts = new Map<PortalName, any>();
+const activePages = new Map<PortalName, any>();
+const activePageManagers = new Map<PortalName, PageManager>();
+
+export async function runScraper(opts: Partial<RunControllerOptions> = {}): Promise<{ success: boolean; count: number; runId: string }> {
   const { completion } = await startRun(opts);
   return completion;
 }
@@ -398,15 +420,22 @@ async function processUnit(
   }
 
   mgr.updateUnit(unit.id, { status: "running", startedAt: new Date().toISOString(), attempts: unit.attempts + 1 });
-  mgr.journal.append({ type: "unit_started", unitId: unit.id });
-
   try {
     const searchUrl = handler.buildSearchUrl(unit.keyword, unit.page);
     let cards: FeedCard[] = [];
+    const pm = activePageManagers.get(unit.portal);
+    
     try {
       cards = await handler.listCards({
         runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
-        searchUrl, browserContext, activePage, logger: log,
+        searchUrl, browserContext,
+        searchPage: pm?.getPage("search") || activePage,
+        detailPage: pm?.getPage("detail"),
+        searchMutex: pm?.getMutex("search"),
+        detailMutex: pm?.getMutex("detail"),
+        pageManager: pm,
+        activePage: pm?.getPage("search") || activePage,
+        logger: log,
       });
       mgr.recordListingSuccess(unit.portal);
     } catch (err: any) {
@@ -438,6 +467,8 @@ async function processUnit(
     const cardMeta = cards.map((c) => ({ id: `${unit.id}#${c.cardHash}`, cardHash: c.cardHash }));
     mgr.addCards(unit.id, cardMeta);
 
+    const repos = getRepositories();
+
     // Cards for a single unit run in parallel with a bounded pool.
     await pool(cards, CONFIG.detailConcurrency, async (feedCard) => {
       const cardUnitId = `${unit.id}#${feedCard.cardHash}`;
@@ -447,12 +478,48 @@ async function processUnit(
       mgr.updateCard(cardUnitId, { status: "running", attempts: cardUnit.attempts + 1 });
 
       try {
-        const normalizedUrl = normalizeUrl(feedCard.detailUrl);
-        if (seenUrls.has(normalizedUrl)) {
-          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate URL" });
+        // 1. Cheap Pre-Filter
+        const preQual = CheapFilter.evaluate({
+          title: feedCard.title,
+          companyName: feedCard.company,
+          location: feedCard.location,
+          rawUrl: feedCard.detailUrl
+        });
+
+        if (!preQual.shouldAcquire) {
+          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: preQual.reason });
           return null;
         }
-        seenUrls.add(normalizedUrl);
+
+        // 2. Canonical Identity Resolution
+        const identity = resolveCanonicalIdentity({
+          portal: unit.portal,
+          url: feedCard.detailUrl,
+          title: feedCard.title,
+          companyName: feedCard.company,
+          rawJobId: feedCard.cardHash
+        });
+
+        if (seenUrls.has(identity.canonicalUrl)) {
+          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Canonical URL" });
+          return null;
+        }
+        seenUrls.add(identity.canonicalUrl);
+
+        // 3. Upsert Discovered Job into Persistent Acquisition Ledger
+        const ledgerItem = await repos.acquisition.upsertDiscoveredJob({
+          canonicalJobId: identity.canonicalJobId,
+          sourcePortal: identity.sourcePortal,
+          sourceJobId: identity.sourceJobId,
+          canonicalUrl: identity.canonicalUrl,
+          title: feedCard.title,
+          companyName: feedCard.company,
+          location: feedCard.location,
+          state: "QUEUED",
+          firstSeenAt: new Date().toISOString(),
+          lastSeenAt: new Date().toISOString(),
+          validationConfidence: identity.identityConfidence
+        });
 
         const snapshotPath = path.join(SNAPSHOT_DIR, `${feedCard.cardHash}.json`);
         const isHistoricallyNew = !fs.existsSync(snapshotPath);
@@ -461,15 +528,47 @@ async function processUnit(
         
         if (!snapshot) {
           mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId });
+          const pmDetail = activePageManagers.get(unit.portal);
           const detail = await handler.fetchDetail({
             runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
-            searchUrl, browserContext, logger: log,
+            searchUrl, browserContext,
+            searchPage: pmDetail?.getPage("search") || activePage,
+            detailPage: pmDetail?.getPage("detail"),
+            searchMutex: pmDetail?.getMutex("search"),
+            detailMutex: pmDetail?.getMutex("detail"),
+            pageManager: pmDetail,
+            logger: log,
             isHttpDisabled: (url: string) => mgr.isHttpFastPathDisabled(unit.portal) || mgr.failedHttpUrls.has(url),
             recordHttpFailure: (url: string, reason: string) => mgr.recordDetailFailure(unit.portal, url, reason),
             recordTelemetry: (event: any) => mgr.recordTelemetry(event),
           }, feedCard.detailUrl);
           mgr.journal.append({ type: "detail_extraction_finished", cardId: cardUnitId, durationMs: detail.fetchDurationMs });
           
+          // 4. Standalone Response Validation
+          const valResult = ResponseValidator.validate({
+            html: detail.rawText || "",
+            url: feedCard.detailUrl,
+            sourcePortal: unit.portal,
+            extractedTitle: feedCard.title,
+            extractedCompany: feedCard.company,
+            extractedDescription: detail.rawText
+          });
+
+          if (!valResult.isValid) {
+            const healthAction = HealthManager.recordFailure(unit.portal, valResult.failureClass || "UNKNOWN_FAILURE");
+            await repos.acquisition.updateJobState(ledgerItem.id, {
+              state: "ACQUIRING",
+              terminalState: valResult.failureClass === "REMOVED_404" ? "PERMANENT_FAILURE" : undefined,
+              lastFailureClass: valResult.failureClass,
+              acquisitionQuality: valResult.quality,
+              validationConfidence: valResult.confidence
+            });
+            mgr.updateCard(cardUnitId, { status: "failed", error: `Validation failed: ${valResult.failureClass}` });
+            return null;
+          }
+
+          HealthManager.recordSuccess(unit.portal);
+
           detailedCard = {
             ...feedCard,
             snapshotSchemaVersion: SNAPSHOT_SCHEMA_VERSION,
@@ -480,6 +579,44 @@ async function processUnit(
           
           writeSnapshot(detailedCard);
           mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: snapshotPath });
+
+          // 5. Record Validated State in Ledger & Merge Opportunity in SQLite
+          await repos.acquisition.updateJobState(ledgerItem.id, {
+            state: "VALIDATED",
+            lastAcquiredAt: new Date().toISOString(),
+            acquisitionQuality: valResult.quality,
+            validationConfidence: valResult.confidence,
+            lastAcquisitionMethod: (detail as any)?.method === "HTTP_FASTPATH" ? "HTTP_FASTPATH" : "BROWSER_DOM"
+          });
+
+          const companyId = feedCard.company.toLowerCase().replace(/[^a-z0-9]/g, "-");
+          await repos.companies.registerCompany({
+            id: companyId,
+            name: feedCard.company,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            provenance: {
+              schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+              runId: mgr.runId,
+              timestamp: new Date().toISOString()
+            }
+          });
+
+          await repos.opportunities.mergeOpportunity({
+            id: identity.canonicalJobId,
+            companyId,
+            canonicalTitle: feedCard.title,
+            location: feedCard.location,
+            fingerprint: identity.canonicalJobId,
+            lifecycle: "Verified",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            provenance: {
+              schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+              runId: mgr.runId,
+              timestamp: new Date().toISOString()
+            }
+          });
         } else {
           detailedCard = snapshot;
         }
@@ -539,48 +676,58 @@ async function processUnit(
       return null;
     });
 
-    let newJobs = 0;
-    let duplicates = 0;
-    let rejected = 0;
-    let extractionErrors = 0;
-    let currentStreak = 0;
-    let maxDuplicateStreak = 0;
-    let saved = 0;
+    let canonicalDuplicates = 0;
+    let ledgerKnown = 0;
+    let hardFiltered = 0;
+    let identityFailed = 0;
+    let novelAccepted = 0;
+    let novelAcquired = 0;
 
     for (const feedCard of cards) {
       const cardUnitId = `${unit.id}#${feedCard.cardHash}`;
       const cu = mgr.manifest.cards.find((c) => c.id === cardUnitId);
       if (!cu) continue;
 
-      if (cu.status === "failed") {
-        rejected++;
-        extractionErrors++;
-      } else if (cu.status === "skipped_empty") {
-        if (cu.error === "Duplicate URL") {
-          duplicates++;
-          currentStreak++;
-          if (currentStreak > maxDuplicateStreak) maxDuplicateStreak = currentStreak;
+      if (cu.status === "skipped_empty") {
+        const errStr = cu.error || "";
+        if (errStr.toLowerCase().includes("duplicate")) {
+          canonicalDuplicates++;
+        } else if (errStr.toLowerCase().includes("ledger")) {
+          ledgerKnown++;
         } else {
-          rejected++;
+          hardFiltered++;
         }
-      } else if (!cu.isNew) {
-        duplicates++;
-        currentStreak++;
-        if (currentStreak > maxDuplicateStreak) maxDuplicateStreak = currentStreak;
-      } else {
-        newJobs++;
-        currentStreak = 0;
-        if (cu.snapshotPath && fs.existsSync(cu.snapshotPath)) {
-          saved++; // acquired!
+      } else if (cu.status === "failed") {
+        identityFailed++;
+      } else if (cu.status === "done") {
+        if (!cu.isNew) {
+          canonicalDuplicates++;
+        } else {
+          novelAccepted++;
+          if (cu.snapshotPath && fs.existsSync(cu.snapshotPath)) {
+            novelAcquired++;
+          }
         }
       }
     }
     
     const cardsParsed = cards.length;
-    const opportunities = cardsParsed - duplicates - rejected;
+    const classified = canonicalDuplicates + ledgerKnown + hardFiltered + identityFailed + novelAccepted;
     
-    outcome.detailCount = saved;
-    outcome.opportunities = opportunities; // Acquired snapshots count towards opportunities discovered
+    if (classified !== cardsParsed) {
+      log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, Ledger=${ledgerKnown}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, NovelAccepted=${novelAccepted})`, "warn");
+    }
+    if (novelAcquired > novelAccepted) {
+      log(`[AccountingInvariantViolation] novelAcquired (${novelAcquired}) > novelAccepted (${novelAccepted})`, "warn");
+    }
+
+    const newJobs = novelAccepted;
+    const duplicates = canonicalDuplicates;
+    const rejected = ledgerKnown + hardFiltered + identityFailed;
+    const opportunities = novelAccepted;
+    
+    outcome.detailCount = novelAcquired;
+    outcome.opportunities = opportunities;
     outcome.factsCreated = 0; // Enriched downstream
 
     outcome.newJobs = newJobs;
@@ -640,15 +787,33 @@ async function processUnit(
         page: unit.page,
         cardsSeen: cards.length,
         cardsParsed,
-        duplicates,
+        duplicates: canonicalDuplicates,
         rejected,
         opportunities,
-        saved,
+        saved: novelAcquired,
         qualified: null,
         latencyMs: runtimeMs,
         decision,
         decisionReason: reason,
         failureReason: null,
+        timestamp: new Date().toISOString()
+      });
+
+      QueryMetricsStore.record({
+        runId: mgr.runId,
+        portal: unit.portal,
+        query: unit.keyword,
+        page: unit.page,
+        cardsSeen: cards.length,
+        cardsParsed,
+        canonicalDuplicates,
+        ledgerKnown,
+        hardFiltered,
+        identityFailed,
+        novelAccepted,
+        novelAcquired,
+        noveltyRate: cardsParsed > 0 ? (novelAccepted / cardsParsed) : 0,
+        elapsedMs: runtimeMs,
         timestamp: new Date().toISOString()
       });
     } catch (err: any) {
@@ -661,8 +826,8 @@ async function processUnit(
       ruleVersion: "4.5",
       cardsSeen: cards.length,
       cardsParsed: cards.length,
-      duplicates,
-      extractionErrors,
+      duplicates: canonicalDuplicates,
+      extractionErrors: identityFailed,
       qualified: null,
       recommended: null,
       newCompanies: null,
@@ -672,7 +837,7 @@ async function processUnit(
 
     mgr.updateUnit(unit.id, { decisionRecord });
 
-    log(`\n=== PAGE SUMMARY ===\nPortal: ${unit.portal}\nKeyword: ${unit.keyword}\nPage: ${unit.page}\n\nCards Seen ............ ${decisionRecord.cardsSeen}\nCards Parsed .......... ${decisionRecord.cardsParsed}\nDuplicates ............ ${decisionRecord.duplicates}\nExtraction Errors ..... ${decisionRecord.extractionErrors}\nQualified ............. N/A (Not measured)\nRecommended ........... N/A (Not measured)\nNew Companies ......... N/A (Requires enrichment)\n\nDecision .............. ${decisionRecord.decision}\nReason ................ ${decisionRecord.reason}\n====================\n`, "info");
+    log(`\n=== PAGE SUMMARY ===\nPortal: ${unit.portal}\nKeyword: ${unit.keyword}\nPage: ${unit.page}\n\nCards Seen ............ ${cards.length}\nCards Parsed .......... ${cardsParsed}\n  ├── Canonical Duplicates ... ${canonicalDuplicates}\n  ├── Ledger Known ........... ${ledgerKnown}\n  ├── Hard Filtered .......... ${hardFiltered}\n  ├── Identity Failures ...... ${identityFailed}\n  └── Novel Accepted ......... ${novelAccepted} (Acquired: ${novelAcquired})\n\nNovelty Rate .......... ${((novelAccepted / Math.max(1, cardsParsed)) * 100).toFixed(1)}%\nDecision .............. ${decision}\nReason ................ ${reason}\n====================\n`, "info");
     
     outcome.status = "completed";
   } catch (err: any) {
@@ -819,7 +984,7 @@ const isMainModule = typeof process !== 'undefined' &&
   !process.argv[1].includes('node_modules');
 
 if (isMainModule) {
-  run().then((res) => {
-    if (!res.success) process.exit(1);
+  runScraper().then((res: any) => {
+    if (!res?.success) process.exit(1);
   });
 }

@@ -4,13 +4,13 @@ import { getCorpusHealthFn, triggerCorpusRegenerationFn, getCorpusRegenerationSt
 import type { CorpusHealthStats } from "../../scripts/corpus/health";
 
 const DEFAULT_STATS: CorpusHealthStats = {
-  totalJobs: 249,
-  textCoveragePercent: 96.4,
-  avgDescLength: 6465,
-  capabilityCoveragePercent: 98.0,
-  avgDimensionConfidencePercent: 38,
+  totalJobs: 0,
+  textCoveragePercent: 100.0,
+  avgDescLength: 4200,
+  capabilityCoveragePercent: 95.0,
+  avgDimensionConfidencePercent: 85,
   avgEvidenceQuotesPerJob: 3,
-  extractionVersion: "4.1.0",
+  extractionVersion: "4.5.0",
   editorialCoveragePercent: 100,
 };
 

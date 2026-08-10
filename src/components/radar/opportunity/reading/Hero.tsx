@@ -50,7 +50,6 @@ export function Hero({
               <span className="label-mono font-normal">{brief.fitLabel || 'Executive Fit'}</span>
               <span className="label-mono font-normal">· {brief.evidenceQuality}</span>
               {readTime && <span className="label-mono font-normal">· {readTime}</span>}
-              <span className="label-mono font-normal">· 20 minute application</span>
             </div>
 
             <h1 className="font-display text-5xl leading-[1.05] tracking-tight text-foreground font-normal">

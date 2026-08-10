@@ -177,7 +177,7 @@ function Shortlist() {
     setExtraScraped((prev) => prev + 1);
   };
 
-  const totalScraped = baseCounts.total + extraScraped;
+  const totalScraped = Math.max(opportunitiesList.length, baseCounts.total) + extraScraped;
 
   return (
     <div className="min-h-screen pb-24 bg-background text-foreground font-sans">
@@ -202,7 +202,7 @@ function Shortlist() {
             <div className="flex shrink-0 items-end gap-4 sm:gap-7">
               <div>
                 <dd className="font-display text-4xl leading-none sm:text-5xl text-foreground tabular-nums font-normal">
-                  40
+                  {Object.keys(decisions).length}
                 </dd>
                 <dt className="label-mono mt-2 block font-normal">Reviewed</dt>
               </div>
@@ -212,7 +212,7 @@ function Shortlist() {
               <span className="pb-3 font-mono text-xs text-border-strong">→</span>
               <div>
                 <dd className="font-display text-4xl leading-none sm:text-5xl text-primary tabular-nums font-normal">
-                  {remaining.filter((o) => o.decision === "PURSUE").length || 6}
+                  {remaining.length}
                 </dd>
                 <dt className="label-mono mt-2 block font-normal text-primary">To act on</dt>
               </div>

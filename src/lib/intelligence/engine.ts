@@ -40,11 +40,53 @@ function getBaseOpportunities(): OpportunitySource[] {
     if (fs.existsSync(jsonPath)) {
       const content = fs.readFileSync(jsonPath, "utf-8");
       baseOpportunitiesCache = JSON.parse(content) as OpportunitySource[];
-      return baseOpportunitiesCache;
+      if (baseOpportunitiesCache.length > 0) return baseOpportunitiesCache;
     }
   } catch (err) {
     console.warn("[Engine] Failed to load live-scraped.json dynamically:", err);
   }
+
+  try {
+    const mainDbPath = path.resolve(process.cwd(), "radar.sqlite");
+    if (fs.existsSync(mainDbPath)) {
+      const Database = require("better-sqlite3");
+      const db = new Database(mainDbPath, { readonly: true });
+      const rows = db.prepare(`
+        SELECT o.id as jobHash, o.canonical_title as role, c.name as company, o.location as location,
+               d.content as rawContent
+        FROM opportunities o
+        LEFT JOIN companies c ON o.company_id = c.id
+        LEFT JOIN documents d ON d.opportunity_id = o.id
+      `).all() as any[];
+      db.close();
+
+      const ops: OpportunitySource[] = rows.map((r) => {
+        let contentObj: any = {};
+        try { if (r.rawContent) contentObj = JSON.parse(r.rawContent); } catch {}
+        return {
+          jobHash: r.jobHash,
+          role: r.role || contentObj.role || "Executive Role",
+          company: r.company || contentObj.company || "Target Company",
+          location: r.location || contentObj.location || "Remote",
+          scrapedFrom: contentObj.scrapedFrom || "LinkedIn",
+          postedRelative: contentObj.postedRelative || "Recently Ingested",
+          rawText: contentObj.normalizedText || contentObj.rawText || "",
+          dimensions: contentObj.dimensions || [],
+          primaryConcern: contentObj.primaryConcern || null,
+          whyNow: contentObj.whyNow,
+          positioning: contentObj.positioning,
+        };
+      });
+
+      if (ops.length > 0) {
+        baseOpportunitiesCache = ops;
+        return baseOpportunitiesCache;
+      }
+    }
+  } catch (err: any) {
+    console.warn("[Engine] Failed to load opportunities from radar.sqlite:", err.message);
+  }
+
   return [];
 }
 

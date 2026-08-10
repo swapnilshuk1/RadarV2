@@ -28,7 +28,9 @@ const NON_INDIA_LOCATIONS = [
  * Returns false if it should be immediately skipped.
  */
 export function passesHardFilter(card: CardData): { pass: boolean; reason?: string } {
-  if (!card.title || !card.company) return { pass: false, reason: "Missing title or company" };
+  if (!card.title && !card.company) return { pass: false, reason: "Missing title and company name" };
+  if (!card.title) return { pass: false, reason: "Missing title" };
+  if (!card.company) return { pass: false, reason: "Missing company name" };
 
   for (const p of JUNIOR_PATTERNS) {
     if (p.test(card.title)) return { pass: false, reason: "Junior title detected" };

@@ -30,7 +30,6 @@ export async function runRebuildReadModels(verify: boolean = false, targetName: 
   const workspaces = rawDb.prepare("SELECT id FROM workspaces").all() as { id: string }[];
   
   if (workspaces.length === 0) {
-    console.log("[Rebuild] No workspaces found. Nothing to rebuild.");
     rawDb.close();
     return;
   }

@@ -8,7 +8,7 @@ import { hydrateVirtualizedList } from "../utils/scroll";
 
 export const naukriHandler: PortalHandler = {
   name: "Naukri",
-  detailStrategy: (process.env.NAUKRI_DETAIL_STRATEGY as "auto" | "http" | "browser") || "browser",
+  detailStrategy: "browser",
   buildSearchUrl(kw, page) {
     const slug = kw.toLowerCase().replace(/\s+/g, "-");
     return `https://www.naukri.com/${slug}-jobs-in-india-${page}?k=${encodeURIComponent(kw)}`;
@@ -169,8 +169,9 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       ctx.recordTelemetry?.("httpAttempted");
       const httpRes = await fastFetchDetail(
         url, 
-        "h1, header, .styles_job-header__container__b1Qf_", 
-        contentSelectors
+        "h1, header, .styles_job-header__container__b1Qf_, [class*='jd-header'], body", 
+        contentSelectors,
+        { "appid": "109", "systemid": "NWEB", "Referer": "https://www.naukri.com/" }
       );
       if (httpRes.fetched && httpRes.rawText && httpRes.rawText.length > 100) {
         ctx.recordTelemetry?.("httpSuccessful");
@@ -189,12 +190,14 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   }
 
   const t0 = Date.now();
-  const page = await ctx.browserContext.newPage();
-  try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 12000 }).catch(() => {});
-    await jitter(500, 1200);
+  const page = ctx.detailPage || ctx.searchPage || ctx.activePage;
+  const mutex = ctx.detailMutex || ctx.searchMutex;
 
-    await page.waitForSelector(contentSelectors, { timeout: 6000 }).catch(() => {});
+  const doExtract = async () => {
+    try {
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
+      await jitter(300, 800);
+      await page.waitForSelector(contentSelectors, { timeout: 5000 }).catch(() => {});
 
     let rawHtml = "";
     let rawText = "";
@@ -207,8 +210,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       "[class*='jobDescription']",
       "#job-description",
       "main",
-      "article",
-      "body",
+      "article"
     ];
 
     for (const sel of candidateSelectors) {
@@ -227,10 +229,14 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     }
 
     return { fetched: true, rawHtml, rawText, fetchDurationMs: Date.now() - t0 };
-  } catch (err: any) {
-    return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
-  } finally {
-    await page.close().catch(() => {});
+    } catch (err: any) {
+      return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
+    }
+  };
+
+  if (ctx.pageManager) {
+    return ctx.pageManager.executeTransaction("detail", () => doExtract());
   }
+  return mutex ? mutex.runExclusive(() => doExtract()) : doExtract();
 }
 

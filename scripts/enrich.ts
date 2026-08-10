@@ -15,6 +15,33 @@ const WORKER_ID = `worker-${process.pid}`;
 // Exponential backoff array in seconds (1m, 2m, 4m, 8m)
 const BACKOFF_SECONDS = [60, 120, 240, 480]; 
 
+let lastLlmCallTime = 0;
+let backoffMultiplierMs = 0;
+
+async function rateLimitedExtract(card: DetailedCard) {
+  const minIntervalMs = 2500 + backoffMultiplierMs; // Baseline 2.5s + dynamic backoff
+  const now = Date.now();
+  const elapsed = now - lastLlmCallTime;
+  if (elapsed < minIntervalMs) {
+    await new Promise((r) => setTimeout(r, minIntervalMs - elapsed));
+  }
+  lastLlmCallTime = Date.now();
+
+  try {
+    const res = await extract(card);
+    if (backoffMultiplierMs > 0) {
+      backoffMultiplierMs = Math.max(0, backoffMultiplierMs - 500); // Gradually recover
+    }
+    return res;
+  } catch (err: any) {
+    if (err.message?.includes("429") || err.message?.includes("RESOURCE_EXHAUSTED")) {
+      backoffMultiplierMs = Math.min(15000, (backoffMultiplierMs || 2000) * 2);
+      log(`[Enrich] Rate-limited (429). Increasing dynamic LLM delay to ${2500 + backoffMultiplierMs}ms`, "warn");
+    }
+    throw err;
+  }
+}
+
 async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist/queue").EnrichmentJob): Promise<{llmMs: number; busyMs: number; dimensions?: any}> {
   queue.markRunning(job.id);
   const tStart = Date.now();
@@ -34,9 +61,9 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
       extraction = cachedEx;
       isFromCache = true;
     } else {
-      // 1. Extract live via LLM
+      // 1. Extract live via Rate-Limited LLM
       const tLlm0 = Date.now();
-      extraction = await extract(detailedCard);
+      extraction = await rateLimitedExtract(detailedCard);
       llmMs = Date.now() - tLlm0;
       writeExtraction(filteredCardHash(detailedCard), extraction);
     }

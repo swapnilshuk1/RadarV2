@@ -171,17 +171,24 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   }
 
   const t0 = Date.now();
-  const page = await ctx.browserContext.newPage();
-  try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
-    await jitter(500, 1200);
-    const container = page.locator("#jobDescriptionText, .jobsearch-jobDescriptionText, [class*='description'], [class*='job-detail'], main, article").first();
-    const rawHtml = await container.innerHTML().catch(() => "");
-    const rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-    return { fetched: true, rawHtml, rawText, fetchDurationMs: Date.now() - t0 };
-  } catch (err: any) {
-    return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
-  } finally {
-    await page.close().catch(() => {});
+  const page = ctx.detailPage || ctx.searchPage || ctx.activePage;
+  const mutex = ctx.detailMutex || ctx.searchMutex;
+
+  const doExtract = async () => {
+    try {
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
+      await jitter(300, 800);
+      const container = page.locator("#jobDescriptionText, .jobsearch-jobDescriptionText, [class*='description'], [class*='job-detail'], main, article").first();
+      const rawHtml = await container.innerHTML().catch(() => "");
+      const rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+      return { fetched: true, rawHtml, rawText, fetchDurationMs: Date.now() - t0 };
+    } catch (err: any) {
+      return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
+    }
+  };
+
+  if (ctx.pageManager) {
+    return ctx.pageManager.executeTransaction("detail", () => doExtract());
   }
+  return mutex ? mutex.runExclusive(() => doExtract()) : doExtract();
 }
