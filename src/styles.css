@@ -264,7 +264,124 @@
   animation: revealUp 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Context-Aware Adaptive Layout Gating (Ensures SSR stability and zero mobile/desktop layout duplication) */
+/* Executive Advisory Design System Utilities */
+.glass-header {
+  background: oklch(0.985 0.005 85 / 0.85);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+}
+
+.dark .glass-header {
+  background: oklch(0.14 0.04 260 / 0.85);
+}
+
+.glass-card {
+  background: oklch(1 0 0 / 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid oklch(0.91 0.005 85);
+  box-shadow: 0 4px 20px -2px oklch(0.22 0.01 85 / 0.03);
+}
+
+.dark .glass-card {
+  background: oklch(0.19 0.05 260 / 0.7);
+  border: 1px solid oklch(1 0 0 / 0.12);
+  box-shadow: 0 4px 20px -2px oklch(0 0 0 / 0.3);
+}
+
+.card-lift {
+  transition: all 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px -4px oklch(0.22 0.01 85 / 0.08);
+  border-color: oklch(0.65 0.01 85 / 0.6);
+}
+
+.dark .card-lift:hover {
+  box-shadow: 0 8px 30px -4px oklch(0 0 0 / 0.5);
+  border-color: oklch(1 0 0 / 0.3);
+}
+
+/* Floating Navigation Action Dock */
+.floating-dock {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: oklch(0.18 0.02 85 / 0.92);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid oklch(1 0 0 / 0.15);
+  box-shadow: 0 12px 40px -4px oklch(0 0 0 / 0.35);
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+}
+
+.dark .floating-dock {
+  background: oklch(0.12 0.04 260 / 0.92);
+  border: 1px solid oklch(1 0 0 / 0.2);
+}
+
+/* Glowing Decision Badges */
+.badge-pursue {
+  background: oklch(0.42 0.12 155 / 0.12);
+  color: oklch(0.35 0.14 155);
+  border: 1px solid oklch(0.42 0.12 155 / 0.35);
+}
+
+.dark .badge-pursue {
+  background: oklch(0.42 0.12 155 / 0.25);
+  color: oklch(0.75 0.14 155);
+  border: 1px solid oklch(0.42 0.12 155 / 0.5);
+}
+
+.badge-consider {
+  background: oklch(0.55 0.12 65 / 0.12);
+  color: oklch(0.48 0.14 65);
+  border: 1px solid oklch(0.55 0.12 65 / 0.35);
+}
+
+.dark .badge-consider {
+  background: oklch(0.55 0.12 65 / 0.25);
+  color: oklch(0.82 0.14 65);
+  border: 1px solid oklch(0.55 0.12 65 / 0.5);
+}
+
+.badge-pass {
+  background: oklch(0.62 0.008 85 / 0.12);
+  color: oklch(0.45 0.008 85);
+  border: 1px solid oklch(0.62 0.008 85 / 0.35);
+}
+
+.dark .badge-pass {
+  background: oklch(0.62 0.008 85 / 0.2);
+  color: oklch(0.75 0.008 85);
+  border: 1px solid oklch(0.62 0.008 85 / 0.4);
+}
+
+/* Radial Score Badges */
+.score-badge-high {
+  border-color: oklch(0.42 0.12 155);
+  color: oklch(0.35 0.14 155);
+  background: oklch(0.42 0.12 155 / 0.06);
+}
+
+.score-badge-mid {
+  border-color: oklch(0.55 0.12 65);
+  color: oklch(0.48 0.14 65);
+  background: oklch(0.55 0.12 65 / 0.06);
+}
+
+.score-badge-low {
+  border-color: oklch(0.62 0.008 85);
+  color: oklch(0.45 0.008 85);
+  background: oklch(0.62 0.008 85 / 0.06);
+}
+
+/* Context-Aware Adaptive Layout Gating */
 @media (max-width: 1023px) {
   .desktop-only {
     display: none !important;

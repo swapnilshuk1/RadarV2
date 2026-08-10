@@ -156,10 +156,12 @@ function GlobalHeader() {
   const { resetOnboarding } = useOnboarding();
   const [sessionName, setSessionName] = useState<string | null>(null);
   const [isDev, setIsDev] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setIsDev(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+      setIsDark(document.documentElement.classList.contains("dark"));
       const sessionStr = sessionStorage.getItem("radar_session");
       if (sessionStr) {
         try {
@@ -170,6 +172,19 @@ function GlobalHeader() {
     }
   }, []);
 
+  const toggleTheme = () => {
+    if (typeof window !== "undefined") {
+      const root = document.documentElement;
+      if (root.classList.contains("dark")) {
+        root.classList.remove("dark");
+        setIsDark(false);
+      } else {
+        root.classList.add("dark");
+        setIsDark(true);
+      }
+    }
+  };
+
   const name = sessionName || candidateProfile.identity.name;
   const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "SS";
 
@@ -179,21 +194,27 @@ function GlobalHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md w-full">
-      <div className="memo-container grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 py-3">
-        {/* Brand */}
-        <Link to="/" className="flex shrink-0 items-center gap-2">
-          <span className="font-mono text-[0.78rem] font-medium tracking-[0.34em] text-foreground">RADAR</span>
-        </Link>
+    <header className="sticky top-0 z-40 border-b border-border/60 glass-header w-full shadow-xs">
+      <div className="memo-container grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 py-2.5">
+        {/* Brand & Telemetry */}
+        <div className="flex items-center gap-3 shrink-0">
+          <Link to="/" className="flex items-center gap-2 group">
+            <span className="font-mono text-[0.82rem] font-bold tracking-[0.38em] text-foreground group-hover:text-primary transition-colors">RADAR</span>
+          </Link>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.62rem] font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            1,285 LIVE
+          </span>
+        </div>
 
         {/* Navigation Bar */}
-        <nav className="flex items-center justify-end gap-1 overflow-x-auto">
-          <ul className="flex items-center gap-1">
+        <nav className="flex items-center justify-end gap-1.5 overflow-x-auto">
+          <ul className="flex items-center gap-1 bg-muted/50 p-1 rounded-full border border-border/40">
             <li>
               <Link
                 to="/"
-                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
-                  isSelected("/") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
+                  isSelected("/") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Shortlist
@@ -202,8 +223,8 @@ function GlobalHeader() {
             <li>
               <Link
                 to="/profile"
-                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
-                  isSelected("/profile") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
+                  isSelected("/profile") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Profile
@@ -212,8 +233,8 @@ function GlobalHeader() {
             <li>
               <Link
                 to="/decisions"
-                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
-                  isSelected("/decisions") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
+                  isSelected("/decisions") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Opportunities
@@ -222,8 +243,8 @@ function GlobalHeader() {
             <li>
               <Link
                 to="/corpus"
-                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
-                  isSelected("/corpus") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
+                  isSelected("/corpus") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Corpus
@@ -234,8 +255,8 @@ function GlobalHeader() {
                 <li>
                   <Link
                     to="/design-system"
-                    className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
-                      isSelected("/design-system") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                    className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
+                      isSelected("/design-system") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     Design System
@@ -244,8 +265,8 @@ function GlobalHeader() {
                 <li>
                   <Link
                     to="/font-sandbox"
-                    className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
-                      isSelected("/font-sandbox") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                    className={`label-mono block whitespace-nowrap rounded-full px-3 py-1 transition-all ${
+                      isSelected("/font-sandbox") ? "bg-background text-foreground shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     Font Lab
@@ -255,17 +276,26 @@ function GlobalHeader() {
             )}
           </ul>
 
-          <span className="ml-2 hidden shrink-0 items-center gap-2 border-l border-border pl-3 sm:flex">
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-foreground font-mono text-[0.55rem] text-background font-bold">
+          {/* Theme Switcher Toggle */}
+          <button
+            onClick={toggleTheme}
+            title="Toggle theme"
+            className="ml-1 p-1.5 rounded-full border border-border/60 bg-background text-foreground hover:bg-muted transition-colors text-xs"
+          >
+            {isDark ? "☀️" : "🌙"}
+          </button>
+
+          <span className="ml-1 hidden shrink-0 items-center gap-2 border-l border-border/60 pl-3 sm:flex">
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-primary font-mono text-[0.55rem] text-primary-foreground font-bold shadow-xs">
               {initials}
             </span>
-            <span className="text-xs text-muted-foreground truncate w-[140px] block">{name}</span>
+            <span className="text-xs text-muted-foreground truncate max-w-[120px] block">{name}</span>
           </span>
 
           <a
             href="/api/auth/logout"
             id="sign-out-link"
-            className="label-mono ml-2 block whitespace-nowrap px-2 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            className="label-mono ml-1 block whitespace-nowrap px-2 py-1 text-muted-foreground hover:text-foreground transition-colors"
           >
             Exit
           </a>

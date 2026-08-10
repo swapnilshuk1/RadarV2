@@ -154,78 +154,86 @@ export function ReadingSurface({
 
       <Appendix brief={brief} rawDimensions={rawDimensions} />
 
-      {/* STICKY BOTTOM ACTION BAR */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background backdrop-blur-md py-2.5">
-        <div className="memo-container flex items-center justify-between gap-3">
-          {/* Left: Previous Brief */}
-          <div className="flex items-center gap-1 min-w-[80px]">
-            {neighbors?.prev ? (
-              <Link
-                to="/opportunity/$jobHash"
-                params={{ jobHash: neighbors.prev }}
-                className="label-mono text-muted-foreground hover:text-foreground transition-colors font-normal"
-              >
-                ← Prev
-              </Link>
-            ) : (
-              <span className="label-mono text-muted-foreground font-normal opacity-30">← Prev</span>
-            )}
-          </div>
-
-          {/* Center: Verdict Buttons */}
-          <div className="flex items-center gap-2">
-            <span className="label-mono text-muted-foreground font-normal mr-2">Verdict</span>
-            <ExecutiveActionButton
-              verdict="PURSUE"
-              isActive={currentVerdict === "PURSUE"}
-              aria-pressed={currentVerdict === "PURSUE"}
-              onClick={() => decide("PURSUE")}
+      {/* FLOATING ACTION DOCK (APPLE/LINEAR STYLE) */}
+      <div className="floating-dock shadow-2xl flex items-center justify-between gap-4 pointer-events-auto">
+        {/* Left: Previous Brief */}
+        <div className="flex items-center gap-1.5 min-w-[70px]">
+          {neighbors?.prev ? (
+            <Link
+              to="/opportunity/$jobHash"
+              params={{ jobHash: neighbors.prev }}
+              className="label-mono text-muted-foreground hover:text-foreground transition-colors font-medium text-[0.7rem]"
             >
-              Pursue
-            </ExecutiveActionButton>
+              ← Prev
+            </Link>
+          ) : (
+            <span className="label-mono text-muted-foreground font-normal opacity-30 text-[0.7rem]">← Prev</span>
+          )}
+        </div>
 
-            <ExecutiveActionButton
-              verdict="CONSIDER"
-              isActive={currentVerdict === "CONSIDER"}
-              aria-pressed={currentVerdict === "CONSIDER"}
-              onClick={() => decide("CONSIDER")}
+        {/* Center: Verdict Buttons with Keyboard Badges */}
+        <div className="flex items-center gap-2">
+          <span className="label-mono text-muted-foreground text-[0.68rem] uppercase font-bold mr-1">Verdict</span>
+          
+          <button
+            onClick={() => decide("PURSUE")}
+            className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              currentVerdict === "PURSUE"
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            Pursue
+            <kbd className="text-[0.6rem] opacity-70 bg-black/20 px-1 rounded">P</kbd>
+          </button>
+
+          <button
+            onClick={() => decide("CONSIDER")}
+            className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              currentVerdict === "CONSIDER"
+                ? "bg-amber-600 text-white shadow-xs"
+                : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            Consider
+            <kbd className="text-[0.6rem] opacity-70 bg-black/20 px-1 rounded">C</kbd>
+          </button>
+
+          <button
+            onClick={() => decide("PASS")}
+            className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              currentVerdict === "PASS"
+                ? "bg-slate-700 text-white shadow-xs"
+                : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            Pass
+            <kbd className="text-[0.6rem] opacity-70 bg-black/20 px-1 rounded">X</kbd>
+          </button>
+        </div>
+
+        {/* Right: Next Brief + Apply */}
+        <div className="flex items-center gap-2 min-w-[70px] justify-end">
+          {o.applyUrl ? (
+            <a
+              href={applyUrlFor(o)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="label-mono flex items-center gap-1 bg-emerald-500 text-white px-3 py-1.5 rounded-full text-[0.68rem] font-bold uppercase tracking-wider hover:bg-emerald-600 transition-colors shadow-xs"
             >
-              Consider
-            </ExecutiveActionButton>
-
-            <ExecutiveActionButton
-              verdict="PASS"
-              isActive={currentVerdict === "PASS"}
-              aria-pressed={currentVerdict === "PASS"}
-              onClick={() => decide("PASS")}
+              Apply →
+            </a>
+          ) : neighbors?.next ? (
+            <Link
+              to="/opportunity/$jobHash"
+              params={{ jobHash: neighbors.next }}
+              className="label-mono text-muted-foreground hover:text-foreground transition-colors font-medium text-[0.7rem]"
             >
-              Pass
-            </ExecutiveActionButton>
-          </div>
-
-          {/* Right: Next Brief + Apply */}
-          <div className="flex items-center gap-3 min-w-[80px] justify-end">
-            {o.applyUrl ? (
-              <Button
-                asChild
-                className="flex items-center justify-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal h-auto"
-              >
-                <a href={applyUrlFor(o)} target="_blank" rel="noopener noreferrer">
-                  Apply direct →
-                </a>
-              </Button>
-            ) : neighbors?.next ? (
-              <Link
-                to="/opportunity/$jobHash"
-                params={{ jobHash: neighbors.next }}
-                className="label-mono text-muted-foreground hover:text-foreground transition-colors font-normal"
-              >
-                Next →
-              </Link>
-            ) : (
-              <span className="label-mono text-muted-foreground font-normal opacity-30">Next →</span>
-            )}
-          </div>
+              Next →
+            </Link>
+          ) : (
+            <span className="label-mono text-muted-foreground font-normal opacity-30 text-[0.7rem]">Next →</span>
+          )}
         </div>
       </div>
     </div>

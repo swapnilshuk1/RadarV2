@@ -143,8 +143,8 @@ export class OpportunityAssessmentEngine {
       contradictions.push("Role scope or experience is below executive baseline.");
     }
 
-    const candOL = LEVEL_VAL[candidate.operatingLevel.value] || 1;
-    const jobOL = LEVEL_VAL[job.operatingLevel.value] || 1;
+    const candOL = (LEVEL_VAL as any)[candidate.operatingLevel.value] || 1;
+    const jobOL = (LEVEL_VAL as any)[job.operatingLevel.value] || 1;
 
     let operatingLevelAssessment: "MATCH" | "PROMOTION" | "REGRESSION_MINOR" | "REGRESSION_MAJOR" | "UNKNOWN" = "MATCH";
     const olDiff = candOL - jobOL;
@@ -158,8 +158,8 @@ export class OpportunityAssessmentEngine {
       operatingLevelAssessment = "REGRESSION_MAJOR";
     }
 
-    const candWN = WN_VAL[candidate.workNature.value] || 1;
-    const jobWN = WN_VAL[job.workNature.value] || 1;
+    const candWN = (WN_VAL as any)[candidate.workNature.value] || 1;
+    const jobWN = (WN_VAL as any)[job.workNature.value] || 1;
 
     let workNatureAssessment: "MATCH" | "PROMOTION" | "REGRESSION" | "UNKNOWN" = "MATCH";
     if (candWN === jobWN) {
