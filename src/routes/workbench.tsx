@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React from "react";
+import { WorkbenchCard } from "@/components/radar/cards";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/workbench")({
   head: () => ({
@@ -56,23 +58,23 @@ function AcquisitionWorkbench() {
             
             <div>
               <h3 className="text-lg font-medium text-ink border-b border-sand-200 pb-2 mb-4">Coverage Signals</h3>
-              <div className="bg-white border border-sand-200 p-4 rounded-xl shadow-sm space-y-3">
+              <WorkbenchCard className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-emerald-600">High Yield</span>
                   <span className="text-xs bg-sand-100 px-2 py-0.5 rounded text-sand-600">Transformation</span>
                 </div>
-                <button className="w-full text-xs font-medium bg-sand-100 hover:bg-sand-200 text-ink py-1.5 rounded transition-colors">
+                <Button variant="secondary" size="sm" className="w-full text-xs font-medium">
                   Expand Catalog
-                </button>
+                </Button>
                 <hr className="border-sand-200" />
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-rose-600">Low Yield</span>
                   <span className="text-xs bg-sand-100 px-2 py-0.5 rounded text-sand-600">Brand Marketing</span>
                 </div>
-                <button className="w-full text-xs font-medium bg-sand-100 hover:bg-sand-200 text-ink py-1.5 rounded transition-colors">
+                <Button variant="secondary" size="sm" className="w-full text-xs font-medium">
                   Reduce Budget
-                </button>
-              </div>
+                </Button>
+              </WorkbenchCard>
             </div>
           </div>
         </div>
@@ -83,17 +85,17 @@ function AcquisitionWorkbench() {
 
 function MetricCard({ title, value, sub }: { title: string, value: string, sub: string }) {
   return (
-    <div className="bg-white border border-sand-200 rounded-xl p-5 shadow-sm">
+    <WorkbenchCard className="p-5">
       <h4 className="text-sm font-medium text-sand-500 mb-1">{title}</h4>
       <div className="text-3xl font-semibold text-ink tracking-tight">{value}</div>
       <div className="text-xs text-sand-500 mt-2">{sub}</div>
-    </div>
+    </WorkbenchCard>
   );
 }
 
 function FamilyRow({ name, yieldPct, freshness, dupRate, coverage, status }: any) {
   return (
-    <div className="flex items-center justify-between bg-white border border-sand-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <WorkbenchCard className="flex items-center justify-between p-4 hover:shadow-md transition-shadow">
       <div>
         <div className="font-medium text-ink flex items-center gap-2">
           {name}
@@ -109,6 +111,6 @@ function FamilyRow({ name, yieldPct, freshness, dupRate, coverage, status }: any
         <div className="text-sm font-medium text-ink">{coverage}</div>
         <div className="text-xs text-sand-400">Coverage</div>
       </div>
-    </div>
+    </WorkbenchCard>
   );
 }

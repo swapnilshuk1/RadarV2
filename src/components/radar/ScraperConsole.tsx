@@ -149,10 +149,10 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
           <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${completed ? "bg-decision-pursue" : "bg-decision-pursue animate-ping"}`}></span>
           <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${completed ? "bg-decision-pursue" : "bg-decision-pursue"}`}></span>
         </span>
-        <span className="font-mono text-[11px] font-medium uppercase tracking-wider">{statusPillText}</span>
+        <span className="label-mono font-medium tracking-wider">{statusPillText}</span>
         <button 
           onClick={(e) => { e.stopPropagation(); onClose(); }}
-          className="ml-2 text-[14px] text-white/40 hover:text-white"
+          className="ml-2 text-sm text-white/40 hover:text-white"
           title="Dismiss completely"
         >
           ×
@@ -168,7 +168,7 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
         className="flex cursor-pointer items-center justify-between border-b border-white/10 bg-white/5 px-4 py-2.5"
         onClick={() => setIsMinimized(true)}
       >
-        <span className="text-[11px] font-medium uppercase tracking-[0.14em] flex items-center gap-2">
+        <span className="label-mono font-medium flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full ${completed ? "bg-decision-pursue" : "bg-decision-pursue animate-pulse"}`}></span>
           {completed ? "✔ Scan Complete" : status === "enriching" ? "AI Enrichment" : "Scan Progress"}
         </span>
@@ -176,7 +176,7 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
           <button 
             type="button" 
             onClick={(e) => { e.stopPropagation(); setIsMinimized(true); }} 
-            className="text-white/50 hover:text-white text-[16px] leading-none"
+            className="text-white/50 hover:text-white text-base leading-none"
             title="Minimize"
           >
             −
@@ -184,7 +184,7 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
           <button 
             type="button" 
             onClick={(e) => { e.stopPropagation(); onClose(); }} 
-            className="text-white/50 hover:text-white text-[16px] leading-none"
+            className="text-white/50 hover:text-white text-base leading-none"
             title="Dismiss"
           >
             ×
@@ -193,7 +193,7 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
       </div>
 
       {/* Body */}
-      <div className="flex flex-col p-4 text-[13px] font-mono leading-relaxed">
+      <div className="flex flex-col p-4 text-sm font-mono leading-relaxed">
         {status === "waiting_for_confirmation" ? (
           <div className="mb-4 flex flex-col gap-3 rounded bg-white/5 p-3">
             <div className="font-semibold text-white">Browser Sessions Ready</div>
@@ -202,7 +202,7 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
                 const h = portalHealth[p];
                 const isReady = h?.status === "ready";
                 return (
-                  <div key={p} className="flex flex-col text-[12px]">
+                  <div key={p} className="flex flex-col text-xs">
                     <div className="flex items-center gap-2">
                       <span>{isReady ? "✅" : h?.status === "error" ? "❌" : "⚠️"}</span>
                       <span className="font-medium text-white/90">{p}</span>
@@ -267,7 +267,7 @@ export function ScraperConsole({ runId, onClose, onRefreshFeed, onConfirm, onAbo
                   />
                 </div>
                 {enrichmentStats.processing > 0 && (
-                  <div className="mt-1 text-[11px] text-white/55 italic">
+                  <div className="mt-1 text-xs text-white/55 italic">
                     Concurrently analyzing {enrichmentStats.processing} jobs...
                   </div>
                 )}

@@ -10,9 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkbenchRouteImport } from './routes/workbench'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ScrapedRouteImport } from './routes/scraped'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as FontSandboxRouteImport } from './routes/font-sandbox'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as DecisionsRouteImport } from './routes/decisions'
 import { Route as CorpusRouteImport } from './routes/corpus'
@@ -29,6 +31,11 @@ const WorkbenchRoute = WorkbenchRouteImport.update({
   path: '/workbench',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScrapedRoute = ScrapedRouteImport.update({
   id: '/scraped',
   path: '/scraped',
@@ -42,6 +49,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FontSandboxRoute = FontSandboxRouteImport.update({
+  id: '/font-sandbox',
+  path: '/font-sandbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DesignSystemRoute = DesignSystemRouteImport.update({
@@ -100,9 +112,11 @@ export interface FileRoutesByFullPath {
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
   '/design-system': typeof DesignSystemRoute
+  '/font-sandbox': typeof FontSandboxRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
+  '/welcome': typeof WelcomeRoute
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
@@ -116,9 +130,11 @@ export interface FileRoutesByTo {
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
   '/design-system': typeof DesignSystemRoute
+  '/font-sandbox': typeof FontSandboxRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
+  '/welcome': typeof WelcomeRoute
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
@@ -133,9 +149,11 @@ export interface FileRoutesById {
   '/corpus': typeof CorpusRoute
   '/decisions': typeof DecisionsRoute
   '/design-system': typeof DesignSystemRoute
+  '/font-sandbox': typeof FontSandboxRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/scraped': typeof ScrapedRoute
+  '/welcome': typeof WelcomeRoute
   '/workbench': typeof WorkbenchRoute
   '/opportunity/$jobHash': typeof OpportunityJobHashRoute
   '/qa/mapping': typeof QaMappingRoute
@@ -151,9 +169,11 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/decisions'
     | '/design-system'
+    | '/font-sandbox'
     | '/login'
     | '/profile'
     | '/scraped'
+    | '/welcome'
     | '/workbench'
     | '/opportunity/$jobHash'
     | '/qa/mapping'
@@ -167,9 +187,11 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/decisions'
     | '/design-system'
+    | '/font-sandbox'
     | '/login'
     | '/profile'
     | '/scraped'
+    | '/welcome'
     | '/workbench'
     | '/opportunity/$jobHash'
     | '/qa/mapping'
@@ -183,9 +205,11 @@ export interface FileRouteTypes {
     | '/corpus'
     | '/decisions'
     | '/design-system'
+    | '/font-sandbox'
     | '/login'
     | '/profile'
     | '/scraped'
+    | '/welcome'
     | '/workbench'
     | '/opportunity/$jobHash'
     | '/qa/mapping'
@@ -200,9 +224,11 @@ export interface RootRouteChildren {
   CorpusRoute: typeof CorpusRoute
   DecisionsRoute: typeof DecisionsRoute
   DesignSystemRoute: typeof DesignSystemRoute
+  FontSandboxRoute: typeof FontSandboxRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   ScrapedRoute: typeof ScrapedRoute
+  WelcomeRoute: typeof WelcomeRoute
   WorkbenchRoute: typeof WorkbenchRoute
   OpportunityJobHashRoute: typeof OpportunityJobHashRoute
   QaMappingRoute: typeof QaMappingRoute
@@ -219,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/workbench'
       fullPath: '/workbench'
       preLoaderRoute: typeof WorkbenchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scraped': {
@@ -240,6 +273,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/font-sandbox': {
+      id: '/font-sandbox'
+      path: '/font-sandbox'
+      fullPath: '/font-sandbox'
+      preLoaderRoute: typeof FontSandboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/design-system': {
@@ -320,9 +360,11 @@ const rootRouteChildren: RootRouteChildren = {
   CorpusRoute: CorpusRoute,
   DecisionsRoute: DecisionsRoute,
   DesignSystemRoute: DesignSystemRoute,
+  FontSandboxRoute: FontSandboxRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   ScrapedRoute: ScrapedRoute,
+  WelcomeRoute: WelcomeRoute,
   WorkbenchRoute: WorkbenchRoute,
   OpportunityJobHashRoute: OpportunityJobHashRoute,
   QaMappingRoute: QaMappingRoute,

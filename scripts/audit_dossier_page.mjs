@@ -11,7 +11,9 @@ async function auditDossierPage() {
     deviceScaleFactor: 1,
   });
   const desktopPage = await desktopContext.newPage();
-  await desktopPage.goto('http://130.210.41.232.sslip.io/login', { waitUntil: 'networkidle' });
+  desktopPage.on('console', msg => console.log('DESKTOP CONSOLE:', msg.text()));
+  desktopPage.on('pageerror', err => console.log('DESKTOP PAGE ERROR:', err.message));
+  await desktopPage.goto('http://localhost:3001/login', { waitUntil: 'networkidle' });
   await desktopPage.evaluate(() => {
     sessionStorage.setItem('radar_session', JSON.stringify({
       userId: 'swapnil-shukla-dev',
@@ -22,16 +24,21 @@ async function auditDossierPage() {
 
   // Navigate to first job hash opportunity detail
   console.log('Navigating Desktop to Opportunity Dossier page...');
-  await desktopPage.goto('http://130.210.41.232.sslip.io/', { waitUntil: 'networkidle' });
+  await desktopPage.goto('http://localhost:3001/', { waitUntil: 'networkidle' });
   
-  // Click first card title or expand button
-  const cardTitle = desktopPage.locator('button:has-text("+"), h3, h2').first();
-  if (await cardTitle.isVisible()) {
-    console.log('Clicking card element on shortlist...');
-    await cardTitle.click();
-    await desktopPage.waitForTimeout(1000);
-  }
+  // Find the first list item button containing "+ BRIEF" and click it to expand the drawer
+  const expandBtn = desktopPage.locator('button:has-text("+ BRIEF"), button:has-text("+ Brief")').first();
+  console.log('Expanding first desktop brief row...');
+  await expandBtn.click({ timeout: 10000 });
 
+  // Now find the link containing "/opportunity/" and click it
+  const dossierLink = desktopPage.locator('a[href*="/opportunity/"]').first();
+  console.log('Navigating to Desktop Dossier...');
+  await dossierLink.click({ timeout: 10000 });
+  await desktopPage.waitForURL('**/opportunity/**', { timeout: 15000 });
+  await desktopPage.waitForLoadState('networkidle');
+
+  console.log('Current Desktop URL:', desktopPage.url());
   const desktopDossierPath = path.join(artifactDir, 'art_director_dossier_desktop.png');
   await desktopPage.screenshot({ path: desktopDossierPath, fullPage: true });
   console.log(`Saved Desktop Dossier screenshot: ${desktopDossierPath}`);
@@ -44,7 +51,9 @@ async function auditDossierPage() {
     hasTouch: true,
   });
   const mobilePage = await mobileContext.newPage();
-  await mobilePage.goto('http://130.210.41.232.sslip.io/login', { waitUntil: 'networkidle' });
+  mobilePage.on('console', msg => console.log('MOBILE CONSOLE:', msg.text()));
+  mobilePage.on('pageerror', err => console.log('MOBILE PAGE ERROR:', err.message));
+  await mobilePage.goto('http://localhost:3001/login', { waitUntil: 'networkidle' });
   await mobilePage.evaluate(() => {
     sessionStorage.setItem('radar_session', JSON.stringify({
       userId: 'swapnil-shukla-dev',
@@ -54,13 +63,19 @@ async function auditDossierPage() {
   });
 
   console.log('Navigating Mobile to Opportunity Dossier page...');
-  await mobilePage.goto('http://130.210.41.232.sslip.io/', { waitUntil: 'networkidle' });
-  const mobileCard = mobilePage.locator('button:has-text("+"), h3, h2').first();
-  if (await mobileCard.isVisible()) {
-    await mobileCard.click();
-    await mobilePage.waitForTimeout(1000);
-  }
+  await mobilePage.goto('http://localhost:3001/', { waitUntil: 'networkidle' });
+  // Find the first list item button containing "+ BRIEF" and click it to expand the drawer on mobile
+  const mobileExpandBtn = mobilePage.locator('button:has-text("+ BRIEF"), button:has-text("+ Brief")').first();
+  console.log('Expanding first mobile brief row...');
+  await mobileExpandBtn.click({ timeout: 10000 });
 
+  const mobileDossierLink = mobilePage.locator('a[href*="/opportunity/"]').first();
+  console.log('Navigating to Mobile Dossier...');
+  await mobileDossierLink.click({ timeout: 10000 });
+  await mobilePage.waitForURL('**/opportunity/**', { timeout: 15000 });
+  await mobilePage.waitForLoadState('networkidle');
+
+  console.log('Current Mobile URL:', mobilePage.url());
   const mobileDossierPath = path.join(artifactDir, 'art_director_dossier_mobile.png');
   await mobilePage.screenshot({ path: mobileDossierPath, fullPage: true });
   console.log(`Saved Mobile Dossier screenshot: ${mobileDossierPath}`);

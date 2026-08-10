@@ -10,7 +10,7 @@ const STYLES: Record<EvidenceBucket, { border: string; text: string; dot: string
 export function EvidenceChip({ bucket, label }: { bucket: EvidenceBucket; label: string }) {
   const s = STYLES[bucket];
   return (
-    <span className={`inline-flex items-center gap-1.5 border ${s.border} ${s.text} px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.16em]`}>
+    <span className={`inline-flex items-center gap-1.5 border ${s.border} ${s.text} px-2 py-0.5 label-mono`}>
       <span className={`h-1 w-1 ${s.dot}`} aria-hidden />
       {bucket} · {label}
     </span>

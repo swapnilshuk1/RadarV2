@@ -253,7 +253,12 @@ export interface PortalContext {
   page: number;
   searchUrl: string;
   browserContext: any;   // playwright BrowserContext
-  activePage?: any;      // explicitly track the tab used for this portal
+  searchPage?: any;      // persistent Playwright Page dedicated to search
+  detailPage?: any;      // persistent Playwright Page dedicated to details
+  searchMutex?: any;     // transaction-scoped Mutex for searchPage
+  detailMutex?: any;     // transaction-scoped Mutex for detailPage
+  pageManager?: any;     // PageManager instance for ownership-aware page lifecycle
+  activePage?: any;      // backward-compatibility reference to searchPage
   logger: (msg: string) => void;
   isHttpDisabled?: (url: string) => boolean;
   recordHttpFailure?: (url: string, reason: string) => void;

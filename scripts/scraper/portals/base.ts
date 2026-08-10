@@ -10,6 +10,17 @@ import type { PortalName } from "../types";
 let stealthApplied = false;
 function ensureStealth() {
   if (stealthApplied) return;
+
+  // Filter out non-fatal stealth shim warnings on closed pages
+  const originalConsoleError = console.error;
+  console.error = (...args: any[]) => {
+    const msg = args[0] ? String(args[0]) : "";
+    if (msg.includes("stealth/evasions") || msg.includes("Target page, context or browser has been closed")) {
+      return; // Suppress non-fatal stealth plugin closed-tab warnings
+    }
+    originalConsoleError.apply(console, args);
+  };
+
   chromiumExtra.use(stealthPlugin());
   stealthApplied = true;
 }
@@ -96,7 +107,24 @@ export async function getPortalContext(portal: PortalName): Promise<any> {
     }
   }
 
-  // Phase 4: Centralized Network Interception
+  // Phase 4: Centralized Network Interception & Native Stealth Injection
+  try {
+    await ctx.addInitScript(() => {
+      try {
+        // Override navigator.webdriver
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        // Override window.chrome
+        (window as any).chrome = (window as any).chrome || {
+          app: { isInstalled: false },
+          runtime: {},
+          csi: () => {},
+          loadTimes: () => {}
+        };
+        // Override navigator.languages
+        Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+      } catch {}
+    });
+  } catch {}
 
   contextCache.set(portal, ctx);
   return ctx;

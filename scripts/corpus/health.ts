@@ -78,12 +78,17 @@ export function calculateCorpusHealth(dbPath?: string): CorpusHealthStats {
     }
   }
 
-  // Fallback to SQLite if live-scraped is empty
-  if (totalJobs === 0 && fs.existsSync(resolvedDbPath)) {
+  // Fallback to SQLite if live-scraped is empty or incomplete
+  if (fs.existsSync(resolvedDbPath)) {
     try {
       const db = new Database(resolvedDbPath, { readonly: true });
-      const rows = db.prepare("SELECT content FROM documents WHERE payload_type = 'Structured'").all() as { content: string }[];
-      totalJobs = rows.length;
+      const oppCountRow = db.prepare("SELECT COUNT(*) as count FROM opportunities").get() as { count: number };
+      const rows = db.prepare("SELECT content FROM documents").all() as { content: string }[];
+      
+      const dbTotalJobs = Math.max(oppCountRow?.count || 0, rows.length);
+      if (dbTotalJobs > totalJobs) {
+        totalJobs = dbTotalJobs;
+      }
 
       for (const row of rows) {
         const rec = JSON.parse(row.content);

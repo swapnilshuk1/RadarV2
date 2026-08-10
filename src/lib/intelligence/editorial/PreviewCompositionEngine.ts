@@ -15,10 +15,10 @@ export class PreviewCompositionEngine {
    * Translates the core truth (Opportunity) into the "Preview" cognitive stage using
    * the Editorial Pattern & Narrative Composition pipeline.
    */
-  static compose(opportunity: Opportunity): PreviewFragment {
+  static compose(opportunity: Opportunity, options?: { bypassHistory?: boolean }): PreviewFragment {
     try {
       const ctx = EditorialContextBuilder.build(opportunity);
-      const pattern = EditorialPatternSelector.select(ctx, opportunity.jobHash);
+      const pattern = EditorialPatternSelector.select(ctx, opportunity.jobHash, options?.bypassHistory);
       const composed = NarrativeComposer.compose(pattern, opportunity);
 
       return {

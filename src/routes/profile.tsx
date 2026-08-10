@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
   uploadDocumentFn,
@@ -7,6 +7,7 @@ import {
   getLatestIntentFn
 } from "../lib/intelligence/document-server";
 import { triggerDeployFn } from "./api/webhooks/deploy";
+import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -26,6 +27,12 @@ function ProfilePage() {
   const { intent } = Route.useLoaderData();
   const [deploying, setDeploying] = useState(false);
   const router = useRouter();
+  const navigate = useNavigate();
+
+  const { progress, markEvidenceProvided, markEvidenceSkipped, markIntentSet, markIntentSkipped } = useOnboarding();
+
+  const isEvidenceStage = progress.orientationSeen && progress.evidenceStatus === "pending";
+  const isIntentStage = progress.orientationSeen && progress.evidenceStatus !== "pending" && progress.intentStatus === "pending";
 
   // Intent form state
   const [currency, setCurrency] = useState<"INR" | "USD" | "EUR" | "GBP">(
@@ -61,6 +68,7 @@ function ProfilePage() {
           setPipelineStatus(res.status || "PROCESSING");
 
           if (res.status === "COMPLETED") {
+            markEvidenceProvided();
             await router.invalidate();
           } else if (res.status === "FAILED") {
             setUploadError(res.errorMessage || "Pipeline processing failed.");
@@ -72,7 +80,20 @@ function ProfilePage() {
     }, 1200);
 
     return () => clearInterval(interval);
-  }, [activeDocId, pipelineStatus, router]);
+  }, [activeDocId, pipelineStatus, router, markEvidenceProvided]);
+
+  const fileToBase64 = (fileToConvert: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(fileToConvert);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.includes(",") ? result.split(",")[1] : result;
+        resolve(base64);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
 
   const handleFileUpload = async (file: File) => {
     setIsUploading(true);
@@ -81,8 +102,7 @@ function ProfilePage() {
     setPipelineStatus("PROCESSING");
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const base64Buffer = Buffer.from(arrayBuffer).toString("base64");
+      const base64Buffer = await fileToBase64(file);
 
       const res = await uploadDocumentFn({
         data: {
@@ -94,6 +114,7 @@ function ProfilePage() {
 
       if (res.success && res.documentId) {
         setActiveDocId(res.documentId);
+        markEvidenceProvided();
       } else {
         setUploadError("Failed to initiate file upload.");
         setIsUploading(false);
@@ -122,6 +143,7 @@ function ProfilePage() {
 
       if (res.success && res.documentId) {
         setActiveDocId(res.documentId);
+        markEvidenceProvided();
       } else {
         setUploadError("Failed to initiate text upload.");
         setIsUploading(false);
@@ -153,7 +175,9 @@ function ProfilePage() {
       });
 
       setIntentSavedMsg("Career intent saved (new version created)!");
+      markIntentSet();
       await router.invalidate();
+      navigate({ to: "/" });
     } catch (err: any) {
       console.error("Save intent failed:", err);
     } finally {
@@ -180,33 +204,68 @@ function ProfilePage() {
 
   const currentStageIdx = getStageIndex(pipelineStage);
 
+  let headerEyebrow = "◆ EXECUTIVE ADVISORY PROFILE";
+  let headerTitle = "Executive Profile & Intent";
+  let headerSubtitle = "Upload your executive résumé (PDF, Word DOCX, Plain Text) to extract immutable evidence claims, and explicitly configure your target career intent.";
+
+  if (isEvidenceStage) {
+    headerEyebrow = "◆ STAGE 1 — CAREER EVIDENCE";
+    headerTitle = "Start with your career evidence";
+    headerSubtitle = "Upload your CV. RADAR will use your actual career history — roles, scale, achievements and experience — to understand where you are strongest.";
+  } else if (isIntentStage) {
+    headerEyebrow = "◆ STAGE 2 — CAREER DIRECTION";
+    headerTitle = "Tell RADAR where you want to go";
+    headerSubtitle = "Your CV tells us where you've been. Your career intent tells us what you're looking for next.";
+  }
+
   return (
     <div className="mx-auto max-w-[1080px] px-4 sm:px-8 py-10 sm:py-14 space-y-12 text-foreground">
       {/* Header */}
-      <div className="border-b border-border/60 pb-8">
+      <div className="border-b border-border/60 pb-8 transition-all duration-300">
         <span className="mono text-[10px] tracking-[0.24em] font-bold uppercase text-foreground/80 block mb-2">
-          ◆ EXECUTIVE ADVISORY PROFILE
+          {headerEyebrow}
         </span>
         <h1 className="font-serif text-[2.75rem] sm:text-[3.25rem] font-light tracking-tight leading-[1.05] text-foreground">
-          Executive Profile &amp; Intent
+          {headerTitle}
         </h1>
         <p className="mt-3 font-serif text-[15px] italic text-muted-foreground max-w-3xl leading-relaxed">
-          Upload your executive résumé (PDF, Word DOCX, Plain Text) to extract immutable evidence claims, and explicitly configure your target career intent.
+          {headerSubtitle}
         </p>
       </div>
 
-      {/* Grid Layout */}
+      {/* Grid Layout — Continuous Composition */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         {/* Document Upload Zone */}
-        <div className="p-8 rounded-sm border border-border/80 bg-card shadow-xs space-y-6">
+        <div
+          className={`p-8 rounded-sm border bg-card shadow-xs space-y-6 transition-all duration-300 ${
+            isEvidenceStage
+              ? "border-foreground shadow-md ring-1 ring-foreground/20"
+              : isIntentStage
+              ? "border-border/60 opacity-70 hover:opacity-100"
+              : "border-border/80"
+          }`}
+        >
           <div className="flex items-center justify-between border-b border-border/50 pb-3">
             <span className="mono text-[11px] tracking-[0.22em] text-foreground font-bold uppercase">
               ◆ RÉSUMÉ &amp; EVIDENCE INGESTION
             </span>
             <span className="mono text-[10px] text-muted-foreground/70 uppercase">
-              Stage 1 / 2
+              {isEvidenceStage ? "Active Setup" : isIntentStage ? "Evidence Logged" : "Stage 1 / 2"}
             </span>
           </div>
+
+          {/* Evidence status callout when in Intent stage */}
+          {isIntentStage && (
+            <div className="p-3.5 bg-muted/40 border border-border/60 rounded-xs text-[11.5px] font-mono leading-relaxed">
+              {progress.evidenceStatus === "provided" ? (
+                <span className="text-emerald-800 font-bold block">✓ Career evidence registered</span>
+              ) : (
+                <span className="text-muted-foreground block">
+                  ℹ Career evidence pending — upload your CV anytime to sharpen recommendation accuracy.
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Native File Upload Dropzone */}
           <div className="border border-dashed border-border/80 rounded-sm p-8 text-center space-y-4 bg-muted/10 hover:border-foreground transition-all cursor-pointer">
@@ -270,6 +329,19 @@ function ProfilePage() {
               {isUploading ? "Uploading & Processing..." : "Process Text Resume ➔"}
             </button>
           </div>
+
+          {/* Onboarding Skip Link for Evidence */}
+          {isEvidenceStage && (
+            <div className="pt-2 text-center border-t border-border/40">
+              <button
+                type="button"
+                onClick={() => markEvidenceSkipped()}
+                className="mono text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-4 cursor-pointer"
+              >
+                I'll do this later →
+              </button>
+            </div>
+          )}
 
           {uploadError && (
             <div className="mono p-3 text-[11px] rounded-xs border border-red-500/50 bg-red-950/5 text-red-700 font-medium">
@@ -339,13 +411,22 @@ function ProfilePage() {
         </div>
 
         {/* Career Intent Panel */}
-        <form onSubmit={handleSaveIntent} className="p-8 rounded-sm border border-border/80 bg-card shadow-xs space-y-6">
+        <form
+          onSubmit={handleSaveIntent}
+          className={`p-8 rounded-sm border bg-card shadow-xs space-y-6 transition-all duration-300 ${
+            isIntentStage
+              ? "border-foreground shadow-md ring-1 ring-foreground/20"
+              : isEvidenceStage
+              ? "border-border/60 opacity-70 hover:opacity-100"
+              : "border-border/80"
+          }`}
+        >
           <div className="flex items-center justify-between border-b border-border/50 pb-3">
             <span className="mono text-[11px] tracking-[0.22em] text-emerald-800 font-bold uppercase">
               ◆ STRATEGIC CAREER INTENT
             </span>
             <span className="mono text-[10px] text-muted-foreground/70 uppercase">
-              HUMAN CONFIG
+              {isIntentStage ? "Active Setup" : "HUMAN CONFIG"}
             </span>
           </div>
 
@@ -427,10 +508,26 @@ function ProfilePage() {
             <button
               type="submit"
               disabled={isSavingIntent}
-              className="mono w-full py-3 px-4 rounded-sm border border-foreground bg-foreground text-background font-bold text-[11px] uppercase tracking-wider hover:opacity-90 disabled:opacity-50 transition-opacity mt-2"
+              className="mono w-full py-3 px-4 rounded-sm border border-foreground bg-foreground text-background font-bold text-[11px] uppercase tracking-wider hover:opacity-90 disabled:opacity-50 transition-opacity mt-2 cursor-pointer"
             >
               {isSavingIntent ? "Saving Intent Version..." : "Save Career Intent Version ➔"}
             </button>
+
+            {/* Onboarding Skip Link for Intent */}
+            {isIntentStage && (
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    markIntentSkipped();
+                    navigate({ to: "/" });
+                  }}
+                  className="mono text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-4 cursor-pointer"
+                >
+                  Take me to my shortlist →
+                </button>
+              </div>
+            )}
 
             {intentSavedMsg && (
               <p className="mono text-[11px] text-emerald-800 font-bold text-center mt-2">

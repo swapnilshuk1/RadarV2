@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { getScrapedJobs, getScraperCounts } from "../data/scraped-jobs";
 import { getPipelineStatsFn } from "../lib/intelligence/scrape-server";
+import { FeedCard } from "@/components/radar/cards";
+import { Eyebrow } from "@/components/typography";
 
 export const Route = createFileRoute("/scraped")({
   head: () => ({
@@ -76,12 +78,12 @@ function ScrapedFeed() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             
             {/* Column 1: Ingestion Pipeline (System) */}
-            <div className="bg-background border border-hairline rounded-xl p-6 shadow-sm">
+            <FeedCard className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <span className="font-mono text-[11px] uppercase tracking-wider text-ink-muted flex items-center gap-2">
+                <Eyebrow className="flex items-center gap-2">
                   <span className={`w-2.5 h-2.5 rounded-full ${stats?.enriching > 0 ? "bg-decision-pursue animate-pulse" : "bg-ink-muted/50"}`}></span>
                   Ingestion Pipeline (System)
-                </span>
+                </Eyebrow>
                 <span className="text-[12px] text-ink-muted">
                   {stats?.enriching > 0 ? "AI Enriching..." : "Daemon Idle"}
                 </span>
@@ -115,15 +117,15 @@ function ScrapedFeed() {
                 <Metric label="Throughput" value={`${stats?.throughputPerMin ?? 0.0}/min`} />
                 <Metric label="Cache Hit %" value={`${stats?.cacheHitRate ?? 0}%`} sub={`(${stats?.cacheSaves ?? 0} saves)`} />
               </div>
-            </div>
+            </FeedCard>
 
             {/* Column 2: Recommendation Pipeline (Career) */}
-            <div className="bg-background border border-hairline rounded-xl p-6 shadow-sm">
+            <FeedCard className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <span className="font-mono text-[11px] uppercase tracking-wider text-ink-muted flex items-center gap-2">
+                <Eyebrow className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-decision-pursue"></span>
                   Recommendation Pipeline (Career)
-                </span>
+                </Eyebrow>
                 <span className="text-[12px] text-ink-muted">Policy Active</span>
               </div>
 
@@ -162,7 +164,7 @@ function ScrapedFeed() {
                   <span>Parse Errors: <strong className="font-medium text-ink tabular-nums">{stats?.errorDistribution?.PARSE_FAILURE ?? 0}</strong></span>
                 </div>
               </div>
-            </div>
+            </FeedCard>
 
           </div>
         </div>

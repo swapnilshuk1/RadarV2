@@ -47,6 +47,33 @@ export interface OpportunityStore {
   }): Promise<Opportunity[]>;
 }
 
+export interface AcquisitionLedgerItem {
+  id: string;
+  canonicalJobId: string;
+  sourcePortal: string;
+  sourceJobId: string;
+  canonicalUrl: string;
+  title: string;
+  companyName: string;
+  location?: string;
+  state: "DISCOVERED" | "QUEUED" | "CLAIMED" | "ACQUIRING" | "VALIDATED" | "ENRICHED" | "EVALUATED";
+  terminalState?: "DUPLICATE" | "CHALLENGE" | "PERMANENT_FAILURE" | "EXPIRED" | "DISCARDED";
+  claimedBy?: string;
+  claimedAt?: string;
+  leaseExpiresAt?: string;
+  attemptCount?: number;
+  lastFailureClass?: string;
+  lastAcquisitionMethod?: string;
+  acquisitionQuality?: string;
+  validationConfidence?: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  lastAcquiredAt?: string;
+  freshnessState?: "NEW" | "FRESH" | "AGING" | "STALE" | "EXPIRED";
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AcquisitionStore {
   recordDocument(document: Document): Promise<void>;
   logDiscovery(discovery: {
@@ -57,6 +84,12 @@ export interface AcquisitionStore {
     firstPortal: string;
     firstDefinition: string;
   }): Promise<void>;
+
+  upsertDiscoveredJob(item: Omit<AcquisitionLedgerItem, "id" | "createdAt" | "updatedAt"> & { id?: string }): Promise<AcquisitionLedgerItem>;
+  getLedgerItemByCanonicalId(sourcePortal: string, canonicalJobId: string): Promise<AcquisitionLedgerItem | undefined>;
+  claimQueuedJobs(workerId: string, limit?: number, leaseMs?: number): Promise<AcquisitionLedgerItem[]>;
+  updateJobState(id: string, updates: Partial<AcquisitionLedgerItem>): Promise<void>;
+  reclaimExpiredLeases(): Promise<number>;
 }
 
 export interface KnowledgeStore {

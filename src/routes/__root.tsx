@@ -15,6 +15,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { getSessionUserFn } from "../lib/auth/server";
 import { candidateSignature } from "../lib/personalization";
 import { candidateProfile } from "../data/candidate-profile";
+import { OnboardingProvider, useOnboarding } from "../components/onboarding/OnboardingProvider";
 
 import appCss from "../styles.css?url";
 
@@ -22,7 +23,7 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-ink-muted">RADAR · 404</p>
+        <p className="label-mono text-ink-muted">RADAR · 404</p>
         <h1 className="mt-3 font-serif text-5xl text-ink">Signal lost</h1>
         <p className="mt-3 text-sm text-ink-muted">
           This opportunity is not on the shortlist.
@@ -30,7 +31,7 @@ function NotFoundComponent() {
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center rounded-sm border border-ink bg-ink px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-parchment transition-colors hover:bg-parchment hover:text-ink"
+            className="inline-flex items-center rounded-sm border border-ink bg-ink px-4 py-2 label-mono text-parchment transition-colors hover:bg-parchment hover:text-ink"
           >
             Return to shortlist
           </Link>
@@ -47,7 +48,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
       <div className="max-w-xl text-center">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-ink-muted">RADAR · System Error</p>
+        <p className="label-mono text-ink-muted">RADAR · System Error</p>
         <h1 className="mt-3 font-serif text-3xl text-ink">Recommendation unavailable</h1>
         <p className="mt-3 text-sm text-ink-muted">
           The advisory couldn't render this brief.
@@ -55,19 +56,19 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         {error && (
           <div className="mt-4 p-4 rounded bg-red-950/10 border border-red-500/20 text-left overflow-auto max-h-60 text-xs font-mono text-red-600">
             <p className="font-bold">{error.name || "Error"}: {error.message || String(error)}</p>
-            {error.stack && <pre className="mt-2 text-[10px] whitespace-pre-wrap">{error.stack}</pre>}
+            {error.stack && <pre className="mt-2 text-[0.65rem] whitespace-pre-wrap">{error.stack}</pre>}
           </div>
         )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => { router.invalidate(); reset(); }}
-            className="inline-flex items-center rounded-sm border border-ink bg-ink px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-parchment"
+            className="inline-flex items-center rounded-sm border border-ink bg-ink px-4 py-2 label-mono text-parchment"
           >
             Try again
           </button>
           <a
             href="/"
-            className="inline-flex items-center rounded-sm border border-ink/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-ink"
+            className="inline-flex items-center rounded-sm border border-ink/20 px-4 py-2 label-mono text-ink"
           >
             Shortlist
           </a>
@@ -151,10 +152,14 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function GlobalHeader() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { resetOnboarding } = useOnboarding();
   const [sessionName, setSessionName] = useState<string | null>(null);
+  const [isDev, setIsDev] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      setIsDev(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
       const sessionStr = sessionStorage.getItem("radar_session");
       if (sessionStr) {
         try {
@@ -175,7 +180,7 @@ function GlobalHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md w-full">
-      <div className="mx-auto grid max-w-[1180px] grid-cols-[auto_minmax(0,1fr)] items-center gap-4 px-5 py-3 sm:px-8">
+      <div className="memo-container grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 py-3">
         {/* Brand */}
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <span className="font-mono text-[0.78rem] font-medium tracking-[0.34em] text-foreground">RADAR</span>
@@ -211,7 +216,7 @@ function GlobalHeader() {
                   isSelected("/decisions") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
                 }`}
               >
-                Decisions
+                Opportunities
               </Link>
             </li>
             <li>
@@ -224,23 +229,37 @@ function GlobalHeader() {
                 Corpus
               </Link>
             </li>
-            <li>
-              <Link
-                to="/design-system"
-                className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
-                  isSelected("/design-system") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
-                }`}
-              >
-                Design System
-              </Link>
-            </li>
+            {isDev && (
+              <>
+                <li>
+                  <Link
+                    to="/design-system"
+                    className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
+                      isSelected("/design-system") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                    }`}
+                  >
+                    Design System
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/font-sandbox"
+                    className={`label-mono block whitespace-nowrap px-2.5 py-1.5 transition-colors sm:px-3 ${
+                      isSelected("/font-sandbox") ? "border-b border-foreground text-foreground" : "hover:text-foreground"
+                    }`}
+                  >
+                    Font Lab
+                  </Link>
+                </li>
+              </>
+            )}
           </ul>
 
           <span className="ml-2 hidden shrink-0 items-center gap-2 border-l border-border pl-3 sm:flex">
             <span className="grid h-6 w-6 place-items-center rounded-full bg-foreground font-mono text-[0.55rem] text-background font-bold">
               {initials}
             </span>
-            <span className="text-xs text-muted-foreground truncate max-w-[140px]">{name}</span>
+            <span className="text-xs text-muted-foreground truncate w-[140px] block">{name}</span>
           </span>
 
           <a
@@ -261,12 +280,15 @@ function RootComponent() {
   const location = useLocation();
 
   const showHeader = !location.pathname.startsWith("/login") &&
-    !location.pathname.startsWith("/api/auth");
+    !location.pathname.startsWith("/api/auth") &&
+    !location.pathname.startsWith("/welcome");
 
   return (
     <QueryClientProvider client={queryClient}>
-      {showHeader && <GlobalHeader />}
-      <Outlet />
+      <OnboardingProvider>
+        {showHeader && <GlobalHeader />}
+        <Outlet />
+      </OnboardingProvider>
     </QueryClientProvider>
   );
 }

@@ -17,12 +17,12 @@ export const fallbackPattern: EditorialPattern = {
   },
   constraints: {},
   slots: {
-    headline: (v) => `This opportunity aligns broadly with your current executive scope, although several aspects of the operating model should be clarified during initial discussions.`,
-    opening: (v) => `The position for ${v.role} at ${v.company} presents a structured commercial role within your core operating domain.`,
-    editorialBridge: (v) => `Primary alignment rests on functional capability match, though direct budget boundaries and reporting authority warrant early verification.`,
+    headline: (v) => `This ${v.role} mandate at ${v.company} aligns with your commercial track, though operating scope requires verification during initial screening.`,
+    opening: (v) => `The seat presents a structured commercial role within your primary operating domain.`,
+    editorialBridge: (v) => `Primary alignment rests on functional capability overlap; direct budget authority and reporting lines warrant early screening.`,
     decisionGuidance: {
-      proceedIf: (v) => `Functional scope and operational scale at ${v.company} align with your target operating mandate.`,
-      pauseIf: (v) => `Clarify direct reporting lines and regional budget allocation before committing further time.`,
+      proceedIf: (v) => `Functional scope and operational scale at ${v.company} align with your target mandate.`,
+      pauseIf: (v) => `Clarify direct reporting lines and budget allocation before committing prep time.`,
       closing: (v) => `Consider. Evaluate operating scope and budget authority during initial screening.`
     }
   }

@@ -20,30 +20,19 @@ export function getScrapedJobs(): ScrapedJob[] {
   const shortlist = new Set(
     OpportunityProvider.list({ activePursuits: 0 }).map((o) => o.jobHash),
   );
-  return [
-    ...current.map((o: OpportunitySource) => {
-      const isShortlisted = shortlist.has(o.jobHash);
-      return {
-        id: o.jobHash,
-        role: o.role,
-        company: o.company,
-        location: o.location,
-        source: o.scrapedFrom,
-        scrapedRelative: o.postedRelative,
-        shortlistedAs: isShortlisted ? o.jobHash : undefined,
-        filteredReason: isShortlisted ? undefined : "Low alignment score / functional mismatch",
-      };
-    }),
-    { id: "s-01", role: "Head of Digital Marketing", company: "Maruti Suzuki", location: "Gurugram · India", source: "Naukri", scrapedRelative: "Scraped 1 day ago", filteredReason: "Head-of scope below VP+ threshold" },
-    { id: "s-02", role: "Growth Marketing Manager", company: "Zomato", location: "Gurugram · India", source: "LinkedIn", scrapedRelative: "Scraped 2 days ago", filteredReason: "Manager level — target list starts at VP" },
-    { id: "s-03", role: "Regional CMO, MENA", company: "Landmark Group", location: "Dubai · UAE", source: "LinkedIn", scrapedRelative: "Scraped 3 days ago", filteredReason: "Geography outside preferred India set" },
-    { id: "s-04", role: "SVP Brand & Communications", company: "Times Network", location: "Delhi NCR · India", source: "Naukri", scrapedRelative: "Scraped 4 days ago", filteredReason: "Brand-only remit; no growth / CRM anchor" },
-    { id: "s-05", role: "VP Product Marketing", company: "Freshworks", location: "Bengaluru · India", source: "Indeed", scrapedRelative: "Scraped 5 days ago", filteredReason: "Product marketing, not growth ownership" },
-    { id: "s-06", role: "Regional Marketing Lead, SEA", company: "Byju's International", location: "Singapore", source: "LinkedIn", scrapedRelative: "Scraped 5 days ago", filteredReason: "Geography outside preferred India set" },
-    { id: "s-07", role: "Chief Marketing Officer", company: "LinkedIn Guest Area", location: "Bengaluru · India", source: "Naukri", scrapedRelative: "Scraped 6 days ago", filteredReason: "Company name unresolved — sanitizer discarded listing" },
-    { id: "s-08", role: "Head of Performance Marketing", company: "Nykaa", location: "Mumbai · India", source: "Indeed", scrapedRelative: "Scraped 7 days ago", filteredReason: "Functional depth match but level below VP" },
-    { id: "s-09", role: "Marketing Director, EMEA", company: "Wipro", location: "London · UK", source: "LinkedIn", scrapedRelative: "Scraped 9 days ago", filteredReason: "Level and geography both out of scope" },
-  ];
+  return current.map((o: OpportunitySource) => {
+    const isShortlisted = shortlist.has(o.jobHash);
+    return {
+      id: o.jobHash,
+      role: o.role,
+      company: o.company,
+      location: o.location,
+      source: o.scrapedFrom,
+      scrapedRelative: o.postedRelative,
+      shortlistedAs: isShortlisted ? o.jobHash : undefined,
+      filteredReason: isShortlisted ? undefined : "Low alignment score / functional mismatch",
+    };
+  });
 }
 
 export function getScraperCounts() {

@@ -602,24 +602,24 @@ function generateDynamicNarrative(
   const level = cleanDimValue(rawLevel);
 
   return {
-    recommendation: `Targeted executive opportunity in ${level} capacity, aligning with your marketing growth and digital stack precedents.`,
+    recommendation: `Targeted executive mandate in ${level} capacity; aligns with your commercial growth and enterprise stack precedents. Verify direct reporting boundaries and budget authority.`,
     recommendationArchetype: "Natural Fit",
-    recommendationArchetypeTagline: "Matches your executive track and functional expertise.",
+    recommendationArchetypeTagline: "Aligns with your executive trajectory and operating track record.",
     mandateArchetype: "Growth Marketing",
-    primaryDriver: "Marketing Strategy",
-    secondaryDriver: "Team Leadership",
-    primaryRisk: "Standard organizational alignment review",
+    primaryDriver: "Commercial Expansion",
+    secondaryDriver: "Operating Execution",
+    primaryRisk: "Reporting line & budget authority clarification",
     tailoringEffort: "LOW",
-    capabilityAlignmentText: "Strong capability alignment",
-    whyNow: `The organization is expanding its ${level} capability to support digital revenue growth.`,
+    capabilityAlignmentText: "Strong functional alignment",
+    whyNow: `The enterprise is strengthening its ${level} leadership to accelerate commercial throughput and customer acquisition.`,
     positioning: [
-      `Your 20+ years of commercial and digital growth experience aligns with this ${level} mandate.`
+      `Your operating history across large-scale commercial portfolios matches the core responsibilities required for this ${level} seat.`
     ],
     headspace: [
-      { action: "Verify operational scope and team size", benefit: "Ensures seniority alignment", effort: "Low" }
+      { action: "Verify direct P&L scope and team headcount in writing", benefit: "Rules out an operational title without budget authority", effort: "Low" }
     ],
-    hiringRisk: "Standard executive chemistry and scope verification required.",
-    alternativePath: "Viable opportunity in queue."
+    hiringRisk: "Unstated reporting line hierarchy and capital allocation controls require screening clarification.",
+    alternativePath: "Active candidate in recommendation queue."
   };
 }
 

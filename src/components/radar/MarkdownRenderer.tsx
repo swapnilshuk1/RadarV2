@@ -67,7 +67,7 @@ export function MarkdownRenderer({ content, className = "", isHero = false }: Ma
       flushList();
       const headerText = line.substring(4);
       elements.push(
-        <h3 key={`h3-${i}`} className="text-[20px] font-semibold text-ink mt-8 mb-3 leading-snug">
+        <h3 key={`h3-${i}`} className="text-xl font-semibold text-ink mt-8 mb-3 leading-snug">
           {parseInlineStyles(headerText)}
         </h3>
       );
@@ -75,21 +75,21 @@ export function MarkdownRenderer({ content, className = "", isHero = false }: Ma
       flushList();
       const headerText = line.substring(5);
       elements.push(
-        <h4 key={`h4-${i}`} className="text-[13.5px] font-mono text-brass uppercase tracking-[0.2em] mt-7 mb-3">
+        <h4 key={`h4-${i}`} className="label-mono text-brass mt-7 mb-3">
           {parseInlineStyles(headerText)}
         </h4>
       );
     } else if (line.startsWith("* ") || line.startsWith("- ")) {
       const itemText = line.substring(2);
       currentList.push(
-        <li key={`li-${i}`} className="text-[14.5px] leading-relaxed text-ink-muted">
+        <li key={`li-${i}`} className="text-sm leading-relaxed text-ink-muted">
           {parseInlineStyles(itemText)}
         </li>
       );
     } else if (line.startsWith("  - ") || line.startsWith("    - ")) {
       const itemText = line.trim().substring(2);
       currentList.push(
-        <li key={`li-${i}`} className="list-none pl-6 text-[13.5px] leading-relaxed text-ink-muted/85 italic border-l-2 border-brass/30 my-2">
+        <li key={`li-${i}`} className="list-none pl-6 text-sm leading-relaxed text-ink-muted/85 italic border-l-2 border-brass/30 my-2">
           {parseInlineStyles(itemText)}
         </li>
       );
@@ -100,8 +100,8 @@ export function MarkdownRenderer({ content, className = "", isHero = false }: Ma
           key={`p-${i}`}
           className={`${
             isHero 
-              ? "text-[21px] font-serif leading-relaxed text-ink" 
-              : "text-[15px] leading-relaxed text-ink-muted"
+              ? "text-xl font-serif leading-relaxed text-ink" 
+              : "text-base leading-relaxed text-ink-muted"
           } mb-4`}
         >
           {parseInlineStyles(line)}

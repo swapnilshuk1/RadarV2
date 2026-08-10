@@ -75,7 +75,7 @@ To balance system stability with rapid iteration, agents must distinguish betwee
 
 To maintain a lean, high-performing codebase without unnecessary complexity:
 
-0. **ABSOLUTE FIRST COMMANDMENT (NO BANDAID WORKAROUNDS)**: NEVER offer temporary workarounds, alternative menus, or bypasses when an underlying system failure or connection issue occurs. ALWAYS investigate the exact root cause, diagnose the underlying logs and configuration, and resolve the primary issue directly.
+0. **ABSOLUTE FIRST COMMANDMENT (NO BANDAID WORKAROUNDS & SYMPTOM SILENCING)**: NEVER offer temporary workarounds, defensive null/empty fallbacks, or bypasses when an underlying system failure or formatting/character constraint warning occurs. A warning or limit is a diagnostic signal of an upstream ontology mismatch. You MUST trace the data lineage upstream and resolve the issue directly at its source (the EKB/Knowledge layer) via semantic normalization, never via local string-cleanup or truncation filters in the editorial/presentation layers.
 1. **Extend Existing Abstractions First**: Before creating a new service, helper, or class, search the codebase. Extend existing repositories (`StorageProvider`) and services rather than writing duplicate or parallel infrastructure.
 2. **Single Source of Persistence**: All persistent domain state (opportunities, companies, documents, user decisions) MUST use `DatabaseAdapter` (Turso/SQLite). NEVER introduce parallel file-based storage (`.json` or `.txt`) for persistent user state.
 3. **Ephemeral Cloud Safe**: Assume production runs on ephemeral cloud containers (e.g. Render, Vercel). NEVER write mutable application data to local container filesystems.
@@ -266,4 +266,17 @@ Page (e.g. Executive Dossier, Shortlist Queue)
 - **Percentages**: `94% fit overlap`.
 - **Confidence**: `High (Verified provenance)`.
 - **Locations**: `Bengaluru (Hybrid)` or `San Francisco, CA`.
+
+### G. Strict Design System & Token Discipline Invariant
+> **ABSOLUTE PROHIBITION OF AD-HOC INLINE TAILWIND MAGIC VALUES**
+1. **No Magic Pixel Dimensions or Arbitrary Offsets**: NEVER write ad-hoc arbitrary Tailwind values in JSX such as `text-[11px]`, `text-[10px]`, `max-w-[1180px]`, or `p-[3px]`.
+2. **No Arbitrary Opacity Hacks**: NEVER write ad-hoc opacity modifiers like `border-border/60`, `border-border/40`, `border-primary/30`, `bg-surface-raised/40`, or `text-foreground/90`. Always use established semantic CSS tokens (`var(--border)`, `var(--border-strong)`, `var(--surface-raised)`).
+3. **Mandatory Use of Registered Design System Classes**: All UI views MUST use centralized design utility classes defined in `src/styles.css`:
+   - `.memo-container` (Centralized 1180px container with responsive `space-y-12`)
+   - `.memo-card` (`border border-border bg-surface-raised p-5 rounded-md`)
+   - `.memo-callout` (`border-l-2 border-primary bg-surface-raised p-4`)
+   - `.memo-opinion-box` (`border-2 border-primary/30 bg-surface-raised p-6 my-6 rounded-lg`)
+   - `.label-mono` / `.memo-badge` (`font-mono uppercase tracking-[0.18em] text-[0.65rem]`)
+4. **Audit First Rule**: Before writing or modifying any UI route/component, agents MUST inspect `src/styles.css` to verify available design system classes and enforce 100% token reuse.
+
 

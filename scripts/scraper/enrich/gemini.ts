@@ -72,7 +72,24 @@ function getADCToken(): string | null {
   return null;
 }
 
+let requestQueue: Promise<any> = Promise.resolve();
+
 export async function enrichWithLLM(input: EnrichInput): Promise<Patch | null> {
+  // Queue calls serially to enforce strict 4.1s spacing between Vertex AI calls
+  const result = new Promise<Patch | null>((resolve) => {
+    requestQueue = requestQueue.then(async () => {
+      try {
+        const patch = await executeEnrichWithLLM(input);
+        resolve(patch);
+      } catch (err: any) {
+        resolve(null);
+      }
+    });
+  });
+  return result;
+}
+
+async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise<Patch | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   let url = "";
@@ -82,7 +99,6 @@ export async function enrichWithLLM(input: EnrichInput): Promise<Patch | null> {
   } else {
     const adcToken = getADCToken();
     if (!adcToken) {
-      // No credentials available — fall back to deterministic mode
       return null;
     }
     headers["Authorization"] = `Bearer ${adcToken}`;
@@ -90,7 +106,7 @@ export async function enrichWithLLM(input: EnrichInput): Promise<Patch | null> {
     url = `https://us-central1-aiplatform.googleapis.com/v1/projects/${projectId}/locations/us-central1/publishers/google/models/gemini-2.5-flash:generateContent`;
     
     // Throttle to stay within Vertex AI's default 15 RPM (1 request / 4.1s) trial quota
-    await new Promise(resolve => setTimeout(resolve, 4100));
+    await new Promise(resolve => setTimeout(resolve, 4200));
   }
 
   const prompt = buildPrompt(input);
@@ -103,16 +119,25 @@ export async function enrichWithLLM(input: EnrichInput): Promise<Patch | null> {
         generationConfig: { responseMimeType: "application/json", temperature: 0.1 },
       }),
     });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      throw new Error(`Gemini status ${res.status}: ${errText}`);
+
+    if (res.status === 429) {
+      if (retryCount < 3) {
+        const backoffMs = (retryCount + 1) * 5000;
+        await new Promise((r) => setTimeout(r, backoffMs));
+        return executeEnrichWithLLM(input, retryCount + 1);
+      }
+      return null;
     }
+
+    if (!res.ok) {
+      return null;
+    }
+
     const data = await res.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error("empty response");
+    if (!text) return null;
     return JSON.parse(text) as Patch;
   } catch (err: any) {
-    console.warn(`[enrich] LLM fallback failed: ${err.message}`);
     return null;
   }
 }

@@ -5,13 +5,12 @@ import { ARTIFACTS_DIR } from "../../../scripts/scraper/config";
 
 let rebuildTimeout: NodeJS.Timeout | null = null;
 
-// Debounced 2-second function to rebuild SQLite read models and write live-scraped.json
+// Debounced 10-second function to rebuild SQLite read models and write live-scraped.json
 export function triggerDebouncedRebuild() {
   if (rebuildTimeout) {
     clearTimeout(rebuildTimeout);
   }
   rebuildTimeout = setTimeout(async () => {
-    console.log("[Server] Debounce trigger: rebuilding SQLite read models...");
     try {
       const { runRebuildReadModels } = await import("../../../scripts/rebuild-read-models");
       runRebuildReadModels();
@@ -20,7 +19,6 @@ export function triggerDebouncedRebuild() {
       const records = collectRecords();
       writeLiveScraped(records);
       invalidateLiveScrapedCache();
-      console.log(`[Server] Successfully rebuilt live-scraped.json cache with ${records.length} records.`);
 
       // Notify EvaluationCoordinator that corpus has expanded
       const { EvaluationCoordinator } = await import("./EvaluationCoordinator");
@@ -28,7 +26,7 @@ export function triggerDebouncedRebuild() {
     } catch (err: any) {
       console.error("[Server] Debounced rebuild failed:", err.message);
     }
-  }, 2000);
+  }, 10000);
 }
 
 // Vite HMR-safe singleton background daemon initialization

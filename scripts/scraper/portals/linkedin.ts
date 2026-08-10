@@ -19,9 +19,15 @@ export const linkedinHandler: PortalHandler = {
     const page = ctx.activePage;
     let keepOpen = false;
     try {
-      // We catch the timeout so we can still evaluate the URL and DOM state.
-      // Often the page loads enough for us to know if we are logged in, even if 
-      // some ad-tracking script hangs the 'load' event.
+      // 1. Instant deterministic check via session cookie li_at
+      const cookies = await ctx.browserContext.cookies().catch(() => []);
+      const hasLiAtCookie = cookies.some((c: any) => c.name === "li_at" && c.value && c.value.length > 10);
+      if (hasLiAtCookie) {
+        ctx.logger("✓ Valid LinkedIn session cookie (li_at) verified.");
+        return "ready";
+      }
+
+      // 2. Navigation fallback
       await page.goto("https://www.linkedin.com/feed/", {
         waitUntil: "domcontentloaded",
         timeout: CONFIG.navTimeoutMs,
@@ -33,18 +39,13 @@ export const linkedinHandler: PortalHandler = {
       const checkLoggedIn = async (): Promise<boolean> => {
         const url = page.url();
 
-        // URL-based check — far more reliable than DOM selectors across
-        // LinkedIn UI redesigns. Feed/jobs/network URLs = authenticated.
         if (/\/(feed|jobs|mynetwork|in\/|messaging)(\/|$|\?)/.test(url)) {
           return true;
         }
-        // Redirect to login/authwall/checkpoint = definitely logged out.
         if (/\/(login|authwall|checkpoint|signup)(\/|$|\?)/.test(url)) {
           return false;
         }
 
-        // URL is ambiguous (e.g. stayed on linkedin.com root) — fall back to
-        // DOM selectors. Broadened to survive LinkedIn's frequent nav redesigns.
         const count = await page
           .locator(
             [
@@ -63,12 +64,8 @@ export const linkedinHandler: PortalHandler = {
         return count > 0;
       };
 
-      // Fast path — already logged in.
       if (await checkLoggedIn()) return "ready";
 
-      // Slow path — not logged in. We no longer block here.
-      // We return 'gated' immediately so Phase 1 can finish and enter 'waiting_for_confirmation'.
-      // The user can log in during the pause.
       ctx.logger("LinkedIn not logged in — returning 'gated'.");
       keepOpen = true;
       return "gated";

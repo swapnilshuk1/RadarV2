@@ -60,7 +60,9 @@ export interface EvidenceMatch {
 }
 
 export interface CapabilityAssessment extends AssessmentMetadata {
-  overallFit: number;               // Numeric score (0.0 to 1.0)
+  overallFit: number;               // Composite balanced score (0.0 to 1.0)
+  capabilityPotential?: number;     // Executive potential fit (0.0 to 1.0)
+  evidenceStrength?: number;        // Direct proof evidence density (0.0 to 1.0)
   matchedCapabilities: string[];
   missingCapabilities: string[];
   missingInferredCapabilities?: string[];

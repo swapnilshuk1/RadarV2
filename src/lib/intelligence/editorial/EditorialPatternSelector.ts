@@ -21,7 +21,7 @@ export class EditorialPatternSelector {
     return [...this.sessionHistory];
   }
 
-  public static select(ctx: EditorialContext, opportunityId?: string): EditorialPattern {
+  public static select(ctx: EditorialContext, opportunityId?: string, bypassHistory: boolean = false): EditorialPattern {
     // 1. Filter valid patterns using EditorialValidator QA rules
     const validPatterns = allEditorialPatterns.filter((p) => {
       if (p.id === fallbackPattern.id) return false;
@@ -32,50 +32,55 @@ export class EditorialPatternSelector {
       return fallbackPattern;
     }
 
-    // 2. Multi-dimensional repetition & skeleton cap filtering
-    const totalSelections = this.sessionHistory.length;
+    let candidatePool = validPatterns;
 
-    const filteredPool = validPatterns.filter((p) => {
-      // Avoid exact pattern ID repeat in recent history
-      const idRecent = this.sessionHistory.slice(-5).some((entry) => entry.patternId === p.id);
-      if (idRecent) return false;
+    if (!bypassHistory) {
+      // 2. Multi-dimensional repetition & skeleton cap filtering
+      const totalSelections = this.sessionHistory.length;
 
-      // Avoid immediate repeat of same patternFamily, same skeleton, or same purpose
-      const last = this.sessionHistory[this.sessionHistory.length - 1];
-      if (last) {
-        if (last.patternFamily === p.patternFamily) return false;
-        if (last.skeleton === p.skeleton) return false;
-        if (last.purpose === p.editorialPurpose) return false;
-      }
+      const filteredPool = validPatterns.filter((p) => {
+        // Avoid exact pattern ID repeat in recent history
+        const idRecent = this.sessionHistory.slice(-5).some((entry) => entry.patternId === p.id);
+        if (idRecent) return false;
 
-      // Enforce max 40% skeleton distribution rule across session
-      if (totalSelections >= 3) {
-        const skeletonCount = this.sessionHistory.filter((entry) => entry.skeleton === p.skeleton).length;
-        const currentPct = skeletonCount / totalSelections;
-        if (currentPct >= 0.4) return false;
-      }
+        // Avoid immediate repeat of same patternFamily, same skeleton, or same purpose
+        const last = this.sessionHistory[this.sessionHistory.length - 1];
+        if (last) {
+          if (last.patternFamily === p.patternFamily) return false;
+          if (last.skeleton === p.skeleton) return false;
+          if (last.purpose === p.editorialPurpose) return false;
+        }
 
-      return true;
-    });
+        // Enforce max 40% skeleton distribution rule across session
+        if (totalSelections >= 3) {
+          const skeletonCount = this.sessionHistory.filter((entry) => entry.skeleton === p.skeleton).length;
+          const currentPct = skeletonCount / totalSelections;
+          if (currentPct >= 0.4) return false;
+        }
 
-    // Fall back to un-repeated IDs if strict filter narrows pool to 0
-    const unshownPatterns = validPatterns.filter(
-      (p) => !this.sessionHistory.some((entry) => entry.patternId === p.id)
-    );
+        return true;
+      });
 
-    const candidatePool =
-      filteredPool.length > 0
-        ? filteredPool
-        : unshownPatterns.length > 0
-        ? unshownPatterns
-        : validPatterns;
+      // Fall back to un-repeated IDs if strict filter narrows pool to 0
+      const unshownPatterns = validPatterns.filter(
+        (p) => !this.sessionHistory.some((entry) => entry.patternId === p.id)
+      );
 
-    // 3. Deterministic hash selection from candidate pool
+      candidatePool =
+        filteredPool.length > 0
+          ? filteredPool
+          : unshownPatterns.length > 0
+          ? unshownPatterns
+          : validPatterns;
+    }
+
+    // 3. Deterministic hash selection from candidate pool using company + role seed for pattern diversity
     let selectedIndex = 0;
-    if (opportunityId) {
+    const seedString = opportunityId || "editorial_pattern_seed";
+    if (seedString) {
       let hash = 0;
-      for (let i = 0; i < opportunityId.length; i++) {
-        hash = (hash << 5) - hash + opportunityId.charCodeAt(i);
+      for (let i = 0; i < seedString.length; i++) {
+        hash = (hash << 5) - hash + seedString.charCodeAt(i);
         hash |= 0;
       }
       selectedIndex = Math.abs(hash) % candidatePool.length;
@@ -83,13 +88,15 @@ export class EditorialPatternSelector {
 
     const chosen = candidatePool[selectedIndex] || fallbackPattern;
 
-    // 4. Update session history entry
-    this.sessionHistory.push({
-      patternId: chosen.id,
-      patternFamily: chosen.patternFamily,
-      skeleton: chosen.skeleton,
-      purpose: chosen.editorialPurpose,
-    });
+    if (!bypassHistory) {
+      // 4. Update session history entry
+      this.sessionHistory.push({
+        patternId: chosen.id,
+        patternFamily: chosen.patternFamily,
+        skeleton: chosen.skeleton,
+        purpose: chosen.editorialPurpose,
+      });
+    }
 
     return chosen;
   }
