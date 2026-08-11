@@ -27,7 +27,7 @@ export class OpportunityService {
     // Pass projection directly into the V4 Engine
     const { presented } = runEngine(projection, active);
     
-    const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, PASS: 2 };
+    const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, SPARSE_SPEC: 2, PASS: 3 };
     
     return presented
       .map((p) => {

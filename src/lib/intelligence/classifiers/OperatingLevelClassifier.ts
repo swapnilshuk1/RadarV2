@@ -22,6 +22,46 @@ export class OperatingLevelClassifier {
     const tLower = title.toLowerCase();
     const textLower = (title + " " + text).toLowerCase();
 
+    // Role-contextual high-confidence non-commercial professional-domain vetoes
+    const hasMedicalAffairsVeto = /\bmedical affairs\b/i.test(tLower);
+    const hasClinicalVeto = /\bclinical\b/i.test(tLower) && !/marketing|growth|commercial/i.test(tLower);
+    const hasBimVeto = /\bbim\b/i.test(tLower);
+    const hasCivilStructuralVeto = /(\bcivil\b|\bstructural\b)/i.test(tLower) && !/marketing|growth|commercial/i.test(tLower);
+    const hasQualityVeto = /\bquality\b/i.test(tLower) && !/marketing|growth|commercial/i.test(tLower);
+    const hasRecruitmentStaffingVeto = /(\brecruitment\b|\bstaffing\b)/i.test(tLower) || 
+                                       ((/managing director/i.test(tLower) || /director/i.test(tLower)) && (/antal|staffing|recruitment/i.test(textLower)));
+    const hasSoftwareVeto = /(\bsoftware engineer\b|\bfull stack\b|\bfrontend\b|\bbackend\b)/i.test(tLower);
+    const hasIndustrialResinVeto = /(\bresin\b|\bpolymer\b)/i.test(tLower) && !/marketing|growth/i.test(tLower);
+    const hasTelecomEngVeto = /\btelecom\b/i.test(tLower) && /(\bengineer\b|\bautomation\b)/i.test(tLower);
+    const hasHeavyElectronicsVeto = /\bpower electronics\b/i.test(tLower) && !/marketing director|cmo/i.test(tLower);
+    const hasDerivedDataVeto = /\bderived data\b/i.test(tLower);
+    const hasDeliveryLeaderVeto = /\bdelivery (leader|lead)\b/i.test(tLower) && !/marketing|growth|commercial/i.test(tLower);
+    const hasItcVeto = /\bitc\b/i.test(tLower) && !/marketing|growth/i.test(tLower);
+    const hasPracticeLeadVeto = /\bpractice (lead|director|head)\b/i.test(tLower) && !/marketing|growth/i.test(tLower);
+    const hasArchitectureVeto = /\barchitecture\b/i.test(tLower) && !/marketing|growth|commercial/i.test(tLower);
+
+    const isNonCommercialDomain = 
+      hasMedicalAffairsVeto ||
+      hasClinicalVeto ||
+      hasBimVeto ||
+      hasCivilStructuralVeto ||
+      hasQualityVeto ||
+      hasRecruitmentStaffingVeto ||
+      hasSoftwareVeto ||
+      hasIndustrialResinVeto ||
+      hasTelecomEngVeto ||
+      hasHeavyElectronicsVeto ||
+      hasDerivedDataVeto ||
+      hasDeliveryLeaderVeto ||
+      hasItcVeto ||
+      hasPracticeLeadVeto ||
+      hasArchitectureVeto;
+
+    if (isNonCommercialDomain) {
+      evidenceIds.push("ol_non_commercial_veto");
+      return { value: "MANAGERIAL", evidenceIds, confidence: 0.95 };
+    }
+
     // 1. Title Seniority Prior Classification
     const isExecutiveTitle = 
       tLower.includes("cmo") || 

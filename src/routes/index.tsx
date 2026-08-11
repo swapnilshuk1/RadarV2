@@ -401,33 +401,28 @@ function ShortlistCardRow({
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
   const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
-  const score = o.recommendationResult?.score ?? 80;
-
-  useEffect(() => {
-    if (isOpen && rowRef.current) {
-      const timer = setTimeout(() => {
-        rowRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 60);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen]);
+  const isSparse = o.decision === "SPARSE_SPEC";
+  const rawScore = o.recommendationResult?.score;
+  const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
+  const decisionLabel = isSparse ? "needs more signal" : (o.decision?.toLowerCase() || "pursue");
 
   const badgeClass = 
     o.decision === "CONSIDER" 
       ? "badge-consider" 
       : o.decision === "PASS" 
         ? "badge-pass" 
-        : "badge-pursue";
+        : o.decision === "SPARSE_SPEC"
+          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+          : "badge-pursue";
 
   const scoreClass = 
-    score >= 75 
-      ? "score-badge-high" 
-      : score >= 60 
-        ? "score-badge-mid" 
-        : "score-badge-low";
+    isSparse 
+      ? "border-amber-500/40 text-amber-600 bg-amber-500/10 dark:text-amber-400" 
+      : (typeof rawScore === "number" && rawScore >= 75)
+        ? "score-badge-high" 
+        : (typeof rawScore === "number" && rawScore >= 60)
+          ? "score-badge-mid" 
+          : "score-badge-low";
 
   return (
     <li
@@ -467,7 +462,7 @@ function ShortlistCardRow({
               {o.role}
             </span>
             <span className={`label-mono shrink-0 rounded-full px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider ${badgeClass}`}>
-              {o.decision?.toLowerCase() || "pursue"}
+              {decisionLabel}
             </span>
             <span className="label-mono hidden rounded-full bg-muted/80 px-2.5 py-0.5 text-[0.62rem] text-muted-foreground sm:inline font-medium">
               {o.mandateArchetype && o.mandateArchetype !== "Growth Marketing" ? o.mandateArchetype : inferExecutiveMandateArchetype(o.role, (o as any).rawText || (o as any).description)}
@@ -492,7 +487,7 @@ function ShortlistCardRow({
 
         <span className="flex shrink-0 flex-col items-end gap-2">
           <span className={`flex shrink-0 items-center justify-center h-10 w-10 rounded-full border-2 font-display text-lg font-bold shadow-xs ${scoreClass}`}>
-            {score}
+            {scoreDisplay}
           </span>
           <span className="label-mono text-[0.68rem] text-muted-foreground group-hover:text-foreground font-semibold transition-colors">
             {isOpen ? "— Close" : "+ Brief"}

@@ -22,7 +22,7 @@ export type RecommendationRecord = Readonly<{
   engineVersion: string;
   recommendationVersion: string; // fingerprint of inputs + engine
   verb: DecisionVerb;
-  priority: number;
+  priority: number | null;
   decisionSummary: {
     careerValue: number;
     shortlistingPotential: number;

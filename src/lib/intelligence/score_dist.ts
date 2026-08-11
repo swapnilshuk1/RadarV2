@@ -12,7 +12,8 @@ const scores: Record<string, number[]> = { PURSUE: [], CONSIDER: [], PASS: [], N
 
 for (const r of records) {
   counts[r.verb] = (counts[r.verb] || 0) + 1;
-  scores[r.verb].push(r.priority);
+  if (!scores[r.verb]) scores[r.verb] = [];
+  if (r.priority !== null) scores[r.verb].push(r.priority);
 }
 
 console.log("\nVERDICT COUNTS:");

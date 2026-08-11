@@ -1,11 +1,12 @@
-import { IdentityAssessment, CapabilityAssessment, OpportunityAssessment, CareerAssessment, LifestyleAssessment, DecisionVerdict } from "../../domain/semantic";
+import { IdentityAssessment, CapabilityAssessment, OpportunityAssessment, CareerAssessment, LifestyleAssessment, DecisionVerdict, EvaluationStatus, Recommendation } from "../../domain/semantic";
 import decisionPolicy from "@/data/ontology/decision_policy.json";
 import { IdentityDistanceCalculator } from "../utils/IdentityDistanceCalculator";
+import { EvidenceGate } from "../gates/EvidenceGate";
 
 export interface PipelineStage {
   stage: string;
   status: string;
-  score?: number;
+  score?: number | null;
   reason?: string | Record<string, any>;
 }
 
@@ -18,7 +19,11 @@ export interface DecisionDriver {
 
 export interface DecisionPolicyResult {
   verdict: DecisionVerdict;
-  priorityScore: number;
+  evaluationStatus: EvaluationStatus;
+  recommendation: Recommendation;
+  priorityScore: number | null;
+  structuralConviction: boolean;
+  uiLabel: string;
   confidences: {
     parsing: number;
     matching: number;
@@ -46,6 +51,38 @@ export class DecisionPolicyEngine {
   ): DecisionPolicyResult {
     const triggeredRuleIds: string[] = [];
     
+    // Step 0: Evidence Gate Precedence Check
+    const roleTitle = (opportunity as any).role || (opportunity as any).originalOpportunity?.role || "";
+    const companyName = (opportunity as any).company || "";
+    const gateResult = EvidenceGate.evaluate(
+      jobDescriptionText || "",
+      roleTitle,
+      companyName
+    );
+
+    if (gateResult.evaluationStatus === "SPARSE_SPEC") {
+      return {
+        verdict: "SPARSE_SPEC",
+        evaluationStatus: "SPARSE_SPEC",
+        recommendation: null,
+        priorityScore: null,
+        structuralConviction: false,
+        uiLabel: "Needs More Signal",
+        confidences: { parsing: 0.3, matching: 0.3, recommendation: 0.3 },
+        tailoringEffort: "HIGH",
+        trajectoryUpside: "Insufficient Specification",
+        relativeDifferentiator: gateResult.reason || "Posting is too limited (< 25 words) to evaluate mandate scope or capability fit without guessing.",
+        triggeredRuleIds: ["G-EVIDENCE-GATE-SPARSE-SPEC"],
+        pipeline: [
+          { stage: "EvidenceGate", status: "SPARSE_SPEC", score: null, reason: "Needs More Signal: < 25 words in job specification." }
+        ],
+        decisionDrivers: [],
+        decisionRisks: [
+          { factor: "Insufficient Evidence", impact: "negative", strength: "high", evidence: "Specification contains fewer than 25 words." }
+        ]
+      };
+    }
+
     // Evaluate Topological Semantic Distance d in [0, 1]
     const identityDistance = IdentityDistanceCalculator.calculate(
       candidateIdentityValue, 
@@ -57,7 +94,11 @@ export class DecisionPolicyEngine {
     if (identityDistance >= 0.80) {
       return {
         verdict: "PASS",
+        evaluationStatus: "EVALUATED",
+        recommendation: "PASS",
         priorityScore: 0,
+        structuralConviction: false,
+        uiLabel: "Pass",
         confidences: { parsing: 0.9, matching: 0.9, recommendation: 0.95 },
         tailoringEffort: "HIGH",
         trajectoryUpside: "N/A",
@@ -87,7 +128,11 @@ export class DecisionPolicyEngine {
 
       return {
         verdict: "NOT_EVALUABLE",
-        priorityScore: 0,
+        evaluationStatus: "NOT_EVALUABLE",
+        recommendation: null,
+        priorityScore: null,
+        structuralConviction: false,
+        uiLabel: "Not Evaluable",
         confidences: { parsing: 0.0, matching: 0.0, recommendation: 0.0 },
         tailoringEffort: "HIGH",
         trajectoryUpside: "Uncertain / Insufficient Signals",
@@ -115,7 +160,6 @@ export class DecisionPolicyEngine {
     const locationFriction = (lifestyle as any).locationFrictionPenalty || 0;
 
     // Non-Additive Cross-Dimensional Interaction Scaling
-    // Identity distance modulates the effective Capability and Career weight scaling
     const capabilityInteractionMultiplier = Math.max(0.20, 1.0 - 0.70 * identityDistance);
     const careerInteractionMultiplier = Math.max(0.30, 1.0 - 0.50 * identityDistance);
 
@@ -123,7 +167,6 @@ export class DecisionPolicyEngine {
     const effectiveCareerWeight = baseWeights.career * careerInteractionMultiplier;
 
     // Differentiated Continuous Score Calibration
-    const roleTitle = (opportunity as any).role || (opportunity as any).originalOpportunity?.role || "";
     const titleLower = roleTitle.toLowerCase();
     
     // Altitude modifier based on role executive authority
@@ -239,14 +282,18 @@ export class DecisionPolicyEngine {
 
     pipeline.push({ stage: "Ranking", status: "COMPLETE", score: priorityScore });
 
-    // Exclusion Gates
+    // Exclusion Gates (Hard Vetoes)
     if (
       opportunity.mandateSeniority === "SUB_TIER" || 
       (opportunity as any).seniorityAssessment?.mandateSeniority === "SUB_TIER"
     ) {
       return {
         verdict: "PASS",
+        evaluationStatus: "EVALUATED",
+        recommendation: "PASS",
         priorityScore: Math.min(priorityScore, 40),
+        structuralConviction: false,
+        uiLabel: "Pass",
         confidences,
         tailoringEffort: "HIGH",
         trajectoryUpside: "Sub-tier Mandate",
@@ -263,7 +310,11 @@ export class DecisionPolicyEngine {
     if (identity.verdict === "MISMATCH" || identityScore < t.identityCutoff) {
       return {
         verdict: "PASS",
+        evaluationStatus: "EVALUATED",
+        recommendation: "PASS",
         priorityScore: Math.min(priorityScore, 50),
+        structuralConviction: false,
+        uiLabel: "Pass",
         confidences,
         tailoringEffort: "HIGH",
         trajectoryUpside,
@@ -278,7 +329,11 @@ export class DecisionPolicyEngine {
     if (capability.overallFit < t.capabilityCutoff) {
       return {
         verdict: "PASS",
+        evaluationStatus: "EVALUATED",
+        recommendation: "PASS",
         priorityScore: Math.min(priorityScore, 55),
+        structuralConviction: false,
+        uiLabel: "Pass",
         confidences,
         tailoringEffort: "HIGH",
         trajectoryUpside,
@@ -293,7 +348,11 @@ export class DecisionPolicyEngine {
     if (career.regressionScore >= t.regressionCutoff) {
       return {
         verdict: "PASS",
+        evaluationStatus: "EVALUATED",
+        recommendation: "PASS",
         priorityScore: Math.min(priorityScore, 50),
+        structuralConviction: false,
+        uiLabel: "Pass",
         confidences,
         tailoringEffort: "HIGH",
         trajectoryUpside,
@@ -305,25 +364,49 @@ export class DecisionPolicyEngine {
       };
     }
 
-    if (priorityScore >= 75 && identityScore >= 60) {
+    // Structural Conviction Calibration (Controlled Policy Experiment)
+    // Applies strictly AFTER all hard vetoes have passed
+    const ma = (opportunity as any).mandateAssessment;
+    const isCommercialDomain = !jobExecutiveIdentityValue || jobExecutiveIdentityValue.includes("Commercial") || jobExecutiveIdentityValue.includes("Marketing") || jobExecutiveIdentityValue.includes("Growth");
+    const isExecutiveAltitude = (opportunity as any).operatingLevelAssessment === "MATCH" || (opportunity as any).operatingLevelAssessment === "PROMOTION" || titleLower.includes("head") || titleLower.includes("director") || titleLower.includes("chief") || titleLower.includes("cmo") || titleLower.includes("vp");
+    const isBusinessGrowth = ma?.type === "BUSINESS_GROWTH";
+    const isEnterpriseScope = ma?.scope === "ENTERPRISE";
+
+    const hasStructuralConviction = isCommercialDomain && isExecutiveAltitude && isBusinessGrowth && isEnterpriseScope;
+    let calibratedPriorityScore = priorityScore;
+
+    if (hasStructuralConviction) {
+      calibratedPriorityScore = Math.min(100, priorityScore + 3);
+      triggeredRuleIds.push("R-STRUCTURAL-CONVICTION-CALIBRATION");
+    }
+
+    if (calibratedPriorityScore >= 75 && identityScore >= 60) {
       return {
         verdict: "PURSUE",
-        priorityScore,
+        evaluationStatus: "EVALUATED",
+        recommendation: "PURSUE",
+        priorityScore: calibratedPriorityScore,
+        structuralConviction: hasStructuralConviction,
+        uiLabel: "Pursue",
         confidences,
         tailoringEffort,
         trajectoryUpside,
         relativeDifferentiator,
-        triggeredRuleIds: ["R-PURSUE-INTERACTIVE-SCORE"],
+        triggeredRuleIds: ["R-PURSUE-INTERACTIVE-SCORE", ...(hasStructuralConviction ? ["R-STRUCTURAL-CONVICTION-CALIBRATION"] : [])],
         pipeline,
         decisionDrivers,
         decisionRisks
       };
     }
 
-    if (priorityScore >= 60) {
+    if (calibratedPriorityScore >= 60) {
       return {
         verdict: "CONSIDER",
-        priorityScore,
+        evaluationStatus: "EVALUATED",
+        recommendation: "CONSIDER",
+        priorityScore: calibratedPriorityScore,
+        structuralConviction: hasStructuralConviction,
+        uiLabel: "Consider",
         confidences,
         tailoringEffort,
         trajectoryUpside,
@@ -337,7 +420,11 @@ export class DecisionPolicyEngine {
 
     return {
       verdict: "PASS",
-      priorityScore,
+      evaluationStatus: "EVALUATED",
+      recommendation: "PASS",
+      priorityScore: calibratedPriorityScore,
+      structuralConviction: false,
+      uiLabel: "Pass",
       confidences,
       tailoringEffort,
       trajectoryUpside,

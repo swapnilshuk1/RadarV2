@@ -18,7 +18,9 @@ export class IdentityDistanceCalculator {
 
     // Map job string to ontology domain ID
     let jobDomain = "commercial_marketing";
-    if (
+    if (jobLower.includes("excluded")) {
+      jobDomain = "excluded_domain";
+    } else if (
       jobLower.includes("technology") || 
       jobLower.includes("information technology") || 
       jobLower.includes("it head") || 
@@ -32,7 +34,17 @@ export class IdentityDistanceCalculator {
       fullTextLower.includes("quote-to-cash")
     ) {
       jobDomain = "technology_engineering";
-    } else if (jobLower.includes("operational excellence") || jobLower.includes("delivery management") || fullTextLower.includes("programme delivery") || fullTextLower.includes("shared services")) {
+    } else if (
+      jobLower.includes("administration") || 
+      jobLower.includes("facilities") || 
+      fullTextLower.includes("campus administration") || 
+      fullTextLower.includes("housekeeping") || 
+      fullTextLower.includes("campus infrastructure") ||
+      jobLower.includes("operational excellence") || 
+      jobLower.includes("delivery management") || 
+      fullTextLower.includes("programme delivery") || 
+      fullTextLower.includes("shared services")
+    ) {
       jobDomain = "operations_delivery";
     } else if (jobLower.includes("clinical") || jobLower.includes("medical")) {
       jobDomain = "clinical_medical";

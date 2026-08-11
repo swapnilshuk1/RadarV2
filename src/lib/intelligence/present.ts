@@ -132,14 +132,17 @@ export function present(
     // Suppress error
   }
   
+  const scoreVal = record.priority !== null ? Math.round(record.priority) : 0;
+  const scoreStr = record.priority !== null ? `${Math.round(record.priority)}/100` : "N/A";
+
   const recommendationResultViewModel: RecommendationViewModel = {
-    score: Math.round(record.priority),
+    score: scoreVal,
     decision: record.verb,
     policyId: "policy-v1.0",
     policyVersion: "1.0.0",
     explanation: isPass 
-      ? `Evaluated by RADAR V4 strategic framework: ${record.verb.toLowerCase()} (Score: ${Math.round(record.priority)}/100).`
-      : `Dynamically evaluated using RADAR V4 strategic framework to ${record.verb.toLowerCase()} (Score: ${Math.round(record.priority)}/100).`,
+      ? `Evaluated by RADAR V4 strategic framework: ${record.verb.toLowerCase()} (Score: ${scoreStr}).`
+      : `Dynamically evaluated using RADAR V4 strategic framework to ${record.verb.toLowerCase()} (Score: ${scoreStr}).`,
     capabilities: mappedCapabilities,
     decisionConfidence,
   };

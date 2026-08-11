@@ -140,7 +140,9 @@ export type RuleCondition =
   | { dimension: "CAREER"; field: CareerField; operator: "EQUALS" | "NOT_EQUALS" | "LESS_THAN" | "GREATER_THAN"; value: string | number | boolean }
   | { dimension: "LIFESTYLE"; field: LifestyleField; operator: "EQUALS" | "NOT_EQUALS" | "LESS_THAN" | "GREATER_THAN"; value: string | number | boolean };
 
-export type DecisionVerdict = "PASS" | "CONSIDER" | "PURSUE" | "NOT_EVALUABLE";
+export type EvaluationStatus = "EVALUATED" | "SPARSE_SPEC" | "NOT_EVALUABLE";
+export type Recommendation = "PURSUE" | "CONSIDER" | "PASS" | null;
+export type DecisionVerdict = "PASS" | "CONSIDER" | "PURSUE" | "NOT_EVALUABLE" | "SPARSE_SPEC";
 
 // Data-driven decision rule with explicit output verbs
 export interface DecisionRule {

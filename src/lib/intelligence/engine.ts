@@ -146,7 +146,7 @@ export function injectFreshRecords(records: any[]) {
 const candidateBuilder = new CandidateProjectionBuilderImpl();
 
 const ONTOLOGY_VERSION = "14.2.0";
-const ENGINE_VERSION = "4.0.0";
+const ENGINE_VERSION = "4.1.0-sparse-conviction";
 
 function simpleStringHash(str: string): string {
   let hash = 5381;
@@ -246,7 +246,7 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
       priority: finalScore,
       decisionSummary: {
         careerValue: capability.overallFit,
-        shortlistingPotential: finalScore / 100,
+        shortlistingPotential: finalScore !== null ? finalScore / 100 : 0,
         pursuitFriction: (lifestyle as any).locationFrictionPenalty || 0
       },
       decisionDrivers: policyResult.decisionDrivers,
@@ -271,7 +271,7 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
         unknowns: []
       },
       trace: {
-        priority: finalScore,
+        priority: finalScore !== null ? finalScore : 0,
         factors: {
           careerValue: capability.overallFit,
           shortlistingPotential: capability.overallFit,
@@ -301,8 +301,9 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
 
   // Populate comparative queue ranking
   for (const r of records) {
-    const higherThan = records.filter(other => other.priority < r.priority).map(other => other.jobHash);
-    const lowerThan = records.filter(other => other.priority > r.priority).map(other => other.jobHash);
+    const rPriority = r.priority ?? 0;
+    const higherThan = records.filter(other => (other.priority ?? 0) < rPriority).map(other => other.jobHash);
+    const lowerThan = records.filter(other => (other.priority ?? 0) > rPriority).map(other => other.jobHash);
     (r as any).comparison = { higherThan, lowerThan, differentiators: [], tradeOffs: [] };
   }
 

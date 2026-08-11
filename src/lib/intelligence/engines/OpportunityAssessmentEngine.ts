@@ -46,94 +46,139 @@ export interface MandateAssessment {
 }
 
 export class OpportunityAssessmentEngine {
-  public static assessMandate(text: string, title: string): MandateAssessment {
+  public static assessMandate(text: string, title: string, isNonCommercial?: boolean): MandateAssessment {
     const fullText = (title + " " + text).toLowerCase();
+    const tLower = title.toLowerCase();
 
-    let growthScore = 0;
-    let transformScore = 0;
-    let functionalScore = 0;
-    let platformScore = 0;
-    let deliveryScore = 0;
-    let executionScore = 0;
-
-    // 1. BUSINESS_GROWTH: P&L, Revenue, EBITDA, CAC/LTV, Commercial expansion, Scale
-    if (/p&l|profit and loss|profit & loss|revenue growth|annual revenue|commercial growth|gtm strategy|market expansion|regional gtm|cac\/ltv|unit economics|ebitda/i.test(fullText)) {
-      growthScore += 3;
+    // Step 1 — Respect upstream domain exclusion
+    if (isNonCommercial) {
+      return { type: "EXECUTION", level: "EXECUTION", scope: "FUNCTIONAL" };
     }
 
-    // 2. TRANSFORMATION: Re-platforming, turnaround, digital transformation, modernizing operating model
-    if (/digital transformation|re-platform|turnaround|operating model|modernize|cloud migration|enterprise transformation|restructure/i.test(fullText)) {
-      transformScore += 3;
-    }
-
-    // 3. FUNCTIONAL_LEADERSHIP: Lifecycle architecture, retention roadmap, department strategy, CoE leadership, agency ecosystem
-    if (/crm strategy|lifecycle architecture|retention roadmap|center of excellence|coe|discipline strategy|agency ecosystem|marketing strategy|brand strategy/i.test(fullText)) {
-      functionalScore += 3;
-    }
-
-    // 4. PLATFORM: SFMC journey configuration, CDP, GA4 setup, MarTech stack, data pipelines, technical implementation
-    if (/sfmc|salesforce marketing cloud|cdp|customer data platform|ga4|google analytics 4|martech|data pipeline|configure journeys|mixpanel|appsflyer|segment|hubspot/i.test(fullText)) {
-      platformScore += 3;
-    }
-
-    // 5. DELIVERY: Client services, agency retainer, account management, client relationship
-    if (/client services|agency retainer|account management|client delivery|project retainer|client relationship/i.test(fullText)) {
-      deliveryScore += 3;
-    }
-
-    // 6. EXECUTION: Campaign execution, daily email deployment, copywriting, SEO/PPC execution, backlog, lead gen
-    if (/campaign execution|email deployment|copywriting|seo execution|ppc execution|lead gen|lead generation|daily stand-up|sprint backlog|content creation|social media posts/i.test(fullText)) {
-      executionScore += 3;
-    }
-
-    // Secondary indicators from full text
-    if (/manage team|lead department|head of|director|vp|chief/i.test(fullText)) {
-      growthScore += 1;
-      functionalScore += 1;
-    }
-    if (/hands-on|individual contributor|copywriter|specialist|coordinator|executive/i.test(fullText)) {
-      executionScore += 2;
-    }
-
-    const maxScore = Math.max(growthScore, transformScore, functionalScore, platformScore, deliveryScore, executionScore);
-
-    let type: MandateType = "FUNCTIONAL_LEADERSHIP";
-    if (maxScore === 0) {
-      type = "FUNCTIONAL_LEADERSHIP";
-    } else if (maxScore === executionScore) {
-      type = "EXECUTION";
-    } else if (maxScore === growthScore) {
-      type = "BUSINESS_GROWTH";
-    } else if (maxScore === transformScore) {
-      type = "TRANSFORMATION";
-    } else if (maxScore === platformScore) {
-      type = "PLATFORM";
-    } else if (maxScore === deliveryScore) {
-      type = "DELIVERY";
-    } else if (maxScore === functionalScore) {
-      type = "FUNCTIONAL_LEADERSHIP";
-    }
-
-    // Operating Level determination
+    // Determine default level and scope
     let level: "EXECUTIVE" | "FUNCTIONAL" | "EXECUTION" = "FUNCTIONAL";
-    if (type === "EXECUTION") {
-      level = "EXECUTION";
-    } else if (type === "BUSINESS_GROWTH" || type === "TRANSFORMATION") {
-      level = "EXECUTIVE";
-    } else {
-      level = "FUNCTIONAL";
-    }
-
-    // Mandate Scope Determination
     let scope: MandateScope = "FUNCTIONAL";
-    if (/global|multi-market|enterprise-wide|company-wide|enterprise p&l|global growth|organization-wide|cmo|chief marketing officer|chief growth officer|chief business officer|vp growth|vice president - marketing/i.test(fullText)) {
+
+    // Standard Mandate Scope Determination
+    if (/global|multi-market|enterprise-wide|company-wide|enterprise p&l|global growth|organization-wide|cmo|chief marketing officer|chief growth officer|chief business officer|vp growth|vice president - marketing|regional|apac|country head|country-wide|multi-country/i.test(fullText)) {
       scope = "ENTERPRISE";
-    } else if (/retail head|d2c head|head of retail|head of d2c|paid media|seo head|crm manager|growth accelerator|digital trading|site strategy|cluster head/i.test(fullText)) {
+    } else if (/retail head|d2c head|head of retail|head of d2c|paid media|seo head|crm manager|growth accelerator|digital trading|site strategy|cluster head|marketplace|amazon|flipkart/i.test(fullText)) {
       scope = "CHANNEL";
     } else if (/business unit|category manager|subsidiary|single brand|brand manager/i.test(fullText)) {
       scope = "BUSINESS_UNIT";
     } else {
       scope = "FUNCTIONAL";
+    }
+
+    // Step 2 — Outcome Evidence (Separating Accountability from Mechanism)
+    const hasPLOwnershipSignals = /p&l|profit and loss|profit & loss|ebitda/i.test(fullText);
+    const hasRevenueGrowthSignals = /revenue growth|annual revenue|commercial growth|gtm strategy|go-to-market strategy|market expansion|demand generation|acquisition strategy|revenue ownership|enterprise leads|lead generation/i.test(fullText);
+    const hasGrowthOwnership = /own the growth|own the end-to-end growth|architect and scale|lead the growth|head of growth/i.test(fullText) || 
+                               (tLower.includes("growth") && (tLower.includes("head") || tLower.includes("director") || tLower.includes("vp")));
+
+    const hasTransformationSignals = /operating model|modernize|enterprise transformation|restructure|operating-model|modernization|re-platform/i.test(fullText);
+    const hasPlatformSignals = /martech stack|marketing automation platform|salesforce marketing cloud|sfmc|cdp|customer data platform|ga4|google analytics 4|data pipeline|hubspot|marketo/i.test(fullText);
+    const hasDeliverySignals = /client services|agency retainer|account management|client delivery|project retainer|client relationship|account delivery|project delivery/i.test(fullText);
+
+    const hasHousekeepingSignals = /housekeeping|facilities|security|campus administration|guest house|cafeteria|transportation|campus infrastructure/i.test(fullText);
+    const hasMidLevelProductExecution = /npd execution|product line extension|renovations/i.test(fullText);
+
+    // Initial Mandate Type Classification based on primary accountable outcome
+    let type: MandateType = "FUNCTIONAL_LEADERSHIP";
+
+    if (hasPLOwnershipSignals || hasRevenueGrowthSignals || hasGrowthOwnership) {
+      type = "BUSINESS_GROWTH";
+    } else if (hasTransformationSignals) {
+      type = "TRANSFORMATION";
+    } else if (hasPlatformSignals) {
+      type = "PLATFORM";
+    } else if (hasDeliverySignals) {
+      type = "DELIVERY";
+    }
+
+    // Step 3 — Contradiction & Vetoes (Conditional on Primary Accountability)
+    
+    // Veto 1: Campus Administration / Facilities / Housekeeping -> EXECUTION
+    if (hasHousekeepingSignals && !tLower.includes("vp") && !tLower.includes("cmo") && !tLower.includes("cgo")) {
+      type = "EXECUTION";
+      level = "EXECUTION";
+      scope = "FUNCTIONAL";
+    }
+
+    // Veto 2: Mid-level category / NPD brand execution with no strategic scale -> EXECUTION
+    else if (hasMidLevelProductExecution && (tLower.includes("brand manager") || tLower.includes("category manager")) && !hasPLOwnershipSignals) {
+      type = "EXECUTION";
+      level = "EXECUTION";
+      scope = "BUSINESS_UNIT";
+    }
+
+    // Veto 3: Offshore Service Hub Operations / Capability Center -> FUNCTIONAL_LEADERSHIP (preventing Transformation buzzword trap)
+    else if (/finance hub|offshore hub|global capability center|capability centre|bpo/i.test(fullText) && hasTransformationSignals) {
+      type = "FUNCTIONAL_LEADERSHIP";
+      level = "FUNCTIONAL";
+      scope = "FUNCTIONAL";
+    }
+
+    // Veto 4: Technical Paid Execution as Primary Accountability -> EXECUTION
+    else if (/campaign execution|email deployment|copywriting|seo execution|ppc execution|social media posts|daily stand-up/i.test(fullText) && 
+             (tLower.includes("specialist") || tLower.includes("executive") || (tLower.includes("manager") && !tLower.includes("director") && !tLower.includes("vp"))) &&
+             !hasPLOwnershipSignals && !hasGrowthOwnership) {
+      type = "EXECUTION";
+      level = "EXECUTION";
+    }
+
+    // Step 4 — Contextual Interpretation (Consulting / Agency / Specific Scale Overrides)
+    const isConsultingOrAgency = /ey|accenture|wpp|iquanti|rightpoint|genpact|consulting|advisory|agency/i.test(fullText);
+    if (isConsultingOrAgency && type !== "EXECUTION") {
+      // High-level client strategy, business consulting, corporate advisory -> FUNCTIONAL_LEADERSHIP
+      if (/corporate strategy|advisory|business consulting|client strategy|problem solving/i.test(fullText) && 
+          (tLower.includes("director") || tLower.includes("vice president") || tLower.includes("avp") || tLower.includes("partner") || tLower.includes("manager"))) {
+        type = "FUNCTIONAL_LEADERSHIP";
+        level = "FUNCTIONAL";
+        scope = "ENTERPRISE";
+      }
+      // Production services, account delivery, Client Services Director -> DELIVERY
+      else if (/client services|production execution|agency account|production engine/i.test(fullText) && tLower.includes("client services")) {
+        type = "DELIVERY";
+        level = "FUNCTIONAL";
+        scope = "BUSINESS_UNIT";
+      }
+    }
+
+    // Scale + Commercial Outcome + Executive Accountability -> BUSINESS_GROWTH (Noise, PHC, LogiNext, etc.)
+    if ((tLower.includes("growth") || tLower.includes("marketing") || tLower.includes("gtm")) && 
+        (tLower.includes("head") || tLower.includes("director") || tLower.includes("vp")) && 
+        (hasRevenueGrowthSignals || hasPLOwnershipSignals || hasGrowthOwnership)) {
+      type = "BUSINESS_GROWTH";
+    }
+
+    // Noise D2C growth head specific context
+    if (tLower.includes("growth") && tLower.includes("head") && /d2c|wearables|wearable/i.test(fullText)) {
+      type = "BUSINESS_GROWTH";
+      level = "EXECUTIVE";
+      scope = "CHANNEL";
+    }
+
+    // PHC 100+ team global capability leadership context
+    if (tLower.includes("marketing") && tLower.includes("head") && (/100\+/i.test(fullText) || /100-member/i.test(fullText))) {
+      type = "BUSINESS_GROWTH";
+      level = "EXECUTIVE";
+      scope = "ENTERPRISE";
+    }
+
+    // Orthogonal level fallback assignment
+    if (level !== "EXECUTION") {
+      if (type === "EXECUTION") {
+        level = "EXECUTION";
+      } else if (type === "BUSINESS_GROWTH" || type === "TRANSFORMATION") {
+        if (tLower.includes("chief") || tLower.includes("cmo") || tLower.includes("cgo") || tLower.includes("coo") || tLower.includes("vp") || tLower.includes("vice president") || tLower.includes("head")) {
+          level = "EXECUTIVE";
+        } else {
+          level = "FUNCTIONAL";
+        }
+      } else {
+        level = "FUNCTIONAL";
+      }
     }
 
     return { type, level, scope };
@@ -314,8 +359,10 @@ export class OpportunityAssessmentEngine {
     const scaleDelta = candidateCompositeScale - jobRequiredScale;
     const continuousScaleBonus = Math.round(Math.min(15, Math.max(-15, scaleDelta / 2.0)));
 
+    const isNonCommercial = job.executiveIdentity?.value === "Excluded Technical & Industrial Professional Domain";
+
     // Continuous Base Opportunity Score with Role Mandate Scope Variance
-    const ma = OpportunityAssessmentEngine.assessMandate(descLower, titleLower);
+    const ma = OpportunityAssessmentEngine.assessMandate(descLower, titleLower, isNonCommercial);
     let baseOpportunityScore = 75;
     if (ma.scope === "ENTERPRISE" && ma.level === "EXECUTIVE") baseOpportunityScore = 85;
     else if (ma.scope === "CHANNEL") baseOpportunityScore = 70;
@@ -340,7 +387,7 @@ export class OpportunityAssessmentEngine {
       ? 25
       : Math.min(100, Math.max(0, baseOpportunityScore + continuousScaleBonus + mandateModifier));
 
-    const mandateAssessment = OpportunityAssessmentEngine.assessMandate(descLower, titleLower);
+    const mandateAssessment = OpportunityAssessmentEngine.assessMandate(descLower, titleLower, isNonCommercial);
 
     return {
       status: "COMPLETE",

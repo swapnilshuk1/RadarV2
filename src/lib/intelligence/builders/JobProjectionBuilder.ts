@@ -171,6 +171,47 @@ export class JobProjectionBuilder {
       identityConf = 0.88;
     }
 
+    // Role-contextual high-confidence non-commercial professional-domain vetoes
+    const companyLower = (opportunity.company || "").toLowerCase();
+    const hasMedicalAffairsVeto = /\bmedical affairs\b/i.test(titleLower);
+    const hasClinicalVeto = /\bclinical\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+    const hasBimVeto = /\bbim\b/i.test(titleLower);
+    const hasCivilStructuralVeto = /(\bcivil\b|\bstructural\b)/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+    const hasQualityVeto = /\bquality\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+    const hasRecruitmentStaffingVeto = /(\brecruitment\b|\bstaffing\b)/i.test(titleLower) || 
+                                       ((/managing director/i.test(titleLower) || /director/i.test(titleLower)) && (/antal|staffing|recruitment/i.test(companyLower)));
+    const hasSoftwareVeto = /(\bsoftware engineer\b|\bfull stack\b|\bfrontend\b|\bbackend\b)/i.test(titleLower);
+    const hasIndustrialResinVeto = /(\bresin\b|\bpolymer\b)/i.test(titleLower) && !/marketing|growth/i.test(titleLower);
+    const hasTelecomEngVeto = /\btelecom\b/i.test(titleLower) && /(\bengineer\b|\bautomation\b)/i.test(titleLower);
+    const hasHeavyElectronicsVeto = /\bpower electronics\b/i.test(titleLower) && !/marketing director|cmo/i.test(titleLower);
+    const hasDerivedDataVeto = /\bderived data\b/i.test(titleLower);
+    const hasDeliveryLeaderVeto = /\bdelivery (leader|lead)\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+    const hasItcVeto = /\bitc\b/i.test(titleLower) && !/marketing|growth/i.test(titleLower);
+    const hasPracticeLeadVeto = /\bpractice (lead|director|head)\b/i.test(titleLower) && !/marketing|growth/i.test(titleLower);
+    const hasArchitectureVeto = /\barchitecture\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+
+    const isNonCommercialDomain = 
+      hasMedicalAffairsVeto ||
+      hasClinicalVeto ||
+      hasBimVeto ||
+      hasCivilStructuralVeto ||
+      hasQualityVeto ||
+      hasRecruitmentStaffingVeto ||
+      hasSoftwareVeto ||
+      hasIndustrialResinVeto ||
+      hasTelecomEngVeto ||
+      hasHeavyElectronicsVeto ||
+      hasDerivedDataVeto ||
+      hasDeliveryLeaderVeto ||
+      hasItcVeto ||
+      hasPracticeLeadVeto ||
+      hasArchitectureVeto;
+
+    if (isNonCommercialDomain) {
+      primaryIdentity = "Excluded Technical & Industrial Professional Domain";
+      identityConf = 0.95;
+    }
+
     const executiveIdentity: ExecutiveIdentity = {
       value: primaryIdentity,
       confidence: identityConf,

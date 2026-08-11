@@ -273,7 +273,8 @@ function selectOpening(record: RecommendationRecord, source: OpportunitySource):
   if (OPENING_VARIATIONS[jobHash]) {
     const list = OPENING_VARIATIONS[jobHash];
     // Deterministic selection based on priority of recommendation
-    const idx = Math.abs(Math.round(record.priority * 100)) % list.length;
+    const priorityVal = record.priority ?? 50;
+    const idx = Math.abs(Math.round(priorityVal * 100)) % list.length;
     return list[idx];
   }
 
