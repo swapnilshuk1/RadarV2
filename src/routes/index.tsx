@@ -76,10 +76,12 @@ export const Route = createFileRoute("/")({
 });
 
 function Shortlist() {
+  const { opportunitiesList } = Route.useLoaderData();
   const { decisions, decide: recordDecision } = useDecisions();
   const { progress, markArrivalSeen } = useOnboarding();
   const [open, setOpen] = useState<string | null>(null);
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   const showArrivalBanner = !progress.arrivalSeen;
   const isBothSkipped = progress.evidenceStatus === "skipped" && progress.intentStatus === "skipped";
