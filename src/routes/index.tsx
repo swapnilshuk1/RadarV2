@@ -88,20 +88,41 @@ function Shortlist() {
   const [extraScraped, setExtraScraped] = useState(0);
   const router = useRouter();
 
-  const baseCounts = getScraperCounts();
-  const { opportunitiesList } = Route.useLoaderData();
-
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const sourceCounts = useMemo(() => {
+    const counts = { LinkedIn: 0, Naukri: 0, Indeed: 0 };
+    for (const o of opportunitiesList) {
+      const src = o.scrapedFrom as keyof typeof counts;
+      if (counts[src] !== undefined) {
+        counts[src]++;
+      }
+    }
+    return counts;
+  }, [opportunitiesList]);
 
   const remaining = useMemo(
     () => opportunitiesList.filter((o) => !decisions[o.jobHash]),
     [opportunitiesList, decisions]
   );
 
+  const shortlistedOps = useMemo(
+    () => remaining.filter((o) => o.decision === "PURSUE" || o.decision === "CONSIDER"),
+    [remaining]
+  );
+
+  const sparseOps = useMemo(
+    () => remaining.filter((o) => o.decision === "SPARSE_SPEC"),
+    [remaining]
+  );
+
   const filteredRemaining = useMemo(() => {
-    if (selectedCategory === "All") return remaining;
-    return remaining.filter(o => getCategoryTags(o).includes(selectedCategory));
-  }, [remaining, selectedCategory]);
+    if (selectedCategory === "Needs More Signal") {
+      return sparseOps;
+    }
+    if (selectedCategory === "All") {
+      return shortlistedOps;
+    }
+    return shortlistedOps.filter((o) => getCategoryTags(o).includes(selectedCategory));
+  }, [selectedCategory, shortlistedOps, sparseOps]);
 
   const visible = filteredRemaining.slice(0, VISIBLE_LIMIT);
 
@@ -284,20 +305,25 @@ function Shortlist() {
 
             {/* Human-Friendly Category Filters */}
             <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap p-1 bg-muted/40 rounded-full border border-border/40 max-w-full scrollbar-none shrink-0">
-              {["All", "Transformation", "Commercial Growth", "Country Leadership", "Platform & Digital", "Founder-led", "Private Equity"].map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`text-[0.62rem] font-mono uppercase tracking-wider px-2.5 py-0.5 whitespace-nowrap shrink-0 transition-all rounded-full cursor-pointer ${
-                    selectedCategory === cat
-                      ? "bg-foreground text-background font-bold shadow-xs"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+              {["All", `Needs More Signal (${sparseOps.length})`, "Transformation", "Commercial Growth", "Country Leadership", "Platform & Digital", "Founder-led", "Private Equity"].map((cat) => {
+                const catKey = cat.startsWith("Needs More Signal") ? "Needs More Signal" : cat;
+                return (
+                  <button
+                    key={catKey}
+                    type="button"
+                    onClick={() => setSelectedCategory(catKey)}
+                    className={`text-[0.62rem] font-mono uppercase tracking-wider px-2.5 py-0.5 whitespace-nowrap shrink-0 transition-all rounded-full cursor-pointer ${
+                      selectedCategory === catKey
+                        ? "bg-foreground text-background font-bold shadow-xs"
+                        : catKey === "Needs More Signal"
+                          ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 font-semibold"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -325,7 +351,7 @@ function Shortlist() {
               <li className="glass-card rounded-xl py-16 text-center font-display text-xl text-muted-foreground">
                 {selectedCategory === "All" 
                   ? "All shortlist items reviewed!" 
-                  : `No opportunities on the shortlist match "${selectedCategory}".`}
+                  : `No opportunities match "${selectedCategory}".`}
               </li>
             )}
           </ul>
@@ -355,16 +381,16 @@ function Shortlist() {
           </span>
           <span className="hidden md:inline-block text-border/60">|</span>
           <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
-            LinkedIn <span className="text-foreground font-mono font-bold">{baseCounts.bySource.LinkedIn}</span>
+            LinkedIn <span className="text-foreground font-mono font-bold">{sourceCounts.LinkedIn}</span>
           </span>
           <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
-            Naukri <span className="text-foreground font-mono font-bold">{baseCounts.bySource.Naukri}</span>
+            Naukri <span className="text-foreground font-mono font-bold">{sourceCounts.Naukri}</span>
           </span>
           <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
-            Indeed <span className="text-foreground font-mono font-bold">{baseCounts.bySource.Indeed}</span>
+            Indeed <span className="text-foreground font-mono font-bold">{sourceCounts.Indeed}</span>
           </span>
           <span className="label-mono shrink-0 text-emerald-600 dark:text-emerald-400 font-bold">
-            → {remaining.length} on shortlist
+            → {shortlistedOps.length} on shortlist
           </span>
         </div>
       </footer>

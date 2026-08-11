@@ -24,12 +24,15 @@ export class EvidenceGate {
     if (wordCount < 25) {
       const textLower = (roleTitle + " " + companyName + " " + text).toLowerCase();
       
-      // Minimal high-confidence identity check: Is role clearly non-commercial / administrative / technical?
+      // Minimal high-confidence identity check: Is role clearly non-commercial / administrative / technical / clinical?
       const nonCommercialKeywords = [
         "software engineer", "developer", "full stack", "frontend", "backend", "architect",
         "qa engineer", "devops", ".net", "bim", "medical", "superintendent", "chartered accountant",
         "tax manager", "legal counsel", "recruitment manager", "hr executive", "cto", "resin",
-        "power electronics", "quality director", "clinical", "administration manager", "facilities manager"
+        "power electronics", "quality director", "clinical", "administration manager", "facilities manager",
+        "hospital", "nursing", "physician", "surgeon", "civil engineer", "mechanical engineer",
+        "electrical engineer", "site engineer", "draftsman", "cad", "quantity surveyor", "estimator",
+        "freelance", "upwork", "$70/hr", "side desk"
       ];
 
       const isNonCommercial = nonCommercialKeywords.some(kw => textLower.includes(kw));
