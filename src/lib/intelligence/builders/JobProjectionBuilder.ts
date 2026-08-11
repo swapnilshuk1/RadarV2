@@ -127,38 +127,23 @@ export class JobProjectionBuilder {
     const organizationalIntent = this.inferOrganizationalIntent(fullText, title);
     const executiveMission = this.buildExecutiveMission(title, resolvedCompany, trueExecutiveMandate, organizationalIntent);
 
-    // 1. Executive Identity Classification
+    // 1. Executive Identity & Technical Domain Veto Classification
+    const isExecutiveTechLeader = /(head of|director|vp|vice president|cto|cio|chief)/i.test(titleLower);
+
+    const isTitleTechIC = (!isExecutiveTechLeader && /(\bengineer\b|\bdeveloper\b|\bprogrammer\b|\bfull stack\b|\bfrontend\b|\bbackend\b|\bcoding\b|\barchitect\b)/i.test(titleLower)) ||
+                          /(\bjava\b|\bpython\b|\bnode\.?js\b|\breact\b|\bangular\b|\bc\+\+\b|\bgolang\b|\bruby\b|\bdevops\b|\bcloud engineer\b|\bdata engineer\b|\bmachine learning engineer\b|\bai engineer\b|\bsoftware\b)/i.test(titleLower);
+
+    const isTitleTechLeadership = isExecutiveTechLeader && /(\btechnology\b|\binformation technology\b|\bit\b|\bcio\b|\bcto\b|\bengineering\b|\bsoftware\b|\bdata\b|\bdigital\b|\bai\b)/i.test(titleLower);
+
     let primaryIdentity = "Commercial & Marketing Leadership";
     let identityConf = 0.85;
 
-    const isTitleTech = this.testKeyword(titleLower, "technology") || 
-                        this.testKeyword(titleLower, "information technology") || 
-                        this.testKeyword(titleLower, "it head") || 
-                        this.testKeyword(titleLower, "head of it") || 
-                        this.testKeyword(titleLower, "head - it") || 
-                        this.testKeyword(titleLower, "it director") || 
-                        this.testKeyword(titleLower, "it manager") || 
-                        this.testKeyword(titleLower, "cio") || 
-                        this.testKeyword(titleLower, "cto") || 
-                        this.testKeyword(titleLower, "engineering") || 
-                        this.testKeyword(titleLower, "architect") || 
-                        this.testKeyword(titleLower, "product manager") || 
-                        this.testKeyword(titleLower, "group product manager") || 
-                        this.testKeyword(titleLower, "gpm") || 
-                        this.testKeyword(titleLower, "gen ai") || 
-                        this.testKeyword(titleLower, "agentic");
-
-    const isBodyTech = this.testKeyword(fullText, "salesforce architect") || 
-                       this.testKeyword(fullText, "hands-on coding") || 
-                       this.testKeyword(fullText, "react") || 
-                       this.testKeyword(fullText, "python");
-
-    if (isTitleTech) {
+    if (isTitleTechLeadership) {
       primaryIdentity = "Technology & Engineering Leadership";
       identityConf = 0.92;
-    } else if (isBodyTech && !titleLower.includes("head") && !titleLower.includes("director") && !titleLower.includes("vp")) {
-      primaryIdentity = "Technical Individual Contributor";
-      identityConf = 0.80;
+    } else if (isTitleTechIC) {
+      primaryIdentity = "Excluded Technical & Industrial Professional Domain";
+      identityConf = 0.95;
     }
 
     const isTitleOps = this.testKeyword(titleLower, "operations") || 
@@ -166,7 +151,7 @@ export class JobProjectionBuilder {
                        this.testKeyword(titleLower, "logistics") || 
                        this.testKeyword(titleLower, "site strategy");
 
-    if (isTitleOps && !isTitleTech) {
+    if (isTitleOps && !isTitleTechLeadership && !isTitleTechIC) {
       primaryIdentity = "Operations & Logistics Leadership";
       identityConf = 0.88;
     }
@@ -180,7 +165,7 @@ export class JobProjectionBuilder {
     const hasQualityVeto = /\bquality\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
     const hasRecruitmentStaffingVeto = /(\brecruitment\b|\bstaffing\b)/i.test(titleLower) || 
                                        ((/managing director/i.test(titleLower) || /director/i.test(titleLower)) && (/antal|staffing|recruitment/i.test(companyLower)));
-    const hasSoftwareVeto = /(\bsoftware engineer\b|\bfull stack\b|\bfrontend\b|\bbackend\b)/i.test(titleLower);
+    const hasSoftwareVeto = isTitleTechIC || /(\bsoftware engineer\b|\bfull stack\b|\bfrontend\b|\bbackend\b|\bjava\b|\bpython\b|\bdeveloper\b)/i.test(titleLower);
     const hasIndustrialResinVeto = /(\bresin\b|\bpolymer\b)/i.test(titleLower) && !/marketing|growth/i.test(titleLower);
     const hasTelecomEngVeto = /\btelecom\b/i.test(titleLower) && /(\bengineer\b|\bautomation\b)/i.test(titleLower);
     const hasHeavyElectronicsVeto = /\bpower electronics\b/i.test(titleLower) && !/marketing director|cmo/i.test(titleLower);
@@ -191,6 +176,7 @@ export class JobProjectionBuilder {
     const hasArchitectureVeto = /\barchitecture\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
 
     const isNonCommercialDomain = 
+      isTitleTechIC ||
       hasMedicalAffairsVeto ||
       hasClinicalVeto ||
       hasBimVeto ||
@@ -265,7 +251,7 @@ export class JobProjectionBuilder {
 
     if (this.testKeyword(titleLower, "marketing") || this.testKeyword(titleLower, "sales") || this.testKeyword(titleLower, "commercial")) {
       executiveFunction.add("Commercial & Marketing");
-    } else if (this.testKeyword(titleLower, "technology") || this.testKeyword(titleLower, "it") || this.testKeyword(titleLower, "architect") || isTitleTech) {
+    } else if (this.testKeyword(titleLower, "technology") || this.testKeyword(titleLower, "it") || this.testKeyword(titleLower, "architect") || isTitleTechLeadership || isTitleTechIC) {
       executiveFunction.add("Technology");
     } else if (this.testKeyword(titleLower, "operations") || this.testKeyword(titleLower, "delivery") || isTitleOps) {
       executiveFunction.add("Operations");
