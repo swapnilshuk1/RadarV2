@@ -223,7 +223,9 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
       opportunityAssess,
       career,
       lifestyle,
-      jobProjV4.executiveIdentity.value
+      jobProjV4.executiveIdentity.value,
+      candProjV4.primaryTrack || "Commercial & Marketing Leadership",
+      raw.rawText || ""
     );
 
     const finalVerb = policyResult.verdict;
