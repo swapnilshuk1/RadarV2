@@ -201,7 +201,7 @@ function Shortlist() {
     setExtraScraped((prev) => prev + 1);
   };
 
-  const totalScraped = Math.max(opportunitiesList.length, baseCounts.total) + extraScraped;
+  const totalScraped = opportunitiesList.length + extraScraped;
 
   return (
     <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
