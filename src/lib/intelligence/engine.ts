@@ -217,6 +217,9 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
     // 4. Resolve Verdict via Rules-Based Decision Policy Engine
     const careerValueBreakdown = CareerValueEngine.evaluate(candProjV4, jobProjV4);
 
+    const rawJobText = (raw as any).rawText || (raw as any).rawDescription || (raw as any).description || (raw as any).normalizedText || "";
+    const candIdentityVal = (candProjV4 as any).executiveIdentity?.value || "Commercial & Marketing Leadership";
+
     const policyResult = DecisionPolicyEngine.evaluate(
       identity,
       capability,
@@ -224,8 +227,8 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
       career,
       lifestyle,
       jobProjV4.executiveIdentity.value,
-      candProjV4.primaryTrack || "Commercial & Marketing Leadership",
-      raw.rawText || ""
+      candIdentityVal,
+      rawJobText
     );
 
     const finalVerb = policyResult.verdict;
