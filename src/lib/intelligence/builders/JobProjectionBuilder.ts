@@ -158,7 +158,7 @@ export class JobProjectionBuilder {
 
     // Role-contextual high-confidence non-commercial professional-domain vetoes
     const companyLower = (opportunity.company || "").toLowerCase();
-    const hasMedicalAffairsVeto = /\bmedical affairs\b/i.test(titleLower);
+    const hasMedicalAffairsVeto = /(\bmedical\b|\bsuperintendent\b|\bhospital\b|\bphysician\b|\bsurgeon\b|\bdoctor\b|\bnursing\b)/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
     const hasClinicalVeto = /\bclinical\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
     const hasBimVeto = /\bbim\b/i.test(titleLower);
     const hasCivilStructuralVeto = /(\bcivil\b|\bstructural\b)/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
