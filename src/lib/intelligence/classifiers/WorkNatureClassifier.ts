@@ -70,7 +70,7 @@ export class WorkNatureClassifier {
         return { value: "TACTICAL_WORK", evidenceIds: ["wn_title_tactical"], confidence: 0.6 };
       }
       evidenceIds.push("wn_fallback_default");
-      return { value: "UNKNOWN", evidenceIds, confidence: 0.0 };
+      return { value: "MANAGERIAL_WORK", evidenceIds, confidence: 0.5 };
     }
 
     if (maxScore === execScore) {

@@ -7,7 +7,7 @@
     "capability": 0.15
   },
   "thresholds": {
-    "pursueScore": 80,
+    "pursueScore": 70,
     "considerScore": 60,
     "identityCutoff": 30,
     "identityPursueCutoff": 60,

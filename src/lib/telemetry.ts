@@ -4,7 +4,7 @@
 
 export interface TelemetryLog {
   jobHash: string;
-  action: "EXPAND" | "CLOSE" | "PURSUE" | "CONSIDER" | "PASS" | "UNDONE" | "NOT_EVALUABLE";
+  action: "EXPAND" | "CLOSE" | "PURSUE" | "CONSIDER" | "PASS" | "UNDONE" | "NOT_EVALUABLE" | "SPARSE_SPEC";
   durationMs: number;
   timestamp: number;
   metadata?: Record<string, any>;

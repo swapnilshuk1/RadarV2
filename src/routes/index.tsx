@@ -11,6 +11,7 @@ import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompo
 import { JobProjectionBuilder } from "../lib/intelligence/builders/JobProjectionBuilder";
 import { logTelemetry } from "../lib/telemetry";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
+import { inferExecutiveMandateArchetype } from "../lib/intelligence/editorial";
 
 const VISIBLE_LIMIT = 10;
 
@@ -75,10 +76,12 @@ export const Route = createFileRoute("/")({
 });
 
 function Shortlist() {
+  const { opportunitiesList } = Route.useLoaderData();
   const { decisions, decide: recordDecision } = useDecisions();
   const { progress, markArrivalSeen } = useOnboarding();
   const [open, setOpen] = useState<string | null>(null);
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   const showArrivalBanner = !progress.arrivalSeen;
   const isBothSkipped = progress.evidenceStatus === "skipped" && progress.intentStatus === "skipped";
@@ -87,20 +90,41 @@ function Shortlist() {
   const [extraScraped, setExtraScraped] = useState(0);
   const router = useRouter();
 
-  const baseCounts = getScraperCounts();
-  const { opportunitiesList } = Route.useLoaderData();
-
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const sourceCounts = useMemo(() => {
+    const counts = { LinkedIn: 0, Naukri: 0, Indeed: 0 };
+    for (const o of opportunitiesList) {
+      const src = o.scrapedFrom as keyof typeof counts;
+      if (counts[src] !== undefined) {
+        counts[src]++;
+      }
+    }
+    return counts;
+  }, [opportunitiesList]);
 
   const remaining = useMemo(
     () => opportunitiesList.filter((o) => !decisions[o.jobHash]),
     [opportunitiesList, decisions]
   );
 
+  const shortlistedOps = useMemo(
+    () => remaining.filter((o) => o.decision === "PURSUE" || o.decision === "CONSIDER"),
+    [remaining]
+  );
+
+  const sparseOps = useMemo(
+    () => remaining.filter((o) => o.decision === "SPARSE_SPEC"),
+    [remaining]
+  );
+
   const filteredRemaining = useMemo(() => {
-    if (selectedCategory === "All") return remaining;
-    return remaining.filter(o => getCategoryTags(o).includes(selectedCategory));
-  }, [remaining, selectedCategory]);
+    if (selectedCategory === "Needs More Signal") {
+      return sparseOps;
+    }
+    if (selectedCategory === "All") {
+      return shortlistedOps;
+    }
+    return shortlistedOps.filter((o) => getCategoryTags(o).includes(selectedCategory));
+  }, [selectedCategory, shortlistedOps, sparseOps]);
 
   const visible = filteredRemaining.slice(0, VISIBLE_LIMIT);
 
@@ -177,55 +201,50 @@ function Shortlist() {
     setExtraScraped((prev) => prev + 1);
   };
 
-  const totalScraped = Math.max(opportunitiesList.length, baseCounts.total) + extraScraped;
+  const totalScraped = opportunitiesList.length + extraScraped;
 
   return (
-    <div className="min-h-screen pb-24 bg-background text-foreground font-sans">
-      <main className="mx-auto max-w-[1180px] px-5 sm:px-8">
+    <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
+      <main className="mx-auto max-w-[1180px] px-5 sm:px-8 pt-4">
         {/* ────────────────────────────────────────────────────────────────────────
             HEADER BRIEFING SUMMARY
             ──────────────────────────────────────────────────────────────────────── */}
-        <section className="grid gap-8 border-b border-border py-9 sm:py-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <section className="glass-card rounded-xl p-6 sm:p-8 grid gap-8 border border-border/60 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end shadow-xs animate-reveal">
           <div className="min-w-0">
-            <p className="label-mono font-normal" suppressHydrationWarning>
-              Today's executive briefing · {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-            </p>
-            <h1 className="mt-3 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-7xl text-foreground font-normal">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="label-mono font-medium text-muted-foreground" suppressHydrationWarning>
+                Executive Briefing · {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+              </p>
+            </div>
+            <h1 className="mt-2 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-6xl text-foreground font-normal">
               The shortlist.
             </h1>
-            <p className="mt-4 max-w-lg text-sm leading-relaxed text-muted-foreground font-normal">
-              Six mandates cleared the bar out of {totalScraped} scraped this week. Decide on one and the next in line takes its slot.
+            <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground font-normal">
+              Six mandates cleared the bar out of <span className="font-mono text-foreground font-semibold">{totalScraped}</span> scraped this week. Decide on one and the next in line takes its slot.
             </p>
           </div>
 
-          <dl className="flex items-end gap-4 overflow-x-auto sm:gap-7">
-            <div className="flex shrink-0 items-end gap-4 sm:gap-7">
-              <div>
-                <dd className="font-display text-4xl leading-none sm:text-5xl text-primary tabular-nums font-normal">
-                  {String(remaining.filter((o) => o.decision === "PURSUE").length || 6).padStart(2, "0")}
-                </dd>
-                <dt className="label-mono mt-2 block font-normal text-primary">Cleared</dt>
-              </div>
+          <dl className="flex items-center gap-6 overflow-x-auto sm:gap-8">
+            <div className="border-r border-border/40 pr-6 sm:pr-8">
+              <dd className="font-display text-4xl sm:text-5xl text-emerald-600 dark:text-emerald-400 tabular-nums font-normal">
+                {String(remaining.filter((o) => o.decision === "PURSUE").length || 6).padStart(2, "0")}
+              </dd>
+              <dt className="label-mono mt-1 text-[0.68rem] text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">Cleared</dt>
             </div>
 
-            <div className="flex shrink-0 items-end gap-4 sm:gap-7">
-              <span className="pb-3 font-mono text-xs text-border-strong">→</span>
-              <div>
-                <dd className="font-display text-4xl leading-none sm:text-5xl text-foreground tabular-nums font-normal">
-                  {Object.keys(decisions).length}
-                </dd>
-                <dt className="label-mono mt-2 block font-normal">Reviewed</dt>
-              </div>
+            <div className="border-r border-border/40 pr-6 sm:pr-8">
+              <dd className="font-display text-4xl sm:text-5xl text-foreground tabular-nums font-normal">
+                {Object.keys(decisions).length}
+              </dd>
+              <dt className="label-mono mt-1 text-[0.68rem] text-muted-foreground font-semibold uppercase tracking-wider">Reviewed</dt>
             </div>
 
-            <div className="flex shrink-0 items-end gap-4 sm:gap-7">
-              <span className="pb-3 font-mono text-xs text-border-strong">→</span>
-              <div>
-                <dd className="font-display text-4xl leading-none sm:text-5xl text-muted-foreground/70 tabular-nums font-normal">
-                  {remaining.length}
-                </dd>
-                <dt className="label-mono mt-2 block font-normal">Awaiting Review</dt>
-              </div>
+            <div>
+              <dd className="font-display text-4xl sm:text-5xl text-muted-foreground tabular-nums font-normal">
+                {totalScraped}
+              </dd>
+              <dt className="label-mono mt-1 text-[0.68rem] text-muted-foreground font-semibold uppercase tracking-wider">Screened</dt>
             </div>
           </dl>
         </section>
@@ -234,10 +253,10 @@ function Shortlist() {
             EXECUTIVE RECOMMENDATION ARRIVAL BANNER (ONBOARDING STAGE 5)
             ──────────────────────────────────────────────────────────────────────── */}
         {showArrivalBanner && (
-          <section className="mt-8 border-l-2 border-primary bg-card p-6 rounded-sm shadow-xs border border-border/80 animate-reveal">
+          <section className="mt-6 border-l-4 border-emerald-500 glass-card p-6 rounded-lg border border-border/60 animate-reveal">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1.5 max-w-2xl">
-                <span className="mono text-[10px] tracking-[0.22em] font-bold uppercase text-primary block">
+                <span className="mono text-[10px] tracking-[0.22em] font-bold uppercase text-emerald-600 dark:text-emerald-400 block">
                   ◆ EXECUTIVE RECOMMENDATION ARRIVAL
                 </span>
                 <h2 className="font-serif text-2xl text-foreground font-normal tracking-tight">
@@ -256,7 +275,7 @@ function Shortlist() {
                 {isBothSkipped ? (
                   <Link
                     to="/profile"
-                    className="mono text-[11px] font-bold uppercase tracking-wider bg-foreground text-background px-4 py-2.5 rounded-xs hover:opacity-90 transition-opacity"
+                    className="mono text-[11px] font-bold uppercase tracking-wider bg-foreground text-background px-4 py-2.5 rounded-full hover:opacity-90 transition-opacity shadow-xs"
                   >
                     Complete setup →
                   </Link>
@@ -264,7 +283,7 @@ function Shortlist() {
                   <button
                     type="button"
                     onClick={() => markArrivalSeen()}
-                    className="mono text-[11px] font-bold uppercase tracking-wider bg-foreground text-background px-4 py-2.5 rounded-xs hover:opacity-90 transition-opacity cursor-pointer"
+                    className="mono text-[11px] font-bold uppercase tracking-wider bg-foreground text-background px-4 py-2.5 rounded-full hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
                   >
                     Got it →
                   </button>
@@ -278,38 +297,42 @@ function Shortlist() {
             SHORTLIST QUEUE
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="py-6 sm:py-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border mb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/60 mb-6">
             <div>
-              <h2 className="label-mono text-foreground font-normal">Shortlist queue · sorted by fit</h2>
-              <span className="label-mono font-normal text-muted-foreground mt-1 block">
-                {filteredRemaining.length} of {remaining.length} awaiting review
+              <h2 className="label-mono text-foreground font-semibold tracking-wider">Shortlist queue · sorted by fit</h2>
+              <span className="label-mono text-xs text-muted-foreground mt-0.5 block">
+                {filteredRemaining.length} opportunities evaluated by RADAR
               </span>
             </div>
 
             {/* Human-Friendly Category Filters */}
-            <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto">
-              {["All", "Transformation", "Commercial Growth", "Country Leadership", "Platform & Digital", "Founder-led", "Private Equity"].map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`text-[0.65rem] font-mono uppercase tracking-wider px-2.5 py-1.5 transition-all rounded-[3px] border cursor-pointer ${
-                    selectedCategory === cat
-                      ? "bg-foreground text-background border-foreground font-semibold"
-                      : "bg-transparent text-muted-foreground border-border hover:text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+            <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap p-1 bg-muted/40 rounded-full border border-border/40 max-w-full scrollbar-none shrink-0">
+              {["All", `Needs More Signal (${sparseOps.length})`, "Transformation", "Commercial Growth", "Country Leadership", "Platform & Digital", "Founder-led", "Private Equity"].map((cat) => {
+                const catKey = cat.startsWith("Needs More Signal") ? "Needs More Signal" : cat;
+                return (
+                  <button
+                    key={catKey}
+                    type="button"
+                    onClick={() => setSelectedCategory(catKey)}
+                    className={`text-[0.62rem] font-mono uppercase tracking-wider px-2.5 py-0.5 whitespace-nowrap shrink-0 transition-all rounded-full cursor-pointer ${
+                      selectedCategory === catKey
+                        ? "bg-foreground text-background font-bold shadow-xs"
+                        : catKey === "Needs More Signal"
+                          ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 font-semibold"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <ul className="border-t border-border">
+          <ul className="space-y-3">
             {visible.map((o, idx) => {
               const isOpen = open === o.jobHash;
               const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
-              const score = o.recommendationResult?.score ?? 80;
 
               return (
                 <ShortlistCardRow
@@ -327,10 +350,10 @@ function Shortlist() {
             })}
 
             {visible.length === 0 && (
-              <li className="py-16 text-center font-display text-xl text-muted-foreground">
+              <li className="glass-card rounded-xl py-16 text-center font-display text-xl text-muted-foreground">
                 {selectedCategory === "All" 
                   ? "All shortlist items reviewed!" 
-                  : `No opportunities on the shortlist match "${selectedCategory}".`}
+                  : `No opportunities match "${selectedCategory}".`}
               </li>
             )}
           </ul>
@@ -338,37 +361,38 @@ function Shortlist() {
       </main>
 
       {/* ────────────────────────────────────────────────────────────────────────
-          FOOTER STATUS BAR
+          FLOATING FOOTER STATUS BAR
           ──────────────────────────────────────────────────────────────────────── */}
-      <footer className="fixed inset-x-0 bottom-0 border-t border-border bg-background/90 py-2.5 backdrop-blur-md z-40">
-        <div className="mx-auto flex max-w-[1180px] items-center gap-x-5 gap-y-1 overflow-x-auto px-5 sm:px-8">
+      <footer className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 pointer-events-none">
+        <div className="glass-card rounded-full px-5 py-2 flex items-center gap-4 text-xs shadow-lg border border-border/60 pointer-events-auto backdrop-blur-xl">
           <button
             type="button"
             onClick={runSearch}
             disabled={isStarting || !!activeRunId}
-            className={`label-mono shrink-0 font-bold px-2.5 py-1 rounded-xs transition-all flex items-center gap-1.5 text-[11px] cursor-pointer ${
+            className={`label-mono shrink-0 font-bold px-3 py-1 rounded-full transition-all flex items-center gap-1.5 text-[10px] cursor-pointer shadow-xs ${
               activeRunId
-                ? "bg-primary text-white"
+                ? "bg-emerald-600 text-white"
                 : "bg-foreground text-background hover:opacity-90"
             }`}
           >
-            <span className={`inline-block h-1.5 w-1.5 rounded-full ${activeRunId ? "bg-white animate-ping" : "bg-signal"}`} />
+            <span className={`inline-block h-1.5 w-1.5 rounded-full ${activeRunId ? "bg-white animate-ping" : "bg-emerald-400"}`} />
             {isStarting ? "Starting..." : activeRunId ? "Scraper Active" : "Run Scraper"}
           </button>
-          <span className="label-mono shrink-0 font-bold">
-            <span className="text-foreground font-mono">{totalScraped}</span> scraped
+          <span className="label-mono shrink-0 text-muted-foreground">
+            <span className="text-foreground font-mono font-bold">{totalScraped}</span> scraped
           </span>
-          <span className="label-mono hidden shrink-0 sm:inline">
-            LinkedIn <span className="text-foreground font-mono font-bold">{baseCounts.bySource.LinkedIn}</span>
+          <span className="hidden md:inline-block text-border/60">|</span>
+          <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
+            LinkedIn <span className="text-foreground font-mono font-bold">{sourceCounts.LinkedIn}</span>
           </span>
-          <span className="label-mono hidden shrink-0 sm:inline">
-            Naukri <span className="text-foreground font-mono font-bold">{baseCounts.bySource.Naukri}</span>
+          <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
+            Naukri <span className="text-foreground font-mono font-bold">{sourceCounts.Naukri}</span>
           </span>
-          <span className="label-mono hidden shrink-0 sm:inline">
-            Indeed <span className="text-foreground font-mono font-bold">{baseCounts.bySource.Indeed}</span>
+          <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
+            Indeed <span className="text-foreground font-mono font-bold">{sourceCounts.Indeed}</span>
           </span>
-          <span className="label-mono ml-auto shrink-0 text-primary font-bold">
-            → {remaining.length} on shortlist
+          <span className="label-mono shrink-0 text-emerald-600 dark:text-emerald-400 font-bold">
+            → {shortlistedOps.length} on shortlist
           </span>
         </div>
       </footer>
@@ -405,25 +429,34 @@ function ShortlistCardRow({
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
   const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
-  const score = o.recommendationResult?.score ?? 80;
+  const isSparse = o.decision === "SPARSE_SPEC";
+  const rawScore = o.recommendationResult?.score;
+  const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
+  const decisionLabel = isSparse ? "needs more signal" : (o.decision?.toLowerCase() || "pursue");
 
-  useEffect(() => {
-    if (isOpen && rowRef.current) {
-      const timer = setTimeout(() => {
-        rowRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 60);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen]);
+  const badgeClass = 
+    o.decision === "CONSIDER" 
+      ? "badge-consider" 
+      : o.decision === "PASS" 
+        ? "badge-pass" 
+        : o.decision === "SPARSE_SPEC"
+          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+          : "badge-pursue";
+
+  const scoreClass = 
+    isSparse 
+      ? "border-amber-500/40 text-amber-600 bg-amber-500/10 dark:text-amber-400" 
+      : (typeof rawScore === "number" && rawScore >= 75)
+        ? "score-badge-high" 
+        : (typeof rawScore === "number" && rawScore >= 60)
+          ? "score-badge-mid" 
+          : "score-badge-low";
 
   return (
     <li
       ref={rowRef}
-      className={`scroll-mt-24 border-b border-border transition-all ${
-        showArrivalBanner && idx === 0 ? "border-l-2 border-l-primary bg-muted/20 pl-2 sm:pl-3" : ""
+      className={`scroll-mt-24 glass-card rounded-xl border border-border/60 transition-all duration-200 card-lift overflow-hidden ${
+        showArrivalBanner && idx === 0 ? "border-l-4 border-l-emerald-500 bg-emerald-500/5" : ""
       }`}
     >
       <button
@@ -446,27 +479,25 @@ function ShortlistCardRow({
             setOpen(o.jobHash);
           }
         }}
-        className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 py-3.5 text-left transition-colors sm:gap-8 cursor-pointer hover:bg-muted/10"
+        className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4 p-4 text-left transition-colors sm:p-5 cursor-pointer"
       >
         <span className="min-w-0">
           <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-            <span className="label-mono tabular-nums text-border-strong font-normal">
+            <span className="label-mono tabular-nums text-muted-foreground font-semibold">
               {(idx + 1).toString().padStart(2, "0")}
             </span>
-            <span className="font-display text-2xl leading-tight sm:text-[1.7rem] text-foreground font-normal">
+            <span className="font-display text-2xl leading-tight sm:text-[1.7rem] text-foreground font-normal group-hover:text-primary transition-colors">
               {o.role}
             </span>
-            <span className={`label-mono shrink-0 rounded-[3px] px-1.5 py-[3px] leading-none font-normal uppercase ${
-              o.decision === "CONSIDER" ? "bg-caution text-white" : o.decision === "PASS" ? "bg-muted text-muted-foreground" : "bg-signal text-white"
-            }`}>
-              {o.decision?.toLowerCase() || "pursue"}
+            <span className={`label-mono shrink-0 rounded-full px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider ${badgeClass}`}>
+              {decisionLabel}
             </span>
-            <span className="label-mono hidden rounded-[3px] bg-secondary px-1.5 py-[3px] leading-none sm:inline font-normal">
-              {o.mandateArchetype || "Growth Marketing"}
+            <span className="label-mono hidden rounded-full bg-muted/80 px-2.5 py-0.5 text-[0.62rem] text-muted-foreground sm:inline font-medium">
+              {o.mandateArchetype && o.mandateArchetype !== "Growth Marketing" ? o.mandateArchetype : inferExecutiveMandateArchetype(o.role, (o as any).rawText || (o as any).description)}
             </span>
           </span>
 
-          <span className="label-mono mt-2 block truncate font-normal">
+          <span className="label-mono mt-2 block truncate text-muted-foreground font-medium text-[0.72rem]">
             {o.company} · {o.location} ({(o as any).workModel || "On-site"}) · {o.scrapedFrom}
           </span>
 
@@ -475,21 +506,18 @@ function ShortlistCardRow({
           </span>
 
           {(brief.frictionPreview || brief.topUnknownPreview) && (
-            <span className="mt-2.5 flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" />
-              <span className="label-mono truncate text-destructive font-normal">
-                Needs verification: {brief.frictionPreview || brief.topUnknownPreview}
-              </span>
+            <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[0.68rem] text-amber-700 dark:text-amber-300 border border-amber-500/20 font-mono">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+              Needs verification: {brief.frictionPreview || brief.topUnknownPreview}
             </span>
           )}
         </span>
 
         <span className="flex shrink-0 flex-col items-end gap-2">
-          <span className="flex shrink-0 items-baseline gap-0.5 tabular-nums">
-            <span className="font-display text-3xl leading-none text-foreground font-normal">{score}</span>
-            <span className="font-mono text-[0.6rem] text-muted-foreground font-normal">/100</span>
+          <span className={`flex shrink-0 items-center justify-center h-10 w-10 rounded-full border-2 font-display text-lg font-bold shadow-xs ${scoreClass}`}>
+            {scoreDisplay}
           </span>
-          <span className="label-mono transition-colors group-hover:text-foreground font-normal">
+          <span className="label-mono text-[0.68rem] text-muted-foreground group-hover:text-foreground font-semibold transition-colors">
             {isOpen ? "— Close" : "+ Brief"}
           </span>
         </span>
@@ -498,7 +526,7 @@ function ShortlistCardRow({
       {/* Expanded Brief Drawer with smooth CSS grid expansion */}
       <div
         className={`grid transition-all duration-300 ease-out overflow-hidden ${
-          isOpen ? "grid-rows-[1fr] opacity-100 mt-2 mb-4" : "grid-rows-[0fr] opacity-0 mt-0 mb-0"
+          isOpen ? "grid-rows-[1fr] opacity-100 p-3 sm:p-4 border-t border-border/60 bg-muted/20 dark:bg-muted/10" : "grid-rows-[0fr] opacity-0 p-0"
         }`}
       >
         <div className="min-h-0">

@@ -118,7 +118,7 @@ export class JobProjectionBuilder {
 
   public static build(opportunity: any): JobProjection {
     const title = opportunity.role || "";
-    const fullText = (opportunity.description || opportunity.normalizedText || "").toLowerCase();
+    let fullText = (opportunity.description || opportunity.normalizedText || opportunity.rawText || opportunity.rawDescription || "").toLowerCase();
     const fullContext = (title + "\n" + fullText);
     const titleLower = title.toLowerCase();
 
@@ -127,41 +127,74 @@ export class JobProjectionBuilder {
     const organizationalIntent = this.inferOrganizationalIntent(fullText, title);
     const executiveMission = this.buildExecutiveMission(title, resolvedCompany, trueExecutiveMandate, organizationalIntent);
 
-    // 1. Executive Identity Classification
-    let primaryIdentity = "Commercial & Marketing Leadership";
-    let identityConf = 0.85;
+    // 1. Executive Identity Classification (Positive Domain Validation)
+    const isExecutiveTechLeader = /(head of|director|vp|vice president|cto|cio|chief)/i.test(titleLower);
 
-    const isTitleTech = this.testKeyword(titleLower, "technology") || 
-                        this.testKeyword(titleLower, "cto") || 
-                        this.testKeyword(titleLower, "engineering") || 
-                        this.testKeyword(titleLower, "architect") || 
-                        this.testKeyword(titleLower, "product manager") || 
-                        this.testKeyword(titleLower, "group product manager") || 
-                        this.testKeyword(titleLower, "gpm") || 
-                        this.testKeyword(titleLower, "gen ai") || 
-                        this.testKeyword(titleLower, "agentic");
+    const isTitleTechIC = (!isExecutiveTechLeader && /(\bengineer\b|\bdeveloper\b|\bprogrammer\b|\bfull stack\b|\bfrontend\b|\bbackend\b|\bcoding\b|\barchitect\b)/i.test(titleLower)) ||
+                          /(\bjava\b|\bpython\b|\bnode\.?js\b|\breact\b|\bangular\b|\bc\+\+\b|\bgolang\b|\bruby\b|\bdevops\b|\bcloud engineer\b|\bdata engineer\b|\bmachine learning engineer\b|\bai engineer\b|\bsoftware\b)/i.test(titleLower);
 
-    const isBodyTech = this.testKeyword(fullText, "salesforce architect") || 
-                       this.testKeyword(fullText, "hands-on coding") || 
-                       this.testKeyword(fullText, "react") || 
-                       this.testKeyword(fullText, "python");
-
-    if (isTitleTech) {
-      primaryIdentity = "Technology & Engineering Leadership";
-      identityConf = 0.92;
-    } else if (isBodyTech && !titleLower.includes("head") && !titleLower.includes("director") && !titleLower.includes("vp")) {
-      primaryIdentity = "Technical Individual Contributor";
-      identityConf = 0.80;
-    }
+    const isTitleTechLeadership = isExecutiveTechLeader && /(\btechnology\b|\binformation technology\b|\bit\b|\bcio\b|\bcto\b|\bengineering\b|\bsoftware\b|\bdata\b|\bdigital\b|\bai\b)/i.test(titleLower);
 
     const isTitleOps = this.testKeyword(titleLower, "operations") || 
                        this.testKeyword(titleLower, "supply chain") || 
                        this.testKeyword(titleLower, "logistics") || 
                        this.testKeyword(titleLower, "site strategy");
 
-    if (isTitleOps && !isTitleTech) {
+    // Role-contextual high-confidence non-commercial professional-domain vetoes
+    const companyLower = (opportunity.company || "").toLowerCase();
+    const hasMedicalAffairsVeto = /(\bmedical\b|\bsuperintendent\b|\bhospital\b|\bphysician\b|\bsurgeon\b|\bdoctor\b|\bnursing\b)/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+    const hasClinicalVeto = /\bclinical\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+    const hasBimVeto = /\bbim\b/i.test(titleLower);
+    const hasCivilStructuralVeto = /(\bcivil\b|\bstructural\b)/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+    const hasQualityVeto = /\bquality\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+    const hasRecruitmentStaffingVeto = /(\brecruitment\b|\bstaffing\b)/i.test(titleLower) || 
+                                       ((/managing director/i.test(titleLower) || /director/i.test(titleLower)) && (/antal|staffing|recruitment/i.test(companyLower)));
+    const hasSoftwareVeto = isTitleTechIC || /(\bsoftware engineer\b|\bfull stack\b|\bfrontend\b|\bbackend\b|\bjava\b|\bpython\b|\bdeveloper\b)/i.test(titleLower);
+    const hasIndustrialResinVeto = /(\bresin\b|\bpolymer\b)/i.test(titleLower) && !/marketing|growth/i.test(titleLower);
+    const hasTelecomEngVeto = /\btelecom\b/i.test(titleLower) && /(\bengineer\b|\bautomation\b)/i.test(titleLower);
+    const hasHeavyElectronicsVeto = /\bpower electronics\b/i.test(titleLower) && !/marketing director|cmo/i.test(titleLower);
+    const hasDerivedDataVeto = /\bderived data\b/i.test(titleLower);
+    const hasDeliveryLeaderVeto = /\bdelivery (leader|lead)\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+    const hasItcVeto = /\bitc\b/i.test(titleLower) && !/marketing|growth/i.test(titleLower);
+    const hasPracticeLeadVeto = /\bpractice (lead|director|head)\b/i.test(titleLower) && !/marketing|growth/i.test(titleLower);
+    const hasArchitectureVeto = /\barchitecture\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+
+    const isNonCommercialDomain = 
+      isTitleTechIC ||
+      hasMedicalAffairsVeto ||
+      hasClinicalVeto ||
+      hasBimVeto ||
+      hasCivilStructuralVeto ||
+      hasQualityVeto ||
+      hasRecruitmentStaffingVeto ||
+      hasSoftwareVeto ||
+      hasIndustrialResinVeto ||
+      hasTelecomEngVeto ||
+      hasHeavyElectronicsVeto ||
+      hasDerivedDataVeto ||
+      hasDeliveryLeaderVeto ||
+      hasItcVeto ||
+      hasPracticeLeadVeto ||
+      hasArchitectureVeto;
+
+    // Positive commercial & growth identity recognition
+    const isExplicitCommercialRole = /(\bmarketing\b|\bgrowth\b|\bcommercial\b|\brevenue\b|\bcmo\b|\bcgo\b|\bcro\b|\bgtm\b|\becommerce\b|\be-commerce\b|\bbrand\b|\bperformance\b|\bd2c\b|\bdigital marketing\b|\bmedia sales\b|\bclient partner\b|\bbusiness development\b|\bsales\b|\bp&l\b|\bcategory head\b|\bbusiness head\b|\bcountry head\b|\bcountry director\b|\bgeneral manager\b|\bchief executive\b|\bceo\b|\bchief operating\b|\bcoo\b|\bchief of staff\b|\bkey accounts\b|\baccount director\b|\bcustomer success\b|\bcustomer experience\b|\bmartech\b|\btrade marketing\b|\bmerchandising\b|\bpr\b|\bpublic relations\b|\bcommunications\b)/i.test(titleLower + " " + fullText.substring(0, 300));
+
+    let primaryIdentity = "Excluded Technical & Industrial Professional Domain";
+    let identityConf = 0.85;
+
+    if (isTitleTechLeadership) {
+      primaryIdentity = "Technology & Engineering Leadership";
+      identityConf = 0.92;
+    } else if (isTitleOps && !isExplicitCommercialRole) {
       primaryIdentity = "Operations & Logistics Leadership";
       identityConf = 0.88;
+    } else if (isExplicitCommercialRole && !isNonCommercialDomain) {
+      primaryIdentity = "Commercial & Marketing Leadership";
+      identityConf = 0.90;
+    } else {
+      primaryIdentity = "Excluded Technical & Industrial Professional Domain";
+      identityConf = 0.95;
     }
 
     const executiveIdentity: ExecutiveIdentity = {
@@ -217,7 +250,7 @@ export class JobProjectionBuilder {
 
     if (this.testKeyword(titleLower, "marketing") || this.testKeyword(titleLower, "sales") || this.testKeyword(titleLower, "commercial")) {
       executiveFunction.add("Commercial & Marketing");
-    } else if (this.testKeyword(titleLower, "technology") || this.testKeyword(titleLower, "it") || this.testKeyword(titleLower, "architect") || isTitleTech) {
+    } else if (this.testKeyword(titleLower, "technology") || this.testKeyword(titleLower, "it") || this.testKeyword(titleLower, "architect") || isTitleTechLeadership || isTitleTechIC) {
       executiveFunction.add("Technology");
     } else if (this.testKeyword(titleLower, "operations") || this.testKeyword(titleLower, "delivery") || isTitleOps) {
       executiveFunction.add("Operations");
@@ -250,6 +283,17 @@ export class JobProjectionBuilder {
     let workModel: "HYBRID" | "REMOTE" | "ON_SITE" | "UNKNOWN" = "UNKNOWN";
     if (operatingContext.hybrid) workModel = "HYBRID";
     else if (operatingContext.remote) workModel = "REMOTE";
+    else if (this.testKeyword(fullText, "on-site") || this.testKeyword(fullText, "onsite") || this.testKeyword(fullText, "office") || this.testKeyword(fullText, "on site")) {
+      workModel = "ON_SITE";
+    }
+
+    const workModelDim = opportunity.dimensions?.find((d: any) => d.key === "workModel");
+    if (workModelDim && workModelDim.jdEvidence?.value) {
+      const val = String(workModelDim.jdEvidence.value).toUpperCase();
+      if (val.includes("HYBRID")) workModel = "HYBRID";
+      else if (val.includes("REMOTE")) workModel = "REMOTE";
+      else if (val.includes("ON-SITE") || val.includes("ON_SITE") || val.includes("OFFICE") || val.includes("ON SITE")) workModel = "ON_SITE";
+    }
 
     const operatingLevel = OperatingLevelClassifier.classify(fullContext, title);
     const workNature = WorkNatureClassifier.classify(fullContext, title);

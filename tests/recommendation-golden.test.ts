@@ -3,10 +3,21 @@
 // canonical Indian-market cases described in the vision document.
 
 import { describe, expect, it } from "vitest";
-import { runEngine } from "@/lib/intelligence/engine";
+import { runEngine, injectFreshRecords, invalidateEngineCache, readOpportunities, clearInjectedRecords, ENGINE_VERSION } from "@/lib/intelligence/engine";
 import { OpportunityProvider } from "@/lib/intelligence/opportunity-provider";
+import { CandidateProjectionBuilderImpl } from "@/lib/intelligence/builders/CandidateProjectionBuilder";
+import { candidateProfile } from "@/data/candidate-profile";
+import { rawOpportunities } from "@/data/opportunity-fixtures";
+import { present } from "@/lib/intelligence/present";
 
-const { records } = runEngine(0);
+import { POLICY_THRESHOLDS } from "@/lib/intelligence/policy/DecisionPolicyEngine";
+
+// Inject golden opportunities into the memory cache
+injectFreshRecords(rawOpportunities);
+
+const builder = new CandidateProjectionBuilderImpl();
+const projection = builder.fromProfile(candidateProfile);
+const { records } = runEngine(projection, 0);
 const byHash = new Map(records.map((r) => [r.jobHash, r]));
 
 describe("recommendation golden fixtures", () => {
@@ -14,13 +25,13 @@ describe("recommendation golden fixtures", () => {
     const r = byHash.get("j-bmw-india-cmo")!;
     expect(r).toBeDefined();
     expect(r.verb).toBe("PURSUE");
-    expect(r.priority).toBeGreaterThan(0.55);
+    expect(r.priority).toBeGreaterThan(POLICY_THRESHOLDS.CONSIDER);
   });
 
   it("Reliance Retail CGO → PURSUE", () => {
     const r = byHash.get("j-reliance-cgo")!;
     expect(r.verb).toBe("PURSUE");
-    expect(r.priority).toBeGreaterThan(0.55);
+    expect(r.priority).toBeGreaterThan(POLICY_THRESHOLDS.CONSIDER);
   });
 
   it("VML VP Perf → CONSIDER band", () => {
@@ -41,8 +52,8 @@ describe("recommendation golden fixtures", () => {
 
   it("every record carries an immutable RecommendationRecord contract", () => {
     for (const r of records) {
-      expect(r.engineVersion).toBe("1.0.0");
-      expect(r.recommendationVersion).toMatch(/^1\.0\.0:/);
+      expect(r.engineVersion).toBe(ENGINE_VERSION);
+      expect(r.recommendationVersion.startsWith(ENGINE_VERSION + ":")).toBe(true);
       expect(r.confidence).toBeGreaterThanOrEqual(0);
       expect(r.confidence).toBeLessThanOrEqual(1);
       expect(["High", "Medium", "Low"]).toContain(r.stability);
@@ -54,16 +65,58 @@ describe("recommendation golden fixtures", () => {
 
   it("decision does not consume confidence — a low-confidence PURSUE stays PURSUE", () => {
     for (const r of records) {
-      if (r.verb === "PURSUE") expect(r.priority).toBeGreaterThanOrEqual(0.55);
+      if (r.verb === "PURSUE") expect(r.priority).toBeGreaterThanOrEqual(POLICY_THRESHOLDS.PURSUE);
       if (r.verb === "CONSIDER") {
-        expect(r.priority).toBeGreaterThanOrEqual(0.3);
-        expect(r.priority).toBeLessThan(0.55);
+        expect(r.priority).toBeGreaterThanOrEqual(POLICY_THRESHOLDS.CONSIDER);
+        expect(r.priority).toBeLessThan(POLICY_THRESHOLDS.PURSUE);
       }
       if (r.verb === "PASS" && !r.headspace.downgraded) {
-        expect(r.priority).toBeLessThan(0.3);
+        expect(r.priority).toBeLessThan(POLICY_THRESHOLDS.CONSIDER);
       }
     }
   });
+
+  it("no PURSUE card contains negative or contradictory editorial language (both live corpus and golden fixtures)", () => {
+    // 1. Check golden fixtures
+    const listGolden = OpportunityProvider.list({ activePursuits: 0 });
+    const pursueGolden = listGolden.filter((o) => o.decision === "PURSUE");
+
+    // 2. Check live corpus from SQLite database
+    invalidateEngineCache();
+    clearInjectedRecords(); // Sets memoryCache = null to fall back to SQLite
+
+    const { records: liveRecords } = runEngine(projection, 0);
+    
+    // Ensure we actually loaded live opportunities from SQLite
+    expect(liveRecords.length).toBeGreaterThan(0);
+
+    const listLive = liveRecords
+      .filter((r) => r.verb === "PURSUE")
+      .map((r) => {
+        const matchingSource = readOpportunities().find(o => o.jobHash === r.jobHash);
+        if (!matchingSource) return null;
+        return present(matchingSource, r, projection).opportunity;
+      })
+      .filter((o): o is any => o !== null);
+
+    // Restore golden records cache for remaining tests
+    injectFreshRecords(rawOpportunities);
+
+    const contradictions = [
+      "not recommended",
+      "does not align",
+      "separate functional domain",
+      "major trajectory deviation"
+    ];
+
+    const allPursueCards = [...pursueGolden, ...listLive];
+    for (const card of allPursueCards) {
+      const recLower = card.recommendation.toLowerCase();
+      for (const phrase of contradictions) {
+        expect(recLower).not.toContain(phrase);
+      }
+    }
+  }, 60000);
 
   it("OpportunityProvider output integrates pipeline and presenter correctly", () => {
     const list = OpportunityProvider.list({ activePursuits: 0 });

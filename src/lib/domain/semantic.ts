@@ -59,8 +59,11 @@ export interface EvidenceMatch {
   reason: string;
 }
 
+export type CapabilityEvidenceState = "SUFFICIENT" | "PARTIAL" | "UNAVAILABLE";
+
 export interface CapabilityAssessment extends AssessmentMetadata {
   overallFit: number;               // Composite balanced score (0.0 to 1.0)
+  evidenceState?: CapabilityEvidenceState; // Explicit 3-state evidence tracker
   capabilityPotential?: number;     // Executive potential fit (0.0 to 1.0)
   evidenceStrength?: number;        // Direct proof evidence density (0.0 to 1.0)
   matchedCapabilities: string[];
@@ -69,10 +72,31 @@ export interface CapabilityAssessment extends AssessmentMetadata {
   matches?: EvidenceMatch[];
 }
 
+export type ScopeType = "STRATEGIC_MANDATE" | "MIXED" | "EXECUTION" | "UNKNOWN";
+
+export type SenioritySignalType = 
+  | "QUALIFIED_EXECUTIVE" 
+  | "BORDERLINE_MANDATE" 
+  | "SUB_TIER_SIGNAL" 
+  | "CRITICAL_SENIORITY_CONTRADICTION";
+
+export interface ExecutiveSeniorityAssessment {
+  minYearsExperience?: number;
+  maxYearsExperience?: number;
+  scopeType: ScopeType;
+  signalType: SenioritySignalType;
+  mandateSeniority: "QUALIFIED" | "BORDERLINE" | "SUB_TIER";
+  evidence: string[];
+  contradictions: string[];
+}
+
 export interface OpportunityAssessment extends AssessmentMetadata {
   operatingLevelAssessment: "MATCH" | "PROMOTION" | "REGRESSION_MINOR" | "REGRESSION_MAJOR" | "UNKNOWN";
   workNatureAssessment: "MATCH" | "PROMOTION" | "REGRESSION" | "UNKNOWN";
   scopeAssessment: "MATCH" | "PROMOTION" | "REGRESSION" | "UNKNOWN";
+  mandateSeniority?: "QUALIFIED" | "BORDERLINE" | "SUB_TIER";
+  seniorityAssessment?: ExecutiveSeniorityAssessment;
+  opportunityScore?: number;
 }
 
 export interface CareerAssessment extends AssessmentMetadata {
@@ -116,7 +140,9 @@ export type RuleCondition =
   | { dimension: "CAREER"; field: CareerField; operator: "EQUALS" | "NOT_EQUALS" | "LESS_THAN" | "GREATER_THAN"; value: string | number | boolean }
   | { dimension: "LIFESTYLE"; field: LifestyleField; operator: "EQUALS" | "NOT_EQUALS" | "LESS_THAN" | "GREATER_THAN"; value: string | number | boolean };
 
-export type DecisionVerdict = "PASS" | "CONSIDER" | "PURSUE" | "NOT_EVALUABLE";
+export type EvaluationStatus = "EVALUATED" | "EVALUATED_WITH_STRUCTURED_EVIDENCE" | "SPARSE_SPEC" | "NOT_EVALUABLE";
+export type Recommendation = "PURSUE" | "CONSIDER" | "PASS" | null;
+export type DecisionVerdict = "PASS" | "CONSIDER" | "PURSUE" | "NOT_EVALUABLE" | "SPARSE_SPEC";
 
 // Data-driven decision rule with explicit output verbs
 export interface DecisionRule {
