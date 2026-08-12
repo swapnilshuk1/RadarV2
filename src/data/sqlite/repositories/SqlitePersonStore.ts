@@ -2,6 +2,9 @@ import type { DatabaseAdapter } from "../../database/adapter";
 import type { PersonStore } from "../../../domain/repositories";
 import type { Person, ResumeVersion } from "../../../domain/entities";
 import type { CandidateProjection } from "../../../lib/domain/candidate_projection";
+import * as path from "path";
+import * as fs from "fs";
+import { CandidateIntelligencePipeline } from "../../../lib/intelligence/cip";
 
 export class SqlitePersonStore implements PersonStore {
   constructor(private db: DatabaseAdapter) {}
@@ -122,7 +125,22 @@ export class SqlitePersonStore implements PersonStore {
       `SELECT projection_json FROM career_profiles WHERE person_id = ? ORDER BY created_at DESC LIMIT 1`,
       [personId]
     );
-    if (!row || !row.projection_json) return undefined;
+    if (!row || !row.projection_json) {
+      // Fallback: Dynamically parse the V4 active local candidate-profile.json
+      try {
+        const filePath = path.join(process.cwd(), "src/data/candidate-profile.json");
+        if (fs.existsSync(filePath)) {
+          const rawContent = fs.readFileSync(filePath, "utf-8");
+          const profile = JSON.parse(rawContent);
+          const cip = new CandidateIntelligencePipeline();
+          const compiled = cip.getActiveDossier(profile);
+          return compiled.projection as any;
+        }
+      } catch (err) {
+        console.error("[SqlitePersonStore] Fallback compilation failed:", err);
+      }
+      return undefined;
+    }
     
     try {
       const parsed = JSON.parse(row.projection_json) as CandidateProjection;

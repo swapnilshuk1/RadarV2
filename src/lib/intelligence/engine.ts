@@ -8,14 +8,15 @@
 
 import { rawOpportunities as authored, type Opportunity, type OpportunitySource } from "@/data/opportunity-fixtures";
 import { extraOpportunities } from "@/data/extra-fixtures";
+import decisionPolicy from "@/data/ontology/decision_policy.json";
 import path from "path";
 import fs from "fs";
 import { CandidateIntelligencePipeline } from "./cip";
 import { JobIntelligencePipeline } from "./jip";
-import { V3EvaluationEngine } from "./V3EvaluationEngine";
 import { present, type Presented } from "./present";
+import { buildHeadspace } from "./candidate";
+import { applyHeadspaceFilter } from "./headspace-filter";
 import type { RecommendationRecord } from "./record";
-import { loadDecisionPolicy, computeDecisionVerdict } from "../recommendation/EvaluationAdapter";
 import type { CandidateProjection } from "../domain/candidate_projection";
 
 // Phase 4 Semantic Imports
@@ -92,11 +93,7 @@ function getBaseOpportunities(): OpportunitySource[] {
 
 let memoryCache: OpportunitySource[] | null = null;
 
-let cachedRuns = new Map<number, {
-  currentAuthoredLength: number;
-  currentAuthoredHashes: string;
-  result: { presented: Presented[]; records: RecommendationRecord[] };
-}>();
+let cachedRuns = new Map<string, { presented: Presented[]; records: RecommendationRecord[] }>();
 
 export function invalidateEngineCache() {
   baseOpportunitiesCache = null;
@@ -143,10 +140,40 @@ export function injectFreshRecords(records: any[]) {
   writeOpportunities([...(records as OpportunitySource[])]);
 }
 
+export function clearInjectedRecords() {
+  memoryCache = null;
+  invalidateEngineCache();
+}
+
+/** Explicit Fixture / Corpus Isolation APIs (Boundary 9) */
+export function injectFixtureRecords(records: OpportunitySource[]) {
+  memoryCache = [...records];
+  invalidateEngineCache();
+}
+
+export function clearFixtureRecords() {
+  memoryCache = null;
+  invalidateEngineCache();
+}
+
+export function readLiveOpportunities(): OpportunitySource[] {
+  memoryCache = null;
+  invalidateEngineCache();
+  return getBaseOpportunities();
+}
+
+export function assertLiveCorpusNotEmpty(): OpportunitySource[] {
+  const ops = readLiveOpportunities();
+  if (ops.length === 0) {
+    throw new Error("[CorpusInvariant] Live opportunity corpus is empty! Check database/fixtures.");
+  }
+  return ops;
+}
+
 const candidateBuilder = new CandidateProjectionBuilderImpl();
 
 const ONTOLOGY_VERSION = "14.2.0";
-const ENGINE_VERSION = "4.3.0-positive-domain-validation";
+export const ENGINE_VERSION = "4.3.0-positive-domain-validation";
 
 function simpleStringHash(str: string): string {
   let hash = 5381;
@@ -160,9 +187,12 @@ export function computeEvaluationSignature(
   jobHash: string,
   projectionTimestamp: string | number = "v1",
   ontologyVersion: string = ONTOLOGY_VERSION,
-  engineVersion: string = ENGINE_VERSION
+  engineVersion: string = ENGINE_VERSION,
+  policyHash = "",
+  candHash = "",
+  oppContentHash = ""
 ): string {
-  const raw = `${jobHash}:${projectionTimestamp}:${ontologyVersion}:${engineVersion}`;
+  const raw = `${jobHash}:${projectionTimestamp}:${ontologyVersion}:${engineVersion}:${policyHash}:${candHash}:${oppContentHash}`;
   return simpleStringHash(raw);
 }
 
@@ -176,15 +206,26 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
   records: RecommendationRecord[];
 } {
   const currentAuthored = readOpportunities();
-  const currentHashes = currentAuthored.map(o => o.jobHash).join(",");
+  
+  const engineVersion = ENGINE_VERSION;
+  const policyHash = simpleStringHash(JSON.stringify(decisionPolicy));
+  const ontologyVersion = ONTOLOGY_VERSION;
+  const candHash = simpleStringHash(JSON.stringify(projection));
+  
+  const serializedOps = JSON.stringify(currentAuthored.map(o => ({
+    hash: o.jobHash,
+    role: o.role,
+    company: o.company,
+    text: (o as any).description || (o as any).normalizedText || (o as any).rawText || (o as any).rawDescription || "",
+    dims: o.dimensions
+  })));
+  const opportunityCorpusHash = simpleStringHash(serializedOps);
 
-  const cached = cachedRuns.get(activePursuits);
-  if (
-    cached &&
-    cached.currentAuthoredLength === currentAuthored.length &&
-    cached.currentAuthoredHashes === currentHashes
-  ) {
-    return cached.result;
+  const topLevelCacheKey = `${engineVersion}:${policyHash}:${ontologyVersion}:${candHash}:${opportunityCorpusHash}:${activePursuits}`;
+
+  const cached = cachedRuns.get(topLevelCacheKey);
+  if (cached) {
+    return cached;
   }
 
   // Fallback V3 Dossier and CandidateProjectionBuilder removed since projection is already built
@@ -195,7 +236,22 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
   const presentedList: Presented[] = [];
 
   for (const raw of currentAuthored) {
-    const signature = computeEvaluationSignature(raw.jobHash, projTimestamp);
+    const oppContentHash = simpleStringHash(JSON.stringify({
+      role: raw.role,
+      company: raw.company,
+      text: (raw as any).description || (raw as any).normalizedText || (raw as any).rawText || (raw as any).rawDescription || "",
+      dims: raw.dimensions
+    }));
+
+    const signature = computeEvaluationSignature(
+      raw.jobHash,
+      `${projTimestamp}:${activePursuits}`,
+      ontologyVersion,
+      engineVersion,
+      policyHash,
+      candHash,
+      oppContentHash
+    );
     const existing = itemEvaluationCache.get(signature);
 
     if (existing) {
@@ -220,6 +276,19 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
     const rawJobText = (raw as any).rawText || (raw as any).rawDescription || (raw as any).description || (raw as any).normalizedText || "";
     const candIdentityVal = (candProjV4 as any).executiveIdentity?.value || "Commercial & Marketing Leadership";
 
+    const hasStructuredEvidence = !!(raw.dimensions && raw.dimensions.some((d: any) => {
+      if (!d.jdEvidence || d.jdEvidence.status !== "Explicit") return false;
+      const evidenceList = d.jdEvidence.evidence;
+      if (!Array.isArray(evidenceList) || evidenceList.length === 0) return false;
+      return evidenceList.some((ev: any) => {
+        const quote = ev?.quote;
+        if (!quote) return false;
+        const isGrounded = rawJobText.toLowerCase().includes(quote.toLowerCase());
+        const hasTrustedProvenance = ev.provenance === "curated" || ev.provenance === "extractor" || ev.provenance === "gold" || ev.provenance === "fixture" || ev.provenance === "onboarder" || !rawJobText || !ev.provenance;
+        return isGrounded || hasTrustedProvenance;
+      });
+    }));
+
     const policyResult = DecisionPolicyEngine.evaluate(
       identity,
       capability,
@@ -228,10 +297,13 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
       lifestyle,
       jobProjV4.executiveIdentity.value,
       candIdentityVal,
-      rawJobText
+      rawJobText,
+      hasStructuredEvidence
     );
 
     const finalVerb = policyResult.verdict;
+    const headspaceState = buildHeadspace(activePursuits);
+    const headspaceOutcome = applyHeadspaceFilter(finalVerb, headspaceState);
 
     // Use Continuous Priority Score directly from DecisionPolicyEngine
     const finalScore = policyResult.priorityScore;
@@ -242,27 +314,31 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
       (d: any) => d.bucket === "Missing" || d.bucket === "Gap" || d.jdEvidence?.status === "Missing"
     );
 
-    // Backwards compatibility translation
+    // Backwards compatibility translation & clean V4 record
     const record: RecommendationRecord = {
       jobHash: raw.jobHash,
-      engineVersion: "4.0.0",
-      recommendationVersion: `v4:${raw.jobHash}:${finalVerb}`,
-      verb: finalVerb,
-      priority: finalScore,
+      engineVersion: ENGINE_VERSION,
+      recommendationVersion: `${ENGINE_VERSION}:${raw.jobHash}:${headspaceOutcome.finalVerb}`,
+      verb: headspaceOutcome.finalVerb,
+      rawScore: policyResult.rawScore,
+      priority: finalScore !== null ? finalScore : null,
+      vetoed: policyResult.vetoed,
+      vetoReason: policyResult.vetoReason,
+      claimPermissions: policyResult.claimPermissions,
+      confidence: policyResult.confidences.recommendation,
+      factors: {
+        pursuitFriction: (lifestyle as any).locationFrictionPenalty || 0
+      },
       decisionSummary: {
         careerValue: capability.overallFit,
-        shortlistingPotential: finalScore !== null ? finalScore / 100 : 0,
+        shortlistingPotential: finalScore !== null ? finalScore : 0,
         pursuitFriction: (lifestyle as any).locationFrictionPenalty || 0
       },
       decisionDrivers: policyResult.decisionDrivers,
       decisionRisks: policyResult.decisionRisks,
       confidences: policyResult.confidences,
       stability: "High",
-      headspace: {
-        finalVerb,
-        downgraded: false,
-        reason: undefined
-      },
+      headspace: headspaceOutcome,
       comparison: {
         higherThan: [],
         lowerThan: [],
@@ -319,18 +395,28 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
       const a = byHash.get(r.jobHash);
       if (!a) return null;
       const pres = present(a, r, projection);
-      const signature = computeEvaluationSignature(r.jobHash, projTimestamp);
+      const oppContentHash = simpleStringHash(JSON.stringify({
+        role: a.role,
+        company: a.company,
+        text: (a as any).description || (a as any).normalizedText || (a as any).rawText || (a as any).rawDescription || "",
+        dims: a.dimensions
+      }));
+      const signature = computeEvaluationSignature(
+        r.jobHash,
+        `${projTimestamp}:${activePursuits}`,
+        ontologyVersion,
+        engineVersion,
+        policyHash,
+        candHash,
+        oppContentHash
+      );
       itemEvaluationCache.set(signature, { record: r, presented: pres });
       return pres;
     })
     .filter((x): x is Presented => x !== null);
 
   const result = { presented, records };
-  cachedRuns.set(activePursuits, {
-    currentAuthoredLength: currentAuthored.length,
-    currentAuthoredHashes: currentHashes,
-    result
-  });
+  cachedRuns.set(topLevelCacheKey, result);
   return result;
 }
 

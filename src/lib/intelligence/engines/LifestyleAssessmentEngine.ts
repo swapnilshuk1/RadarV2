@@ -32,6 +32,8 @@ export class LifestyleAssessmentEngine {
     if (candidate.preferredWorkModel !== "ANY" && job.workModel !== "UNKNOWN") {
       if (candidate.preferredWorkModel === "REMOTE" && job.workModel === "ON_SITE") {
         travelFit = false;
+      } else if (candidate.preferredWorkModel === "HYBRID" && job.workModel === "ON_SITE") {
+        travelFit = false;
       }
     }
 

@@ -3,6 +3,11 @@ import decisionPolicy from "@/data/ontology/decision_policy.json";
 import { IdentityDistanceCalculator } from "../utils/IdentityDistanceCalculator";
 import { EvidenceGate } from "../gates/EvidenceGate";
 
+export const POLICY_THRESHOLDS = {
+  PURSUE: decisionPolicy.thresholds.pursueScore,
+  CONSIDER: decisionPolicy.thresholds.considerScore,
+};
+
 export interface PipelineStage {
   stage: string;
   status: string;
@@ -21,7 +26,15 @@ export interface DecisionPolicyResult {
   verdict: DecisionVerdict;
   evaluationStatus: EvaluationStatus;
   recommendation: Recommendation;
+  rawScore: number;
   priorityScore: number | null;
+  vetoed: boolean;
+  vetoReason: string | null;
+  claimPermissions: {
+    allowedClaims: ("PL_SCALE" | "FOUNDER_PROXIMITY" | "TRANSFORMATION" | "GO_TO_MARKET" | "GLOBAL_SCOPE")[];
+    explicitUnknowns: string[];
+    explicitRisks: string[];
+  };
   structuralConviction: boolean;
   uiLabel: string;
   confidences: {
@@ -47,17 +60,46 @@ export class DecisionPolicyEngine {
     lifestyle: LifestyleAssessment,
     jobExecutiveIdentityValue?: string,
     candidateIdentityValue: string = "Commercial & Marketing Leadership",
-    jobDescriptionText?: string
+    jobDescriptionText?: string,
+    hasStructuredEvidence: boolean = false
   ): DecisionPolicyResult {
     const triggeredRuleIds: string[] = [];
     
+    // Construct Grounded Claim Permissions based on explicit evidence
+    const descText = (jobDescriptionText || (opportunity as any).originalOpportunity?.normalizedText || "").toLowerCase();
+    const allowedClaims: ("PL_SCALE" | "FOUNDER_PROXIMITY" | "TRANSFORMATION" | "GO_TO_MARKET" | "GLOBAL_SCOPE")[] = [];
+    
+    if (descText.includes("p&l") || descText.includes("profit and loss") || (opportunity as any).operatingContext?.pnlResponsibility) {
+      allowedClaims.push("PL_SCALE");
+    }
+    if (descText.includes("founder") || descText.includes("board of directors")) {
+      allowedClaims.push("FOUNDER_PROXIMITY");
+    }
+    if (descText.includes("transform") || (career as any).trajectory === "FORWARD") {
+      allowedClaims.push("TRANSFORMATION");
+    }
+    if (descText.includes("go-to-market") || descText.includes("gtm") || descText.includes("commercial")) {
+      allowedClaims.push("GO_TO_MARKET");
+    }
+    if (descText.includes("global") || descText.includes("international") || descText.includes("enterprise")) {
+      allowedClaims.push("GLOBAL_SCOPE");
+    }
+
+    const claimPermissions = {
+      allowedClaims,
+      explicitUnknowns: capability.missingCapabilities || [],
+      explicitRisks: [] as string[]
+    };
+
     // Step 0: Evidence Gate Precedence Check
     const roleTitle = (opportunity as any).role || (opportunity as any).originalOpportunity?.role || "";
     const companyName = (opportunity as any).company || "";
+
     const gateResult = EvidenceGate.evaluate(
       jobDescriptionText || "",
       roleTitle,
-      companyName
+      companyName,
+      hasStructuredEvidence
     );
 
     if (gateResult.evaluationStatus === "SPARSE_SPEC") {
@@ -65,7 +107,11 @@ export class DecisionPolicyEngine {
         verdict: "SPARSE_SPEC",
         evaluationStatus: "SPARSE_SPEC",
         recommendation: null,
+        rawScore: 0,
         priorityScore: null,
+        vetoed: true,
+        vetoReason: "G-EVIDENCE-GATE-SPARSE-SPEC",
+        claimPermissions,
         structuralConviction: false,
         uiLabel: "Needs More Signal",
         confidences: { parsing: 0.3, matching: 0.3, recommendation: 0.3 },
@@ -83,6 +129,9 @@ export class DecisionPolicyEngine {
       };
     }
 
+    const isStructuredSparse = gateResult.evaluationStatus === "EVALUATED_WITH_STRUCTURED_EVIDENCE";
+    const evaluationStatus: EvaluationStatus = isStructuredSparse ? "EVALUATED_WITH_STRUCTURED_EVIDENCE" : "EVALUATED";
+
     // Evaluate Topological Semantic Distance d in [0, 1]
     const identityDistance = IdentityDistanceCalculator.calculate(
       candidateIdentityValue, 
@@ -96,7 +145,11 @@ export class DecisionPolicyEngine {
         verdict: "PASS",
         evaluationStatus: "EVALUATED",
         recommendation: "PASS",
+        rawScore: 0,
         priorityScore: 0,
+        vetoed: true,
+        vetoReason: "G-EXECUTIVE-IDENTITY-MISMATCH",
+        claimPermissions,
         structuralConviction: false,
         uiLabel: "Pass",
         confidences: { parsing: 0.9, matching: 0.9, recommendation: 0.95 },
@@ -130,7 +183,11 @@ export class DecisionPolicyEngine {
         verdict: "NOT_EVALUABLE",
         evaluationStatus: "NOT_EVALUABLE",
         recommendation: null,
+        rawScore: 0,
         priorityScore: null,
+        vetoed: true,
+        vetoReason: "G-EVIDENCE-INTEGRITY-FAILED",
+        claimPermissions,
         structuralConviction: false,
         uiLabel: "Not Evaluable",
         confidences: { parsing: 0.0, matching: 0.0, recommendation: 0.0 },
@@ -166,51 +223,16 @@ export class DecisionPolicyEngine {
     const effectiveCapWeight = baseWeights.capability * capabilityInteractionMultiplier;
     const effectiveCareerWeight = baseWeights.career * careerInteractionMultiplier;
 
-    // Differentiated Continuous Score Calibration
-    const titleLower = roleTitle.toLowerCase();
-    
-    // Altitude modifier based on role executive authority
-    let altitudeModifier = 0;
-    if (titleLower.includes("chief") || titleLower.includes("cmo") || titleLower.includes("cro") || titleLower.includes("cgo") || titleLower.includes("coo")) {
-      altitudeModifier = 12;
-    } else if (titleLower.includes("vp") || titleLower.includes("vice president") || titleLower.includes("svp")) {
-      altitudeModifier = 8;
-    } else if (titleLower.includes("director") || titleLower.includes("country head")) {
-      altitudeModifier = 4;
-    } else if (titleLower.includes("head")) {
-      altitudeModifier = 1;
-    }
-
-    // P&L & Scale modifier from description evidence
-    const descText = (jobDescriptionText || (opportunity as any).originalOpportunity?.normalizedText || "").toLowerCase();
-    let scopeBonus = 0;
-    if (descText.includes("p&l") || descText.includes("profit and loss") || descText.includes("ebitda") || descText.includes("board of directors")) {
-      scopeBonus += 5;
-    }
-    if (descText.includes("global") || descText.includes("international") || descText.includes("enterprise")) {
-      scopeBonus += 3;
-    }
-
-    // Hash-seeded deterministic micro-variance to ensure distinct fractional tie-breaking
-    let hashSeed = 0;
-    const seedStr = (opportunity as any).jobHash || roleTitle;
-    for (let i = 0; i < seedStr.length; i++) {
-      hashSeed = (hashSeed * 31 + seedStr.charCodeAt(i)) & 0xffffffff;
-    }
-    const microVariance = ((Math.abs(hashSeed) % 11) - 5) * 0.8; // [-4.0, +4.0]
-
-    const calibratedOpportunityScore = Math.min(98, Math.max(30, opportunityScore + altitudeModifier + scopeBonus + microVariance));
-
-    // Calculate Uncompressed Interactive Priority Score
+    // Clean Continuous Score Calculation (Free of Artificial Noise or Arbitrary Boosts)
     const rawInteractiveScore = 
       baseWeights.identity * identityScore +
       effectiveCareerWeight * careerScore +
-      baseWeights.opportunity * calibratedOpportunityScore +
+      baseWeights.opportunity * opportunityScore +
       effectiveCapWeight * capabilityScore -
       locationFriction;
 
-    // Direct linear score bounded between 0 and 100
-    const priorityScore = Math.min(100, Math.max(0, Math.round(rawInteractiveScore)));
+    // Pure continuous score bounded between 0 and 100
+    const rawScore = Math.min(100, Math.max(0, Math.round(rawInteractiveScore)));
 
     const parsingConfidence = Math.min(1.0, 
       (identity.evidenceCount > 0 ? 0.9 : 0.6) * 
@@ -278,20 +300,24 @@ export class DecisionPolicyEngine {
         ? "Strategic P&L Scale Consolidation" 
         : "Operational Repositioning";
 
-    const relativeDifferentiator = `Score ${priorityScore}/100 with ${Math.round(identityScore)}% Identity similarity and ${capabilityScore}% Capability fit.`;
+    const relativeDifferentiator = `Score ${rawScore}/100 with ${Math.round(identityScore)}% Identity similarity and ${capabilityScore}% Capability fit.`;
 
-    pipeline.push({ stage: "Ranking", status: "COMPLETE", score: priorityScore });
+    pipeline.push({ stage: "Ranking", status: "COMPLETE", score: rawScore });
 
-    // Exclusion Gates (Hard Vetoes)
+    // Exclusion Gates (Hard Vetoes) — Assign priorityScore = 0 / null, vetoed = true, vetoReason
     if (
       opportunity.mandateSeniority === "SUB_TIER" || 
       (opportunity as any).seniorityAssessment?.mandateSeniority === "SUB_TIER"
     ) {
       return {
         verdict: "PASS",
-        evaluationStatus: "EVALUATED",
+        evaluationStatus: evaluationStatus,
         recommendation: "PASS",
-        priorityScore: Math.min(priorityScore, 40),
+        rawScore,
+        priorityScore: 0,
+        vetoed: true,
+        vetoReason: "G-SUB-TIER-MANDATE-VETO",
+        claimPermissions,
         structuralConviction: false,
         uiLabel: "Pass",
         confidences,
@@ -310,9 +336,13 @@ export class DecisionPolicyEngine {
     if (identity.verdict === "MISMATCH" || identityScore < t.identityCutoff) {
       return {
         verdict: "PASS",
-        evaluationStatus: "EVALUATED",
+        evaluationStatus: evaluationStatus,
         recommendation: "PASS",
-        priorityScore: Math.min(priorityScore, 50),
+        rawScore,
+        priorityScore: 0,
+        vetoed: true,
+        vetoReason: "G-IDENTITY-VETO",
+        claimPermissions,
         structuralConviction: false,
         uiLabel: "Pass",
         confidences,
@@ -329,9 +359,13 @@ export class DecisionPolicyEngine {
     if (capability.overallFit < t.capabilityCutoff) {
       return {
         verdict: "PASS",
-        evaluationStatus: "EVALUATED",
+        evaluationStatus: evaluationStatus,
         recommendation: "PASS",
-        priorityScore: Math.min(priorityScore, 55),
+        rawScore,
+        priorityScore: 0,
+        vetoed: true,
+        vetoReason: "G-EXECUTION-VETO",
+        claimPermissions,
         structuralConviction: false,
         uiLabel: "Pass",
         confidences,
@@ -348,9 +382,13 @@ export class DecisionPolicyEngine {
     if (career.regressionScore >= t.regressionCutoff) {
       return {
         verdict: "PASS",
-        evaluationStatus: "EVALUATED",
+        evaluationStatus: evaluationStatus,
         recommendation: "PASS",
-        priorityScore: Math.min(priorityScore, 50),
+        rawScore,
+        priorityScore: 0,
+        vetoed: true,
+        vetoReason: "G-COMPATIBILITY-REGRESSION-VETO",
+        claimPermissions,
         structuralConviction: false,
         uiLabel: "Pass",
         confidences,
@@ -364,28 +402,25 @@ export class DecisionPolicyEngine {
       };
     }
 
-    // Structural Conviction Calibration (Controlled Policy Experiment)
-    // Applies strictly AFTER all hard vetoes have passed
+    // Structural Conviction Flag (Calculated purely for analytical tagging, NOT mutating score)
     const ma = (opportunity as any).mandateAssessment;
     const isCommercialDomain = !jobExecutiveIdentityValue || jobExecutiveIdentityValue.includes("Commercial") || jobExecutiveIdentityValue.includes("Marketing") || jobExecutiveIdentityValue.includes("Growth");
-    const isExecutiveAltitude = (opportunity as any).operatingLevelAssessment === "MATCH" || (opportunity as any).operatingLevelAssessment === "PROMOTION" || titleLower.includes("head") || titleLower.includes("director") || titleLower.includes("chief") || titleLower.includes("cmo") || titleLower.includes("vp");
+    const isExecutiveAltitude = (opportunity as any).operatingLevelAssessment === "MATCH" || (opportunity as any).operatingLevelAssessment === "PROMOTION" || roleTitle.toLowerCase().includes("head") || roleTitle.toLowerCase().includes("director") || roleTitle.toLowerCase().includes("chief") || roleTitle.toLowerCase().includes("cmo") || roleTitle.toLowerCase().includes("vp");
     const isBusinessGrowth = ma?.type === "BUSINESS_GROWTH";
     const isEnterpriseScope = ma?.scope === "ENTERPRISE";
 
     const hasStructuralConviction = isCommercialDomain && isExecutiveAltitude && isBusinessGrowth && isEnterpriseScope;
-    let calibratedPriorityScore = priorityScore;
 
-    if (hasStructuralConviction) {
-      calibratedPriorityScore = Math.min(100, priorityScore + 3);
-      triggeredRuleIds.push("R-STRUCTURAL-CONVICTION-CALIBRATION");
-    }
-
-    if (calibratedPriorityScore >= 75 && identityScore >= 60) {
+    if (rawScore >= POLICY_THRESHOLDS.PURSUE && identityScore >= t.identityPursueCutoff) {
       return {
         verdict: "PURSUE",
-        evaluationStatus: "EVALUATED",
+        evaluationStatus: evaluationStatus,
         recommendation: "PURSUE",
-        priorityScore: calibratedPriorityScore,
+        rawScore,
+        priorityScore: rawScore,
+        vetoed: false,
+        vetoReason: null,
+        claimPermissions,
         structuralConviction: hasStructuralConviction,
         uiLabel: "Pursue",
         confidences,
@@ -399,12 +434,16 @@ export class DecisionPolicyEngine {
       };
     }
 
-    if (calibratedPriorityScore >= 60) {
+    if (rawScore >= POLICY_THRESHOLDS.CONSIDER) {
       return {
         verdict: "CONSIDER",
-        evaluationStatus: "EVALUATED",
+        evaluationStatus: evaluationStatus,
         recommendation: "CONSIDER",
-        priorityScore: calibratedPriorityScore,
+        rawScore,
+        priorityScore: rawScore,
+        vetoed: false,
+        vetoReason: null,
+        claimPermissions,
         structuralConviction: hasStructuralConviction,
         uiLabel: "Consider",
         confidences,
@@ -420,9 +459,13 @@ export class DecisionPolicyEngine {
 
     return {
       verdict: "PASS",
-      evaluationStatus: "EVALUATED",
+      evaluationStatus: evaluationStatus,
       recommendation: "PASS",
-      priorityScore: calibratedPriorityScore,
+      rawScore,
+      priorityScore: 0,
+      vetoed: false,
+      vetoReason: null,
+      claimPermissions,
       structuralConviction: false,
       uiLabel: "Pass",
       confidences,

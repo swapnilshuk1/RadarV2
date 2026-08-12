@@ -1,0 +1,23 @@
+{
+  "certifiedAt": "2026-08-12T10:20:54.892Z",
+  "corpusHash": "d105bacbf0980b70a2a8e02b6c5313f57cdcc4f39006769ebcd6c5d63c14c5e5",
+  "evaluatedCount": 46,
+  "sparseCount": 17,
+  "agreedCount": 9,
+  "agreedPercentage": "19.6",
+  "divergenceCounts": {
+    "EVIDENCE": 18,
+    "DOMAIN": 70,
+    "ALTITUDE": 0,
+    "MANDATE_TYPE": 0,
+    "MANDATE_SCOPE": 0,
+    "POLICY": 3,
+    "NONE": 9
+  },
+  "contractAFailures": 0,
+  "contractCFailures": 0,
+  "contractEFailures": 0,
+  "mutationsPassed": 12,
+  "determinismPassed": true,
+  "status": "PASS"
+}

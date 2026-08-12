@@ -140,7 +140,7 @@ export type RuleCondition =
   | { dimension: "CAREER"; field: CareerField; operator: "EQUALS" | "NOT_EQUALS" | "LESS_THAN" | "GREATER_THAN"; value: string | number | boolean }
   | { dimension: "LIFESTYLE"; field: LifestyleField; operator: "EQUALS" | "NOT_EQUALS" | "LESS_THAN" | "GREATER_THAN"; value: string | number | boolean };
 
-export type EvaluationStatus = "EVALUATED" | "SPARSE_SPEC" | "NOT_EVALUABLE";
+export type EvaluationStatus = "EVALUATED" | "EVALUATED_WITH_STRUCTURED_EVIDENCE" | "SPARSE_SPEC" | "NOT_EVALUABLE";
 export type Recommendation = "PURSUE" | "CONSIDER" | "PASS" | null;
 export type DecisionVerdict = "PASS" | "CONSIDER" | "PURSUE" | "NOT_EVALUABLE" | "SPARSE_SPEC";
 

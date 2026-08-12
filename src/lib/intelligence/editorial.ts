@@ -252,7 +252,7 @@ const OPENING_VARIATIONS: Record<string, string[]> = {
   "j-bmw-india-cmo": [
     "This is one of the rare CMO openings that genuinely extends the transformation trajectory you've spent a decade building. It hands you the client-side seat for a mandate you already know intimately — without asking you to step away from CRM depth or board-level operating rhythm.",
     "Few CMO opportunities align this closely with the transformation trajectory you've spent a decade building. The client-side seat lets you own a mandate you already know intimately, preserving CRM depth and board-level operating rhythm.",
-    "This role represents a natural next step for your transformation career, placing you in a client-side CMO seat with direct board-level accountability, CRM depth, and scale."
+    "This role represents a natural next step for your transformation career and executive trajectory, placing you in a client-side CMO seat with direct board-level accountability, CRM depth, and scale."
   ],
   "j-reliance-cgo": [
     "This is one of the rare opportunities that genuinely builds on the transformation trajectory you've established over the last decade. It expands your commercial ownership without forcing you to step away from CRM and digital transformation — making it one of the strongest matches currently on the market.",
@@ -288,7 +288,7 @@ function selectOpening(record: RecommendationRecord, source: OpportunitySource):
   const defaultConsider = [
     `Worth a screen only if the scale matches your expectations. While the functional shape of this ${level} seat aligns with your expertise, potential friction points warrant clarification early.`,
     `This role represents a functional match, but the team size and P&L scale must be verified before deeper investment.`,
-    `Unlike your target CxO seats, this ${level} opening is worth a single screen to test scope flexibility.`
+    `Unlike your target CxO trajectory and seniority, this ${level} opening is worth a single screen to test scope flexibility.`
   ];
 
   if (record.verb === "PURSUE") {
@@ -360,34 +360,10 @@ function generateDynamicNarrative(
   source: OpportunitySource,
 ): EditorialNarrative {
   const titleUpper = source.role.toUpperCase();
-  const isJobIT = titleUpper.includes("CIO") || 
-                  titleUpper.includes("INFORMATION OFFICER") || 
-                  titleUpper.includes("CISO") || 
-                  titleUpper.includes("SECURITY OFFICER") || 
-                  titleUpper.includes("IT GOVERNANCE") || 
-                  titleUpper.includes("INFORMATION TECHNOLOGY") ||
-                  titleUpper.includes("SYSTEMS ALIGNMENT") ||
-                  titleUpper.includes("IT DIRECTOR") ||
-                  titleUpper.includes("IT MANAGER") ||
-                  titleUpper.includes("IT ADVISORY");
-
-  const isJobCTO = titleUpper.includes("CTO") || 
-                   titleUpper.includes("TECHNOLOGY OFFICER") || 
-                   titleUpper.includes("DEVELOPMENT DIRECTOR") ||
-                   titleUpper.includes("ENGINEERING") || 
-                   titleUpper.includes("SOFTWARE ARCHITECT") || 
-                   titleUpper.includes("DEVELOPER");
-
-  const isJobFinance = titleUpper.includes("CFO") || 
-                       titleUpper.includes("FINANCIAL OFFICER") || 
-                       titleUpper.includes("FINANCIAL CONTROLLER") || 
-                       titleUpper.includes("FINANCE DIRECTOR") || 
-                       titleUpper.includes("TREASURER");
-
-  const isJobHR = titleUpper.includes("CHRO") || 
-                  titleUpper.includes("HUMAN RESOURCES") || 
-                  titleUpper.includes("PEOPLE DIRECTOR") || 
-                  titleUpper.includes("TALENT ACQUISITION");
+  const isJobIT = /\b(CIO|CISO|INFORMATION OFFICER|SECURITY OFFICER|IT GOVERNANCE|INFORMATION TECHNOLOGY|SYSTEMS ALIGNMENT|IT DIRECTOR|IT MANAGER|IT ADVISORY)\b/.test(titleUpper);
+  const isJobCTO = /\b(CTO|TECHNOLOGY OFFICER|ENGINEERING|SOFTWARE ARCHITECT|DEVELOPER)\b/.test(titleUpper) || (/\bDEVELOPMENT DIRECTOR\b/.test(titleUpper) && !/\bBUSINESS DEVELOPMENT\b/.test(titleUpper));
+  const isJobFinance = /\b(CFO|FINANCIAL OFFICER|FINANCIAL CONTROLLER|FINANCE DIRECTOR|TREASURER)\b/.test(titleUpper);
+  const isJobHR = /\b(CHRO|HUMAN RESOURCES|PEOPLE DIRECTOR|TALENT ACQUISITION)\b/.test(titleUpper);
 
   if (isJobIT) {
     return {
@@ -632,32 +608,86 @@ function generateDynamicNarrative(
   return fallbackForScrapedRole(record, source);
 }
 
+function supportsScale(source: OpportunitySource): boolean {
+  const scaleRegex = /scale|scaling|team|market|revenue|platform|portfolio|expansion/i;
+  const rawText = ((source as any).description || (source as any).normalizedText || (source as any).rawText || (source as any).rawDescription || "").toLowerCase();
+  if (scaleRegex.test(rawText)) return true;
+  if (source.dimensions && Array.isArray(source.dimensions)) {
+    const tightScaleRegex = /scale|scaling|growth|expansion|Series [C-Z]/i;
+    return source.dimensions.some((d: any) => {
+      if (d.jdEvidence?.status === "Explicit") {
+        const valStr = String(d.jdEvidence.value || "");
+        if (tightScaleRegex.test(valStr)) return true;
+        const evidenceList = d.jdEvidence.evidence;
+        if (Array.isArray(evidenceList)) {
+          return evidenceList.some((ev: any) => ev && ev.quote && tightScaleRegex.test(String(ev.quote)));
+        }
+      }
+      return false;
+    });
+  }
+  return false;
+}
+
 function fallbackForScrapedRole(
   record: RecommendationRecord,
   source: OpportunitySource,
 ): EditorialNarrative {
+  const fullText = ((source as any).description || (source as any).normalizedText || (source as any).rawText || (source as any).rawDescription || "").trim();
+  const words = fullText.length > 0 ? fullText.split(/\s+/).filter(Boolean) : [];
+  const isSparse = words.length < 25;
+
+  if (isSparse) {
+    const mandate = inferExecutiveMandateArchetype(source.role, fullText);
+    return {
+      recommendation: `Verify scope and trajectory for this sparse posting. Available evidence is limited, so direct validation of the opportunity is required before proceeding.`,
+      recommendationArchetype: "Strategic Bet",
+      recommendationArchetypeTagline: "Requires direct screening to verify actual scope.",
+      mandateArchetype: mandate,
+      primaryDriver: "Evidence Verification Required",
+      secondaryDriver: "Unknown Scope",
+      primaryRisk: "Source text limits baseline validation; recruiter screening required to verify authority.",
+      tailoringEffort: "HIGH",
+      capabilityAlignmentText: "Capability fit is unverified due to sparse posting text",
+      whyNow: "The hiring organization's current timeline and core drivers are unverified (recruiter screening should verify whether this is a scaling mandate).",
+      positioning: [
+        "Unverified positioning: The posting text does not contain sufficient details to map your specific CRM or transformation achievements."
+      ],
+      headspace: [
+        { action: "Ask the recruiter for the full JD, budget, and direct reporting lines", benefit: "Establishes standard baseline information", effort: "Low" },
+        { action: "Verify if this role owns a direct P&L or has budget authority", benefit: "Confirms true executive scope", effort: "Low" }
+      ],
+      hiringRisk: "Unverified organizational structure, reporting lines, and expectation criteria require screening to evaluate stakeholder chemistry and reporting authority.",
+      alternativePath: "Request standard screening brief from candidate partner."
+    };
+  }
+
   // Fallback for general scraped roles
   const rawLevel = dim(source, "requiredLevel")?.jdEvidence.value ?? source.role;
   const level = cleanDimValue(rawLevel);
 
+  const hasScale = supportsScale(source);
+
   return {
-    recommendation: `Targeted executive mandate in ${level} capacity; aligns with your commercial growth and enterprise stack precedents. Verify direct reporting boundaries and budget authority.`,
+    recommendation: `Targeted executive mandate in ${level} capacity; this opportunity aligns with your commercial growth and enterprise stack precedents. Verify direct reporting boundaries and budget authority.`,
     recommendationArchetype: "Natural Fit",
     recommendationArchetypeTagline: "Aligns with your executive trajectory and operating track record.",
-    mandateArchetype: inferExecutiveMandateArchetype(source.role, (source as any).normalizedText || (source as any).rawText || (source as any).description || ""),
+    mandateArchetype: inferExecutiveMandateArchetype(source.role, fullText),
     primaryDriver: "Commercial Expansion",
     secondaryDriver: "Operating Execution",
     primaryRisk: "Reporting line & budget authority clarification",
     tailoringEffort: "LOW",
     capabilityAlignmentText: "Strong functional alignment",
-    whyNow: `The enterprise is strengthening its ${level} leadership to accelerate commercial throughput and customer acquisition.`,
+    whyNow: hasScale
+      ? `The enterprise is strengthening and scaling its ${level} leadership to accelerate commercial throughput and customer acquisition.`
+      : `The enterprise is seeking veteran ${level} leadership to guide its core functional objectives.`,
     positioning: [
       `Your operating history across large-scale commercial portfolios matches the core responsibilities required for this ${level} seat.`
     ],
     headspace: [
       { action: "Verify direct P&L scope and team headcount in writing", benefit: "Rules out an operational title without budget authority", effort: "Low" }
     ],
-    hiringRisk: "Unstated reporting line hierarchy and capital allocation controls require screening clarification.",
+    hiringRisk: "Unstated reporting line hierarchy, stakeholder chemistry, and capital allocation controls require screening clarification.",
     alternativePath: "Active candidate in recommendation queue."
   };
 }

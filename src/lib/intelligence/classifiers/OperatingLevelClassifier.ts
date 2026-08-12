@@ -62,20 +62,17 @@ export class OperatingLevelClassifier {
       return { value: "MANAGERIAL", evidenceIds, confidence: 0.95 };
     }
 
+    // NAMED POLICY: Operating Level Calibration Policy
+    // This policy formalizes the strategic-to-executive progression mapping:
+    // 1. VP/SVP level titles represent highly strategic but non-ultimate P&L seats, mapping to "STRATEGIC".
+    // 2. Ultimate enterprise-wide decision-makers (CMO, CGO, COO, CRO, Chief) map to "EXECUTIVE".
+    // When a STRATEGIC candidate (e.g. VP level) is assessed against an EXECUTIVE job (e.g. CMO),
+    // the engine resolves this as a "PROMOTION" opportunity, rewarding the upside while signaling humility.
+    const isUltimateExec = tLower.includes("cmo") || tLower.includes("cgo") || tLower.includes("cro") || tLower.includes("coo") || tLower.includes("chief");
+    const isVPLevel = tLower.includes("vp") || tLower.includes("vice president") || tLower.includes("svp");
+
     // 1. Title Seniority Prior Classification
-    const isExecutiveTitle = 
-      tLower.includes("cmo") || 
-      tLower.includes("cgo") || 
-      tLower.includes("cro") || 
-      tLower.includes("coo") || 
-      tLower.includes("chief") || 
-      tLower.includes("vice president") || 
-      tLower.includes("vp") || 
-      tLower.includes("svp") || 
-      tLower.includes("country head") || 
-      tLower.includes("head of") || 
-      tLower.includes("head -") || 
-      tLower.includes("director");
+    const isExecutiveTitle = isUltimateExec || isVPLevel || tLower.includes("country head") || tLower.includes("head of") || tLower.includes("head -") || tLower.includes("director");
 
     const isExplicitMidTierTitle = 
       (tLower.includes("manager") || 
@@ -103,6 +100,10 @@ export class OperatingLevelClassifier {
 
     // 3. Apply Asymmetric Prior Rule
     if (isExecutiveTitle && !hasLowYoEContradiction && !isTacticalExecutionOnly && !isNarrowUnitScope) {
+      if (isVPLevel) {
+        evidenceIds.push("ol_calibration_vp_strategic");
+        return { value: "STRATEGIC", evidenceIds, confidence: 0.9 };
+      }
       evidenceIds.push("ol_asymmetric_exec_prior");
       return { value: "EXECUTIVE", evidenceIds, confidence: 0.9 };
     }

@@ -17,12 +17,31 @@ import type { EvidenceMatch, CareerValueBreakdown } from "../domain/semantic";
 
 export const ENGINE_VERSION = "1.0.0";
 
+export type ClaimPermissionToken =
+  | "PL_SCALE"
+  | "FOUNDER_PROXIMITY"
+  | "TRANSFORMATION"
+  | "GO_TO_MARKET"
+  | "GLOBAL_SCOPE";
+
+export interface ClaimPermissions {
+  allowedClaims: ClaimPermissionToken[];
+  explicitUnknowns: string[];
+  explicitRisks: string[];
+}
+
 export type RecommendationRecord = Readonly<{
   jobHash: string;
   engineVersion: string;
   recommendationVersion: string; // fingerprint of inputs + engine
   verb: DecisionVerb;
-  priority: number | null;
+  rawScore?: number; // Unvetoed continuous numeric fit score [0-100]
+  priority: number | null; // 0 or null if hard vetoed; otherwise rawScore
+  vetoed?: boolean; // True if any hard veto was triggered
+  vetoReason?: string | null; // Triggered rule ID (e.g. "G-SUB-TIER-MANDATE-VETO")
+  claimPermissions?: ClaimPermissions; // Editorial claim authorization tokens
+  confidence?: number;
+  factors?: any;
   decisionSummary: {
     careerValue: number;
     shortlistingPotential: number;

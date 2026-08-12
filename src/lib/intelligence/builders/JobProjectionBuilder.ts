@@ -118,7 +118,7 @@ export class JobProjectionBuilder {
 
   public static build(opportunity: any): JobProjection {
     const title = opportunity.role || "";
-    const fullText = (opportunity.description || opportunity.normalizedText || "").toLowerCase();
+    let fullText = (opportunity.description || opportunity.normalizedText || opportunity.rawText || opportunity.rawDescription || "").toLowerCase();
     const fullContext = (title + "\n" + fullText);
     const titleLower = title.toLowerCase();
 
@@ -283,6 +283,17 @@ export class JobProjectionBuilder {
     let workModel: "HYBRID" | "REMOTE" | "ON_SITE" | "UNKNOWN" = "UNKNOWN";
     if (operatingContext.hybrid) workModel = "HYBRID";
     else if (operatingContext.remote) workModel = "REMOTE";
+    else if (this.testKeyword(fullText, "on-site") || this.testKeyword(fullText, "onsite") || this.testKeyword(fullText, "office") || this.testKeyword(fullText, "on site")) {
+      workModel = "ON_SITE";
+    }
+
+    const workModelDim = opportunity.dimensions?.find((d: any) => d.key === "workModel");
+    if (workModelDim && workModelDim.jdEvidence?.value) {
+      const val = String(workModelDim.jdEvidence.value).toUpperCase();
+      if (val.includes("HYBRID")) workModel = "HYBRID";
+      else if (val.includes("REMOTE")) workModel = "REMOTE";
+      else if (val.includes("ON-SITE") || val.includes("ON_SITE") || val.includes("OFFICE") || val.includes("ON SITE")) workModel = "ON_SITE";
+    }
 
     const operatingLevel = OperatingLevelClassifier.classify(fullContext, title);
     const workNature = WorkNatureClassifier.classify(fullContext, title);

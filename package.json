@@ -29,8 +29,9 @@
     "eqe:2:ontology": "tsx scripts/validate-ontology.ts",
     "eqe:3:recognition": "tsx scripts/corpus-recognition-report.ts",
     "eqe:4:acceptance": "tsx scripts/test-acceptance.ts",
-    "eqe:5:calibration": "tsx scripts/run-policy-calibration.ts --candidate=candidate.json",
-    "test:eqe": "npm run eqe:1:html && npm run eqe:2:ontology && npm run eqe:3:recognition && npm run eqe:4:acceptance && npm run eqe:5:calibration"
+    "eqe:5:calibration": "tsx scripts/qa-eval.ts",
+    "test:eqe": "npm run eqe:1:html && npm run eqe:2:ontology && npm run eqe:3:recognition && npm run eqe:4:acceptance && npm run eqe:5:calibration",
+    "certify:radar": "tsx scripts/certification/certify.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

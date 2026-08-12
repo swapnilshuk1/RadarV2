@@ -14,7 +14,8 @@ export class EvidenceGate {
   public static evaluate(
     jobText: string,
     roleTitle: string = "",
-    companyName: string = ""
+    companyName: string = "",
+    hasStructuredEvidence: boolean = false
   ): EvidenceGateResult {
     const text = (jobText || "").trim();
     const words = text.length > 0 ? text.split(/\s+/).filter(Boolean) : [];
@@ -22,6 +23,17 @@ export class EvidenceGate {
 
     // Check if text is sparse (< 25 words)
     if (wordCount < 25) {
+      if (hasStructuredEvidence) {
+        return {
+          evaluationStatus: "EVALUATED_WITH_STRUCTURED_EVIDENCE",
+          recommendation: null,
+          priorityScore: 0,
+          structuralConviction: false,
+          uiLabel: "Evaluated (Structured)",
+          isSparse: true
+        };
+      }
+
       const textLower = (roleTitle + " " + companyName + " " + text).toLowerCase();
       
       // Minimal high-confidence identity check: Is role clearly non-commercial / administrative / technical / clinical?
