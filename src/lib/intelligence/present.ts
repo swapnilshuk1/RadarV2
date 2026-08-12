@@ -138,11 +138,11 @@ export function present(
   const recommendationResultViewModel: RecommendationViewModel = {
     score: scoreVal,
     decision: record.verb,
-    policyId: "policy-v1.0",
-    policyVersion: "1.0.0",
+    policyId: "policy-v4.3",
+    policyVersion: "4.3.0",
     explanation: isPass 
-      ? `Evaluated by RADAR V4 strategic framework: ${record.verb.toLowerCase()} (Score: ${scoreStr}).`
-      : `Dynamically evaluated using RADAR V4 strategic framework to ${record.verb.toLowerCase()} (Score: ${scoreStr}).`,
+      ? `Evaluated by RADAR V4.3 strategic framework: ${record.verb.toLowerCase()} (Score: ${scoreStr}).`
+      : `Dynamically evaluated using RADAR V4.3 strategic framework to ${record.verb.toLowerCase()} (Score: ${scoreStr}).`,
     capabilities: mappedCapabilities,
     decisionConfidence,
   };
