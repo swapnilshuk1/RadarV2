@@ -127,7 +127,7 @@ export class JobProjectionBuilder {
     const organizationalIntent = this.inferOrganizationalIntent(fullText, title);
     const executiveMission = this.buildExecutiveMission(title, resolvedCompany, trueExecutiveMandate, organizationalIntent);
 
-    // 1. Executive Identity & Technical Domain Veto Classification
+    // 1. Executive Identity Classification (Positive Domain Validation)
     const isExecutiveTechLeader = /(head of|director|vp|vice president|cto|cio|chief)/i.test(titleLower);
 
     const isTitleTechIC = (!isExecutiveTechLeader && /(\bengineer\b|\bdeveloper\b|\bprogrammer\b|\bfull stack\b|\bfrontend\b|\bbackend\b|\bcoding\b|\barchitect\b)/i.test(titleLower)) ||
@@ -135,26 +135,10 @@ export class JobProjectionBuilder {
 
     const isTitleTechLeadership = isExecutiveTechLeader && /(\btechnology\b|\binformation technology\b|\bit\b|\bcio\b|\bcto\b|\bengineering\b|\bsoftware\b|\bdata\b|\bdigital\b|\bai\b)/i.test(titleLower);
 
-    let primaryIdentity = "Commercial & Marketing Leadership";
-    let identityConf = 0.85;
-
-    if (isTitleTechLeadership) {
-      primaryIdentity = "Technology & Engineering Leadership";
-      identityConf = 0.92;
-    } else if (isTitleTechIC) {
-      primaryIdentity = "Excluded Technical & Industrial Professional Domain";
-      identityConf = 0.95;
-    }
-
     const isTitleOps = this.testKeyword(titleLower, "operations") || 
                        this.testKeyword(titleLower, "supply chain") || 
                        this.testKeyword(titleLower, "logistics") || 
                        this.testKeyword(titleLower, "site strategy");
-
-    if (isTitleOps && !isTitleTechLeadership && !isTitleTechIC) {
-      primaryIdentity = "Operations & Logistics Leadership";
-      identityConf = 0.88;
-    }
 
     // Role-contextual high-confidence non-commercial professional-domain vetoes
     const companyLower = (opportunity.company || "").toLowerCase();
@@ -193,7 +177,22 @@ export class JobProjectionBuilder {
       hasPracticeLeadVeto ||
       hasArchitectureVeto;
 
-    if (isNonCommercialDomain) {
+    // Positive commercial & growth identity recognition
+    const isExplicitCommercialRole = /(\bmarketing\b|\bgrowth\b|\bcommercial\b|\brevenue\b|\bcmo\b|\bcgo\b|\bcro\b|\bgtm\b|\becommerce\b|\be-commerce\b|\bbrand\b|\bperformance\b|\bd2c\b|\bdigital marketing\b|\bmedia sales\b|\bclient partner\b|\bbusiness development\b|\bsales\b|\bp&l\b|\bcategory head\b|\bbusiness head\b|\bcountry head\b|\bcountry director\b|\bgeneral manager\b|\bchief executive\b|\bceo\b|\bchief operating\b|\bcoo\b|\bchief of staff\b|\bkey accounts\b|\baccount director\b|\bcustomer success\b|\bcustomer experience\b|\bmartech\b|\btrade marketing\b|\bmerchandising\b|\bpr\b|\bpublic relations\b|\bcommunications\b)/i.test(titleLower + " " + fullText.substring(0, 300));
+
+    let primaryIdentity = "Excluded Technical & Industrial Professional Domain";
+    let identityConf = 0.85;
+
+    if (isTitleTechLeadership) {
+      primaryIdentity = "Technology & Engineering Leadership";
+      identityConf = 0.92;
+    } else if (isTitleOps && !isExplicitCommercialRole) {
+      primaryIdentity = "Operations & Logistics Leadership";
+      identityConf = 0.88;
+    } else if (isExplicitCommercialRole && !isNonCommercialDomain) {
+      primaryIdentity = "Commercial & Marketing Leadership";
+      identityConf = 0.90;
+    } else {
       primaryIdentity = "Excluded Technical & Industrial Professional Domain";
       identityConf = 0.95;
     }

@@ -146,7 +146,7 @@ export function injectFreshRecords(records: any[]) {
 const candidateBuilder = new CandidateProjectionBuilderImpl();
 
 const ONTOLOGY_VERSION = "14.2.0";
-const ENGINE_VERSION = "4.2.0-domain-veto-fix";
+const ENGINE_VERSION = "4.3.0-positive-domain-validation";
 
 function simpleStringHash(str: string): string {
   let hash = 5381;
