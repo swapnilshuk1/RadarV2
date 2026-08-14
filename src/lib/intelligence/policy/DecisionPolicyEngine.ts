@@ -61,7 +61,10 @@ export class DecisionPolicyEngine {
     jobExecutiveIdentityValue?: string,
     candidateIdentityValue: string = "Commercial & Marketing Leadership",
     jobDescriptionText?: string,
-    hasStructuredEvidence: boolean = false
+    hasStructuredEvidence: boolean = false,
+    evidenceGrounding?: Record<string, string>,
+    dimensions?: Array<{ key: string; jdEvidence?: { value?: string } }>,
+    shortlistingPotentialScore?: number // P3-A: Pre-calculated authoritative SP
   ): DecisionPolicyResult {
     const triggeredRuleIds: string[] = [];
     
@@ -69,15 +72,47 @@ export class DecisionPolicyEngine {
     const descText = (jobDescriptionText || (opportunity as any).originalOpportunity?.normalizedText || "").toLowerCase();
     const allowedClaims: ("PL_SCALE" | "FOUNDER_PROXIMITY" | "TRANSFORMATION" | "GO_TO_MARKET" | "GLOBAL_SCOPE")[] = [];
     
+    // P0-A: Check evidence grounding for structured claims
+    const hasGroundedEvidence = (key: string): boolean => {
+      if (!evidenceGrounding) return false;
+      const grounding = evidenceGrounding[key];
+      return grounding === "SOURCE_GROUNDED" || grounding === "STRUCTURED_TRUSTED";
+    };
+    
+    const getDimensionValue = (key: string): string => {
+      if (!dimensions) return "";
+      const dim = dimensions.find(d => d.key === key);
+      return dim?.jdEvidence?.value?.toLowerCase() || "";
+    };
+    
+    // P&L Scale: check source text or grounded evidence
     if (descText.includes("p&l") || descText.includes("profit and loss") || (opportunity as any).operatingContext?.pnlResponsibility) {
       allowedClaims.push("PL_SCALE");
     }
+    // Also check grounded commercialAccountability evidence
+    if (hasGroundedEvidence("commercialAccountability")) {
+      const val = getDimensionValue("commercialAccountability");
+      if (val.includes("p&l") || val.includes("profit")) {
+        allowedClaims.push("PL_SCALE");
+      }
+    }
+    
     if (descText.includes("founder") || descText.includes("board of directors")) {
       allowedClaims.push("FOUNDER_PROXIMITY");
     }
+    
+    // Transformation: check source text, career trajectory, or grounded mandate evidence
     if (descText.includes("transform") || (career as any).trajectory === "FORWARD") {
       allowedClaims.push("TRANSFORMATION");
     }
+    // P0-A: STRUCTURED_TRUSTED mandate evidence confers TRANSFORMATION claim
+    if (hasGroundedEvidence("mandate")) {
+      const mandateVal = getDimensionValue("mandate");
+      if (mandateVal.includes("transformation") || mandateVal.includes("transform")) {
+        allowedClaims.push("TRANSFORMATION");
+      }
+    }
+    
     if (descText.includes("go-to-market") || descText.includes("gtm") || descText.includes("commercial")) {
       allowedClaims.push("GO_TO_MARKET");
     }
@@ -290,9 +325,25 @@ export class DecisionPolicyEngine {
     if ((career as any).trajectory === "FORWARD") decisionDrivers.push({ factor: "Career Growth", impact: "positive", strength: "high", evidence: "Forward trajectory" });
     if (career.regressionScore > 20) decisionRisks.push({ factor: "Career Regression", impact: "negative", strength: "high", evidence: `Regression score: ${career.regressionScore}` });
 
+    // P1-C: Tailoring effort derived from capability gaps, not match scores
+    // Concept: effort is determined by the gaps requiring bridging, not by overall match percentage
     let tailoringEffort: "LOW" | "MODERATE" | "HIGH" = "LOW";
-    if (capabilityScore < 80 || identityScore < 80) tailoringEffort = "MODERATE";
-    if (capabilityScore < 60 || identityScore < 60) tailoringEffort = "HIGH";
+    
+    // Analyze missing capabilities by tier
+    const missingCoreMandate = capability.missingCapabilities.filter(c => c.includes("[CORE_MANDATE]")).length;
+    const missingExecution = capability.missingCapabilities.filter(c => c.includes("[EXECUTION_CAPABILITY]")).length;
+    const missingTechStack = capability.missingCapabilities.filter(c => c.includes("[TECHNOLOGY_STACK]")).length;
+    const missingDomain = capability.missingCapabilities.filter(c => c.includes("[DOMAIN_FAMILIARITY]")).length;
+    
+    // MODERATE: Execution or technology gaps exist (can be bridged with effort)
+    if (missingExecution > 0 || missingTechStack > 0 || missingDomain > 0) {
+      tailoringEffort = "MODERATE";
+    }
+    
+    // HIGH: Core mandate gaps exist (fundamental to role, harder to bridge)
+    if (missingCoreMandate > 0) {
+      tailoringEffort = "HIGH";
+    }
 
     const trajectoryUpside = (career as any).trajectory === "FORWARD" 
       ? "High Advancement Leverage" 
@@ -356,7 +407,7 @@ export class DecisionPolicyEngine {
       };
     }
 
-    if (capability.overallFit < t.capabilityCutoff) {
+    if ((capability.overallFit ?? 0) < t.capabilityCutoff) {
       return {
         verdict: "PASS",
         evaluationStatus: evaluationStatus,
@@ -411,7 +462,41 @@ export class DecisionPolicyEngine {
 
     const hasStructuralConviction = isCommercialDomain && isExecutiveAltitude && isBusinessGrowth && isEnterpriseScope;
 
+    // P3-A: Career-Value Protection Rule (Rule 1 - Approved)
+    // Detect "easy trap": CV < 50 AND SP >= 80 AND Friction < 10 AND initial PURSUE
+    // Use pre-calculated authoritative SP passed from engine.ts
+    const spHigh = shortlistingPotentialScore !== undefined && shortlistingPotentialScore >= 80; // SP >= 80
+    const frictionLow = locationFriction < 10; // Friction < 10 (strictly less than)
+    const careerValueLow = careerScore < 50; // CV < 50 (strictly less than)
+
+    const wouldBeEasyTrap = spHigh && frictionLow && careerValueLow;
+
+    // P3-A: If this would be an easy trap PURSUE, downgrade to CONSIDER
     if (rawScore >= POLICY_THRESHOLDS.PURSUE && identityScore >= t.identityPursueCutoff) {
+      // P3-A: Career-Value Protection - downgrade easy trap from PURSUE to CONSIDER
+      if (wouldBeEasyTrap) {
+        return {
+          verdict: "CONSIDER",
+          evaluationStatus: evaluationStatus,
+          recommendation: "CONSIDER",
+          rawScore,
+          priorityScore: rawScore,
+          vetoed: false,
+          vetoReason: null,
+          claimPermissions,
+          structuralConviction: false,
+          uiLabel: "Consider",
+          confidences,
+          tailoringEffort,
+          trajectoryUpside: "Limited Career Upside",
+          relativeDifferentiator: "High accessibility but material career regression detected.",
+          triggeredRuleIds: ["R-CONSIDER-CAREER-VALUE-PROTECTION", "R-PURSUE-INTERACTIVE-SCORE"],
+          pipeline: [...pipeline, { stage: "CareerValueProtection", status: "DOWNSCALED", score: rawScore, reason: "Easy trap: CV < 50 + SP >= 80 + Friction < 10" }],
+          decisionDrivers: [...decisionDrivers, { factor: "High Shortlisting Potential", impact: "positive", strength: "high", evidence: `${shortlistingPotentialScore}% SP` }],
+          decisionRisks: [...decisionRisks, { factor: "Low Career Value", impact: "negative", strength: "high", evidence: `CV: ${careerScore}` }]
+        };
+      }
+
       return {
         verdict: "PURSUE",
         evaluationStatus: evaluationStatus,

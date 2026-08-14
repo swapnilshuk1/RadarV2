@@ -18,6 +18,7 @@ import { buildHeadspace } from "./candidate";
 import { applyHeadspaceFilter } from "./headspace-filter";
 import type { RecommendationRecord } from "./record";
 import type { CandidateProjection } from "../domain/candidate_projection";
+import { computeEvidenceGroundingMap, EvidenceGroundingState } from "@/domain/evidence";
 
 // Phase 4 Semantic Imports
 import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
@@ -28,7 +29,11 @@ import { CareerAssessmentEngine } from "./engines/CareerAssessmentEngine";
 import { CareerValueEngine } from "./engines/CareerValueEngine";
 import { LifestyleAssessmentEngine } from "./engines/LifestyleAssessmentEngine";
 import { IdentityAssessmentEngine } from "./engines/IdentityAssessmentEngine";
+
+
 import { DecisionPolicyEngine } from "./policy/DecisionPolicyEngine";
+import { EvidenceGate } from "./gates/EvidenceGate";
+import { calculateShortlistingPotentialFromAssessments } from "./calculators/ShortlistingPotentialCalculator";
 
 const KEY = "radar.opportunities.v3";
 let baseOpportunitiesCache: OpportunitySource[] | null = null;
@@ -260,22 +265,12 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
       continue;
     }
 
-    // 2. Build Job V4 Projection
-    const jobProjV4 = JobProjectionBuilder.build(raw);
-
-    // 3. Evaluate Isolated Assessments
-    const identity = IdentityAssessmentEngine.evaluate(candProjV4, jobProjV4);
-    const capability = CapabilityAssessmentEngine.evaluate(candProjV4, jobProjV4);
-    const opportunityAssess = OpportunityAssessmentEngine.evaluate(candProjV4, jobProjV4);
-    const career = CareerAssessmentEngine.evaluate(candProjV4, jobProjV4);
-    const lifestyle = LifestyleAssessmentEngine.evaluate(candProjV4, jobProjV4);
-
-    // 4. Resolve Verdict via Rules-Based Decision Policy Engine
-    const careerValueBreakdown = CareerValueEngine.evaluate(candProjV4, jobProjV4);
-
+        // PHASE 0.2: EvidenceGate Early Boundary Check
+    // Must occur BEFORE any expensive downstream processing (P0-B + P0-C contract)
     const rawJobText = (raw as any).rawText || (raw as any).rawDescription || (raw as any).description || (raw as any).normalizedText || "";
-    const candIdentityVal = (candProjV4 as any).executiveIdentity?.value || "Commercial & Marketing Leadership";
-
+    const roleTitle = raw.role || "";
+    const companyName = raw.company || "";
+    
     const hasStructuredEvidence = !!(raw.dimensions && raw.dimensions.some((d: any) => {
       if (!d.jdEvidence || d.jdEvidence.status !== "Explicit") return false;
       const evidenceList = d.jdEvidence.evidence;
@@ -284,10 +279,100 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
         const quote = ev?.quote;
         if (!quote) return false;
         const isGrounded = rawJobText.toLowerCase().includes(quote.toLowerCase());
-        const hasTrustedProvenance = ev.provenance === "curated" || ev.provenance === "extractor" || ev.provenance === "gold" || ev.provenance === "fixture" || ev.provenance === "onboarder" || !rawJobText || !ev.provenance;
+        const hasTrustedProvenance = ev.provenance === "curated" || ev.provenance === "extractor" || ev.provenance === "gold" || ev.provenance === "fixture" || ev.provenance === "onboarder";
         return isGrounded || hasTrustedProvenance;
       });
     }));
+
+    const gateResult = EvidenceGate.evaluate(rawJobText, roleTitle, companyName, hasStructuredEvidence);
+
+    // P0-B + P0-C: Early termination for SPARSE_SPEC
+    if (gateResult.evaluationStatus === "SPARSE_SPEC") {
+      const sparseRecord: RecommendationRecord = {
+        jobHash: raw.jobHash,
+        engineVersion: ENGINE_VERSION,
+        recommendationVersion: `${ENGINE_VERSION}:${raw.jobHash}:SPARSE_SPEC`,
+        verb: "SPARSE_SPEC",
+        rawScore: 0,
+        priority: null,  // P0-B: uncertainty encoded as null
+        vetoed: false,   // P0-B: not a veto
+        vetoReason: null,
+        claimPermissions: { allowedClaims: [], explicitUnknowns: [], explicitRisks: [] },
+        confidence: 0.3,
+        factors: { pursuitFriction: 0 },
+        evidenceGrounding: {}, // SPARSE_SPEC has no dimensions to ground
+        decisionSummary: {
+          careerValue: 0,
+          shortlistingPotential: 0,
+          pursuitFriction: 0
+        },
+        decisionDrivers: [],
+        decisionRisks: [{ factor: "Insufficient Evidence", impact: "negative", strength: "high", evidence: "Specification contains fewer than 25 words." }],
+        confidences: { parsing: 0.3, matching: 0.3, recommendation: 0.3 },
+        stability: "Low",
+        headspace: { finalVerb: "SPARSE_SPEC", downgraded: false, reason: undefined },
+        comparison: { higherThan: [], lowerThan: [], differentiators: [], tradeOffs: [] },
+        explanation: {
+          reason: "insufficient-evidence-for-evaluation",
+          dominantFactor: "careerValue",
+          missingEvidence: [],
+          unknowns: ["mandate scope", "capability requirements", "reporting structure"]
+        },
+        trace: {
+          priority: 0,
+          factors: { careerValue: 0, shortlistingPotential: 0, pursuitFriction: 1.0 },
+          verb0: "SPARSE_SPEC",
+          finalVerb: "SPARSE_SPEC",
+          confidence: 0.3,
+          stability: "Low",
+          // P0-C: Pipeline contains ONLY EvidenceGate
+          pipeline: [{ stage: "EvidenceGate", status: "SPARSE_SPEC", score: null, reason: "Needs More Signal: < 25 words in job specification." }],
+          evidenceMapping: [],
+          // P0-C: No careerValueBreakdown for SPARSE_SPEC
+          careerValueBreakdown: undefined as any,
+          headspace: { finalVerb: "SPARSE_SPEC", downgraded: false, reason: undefined },
+          missing: ["evidence"],
+          timestamp: new Date().toISOString()
+        } as any,
+        esi: undefined,
+        diligenceStatus: "FAILED"
+      };
+      records.push(sparseRecord);
+      // Skip ALL expensive downstream processing (Identity, Capability, Career assessments)
+      continue;
+    }
+
+    // Non-SPARSE_SPEC: Continue with normal pipeline
+    // 2. Build Job V4 Projection
+    const jobProjV4 = JobProjectionBuilder.build(raw);
+
+    // P0-A: Compute evidence grounding for all dimensions (needed for record and downstream)
+    const evidenceGrounding = computeEvidenceGroundingMap(raw.dimensions || [], rawJobText);
+
+    // 3. Evaluate Isolated Assessments
+    const identity = IdentityAssessmentEngine.evaluate(candProjV4, jobProjV4);
+    const capability = CapabilityAssessmentEngine.evaluate(candProjV4, jobProjV4);
+    const opportunityAssess = OpportunityAssessmentEngine.evaluate(candProjV4, jobProjV4);
+    const career = CareerAssessmentEngine.evaluate(candProjV4, jobProjV4);
+    const lifestyle = LifestyleAssessmentEngine.evaluate(candProjV4, jobProjV4);
+
+    // P3-A: Calculate authoritative Shortlisting Potential BEFORE DecisionPolicyEngine
+    // This breaks the circular dependency by using pre-decision assessments only
+    const recommendationConfidence = (capability.matchingConfidence || 0.8);
+    const shortlistingPotentialCalc = calculateShortlistingPotentialFromAssessments(
+      identity,
+      capability,
+      career,
+      opportunityAssess,
+      recommendationConfidence
+    );
+    const shortlistingPotentialScore = shortlistingPotentialCalc.score;
+
+    // 4. Resolve Verdict via Rules-Based Decision Policy Engine
+    // P3-A: Pass SP to DecisionPolicyEngine for Easy Trap rule
+    const careerValueBreakdown = CareerValueEngine.evaluate(candProjV4, jobProjV4);
+
+    const candIdentityVal = (candProjV4 as any).executiveIdentity?.value || "Commercial & Marketing Leadership";
 
     const policyResult = DecisionPolicyEngine.evaluate(
       identity,
@@ -298,7 +383,10 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
       jobProjV4.executiveIdentity.value,
       candIdentityVal,
       rawJobText,
-      hasStructuredEvidence
+      hasStructuredEvidence,
+      undefined, // evidenceGrounding - not used
+      undefined, // dimensions - not used
+      shortlistingPotentialScore // P3-A: Pass authoritative SP
     );
 
     const finalVerb = policyResult.verdict;
@@ -329,9 +417,11 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
       factors: {
         pursuitFriction: (lifestyle as any).locationFrictionPenalty || 0
       },
+      evidenceGrounding,
+      // P3-A: decisionSummary.shortlistingPotential now uses authoritative P2-C calculation
       decisionSummary: {
-        careerValue: capability.overallFit,
-        shortlistingPotential: finalScore !== null ? finalScore : 0,
+        careerValue: (career as any).careerScore ?? 0,
+        shortlistingPotential: shortlistingPotentialScore,
         pursuitFriction: (lifestyle as any).locationFrictionPenalty || 0
       },
       decisionDrivers: policyResult.decisionDrivers,
@@ -351,29 +441,32 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
         missingEvidence: rawGaps.map((g: any) => g.key),
         unknowns: []
       },
+      // P3-A: trace.factors.shortlistingPotential now uses the same authoritative value
+      // P3-A: Store full SP calculation for synthesizer consumption
       trace: {
-        priority: finalScore !== null ? finalScore : 0,
-        factors: {
-          careerValue: capability.overallFit,
-          shortlistingPotential: capability.overallFit,
-          pursuitFriction: 1.0
-        },
-        verb0: finalVerb,
-        finalVerb,
-        confidence: policyResult.confidences.recommendation,
-        stability: "High",
-        pipeline: policyResult.pipeline,
-        evidenceMapping: capability.matches || [],
-        careerValueBreakdown,
-        headspace: {
-          finalVerb,
-          downgraded: false,
-          reason: undefined
-        },
-        missing: rawGaps.map((g: any) => g.key),
-        timestamp: new Date().toISOString()
-      },
-      esi: capability.overallFit,
+              priority: finalScore !== null ? finalScore : 0,
+              factors: {
+                careerValue: (career as any).careerScore ?? 0,
+                shortlistingPotential: shortlistingPotentialScore,
+                pursuitFriction: 1.0
+              },
+              shortlistingPotentialCalculation: shortlistingPotentialCalc,
+              verb0: finalVerb,
+              finalVerb,
+              confidence: policyResult.confidences.recommendation,
+              stability: "High",
+              pipeline: policyResult.pipeline,
+              evidenceMapping: capability.matches || [],
+              careerValueBreakdown,
+              headspace: {
+                finalVerb,
+                downgraded: false,
+                reason: undefined
+              },
+              missing: rawGaps.map((g: any) => g.key),
+              timestamp: new Date().toISOString()
+      } as any,
+      esi: capability.overallFit ?? 0,
       diligenceStatus: "READY"
     };
 
