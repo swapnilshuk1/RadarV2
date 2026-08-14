@@ -2,13 +2,15 @@
 // and future debugging. The UI does not need it; tests will.
 
 import type { DecisionVerb } from "@/data/opportunity-fixtures";
-import type { PriorityResult } from "./priority";
+import type { DecisionFactors } from "./record";
 import type { Stability } from "./stability";
 import type { HeadspaceOutcome } from "./headspace-filter";
 
+import type { ShortlistingPotentialCalculation } from "./calculators/ShortlistingPotentialCalculator";
+
 export type DecisionTrace = Readonly<{
   priority: number;
-  factors: PriorityResult["factors"];
+  factors: DecisionFactors;
   verb0: DecisionVerb;        // before headspace
   finalVerb: DecisionVerb;
   confidence: number;
@@ -16,10 +18,12 @@ export type DecisionTrace = Readonly<{
   headspace: HeadspaceOutcome;
   missing: string[];
   timestamp: string;
+  // P3-A: Full SP calculation for synthesizer consumption
+  shortlistingPotentialCalculation?: ShortlistingPotentialCalculation;
 }>;
 
 export function buildTrace(input: {
-  priority: PriorityResult;
+  priority: { priority: number; factors: DecisionFactors };
   verb0: DecisionVerb;
   finalVerb: DecisionVerb;
   confidence: number;

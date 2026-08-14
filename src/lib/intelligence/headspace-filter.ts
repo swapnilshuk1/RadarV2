@@ -11,7 +11,7 @@
 //
 // Connections:
 // - candidate.ts -> buildHeadspace()
-// - pipeline.ts -> runPipeline() -> applyHeadspaceFilter()
+// - engine.ts -> runEngine() -> applyHeadspaceFilter()
 // ===================================================================
 
 import type { DecisionVerb } from "@/data/opportunity-fixtures";

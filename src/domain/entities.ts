@@ -204,7 +204,7 @@ export interface DecisionImpact {
 }
 
 export interface DecisionConfidence {
-  overall: number;        // 0.0 to 1.0 calibrated decision confidence
+  overall: number | null; // 0.0 to 1.0 calibrated decision confidence; null when unavailable
   stability: number;      // 0.0 to 1.0 likelihood of recommendation hold
   limitingDimensions: DecisionImpact[]; // Dimensions capping overall confidence
   explanation: string;    // Actionable plain-English guidance

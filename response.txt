@@ -1,0 +1,588 @@
+With these diagnostics, we can now move from “six failing tests” to a much more definitive architectural diagnosis.
+
+And there is one finding that is more serious than the three you initially summarized:
+
+SPARSE_SPEC is being correctly classified at the policy boundary, but the opportunity is still being evaluated, enriched, presented, and ranked as if it were a normal evaluated opportunity.
+
+The Golden Trace makes that visible.
+
+1. The strongest finding: SPARSE_SPEC is not actually isolated
+
+For j-cdda239800fe, the engine record says:
+
+recommendation = SPARSE_SPEC
+priority = null
+Evidence Gate says SPARSE_SPEC
+pipeline contains only EvidenceGate
+
+That part is good.
+
+But the same record still contains:
+
+careerValueBreakdown
+  titleProgression
+  scopeExpansion
+  commercialScale
+  brandSignal
+  futureOptionality
+
+headspace
+missing[]
+
+even though the pipeline supposedly stopped at the Evidence Gate.
+
+More importantly, the shortlist then contains a fully populated set of dimensions and candidate proofs:
+
+requiredLevel
+reportingLine
+mandate
+commercialAccountability
+functionalScope
+geography
+workModel
+technologyStack
+
+with things such as:
+
+"P&L Scale matches"
+"Full growth capability stack"
+"Platform-native experience"
+
+despite the source text being empty.
+
+This is the architectural defect.
+
+Your Evidence Gate is currently acting as a decision veto, not a true pipeline boundary.
+
+The intended contract was:
+
+RAW JD
+   ↓
+Evidence Gate
+   ↓
+SPARSE_SPEC
+   ↓
+STOP
+
+What you actually have is closer to:
+
+RAW JD
+   ↓
+Evidence Gate → SPARSE_SPEC
+   ↓
+other enrichment / projection work
+   ↓
+career analysis
+   ↓
+dimension enrichment
+   ↓
+editorial generation
+   ↓
+shortlist
+
+So the system says:
+
+"I don't have enough evidence to decide."
+
+while simultaneously generating material that looks like evidence-backed evaluation.
+
+That's precisely the kind of ambiguity we were trying to eliminate.
+
+2. There is also a subtle but important semantic bug: vetoed = true
+
+The sparse record has:
+
+recommendation: SPARSE_SPEC
+priority: null
+vetoed: true
+vetoReason: G-EVIDENCE-GATE-SPARSE-SPEC
+
+That conflicts with your architecture.
+
+SPARSE_SPEC is not a veto.
+
+A veto means:
+
+"We have sufficient evidence and have determined this opportunity should not proceed."
+
+SPARSE_SPEC means:
+
+"We don't have sufficient evidence to make that determination."
+
+Those are epistemically opposite.
+
+I would therefore make this invariant explicit:
+
+SPARSE_SPEC:
+  evaluationStatus = "SPARSE_SPEC"
+  recommendation = null
+  priorityScore = null
+  vetoed = false
+  vetoReason = null
+
+If you need to explain why the pipeline stopped:
+
+evaluationBlockReason = "G-EVIDENCE-GATE-SPARSE-SPEC"
+
+That preserves the distinction:
+
+BLOCKED BY INSUFFICIENT EVIDENCE
+             ≠
+             VETOED
+
+This will likely eliminate part of the presenter/shortlist semantic confusion too.
+
+3. The presenter is definitely violating the sparse contract
+
+The presenter converts:
+
+priority = null
+
+into:
+
+recommendationResult.score = 0
+
+and produces:
+
+decisionConfidence.overall = 0.8
+stability = 0.75
+
+That is a serious UI truthfulness issue.
+
+You explicitly established:
+
+SPARSE_SPEC → no mathematical priority score.
+
+Yet the UI model contains:
+
+score: 0
+
+Even if the UI visually displays "N/A", the internal presentation contract has manufactured a numeric score.
+
+Worse, the confidence says 0.8, while the actual engine confidence is 0.3.
+
+So the presenter isn't merely formatting the engine result.
+
+It is re-evaluating / synthesizing semantics.
+
+That validates the P0 presenter finding.
+
+4. The shortlist is not a projection of the decision record
+
+This is probably the most important explanation for the screenshot you showed earlier.
+
+Your record says:
+
+SPARSE_SPEC
+priority = null
+
+But the shortlist item has:
+
+decision = SPARSE_SPEC
+recommendation = "Verify scope..."
+recommendationResult.score = 0
+recommendationArchetype = "Strategic Bet"
+mandateArchetype = "Marketing Leadership"
+tailoringEffort = "HIGH"
+
+That is too much semantic material for something that supposedly has not earned a decision.
+
+In particular:
+
+recommendationArchetype: "Strategic Bet"
+
+is dangerous.
+
+A user can reasonably interpret that as:
+
+RADAR thinks this is a strategic opportunity.
+
+But the engine explicitly says:
+
+insufficient evidence to decide.
+
+Likewise:
+
+mandateArchetype: Marketing Leadership
+
+is a substantive classification.
+
+For SPARSE_SPEC, the UI should instead be something like:
+
+Needs More Signal
+
+Why:
+The posting is too sparse to determine mandate, authority,
+commercial scope or reporting line.
+
+Missing:
+• Reporting line
+• Mandate
+• Commercial accountability
+• Functional scope
+
+Next step:
+[Paste full JD] [Add what you know]
+
+That's it.
+
+No:
+
+Strategic Bet
+Marketing Leadership
+score
+confidence
+capability alignment
+career value
+tailoring effort
+
+unless those are explicitly marked as user-authorized provisional.
+
+5. The 4,226 evidence failures are even more revealing
+
+The diagnostic found:
+
+4,226 ungrounded evidence quotes.
+
+The examples are not obscure generated sentences.
+
+They're fundamental decision facts:
+
+"Growth Strategy"
+"Noida"
+"Director"
+"Mumbai"
+"On-site"
+"P&L Management"
+"Brand Strategy"
+"COO"
+"Salesforce"
+"Senior Vice President"
+"Chief Marketing Officer"
+
+And the diagnostic reports:
+
+rawSnippet: ""
+
+for these records.
+
+This changes my diagnosis slightly.
+
+I would not simply fix hasTrustedProvenance.
+
+We first need to determine why the raw source is empty while structured dimensions exist.
+
+Because the likely architecture is:
+
+Scraped opportunity
+       ↓
+rawText missing / lost
+       ↓
+LLM / enrichment dimensions still populated
+       ↓
+structured evidence exists
+       ↓
+Decision engine consumes it
+
+If that's true, changing provenance logic alone only makes the system correctly reject thousands of records.
+
+That's useful—but it doesn't repair the upstream data contract.
+
+6. The provenance taxonomy itself needs tightening
+
+Your intended provenance taxonomy was:
+
+SOURCE_EVIDENCE
+EMPLOYER_POSTING
+USER_PROVIDED_EVIDENCE
+USER_AUTHORIZED_PROVISIONAL
+INFERRED
+
+But the Golden Trace has:
+
+provenance: "llm"
+
+for dimension evidence.
+
+That is not a meaningful epistemic provenance class.
+
+llm describes how something was extracted, not where the fact came from.
+
+These are different dimensions:
+
+source:
+  SOURCE_EVIDENCE
+
+extraction:
+  LLM
+
+grounding:
+  DIRECT_SPAN
+
+versus:
+
+source:
+  INFERRED
+
+extraction:
+  LLM
+
+grounding:
+  NONE
+
+I would strongly recommend separating:
+
+provenanceSource
+extractionMethod
+groundingStatus
+
+rather than putting everything into one provenance field.
+
+7. Candidate causality is unequivocally broken
+
+The missing-trace diagnostic found:
+
+1,514 records with both candidateProjectionHash and opportunityContentHash null.
+
+That isn't a few edge cases.
+
+It's effectively the entire evaluated corpus.
+
+And importantly, policySignature does exist:
+
+4.3.0-positive-domain-validation:j-...:PURSUE
+
+So the system knows which policy/verdict was used, but cannot establish:
+
+which candidate projection + opportunity version produced it.
+
+That's unacceptable for RADAR.
+
+The minimum record identity should be:
+
+OpportunityContentHash
+CandidateProjectionHash
+PolicySignature
+EngineVersion
+OntologyVersion
+
+Then:
+
+DecisionPackageIdentity =
+hash(
+  candidate +
+  opportunity +
+  policy +
+  ontology +
+  engine
+)
+
+Without that, the shortlist screenshot cannot be treated as a trustworthy representation of the current candidate's evaluation.
+
+8. The career-regression adversarial test is not currently executable
+
+This is another important finding.
+
+Your career-regression diagnostic says:
+
+No explicit career regression pipeline stage found.
+
+It finds career dimensions such as:
+
+titleProgression
+scopeExpansion
+commercialScale
+brandSignal
+futureOptionality
+
+but not an explicit:
+
+career.regressionScore
+
+or equivalent policy stage.
+
+That means we cannot yet claim that Adversarial Pair B has been proven.
+
+You previously defined:
+
+CareerRegressionScore = 60
++
+Structural Conviction
+=
+PASS
+
+But the current runtime evidence doesn't demonstrate that such a veto exists as an independent, auditable decision gate.
+
+That's a critical distinction:
+
+A benchmark result showing PASS is not proof that the career-regression veto fired.
+
+We need an explicit trace such as:
+
+Career
+  score: 60
+  regressionScore: 60
+  status: VETO
+  ruleId: G-CAREER-REGRESSION-VETO
+
+followed by:
+
+StructuralConviction
+  evaluated: false
+  bypassed: true
+  reason: HARD_VETO
+
+Until that exists, Structural Conviction isolation remains unproven.
+
+9. What I would now classify as the authoritative defects
+ID	Severity	Defect	Diagnosis
+E-01	P0	Raw source/evidence separation broken	4,226 structured facts aren't grounded
+E-02	P0	SPARSE_SPEC isn't truly isolated	Downstream career/dimension/editorial processing continues
+E-03	P0	Sparse state represented as veto	vetoed=true is semantically wrong
+E-04	P0	Candidate identity absent from records	1,514 records lack candidate/opportunity hashes
+E-05	P0	UNKNOWN capability = 0.50	Uncertainty masquerades as fit
+E-06	P0	Presenter mutates semantics	null → 0 and confidence changes
+E-07	P0	Shortlist isn't a pure projection	Adds archetypes/recommendations/semantic content
+E-08	P0	Career regression isn't independently auditable	Adversarial Pair B isn't actually proven
+E-09	P1	llm used as epistemic provenance	Extraction mechanism conflated with evidence source
+E-10	P1	Policy signature exists but input identity doesn't	Versioned policy without causal input lineage
+10. The most important architectural correction
+
+I would now change our Phase-0 architecture from:
+
+Evidence Gate
+   ↓
+Decision Policy
+
+to an explicit evaluation lifecycle:
+
+                    ┌───────────────────┐
+                    │   RAW OPPORTUNITY │
+                    └─────────┬─────────┘
+                              ↓
+                    ┌───────────────────┐
+                    │ EVIDENCE CONTRACT │
+                    └─────────┬─────────┘
+                              ↓
+                     ┌────────────────┐
+                     │  Evidence Gate │
+                     └───────┬────────┘
+                             │
+                ┌────────────┴────────────┐
+                ↓                         ↓
+          SPARSE_SPEC                SUFFICIENT
+                │                         │
+                │                         ↓
+                │                 Full Evaluation
+                │                         │
+                │                 ┌───────┴───────┐
+                │                 ↓               ↓
+                │              VETO          RANKING
+                │                 │               │
+                │                 └───────┬───────┘
+                │                         ↓
+                │                    DECISION
+                │
+                ↓
+        ENRICHMENT / USER INPUT
+                │
+                ↓
+        Re-enter Evidence Gate
+
+Nothing below the right-hand branch should execute for SPARSE_SPEC.
+
+And the presentation architecture should become:
+
+RecommendationRecord
+        ↓
+DecisionPackage
+        ↓
+Pure Presenter
+        ↓
+Shortlist
+
+not:
+
+RecommendationRecord
+      ↘
+       Presenter → new semantics
+      ↘
+       Shortlist → new semantics
+11. The next test I would build is the real "killer test"
+
+Before fixing all 4,226 records, create one deterministic pathological opportunity.
+
+Fixture
+rawText = ""
+title = "Chief Marketing Officer"
+structured dimensions = rich
+candidate = rich
+
+Then assert:
+
+expect(record.evaluationStatus).toBe("SPARSE_SPEC")
+expect(record.recommendation).toBeNull()
+expect(record.priority).toBeNull()
+expect(record.vetoed).toBe(false)
+
+expect(record.trace.pipeline).toHaveLength(1)
+expect(record.trace.pipeline[0].stage).toBe("EvidenceGate")
+
+expect(record.trace.candidateProjectionHash).toBeDefined()
+expect(record.trace.opportunityContentHash).toBeDefined()
+
+And critically:
+
+expect(record.trace.careerValueBreakdown).toBeUndefined()
+expect(record.trace.evidenceMapping).toEqual([])
+
+Then:
+
+const presented = present(...)
+
+must satisfy:
+
+expect(presented.opportunity.recommendationResult.score).toBeNull()
+expect(presented.opportunity.decision).toBe("SPARSE_SPEC")
+expect(presented.opportunity.vetoed).toBe(false)
+
+And finally:
+
+const shortlist = OpportunityProvider.list(...)
+
+const item = shortlist.find(...)
+expect(item.recommendationResult.score).toBeNull()
+expect(item.decision).toBe("SPARSE_SPEC")
+expect(item.recommendationArchetype).toBeUndefined()
+expect(item.mandateArchetype).toBeUndefined()
+
+That single test would prove the entire Evidence → Engine → Presenter → Shortlist boundary.
+
+Bottom line
+
+We have now found something much more fundamental than a scoring bug.
+
+The decision engine is becoming more correct, but the data/presentation architecture around it is still leaking semantics.
+
+The good news is that your core Evidence Gate appears to be doing its most important job: the Golden Trace correctly produces SPARSE_SPEC with priority = null.
+
+The bad news is that everything around that gate is not respecting the boundary.
+
+So I would freeze all scoring/calibration work now.
+
+Phase-0 remediation order should be:
+
+1. Fix the lifecycle boundary for SPARSE_SPEC
+2. Fix raw evidence/provenance architecture
+3. Make candidate/opportunity identity mandatory
+4. Remove numeric UNKNOWN semantics
+5. Make Presenter lossless
+6. Make Shortlist a pure projection
+7. Implement and explicitly trace Career Regression veto
+8. Only then resume benchmark/scoring calibration
+
+Until those are green, a better benchmark score is potentially misleading.
+
+And notably, your original Phase-0 harness was designed precisely around these contracts—Evidence Purity, Provenance, Candidate Causality, UNKNOWN semantics, Presenter Fidelity, and Shortlist Integrity.
+
+This is now a credible architectural red state, not a testing nuisance.

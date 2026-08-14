@@ -121,13 +121,21 @@ export class SemanticNaturalLanguageResolver {
   public static resolveActionRecommendation(
     decision: "PURSUE" | "CONSIDER" | "PASS",
     role: string,
-    company: string
+    company: string,
+    tailoringEffort?: "LOW" | "MODERATE" | "HIGH"
   ): string {
+    // P1-F: Tailoring effort influences action intensity
+    const effortContext = tailoringEffort === "HIGH" 
+      ? " Material capability gaps require bridging effort; prioritize gap-closing in your positioning."
+      : tailoringEffort === "MODERATE"
+        ? " Some capability alignment work needed; highlight transferable precedents."
+        : "";
+
     if (decision === "PURSUE") {
-      return `Proceed. Priority mandate for ${role} at ${company}; position justifies immediate screening call to confirm reporting line and capital allocation.`;
+      return `Proceed. Priority mandate for ${role} at ${company}; position justifies immediate screening call to confirm reporting line and capital allocation.${effortContext}`;
     }
     if (decision === "CONSIDER") {
-      return `Consider. Conduct a single screening conversation to verify true P&L scope and budget authority at ${company} before allocating further prep time.`;
+      return `Consider. Conduct a single screening conversation to verify true P&L scope and budget authority at ${company} before allocating further prep time.${effortContext}`;
     }
     return `Pass. Operating remit for ${role} at ${company} sits below your target commercial altitude; preserve search bandwidth for full-scope mandates.`;
   }

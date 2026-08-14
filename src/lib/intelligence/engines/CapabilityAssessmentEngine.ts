@@ -163,10 +163,10 @@ export class CapabilityAssessmentEngine {
         evidenceCount: 0,
         failureCode: "EMPTY_CAPABILITIES",
         evidenceSummary: { extractedSignals: 0, inferredSignals: 0, ignoredSignals: 0, conflictingSignals: 0 },
-        overallFit: 0.50, // Neutral uncertainty baseline
-        capabilityPotential: 0.50,
-        evidenceStrength: 0.50,
-        matchingConfidence: 0.50,
+        overallFit: null, // Unknown - not neutral
+        capabilityPotential: null,
+        evidenceStrength: 0,
+        matchingConfidence: 0,
         matchedCapabilities: [],
         missingCapabilities: [],
         matches: []
@@ -233,12 +233,14 @@ export class CapabilityAssessmentEngine {
 
     // Determine 3-state Capability Evidence
     const hasParsedCapabilities = capsToEvaluate.length > 0 && capsToEvaluate.some(c => c.name && c.name.length > 2);
-    const evidenceState = !hasParsedCapabilities || richness.sufficiency === "INSUFFICIENT" 
+    // If capabilities exist but job evidence richness is insufficient, still evaluate capabilities
+    // UNAVAILABLE only when NO capabilities to evaluate
+    const evidenceState = !hasParsedCapabilities 
       ? "UNAVAILABLE" 
       : (matchedCapabilities.length > 0 ? "SUFFICIENT" : "PARTIAL");
 
-    // If evidence is unavailable, overallFit is neutral 0.50 (Uncertainty)
-    const overallFit = evidenceState === "UNAVAILABLE" ? 0.50 : rawFit;
+    // overallFit is null when evidence is unavailable (no capabilities to evaluate)
+    const overallFit = evidenceState === "UNAVAILABLE" ? null : rawFit;
 
     const rawConf = Number((0.92 - (missingCapabilities.length * 0.02)).toFixed(2));
     const matchingConfidence = isNaN(rawConf) ? 0.80 : Math.max(0.20, rawConf);

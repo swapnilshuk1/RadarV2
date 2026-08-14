@@ -2,6 +2,9 @@
 
 export type OperatingLevel = "EXECUTIVE" | "STRATEGIC" | "MANAGERIAL" | "TACTICAL" | "INDIVIDUAL_CONTRIBUTOR" | "UNKNOWN";
 
+// P0-E: Candidate Seniority Level - distinct from OperatingLevel
+export type CandidateSeniorityLevel = "DIRECTOR" | "VP_FUNCTIONAL" | "C_SUITE" | "UNKNOWN";
+
 export type WorkNature = "EXECUTIVE_WORK" | "STRATEGIC_WORK" | "MANAGERIAL_WORK" | "TACTICAL_WORK" | "SPECIALIST_WORK" | "UNKNOWN";
 
 export type DecisionAuthority = "ENTERPRISE" | "BUSINESS_UNIT" | "FUNCTION" | "TEAM" | "SELF" | "UNKNOWN";
@@ -62,9 +65,9 @@ export interface EvidenceMatch {
 export type CapabilityEvidenceState = "SUFFICIENT" | "PARTIAL" | "UNAVAILABLE";
 
 export interface CapabilityAssessment extends AssessmentMetadata {
-  overallFit: number;               // Composite balanced score (0.0 to 1.0)
+  overallFit: number | null;          // Composite balanced score (0.0 to 1.0), null when UNAVAILABLE
   evidenceState?: CapabilityEvidenceState; // Explicit 3-state evidence tracker
-  capabilityPotential?: number;     // Executive potential fit (0.0 to 1.0)
+  capabilityPotential?: number | null; // Executive potential fit (0.0 to 1.0), null when UNAVAILABLE
   evidenceStrength?: number;        // Direct proof evidence density (0.0 to 1.0)
   matchedCapabilities: string[];
   missingCapabilities: string[];

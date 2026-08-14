@@ -6,7 +6,6 @@
 // everything after it is presentation.
 
 import type { DecisionVerb } from "@/data/opportunity-fixtures";
-import type { PriorityResult } from "./priority";
 import type { Stability } from "./stability";
 import type { ComparativeAnalysis } from "./comparative";
 import type { ExplanationObject } from "./explain";
@@ -30,6 +29,16 @@ export interface ClaimPermissions {
   explicitRisks: string[];
 }
 
+// Decision factor structure - defines the three core dimensions of priority calculation
+export type DecisionFactors = Readonly<{
+  careerValue: number;
+  shortlistingPotential: number;
+  pursuitFriction: number;
+}>;
+
+// Dominant factor in the decision - which of the three factors had the most influence
+export type DominantFactor = "careerValue" | "shortlistingPotential" | "pursuitFriction";
+
 export type RecommendationRecord = Readonly<{
   jobHash: string;
   engineVersion: string;
@@ -42,11 +51,9 @@ export type RecommendationRecord = Readonly<{
   claimPermissions?: ClaimPermissions; // Editorial claim authorization tokens
   confidence?: number;
   factors?: any;
-  decisionSummary: {
-    careerValue: number;
-    shortlistingPotential: number;
-    pursuitFriction: number;
-  };
+  /** P0-A: Evidence grounding state per dimension key */
+  evidenceGrounding?: Record<string, import("@/domain/evidence").EvidenceGroundingState>;
+  decisionSummary: DecisionFactors;
   decisionDrivers: DecisionDriver[];
   decisionRisks: DecisionDriver[];
   confidences: {

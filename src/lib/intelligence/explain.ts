@@ -2,18 +2,18 @@
 // The Narrative Formatter is the sole prose author.
 
 import { dim, type OpportunityIntelligence } from "./schema";
-import type { PriorityResult } from "./priority";
+import type { DecisionFactors, DominantFactor } from "./record";
 
 export type ExplanationObject = Readonly<{
   reason: string;             // structured tag: e.g. "career-value-dominant"
-  dominantFactor: PriorityResult["dominantFactor"];
+  dominantFactor: DominantFactor;
   missingEvidence: string[];  // dimension keys with status = Missing
   unknowns: string[];         // dimension keys where JD is silent AND market absent
 }>;
 
 export function explain(input: {
   oi: OpportunityIntelligence;
-  priority: PriorityResult;
+  priority: { priority: number; factors: DecisionFactors; dominantFactor: DominantFactor };
   marketAvailable: boolean;
 }): ExplanationObject {
   const missing: string[] = [];

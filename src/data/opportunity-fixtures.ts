@@ -113,6 +113,8 @@ export type Opportunity = {
   primaryRisk?: string;
   tailoringEffort?: "LOW" | "MODERATE" | "HIGH";
   capabilityAlignmentText?: string;
+  /** P1-F: Executive-facing recommended action based on decision + tailoring effort */
+  recommendedAction?: string;
 };
 
 /** Derive the apply URL from the scraped source when a direct one wasn't captured. */

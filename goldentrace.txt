@@ -1,0 +1,1568 @@
+npx tsx scripts/run-golden-trace-clean.ts j-cdda239800fe j-f5873c10d6cd j-4d8a0ef3fad4 j-fd09a5e8a65a j-9bc1610fec69
+
+=== GOLDEN TRACE for j-cdda239800fe ===
+RECORD: {
+  "jobHash": "j-cdda239800fe",
+  "recommendation": "SPARSE_SPEC",
+  "rawScore": 0,
+  "priority": null,
+  "vetoed": true,
+  "vetoReason": "G-EVIDENCE-GATE-SPARSE-SPEC",
+  "policySignature": "4.3.0-positive-domain-validation:j-cdda239800fe:SPARSE_SPEC",
+  "trace": {
+    "priority": 0,
+    "factors": {
+      "careerValue": 0.5,
+      "shortlistingPotential": 0.5,
+      "pursuitFriction": 1
+    },
+    "verb0": "SPARSE_SPEC",
+    "finalVerb": "SPARSE_SPEC",
+    "confidence": 0.3,
+    "stability": "High",
+    "pipeline": [
+      {
+        "stage": "EvidenceGate",
+        "status": "SPARSE_SPEC",
+        "score": null,
+        "reason": "Needs More Signal: < 25 words in job specification."
+      }
+    ],
+    "evidenceMapping": [],
+    "careerValueBreakdown": {
+      "titleProgression": {
+        "value": 0.2,
+        "reason": "Title Regression to MANAGERIAL",
+        "status": "KNOWN"
+      },
+      "scopeExpansion": {
+        "value": 0.5,
+        "reason": "Similar Scope",
+        "status": "KNOWN"
+      },
+      "commercialScale": {
+        "value": 0.3,
+        "reason": "Cost Center / No Commercial Scope",
+        "status": "KNOWN"
+      },
+      "brandSignal": {
+        "value": 0.5,
+        "reason": "Brand metadata unavailable",
+        "status": "UNKNOWN"
+      },
+      "futureOptionality": {
+        "value": 0.4,
+        "reason": "Title regression limits immediate external optionality",
+        "status": "ESTIMATED"
+      }
+    },
+    "headspace": {
+      "finalVerb": "SPARSE_SPEC",
+      "downgraded": false
+    },
+    "missing": [
+      "reportingLine",
+      "mandate",
+      "commercialAccountability",
+      "functionalScope",
+      "geography",
+      "workModel",
+      "technologyStack"
+    ],
+    "timestamp": "2026-08-13T04:06:13.470Z"
+  }
+}
+SOURCE rawText snippet: 
+PRESENTER (selected): {
+  "decision": "SPARSE_SPEC",
+  "recommendationResult": {
+    "score": 0,
+    "decision": "SPARSE_SPEC",
+    "policyId": "policy-v4.3",
+    "policyVersion": "4.3.0",
+    "explanation": "Dynamically evaluated using RADAR V4.3 strategic framework to sparse_spec (Score: N/A).",
+    "capabilities": [],
+    "decisionConfidence": {
+      "overall": 0.8,
+      "stability": 0.75,
+      "limitingDimensions": [],
+      "explanation": "Low alignment; structural level or functional domain mismatch limits suitability."
+    }
+  },
+  "policyVersion": "4.3.0",
+  "diligenceStatus": "READY"
+}
+SHORTLIST ITEM: {
+  "extractorVersion": "1.0.0",
+  "promptVersion": "1.0.0",
+  "jobHash": "j-cdda239800fe",
+  "role": "Marketing Manager (Remote)",
+  "company": "Pirsonal",
+  "location": "Remote in Unknown, Karnataka",
+  "postedRelative": "Posted recently",
+  "scrapedFrom": "Indeed",
+  "primaryConcern": null,
+  "applyUrl": "https://in.indeed.com/rc/clk?jk=2240025f45f6cd2f",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "Manager",
+        "status": "Inferred",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "medium",
+        "extractorId": "gemini-2.5-flash@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Seniority check",
+        "detail": "Matches target title list"
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "reportingLine@2.0.0"
+      },
+      "candidateProof": {
+        "headline": "Reporting line alignment",
+        "detail": "CxO / MD reporting proven"
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "mandate@2.0.2"
+      },
+      "candidateProof": {
+        "headline": "Mandate alignment",
+        "detail": "Lifecycle stage matches profile"
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "commercialAccountability@2.1.0"
+      },
+      "candidateProof": {
+        "headline": "P&L Scale matches",
+        "detail": "Prior P&L / budget precedent"
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "functionalScope@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Competency match",
+        "detail": "Full growth capability stack"
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "geography@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Location match",
+        "detail": "Target market listing matches"
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "workModel@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Work model preference",
+        "detail": "Preferred work model"
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "technologyStack@2.0.0"
+      },
+      "candidateProof": {
+        "headline": "Platform stack",
+        "detail": "Platform-native experience"
+      }
+    }
+  ],
+  "telemetry": {
+    "deterministicMs": 1,
+    "llmMs": 26207,
+    "llmCalled": true,
+    "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+  },
+  "decision": "SPARSE_SPEC",
+  "recommendation": "Verify scope and trajectory for this sparse posting. Available evidence is limited, so direct validation of the opportunity is required before proceeding.",
+  "whyNow": "The hiring organization's current timeline and core drivers are unverified (recruiter screening should verify whether this is a scaling mandate).",
+  "positioning": [
+    "Unverified positioning: The posting text does not contain sufficient details to map your specific CRM or transformation achievements."
+  ],
+  "headspace": [
+    {
+      "action": "Ask the recruiter for the full JD, budget, and direct reporting lines",
+      "benefit": "Establishes standard baseline information",
+      "effort": "Low"
+    },
+    {
+      "action": "Verify if this role owns a direct P&L or has budget authority",
+      "benefit": "Confirms true executive scope",
+      "effort": "Low"
+    }
+  ],
+  "hiringRisk": "Unverified organizational structure, reporting lines, and expectation criteria require screening to evaluate stakeholder chemistry and reporting authority.",
+  "alternativePath": "Request standard screening brief from candidate partner.",
+  "recommendationResult": {
+    "score": 0,
+    "decision": "SPARSE_SPEC",
+    "policyId": "policy-v4.3",
+    "policyVersion": "4.3.0",
+    "explanation": "Dynamically evaluated using RADAR V4.3 strategic framework to sparse_spec (Score: N/A).",
+    "capabilities": [],
+    "decisionConfidence": {
+      "overall": 0.8,
+      "stability": 0.75,
+      "limitingDimensions": [],
+      "explanation": "Low alignment; structural level or functional domain mismatch limits suitability."
+    }
+  },
+  "esi": 0.5,
+  "diligenceStatus": "READY",
+  "recommendationArchetype": "Strategic Bet",
+  "recommendationArchetypeTagline": "Requires direct screening to verify actual scope.",
+  "mandateArchetype": "Marketing Leadership",
+  "primaryDriver": "Evidence Verification Required",
+  "secondaryDriver": "Unknown Scope",
+  "primaryRisk": "Source text limits baseline validation; recruiter screening required to verify authority.",
+  "tailoringEffort": "HIGH",
+  "capabilityAlignmentText": "Capability fit is unverified due to sparse posting text"
+}
+
+
+=== GOLDEN TRACE for j-f5873c10d6cd ===
+RECORD: {
+  "jobHash": "j-f5873c10d6cd",
+  "recommendation": "PURSUE",
+  "rawScore": 74,
+  "priority": 74,
+  "vetoed": false,
+  "vetoReason": null,
+  "policySignature": "4.3.0-positive-domain-validation:j-f5873c10d6cd:PURSUE",
+  "trace": {
+    "priority": 74,
+    "factors": {
+      "careerValue": 0.795,
+      "shortlistingPotential": 0.795,
+      "pursuitFriction": 1
+    },
+    "verb0": "PURSUE",
+    "finalVerb": "PURSUE",
+    "confidence": 0.87,
+    "stability": "High",
+    "pipeline": [
+      {
+        "stage": "Identity",
+        "status": "MATCH",
+        "score": 100,
+        "reason": {
+          "vectorSimilarity": "100%",
+          "distance": "0.00"
+        }
+      },
+      {
+        "stage": "Capability",
+        "status": "PASS",
+        "score": 80,
+        "reason": {
+          "matched": [
+            "Drive sales and growth strategy, focusing on connecting brands with rural kirana stores and overcoming last-mile challenges. [CORE_MANDATE] (Proof: 100%, Potential: 100%)",
+            "Sales & Growth targets [CORE_MANDATE] (Proof: 100%, Potential: 100%)",
+            "Growth [CORE_MANDATE] (Proof: 100%, Potential: 100%)"
+          ],
+          "missing": [
+            "C-level [EXECUTION_CAPABILITY]",
+            "India [EXECUTION_CAPABILITY]"
+          ],
+          "interactionScale": "1.00"
+        }
+      },
+      {
+        "stage": "Career",
+        "status": "PASS",
+        "score": 46,
+        "reason": "Trajectory: LATERAL"
+      },
+      {
+        "stage": "Lifestyle",
+        "status": "PASS",
+        "score": 100,
+        "reason": "Location Friction: 0"
+      },
+      {
+        "stage": "Ranking",
+        "status": "COMPLETE",
+        "score": 74
+      }
+    ],
+    "evidenceMapping": [
+      {
+        "jobCapability": "Drive sales and growth strategy, focusing on connecting brands with rural kirana stores and overcoming last-mile challenges.",
+        "candidateCapability": "Growth Strategy",
+        "confidence": 1,
+        "reason": "Direct Explicit Evidence Match"
+      },
+      {
+        "jobCapability": "Sales & Growth targets",
+        "candidateCapability": "Growth",
+        "confidence": 1,
+        "reason": "Direct Explicit Evidence Match"
+      },
+      {
+        "jobCapability": "Growth",
+        "candidateCapability": "Growth Strategy",
+        "confidence": 1,
+        "reason": "Direct Explicit Evidence Match"
+      }
+    ],
+    "careerValueBreakdown": {
+      "titleProgression": {
+        "value": 0.9,
+        "reason": "Promotion to EXECUTIVE",
+        "status": "KNOWN"
+      },
+      "scopeExpansion": {
+        "value": 0.5,
+        "reason": "Similar Scope",
+        "status": "KNOWN"
+      },
+      "commercialScale": {
+        "value": 0.3,
+        "reason": "Cost Center / No Commercial Scope",
+        "status": "KNOWN"
+      },
+      "brandSignal": {
+        "value": 0.5,
+        "reason": "Brand metadata unavailable",
+        "status": "UNKNOWN"
+      },
+      "futureOptionality": {
+        "value": 0.6,
+        "reason": "Standard Progression (Evolving Heuristic)",
+        "status": "ESTIMATED"
+      }
+    },
+    "headspace": {
+      "finalVerb": "PURSUE",
+      "downgraded": false
+    },
+    "missing": [
+      "reportingLine",
+      "workModel",
+      "technologyStack"
+    ],
+    "timestamp": "2026-08-13T04:06:12.550Z"
+  }
+}
+SOURCE rawText snippet: 
+PRESENTER (selected): {
+  "decision": "PURSUE",
+  "recommendationResult": {
+    "score": 74,
+    "decision": "PURSUE",
+    "policyId": "policy-v4.3",
+    "policyVersion": "4.3.0",
+    "explanation": "Dynamically evaluated using RADAR V4.3 strategic framework to pursue (Score: 74/100).",
+    "capabilities": [
+      {
+        "id": "cap_0",
+        "name": "Drive sales and growth strategy, focusing on connecting brands with rural kirana stores and overcoming last-mile challenges.",
+        "description": "Direct Explicit Evidence Match",
+        "strength": "Strong",
+        "score": 1,
+        "scorePercentage": 100,
+        "evidenceQuote": "Growth Strategy",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 1
+      },
+      {
+        "id": "cap_1",
+        "name": "Sales & Growth targets",
+        "description": "Direct Explicit Evidence Match",
+        "strength": "Strong",
+        "score": 1,
+        "scorePercentage": 100,
+        "evidenceQuote": "Growth",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 1
+      },
+      {
+        "id": "cap_2",
+        "name": "Growth",
+        "description": "Direct Explicit Evidence Match",
+        "strength": "Strong",
+        "score": 1,
+        "scorePercentage": 100,
+        "evidenceQuote": "Growth Strategy",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 1
+      }
+    ],
+    "decisionConfidence": {
+      "overall": 0.74,
+      "stability": 0.75,
+      "limitingDimensions": [],
+      "explanation": "Moderate structural alignment; potential promotion scope or scale variance detected."
+    }
+  },
+  "policyVersion": "4.3.0",
+  "diligenceStatus": "READY"
+}
+SHORTLIST ITEM: {
+  "extractorVersion": "1.0.0",
+  "promptVersion": "1.0.0",
+  "jobHash": "j-f5873c10d6cd",
+  "role": "Chief Growth & Strategy Officer(Sales & Growth)",
+  "company": "Xpand",
+  "location": "Noida, Mumbai, New Delhi",
+  "postedRelative": "Posted recently",
+  "scrapedFrom": "Naukri",
+  "primaryConcern": null,
+  "applyUrl": "https://www.naukri.com/job-listings-chief-growth-strategy-officer-sales-growth-xpand-noida-mumbai-new-delhi-2-to-6-years-190225502401",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "C-level",
+        "status": "Inferred",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "medium",
+        "extractorId": "gemini-2.5-flash@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Seniority check",
+        "detail": "Matches target title list"
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "reportingLine@2.0.0"
+      },
+      "candidateProof": {
+        "headline": "Reporting line alignment",
+        "detail": "CxO / MD reporting proven"
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "Drive sales and growth strategy, focusing on connecting brands with rural kirana stores and overcoming last-mile challenges.",
+        "status": "Inferred",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "medium",
+        "extractorId": "gemini-2.5-flash@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Mandate alignment",
+        "detail": "Lifecycle stage matches profile"
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "Sales & Growth targets",
+        "status": "Inferred",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "medium",
+        "extractorId": "gemini-2.5-flash@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "P&L Scale matches",
+        "detail": "Prior P&L / budget precedent"
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "Growth",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Growth Strategy",
+            "source": "snippet"
+          }
+        ],
+        "provenance": "explicit",
+        "quality": "high",
+        "extractorId": "functionalScope@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Competency match",
+        "detail": "Full growth capability stack"
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "India",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Noida",
+            "source": "snippet"
+          }
+        ],
+        "provenance": "explicit",
+        "quality": "high",
+        "extractorId": "geography@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Location match",
+        "detail": "Target market listing matches"
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "workModel@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Work model preference",
+        "detail": "Preferred work model"
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "technologyStack@2.0.0"
+      },
+      "candidateProof": {
+        "headline": "Platform stack",
+        "detail": "Platform-native experience"
+      }
+    }
+  ],
+  "telemetry": {
+    "deterministicMs": 5,
+    "llmMs": 44512,
+    "llmCalled": true,
+    "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+  },
+  "decision": "PURSUE",
+  "recommendation": "Targeted executive mandate in C-level capacity; this opportunity aligns with your commercial growth and enterprise stack precedents. Verify direct reporting boundaries and budget authority.",
+  "whyNow": "The enterprise is strengthening and scaling its C-level leadership to accelerate commercial throughput and customer acquisition.",
+  "positioning": [
+    "Your operating history across large-scale commercial portfolios matches the core responsibilities required for this C-level seat."
+  ],
+  "headspace": [
+    {
+      "action": "Verify direct P&L scope and team headcount in writing",
+      "benefit": "Rules out an operational title without budget authority",
+      "effort": "Low"
+    }
+  ],
+  "hiringRisk": "Unstated reporting line hierarchy, stakeholder chemistry, and capital allocation controls require screening clarification.",
+  "alternativePath": "Active candidate in recommendation queue.",
+  "recommendationResult": {
+    "score": 74,
+    "decision": "PURSUE",
+    "policyId": "policy-v4.3",
+    "policyVersion": "4.3.0",
+    "explanation": "Dynamically evaluated using RADAR V4.3 strategic framework to pursue (Score: 74/100).",
+    "capabilities": [
+      {
+        "id": "cap_0",
+        "name": "Drive sales and growth strategy, focusing on connecting brands with rural kirana stores and overcoming last-mile challenges.",
+        "description": "Direct Explicit Evidence Match",
+        "strength": "Strong",
+        "score": 1,
+        "scorePercentage": 100,
+        "evidenceQuote": "Growth Strategy",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 1
+      },
+      {
+        "id": "cap_1",
+        "name": "Sales & Growth targets",
+        "description": "Direct Explicit Evidence Match",
+        "strength": "Strong",
+        "score": 1,
+        "scorePercentage": 100,
+        "evidenceQuote": "Growth",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 1
+      },
+      {
+        "id": "cap_2",
+        "name": "Growth",
+        "description": "Direct Explicit Evidence Match",
+        "strength": "Strong",
+        "score": 1,
+        "scorePercentage": 100,
+        "evidenceQuote": "Growth Strategy",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 1
+      }
+    ],
+    "decisionConfidence": {
+      "overall": 0.74,
+      "stability": 0.75,
+      "limitingDimensions": [],
+      "explanation": "Moderate structural alignment; potential promotion scope or scale variance detected."
+    }
+  },
+  "esi": 0.795,
+  "diligenceStatus": "READY",
+  "recommendationArchetype": "Natural Fit",
+  "recommendationArchetypeTagline": "Aligns with your executive trajectory and operating track record.",
+  "mandateArchetype": "Commercial Growth",
+  "primaryDriver": "Commercial Expansion",
+  "secondaryDriver": "Operating Execution",
+  "primaryRisk": "Reporting line & budget authority clarification",
+  "tailoringEffort": "LOW",
+  "capabilityAlignmentText": "Strong functional alignment"
+}
+
+
+=== GOLDEN TRACE for j-4d8a0ef3fad4 ===
+RECORD: {
+  "jobHash": "j-4d8a0ef3fad4",
+  "recommendation": "PASS",
+  "rawScore": 0,
+  "priority": 0,
+  "vetoed": true,
+  "vetoReason": "G-EXECUTIVE-IDENTITY-MISMATCH",
+  "policySignature": "4.3.0-positive-domain-validation:j-4d8a0ef3fad4:PASS",
+  "trace": {
+    "priority": 0,
+    "factors": {
+      "careerValue": 0.5,
+      "shortlistingPotential": 0.5,
+      "pursuitFriction": 1
+    },
+    "verb0": "PASS",
+    "finalVerb": "PASS",
+    "confidence": 0.95,
+    "stability": "High",
+    "pipeline": [
+      {
+        "stage": "Identity",
+        "status": "FAILED",
+        "reason": "Semantic Distance: 0.85 (Required < 0.80)"
+      }
+    ],
+    "evidenceMapping": [
+      {
+        "jobCapability": "Senior Leadership",
+        "candidateCapability": "Enterprise P&L Ownership & ENTERPRISE Board Decision Authority",
+        "confidence": 0.7,
+        "reason": "Enterprise Scope Grounding (ENTERPRISE Decision Authority proves Senior Leadership)"
+      },
+      {
+        "jobCapability": "Oversee clinical governance, quality management, medical staff leadership, hospital operations, and medico-legal compliance to ensure high-quality, safe, and ethical patient care.",
+        "candidateCapability": "Enterprise P&L Ownership & ENTERPRISE Board Decision Authority",
+        "confidence": 0.7,
+        "reason": "Enterprise Scope Grounding (ENTERPRISE Decision Authority proves Oversee clinical governance, quality management, medical staff leadership, hospital operations, and medico-legal compliance to ensure high-quality, safe, and ethical patient care.)"
+      }
+    ],
+    "careerValueBreakdown": {
+      "titleProgression": {
+        "value": 0.9,
+        "reason": "Promotion to EXECUTIVE",
+        "status": "KNOWN"
+      },
+      "scopeExpansion": {
+        "value": 0.8,
+        "reason": "Continued Executive Scope",
+        "status": "KNOWN"
+      },
+      "commercialScale": {
+        "value": 0.3,
+        "reason": "Cost Center / No Commercial Scope",
+        "status": "KNOWN"
+      },
+      "brandSignal": {
+        "value": 0.5,
+        "reason": "Brand metadata unavailable",
+        "status": "UNKNOWN"
+      },
+      "futureOptionality": {
+        "value": 0.6,
+        "reason": "Standard Progression (Evolving Heuristic)",
+        "status": "ESTIMATED"
+      }
+    },
+    "headspace": {
+      "finalVerb": "PASS",
+      "downgraded": false
+    },
+    "missing": [
+      "reportingLine",
+      "commercialAccountability",
+      "functionalScope",
+      "geography",
+      "workModel",
+      "technologyStack"
+    ],
+    "timestamp": "2026-08-13T04:06:12.561Z"
+  }
+}
+SOURCE rawText snippet: 
+PRESENTER (selected): {
+  "decision": "PASS",
+  "recommendationResult": {
+    "score": 0,
+    "decision": "PASS",
+    "policyId": "policy-v4.3",
+    "policyVersion": "4.3.0",
+    "explanation": "Evaluated by RADAR V4.3 strategic framework: pass (Score: 0/100).",
+    "capabilities": [
+      {
+        "id": "cap_0",
+        "name": "Senior Leadership",
+        "description": "Enterprise Scope Grounding (ENTERPRISE Decision Authority proves Senior Leadership)",
+        "strength": "Moderate",
+        "score": 0.7,
+        "scorePercentage": 70,
+        "evidenceQuote": "Enterprise P&L Ownership & ENTERPRISE Board Decision Authority",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 0.7
+      },
+      {
+        "id": "cap_1",
+        "name": "Oversee clinical governance, quality management, medical staff leadership, hospital operations, and medico-legal compliance to ensure high-quality, safe, and ethical patient care.",
+        "description": "Enterprise Scope Grounding (ENTERPRISE Decision Authority proves Oversee clinical governance, quality management, medical staff leadership, hospital operations, and medico-legal compliance to ensure high-quality, safe, and ethical patient care.)",
+        "strength": "Moderate",
+        "score": 0.7,
+        "scorePercentage": 70,
+        "evidenceQuote": "Enterprise P&L Ownership & ENTERPRISE Board Decision Authority",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 0.7
+      }
+    ],
+    "decisionConfidence": {
+      "overall": 0.3,
+      "stability": 0.75,
+      "limitingDimensions": [],
+      "explanation": "Low alignment; structural level or functional domain mismatch limits suitability."
+    }
+  },
+  "policyVersion": "4.3.0",
+  "diligenceStatus": "READY"
+}
+SHORTLIST ITEM: null
+
+
+=== GOLDEN TRACE for j-fd09a5e8a65a ===
+RECORD: {
+  "jobHash": "j-fd09a5e8a65a",
+  "recommendation": "CONSIDER",
+  "rawScore": 69,
+  "priority": 69,
+  "vetoed": false,
+  "vetoReason": null,
+  "policySignature": "4.3.0-positive-domain-validation:j-fd09a5e8a65a:CONSIDER",
+  "trace": {
+    "priority": 69,
+    "factors": {
+      "careerValue": 0.736,
+      "shortlistingPotential": 0.736,
+      "pursuitFriction": 1
+    },
+    "verb0": "CONSIDER",
+    "finalVerb": "CONSIDER",
+    "confidence": 0.87,
+    "stability": "High",
+    "pipeline": [
+      {
+        "stage": "Identity",
+        "status": "MATCH",
+        "score": 100,
+        "reason": {
+          "vectorSimilarity": "100%",
+          "distance": "0.00"
+        }
+      },
+      {
+        "stage": "Capability",
+        "status": "PASS",
+        "score": 74,
+        "reason": {
+          "matched": [
+            "Drive growth and revenue by identifying, executing, and managing partnerships and strategic initiatives, and contributing to partner programs. [CORE_MANDATE] (Proof: 100%, Potential: 100%)",
+            "Drive growth and revenue; negotiating agreements [CORE_MANDATE] (Proof: 100%, Potential: 100%)"
+          ],
+          "missing": [
+            "CxO [EXECUTION_CAPABILITY]",
+            "India [EXECUTION_CAPABILITY]"
+          ],
+          "interactionScale": "1.00"
+        }
+      },
+      {
+        "stage": "Career",
+        "status": "PASS",
+        "score": 46,
+        "reason": "Trajectory: LATERAL"
+      },
+      {
+        "stage": "Lifestyle",
+        "status": "PASS",
+        "score": 95,
+        "reason": "Location Friction: 5"
+      },
+      {
+        "stage": "Ranking",
+        "status": "COMPLETE",
+        "score": 69
+      }
+    ],
+    "evidenceMapping": [
+      {
+        "jobCapability": "Drive growth and revenue by identifying, executing, and managing partnerships and strategic initiatives, and contributing to partner programs.",
+        "candidateCapability": "Growth",
+        "confidence": 1,
+        "reason": "Direct Explicit Evidence Match"
+      },
+      {
+        "jobCapability": "Drive growth and revenue; negotiating agreements",
+        "candidateCapability": "Growth",
+        "confidence": 1,
+        "reason": "Direct Explicit Evidence Match"
+      }
+    ],
+    "careerValueBreakdown": {
+      "titleProgression": {
+        "value": 0.9,
+        "reason": "Promotion to EXECUTIVE",
+        "status": "KNOWN"
+      },
+      "scopeExpansion": {
+        "value": 0.5,
+        "reason": "Similar Scope",
+        "status": "KNOWN"
+      },
+      "commercialScale": {
+        "value": 0.3,
+        "reason": "Cost Center / No Commercial Scope",
+        "status": "KNOWN"
+      },
+      "brandSignal": {
+        "value": 0.5,
+        "reason": "Brand metadata unavailable",
+        "status": "UNKNOWN"
+      },
+      "futureOptionality": {
+        "value": 0.6,
+        "reason": "Standard Progression (Evolving Heuristic)",
+        "status": "ESTIMATED"
+      }
+    },
+    "headspace": {
+      "finalVerb": "CONSIDER",
+      "downgraded": false
+    },
+    "missing": [
+      "reportingLine",
+      "functionalScope",
+      "workModel",
+      "technologyStack"
+    ],
+    "timestamp": "2026-08-13T04:06:12.641Z"
+  }
+}
+SOURCE rawText snippet: 
+PRESENTER (selected): {
+  "decision": "CONSIDER",
+  "recommendationResult": {
+    "score": 69,
+    "decision": "CONSIDER",
+    "policyId": "policy-v4.3",
+    "policyVersion": "4.3.0",
+    "explanation": "Dynamically evaluated using RADAR V4.3 strategic framework to consider (Score: 69/100).",
+    "capabilities": [
+      {
+        "id": "cap_0",
+        "name": "Drive growth and revenue by identifying, executing, and managing partnerships and strategic initiatives, and contributing to partner programs.",
+        "description": "Direct Explicit Evidence Match",
+        "strength": "Strong",
+        "score": 1,
+        "scorePercentage": 100,
+        "evidenceQuote": "Growth",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 1
+      },
+      {
+        "id": "cap_1",
+        "name": "Drive growth and revenue; negotiating agreements",
+        "description": "Direct Explicit Evidence Match",
+        "strength": "Strong",
+        "score": 1,
+        "scorePercentage": 100,
+        "evidenceQuote": "Growth",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 1
+      }
+    ],
+    "decisionConfidence": {
+      "overall": 0.69,
+      "stability": 0.75,
+      "limitingDimensions": [],
+      "explanation": "Moderate structural alignment; potential promotion scope or scale variance detected."
+    }
+  },
+  "policyVersion": "4.3.0",
+  "diligenceStatus": "READY"
+}
+SHORTLIST ITEM: {
+  "extractorVersion": "1.0.0",
+  "promptVersion": "1.0.0",
+  "jobHash": "j-fd09a5e8a65a",
+  "role": "Chief Marketing Officer",
+  "company": "Goodwin Financial Holdings",
+  "location": "Hyderabad",
+  "postedRelative": "Posted recently",
+  "scrapedFrom": "Naukri",
+  "primaryConcern": null,
+  "applyUrl": "https://www.naukri.com/job-listings-chief-marketing-officer-goodwin-financial-holdings-p-ltd-hyderabad-5-to-10-years-270525503433",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "CxO",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Chief Marketing Officer",
+            "source": "title"
+          }
+        ],
+        "provenance": "explicit",
+        "quality": "high",
+        "extractorId": "requiredLevel@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Seniority check",
+        "detail": "Matches target title list"
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "reportingLine@2.0.0"
+      },
+      "candidateProof": {
+        "headline": "Reporting line alignment",
+        "detail": "CxO / MD reporting proven"
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "Drive growth and revenue by identifying, executing, and managing partnerships and strategic initiatives, and contributing to partner programs.",
+        "status": "Inferred",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "medium",
+        "extractorId": "gemini-2.5-flash@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Mandate alignment",
+        "detail": "Lifecycle stage matches profile"
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Adjacent",
+      "jdEvidence": {
+        "value": "Drive growth and revenue; negotiating agreements",
+        "status": "Inferred",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "medium",
+        "extractorId": "gemini-2.5-flash@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "P&L Scale matches",
+        "detail": "Prior P&L / budget precedent"
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "functionalScope@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Competency match",
+        "detail": "Full growth capability stack"
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Matched",
+      "jdEvidence": {
+        "value": "India",
+        "status": "Explicit",
+        "evidence": [
+          {
+            "quote": "Hyderabad",
+            "source": "snippet"
+          }
+        ],
+        "provenance": "explicit",
+        "quality": "high",
+        "extractorId": "geography@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Location match",
+        "detail": "Target market listing matches"
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "workModel@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Work model preference",
+        "detail": "Preferred work model"
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "technologyStack@2.0.0"
+      },
+      "candidateProof": {
+        "headline": "Platform stack",
+        "detail": "Platform-native experience"
+      }
+    }
+  ],
+  "telemetry": {
+    "deterministicMs": 1,
+    "llmMs": 9731,
+    "llmCalled": true,
+    "llmFallbackReason": "smart:reportingLine,mandate,commercialAccountability"
+  },
+  "decision": "CONSIDER",
+  "recommendation": "Targeted executive mandate in CxO capacity; this opportunity aligns with your commercial growth and enterprise stack precedents. Verify direct reporting boundaries and budget authority.",
+  "whyNow": "The enterprise is strengthening and scaling its CxO leadership to accelerate commercial throughput and customer acquisition.",
+  "positioning": [
+    "Your operating history across large-scale commercial portfolios matches the core responsibilities required for this CxO seat."
+  ],
+  "headspace": [
+    {
+      "action": "Verify direct P&L scope and team headcount in writing",
+      "benefit": "Rules out an operational title without budget authority",
+      "effort": "Low"
+    }
+  ],
+  "hiringRisk": "Unstated reporting line hierarchy, stakeholder chemistry, and capital allocation controls require screening clarification.",
+  "alternativePath": "Active candidate in recommendation queue.",
+  "recommendationResult": {
+    "score": 69,
+    "decision": "CONSIDER",
+    "policyId": "policy-v4.3",
+    "policyVersion": "4.3.0",
+    "explanation": "Dynamically evaluated using RADAR V4.3 strategic framework to consider (Score: 69/100).",
+    "capabilities": [
+      {
+        "id": "cap_0",
+        "name": "Drive growth and revenue by identifying, executing, and managing partnerships and strategic initiatives, and contributing to partner programs.",
+        "description": "Direct Explicit Evidence Match",
+        "strength": "Strong",
+        "score": 1,
+        "scorePercentage": 100,
+        "evidenceQuote": "Growth",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 1
+      },
+      {
+        "id": "cap_1",
+        "name": "Drive growth and revenue; negotiating agreements",
+        "description": "Direct Explicit Evidence Match",
+        "strength": "Strong",
+        "score": 1,
+        "scorePercentage": 100,
+        "evidenceQuote": "Growth",
+        "dimensionLabel": "Executive Mandate",
+        "weight": 1,
+        "weightedContribution": 1
+      }
+    ],
+    "decisionConfidence": {
+      "overall": 0.69,
+      "stability": 0.75,
+      "limitingDimensions": [],
+      "explanation": "Moderate structural alignment; potential promotion scope or scale variance detected."
+    }
+  },
+  "esi": 0.736,
+  "diligenceStatus": "READY",
+  "recommendationArchetype": "Natural Fit",
+  "recommendationArchetypeTagline": "Aligns with your executive trajectory and operating track record.",
+  "mandateArchetype": "Commercial Scale",
+  "primaryDriver": "Commercial Expansion",
+  "secondaryDriver": "Operating Execution",
+  "primaryRisk": "Reporting line & budget authority clarification",
+  "tailoringEffort": "LOW",
+  "capabilityAlignmentText": "Strong functional alignment"
+}
+
+
+=== GOLDEN TRACE for j-9bc1610fec69 ===
+RECORD: {
+  "jobHash": "j-9bc1610fec69",
+  "recommendation": "NOT_EVALUABLE",
+  "rawScore": 0,
+  "priority": null,
+  "vetoed": true,
+  "vetoReason": "G-EVIDENCE-INTEGRITY-FAILED",
+  "policySignature": "4.3.0-positive-domain-validation:j-9bc1610fec69:NOT_EVALUABLE",
+  "trace": {
+    "priority": 0,
+    "factors": {
+      "careerValue": 0.5,
+      "shortlistingPotential": 0.5,
+      "pursuitFriction": 1
+    },
+    "verb0": "NOT_EVALUABLE",
+    "finalVerb": "NOT_EVALUABLE",
+    "confidence": 0,
+    "stability": "High",
+    "pipeline": [
+      {
+        "stage": "Integrity",
+        "status": "FAILED",
+        "reason": "Critical evidence missing: Capability [EMPTY_CAPABILITIES]"
+      }
+    ],
+    "evidenceMapping": [],
+    "careerValueBreakdown": {
+      "titleProgression": {
+        "value": 0.2,
+        "reason": "Title Regression to MANAGERIAL",
+        "status": "KNOWN"
+      },
+      "scopeExpansion": {
+        "value": 0.8,
+        "reason": "Continued Executive Scope",
+        "status": "KNOWN"
+      },
+      "commercialScale": {
+        "value": 0.3,
+        "reason": "Cost Center / No Commercial Scope",
+        "status": "KNOWN"
+      },
+      "brandSignal": {
+        "value": 0.5,
+        "reason": "Brand metadata unavailable",
+        "status": "UNKNOWN"
+      },
+      "futureOptionality": {
+        "value": 0.4,
+        "reason": "Title regression limits immediate external optionality",
+        "status": "ESTIMATED"
+      }
+    },
+    "headspace": {
+      "finalVerb": "NOT_EVALUABLE",
+      "downgraded": false
+    },
+    "missing": [
+      "requiredLevel",
+      "reportingLine",
+      "mandate",
+      "commercialAccountability",
+      "functionalScope",
+      "geography",
+      "workModel",
+      "technologyStack"
+    ],
+    "timestamp": "2026-08-13T04:06:19.156Z"
+  }
+}
+SOURCE rawText snippet: 
+PRESENTER (selected): {
+  "decision": "NOT_EVALUABLE",
+  "recommendationResult": {
+    "score": 0,
+    "decision": "NOT_EVALUABLE",
+    "policyId": "policy-v4.3",
+    "policyVersion": "4.3.0",
+    "explanation": "Dynamically evaluated using RADAR V4.3 strategic framework to not_evaluable (Score: N/A).",
+    "capabilities": [],
+    "decisionConfidence": {
+      "overall": 0.8,
+      "stability": 0.75,
+      "limitingDimensions": [],
+      "explanation": "Low alignment; structural level or functional domain mismatch limits suitability."
+    }
+  },
+  "policyVersion": "4.3.0",
+  "diligenceStatus": "READY"
+}
+SHORTLIST ITEM: {
+  "extractorVersion": "1.0.0",
+  "promptVersion": "1.0.0",
+  "jobHash": "j-9bc1610fec69",
+  "role": "Deputy Manager - CD - Growth North & East",
+  "company": "Bajaj Finance",
+  "location": "Kalol, Gandhinagar, Gandhinagar, Kalol",
+  "postedRelative": "Posted recently",
+  "scrapedFrom": "Naukri",
+  "primaryConcern": null,
+  "applyUrl": "https://www.naukri.com/job-listings-deputy-manager-cd-growth-north-east-bajaj-finance-limited-kalol-gandhinagar-gandhinagar-kalol-0-to-3-years-220726925813",
+  "dimensions": [
+    {
+      "key": "requiredLevel",
+      "label": "Required Level",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "requiredLevel@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Seniority check",
+        "detail": "Matches target title list"
+      }
+    },
+    {
+      "key": "reportingLine",
+      "label": "Reporting Line",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "reportingLine@2.0.0"
+      },
+      "candidateProof": {
+        "headline": "Reporting line alignment",
+        "detail": "CxO / MD reporting proven"
+      }
+    },
+    {
+      "key": "mandate",
+      "label": "Mandate",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "mandate@2.0.2"
+      },
+      "candidateProof": {
+        "headline": "Mandate alignment",
+        "detail": "Lifecycle stage matches profile"
+      }
+    },
+    {
+      "key": "commercialAccountability",
+      "label": "Commercial Accountability",
+      "importance": "Core",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "commercialAccountability@2.1.0"
+      },
+      "candidateProof": {
+        "headline": "P&L Scale matches",
+        "detail": "Prior P&L / budget precedent"
+      }
+    },
+    {
+      "key": "functionalScope",
+      "label": "Functional Scope",
+      "importance": "Supporting",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "functionalScope@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Competency match",
+        "detail": "Full growth capability stack"
+      }
+    },
+    {
+      "key": "geography",
+      "label": "Geography",
+      "importance": "Supporting",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "geography@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Location match",
+        "detail": "Target market listing matches"
+      }
+    },
+    {
+      "key": "workModel",
+      "label": "Work Model",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "workModel@1.0.0"
+      },
+      "candidateProof": {
+        "headline": "Work model preference",
+        "detail": "Preferred work model"
+      }
+    },
+    {
+      "key": "technologyStack",
+      "label": "Technology Stack",
+      "importance": "Context",
+      "bucket": "Missing",
+      "jdEvidence": {
+        "value": null,
+        "status": "Missing",
+        "evidence": [],
+        "provenance": "llm",
+        "quality": "low",
+        "extractorId": "technologyStack@2.0.0"
+      },
+      "candidateProof": {
+        "headline": "Platform stack",
+        "detail": "Platform-native experience"
+      }
+    }
+  ],
+  "telemetry": {
+    "deterministicMs": 3,
+    "llmMs": 33636,
+    "llmCalled": true,
+    "llmFallbackReason": "smart:requiredLevel,reportingLine,mandate,commercialAccountability"
+  },
+  "decision": "NOT_EVALUABLE",
+  "recommendation": "Targeted executive mandate in Deputy Manager - CD - Growth North and East capacity; this opportunity aligns with your commercial growth and enterprise stack precedents. Verify direct reporting boundaries and budget authority.",
+  "whyNow": "The enterprise is strengthening and scaling its Deputy Manager - CD - Growth North and East leadership to accelerate commercial throughput and customer acquisition.",
+  "positioning": [
+    "Your operating history across large-scale commercial portfolios matches the core responsibilities required for this Deputy Manager - CD - Growth North and East seat."
+  ],
+  "headspace": [
+    {
+      "action": "Verify direct P&L scope and team headcount in writing",
+      "benefit": "Rules out an operational title without budget authority",
+      "effort": "Low"
+    }
+  ],
+  "hiringRisk": "Unstated reporting line hierarchy, stakeholder chemistry, and capital allocation controls require screening clarification.",
+  "alternativePath": "Active candidate in recommendation queue.",
+  "recommendationResult": {
+    "score": 0,
+    "decision": "NOT_EVALUABLE",
+    "policyId": "policy-v4.3",
+    "policyVersion": "4.3.0",
+    "explanation": "Dynamically evaluated using RADAR V4.3 strategic framework to not_evaluable (Score: N/A).",
+    "capabilities": [],
+    "decisionConfidence": {
+      "overall": 0.8,
+      "stability": 0.75,
+      "limitingDimensions": [],
+      "explanation": "Low alignment; structural level or functional domain mismatch limits suitability."
+    }
+  },
+  "esi": 0.5,
+  "diligenceStatus": "READY",
+  "recommendationArchetype": "Natural Fit",
+  "recommendationArchetypeTagline": "Aligns with your executive trajectory and operating track record.",
+  "mandateArchetype": "Commercial Growth",
+  "primaryDriver": "Commercial Expansion",
+  "secondaryDriver": "Operating Execution",
+  "primaryRisk": "Reporting line & budget authority clarification",
+  "tailoringEffort": "LOW",
+  "capabilityAlignmentText": "Strong functional alignment"
+}
+
+

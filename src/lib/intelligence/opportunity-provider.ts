@@ -31,9 +31,27 @@ export const OpportunityProvider = {
       .map((p) => p.opportunity)
       .filter((o) => o.decision !== "PASS")
       .sort((a, b) => {
+        // P1-E: Deterministic tie-breaking for ranking
+        // Primary: Decision tier (PURSUE < CONSIDER < PASS)
         const tierDiff = (decisionRank[a.decision] ?? 3) - (decisionRank[b.decision] ?? 3);
         if (tierDiff !== 0) return tierDiff;
-        return (b.recommendationResult?.score ?? 0) - (a.recommendationResult?.score ?? 0);
+
+        // Secondary: Higher recommendation score first
+        const scoreA = a.recommendationResult?.score ?? 0;
+        const scoreB = b.recommendationResult?.score ?? 0;
+        const scoreDiff = scoreB - scoreA;
+        if (scoreDiff !== 0) return scoreDiff;
+
+        // Tertiary: Same score → higher confidence first
+        // Confidence is on recommendationResult.decisionConfidence.overall (0-1 scale)
+        const confA = a.recommendationResult?.decisionConfidence?.overall ?? 0;
+        const confB = b.recommendationResult?.decisionConfidence?.overall ?? 0;
+        const confDiff = confB - confA;
+        if (confDiff !== 0) return confDiff;
+
+        // Quaternary: Same confidence → deterministic jobHash order
+        // jobHash is the only guaranteed unique and deterministic tie-breaker
+        return a.jobHash.localeCompare(b.jobHash);
       });
   },
 

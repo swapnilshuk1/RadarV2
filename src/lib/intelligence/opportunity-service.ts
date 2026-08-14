@@ -38,9 +38,25 @@ export class OpportunityService {
         return opp;
       })
       .sort((a, b) => {
+        // P1-E: Deterministic tie-breaking for ranking
+        // Primary: Decision tier (PURSUE < CONSIDER < SPARSE_SPEC < PASS)
         const tierDiff = (decisionRank[a.decision] ?? 3) - (decisionRank[b.decision] ?? 3);
         if (tierDiff !== 0) return tierDiff;
-        return (b.recommendationResult?.score ?? 0) - (a.recommendationResult?.score ?? 0);
+
+        // Secondary: Higher recommendation score first
+        const scoreA = a.recommendationResult?.score ?? 0;
+        const scoreB = b.recommendationResult?.score ?? 0;
+        const scoreDiff = scoreB - scoreA;
+        if (scoreDiff !== 0) return scoreDiff;
+
+        // Tertiary: Same score → higher confidence first
+        const confA = a.recommendationResult?.decisionConfidence?.overall ?? 0;
+        const confB = b.recommendationResult?.decisionConfidence?.overall ?? 0;
+        const confDiff = confB - confA;
+        if (confDiff !== 0) return confDiff;
+
+        // Quaternary: Same confidence → deterministic jobHash order
+        return a.jobHash.localeCompare(b.jobHash);
       });
   }
 

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+
+  "model": "amazon-bedrock/moonshotai.kimi-k2.5",
+
+  "provider": {
+    "amazon-bedrock": {
+      "options": {
+        "region": "us-east-1",
+        "profile": "bedrock"
+      },
+      "models": {
+        "moonshotai.kimi-k2.5": {
+          "name": "Kimi K2.5",
+          "id": "moonshotai.kimi-k2.5",
+          "tool_call": true,
+          "reasoning": true,
+          "limit": {
+            "context": 262144,
+            "output": 32768
+          }
+        }
+      }
+    }
+  }
+}

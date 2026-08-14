@@ -3,6 +3,7 @@
 import { CandidateProjection } from "../../domain/candidate_projection";
 import { CandidateProfile } from "../../../data/candidate-profile";
 import { OperatingLevelClassifier } from "../classifiers/OperatingLevelClassifier";
+import { CandidateSeniorityClassifier } from "../classifiers/CandidateSeniorityClassifier";
 import { WorkNatureClassifier } from "../classifiers/WorkNatureClassifier";
 import { DecisionAuthorityClassifier } from "../classifiers/DecisionAuthorityClassifier";
 import { CommercialScopeClassifier } from "../classifiers/CommercialScopeClassifier";
@@ -27,16 +28,23 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
 
     // Run our classifiers to determine the candidate's structural properties
     const operatingLevelRaw = OperatingLevelClassifier.classify(candidateText, title);
+    const candidateSeniorityLevelRaw = CandidateSeniorityClassifier.classify(title, candidateText);
     const workNature = WorkNatureClassifier.classify(candidateText, title);
     const decisionAuthority = DecisionAuthorityClassifier.classify(candidateText, title);
     const commercialScope = CommercialScopeClassifier.classify(candidateText, title);
 
-    // Enforce that a senior VP / Regional CoE Lead baseline operating level resolves to STRATEGIC (4).
-    // This correctly leaves enterprise-wide C-suite and board CMO roles (like BMW India CMO) as an executive PROMOTION.
+    // Use the classifier output directly, preserving authoritative classification
     const operatingLevel = {
-      value: "STRATEGIC" as OperatingLevel,
-      evidenceIds: [...operatingLevelRaw.evidenceIds, "cand_vp_functional_limit"],
-      confidence: 0.95
+      value: operatingLevelRaw.value,
+      evidenceIds: operatingLevelRaw.evidenceIds,
+      confidence: operatingLevelRaw.confidence
+    };
+
+    // P0-E: Candidate seniority level - distinct from operating level
+    const candidateSeniorityLevel = {
+      value: candidateSeniorityLevelRaw.value,
+      evidenceIds: candidateSeniorityLevelRaw.evidenceIds,
+      confidence: candidateSeniorityLevelRaw.confidence
     };
 
     // Aggregate capabilities
@@ -78,6 +86,7 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
 
     return {
       operatingLevel,
+      candidateSeniorityLevel,
       workNature,
       decisionAuthority,
       commercialScope,
@@ -97,14 +106,23 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
     const fullText = graph.facts.map(f => f.value).join("\n");
 
     const operatingLevelRaw = OperatingLevelClassifier.classify(fullText, "Executive");
+    const candidateSeniorityLevelRaw = CandidateSeniorityClassifier.classify("Executive", fullText);
     const workNature = WorkNatureClassifier.classify(fullText, "Executive");
     const decisionAuthority = DecisionAuthorityClassifier.classify(fullText, "Executive");
     const commercialScope = CommercialScopeClassifier.classify(fullText, "Executive");
 
+    // Use the classifier output directly, preserving authoritative classification
     const operatingLevel = {
-      value: "STRATEGIC" as OperatingLevel,
-      evidenceIds: [...operatingLevelRaw.evidenceIds, "evidence_derived"],
-      confidence: 0.90
+      value: operatingLevelRaw.value,
+      evidenceIds: operatingLevelRaw.evidenceIds,
+      confidence: operatingLevelRaw.confidence
+    };
+
+    // P0-E: Candidate seniority level - distinct from operating level
+    const candidateSeniorityLevel = {
+      value: candidateSeniorityLevelRaw.value,
+      evidenceIds: candidateSeniorityLevelRaw.evidenceIds,
+      confidence: candidateSeniorityLevelRaw.confidence
     };
 
     const defaultThemes = [
@@ -124,6 +142,7 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
 
     return {
       operatingLevel,
+      candidateSeniorityLevel,
       workNature,
       decisionAuthority,
       commercialScope,

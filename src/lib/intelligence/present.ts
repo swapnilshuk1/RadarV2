@@ -4,6 +4,7 @@ import { format, type Narrative } from "./narrative";
 import { CapabilityEngine, type JobSlice } from "../capability/CapabilityEngine";
 import { CapabilityRecommendationScorer } from "../recommendation/CapabilityRecommendationScorer";
 import { CapabilityOntology } from "../ontology/CapabilityOntology";
+import { SemanticNaturalLanguageResolver } from "./editorial/SemanticNaturalLanguageResolver";
 
 export type Presented = {
   opportunity: Opportunity;
@@ -61,15 +62,14 @@ export function present(
 
   const isPass = record.verb === "PASS";
 
-  // Dynamic Calibrated Decision Confidence based on V4 strategic alignment
-  const scoreValForConfidence = record.priority !== null ? Math.round(record.priority) : 0;
-  const overall = record.priority !== null ? Math.max(0.3, Math.min(0.95, scoreValForConfidence / 100)) : 0.80;
-  const stability = scoreValForConfidence >= 75 ? 0.92 : 0.75;
+    // Pure projection: use confidence from RecommendationRecord directly
+  const overall = record.confidence ?? null;
+  const stability = record.stability === "High" ? 0.92 : record.stability === "Medium" ? 0.75 : 0.50;
   
   let explanation = "Moderate structural alignment; potential promotion scope or scale variance detected.";
-  if (scoreValForConfidence >= 75) {
+  if (record.priority !== null && record.priority >= 75) {
     explanation = "Strong structural alignment across operating level and strategic commercial growth mandates.";
-  } else if (scoreValForConfidence < 50) {
+  } else if (record.priority !== null && record.priority < 50) {
     explanation = "Low alignment; structural level or functional domain mismatch limits suitability.";
   }
 
@@ -87,7 +87,7 @@ export function present(
     score: scoreVal,
     decision: record.verb,
     policyId: "policy-v4.3",
-    policyVersion: "4.3.0",
+    policyVersion: record.recommendationVersion,
     explanation: isPass 
       ? `Evaluated by RADAR V4.3 strategic framework: ${record.verb.toLowerCase()} (Score: ${scoreStr}).`
       : `Dynamically evaluated using RADAR V4.3 strategic framework to ${record.verb.toLowerCase()} (Score: ${scoreStr}).`,
@@ -126,6 +126,13 @@ export function present(
       primaryRisk: narrative.primaryRisk,
       tailoringEffort: narrative.tailoringEffort,
       capabilityAlignmentText: narrative.capabilityAlignmentText,
+      // P1-F: Generate executive-facing recommended action based on decision + tailoring effort
+      recommendedAction: SemanticNaturalLanguageResolver.resolveActionRecommendation(
+        record.verb as "PURSUE" | "CONSIDER" | "PASS",
+        source.role,
+        source.company,
+        narrative.tailoringEffort
+      ),
     },
     record,
     narrative,
