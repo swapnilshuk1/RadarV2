@@ -2,10 +2,14 @@ import { IdentityAssessment, CapabilityAssessment, OpportunityAssessment, Career
 import decisionPolicy from "@/data/ontology/decision_policy.json";
 import { IdentityDistanceCalculator } from "../utils/IdentityDistanceCalculator";
 import { EvidenceGate } from "../gates/EvidenceGate";
+import { QualityScoreCalculator } from "./QualityScoreCalculator";
 
 export const POLICY_THRESHOLDS = {
   PURSUE: decisionPolicy.thresholds.pursueScore,
   CONSIDER: decisionPolicy.thresholds.considerScore,
+  MIN_PURSUE_SP: decisionPolicy.thresholds.minPursueSp,
+  MAX_PURSUE_FRICTION: decisionPolicy.thresholds.maxPursueFriction,
+  MAX_CONSIDER_FRICTION: decisionPolicy.thresholds.maxConsiderFriction,
 };
 
 export interface PipelineStage {
@@ -26,8 +30,9 @@ export interface DecisionPolicyResult {
   verdict: DecisionVerdict;
   evaluationStatus: EvaluationStatus;
   recommendation: Recommendation;
-  rawScore: number;
-  priorityScore: number | null;
+  qualityScore: number | null; // Authoritative Model C intrinsic quality score
+  rawScore: number | null;     // Legacy compatibility alias (equals qualityScore)
+  priorityScore: number | null;// Legacy compatibility alias (equals qualityScore)
   vetoed: boolean;
   vetoReason: string | null;
   claimPermissions: {
@@ -137,12 +142,15 @@ export class DecisionPolicyEngine {
       hasStructuredEvidence
     );
 
-    if (gateResult.evaluationStatus === "SPARSE_SPEC") {
+    const isSparseSpec = gateResult.evaluationStatus === "SPARSE_SPEC";
+
+    if (isSparseSpec) {
       return {
         verdict: "SPARSE_SPEC",
         evaluationStatus: "SPARSE_SPEC",
         recommendation: null,
-        rawScore: 0,
+        qualityScore: null,
+        rawScore: null,
         priorityScore: null,
         vetoed: true,
         vetoReason: "G-EVIDENCE-GATE-SPARSE-SPEC",
@@ -180,8 +188,9 @@ export class DecisionPolicyEngine {
         verdict: "PASS",
         evaluationStatus: "EVALUATED",
         recommendation: "PASS",
-        rawScore: 0,
-        priorityScore: 0,
+        qualityScore: null,
+        rawScore: null,
+        priorityScore: null,
         vetoed: true,
         vetoReason: "G-EXECUTIVE-IDENTITY-MISMATCH",
         claimPermissions,
@@ -218,7 +227,8 @@ export class DecisionPolicyEngine {
         verdict: "NOT_EVALUABLE",
         evaluationStatus: "NOT_EVALUABLE",
         recommendation: null,
-        rawScore: 0,
+        qualityScore: null,
+        rawScore: null,
         priorityScore: null,
         vetoed: true,
         vetoReason: "G-EVIDENCE-INTEGRITY-FAILED",
@@ -241,33 +251,28 @@ export class DecisionPolicyEngine {
     }
 
     const policyConfig: any = decisionPolicy;
-    const baseWeights = policyConfig.weights;
     const t = policyConfig.thresholds;
+
+    // Calculate Model C Authoritative Intrinsic Quality Score
+    const qualityResult = QualityScoreCalculator.calculate({
+      identityDistance,
+      identity,
+      capability,
+      career,
+      opportunity,
+      isSparseSpec: false,
+      criticalFailed: false
+    });
+
+    const qualityScore = qualityResult.qualityScore; // Authoritative [0-100]
+    const rawScore = qualityScore;                   // Legacy alias
+    const priorityScore = qualityScore;              // Legacy alias
 
     const identityScore = Math.round((identity.coverage || (1.0 - identityDistance)) * 100);
     const isCapUnavailable = (capability as any).evidenceState === "UNAVAILABLE" || capability.sufficiency === "INSUFFICIENT" || capability.overallFit === null;
     const capabilityScore = isCapUnavailable ? 50 : Math.round((capability.overallFit || 0) * 100);
     const careerScore = (career as any).careerScore || Math.max(0, 80 - (career.regressionScore || 0));
-    const opportunityScore = (opportunity as any).opportunityScore || 80;
     const locationFriction = (lifestyle as any).locationFrictionPenalty || 0;
-
-    // Non-Additive Cross-Dimensional Interaction Scaling
-    const capabilityInteractionMultiplier = Math.max(0.20, 1.0 - 0.70 * identityDistance);
-    const careerInteractionMultiplier = Math.max(0.30, 1.0 - 0.50 * identityDistance);
-
-    const effectiveCapWeight = baseWeights.capability * capabilityInteractionMultiplier;
-    const effectiveCareerWeight = baseWeights.career * careerInteractionMultiplier;
-
-    // Clean Continuous Score Calculation (Free of Artificial Noise or Arbitrary Boosts)
-    const rawInteractiveScore = 
-      baseWeights.identity * identityScore +
-      effectiveCareerWeight * careerScore +
-      baseWeights.opportunity * opportunityScore +
-      effectiveCapWeight * capabilityScore -
-      locationFriction;
-
-    // Pure continuous score bounded between 0 and 100
-    const rawScore = Math.min(100, Math.max(0, Math.round(rawInteractiveScore)));
 
     const parsingConfidence = Math.min(1.0, 
       (identity.evidenceCount > 0 ? 0.9 : 0.6) * 
@@ -305,8 +310,7 @@ export class DecisionPolicyEngine {
         score: capabilityScore, 
         reason: {
           matched: capability.matchedCapabilities,
-          missing: capability.missingCapabilities,
-          interactionScale: capabilityInteractionMultiplier.toFixed(2)
+          missing: capability.missingCapabilities
         }
       },
       { stage: "Career", status: career.regressionScore < (t.regressionCutoff || 50) ? "PASS" : "FAIL", score: careerScore, reason: `Trajectory: ${(career as any).trajectory}` },
@@ -325,22 +329,17 @@ export class DecisionPolicyEngine {
     if ((career as any).trajectory === "FORWARD") decisionDrivers.push({ factor: "Career Growth", impact: "positive", strength: "high", evidence: "Forward trajectory" });
     if (career.regressionScore > 20) decisionRisks.push({ factor: "Career Regression", impact: "negative", strength: "high", evidence: `Regression score: ${career.regressionScore}` });
 
-    // P1-C: Tailoring effort derived from capability gaps, not match scores
-    // Concept: effort is determined by the gaps requiring bridging, not by overall match percentage
     let tailoringEffort: "LOW" | "MODERATE" | "HIGH" = "LOW";
     
-    // Analyze missing capabilities by tier
     const missingCoreMandate = capability.missingCapabilities.filter(c => c.includes("[CORE_MANDATE]")).length;
     const missingExecution = capability.missingCapabilities.filter(c => c.includes("[EXECUTION_CAPABILITY]")).length;
     const missingTechStack = capability.missingCapabilities.filter(c => c.includes("[TECHNOLOGY_STACK]")).length;
     const missingDomain = capability.missingCapabilities.filter(c => c.includes("[DOMAIN_FAMILIARITY]")).length;
     
-    // MODERATE: Execution or technology gaps exist (can be bridged with effort)
     if (missingExecution > 0 || missingTechStack > 0 || missingDomain > 0) {
       tailoringEffort = "MODERATE";
     }
     
-    // HIGH: Core mandate gaps exist (fundamental to role, harder to bridge)
     if (missingCoreMandate > 0) {
       tailoringEffort = "HIGH";
     }
@@ -351,11 +350,11 @@ export class DecisionPolicyEngine {
         ? "Strategic P&L Scale Consolidation" 
         : "Operational Repositioning";
 
-    const relativeDifferentiator = `Score ${rawScore}/100 with ${Math.round(identityScore)}% Identity similarity and ${capabilityScore}% Capability fit.`;
+    const relativeDifferentiator = `Quality Score ${qualityScore}/100 with ${Math.round(identityScore)}% Identity similarity and ${capabilityScore}% Capability fit.`;
 
-    pipeline.push({ stage: "Ranking", status: "COMPLETE", score: rawScore });
+    pipeline.push({ stage: "Ranking", status: "COMPLETE", score: qualityScore });
 
-    // Exclusion Gates (Hard Vetoes) — Assign priorityScore = 0 / null, vetoed = true, vetoReason
+    // Exclusion Gates (Hard Vetoes) — Assign qualityScore (numeric), vetoed = true, vetoReason
     if (
       opportunity.mandateSeniority === "SUB_TIER" || 
       (opportunity as any).seniorityAssessment?.mandateSeniority === "SUB_TIER"
@@ -364,8 +363,9 @@ export class DecisionPolicyEngine {
         verdict: "PASS",
         evaluationStatus: evaluationStatus,
         recommendation: "PASS",
+        qualityScore,
         rawScore,
-        priorityScore: 0,
+        priorityScore,
         vetoed: true,
         vetoReason: "G-SUB-TIER-MANDATE-VETO",
         claimPermissions,
@@ -389,8 +389,9 @@ export class DecisionPolicyEngine {
         verdict: "PASS",
         evaluationStatus: evaluationStatus,
         recommendation: "PASS",
+        qualityScore,
         rawScore,
-        priorityScore: 0,
+        priorityScore,
         vetoed: true,
         vetoReason: "G-IDENTITY-VETO",
         claimPermissions,
@@ -412,8 +413,9 @@ export class DecisionPolicyEngine {
         verdict: "PASS",
         evaluationStatus: evaluationStatus,
         recommendation: "PASS",
+        qualityScore,
         rawScore,
-        priorityScore: 0,
+        priorityScore,
         vetoed: true,
         vetoReason: "G-EXECUTION-VETO",
         claimPermissions,
@@ -435,8 +437,9 @@ export class DecisionPolicyEngine {
         verdict: "PASS",
         evaluationStatus: evaluationStatus,
         recommendation: "PASS",
+        qualityScore,
         rawScore,
-        priorityScore: 0,
+        priorityScore,
         vetoed: true,
         vetoReason: "G-COMPATIBILITY-REGRESSION-VETO",
         claimPermissions,
@@ -453,7 +456,7 @@ export class DecisionPolicyEngine {
       };
     }
 
-    // Structural Conviction Flag (Calculated purely for analytical tagging, NOT mutating score)
+    // Structural Conviction Flag
     const ma = (opportunity as any).mandateAssessment;
     const isCommercialDomain = !jobExecutiveIdentityValue || jobExecutiveIdentityValue.includes("Commercial") || jobExecutiveIdentityValue.includes("Marketing") || jobExecutiveIdentityValue.includes("Growth");
     const isExecutiveAltitude = (opportunity as any).operatingLevelAssessment === "MATCH" || (opportunity as any).operatingLevelAssessment === "PROMOTION" || roleTitle.toLowerCase().includes("head") || roleTitle.toLowerCase().includes("director") || roleTitle.toLowerCase().includes("chief") || roleTitle.toLowerCase().includes("cmo") || roleTitle.toLowerCase().includes("vp");
@@ -462,25 +465,24 @@ export class DecisionPolicyEngine {
 
     const hasStructuralConviction = isCommercialDomain && isExecutiveAltitude && isBusinessGrowth && isEnterpriseScope;
 
-    // P3-A: Career-Value Protection Rule (Rule 1 - Approved)
-    // Detect "easy trap": CV < 50 AND SP >= 80 AND Friction < 10 AND initial PURSUE
-    // Use pre-calculated authoritative SP passed from engine.ts
-    const spHigh = shortlistingPotentialScore !== undefined && shortlistingPotentialScore >= 80; // SP >= 80
-    const frictionLow = locationFriction < 10; // Friction < 10 (strictly less than)
-    const careerValueLow = careerScore < 50; // CV < 50 (strictly less than)
+    const sp = shortlistingPotentialScore ?? 0;
+    const friction = locationFriction;
+    const careerValueLow = careerScore < 50;
+    const spHigh = sp >= 80;
+    const frictionLow = friction < 10;
 
-    const wouldBeEasyTrap = spHigh && frictionLow && careerValueLow;
+    const isEasyTrap = spHigh && frictionLow && careerValueLow;
+    const effectiveScore = qualityScore ?? 0;
 
-    // P3-A: If this would be an easy trap PURSUE, downgrade to CONSIDER
-    if (rawScore >= POLICY_THRESHOLDS.PURSUE && identityScore >= t.identityPursueCutoff) {
-      // P3-A: Career-Value Protection - downgrade easy trap from PURSUE to CONSIDER
-      if (wouldBeEasyTrap) {
+    if (effectiveScore >= POLICY_THRESHOLDS.PURSUE && identityScore >= t.identityPursueCutoff) {
+      if (isEasyTrap) {
         return {
           verdict: "CONSIDER",
           evaluationStatus: evaluationStatus,
           recommendation: "CONSIDER",
+          qualityScore,
           rawScore,
-          priorityScore: rawScore,
+          priorityScore,
           vetoed: false,
           vetoReason: null,
           claimPermissions,
@@ -491,18 +493,91 @@ export class DecisionPolicyEngine {
           trajectoryUpside: "Limited Career Upside",
           relativeDifferentiator: "High accessibility but material career regression detected.",
           triggeredRuleIds: ["R-CONSIDER-CAREER-VALUE-PROTECTION", "R-PURSUE-INTERACTIVE-SCORE"],
-          pipeline: [...pipeline, { stage: "CareerValueProtection", status: "DOWNSCALED", score: rawScore, reason: "Easy trap: CV < 50 + SP >= 80 + Friction < 10" }],
+          pipeline: [...pipeline, { stage: "CareerValueProtection", status: "DOWNSCALED", score: qualityScore, reason: "Easy trap: CV < 50 + SP >= 80 + Friction < 10" }],
           decisionDrivers: [...decisionDrivers, { factor: "High Shortlisting Potential", impact: "positive", strength: "high", evidence: `${shortlistingPotentialScore}% SP` }],
           decisionRisks: [...decisionRisks, { factor: "Low Career Value", impact: "negative", strength: "high", evidence: `CV: ${careerScore}` }]
         };
+      }
+
+      if (sp < POLICY_THRESHOLDS.MIN_PURSUE_SP) {
+        return {
+          verdict: "CONSIDER",
+          evaluationStatus: evaluationStatus,
+          recommendation: "CONSIDER",
+          qualityScore,
+          rawScore,
+          priorityScore,
+          vetoed: false,
+          vetoReason: null,
+          claimPermissions,
+          structuralConviction: false,
+          uiLabel: "Consider",
+          confidences,
+          tailoringEffort,
+          trajectoryUpside,
+          relativeDifferentiator: "High quality role but shortlisting potential is below pursuit threshold.",
+          triggeredRuleIds: ["POL-D-CONSIDER-REACH-ROLE"],
+          pipeline: [...pipeline, { stage: "ShortlistingPotentialGate", status: "DOWNSCALED", score: qualityScore, reason: `SP ${sp} < ${POLICY_THRESHOLDS.MIN_PURSUE_SP}` }],
+          decisionDrivers,
+          decisionRisks: [...decisionRisks, { factor: "Lower Shortlisting Potential", impact: "negative", strength: "medium", evidence: `SP: ${sp}%` }]
+        };
+      }
+
+      if (friction > POLICY_THRESHOLDS.MAX_PURSUE_FRICTION) {
+        if (friction <= POLICY_THRESHOLDS.MAX_CONSIDER_FRICTION) {
+          return {
+            verdict: "CONSIDER",
+            evaluationStatus: evaluationStatus,
+            recommendation: "CONSIDER",
+            qualityScore,
+            rawScore,
+            priorityScore,
+            vetoed: false,
+            vetoReason: null,
+            claimPermissions,
+            structuralConviction: false,
+            uiLabel: "Consider",
+            confidences,
+            tailoringEffort,
+            trajectoryUpside,
+            relativeDifferentiator: "High quality role but pursuit friction requires exploratory verification.",
+            triggeredRuleIds: ["POL-D-CONSIDER-HIGH-FRICTION"],
+            pipeline: [...pipeline, { stage: "PursuitFrictionGate", status: "DOWNSCALED", score: qualityScore, reason: `Friction ${friction} > ${POLICY_THRESHOLDS.MAX_PURSUE_FRICTION}` }],
+            decisionDrivers,
+            decisionRisks: [...decisionRisks, { factor: "High Pursuit Friction", impact: "negative", strength: "medium", evidence: `Friction: ${friction}` }]
+          };
+        } else {
+          return {
+            verdict: "PASS",
+            evaluationStatus: evaluationStatus,
+            recommendation: "PASS",
+            qualityScore,
+            rawScore,
+            priorityScore,
+            vetoed: false,
+            vetoReason: null,
+            claimPermissions,
+            structuralConviction: false,
+            uiLabel: "Pass",
+            confidences,
+            tailoringEffort,
+            trajectoryUpside,
+            relativeDifferentiator: "Prohibitive lifestyle/relocation friction exceeds consider threshold.",
+            triggeredRuleIds: ["POL-D-PASS-PROHIBITIVE-FRICTION"],
+            pipeline: [...pipeline, { stage: "PursuitFrictionGate", status: "EXCLUDED", score: qualityScore, reason: `Friction ${friction} > ${POLICY_THRESHOLDS.MAX_CONSIDER_FRICTION}` }],
+            decisionDrivers,
+            decisionRisks: [...decisionRisks, { factor: "Prohibitive Friction", impact: "negative", strength: "high", evidence: `Friction: ${friction}` }]
+          };
+        }
       }
 
       return {
         verdict: "PURSUE",
         evaluationStatus: evaluationStatus,
         recommendation: "PURSUE",
+        qualityScore,
         rawScore,
-        priorityScore: rawScore,
+        priorityScore,
         vetoed: false,
         vetoReason: null,
         claimPermissions,
@@ -519,13 +594,38 @@ export class DecisionPolicyEngine {
       };
     }
 
-    if (rawScore >= POLICY_THRESHOLDS.CONSIDER) {
+    if (effectiveScore >= POLICY_THRESHOLDS.CONSIDER) {
+      if (friction > POLICY_THRESHOLDS.MAX_CONSIDER_FRICTION) {
+        return {
+          verdict: "PASS",
+          evaluationStatus: evaluationStatus,
+          recommendation: "PASS",
+          qualityScore,
+          rawScore,
+          priorityScore,
+          vetoed: false,
+          vetoReason: null,
+          claimPermissions,
+          structuralConviction: false,
+          uiLabel: "Pass",
+          confidences,
+          tailoringEffort,
+          trajectoryUpside,
+          relativeDifferentiator: "Prohibitive lifestyle/relocation friction exceeds consider threshold.",
+          triggeredRuleIds: ["POL-D-PASS-PROHIBITIVE-FRICTION"],
+          pipeline: [...pipeline, { stage: "PursuitFrictionGate", status: "EXCLUDED", score: qualityScore, reason: `Friction ${friction} > ${POLICY_THRESHOLDS.MAX_CONSIDER_FRICTION}` }],
+          decisionDrivers,
+          decisionRisks: [...decisionRisks, { factor: "Prohibitive Friction", impact: "negative", strength: "high", evidence: `Friction: ${friction}` }]
+        };
+      }
+
       return {
         verdict: "CONSIDER",
         evaluationStatus: evaluationStatus,
         recommendation: "CONSIDER",
+        qualityScore,
         rawScore,
-        priorityScore: rawScore,
+        priorityScore,
         vetoed: false,
         vetoReason: null,
         claimPermissions,
@@ -546,8 +646,9 @@ export class DecisionPolicyEngine {
       verdict: "PASS",
       evaluationStatus: evaluationStatus,
       recommendation: "PASS",
+      qualityScore,
       rawScore,
-      priorityScore: 0,
+      priorityScore,
       vetoed: false,
       vetoReason: null,
       claimPermissions,

@@ -64,7 +64,7 @@ export interface CapabilityCardViewModel {
 import type { DecisionConfidence } from "../domain/entities";
 
 export interface RecommendationViewModel {
-  score: number;
+  score: number | null;
   decision: string;
   policyId: string;
   policyVersion: string;

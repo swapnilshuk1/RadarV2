@@ -9,18 +9,6 @@
  * - principal risk (What should worry me?)
  * - career value (Why this opportunity?)
  * - effort level (What will it take?)
- *
- * Actions should be:
- * - concise
- * - executive-facing
- * - decision appropriate
- * - evidence grounded
- * - useful immediately
- *
- * PURSUE: concrete forward action
- * CONSIDER: validation / selective preparation
- * PASS: explain why time should NOT be invested
- * NOT_EVALUABLE: no fabricated action
  */
 
 import type { RecommendationRecord } from "../record";
@@ -71,23 +59,7 @@ export function synthesizeAction(
   effort?: EffortInterpretation
 ): RecommendedAction {
   const decision = record.verb;
-  const evidence: string[] = [];
 
-  // Collect evidence from components
-  if (strategicAdvantage?.category) {
-    evidence.push(`Strategic advantage: ${strategicAdvantage.category}`);
-  }
-  if (principalRisk?.category) {
-    evidence.push(`Principal risk: ${principalRisk.category}`);
-  }
-  if (careerValue?.trajectoryCategory) {
-    evidence.push(`Career trajectory: ${careerValue.trajectoryCategory}`);
-  }
-  if (effort?.effortLevel) {
-    evidence.push(`Effort level: ${effort.effortLevel}`);
-  }
-
-  // Build action based on decision
   switch (decision) {
     case "PURSUE":
       return synthesizePursueAction(record, source, strategicAdvantage, principalRisk, careerValue, effort);
@@ -114,41 +86,37 @@ function synthesizePursueAction(
   careerValue?: CareerValueInterpretation,
   effort?: EffortInterpretation
 ): RecommendedAction {
-  // Build action based on risk and effort
   let statement: string;
   let timeEstimate: string;
   let prerequisites: string | undefined;
   let expectedOutcome: string;
-  let confidence: number;
 
+  const roleTitle = source.role || "Executive Role";
+  const companyName = source.company || "Target Company";
   const hasMaterialRisk = principalRisk?.severity === "high";
   const hasHighEffort = effort?.effortLevel === "high";
   const hasForwardTrajectory = careerValue?.trajectoryCategory === "forward_progression";
 
-  confidence = strategicAdvantage?.confidence ?? 0.75;
+  const confidence = strategicAdvantage?.confidence ?? 0.85;
 
   if (hasMaterialRisk && hasHighEffort) {
-    // High reward but high friction - proceed with caution
-    statement = `Proceed with priority but validate ${principalRisk?.mitigation?.toLowerCase() || "key assumptions"} before full investment. Your ${strategicAdvantage?.category === "transformation_experience" ? "transformation credentials" : "capability alignment"} is strong, but the ${principalRisk?.statement.toLowerCase().slice(0, 60)}... requires upfront clarification.`;
+    statement = `Proceed with high priority for ${roleTitle} at ${companyName}. Validate reporting structure during the initial call while leveraging your core transformation precedent.`;
     timeEstimate = effort?.timeEstimate || "8-12 hours";
-    prerequisites = `Confirm ${principalRisk?.evidence[0]?.toLowerCase() || "key requirements"} before significant preparation`;
-    expectedOutcome = "Priority interview within 1-2 weeks with validated positioning";
+    prerequisites = `Confirm key mandate boundaries before deep deck preparation`;
+    expectedOutcome = "Screening conversation scheduled with search partner";
   } else if (hasForwardTrajectory && !hasHighEffort) {
-    // Strong forward trajectory with low effort - move quickly
-    statement = `Proceed immediately. This ${careerValue?.dimensions.title.direction === "up" ? "elevated role" : "strategic opportunity"} aligns with your trajectory and requires minimal repositioning. Initiate contact this week while the opportunity is fresh.`;
+    statement = `Proceed immediately for ${roleTitle} at ${companyName}. This mandate expands your commercial trajectory with low repositioning friction. Initiate contact this week.`;
     timeEstimate = effort?.timeEstimate || "2-4 hours";
-    expectedOutcome = "Screening call within 3-5 days, strong conversion probability";
+    expectedOutcome = "Screening call within 3-5 days";
   } else if (hasHighEffort) {
-    // High effort but worth it
-    statement = `Proceed after targeted preparation. ${effort?.preparationRequired[0] || "Tailor your positioning"} to emphasize ${strategicAdvantage?.category === "core_mandate_match" ? "core mandate alignment" : "strategic advantages"}. The effort is justified by the ${hasForwardTrajectory ? "career progression potential" : "mandate scope"}.`;
+    statement = `Proceed after targeted preparation for ${companyName}. Tailor your executive brief to emphasize transformation and P&L scale precedents.`;
     timeEstimate = effort?.timeEstimate || "6-10 hours";
     prerequisites = effort?.validationNeeded;
-    expectedOutcome = "Well-positioned application with validated fit";
+    expectedOutcome = "Positioned application submitted with validated domain alignment";
   } else {
-    // Standard pursue
-    statement = `Proceed. ${strategicAdvantage?.statement.slice(0, 80) || "Strong capability alignment"}... Request a screening call to confirm scope and timeline.`;
+    statement = `Proceed with outreach for ${roleTitle} at ${companyName}. Request an initial screening call to confirm operational scope and timeline.`;
     timeEstimate = effort?.timeEstimate || "3-5 hours";
-    expectedOutcome = "Initial conversation within 1 week";
+    expectedOutcome = "Initial conversation scheduled within 1 week";
   }
 
   return {
@@ -159,8 +127,8 @@ function synthesizePursueAction(
     prerequisites,
     expectedOutcome,
     confidence,
-    actionRisk: principalRisk?.statement ? `Risk: ${principalRisk.statement.slice(0, 60)}...` : undefined,
-    alternativeAction: hasMaterialRisk ? "Pivot to lower-risk alternatives if validation fails" : undefined
+    actionRisk: principalRisk?.statement ? `Risk: ${principalRisk.statement}` : undefined,
+    alternativeAction: hasMaterialRisk ? "Pivot to lower-risk alternatives if scope validation fails" : undefined
   };
 }
 
@@ -176,48 +144,28 @@ function synthesizeConsiderAction(
   effort?: EffortInterpretation
 ): RecommendedAction {
   let statement: string;
-  let timeEstimate: string;
-  let prerequisites: string | undefined;
-  let expectedOutcome: string;
-  let confidence: number;
 
+  const roleTitle = source.role || "Executive Role";
+  const companyName = source.company || "Target Company";
   const hasUncertainty = principalRisk?.category === "job_spec_uncertainty" || principalRisk?.category === "missing_evidence";
-  const hasModerateRisk = principalRisk?.severity === "medium";
   const hasCareerConcerns = careerValue?.trajectoryCategory === "backward_regression";
 
-  confidence = 0.7;
+  const confidence = 0.75;
 
   if (hasUncertainty) {
-    // Need more information before proceeding
-    statement = `Request clarification before investing. The ${principalRisk?.statement.toLowerCase().slice(0, 70) || "key details"}... must be resolved to evaluate fit. A single screening call should surface the missing context.`;
-    timeEstimate = "1-2 hours for initial outreach";
-    prerequisites = `Obtain ${principalRisk?.mitigation?.toLowerCase() || "missing information"}`;
-    expectedOutcome = "Sufficient information to upgrade to PURSUE or downgrade to PASS";
-  } else if (hasCareerConcerns && strategicAdvantage) {
-    // Career concerns but some advantage - selective pursuit
-    statement = `Selective consideration. While ${careerValue?.statement.toLowerCase().slice(0, 60)}..., your ${strategicAdvantage.evidence[0]?.toLowerCase() || "relevant experience"} may justify a single exploratory conversation.`;
-    timeEstimate = effort?.timeEstimate || "2-3 hours";
-    prerequisites = "Verify actual scope exceeds current role before any preparation";
-    expectedOutcome = "Clarity on whether scope compensates for trajectory concerns";
-  } else if (hasModerateRisk) {
-    // Moderate risk - validate first
-    statement = `Validate ${principalRisk?.mitigation?.toLowerCase() || "key assumptions"} before proceeding. Your ${strategicAdvantage?.category === "capability_combination" ? "capability profile" : "experience"} is relevant, but ${principalRisk?.statement.toLowerCase().slice(0, 50)}... warrants clarification.`;
-    timeEstimate = effort?.timeEstimate || "3-5 hours";
-    expectedOutcome = "Validated decision to pursue or pass based on risk clarification";
+    statement = `Request scope clarification before investing deep effort in ${roleTitle} at ${companyName}. Conduct a single screening call to resolve missing mandate context.`;
+  } else if (hasCareerConcerns) {
+    statement = `Selective consideration for ${roleTitle} at ${companyName}. Conduct an exploratory conversation to verify whether actual commercial P&L scope compensates for title alignment.`;
   } else {
-    // Standard consider
-    statement = `Consider with selective preparation. Conduct one screening conversation to verify scope and expectations before significant time investment.`;
-    timeEstimate = effort?.timeEstimate || "3-4 hours";
-    expectedOutcome = "Sufficient information to proceed or decline";
+    statement = `Consider with targeted validation. Conduct an initial conversation with ${companyName} to test scope flexibility before deeper time investment.`;
   }
 
   return {
     statement,
     category: "consider",
     primaryAction: "Validate before committing",
-    timeEstimate,
-    prerequisites,
-    expectedOutcome,
+    timeEstimate: effort?.timeEstimate || "2-3 hours",
+    expectedOutcome: "Sufficient information to upgrade to PURSUE or decline to PASS",
     confidence
   };
 }
@@ -232,27 +180,18 @@ function synthesizePassAction(
   careerValue?: CareerValueInterpretation
 ): RecommendedAction {
   let statement: string;
-  let expectedOutcome: string;
-  let confidence: number;
+  const roleTitle = source.role || "Executive Role";
+  const companyName = source.company || "Target Company";
 
   const hasCareerRegression = careerValue?.trajectoryCategory === "backward_regression";
   const hasIdentityMismatch = principalRisk?.category === "identity_domain_concern";
-  const hasMaterialGap = principalRisk?.category === "material_capability_gap";
-
-  confidence = 0.8;
 
   if (hasCareerRegression) {
-    statement = `Decline. ${careerValue?.statement.slice(0, 80) || "This represents career regression"}... Preserve bandwidth for roles that advance rather than constrain your trajectory.`;
-    expectedOutcome = "Preserved headspace for better-aligned opportunities";
+    statement = `Decline ${roleTitle} at ${companyName}. The mandate represents career regression. Preserve search bandwidth for roles that advance your executive trajectory.`;
   } else if (hasIdentityMismatch) {
-    statement = `Pass. ${principalRisk?.statement.slice(0, 80) || "Significant domain/identity mismatch"}... Rejecting this preserves focus for roles within your core executive identity.`;
-    expectedOutcome = "Clear focus on native-domain opportunities";
-  } else if (hasMaterialGap) {
-    statement = `Pass. ${principalRisk?.statement.slice(0, 80) || "Material capability gaps"}... The effort to bridge these gaps outweighs the likely return.`;
-    expectedOutcome = "Time redirected toward better-fit opportunities";
+    statement = `Pass on ${roleTitle} at ${companyName}. The role operates in an adjacent functional domain outside your core executive focus. Rejecting this preserves positioning focus.`;
   } else {
-    statement = `Pass. The mandate scope and requirements sit below your target commercial altitude. Preserve search bandwidth for full-scope executive mandates.`;
-    expectedOutcome = "Preserved executive search focus";
+    statement = `Pass on ${roleTitle} at ${companyName}. The mandate scope sits below your target commercial altitude. Preserve search bandwidth for full-scope executive seats.`;
   }
 
   return {
@@ -260,8 +199,8 @@ function synthesizePassAction(
     category: "pass",
     primaryAction: "Decline and preserve bandwidth",
     timeEstimate: "No time investment required",
-    expectedOutcome,
-    confidence
+    expectedOutcome: "Preserved executive search focus for higher-alignment opportunities",
+    confidence: 0.85
   };
 }
 
@@ -272,11 +211,12 @@ function synthesizeNotEvaluableAction(
   record: RecommendationRecord,
   source: OpportunitySource
 ): RecommendedAction {
+  const companyName = source.company || "Target Company";
   return {
-    statement: `Defer evaluation. Insufficient information to provide a meaningful recommendation. Request additional job specification details if this opportunity appears strategically relevant.`,
+    statement: `Defer evaluation for ${companyName}. Insufficient information in specification to provide a reliable recommendation. Request full JD if strategically relevant.`,
     category: "not_evaluable",
     primaryAction: "Request more information",
-    timeEstimate: "No action until more information available",
+    timeEstimate: "No action required",
     expectedOutcome: "Sufficient specification to enable evaluation",
     confidence: 0.5
   };
@@ -290,25 +230,19 @@ function synthesizeDefaultAction(
   source: OpportunitySource
 ): RecommendedAction {
   return {
-    statement: `Review opportunity details and evaluate against your current priorities and trajectory goals.`,
+    statement: `Review opportunity details for ${source.role} at ${source.company} and evaluate against your current priority track.`,
     category: "consider",
     primaryAction: "Review and evaluate",
-    timeEstimate: "1-2 hours for initial review",
+    timeEstimate: "1-2 hours",
     expectedOutcome: "Initial assessment of fit and priority",
     confidence: 0.6
   };
 }
 
-/**
- * Format action for presentation
- */
 export function formatAction(action: RecommendedAction): string {
   return action.statement;
 }
 
-/**
- * Get action category indicator for UI
- */
 export function getActionIndicator(action: RecommendedAction): {
   label: string;
   color: "green" | "amber" | "red" | "neutral";

@@ -54,8 +54,10 @@ scraper-profile-temp-*/
 # Local calibration runs
 .radar/
 
-# Zip archives
+# Zip and tar archives
 *.zip
+*.tar.gz
+*.tgz
 
 # Scratch files and backups
 scratch/

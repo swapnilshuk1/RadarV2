@@ -7,6 +7,8 @@
  */
 
 import { OpportunityService } from "./opportunity-service";
+import { invalidateEngineCache } from "./engine";
+import { invalidateCandidateDossierCache } from "./cip";
 
 export type EvaluationTriggerEvent =
   | "CORPUS_UPDATED"
@@ -39,6 +41,10 @@ export class EvaluationCoordinator {
       case "PROJECTION_UPDATED":
       case "INTENT_UPDATED":
       case "ONTOLOGY_UPGRADED":
+        // Invalidate in-memory caches to guarantee fresh evaluation
+        invalidateEngineCache();
+        invalidateCandidateDossierCache();
+
         // Re-calculate recommendations for user
         await OpportunityService.listForUser(personId);
         break;

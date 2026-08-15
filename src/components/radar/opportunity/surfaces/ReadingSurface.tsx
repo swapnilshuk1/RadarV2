@@ -10,6 +10,7 @@ import { Appendix } from "../reading/Appendix";
 import { ExecutiveActionButton } from "@/components/radar/actions";
 import { Button } from "@/components/ui/button";
 import { applyUrlFor, type DecisionVerb } from "@/data/opportunity-fixtures";
+import { useSectionPreferences } from "@/lib/section-preferences-store";
 
 interface ReadingSurfaceProps {
   opportunity: any;
@@ -119,6 +120,8 @@ export function ReadingSurface({
     return () => document.removeEventListener("keydown", handleKeyboard);
   }, [handleKeyboard]);
 
+  const { getSectionState, toggleSection, resetToDefaults } = useSectionPreferences(currentVerdict, o.archetype);
+
   return (
     <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
       <Hero
@@ -131,23 +134,74 @@ export function ReadingSurface({
         readTime={readTime}
       />
 
-      {/* CORE MEMORANDUM GRID */}
-      <section className="py-10" ref={revealRef}>
-        <div className="memo-container space-y-12">
-          <div data-reveal>
-            <Context o={o} brief={brief} jobProj={jobProj} />
+      {/* CORE MEMORANDUM GRID WITH SECTION PREFERENCES */}
+      <section className="py-6" ref={revealRef}>
+        <div className="memo-container space-y-8">
+          {/* Section Toolbar & Layout Preferences */}
+          <div className="flex items-center justify-between border-b border-border/50 pb-2">
+            <span className="label-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+              Memorandum Layout · Custom Preferences Active
+            </span>
+            <button
+              onClick={resetToDefaults}
+              className="label-mono text-[11px] text-muted-foreground hover:text-foreground underline decoration-dotted underline-offset-4 cursor-pointer transition-colors"
+            >
+              Reset Layout Defaults
+            </button>
           </div>
-          <div data-reveal>
-            <Mandate o={o} jobProj={jobProj} executionPkg={executionPkg} />
+          {/* Section I: Context */}
+          <div data-reveal className="border-t border-border pt-4">
+            <div className="flex items-center justify-between cursor-pointer py-2 group select-none" onClick={() => toggleSection("context")}>
+              <span className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-semibold">Section I · Why this deserves your attention</span>
+              <button className="label-mono text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded bg-surface-raised border border-border cursor-pointer transition-colors">
+                {getSectionState("context") === "open" ? "Collapse ▲" : "Expand ▼"}
+              </button>
+            </div>
+            {getSectionState("context") === "open" && <Context o={o} brief={brief} jobProj={jobProj} />}
           </div>
-          <div data-reveal>
-            <Evidence brief={brief} />
+
+          {/* Section II: Mandate */}
+          <div data-reveal className="border-t border-border pt-4">
+            <div className="flex items-center justify-between cursor-pointer py-2 group select-none" onClick={() => toggleSection("mandate")}>
+              <span className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-semibold">Section II · What success requires</span>
+              <button className="label-mono text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded bg-surface-raised border border-border cursor-pointer transition-colors">
+                {getSectionState("mandate") === "open" ? "Collapse ▲" : "Expand ▼"}
+              </button>
+            </div>
+            {getSectionState("mandate") === "open" && <Mandate o={o} jobProj={jobProj} executionPkg={executionPkg} />}
           </div>
-          <div data-reveal>
-            <Opinion brief={brief} currentVerdict={currentVerdict} />
+
+          {/* Section III: Evidence */}
+          <div data-reveal className="border-t border-border pt-4">
+            <div className="flex items-center justify-between cursor-pointer py-2 group select-none" onClick={() => toggleSection("evidence")}>
+              <span className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-semibold">Section III · Why this reached your desk</span>
+              <button className="label-mono text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded bg-surface-raised border border-border cursor-pointer transition-colors">
+                {getSectionState("evidence") === "open" ? "Collapse ▲" : "Expand ▼"}
+              </button>
+            </div>
+            {getSectionState("evidence") === "open" && <Evidence brief={brief} />}
           </div>
-          <div data-reveal>
-            <Strategy brief={brief} executionPkg={executionPkg} />
+
+          {/* Section IV: Opinion */}
+          <div data-reveal className="border-t border-border pt-4">
+            <div className="flex items-center justify-between cursor-pointer py-2 group select-none" onClick={() => toggleSection("opinion")}>
+              <span className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-semibold">Section IV · Executive Bottom Line</span>
+              <button className="label-mono text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded bg-surface-raised border border-border cursor-pointer transition-colors">
+                {getSectionState("opinion") === "open" ? "Collapse ▲" : "Expand ▼"}
+              </button>
+            </div>
+            {getSectionState("opinion") === "open" && <Opinion brief={brief} currentVerdict={currentVerdict} />}
+          </div>
+
+          {/* Section V: Strategy */}
+          <div data-reveal className="border-t border-border pt-4">
+            <div className="flex items-center justify-between cursor-pointer py-2 group select-none" onClick={() => toggleSection("strategy")}>
+              <span className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-semibold">Section V · How to win the conversation</span>
+              <button className="label-mono text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded bg-surface-raised border border-border cursor-pointer transition-colors">
+                {getSectionState("strategy") === "open" ? "Collapse ▲" : "Expand ▼"}
+              </button>
+            </div>
+            {getSectionState("strategy") === "open" && <Strategy brief={brief} executionPkg={executionPkg} />}
           </div>
         </div>
       </section>

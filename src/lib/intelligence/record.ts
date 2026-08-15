@@ -44,8 +44,9 @@ export type RecommendationRecord = Readonly<{
   engineVersion: string;
   recommendationVersion: string; // fingerprint of inputs + engine
   verb: DecisionVerb;
-  rawScore?: number; // Unvetoed continuous numeric fit score [0-100]
-  priority: number | null; // 0 or null if hard vetoed; otherwise rawScore
+  qualityScore: number | null; // Authoritative Model C intrinsic quality score [0-100] or null
+  rawScore?: number | null; // Model C continuous quality score (legacy alias)
+  priority: number | null; // Model C continuous quality score (legacy alias)
   vetoed?: boolean; // True if any hard veto was triggered
   vetoReason?: string | null; // Triggered rule ID (e.g. "G-SUB-TIER-MANDATE-VETO")
   claimPermissions?: ClaimPermissions; // Editorial claim authorization tokens

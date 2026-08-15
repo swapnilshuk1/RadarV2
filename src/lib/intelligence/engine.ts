@@ -293,6 +293,7 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
         engineVersion: ENGINE_VERSION,
         recommendationVersion: `${ENGINE_VERSION}:${raw.jobHash}:SPARSE_SPEC`,
         verb: "SPARSE_SPEC",
+        qualityScore: null,
         rawScore: 0,
         priority: null,  // P0-B: uncertainty encoded as null
         vetoed: false,   // P0-B: not a veto
@@ -408,6 +409,7 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
       engineVersion: ENGINE_VERSION,
       recommendationVersion: `${ENGINE_VERSION}:${raw.jobHash}:${headspaceOutcome.finalVerb}`,
       verb: headspaceOutcome.finalVerb,
+      qualityScore: finalScore !== null ? finalScore : null,
       rawScore: policyResult.rawScore,
       priority: finalScore !== null ? finalScore : null,
       vetoed: policyResult.vetoed,

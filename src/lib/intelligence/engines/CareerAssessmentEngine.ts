@@ -1,4 +1,4 @@
-﻿import { CandidateProjection } from "../../domain/candidate_projection";
+import { CandidateProjection } from "../../domain/candidate_projection";
 import { JobProjection } from "../../domain/job_projection";
 import { CareerAssessment, OperatingLevel } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
@@ -20,10 +20,10 @@ export class CareerAssessmentEngine {
   ): CareerAssessment {
     const richness = EvidenceRichnessCalculator.calculate(job.originalOpportunity);
 
-    if (
-      job.operatingLevel.value === "UNKNOWN" ||
-      candidate.operatingLevel.value === "UNKNOWN"
-    ) {
+    const candLevel = typeof candidate.operatingLevel === "object" ? candidate.operatingLevel?.value : candidate.operatingLevel;
+    const jobLevel = typeof job.operatingLevel === "object" ? job.operatingLevel?.value : job.operatingLevel;
+
+    if (!jobLevel || !candLevel || jobLevel === "UNKNOWN" || candLevel === "UNKNOWN") {
       return {
         status: "FAILED",
         sufficiency: "INSUFFICIENT",
@@ -36,8 +36,8 @@ export class CareerAssessmentEngine {
       };
     }
 
-    const candVal = LEVEL_HIERARCHY[candidate.operatingLevel.value] || 1;
-    const jobVal = LEVEL_HIERARCHY[job.operatingLevel.value] || 1;
+    const candVal = LEVEL_HIERARCHY[candLevel as keyof typeof LEVEL_HIERARCHY] || 1;
+    const jobVal = LEVEL_HIERARCHY[jobLevel as keyof typeof LEVEL_HIERARCHY] || 1;
     const diff = candVal - jobVal;
 
     const cvb = CareerValueEngine.evaluate(candidate, job);

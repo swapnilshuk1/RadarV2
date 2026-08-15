@@ -11,18 +11,11 @@
  *
  * This is NOT a re-ranking or scoring change. It is interpretive synthesis
  * that explains the principal risk in executive language.
- *
- * Evidence Sources:
- * - decisionRisks[]: authoritative risks from DecisionPolicyEngine
- * - trace.evidenceMapping[]: capability match evidence with confidence
- * - claimPermissions.explicitUnknowns/explicitRisks: known gaps
- * - explanation.missingEvidence: evidence gaps that create uncertainty
- * - career trajectory: FORWARD/LATERAL/BACKWARD status
- * - mandateSeniority: QUALIFIED/BORDERLINE/SUB_TIER status
  */
 
 import type { RecommendationRecord } from "../record";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
+import { unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
 
 export interface PrincipalRisk {
   /** The synthesized risk statement in executive language */
@@ -53,12 +46,6 @@ export interface PrincipalRisk {
 
 /**
  * Synthesize principal risk from assessment outputs
- *
- * Returns a risk statement that explains:
- * 1. What the risk is
- * 2. Why it matters for this specific opportunity
- * 3. What candidate evidence creates or mitigates the risk
- * 4. Where appropriate, what the executive can do about it
  */
 export function synthesizePrincipalRisk(
   record: RecommendationRecord,
@@ -68,13 +55,14 @@ export function synthesizePrincipalRisk(
   let confidence = 0.7;
   let severity: PrincipalRisk["severity"] = "medium";
 
+  const roleTitle = source.role || "Executive Role";
+  const companyName = source.company || "Target Company";
+
   // 1. Analyze authoritative decision risks (highest priority)
   const decisionRisks = record.decisionRisks || [];
-  const hasDecisionRisks = decisionRisks.length > 0;
 
   // 2. Extract capability gaps from trace
   const evidenceMapping = record.trace?.evidenceMapping || [];
-  const lowConfidenceMatches = evidenceMapping.filter((m) => m.confidence < 0.5);
   const missingCapabilities = record.claimPermissions?.explicitUnknowns || [];
 
   // 3. Categorize gaps by tier
@@ -108,10 +96,6 @@ export function synthesizePrincipalRisk(
       r.factor.toLowerCase().includes("distance")
   );
 
-  const hasCapabilityGap = decisionRisks.some(
-    (r) => r.factor.toLowerCase().includes("capability gap")
-  );
-
   const hasLocationFriction = decisionRisks.some(
     (r) =>
       r.factor.toLowerCase().includes("location") ||
@@ -141,7 +125,7 @@ export function synthesizePrincipalRisk(
       confidence = 0.65;
       severity = "medium";
       return {
-        statement: `Core mandate requires ${gapCapability.toLowerCase()} where your precedent is limited. Your adjacent capabilities may transfer, but this remains a primary interview validation point.`,
+        statement: `The ${roleTitle} mandate at ${companyName} requires ${gapCapability.toLowerCase()} where your direct precedent is limited. This remains a primary interview validation point.`,
         category: "material_capability_gap",
         evidence: evidence.slice(0, 3),
         mitigation:
@@ -154,7 +138,7 @@ export function synthesizePrincipalRisk(
     confidence = 0.55;
     severity = "high";
     return {
-      statement: `Limited evidence of ${gapCapability.toLowerCase()} — a core requirement for this mandate. This gap will likely surface in screening.`,
+      statement: `Limited evidence of ${gapCapability.toLowerCase()} for the ${roleTitle} opening at ${companyName}. This core gap will likely surface in initial screening.`,
       category: "material_capability_gap",
       evidence: evidence.slice(0, 3),
       confidence,
@@ -172,7 +156,7 @@ export function synthesizePrincipalRisk(
     confidence = 0.75;
     severity = "high";
     return {
-      statement: `The operating level and scope represent a step back from your current trajectory. The primary risk is career deceleration, not capability mismatch.`,
+      statement: `The operating level and scope for ${roleTitle} at ${companyName} represent a step back from your current trajectory. The primary risk is career deceleration.`,
       category: "career_trajectory_concern",
       evidence: evidence.slice(0, 3),
       mitigation: "Verify if there's a fast-track path to broader scope within 12-18 months",
@@ -193,7 +177,7 @@ export function synthesizePrincipalRisk(
     confidence = 0.8;
     severity = "high";
     return {
-      statement: `This role operates in a different functional domain than your core executive expertise. The principal risk is positioning credibility in a non-native territory.`,
+      statement: `This ${roleTitle} role at ${companyName} operates in a separate functional domain from your core executive expertise. Positioning credibility is the primary bottleneck.`,
       category: "identity_domain_concern",
       evidence: evidence.slice(0, 3),
       mitigation: "Consider whether domain pivot is intentional career strategy",
@@ -210,7 +194,7 @@ export function synthesizePrincipalRisk(
     confidence = 0.5;
     severity = "medium";
     return {
-      statement: `Key details are unavailable in the posting — ${keyGaps.join(", ")}. The risk is pursuing an opportunity with undefined scope or expectations.`,
+      statement: `Key details are unavailable in ${companyName}'s posting — ${keyGaps.join(", ")}. The risk is pursuing an opportunity with undefined scope or expectations.`,
       category: "job_spec_uncertainty",
       evidence: evidence.slice(0, 3),
       mitigation: "Request full JD and direct reporting line details before investing time",
@@ -231,7 +215,7 @@ export function synthesizePrincipalRisk(
     confidence = 0.7;
     severity = "medium";
     return {
-      statement: `The location or working model creates practical friction. This is a lifestyle alignment risk rather than a capability concern.`,
+      statement: `The location or working model for ${roleTitle} at ${companyName} creates practical friction. This is a lifestyle alignment risk.`,
       category: "engagement_lifestyle_concern",
       evidence: evidence.slice(0, 3),
       mitigation: "Verify flexibility in working arrangement before proceeding",
@@ -240,12 +224,12 @@ export function synthesizePrincipalRisk(
     };
   }
 
-  // Priority 6: No material risk for PURSUE with strong matches (check before peripheral gaps)
+  // Priority 6: No material risk for PURSUE
   if (record.verb === "PURSUE") {
     confidence = 0.85;
     severity = "low";
     return {
-      statement: `No material risk identified in current assessment. Proceed with standard due diligence.`,
+      statement: `No material structural risk identified for ${roleTitle} at ${companyName}. Proceed with standard executive due diligence.`,
       category: "no_material_risk",
       evidence: ["Comprehensive capability match", "Strong evidence grounding"],
       confidence,
@@ -253,104 +237,47 @@ export function synthesizePrincipalRisk(
     };
   }
 
-  // Priority 7: Execution/technology gaps (less critical than core mandate, only if not PURSUE)
+  // Default: Secondary execution or domain gaps
   if (executionGaps.length > 0 || techStackGaps.length > 0) {
     const gap = executionGaps[0] || techStackGaps[0];
-    const gapCapability = extractCapabilityName(gap);
-    evidence.push(`Execution gap: ${gapCapability}`);
+    const gapName = extractCapabilityName(gap);
+    evidence.push(`Secondary gap: ${gapName}`);
 
     confidence = 0.6;
     severity = "low";
     return {
-      statement: `${gapCapability} is listed in the requirements; this is a bridgeable execution gap rather than a core mandate mismatch.`,
+      statement: `Secondary execution gap in ${gapName.toLowerCase()} for ${roleTitle}. Manageable through team composition or strategic advisory.`,
       category: "material_capability_gap",
       evidence: evidence.slice(0, 3),
-      mitigation: "Prepare examples of adjacent tool/platform experience",
       confidence,
       severity,
     };
   }
 
-  // Priority 8: Domain familiarity gaps
-  if (domainGaps.length > 0) {
-    const domainGap = domainGaps[0];
-    const gapCapability = extractCapabilityName(domainGap);
-    evidence.push(`Domain gap: ${gapCapability}`);
-
-    confidence = 0.55;
-    severity = "medium";
-    return {
-      statement: `The industry domain requires ${gapCapability.toLowerCase()} where your direct precedent is limited. This may affect initial credibility.`,
-      category: "identity_domain_concern",
-      evidence: evidence.slice(0, 3),
-      mitigation: "Frame transferable domain patterns from adjacent industries",
-      confidence,
-      severity,
-    };
-  }
-
-  // Priority 9: Low-confidence evidence matches
-  if (lowConfidenceMatches.length > 0 && record.verb === "CONSIDER") {
-    evidence.push("Multiple capability matches below confidence threshold");
-
-    confidence = 0.5;
-    severity = "medium";
-    return {
-      statement: `Several claimed capability matches lack strong evidentiary support. The risk is overestimating fit based on weak signal.`,
-      category: "missing_evidence",
-      evidence: evidence.slice(0, 3),
-      mitigation: "Validate key capabilities with specific examples in initial conversation",
-      confidence,
-      severity,
-    };
-  }
-
-  // Default for PASS or edge cases
-  confidence = 0.5;
-  severity = "medium";
+  // Fallback
   return {
-    statement: hasDecisionRisks
-      ? `${decisionRisks[0].factor}: ${decisionRisks[0].evidence}`
-      : `Assessment identified concerns that warrant careful consideration before proceeding.`,
-    category: hasDecisionRisks ? "material_capability_gap" : "job_spec_uncertainty",
-    evidence: decisionRisks.length > 0 ? [decisionRisks[0].evidence] : ["Assessment analysis"],
-    confidence,
-    severity,
+    statement: `Standard evaluation risks apply for ${roleTitle} at ${companyName}. Verify reporting line, P&L ceiling, and strategic mandate during initial conversation.`,
+    category: "job_spec_uncertainty",
+    evidence: ["Standard assessment baseline"],
+    confidence: 0.5,
+    severity: "low",
   };
 }
 
-/**
- * Extract clean capability name from gap string
- */
-function extractCapabilityName(gapString: string): string {
-  // Remove tier markers like [CORE_MANDATE], [EXECUTION_CAPABILITY], etc.
-  return gapString
-    .replace(/\s*\[[^\]]+\]\s*/g, "")
-    .replace(/_/g, " ")
-    .trim();
-}
-
-/**
- * Format principal risk for presentation
- */
 export function formatPrincipalRisk(risk: PrincipalRisk): string {
-  if (risk.confidence < 0.5) {
-    return `Risk unclear: ${risk.statement}`;
-  }
   return risk.statement;
 }
 
 /**
- * Get risk severity indicator for UI
+ * Extract clean capability name from tag string
  */
-export function getRiskSeverityIndicator(risk: PrincipalRisk): {
-  label: string;
-  color: "red" | "amber" | "green";
-} {
-  if (risk.severity === "high") {
-    return { label: "High Risk", color: "red" };
-  } else if (risk.severity === "medium") {
-    return { label: "Moderate Risk", color: "amber" };
-  }
-  return { label: "Low Risk", color: "green" };
+function extractCapabilityName(tag: string): string {
+  const unwrapped = unwrapEvidenceValue(tag);
+  return unwrapped
+    .replace(/\[CORE_MANDATE\]/g, "")
+    .replace(/\[EXECUTION_CAPABILITY\]/g, "")
+    .replace(/\[TECHNOLOGY_STACK\]/g, "")
+    .replace(/\[DOMAIN_FAMILIARITY\]/g, "")
+    .replace(/_/g, " ")
+    .trim();
 }

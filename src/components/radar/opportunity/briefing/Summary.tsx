@@ -30,16 +30,21 @@ export function Summary({
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <span className={`label-mono rounded-[3px] px-1.5 py-[2px] leading-none uppercase font-normal text-[10px] ${
+            <span className={`label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs ${
               currentVerdict === "PURSUE"
                 ? "bg-signal text-white"
                 : currentVerdict === "CONSIDER"
                 ? "bg-caution text-white"
                 : "bg-muted text-muted-foreground"
             }`}>
-              {currentVerdict === "PURSUE" ? "Pursue" : currentVerdict === "CONSIDER" ? "Consider" : "Pass"}
+              {currentVerdict}
             </span>
-            <span className="label-mono font-normal text-[10px]">Executive Briefing</span>
+
+            <span className="label-mono font-mono text-xs font-semibold px-2 py-0.5 rounded bg-surface-raised border border-border text-foreground">
+              RADAR SCORE: {brief.qualityScore != null ? `${brief.qualityScore}/100` : "N/A"}
+            </span>
+
+            <span className="label-mono font-normal text-[10px] text-muted-foreground">· Executive Briefing</span>
           </div>
 
           <h1 className="mt-3 font-display text-3xl leading-[1.1] tracking-tight text-foreground font-normal">

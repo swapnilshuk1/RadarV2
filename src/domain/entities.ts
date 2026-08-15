@@ -369,3 +369,40 @@ export interface Capability {
   supportingEvidence: EvidenceReference[];
   sourceDimensions: SourceDimension[];
 }
+
+// ============================================================================
+// Platform Intelligence Contracts (P7-B / P7-C Platform Intelligence)
+// ============================================================================
+
+export type SignalAvailabilityState = "AVAILABLE" | "UNAVAILABLE" | "NOT_APPLICABLE" | "UNKNOWN";
+
+export interface ValueWithAvailability<T> {
+  value: T | null;
+  state: SignalAvailabilityState;
+  provenanceNote?: string;
+}
+
+export interface PlatformIntelligence {
+  source: "LinkedIn" | "Naukri" | "Indeed" | "Workday" | "Greenhouse" | "Lever" | "SmartRecruiters" | "CompanySite";
+  accountConnected: boolean;
+  membershipTier: "FREE" | "PREMIUM" | "RECRUITER" | "UNKNOWN";
+  retrievedAt?: string;
+  provenanceMode?: "FIXTURE" | "LOCAL_EXPERIMENT" | "LIVE_AUTHORIZED";
+
+  applicantCount: ValueWithAvailability<number>;
+  applicantRankPercentile: ValueWithAvailability<number>;
+  topApplicantBadge: ValueWithAvailability<boolean>;
+  seniorApplicantRatio: ValueWithAvailability<number>;
+
+  platformMatchScore: ValueWithAvailability<number>;
+  platformRecommendationBadge: ValueWithAvailability<string>;
+  platformSkillMatchCount: ValueWithAvailability<{ matched: number; total: number }>;
+  platformExperienceMatch: ValueWithAvailability<boolean>;
+
+  recruiterActiveRecently: ValueWithAvailability<boolean>;
+  hiringManagerName: ValueWithAvailability<string>;
+  companyHeadcountGrowthYoY: ValueWithAvailability<number>;
+
+  sourceFreshnessAgeDays: ValueWithAvailability<number>;
+}
+

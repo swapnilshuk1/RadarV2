@@ -291,8 +291,10 @@ export class OpportunityAssessmentEngine {
       contradictions.push("Role scope or experience is below executive baseline.");
     }
 
-    const candOL = (LEVEL_VAL as any)[candidate.operatingLevel.value] || 1;
-    const jobOL = (LEVEL_VAL as any)[job.operatingLevel.value] || 1;
+    const candOLVal = typeof candidate.operatingLevel === "object" ? candidate.operatingLevel?.value : candidate.operatingLevel;
+    const jobOLVal = typeof job.operatingLevel === "object" ? job.operatingLevel?.value : job.operatingLevel;
+    const candOL = (LEVEL_VAL as any)[candOLVal || ""] || 1;
+    const jobOL = (LEVEL_VAL as any)[jobOLVal || ""] || 1;
 
     let operatingLevelAssessment: "MATCH" | "PROMOTION" | "REGRESSION_MINOR" | "REGRESSION_MAJOR" | "UNKNOWN" = "MATCH";
     const olDiff = candOL - jobOL;
@@ -306,8 +308,10 @@ export class OpportunityAssessmentEngine {
       operatingLevelAssessment = "REGRESSION_MAJOR";
     }
 
-    const candWN = (WN_VAL as any)[candidate.workNature.value] || 1;
-    const jobWN = (WN_VAL as any)[job.workNature.value] || 1;
+    const candWNVal = typeof candidate.workNature === "object" ? candidate.workNature?.value : candidate.workNature;
+    const jobWNVal = typeof job.workNature === "object" ? job.workNature?.value : job.workNature;
+    const candWN = (WN_VAL as any)[candWNVal || ""] || 1;
+    const jobWN = (WN_VAL as any)[jobWNVal || ""] || 1;
 
     let workNatureAssessment: "MATCH" | "PROMOTION" | "REGRESSION" | "UNKNOWN" = "MATCH";
     if (candWN === jobWN) {
@@ -320,11 +324,13 @@ export class OpportunityAssessmentEngine {
 
     // Handle unknown commercial scope gracefully without failing the entire assessment
     let scopeAssessment: "MATCH" | "PROMOTION" | "REGRESSION" | "UNKNOWN" = "MATCH";
-    if (job.commercialScope.value === "UNKNOWN" || candidate.commercialScope.value === "UNKNOWN") {
+    const candCSVal = typeof candidate.commercialScope === "object" ? candidate.commercialScope?.value : candidate.commercialScope;
+    const jobCSVal = typeof job.commercialScope === "object" ? job.commercialScope?.value : job.commercialScope;
+    if (jobCSVal === "UNKNOWN" || candCSVal === "UNKNOWN" || !jobCSVal || !candCSVal) {
       scopeAssessment = "UNKNOWN";
     } else {
-      const candCS = SCOPE_VAL[candidate.commercialScope.value] || 1;
-      const jobCS = SCOPE_VAL[job.commercialScope.value] || 1;
+      const candCS = SCOPE_VAL[candCSVal] || 1;
+      const jobCS = SCOPE_VAL[jobCSVal] || 1;
       if (candCS === jobCS) {
         scopeAssessment = "MATCH";
       } else if (candCS < jobCS) {

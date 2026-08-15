@@ -67,9 +67,10 @@ export function present(
   const stability = record.stability === "High" ? 0.92 : record.stability === "Medium" ? 0.75 : 0.50;
   
   let explanation = "Moderate structural alignment; potential promotion scope or scale variance detected.";
-  if (record.priority !== null && record.priority >= 75) {
+  const effectiveQualityScore = record.qualityScore ?? record.priority;
+  if (effectiveQualityScore !== null && effectiveQualityScore >= 75) {
     explanation = "Strong structural alignment across operating level and strategic commercial growth mandates.";
-  } else if (record.priority !== null && record.priority < 50) {
+  } else if (effectiveQualityScore !== null && effectiveQualityScore < 50) {
     explanation = "Low alignment; structural level or functional domain mismatch limits suitability.";
   }
 
@@ -80,8 +81,8 @@ export function present(
     explanation
   };
   
-  const scoreVal = record.priority !== null ? Math.round(record.priority) : 0;
-  const scoreStr = record.priority !== null ? `${Math.round(record.priority)}/100` : "N/A";
+  const scoreVal = effectiveQualityScore !== null ? Math.round(effectiveQualityScore) : null;
+  const scoreStr = effectiveQualityScore !== null ? `${Math.round(effectiveQualityScore)}/100` : "N/A";
 
   const recommendationResultViewModel: RecommendationViewModel = {
     score: scoreVal,

@@ -36,21 +36,67 @@ export function Hero({
         <div className="mt-12 grid gap-10 lg:grid-cols-[3fr_2fr]">
           {/* Left Column: Strategic Mandate & Core Advisory Thesis */}
           <div className="space-y-6">
-            {/* Badges & Verbs */}
+            {/* Badges, Scores & Verbs */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`label-mono rounded-[3px] px-1.5 py-[3px] leading-none uppercase font-normal ${
+              <span className={`label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs ${
                 currentVerdict === "PURSUE"
                   ? "bg-signal text-white"
                   : currentVerdict === "CONSIDER"
                   ? "bg-caution text-white"
                   : "bg-muted text-muted-foreground"
               }`}>
-                {currentVerdict === "PURSUE" ? "Pursue" : currentVerdict === "CONSIDER" ? "Consider" : "Pass"}
+                {currentVerdict}
               </span>
-              <span className="label-mono font-normal">{brief.fitLabel || 'Executive Fit'}</span>
-              <span className="label-mono font-normal">· {brief.evidenceQuality}</span>
-              {readTime && <span className="label-mono font-normal">· {readTime}</span>}
+
+              <span className="label-mono font-mono text-xs font-semibold px-2 py-1 rounded bg-surface-raised border border-border text-foreground">
+                RADAR SCORE: {brief.qualityScore != null ? `${brief.qualityScore}/100` : "N/A"}
+              </span>
+
+              {/* Coexistence Rationale Flag if Quality Score diverges from Decision Verb */}
+              {brief.qualityScore != null && brief.qualityScore >= 65 && currentVerdict !== "PURSUE" && (
+                <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-caution/20 text-caution font-medium border border-caution/30">
+                  {brief.qualityScore >= 80 && currentVerdict === "PASS"
+                    ? "Identity / Gate Filter"
+                    : "High Friction / Location"}
+                </span>
+              )}
+              {brief.qualityScore != null && brief.qualityScore < 50 && currentVerdict === "CONSIDER" && (
+                <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-caution/20 text-caution font-medium border border-caution/30">
+                  Easy Trap Protection
+                </span>
+              )}
+
+              {/* Freshness Badge */}
+              <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-surface-raised border border-border text-muted-foreground font-medium">
+                {o.postedRelative ? `${o.postedRelative} · ${o.scrapedFrom || 'Workday'}` : `Scraped ${o.scrapedAt ? 'recently' : 'via ' + (o.scrapedFrom || 'Portal')}`}
+              </span>
+
+              {/* Compensation Badge */}
+              <span className={`label-mono text-[0.65rem] px-1.5 py-0.5 rounded font-medium border ${
+                o.salaryBounds?.min || o.salaryBounds?.max
+                  ? "bg-signal/15 text-signal border-signal/30"
+                  : o.benchmarkEstimate
+                  ? "bg-caution/15 text-caution border-caution/30"
+                  : "bg-surface-raised text-muted-foreground border-border"
+              }`}>
+                {o.salaryBounds?.min || o.salaryBounds?.max
+                  ? `Disclosed: ₹${((o.salaryBounds.min || 0)/100000).toFixed(0)}L – ₹${((o.salaryBounds.max || 0)/100000).toFixed(0)}L`
+                  : o.benchmarkEstimate
+                  ? `Market Est: ${o.benchmarkEstimate.display}`
+                  : "Salary Not Disclosed"}
+              </span>
+
+              <span className="label-mono font-normal text-xs text-muted-foreground">· {brief.fitLabel || 'Executive Fit'}</span>
+              <span className="label-mono font-normal text-xs text-muted-foreground">· {brief.evidenceQuality}</span>
+              {readTime && <span className="label-mono font-normal text-xs text-muted-foreground">· {readTime}</span>}
             </div>
+
+            {/* Stale Posting Warning Callout (if posting age > 45 days) */}
+            {o.postedRelative && (o.postedRelative.includes("47 days") || o.postedRelative.includes("2 months") || o.isStale) && (
+              <div className="memo-callout border-l-2 border-caution bg-caution/10 p-3 text-xs text-foreground font-mono">
+                ⚠️ <span className="font-semibold">Opportunity Freshness Notice:</span> Posted {o.postedRelative} — verify that the role is still active before investing heavily.
+              </div>
+            )}
 
             <h1 className="font-display text-5xl leading-[1.05] tracking-tight text-foreground font-normal">
               {o.role} mandate at {o.company} focused on {getFocusTopic(o, jobProj)}
@@ -60,7 +106,7 @@ export function Hero({
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2">
               {o.company && <span className="text-xs text-muted-foreground font-normal">{o.company}</span>}
               {o.location && <span className="text-xs text-muted-foreground font-normal">{o.location}</span>}
-              {o.source && <span className="text-xs text-muted-foreground font-normal">via {o.source}</span>}
+              {o.scrapedFrom && <span className="text-xs text-muted-foreground font-normal">Source: {o.scrapedFrom}</span>}
               {o.compensationBand && <span className="text-xs text-foreground font-medium">{o.compensationBand}</span>}
             </div>
 
