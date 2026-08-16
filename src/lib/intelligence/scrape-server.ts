@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import path from "path";
 import fs from "fs";
 import { ARTIFACTS_DIR } from "../../../scripts/scraper/config";
+import { requireAuthUser } from "../auth/guard";
 
 let rebuildTimeout: NodeJS.Timeout | null = null;
 
@@ -86,8 +87,37 @@ if (typeof globalThis !== "undefined") {
   }
 }
 
+let activeScrapeRunLock: { runId: string; startedAt: number } | null = null;
+
+export function getActiveScrapeLock(): { runId: string; startedAt: number } | null {
+  if (!activeScrapeRunLock) return null;
+  const state = getActiveScrapeState();
+  if (!state || !state.isActive) {
+    activeScrapeRunLock = null;
+    return null;
+  }
+  return activeScrapeRunLock;
+}
+
 export const triggerScrapeFn = createServerFn({ method: "POST" })
   .handler(async () => {
+    // 1. Enforce Authentication & Admin Role
+    await requireAuthUser({ requireAdmin: true });
+
+    // 2. Enforce Single-Process Mutex
+    const activeState = getActiveScrapeState();
+    const activeLock = getActiveScrapeLock();
+    if (activeState || activeLock) {
+      const activeRunId = activeState?.runId || activeLock?.runId || "active";
+      console.warn(`[Server] triggerScrapeFn rejected: Run ${activeRunId} is already in progress.`);
+      return {
+        success: false,
+        error: `A scraping run is already in progress (${activeRunId}). Concurrent execution is rejected.`,
+        runId: activeRunId,
+        alreadyRunning: true
+      };
+    }
+
     try {
       console.log("[Server] triggerScrapeFn: launching fresh live scraper in background…");
       // Dynamic import isolates Playwright/Node modules from the browser bundler.
@@ -95,14 +125,26 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
       
       const { runId, completion } = await startRun({ resume: false, autoConfirm: true });
       
+      activeScrapeRunLock = { runId, startedAt: Date.now() };
+
       // Fire and forget
-      void completion.catch((err: any) => {
-        console.error(`[Server] background scrape ${runId} failed:`, err);
-      });
+      void completion
+        .then(() => {
+          if (activeScrapeRunLock?.runId === runId) {
+            activeScrapeRunLock = null;
+          }
+        })
+        .catch((err: any) => {
+          console.error(`[Server] background scrape ${runId} failed:`, err);
+          if (activeScrapeRunLock?.runId === runId) {
+            activeScrapeRunLock = null;
+          }
+        });
 
       return { success: true, runId };
     } catch (error: any) {
       console.error("[Server] triggerScrapeFn failed:", error);
+      activeScrapeRunLock = null;
       return { success: false, error: error?.message ?? String(error) };
     }
   });
@@ -110,6 +152,7 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
 export const getRunEventsFn = createServerFn({ method: "GET" })
   .validator((d: { runId: string; afterIndex: number }) => d)
   .handler(async ({ data }) => {
+    await requireAuthUser();
     const { runId, afterIndex } = data;
     const { Journal } = await import("../../../scripts/scraper/run/journal");
     
@@ -265,11 +308,13 @@ export function abortScrapeState(runId: string) {
 
 export const getActiveScrapeFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    await requireAuthUser();
     return getActiveScrapeState();
   });
 
 export const getLatestRunFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    await requireAuthUser();
     try {
       const latestPath = path.join(ARTIFACTS_DIR, "runs", "latest.json");
       if (!fs.existsSync(latestPath)) return null;
@@ -285,12 +330,14 @@ export const getLatestRunFn = createServerFn({ method: "GET" })
 export const getRunProgressFn = createServerFn({ method: "GET" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
+    await requireAuthUser();
     return getRunProgressState(data.runId);
   });
 
 export const confirmScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
+    await requireAuthUser({ requireAdmin: true });
     const manifestPath = path.join(ARTIFACTS_DIR, "runs", data.runId, "manifest.json");
     try {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
@@ -307,7 +354,12 @@ export const confirmScrapeFn = createServerFn({ method: "POST" })
 export const abortScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    return abortScrapeState(data.runId);
+    await requireAuthUser({ requireAdmin: true });
+    const result = abortScrapeState(data.runId);
+    if (activeScrapeRunLock?.runId === data.runId) {
+      activeScrapeRunLock = null;
+    }
+    return result;
   });
 
 let liveScrapedCache: { data: any[]; timestamp: number } | null = null;
@@ -318,6 +370,7 @@ export function invalidateLiveScrapedCache() {
 
 export const getLiveScrapedFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    await requireAuthUser();
     const now = Date.now();
     if (liveScrapedCache && (now - liveScrapedCache.timestamp < 30_000)) {
       return liveScrapedCache.data;
@@ -388,6 +441,7 @@ function getCorpusJob(): CorpusJobState {
 
 export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
   .handler(async () => {
+    await requireAuthUser({ requireAdmin: true });
     try {
       const job = getCorpusJob();
       if (job.status === "running") {
@@ -447,11 +501,13 @@ export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
 
 export const getCorpusRegenerationStatusFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    await requireAuthUser();
     return getCorpusJob();
   });
 
 export const getCorpusHealthFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    await requireAuthUser();
     try {
       const { calculateCorpusHealth } = await import("../../../scripts/corpus/health");
       return calculateCorpusHealth();
@@ -463,6 +519,7 @@ export const getCorpusHealthFn = createServerFn({ method: "GET" })
 
 export const getPipelineStatsFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    await requireAuthUser();
     try {
       const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
       const queue = new EnrichmentQueue();

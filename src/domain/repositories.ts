@@ -15,6 +15,7 @@ import type {
 } from "./entities";
 import type { CandidateProjection } from "../lib/domain/candidate_projection";
 import type { CandidateDocumentRecord, SqliteDocumentStore } from "../data/sqlite/repositories/SqliteDocumentStore";
+import type { OpportunitySource } from "../data/opportunity-fixtures";
 
 /**
  * Repository Contracts
@@ -45,6 +46,9 @@ export interface OpportunityStore {
     companyId?: string;
     lifecycle?: string;
   }): Promise<Opportunity[]>;
+
+  listOpportunitySources(): Promise<OpportunitySource[]>;
+  getOpportunitySource(jobHash: string): Promise<OpportunitySource | undefined>;
 }
 
 export interface AcquisitionLedgerItem {

@@ -32,9 +32,7 @@ export class EvaluationCoordinator {
     personId?: string;
     event: EvaluationTriggerEvent;
   }> {
-    console.log(`[EvaluationCoordinator] Event received: ${payload.event} for user: ${payload.personId || "ALL"}`);
-
-    const personId = payload.personId || "swapnil-shukla";
+    const personId = payload.personId;
 
     switch (payload.event) {
       case "CORPUS_UPDATED":
@@ -45,8 +43,10 @@ export class EvaluationCoordinator {
         invalidateEngineCache();
         invalidateCandidateDossierCache();
 
-        // Re-calculate recommendations for user
-        await OpportunityService.listForUser(personId);
+        // Re-calculate recommendations for user if specific user provided
+        if (personId) {
+          await OpportunityService.listForUser(personId);
+        }
         break;
 
       default:

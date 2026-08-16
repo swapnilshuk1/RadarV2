@@ -29,17 +29,19 @@ if [ ! -d ".output" ]; then
     exit 1
 fi
 
-# Create deployment archive
-tar -czf radar-deploy.tar.gz \
+# Create deployment archive (deterministic runtime bundle only)
+tar --exclude='node_modules' \
+    --exclude='.git' \
+    --exclude='.env*' \
+    --exclude='*.sqlite*' \
+    --exclude='*.jsonl' \
+    --exclude='*.log' \
+    --exclude='live-scraped.json' \
+    -czf radar-deploy.tar.gz \
     .output/ \
     package.json \
     package-lock.json \
-    radar.sqlite \
-    src/data/ontology/ \
-    src/data/live-scraped.json \
-    --exclude='node_modules' \
-    --exclude='.git' \
-    2>/dev/null || true
+    src/data/ontology/
 
 echo -e "${GREEN}✓ Deployment package created: radar-deploy.tar.gz${NC}"
 echo ""
@@ -59,6 +61,11 @@ cat << 'SERVER_COMMANDS'
 # Stop existing service
 sudo systemctl stop radar || true
 
+# Preserve existing .env if present
+if [ -f /opt/radar/.env ]; then
+    sudo cp /opt/radar/.env /tmp/radar.env.bak
+fi
+
 # Backup existing deployment
 if [ -d /opt/radar ]; then
     sudo mv /opt/radar /opt/radar-backup-$(date +%Y%m%d-%H%M%S)
@@ -67,6 +74,12 @@ fi
 # Create new deployment directory
 sudo mkdir -p /opt/radar
 sudo tar -xzf ~/radar-deploy.tar.gz -C /opt/radar
+
+# Restore .env if preserved
+if [ -f /tmp/radar.env.bak ]; then
+    sudo mv /tmp/radar.env.bak /opt/radar/.env
+fi
+
 sudo chown -R www-data:www-data /opt/radar
 
 # Install dependencies

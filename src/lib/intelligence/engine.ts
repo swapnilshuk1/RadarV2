@@ -9,8 +9,6 @@
 import { rawOpportunities as authored, type Opportunity, type OpportunitySource } from "@/data/opportunity-fixtures";
 import { extraOpportunities } from "@/data/extra-fixtures";
 import decisionPolicy from "@/data/ontology/decision_policy.json";
-import path from "path";
-import fs from "fs";
 import { CandidateIntelligencePipeline } from "./cip";
 import { JobIntelligencePipeline } from "./jip";
 import { present, type Presented } from "./present";
@@ -39,67 +37,7 @@ const KEY = "radar.opportunities.v3";
 let baseOpportunitiesCache: OpportunitySource[] | null = null;
 
 function getBaseOpportunities(): OpportunitySource[] {
-  if (typeof window !== "undefined") {
-    return baseOpportunitiesCache || [];
-  }
-  if (baseOpportunitiesCache) return baseOpportunitiesCache;
-
-  try {
-    const liveScrapedPath = path.resolve(process.cwd(), "src/data/live-scraped.json");
-    if (fs.existsSync(liveScrapedPath)) {
-      const raw = fs.readFileSync(liveScrapedPath, "utf-8");
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        baseOpportunitiesCache = parsed as OpportunitySource[];
-        return baseOpportunitiesCache;
-      }
-    }
-  } catch (err: any) {
-    console.warn("[Engine] Failed to read live-scraped.json from disk:", err.message);
-  }
-
-  try {
-    const mainDbPath = path.resolve(process.cwd(), "radar.sqlite");
-    if (fs.existsSync(mainDbPath)) {
-      const Database = require("better-sqlite3");
-      const db = new Database(mainDbPath, { readonly: true });
-      const rows = db.prepare(`
-        SELECT o.id as jobHash, o.canonical_title as role, c.name as company, o.location as location,
-               d.content as rawContent
-        FROM opportunities o
-        LEFT JOIN companies c ON o.company_id = c.id
-        LEFT JOIN documents d ON d.opportunity_id = o.id
-      `).all() as any[];
-      db.close();
-
-      const ops: OpportunitySource[] = rows.map((r) => {
-        let contentObj: any = {};
-        try { if (r.rawContent) contentObj = JSON.parse(r.rawContent); } catch {}
-        return {
-          jobHash: r.jobHash,
-          role: r.role || contentObj.role || "Executive Role",
-          company: r.company || contentObj.company || "Target Company",
-          location: r.location || contentObj.location || "Remote",
-          scrapedFrom: contentObj.scrapedFrom || "LinkedIn",
-          postedRelative: contentObj.postedRelative || "Recently Ingested",
-          rawText: contentObj.normalizedText || contentObj.rawText || "",
-          dimensions: contentObj.dimensions || [],
-          primaryConcern: contentObj.primaryConcern || null,
-          whyNow: contentObj.whyNow,
-          positioning: contentObj.positioning,
-        };
-      });
-
-      if (ops.length > 0) {
-        baseOpportunitiesCache = ops;
-        return baseOpportunitiesCache;
-      }
-    }
-  } catch (err: any) {
-    console.warn("[Engine] Failed to load opportunities from radar.sqlite:", err.message);
-  }
-
-  return [];
+  return baseOpportunitiesCache || [];
 }
 
 let memoryCache: OpportunitySource[] | null = null;
@@ -212,11 +150,15 @@ const itemEvaluationCache = new Map<string, { record: RecommendationRecord; pres
 /**
  * Executes the full V4 pipeline: Candidate/Job Projections -> Assessments -> Rules Engine -> Presentation
  */
-export function runEngine(projection: CandidateProjection, activePursuits = 0): {
+export function runEngine(
+  projection: CandidateProjection,
+  activePursuits = 0,
+  opportunities?: OpportunitySource[]
+): {
   presented: Presented[];
   records: RecommendationRecord[];
 } {
-  const currentAuthored = readOpportunities();
+  const currentAuthored = opportunities ?? memoryCache ?? readOpportunities();
   
   const engineVersion = ENGINE_VERSION;
   const policyHash = simpleStringHash(JSON.stringify(decisionPolicy));
@@ -521,11 +463,16 @@ export function runEngine(projection: CandidateProjection, activePursuits = 0): 
   return result;
 }
 
-export function runEngineSingle(jobHash: string, projection: CandidateProjection, activePursuits = 0): Presented | undefined {
-  const currentAuthored = readOpportunities();
+export function runEngineSingle(
+  jobHash: string,
+  projection: CandidateProjection,
+  activePursuits = 0,
+  opportunities?: OpportunitySource[]
+): Presented | undefined {
+  const currentAuthored = opportunities ?? memoryCache ?? readOpportunities();
   const found = currentAuthored.find((o) => o.jobHash === jobHash);
   if (!found) return undefined;
 
-  const { presented } = runEngine(projection, activePursuits);
+  const { presented } = runEngine(projection, activePursuits, currentAuthored);
   return presented.find(p => p.opportunity.jobHash === jobHash);
 }

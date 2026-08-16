@@ -37,7 +37,23 @@ export type OpportunitySource = Omit<
   | "headspaceInvestment"
   | "hiringRisk"
   | "alternativePath"
->;
+> & {
+  rawText?: string;
+  normalizedText?: string;
+  description?: string;
+  rawDescription?: string;
+  whyNow?: string;
+  positioning?: string[];
+  primaryProof?: { headline: string; detail: string };
+  headspaceInvestment?: {
+    estimateHours: string;
+    window: string;
+    leverage: string;
+    optional?: string[];
+  };
+  hiringRisk?: string;
+  alternativePath?: string;
+};
 
 export type DimensionResult = {
   key: DimensionKey;

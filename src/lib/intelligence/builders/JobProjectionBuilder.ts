@@ -6,9 +6,35 @@ import { CommercialScopeClassifier } from "../classifiers/CommercialScopeClassif
 
 export class JobProjectionBuilder {
 
+  private static regexCache = new Map<string, RegExp>();
+  private static projectionCache = new Map<string, JobProjection>();
+  private static actualBuildCount = 0;
+
+  public static clearCache(): void {
+    this.regexCache.clear();
+    this.projectionCache.clear();
+    this.actualBuildCount = 0;
+  }
+
+  public static getCacheSize(): number {
+    return this.projectionCache.size;
+  }
+
+  public static getBuildCount(): number {
+    return this.actualBuildCount;
+  }
+
+  public static resetMetrics(): void {
+    this.actualBuildCount = 0;
+  }
+
   private static testKeyword(text: string, kw: string): boolean {
-    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+    let regex = this.regexCache.get(kw);
+    if (!regex) {
+      const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      regex = new RegExp(`\\b${escaped}\\b`, 'i');
+      this.regexCache.set(kw, regex);
+    }
     return regex.test(text);
   }
 
@@ -117,6 +143,21 @@ export class JobProjectionBuilder {
   }
 
   public static build(opportunity: any): JobProjection {
+    const cacheKey = opportunity?.jobHash || opportunity?.id;
+    if (cacheKey && this.projectionCache.has(cacheKey)) {
+      const cached = this.projectionCache.get(cacheKey)!;
+      return { ...cached, originalOpportunity: opportunity };
+    }
+
+    const projection = this.buildUncached(opportunity);
+    if (cacheKey) {
+      this.projectionCache.set(cacheKey, projection);
+    }
+    return projection;
+  }
+
+  private static buildUncached(opportunity: any): JobProjection {
+    this.actualBuildCount++;
     const title = opportunity.role || "";
     let fullText = (opportunity.description || opportunity.normalizedText || opportunity.rawText || opportunity.rawDescription || "").toLowerCase();
     const fullContext = (title + "\n" + fullText);

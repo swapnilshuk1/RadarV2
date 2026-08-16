@@ -12,7 +12,7 @@ import { validateCandidateProjection } from "../domain/candidate_projection";
  * CandidateProjection to the database for a target user.
  */
 export async function syncCanonicalCandidateProjection(
-  personId: string = "swapnil-shukla",
+  personId: string,
   profile: CandidateProfile = candidateProfile
 ): Promise<CandidateProjection> {
   const repos = getRepositories();

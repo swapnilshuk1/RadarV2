@@ -35,8 +35,12 @@ bunfig.toml
 *.sln
 *.sw?
 
-# Environment / secrets — never commit API keys
+# Environment / secrets — never commit API keys or private certificates
 .env
+.env.*
+*.env
+*.key
+*.pem
 groq.env
 
 # RADAR local data

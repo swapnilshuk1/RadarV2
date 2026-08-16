@@ -34,7 +34,7 @@ function loadEnvFile(fileBasename: string) {
           if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
             val = val.slice(1, -1);
           }
-          if (!process.env[key]) {
+          if (process.env[key] === undefined) {
             process.env[key] = val;
           }
         }
@@ -42,10 +42,6 @@ function loadEnvFile(fileBasename: string) {
     }
   } catch {}
 }
-
-// Fallback Turso credentials for cloud deployments (Render, Vercel, Netlify)
-const DEFAULT_TURSO_URL = "libsql://radar-db-swapnilshuk1.aws-ap-south-1.turso.io";
-const DEFAULT_TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODQ4MDcyNTQsImlkIjoiMDE5ZjhlY2ItYTYwMS03ZTM5LThjNGUtMjE1ZTI0YTZiNmExIiwia2lkIjoiYzZxcy1UNW4tTlpOQzZQNFpBQ0tyZ0w0VVFGd3ZYVG5MTjdzVU9QaWJVNCIsInJpZCI6IjEyNDkzZmVmLTk2NjYtNGEyYS04MzY3LTgwZDI5MDk4MjAxMiJ9.Ewbydc5FWX-SCcW12JLJtc7H7L8_IX1tQxz7HrmY_YPL4vAGDsW_CApCg2jDdBm8kTqQTDvrZ5rGWKcHmI9LAA";
 
 export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
   if (typeof window !== "undefined") {
@@ -59,9 +55,13 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
   loadEnvFile("gemini.env");
   loadEnvFile("groq.env");
 
-  const tursoUrl = process.env.TURSO_CONNECTION_URL || DEFAULT_TURSO_URL;
-  const tursoToken = process.env.TURSO_AUTH_TOKEN || DEFAULT_TURSO_TOKEN;
+  const tursoUrl = process.env.TURSO_CONNECTION_URL || process.env.TURSO_DATABASE_URL;
+  const tursoToken = process.env.TURSO_AUTH_TOKEN;
   const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL === "1" || process.env.RENDER === "true";
+
+  if (isProduction && (!tursoUrl || !tursoToken)) {
+    throw new Error("[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment.");
+  }
 
   if (tursoUrl && tursoToken) {
     if (!_hasLoggedStartup) {
@@ -78,7 +78,7 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
     return _cachedAdapter;
   }
 
-  // Fallback to SQLite (better-sqlite3)
+  // Fallback to SQLite (better-sqlite3) for local offline/unit test environments
   try {
     let DatabaseConstructor: any = null;
     const req = getReq();

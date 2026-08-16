@@ -28,9 +28,10 @@ export class OpportunityService {
   /** List all dynamically computed opportunity DTOs for a specific user, sorted by Homogeneous Population Tiers. */
   static async listForUser(userId: string, options?: ServiceOptions): Promise<Opportunity[]> {
     const repos = getRepositories();
-    const [projection, userDecisions] = await Promise.all([
+    const [projection, userDecisions, oppSources] = await Promise.all([
       repos.people.getLatestProjection(userId),
       repos.decisions.getUserDecisions(userId),
+      repos.opportunities.listOpportunitySources(),
     ]);
     
     if (!projection) {
@@ -42,8 +43,8 @@ export class OpportunityService {
       active = Object.values(userDecisions).filter((d) => d.verb === "PURSUE").length;
     }
     
-    // Pass projection directly into the V4 Engine
-    const { presented } = runEngine(projection, active);
+    // Pass projection and canonical opportunities directly into the V4 Engine
+    const { presented } = runEngine(projection, active, oppSources);
     
     return presented
       .map((p) => {
@@ -117,16 +118,19 @@ export class OpportunityService {
 
     // Lazy fallback
     const repos = getRepositories();
-    const projection = await repos.people.getLatestProjection(userId);
+    const [projection, userDecisions, oppSource] = await Promise.all([
+      repos.people.getLatestProjection(userId),
+      repos.decisions.getUserDecisions(userId),
+      repos.opportunities.getOpportunitySource(jobHash),
+    ]);
     
-    if (!projection) return undefined;
+    if (!projection || !oppSource) return undefined;
 
     let active = options?.activePursuits;
     if (active === undefined) {
-      const userDecisions = await repos.decisions.getUserDecisions(userId);
       active = Object.values(userDecisions).filter((d) => d.verb === "PURSUE").length;
     }
-    const presentedSingle = runEngineSingle(jobHash, projection, active);
+    const presentedSingle = runEngineSingle(jobHash, projection, active, [oppSource]);
     return presentedSingle?.opportunity;
   }
 
