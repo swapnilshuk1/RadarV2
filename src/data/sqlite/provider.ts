@@ -7,6 +7,7 @@ import { SqliteSourceStore } from "./repositories/SqliteSourceStore";
 import { SqlitePersonStore } from "./repositories/SqlitePersonStore";
 import { SqliteDecisionSupportStore } from "./repositories/SqliteDecisionSupportStore";
 import { SqliteDocumentStore } from "./repositories/SqliteDocumentStore";
+import { SqliteEvaluationStore } from "./repositories/SqliteEvaluationStore";
 import { getDatabaseAdapter, type DatabaseAdapter } from "../database";
 import type { StorageProvider } from "../../domain/repositories";
 
@@ -24,7 +25,8 @@ export function createRepositories(db: DatabaseAdapter): StorageProvider {
     reasoning: new SqliteReasoningStore(db),
     people: new SqlitePersonStore(db),
     decisions: new SqliteDecisionSupportStore(db),
-    documents: new SqliteDocumentStore(db)
+    documents: new SqliteDocumentStore(db),
+    evaluations: new SqliteEvaluationStore(db),
   };
 }
 

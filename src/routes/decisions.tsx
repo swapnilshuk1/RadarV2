@@ -4,6 +4,7 @@ import { applyUrlFor, type DecisionVerb, type Opportunity } from "../data/opport
 import { useDecisions, type DecisionRecord } from "../lib/decisions-store";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
 import { getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
+import { ClientOpportunityCache } from "../lib/opportunity-cache";
 
 // Recomposition elements
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
@@ -79,6 +80,12 @@ function OpportunitiesPage() {
   useEffect(() => {
     setTracking(readTracking());
   }, []);
+
+  useEffect(() => {
+    if (opportunitiesList) {
+      ClientOpportunityCache.setList(opportunitiesList);
+    }
+  }, [opportunitiesList]);
 
   const updateTracking = (jobHash: string, key: keyof TrackingData, value: string) => {
     setTracking((prev) => {

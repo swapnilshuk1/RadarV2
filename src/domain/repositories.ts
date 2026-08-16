@@ -148,6 +148,8 @@ export interface DecisionSupportStore {
 // 3. STORAGE ABSTRACTION
 // ============================================================================
 
+import type { SqliteEvaluationStore } from "../data/sqlite/repositories/SqliteEvaluationStore";
+
 export interface StorageProvider {
   sources: SourceStore;
   companies: CompanyStore;
@@ -158,4 +160,5 @@ export interface StorageProvider {
   people: PersonStore;
   decisions: DecisionSupportStore;
   documents: SqliteDocumentStore;
+  evaluations: SqliteEvaluationStore;
 }
