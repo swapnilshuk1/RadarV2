@@ -52,6 +52,48 @@ const HANDLERS: Record<PortalName, PortalHandler> = {
 
 const enrichmentQueue = new EnrichmentQueue();
 
+export function syncManifestProgress(
+  mgr: RunController,
+  stage?: "discover" | "evaluate" | "prioritize" | "complete" | "stopped" | "failed"
+) {
+  const cardsFound = mgr.manifest.cards.length;
+  let evaluated = 0;
+  try {
+    const stats = enrichmentQueue.getRunStats(mgr.runId);
+    evaluated = stats?.completed || 0;
+  } catch {}
+
+  const currentStage =
+    stage ||
+    (mgr.manifest.status === "enriching"
+      ? "evaluate"
+      : mgr.manifest.status === "completed"
+        ? "complete"
+        : mgr.manifest.status === "stopped" || mgr.manifest.status === "stopping" || mgr.manifest.status === "aborted"
+          ? "stopped"
+          : mgr.manifest.status === "failed"
+            ? "failed"
+            : "discover");
+
+  const sources: Record<string, "pending" | "searching" | "completed" | "failed"> = {};
+  for (const portal of mgr.manifest.portals) {
+    const units = mgr.manifest.units.filter((u) => u.portal === portal);
+    const hasRunning = units.some((u) => u.status === "running");
+    const allDone = units.every((u) => u.status === "done" || u.status.startsWith("skipped"));
+    if (hasRunning) sources[portal] = "searching";
+    else if (allDone && units.length > 0) sources[portal] = "completed";
+    else sources[portal] = "pending";
+  }
+
+  mgr.updateCanonicalMetrics({
+    opportunitiesFound: cardsFound,
+    evaluatedCount: evaluated,
+    remainingCount: Math.max(0, cardsFound - evaluated),
+    stage: currentStage,
+    sources,
+  });
+}
+
 export interface RunOptions {
   keywords?: string[];
   portals?: PortalName[];
@@ -132,6 +174,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
   const seenCardKeys = new Set<string>();   // cross-portal dedup
   const seenUrls = new Set<string>();       // cross-portal exact URL dedup
+  const seenCanonicalIds = new Set<string>(); // cross-portal canonical ID dedup
 
   const completion = (async () => {
     try {
@@ -245,13 +288,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         let portalFacts = 0;
 
         for (const unit of units) {
-          try {
-            const currentManifest = JSON.parse(fs.readFileSync(mgr.manifestPath, "utf-8"));
-            if (currentManifest.status === "aborted") {
-               plog("Run aborted by UI during execution. Stopping portal loop.", "warn");
-               break;
-            }
-          } catch {}
+          if (mgr.isCancellationRequested()) {
+             plog("Run cancellation requested (stopping/aborted). Halting portal unit loop.", "warn");
+             break;
+          }
 
           // Adaptive Novelty Scheduler: Skip query page if historical novelty rate is < 5% on this portal (after page 1)
           if (unit.page > 1) {
@@ -263,11 +303,12 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             }
           }
 
-          const outcome = await processUnit(mgr, handler, unit, browserContext, activePage, seenCardKeys, seenUrls, plog);
+          const outcome = await processUnit(mgr, handler, unit, browserContext, activePage, seenCardKeys, seenUrls, seenCanonicalIds, plog);
           if (outcome) {
             portalIngested += outcome.opportunities;
             portalFacts += outcome.factsCreated;
           }
+          syncManifestProgress(mgr, "discover");
           await jitter();
         }
         return { portalIngested, portalFacts };
@@ -392,6 +433,7 @@ async function processUnit(
   activePage: any,
   seenCardKeys: Set<string>,
   seenUrls: Set<string>,
+  seenCanonicalIds: Set<string>,
   log: ReturnType<typeof makeLogger>
 ): Promise<ProcessOutcome> {
   const outcome: ProcessOutcome = {
@@ -500,11 +542,24 @@ async function processUnit(
           rawJobId: feedCard.cardHash
         });
 
-        if (seenUrls.has(identity.canonicalUrl)) {
-          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Canonical URL" });
+        // Pre-Detail Duplicate Detection:
+        // Check in-memory sets AND persisted SQLite database before expensive detail extraction.
+        const isInMemoryDuplicate = seenUrls.has(identity.canonicalUrl) || seenCanonicalIds.has(identity.canonicalJobId);
+        let isPersistedDuplicate = false;
+        if (!isInMemoryDuplicate) {
+          const existingOpp = await repos.opportunities.getOpportunity(identity.canonicalJobId).catch(() => undefined);
+          if (existingOpp) isPersistedDuplicate = true;
+        }
+
+        if (isInMemoryDuplicate || isPersistedDuplicate) {
+          mgr.recordTelemetry("duplicatePreDetail");
+          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Canonical URL (Pre-Detail)" });
+          outcome.duplicates++;
           return null;
         }
+
         seenUrls.add(identity.canonicalUrl);
+        seenCanonicalIds.add(identity.canonicalJobId);
 
         // 3. Upsert Discovered Job into Persistent Acquisition Ledger
         const ledgerItem = await repos.acquisition.upsertDiscoveredJob({
@@ -627,7 +682,9 @@ async function processUnit(
         const key = [detailedCard.title, detailedCard.company, detailedCard.location]
           .map((s) => (s || "").toLowerCase().trim()).join("|");
         if (seenCardKeys.has(key)) {
-          mgr.updateCard(cardUnitId, { status: "skipped_empty" });
+          mgr.recordTelemetry("duplicatePostDetail");
+          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Content Hash (Post-Detail)" });
+          outcome.duplicates++;
           return null;
         }
         seenCardKeys.add(key);

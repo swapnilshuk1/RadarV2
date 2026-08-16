@@ -38,6 +38,9 @@ export function stripTrackingParams(rawUrl: string): string {
         key.startsWith("utm_") ||
         key.startsWith("ref") ||
         key.startsWith("tracking") ||
+        key === "src" ||
+        key === "sid" ||
+        key === "sp" ||
         key === "eBP" ||
         key === "trk" ||
         key === "l" ||

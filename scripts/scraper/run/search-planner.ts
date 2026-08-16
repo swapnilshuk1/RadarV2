@@ -51,20 +51,6 @@ export class SearchPlanner {
         });
       }
 
-      // Append target title + location combinations
-      for (const loc of intent.preferredLocations.slice(0, 2)) {
-        const combo = `${title} ${loc}`;
-        if (!seenQueries.has(combo)) {
-          seenQueries.add(combo);
-          primaryQueries.push(combo);
-          rankedQueries.push({
-            query: combo,
-            score: 90,
-            dimension: "targetRolesAndLocations",
-            concept: combo,
-          });
-        }
-      }
     }
 
     searchHypotheses.push({

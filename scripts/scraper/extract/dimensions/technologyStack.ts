@@ -146,17 +146,11 @@ export function extractTechnology(input: { title: string; snippet: string; detai
   const norm = technologyExtractorInstance.normalize(raw);
   if (!norm) return missing<string>();
 
-  const payload = {
-    value: norm.canonicalValue.products.join(", "),
-    rawValue: norm.rawValue,
-    canonicalValue: norm.canonicalValue,
-    confidence: norm.confidence,
-    metadata: norm.metadata,
-    extractorVersion,
-    normalizerVersion
-  };
+  const cleanValue = (norm.canonicalValue?.products && norm.canonicalValue.products.length > 0)
+    ? norm.canonicalValue.products.join(", ")
+    : String(norm.rawValue || "TECHNOLOGY").trim();
 
-  return anchor(JSON.stringify(payload), raw.evidenceSnippet, raw.rawValue, "snippet");
+  return anchor(cleanValue, raw.evidenceSnippet, raw.rawValue, "snippet");
 }
 
 export const technologyExtractorId = `technologyStack@${extractorVersion}`;

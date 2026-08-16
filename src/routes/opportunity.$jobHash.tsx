@@ -47,7 +47,11 @@ function OpportunityBriefView() {
   const currentVerdict: DecisionVerb = (decisions[o.jobHash]?.verb as DecisionVerb) || o.decision;
 
   const decide = (verb: DecisionVerb) => {
-    recordDecision(o.jobHash, verb);
+    recordDecision(
+      o.jobHash,
+      verb,
+      o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion
+    );
     router.invalidate();
   };
 

@@ -74,7 +74,7 @@ export class DecisionPolicyEngine {
     const triggeredRuleIds: string[] = [];
     
     // Construct Grounded Claim Permissions based on explicit evidence
-    const descText = (jobDescriptionText || (opportunity as any).originalOpportunity?.normalizedText || "").toLowerCase();
+    const descText = (jobDescriptionText || (opportunity as any)?.originalOpportunity?.normalizedText || "").toLowerCase();
     const allowedClaims: ("PL_SCALE" | "FOUNDER_PROXIMITY" | "TRANSFORMATION" | "GO_TO_MARKET" | "GLOBAL_SCOPE")[] = [];
     
     // P0-A: Check evidence grounding for structured claims
@@ -91,7 +91,7 @@ export class DecisionPolicyEngine {
     };
     
     // P&L Scale: check source text or grounded evidence
-    if (descText.includes("p&l") || descText.includes("profit and loss") || (opportunity as any).operatingContext?.pnlResponsibility) {
+    if (descText.includes("p&l") || descText.includes("profit and loss") || (opportunity as any)?.operatingContext?.pnlResponsibility) {
       allowedClaims.push("PL_SCALE");
     }
     // Also check grounded commercialAccountability evidence
@@ -107,7 +107,7 @@ export class DecisionPolicyEngine {
     }
     
     // Transformation: check source text, career trajectory, or grounded mandate evidence
-    if (descText.includes("transform") || (career as any).trajectory === "FORWARD") {
+    if (descText.includes("transform") || (career as any)?.trajectory === "FORWARD") {
       allowedClaims.push("TRANSFORMATION");
     }
     // P0-A: STRUCTURED_TRUSTED mandate evidence confers TRANSFORMATION claim
@@ -127,13 +127,13 @@ export class DecisionPolicyEngine {
 
     const claimPermissions = {
       allowedClaims,
-      explicitUnknowns: capability.missingCapabilities || [],
+      explicitUnknowns: capability?.missingCapabilities || [],
       explicitRisks: [] as string[]
     };
 
     // Step 0: Evidence Gate Precedence Check
-    const roleTitle = (opportunity as any).role || (opportunity as any).originalOpportunity?.role || "";
-    const companyName = (opportunity as any).company || "";
+    const roleTitle = (opportunity as any)?.role || (opportunity as any)?.originalOpportunity?.canonicalTitle || "";
+    const companyName = (opportunity as any)?.company || "";
 
     const gateResult = EvidenceGate.evaluate(
       jobDescriptionText || "",

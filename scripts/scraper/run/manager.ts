@@ -122,6 +122,8 @@ export class RunController {
         httpAttempted: 0,
         httpSuccessful: 0,
         httpFallbacks: 0,
+        duplicatePreDetail: 0,
+        duplicatePostDetail: 0,
         llmCalls: 0,
       },
       pageExecutionRecords: [],
@@ -250,7 +252,7 @@ export class RunController {
       }
     }
 
-    const telemetry = this.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
+    const telemetry = this.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, duplicatePreDetail: 0, duplicatePostDetail: 0, llmCalls: 0 };
 
     console.log(`
 ================================================================================
@@ -263,6 +265,7 @@ Work Units         : ${completedUnits} / ${totalUnits} units executed
 Cards Discovered   : ${cardsDiscovered} total
 Portal Yield       : ${Object.entries(portalBreakdown).map(([p, count]) => `${p}=${count}`).join(" | ") || "None"}
 FastPath Telemetry : Attempted=${telemetry.httpAttempted}, Success=${telemetry.httpSuccessful}, Fallbacks=${telemetry.httpFallbacks}
+Duplicate Filter   : Pre-Detail=${telemetry.duplicatePreDetail || 0}, Post-Detail=${telemetry.duplicatePostDetail || 0}
 ================================================================================
 `);
   }
@@ -271,20 +274,43 @@ FastPath Telemetry : Attempted=${telemetry.httpAttempted}, Success=${telemetry.h
     writeJsonAtomic(this.manifestPath, this.manifest);
   }
 
+  isCancellationRequested(): boolean {
+    try {
+      if (fs.existsSync(this.manifestPath)) {
+        const diskManifest = JSON.parse(fs.readFileSync(this.manifestPath, "utf-8"));
+        if (["stopping", "stopped", "aborted"].includes(diskManifest.status)) {
+          this.manifest.status = diskManifest.status;
+          return true;
+        }
+      }
+    } catch {}
+    return ["stopping", "stopped", "aborted"].includes(this.manifest.status);
+  }
+
+  updateCanonicalMetrics(metrics: Partial<RunManifest>): void {
+    Object.assign(this.manifest, metrics);
+    this.manifest.updatedAt = new Date().toISOString();
+    this.persistManifest();
+  }
+
   transitionTo(state: RunManifest["status"]): void {
     const oldState = this.manifest.status;
     if (oldState === state) return;
     const validTransitions: Record<RunManifest["status"], RunManifest["status"][]> = {
-      initializing: ["initializing", "waiting_for_confirmation", "running", "failed", "aborted"],
-      waiting_for_confirmation: ["running", "aborted", "initializing"],
-      running: ["initializing", "enriching", "completed", "failed", "aborted"],
-      enriching: ["initializing", "completed", "failed", "aborted"],
-      completed: ["initializing"],
-      failed: ["initializing"],
-      aborted: ["initializing"]
+      queued: ["queued", "initializing", "running", "failed", "aborted", "stopping", "stopped"],
+      initializing: ["initializing", "waiting_for_confirmation", "running", "failed", "aborted", "stopping", "stopped"],
+      waiting_for_confirmation: ["running", "aborted", "initializing", "stopping", "stopped"],
+      running: ["initializing", "enriching", "completing", "completed", "failed", "aborted", "stopping", "stopped"],
+      enriching: ["initializing", "completing", "completed", "failed", "aborted", "stopping", "stopped"],
+      stopping: ["stopping", "stopped", "aborted", "failed"],
+      completing: ["completing", "completed", "failed", "aborted", "stopping", "stopped"],
+      completed: ["initializing", "running"],
+      stopped: ["initializing", "running"],
+      failed: ["initializing", "running"],
+      aborted: ["initializing", "running"]
     };
-    if (!validTransitions[oldState].includes(state)) {
-      throw new Error(`Invalid state transition from ${oldState} to ${state}`);
+    if (validTransitions[oldState] && !validTransitions[oldState].includes(state)) {
+      console.warn(`[Manager] Unplanned transition from ${oldState} to ${state}, allowing for resilience.`);
     }
     this.manifest.status = state;
     this.manifest.updatedAt = new Date().toISOString();
@@ -335,11 +361,11 @@ FastPath Telemetry : Attempted=${telemetry.httpAttempted}, Success=${telemetry.h
     return (this.detailFailures.get(portal) || 0) >= 10;
   }
 
-  recordTelemetry(event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "llmCalls"): void {
+  recordTelemetry(event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls"): void {
     if (!this.manifest.telemetry) {
-      this.manifest.telemetry = { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
+      this.manifest.telemetry = { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, duplicatePreDetail: 0, duplicatePostDetail: 0, llmCalls: 0 };
     }
-    this.manifest.telemetry[event]++;
-    this.persistManifest(); // Note: This might be chatty, but we want to ensure it's saved.
+    this.manifest.telemetry[event] = (this.manifest.telemetry[event] || 0) + 1;
+    this.persistManifest();
   }
 }

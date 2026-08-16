@@ -1,10 +1,7 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { PersonStore } from "../../../domain/repositories";
 import type { Person, ResumeVersion } from "../../../domain/entities";
-import type { CandidateProjection } from "../../../lib/domain/candidate_projection";
-import * as path from "path";
-import * as fs from "fs";
-import { CandidateIntelligencePipeline } from "../../../lib/intelligence/cip";
+import { type CandidateProjection, validateCandidateProjection } from "../../../lib/domain/candidate_projection";
 
 export class SqlitePersonStore implements PersonStore {
   constructor(private db: DatabaseAdapter) {}
@@ -79,6 +76,13 @@ export class SqlitePersonStore implements PersonStore {
   }
 
   async saveProjection(personId: string, projection: CandidateProjection): Promise<void> {
+    const validation = validateCandidateProjection(projection);
+    if (!validation.valid) {
+      console.warn(
+        `[SqlitePersonStore.saveProjection] Warning: saving projection for ${personId} with missing fields: [${validation.missingFields.join(", ")}]`
+      );
+    }
+
     const profileId = `profile-${personId}`; // Enforce single active profile per user for now
     const projectionJson = JSON.stringify(projection);
     const now = new Date().toISOString();
@@ -126,37 +130,17 @@ export class SqlitePersonStore implements PersonStore {
       [personId]
     );
     if (!row || !row.projection_json) {
-      // Fallback: Dynamically parse the V4 active local candidate-profile.json
-      try {
-        const filePath = path.join(process.cwd(), "src/data/candidate-profile.json");
-        if (fs.existsSync(filePath)) {
-          const rawContent = fs.readFileSync(filePath, "utf-8");
-          const profile = JSON.parse(rawContent);
-          const cip = new CandidateIntelligencePipeline();
-          const compiled = cip.getActiveDossier(profile);
-          return compiled.projection as any;
-        }
-      } catch (err) {
-        console.error("[SqlitePersonStore] Fallback compilation failed:", err);
-      }
       return undefined;
     }
     
     try {
       const parsed = JSON.parse(row.projection_json) as CandidateProjection;
-      if (!parsed.executiveThemes || parsed.executiveThemes.length === 0) {
-        parsed.executiveThemes = [
-          "Growth Marketing",
-          "Digital Transformation",
-          "CRM Strategy",
-          "Commercial Growth",
-          "Performance Marketing",
-          "theme_growth",
-          "theme_commercial",
-          "theme_customer",
-          "theme_transformation",
-          "theme_digital"
-        ];
+      const validation = validateCandidateProjection(parsed);
+      if (!validation.valid) {
+        console.error(
+          `[SqlitePersonStore] Stored projection for user '${personId}' failed integrity check: missing [${validation.missingFields.join(", ")}]. Stored projection is invalid/incomplete.`
+        );
+        return undefined;
       }
       return parsed;
     } catch (e) {
@@ -164,6 +148,7 @@ export class SqlitePersonStore implements PersonStore {
       return undefined;
     }
   }
+
   
   async getResumeVersions(candidateProfileId: string): Promise<ResumeVersion[]> {
     throw new Error("Method not implemented.");

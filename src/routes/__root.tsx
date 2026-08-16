@@ -305,6 +305,9 @@ function GlobalHeader() {
   );
 }
 
+import { ScrapeProgressProvider } from "../components/radar/ScrapeProgressProvider";
+import { ScrapeProgressPanel } from "../components/radar/ScrapeProgressPanel";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const location = useLocation();
@@ -315,10 +318,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <OnboardingProvider>
-        {showHeader && <GlobalHeader />}
-        <Outlet />
-      </OnboardingProvider>
+      <ScrapeProgressProvider>
+        <OnboardingProvider>
+          {showHeader && <GlobalHeader />}
+          <Outlet />
+          <ScrapeProgressPanel />
+        </OnboardingProvider>
+      </ScrapeProgressProvider>
     </QueryClientProvider>
   );
 }

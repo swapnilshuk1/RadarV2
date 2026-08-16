@@ -13,6 +13,8 @@ import { logTelemetry } from "../lib/telemetry";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 import { inferExecutiveMandateArchetype } from "../lib/intelligence/editorial";
 
+import { useScrapeProgress } from "../components/radar/ScrapeProgressProvider";
+
 const VISIBLE_LIMIT = 10;
 
 function getCategoryTags(o: Opportunity): string[] {
@@ -67,6 +69,7 @@ export const Route = createFileRoute("/")({
       { property: "og:description", content: "Today's executive briefing: six mandates cleared the bar. Pursue, consider or pass." },
     ],
   }),
+  staleTime: 0,
   loader: async () => {
     return {
       opportunitiesList: await getOpportunitiesFn(),
@@ -101,8 +104,52 @@ function Shortlist() {
     return counts;
   }, [opportunitiesList]);
 
+  const totalActivePursuits = useMemo(
+    () => opportunitiesList.filter((o) => {
+      const userAct = o.userDecision?.userAction;
+      if (userAct) return userAct === "PURSUE";
+      return o.decision === "PURSUE";
+    }).length,
+    [opportunitiesList]
+  );
+
+  const totalShortlisted = useMemo(
+    () => opportunitiesList.filter((o) => o.decision === "PURSUE" || o.decision === "CONSIDER").length,
+    [opportunitiesList]
+  );
+
+  const totalSparse = useMemo(
+    () => opportunitiesList.filter((o) => o.decision === "SPARSE_SPEC").length,
+    [opportunitiesList]
+  );
+
   const remaining = useMemo(
-    () => opportunitiesList.filter((o) => !decisions[o.jobHash]),
+    () =>
+      opportunitiesList.filter((o) => {
+        const clientRec = decisions[o.jobHash];
+        const currentFingerprint = o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion;
+        if (clientRec && clientRec.reviewedFingerprint && clientRec.reviewedFingerprint === currentFingerprint) {
+          return false;
+        }
+
+        if (o.reviewWorkflowState === "UNREVIEWED") {
+          if (clientRec && !clientRec.reviewedFingerprint) return false;
+          return true;
+        }
+
+        if (o.reviewWorkflowState === "REVIEWED_STALE") {
+          if (clientRec && clientRec.reviewedFingerprint === currentFingerprint) return false;
+          return true;
+        }
+
+        if (o.reviewWorkflowState === "REVIEWED_UNKNOWN") {
+          if (clientRec && clientRec.reviewedFingerprint === currentFingerprint) return false;
+          const action = o.userDecision?.userAction || o.decision;
+          return action === "PURSUE" || action === "CONSIDER";
+        }
+
+        return false;
+      }),
     [opportunitiesList, decisions]
   );
 
@@ -128,12 +175,12 @@ function Shortlist() {
 
   const visible = filteredRemaining.slice(0, VISIBLE_LIMIT);
 
-  const decide = (jobHash: string, verb: DecisionVerb) => {
+  const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
     const openTime = openedTimes[jobHash];
     const duration = openTime ? Date.now() - openTime : 0;
     logTelemetry(jobHash, verb, duration);
 
-    recordDecision(jobHash, verb);
+    recordDecision(jobHash, verb, reviewedFingerprint);
     setOpen((cur) => (cur === jobHash ? null : cur));
 
     setOpenedTimes((prev) => {
@@ -143,64 +190,7 @@ function Shortlist() {
     });
   };
 
-  const [isStarting, setIsStarting] = useState(false);
-
-  const runSearch = async () => {
-    if (activeRunId || isStarting) return;
-    setIsStarting(true);
-
-    try {
-      const res = await triggerScrapeFn();
-      if (res.success && res.runId) {
-        setActiveRunId(res.runId);
-      }
-    } catch (err: any) {
-      console.error("Failed to start scrape run:", err);
-      alert("Failed to start scrape: " + err.message);
-    } finally {
-      setIsStarting(false);
-    }
-  };
-
-  const handleScrapeComplete = async (payload: { runId: string; opportunities: any[] }) => {
-    setActiveRunId(null);
-    try {
-      await confirmScrapeFn({ data: { runId: payload.runId } });
-      const freshRecords = payload.opportunities.map((o) => ({
-        id: o.id || `scraped_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        job_hash: o.jobHash || o.job_hash || String(Math.random()),
-        canonical_title: o.canonicalTitle || o.title || o.role || "Executive Role",
-        role: o.role || "Executive Role",
-        company: o.company || "Target Company",
-        location: o.location || "Remote",
-        recommendation: o.recommendation || "CONSIDER",
-        fit_rationale: o.fitRationale || o.recommendation || "",
-        raw_description: o.description || ""
-      }));
-
-      if (freshRecords.length > 0) {
-        await injectFreshFn({ data: freshRecords });
-        router.invalidate();
-      }
-    } catch (err) {
-      console.error("Failed to fetch fresh records:", err);
-    }
-    setExtraScraped((prev) => prev + 1);
-  };
-
-  const handleRefreshFeed = async () => {
-    try {
-      const freshRecords = await getLiveScrapedFn();
-      if (freshRecords && freshRecords.length > 0) {
-        await injectFreshFn({ data: freshRecords });
-        router.invalidate();
-      }
-    } catch (err) {
-      console.error("Failed to fetch fresh records:", err);
-    }
-    setExtraScraped((prev) => prev + 1);
-  };
-
+  const { runState, startScrape, isStarting, restore } = useScrapeProgress();
   const totalScraped = opportunitiesList.length + extraScraped;
 
   return (
@@ -221,23 +211,23 @@ function Shortlist() {
               The shortlist.
             </h1>
             <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground font-normal">
-              Six mandates cleared the bar out of <span className="font-mono text-foreground font-semibold">{totalScraped}</span> scraped this week. Decide on one and the next in line takes its slot.
+              <span className="font-mono text-foreground font-semibold">{totalActivePursuits}</span> opportunities you've chosen to pursue out of <span className="font-mono text-foreground font-semibold">{totalScraped}</span> screened. {shortlistedOps.length} shortlist opportunities remaining to review.
             </p>
           </div>
 
           <dl className="flex items-center gap-6 overflow-x-auto sm:gap-8">
             <div className="border-r border-border/40 pr-6 sm:pr-8">
               <dd className="font-display text-4xl sm:text-5xl text-emerald-600 dark:text-emerald-400 tabular-nums font-normal">
-                {String(remaining.filter((o) => o.decision === "PURSUE").length || 6).padStart(2, "0")}
+                {String(totalActivePursuits).padStart(2, "0")}
               </dd>
-              <dt className="label-mono mt-1 text-[0.68rem] text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">Cleared</dt>
+              <dt className="label-mono mt-1 text-[0.68rem] text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">Active Pursuits</dt>
             </div>
 
             <div className="border-r border-border/40 pr-6 sm:pr-8">
               <dd className="font-display text-4xl sm:text-5xl text-foreground tabular-nums font-normal">
                 {Object.keys(decisions).length}
               </dd>
-              <dt className="label-mono mt-1 text-[0.68rem] text-muted-foreground font-semibold uppercase tracking-wider">Reviewed</dt>
+              <dt className="label-mono mt-1 text-[0.68rem] text-muted-foreground font-semibold uppercase tracking-wider">Decisions</dt>
             </div>
 
             <div>
@@ -301,13 +291,28 @@ function Shortlist() {
             <div>
               <h2 className="label-mono text-foreground font-semibold tracking-wider">Shortlist queue · sorted by fit</h2>
               <span className="label-mono text-xs text-muted-foreground mt-0.5 block">
-                {filteredRemaining.length} opportunities evaluated by RADAR
+                {selectedCategory === "All"
+                  ? shortlistedOps.length > 0
+                    ? `${shortlistedOps.length} shortlist opportunities remaining to review (${totalShortlisted} shortlisted)`
+                    : `0 shortlist opportunities remaining to review (all ${totalShortlisted} shortlisted have recorded decisions)`
+                  : selectedCategory === "Needs More Signal"
+                    ? `${sparseOps.length} sparse opportunities remaining to review (${totalSparse} total)`
+                    : `${filteredRemaining.length} ${selectedCategory} opportunities remaining to review`}
               </span>
             </div>
 
             {/* Human-Friendly Category Filters */}
             <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap p-1 bg-muted/40 rounded-full border border-border/40 max-w-full scrollbar-none shrink-0">
-              {["All", `Needs More Signal (${sparseOps.length})`, "Transformation", "Commercial Growth", "Country Leadership", "Platform & Digital", "Founder-led", "Private Equity"].map((cat) => {
+              {[
+                "All",
+                `Needs More Signal (${sparseOps.length} / ${totalSparse})`,
+                "Transformation",
+                "Commercial Growth",
+                "Country Leadership",
+                "Platform & Digital",
+                "Founder-led",
+                "Private Equity",
+              ].map((cat) => {
                 const catKey = cat.startsWith("Needs More Signal") ? "Needs More Signal" : cat;
                 return (
                   <button
@@ -352,8 +357,14 @@ function Shortlist() {
             {visible.length === 0 && (
               <li className="glass-card rounded-xl py-16 text-center font-display text-xl text-muted-foreground">
                 {selectedCategory === "All" 
-                  ? "All shortlist items reviewed!" 
-                  : `No opportunities match "${selectedCategory}".`}
+                  ? (totalShortlisted > 0 && shortlistedOps.length === 0
+                      ? `All ${totalShortlisted} shortlist opportunities have recorded decisions.`
+                      : "No shortlist opportunities remaining to review.")
+                  : selectedCategory === "Needs More Signal"
+                    ? (totalSparse > 0 && sparseOps.length === 0
+                        ? `All ${totalSparse} sparse opportunities have recorded decisions.`
+                        : "No opportunities need more signal.")
+                    : `No unreviewed opportunities match "${selectedCategory}".`}
               </li>
             )}
           </ul>
@@ -367,16 +378,22 @@ function Shortlist() {
         <div className="glass-card rounded-full px-5 py-2 flex items-center gap-4 text-xs shadow-lg border border-border/60 pointer-events-auto backdrop-blur-xl">
           <button
             type="button"
-            onClick={runSearch}
-            disabled={isStarting || !!activeRunId}
+            onClick={() => {
+              if (runState?.isActive) {
+                restore();
+              } else {
+                void startScrape();
+              }
+            }}
+            disabled={isStarting}
             className={`label-mono shrink-0 font-bold px-3 py-1 rounded-full transition-all flex items-center gap-1.5 text-[10px] cursor-pointer shadow-xs ${
-              activeRunId
+              runState?.isActive
                 ? "bg-emerald-600 text-white"
                 : "bg-foreground text-background hover:opacity-90"
             }`}
           >
-            <span className={`inline-block h-1.5 w-1.5 rounded-full ${activeRunId ? "bg-white animate-ping" : "bg-emerald-400"}`} />
-            {isStarting ? "Starting..." : activeRunId ? "Scraper Active" : "Run Scraper"}
+            <span className={`inline-block h-1.5 w-1.5 rounded-full ${runState?.isActive ? "bg-white animate-ping" : "bg-emerald-400"}`} />
+            {isStarting ? "Starting..." : runState?.isActive ? "Search Active" : "Run Search"}
           </button>
           <span className="label-mono shrink-0 text-muted-foreground">
             <span className="text-foreground font-mono font-bold">{totalScraped}</span> scraped
@@ -392,18 +409,10 @@ function Shortlist() {
             Indeed <span className="text-foreground font-mono font-bold">{sourceCounts.Indeed}</span>
           </span>
           <span className="label-mono shrink-0 text-emerald-600 dark:text-emerald-400 font-bold">
-            → {shortlistedOps.length} on shortlist
+            → {shortlistedOps.length} of {totalShortlisted} to review
           </span>
         </div>
       </footer>
-
-      <ScraperConsole
-        runId={activeRunId}
-        onClose={() => setActiveRunId(null)}
-        onRefreshFeed={handleRefreshFeed}
-        onConfirm={confirmScrapeFn}
-        onAbort={abortScrapeFn}
-      />
     </div>
   );
 }
@@ -424,7 +433,7 @@ function ShortlistCardRow({
   openedTimes: Record<string, number>;
   setOpenedTimes: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   setOpen: React.Dispatch<React.SetStateAction<string | null>>;
-  decide: (jobHash: string, verb: DecisionVerb) => void;
+  decide: (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => void;
   showArrivalBanner: boolean;
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
@@ -531,7 +540,16 @@ function ShortlistCardRow({
       >
         <div className="min-h-0">
           {isOpen && (
-            <InlineBrief opportunity={o} onDecide={(verb) => decide(o.jobHash, verb)} />
+            <InlineBrief
+              opportunity={o}
+              onDecide={(verb) =>
+                decide(
+                  o.jobHash,
+                  verb,
+                  o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion
+                )
+              }
+            />
           )}
         </div>
       </div>

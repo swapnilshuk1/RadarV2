@@ -39,17 +39,23 @@ const KEY = "radar.opportunities.v3";
 let baseOpportunitiesCache: OpportunitySource[] | null = null;
 
 function getBaseOpportunities(): OpportunitySource[] {
+  if (typeof window !== "undefined") {
+    return baseOpportunitiesCache || [];
+  }
   if (baseOpportunitiesCache) return baseOpportunitiesCache;
-  if (typeof window !== "undefined") return [];
+
   try {
-    const jsonPath = path.resolve(process.cwd(), "src/data/live-scraped.json");
-    if (fs.existsSync(jsonPath)) {
-      const content = fs.readFileSync(jsonPath, "utf-8");
-      baseOpportunitiesCache = JSON.parse(content) as OpportunitySource[];
-      if (baseOpportunitiesCache.length > 0) return baseOpportunitiesCache;
+    const liveScrapedPath = path.resolve(process.cwd(), "src/data/live-scraped.json");
+    if (fs.existsSync(liveScrapedPath)) {
+      const raw = fs.readFileSync(liveScrapedPath, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        baseOpportunitiesCache = parsed as OpportunitySource[];
+        return baseOpportunitiesCache;
+      }
     }
-  } catch (err) {
-    console.warn("[Engine] Failed to load live-scraped.json dynamically:", err);
+  } catch (err: any) {
+    console.warn("[Engine] Failed to read live-scraped.json from disk:", err.message);
   }
 
   try {

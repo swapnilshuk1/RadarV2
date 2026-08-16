@@ -87,7 +87,18 @@ export interface PageExecutionRecord {
   timestamp: string;
 }
 
-export type RunState = "initializing" | "waiting_for_confirmation" | "running" | "enriching" | "completed" | "failed" | "aborted";
+export type RunState =
+  | "queued"
+  | "initializing"
+  | "waiting_for_confirmation"
+  | "running"
+  | "enriching"
+  | "stopping"
+  | "completing"
+  | "completed"
+  | "stopped"
+  | "failed"
+  | "aborted";
 
 export type HealthScore = "Healthy" | "Slow" | "Degraded" | "Blocked" | "Disabled";
 
@@ -111,11 +122,18 @@ export interface RunManifest {
   portals: PortalName[];
   maxPages: number;
   maxCardsPerPage: number;
+  opportunitiesFound?: number;
+  evaluatedCount?: number;
+  remainingCount?: number;
+  stage?: "discover" | "evaluate" | "prioritize" | "complete" | "stopped" | "failed";
+  sources?: Record<string, "pending" | "searching" | "completed" | "failed">;
   portalHealth?: Record<string, PortalHealth>;
   telemetry?: {
     httpAttempted: number;
     httpSuccessful: number;
     httpFallbacks: number;
+    duplicatePreDetail: number;
+    duplicatePostDetail: number;
     llmCalls: number;
   };
   pageExecutionRecords?: PageExecutionRecord[];
@@ -262,7 +280,7 @@ export interface PortalContext {
   logger: (msg: string) => void;
   isHttpDisabled?: (url: string) => boolean;
   recordHttpFailure?: (url: string, reason: string) => void;
-  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "llmCalls") => void;
+  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls") => void;
 }
 
 export interface PortalHandler {

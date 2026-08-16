@@ -208,7 +208,13 @@ export class JobProjectionBuilder {
     if (opportunity.dimensions && Array.isArray(opportunity.dimensions)) {
       opportunity.dimensions.forEach((dim: any) => {
         if (dim.jdEvidence && dim.jdEvidence.value) {
-          const capName = String(dim.jdEvidence.value).trim();
+          let capName = String(dim.jdEvidence.value).trim();
+          if (capName.startsWith("{") && capName.includes('"')) {
+            try {
+              const parsed = JSON.parse(capName);
+              capName = String(parsed.value || parsed.canonicalValue || parsed.rawValue || capName).trim();
+            } catch {}
+          }
           if (capName.length > 2) {
             capabilitiesMap.set(capName.toLowerCase(), {
               name: capName,

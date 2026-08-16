@@ -71,6 +71,8 @@ export interface RecommendationViewModel {
   explanation: string;
   capabilities: CapabilityCardViewModel[];
   decisionConfidence?: DecisionConfidence;
+  vetoed?: boolean;
+  vetoReason?: string | null;
 }
 
 export type Opportunity = {
@@ -115,6 +117,14 @@ export type Opportunity = {
   capabilityAlignmentText?: string;
   /** P1-F: Executive-facing recommended action based on decision + tailoring effort */
   recommendedAction?: string;
+
+  // RADAR V4 Multi-State Multi-Truth Model
+  engineRecommendation?: import("@/domain/decision_v4").EngineRecommendationV4;
+  userDecision?: import("@/domain/decision_v4").UserDecisionStateV4 | null;
+  effectiveDecision?: import("@/domain/decision_v4").EffectiveDecision;
+  reviewWorkflowState?: import("@/domain/decision_v4").ReviewWorkflowState;
+  displayScore?: string;
+  uiBadge?: { label: string; variant: "signal" | "caution" | "pass" | "muted" };
 };
 
 /** Derive the apply URL from the scraped source when a direct one wasn't captured. */

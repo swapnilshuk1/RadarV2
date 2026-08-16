@@ -3,7 +3,8 @@ import path from "path";
 import { EnrichmentQueue } from "./scraper/persist/queue";
 import { extract } from "./scraper/extract/extractor";
 import { ingestIntoSqlite } from "./scraper/persist/ingest";
-import { writeExtraction, readExtractionIfFresh } from "./scraper/persist/writer";
+import { writeExtraction, readExtractionIfFresh, writeLiveScraped, collectRecords } from "./scraper/persist/writer";
+import { invalidateEngineCache } from "../src/lib/intelligence/engine";
 import { EXTRACTOR_VERSION } from "./scraper/versions";
 import type { DetailedCard } from "./scraper/types";
 import { makeLogger } from "./scraper/utils/logger";
@@ -51,17 +52,20 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
     const snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
     const detailedCard = JSON.parse(snapStr) as DetailedCard;
     
-    // Check if we already have a fresh, valid-version extraction on disk!
+    // Check if we already have a fresh, valid-version extraction on disk that covers full JD if present
     const cachedEx = readExtractionIfFresh(filteredCardHash(detailedCard), CONFIG.snapshotFreshHours, EXTRACTOR_VERSION);
+    const hasFullJd = !!(detailedCard.detail && detailedCard.detail.rawText && detailedCard.detail.rawText.trim().length >= 200);
+    const cachedHasFullJd = !!(cachedEx && cachedEx.normalizedText && cachedEx.normalizedText.trim().length >= 200);
+
     let extraction;
     let isFromCache = false;
 
-    if (cachedEx) {
+    if (cachedEx && (!hasFullJd || cachedHasFullJd)) {
       log(`[Enrich] Using cached extraction for ${job.id} (skipped live LLM call)`);
       extraction = cachedEx;
       isFromCache = true;
     } else {
-      // 1. Extract live via Rate-Limited LLM
+      // 1. Extract live on Full JD via Rate-Limited LLM
       const tLlm0 = Date.now();
       extraction = await rateLimitedExtract(detailedCard);
       llmMs = Date.now() - tLlm0;
@@ -74,6 +78,17 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
     
     if (report.warnings.length > 0) {
       log(`Ingestion warnings for ${job.id}: ${report.warnings.join(", ")}`, "warn");
+    }
+
+    // 3. Update system-of-record live-scraped.json & invalidate engine cache for auto re-evaluation
+    try {
+      const records = collectRecords();
+      if (records.length > 0) {
+        writeLiveScraped(records);
+      }
+      invalidateEngineCache();
+    } catch (e: any) {
+      log(`[Enrich] Failed to update live-scraped.json or invalidate engine cache: ${e.message}`, "warn");
     }
     
     if (isFromCache) {
@@ -335,6 +350,17 @@ export async function enrichJobsForRun(runId: string) {
   let emptyBackoffMs = 250;
   
   while (true) {
+    try {
+      const manifestPath = path.join(process.cwd(), ".scraper-artifacts", "runs", runId, "manifest.json");
+      if (fs.existsSync(manifestPath)) {
+        const m = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+        if (["stopping", "stopped", "aborted"].includes(m.status)) {
+          log(`[Enrich] Cancellation requested for run ${runId}. Halting enrichment loop.`, "warn");
+          break;
+        }
+      }
+    } catch {}
+
     const pendingCount = queue.getPendingCountForRun(runId);
     if (pendingCount === 0) {
       log(`[Enrich] All jobs for run ${runId} have been successfully processed.`);

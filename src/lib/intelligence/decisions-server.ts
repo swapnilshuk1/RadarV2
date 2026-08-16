@@ -29,12 +29,12 @@ export const getDecisionsFn = createServerFn({ method: "GET" }).handler(async ()
 });
 
 export const saveDecisionFn = createServerFn({ method: "POST" })
-  .validator((d: { jobHash: string; verb: string; reason?: string }) => d)
+  .validator((d: { jobHash: string; verb: string; reason?: string; reviewedFingerprint?: string | null }) => d)
   .handler(async ({ data }) => {
     try {
       const userId = await getAuthenticatedUserId();
       const repos = getRepositories();
-      await repos.decisions.recordUserDecision(userId, data.jobHash, data.verb, data.reason);
+      await repos.decisions.recordUserDecision(userId, data.jobHash, data.verb, data.reason, data.reviewedFingerprint);
       return { success: true };
     } catch (err: any) {
       console.error("[decisions-server] Error saving decision:", err);
@@ -43,14 +43,14 @@ export const saveDecisionFn = createServerFn({ method: "POST" })
   });
 
 export const syncDecisionsFn = createServerFn({ method: "POST" })
-  .validator((d: { decisions: Record<string, { verb: string }> }) => d)
+  .validator((d: { decisions: Record<string, { verb: string; reviewedFingerprint?: string | null }> }) => d)
   .handler(async ({ data }) => {
     try {
       const userId = await getAuthenticatedUserId();
       const repos = getRepositories();
       for (const [jobHash, entry] of Object.entries(data.decisions)) {
         if (entry && entry.verb) {
-          await repos.decisions.recordUserDecision(userId, jobHash, entry.verb);
+          await repos.decisions.recordUserDecision(userId, jobHash, entry.verb, undefined, entry.reviewedFingerprint);
         }
       }
       return { success: true };

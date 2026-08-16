@@ -166,6 +166,128 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
     };
   });
 
+export function buildCanonicalRunData(runId: string) {
+  const runDir = path.join(ARTIFACTS_DIR, "runs", runId);
+  const manifestPath = path.join(runDir, "manifest.json");
+
+  if (!fs.existsSync(manifestPath)) return null;
+
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+    const opportunitiesFound = manifest.opportunitiesFound ?? manifest.cards?.length ?? 0;
+
+    let evaluatedCount = manifest.evaluatedCount ?? 0;
+    try {
+      const { EnrichmentQueue } = require("../../../scripts/scraper/persist/queue");
+      const queue = new EnrichmentQueue();
+      const stats = queue.getRunStats(runId);
+      if (stats?.completed !== undefined) {
+        evaluatedCount = Math.max(evaluatedCount, stats.completed);
+      }
+    } catch {}
+
+    const remainingCount = Math.max(0, opportunitiesFound - evaluatedCount);
+
+    const ACTIVE_STATES = ["queued", "initializing", "waiting_for_confirmation", "running", "enriching", "stopping", "completing"];
+    const isActive = ACTIVE_STATES.includes(manifest.status);
+
+    const sources = manifest.sources || {
+      LinkedIn: "pending",
+      Naukri: "pending",
+      Indeed: "pending"
+    };
+
+    let stage = manifest.stage;
+    if (!stage) {
+      if (manifest.status === "completed") stage = "complete";
+      else if (manifest.status === "stopped" || manifest.status === "aborted") stage = "stopped";
+      else if (manifest.status === "failed") stage = "failed";
+      else if (manifest.status === "enriching") stage = "evaluate";
+      else stage = "discover";
+    }
+
+    return {
+      runId,
+      status: manifest.status,
+      isActive,
+      stage,
+      opportunitiesFound,
+      evaluatedCount,
+      remainingCount,
+      sources,
+      startedAt: manifest.startedAt,
+      updatedAt: manifest.updatedAt,
+      finishedAt: manifest.finishedAt,
+      portalHealth: manifest.portalHealth || {}
+    };
+  } catch (err: any) {
+    console.error(`[Server] Failed to read manifest for run ${runId}:`, err.message);
+    return null;
+  }
+}
+
+export function getActiveScrapeState() {
+  try {
+    const latestPath = path.join(ARTIFACTS_DIR, "runs", "latest.json");
+    if (!fs.existsSync(latestPath)) return null;
+    const latest = JSON.parse(fs.readFileSync(latestPath, "utf-8"));
+    if (!latest?.runId) return null;
+
+    const runData = buildCanonicalRunData(latest.runId);
+    if (runData && runData.isActive) {
+      return runData;
+    }
+    return null; // Active-only per Directive #2
+  } catch {
+    return null;
+  }
+}
+
+export function getRunProgressState(runId: string) {
+  return buildCanonicalRunData(runId);
+}
+
+export function abortScrapeState(runId: string) {
+  const manifestPath = path.join(ARTIFACTS_DIR, "runs", runId, "manifest.json");
+  try {
+    if (fs.existsSync(manifestPath)) {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+      manifest.status = "stopping";
+      manifest.updatedAt = new Date().toISOString();
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
+      console.log(`[Server] Abort requested for run ${runId}. Manifest status set to 'stopping'.`);
+    }
+    return { success: true, status: "stopping" };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export const getActiveScrapeFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    return getActiveScrapeState();
+  });
+
+export const getLatestRunFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    try {
+      const latestPath = path.join(ARTIFACTS_DIR, "runs", "latest.json");
+      if (!fs.existsSync(latestPath)) return null;
+      const latest = JSON.parse(fs.readFileSync(latestPath, "utf-8"));
+      if (!latest?.runId) return null;
+
+      return buildCanonicalRunData(latest.runId);
+    } catch {
+      return null;
+    }
+  });
+
+export const getRunProgressFn = createServerFn({ method: "GET" })
+  .validator((d: { runId: string }) => d)
+  .handler(async ({ data }) => {
+    return getRunProgressState(data.runId);
+  });
+
 export const confirmScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
@@ -185,17 +307,7 @@ export const confirmScrapeFn = createServerFn({ method: "POST" })
 export const abortScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    const manifestPath = path.join(ARTIFACTS_DIR, "runs", data.runId, "manifest.json");
-    try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-      if (manifest.status === "waiting_for_confirmation" || manifest.status === "running") {
-        manifest.status = "aborted";
-        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
-      }
-      return { success: true };
-    } catch (e: any) {
-      return { success: false, error: e.message };
-    }
+    return abortScrapeState(data.runId);
   });
 
 let liveScrapedCache: { data: any[]; timestamp: number } | null = null;

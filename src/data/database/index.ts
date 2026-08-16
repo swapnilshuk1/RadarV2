@@ -48,6 +48,9 @@ const DEFAULT_TURSO_URL = "libsql://radar-db-swapnilshuk1.aws-ap-south-1.turso.i
 const DEFAULT_TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3ODQ4MDcyNTQsImlkIjoiMDE5ZjhlY2ItYTYwMS03ZTM5LThjNGUtMjE1ZTI0YTZiNmExIiwia2lkIjoiYzZxcy1UNW4tTlpOQzZQNFpBQ0tyZ0w0VVFGd3ZYVG5MTjdzVU9QaWJVNCIsInJpZCI6IjEyNDkzZmVmLTk2NjYtNGEyYS04MzY3LTgwZDI5MDk4MjAxMiJ9.Ewbydc5FWX-SCcW12JLJtc7H7L8_IX1tQxz7HrmY_YPL4vAGDsW_CApCg2jDdBm8kTqQTDvrZ5rGWKcHmI9LAA";
 
 export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
+  if (typeof window !== "undefined") {
+    throw new Error("[DatabaseAdapter] getDatabaseAdapter must only be called on the server");
+  }
   if (_cachedAdapter) {
     return _cachedAdapter;
   }

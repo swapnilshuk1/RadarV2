@@ -36,21 +36,19 @@ export const OpportunityProvider = {
         const tierDiff = (decisionRank[a.decision] ?? 3) - (decisionRank[b.decision] ?? 3);
         if (tierDiff !== 0) return tierDiff;
 
-        // Secondary: Higher recommendation score first
-        const scoreA = a.recommendationResult?.score ?? 0;
-        const scoreB = b.recommendationResult?.score ?? 0;
-        const scoreDiff = scoreB - scoreA;
-        if (scoreDiff !== 0) return scoreDiff;
+        // Secondary: Higher recommendation score first (null score never coerced to 0)
+        const scoreA = a.recommendationResult?.score ?? null;
+        const scoreB = b.recommendationResult?.score ?? null;
+        if (scoreA !== null && scoreB !== null) {
+          const scoreDiff = scoreB - scoreA;
+          if (scoreDiff !== 0) return scoreDiff;
+        } else if (scoreA !== null && scoreB === null) {
+          return -1;
+        } else if (scoreA === null && scoreB !== null) {
+          return 1;
+        }
 
-        // Tertiary: Same score → higher confidence first
-        // Confidence is on recommendationResult.decisionConfidence.overall (0-1 scale)
-        const confA = a.recommendationResult?.decisionConfidence?.overall ?? 0;
-        const confB = b.recommendationResult?.decisionConfidence?.overall ?? 0;
-        const confDiff = confB - confA;
-        if (confDiff !== 0) return confDiff;
-
-        // Quaternary: Same confidence → deterministic jobHash order
-        // jobHash is the only guaranteed unique and deterministic tie-breaker
+        // Tertiary: Deterministic jobHash order (confidence strictly excluded from fit ranking)
         return a.jobHash.localeCompare(b.jobHash);
       });
   },

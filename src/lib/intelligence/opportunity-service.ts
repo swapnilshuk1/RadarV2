@@ -1,13 +1,31 @@
 import { getRepositories } from "../../data/sqlite/provider";
 import { runEngine, runEngineSingle, addExtraOpportunities, injectFreshRecords } from "./engine";
 import type { Opportunity } from "@/data/opportunity-fixtures";
+import {
+  computeEffectiveDecision,
+  computeReviewWorkflowState,
+  type EngineRecommendationV4,
+  type UserDecisionStateV4,
+  type EffectiveDecision,
+} from "../../domain/decision_v4";
 
 export type ServiceOptions = {
   activePursuits?: number;
 };
 
+const POPULATION_TIER_ORDER: Record<EffectiveDecision, number> = {
+  ENGINE_PURSUIT: 0,
+  USER_CONFIRMED: 0,
+  PREFERENCE_OVERRIDE: 1,
+  VETO_OVERRIDE: 2,
+  ENGINE_CONSIDER: 3,
+  NOT_EVALUABLE: 4,
+  USER_PASSED: 5,
+  ENGINE_PASS: 5,
+};
+
 export class OpportunityService {
-  /** List all dynamically computed opportunity DTOs for a specific user, sorted by Pursuit Potential. */
+  /** List all dynamically computed opportunity DTOs for a specific user, sorted by Homogeneous Population Tiers. */
   static async listForUser(userId: string, options?: ServiceOptions): Promise<Opportunity[]> {
     const repos = getRepositories();
     const [projection, userDecisions] = await Promise.all([
@@ -27,35 +45,66 @@ export class OpportunityService {
     // Pass projection directly into the V4 Engine
     const { presented } = runEngine(projection, active);
     
-    const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, SPARSE_SPEC: 2, PASS: 3 };
-    
     return presented
       .map((p) => {
-        const opp = { ...p.opportunity };
-        if (userDecisions[opp.jobHash]) {
-          opp.decision = userDecisions[opp.jobHash].verb as any;
-        }
+        const rawUser = userDecisions[p.opportunity.jobHash];
+        const engineRec: EngineRecommendationV4 = p.opportunity.engineRecommendation || {
+          jobHash: p.opportunity.jobHash,
+          evaluationFingerprint: p.record.recommendationVersion,
+          engineVerdict: p.record.verb as any,
+          vetoed: Boolean(p.record.vetoed),
+          vetoReason: p.record.vetoReason || null,
+          qualityScore: p.record.vetoed ? null : (p.record.qualityScore !== null && p.record.qualityScore !== undefined ? Math.round(p.record.qualityScore) : null),
+          parsingConfidence: p.record.confidences?.parsing ?? (p.record.confidence ?? 0.8),
+          evaluatedAt: new Date().toISOString(),
+        };
+
+        const userState: UserDecisionStateV4 | null = rawUser ? {
+          personId: userId,
+          jobHash: p.opportunity.jobHash,
+          userAction: rawUser.verb as any,
+          reviewedFingerprint: (rawUser as any).reviewedFingerprint || null,
+          updatedAt: rawUser.updatedAt || null,
+        } : null;
+
+        const effectiveDecision = computeEffectiveDecision(engineRec, userState);
+        const reviewWorkflowState = computeReviewWorkflowState(engineRec, userState);
+
+        const opp: Opportunity = {
+          ...p.opportunity,
+          engineRecommendation: engineRec,
+          userDecision: userState,
+          effectiveDecision,
+          reviewWorkflowState,
+          // Legacy presentation compatibility verb for active UI tabs (PURSUE / CONSIDER / PASS / SPARSE_SPEC)
+          decision: userState?.userAction
+            ? (userState.userAction as any)
+            : (engineRec.engineVerdict as any),
+        };
+
         return opp;
       })
       .sort((a, b) => {
-        // P1-E: Deterministic tie-breaking for ranking
-        // Primary: Decision tier (PURSUE < CONSIDER < SPARSE_SPEC < PASS)
-        const tierDiff = (decisionRank[a.decision] ?? 3) - (decisionRank[b.decision] ?? 3);
-        if (tierDiff !== 0) return tierDiff;
+        // 1. Primary: Homogeneous Population Tier
+        const tierA = POPULATION_TIER_ORDER[a.effectiveDecision || "ENGINE_PASS"] ?? 5;
+        const tierB = POPULATION_TIER_ORDER[b.effectiveDecision || "ENGINE_PASS"] ?? 5;
+        if (tierA !== tierB) return tierA - tierB;
 
-        // Secondary: Higher recommendation score first
-        const scoreA = a.recommendationResult?.score ?? 0;
-        const scoreB = b.recommendationResult?.score ?? 0;
-        const scoreDiff = scoreB - scoreA;
-        if (scoreDiff !== 0) return scoreDiff;
+        // 2. Secondary: Intra-tier rank by numeric qualityScore (DESC)
+        // INVARIANT: null scores are NEVER coerced to 0 (no `?? 0` or `|| 0`).
+        const scoreA = a.engineRecommendation?.qualityScore ?? a.recommendationResult?.score ?? null;
+        const scoreB = b.engineRecommendation?.qualityScore ?? b.recommendationResult?.score ?? null;
 
-        // Tertiary: Same score → higher confidence first
-        const confA = a.recommendationResult?.decisionConfidence?.overall ?? 0;
-        const confB = b.recommendationResult?.decisionConfidence?.overall ?? 0;
-        const confDiff = confB - confA;
-        if (confDiff !== 0) return confDiff;
+        if (scoreA !== null && scoreB !== null) {
+          const scoreDiff = scoreB - scoreA;
+          if (scoreDiff !== 0) return scoreDiff;
+        } else if (scoreA !== null && scoreB === null) {
+          return -1; // Evaluated score ranks above null score
+        } else if (scoreA === null && scoreB !== null) {
+          return 1;  // Null score ranks below evaluated score
+        }
 
-        // Quaternary: Same confidence → deterministic jobHash order
+        // 3. Quaternary: Deterministic jobHash order (confidence is NOT used for fit ranking)
         return a.jobHash.localeCompare(b.jobHash);
       });
   }

@@ -20,6 +20,7 @@ export const Route = createFileRoute("/decisions")({
       { name: "robots", content: "noindex" },
     ],
   }),
+  staleTime: 0,
   loader: async () => {
     return {
       opportunitiesList: await getOpportunitiesFn()
@@ -228,7 +229,11 @@ function OpportunitiesPage() {
                           <span>{r.location}</span>
                           <span className="text-hairline-strong">·</span>
                           <span className="font-mono uppercase tracking-[0.14em] text-[0.62rem] text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm">
-                            Fit Overlap {score}%
+                            {o.recommendationResult?.score !== null && o.recommendationResult?.score !== undefined
+                              ? `Fit Overlap ${o.recommendationResult.score}%`
+                              : o.engineRecommendation?.vetoed
+                                ? `Vetoed (${o.engineRecommendation.vetoReason || "Mismatch"})`
+                                : "Unscored"}
                           </span>
                         </div>
                       </div>

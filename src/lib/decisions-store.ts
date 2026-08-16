@@ -8,7 +8,7 @@ import {
   clearDecisionsFn
 } from "./intelligence/decisions-server";
 
-export type DecisionRecord = { verb: DecisionVerb; at: number };
+export type DecisionRecord = { verb: DecisionVerb; at: number; reviewedFingerprint?: string | null };
 export type DecisionMap = Record<string, DecisionRecord>;
 
 const KEY = "radar.decisions.v1";
@@ -63,7 +63,8 @@ export function useDecisions() {
           for (const [hash, val] of Object.entries(res.decisions)) {
             serverMap[hash] = {
               verb: val.verb as DecisionVerb,
-              at: val.updatedAt ? new Date(val.updatedAt).getTime() : Date.now()
+              at: val.updatedAt ? new Date(val.updatedAt).getTime() : Date.now(),
+              reviewedFingerprint: (val as any).reviewedFingerprint || null
             };
           }
 
@@ -98,15 +99,15 @@ export function useDecisions() {
     };
   }, []);
 
-  const decide = (jobHash: string, verb: DecisionVerb) => {
+  const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
     setDecisions((prev) => {
-      const next = { ...prev, [jobHash]: { verb, at: Date.now() } };
+      const next = { ...prev, [jobHash]: { verb, at: Date.now(), reviewedFingerprint: reviewedFingerprint || null } };
       writeLocal(next);
       return next;
     });
 
     // Fire background server call to Turso/SQLite
-    saveDecisionFn({ data: { jobHash, verb } }).catch((err) => {
+    saveDecisionFn({ data: { jobHash, verb, reviewedFingerprint } }).catch((err) => {
       console.error("[useDecisions] Error saving decision to server:", err);
     });
   };

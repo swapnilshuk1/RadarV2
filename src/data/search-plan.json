@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "generatedAt": "2026-08-10T14:11:23.032Z",
+  "generatedAt": "2026-08-16T08:50:47.245Z",
   "candidateIntent": {
     "targetLevel": [
       "Chief",
@@ -77,65 +77,25 @@
       "description": "High-priority portal search queries dynamically compiled from user profile career intent.",
       "queries": [
         "Chief Marketing Officer",
-        "Chief Marketing Officer Gurugram",
-        "Chief Marketing Officer Remote India",
         "Chief Growth Officer",
-        "Chief Growth Officer Gurugram",
-        "Chief Growth Officer Remote India",
         "Chief Customer Officer",
-        "Chief Customer Officer Gurugram",
-        "Chief Customer Officer Remote India",
         "Chief Digital Officer",
-        "Chief Digital Officer Gurugram",
-        "Chief Digital Officer Remote India",
         "SVP Marketing",
-        "SVP Marketing Gurugram",
-        "SVP Marketing Remote India",
         "SVP Marketing & Transformation",
-        "SVP Marketing & Transformation Gurugram",
-        "SVP Marketing & Transformation Remote India",
         "Senior Vice President Marketing",
-        "Senior Vice President Marketing Gurugram",
-        "Senior Vice President Marketing Remote India",
         "Vice President Marketing",
-        "Vice President Marketing Gurugram",
-        "Vice President Marketing Remote India",
         "Vice President Growth",
-        "Vice President Growth Gurugram",
-        "Vice President Growth Remote India",
         "Vice President Digital",
-        "Vice President Digital Gurugram",
-        "Vice President Digital Remote India",
         "Vice President Customer Experience",
-        "Vice President Customer Experience Gurugram",
-        "Vice President Customer Experience Remote India",
         "Head of Marketing",
-        "Head of Marketing Gurugram",
-        "Head of Marketing Remote India",
         "Head of Growth",
-        "Head of Growth Gurugram",
-        "Head of Growth Remote India",
         "Head of Digital",
-        "Head of Digital Gurugram",
-        "Head of Digital Remote India",
         "Head of CRM",
-        "Head of CRM Gurugram",
-        "Head of CRM Remote India",
         "Head of Customer Experience",
-        "Head of Customer Experience Gurugram",
-        "Head of Customer Experience Remote India",
         "Head of MarTech",
-        "Head of MarTech Gurugram",
-        "Head of MarTech Remote India",
         "Marketing Director",
-        "Marketing Director Gurugram",
-        "Marketing Director Remote India",
         "Global Marketing Director",
-        "Global Marketing Director Gurugram",
-        "Global Marketing Director Remote India",
-        "Transformation Director",
-        "Transformation Director Gurugram",
-        "Transformation Director Remote India"
+        "Transformation Director"
       ]
     },
     {
@@ -329,246 +289,6 @@
       "score": 95,
       "dimension": "targetRoles",
       "concept": "Transformation Director"
-    },
-    {
-      "query": "Chief Marketing Officer Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Chief Marketing Officer Gurugram"
-    },
-    {
-      "query": "Chief Marketing Officer Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Chief Marketing Officer Remote India"
-    },
-    {
-      "query": "Chief Growth Officer Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Chief Growth Officer Gurugram"
-    },
-    {
-      "query": "Chief Growth Officer Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Chief Growth Officer Remote India"
-    },
-    {
-      "query": "Chief Customer Officer Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Chief Customer Officer Gurugram"
-    },
-    {
-      "query": "Chief Customer Officer Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Chief Customer Officer Remote India"
-    },
-    {
-      "query": "Chief Digital Officer Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Chief Digital Officer Gurugram"
-    },
-    {
-      "query": "Chief Digital Officer Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Chief Digital Officer Remote India"
-    },
-    {
-      "query": "SVP Marketing Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "SVP Marketing Gurugram"
-    },
-    {
-      "query": "SVP Marketing Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "SVP Marketing Remote India"
-    },
-    {
-      "query": "SVP Marketing & Transformation Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "SVP Marketing & Transformation Gurugram"
-    },
-    {
-      "query": "SVP Marketing & Transformation Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "SVP Marketing & Transformation Remote India"
-    },
-    {
-      "query": "Senior Vice President Marketing Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Senior Vice President Marketing Gurugram"
-    },
-    {
-      "query": "Senior Vice President Marketing Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Senior Vice President Marketing Remote India"
-    },
-    {
-      "query": "Vice President Marketing Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Vice President Marketing Gurugram"
-    },
-    {
-      "query": "Vice President Marketing Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Vice President Marketing Remote India"
-    },
-    {
-      "query": "Vice President Growth Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Vice President Growth Gurugram"
-    },
-    {
-      "query": "Vice President Growth Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Vice President Growth Remote India"
-    },
-    {
-      "query": "Vice President Digital Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Vice President Digital Gurugram"
-    },
-    {
-      "query": "Vice President Digital Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Vice President Digital Remote India"
-    },
-    {
-      "query": "Vice President Customer Experience Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Vice President Customer Experience Gurugram"
-    },
-    {
-      "query": "Vice President Customer Experience Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Vice President Customer Experience Remote India"
-    },
-    {
-      "query": "Head of Marketing Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of Marketing Gurugram"
-    },
-    {
-      "query": "Head of Marketing Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of Marketing Remote India"
-    },
-    {
-      "query": "Head of Growth Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of Growth Gurugram"
-    },
-    {
-      "query": "Head of Growth Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of Growth Remote India"
-    },
-    {
-      "query": "Head of Digital Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of Digital Gurugram"
-    },
-    {
-      "query": "Head of Digital Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of Digital Remote India"
-    },
-    {
-      "query": "Head of CRM Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of CRM Gurugram"
-    },
-    {
-      "query": "Head of CRM Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of CRM Remote India"
-    },
-    {
-      "query": "Head of Customer Experience Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of Customer Experience Gurugram"
-    },
-    {
-      "query": "Head of Customer Experience Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of Customer Experience Remote India"
-    },
-    {
-      "query": "Head of MarTech Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of MarTech Gurugram"
-    },
-    {
-      "query": "Head of MarTech Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Head of MarTech Remote India"
-    },
-    {
-      "query": "Marketing Director Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Marketing Director Gurugram"
-    },
-    {
-      "query": "Marketing Director Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Marketing Director Remote India"
-    },
-    {
-      "query": "Global Marketing Director Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Global Marketing Director Gurugram"
-    },
-    {
-      "query": "Global Marketing Director Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Global Marketing Director Remote India"
-    },
-    {
-      "query": "Transformation Director Gurugram",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Transformation Director Gurugram"
-    },
-    {
-      "query": "Transformation Director Remote India",
-      "score": 90,
-      "dimension": "targetRolesAndLocations",
-      "concept": "Transformation Director Remote India"
     },
     {
       "query": "CMO",

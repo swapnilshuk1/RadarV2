@@ -177,7 +177,13 @@ export class KnowledgeGraphBuilder {
         }
 
         // Fact (Identity: Opportunity + Fact Type + Normalized Value)
-        const dimValue = dim.jdEvidence.value;
+        let dimValue = dim.jdEvidence.value;
+        if (typeof dimValue === "string" && dimValue.startsWith("{") && dimValue.includes('"')) {
+          try {
+            const parsed = JSON.parse(dimValue);
+            dimValue = parsed.value || parsed.canonicalValue || parsed.rawValue || dimValue;
+          } catch {}
+        }
         const normalizedValue = typeof dimValue === "string" ? dimValue.trim().toLowerCase() : JSON.stringify(dimValue);
         const factId = "f_" + this.deterministicHash(`${opportunity.id}:${dim.key}:${normalizedValue}`);
         
