@@ -54,6 +54,8 @@ export interface DecisionPolicyResult {
   pipeline: PipelineStage[];
   decisionDrivers: DecisionDriver[];
   decisionRisks: DecisionDriver[];
+  opportunityScoreSource?: "EXPLICIT" | "FALLBACK";
+  opportunityScoreConfidence?: "HIGH" | "LOW";
 }
 
 export class DecisionPolicyEngine {
@@ -267,6 +269,8 @@ export class DecisionPolicyEngine {
     const qualityScore = qualityResult.qualityScore; // Authoritative [0-100]
     const rawScore = qualityScore;                   // Legacy alias
     const priorityScore = qualityScore;              // Legacy alias
+    const opportunityScoreSource = qualityResult.opportunityScoreSource;
+    const opportunityScoreConfidence = qualityResult.opportunityScoreConfidence;
 
     const identityScore = Math.round((identity.coverage || (1.0 - identityDistance)) * 100);
     const isCapUnavailable = (capability as any).evidenceState === "UNAVAILABLE" || capability.sufficiency === "INSUFFICIENT" || capability.overallFit === null;
@@ -366,6 +370,8 @@ export class DecisionPolicyEngine {
         qualityScore,
         rawScore,
         priorityScore,
+        opportunityScoreSource,
+        opportunityScoreConfidence,
         vetoed: true,
         vetoReason: "G-SUB-TIER-MANDATE-VETO",
         claimPermissions,
@@ -392,6 +398,8 @@ export class DecisionPolicyEngine {
         qualityScore,
         rawScore,
         priorityScore,
+        opportunityScoreSource,
+        opportunityScoreConfidence,
         vetoed: true,
         vetoReason: "G-IDENTITY-VETO",
         claimPermissions,
@@ -416,6 +424,8 @@ export class DecisionPolicyEngine {
         qualityScore,
         rawScore,
         priorityScore,
+        opportunityScoreSource,
+        opportunityScoreConfidence,
         vetoed: true,
         vetoReason: "G-EXECUTION-VETO",
         claimPermissions,
@@ -440,6 +450,8 @@ export class DecisionPolicyEngine {
         qualityScore,
         rawScore,
         priorityScore,
+        opportunityScoreSource,
+        opportunityScoreConfidence,
         vetoed: true,
         vetoReason: "G-COMPATIBILITY-REGRESSION-VETO",
         claimPermissions,
@@ -483,6 +495,8 @@ export class DecisionPolicyEngine {
           qualityScore,
           rawScore,
           priorityScore,
+          opportunityScoreSource,
+          opportunityScoreConfidence,
           vetoed: false,
           vetoReason: null,
           claimPermissions,
@@ -507,6 +521,8 @@ export class DecisionPolicyEngine {
           qualityScore,
           rawScore,
           priorityScore,
+          opportunityScoreSource,
+          opportunityScoreConfidence,
           vetoed: false,
           vetoReason: null,
           claimPermissions,
@@ -532,6 +548,8 @@ export class DecisionPolicyEngine {
             qualityScore,
             rawScore,
             priorityScore,
+            opportunityScoreSource,
+            opportunityScoreConfidence,
             vetoed: false,
             vetoReason: null,
             claimPermissions,
@@ -554,6 +572,8 @@ export class DecisionPolicyEngine {
             qualityScore,
             rawScore,
             priorityScore,
+            opportunityScoreSource,
+            opportunityScoreConfidence,
             vetoed: false,
             vetoReason: null,
             claimPermissions,
@@ -578,6 +598,8 @@ export class DecisionPolicyEngine {
         qualityScore,
         rawScore,
         priorityScore,
+        opportunityScoreSource,
+        opportunityScoreConfidence,
         vetoed: false,
         vetoReason: null,
         claimPermissions,
@@ -603,6 +625,8 @@ export class DecisionPolicyEngine {
           qualityScore,
           rawScore,
           priorityScore,
+          opportunityScoreSource,
+          opportunityScoreConfidence,
           vetoed: false,
           vetoReason: null,
           claimPermissions,
@@ -626,6 +650,8 @@ export class DecisionPolicyEngine {
         qualityScore,
         rawScore,
         priorityScore,
+        opportunityScoreSource,
+        opportunityScoreConfidence,
         vetoed: false,
         vetoReason: null,
         claimPermissions,
@@ -649,6 +675,8 @@ export class DecisionPolicyEngine {
       qualityScore,
       rawScore,
       priorityScore,
+      opportunityScoreSource,
+      opportunityScoreConfidence,
       vetoed: false,
       vetoReason: null,
       claimPermissions,

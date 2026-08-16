@@ -33,6 +33,9 @@ export interface EditorialVariableMap {
   location: string;
   pnlScale?: string;
   primaryCapability?: string;
+  synthesizedAdvantage?: { statement: string; evidenceIds: string[]; confidence: number; };
+  synthesizedRisk?: { statement: string; evidenceIds: string[]; confidence: number; };
+  isEasyTrapTriggered?: boolean;
 }
 
 export interface EditorialPatternConstraints {

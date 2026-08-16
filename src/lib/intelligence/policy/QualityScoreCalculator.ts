@@ -19,6 +19,8 @@ export interface QualityScoreResult {
   qualityScore: number | null;
   isEligible: boolean;
   ineligibilityReason?: "SPARSE_SPEC" | "IDENTITY_MISMATCH" | "EVIDENCE_INTEGRITY_FAILED";
+  opportunityScoreSource?: "EXPLICIT" | "FALLBACK";
+  opportunityScoreConfidence?: "HIGH" | "LOW";
   componentScores: {
     careerScore: number;
     capabilityScore: number;
@@ -100,7 +102,12 @@ export class QualityScoreCalculator {
       
     const capabilityScore = isCapUnavailable ? 50 : Math.round((input.capability.overallFit || 0) * 100);
     const careerScore = (input.career as any).careerScore || Math.max(0, 80 - (input.career.regressionScore || 0));
-    const opportunityScore = (input.opportunity as any).opportunityScore || 80;
+
+    const rawOpportunityScore = (input.opportunity as any).opportunityScore;
+    const isExplicitOpportunityScore = rawOpportunityScore !== undefined && rawOpportunityScore !== null;
+    const opportunityScore = isExplicitOpportunityScore ? rawOpportunityScore : 80;
+    const opportunityScoreSource: "EXPLICIT" | "FALLBACK" = isExplicitOpportunityScore ? "EXPLICIT" : "FALLBACK";
+    const opportunityScoreConfidence: "HIGH" | "LOW" = isExplicitOpportunityScore ? "HIGH" : "LOW";
 
     // 5. Model C Intrinsic Quality Score Calculation (Continuous, 0-100)
     // Formula: (6/13)*Career + (3/13)*Capability + (4/13)*Opportunity
@@ -114,6 +121,8 @@ export class QualityScoreCalculator {
     return {
       qualityScore,
       isEligible: true,
+      opportunityScoreSource,
+      opportunityScoreConfidence,
       componentScores: { careerScore, capabilityScore, opportunityScore },
       normalizedWeights
     };
