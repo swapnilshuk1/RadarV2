@@ -77,4 +77,59 @@ export class EvaluationWorker {
     }
     return count;
   }
+
+  private static isDaemonRunning = false;
+  private static daemonAbortController: AbortController | null = null;
+
+  /**
+   * Starts a persistent background worker daemon that continuously polls and drains
+   * the evaluation_jobs queue with idle backoff and graceful termination.
+   */
+  public static startDaemon(
+    pollIntervalMs: number = 2000,
+    workerId: string = `worker_daemon_${process.pid}`
+  ): { stop: () => void; isRunning: () => boolean } {
+    if (this.isDaemonRunning) {
+      return {
+        stop: () => this.stopDaemon(),
+        isRunning: () => this.isDaemonRunning,
+      };
+    }
+
+    this.isDaemonRunning = true;
+    this.daemonAbortController = new AbortController();
+    const signal = this.daemonAbortController.signal;
+
+    (async () => {
+      while (!signal.aborted) {
+        try {
+          const hadWork = await this.processNextJob(workerId);
+          if (!hadWork) {
+            // Queue empty: wait for poll interval before checking again
+            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+          }
+        } catch (err: any) {
+          console.error("⚠️ [EvaluationDaemon] Unhandled loop error:", err?.message || err);
+          await new Promise((resolve) => setTimeout(resolve, Math.max(pollIntervalMs * 2, 5000)));
+        }
+      }
+      this.isDaemonRunning = false;
+    })();
+
+    return {
+      stop: () => this.stopDaemon(),
+      isRunning: () => this.isDaemonRunning,
+    };
+  }
+
+  /**
+   * Gracefully terminates the running evaluation worker daemon.
+   */
+  public static stopDaemon(): void {
+    if (this.daemonAbortController) {
+      this.daemonAbortController.abort();
+      this.daemonAbortController = null;
+    }
+    this.isDaemonRunning = false;
+  }
 }

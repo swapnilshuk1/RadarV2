@@ -278,6 +278,13 @@ export function getActiveScrapeState() {
 
     const runData = buildCanonicalRunData(latest.runId);
     if (runData && runData.isActive) {
+      // If there is no active process lock and updatedAt is >30s old, the run is orphaned
+      const updatedAt = runData.updatedAt ? new Date(runData.updatedAt).getTime() : 0;
+      const ageMs = Date.now() - updatedAt;
+      if (!activeScrapeRunLock && ageMs > 30000) {
+        abortScrapeState(latest.runId);
+        return null;
+      }
       return runData;
     }
     return null; // Active-only per Directive #2

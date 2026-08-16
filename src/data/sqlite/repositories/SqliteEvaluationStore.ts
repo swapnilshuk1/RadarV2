@@ -100,16 +100,22 @@ export class SqliteEvaluationStore {
     return `eval_hash_${Math.abs(hash).toString(16)}`;
   }
 
+  private sanitizeParams(params: any[]): any[] {
+    return params.map((p) => (p === undefined ? null : p));
+  }
+
   /**
-   * Upserts candidate evaluation while strictly protecting any existing user_decision_override.
+   * Upserts a candidate evaluation while strictly protecting user overrides.
    */
-  async saveEvaluation(record: CandidateEvaluationRecord): Promise<void> {
+  async saveEvaluation(record: Omit<CandidateEvaluationRecord, "updatedAt">): Promise<void> {
     await this.ensureSchema();
-    // Check if an existing user_decision_override exists
+    // 1. Fetch any existing record to preserve user decision overrides
     const existing = await this.getEvaluation(record.personId, record.jobHash);
-    const effectiveOverride = existing?.userDecisionOverride || record.userDecisionOverride || null;
-    const finalEffectiveDecision = effectiveOverride || record.engineVerdict;
-    const finalQualityScore = effectiveOverride ? 100.0 : record.engineQualityScore;
+    const existingOverride = existing?.userDecisionOverride;
+
+    const effectiveOverride = record.userDecisionOverride ?? existingOverride ?? null;
+    const finalEffectiveDecision = effectiveOverride || record.effectiveDecision || record.engineVerdict;
+    const finalQualityScore = effectiveOverride ? 100.0 : (record.qualityScore ?? record.engineQualityScore);
 
     await this.db.execute(
       `
@@ -131,7 +137,7 @@ export class SqliteEvaluationStore {
         evaluation_json = excluded.evaluation_json,
         updated_at = CURRENT_TIMESTAMP
       `,
-      [
+      this.sanitizeParams([
         record.personId,
         record.jobHash,
         record.policyVersion,
@@ -143,7 +149,7 @@ export class SqliteEvaluationStore {
         finalQualityScore,
         record.evaluationStatus || "COMPLETE",
         record.evaluationJson,
-      ]
+      ])
     );
   }
 
@@ -171,7 +177,7 @@ export class SqliteEvaluationStore {
           updated_at = CURRENT_TIMESTAMP
       WHERE person_id = ? AND job_hash = ?
       `,
-      [userOverride, newEffectiveDecision, newQualityScore, personId, jobHash]
+      this.sanitizeParams([userOverride, newEffectiveDecision, newQualityScore, personId, jobHash])
     );
   }
 
@@ -182,7 +188,7 @@ export class SqliteEvaluationStore {
     await this.ensureSchema();
     const row = await this.db.one<any>(
       `SELECT * FROM candidate_evaluations WHERE person_id = ? AND job_hash = ?`,
-      [personId, jobHash]
+      this.sanitizeParams([personId, jobHash])
     );
     if (!row) return null;
     return this.mapRow(row);
@@ -200,7 +206,7 @@ export class SqliteEvaluationStore {
       ORDER BY quality_score DESC
       LIMIT ?
       `,
-      [personId, limit]
+      this.sanitizeParams([personId, limit])
     );
     return rows.map((r) => this.mapRow(r));
   }
@@ -208,7 +214,7 @@ export class SqliteEvaluationStore {
   /**
    * Enqueues evaluation job in evaluation_jobs queue.
    */
-  async enqueueJob(personId: string, jobHash: string, inputHash: string): Promise<void> {
+  async enqueueJob(personId: string, jobHash: string, inputHash: string): Promise<string> {
     await this.ensureSchema();
     const jobId = `job_${personId}_${jobHash}_${inputHash.slice(0, 8)}`;
     await this.db.execute(
@@ -219,8 +225,9 @@ export class SqliteEvaluationStore {
         status = CASE WHEN evaluation_jobs.status = 'FAILED' THEN 'PENDING' ELSE evaluation_jobs.status END,
         available_at = CURRENT_TIMESTAMP
       `,
-      [jobId, personId, jobHash, inputHash]
+      this.sanitizeParams([jobId, personId, jobHash, inputHash])
     );
+    return jobId;
   }
 
   /**
@@ -236,7 +243,7 @@ export class SqliteEvaluationStore {
       WHERE status = 'RUNNING'
         AND datetime(locked_at, '+' || ? || ' minutes') < datetime('now')
       `,
-      [leaseTimeoutMinutes]
+      this.sanitizeParams([leaseTimeoutMinutes])
     );
 
     // Find first PENDING job
@@ -258,7 +265,7 @@ export class SqliteEvaluationStore {
       SET status = 'RUNNING', lock_owner = ?, locked_at = CURRENT_TIMESTAMP, attempts = attempts + 1
       WHERE id = ?
       `,
-      [lockOwner, row.id]
+      this.sanitizeParams([lockOwner, row.id])
     );
 
     return {
@@ -284,7 +291,7 @@ export class SqliteEvaluationStore {
       SET status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP, lock_owner = NULL
       WHERE id = ?
       `,
-      [jobId]
+      this.sanitizeParams([jobId])
     );
   }
 
@@ -298,7 +305,7 @@ export class SqliteEvaluationStore {
       SET status = ?, last_error = ?, lock_owner = NULL
       WHERE id = ?
       `,
-      [isSuperseded ? "SUPERSEDED" : "FAILED", error, jobId]
+      this.sanitizeParams([isSuperseded ? "SUPERSEDED" : "FAILED", error, jobId])
     );
   }
 

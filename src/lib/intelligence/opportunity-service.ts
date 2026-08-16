@@ -24,9 +24,19 @@ const POPULATION_TIER_ORDER: Record<EffectiveDecision, number> = {
   ENGINE_PASS: 5,
 };
 
+let _workerStarted = false;
+function ensureWorkerDaemonStarted() {
+  if (_workerStarted || typeof window !== "undefined" || process.env.NODE_ENV === "test") return;
+  _workerStarted = true;
+  import("./workers/EvaluationWorker").then(({ EvaluationWorker }) => {
+    EvaluationWorker.startDaemon(2000);
+  }).catch(() => {});
+}
+
 export class OpportunityService {
   /** List all opportunity DTOs for a specific user via O(k) materialized evaluations query. */
   static async listForUser(userId: string, options?: ServiceOptions): Promise<Opportunity[]> {
+    ensureWorkerDaemonStarted();
     const repos = getRepositories();
 
     // 1. Fetch materialized candidate evaluations O(k)
@@ -239,10 +249,12 @@ export class OpportunityService {
   /** Evaluates a single candidate-opportunity pair directly via V4 engines without corpus-wide evaluation. */
   static async evaluateSingleOpportunity(userId: string, jobHash: string): Promise<any | undefined> {
     const repos = getRepositories();
-    const [projection, oppSource] = await Promise.all([
-      repos.people.getLatestProjection(userId),
-      repos.opportunities.getOpportunitySource(jobHash),
-    ]);
+    let projection = await repos.people.getLatestProjection(userId);
+    if (!projection) {
+      const { syncCanonicalCandidateProjection } = await import("./candidate-sync");
+      projection = await syncCanonicalCandidateProjection(userId).catch(() => undefined);
+    }
+    const oppSource = await repos.opportunities.getOpportunitySource(jobHash);
     if (!projection || !oppSource) return undefined;
     const single = runEngineSingle(jobHash, projection, 0, [oppSource]);
     return single?.opportunity;
