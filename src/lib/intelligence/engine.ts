@@ -17,6 +17,7 @@ import { applyHeadspaceFilter } from "./headspace-filter";
 import type { RecommendationRecord } from "./record";
 import type { CandidateProjection } from "../domain/candidate_projection";
 import { computeEvidenceGroundingMap, EvidenceGroundingState } from "@/domain/evidence";
+import { buildCandidateEvaluationContext } from "./context";
 
 // Phase 4 Semantic Imports
 import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
@@ -37,7 +38,10 @@ const KEY = "radar.opportunities.v3";
 let baseOpportunitiesCache: OpportunitySource[] | null = null;
 
 function getBaseOpportunities(): OpportunitySource[] {
-  return baseOpportunitiesCache || [];
+  if (!baseOpportunitiesCache) {
+    baseOpportunitiesCache = authored;
+  }
+  return baseOpportunitiesCache;
 }
 
 let memoryCache: OpportunitySource[] | null = null;
@@ -82,7 +86,11 @@ export function writeOpportunities(next: OpportunitySource[]) {
 }
 
 export function addExtraOpportunities() {
-  writeOpportunities(extraOpportunities);
+  const baseOps = getBaseOpportunities();
+  const merged = new Map<string, OpportunitySource>();
+  for (const item of baseOps) merged.set(item.jobHash, item);
+  for (const item of extraOpportunities) merged.set(item.jobHash, item);
+  writeOpportunities(Array.from(merged.values()));
 }
 
 export function injectFreshRecords(records: any[]) {
@@ -145,6 +153,16 @@ export function computeEvaluationSignature(
   return simpleStringHash(raw);
 }
 
+function getOppContentHash(raw: OpportunitySource): string {
+  const role = raw.role || "";
+  const company = raw.company || "";
+  const text = (raw as any).description || (raw as any).normalizedText || (raw as any).rawText || (raw as any).rawDescription || "";
+  const dimsStr = Array.isArray(raw.dimensions)
+    ? raw.dimensions.map((d: any) => `${d.key}:${d.label}:${d.jdEvidence?.status || ""}`).join(";")
+    : "";
+  return simpleStringHash(`${raw.jobHash || ""}|${role}|${company}|${text}|${dimsStr}`);
+}
+
 const itemEvaluationCache = new Map<string, { record: RecommendationRecord; presented: Presented }>();
 
 /**
@@ -160,19 +178,18 @@ export function runEngine(
 } {
   const currentAuthored = opportunities ?? memoryCache ?? readOpportunities();
   
+  const evalContext = buildCandidateEvaluationContext(projection);
+
   const engineVersion = ENGINE_VERSION;
   const policyHash = simpleStringHash(JSON.stringify(decisionPolicy));
   const ontologyVersion = ONTOLOGY_VERSION;
   const candHash = simpleStringHash(JSON.stringify(projection));
   
-  const serializedOps = JSON.stringify(currentAuthored.map(o => ({
-    hash: o.jobHash,
-    role: o.role,
-    company: o.company,
-    text: (o as any).description || (o as any).normalizedText || (o as any).rawText || (o as any).rawDescription || "",
-    dims: o.dimensions
-  })));
-  const opportunityCorpusHash = simpleStringHash(serializedOps);
+  const oppContentHashByJobHash = new Map<string, string>();
+  for (const o of currentAuthored) {
+    oppContentHashByJobHash.set(o.jobHash, getOppContentHash(o));
+  }
+  const opportunityCorpusHash = simpleStringHash(currentAuthored.map(o => oppContentHashByJobHash.get(o.jobHash)!).join(";"));
 
   const topLevelCacheKey = `${engineVersion}:${policyHash}:${ontologyVersion}:${candHash}:${opportunityCorpusHash}:${activePursuits}`;
 
@@ -189,12 +206,7 @@ export function runEngine(
   const presentedList: Presented[] = [];
 
   for (const raw of currentAuthored) {
-    const oppContentHash = simpleStringHash(JSON.stringify({
-      role: raw.role,
-      company: raw.company,
-      text: (raw as any).description || (raw as any).normalizedText || (raw as any).rawText || (raw as any).rawDescription || "",
-      dims: raw.dimensions
-    }));
+    const oppContentHash = oppContentHashByJobHash.get(raw.jobHash) || getOppContentHash(raw);
 
     const signature = computeEvaluationSignature(
       raw.jobHash,
@@ -299,10 +311,10 @@ export function runEngine(
     const evidenceGrounding = computeEvidenceGroundingMap(raw.dimensions || [], rawJobText);
 
     // 3. Evaluate Isolated Assessments
-    const identity = IdentityAssessmentEngine.evaluate(candProjV4, jobProjV4);
-    const capability = CapabilityAssessmentEngine.evaluate(candProjV4, jobProjV4);
+    const identity = IdentityAssessmentEngine.evaluate(candProjV4, jobProjV4, evalContext);
+    const capability = CapabilityAssessmentEngine.evaluate(candProjV4, jobProjV4, evalContext);
     const opportunityAssess = OpportunityAssessmentEngine.evaluate(candProjV4, jobProjV4);
-    const career = CareerAssessmentEngine.evaluate(candProjV4, jobProjV4);
+    const career = CareerAssessmentEngine.evaluate(candProjV4, jobProjV4, evalContext);
     const lifestyle = LifestyleAssessmentEngine.evaluate(candProjV4, jobProjV4);
 
     // P3-A: Calculate authoritative Shortlisting Potential BEFORE DecisionPolicyEngine
@@ -423,12 +435,19 @@ export function runEngine(
     records.push(record);
   }
 
-  // Populate comparative queue ranking
+  // Populate comparative queue ranking (O(U * N) where U = number of unique priority values)
+  const comparisonCacheByPriority = new Map<number, { higherThan: string[]; lowerThan: string[]; differentiators: any[]; tradeOffs: any[] }>();
+
   for (const r of records) {
     const rPriority = r.priority ?? 0;
-    const higherThan = records.filter(other => (other.priority ?? 0) < rPriority).map(other => other.jobHash);
-    const lowerThan = records.filter(other => (other.priority ?? 0) > rPriority).map(other => other.jobHash);
-    (r as any).comparison = { higherThan, lowerThan, differentiators: [], tradeOffs: [] };
+    let comp = comparisonCacheByPriority.get(rPriority);
+    if (!comp) {
+      const higherThan = records.filter(other => (other.priority ?? 0) < rPriority).map(other => other.jobHash);
+      const lowerThan = records.filter(other => (other.priority ?? 0) > rPriority).map(other => other.jobHash);
+      comp = { higherThan, lowerThan, differentiators: [], tradeOffs: [] };
+      comparisonCacheByPriority.set(rPriority, comp);
+    }
+    (r as any).comparison = comp;
   }
 
   // Generate Presented mappings
@@ -438,12 +457,7 @@ export function runEngine(
       const a = byHash.get(r.jobHash);
       if (!a) return null;
       const pres = present(a, r, projection);
-      const oppContentHash = simpleStringHash(JSON.stringify({
-        role: a.role,
-        company: a.company,
-        text: (a as any).description || (a as any).normalizedText || (a as any).rawText || (a as any).rawDescription || "",
-        dims: a.dimensions
-      }));
+      const oppContentHash = oppContentHashByJobHash.get(r.jobHash) || getOppContentHash(a);
       const signature = computeEvaluationSignature(
         r.jobHash,
         `${projTimestamp}:${activePursuits}`,

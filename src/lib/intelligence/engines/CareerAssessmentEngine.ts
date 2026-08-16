@@ -3,6 +3,7 @@ import { JobProjection } from "../../domain/job_projection";
 import { CareerAssessment, OperatingLevel } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
 import { CareerValueEngine } from "./CareerValueEngine";
+import type { CandidateEvaluationContext } from "../context";
 import brandTiers from "@/data/ontology/brand_tiers.json";
 
 const LEVEL_HIERARCHY: Record<Exclude<OperatingLevel, "UNKNOWN">, number> = {
@@ -16,11 +17,12 @@ const LEVEL_HIERARCHY: Record<Exclude<OperatingLevel, "UNKNOWN">, number> = {
 export class CareerAssessmentEngine {
   public static evaluate(
     candidate: CandidateProjection,
-    job: JobProjection
+    job: JobProjection,
+    context?: CandidateEvaluationContext
   ): CareerAssessment {
     const richness = EvidenceRichnessCalculator.calculate(job.originalOpportunity);
 
-    const candLevel = typeof candidate.operatingLevel === "object" ? candidate.operatingLevel?.value : candidate.operatingLevel;
+    const candLevel = context ? context.candOperatingLevel : (typeof candidate.operatingLevel === "object" ? candidate.operatingLevel?.value : candidate.operatingLevel);
     const jobLevel = typeof job.operatingLevel === "object" ? job.operatingLevel?.value : job.operatingLevel;
 
     if (!jobLevel || !candLevel || jobLevel === "UNKNOWN" || candLevel === "UNKNOWN") {

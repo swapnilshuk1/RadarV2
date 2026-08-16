@@ -2,6 +2,7 @@ import { CandidateProjection } from "../../domain/candidate_projection";
 import { JobProjection, CapabilityTaxonomyTier } from "../../domain/job_projection";
 import { CapabilityAssessment, EvidenceMatch } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
+import type { CandidateEvaluationContext } from "../context";
 import executiveOntology from "@/data/ontology/executive_ontology.json";
 
 export class CapabilityAssessmentEngine {
@@ -150,7 +151,8 @@ export class CapabilityAssessmentEngine {
 
   public static evaluate(
     candidate: CandidateProjection,
-    job: JobProjection
+    job: JobProjection,
+    context?: CandidateEvaluationContext
   ): CapabilityAssessment {
     const richness = EvidenceRichnessCalculator.calculate(job.originalOpportunity);
     const jobCaps = job.capabilities || [];

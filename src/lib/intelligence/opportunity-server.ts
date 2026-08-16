@@ -34,6 +34,24 @@ export const getNeighboursFn = createServerFn({ method: "GET" })
     return OpportunityService.neighboursForUser(user.id, jobHash);
   });
 
+export const getOpportunityDetailsFn = createServerFn({ method: "GET" })
+  .validator((d: string) => d)
+  .handler(async ({ data: jobHash }) => {
+    const user = await requireAuthUser();
+    const list = await OpportunityService.listForUser(user.id);
+    const index = list.findIndex((o) => o.jobHash === jobHash);
+    const opportunity = index >= 0 ? list[index] : undefined;
+    return {
+      opportunity,
+      currentIndex: index >= 0 ? index + 1 : 1,
+      totalCount: list.length || 1,
+      neighbors: {
+        prev: index > 0 ? list[index - 1] : undefined,
+        next: index >= 0 && index < list.length - 1 ? list[index + 1] : undefined,
+      },
+    };
+  });
+
 export const addExtraOpportunitiesFn = createServerFn({ method: "POST" })
   .handler(async () => {
     await requireAuthUser({ requireAdmin: true });

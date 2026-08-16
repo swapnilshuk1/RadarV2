@@ -1,6 +1,6 @@
 import { createFileRoute, notFound, useRouter } from "@tanstack/react-router";
 import { type DecisionVerb } from "../data/opportunity-fixtures";
-import { getOpportunityFn, getNeighboursFn, getQueueMetricsFn } from "../lib/intelligence/opportunity-server";
+import { getOpportunityDetailsFn } from "../lib/intelligence/opportunity-server";
 import { useDecisions } from "../lib/decisions-store";
 import { candidateProfile } from "../data/candidate-profile";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
@@ -13,15 +13,13 @@ import { ExecutiveBriefingSurface } from "@/components/radar/opportunity/surface
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }: { params: { jobHash: string } }) => {
-    const opportunity = await getOpportunityFn({ data: params.jobHash });
-    if (!opportunity) throw notFound();
-    const metrics = await getQueueMetricsFn({ data: params.jobHash });
-    const neighbors = await getNeighboursFn({ data: params.jobHash });
+    const details = await getOpportunityDetailsFn({ data: params.jobHash });
+    if (!details.opportunity) throw notFound();
     return {
-      opportunity,
-      neighbors,
-      currentIndex: metrics.currentIndex,
-      totalCount: metrics.totalCount,
+      opportunity: details.opportunity,
+      neighbors: details.neighbors,
+      currentIndex: details.currentIndex,
+      totalCount: details.totalCount,
     };
   },
   head: ({ loaderData }: { loaderData?: any }) => {
