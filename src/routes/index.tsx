@@ -287,18 +287,18 @@ function Shortlist() {
             SHORTLIST QUEUE
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="py-6 sm:py-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/60 mb-6">
-            <div>
-              <h2 className="label-mono text-foreground font-semibold tracking-wider">Shortlist queue · sorted by fit</h2>
-              <span className="label-mono text-xs text-muted-foreground mt-0.5 block">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 border-b border-border/60 mb-6">
+            <div className="shrink-0 min-w-0">
+              <h2 className="label-mono text-foreground font-semibold tracking-wider text-xs sm:text-sm uppercase whitespace-nowrap">
                 {selectedCategory === "All"
-                  ? shortlistedOps.length > 0
-                    ? `${shortlistedOps.length} shortlist opportunities remaining to review (${totalShortlisted} shortlisted)`
-                    : `0 shortlist opportunities remaining to review (all ${totalShortlisted} shortlisted have recorded decisions)`
-                  : selectedCategory === "Needs More Signal"
-                    ? `${sparseOps.length} sparse opportunities remaining to review (${totalSparse} total)`
-                    : `${filteredRemaining.length} ${selectedCategory} opportunities remaining to review`}
-              </span>
+                  ? `Sorted by Fit · ${totalShortlisted} Shortlisted`
+                  : `Sorted by Fit · ${filteredRemaining.length} ${selectedCategory}`}
+              </h2>
+              {selectedCategory === "All" && shortlistedOps.length > 0 && shortlistedOps.length !== totalShortlisted && (
+                <span className="label-mono text-[11px] text-muted-foreground mt-0.5 block whitespace-nowrap">
+                  {shortlistedOps.length} remaining to review
+                </span>
+              )}
             </div>
 
             {/* Human-Friendly Category Filters */}
