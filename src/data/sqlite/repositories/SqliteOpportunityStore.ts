@@ -93,12 +93,23 @@ export class SqliteOpportunityStore implements OpportunityStore {
 
   async listOpportunitySources(): Promise<OpportunitySource[]> {
     const sql = `
-      SELECT o.id as id, o.canonical_title as canonical_title, o.location as location,
-             c.name as company_name, d.content as doc_content
-      FROM opportunities o
-      LEFT JOIN companies c ON o.company_id = c.id
-      LEFT JOIN documents d ON d.opportunity_id = o.id
-      WHERE o.lifecycle != 'Archived'
+      WITH RankedOpps AS (
+        SELECT o.rowid as rid, o.id as id, o.canonical_title as canonical_title, o.location as location,
+               c.name as company_name, d.content as doc_content,
+               ROW_NUMBER() OVER (
+                 PARTITION BY COALESCE(json_extract(d.content, '$.jobHash'), o.id)
+                 ORDER BY 
+                   CASE WHEN d.content IS NOT NULL AND json_extract(d.content, '$.normalizedText') IS NOT NULL AND length(json_extract(d.content, '$.normalizedText')) > 0 THEN 0 ELSE 1 END,
+                   o.rowid ASC
+               ) as rn
+        FROM opportunities o
+        LEFT JOIN companies c ON o.company_id = c.id
+        LEFT JOIN documents d ON d.opportunity_id = o.id
+        WHERE o.lifecycle != 'Archived'
+      )
+      SELECT id, canonical_title, location, company_name, doc_content
+      FROM RankedOpps
+      WHERE rn = 1
     `;
     const rows = await this.db.many<any>(sql);
     const jobHashMap = new Map<string, OpportunitySource>();
