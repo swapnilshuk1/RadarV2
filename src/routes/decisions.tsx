@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { applyUrlFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
 import { useDecisions, type DecisionRecord } from "../lib/decisions-store";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
-import { getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
+import { getDecidedOpportunitiesFn, getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
 import { ClientOpportunityCache } from "../lib/opportunity-cache";
 
 // Recomposition elements
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/decisions")({
   staleTime: 0,
   loader: async () => {
     return {
-      opportunitiesList: await getOpportunitiesFn()
+      opportunitiesList: await getDecidedOpportunitiesFn()
     };
   },
   component: OpportunitiesPage,

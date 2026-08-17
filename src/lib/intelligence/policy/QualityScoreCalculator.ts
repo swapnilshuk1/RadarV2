@@ -68,6 +68,8 @@ export class QualityScoreCalculator {
         qualityScore: null,
         isEligible: false,
         ineligibilityReason: "SPARSE_SPEC",
+        opportunityScoreSource: "FALLBACK",
+        opportunityScoreConfidence: "LOW",
         componentScores: { careerScore: 0, capabilityScore: 0, opportunityScore: 0 },
         normalizedWeights
       };
@@ -79,6 +81,8 @@ export class QualityScoreCalculator {
         qualityScore: null,
         isEligible: false,
         ineligibilityReason: "IDENTITY_MISMATCH",
+        opportunityScoreSource: "FALLBACK",
+        opportunityScoreConfidence: "LOW",
         componentScores: { careerScore: 0, capabilityScore: 0, opportunityScore: 0 },
         normalizedWeights
       };
@@ -90,6 +94,8 @@ export class QualityScoreCalculator {
         qualityScore: null,
         isEligible: false,
         ineligibilityReason: "EVIDENCE_INTEGRITY_FAILED",
+        opportunityScoreSource: "FALLBACK",
+        opportunityScoreConfidence: "LOW",
         componentScores: { careerScore: 0, capabilityScore: 0, opportunityScore: 0 },
         normalizedWeights
       };

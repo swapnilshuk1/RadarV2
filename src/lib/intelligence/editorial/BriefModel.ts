@@ -58,7 +58,7 @@ export interface ProofPointItem {
 
 export interface QualitativeReasoningRow {
   layer: "Identity Alignment" | "Capability Coverage" | "Career Capital Value";
-  ratingLabel: "Exceptional" | "Strong Alignment" | "Adjacent Alignment" | "Moderate";
+  ratingLabel: "Exceptional" | "Strong Alignment" | "Adjacent Alignment" | "Moderate" | "Limited Upside";
   becausePoints: string[];
   evidenceSnippet: string;
 }

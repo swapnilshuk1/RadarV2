@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { type Opportunity, type DecisionVerb } from "../data/opportunity-fixtures";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
-import { getOpportunitiesFn, injectFreshFn } from "../lib/intelligence/opportunity-server";
+import { getOpportunitiesFn, getShortlistMetricsFn, injectFreshFn } from "../lib/intelligence/opportunity-server";
 import { getScraperCounts } from "../data/scraped-jobs";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
@@ -14,50 +14,21 @@ import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 import { inferExecutiveMandateArchetype } from "../lib/intelligence/editorial";
 
 import { useScrapeProgress } from "../components/radar/ScrapeProgressProvider";
+import {
+  CANONICAL_CATEGORIES,
+  classifyOpportunityCategories,
+  resolveCanonicalCategoryId,
+  type CategoryId,
+} from "../lib/domain/category_taxonomy";
 
 const VISIBLE_LIMIT = 10;
 
 function getCategoryTags(o: Opportunity): string[] {
-  const tags = ["All"];
-  const jobProj = JobProjectionBuilder.build(o);
-
-  const mandate = jobProj.trueExecutiveMandate || "COMMERCIAL_EXPANSION";
-  const intent = jobProj.executiveMission?.intent || "ACCELERATE_GROWTH";
-  const title = (o.role || "").toLowerCase();
-  const rawText = (o.role + " " + (o as any).description + " " + o.recommendation).toLowerCase();
-
-  // 1. Transformation
-  if (mandate === "TRANSFORMATION" || mandate === "TURNAROUND" || rawText.includes("transformation") || rawText.includes("modernize") || rawText.includes("overhaul")) {
-    tags.push("Transformation");
-  }
-
-  // 2. Commercial Growth
-  if (mandate === "SCALE" || mandate === "COMMERCIAL_EXPANSION" || intent === "ACCELERATE_GROWTH" || intent === "EXPAND_GEOGRAPHY" || rawText.includes("growth") || rawText.includes("revenue") || rawText.includes("commercial") || rawText.includes("sales")) {
-    tags.push("Commercial Growth");
-  }
-
-  // 3. Country Leadership
-  if (intent === "EXPAND_GEOGRAPHY" || title.includes("country") || title.includes("regional") || title.includes("general manager") || title.includes("managing director") || title.includes("head of") || title.includes("national")) {
-    tags.push("Country Leadership");
-  }
-
-  // 4. Platform & Digital
-  const hasPlatformKeywords = ["platform", "digital", "technology", "crm", "salesforce", "sfmc", "cdp", "product", "software", "saas", "tech"].some(kw => rawText.includes(kw));
-  if (hasPlatformKeywords) {
-    tags.push("Platform & Digital");
-  }
-
-  // 5. Founder-led
-  if (intent === "PROFESSIONALIZE_FOUNDER_COMPANY" || rawText.includes("founder") || rawText.includes("co-founder") || rawText.includes("bootstrapped") || rawText.includes("first hire")) {
-    tags.push("Founder-led");
-  }
-
-  // 6. Private Equity
-  if (intent === "PREPARE_IPO" || intent === "INTEGRATE_ACQUISITION" || rawText.includes("private equity") || rawText.includes("portfolio company") || rawText.includes("venture capital") || rawText.includes("pe-backed") || rawText.includes("vc-backed") || rawText.includes("ipo")) {
-    tags.push("Private Equity");
-  }
-
-  return tags;
+  const cats = classifyOpportunityCategories(o);
+  return cats.map((catId) => {
+    const def = CANONICAL_CATEGORIES.find((c) => c.id === catId);
+    return def ? def.label : catId;
+  });
 }
 
 export const Route = createFileRoute("/")({
@@ -71,20 +42,63 @@ export const Route = createFileRoute("/")({
   }),
   staleTime: 0,
   loader: async () => {
+    const [opportunitiesList, metrics] = await Promise.all([
+      getOpportunitiesFn(),
+      getShortlistMetricsFn(),
+    ]);
     return {
-      opportunitiesList: await getOpportunitiesFn(),
+      opportunitiesList,
+      metrics,
     };
   },
   component: Shortlist,
 });
 
 function Shortlist() {
-  const { opportunitiesList } = Route.useLoaderData();
+  const { opportunitiesList, metrics } = Route.useLoaderData();
   const { decisions, decide: recordDecision } = useDecisions();
   const { progress, markArrivalSeen } = useOnboarding();
   const [open, setOpen] = useState<string | null>(null);
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<CategoryId>("all");
+  const [categoryOps, setCategoryOps] = useState<Opportunity[] | null>(null);
+  const [isLoadingCategory, setIsLoadingCategory] = useState(false);
+  const categoryCacheRef = useRef<Map<string, Opportunity[]>>(new Map());
+
+  useEffect(() => {
+    if (selectedCategoryId === "all") {
+      setCategoryOps(null);
+      setIsLoadingCategory(false);
+      return;
+    }
+
+    if (categoryCacheRef.current.has(selectedCategoryId)) {
+      setCategoryOps(categoryCacheRef.current.get(selectedCategoryId)!);
+      setIsLoadingCategory(false);
+      return;
+    }
+
+    let active = true;
+    setIsLoadingCategory(true);
+    getOpportunitiesFn({ data: { categoryId: selectedCategoryId } })
+      .then((ops) => {
+        if (active) {
+          categoryCacheRef.current.set(selectedCategoryId, ops);
+          setCategoryOps(ops);
+          setIsLoadingCategory(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load category opportunities:", err);
+        if (active) setIsLoadingCategory(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCategoryId]);
+
+  const activeOps = categoryOps ?? opportunitiesList;
 
   const showArrivalBanner = !progress.arrivalSeen;
   const isBothSkipped = progress.evidenceStatus === "skipped" && progress.intentStatus === "skipped";
@@ -95,37 +109,25 @@ function Shortlist() {
 
   const sourceCounts = useMemo(() => {
     const counts = { LinkedIn: 0, Naukri: 0, Indeed: 0 };
-    for (const o of opportunitiesList) {
+    for (const o of activeOps) {
       const src = o.scrapedFrom as keyof typeof counts;
       if (counts[src] !== undefined) {
         counts[src]++;
       }
     }
     return counts;
-  }, [opportunitiesList]);
+  }, [activeOps]);
 
-  const totalActivePursuits = useMemo(
-    () => opportunitiesList.filter((o) => {
-      const userAct = o.userDecision?.userAction;
-      if (userAct) return userAct === "PURSUE";
-      return o.decision === "PURSUE";
-    }).length,
-    [opportunitiesList]
-  );
-
-  const totalShortlisted = useMemo(
-    () => opportunitiesList.filter((o) => o.decision === "PURSUE" || o.decision === "CONSIDER").length,
-    [opportunitiesList]
-  );
-
-  const totalSparse = useMemo(
-    () => opportunitiesList.filter((o) => o.decision === "SPARSE_SPEC").length,
-    [opportunitiesList]
-  );
+  const totalActivePursuits = metrics?.activePursuits ?? 0;
+  const totalShortlisted = metrics?.totalShortlisted ?? 0;
+  const totalSparse = metrics?.engineBreakdown?.sparse ?? 0;
+  const totalDecisionsCount = metrics?.totalDecisions ?? Object.keys(decisions).length;
+  const totalScreenedCount = (metrics?.totalScreened ?? 0) + extraScraped;
+  const integrity = metrics?.integrity;
 
   const remaining = useMemo(
     () =>
-      opportunitiesList.filter((o) => {
+      activeOps.filter((o) => {
         const clientRec = decisions[o.jobHash];
         const currentFingerprint = o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion;
         if (clientRec && clientRec.reviewedFingerprint && clientRec.reviewedFingerprint === currentFingerprint) {
@@ -150,7 +152,7 @@ function Shortlist() {
 
         return false;
       }),
-    [opportunitiesList, decisions]
+    [activeOps, decisions]
   );
 
   const shortlistedOps = useMemo(
@@ -164,14 +166,11 @@ function Shortlist() {
   );
 
   const filteredRemaining = useMemo(() => {
-    if (selectedCategory === "Needs More Signal") {
+    if (selectedCategoryId === "needs_more_signal") {
       return sparseOps;
     }
-    if (selectedCategory === "All") {
-      return shortlistedOps;
-    }
-    return shortlistedOps.filter((o) => getCategoryTags(o).includes(selectedCategory));
-  }, [selectedCategory, shortlistedOps, sparseOps]);
+    return shortlistedOps;
+  }, [selectedCategoryId, shortlistedOps, sparseOps]);
 
   const visible = filteredRemaining.slice(0, VISIBLE_LIMIT);
 
@@ -191,11 +190,33 @@ function Shortlist() {
   };
 
   const { runState, startScrape, isStarting, restore } = useScrapeProgress();
-  const totalScraped = opportunitiesList.length + extraScraped;
+  const totalScraped = totalScreenedCount;
 
   return (
     <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
       <main className="mx-auto max-w-[1180px] px-5 sm:px-8 pt-4">
+        {/* Metric Integrity Warning Banner */}
+        {integrity && integrity.status !== "PASS" && (
+          <div className="mb-4 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200 text-xs font-mono flex items-start gap-3">
+            <span className="text-base leading-none">⚠️</span>
+            <div className="flex-1">
+              <p className="font-bold uppercase tracking-wider text-[11px]">Metric Integrity Check Requires Attention</p>
+              <p className="mt-1 text-muted-foreground">
+                Some dashboard counts may be temporarily inconsistent with underlying evaluation data. RADAR is validating evaluation state.
+              </p>
+              {process.env.NODE_ENV !== "production" && integrity.discrepancies.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-amber-500/20 space-y-1 text-[10px]">
+                  {integrity.discrepancies.map((d, i) => (
+                    <div key={i}>
+                      • <span className="font-semibold">{d.metricName}</span>: expected {String(d.expected)}, got {String(d.actual)} ({d.message})
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ────────────────────────────────────────────────────────────────────────
             HEADER BRIEFING SUMMARY
             ──────────────────────────────────────────────────────────────────────── */}
@@ -211,7 +232,7 @@ function Shortlist() {
               The shortlist.
             </h1>
             <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground font-normal">
-              <span className="font-mono text-foreground font-semibold">{totalActivePursuits}</span> opportunities you've chosen to pursue out of <span className="font-mono text-foreground font-semibold">{totalScraped}</span> screened. {shortlistedOps.length} shortlist opportunities remaining to review.
+              <span className="font-mono text-foreground font-semibold">{totalActivePursuits}</span> opportunities recommended for pursuit out of <span className="font-mono text-foreground font-semibold">{totalScraped}</span> screened. {shortlistedOps.length} shortlist opportunities remaining to review.
             </p>
           </div>
 
@@ -225,7 +246,7 @@ function Shortlist() {
 
             <div className="border-r border-border/40 pr-6 sm:pr-8">
               <dd className="font-display text-4xl sm:text-5xl text-foreground tabular-nums font-normal">
-                {Object.keys(decisions).length}
+                {totalDecisionsCount}
               </dd>
               <dt className="label-mono mt-1 text-[0.68rem] text-muted-foreground font-semibold uppercase tracking-wider">Decisions</dt>
             </div>
@@ -290,11 +311,13 @@ function Shortlist() {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 border-b border-border/60 mb-6">
             <div className="shrink-0 min-w-0">
               <h2 className="label-mono text-foreground font-semibold tracking-wider text-xs sm:text-sm uppercase whitespace-nowrap">
-                {selectedCategory === "All"
+                {selectedCategoryId === "all"
                   ? `Sorted by Fit · ${totalShortlisted} Shortlisted`
-                  : `Sorted by Fit · ${filteredRemaining.length} ${selectedCategory}`}
+                  : `Sorted by Fit · ${
+                      metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? (isLoadingCategory ? "..." : filteredRemaining.length)
+                    } ${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}`}
               </h2>
-              {selectedCategory === "All" && shortlistedOps.length > 0 && shortlistedOps.length !== totalShortlisted && (
+              {selectedCategoryId === "all" && shortlistedOps.length > 0 && shortlistedOps.length !== totalShortlisted && (
                 <span className="label-mono text-[11px] text-muted-foreground mt-0.5 block whitespace-nowrap">
                   {shortlistedOps.length} remaining to review
                 </span>
@@ -303,68 +326,82 @@ function Shortlist() {
 
             {/* Human-Friendly Category Filters */}
             <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap p-1 bg-muted/40 rounded-full border border-border/40 max-w-full scrollbar-none shrink-0">
-              {[
-                "All",
-                `Needs More Signal (${sparseOps.length} / ${totalSparse})`,
-                "Transformation",
-                "Commercial Growth",
-                "Country Leadership",
-                "Platform & Digital",
-                "Founder-led",
-                "Private Equity",
-              ].map((cat) => {
-                const catKey = cat.startsWith("Needs More Signal") ? "Needs More Signal" : cat;
+              {CANONICAL_CATEGORIES.map((catDef) => {
+                const isSelected = selectedCategoryId === catDef.id;
+                const catMetric = metrics?.categoryMetrics?.[catDef.id];
+
+                let countLabel = "";
+                if (catDef.id === "all") {
+                  const cnt = catMetric?.unreviewed ?? remaining.length;
+                  countLabel = ` (${cnt})`;
+                } else if (catDef.id === "needs_more_signal") {
+                  const unrev = catMetric?.unreviewed ?? sparseOps.length;
+                  const tot = catMetric?.total ?? totalSparse;
+                  countLabel = ` (${unrev} / ${tot})`;
+                } else {
+                  const unrev = catMetric?.unreviewed ?? (selectedCategoryId === catDef.id ? filteredRemaining.length : 0);
+                  countLabel = ` (${unrev})`;
+                }
+
+                const displayLabel = `${catDef.label}${countLabel}`;
+
                 return (
                   <button
-                    key={catKey}
+                    key={catDef.id}
                     type="button"
-                    onClick={() => setSelectedCategory(catKey)}
+                    onClick={() => setSelectedCategoryId(catDef.id)}
                     className={`text-[0.62rem] font-mono uppercase tracking-wider px-2.5 py-0.5 whitespace-nowrap shrink-0 transition-all rounded-full cursor-pointer ${
-                      selectedCategory === catKey
+                      isSelected
                         ? "bg-foreground text-background font-bold shadow-xs"
-                        : catKey === "Needs More Signal"
+                        : catDef.id === "needs_more_signal"
                           ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 font-semibold"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                     }`}
                   >
-                    {cat}
+                    {displayLabel}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <ul className="space-y-3">
-            {visible.map((o, idx) => {
-              const isOpen = open === o.jobHash;
-              const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
+          <ul className="space-y-3 min-h-[300px]">
+            {isLoadingCategory ? (
+              <li className="glass-card rounded-xl py-12 text-center font-mono text-xs tracking-wider uppercase text-muted-foreground animate-pulse border border-border/40 bg-surface-raised/40">
+                Loading {CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId} Opportunities...
+              </li>
+            ) : (
+              visible.map((o, idx) => {
+                const isOpen = open === o.jobHash;
+                const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
 
-              return (
-                <ShortlistCardRow
-                  key={o.jobHash}
-                  o={o}
-                  idx={idx}
-                  isOpen={isOpen}
-                  openedTimes={openedTimes}
-                  setOpenedTimes={setOpenedTimes}
-                  setOpen={setOpen}
-                  decide={decide}
-                  showArrivalBanner={showArrivalBanner}
-                />
-              );
-            })}
+                return (
+                  <ShortlistCardRow
+                    key={o.jobHash}
+                    o={o}
+                    idx={idx}
+                    isOpen={isOpen}
+                    openedTimes={openedTimes}
+                    setOpenedTimes={setOpenedTimes}
+                    setOpen={setOpen}
+                    decide={decide}
+                    showArrivalBanner={showArrivalBanner}
+                  />
+                );
+              })
+            )}
 
-            {visible.length === 0 && (
+            {!isLoadingCategory && visible.length === 0 && (
               <li className="glass-card rounded-xl py-16 text-center font-display text-xl text-muted-foreground">
-                {selectedCategory === "All" 
+                {selectedCategoryId === "all" 
                   ? (totalShortlisted > 0 && shortlistedOps.length === 0
                       ? `All ${totalShortlisted} shortlist opportunities have recorded decisions.`
                       : "No shortlist opportunities remaining to review.")
-                  : selectedCategory === "Needs More Signal"
+                  : selectedCategoryId === "needs_more_signal"
                     ? (totalSparse > 0 && sparseOps.length === 0
                         ? `All ${totalSparse} sparse opportunities have recorded decisions.`
                         : "No opportunities need more signal.")
-                    : `No unreviewed opportunities match "${selectedCategory}".`}
+                    : `No unreviewed opportunities match "${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}".`}
               </li>
             )}
           </ul>
@@ -409,7 +446,7 @@ function Shortlist() {
             Indeed <span className="text-foreground font-mono font-bold">{sourceCounts.Indeed}</span>
           </span>
           <span className="label-mono shrink-0 text-emerald-600 dark:text-emerald-400 font-bold">
-            → {shortlistedOps.length} of {totalShortlisted} to review
+            → {selectedCategoryId === "all" ? shortlistedOps.length : (metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? filteredRemaining.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.total ?? filteredRemaining.length)} to review
           </span>
         </div>
       </footer>

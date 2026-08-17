@@ -55,8 +55,13 @@ export type RecommendationRecord = Readonly<{
   /** P0-A: Evidence grounding state per dimension key */
   evidenceGrounding?: Record<string, import("@/domain/evidence").EvidenceGroundingState>;
   decisionSummary: DecisionFactors;
+  triggeredRuleIds?: string[];
   decisionDrivers: DecisionDriver[];
   decisionRisks: DecisionDriver[];
+  relativeDifferentiator?: string;
+  trajectoryUpside?: string;
+  opportunityScoreConfidence?: "HIGH" | "LOW";
+  opportunityScoreSource?: "EXPLICIT" | "FALLBACK";
   confidences: {
     parsing: number;
     matching: number;

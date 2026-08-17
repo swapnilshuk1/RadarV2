@@ -386,8 +386,13 @@ export function runEngine(
         shortlistingPotential: shortlistingPotentialScore,
         pursuitFriction: (lifestyle as any).locationFrictionPenalty || 0
       },
+      triggeredRuleIds: policyResult.triggeredRuleIds,
       decisionDrivers: policyResult.decisionDrivers,
       decisionRisks: policyResult.decisionRisks,
+      relativeDifferentiator: policyResult.relativeDifferentiator,
+      trajectoryUpside: policyResult.trajectoryUpside,
+      opportunityScoreConfidence: policyResult.opportunityScoreConfidence,
+      opportunityScoreSource: policyResult.opportunityScoreSource,
       confidences: policyResult.confidences,
       stability: "High",
       headspace: headspaceOutcome,

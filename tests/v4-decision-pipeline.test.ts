@@ -385,7 +385,8 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
   // T11: End-to-End OpportunityService Contract Verification
   // ==========================================================================
   it("T11: OpportunityService.listForUser returns properly structured V4 opportunities with 4-state workflow", async () => {
-    const opportunities = await OpportunityService.listForUser("swapnil-shukla");
+    const userId = "guest-user";
+    const opportunities = await OpportunityService.listForUser(userId);
     expect(opportunities.length).toBeGreaterThan(0);
 
     for (const opp of opportunities) {

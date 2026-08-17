@@ -30,6 +30,17 @@ export interface EvaluationJobRecord {
   createdAt?: string;
 }
 
+export interface EvaluationMetrics {
+  totalScreened: number;
+  activePursuits: number;
+  shortlistedCount: number;
+  decisionsCount: number;
+  pursueCount: number;
+  considerCount: number;
+  passCount: number;
+  sparseCount: number;
+}
+
 export class SqliteEvaluationStore {
   private schemaInitPromise: Promise<void> | null = null;
 
@@ -109,7 +120,6 @@ export class SqliteEvaluationStore {
    */
   async saveEvaluation(record: Omit<CandidateEvaluationRecord, "updatedAt">): Promise<void> {
     await this.ensureSchema();
-    // 1. Fetch any existing record to preserve user decision overrides
     const existing = await this.getEvaluation(record.personId, record.jobHash);
     const existingOverride = existing?.userDecisionOverride;
 
@@ -195,20 +205,182 @@ export class SqliteEvaluationStore {
   }
 
   /**
-   * Queries evaluated candidate shortlist O(k) with indexed sorting.
+   * Returns index-backed aggregate metrics across the complete candidate evaluation population.
    */
-  async listEvaluationsForUser(personId: string, limit = 50): Promise<CandidateEvaluationRecord[]> {
+  async getEvaluationMetrics(personId: string): Promise<EvaluationMetrics> {
+    await this.ensureSchema();
+    const row = await this.db.one<any>(
+      `
+      SELECT 
+        COUNT(*) as total_screened,
+        SUM(CASE WHEN COALESCE(user_decision_override, effective_decision) = 'PURSUE' THEN 1 ELSE 0 END) as active_pursuits,
+        SUM(CASE WHEN COALESCE(user_decision_override, effective_decision) IN ('PURSUE', 'CONSIDER') THEN 1 ELSE 0 END) as shortlisted_count,
+        SUM(CASE WHEN user_decision_override IS NOT NULL THEN 1 ELSE 0 END) as decisions_count,
+        SUM(CASE WHEN effective_decision = 'PURSUE' THEN 1 ELSE 0 END) as pursue_count,
+        SUM(CASE WHEN effective_decision = 'CONSIDER' THEN 1 ELSE 0 END) as consider_count,
+        SUM(CASE WHEN effective_decision = 'PASS' THEN 1 ELSE 0 END) as pass_count,
+        SUM(CASE WHEN evaluation_status = 'SPARSE_SPEC' THEN 1 ELSE 0 END) as sparse_count
+      FROM candidate_evaluations
+      WHERE person_id = ?
+      `,
+      this.sanitizeParams([personId])
+    );
+
+    return {
+      totalScreened: Number(row?.total_screened || 0),
+      activePursuits: Number(row?.active_pursuits || 0),
+      shortlistedCount: Number(row?.shortlisted_count || 0),
+      decisionsCount: Number(row?.decisions_count || 0),
+      pursueCount: Number(row?.pursue_count || 0),
+      considerCount: Number(row?.consider_count || 0),
+      passCount: Number(row?.pass_count || 0),
+      sparseCount: Number(row?.sparse_count || 0),
+    };
+  }
+
+  /**
+   * Fetches specific evaluations by job_hash list for user decision pipeline hydration.
+   */
+  async getEvaluationsByJobHashes(personId: string, jobHashes: string[]): Promise<CandidateEvaluationRecord[]> {
+    await this.ensureSchema();
+    if (!jobHashes || jobHashes.length === 0) return [];
+    const placeholders = jobHashes.map(() => "?").join(",");
+    const rows = await this.db.many<any>(
+      `
+      SELECT * FROM candidate_evaluations
+      WHERE person_id = ? AND job_hash IN (${placeholders})
+      ORDER BY quality_score DESC
+      `,
+      this.sanitizeParams([personId, ...jobHashes])
+    );
+    return rows.map((r) => this.mapRow(r));
+  }
+
+  /**
+   * Efficiently computes adjacent navigation links and rank across the full ordered evaluation population.
+   */
+  async getAdjacentEvaluations(
+    personId: string,
+    jobHash: string
+  ): Promise<{ prevHash?: string; nextHash?: string; currentIndex: number; totalCount: number }> {
+    await this.ensureSchema();
+    const rows = await this.db.many<{ job_hash: string }>(
+      `SELECT job_hash FROM candidate_evaluations WHERE person_id = ? ORDER BY quality_score DESC, job_hash ASC`,
+      this.sanitizeParams([personId])
+    );
+    const totalCount = rows.length;
+    if (totalCount === 0) return { currentIndex: 1, totalCount: 1 };
+
+    const idx = rows.findIndex((r) => r.job_hash === jobHash);
+    if (idx === -1) return { currentIndex: 1, totalCount };
+
+    return {
+      prevHash: idx > 0 ? rows[idx - 1].job_hash : undefined,
+      nextHash: idx < totalCount - 1 ? rows[idx + 1].job_hash : undefined,
+      currentIndex: idx + 1,
+      totalCount,
+    };
+  }
+
+  /**
+   * Computes authoritative population metrics for all canonical categories across the full evaluation corpus.
+   */
+  async getCategoryMetrics(personId: string): Promise<Record<string, { total: number; unreviewed: number; shortlisted: number }>> {
+    await this.ensureSchema();
+    const rows = await this.db.many<any>(
+      `
+      SELECT ce.job_hash, o.canonical_title as role, ce.evaluation_json, ce.effective_decision, ce.user_decision_override, ce.evaluation_status,
+             d.action as user_action
+      FROM candidate_evaluations ce
+      LEFT JOIN opportunities o ON ce.job_hash = o.id
+      LEFT JOIN decisions d ON ce.person_id = d.person_id AND ce.job_hash = d.opportunity_id
+      WHERE ce.person_id = ?
+      ORDER BY ce.quality_score DESC
+      `,
+      this.sanitizeParams([personId])
+    );
+
+    const counts: Record<string, { total: number; unreviewed: number; shortlisted: number }> = {
+      all: { total: 0, unreviewed: 0, shortlisted: 0 },
+      needs_more_signal: { total: 0, unreviewed: 0, shortlisted: 0 },
+      transformation: { total: 0, unreviewed: 0, shortlisted: 0 },
+      commercial_growth: { total: 0, unreviewed: 0, shortlisted: 0 },
+      country_leadership: { total: 0, unreviewed: 0, shortlisted: 0 },
+      platform_digital: { total: 0, unreviewed: 0, shortlisted: 0 },
+      founder_led: { total: 0, unreviewed: 0, shortlisted: 0 },
+      private_equity: { total: 0, unreviewed: 0, shortlisted: 0 },
+    };
+
+    const { classifyOpportunityCategories } = await import("../../../lib/domain/category_taxonomy");
+
+    for (const r of rows) {
+      const isReviewed = r.user_action != null || r.user_decision_override != null;
+      const effectiveDec = r.user_action || r.user_decision_override || r.effective_decision;
+      const isShortlisted = effectiveDec === "PURSUE" || effectiveDec === "CONSIDER";
+
+      let parsedRole = r.role;
+      if (!parsedRole && r.evaluation_json) {
+        try {
+          const parsed = JSON.parse(r.evaluation_json);
+          parsedRole = parsed.role || parsed.title;
+        } catch {}
+      }
+
+      const oppPartial = {
+        role: parsedRole,
+        evaluationStatus: r.evaluation_status,
+        recommendation: r.effective_decision,
+        evaluationJson: r.evaluation_json,
+      };
+
+      const cats = classifyOpportunityCategories(oppPartial);
+      for (const catId of cats) {
+        if (!counts[catId]) {
+          counts[catId] = { total: 0, unreviewed: 0, shortlisted: 0 };
+        }
+        counts[catId].total++;
+        if (!isReviewed) counts[catId].unreviewed++;
+        if (isShortlisted) counts[catId].shortlisted++;
+      }
+    }
+
+    return counts;
+  }
+
+  /**
+   * Queries evaluated candidate shortlist O(k) with indexed sorting and optional category filtering.
+   */
+  async listEvaluationsForUser(personId: string, limit = 50, categoryId = "all"): Promise<CandidateEvaluationRecord[]> {
     await this.ensureSchema();
     const rows = await this.db.many<any>(
       `
       SELECT * FROM candidate_evaluations
       WHERE person_id = ?
       ORDER BY quality_score DESC
-      LIMIT ?
       `,
-      this.sanitizeParams([personId, limit])
+      this.sanitizeParams([personId])
     );
-    return rows.map((r) => this.mapRow(r));
+
+    const mapped = rows.map((r) => this.mapRow(r));
+    if (!categoryId || categoryId === "all") {
+      return mapped.slice(0, limit);
+    }
+
+    const { classifyOpportunityCategories, resolveCanonicalCategoryId } = await import("../../../lib/domain/category_taxonomy");
+    const canonicalTarget = resolveCanonicalCategoryId(categoryId);
+
+    const filtered = mapped.filter((ev) => {
+      try {
+        const opp = JSON.parse(ev.evaluationJson || "{}");
+        opp.evaluationStatus = ev.evaluationStatus;
+        const cats = classifyOpportunityCategories(opp);
+        return cats.includes(canonicalTarget);
+      } catch {
+        return false;
+      }
+    });
+
+    return filtered.slice(0, limit);
   }
 
   /**

@@ -3,9 +3,22 @@ import { OpportunityService } from "./opportunity-service";
 import { requireAuthUser } from "../auth/guard";
 
 export const getOpportunitiesFn = createServerFn({ method: "GET" })
+  .validator((d?: { categoryId?: string }) => d)
+  .handler(async ({ data }) => {
+    const user = await requireAuthUser();
+    return OpportunityService.listForUser(user.id, { categoryId: data?.categoryId });
+  });
+
+export const getShortlistMetricsFn = createServerFn({ method: "GET" })
   .handler(async () => {
     const user = await requireAuthUser();
-    return OpportunityService.listForUser(user.id);
+    return OpportunityService.getMetricsForUser(user.id);
+  });
+
+export const getDecidedOpportunitiesFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const user = await requireAuthUser();
+    return OpportunityService.listDecidedForUser(user.id);
   });
 
 export const getOpportunityFn = createServerFn({ method: "GET" })
@@ -19,11 +32,12 @@ export const getQueueMetricsFn = createServerFn({ method: "GET" })
   .validator((d: string) => d)
   .handler(async ({ data: jobHash }) => {
     const user = await requireAuthUser();
-    const list = await OpportunityService.listForUser(user.id);
-    const index = list.findIndex((o) => o.jobHash === jobHash);
+    const { getRepositories } = await import("../../data/sqlite/provider");
+    const repos = getRepositories();
+    const adj = await repos.evaluations.getAdjacentEvaluations(user.id, jobHash);
     return {
-      currentIndex: index >= 0 ? index + 1 : 1,
-      totalCount: list.length || 1,
+      currentIndex: adj.currentIndex,
+      totalCount: adj.totalCount,
     };
   });
 
@@ -38,17 +52,17 @@ export const getOpportunityDetailsFn = createServerFn({ method: "GET" })
   .validator((d: string) => d)
   .handler(async ({ data: jobHash }) => {
     const user = await requireAuthUser();
-    const list = await OpportunityService.listForUser(user.id);
-    const index = list.findIndex((o) => o.jobHash === jobHash);
-    const opportunity = index >= 0 ? list[index] : undefined;
+    const [opportunity, neighbors, provider] = await Promise.all([
+      OpportunityService.getForUser(user.id, jobHash),
+      OpportunityService.neighboursForUser(user.id, jobHash),
+      import("../../data/sqlite/provider"),
+    ]);
+    const adj = await provider.getRepositories().evaluations.getAdjacentEvaluations(user.id, jobHash);
     return {
       opportunity,
-      currentIndex: index >= 0 ? index + 1 : 1,
-      totalCount: list.length || 1,
-      neighbors: {
-        prev: index > 0 ? list[index - 1] : undefined,
-        next: index >= 0 && index < list.length - 1 ? list[index + 1] : undefined,
-      },
+      currentIndex: adj.currentIndex,
+      totalCount: adj.totalCount,
+      neighbors,
     };
   });
 

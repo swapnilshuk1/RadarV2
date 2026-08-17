@@ -38,6 +38,13 @@ export interface EngineRecommendationV4 {
   readonly qualityScore: number | null; // Model C authoritative continuous quality score (0..100 or null)
   readonly parsingConfidence: number;   // 0.0..1.0
   readonly evaluatedAt: string;
+  readonly triggeredRuleIds?: string[];
+  readonly decisionRisks?: any[];
+  readonly decisionDrivers?: any[];
+  readonly relativeDifferentiator?: string;
+  readonly opportunityScoreConfidence?: "HIGH" | "LOW";
+  readonly opportunityScoreSource?: "EXPLICIT" | "FALLBACK";
+  readonly trajectoryUpside?: string;
 }
 
 export interface UserDecisionStateV4 {

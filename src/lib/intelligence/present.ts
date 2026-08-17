@@ -164,6 +164,13 @@ export function present(
         qualityScore: record.vetoed ? null : (record.qualityScore !== null && record.qualityScore !== undefined ? Math.round(record.qualityScore) : null),
         parsingConfidence: record.confidences?.parsing ?? (record.confidence ?? 0.8),
         evaluatedAt: new Date().toISOString(),
+        triggeredRuleIds: record.triggeredRuleIds,
+        decisionRisks: record.decisionRisks,
+        decisionDrivers: record.decisionDrivers,
+        relativeDifferentiator: record.relativeDifferentiator,
+        opportunityScoreConfidence: record.opportunityScoreConfidence,
+        opportunityScoreSource: record.opportunityScoreSource,
+        trajectoryUpside: record.trajectoryUpside,
       },
       userDecision: null,
       effectiveDecision: record.verb === "PURSUE" 

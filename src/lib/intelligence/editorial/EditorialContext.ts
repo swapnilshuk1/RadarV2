@@ -31,16 +31,15 @@ export class EditorialContextBuilder {
     // Check Founder-led indicators
     const companyLower = (opportunity.company || "").toLowerCase();
     const roleLower = (opportunity.role || "").toLowerCase();
-    const narrativeLower = ((opportunity.primaryDriver || "") + " " + (opportunity.primaryConcern || "")).toLowerCase();
     
     const isFounderLed =
-      narrativeLower.includes("founder") ||
-      narrativeLower.includes("promoter") ||
-      narrativeLower.includes("owner-led") ||
+      companyLower.includes("founder") ||
+      companyLower.includes("promoter") ||
+      companyLower.includes("owner-led") ||
       roleLower.includes("founder");
 
-    const isPE = narrativeLower.includes("private equity") || narrativeLower.includes("pe-backed");
-    const isPublic = narrativeLower.includes("public company") || narrativeLower.includes("listed");
+    const isPE = companyLower.includes("private equity") || companyLower.includes("pe-backed") || companyLower.includes("capital") || companyLower.includes("partners");
+    const isPublic = companyLower.includes("public company") || companyLower.includes("listed") || companyLower.includes("inc") || companyLower.includes("corp") || companyLower.includes("ltd");
 
     let organizationType: OrganizationType = "institutional";
     if (isFounderLed) organizationType = "founder_led";
@@ -63,8 +62,8 @@ export class EditorialContextBuilder {
     }
 
     if (mandateProvenance === "TITLE_HEURISTIC") {
-      const isTurnaround = narrativeLower.includes("turnaround") || narrativeLower.includes("restructure");
-      const isModernization = narrativeLower.includes("transformation") || narrativeLower.includes("digitiz") || narrativeLower.includes("moderniz");
+      const isTurnaround = roleLower.includes("turnaround") || roleLower.includes("restructure");
+      const isModernization = roleLower.includes("transformation") || roleLower.includes("digitiz") || roleLower.includes("moderniz");
 
       if (isTurnaround) transformationStage = "turnaround";
       else if (isModernization) transformationStage = "modernization";
@@ -94,12 +93,14 @@ export class EditorialContextBuilder {
 
     if (pnlProvenance === "TITLE_HEURISTIC") {
       hasPnlOwnership =
-        narrativeLower.includes("p&l") ||
-        narrativeLower.includes("commercial") ||
-        narrativeLower.includes("revenue") ||
-        narrativeLower.includes("budget") ||
         roleLower.includes("cmo") ||
         roleLower.includes("cgo") ||
+        roleLower.includes("cro") ||
+        roleLower.includes("ceo") ||
+        roleLower.includes("coo") ||
+        roleLower.includes("general manager") ||
+        roleLower.includes("business head") ||
+        roleLower.includes("p&l") ||
         roleLower.includes("vp");
     }
 

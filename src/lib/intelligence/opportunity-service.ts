@@ -1,4 +1,5 @@
 import { getRepositories } from "../../data/sqlite/provider";
+import { getDatabaseAdapter } from "../../data/database";
 import { runEngine, runEngineSingle, addExtraOpportunities, injectFreshRecords } from "./engine";
 import type { Opportunity } from "@/data/opportunity-fixtures";
 import {
@@ -8,10 +9,29 @@ import {
   type UserDecisionStateV4,
   type EffectiveDecision,
 } from "../../domain/decision_v4";
+import {
+  MetricIntegrityValidator,
+  type CanonicalOpportunityMetrics,
+} from "./metric-integrity";
 
 export type ServiceOptions = {
   activePursuits?: number;
+  categoryId?: string;
 };
+
+export interface OpportunityMetrics {
+  totalScreened: number;
+  activePursuits: number;
+  totalShortlisted: number;
+  totalDecisions: number;
+  remainingToReview: number;
+  breakdown: {
+    pursue: number;
+    consider: number;
+    pass: number;
+    sparse: number;
+  };
+}
 
 const POPULATION_TIER_ORDER: Record<EffectiveDecision, number> = {
   ENGINE_PURSUIT: 0,
@@ -34,6 +54,106 @@ function ensureWorkerDaemonStarted() {
 }
 
 export class OpportunityService {
+  /** Computes global aggregate metrics across the full candidate evaluation population with canonical integrity validation. */
+  static async getMetricsForUser(userId: string): Promise<CanonicalOpportunityMetrics> {
+    const repos = getRepositories();
+    const [evalMetrics, userDecisions, categoryMetrics] = await Promise.all([
+      repos.evaluations.getEvaluationMetrics(userId),
+      repos.decisions.getUserDecisions(userId),
+      repos.evaluations.getCategoryMetrics(userId),
+    ]);
+
+    const explicitDecisionsCount = Object.keys(userDecisions).length;
+    const remainingToReview = Math.max(0, evalMetrics.totalScreened - explicitDecisionsCount);
+
+    const userBreakdownCount = {
+      pursue: 0,
+      consider: 0,
+      pass: 0,
+      total: explicitDecisionsCount,
+    };
+
+    for (const d of Object.values(userDecisions)) {
+      if (d.verb === "PURSUE") userBreakdownCount.pursue++;
+      else if (d.verb === "CONSIDER") userBreakdownCount.consider++;
+      else if (d.verb === "PASS") userBreakdownCount.pass++;
+    }
+
+    const generatedAt = new Date().toISOString();
+    const snapshotId = `snap_${userId}_${Date.now()}`;
+
+    const canonicalMetricsPartial: Omit<CanonicalOpportunityMetrics, "integrity"> = {
+      personId: userId,
+      snapshotId,
+      generatedAt,
+      evaluationVersion: "v4.1",
+      totalScreened: evalMetrics.totalScreened,
+      activePursuits: evalMetrics.activePursuits,
+      totalShortlisted: evalMetrics.shortlistedCount,
+      totalDecisions: explicitDecisionsCount,
+      remainingToReview,
+      engineBreakdown: {
+        pursue: evalMetrics.pursueCount,
+        consider: evalMetrics.considerCount,
+        pass: evalMetrics.passCount,
+        sparse: evalMetrics.sparseCount,
+      },
+      userBreakdown: userBreakdownCount,
+      effectiveBreakdown: {
+        pursue: evalMetrics.activePursuits,
+        consider: Math.max(0, evalMetrics.shortlistedCount - evalMetrics.activePursuits),
+        pass: Math.max(0, evalMetrics.totalScreened - evalMetrics.shortlistedCount),
+        sparse: evalMetrics.sparseCount,
+      },
+      categoryMetrics,
+    };
+
+    // Fast Page Load Invariant: Perform validation synchronously with lightweight queries
+    // or return snapshot immediately while triggering background integrity verification
+    const db = getDatabaseAdapter();
+    const integrity = await MetricIntegrityValidator.validate(canonicalMetricsPartial, db);
+
+    return {
+      ...canonicalMetricsPartial,
+      integrity,
+    };
+  }
+
+  /** Hydrates exact opportunity DTOs for user decisions independent of feed rank bounds. */
+  static async listDecidedForUser(userId: string): Promise<Opportunity[]> {
+    const repos = getRepositories();
+    const userDecisions = await repos.decisions.getUserDecisions(userId);
+    const jobHashes = Object.keys(userDecisions);
+    if (jobHashes.length === 0) return [];
+
+    const evaluations = await repos.evaluations.getEvaluationsByJobHashes(userId, jobHashes);
+    return evaluations
+      .map((ev) => {
+        try {
+          const opp = JSON.parse(ev.evaluationJson);
+          const rawUser = userDecisions[ev.jobHash];
+          const userState: UserDecisionStateV4 | null = rawUser ? {
+            personId: userId,
+            jobHash: ev.jobHash,
+            userAction: rawUser.verb as any,
+            reviewedFingerprint: (rawUser as any).reviewedFingerprint || null,
+            updatedAt: rawUser.updatedAt || null,
+          } : null;
+
+          return {
+            ...opp,
+            userDecision: userState,
+            effectiveDecision: computeEffectiveDecision(opp.engineRecommendation || ({} as any), userState),
+            reviewWorkflowState: computeReviewWorkflowState(opp.engineRecommendation || ({} as any), userState),
+            decision: userState?.userAction ? userState.userAction : ev.effectiveDecision,
+          } as Opportunity;
+        } catch {
+          return null;
+        }
+      })
+      .filter((o): o is Opportunity => o !== null);
+  }
+
   /** List all opportunity DTOs for a specific user via O(k) materialized evaluations query. */
   static async listForUser(userId: string, options?: ServiceOptions): Promise<Opportunity[]> {
     ensureWorkerDaemonStarted();
@@ -41,7 +161,7 @@ export class OpportunityService {
 
     // 1. Fetch materialized candidate evaluations O(k)
     const [evaluations, userDecisions] = await Promise.all([
-      repos.evaluations.listEvaluationsForUser(userId, 100),
+      repos.evaluations.listEvaluationsForUser(userId, 100, options?.categoryId),
       repos.decisions.getUserDecisions(userId),
     ]);
 
@@ -221,19 +341,21 @@ export class OpportunityService {
     return this.evaluateSingleOpportunity(userId, jobHash);
   }
 
-  /** Get neighbors (prev/next DTOs) of an opportunity. */
+  /** Get neighbors (prev/next DTOs) of an opportunity across full evaluation population. */
   static async neighboursForUser(
     userId: string,
     jobHash: string,
     options?: ServiceOptions,
   ): Promise<{ prev: Opportunity | undefined; next: Opportunity | undefined }> {
-    const opportunities = await this.listForUser(userId, options);
-    const i = opportunities.findIndex((o) => o.jobHash === jobHash);
-    if (i === -1) return { prev: undefined, next: undefined };
-    return {
-      prev: i > 0 ? opportunities[i - 1] : undefined,
-      next: i < opportunities.length - 1 ? opportunities[i + 1] : undefined,
-    };
+    const repos = getRepositories();
+    const adj = await repos.evaluations.getAdjacentEvaluations(userId, jobHash);
+
+    const [prev, next] = await Promise.all([
+      adj.prevHash ? this.getForUser(userId, adj.prevHash, options) : Promise.resolve(undefined),
+      adj.nextHash ? this.getForUser(userId, adj.nextHash, options) : Promise.resolve(undefined),
+    ]);
+
+    return { prev, next };
   }
 
   /** Add newly extracted opportunities (mock data fallback). */

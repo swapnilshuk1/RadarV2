@@ -34,7 +34,7 @@ export interface OpportunityInOneMinute {
 
 export interface QualitativeReasoningRow {
   layer: string;
-  ratingLabel: "Exceptional" | "Strong Alignment" | "Adjacent Alignment" | "Requires Verification";
+  ratingLabel: "Exceptional" | "Strong Alignment" | "Adjacent Alignment" | "Requires Verification" | "Limited Upside";
   becausePoints: string[];
   evidenceSnippet: string;
 }
@@ -126,10 +126,11 @@ export class BriefCompositionEngine {
     const weights = this.calculateWeights(opportunity);
     const strategy = this.deriveStrategy(weights, opportunity);
 
+    const engineVerdict = opportunity.engineRecommendation?.engineVerdict ?? opportunity.decision;
     const decision: BriefMemory["decision"] =
-      opportunity.decision === "PURSUE" || score >= 75
+      engineVerdict === "PURSUE"
         ? "PURSUE"
-        : opportunity.decision === "CONSIDER" || score >= 50
+        : engineVerdict === "CONSIDER"
         ? "CONSIDER"
         : "PASS";
 
@@ -176,7 +177,18 @@ export class BriefCompositionEngine {
       console.error("BriefCompositionEngine narrative composition fallback:", composedErr);
     }
 
-    const tradeoff = `Evaluating ${opportunity.role} scope at ${opportunity.company} against current career velocity`;
+    const triggeredRuleIds = opportunity.engineRecommendation?.triggeredRuleIds || [];
+    const isEasyTrapTriggered =
+      opportunity.recommendationResult?.policyId === "R-CONSIDER-CAREER-VALUE-PROTECTION" ||
+      opportunity.recommendationResult?.vetoReason === "R-CONSIDER-CAREER-VALUE-PROTECTION" ||
+      triggeredRuleIds.includes("R-CONSIDER-CAREER-VALUE-PROTECTION") ||
+      opportunity.engineRecommendation?.trajectoryUpside === "Limited Career Upside";
+
+    const relativeDiff = opportunity.engineRecommendation?.relativeDifferentiator;
+
+    const tradeoff = isEasyTrapTriggered
+      ? (relativeDiff || "Evaluating strong candidate profile alignment against limited career value step-up.")
+      : `Evaluating ${opportunity.role} scope at ${opportunity.company} against current career velocity`;
 
     const first90Days = resolvedCapText
       ? `Establish operational baseline across ${resolvedCapText} within first 60 days`
@@ -206,7 +218,9 @@ export class BriefCompositionEngine {
     const qualitativeRecommendation: BriefModel["qualitativeRecommendation"] =
       decision === "PURSUE" ? "Strong Pursue Recommendation" : decision === "CONSIDER" ? "Conditional Consideration" : "Strategic Pass";
 
-    const whyNotStronger = score >= 75
+    const whyNotStronger = isEasyTrapTriggered
+      ? "Policy Engine flagged material career-value regression: high accessibility/match score, but limited long-term trajectory step-up."
+      : score >= 75
       ? `This role aligns strongly with target executive capabilities and leadership scope for ${opportunity.role}.`
       : score >= 60
       ? `Operating scope at ${opportunity.company} is scoped at regional Head level rather than global C-suite, limiting immediate P&L scale.`
@@ -216,14 +230,21 @@ export class BriefCompositionEngine {
       whyPursue: [
         `Direct functional ownership of ${opportunity.role} mandate at ${opportunity.company}.`,
         `Strategic alignment with your ${primaryCap} background.`,
-        `Favorable career velocity surplus in ${opportunity.location || "target markets"}.`,
+        isEasyTrapTriggered
+          ? (relativeDiff || "High interview probability based on profile alignment.")
+          : `Favorable career velocity surplus in ${opportunity.location || "target markets"}.`,
       ],
       watchFor: [
+        ...(isEasyTrapTriggered
+          ? [`Career Trajectory Risk: High shortlisting potential but offers limited career capital step-up relative to your current altitude.`]
+          : []),
         `Strategic Risk: Evaluate if the mandate carries genuine P&L authority or functions merely as an operational execution arm.`,
         `Execution Risk: Verify if the team budget and headcount are formally approved for the requested 24-month expansion targets.`,
         `Market Risk: Assess if the organization has moved beyond founder-led decision making into scalable governance.`,
       ],
-      bottomLine: decision === "PURSUE" ? "Worth pursuing." : decision === "CONSIDER" ? "Verify scope before applying." : "Strategic Pass.",
+      bottomLine: isEasyTrapTriggered
+        ? "Caution: High interview probability, but evaluate if the career step-up justifies the transition."
+        : decision === "PURSUE" ? "Worth pursuing." : decision === "CONSIDER" ? "Verify scope before applying." : "Strategic Pass.",
     };
 
     const qualitativeReasoningChain: QualitativeReasoningRow[] = [
@@ -249,23 +270,39 @@ export class BriefCompositionEngine {
       },
       {
         layer: "Career Capital Value",
-        ratingLabel: score >= 70 ? "Strong Alignment" : "Adjacent Alignment",
-        becausePoints: [
-          `Direct P&L & Scale Alignment`,
-          `Operating Scope & Mandate Overlap`,
-          `Long-Term Career Leverage`
-        ],
-        evidenceSnippet: `Executive positioning at ${opportunity.company} expands long-term leadership leverage.`,
+        ratingLabel: isEasyTrapTriggered
+          ? "Limited Upside"
+          : score >= 70 ? "Strong Alignment" : "Adjacent Alignment",
+        becausePoints: isEasyTrapTriggered
+          ? [
+              `High Accessibility / Profile Match`,
+              `Limited Long-Term Career Step-Up`,
+              `Potential Trajectory Deceleration`
+            ]
+          : [
+              `Direct P&L & Scale Alignment`,
+              `Operating Scope & Mandate Overlap`,
+              `Long-Term Career Leverage`
+            ],
+        evidenceSnippet: isEasyTrapTriggered
+          ? (relativeDiff || "High shortlisting probability, but represents limited career capital step-up.")
+          : `Executive positioning at ${opportunity.company} expands long-term leadership leverage.`,
       },
     ];
 
     const strategicUpside: StrategicUpside = {
-      headline: "Strategic Career Value",
-      points: [
-        `This role broadens your record from functional ${primaryCap} leadership to full country-level commercial ownership.`,
-        `This is likely to become one of the strongest P&L acceleration signals on your executive résumé.`,
-        `Establishes multi-region platform governance experience positioning you for future regional CXO searches.`
-      ],
+      headline: isEasyTrapTriggered ? "Career Value Protection Notice" : "Strategic Career Value",
+      points: isEasyTrapTriggered
+        ? [
+            relativeDiff || "This role offers high shortlisting probability due to profile overlap, but limited career capital step-up.",
+            "While accessible, applying here may consume search bandwidth better allocated to higher-leverage CXO mandates.",
+            "Ensure the commercial scope and P&L authority offer genuine expansion before committing to full interviews."
+          ]
+        : [
+            `This role broadens your record from functional ${primaryCap} leadership to full country-level commercial ownership.`,
+            `This is likely to become one of the strongest P&L acceleration signals on your executive résumé.`,
+            `Establishes multi-region platform governance experience positioning you for future regional CXO searches.`
+          ],
     };
 
     const decisionSensitivity = {
@@ -447,6 +484,8 @@ export class BriefCompositionEngine {
 
     const executiveOpinion = decision === "PURSUE"
       ? `This is the strongest commercial transformation mandate on your desk this month. It directly compounds your proven growth leadership record at this operating scale rather than asking you to reinvent it. I would invest time here immediately—but only after confirming board-level reporting is formally approved at ${opportunity.company}.`
+      : isEasyTrapTriggered
+      ? `While your profile aligns strongly with this mandate (giving you high shortlisting probability), RADAR's policy engine flags limited career value step-up relative to your current trajectory. Evaluate carefully whether this opportunity advances your long-term career capital or represents a lateral/decelerating step before allocating interview bandwidth.`
       : decision === "CONSIDER"
       ? `A solid tactical growth opportunity, though the operating scale sits closer to regional execution than global strategy. Your background makes you highly competitive, but you must clarify during screening if the mandate carries genuine P&L authority or functions merely as an operational extension.`
       : `While ${opportunity.company} is a visible enterprise brand, the required altitude represents a structural regression from your verified career capital. I recommend a strategic pass on this mandate to preserve search bandwidth for opportunities offering true board-level commercial ownership.`;
@@ -463,6 +502,8 @@ export class BriefCompositionEngine {
       synthesis: {
         thesis: decision === "PURSUE" 
           ? "Proceed. The strategic upside outweighs the remaining uncertainty, provided the reporting structure confirms genuine commercial ownership."
+          : isEasyTrapTriggered
+          ? "Consider with caution. High interview probability due to profile match, but offers limited long-term career step-up relative to your current trajectory."
           : decision === "CONSIDER"
           ? "Proceed with caution. The domain alignment is strong, but the actual P&L authority must be verified before investing significant time."
           : "Pass. The required altitude represents a structural regression from your current career velocity."

@@ -39,6 +39,10 @@ export function getRepositories(dbPath?: string): StorageProvider {
   return _repos;
 }
 
+export function setStorageProvider(repos: StorageProvider | null) {
+  _repos = repos;
+}
+
 export function closeDatabase() {
   _repos = null;
 }
