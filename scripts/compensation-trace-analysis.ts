@@ -215,7 +215,7 @@ function traceCompensation() {
   console.log();
   
   console.log("CompensationSynthesizer is called from:");
-  console.log("  - OpportunityBriefComposer.ts:97");
+  console.log("  - BriefCompositionEngine.ts");
   console.log("  - Used for: narrative generation ONLY");
   console.log();
   

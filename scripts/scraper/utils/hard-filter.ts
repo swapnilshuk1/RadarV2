@@ -11,6 +11,18 @@ const JUNIOR_PATTERNS = [
   /\btrainee\b/i,
   /\bentry[- ]level\b/i,
   /\bstudent\b/i,
+  /\bapprentice\b/i,
+  /\bjunior\b/i,
+  /\bcall center\b/i,
+  /\btelecaller\b/i,
+  /\bdata entry operator\b/i,
+];
+
+const NON_JOB_PATTERNS = [
+  /privacy policy/i,
+  /terms of service/i,
+  /^job search$/i,
+  /^career portal$/i,
 ];
 
 // If location explicitly mentions a country that isn't India, it might be a false positive search result.
@@ -28,12 +40,19 @@ const NON_INDIA_LOCATIONS = [
  * Returns false if it should be immediately skipped.
  */
 export function passesHardFilter(card: CardData): { pass: boolean; reason?: string } {
-  if (!card.title && !card.company) return { pass: false, reason: "Missing title and company name" };
-  if (!card.title) return { pass: false, reason: "Missing title" };
-  if (!card.company) return { pass: false, reason: "Missing company name" };
+  const title = (card.title || "").trim();
+  const company = (card.company || "").trim();
+
+  if (!title && !company) return { pass: false, reason: "Missing title and company name" };
+  if (!title) return { pass: false, reason: "Missing title" };
+  if (!company) return { pass: false, reason: "Missing company name" };
+
+  for (const p of NON_JOB_PATTERNS) {
+    if (p.test(title)) return { pass: false, reason: `Non-job page title: "${title}"` };
+  }
 
   for (const p of JUNIOR_PATTERNS) {
-    if (p.test(card.title)) return { pass: false, reason: "Junior title detected" };
+    if (p.test(title)) return { pass: false, reason: "Junior title detected" };
   }
 
   if (card.location) {

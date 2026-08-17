@@ -8,6 +8,7 @@ export const Route = createFileRoute("/login")({
 function Login() {
   const navigate = useNavigate();
   const [showWarning, setShowWarning] = useState(false);
+  const [formattedDate, setFormattedDate] = useState("18 AUGUST 2026");
 
   useEffect(() => {
     // If already logged in, redirect to home
@@ -15,60 +16,154 @@ function Login() {
     if (session) {
       navigate({ to: "/" });
     }
-    if (typeof window !== "undefined" && window.location.search.includes("missing_google_credentials")) {
-      setShowWarning(true);
+    if (typeof window !== "undefined") {
+      if (window.location.search.includes("missing_google_credentials")) {
+        setShowWarning(true);
+      }
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, "0");
+      const month = now.toLocaleString("en-GB", { month: "long" }).toUpperCase();
+      const year = now.getFullYear();
+      setFormattedDate(`${day} ${month} ${year}`);
     }
   }, [navigate]);
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-parchment text-ink font-sans antialiased">
-      {/* Container */}
-      <div className="relative w-full max-w-[420px] px-6">
-        <div className="rounded-md border border-hairline bg-card p-10 shadow-[0_12px_40px_rgba(0,0,0,0.03)]">
+    <div className="relative min-h-screen bg-background text-foreground font-sans antialiased flex items-center justify-center p-6 sm:p-10 lg:p-16">
+      <div className="w-full max-w-[1180px] mx-auto">
+        
+        {/* TOP MASTHEAD RULE */}
+        <header className="border-t-2 border-foreground pt-3 mb-10 sm:mb-14 flex items-center justify-between">
+          <span className="font-mono text-xs uppercase tracking-[0.3em] font-semibold text-foreground">
+            RADAR
+          </span>
+          <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground font-normal">
+            {formattedDate}
+          </span>
+        </header>
+
+        {/* MAIN TWO-COLUMN EDITORIAL SPREAD */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
           
-          {/* Logo */}
-          <div className="mb-10 text-center">
-            <span className="font-mono text-xs uppercase tracking-[0.4em] text-ink font-semibold">RADAR</span>
-            <div className="h-[1px] w-8 bg-ink/10 mx-auto mt-2.5 mb-5" />
-            <p className="font-serif text-lg text-ink font-medium tracking-tight">Executive Opportunity Intelligence</p>
-            <p className="text-[13px] text-ink-muted mt-2 font-light max-w-xs mx-auto leading-relaxed">
-              Evidence-anchored career advisory for senior commercial growth executives.
-            </p>
-          </div>
-
-          {/* Warning Banner */}
-          {showWarning && (
-            <div className="mb-6 border border-amber-500/30 bg-amber-500/5 p-3 rounded-md text-[12px] text-amber-900 leading-relaxed font-normal">
-              Google OAuth client keys are not configured in your environment. Please check your <code>.env</code> settings.
+          {/* LEFT COLUMN: EDITORIAL MANIFESTO & PILLARS */}
+          <div className="lg:col-span-7 space-y-8">
+            <div className="space-y-4">
+              <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl leading-[1.08] tracking-tight text-foreground font-normal">
+                Executive opportunity intelligence.
+              </h1>
+              <p className="font-sans text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl font-normal">
+                A standing advisory brief: the shortlist worth your attention, with a written recommendation on each mandate.
+              </p>
             </div>
-          )}
 
-          {/* Login Options */}
-          <div className="space-y-3">
-            {/* Real Google OAuth button */}
-            <a
-              href="/api/auth/google"
-              id="google-oauth-btn"
-              className="flex w-full items-center justify-center gap-3 rounded-md border border-hairline bg-parchment py-3 px-4 text-[13px] font-medium tracking-wide text-ink transition-all hover:bg-muted active:scale-[0.98] cursor-pointer no-underline"
-            >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" width="24" height="24">
-                <g transform="matrix(1, 0, 0, 1, 0, 0)">
-                  <path fill="#EA4335" d="M20.6,10.2c1-1,1.5-2.4,1.4-3.8H12v4.8h5.7c-0.2,1.3-1,2.4-2.1,3.1v3.1h4.1C22,15.1,23.3,12.4,20.6,10.2z" />
-                  <path fill="#4285F4" d="M12,23c3.2,0,6-1.1,8-2.9l-4.1-3.1c-1.1,0.8-2.5,1.2-3.9,1.2c-3,0-5.6-2-6.5-4.8H1.3v3.2C3.3,20.2,7.4,23,12,23z" />
-                  <path fill="#34A853" d="M5.5,13.4C5,11.8,5,10.2,5.5,8.6V5.4H1.3C-0.4,8.2-0.4,13.8,1.3,16.6L5.5,13.4z" />
-                  <path fill="#FBBC05" d="M12,5c1.7,0,3.3,0.6,4.6,1.8l3.4-3.4C17.9,1.5,15,0.7,12,0.7C7.4,0.7,3.3,3.5,1.3,7.2l4.1,3.2C6.4,7.6,9,5,12,5z" />
-                </g>
-              </svg>
-              Continue with Google
-            </a>
+            {/* ROMAN NUMERAL PILLARS */}
+            <div className="pt-6">
+              <div className="border-t border-border py-4 flex items-baseline gap-6">
+                <span className="font-serif text-base text-muted-foreground font-normal w-6 shrink-0">
+                  I
+                </span>
+                <span className="font-serif text-lg sm:text-xl text-foreground font-normal">
+                  Evaluated, not indexed
+                </span>
+              </div>
+
+              <div className="border-t border-border py-4 flex items-baseline gap-6">
+                <span className="font-serif text-base text-muted-foreground font-normal w-6 shrink-0">
+                  II
+                </span>
+                <span className="font-serif text-lg sm:text-xl text-foreground font-normal">
+                  A recommendation, not a score
+                </span>
+              </div>
+
+              <div className="border-t border-b border-border py-4 flex items-baseline gap-6">
+                <span className="font-serif text-base text-muted-foreground font-normal w-6 shrink-0">
+                  III
+                </span>
+                <span className="font-serif text-lg sm:text-xl text-foreground font-normal">
+                  Evidence you can check
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Policy disclaimer */}
-          <div className="mt-8 text-center text-[11px] text-ink-muted leading-relaxed font-light">
-            Advisory access subject to invite credentials. By continuing you agree to RADAR's cognitive bandwidth and executive search guidelines.
+          {/* RIGHT COLUMN: ADVISORY ACCESS FOLIO CARD */}
+          <div className="lg:col-span-5 w-full max-w-md lg:max-w-none mx-auto">
+            <div className="rounded-md border border-border bg-card p-6 sm:p-8 shadow-[0_12px_40px_rgba(0,0,0,0.03)] space-y-6">
+              
+              {/* Card Header */}
+              <div className="border-b border-border pb-3">
+                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground font-medium">
+                  Advisory Access
+                </span>
+              </div>
+
+              {/* Card Headline */}
+              <div className="space-y-1 pt-1">
+                <h2 className="font-serif text-2xl sm:text-3xl text-foreground font-normal tracking-tight">
+                  Sign in to today’s briefing
+                </h2>
+                <p className="font-sans text-xs sm:text-sm text-muted-foreground font-normal">
+                  Access is issued by invitation.
+                </p>
+              </div>
+
+              {/* Warning Banner */}
+              {showWarning && (
+                <div className="border border-amber-500/30 bg-amber-500/5 p-3 rounded-md text-xs text-amber-900 leading-relaxed font-normal">
+                  Google OAuth client keys are not configured in your environment. Please check your <code>.env</code> settings.
+                </div>
+              )}
+
+              {/* Google OAuth Action Button */}
+              <div className="pt-2">
+                <a
+                  href="/api/auth/google"
+                  id="google-oauth-btn"
+                  className="flex w-full items-center justify-center gap-3 rounded-md bg-primary py-3.5 px-4 text-xs font-mono uppercase tracking-wider font-semibold text-primary-foreground transition-all hover:bg-foreground/90 active:scale-[0.98] cursor-pointer no-underline shadow-sm"
+                >
+                  <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                  </svg>
+                  <span>Continue with Google</span>
+                </a>
+              </div>
+
+              {/* Edition Metadata Strip */}
+              <div className="border-y border-border py-3 flex items-center justify-between text-[11px] font-mono">
+                <span className="text-muted-foreground uppercase tracking-wider">
+                  Edition
+                </span>
+                <span className="text-foreground font-medium uppercase tracking-wider">
+                  Weekly · Confidential
+                </span>
+              </div>
+
+              {/* Card Footer */}
+              <div className="text-center text-xs text-muted-foreground font-sans font-light">
+                Prepared for the named recipient only.
+              </div>
+
+            </div>
           </div>
 
         </div>
+
       </div>
     </div>
   );

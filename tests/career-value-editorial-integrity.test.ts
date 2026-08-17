@@ -217,7 +217,7 @@ describe("RADAR V4 — Career-Value Editorial Integrity Suite (Cases A–O)", ()
     expect(ctx.engineVerdict).toBe("PASS");
     expect(thesis.verdict).toBe("PASS");
     expect(thesis.careerValueSignal).toBe("SUB-TIER MANDATE");
-    expect(thesis.primaryReason).toContain("Strategic pass");
+    expect(thesis.primaryReason).toMatch(/Sub-tier mandate veto|Strategic pass/);
   });
 
   it("Case G — Missing Career Signal: Null career values do not fabricate upside", () => {

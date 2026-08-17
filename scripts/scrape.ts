@@ -32,7 +32,7 @@ import { EnrichmentQueue } from "./scraper/persist/queue";
 import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
 import { FailurePolicyEngine } from "../src/lib/acquisition/failure-taxonomy";
 import { ResponseValidator } from "../src/lib/acquisition/validator";
-import { CheapFilter } from "./scraper/run/cheap-filter";
+import { passesHardFilter } from "./scraper/utils/hard-filter";
 import { HealthManager } from "./scraper/run/health-manager";
 import { QueryMetricsStore } from "./scraper/run/metrics";
 import { getRepositories } from "../src/data/sqlite/provider";
@@ -521,14 +521,13 @@ async function processUnit(
 
       try {
         // 1. Cheap Pre-Filter
-        const preQual = CheapFilter.evaluate({
+        const preQual = passesHardFilter({
           title: feedCard.title,
-          companyName: feedCard.company,
-          location: feedCard.location,
-          rawUrl: feedCard.detailUrl
+          company: feedCard.company,
+          location: feedCard.location || "",
         });
 
-        if (!preQual.shouldAcquire) {
+        if (!preQual.pass) {
           mgr.updateCard(cardUnitId, { status: "skipped_empty", error: preQual.reason });
           return null;
         }

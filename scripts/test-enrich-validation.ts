@@ -6,27 +6,27 @@
 
 import { enrichWithLLM } from "./scraper/enrich/gemini";
 import { QueryMetricsStore } from "./scraper/run/metrics";
-import { CheapFilter } from "./scraper/run/cheap-filter";
+import { passesHardFilter } from "./scraper/utils/hard-filter";
 
 async function runValidation() {
   console.log("================================================================================");
   console.log("            RADAR v2 EMPIRICAL FIX VALIDATION RUN");
   console.log("================================================================================\n");
 
-  // 1. Validate CheapFilter granular logging
-  console.log("--- 1. Validating CheapFilter Granular Telemetry ---");
-  const res1 = CheapFilter.evaluate({ title: "", companyName: "Google" });
+  // 1. Validate HardFilter granular telemetry
+  console.log("--- 1. Validating HardFilter Granular Telemetry ---");
+  const res1 = passesHardFilter({ title: "", company: "Google", location: "" });
   console.log(`Title missing result: "${res1.reason}"`);
-  console.assert(res1.reason === "Missing title", "CheapFilter title missing test failed");
+  console.assert(res1.reason === "Missing title", "HardFilter title missing test failed");
 
-  const res2 = CheapFilter.evaluate({ title: "Vice President Marketing", companyName: "" });
+  const res2 = passesHardFilter({ title: "Vice President Marketing", company: "", location: "" });
   console.log(`Company missing result: "${res2.reason}"`);
-  console.assert(res2.reason === "Missing company name", "CheapFilter company missing test failed");
+  console.assert(res2.reason === "Missing company name", "HardFilter company missing test failed");
 
-  const res3 = CheapFilter.evaluate({ title: "", companyName: "" });
+  const res3 = passesHardFilter({ title: "", company: "", location: "" });
   console.log(`Both missing result: "${res3.reason}"`);
-  console.assert(res3.reason === "Missing title and company name", "CheapFilter both missing test failed");
-  console.log("✅ CheapFilter granular telemetry verified.\n");
+  console.assert(res3.reason === "Missing title and company name", "HardFilter both missing test failed");
+  console.log("✅ HardFilter granular telemetry verified.\n");
 
   // 2. Validate QueryMetricsStore persistence
   console.log("--- 2. Validating QueryMetricsStore Persistence ---");

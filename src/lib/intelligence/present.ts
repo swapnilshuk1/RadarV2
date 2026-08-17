@@ -2,7 +2,6 @@ import type { Opportunity, OpportunitySource, RecommendationViewModel, Capabilit
 import type { RecommendationRecord } from "./record";
 import { format, type Narrative } from "./narrative";
 import { CapabilityEngine, type JobSlice } from "../capability/CapabilityEngine";
-import { CapabilityRecommendationScorer } from "../recommendation/CapabilityRecommendationScorer";
 import { CapabilityOntology } from "../ontology/CapabilityOntology";
 import { SemanticNaturalLanguageResolver } from "./editorial/SemanticNaturalLanguageResolver";
 
