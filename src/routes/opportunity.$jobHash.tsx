@@ -34,9 +34,10 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
       return { meta: [{ title: "Brief unavailable — RADAR" }, { name: "robots", content: "noindex" }] };
     }
     const o = loaderData.opportunity;
+    const engineVerdict = o.engineRecommendation?.engineVerdict || "DOSSIER";
     return {
       meta: [
-        { title: `${o.decision} · ${o.role} — RADAR Executive Dossier` },
+        { title: `${engineVerdict} · ${o.role} — RADAR Executive Dossier` },
         { name: "description", content: o.recommendation || "Executive advisory dossier" },
       ],
     };
@@ -44,18 +45,20 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
   component: OpportunityBriefView,
 });
 
+import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
+
 function OpportunityBriefView() {
   const { opportunity: o, neighbors, currentIndex, totalCount } = Route.useLoaderData();
   const { decisions, decide: recordDecision } = useDecisions();
   const router = useRouter();
 
-  const currentVerdict: DecisionVerb = (decisions[o.jobHash]?.verb as DecisionVerb) || o.decision;
+  const dossierState = resolveDossierDecisionState(o, decisions[o.jobHash]);
 
   const decide = (verb: DecisionVerb) => {
     recordDecision(
       o.jobHash,
       verb,
-      o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion
+      dossierState.evaluationFingerprint
     );
     router.invalidate();
   };
@@ -73,7 +76,7 @@ function OpportunityBriefView() {
   const surfaceProps = {
     opportunity: o,
     brief,
-    currentVerdict,
+    dossierState,
     decide,
     neighbors,
     currentIndex,

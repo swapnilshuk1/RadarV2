@@ -142,12 +142,12 @@ ${seniorityAggs
 
 *Shows multi-dimensional interplay: Policy, Score, Career Upside, Key Risk, Key Driver, Objective Quality, Contradictions, and Final Assessment.*
 
-| # | Role & Company | Category | Policy | Score | Career Upside | Key Risk | Key Driver | Verbatim Quality | Contradiction | Assessment |
-| :-: | :--- | :--- | :---: | :---: | :--- | :--- | :--- | :---: | :---: | :---: |
+| # | Role & Company | Category | Policy | Brief | Score | Career Upside | Key Risk | Key Driver | Verbatim Quality | Audit Status |
+| :-: | :--- | :--- | :---: | :---: | :---: | :--- | :--- | :--- | :---: | :---: |
 ${interplayRows
   .map(
     (r) =>
-      `| ${r.index} | **${r.role.replace(/\|/g, "/").slice(0, 32)}**<br>_${r.company.replace(/\|/g, "/").slice(0, 24)}_ | ${r.category.slice(0, 18)} | \`${r.policyVerdict}\` | ${r.score} | ${r.careerUpside.slice(0, 16)} | ${r.keyRisk.replace(/\|/g, "/")} | ${r.keyDriver.replace(/\|/g, "/")} | ${r.verbatimScore} | ${r.hasContradiction ? "⚠️ Yes" : "No"} | \`${r.assessment}\` |`
+      `| ${r.index} | **${r.role.replace(/\|/g, "/").slice(0, 32)}**<br>_${r.company.replace(/\|/g, "/").slice(0, 24)}_ | ${r.category.slice(0, 18)} | \`${r.policyVerdict}\` | \`${r.policyVerdict}\` | ${r.score} | ${r.careerUpside.slice(0, 16)} | ${r.keyRisk.replace(/\|/g, "/")} | ${r.keyDriver.replace(/\|/g, "/")} | ${r.verbatimScore} | \`${r.assessment === "PASS" ? "✅ PASSED" : r.assessment === "REVIEW" ? "⚠️ REVIEW" : "❌ FAILED"}\` |`
   )
   .join("\n")}
 

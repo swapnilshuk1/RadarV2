@@ -5,11 +5,12 @@ import { StrategyWorkspace } from "../briefing/StrategyWorkspace";
 import { ExecutiveActionButton } from "@/components/radar/actions";
 import { Button } from "@/components/ui/button";
 import { applyUrlFor, type DecisionVerb } from "@/data/opportunity-fixtures";
+import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
 
 interface ExecutiveBriefingSurfaceProps {
   opportunity: any;
   brief: any;
-  currentVerdict: DecisionVerb;
+  dossierState: DossierDecisionState;
   decide: (verdict: DecisionVerb) => void;
   neighbors: any;
   currentIndex: number;
@@ -21,7 +22,7 @@ interface ExecutiveBriefingSurfaceProps {
 export function ExecutiveBriefingSurface({
   opportunity: o,
   brief,
-  currentVerdict,
+  dossierState,
   decide,
   neighbors,
   currentIndex,
@@ -34,7 +35,7 @@ export function ExecutiveBriefingSurface({
       <Summary
         o={o}
         brief={brief}
-        currentVerdict={currentVerdict}
+        dossierState={dossierState}
         currentIndex={currentIndex}
         totalCount={totalCount}
       />
@@ -86,7 +87,7 @@ export function ExecutiveBriefingSurface({
               <span className="label-mono text-muted-foreground font-normal mr-1 text-[10px] tracking-wider uppercase hidden sm:inline">Verdict</span>
               <ExecutiveActionButton
                 verdict="PURSUE"
-                isActive={currentVerdict === "PURSUE"}
+                isActive={dossierState.selectedActionForControls === "PURSUE"}
                 onClick={() => decide("PURSUE")}
                 className="flex-1 text-[10px]"
               >
@@ -95,7 +96,7 @@ export function ExecutiveBriefingSurface({
 
               <ExecutiveActionButton
                 verdict="CONSIDER"
-                isActive={currentVerdict === "CONSIDER"}
+                isActive={dossierState.selectedActionForControls === "CONSIDER"}
                 onClick={() => decide("CONSIDER")}
                 className="flex-1 text-[10px]"
               >
@@ -104,7 +105,7 @@ export function ExecutiveBriefingSurface({
 
               <ExecutiveActionButton
                 verdict="PASS"
-                isActive={currentVerdict === "PASS"}
+                isActive={dossierState.selectedActionForControls === "PASS"}
                 onClick={() => decide("PASS")}
                 className="flex-1 text-[10px]"
               >

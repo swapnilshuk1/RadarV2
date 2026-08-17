@@ -12,10 +12,12 @@ import { Button } from "@/components/ui/button";
 import { applyUrlFor, type DecisionVerb } from "@/data/opportunity-fixtures";
 import { useSectionPreferences } from "@/lib/section-preferences-store";
 
+import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
+
 interface ReadingSurfaceProps {
   opportunity: any;
   brief: any;
-  currentVerdict: DecisionVerb;
+  dossierState: DossierDecisionState;
   decide: (verdict: DecisionVerb) => void;
   neighbors: any;
   currentIndex: number;
@@ -81,7 +83,7 @@ function estimateReadTime(brief: any): string {
 export function ReadingSurface({
   opportunity: o,
   brief,
-  currentVerdict,
+  dossierState,
   decide,
   neighbors,
   currentIndex,
@@ -120,14 +122,17 @@ export function ReadingSurface({
     return () => document.removeEventListener("keydown", handleKeyboard);
   }, [handleKeyboard]);
 
-  const { getSectionState, toggleSection, resetToDefaults } = useSectionPreferences(currentVerdict, o.archetype);
+  const { getSectionState, toggleSection, resetToDefaults } = useSectionPreferences(
+    dossierState.selectedActionForControls || "CONSIDER",
+    o.archetype
+  );
 
   return (
     <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
       <Hero
         o={o}
         brief={brief}
-        currentVerdict={currentVerdict}
+        dossierState={dossierState}
         currentIndex={currentIndex}
         totalCount={totalCount}
         jobProj={jobProj}
@@ -190,7 +195,7 @@ export function ReadingSurface({
                 {getSectionState("opinion") === "open" ? "Collapse ▲" : "Expand ▼"}
               </button>
             </div>
-            {getSectionState("opinion") === "open" && <Opinion brief={brief} currentVerdict={currentVerdict} />}
+            {getSectionState("opinion") === "open" && <Opinion brief={brief} engineVerdict={dossierState.engineVerdict} />}
           </div>
 
           {/* Section V: Strategy */}
@@ -232,7 +237,7 @@ export function ReadingSurface({
           <button
             onClick={() => decide("PURSUE")}
             className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              currentVerdict === "PURSUE"
+              dossierState.selectedActionForControls === "PURSUE"
                 ? "bg-emerald-600 text-white shadow-xs"
                 : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
@@ -244,7 +249,7 @@ export function ReadingSurface({
           <button
             onClick={() => decide("CONSIDER")}
             className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              currentVerdict === "CONSIDER"
+              dossierState.selectedActionForControls === "CONSIDER"
                 ? "bg-amber-600 text-white shadow-xs"
                 : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
@@ -256,7 +261,7 @@ export function ReadingSurface({
           <button
             onClick={() => decide("PASS")}
             className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              currentVerdict === "PASS"
+              dossierState.selectedActionForControls === "PASS"
                 ? "bg-slate-700 text-white shadow-xs"
                 : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}

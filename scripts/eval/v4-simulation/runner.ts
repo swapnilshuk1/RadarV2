@@ -19,6 +19,7 @@ import { DecisionPolicyEngine } from "@/lib/intelligence/policy/DecisionPolicyEn
 import { EvidenceGate } from "@/lib/intelligence/gates/EvidenceGate";
 import { present } from "@/lib/intelligence/present";
 import { BriefCompositionEngine } from "@/lib/intelligence/editorial/BriefCompositionEngine";
+import { buildCandidateEvaluationContext } from "@/lib/intelligence/context";
 import type { RecommendationRecord } from "@/lib/intelligence/record";
 import type { SampledJD } from "./corpus-sampler";
 import type { SimulationRecord } from "./types";
@@ -54,22 +55,31 @@ export function runPipelineOnJD(sampled: SampledJD): SimulationRecord {
   let policyResult: any = null;
   let record: RecommendationRecord;
 
-  const evalContext = {
-    role: raw.role,
-    company: raw.company,
-    location: raw.location,
-    dimensions: raw.dimensions,
-    jobHash: raw.jobHash,
-    rawText: rawJDText,
-  };
+  const evalContext = buildCandidateEvaluationContext(candProj);
 
-  if (!gateResult.passed) {
+  const isSparse = gateResult.evaluationStatus === "SPARSE_SPEC";
+
+  if (isSparse) {
     // Sparse Spec / Early Rejection Path
     record = {
+      jobHash: raw.jobHash,
+      engineVersion: "4.0.0",
+      recommendationVersion: `4.0.0:${raw.jobHash}:SPARSE_SPEC`,
+      verb: "PASS",
       action: "PASS",
-      confidence: "LOW",
+      qualityScore: null,
+      rawScore: null,
+      priority: null,
+      vetoed: true,
+      vetoReason: "R-PASS-SPARSE-SPEC",
+      claimPermissions: { allowedClaims: [], explicitUnknowns: ["Scope", "Seniority"], explicitRisks: ["Sparse specification"] },
+      confidence: 0.2,
       stability: "High",
-      headspace: { downgraded: false },
+      headspace: { downgraded: false, finalVerb: "PASS" },
+      decisionSummary: { careerValue: 0, shortlistingPotential: 0, pursuitFriction: 0 },
+      triggeredRuleIds: ["R-PASS-SPARSE-SPEC"],
+      decisionDrivers: [],
+      decisionRisks: [{ category: "EVIDENCE_INTEGRITY", label: "Sparse Specification", description: gateResult.reason || "Insufficient detail" }],
       explanation: {
         headline: "Insufficient Evidence to Evaluate Opportunity",
         primaryReason: gateResult.reason || "The job posting provides insufficient detail to evaluate fit.",
@@ -77,7 +87,7 @@ export function runPipelineOnJD(sampled: SampledJD): SimulationRecord {
         tradeoffs: ["Cannot confirm seniority, team scale, or commercial responsibility without further discovery."],
         missingEvidence: ["Mandate", "Scope", "Reporting Line", "Compensation"],
       },
-      comparison: { higherThan: [], lowerThan: [] },
+      comparison: { higherThan: [], lowerThan: [], differentiators: [], tradeOffs: [] },
       dimensions: raw.dimensions || [],
       policyDecision: {
         verdict: "PASS",
@@ -86,7 +96,6 @@ export function runPipelineOnJD(sampled: SampledJD): SimulationRecord {
         triggeredRuleIds: ["R-PASS-SPARSE-SPEC"],
         priorityScore: null,
       },
-      qualityScore: null,
       confidences: { recommendation: 0.2 },
     } as any;
 
@@ -163,12 +172,12 @@ export function runPipelineOnJD(sampled: SampledJD): SimulationRecord {
         opportunityAssess,
         career,
         lifestyle,
-        jobProj.executiveIdentity.value,
-        candProj.executiveIdentity.value,
+        jobProj.executiveIdentity?.value || "Commercial & Marketing Leadership",
+        candProj.executiveIdentity?.value || "Commercial & Marketing Leadership",
         rawJDText,
         hasStructuredEvidence,
         undefined,
-        undefined,
+        raw.dimensions,
         spCalc.score
       );
     } catch (err: any) {
@@ -185,12 +194,33 @@ export function runPipelineOnJD(sampled: SampledJD): SimulationRecord {
       };
     }
 
-    // Assemble Canonical RecommendationRecord
     record = {
+      jobHash: raw.jobHash,
+      engineVersion: "4.0.0",
+      recommendationVersion: `4.0.0:${raw.jobHash}:${policyResult.verdict}`,
+      verb: policyResult.verdict,
       action: policyResult.verdict,
-      confidence: capability?.matchingConfidence && capability.matchingConfidence > 0.7 ? "HIGH" : "MEDIUM",
+      qualityScore: spCalc.score,
+      rawScore: spCalc.score,
+      priority: spCalc.score,
+      vetoed: Boolean(policyResult.vetoed),
+      vetoReason: policyResult.vetoReason || null,
+      claimPermissions: {
+        allowedClaims: ["TRANSFORMATION", "GO_TO_MARKET"],
+        explicitUnknowns: [],
+        explicitRisks: (policyResult.decisionRisks || []).map((r: any) => r.label || r.description),
+      },
+      confidence: capability?.matchingConfidence || 0.85,
       stability: "High",
-      headspace: { downgraded: false },
+      headspace: { downgraded: false, finalVerb: policyResult.verdict },
+      decisionSummary: {
+        careerValue: careerValue?.breakdown?.progressionLikelihood ? careerValue.breakdown.progressionLikelihood * 100 : 70,
+        shortlistingPotential: spCalc.score,
+        pursuitFriction: 20,
+      },
+      triggeredRuleIds: policyResult.triggeredRuleIds,
+      decisionDrivers: policyResult.decisionDrivers || [],
+      decisionRisks: policyResult.decisionRisks || [],
       explanation: {
         headline: policyResult.verdict === "PURSUE" ? `Pursue ${raw.role}` : policyResult.verdict === "CONSIDER" ? `Consider ${raw.role}` : `Pass on ${raw.role}`,
         primaryReason: policyResult.decisionDrivers?.[0]?.description || "Evaluation completed across capability and career alignment.",
@@ -198,7 +228,7 @@ export function runPipelineOnJD(sampled: SampledJD): SimulationRecord {
         tradeoffs: [policyResult.relativeDifferentiator || "Evaluate scope vs velocity."],
         missingEvidence: [],
       },
-      comparison: { higherThan: [], lowerThan: [] },
+      comparison: { higherThan: [], lowerThan: [], differentiators: [policyResult.relativeDifferentiator || "Scope"], tradeOffs: [] },
       dimensions: raw.dimensions || [],
       policyDecision: {
         verdict: policyResult.verdict,
@@ -207,7 +237,6 @@ export function runPipelineOnJD(sampled: SampledJD): SimulationRecord {
         triggeredRuleIds: policyResult.triggeredRuleIds,
         priorityScore: policyResult.priorityScore,
       },
-      qualityScore: spCalc.score,
       confidences: {
         recommendation: capability?.matchingConfidence || 0.8,
       },
@@ -246,8 +275,8 @@ export function runPipelineOnJD(sampled: SampledJD): SimulationRecord {
     seniorityTier: sampled.seniorityTier,
     fitSpectrumBucket: sampled.fitSpectrumBucket,
     gateResult: {
-      passed: gateResult.passed,
-      evaluationStatus: (gateResult as any).evaluationStatus || (gateResult.passed ? "EVALUATED" : "SPARSE_SPEC"),
+      passed: !isSparse,
+      evaluationStatus: gateResult.evaluationStatus,
       reason: gateResult.reason,
     },
     isolatedAssessments: {

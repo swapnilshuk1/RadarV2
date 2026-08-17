@@ -102,16 +102,24 @@ export class MetricIntegrityValidator {
       );
 
       const independentEffective = await db.many<{ effective_decision: string; cnt: number }>(
-        `SELECT COALESCE(d.action, ce.user_decision_override, ce.effective_decision) as effective_decision, COUNT(*) as cnt
+        `WITH latest_decisions AS (
+           SELECT person_id, opportunity_id, action,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY person_id, opportunity_id
+                    ORDER BY updated_at DESC, id DESC
+                  ) as rn
+           FROM decisions
+         )
+         SELECT COALESCE(d.action, ce.user_decision_override, ce.effective_decision) as effective_decision, COUNT(*) as cnt
          FROM candidate_evaluations ce
-         LEFT JOIN decisions d ON ce.person_id = d.person_id AND ce.job_hash = d.opportunity_id
+         LEFT JOIN latest_decisions d ON ce.person_id = d.person_id AND ce.job_hash = d.opportunity_id AND d.rn = 1
          WHERE ce.person_id = ?
          GROUP BY COALESCE(d.action, ce.user_decision_override, ce.effective_decision)`,
         [metrics.personId]
       );
 
-      const independentDecisions = await db.one<{ cnt: number }>(
-        `SELECT COUNT(*) as cnt FROM decisions WHERE person_id = ?`,
+      const independentDecisions = await db.one<{ cnt: number; dup_cnt: number }>(
+        `SELECT COUNT(*) as cnt, (COUNT(*) - COUNT(DISTINCT opportunity_id)) as dup_cnt FROM decisions WHERE person_id = ?`,
         [metrics.personId]
       );
 

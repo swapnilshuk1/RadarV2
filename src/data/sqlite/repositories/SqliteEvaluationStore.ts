@@ -211,17 +211,26 @@ export class SqliteEvaluationStore {
     await this.ensureSchema();
     const row = await this.db.one<any>(
       `
+      WITH latest_decisions AS (
+        SELECT person_id, opportunity_id, action,
+               ROW_NUMBER() OVER (
+                 PARTITION BY person_id, opportunity_id
+                 ORDER BY updated_at DESC, id DESC
+               ) as rn
+        FROM decisions
+      )
       SELECT 
         COUNT(*) as total_screened,
-        SUM(CASE WHEN COALESCE(user_decision_override, effective_decision) = 'PURSUE' THEN 1 ELSE 0 END) as active_pursuits,
-        SUM(CASE WHEN COALESCE(user_decision_override, effective_decision) IN ('PURSUE', 'CONSIDER') THEN 1 ELSE 0 END) as shortlisted_count,
-        SUM(CASE WHEN user_decision_override IS NOT NULL THEN 1 ELSE 0 END) as decisions_count,
-        SUM(CASE WHEN effective_decision = 'PURSUE' THEN 1 ELSE 0 END) as pursue_count,
-        SUM(CASE WHEN effective_decision = 'CONSIDER' THEN 1 ELSE 0 END) as consider_count,
-        SUM(CASE WHEN effective_decision = 'PASS' THEN 1 ELSE 0 END) as pass_count,
-        SUM(CASE WHEN evaluation_status = 'SPARSE_SPEC' THEN 1 ELSE 0 END) as sparse_count
-      FROM candidate_evaluations
-      WHERE person_id = ?
+        SUM(CASE WHEN COALESCE(d.action, ce.user_decision_override, ce.effective_decision) = 'PURSUE' THEN 1 ELSE 0 END) as active_pursuits,
+        SUM(CASE WHEN COALESCE(d.action, ce.user_decision_override, ce.effective_decision) IN ('PURSUE', 'CONSIDER') THEN 1 ELSE 0 END) as shortlisted_count,
+        SUM(CASE WHEN d.action IS NOT NULL OR ce.user_decision_override IS NOT NULL THEN 1 ELSE 0 END) as decisions_count,
+        SUM(CASE WHEN ce.effective_decision = 'PURSUE' THEN 1 ELSE 0 END) as pursue_count,
+        SUM(CASE WHEN ce.effective_decision = 'CONSIDER' THEN 1 ELSE 0 END) as consider_count,
+        SUM(CASE WHEN ce.effective_decision = 'PASS' THEN 1 ELSE 0 END) as pass_count,
+        SUM(CASE WHEN ce.evaluation_status = 'SPARSE_SPEC' THEN 1 ELSE 0 END) as sparse_count
+      FROM candidate_evaluations ce
+      LEFT JOIN latest_decisions d ON ce.person_id = d.person_id AND ce.job_hash = d.opportunity_id AND d.rn = 1
+      WHERE ce.person_id = ?
       `,
       this.sanitizeParams([personId])
     );
@@ -289,11 +298,19 @@ export class SqliteEvaluationStore {
     await this.ensureSchema();
     const rows = await this.db.many<any>(
       `
+      WITH latest_decisions AS (
+        SELECT person_id, opportunity_id, action,
+               ROW_NUMBER() OVER (
+                 PARTITION BY person_id, opportunity_id
+                 ORDER BY updated_at DESC, id DESC
+               ) as rn
+        FROM decisions
+      )
       SELECT ce.job_hash, o.canonical_title as role, ce.evaluation_json, ce.effective_decision, ce.user_decision_override, ce.evaluation_status,
              d.action as user_action
       FROM candidate_evaluations ce
       LEFT JOIN opportunities o ON ce.job_hash = o.id
-      LEFT JOIN decisions d ON ce.person_id = d.person_id AND ce.job_hash = d.opportunity_id
+      LEFT JOIN latest_decisions d ON ce.person_id = d.person_id AND ce.job_hash = d.opportunity_id AND d.rn = 1
       WHERE ce.person_id = ?
       ORDER BY ce.quality_score DESC
       `,

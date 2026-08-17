@@ -146,7 +146,7 @@ function Shortlist() {
 
         if (o.reviewWorkflowState === "REVIEWED_UNKNOWN") {
           if (clientRec && clientRec.reviewedFingerprint === currentFingerprint) return false;
-          const action = o.userDecision?.userAction || o.decision;
+          const action = o.userDecision?.userAction || o.engineRecommendation?.engineVerdict;
           return action === "PURSUE" || action === "CONSIDER";
         }
 
@@ -156,7 +156,7 @@ function Shortlist() {
   );
 
   const shortlistedOps = useMemo(
-    () => remaining.filter((o) => o.decision === "PURSUE" || o.decision === "CONSIDER"),
+    () => remaining.filter((o) => o.engineRecommendation?.engineVerdict === "PURSUE" || o.engineRecommendation?.engineVerdict === "CONSIDER"),
     [remaining]
   );
 

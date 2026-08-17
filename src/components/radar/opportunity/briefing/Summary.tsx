@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
 
 interface SummaryProps {
   o: any;
   brief: any;
-  currentVerdict: string;
+  dossierState: DossierDecisionState;
   currentIndex: number;
   totalCount: number;
 }
@@ -11,7 +12,7 @@ interface SummaryProps {
 export function Summary({
   o,
   brief,
-  currentVerdict,
+  dossierState,
   currentIndex,
   totalCount,
 }: SummaryProps) {
@@ -30,15 +31,37 @@ export function Summary({
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <span className={`label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs ${
-              currentVerdict === "PURSUE"
-                ? "bg-signal text-white"
-                : currentVerdict === "CONSIDER"
-                ? "bg-caution text-white"
-                : "bg-muted text-muted-foreground"
-            }`}>
-              {currentVerdict}
-            </span>
+            {/* Primary RADAR Engine Recommendation Badge (Strict Fail-Closed) */}
+            {dossierState.engineVerdict ? (
+              <span className={`label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs ${
+                dossierState.engineVerdict === "PURSUE"
+                  ? "bg-signal text-white"
+                  : dossierState.engineVerdict === "CONSIDER"
+                  ? "bg-caution text-white"
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                {dossierState.engineVerdict}
+              </span>
+            ) : (
+              <span className="label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs bg-caution/20 text-caution border border-caution/30">
+                RECOMMENDATION UNAVAILABLE
+              </span>
+            )}
+
+            {/* Subordinate User Choice Badge */}
+            {dossierState.userDecisionState !== "NONE" && dossierState.userDecision && (
+              <span className={`label-mono font-mono text-xs px-2 py-0.5 rounded font-medium ${
+                dossierState.userDecisionState === "STALE"
+                  ? "bg-caution/20 text-caution border border-caution/30"
+                  : dossierState.userDecisionState === "UNVERIFIABLE"
+                  ? "bg-surface-raised border border-border text-muted-foreground"
+                  : "bg-surface-raised border border-border text-foreground font-semibold"
+              }`}>
+                YOU CHOSE: {dossierState.userDecision}
+                {dossierState.userDecisionState === "STALE" && " · STALE — RE-EVALUATED"}
+                {dossierState.userDecisionState === "UNVERIFIABLE" && " · FRESHNESS UNVERIFIED"}
+              </span>
+            )}
 
             <span className="label-mono font-mono text-xs font-semibold px-2 py-0.5 rounded bg-surface-raised border border-border text-foreground">
               RADAR SCORE: {brief.qualityScore != null ? `${brief.qualityScore}/100` : "N/A"}

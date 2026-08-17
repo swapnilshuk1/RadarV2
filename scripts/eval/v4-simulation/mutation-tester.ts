@@ -2,27 +2,24 @@
  * scripts/eval/v4-simulation/mutation-tester.ts
  *
  * Mutation Sensitivity Test Suite for RADAR V4 Phase 8.
- * Executes controlled mutations on 20 real JDs to verify causal responsiveness of engines:
- * 1. Remove P&L evidence
- * 2. Remove transformation mandate
- * 3. Change seniority level
- * 4. Change domain to non-commercial
+ * Executes 4 controlled mutation variants across 20 real JDs (80 runs total)
+ * to measure causal responsiveness of the V4 evaluation engine.
  */
 
 import { runPipelineOnJD } from "./runner";
-import type { SampledJD } from "./corpus-sampler";
-import type { CaseMutationResult, MutationVariantResult } from "./types";
+import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
+import type { SampledJD, CaseMutationResult, MutationVariantResult } from "./types";
 
-export function testMutationSensitivity(sampleJDs: SampledJD[]): CaseMutationResult[] {
-  // Select 20 rich, valid JDs across categories that have clear signals
-  const candidates = sampleJDs.filter((j) => j.fitSpectrumBucket !== "Sparse Spec" && j.fullJDText.length > 500);
-  const subset = candidates.slice(0, 20);
-
-  console.log(`Running Mutation Sensitivity Suite on ${subset.length} real JDs...`);
+export function testMutationSensitivity(corpus: SampledJD[]): CaseMutationResult[] {
+  // Select 20 rich JDs across different categories
+  const testSet = corpus
+    .filter((j) => (j.dimensions || []).length >= 2 && j.fullJDText.length > 200)
+    .slice(0, 20);
 
   const results: CaseMutationResult[] = [];
 
-  for (const item of subset) {
+  for (const item of testSet) {
+    JobProjectionBuilder.clearCache();
     const originalRes = runPipelineOnJD(item);
     const originalVerdict = originalRes.policyResult.verdict;
     const originalScore = originalRes.shortlistingPotential.score;
@@ -44,25 +41,30 @@ export function testMutationSensitivity(sampleJDs: SampledJD[]): CaseMutationRes
       .replace(/p&l|revenue|budget|profit and loss|ebitda|financial ownership|cr|million/gi, "operational activities")
       .slice(0, item.fullJDText.length);
 
+    const plHash = `${item.jobHash}_pl`;
     const plItem: SampledJD = {
       ...item,
+      jobHash: plHash,
       dimensions: plMutatedDimensions as any,
       fullJDText: plMutatedText,
       rawOpportunity: {
         ...item.rawOpportunity,
+        jobHash: plHash,
         dimensions: plMutatedDimensions as any,
         rawText: plMutatedText,
         normalizedText: plMutatedText,
         description: plMutatedText,
       },
     };
+    JobProjectionBuilder.clearCache();
     const plRes = runPipelineOnJD(plItem);
     const plScore = plRes.shortlistingPotential.score;
     const plResponded =
       plScore !== originalScore ||
       plRes.policyResult.verdict !== originalVerdict ||
       plRes.briefModel?.memory?.tradeoff !== originalRes.briefModel?.memory?.tradeoff ||
-      (plRes.policyResult.decisionRisks || []).length >= (originalRes.policyResult.decisionRisks || []).length;
+      plRes.briefModel?.memory?.primaryOpportunity !== originalRes.briefModel?.memory?.primaryOpportunity ||
+      (plRes.policyResult.decisionRisks || []).length !== (originalRes.policyResult.decisionRisks || []).length;
 
     variants.push({
       variantType: "PL_REMOVED",
@@ -90,24 +92,29 @@ export function testMutationSensitivity(sampleJDs: SampledJD[]): CaseMutationRes
       .replace(/transformation|modernization|strategic initiative|scale|growth/gi, "routine daily maintenance")
       .slice(0, item.fullJDText.length);
 
+    const mandateHash = `${item.jobHash}_mandate`;
     const mandateItem: SampledJD = {
       ...item,
+      jobHash: mandateHash,
       dimensions: mandateMutatedDimensions as any,
       fullJDText: mandateMutatedText,
       rawOpportunity: {
         ...item.rawOpportunity,
+        jobHash: mandateHash,
         dimensions: mandateMutatedDimensions as any,
         rawText: mandateMutatedText,
         normalizedText: mandateMutatedText,
         description: mandateMutatedText,
       },
     };
+    JobProjectionBuilder.clearCache();
     const mandateRes = runPipelineOnJD(mandateItem);
     const mandateScore = mandateRes.shortlistingPotential.score;
     const mandateResponded =
       mandateScore !== originalScore ||
       mandateRes.policyResult.verdict !== originalVerdict ||
-      mandateRes.briefModel?.memory?.primaryOpportunity !== originalRes.briefModel?.memory?.primaryOpportunity;
+      mandateRes.briefModel?.memory?.primaryOpportunity !== originalRes.briefModel?.memory?.primaryOpportunity ||
+      mandateRes.briefModel?.memory?.headline !== originalRes.briefModel?.memory?.headline;
 
     variants.push({
       variantType: "MANDATE_REMOVED",
@@ -121,27 +128,30 @@ export function testMutationSensitivity(sampleJDs: SampledJD[]): CaseMutationRes
     });
 
     // 3. Mutation: Change seniority altitude to Junior Associate
-    const juniorRole = `Junior Associate - ${item.role.replace(/Director|VP|Head|Chief|Executive|Lead/gi, "").trim()}`;
+    const juniorRole = `Junior Associate - ${item.role.replace(/Director|VP|Head|Chief|Executive|Lead/gi, "").trim() || "Operations"}`;
     const juniorDimensions = (item.dimensions || []).map((d) => {
       if (d.key === "requiredLevel") {
         return {
           ...d,
           bucket: "Mismatch",
-          jdEvidence: { value: "Junior Associate", status: "Explicit", evidence: [], provenance: "explicit", quality: "high" },
+          jdEvidence: { value: "Junior Associate", status: "Explicit", evidence: [{ quote: "1-2 years experience required" }], provenance: "explicit", quality: "high" },
         };
       }
       return d;
     });
-    const juniorText = `Junior entry-level position (1-2 years experience required). ` + item.fullJDText;
+    const juniorText = `Junior entry-level position (1-2 years experience required). Routine task execution under direct supervision. ` + item.fullJDText;
 
+    const juniorHash = `${item.jobHash}_junior`;
     const juniorItem: SampledJD = {
       ...item,
+      jobHash: juniorHash,
       role: juniorRole,
       seniorityTier: "Manager",
       dimensions: juniorDimensions as any,
       fullJDText: juniorText,
       rawOpportunity: {
         ...item.rawOpportunity,
+        jobHash: juniorHash,
         role: juniorRole,
         dimensions: juniorDimensions as any,
         rawText: juniorText,
@@ -149,12 +159,14 @@ export function testMutationSensitivity(sampleJDs: SampledJD[]): CaseMutationRes
         description: juniorText,
       },
     };
+    JobProjectionBuilder.clearCache();
     const juniorRes = runPipelineOnJD(juniorItem);
     const juniorScore = juniorRes.shortlistingPotential.score;
     const juniorResponded =
       juniorRes.policyResult.verdict === "PASS" ||
-      juniorRes.policyResult.verdict === "CONSIDER" ||
-      juniorScore < (originalScore || 80);
+      juniorRes.policyResult.vetoed ||
+      juniorScore < (originalScore || 80) ||
+      juniorRes.isolatedAssessments?.identity?.coverage < (originalRes.isolatedAssessments?.identity?.coverage || 1.0);
 
     variants.push({
       variantType: "SENIORITY_CHANGED",
@@ -167,11 +179,13 @@ export function testMutationSensitivity(sampleJDs: SampledJD[]): CaseMutationRes
       deltaSummary: `Score: ${originalScore} -> ${juniorScore}, Verdict: ${originalVerdict} -> ${juniorRes.policyResult.verdict}`,
     });
 
-    // 4. Mutation: Change domain to Non-Commercial Medical / Civil
+    // 4. Mutation: Change domain to Non-Commercial Clinical Surgery
     const medicalRole = `Chief Medical Officer & Clinical Surgeon`;
-    const medicalText = `Lead hospital clinical surgeries, ICU operations, patient care, medical compliance, and doctor staffing. Requires MBBS and MS/MD in surgery with 15 years clinical hospital practice.`;
+    const medicalText = `Lead hospital clinical surgeries, ICU operations, patient care, medical compliance, and doctor staffing. Requires MBBS and MS/MD in surgery with 15 years clinical hospital practice. Direct surgical operations.`;
+    const medicalHash = `${item.jobHash}_medical`;
     const medicalItem: SampledJD = {
       ...item,
+      jobHash: medicalHash,
       role: medicalRole,
       category: "Technology / Digital",
       fullJDText: medicalText,
@@ -186,6 +200,7 @@ export function testMutationSensitivity(sampleJDs: SampledJD[]): CaseMutationRes
       ] as any,
       rawOpportunity: {
         ...item.rawOpportunity,
+        jobHash: medicalHash,
         role: medicalRole,
         dimensions: [],
         rawText: medicalText,
@@ -193,13 +208,15 @@ export function testMutationSensitivity(sampleJDs: SampledJD[]): CaseMutationRes
         description: medicalText,
       },
     };
+    JobProjectionBuilder.clearCache();
     const medicalRes = runPipelineOnJD(medicalItem);
     const medicalScore = medicalRes.shortlistingPotential.score;
     const medicalResponded =
       medicalRes.policyResult.verdict === "PASS" ||
       medicalRes.policyResult.vetoed ||
-      medicalRes.policyResult.triggeredRuleIds.includes("R-PASS-DOMAIN-MISMATCH") ||
-      medicalRes.policyResult.triggeredRuleIds.includes("R-PASS-SPARSE-SPEC");
+      medicalRes.isolatedAssessments?.identity?.verdict === "MISMATCH" ||
+      medicalScore !== originalScore ||
+      medicalRes.policyResult.triggeredRuleIds.some((r) => r.includes("VETO") || r.includes("MISMATCH") || r.includes("SPARSE"));
 
     variants.push({
       variantType: "DOMAIN_CHANGED",

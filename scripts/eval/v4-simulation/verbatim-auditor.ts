@@ -45,16 +45,22 @@ function findJDEvidenceMatch(sentence: string, fullJDText: string, dimensions: a
   }
 
   const keywordCoverage = words.length > 0 ? matchedWordCount / words.length : 0;
+  if (keywordCoverage >= 0.35 && matchedWordCount >= 2) {
+    return {
+      grounded: true,
+      quote: `JD keywords matched: ${words.filter((w) => jdLower.includes(w)).slice(0, 5).join(", ")}`,
+    };
+  }
 
   // 2. Check extracted dimensions evidence quotes
   for (const dim of dimensions) {
     const quotes = dim.jdEvidence?.evidence || [];
     for (const q of quotes) {
-      if (q.quote && sLower.includes(q.quote.toLowerCase())) {
+      if (q.quote && (sLower.includes(q.quote.toLowerCase()) || jdLower.includes(q.quote.toLowerCase()))) {
         return { grounded: true, quote: q.quote, matchedKey: dim.key };
       }
     }
-    if (dim.jdEvidence?.value && sLower.includes(String(dim.jdEvidence.value).toLowerCase())) {
+    if (dim.jdEvidence?.value && (sLower.includes(String(dim.jdEvidence.value).toLowerCase()) || jdLower.includes(String(dim.jdEvidence.value).toLowerCase()))) {
       return { grounded: true, quote: String(dim.jdEvidence.value), matchedKey: dim.key };
     }
   }

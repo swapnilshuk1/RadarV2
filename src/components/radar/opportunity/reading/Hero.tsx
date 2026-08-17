@@ -1,10 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { getFocusTopic } from "@/routes/opportunity.$jobHash";
 
+import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
+
 interface HeroProps {
   o: any;
   brief: any;
-  currentVerdict: string;
+  dossierState: DossierDecisionState;
   currentIndex: number;
   totalCount: number;
   jobProj: any;
@@ -14,7 +16,7 @@ interface HeroProps {
 export function Hero({
   o,
   brief,
-  currentVerdict,
+  dossierState,
   currentIndex,
   totalCount,
   jobProj,
@@ -38,29 +40,51 @@ export function Hero({
           <div className="space-y-6">
             {/* Badges, Scores & Verbs */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs ${
-                currentVerdict === "PURSUE"
-                  ? "bg-signal text-white"
-                  : currentVerdict === "CONSIDER"
-                  ? "bg-caution text-white"
-                  : "bg-muted text-muted-foreground"
-              }`}>
-                {currentVerdict}
-              </span>
+              {/* Primary RADAR Engine Recommendation Badge (Strict Fail-Closed) */}
+              {dossierState.engineVerdict ? (
+                <span className={`label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs ${
+                  dossierState.engineVerdict === "PURSUE"
+                    ? "bg-signal text-white"
+                    : dossierState.engineVerdict === "CONSIDER"
+                    ? "bg-caution text-white"
+                    : "bg-muted text-muted-foreground"
+                }`}>
+                  {dossierState.engineVerdict}
+                </span>
+              ) : (
+                <span className="label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs bg-caution/20 text-caution border border-caution/30">
+                  RECOMMENDATION UNAVAILABLE
+                </span>
+              )}
+
+              {/* Subordinate User Choice Badge */}
+              {dossierState.userDecisionState !== "NONE" && dossierState.userDecision && (
+                <span className={`label-mono font-mono text-xs px-2 py-1 rounded font-medium ${
+                  dossierState.userDecisionState === "STALE"
+                    ? "bg-caution/20 text-caution border border-caution/30"
+                    : dossierState.userDecisionState === "UNVERIFIABLE"
+                    ? "bg-surface-raised border border-border text-muted-foreground"
+                    : "bg-surface-raised border border-border text-foreground font-semibold"
+                }`}>
+                  YOU CHOSE: {dossierState.userDecision}
+                  {dossierState.userDecisionState === "STALE" && " · STALE — RE-EVALUATED"}
+                  {dossierState.userDecisionState === "UNVERIFIABLE" && " · FRESHNESS UNVERIFIED"}
+                </span>
+              )}
 
               <span className="label-mono font-mono text-xs font-semibold px-2 py-1 rounded bg-surface-raised border border-border text-foreground">
                 RADAR SCORE: {brief.qualityScore != null ? `${brief.qualityScore}/100` : "N/A"}
               </span>
 
               {/* Coexistence Rationale Flag if Quality Score diverges from Decision Verb */}
-              {brief.qualityScore != null && brief.qualityScore >= 65 && currentVerdict !== "PURSUE" && (
+              {brief.qualityScore != null && brief.qualityScore >= 65 && dossierState.engineVerdict && dossierState.engineVerdict !== "PURSUE" && (
                 <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-caution/20 text-caution font-medium border border-caution/30">
-                  {brief.qualityScore >= 80 && currentVerdict === "PASS"
+                  {brief.qualityScore >= 80 && dossierState.engineVerdict === "PASS"
                     ? "Identity / Gate Filter"
                     : "High Friction / Location"}
                 </span>
               )}
-              {brief.qualityScore != null && brief.qualityScore < 50 && currentVerdict === "CONSIDER" && (
+              {brief.qualityScore != null && brief.qualityScore < 50 && dossierState.engineVerdict === "CONSIDER" && (
                 <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-caution/20 text-caution font-medium border border-caution/30">
                   Easy Trap Protection
                 </span>
