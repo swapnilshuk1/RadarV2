@@ -16,6 +16,7 @@
  * Does NOT recompute scores or change DecisionPolicy semantics.
  */
 
+import { truncateWordBoundary } from "./SemanticNaturalLanguageResolver";
 import type { RecommendationRecord } from "../record";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
 
@@ -142,9 +143,9 @@ export function synthesizeCapabilityImportance(
   // Identify strongest alignment
   let strongestAlignment: string;
   if (coreMatches.length > 0 && coreMatches[0].confidence >= 0.8) {
-    strongestAlignment = `Strongest evidence in core mandate: ${coreMatches[0].candidateCapability?.slice(0, 60) || "strategic capabilities"}...`;
+    strongestAlignment = `Strongest evidence in core mandate: ${truncateWordBoundary(coreMatches[0].candidateCapability || "strategic capabilities", 60)}`;
   } else if (executionMatches.length > 0 && executionMatches[0].confidence >= 0.7) {
-    strongestAlignment = `Strong evidence in execution: ${executionMatches[0].candidateCapability?.slice(0, 60) || "delivery capabilities"}...`;
+    strongestAlignment = `Strong evidence in execution: ${truncateWordBoundary(executionMatches[0].candidateCapability || "delivery capabilities", 60)}`;
   } else if (techMatches.length > 0) {
     strongestAlignment = `Demonstrated technology/platform experience`;
   } else {

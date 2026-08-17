@@ -29,6 +29,13 @@ export type EffectiveDecision =
   | "ENGINE_CONSIDER"      // Engine CONSIDER, User NONE
   | "NOT_EVALUABLE";       // Engine SPARSE_SPEC / Insufficient signals
 
+export interface DecisionDriver {
+  readonly factor: string;
+  readonly impact: "positive" | "negative";
+  readonly strength: "high" | "medium" | "low";
+  readonly evidence?: string;
+}
+
 export interface EngineRecommendationV4 {
   readonly jobHash: string;
   readonly evaluationFingerprint: string;
@@ -39,12 +46,14 @@ export interface EngineRecommendationV4 {
   readonly parsingConfidence: number;   // 0.0..1.0
   readonly evaluatedAt: string;
   readonly triggeredRuleIds?: string[];
-  readonly decisionRisks?: any[];
-  readonly decisionDrivers?: any[];
+  readonly decisionRisks?: DecisionDriver[];
+  readonly decisionDrivers?: DecisionDriver[];
   readonly relativeDifferentiator?: string;
   readonly opportunityScoreConfidence?: "HIGH" | "LOW";
   readonly opportunityScoreSource?: "EXPLICIT" | "FALLBACK";
   readonly trajectoryUpside?: string;
+  readonly careerRegressionScore?: number | null;
+  readonly careerValueProtection?: string | null;
 }
 
 export interface UserDecisionStateV4 {

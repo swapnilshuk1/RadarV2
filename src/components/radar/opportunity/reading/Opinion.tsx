@@ -25,7 +25,7 @@ export function Opinion({ brief, engineVerdict }: OpinionProps) {
         </span>
       </div>
       <p className="font-serif italic text-2xl leading-relaxed text-foreground font-normal">
-        {brief.structuredSections.synthesis.thesis}
+        {brief.pursuitStrategy?.bottomLine || brief.explanation?.bottomLine || brief.structuredSections.synthesis.thesis}
       </p>
     </div>
   );

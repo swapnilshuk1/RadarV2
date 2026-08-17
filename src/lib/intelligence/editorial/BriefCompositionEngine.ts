@@ -1,5 +1,10 @@
 import type { Opportunity } from "../../../data/opportunity-fixtures";
-import { EditorialContextBuilder } from "./EditorialContext";
+import { EditorialContextBuilder, type EditorialContext } from "./EditorialContext";
+import { ExecutiveThesisBuilder, type ExecutiveThesis } from "./ExecutiveThesisBuilder";
+import { PrimaryReasonResolver } from "./PrimaryReasonResolver";
+import type { ExecutiveDecisionExplanation } from "./ExecutiveDecisionExplanation";
+import { PursuitStrategyResolver } from "./PursuitStrategyResolver";
+import type { PursuitStrategy } from "./PursuitStrategy";
 import { EditorialPatternSelector } from "./EditorialPatternSelector";
 import { NarrativeComposer } from "./NarrativeComposer";
 import { SemanticNaturalLanguageResolver, unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
@@ -57,6 +62,10 @@ export interface ProofPointItem {
 }
 
 export interface BriefModel {
+  editorialContext: EditorialContext;
+  executiveThesis: ExecutiveThesis;
+  explanation: ExecutiveDecisionExplanation;
+  pursuitStrategy: PursuitStrategy;
   memory: BriefMemory;
   structuredSections: {
     context: { thesis: string; body?: string; transition?: string };
@@ -114,39 +123,42 @@ export interface BriefModel {
 }
 
 export class BriefCompositionEngine {
-  public static compose(opportunity: Opportunity, options?: { brevityPolicy?: any; bypassHistory?: boolean }): BriefModel {
+  public static compose(opportunity: Opportunity, options?: { brevityPolicy?: { maxUnknowns?: number; maxEvidence?: number; maxDeliverables?: number }; bypassHistory?: boolean }): BriefModel {
     const policy = options?.brevityPolicy || {
       maxUnknowns: 3,
       maxEvidence: 3,
       maxDeliverables: 3,
     };
 
-    const score = opportunity.recommendationResult?.score ?? 50;
-    const certaintyPct = Math.min(95, Math.max(60, score + 5));
+    // Authoritative Projection Layer
+    const editorialContext = EditorialContextBuilder.build(opportunity);
+    const executiveThesis = ExecutiveThesisBuilder.build(editorialContext, opportunity);
+    const explanation = executiveThesis.explanation || PrimaryReasonResolver.resolve(editorialContext, opportunity);
+    const pursuitStrategy = PursuitStrategyResolver.resolve(explanation, editorialContext);
+
+    // Strict alignment with authoritative engine verdict (null if unevaluated)
+    const engineVerdict = editorialContext.engineVerdict;
+    const decision: BriefMemory["decision"] =
+      engineVerdict === "PURSUE" ? "PURSUE" : engineVerdict === "PASS" ? "PASS" : "CONSIDER";
+
+    const score = editorialContext.rawScore;
     const weights = this.calculateWeights(opportunity);
     const strategy = this.deriveStrategy(weights, opportunity);
 
-    const engineVerdict = opportunity.engineRecommendation?.engineVerdict ?? opportunity.decision;
-    const decision: BriefMemory["decision"] =
-      engineVerdict === "PURSUE"
-        ? "PURSUE"
-        : engineVerdict === "CONSIDER"
-        ? "CONSIDER"
-        : "PASS";
-
-    // Factual Evidence-Grounded Capabilities - parsed through the Executive Knowledge Normalization Pipeline
+    // Factual Evidence-Grounded Capabilities - parsed through EKB
     const capDimensions = (opportunity.dimensions || [])
-      .filter((d: any) => d.key === "technologyStack" || d.key === "functionalScope" || d.key === "mandate");
+      .filter((d: Record<string, unknown>) => d.key === "technologyStack" || d.key === "functionalScope" || d.key === "mandate");
 
     const normalizedCaps = ExecutiveKnowledgeNormalizationPipeline.normalize(capDimensions);
-    const resolvedCapText = normalizedCaps.map((c) => c.label).join(", ");
-    
-    const primaryCap = normalizedCaps[0]?.label || opportunity.role;
-    const secondaryCap = normalizedCaps[1]?.label || "Commercial Strategy";
-    const tertiaryCap = normalizedCaps[2]?.label || "Execution Operations";
+
+    const primaryCap = normalizedCaps[0]?.label || "Growth Architecture";
+    const secondaryCap = normalizedCaps[1]?.label || "Commercial Transformation";
+    const tertiaryCap = normalizedCaps[2]?.label || "Executive Governance";
+
+    const resolvedCapText = [primaryCap, secondaryCap].filter(Boolean).join(" & ");
 
     const retentionSentence = resolvedCapText
-      ? `${opportunity.role} mandate at ${opportunity.company} focused on ${resolvedCapText}.`
+      ? `${opportunity.role} at ${opportunity.company} targeting ${resolvedCapText}.`
       : `${opportunity.role} mandate at ${opportunity.company} in ${opportunity.location || "target location"}.`;
 
     let primaryOpportunity = decision === "PURSUE"
@@ -160,8 +172,7 @@ export class BriefCompositionEngine {
     let recommendedAction = SemanticNaturalLanguageResolver.resolveActionRecommendation(decision, opportunity.role, opportunity.company);
 
     try {
-      const ctx = EditorialContextBuilder.build(opportunity);
-      const pattern = EditorialPatternSelector.select(ctx, opportunity.jobHash, options?.bypassHistory);
+      const pattern = EditorialPatternSelector.select(editorialContext, opportunity.jobHash, options?.bypassHistory);
       const composed = NarrativeComposer.compose(pattern, opportunity);
 
       if (composed.decisionGuidance.proceedIf) {
@@ -177,14 +188,12 @@ export class BriefCompositionEngine {
       console.error("BriefCompositionEngine narrative composition fallback:", composedErr);
     }
 
-    const triggeredRuleIds = opportunity.engineRecommendation?.triggeredRuleIds || [];
     const isEasyTrapTriggered =
-      opportunity.recommendationResult?.policyId === "R-CONSIDER-CAREER-VALUE-PROTECTION" ||
-      opportunity.recommendationResult?.vetoReason === "R-CONSIDER-CAREER-VALUE-PROTECTION" ||
-      triggeredRuleIds.includes("R-CONSIDER-CAREER-VALUE-PROTECTION") ||
-      opportunity.engineRecommendation?.trajectoryUpside === "Limited Career Upside";
+      executiveThesis.careerValueSignal === "LIMITED CAREER UPSIDE" ||
+      executiveThesis.careerValueSignal === "CAREER REGRESSION / PROTECTION" ||
+      editorialContext.careerValue.triggeredRuleIds.includes("R-CONSIDER-CAREER-VALUE-PROTECTION");
 
-    const relativeDiff = opportunity.engineRecommendation?.relativeDifferentiator;
+    const relativeDiff = editorialContext.careerValue.relativeDifferentiator;
 
     const tradeoff = isEasyTrapTriggered
       ? (relativeDiff || "Evaluating strong candidate profile alignment against limited career value step-up.")
@@ -197,7 +206,7 @@ export class BriefCompositionEngine {
     const whyNow = `${opportunity.company} is hiring for ${opportunity.role} in ${opportunity.location || "target region"} to drive strategic initiatives.`;
 
     const memory: BriefMemory = {
-      headline: `${decision}: ${opportunity.role} at ${opportunity.company}`,
+      headline: executiveThesis.headline,
       retentionSentence,
       primaryOpportunity,
       primaryRisk,
@@ -208,22 +217,17 @@ export class BriefCompositionEngine {
       whyNow,
     };
 
-    const headline = `${strategy.focusTitle}: ${strategy.heroAnchor}`;
-
-    // Qualitative Judgments over Pseudo-Precision
-    const explicitCount = (opportunity.dimensions || []).filter((d: any) => d.jdEvidence?.status === "Explicit").length;
-    const evidenceQuality: BriefModel["evidenceQuality"] =
-      explicitCount >= 3 ? "High Evidence Quality" : explicitCount >= 1 ? "Medium Evidence Quality" : "Inferred Evidence";
+    const evidenceQuality = editorialContext.evidence?.evidenceQuality || "Inferred Evidence";
 
     const qualitativeRecommendation: BriefModel["qualitativeRecommendation"] =
-      decision === "PURSUE" ? "Strong Pursue Recommendation" : decision === "CONSIDER" ? "Conditional Consideration" : "Strategic Pass";
+      engineVerdict === "PURSUE" ? "Strong Pursue Recommendation" : engineVerdict === "CONSIDER" ? "Conditional Consideration" : "Strategic Pass";
 
     const whyNotStronger = isEasyTrapTriggered
-      ? "Policy Engine flagged material career-value regression: high accessibility/match score, but limited long-term trajectory step-up."
-      : score >= 75
+      ? "Policy Engine flagged material career-value protection rule: high accessibility/match score, but limited long-term trajectory step-up."
+      : engineVerdict === "PURSUE"
       ? `This role aligns strongly with target executive capabilities and leadership scope for ${opportunity.role}.`
-      : score >= 60
-      ? `Operating scope at ${opportunity.company} is scoped at regional Head level rather than global C-suite, limiting immediate P&L scale.`
+      : engineVerdict === "CONSIDER"
+      ? `Operating scope at ${opportunity.company} is scoped at regional execution rather than global C-suite authority.`
       : "Domain divergence or organizational level regression requires significant transition overhead.";
 
     const oneMinuteTLDR: OpportunityInOneMinute = {
@@ -239,18 +243,18 @@ export class BriefCompositionEngine {
           ? [`Career Trajectory Risk: High shortlisting potential but offers limited career capital step-up relative to your current altitude.`]
           : []),
         `Strategic Risk: Evaluate if the mandate carries genuine P&L authority or functions merely as an operational execution arm.`,
-        `Execution Risk: Verify if the team budget and headcount are formally approved for the requested 24-month expansion targets.`,
+        `Execution Risk: Verify if the team budget and headcount are formally approved for the requested expansion targets.`,
         `Market Risk: Assess if the organization has moved beyond founder-led decision making into scalable governance.`,
       ],
       bottomLine: isEasyTrapTriggered
         ? "Caution: High interview probability, but evaluate if the career step-up justifies the transition."
-        : decision === "PURSUE" ? "Worth pursuing." : decision === "CONSIDER" ? "Verify scope before applying." : "Strategic Pass.",
+        : engineVerdict === "PURSUE" ? "Worth pursuing." : engineVerdict === "CONSIDER" ? "Verify scope before applying." : "Strategic Pass.",
     };
 
     const qualitativeReasoningChain: QualitativeReasoningRow[] = [
       {
         layer: "Identity Alignment",
-        ratingLabel: score >= 75 ? "Exceptional" : "Strong Alignment",
+        ratingLabel: engineVerdict === "PURSUE" ? "Exceptional" : "Strong Alignment",
         becausePoints: [
           `${opportunity.role} Scoping`,
           `${opportunity.company} Mandate`,
@@ -260,7 +264,7 @@ export class BriefCompositionEngine {
       },
       {
         layer: "Capability Coverage",
-        ratingLabel: score >= 75 ? "Exceptional" : "Strong Alignment",
+        ratingLabel: engineVerdict === "PURSUE" ? "Exceptional" : "Strong Alignment",
         becausePoints: [
           `${primaryCap} (Direct Match)`,
           `${secondaryCap} (Verified)`,
@@ -272,7 +276,7 @@ export class BriefCompositionEngine {
         layer: "Career Capital Value",
         ratingLabel: isEasyTrapTriggered
           ? "Limited Upside"
-          : score >= 70 ? "Strong Alignment" : "Adjacent Alignment",
+          : engineVerdict === "PURSUE" ? "Strong Alignment" : "Adjacent Alignment",
         becausePoints: isEasyTrapTriggered
           ? [
               `High Accessibility / Profile Match`,
@@ -327,9 +331,9 @@ export class BriefCompositionEngine {
 
     let topUnknownPreview: string | undefined = "Critical Unknown: Compensation target not disclosed";
 
-    const reportingDim = opportunity.dimensions?.find((d: any) => d.key === "reportingLine");
-    const reportingVal = unwrapEvidenceValue(reportingDim?.jdEvidence?.value);
-    const reportingQuestion = reportingDim?.jdEvidence?.status === "Inferred" && reportingVal
+    const reportingDim = (opportunity.dimensions as Record<string, unknown>[] | undefined)?.find((d) => d.key === "reportingLine");
+    const reportingVal = unwrapEvidenceValue((reportingDim?.jdEvidence as Record<string, unknown> | undefined)?.value);
+    const reportingQuestion = (reportingDim?.jdEvidence as Record<string, unknown> | undefined)?.status === "Inferred" && reportingVal
       ? `Does this role report directly to ${reportingVal} or regional leadership?`
       : "Does this role report directly to the CEO, C-suite, or Regional VP?";
 
@@ -351,14 +355,14 @@ export class BriefCompositionEngine {
       },
     ].slice(0, policy.maxUnknowns);
 
-    if (opportunity.dimensions?.some((d: any) => d.key === "reportingLine" && d.bucket === "Missing")) {
+    if ((opportunity.dimensions as Record<string, unknown>[] | undefined)?.some((d) => d.key === "reportingLine" && d.bucket === "Missing")) {
       topUnknownPreview = "Unknown: Reporting line hierarchy";
     }
 
-    const explicitQuotes = (opportunity.dimensions || [])
-      .flatMap((d: any) => d.jdEvidence?.evidence || [])
-      .map((e: any) => e.quote)
-      .filter((q: string) => q && q.length > 15 && q.length < 120);
+    const explicitQuotes = (opportunity.dimensions as Record<string, unknown>[] || [])
+      .flatMap((d) => ((d.jdEvidence as Record<string, unknown> | undefined)?.evidence as Array<{ quote?: string }> || []))
+      .map((e) => e.quote)
+      .filter((q): q is string => Boolean(q && q.length > 15 && q.length < 120));
 
     const deliverablesWork = [
       explicitQuotes[0] || `Drive ${opportunity.role} strategy and execution roadmap at ${opportunity.company}.`,
@@ -407,86 +411,11 @@ export class BriefCompositionEngine {
       certaintyGuidance = "Solid functional alignment. Verify reporting line and requirements during screening.";
     }
 
-    const sections: BriefSectionMeta[] = [
-      {
-        id: "STRATEGIC_CAREER_VALUE",
-        name: "Strategic Career Value",
-        eyebrow: "STRATEGIC CAREER VALUE",
-        numeral: "I",
-        title: "Why this role is interesting",
-        expression: "Key strategic levers and career capital upside.",
-      },
-      {
-        id: "EXPLAINABLE_REASONING",
-        name: "Explainable Reasoning",
-        eyebrow: "EXPLAINABLE REASONING",
-        numeral: "II",
-        title: "Why this recommendation?",
-        expression: "Structured breakdown of identity, capability, and value.",
-      },
-      {
-        id: "EXECUTIVE_DOSSIER",
-        name: "Executive Dossier",
-        eyebrow: "EXECUTIVE DOSSIER",
-        numeral: "III",
-        title: `Yes — but for a very specific reason.`,
-        expression: "Synthesis of mandate, requirements, and key risks.",
-      },
-      {
-        id: "MANDATE_DELIVERABLES",
-        name: "Mandate Deliverables",
-        eyebrow: "MANDATE DELIVERABLES",
-        numeral: "IV",
-        title: "What will you be expected to deliver?",
-        expression: "Operational deliverables and expected business value.",
-      },
-      {
-        id: "CANDIDATE_MATCH",
-        name: "Candidate Match",
-        eyebrow: "CANDIDATE MATCH",
-        numeral: "V",
-        title: "The Evidence for Alignment",
-        expression: "Direct evidence and graph transferability proof points.",
-      },
-      {
-        id: "REASONING_AND_RISKS",
-        name: "Reasoning & Risks",
-        eyebrow: "REASONING & RISKS",
-        numeral: "VI",
-        title: "Clarify these before the call",
-        expression: "Key unknowns and critical screening questions.",
-      },
-      {
-        id: "DECISION_SENSITIVITY",
-        name: "Decision Sensitivity",
-        eyebrow: "DECISION SENSITIVITY",
-        numeral: "VII",
-        title: "What would change this decision?",
-        expression: "Explicit boundaries that shift Pursue to Pass.",
-      },
-      {
-        id: "SUPPORTING_EVIDENCE",
-        name: "Supporting Evidence",
-        eyebrow: "SUPPORTING EVIDENCE",
-        numeral: "VIII",
-        title: "Evidence behind this recommendation",
-        expression: "Direct excerpts and extracted job dimensions.",
-      },
-      {
-        id: "DOSSIER_LEDGER",
-        name: "Dossier Ledger",
-        eyebrow: "DOSSIER LEDGER",
-        numeral: "IX",
-        title: "Experience & claims inventory",
-        expression: "Verified candidate experience signals.",
-      },
-    ];
-
-    const executiveOpinion = decision === "PURSUE"
+    const executiveOpinion = engineVerdict === "PURSUE"
       ? `This is the strongest commercial transformation mandate on your desk this month. It directly compounds your proven growth leadership record at this operating scale rather than asking you to reinvent it. I would invest time here immediately—but only after confirming board-level reporting is formally approved at ${opportunity.company}.`
       : isEasyTrapTriggered
       ? `While your profile aligns strongly with this mandate (giving you high shortlisting probability), RADAR's policy engine flags limited career value step-up relative to your current trajectory. Evaluate carefully whether this opportunity advances your long-term career capital or represents a lateral/decelerating step before allocating interview bandwidth.`
-      : decision === "CONSIDER"
+      : engineVerdict === "CONSIDER"
       ? `A solid tactical growth opportunity, though the operating scale sits closer to regional execution than global strategy. Your background makes you highly competitive, but you must clarify during screening if the mandate carries genuine P&L authority or functions merely as an operational extension.`
       : `While ${opportunity.company} is a visible enterprise brand, the required altitude represents a structural regression from your verified career capital. I recommend a strategic pass on this mandate to preserve search bandwidth for opportunities offering true board-level commercial ownership.`;
 
@@ -500,13 +429,7 @@ export class BriefCompositionEngine {
         transition: "It does—provided the first 18 months look like this."
       },
       synthesis: {
-        thesis: decision === "PURSUE" 
-          ? "Proceed. The strategic upside outweighs the remaining uncertainty, provided the reporting structure confirms genuine commercial ownership."
-          : isEasyTrapTriggered
-          ? "Consider with caution. High interview probability due to profile match, but offers limited long-term career step-up relative to your current trajectory."
-          : decision === "CONSIDER"
-          ? "Proceed with caution. The domain alignment is strong, but the actual P&L authority must be verified before investing significant time."
-          : "Pass. The required altitude represents a structural regression from your current career velocity."
+        thesis: executiveThesis.primaryReason,
       },
       evidence: {
         thesis: `Why you are well-positioned: You possess proven growth authority and direct domain match for this ${opportunity.role} seat.`,
@@ -520,12 +443,16 @@ export class BriefCompositionEngine {
       reflection: `Consider whether this market trajectory strengthens your executive record over a 3-year horizon.`,
       action: `Validate these operational assumptions during your first recruiter conversation before committing to full interviews.`,
       observation: `The recommendation remains strong unless commercial ownership proves narrower than expected.`,
-      positioning: decision === "PURSUE" 
+      positioning: engineVerdict === "PURSUE" 
         ? "Your experience aligns directly. Focus your narrative on your track record of scaling commercial governance." 
         : "Ensure your resume explicitly highlights P&L responsibility to bridge gaps in functional domain coverage."
     };
 
     return {
+      editorialContext,
+      executiveThesis,
+      explanation,
+      pursuitStrategy,
       executiveOpinion,
       directives,
       memory,

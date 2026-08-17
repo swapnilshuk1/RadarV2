@@ -1,4 +1,19 @@
 /**
+ * Safely truncates a string at a word boundary up to maxLen characters.
+ */
+export function truncateWordBoundary(str: string, maxLen: number = 60): string {
+  if (!str) return "";
+  const trimmed = str.trim();
+  if (trimmed.length <= maxLen) return trimmed;
+  const sub = trimmed.slice(0, maxLen);
+  const lastSpace = sub.lastIndexOf(" ");
+  if (lastSpace > 20) {
+    return sub.slice(0, lastSpace).replace(/[,.;:]$/, "") + "...";
+  }
+  return sub.replace(/[,.;:]$/, "") + "...";
+}
+
+/**
  * Cleans up raw ontology constants (e.g. PL_OWNERSHIP -> P&L Ownership, ON_SITE -> On-site)
  */
 export function cleanOntologyConstants(val: string): string {

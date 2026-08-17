@@ -251,6 +251,15 @@ export class OpportunityService {
         qualityScore: p.record.vetoed ? null : (p.record.qualityScore !== null && p.record.qualityScore !== undefined ? Math.round(p.record.qualityScore) : null),
         parsingConfidence: p.record.confidences?.parsing ?? (p.record.confidence ?? 0.8),
         evaluatedAt: new Date().toISOString(),
+        triggeredRuleIds: p.record.triggeredRuleIds || [],
+        decisionRisks: p.record.decisionRisks || [],
+        decisionDrivers: p.record.decisionDrivers || [],
+        relativeDifferentiator: p.record.relativeDifferentiator || undefined,
+        trajectoryUpside: p.record.trajectoryUpside || undefined,
+        careerRegressionScore: (p.record as any).careerRegressionScore ?? null,
+        careerValueProtection: (p.record as any).careerValueProtection ?? null,
+        opportunityScoreConfidence: p.record.opportunityScoreConfidence,
+        opportunityScoreSource: p.record.opportunityScoreSource,
       };
 
       const userState: UserDecisionStateV4 | null = rawUser ? {

@@ -51,7 +51,7 @@ export type RecommendationRecord = Readonly<{
   vetoReason?: string | null; // Triggered rule ID (e.g. "G-SUB-TIER-MANDATE-VETO")
   claimPermissions?: ClaimPermissions; // Editorial claim authorization tokens
   confidence?: number;
-  factors?: any;
+  factors?: Record<string, unknown>;
   /** P0-A: Evidence grounding state per dimension key */
   evidenceGrounding?: Record<string, import("@/domain/evidence").EvidenceGroundingState>;
   decisionSummary: DecisionFactors;

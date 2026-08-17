@@ -76,17 +76,10 @@ export function Hero({
                 RADAR SCORE: {brief.qualityScore != null ? `${brief.qualityScore}/100` : "N/A"}
               </span>
 
-              {/* Coexistence Rationale Flag if Quality Score diverges from Decision Verb */}
-              {brief.qualityScore != null && brief.qualityScore >= 65 && dossierState.engineVerdict && dossierState.engineVerdict !== "PURSUE" && (
-                <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-caution/20 text-caution font-medium border border-caution/30">
-                  {brief.qualityScore >= 80 && dossierState.engineVerdict === "PASS"
-                    ? "Identity / Gate Filter"
-                    : "High Friction / Location"}
-                </span>
-              )}
-              {brief.qualityScore != null && brief.qualityScore < 50 && dossierState.engineVerdict === "CONSIDER" && (
-                <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-caution/20 text-caution font-medium border border-caution/30">
-                  Easy Trap Protection
+              {/* Canonical Career-Value Signal Badge (Strictly from ExecutiveThesis / ExecutiveExplanation) */}
+              {(brief.explanation?.careerValueSignal || brief.executiveThesis?.careerValueSignal) && (
+                <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-caution/20 text-caution font-medium border border-caution/30 uppercase tracking-wider">
+                  {brief.explanation?.careerValueSignal || brief.executiveThesis?.careerValueSignal}
                 </span>
               )}
 
@@ -138,7 +131,7 @@ export function Hero({
             <div className="border-t border-border pt-5 space-y-3">
               <p className="label-mono text-xs text-primary font-normal uppercase tracking-wider">Executive Advisory Thesis</p>
               <p className="font-serif text-2xl italic leading-relaxed text-foreground font-normal">
-                “{brief.executiveOpinion || "Evaluating strategic executive alignment..."}”
+                “{brief.executiveThesis?.primaryReason || brief.executiveOpinion || "Evaluating strategic executive alignment..."}”
               </p>
             </div>
           </div>
@@ -152,12 +145,17 @@ export function Hero({
               </div>
               
               <p className="mt-4 font-display text-3xl leading-snug text-foreground font-normal">
-                {brief.oneMinuteTLDR.bottomLine}
+                {brief.pursuitStrategy?.bottomLine || brief.explanation?.bottomLine || brief.oneMinuteTLDR.bottomLine}
               </p>
               
-              <p className="mt-3 text-xs leading-relaxed text-foreground font-mono border-l-2 border-primary pl-3">
-                {brief.verdictGuidance.actionNotice}
-              </p>
+              <div className="mt-3 text-xs leading-relaxed text-foreground font-mono border-l-2 border-primary pl-3 space-y-1">
+                <p className="font-semibold uppercase tracking-wider text-[0.65rem] text-primary">
+                  {brief.pursuitStrategy?.executiveLabel || "Advisory Strategy"}
+                </p>
+                <p>
+                  {brief.pursuitStrategy?.immediateNextAction || brief.verdictGuidance.actionNotice}
+                </p>
+              </div>
 
               <div className="mt-5 space-y-4">
                 <div className="space-y-1">

@@ -23,7 +23,7 @@ export interface DecisionDriver {
   factor: string;
   impact: "positive" | "negative";
   strength: "high" | "medium" | "low";
-  evidence: string;
+  evidence?: string;
 }
 
 export interface DecisionPolicyResult {
@@ -75,8 +75,13 @@ export class DecisionPolicyEngine {
   ): DecisionPolicyResult {
     const triggeredRuleIds: string[] = [];
     
+    const opp = opportunity as unknown as Record<string, unknown>;
+    const car = career as unknown as Record<string, unknown>;
+    const cap = capability as unknown as Record<string, unknown>;
+    const life = lifestyle as unknown as Record<string, unknown>;
+
     // Construct Grounded Claim Permissions based on explicit evidence
-    const descText = (jobDescriptionText || (opportunity as any)?.originalOpportunity?.normalizedText || "").toLowerCase();
+    const descText = (jobDescriptionText || (opp.originalOpportunity as Record<string, unknown> | undefined)?.normalizedText as string || "").toLowerCase();
     const allowedClaims: ("PL_SCALE" | "FOUNDER_PROXIMITY" | "TRANSFORMATION" | "GO_TO_MARKET" | "GLOBAL_SCOPE")[] = [];
     
     // P0-A: Check evidence grounding for structured claims
@@ -93,7 +98,7 @@ export class DecisionPolicyEngine {
     };
     
     // P&L Scale: check source text or grounded evidence
-    if (descText.includes("p&l") || descText.includes("profit and loss") || (opportunity as any)?.operatingContext?.pnlResponsibility) {
+    if (descText.includes("p&l") || descText.includes("profit and loss") || (opp.operatingContext as Record<string, unknown> | undefined)?.pnlResponsibility) {
       allowedClaims.push("PL_SCALE");
     }
     // Also check grounded commercialAccountability evidence
@@ -109,7 +114,7 @@ export class DecisionPolicyEngine {
     }
     
     // Transformation: check source text, career trajectory, or grounded mandate evidence
-    if (descText.includes("transform") || (career as any)?.trajectory === "FORWARD") {
+    if (descText.includes("transform") || car.trajectory === "FORWARD") {
       allowedClaims.push("TRANSFORMATION");
     }
     // P0-A: STRUCTURED_TRUSTED mandate evidence confers TRANSFORMATION claim
@@ -134,8 +139,8 @@ export class DecisionPolicyEngine {
     };
 
     // Step 0: Evidence Gate Precedence Check
-    const roleTitle = (opportunity as any)?.role || (opportunity as any)?.originalOpportunity?.canonicalTitle || "";
-    const companyName = (opportunity as any)?.company || "";
+    const roleTitle = (opp.role as string) || (opp.originalOpportunity as Record<string, unknown> | undefined)?.canonicalTitle as string || "";
+    const companyName = (opp.company as string) || "";
 
     const gateResult = EvidenceGate.evaluate(
       jobDescriptionText || "",
@@ -252,7 +257,7 @@ export class DecisionPolicyEngine {
       };
     }
 
-    const policyConfig: any = decisionPolicy;
+    const policyConfig = decisionPolicy as { thresholds: Record<string, number> };
     const t = policyConfig.thresholds;
 
     // Calculate Model C Authoritative Intrinsic Quality Score
@@ -273,10 +278,10 @@ export class DecisionPolicyEngine {
     const opportunityScoreConfidence = qualityResult.opportunityScoreConfidence;
 
     const identityScore = Math.round((identity.coverage || (1.0 - identityDistance)) * 100);
-    const isCapUnavailable = (capability as any).evidenceState === "UNAVAILABLE" || capability.sufficiency === "INSUFFICIENT" || capability.overallFit === null;
+    const isCapUnavailable = cap.evidenceState === "UNAVAILABLE" || capability.sufficiency === "INSUFFICIENT" || capability.overallFit === null;
     const capabilityScore = isCapUnavailable ? 50 : Math.round((capability.overallFit || 0) * 100);
-    const careerScore = (career as any).careerScore || Math.max(0, 80 - (career.regressionScore || 0));
-    const locationFriction = (lifestyle as any).locationFrictionPenalty || 0;
+    const careerScore = (car.careerScore as number | undefined) || Math.max(0, 80 - (career.regressionScore || 0));
+    const locationFriction = (life.locationFrictionPenalty as number | undefined) || 0;
 
     const parsingConfidence = Math.min(1.0, 
       (identity.evidenceCount > 0 ? 0.9 : 0.6) * 
@@ -317,7 +322,7 @@ export class DecisionPolicyEngine {
           missing: capability.missingCapabilities
         }
       },
-      { stage: "Career", status: career.regressionScore < (t.regressionCutoff || 50) ? "PASS" : "FAIL", score: careerScore, reason: `Trajectory: ${(career as any).trajectory}` },
+      { stage: "Career", status: career.regressionScore < (t.regressionCutoff || 50) ? "PASS" : "FAIL", score: careerScore, reason: `Trajectory: ${car.trajectory}` },
       { stage: "Lifestyle", status: locationFriction <= 10 ? "PASS" : "FAIL", score: 100 - locationFriction, reason: `Location Friction: ${locationFriction}` }
     ];
 
@@ -330,7 +335,7 @@ export class DecisionPolicyEngine {
     if (capabilityScore >= 80) decisionDrivers.push({ factor: "Execution Readiness", impact: "positive", strength: "high", evidence: "Purpose-aligned capability match" });
     else if (capability.missingCapabilities.length > 0) decisionRisks.push({ factor: "Capability Gaps", impact: "negative", strength: "medium", evidence: `Missing ${capability.missingCapabilities.length} core capabilities` });
 
-    if ((career as any).trajectory === "FORWARD") decisionDrivers.push({ factor: "Career Growth", impact: "positive", strength: "high", evidence: "Forward trajectory" });
+    if (car.trajectory === "FORWARD") decisionDrivers.push({ factor: "Career Growth", impact: "positive", strength: "high", evidence: "Forward trajectory" });
     if (career.regressionScore > 20) decisionRisks.push({ factor: "Career Regression", impact: "negative", strength: "high", evidence: `Regression score: ${career.regressionScore}` });
 
     let tailoringEffort: "LOW" | "MODERATE" | "HIGH" = "LOW";
@@ -348,9 +353,9 @@ export class DecisionPolicyEngine {
       tailoringEffort = "HIGH";
     }
 
-    const trajectoryUpside = (career as any).trajectory === "FORWARD" 
+    const trajectoryUpside = car.trajectory === "FORWARD" 
       ? "High Advancement Leverage" 
-      : (career as any).trajectory === "LATERAL" 
+      : car.trajectory === "LATERAL" 
         ? "Strategic P&L Scale Consolidation" 
         : "Operational Repositioning";
 
@@ -361,7 +366,7 @@ export class DecisionPolicyEngine {
     // Exclusion Gates (Hard Vetoes) — Assign qualityScore (numeric), vetoed = true, vetoReason
     if (
       opportunity.mandateSeniority === "SUB_TIER" || 
-      (opportunity as any).seniorityAssessment?.mandateSeniority === "SUB_TIER"
+      (opp.seniorityAssessment as Record<string, unknown> | undefined)?.mandateSeniority === "SUB_TIER"
     ) {
       return {
         verdict: "PASS",
@@ -380,7 +385,7 @@ export class DecisionPolicyEngine {
         confidences,
         tailoringEffort: "HIGH",
         trajectoryUpside: "Sub-tier Mandate",
-        relativeDifferentiator: (opportunity as any).seniorityAssessment?.signalType === "CRITICAL_SENIORITY_CONTRADICTION"
+        relativeDifferentiator: (opp.seniorityAssessment as Record<string, unknown> | undefined)?.signalType === "CRITICAL_SENIORITY_CONTRADICTION"
           ? "Seniority contradiction: Executive title conflicts with required 3–7 year execution-oriented scope."
           : "Sub-tier mandate: Role scope is below executive baseline.",
         triggeredRuleIds: ["G-SUB-TIER-MANDATE-VETO"],
@@ -469,9 +474,9 @@ export class DecisionPolicyEngine {
     }
 
     // Structural Conviction Flag
-    const ma = (opportunity as any).mandateAssessment;
+    const ma = opp.mandateAssessment as Record<string, unknown> | undefined;
     const isCommercialDomain = !jobExecutiveIdentityValue || jobExecutiveIdentityValue.includes("Commercial") || jobExecutiveIdentityValue.includes("Marketing") || jobExecutiveIdentityValue.includes("Growth");
-    const isExecutiveAltitude = (opportunity as any).operatingLevelAssessment === "MATCH" || (opportunity as any).operatingLevelAssessment === "PROMOTION" || roleTitle.toLowerCase().includes("head") || roleTitle.toLowerCase().includes("director") || roleTitle.toLowerCase().includes("chief") || roleTitle.toLowerCase().includes("cmo") || roleTitle.toLowerCase().includes("vp");
+    const isExecutiveAltitude = opp.operatingLevelAssessment === "MATCH" || opp.operatingLevelAssessment === "PROMOTION" || roleTitle.toLowerCase().includes("head") || roleTitle.toLowerCase().includes("director") || roleTitle.toLowerCase().includes("chief") || roleTitle.toLowerCase().includes("cmo") || roleTitle.toLowerCase().includes("vp");
     const isBusinessGrowth = ma?.type === "BUSINESS_GROWTH";
     const isEnterpriseScope = ma?.scope === "ENTERPRISE";
 

@@ -15,7 +15,7 @@
 
 import type { RecommendationRecord } from "../record";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
-import { unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
+import { unwrapEvidenceValue, truncateWordBoundary } from "./SemanticNaturalLanguageResolver";
 
 export interface PrincipalRisk {
   /** The synthesized risk statement in executive language */
@@ -120,7 +120,7 @@ export function synthesizePrincipalRisk(
 
     if (mitigatingEvidence.length > 0) {
       evidence.push(
-        `Mitigating: ${mitigatingEvidence[0].candidateCapability.slice(0, 60)}...`
+        `Mitigating: ${truncateWordBoundary(mitigatingEvidence[0].candidateCapability, 60)}`
       );
       confidence = 0.65;
       severity = "medium";

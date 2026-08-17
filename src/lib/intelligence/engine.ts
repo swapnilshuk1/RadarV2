@@ -93,8 +93,8 @@ export function addExtraOpportunities() {
   writeOpportunities(Array.from(merged.values()));
 }
 
-export function injectFreshRecords(records: any[]) {
-  writeOpportunities([...(records as OpportunitySource[])]);
+export function injectFreshRecords(records: OpportunitySource[]) {
+  writeOpportunities([...records]);
 }
 
 export function clearInjectedRecords() {
@@ -156,9 +156,10 @@ export function computeEvaluationSignature(
 function getOppContentHash(raw: OpportunitySource): string {
   const role = raw.role || "";
   const company = raw.company || "";
-  const text = (raw as any).description || (raw as any).normalizedText || (raw as any).rawText || (raw as any).rawDescription || "";
+  const r = raw as unknown as Record<string, unknown>;
+  const text = (r.description || r.normalizedText || r.rawText || r.rawDescription || "") as string;
   const dimsStr = Array.isArray(raw.dimensions)
-    ? raw.dimensions.map((d: any) => `${d.key}:${d.label}:${d.jdEvidence?.status || ""}`).join(";")
+    ? raw.dimensions.map((d: Record<string, unknown>) => `${d.key}:${d.label}:${(d.jdEvidence as Record<string, unknown> | undefined)?.status || ""}`).join(";")
     : "";
   return simpleStringHash(`${raw.jobHash || ""}|${role}|${company}|${text}|${dimsStr}`);
 }
@@ -200,7 +201,8 @@ export function runEngine(
 
   // Fallback V3 Dossier and CandidateProjectionBuilder removed since projection is already built
   const candProjV4 = projection;
-  const projTimestamp = (projection as any).updatedAt || (projection as any).createdAt || "v1";
+  const pProj = projection as unknown as Record<string, unknown>;
+  const projTimestamp = (pProj.updatedAt || pProj.createdAt || "v1") as string;
 
   const records: RecommendationRecord[] = [];
   const presentedList: Presented[] = [];
@@ -227,16 +229,18 @@ export function runEngine(
 
         // PHASE 0.2: EvidenceGate Early Boundary Check
     // Must occur BEFORE any expensive downstream processing (P0-B + P0-C contract)
-    const rawJobText = (raw as any).rawText || (raw as any).rawDescription || (raw as any).description || (raw as any).normalizedText || "";
+    const rRaw = raw as unknown as Record<string, unknown>;
+    const rawJobText = (rRaw.rawText || rRaw.rawDescription || rRaw.description || rRaw.normalizedText || "") as string;
     const roleTitle = raw.role || "";
     const companyName = raw.company || "";
     
-    const hasStructuredEvidence = !!(raw.dimensions && raw.dimensions.some((d: any) => {
-      if (!d.jdEvidence || d.jdEvidence.status !== "Explicit") return false;
-      const evidenceList = d.jdEvidence.evidence;
+    const hasStructuredEvidence = !!(raw.dimensions && (raw.dimensions as Record<string, unknown>[]).some((d) => {
+      const jdEv = d.jdEvidence as Record<string, unknown> | undefined;
+      if (!jdEv || jdEv.status !== "Explicit") return false;
+      const evidenceList = jdEv.evidence as Array<Record<string, unknown>> | undefined;
       if (!Array.isArray(evidenceList) || evidenceList.length === 0) return false;
-      return evidenceList.some((ev: any) => {
-        const quote = ev?.quote;
+      return evidenceList.some((ev) => {
+        const quote = ev?.quote as string | undefined;
         if (!quote) return false;
         const isGrounded = rawJobText.toLowerCase().includes(quote.toLowerCase());
         const hasTrustedProvenance = ev.provenance === "curated" || ev.provenance === "extractor" || ev.provenance === "gold" || ev.provenance === "fixture" || ev.provenance === "onboarder";
@@ -289,12 +293,10 @@ export function runEngine(
           // P0-C: Pipeline contains ONLY EvidenceGate
           pipeline: [{ stage: "EvidenceGate", status: "SPARSE_SPEC", score: null, reason: "Needs More Signal: < 25 words in job specification." }],
           evidenceMapping: [],
-          // P0-C: No careerValueBreakdown for SPARSE_SPEC
-          careerValueBreakdown: undefined as any,
           headspace: { finalVerb: "SPARSE_SPEC", downgraded: false, reason: undefined },
           missing: ["evidence"],
           timestamp: new Date().toISOString()
-        } as any,
+        } as unknown as RecommendationRecord["trace"],
         esi: undefined,
         diligenceStatus: "FAILED"
       };
@@ -333,7 +335,8 @@ export function runEngine(
     // P3-A: Pass SP to DecisionPolicyEngine for Easy Trap rule
     const careerValueBreakdown = CareerValueEngine.evaluate(candProjV4, jobProjV4);
 
-    const candIdentityVal = (candProjV4 as any).executiveIdentity?.value || "Commercial & Marketing Leadership";
+    const candProjObj = candProjV4 as unknown as Record<string, unknown>;
+    const candIdentityVal = ((candProjObj.executiveIdentity as Record<string, unknown> | undefined)?.value as string) || "Commercial & Marketing Leadership";
 
     const policyResult = DecisionPolicyEngine.evaluate(
       identity,
@@ -358,10 +361,13 @@ export function runEngine(
     const finalScore = policyResult.priorityScore;
 
     // Extract actual missing dimensions directly from the scraped database
-    const dims = raw.dimensions || [];
+    const dims = (raw.dimensions || []) as Record<string, unknown>[];
     const rawGaps = dims.filter(
-      (d: any) => d.bucket === "Missing" || d.bucket === "Gap" || d.jdEvidence?.status === "Missing"
+      (d) => d.bucket === "Missing" || d.bucket === "Gap" || (d.jdEvidence as Record<string, unknown> | undefined)?.status === "Missing"
     );
+
+    const lifeObj = lifestyle as unknown as Record<string, unknown>;
+    const carObj = career as unknown as Record<string, unknown>;
 
     // Backwards compatibility translation & clean V4 record
     const record: RecommendationRecord = {
@@ -377,14 +383,14 @@ export function runEngine(
       claimPermissions: policyResult.claimPermissions,
       confidence: policyResult.confidences.recommendation,
       factors: {
-        pursuitFriction: (lifestyle as any).locationFrictionPenalty || 0
+        pursuitFriction: (lifeObj.locationFrictionPenalty as number | undefined) || 0
       },
       evidenceGrounding,
       // P3-A: decisionSummary.shortlistingPotential now uses authoritative P2-C calculation
       decisionSummary: {
-        careerValue: (career as any).careerScore ?? 0,
+        careerValue: (carObj.careerScore as number | undefined) ?? 0,
         shortlistingPotential: shortlistingPotentialScore,
-        pursuitFriction: (lifestyle as any).locationFrictionPenalty || 0
+        pursuitFriction: (lifeObj.locationFrictionPenalty as number | undefined) || 0
       },
       triggeredRuleIds: policyResult.triggeredRuleIds,
       decisionDrivers: policyResult.decisionDrivers,
@@ -405,7 +411,7 @@ export function runEngine(
       explanation: {
         reason: "composite-evidence-sufficiency",
         dominantFactor: "shortlistingPotential",
-        missingEvidence: rawGaps.map((g: any) => g.key),
+        missingEvidence: rawGaps.map((g) => (g.key as string) || ""),
         unknowns: []
       },
       // P3-A: trace.factors.shortlistingPotential now uses the same authoritative value
@@ -413,7 +419,7 @@ export function runEngine(
       trace: {
               priority: finalScore !== null ? finalScore : 0,
               factors: {
-                careerValue: (career as any).careerScore ?? 0,
+                careerValue: (carObj.careerScore as number | undefined) ?? 0,
                 shortlistingPotential: shortlistingPotentialScore,
                 pursuitFriction: 1.0
               },
@@ -430,9 +436,9 @@ export function runEngine(
                 downgraded: false,
                 reason: undefined
               },
-              missing: rawGaps.map((g: any) => g.key),
+              missing: rawGaps.map((g) => (g.key as string) || ""),
               timestamp: new Date().toISOString()
-      } as any,
+      } as unknown as RecommendationRecord["trace"],
       esi: capability.overallFit ?? 0,
       diligenceStatus: "READY"
     };
@@ -441,7 +447,7 @@ export function runEngine(
   }
 
   // Populate comparative queue ranking (O(U * N) where U = number of unique priority values)
-  const comparisonCacheByPriority = new Map<number, { higherThan: string[]; lowerThan: string[]; differentiators: any[]; tradeOffs: any[] }>();
+  const comparisonCacheByPriority = new Map<number, { higherThan: string[]; lowerThan: string[]; differentiators: string[]; tradeOffs: string[] }>();
 
   for (const r of records) {
     const rPriority = r.priority ?? 0;
@@ -452,7 +458,7 @@ export function runEngine(
       comp = { higherThan, lowerThan, differentiators: [], tradeOffs: [] };
       comparisonCacheByPriority.set(rPriority, comp);
     }
-    (r as any).comparison = comp;
+    (r as unknown as Record<string, unknown>).comparison = comp;
   }
 
   // Generate Presented mappings

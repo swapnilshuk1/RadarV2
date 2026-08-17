@@ -1,4 +1,4 @@
-import type { Opportunity, OpportunitySource, RecommendationViewModel, CapabilityCardViewModel } from "@/data/opportunity-fixtures";
+import type { Opportunity, OpportunitySource, RecommendationViewModel, CapabilityCardViewModel, DimensionResult, DimensionKey, EvidenceBucket } from "@/data/opportunity-fixtures";
 import type { RecommendationRecord } from "./record";
 import { format, type Narrative } from "./narrative";
 import { CapabilityEngine, type JobSlice } from "../capability/CapabilityEngine";
@@ -40,7 +40,7 @@ import type { DecisionConfidence } from "../../domain/entities";
 export function present(
   source: OpportunitySource,
   record: RecommendationRecord,
-  dynamicProfile: any
+  dynamicProfile?: unknown
 ): Presented {
   const narrative = format(record, source);
 
@@ -114,17 +114,22 @@ export function present(
     evidenceGrounding,
     dimensions,
     ...cleanSource
-  } = source as any;
+  } = source as Record<string, unknown>;
 
   const cleanDimensions = Array.isArray(source.dimensions)
-    ? source.dimensions.map((d: any) => ({
-        key: d.key,
-        bucket: d.bucket,
+    ? source.dimensions.map((d: Record<string, unknown>): DimensionResult => ({
+        key: ((d.key as string) || "mandate") as DimensionKey,
+        label: (d.label as string) || (d.key as string) || "",
+        importance: ((d.importance as string) || "Core") as "Core" | "Supporting" | "Context",
+        bucket: (d.bucket as EvidenceBucket) || "Missing",
         jdEvidence: {
-          status: d.jdEvidence?.status || "Explicit",
-          value: typeof d.jdEvidence?.value === "string" ? d.jdEvidence.value.slice(0, 140) : "",
-          evidence: Array.isArray(d.jdEvidence?.evidence) && d.jdEvidence.evidence.length > 0
-            ? [{ quote: d.jdEvidence.evidence[0]?.quote?.slice(0, 140) || "", provenance: d.jdEvidence.evidence[0]?.provenance, confidence: d.jdEvidence.evidence[0]?.confidence }]
+          status: ((d.jdEvidence as Record<string, unknown> | undefined)?.status as import("@/data/opportunity-fixtures").Status) || "Explicit",
+          value: typeof (d.jdEvidence as Record<string, unknown> | undefined)?.value === "string" ? String((d.jdEvidence as Record<string, unknown>).value).slice(0, 140) : "",
+          evidence: Array.isArray((d.jdEvidence as Record<string, unknown> | undefined)?.evidence) && ((d.jdEvidence as Record<string, unknown>).evidence as unknown[]).length > 0
+            ? [{
+                quote: typeof ((d.jdEvidence as Record<string, unknown>).evidence as Record<string, unknown>[])[0]?.quote === "string" ? String(((d.jdEvidence as Record<string, unknown>).evidence as Record<string, unknown>[])[0].quote).slice(0, 140) : "",
+                source: "snippet"
+              }]
             : []
         }
       }))
@@ -132,7 +137,7 @@ export function present(
 
   return {
     opportunity: {
-      ...cleanSource,
+      ...source,
       dimensions: cleanDimensions,
       decision: record.verb,
       recommendation: finalRecommendation,
@@ -158,7 +163,7 @@ export function present(
       engineRecommendation: {
         jobHash: record.jobHash,
         evaluationFingerprint: record.recommendationVersion,
-        engineVerdict: record.verb as any,
+        engineVerdict: record.verb as import("../../domain/decision_v4").EngineVerdict,
         vetoed: Boolean(record.vetoed),
         vetoReason: record.vetoReason || null,
         qualityScore: record.vetoed ? null : (record.qualityScore !== null && record.qualityScore !== undefined ? Math.round(record.qualityScore) : null),

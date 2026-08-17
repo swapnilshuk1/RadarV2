@@ -63,6 +63,13 @@ export function Summary({
               </span>
             )}
 
+            {/* Canonical Career-Value Signal Badge */}
+            {(brief.explanation?.careerValueSignal || brief.executiveThesis?.careerValueSignal) && (
+              <span className="label-mono font-mono text-xs px-2 py-0.5 rounded font-medium bg-caution/20 text-caution border border-caution/30 uppercase">
+                {brief.explanation?.careerValueSignal || brief.executiveThesis?.careerValueSignal}
+              </span>
+            )}
+
             <span className="label-mono font-mono text-xs font-semibold px-2 py-0.5 rounded bg-surface-raised border border-border text-foreground">
               RADAR SCORE: {brief.qualityScore != null ? `${brief.qualityScore}/100` : "N/A"}
             </span>
@@ -80,11 +87,16 @@ export function Summary({
       <section className="border-b border-border bg-surface-raised py-6">
         <div className="mx-auto max-w-[1180px] px-5">
           <p className="font-display text-2xl leading-snug text-foreground font-normal">
-            {brief.oneMinuteTLDR.bottomLine}
+            {brief.pursuitStrategy?.bottomLine || brief.explanation?.bottomLine || brief.oneMinuteTLDR.bottomLine}
           </p>
-          <p className="mt-2 text-xs text-foreground/90 font-mono border-l-2 border-primary pl-2.5 leading-relaxed">
-            {brief.verdictGuidance.actionNotice}
-          </p>
+          <div className="mt-2 text-xs text-foreground font-mono border-l-2 border-primary pl-2.5 leading-relaxed space-y-0.5">
+            <span className="font-semibold uppercase tracking-wider text-[0.65rem] text-primary block">
+              {brief.pursuitStrategy?.executiveLabel || "Strategy Focus"}
+            </span>
+            <span>
+              {brief.pursuitStrategy?.immediateNextAction || brief.explanation?.primaryReason || brief.verdictGuidance.actionNotice}
+            </span>
+          </div>
 
           <div className="mt-5 memo-card p-4 space-y-4 bg-background border border-border/80">
             <div>
