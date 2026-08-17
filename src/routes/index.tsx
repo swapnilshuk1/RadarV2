@@ -308,9 +308,9 @@ function Shortlist() {
             SHORTLIST QUEUE
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="py-6 sm:py-8">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-4 border-b border-border/60 mb-6">
-            <div className="shrink-0 min-w-0">
-              <h2 className="label-mono text-foreground font-semibold tracking-wider text-xs sm:text-sm uppercase whitespace-nowrap">
+          <div className="space-y-3 pb-4 border-b border-border/60 mb-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="label-mono text-foreground font-semibold tracking-wider text-xs sm:text-sm uppercase">
                 {selectedCategoryId === "all"
                   ? `Sorted by Fit · ${totalShortlisted} Shortlisted`
                   : `Sorted by Fit · ${
@@ -318,14 +318,14 @@ function Shortlist() {
                     } ${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}`}
               </h2>
               {selectedCategoryId === "all" && shortlistedOps.length > 0 && shortlistedOps.length !== totalShortlisted && (
-                <span className="label-mono text-[11px] text-muted-foreground mt-0.5 block whitespace-nowrap">
+                <span className="label-mono text-[11px] text-muted-foreground">
                   {shortlistedOps.length} remaining to review
                 </span>
               )}
             </div>
 
             {/* Human-Friendly Category Filters */}
-            <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap p-1 bg-muted/40 rounded-full border border-border/40 max-w-full scrollbar-none shrink-0">
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
               {CANONICAL_CATEGORIES.map((catDef) => {
                 const isSelected = selectedCategoryId === catDef.id;
                 const catMetric = metrics?.categoryMetrics?.[catDef.id];
@@ -350,14 +350,20 @@ function Shortlist() {
                     key={catDef.id}
                     type="button"
                     onClick={() => setSelectedCategoryId(catDef.id)}
-                    className={`text-[0.62rem] font-mono uppercase tracking-wider px-2.5 py-0.5 whitespace-nowrap shrink-0 transition-all rounded-full cursor-pointer ${
+                    className={`inline-flex items-center text-[0.65rem] font-mono uppercase tracking-wider px-3 py-1 rounded-full border transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-foreground text-background font-bold shadow-xs"
+                        ? "bg-foreground text-background border-foreground font-semibold shadow-xs"
                         : catDef.id === "needs_more_signal"
-                          ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 font-semibold"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                          ? "text-amber-700 dark:text-amber-300 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 font-semibold"
+                          : "text-muted-foreground bg-surface-raised/40 border-border/60 hover:text-foreground hover:bg-muted/80 hover:border-border"
                     }`}
                   >
+                    {isLoadingCategory && isSelected && (
+                      <span className="relative flex h-1.5 w-1.5 mr-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
+                      </span>
+                    )}
                     {displayLabel}
                   </button>
                 );
@@ -365,91 +371,90 @@ function Shortlist() {
             </div>
           </div>
 
-          <ul className="space-y-3 min-h-[300px]">
+          <div className="space-y-3 min-h-[300px]">
             {isLoadingCategory ? (
-              <li className="glass-card rounded-xl py-12 text-center font-mono text-xs tracking-wider uppercase text-muted-foreground animate-pulse border border-border/40 bg-surface-raised/40">
-                Loading {CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId} Opportunities...
-              </li>
+              <ShortlistSkeletonQueue
+                categoryLabel={CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}
+              />
             ) : (
-              visible.map((o, idx) => {
-                const isOpen = open === o.jobHash;
-                const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
+              <ul className="space-y-3">
+                {visible.map((o, idx) => {
+                  const isOpen = open === o.jobHash;
 
-                return (
-                  <ShortlistCardRow
-                    key={o.jobHash}
-                    o={o}
-                    idx={idx}
-                    isOpen={isOpen}
-                    openedTimes={openedTimes}
-                    setOpenedTimes={setOpenedTimes}
-                    setOpen={setOpen}
-                    decide={decide}
-                    showArrivalBanner={showArrivalBanner}
-                  />
-                );
-              })
-            )}
+                  return (
+                    <ShortlistCardRow
+                      key={o.jobHash}
+                      o={o}
+                      idx={idx}
+                      isOpen={isOpen}
+                      openedTimes={openedTimes}
+                      setOpenedTimes={setOpenedTimes}
+                      setOpen={setOpen}
+                      decide={decide}
+                      showArrivalBanner={showArrivalBanner}
+                    />
+                  );
+                })}
 
-            {!isLoadingCategory && visible.length === 0 && (
-              <li className="glass-card rounded-xl py-16 text-center font-display text-xl text-muted-foreground">
-                {selectedCategoryId === "all" 
-                  ? (totalShortlisted > 0 && shortlistedOps.length === 0
-                      ? `All ${totalShortlisted} shortlist opportunities have recorded decisions.`
-                      : "No shortlist opportunities remaining to review.")
-                  : selectedCategoryId === "needs_more_signal"
-                    ? (totalSparse > 0 && sparseOps.length === 0
-                        ? `All ${totalSparse} sparse opportunities have recorded decisions.`
-                        : "No opportunities need more signal.")
-                    : `No unreviewed opportunities match "${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}".`}
-              </li>
+                {visible.length === 0 && (
+                  <li className="glass-card rounded-xl py-16 text-center font-display text-xl text-muted-foreground list-none">
+                    {selectedCategoryId === "all" 
+                      ? (totalShortlisted > 0 && shortlistedOps.length === 0
+                          ? `All ${totalShortlisted} shortlist opportunities have recorded decisions.`
+                          : "No shortlist opportunities remaining to review.")
+                      : selectedCategoryId === "needs_more_signal"
+                        ? (totalSparse > 0 && sparseOps.length === 0
+                            ? `All ${totalSparse} sparse opportunities have recorded decisions.`
+                            : "No opportunities need more signal.")
+                        : `No unreviewed opportunities match "${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}".`}
+                  </li>
+                )}
+              </ul>
             )}
-          </ul>
+          </div>
         </section>
       </main>
 
       {/* ────────────────────────────────────────────────────────────────────────
           FLOATING FOOTER STATUS BAR
           ──────────────────────────────────────────────────────────────────────── */}
-      <footer className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 pointer-events-none">
-        <div className="glass-card rounded-full px-5 py-2 flex items-center gap-4 text-xs shadow-lg border border-border/60 pointer-events-auto backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={() => {
-              if (runState?.isActive) {
-                restore();
-              } else {
-                void startScrape();
-              }
-            }}
-            disabled={isStarting}
-            className={`label-mono shrink-0 font-bold px-3 py-1 rounded-full transition-all flex items-center gap-1.5 text-[10px] cursor-pointer shadow-xs ${
-              runState?.isActive
-                ? "bg-emerald-600 text-white"
-                : "bg-foreground text-background hover:opacity-90"
-            }`}
-          >
-            <span className={`inline-block h-1.5 w-1.5 rounded-full ${runState?.isActive ? "bg-white animate-ping" : "bg-emerald-400"}`} />
-            {isStarting ? "Starting..." : runState?.isActive ? "Search Active" : "Run Search"}
-          </button>
-          <span className="label-mono shrink-0 text-muted-foreground">
-            <span className="text-foreground font-mono font-bold">{totalScraped}</span> scraped
-          </span>
-          <span className="hidden md:inline-block text-border/60">|</span>
-          <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
-            LinkedIn <span className="text-foreground font-mono font-bold">{sourceCounts.LinkedIn}</span>
-          </span>
-          <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
-            Naukri <span className="text-foreground font-mono font-bold">{sourceCounts.Naukri}</span>
-          </span>
-          <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
-            Indeed <span className="text-foreground font-mono font-bold">{sourceCounts.Indeed}</span>
-          </span>
-          <span className="label-mono shrink-0 text-emerald-600 dark:text-emerald-400 font-bold">
-            → {selectedCategoryId === "all" ? shortlistedOps.length : (metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? filteredRemaining.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.total ?? filteredRemaining.length)} to review
-          </span>
-        </div>
-      </footer>
+      <div className="floating-dock gap-4 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => {
+            if (runState?.isActive) {
+              restore();
+            } else {
+              void startScrape();
+            }
+          }}
+          disabled={isStarting}
+          className={`dock-btn transition-all shadow-xs ${
+            runState?.isActive
+              ? "bg-emerald-600 text-white"
+              : "bg-foreground text-background hover:opacity-90"
+          }`}
+        >
+          <span className={`inline-block h-1.5 w-1.5 rounded-full ${runState?.isActive ? "bg-white animate-ping" : "bg-emerald-400"}`} />
+          {isStarting ? "Starting..." : runState?.isActive ? "Search Active" : "Run Search"}
+        </button>
+        <span className="dock-text">
+          <strong>{totalScraped}</strong> scraped
+        </span>
+        <span className="hidden md:inline-block text-border/40">|</span>
+        <span className="dock-text hidden md:inline">
+          LinkedIn <strong>{sourceCounts.LinkedIn}</strong>
+        </span>
+        <span className="dock-text hidden md:inline">
+          Naukri <strong>{sourceCounts.Naukri}</strong>
+        </span>
+        <span className="dock-text hidden md:inline">
+          Indeed <strong>{sourceCounts.Indeed}</strong>
+        </span>
+        <span className="dock-text text-emerald-600 dark:text-emerald-400 font-bold">
+          → {selectedCategoryId === "all" ? shortlistedOps.length : (metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? filteredRemaining.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.total ?? filteredRemaining.length)} to review
+        </span>
+      </div>
     </div>
   );
 }
@@ -480,6 +485,19 @@ function ShortlistCardRow({
   const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
   const decisionLabel = isSparse ? "needs more signal" : (o.decision?.toLowerCase() || "pursue");
 
+  useEffect(() => {
+    if (isOpen && rowRef.current) {
+      const isMobile = window.innerWidth < 768;
+      const timer = setTimeout(() => {
+        rowRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: isMobile ? "start" : "nearest",
+        });
+      }, 70);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   const badgeClass = 
     o.decision === "CONSIDER" 
       ? "badge-consider" 
@@ -501,7 +519,11 @@ function ShortlistCardRow({
   return (
     <li
       ref={rowRef}
-      className={`scroll-mt-24 glass-card rounded-xl border border-border/60 transition-all duration-200 card-lift overflow-hidden ${
+      className={`scroll-mt-20 sm:scroll-mt-24 glass-card rounded-xl border transition-all duration-300 overflow-hidden ${
+        isOpen
+          ? "border-primary/50 shadow-md ring-1 ring-primary/20 bg-surface-raised"
+          : "border-border/60 hover:border-border card-lift"
+      } ${
         showArrivalBanner && idx === 0 ? "border-l-4 border-l-emerald-500 bg-emerald-500/5" : ""
       }`}
     >
@@ -591,5 +613,53 @@ function ShortlistCardRow({
         </div>
       </div>
     </li>
+  );
+}
+
+function ShortlistSkeletonQueue({ categoryLabel }: { categoryLabel: string }) {
+  return (
+    <div className="space-y-3 animate-reveal">
+      {/* Precision Scan Bar Landmark */}
+      <div className="glass-card rounded-lg px-4 py-2.5 border border-border/60 flex items-center justify-between">
+        <span className="label-mono text-[0.68rem] text-muted-foreground flex items-center gap-2">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
+          CALIBRATING {categoryLabel.toUpperCase()} DOSSIERS...
+        </span>
+        <span className="label-mono text-[0.65rem] text-muted-foreground/80 hidden sm:inline">
+          EVALUATING MANDATE EVIDENCE
+        </span>
+      </div>
+
+      <div className="relative overflow-hidden h-[1.5px] w-full bg-border/40 rounded-full mb-3">
+        <div className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent animate-scan-line" />
+      </div>
+
+      {[1, 2, 3].map((idx) => (
+        <div
+          key={idx}
+          className="glass-card rounded-xl border border-border/50 p-4 sm:p-5 overflow-hidden transition-opacity duration-300"
+          style={{ opacity: 1 - idx * 0.25 }}
+        >
+          <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+            <div className="min-w-0 space-y-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="h-3 w-5 rounded-sm bg-muted/80 animate-pulse" />
+                <div className="h-6 w-48 sm:w-72 rounded-md bg-muted/90 animate-shimmer" />
+                <div className="h-4 w-16 rounded-full bg-muted/60" />
+                <div className="h-4 w-28 rounded-full bg-muted/40 hidden sm:block" />
+              </div>
+
+              <div className="h-3 w-48 rounded bg-muted/60 animate-pulse" />
+              <div className="h-4 w-full max-w-lg rounded bg-muted/40" />
+            </div>
+
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <div className="h-10 w-10 rounded-full bg-muted/80 border border-border/60 animate-pulse" />
+              <div className="h-2.5 w-10 rounded bg-muted/40" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

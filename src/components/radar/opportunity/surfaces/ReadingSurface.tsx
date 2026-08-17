@@ -214,60 +214,60 @@ export function ReadingSurface({
       <Appendix brief={brief} rawDimensions={rawDimensions} />
 
       {/* FLOATING ACTION DOCK (APPLE/LINEAR STYLE) */}
-      <div className="floating-dock shadow-2xl flex items-center justify-between gap-4 pointer-events-auto">
+      <div className="floating-dock justify-between gap-4 pointer-events-auto">
         {/* Left: Previous Brief */}
         <div className="flex items-center gap-1.5 min-w-[70px]">
           {neighbors?.prev ? (
             <Link
               to="/opportunity/$jobHash"
               params={{ jobHash: neighbors.prev }}
-              className="label-mono text-muted-foreground hover:text-foreground transition-colors font-medium text-[0.7rem]"
+              className="dock-link"
             >
-              ← Prev
+              ← PREV
             </Link>
           ) : (
-            <span className="label-mono text-muted-foreground font-normal opacity-30 text-[0.7rem]">← Prev</span>
+            <span className="dock-link opacity-30 cursor-not-allowed">← PREV</span>
           )}
         </div>
 
         {/* Center: Verdict Buttons with Keyboard Badges */}
         <div className="flex items-center gap-2">
-          <span className="label-mono text-muted-foreground text-[0.68rem] uppercase font-bold mr-1">Verdict</span>
+          <span className="dock-label">Verdict</span>
           
           <button
             onClick={() => decide("PURSUE")}
-            className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`dock-btn transition-all shadow-xs ${
               dossierState.selectedActionForControls === "PURSUE"
-                ? "bg-emerald-600 text-white shadow-xs"
+                ? "bg-emerald-600 text-white"
                 : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             Pursue
-            <kbd className="text-[0.6rem] opacity-70 bg-black/20 px-1 rounded">P</kbd>
+            <kbd>P</kbd>
           </button>
 
           <button
             onClick={() => decide("CONSIDER")}
-            className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`dock-btn transition-all shadow-xs ${
               dossierState.selectedActionForControls === "CONSIDER"
-                ? "bg-amber-600 text-white shadow-xs"
+                ? "bg-amber-600 text-white"
                 : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             Consider
-            <kbd className="text-[0.6rem] opacity-70 bg-black/20 px-1 rounded">C</kbd>
+            <kbd>C</kbd>
           </button>
 
           <button
             onClick={() => decide("PASS")}
-            className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`dock-btn transition-all shadow-xs ${
               dossierState.selectedActionForControls === "PASS"
-                ? "bg-slate-700 text-white shadow-xs"
+                ? "bg-slate-700 text-white"
                 : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             Pass
-            <kbd className="text-[0.6rem] opacity-70 bg-black/20 px-1 rounded">X</kbd>
+            <kbd>X</kbd>
           </button>
         </div>
 
@@ -278,7 +278,7 @@ export function ReadingSurface({
               href={applyUrlFor(o)}
               target="_blank"
               rel="noopener noreferrer"
-              className="label-mono flex items-center gap-1 bg-emerald-500 text-white px-3 py-1.5 rounded-full text-[0.68rem] font-bold uppercase tracking-wider hover:bg-emerald-600 transition-colors shadow-xs"
+              className="dock-btn bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-xs"
             >
               Apply →
             </a>
@@ -286,12 +286,12 @@ export function ReadingSurface({
             <Link
               to="/opportunity/$jobHash"
               params={{ jobHash: neighbors.next }}
-              className="label-mono text-muted-foreground hover:text-foreground transition-colors font-medium text-[0.7rem]"
+              className="dock-link"
             >
-              Next →
+              NEXT →
             </Link>
           ) : (
-            <span className="label-mono text-muted-foreground font-normal opacity-30 text-[0.7rem]">Next →</span>
+            <span className="dock-link opacity-30 cursor-not-allowed">NEXT →</span>
           )}
         </div>
       </div>
