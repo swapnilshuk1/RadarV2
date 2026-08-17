@@ -24,18 +24,6 @@ export function InlineBrief({
           </span>
         </div>
 
-        {o.reviewWorkflowState === "REVIEWED_UNKNOWN" && (
-          <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
-            <div className="flex items-center gap-1.5 font-mono text-[0.68rem] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-              HISTORICAL DECISION · V4 ASSESSMENT READY
-            </div>
-            <p className="mt-1 text-muted-foreground font-sans">
-              Decision recorded prior to V4 intelligence calibration. Review the updated mandate analysis and confirm your posture.
-            </p>
-          </div>
-        )}
-
         <p className="mt-2 max-w-xl font-display text-2xl leading-[1.25] text-foreground font-normal">
           {preview.headline || "Closest match to your operating mandate."}
         </p>
@@ -115,7 +103,7 @@ export function InlineBrief({
             }}
             className="rounded-sm border border-signal/40 px-2 py-2 label-mono text-signal font-normal transition-colors hover:bg-signal/10 cursor-pointer text-center truncate"
           >
-            {o.reviewWorkflowState === "REVIEWED_UNKNOWN" ? "Confirm Pursue" : "Pursue"}
+            Pursue
           </button>
           <button
             type="button"
@@ -125,7 +113,7 @@ export function InlineBrief({
             }}
             className="rounded-sm border border-caution/40 px-2 py-2 label-mono text-caution font-normal transition-colors hover:bg-caution/10 cursor-pointer text-center truncate"
           >
-            {o.reviewWorkflowState === "REVIEWED_UNKNOWN" ? "Adjust to Consider" : "Consider"}
+            Consider
           </button>
           <button
             type="button"
