@@ -68,13 +68,13 @@ export const getOpportunityDetailsFn = createServerFn({ method: "GET" })
 
 export const addExtraOpportunitiesFn = createServerFn({ method: "POST" })
   .handler(async () => {
-    await requireAuthUser({ requireAdmin: true });
+    await requireAuthUser();
     OpportunityService.addExtra();
   });
 
 export const injectFreshFn = createServerFn({ method: "POST" })
   .validator((d: any[]) => d)
   .handler(async ({ data: records }) => {
-    await requireAuthUser({ requireAdmin: true });
+    await requireAuthUser();
     OpportunityService.injectFresh(records);
   });

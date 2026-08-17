@@ -14,12 +14,28 @@ import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 import { inferExecutiveMandateArchetype } from "../lib/intelligence/editorial";
 
 import { useScrapeProgress } from "../components/radar/ScrapeProgressProvider";
+import { useAttentionPreference } from "../lib/attention-store";
 import {
   CANONICAL_CATEGORIES,
   classifyOpportunityCategories,
   resolveCanonicalCategoryId,
   type CategoryId,
 } from "../lib/domain/category_taxonomy";
+
+export function getTimeAwareGreeting(userName?: string): string {
+  const namePart = userName ? `, ${userName}` : "";
+  if (typeof window === "undefined") {
+    return `Good morning${namePart}!`;
+  }
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return `Good morning${namePart}!`;
+  }
+  if (hour >= 12 && hour < 17) {
+    return `Good afternoon${namePart}!`;
+  }
+  return `Good evening${namePart}!`;
+}
 
 const VISIBLE_LIMIT = 10;
 
@@ -165,6 +181,14 @@ function Shortlist() {
     [remaining]
   );
 
+  const { attentionWindow } = useAttentionPreference();
+  const [cursorIndex, setCursorIndex] = useState(0);
+  const [greeting, setGreeting] = useState("Good morning, Swapnil!");
+
+  useEffect(() => {
+    setGreeting(getTimeAwareGreeting("Swapnil"));
+  }, []);
+
   const filteredRemaining = useMemo(() => {
     if (selectedCategoryId === "needs_more_signal") {
       return sparseOps;
@@ -172,7 +196,28 @@ function Shortlist() {
     return shortlistedOps;
   }, [selectedCategoryId, shortlistedOps, sparseOps]);
 
-  const visible = filteredRemaining.slice(0, VISIBLE_LIMIT);
+  // Ranked Attention Queue with mid-window replenishment:
+  // Shows up to `attentionWindow` items starting from `cursorIndex`.
+  // When an item receives a decision, it leaves filteredRemaining, and the queue automatically
+  // replenishes at the bottom from the next untouched opportunity in the authoritative sequence.
+  const visible = useMemo(() => {
+    return filteredRemaining.slice(cursorIndex, cursorIndex + attentionWindow);
+  }, [filteredRemaining, cursorIndex, attentionWindow]);
+
+  const hasNext = cursorIndex + attentionWindow < filteredRemaining.length;
+  const hasPrev = cursorIndex > 0;
+
+  const handleNext = () => {
+    if (hasNext) {
+      setCursorIndex((prev) => prev + attentionWindow);
+    }
+  };
+
+  const handlePrev = () => {
+    if (hasPrev) {
+      setCursorIndex((prev) => Math.max(0, prev - attentionWindow));
+    }
+  };
 
   const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
     const openTime = openedTimes[jobHash];
@@ -228,11 +273,11 @@ function Shortlist() {
                 Executive Briefing · {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
               </p>
             </div>
-            <h1 className="mt-2 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-6xl text-foreground font-normal">
-              The shortlist.
+            <h1 className="mt-2 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-6xl text-foreground font-normal" suppressHydrationWarning>
+              {greeting}
             </h1>
-            <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground font-normal">
-              <span className="font-mono text-foreground font-semibold">{totalActivePursuits}</span> opportunities recommended for pursuit out of <span className="font-mono text-foreground font-semibold">{totalScraped}</span> screened. {shortlistedOps.length} shortlist opportunities remaining to review.
+            <p className="mt-3 max-w-lg text-lg leading-relaxed text-foreground font-medium">
+              Here are your top opportunities.
             </p>
           </div>
 
@@ -411,6 +456,43 @@ function Shortlist() {
                 )}
               </ul>
             )}
+
+            {/* Guided Attention Navigation & Escape Hatch Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-border/60">
+              <div className="flex items-center gap-2">
+                {hasPrev && (
+                  <button
+                    type="button"
+                    onClick={handlePrev}
+                    className="inline-flex items-center gap-1 text-[11px] font-mono font-bold uppercase tracking-wider px-4 py-2 rounded-xs border border-border bg-surface-raised hover:bg-muted transition-colors cursor-pointer"
+                    data-testid="guided-prev-btn"
+                  >
+                    ← Previous
+                  </button>
+                )}
+                {hasNext && (
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="inline-flex items-center gap-1 text-[11px] font-mono font-bold uppercase tracking-wider px-4 py-2 rounded-xs border border-foreground bg-foreground text-background hover:opacity-90 transition-opacity cursor-pointer"
+                    data-testid="guided-next-btn"
+                  >
+                    Next →
+                  </button>
+                )}
+              </div>
+
+              {/* Escape hatch: Introduce "Other matched opportunities →" after guided sequence begins extending beyond initial presentation window */}
+              {(cursorIndex > 0 || filteredRemaining.length > attentionWindow) && (
+                <Link
+                  to="/decisions"
+                  className="inline-flex items-center text-[11.5px] font-mono text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="escape-hatch-link"
+                >
+                  Other matched opportunities ({filteredRemaining.length}) →
+                </Link>
+              )}
+            </div>
           </div>
         </section>
       </main>

@@ -101,8 +101,8 @@ export function getActiveScrapeLock(): { runId: string; startedAt: number } | nu
 
 export const triggerScrapeFn = createServerFn({ method: "POST" })
   .handler(async () => {
-    // 1. Enforce Authentication & Admin Role
-    await requireAuthUser({ requireAdmin: true });
+    // 1. Enforce Authentication
+    const user = await requireAuthUser();
 
     // 2. Enforce Single-Process Mutex
     const activeState = getActiveScrapeState();
@@ -261,7 +261,8 @@ export function buildCanonicalRunData(runId: string) {
       startedAt: manifest.startedAt,
       updatedAt: manifest.updatedAt,
       finishedAt: manifest.finishedAt,
-      portalHealth: manifest.portalHealth || {}
+      portalHealth: manifest.portalHealth || {},
+      recentActivities: manifest.recentActivities || []
     };
   } catch (err: any) {
     console.error(`[Server] Failed to read manifest for run ${runId}:`, err.message);
@@ -297,7 +298,7 @@ export function getRunProgressState(runId: string) {
   return buildCanonicalRunData(runId);
 }
 
-export function abortScrapeState(runId: string) {
+export async function abortScrapeState(runId: string) {
   const manifestPath = path.join(ARTIFACTS_DIR, "runs", runId, "manifest.json");
   try {
     if (fs.existsSync(manifestPath)) {
@@ -306,6 +307,13 @@ export function abortScrapeState(runId: string) {
       manifest.updatedAt = new Date().toISOString();
       fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
       console.log(`[Server] Abort requested for run ${runId}. Manifest status set to 'stopping'.`);
+    }
+    // Forcefully trigger live abort on the running scraper process
+    try {
+      const { abortLiveRun } = await import("../../../scripts/scrape");
+      await abortLiveRun(runId);
+    } catch (e: any) {
+      console.warn(`[Server] Note: abortLiveRun call: ${e.message}`);
     }
     return { success: true, status: "stopping" };
   } catch (e: any) {
@@ -344,7 +352,7 @@ export const getRunProgressFn = createServerFn({ method: "GET" })
 export const confirmScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    await requireAuthUser({ requireAdmin: true });
+    await requireAuthUser();
     const manifestPath = path.join(ARTIFACTS_DIR, "runs", data.runId, "manifest.json");
     try {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
@@ -361,7 +369,7 @@ export const confirmScrapeFn = createServerFn({ method: "POST" })
 export const abortScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    await requireAuthUser({ requireAdmin: true });
+    await requireAuthUser();
     const result = abortScrapeState(data.runId);
     if (activeScrapeRunLock?.runId === data.runId) {
       activeScrapeRunLock = null;
@@ -448,7 +456,7 @@ function getCorpusJob(): CorpusJobState {
 
 export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
   .handler(async () => {
-    await requireAuthUser({ requireAdmin: true });
+    await requireAuthUser();
     try {
       const job = getCorpusJob();
       if (job.status === "running") {

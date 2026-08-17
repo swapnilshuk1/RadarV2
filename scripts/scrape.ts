@@ -94,6 +94,35 @@ export function syncManifestProgress(
   });
 }
 
+const activeContexts = new Map<PortalName, any>();
+const activePages = new Map<PortalName, any>();
+const activePageManagers = new Map<PortalName, PageManager>();
+const activeRunControllers = new Map<string, RunController>();
+
+export async function abortLiveRun(runId?: string): Promise<boolean> {
+  const log = makeLogger("scrape:abort");
+  log(`Instant abort requested for run: ${runId || "active"}`);
+  
+  if (runId && activeRunControllers.has(runId)) {
+    const mgr = activeRunControllers.get(runId)!;
+    mgr.manifest.status = "stopping";
+    mgr.recordActivity("Stopping search... Closing browser workers and saving records");
+  } else {
+    for (const mgr of activeRunControllers.values()) {
+      mgr.manifest.status = "stopping";
+      mgr.recordActivity("Stopping search... Closing browser workers and saving records");
+    }
+  }
+
+  // Force close all browser contexts to cancel active navigations and network calls immediately
+  try {
+    await closeAllPortalContexts();
+  } catch (err: any) {
+    log(`Warning closing contexts on abort: ${err.message}`);
+  }
+  return true;
+}
+
 export interface RunOptions {
   keywords?: string[];
   portals?: PortalName[];
@@ -104,31 +133,11 @@ export interface RunOptions {
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   const log = makeLogger("scrape");
+  const freshRun = process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
+  const mgr = new RunController();
+  activeRunControllers.set(mgr.runId, mgr);
+
   let keywords = opts.keywords;
-  if (!keywords) {
-    try {
-      const profilePath = path.join(process.cwd(), "src", "data", "candidate-profile.json");
-      const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
-      const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
-      const searchPlanOutputPath = path.join(process.cwd(), "src", "data", "search-plan.json");
-      
-      const { CareerIntentModel } = await import("./scraper/run/career-intent");
-      const intent = CareerIntentModel.extractIntent(profilePath, taxonomyPath);
-      
-      const { SearchPlanner } = await import("./scraper/run/search-planner");
-      const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
-      
-      fs.writeFileSync(searchPlanOutputPath, JSON.stringify(searchPlan, null, 2), "utf-8");
-      log(`Generated and persisted Search Plan first-class artifact to: ${searchPlanOutputPath}`);
-      
-      // Select all ranked queries to fully capture the environment!
-      keywords = searchPlan.rankedQueries.map(q => q.query);
-      log(`Search Planner compiled all ${keywords.length} portal queries: ${keywords.join(", ")}`);
-    } catch (e: any) {
-      log(`Search Planner failed to dynamically generate Search Plan (${e.message}). Falling back to static defaults.`, "warn");
-      keywords = DEFAULT_KEYWORDS;
-    }
-  }
   let portals = opts.portals ?? DEFAULT_PORTALS;
   const maxPages = opts.maxPages ?? CONFIG.maxPages;
 
@@ -142,8 +151,35 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     portals = portalsArg.split('=')[1].split(',').map(p => p.trim() as PortalName);
   }
 
-  const freshRun = process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
-  const mgr = new RunController();
+  mgr.recordActivity("Building executive search schema from candidate profile...");
+
+  if (!keywords) {
+    try {
+      const profilePath = path.join(process.cwd(), "src", "data", "candidate-profile.json");
+      const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
+      const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
+      const searchPlanOutputPath = path.join(process.cwd(), "src", "data", "search-plan.json");
+      
+      const { CareerIntentModel } = await import("./scraper/run/career-intent");
+      const intent = CareerIntentModel.extractIntent(profilePath, taxonomyPath);
+      mgr.recordActivity(`Extracted target functions: ${intent.functions.slice(0, 2).join(", ") || "Marketing/Growth"} · Levels: ${intent.targetLevel.join(", ")}`);
+      
+      const { SearchPlanner } = await import("./scraper/run/search-planner");
+      const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
+      
+      fs.writeFileSync(searchPlanOutputPath, JSON.stringify(searchPlan, null, 2), "utf-8");
+      log(`Generated and persisted Search Plan first-class artifact to: ${searchPlanOutputPath}`);
+      
+      // Select all ranked queries to fully capture the environment!
+      keywords = searchPlan.rankedQueries.map(q => q.query);
+      log(`Search Planner compiled all ${keywords.length} portal queries: ${keywords.join(", ")}`);
+      mgr.recordActivity(`Compiled ${keywords.length} executive queries (${keywords.slice(0, 3).join(", ")}...)`);
+    } catch (e: any) {
+      log(`Search Planner failed to dynamically generate Search Plan (${e.message}). Falling back to static defaults.`, "warn");
+      keywords = DEFAULT_KEYWORDS;
+    }
+  }
+
   const { resumed } = mgr.init({
     keywords, portals, maxPages,
     maxCardsPerPage: CONFIG.maxCardsPerPage,
@@ -151,6 +187,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   });
   const plannedUnits = mgr.manifest.units.length;
   log(`Run ${mgr.runId} ${resumed ? "resumed" : "started"} — portals=${mgr.manifest.portals.join(",")} units=${plannedUnits}`);
+  mgr.recordActivity(`Search schema armed: ${plannedUnits} work units across ${portals.join(", ")}`);
 
   // Graceful shutdown: checkpoints already fsync'd — just close journal + browsers.
   const shutdown = async (signal: string) => {
@@ -187,11 +224,22 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         const units = mgr.pendingUnits().filter((u) => u.portal === portal);
         if (units.length === 0) { plog("no pending units"); return null; }
 
+        if (portal === "LinkedIn") {
+          mgr.recordActivity("Hooking into your LinkedIn profile session...");
+        } else if (portal === "Naukri") {
+          mgr.recordActivity("Establishing authenticated gateway to Naukri...");
+        } else if (portal === "Indeed") {
+          mgr.recordActivity("Saying hello to Indeed stealth channel...");
+        } else {
+          mgr.recordActivity(`Establishing secure session with ${portal}...`);
+        }
+
         let browserContext: any;
         try { browserContext = await getPortalContext(portal); }
         catch (err: any) { 
           plog(`context launch failed: ${err.message}`, "error"); 
           mgr.updatePortalHealth(portal, { status: "error", details: err.message });
+          mgr.recordActivity(`Error connecting to ${portal}: ${err.message}`);
           return null; 
         }
         
@@ -210,6 +258,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         if (sessionStatus === "error") {
           plog(`session error — skipping portal`, "warn");
           mgr.updatePortalHealth(portal, { status: "error", details: `Session error` });
+          mgr.recordActivity(`Session error on ${portal}`);
           activeContexts.delete(portal);
           activePages.delete(portal);
           return null;
@@ -221,16 +270,23 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           try {
             mgr.updatePortalHealth(portal, { status: "navigating", details: "Loading search page..." });
             await searchPage.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
-            // Intentionally NOT closing the page here. We leave it open so the user 
-            // can visually verify the page, solve captchas, or log in during the pause.
             const elapsed = Date.now() - t0;
             mgr.updatePortalHealth(portal, { status: "ready", details: `Logged in & search loaded (${elapsed}ms)` });
+            if (portal === "LinkedIn") {
+              mgr.recordActivity(`✓ Hooked to your LinkedIn profile (${elapsed}ms)`);
+            } else if (portal === "Naukri") {
+              mgr.recordActivity(`✓ Naukri session authenticated (${elapsed}ms)`);
+            } else if (portal === "Indeed") {
+              mgr.recordActivity(`✓ Say hello to Indeed! Connected (${elapsed}ms)`);
+            } else {
+              mgr.recordActivity(`✓ Connected to ${portal} (${elapsed}ms)`);
+            }
           } catch (err: any) {
             mgr.updatePortalHealth(portal, { status: "error", details: `Search nav failed: ${err.message}` });
           }
         } else if (sessionStatus === "gated") {
-          // If gated, ensureSession already left a tab open for manual verification/login.
           mgr.updatePortalHealth(portal, { status: "gated", details: `Waiting for manual login` });
+          mgr.recordActivity(`Portal ${portal} requires authentication/captcha`);
         }
       });
 
@@ -323,6 +379,17 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         }
       }
 
+      if (mgr.isCancellationRequested()) {
+        log(`[Scrape] Run ${mgr.runId} was aborted/stopped by user. Finalizing...`, "warn");
+        mgr.recordActivity("Search stopped. Finalizing acquired opportunities...");
+        mgr.finalize("aborted");
+        try {
+          const records = collectRecords();
+          writeLiveScraped(records);
+        } catch {}
+        return { success: false, count: ingestedCount, runId: mgr.runId };
+      }
+
       log(`Enqueued ${ingestedCount} cards for enrichment.`);
 
       // Certification: Ensure no units are left running
@@ -335,6 +402,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
       // Transition to enriching state so the UI tracks it in real-time
       mgr.transitionTo("enriching");
+      mgr.recordActivity("Synthesizing evidence graphs & computing fit scores...");
       
       try {
         log(`[Scrape] Automatically starting inline AI enrichment for run ${mgr.runId}...`);
@@ -358,6 +426,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       mgr.finalize("completed");
+      mgr.recordActivity("Search completed · Executive shortlist updated");
       const runDurationS = ((new Date().getTime() - new Date(mgr.manifest.startedAt).getTime()) / 1000).toFixed(1);
       
       const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
@@ -366,7 +435,6 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       generateAcquisitionReport(mgr.runId);
 
       printAcquisitionTelemetry(mgr);
-
 
       console.log(`
 ============================================================
@@ -394,16 +462,13 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
       mgr.finalize("failed");
       return { success: false, count: 0, runId: mgr.runId };
     } finally {
+      activeRunControllers.delete(mgr.runId);
       await closeAllPortalContexts();
     }
   })();
 
   return { runId: mgr.runId, completion };
 }
-
-const activeContexts = new Map<PortalName, any>();
-const activePages = new Map<PortalName, any>();
-const activePageManagers = new Map<PortalName, PageManager>();
 
 export async function runScraper(opts: Partial<RunControllerOptions> = {}): Promise<{ success: boolean; count: number; runId: string }> {
   const { completion } = await startRun(opts);
@@ -462,6 +527,7 @@ async function processUnit(
   }
 
   mgr.updateUnit(unit.id, { status: "running", startedAt: new Date().toISOString(), attempts: unit.attempts + 1 });
+  mgr.recordActivity(`Searching ${unit.portal}: "${unit.keyword}" (Page ${unit.page})...`);
   try {
     const searchUrl = handler.buildSearchUrl(unit.keyword, unit.page);
     let cards: FeedCard[] = [];
@@ -480,6 +546,7 @@ async function processUnit(
         logger: log,
       });
       mgr.recordListingSuccess(unit.portal);
+      mgr.recordActivity(`Discovered ${cards.length} listings on ${unit.portal} for "${unit.keyword}"`);
     } catch (err: any) {
       mgr.recordListingFailure(unit.portal);
       let errorCategory = "Unknown";
@@ -513,11 +580,14 @@ async function processUnit(
 
     // Cards for a single unit run in parallel with a bounded pool.
     await pool(cards, CONFIG.detailConcurrency, async (feedCard) => {
+      if (mgr.isCancellationRequested()) return null;
+
       const cardUnitId = `${unit.id}#${feedCard.cardHash}`;
       const cardUnit = mgr.manifest.cards.find((c) => c.id === cardUnitId);
       if (!cardUnit || cardUnit.status === "done") return null;
 
       mgr.updateCard(cardUnitId, { status: "running", attempts: cardUnit.attempts + 1 });
+      mgr.recordActivity(`Reading JD: ${feedCard.title} (${feedCard.company})`);
 
       try {
         // 1. Cheap Pre-Filter

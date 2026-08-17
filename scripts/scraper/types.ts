@@ -128,6 +128,7 @@ export interface RunManifest {
   stage?: "discover" | "evaluate" | "prioritize" | "complete" | "stopped" | "failed";
   sources?: Record<string, "pending" | "searching" | "completed" | "failed">;
   portalHealth?: Record<string, PortalHealth>;
+  recentActivities?: string[];
   telemetry?: {
     httpAttempted: number;
     httpSuccessful: number;

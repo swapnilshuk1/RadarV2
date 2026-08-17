@@ -20,6 +20,7 @@ export interface CanonicalScrapeState {
   remainingCount: number;
   sources: Record<string, "pending" | "searching" | "completed" | "failed">;
   portalHealth?: Record<string, any>;
+  recentActivities?: string[];
   startedAt?: string;
   updatedAt?: string;
   finishedAt?: string;
@@ -102,7 +103,7 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
 
   // 2. Reconciliation Polling Loop while Run is Active
   useEffect(() => {
-    if (!runState?.runId || !runState.isActive) return;
+    if (!runState?.runId || !runState.isActive || runState.runId === "starting") return;
 
     const interval = setInterval(async () => {
       try {
@@ -117,7 +118,7 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
       } catch (err) {
         console.error("[ScrapeProgressProvider] Reconciliation poll error:", err);
       }
-    }, 3000); // 3-second reconciliation loop
+    }, 1500); // 1.5-second live reconciliation loop
 
     return () => clearInterval(interval);
   }, [runState?.runId, runState?.isActive, syncServerState, router]);
@@ -126,6 +127,23 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
   const startScrape = useCallback(async () => {
     if (runState?.isActive || isStarting) return;
     setIsStarting(true);
+    setIsDismissed(false);
+    setIsMinimized(false);
+
+    // 1. Instant optimistic state so widget appears IMMEDIATELY on click
+    setRunState({
+      runId: "starting",
+      status: "initializing",
+      isActive: true,
+      stage: "discover",
+      opportunitiesFound: 0,
+      evaluatedCount: 0,
+      remainingCount: 0,
+      sources: { LinkedIn: "searching", Naukri: "pending", Indeed: "pending" },
+      portalHealth: {},
+      startedAt: new Date().toISOString(),
+    });
+
     try {
       const res = await triggerScrapeFn();
       if (res.success && res.runId) {
@@ -133,12 +151,18 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
         setIsMinimized(false);
         // Hydrate initial progress immediately
         const fresh = await getRunProgressFn({ data: { runId: res.runId } });
-        if (fresh) syncServerState(fresh);
+        if (fresh) {
+          syncServerState(fresh);
+        } else {
+          setRunState(prev => prev ? { ...prev, runId: res.runId, status: "running" } : null);
+        }
       } else {
+        setRunState(null);
         alert("Failed to start search: " + (res.error || "Unknown error"));
       }
     } catch (err: any) {
       console.error("[ScrapeProgressProvider] triggerScrapeFn failed:", err);
+      setRunState(null);
       alert("Error starting search: " + err.message);
     } finally {
       setIsStarting(false);
@@ -157,13 +181,18 @@ export function ScrapeProgressProvider({ children }: { children: React.ReactNode
     setIsConfirmationOpen(false);
     if (!runState?.runId) return;
 
+    const targetRunId = runState.runId;
     // Optimistically transition state to stopping
     setRunState((prev) => prev ? { ...prev, status: "stopping" } : null);
 
     try {
-      await abortScrapeFn({ data: { runId: runState.runId } });
-      const updated = await getRunProgressFn({ data: { runId: runState.runId } });
-      if (updated) syncServerState(updated);
+      if (targetRunId !== "starting") {
+        await abortScrapeFn({ data: { runId: targetRunId } });
+        const updated = await getRunProgressFn({ data: { runId: targetRunId } });
+        if (updated) syncServerState(updated);
+      } else {
+        setRunState(null);
+      }
     } catch (err) {
       console.error("[ScrapeProgressProvider] confirmStop failed:", err);
     }

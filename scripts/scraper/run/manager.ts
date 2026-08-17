@@ -293,6 +293,20 @@ Duplicate Filter   : Pre-Detail=${telemetry.duplicatePreDetail || 0}, Post-Detai
     this.persistManifest();
   }
 
+  recordActivity(message: string): void {
+    if (!this.manifest.recentActivities) {
+      this.manifest.recentActivities = [];
+    }
+    const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const formatted = `[${ts}] ${message}`;
+    this.manifest.recentActivities = [formatted, ...this.manifest.recentActivities.slice(0, 9)];
+    this.manifest.updatedAt = new Date().toISOString();
+    this.persistManifest();
+    try {
+      this.journal.append({ type: "activity", message: formatted });
+    } catch {}
+  }
+
   transitionTo(state: RunManifest["status"]): void {
     const oldState = this.manifest.status;
     if (oldState === state) return;

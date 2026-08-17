@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { applyUrlFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
 import { useDecisions, type DecisionRecord } from "../lib/decisions-store";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
-import { getDecidedOpportunitiesFn, getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
+import { getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
 import { ClientOpportunityCache } from "../lib/opportunity-cache";
 
 // Recomposition elements
@@ -17,14 +17,14 @@ export const Route = createFileRoute("/decisions")({
   head: () => ({
     meta: [
       { title: "Your opportunities — RADAR" },
-      { name: "description", content: "Your active executive pipeline: prepare CV, validate recruiter questions, and track conversations." },
+      { name: "description", content: "Your active executive pipeline: search, filter, revisit and control opportunities across your pipeline." },
       { name: "robots", content: "noindex" },
     ],
   }),
   staleTime: 0,
   loader: async () => {
     return {
-      opportunitiesList: await getDecidedOpportunitiesFn()
+      opportunitiesList: await getOpportunitiesFn()
     };
   },
   component: OpportunitiesPage,
@@ -57,22 +57,15 @@ function writeTracking(next: TrackingMap) {
   } catch {}
 }
 
-type Row = {
-  jobHash: string;
-  record: DecisionRecord;
-  role: string;
-  company: string;
-  location: string;
-  scrapedFrom: "LinkedIn" | "Naukri" | "Indeed";
-  applyUrl: string;
-  opportunity: Opportunity;
-};
+export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS" | "UNREVIEWED";
 
 function OpportunitiesPage() {
   const { decisions, undo, clear, hydrated } = useDecisions();
   const { opportunitiesList } = Route.useLoaderData();
   const router = useRouter();
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterKey, setFilterKey] = useState<FilterKey>("ALL");
   const [tracking, setTracking] = useState<TrackingMap>({});
   const [activePrepare, setActivePrepare] = useState<Record<string, boolean>>({});
   const [activeTrack, setActiveTrack] = useState<Record<string, boolean>>({});
@@ -97,30 +90,6 @@ function OpportunitiesPage() {
     });
   };
 
-  const rows: Row[] = Object.entries(decisions)
-    .map(([jobHash, record]) => {
-      const o = opportunitiesList.find(opp => opp.jobHash === jobHash);
-      if (!o) return null;
-      return {
-        jobHash,
-        record,
-        role: o.role,
-        company: o.company,
-        location: o.location,
-        scrapedFrom: o.scrapedFrom,
-        applyUrl: applyUrlFor(o),
-        opportunity: o,
-      };
-    })
-    .filter((r): r is Row => r !== null)
-    .sort((a, b) => b.record.at - a.record.at);
-
-  const activeRows = rows.filter(r => r.record.verb === "PURSUE" || r.record.verb === "CONSIDER");
-  const passiveRows = rows.filter(r => r.record.verb === "PASS" || r.record.verb === "NOT_EVALUABLE");
-
-  const countPursue = rows.filter(r => r.record.verb === "PURSUE").length;
-  const countConsider = rows.filter(r => r.record.verb === "CONSIDER").length;
-
   const togglePrepare = (jobHash: string) => {
     setActivePrepare(prev => ({ ...prev, [jobHash]: !prev[jobHash] }));
   };
@@ -129,143 +98,315 @@ function OpportunitiesPage() {
     setActiveTrack(prev => ({ ...prev, [jobHash]: !prev[jobHash] }));
   };
 
+  // Helper to get effective user decision verb for an opportunity
+  const getUserVerb = (o: Opportunity): DecisionVerb | null => {
+    const recorded = decisions[o.jobHash];
+    if (recorded?.verb) return recorded.verb;
+    if (o.userDecision?.userAction) return o.userDecision.userAction as DecisionVerb;
+    return null;
+  };
+
+  // Calculate filter counts across the complete accessible pipeline
+  const counts = useMemo(() => {
+    let pursue = 0;
+    let consider = 0;
+    let pass = 0;
+    let unreviewed = 0;
+
+    for (const o of opportunitiesList) {
+      const verb = getUserVerb(o);
+      if (verb === "PURSUE") pursue++;
+      else if (verb === "CONSIDER") consider++;
+      else if (verb === "PASS") pass++;
+      else unreviewed++;
+    }
+
+    return {
+      all: opportunitiesList.length,
+      pursue,
+      consider,
+      pass,
+      unreviewed,
+    };
+  }, [opportunitiesList, decisions]);
+
+  // Combined Search + Decision Filter Composition
+  const displayedOpportunities = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+
+    return opportunitiesList.filter((o) => {
+      const verb = getUserVerb(o);
+
+      // 1. Decision Filter Match
+      let matchesFilter = false;
+      if (filterKey === "ALL") matchesFilter = true;
+      else if (filterKey === "PURSUE") matchesFilter = verb === "PURSUE";
+      else if (filterKey === "CONSIDER") matchesFilter = verb === "CONSIDER";
+      else if (filterKey === "PASS") matchesFilter = verb === "PASS";
+      else if (filterKey === "UNREVIEWED") matchesFilter = !verb;
+
+      if (!matchesFilter) return false;
+
+      // 2. Search Query Match
+      if (!q) return true;
+      const company = (o.company || "").toLowerCase();
+      const role = (o.role || "").toLowerCase();
+      const location = (o.location || "").toLowerCase();
+
+      return company.includes(q) || role.includes(q) || location.includes(q);
+    });
+  }, [opportunitiesList, decisions, filterKey, searchQuery]);
+
   return (
     <div className="min-h-screen bg-background text-ink font-sans pb-24">
-      {/* Page Header */}
-      <section className="mx-auto max-w-[1180px] px-5 sm:px-8 pb-10 pt-14 border-b border-border">
-        <div className="flex items-baseline justify-between">
+      {/* Page Header — Executive Control Panel */}
+      <section className="mx-auto max-w-[1180px] px-5 sm:px-8 pb-8 pt-12 border-b border-border">
+        <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
           <div>
-            <p className="label-mono font-normal">Active Pipeline</p>
-            <h1 className="mt-3 font-serif text-[3.25rem] leading-[0.92] tracking-tight text-ink font-normal">
+            <p className="label-mono font-normal text-ink-muted">Opportunity Control Plane</p>
+            <h1 className="mt-2 font-serif text-[3rem] sm:text-[3.25rem] leading-[0.95] tracking-tight text-ink font-normal">
               Your opportunities.
             </h1>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-muted font-normal">
+              Search, filter and revisit mandates across your pipeline. Control your evaluation history and active pursuits.
+            </p>
           </div>
-          {rows.length > 0 && (
+          {Object.keys(decisions).length > 0 && (
             <button
               type="button"
               onClick={() => {
-                if (confirm("Clear all opportunities? This can't be undone.")) {
+                if (confirm("Clear all recorded decisions? This can't be undone.")) {
                   clear();
                   router.invalidate();
                 }
               }}
-              className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted hover:text-ink transition-colors"
+              className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted hover:text-ink transition-colors self-start sm:self-auto"
             >
-              Clear all
+              Clear decisions
             </button>
           )}
         </div>
-        <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-muted font-normal">
-          {activeRows.length === 0
-            ? "No active pursuits yet. Mark a brief as Pursue or Consider on the shortlist to begin executing."
-            : `${activeRows.length} active opportunit${activeRows.length === 1 ? "y" : "ies"} in progression. Anchor your positioning and track next steps.`}
-        </p>
-        <div className="mt-6 flex gap-8 text-sm text-ink-muted">
-          <Stat label="Pursued" value={countPursue} tint="text-decision-pursue" />
-          <Stat label="Considered" value={countConsider} tint="text-decision-consider" />
-          <Stat label="Passed" value={passiveRows.length} />
+
+        {/* Search & Filter Control Surface */}
+        <div className="mt-8 space-y-4">
+          {/* Search Input Control */}
+          <div className="relative max-w-md">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search organisation or role"
+              className="w-full bg-surface-raised border border-border px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:border-border-strong rounded-md transition-colors font-sans"
+              data-testid="opportunity-search-input"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted hover:text-ink px-1"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Decision Filter Pills */}
+          <div className="flex flex-wrap items-center gap-2 pt-1" data-testid="decision-filter-bar">
+            <FilterPill
+              label="ALL"
+              count={counts.all}
+              active={filterKey === "ALL"}
+              onClick={() => setFilterKey("ALL")}
+            />
+            <FilterPill
+              label="PURSUED"
+              count={counts.pursue}
+              active={filterKey === "PURSUE"}
+              onClick={() => setFilterKey("PURSUE")}
+              tint="pursue"
+            />
+            <FilterPill
+              label="CONSIDERED"
+              count={counts.consider}
+              active={filterKey === "CONSIDER"}
+              onClick={() => setFilterKey("CONSIDER")}
+              tint="consider"
+            />
+            <FilterPill
+              label="PASSED"
+              count={counts.pass}
+              active={filterKey === "PASS"}
+              onClick={() => setFilterKey("PASS")}
+              tint="pass"
+            />
+            <FilterPill
+              label="UNREVIEWED"
+              count={counts.unreviewed}
+              active={filterKey === "UNREVIEWED"}
+              onClick={() => setFilterKey("UNREVIEWED")}
+            />
+          </div>
         </div>
       </section>
 
-      {/* Main Opportunities List */}
-      <main className="mx-auto max-w-[1180px] px-5 sm:px-8 pt-10">
+      {/* Main Opportunities List Surface */}
+      <main className="mx-auto max-w-[1180px] px-5 sm:px-8 pt-8">
         {!hydrated ? (
-          <p className="text-sm text-ink-muted font-mono uppercase tracking-wider">Loading…</p>
-        ) : activeRows.length === 0 ? (
-          <div className="py-12 text-center border border-dashed border-border rounded-md bg-surface-raised/30">
-            <p className="text-sm text-ink-muted">No active opportunities. Go to the shortlist to evaluate new briefs.</p>
+          <p className="text-sm text-ink-muted font-mono uppercase tracking-wider py-8">Loading pipeline opportunities…</p>
+        ) : displayedOpportunities.length === 0 ? (
+          <div className="py-16 text-center border border-dashed border-border rounded-md bg-surface-raised/30">
+            <p className="text-sm text-ink-muted font-normal">
+              {searchQuery.trim()
+                ? `No opportunities match "${searchQuery.trim()}".`
+                : filterKey !== "ALL"
+                  ? `No ${filterKey.toLowerCase()} opportunities found.`
+                  : "No opportunities currently in pipeline."}
+            </p>
+            {(searchQuery.trim() || filterKey !== "ALL") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setFilterKey("ALL");
+                }}
+                className="mt-3 text-xs font-mono uppercase tracking-wider text-accent-ink hover:underline"
+              >
+                Reset filters & search
+              </button>
+            )}
           </div>
         ) : (
-          <div className="space-y-6">
-            <h2 className="label-mono text-ink-muted mb-4">Today's Priorities</h2>
-            <div className="space-y-6">
-              {activeRows.map((r) => {
-                const o = r.opportunity;
-                const verb = r.record.verb;
+          <div className="space-y-5" data-testid="opportunities-list">
+            <div className="flex items-center justify-between text-xs text-ink-muted font-mono uppercase tracking-wider pb-2 border-b border-hairline">
+              <span>Displaying {displayedOpportunities.length} of {opportunitiesList.length} mandates</span>
+              <span>Sorted by Pipeline Recency</span>
+            </div>
 
-                // Recompose existing models
-                const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
-                const jobProj = JobProjectionBuilder.build(o);
-                const candidateProj = new CandidateProjectionBuilderImpl().fromProfile(candidateProfile);
-                const executionPkg = ExecutionEngine.validateDecision(candidateProj, jobProj);
+            {displayedOpportunities.map((o) => {
+              const verb = getUserVerb(o);
+              const applyUrl = applyUrlFor(o);
 
-                const score = o.recommendationResult?.score ?? 80;
+              // Recompose brief models for context
+              const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
+              const jobProj = JobProjectionBuilder.build(o);
+              const candidateProj = new CandidateProjectionBuilderImpl().fromProfile(candidateProfile);
+              const executionPkg = ExecutionEngine.validateDecision(candidateProj, jobProj);
 
-                // Tracking values
-                const trackData = tracking[r.jobHash] || { latestConversation: "", nextAction: "", followUpDate: "" };
+              // Tracking values
+              const trackData = tracking[o.jobHash] || { latestConversation: "", nextAction: "", followUpDate: "" };
 
-                // Visual Hierarchy: "Next Action" First
-                let nextActionDisplay = trackData.nextAction;
-                if (!nextActionDisplay) {
-                  if (verb === "PURSUE") {
-                    const mandate = jobProj.trueExecutiveMandate || "COMMERCIAL_EXPANSION";
-                    if (mandate === "TRANSFORMATION" || mandate === "TURNAROUND") {
-                      nextActionDisplay = "Tailor your CV to emphasize Transformation before applying";
-                    } else {
-                      nextActionDisplay = "Tailor your CV to emphasize Commercial Growth before applying";
-                    }
+              // Next action context (rendered SECONDARY below identity)
+              let secondaryActionContext = trackData.nextAction;
+              if (!secondaryActionContext) {
+                if (verb === "PURSUE") {
+                  const mandate = jobProj.trueExecutiveMandate || "COMMERCIAL_EXPANSION";
+                  if (mandate === "TRANSFORMATION" || mandate === "TURNAROUND") {
+                    secondaryActionContext = "Tailor CV for Transformation alignment";
                   } else {
-                    nextActionDisplay = "Verify reporting line altitude on initial screening";
+                    secondaryActionContext = "Tailor CV for Commercial Growth alignment";
                   }
+                } else if (verb === "CONSIDER") {
+                  secondaryActionContext = "Verify reporting line altitude on screening call";
                 }
+              }
 
-                const isPrepareOpen = !!activePrepare[r.jobHash];
-                const isTrackOpen = !!activeTrack[r.jobHash];
+              const isPrepareOpen = !!activePrepare[o.jobHash];
+              const isTrackOpen = !!activeTrack[o.jobHash];
 
-                return (
-                  <div key={r.jobHash} className="memo-card border border-border bg-surface-raised p-6 rounded-md animate-reveal">
-                    {/* Header Row: Next Action & Action Buttons */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        {/* Bold Next Action Header */}
-                        <h3 className="font-display font-serif text-[1.65rem] leading-[1.1] text-ink tracking-tight font-normal">
-                          {nextActionDisplay}
-                        </h3>
-                        {/* Subdued Company Context */}
-                        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
-                          <Link
-                            to="/opportunity/$jobHash"
-                            params={{ jobHash: r.jobHash }}
-                            className="font-medium text-ink hover:underline"
-                          >
-                            {r.company}
-                          </Link>
-                          <span className="text-hairline-strong">·</span>
-                          <span>{r.role}</span>
-                          <span className="text-hairline-strong">·</span>
-                          <span>{r.location}</span>
-                          <span className="text-hairline-strong">·</span>
-                          <span className="font-mono uppercase tracking-[0.14em] text-[0.62rem] text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm">
-                            {o.recommendationResult?.score !== null && o.recommendationResult?.score !== undefined
-                              ? `Fit Overlap ${o.recommendationResult.score}%`
-                              : o.engineRecommendation?.vetoed
-                                ? `Vetoed (${o.engineRecommendation.vetoReason || "Mismatch"})`
-                                : "Unscored"}
-                          </span>
-                        </div>
+              return (
+                <div
+                  key={o.jobHash}
+                  className="memo-card border border-border bg-surface-raised p-6 rounded-md transition-all hover:border-border-strong"
+                  data-testid={`opportunity-card-${o.jobHash}`}
+                >
+                  {/* Top Row: Primary Designation Identity + Decision Controls */}
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      {/* PRIMARY IDENTITY HEADER: Designation / Role Title */}
+                      <h3 className="font-serif text-[1.65rem] leading-[1.1] text-ink tracking-tight font-normal">
+                        <Link
+                          to="/opportunity/$jobHash"
+                          params={{ jobHash: o.jobHash }}
+                          className="hover:underline hover:text-accent-ink transition-colors"
+                          data-testid={`opportunity-role-link-${o.jobHash}`}
+                        >
+                          {o.role || "Executive Role"}
+                        </Link>
+                      </h3>
+
+                      {/* SECONDARY IDENTITY: Organisation + Location + Source */}
+                      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+                        <span className="font-semibold text-ink">{o.company}</span>
+                        <span className="text-hairline-strong">·</span>
+                        <span>{o.location}</span>
+                        {o.scrapedFrom && (
+                          <>
+                            <span className="text-hairline-strong">·</span>
+                            <span className="text-ink-muted/80">{o.scrapedFrom}</span>
+                          </>
+                        )}
+                        <span className="text-hairline-strong">·</span>
+                        <span className="font-mono uppercase tracking-[0.14em] text-[0.62rem] text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm">
+                          {o.recommendationResult?.score !== null && o.recommendationResult?.score !== undefined
+                            ? `Fit Index ${o.recommendationResult.score}%`
+                            : o.engineRecommendation?.vetoed
+                              ? `Vetoed (${o.engineRecommendation.vetoReason || "Mismatch"})`
+                              : o.engineRecommendation?.engineVerdict || "Unscored"}
+                        </span>
                       </div>
 
-                      {/* Right-aligned Badge and Undo */}
-                      <div className="flex items-center gap-3 shrink-0">
+                      {/* SECONDARY ACTION CONTEXT (Subdued, non-dominant) */}
+                      {secondaryActionContext && (
+                        <p className="mt-2 text-xs text-ink-muted/90 font-sans italic">
+                          <span className="font-mono not-italic uppercase tracking-wider text-[0.6rem] text-ink-muted mr-1.5">Focus:</span>
+                          {secondaryActionContext}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Right-aligned Decision Badge & Controls */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      {verb ? (
                         <DecisionBadge verb={verb} size="sm" />
+                      ) : (
+                        <span className="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-ink-muted bg-surface/80 border border-hairline px-2.5 py-1 rounded-sm">
+                          UNREVIEWED
+                        </span>
+                      )}
+
+                      {/* OPEN OPPORTUNITY Button */}
+                      <Link
+                        to="/opportunity/$jobHash"
+                        params={{ jobHash: o.jobHash }}
+                        className="rounded-sm border border-border px-3 py-1 label-mono text-xs text-ink hover:bg-background hover:text-accent-ink transition-colors"
+                        data-testid={`open-opportunity-btn-${o.jobHash}`}
+                      >
+                        Open
+                      </Link>
+
+                      {/* UNDO Button */}
+                      {verb && (
                         <button
                           type="button"
                           onClick={() => {
-                            undo(r.jobHash);
+                            undo(o.jobHash);
                             router.invalidate();
                           }}
-                          className="rounded-sm border border-hairline px-3 py-1 label-mono text-ink-muted hover:bg-background hover:text-ink transition-colors"
+                          className="rounded-sm border border-hairline px-3 py-1 label-mono text-xs text-ink-muted hover:bg-background hover:text-ink transition-colors"
+                          data-testid={`undo-btn-${o.jobHash}`}
                         >
                           Undo
                         </button>
-                      </div>
+                      )}
                     </div>
+                  </div>
 
-                    {/* Expandable Prepare & Track triggers */}
+                  {/* Expandable Prepare & Track triggers for decided roles */}
+                  {verb && verb !== "PASS" && (
                     <div className="flex items-center gap-4 border-t border-hairline mt-5 pt-3">
                       <button
                         type="button"
-                        onClick={() => togglePrepare(r.jobHash)}
+                        onClick={() => togglePrepare(o.jobHash)}
                         className={`text-xs uppercase tracking-[0.14em] font-mono cursor-pointer transition-colors ${
                           isPrepareOpen ? "text-ink font-semibold border-b border-ink" : "text-ink-muted hover:text-ink"
                         }`}
@@ -274,16 +415,16 @@ function OpportunitiesPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => toggleTrack(r.jobHash)}
+                        onClick={() => toggleTrack(o.jobHash)}
                         className={`text-xs uppercase tracking-[0.14em] font-mono cursor-pointer transition-colors ${
                           isTrackOpen ? "text-ink font-semibold border-b border-ink" : "text-ink-muted hover:text-ink"
                         }`}
                       >
                         Track
                       </button>
-                      {verb === "PURSUE" && (
+                      {verb === "PURSUE" && applyUrl && (
                         <a
-                          href={r.applyUrl}
+                          href={applyUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="ml-auto text-xs uppercase tracking-[0.14em] font-mono text-decision-pursue hover:underline"
@@ -292,122 +433,121 @@ function OpportunitiesPage() {
                         </a>
                       )}
                     </div>
+                  )}
 
-                    {/* Expanded Prepare Drawer */}
-                    {isPrepareOpen && (
-                      <div className="mt-4 p-4 border border-hairline bg-background/50 rounded-sm animate-reveal">
+                  {/* Expanded Prepare Drawer */}
+                  {isPrepareOpen && (
+                    <div className="mt-4 p-4 border border-hairline bg-background/50 rounded-sm animate-reveal">
+                      <div>
+                        <p className="label-mono text-[0.6rem] text-ink-muted">Resume Positioning Anchor</p>
+                        <p className="text-base text-ink mt-1 font-serif italic leading-snug">
+                          {brief.strategy.focusTitle || `Highlight multi-market commercial GTM operations and digital governance scaling.`}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 border-t border-hairline pt-3">
+                        <p className="label-mono text-[0.6rem] text-ink-muted mb-2">Questions to Validate during screening</p>
+                        <ul className="space-y-3">
+                          {executionPkg.screeningQuestions.map((q, idx) => (
+                            <li key={idx} className="text-sm">
+                              <span className="font-mono text-[0.72rem] font-semibold block text-accent-ink/90">
+                                {idx + 1}. {q.question}
+                              </span>
+                              <span className="text-[0.78rem] text-ink-muted leading-relaxed mt-0.5 block">
+                                {q.whyItMatters}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Expanded Track Drawer */}
+                  {isTrackOpen && (
+                    <div className="mt-4 p-4 border border-hairline bg-background/50 rounded-sm animate-reveal">
+                      <p className="label-mono text-[0.6rem] text-ink-muted mb-3">What happened last time?</p>
+                      <div className="grid gap-4 sm:grid-cols-3">
                         <div>
-                          <p className="label-mono text-[0.6rem] text-ink-muted">Resume Positioning Anchor</p>
-                          <p className="text-base text-ink mt-1 font-serif italic leading-snug">
-                            {brief.strategy.focusTitle || `Highlight multi-market commercial GTM operations and digital governance scaling.`}
-                          </p>
+                          <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Latest Conversation</label>
+                          <input
+                            type="text"
+                            value={trackData.latestConversation}
+                            onChange={(e) => updateTracking(o.jobHash, "latestConversation", e.target.value)}
+                            placeholder="e.g. Recruiter call scheduled"
+                            className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
+                          />
                         </div>
-
-                        <div className="mt-4 border-t border-hairline pt-3">
-                          <p className="label-mono text-[0.6rem] text-ink-muted mb-2">Questions to Validate during screening</p>
-                          <ul className="space-y-3">
-                            {executionPkg.screeningQuestions.map((q, idx) => (
-                              <li key={idx} className="text-sm">
-                                <span className="font-mono text-[0.72rem] font-semibold block text-accent-ink/90">
-                                  {idx + 1}. {q.question}
-                                </span>
-                                <span className="text-[0.78rem] text-ink-muted leading-relaxed mt-0.5 block">
-                                  {q.whyItMatters}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
+                        <div>
+                          <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Next Action Override</label>
+                          <input
+                            type="text"
+                            value={trackData.nextAction}
+                            onChange={(e) => updateTracking(o.jobHash, "nextAction", e.target.value)}
+                            placeholder="e.g. Follow up on Thursday"
+                            className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
+                          />
                         </div>
-                      </div>
-                    )}
-
-                    {/* Expanded Track Drawer */}
-                    {isTrackOpen && (
-                      <div className="mt-4 p-4 border border-hairline bg-background/50 rounded-sm animate-reveal">
-                        <p className="label-mono text-[0.6rem] text-ink-muted mb-3">What happened last time?</p>
-                        <div className="grid gap-4 sm:grid-cols-3">
-                          <div>
-                            <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Latest Conversation</label>
-                            <input
-                              type="text"
-                              value={trackData.latestConversation}
-                              onChange={(e) => updateTracking(r.jobHash, "latestConversation", e.target.value)}
-                              placeholder="e.g. Recruiter call scheduled"
-                              className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Next Action Override</label>
-                            <input
-                              type="text"
-                              value={trackData.nextAction}
-                              onChange={(e) => updateTracking(r.jobHash, "nextAction", e.target.value)}
-                              placeholder="e.g. Follow up on Thursday"
-                              className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Follow-up Date</label>
-                            <input
-                              type="text"
-                              value={trackData.followUpDate}
-                              onChange={(e) => updateTracking(r.jobHash, "followUpDate", e.target.value)}
-                              placeholder="e.g. 12 Aug 2026"
-                              className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
-                            />
-                          </div>
+                        <div>
+                          <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Follow-up Date</label>
+                          <input
+                            type="text"
+                            value={trackData.followUpDate}
+                            onChange={(e) => updateTracking(o.jobHash, "followUpDate", e.target.value)}
+                            placeholder="e.g. 12 Aug 2026"
+                            className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
+                          />
                         </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        )}
-
-        {/* Passive rows (Passed & Not Evaluable) minimal section at the bottom */}
-        {hydrated && passiveRows.length > 0 && (
-          <section className="mt-16 border-t border-hairline pt-8">
-            <h2 className="label-mono text-ink-muted mb-4">Archive</h2>
-            <ul className="space-y-2">
-              {passiveRows.map((r) => (
-                <li key={r.jobHash} className="flex items-center justify-between py-2 border-b border-hairline text-sm">
-                  <span className="truncate">
-                    <span className="text-ink font-medium">{r.company}</span>
-                    <span className="mx-1.5 text-ink-muted">·</span>
-                    <span className="text-ink-muted">{r.role}</span>
-                  </span>
-                  <div className="flex items-center gap-3 shrink-0 pl-4">
-                    <span className="text-[0.62rem] font-mono uppercase tracking-wider text-ink-muted">
-                      {r.record.verb}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        undo(r.jobHash);
-                        router.invalidate();
-                      }}
-                      className="text-xs uppercase tracking-[0.14em] font-mono text-ink-muted hover:text-ink transition-colors"
-                    >
-                      Undo
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
         )}
       </main>
     </div>
   );
 }
 
-function Stat({ label, value, tint = "text-ink" }: { label: string; value: number; tint?: string }) {
+function FilterPill({
+  label,
+  count,
+  active,
+  onClick,
+  tint,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+  tint?: "pursue" | "consider" | "pass";
+}) {
+  let activeStyles = "bg-ink text-background font-semibold border-ink";
+  let inactiveStyles = "bg-surface-raised/80 text-ink-muted hover:text-ink hover:border-border-strong border-border";
+
+  if (active && tint === "pursue") {
+    activeStyles = "bg-decision-pursue text-white font-semibold border-decision-pursue";
+  } else if (active && tint === "consider") {
+    activeStyles = "bg-decision-consider text-white font-semibold border-decision-consider";
+  } else if (active && tint === "pass") {
+    activeStyles = "bg-ink-muted text-background font-semibold border-ink-muted";
+  }
+
   return (
-    <div className="flex items-baseline gap-1.5">
-      <span className={`text-2xl font-serif leading-none ${tint}`}>{value}</span>
-      <span className="text-[0.62rem] font-mono uppercase tracking-[0.14em] text-ink-muted">{label}</span>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full border text-xs font-mono uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+        active ? activeStyles : inactiveStyles
+      }`}
+      data-testid={`filter-pill-${label.toLowerCase()}`}
+    >
+      <span>{label}</span>
+      <span className={`text-[0.65rem] px-1.5 py-0.2 rounded-full ${active ? "bg-white/20 text-white" : "bg-hairline text-ink-muted"}`}>
+        {count}
+      </span>
+    </button>
   );
 }
