@@ -1,4 +1,19 @@
 /**
+ * Safely truncates a string at a word boundary up to maxLen characters.
+ */
+export function truncateWordBoundary(str: string, maxLen: number = 60): string {
+  if (!str) return "";
+  const trimmed = str.trim();
+  if (trimmed.length <= maxLen) return trimmed;
+  const sub = trimmed.slice(0, maxLen);
+  const lastSpace = sub.lastIndexOf(" ");
+  if (lastSpace > 20) {
+    return sub.slice(0, lastSpace).replace(/[,.;:]$/, "") + "...";
+  }
+  return sub.replace(/[,.;:]$/, "") + "...";
+}
+
+/**
  * Cleans up raw ontology constants (e.g. PL_OWNERSHIP -> P&L Ownership, ON_SITE -> On-site)
  */
 export function cleanOntologyConstants(val: string): string {
@@ -38,9 +53,9 @@ export function cleanOntologyConstants(val: string): string {
  * into clean, human-readable display values, stripping large snippets or metadata.
  */
 export function unwrapEvidenceValue(raw: any): string {
-  if (!raw) return "";
+  if (raw === null || raw === undefined) return "";
   if (typeof raw === "boolean") return raw ? "Required" : "Optional";
-  if (Array.isArray(raw)) return raw.map((r) => unwrapEvidenceValue(r)).join(", ");
+  if (Array.isArray(raw)) return raw.map((r) => unwrapEvidenceValue(r)).filter(Boolean).join(", ");
 
   let obj = raw;
   if (typeof raw === "string") {
@@ -49,8 +64,15 @@ export function unwrapEvidenceValue(raw: any): string {
       try {
         obj = JSON.parse(trimmed);
       } catch {
-        return cleanOntologyConstants(trimmed);
+        obj = null;
       }
+    } else if (trimmed.startsWith("{") || trimmed.includes('"value":')) {
+      // Truncated or malformed JSON string: safely extract value if present, else sanitize
+      const match = trimmed.match(/"value"\s*:\s*"([^"]+)"/);
+      if (match && match[1]) {
+        return cleanOntologyConstants(match[1]);
+      }
+      return "";
     } else {
       return cleanOntologyConstants(trimmed);
     }
@@ -74,9 +96,13 @@ export function unwrapEvidenceValue(raw: any): string {
     // Fall back to first readable string property if value/rawValue not found
     const stringVal = Object.values(obj).find((v) => typeof v === "string" && !v.startsWith("{") && !v.includes("extractorVersion"));
     if (stringVal) return cleanOntologyConstants(String(stringVal));
+    return "";
   }
 
-  return cleanOntologyConstants(String(raw));
+  if (typeof raw === "string") {
+    return cleanOntologyConstants(raw);
+  }
+  return "";
 }
 
 /**
@@ -116,19 +142,5 @@ export class SemanticNaturalLanguageResolver {
     return unwrapped
       .replace(/_/g, " ")
       .replace(/\b\w/g, (l) => l.toUpperCase());
-  }
-
-  public static resolveActionRecommendation(
-    decision: "PURSUE" | "CONSIDER" | "PASS",
-    role: string,
-    company: string
-  ): string {
-    if (decision === "PURSUE") {
-      return `Proceed. Priority mandate for ${role} at ${company}; position justifies immediate screening call to confirm reporting line and capital allocation.`;
-    }
-    if (decision === "CONSIDER") {
-      return `Consider. Conduct a single screening conversation to verify true P&L scope and budget authority at ${company} before allocating further prep time.`;
-    }
-    return `Pass. Operating remit for ${role} at ${company} sits below your target commercial altitude; preserve search bandwidth for full-scope mandates.`;
   }
 }

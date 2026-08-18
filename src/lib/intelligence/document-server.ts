@@ -2,34 +2,15 @@
  * document-server.ts
  *
  * TanStack Start transport adapters for candidate documents, pipeline execution, and versioned intent.
- * Dynamic Multi-User Session Resolution with fallback safety.
+ * Strict Authentication & Authorization Enforcement (ADR-008).
  */
 
 import { createServerFn } from "@tanstack/react-start";
-import { getCookie } from "@tanstack/react-start/server";
 import { getRepositories } from "../../data/sqlite/provider";
 import { ProjectionPipeline } from "./pipeline/ProjectionPipeline";
 import { EvaluationCoordinator } from "./EvaluationCoordinator";
-import { validateSessionToken, SESSION_COOKIE_NAME } from "../auth/session";
+import { requireAuthUser } from "../auth/guard";
 import type { CareerIntentRecord } from "../../data/sqlite/repositories/SqliteDocumentStore";
-
-const HARDCODED_DEV_USER = "swapnil-shukla";
-
-/**
- * Resolves active authenticated user ID from session cookie or defaults safely.
- */
-async function getAuthenticatedUserId(): Promise<string> {
-  try {
-    const token = getCookie(SESSION_COOKIE_NAME);
-    if (token) {
-      const { user } = await validateSessionToken(token);
-      if (user?.id) return user.id;
-    }
-  } catch (err) {
-    console.warn("[document-server] Session lookup fallback triggered:", err);
-  }
-  return HARDCODED_DEV_USER;
-}
 
 /**
  * Fire-and-forget document upload transport adapter.
@@ -44,7 +25,8 @@ export const uploadDocumentFn = createServerFn({ method: "POST" })
     base64Buffer?: string;
   }) => data)
   .handler(async ({ data }) => {
-    const userId = await getAuthenticatedUserId();
+    const user = await requireAuthUser();
+    const userId = user.id;
     const documentId = `doc-${Date.now()}`;
     const fileBuffer = data.base64Buffer ? Buffer.from(data.base64Buffer, "base64") : undefined;
 
@@ -79,10 +61,16 @@ export const uploadDocumentFn = createServerFn({ method: "POST" })
 export const getPipelineStatusFn = createServerFn({ method: "GET" })
   .validator((data: { documentId: string }) => data)
   .handler(async ({ data }) => {
+    const user = await requireAuthUser();
     const repos = getRepositories();
     const doc = await repos.documents.getDocument(data.documentId);
     if (!doc) {
       return { success: false, error: "Document not found" };
+    }
+    if (doc.personId !== user.id && user.role !== "admin") {
+      const error: any = new Error("FORBIDDEN: Document access denied");
+      error.statusCode = 403;
+      throw error;
     }
     return {
       success: true,
@@ -108,11 +96,11 @@ export const saveIntentFn = createServerFn({ method: "POST" })
     travelTolerance?: "HIGH" | "MEDIUM" | "LOW";
   }) => intent)
   .handler(async ({ data: intent }) => {
+    const user = await requireAuthUser();
     const repos = getRepositories();
-    const userId = await getAuthenticatedUserId();
 
     const intentRecord: CareerIntentRecord = {
-      personId: userId,
+      personId: user.id,
       currency: intent.currency || "INR",
       targetSalaryAmount: intent.targetSalaryAmount || intent.minSalaryUsd || 8000000,
       minSalaryUsd: intent.minSalaryUsd || intent.targetSalaryAmount,
@@ -125,7 +113,7 @@ export const saveIntentFn = createServerFn({ method: "POST" })
     await repos.documents.saveCareerIntent(intentRecord);
 
     // Refresh evaluations via EvaluationCoordinator
-    await EvaluationCoordinator.notify({ event: "INTENT_UPDATED", personId: userId });
+    await EvaluationCoordinator.notify({ event: "INTENT_UPDATED", personId: user.id });
 
     return {
       success: true,
@@ -138,11 +126,11 @@ export const saveIntentFn = createServerFn({ method: "POST" })
  */
 export const getLatestIntentFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    const user = await requireAuthUser();
     const repos = getRepositories();
-    const userId = await getAuthenticatedUserId();
-    const intent = await repos.documents.getLatestCareerIntent(userId);
+    const intent = await repos.documents.getLatestCareerIntent(user.id);
     return intent || {
-      personId: userId,
+      personId: user.id,
       currency: "INR",
       targetSalaryAmount: 8000000,
       preferredLocations: ["Gurugram", "Remote India"],

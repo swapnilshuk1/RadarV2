@@ -135,16 +135,8 @@ export function extractMandate(input: { title: string; snippet: string; detailTe
   if (!raw) return missing<string>();
   const norm = mandateExtractorInstance.normalize(raw);
   if (!norm) return missing<string>();
-  const payload = {
-    value: norm.canonicalValue,
-    rawValue: norm.rawValue,
-    canonicalValue: norm.canonicalValue,
-    confidence: norm.confidence,
-    metadata: norm.metadata,
-    extractorVersion,
-    normalizerVersion
-  };
-  return anchor(JSON.stringify(payload), raw.evidenceSnippet, raw.rawValue, "snippet");
+  const cleanValue = String(norm.canonicalValue || norm.rawValue || "MANDATE").trim();
+  return anchor(cleanValue, raw.evidenceSnippet, raw.rawValue, "snippet");
 }
 
 export const mandateExtractorId = `mandate@${extractorVersion}`;

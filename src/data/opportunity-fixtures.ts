@@ -37,7 +37,23 @@ export type OpportunitySource = Omit<
   | "headspaceInvestment"
   | "hiringRisk"
   | "alternativePath"
->;
+> & {
+  rawText?: string;
+  normalizedText?: string;
+  description?: string;
+  rawDescription?: string;
+  whyNow?: string;
+  positioning?: string[];
+  primaryProof?: { headline: string; detail: string };
+  headspaceInvestment?: {
+    estimateHours: string;
+    window: string;
+    leverage: string;
+    optional?: string[];
+  };
+  hiringRisk?: string;
+  alternativePath?: string;
+};
 
 export type DimensionResult = {
   key: DimensionKey;
@@ -64,13 +80,15 @@ export interface CapabilityCardViewModel {
 import type { DecisionConfidence } from "../domain/entities";
 
 export interface RecommendationViewModel {
-  score: number;
+  score: number | null;
   decision: string;
   policyId: string;
   policyVersion: string;
   explanation: string;
   capabilities: CapabilityCardViewModel[];
   decisionConfidence?: DecisionConfidence;
+  vetoed?: boolean;
+  vetoReason?: string | null;
 }
 
 export type Opportunity = {
@@ -113,6 +131,16 @@ export type Opportunity = {
   primaryRisk?: string;
   tailoringEffort?: "LOW" | "MODERATE" | "HIGH";
   capabilityAlignmentText?: string;
+  /** P1-F: Executive-facing recommended action based on decision + tailoring effort */
+  recommendedAction?: string;
+
+  // RADAR V4 Multi-State Multi-Truth Model
+  engineRecommendation?: import("@/domain/decision_v4").EngineRecommendationV4;
+  userDecision?: import("@/domain/decision_v4").UserDecisionStateV4 | null;
+  effectiveDecision?: import("@/domain/decision_v4").EffectiveDecision;
+  reviewWorkflowState?: import("@/domain/decision_v4").ReviewWorkflowState;
+  displayScore?: string;
+  uiBadge?: { label: string; variant: "signal" | "caution" | "pass" | "muted" };
 };
 
 /** Derive the apply URL from the scraped source when a direct one wasn't captured. */

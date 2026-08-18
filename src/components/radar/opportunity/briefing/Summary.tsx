@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
 
 interface SummaryProps {
   o: any;
   brief: any;
-  currentVerdict: string;
+  dossierState: DossierDecisionState;
   currentIndex: number;
   totalCount: number;
 }
@@ -11,7 +12,7 @@ interface SummaryProps {
 export function Summary({
   o,
   brief,
-  currentVerdict,
+  dossierState,
   currentIndex,
   totalCount,
 }: SummaryProps) {
@@ -30,16 +31,50 @@ export function Summary({
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <span className={`label-mono rounded-[3px] px-1.5 py-[2px] leading-none uppercase font-normal text-[10px] ${
-              currentVerdict === "PURSUE"
-                ? "bg-signal text-white"
-                : currentVerdict === "CONSIDER"
-                ? "bg-caution text-white"
-                : "bg-muted text-muted-foreground"
-            }`}>
-              {currentVerdict === "PURSUE" ? "Pursue" : currentVerdict === "CONSIDER" ? "Consider" : "Pass"}
+            {/* Primary RADAR Engine Recommendation Badge (Strict Fail-Closed) */}
+            {dossierState.engineVerdict ? (
+              <span className={`label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs ${
+                dossierState.engineVerdict === "PURSUE"
+                  ? "bg-signal text-white"
+                  : dossierState.engineVerdict === "CONSIDER"
+                  ? "bg-caution text-white"
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                {dossierState.engineVerdict}
+              </span>
+            ) : (
+              <span className="label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs bg-caution/20 text-caution border border-caution/30">
+                RECOMMENDATION UNAVAILABLE
+              </span>
+            )}
+
+            {/* Subordinate User Choice Badge */}
+            {dossierState.userDecisionState !== "NONE" && dossierState.userDecision && (
+              <span className={`label-mono font-mono text-xs px-2 py-0.5 rounded font-medium ${
+                dossierState.userDecisionState === "STALE"
+                  ? "bg-caution/20 text-caution border border-caution/30"
+                  : dossierState.userDecisionState === "UNVERIFIABLE"
+                  ? "bg-surface-raised border border-border text-muted-foreground"
+                  : "bg-surface-raised border border-border text-foreground font-semibold"
+              }`}>
+                YOU CHOSE: {dossierState.userDecision}
+                {dossierState.userDecisionState === "STALE" && " · STALE — RE-EVALUATED"}
+                {dossierState.userDecisionState === "UNVERIFIABLE" && " · FRESHNESS UNVERIFIED"}
+              </span>
+            )}
+
+            {/* Canonical Career-Value Signal Badge */}
+            {(brief.explanation?.careerValueSignal || brief.executiveThesis?.careerValueSignal) && (
+              <span className="label-mono font-mono text-xs px-2 py-0.5 rounded font-medium bg-caution/20 text-caution border border-caution/30 uppercase">
+                {brief.explanation?.careerValueSignal || brief.executiveThesis?.careerValueSignal}
+              </span>
+            )}
+
+            <span className="label-mono font-mono text-xs font-semibold px-2 py-0.5 rounded bg-surface-raised border border-border text-foreground">
+              RADAR SCORE: {(brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore) != null ? `${brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore}/100` : "N/A"}
             </span>
-            <span className="label-mono font-normal text-[10px]">Executive Briefing</span>
+
+            <span className="label-mono font-normal text-[10px] text-muted-foreground">· Executive Briefing</span>
           </div>
 
           <h1 className="mt-3 font-display text-3xl leading-[1.1] tracking-tight text-foreground font-normal">
@@ -52,11 +87,16 @@ export function Summary({
       <section className="border-b border-border bg-surface-raised py-6">
         <div className="mx-auto max-w-[1180px] px-5">
           <p className="font-display text-2xl leading-snug text-foreground font-normal">
-            {brief.oneMinuteTLDR.bottomLine}
+            {brief.pursuitStrategy?.bottomLine || brief.explanation?.bottomLine || brief.oneMinuteTLDR.bottomLine}
           </p>
-          <p className="mt-2 text-xs text-foreground/90 font-mono border-l-2 border-primary pl-2.5 leading-relaxed">
-            {brief.verdictGuidance.actionNotice}
-          </p>
+          <div className="mt-2 text-xs text-foreground font-mono border-l-2 border-primary pl-2.5 leading-relaxed space-y-0.5">
+            <span className="font-semibold uppercase tracking-wider text-[0.65rem] text-primary block">
+              {brief.pursuitStrategy?.executiveLabel || "Strategy Focus"}
+            </span>
+            <span>
+              {brief.pursuitStrategy?.immediateNextAction || brief.explanation?.primaryReason || brief.verdictGuidance.actionNotice}
+            </span>
+          </div>
 
           <div className="mt-5 memo-card p-4 space-y-4 bg-background border border-border/80">
             <div>

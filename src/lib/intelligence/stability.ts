@@ -3,7 +3,7 @@
 // evidence arrives?", not "how complete is the evidence today?".
 
 import type { DecisionVerb } from "@/data/opportunity-fixtures";
-import type { PriorityResult } from "./priority";
+import type { DecisionFactors, DominantFactor } from "./record";
 import { marginToBand } from "./decision";
 
 export type Stability = "High" | "Medium" | "Low";
@@ -11,9 +11,9 @@ export type Stability = "High" | "Medium" | "Low";
 export function computeStability(input: {
   priority: number;
   verb: DecisionVerb;
-  factors: PriorityResult["factors"];
+  factors: DecisionFactors;
   completeness: number;
-  dominantFactor: PriorityResult["dominantFactor"];
+  dominantFactor: DominantFactor;
 }): Stability {
   const margin = Math.abs(marginToBand(input.priority, input.verb));
   // A record whose verb sits at the edge of a band is inherently fragile.

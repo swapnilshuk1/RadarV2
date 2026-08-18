@@ -38,7 +38,7 @@ export interface BriefMemory {
   primaryOpportunity: string;  // e.g. "Direct P&L and regional growth expansion"
   primaryRisk: string;         // e.g. "Reporting line hierarchy unstated"
   recommendedAction: string;   // e.g. "PURSUE — Submit direct application"
-  decision: "PURSUE" | "CONSIDER" | "PASS";
+  decision: "PURSUE" | "CONSIDER" | "PASS" | null;
   tradeoff: string;            // e.g. "Smaller team (-15% span) for direct C-suite visibility"
   first90Days: string;         // e.g. "Restructure marketing agency roster before Q2 launch"
   whyNow: string;              // e.g. "Company entering $50M regional expansion phase following CEO hire"
@@ -58,7 +58,7 @@ export interface ProofPointItem {
 
 export interface QualitativeReasoningRow {
   layer: "Identity Alignment" | "Capability Coverage" | "Career Capital Value";
-  ratingLabel: "Exceptional" | "Strong Alignment" | "Adjacent Alignment" | "Moderate";
+  ratingLabel: "Exceptional" | "Strong Alignment" | "Adjacent Alignment" | "Moderate" | "Limited Upside";
   becausePoints: string[];
   evidenceSnippet: string;
 }
@@ -104,7 +104,7 @@ export interface BriefModel {
   score: number;
   certaintyPct: number;
   evidenceQuality: "High Evidence Quality" | "Medium Evidence Quality" | "Inferred Evidence";
-  qualitativeRecommendation: "Strong Pursue Recommendation" | "Conditional Consideration" | "Strategic Pass";
+  qualitativeRecommendation: "Strong Pursue Recommendation" | "Conditional Consideration" | "Strategic Pass" | "Pending Assessment";
   whyNotStronger: string;
   sections: BriefSectionMeta[];
   oneMinuteTLDR: OpportunityInOneMinute;

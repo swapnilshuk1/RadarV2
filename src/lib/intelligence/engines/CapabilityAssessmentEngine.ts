@@ -2,6 +2,7 @@ import { CandidateProjection } from "../../domain/candidate_projection";
 import { JobProjection, CapabilityTaxonomyTier } from "../../domain/job_projection";
 import { CapabilityAssessment, EvidenceMatch } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
+import type { CandidateEvaluationContext } from "../context";
 import executiveOntology from "@/data/ontology/executive_ontology.json";
 
 export class CapabilityAssessmentEngine {
@@ -70,9 +71,15 @@ export class CapabilityAssessmentEngine {
       }
     }
 
+    // Check functional adjacency between candidate identity and job domain
+    const candidateIdentity = (candidate.executiveThemes?.join(" ") || "Commercial & Marketing Leadership").toLowerCase();
+    const isCommercialCandidate = candidateIdentity.includes("commercial") || candidateIdentity.includes("marketing") || candidateIdentity.includes("growth");
+    const isOrthogonalDomain = ["medical", "clinical", "hospital", "nuclear", "supply chain", "logistics", "procurement", "manufacturing", "site strategy"].some(d => jobLower.includes(d));
+
     // 2. Scope of Responsibility & Executive Altitude Ground
+    // Generic executive keywords only grant transferability if the domain is not strictly orthogonal
     const isHighLevelExecutiveCap = ["leadership", "governance", "commercial", "transformation", "executive", "strategy", "management"].some(kw => jobLower.includes(kw));
-    if (isHighLevelExecutiveCap) {
+    if (isHighLevelExecutiveCap && !(isCommercialCandidate && isOrthogonalDomain)) {
       if (candidate.decisionAuthority?.value === "ENTERPRISE" || candidate.commercialScope?.value === "ENTERPRISE") {
         return {
           score: 0.70,
@@ -121,11 +128,6 @@ export class CapabilityAssessmentEngine {
     // 5. Conditional Potential Floor Equation:
     // Floor = Executive Altitude x Identity Overlap x Functional Adjacency
     const isExecutiveLevel = candidate.operatingLevel?.value === "EXECUTIVE" || candidate.commercialScope?.value === "ENTERPRISE";
-    
-    // Check functional adjacency between candidate identity and job domain
-    const candidateIdentity = (candidate.executiveThemes?.join(" ") || "Commercial & Marketing Leadership").toLowerCase();
-    const isCommercialCandidate = candidateIdentity.includes("commercial") || candidateIdentity.includes("marketing") || candidateIdentity.includes("growth");
-    const isOrthogonalDomain = ["medical", "clinical", "hospital", "supply chain", "logistics", "procurement", "manufacturing", "site strategy"].some(d => jobLower.includes(d));
 
     let baselinePotential = 0.20;
     if (isExecutiveLevel) {
@@ -150,7 +152,8 @@ export class CapabilityAssessmentEngine {
 
   public static evaluate(
     candidate: CandidateProjection,
-    job: JobProjection
+    job: JobProjection,
+    context?: CandidateEvaluationContext
   ): CapabilityAssessment {
     const richness = EvidenceRichnessCalculator.calculate(job.originalOpportunity);
     const jobCaps = job.capabilities || [];
@@ -163,10 +166,10 @@ export class CapabilityAssessmentEngine {
         evidenceCount: 0,
         failureCode: "EMPTY_CAPABILITIES",
         evidenceSummary: { extractedSignals: 0, inferredSignals: 0, ignoredSignals: 0, conflictingSignals: 0 },
-        overallFit: 0.50, // Neutral uncertainty baseline
-        capabilityPotential: 0.50,
-        evidenceStrength: 0.50,
-        matchingConfidence: 0.50,
+        overallFit: null, // Unknown - not neutral
+        capabilityPotential: null,
+        evidenceStrength: 0,
+        matchingConfidence: 0,
         matchedCapabilities: [],
         missingCapabilities: [],
         matches: []
@@ -192,12 +195,12 @@ export class CapabilityAssessmentEngine {
     let totalPotentialScoreSum = 0;
     let totalWeightSum = 0;
 
-    const explicitCaps = jobCaps.filter(c => c.source === "explicit");
+    const explicitCaps = jobCaps.filter(c => typeof c === "object" && c !== null && (c as any).source === "explicit");
     const capsToEvaluate = explicitCaps.length > 0 ? explicitCaps : jobCaps;
 
     capsToEvaluate.forEach((jobCapObj) => {
-      const jobCapName = jobCapObj.name;
-      const tier: CapabilityTaxonomyTier = jobCapObj.tier || "EXECUTION_CAPABILITY";
+      const jobCapName = typeof jobCapObj === "string" ? jobCapObj : (jobCapObj as any)?.name || "";
+      const tier: CapabilityTaxonomyTier = typeof jobCapObj === "string" ? "CORE_MANDATE" : ((jobCapObj as any)?.tier || "EXECUTION_CAPABILITY");
       
       let weight = 0.30;
       if (tier === "CORE_MANDATE") weight = 0.40;
@@ -233,12 +236,14 @@ export class CapabilityAssessmentEngine {
 
     // Determine 3-state Capability Evidence
     const hasParsedCapabilities = capsToEvaluate.length > 0 && capsToEvaluate.some(c => c.name && c.name.length > 2);
-    const evidenceState = !hasParsedCapabilities || richness.sufficiency === "INSUFFICIENT" 
+    // If capabilities exist but job evidence richness is insufficient, still evaluate capabilities
+    // UNAVAILABLE only when NO capabilities to evaluate
+    const evidenceState = !hasParsedCapabilities 
       ? "UNAVAILABLE" 
       : (matchedCapabilities.length > 0 ? "SUFFICIENT" : "PARTIAL");
 
-    // If evidence is unavailable, overallFit is neutral 0.50 (Uncertainty)
-    const overallFit = evidenceState === "UNAVAILABLE" ? 0.50 : rawFit;
+    // overallFit is null when evidence is unavailable (no capabilities to evaluate)
+    const overallFit = evidenceState === "UNAVAILABLE" ? null : rawFit;
 
     const rawConf = Number((0.92 - (missingCapabilities.length * 0.02)).toFixed(2));
     const matchingConfidence = isNaN(rawConf) ? 0.80 : Math.max(0.20, rawConf);

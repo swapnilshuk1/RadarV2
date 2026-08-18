@@ -10,11 +10,14 @@ import { Appendix } from "../reading/Appendix";
 import { ExecutiveActionButton } from "@/components/radar/actions";
 import { Button } from "@/components/ui/button";
 import { applyUrlFor, type DecisionVerb } from "@/data/opportunity-fixtures";
+import { useSectionPreferences } from "@/lib/section-preferences-store";
+
+import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
 
 interface ReadingSurfaceProps {
   opportunity: any;
   brief: any;
-  currentVerdict: DecisionVerb;
+  dossierState: DossierDecisionState;
   decide: (verdict: DecisionVerb) => void;
   neighbors: any;
   currentIndex: number;
@@ -80,7 +83,7 @@ function estimateReadTime(brief: any): string {
 export function ReadingSurface({
   opportunity: o,
   brief,
-  currentVerdict,
+  dossierState,
   decide,
   neighbors,
   currentIndex,
@@ -119,35 +122,91 @@ export function ReadingSurface({
     return () => document.removeEventListener("keydown", handleKeyboard);
   }, [handleKeyboard]);
 
+  const { getSectionState, toggleSection, resetToDefaults } = useSectionPreferences(
+    dossierState.selectedActionForControls || "CONSIDER",
+    o.archetype
+  );
+
   return (
     <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
       <Hero
         o={o}
         brief={brief}
-        currentVerdict={currentVerdict}
+        dossierState={dossierState}
         currentIndex={currentIndex}
         totalCount={totalCount}
         jobProj={jobProj}
         readTime={readTime}
       />
 
-      {/* CORE MEMORANDUM GRID */}
-      <section className="py-10" ref={revealRef}>
-        <div className="memo-container space-y-12">
-          <div data-reveal>
-            <Context o={o} brief={brief} jobProj={jobProj} />
+      {/* CORE MEMORANDUM GRID WITH SECTION PREFERENCES */}
+      <section className="py-6" ref={revealRef}>
+        <div className="memo-container space-y-8">
+          {/* Section Toolbar & Layout Preferences */}
+          <div className="flex items-center justify-between border-b border-border/50 pb-2">
+            <span className="label-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+              Memorandum Layout · Custom Preferences Active
+            </span>
+            <button
+              onClick={resetToDefaults}
+              className="label-mono text-[11px] text-muted-foreground hover:text-foreground underline decoration-dotted underline-offset-4 cursor-pointer transition-colors"
+            >
+              Reset Layout Defaults
+            </button>
           </div>
-          <div data-reveal>
-            <Mandate o={o} jobProj={jobProj} executionPkg={executionPkg} />
+          {/* Section I: Context */}
+          <div data-reveal className="border-t border-border pt-4">
+            <div className="flex items-center justify-between cursor-pointer py-2 group select-none" onClick={() => toggleSection("context")}>
+              <span className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-semibold">Section I · Why this deserves your attention</span>
+              <button className="label-mono text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded bg-surface-raised border border-border cursor-pointer transition-colors">
+                {getSectionState("context") === "open" ? "Collapse ▲" : "Expand ▼"}
+              </button>
+            </div>
+            {getSectionState("context") === "open" && <Context o={o} brief={brief} jobProj={jobProj} />}
           </div>
-          <div data-reveal>
-            <Evidence brief={brief} />
+
+          {/* Section II: Mandate */}
+          <div data-reveal className="border-t border-border pt-4">
+            <div className="flex items-center justify-between cursor-pointer py-2 group select-none" onClick={() => toggleSection("mandate")}>
+              <span className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-semibold">Section II · What success requires</span>
+              <button className="label-mono text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded bg-surface-raised border border-border cursor-pointer transition-colors">
+                {getSectionState("mandate") === "open" ? "Collapse ▲" : "Expand ▼"}
+              </button>
+            </div>
+            {getSectionState("mandate") === "open" && <Mandate o={o} jobProj={jobProj} executionPkg={executionPkg} />}
           </div>
-          <div data-reveal>
-            <Opinion brief={brief} currentVerdict={currentVerdict} />
+
+          {/* Section III: Evidence */}
+          <div data-reveal className="border-t border-border pt-4">
+            <div className="flex items-center justify-between cursor-pointer py-2 group select-none" onClick={() => toggleSection("evidence")}>
+              <span className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-semibold">Section III · Why this reached your desk</span>
+              <button className="label-mono text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded bg-surface-raised border border-border cursor-pointer transition-colors">
+                {getSectionState("evidence") === "open" ? "Collapse ▲" : "Expand ▼"}
+              </button>
+            </div>
+            {getSectionState("evidence") === "open" && <Evidence brief={brief} />}
           </div>
-          <div data-reveal>
-            <Strategy brief={brief} executionPkg={executionPkg} />
+
+          {/* Section IV: Opinion */}
+          <div data-reveal className="border-t border-border pt-4">
+            <div className="flex items-center justify-between cursor-pointer py-2 group select-none" onClick={() => toggleSection("opinion")}>
+              <span className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-semibold">Section IV · Executive Bottom Line</span>
+              <button className="label-mono text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded bg-surface-raised border border-border cursor-pointer transition-colors">
+                {getSectionState("opinion") === "open" ? "Collapse ▲" : "Expand ▼"}
+              </button>
+            </div>
+            {getSectionState("opinion") === "open" && <Opinion brief={brief} engineVerdict={dossierState.engineVerdict} />}
+          </div>
+
+          {/* Section V: Strategy */}
+          <div data-reveal className="border-t border-border pt-4">
+            <div className="flex items-center justify-between cursor-pointer py-2 group select-none" onClick={() => toggleSection("strategy")}>
+              <span className="label-mono text-xs uppercase tracking-wider text-muted-foreground font-semibold">Section V · How to win the conversation</span>
+              <button className="label-mono text-xs text-muted-foreground hover:text-foreground px-2 py-0.5 rounded bg-surface-raised border border-border cursor-pointer transition-colors">
+                {getSectionState("strategy") === "open" ? "Collapse ▲" : "Expand ▼"}
+              </button>
+            </div>
+            {getSectionState("strategy") === "open" && <Strategy brief={brief} executionPkg={executionPkg} />}
           </div>
         </div>
       </section>
@@ -155,60 +214,60 @@ export function ReadingSurface({
       <Appendix brief={brief} rawDimensions={rawDimensions} />
 
       {/* FLOATING ACTION DOCK (APPLE/LINEAR STYLE) */}
-      <div className="floating-dock shadow-2xl flex items-center justify-between gap-4 pointer-events-auto">
+      <div className="floating-dock justify-between gap-4 pointer-events-auto">
         {/* Left: Previous Brief */}
         <div className="flex items-center gap-1.5 min-w-[70px]">
           {neighbors?.prev ? (
             <Link
               to="/opportunity/$jobHash"
               params={{ jobHash: neighbors.prev }}
-              className="label-mono text-muted-foreground hover:text-foreground transition-colors font-medium text-[0.7rem]"
+              className="dock-link"
             >
-              ← Prev
+              ← PREV
             </Link>
           ) : (
-            <span className="label-mono text-muted-foreground font-normal opacity-30 text-[0.7rem]">← Prev</span>
+            <span className="dock-link opacity-30 cursor-not-allowed">← PREV</span>
           )}
         </div>
 
         {/* Center: Verdict Buttons with Keyboard Badges */}
         <div className="flex items-center gap-2">
-          <span className="label-mono text-muted-foreground text-[0.68rem] uppercase font-bold mr-1">Verdict</span>
+          <span className="dock-label">Verdict</span>
           
           <button
             onClick={() => decide("PURSUE")}
-            className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              currentVerdict === "PURSUE"
-                ? "bg-emerald-600 text-white shadow-xs"
+            className={`dock-btn transition-all shadow-xs ${
+              dossierState.selectedActionForControls === "PURSUE"
+                ? "bg-emerald-600 text-white"
                 : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             Pursue
-            <kbd className="text-[0.6rem] opacity-70 bg-black/20 px-1 rounded">P</kbd>
+            <kbd>P</kbd>
           </button>
 
           <button
             onClick={() => decide("CONSIDER")}
-            className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              currentVerdict === "CONSIDER"
-                ? "bg-amber-600 text-white shadow-xs"
+            className={`dock-btn transition-all shadow-xs ${
+              dossierState.selectedActionForControls === "CONSIDER"
+                ? "bg-amber-600 text-white"
                 : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             Consider
-            <kbd className="text-[0.6rem] opacity-70 bg-black/20 px-1 rounded">C</kbd>
+            <kbd>C</kbd>
           </button>
 
           <button
             onClick={() => decide("PASS")}
-            className={`label-mono flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              currentVerdict === "PASS"
-                ? "bg-slate-700 text-white shadow-xs"
+            className={`dock-btn transition-all shadow-xs ${
+              dossierState.selectedActionForControls === "PASS"
+                ? "bg-slate-700 text-white"
                 : "bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
             Pass
-            <kbd className="text-[0.6rem] opacity-70 bg-black/20 px-1 rounded">X</kbd>
+            <kbd>X</kbd>
           </button>
         </div>
 
@@ -219,7 +278,7 @@ export function ReadingSurface({
               href={applyUrlFor(o)}
               target="_blank"
               rel="noopener noreferrer"
-              className="label-mono flex items-center gap-1 bg-emerald-500 text-white px-3 py-1.5 rounded-full text-[0.68rem] font-bold uppercase tracking-wider hover:bg-emerald-600 transition-colors shadow-xs"
+              className="dock-btn bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-xs"
             >
               Apply →
             </a>
@@ -227,12 +286,12 @@ export function ReadingSurface({
             <Link
               to="/opportunity/$jobHash"
               params={{ jobHash: neighbors.next }}
-              className="label-mono text-muted-foreground hover:text-foreground transition-colors font-medium text-[0.7rem]"
+              className="dock-link"
             >
-              Next →
+              NEXT →
             </Link>
           ) : (
-            <span className="label-mono text-muted-foreground font-normal opacity-30 text-[0.7rem]">Next →</span>
+            <span className="dock-link opacity-30 cursor-not-allowed">NEXT →</span>
           )}
         </div>
       </div>

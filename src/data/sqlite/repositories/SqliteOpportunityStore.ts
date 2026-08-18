@@ -1,9 +1,19 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { OpportunityStore } from "../../../domain/repositories";
 import type { Opportunity } from "../../../domain/entities";
+import type { OpportunitySource } from "../../../data/opportunity-fixtures";
 
 export class SqliteOpportunityStore implements OpportunityStore {
+  private inFlightSourcesPromise: Promise<OpportunitySource[]> | null = null;
+
   constructor(private db: DatabaseAdapter) {}
+
+  /**
+   * Clears in-flight sources promise (e.g. after scraper persistence).
+   */
+  public invalidateSourcesCache(): void {
+    this.inFlightSourcesPromise = null;
+  }
 
   async mergeOpportunity(opportunity: Opportunity): Promise<void> {
     await this.db.execute(
@@ -88,6 +98,116 @@ export class SqliteOpportunityStore implements OpportunityStore {
     }
     const rows = await this.db.many<any>(sql, params);
     return rows.map(r => this.mapRow(r));
+  }
+
+  async listOpportunitySources(): Promise<OpportunitySource[]> {
+    if (this.inFlightSourcesPromise) {
+      return this.inFlightSourcesPromise;
+    }
+
+    this.inFlightSourcesPromise = (async () => {
+      const sql = `
+        WITH RankedOpps AS (
+          SELECT o.rowid as rid, o.id as id, o.canonical_title as canonical_title, o.location as location,
+                 c.name as company_name, d.content as doc_content,
+                 ROW_NUMBER() OVER (
+                   PARTITION BY COALESCE(json_extract(d.content, '$.jobHash'), o.id)
+                   ORDER BY 
+                     CASE WHEN d.content IS NOT NULL AND json_extract(d.content, '$.normalizedText') IS NOT NULL AND length(json_extract(d.content, '$.normalizedText')) > 0 THEN 0 ELSE 1 END,
+                     o.rowid ASC
+                 ) as rn
+          FROM opportunities o
+          LEFT JOIN companies c ON o.company_id = c.id
+          LEFT JOIN documents d ON d.opportunity_id = o.id
+          WHERE o.lifecycle != 'Archived'
+        )
+        SELECT id, canonical_title, location, company_name, doc_content
+        FROM RankedOpps
+        WHERE rn = 1
+      `;
+      const rows = await this.db.many<any>(sql);
+      const jobHashMap = new Map<string, OpportunitySource>();
+
+      for (const r of rows) {
+        let contentObj: any = {};
+        if (r.doc_content) {
+          try {
+            contentObj = typeof r.doc_content === "string" ? JSON.parse(r.doc_content) : r.doc_content;
+          } catch {}
+        }
+
+        const jobHash = contentObj.jobHash || r.id;
+        const oppSource: OpportunitySource = {
+          jobHash,
+          role: r.canonical_title || contentObj.role || "Executive Role",
+          company: r.company_name || contentObj.company || "Target Company",
+          location: r.location || contentObj.location || "Remote",
+          scrapedFrom: contentObj.scrapedFrom || "LinkedIn",
+          postedRelative: contentObj.postedRelative || "Recently Ingested",
+          rawText: contentObj.normalizedText || contentObj.rawText || contentObj.rawDescription || "",
+          dimensions: Array.isArray(contentObj.dimensions) ? contentObj.dimensions : [],
+          primaryConcern: contentObj.primaryConcern || null,
+          whyNow: contentObj.whyNow,
+          positioning: Array.isArray(contentObj.positioning) ? contentObj.positioning : [],
+          applyUrl: contentObj.applyUrl || contentObj.url,
+          primaryProof: contentObj.primaryProof,
+          headspaceInvestment: contentObj.headspaceInvestment,
+          hiringRisk: contentObj.hiringRisk,
+          alternativePath: contentObj.alternativePath,
+        };
+
+        const existing = jobHashMap.get(jobHash);
+        if (!existing || (!existing.rawText && oppSource.rawText)) {
+          jobHashMap.set(jobHash, oppSource);
+        }
+      }
+
+      return Array.from(jobHashMap.values());
+    })().finally(() => {
+      this.inFlightSourcesPromise = null;
+    });
+
+    return this.inFlightSourcesPromise;
+  }
+
+  async getOpportunitySource(jobHash: string): Promise<OpportunitySource | undefined> {
+    const sql = `
+      SELECT o.id as id, o.canonical_title as canonical_title, o.location as location,
+             c.name as company_name, d.content as doc_content
+      FROM opportunities o
+      LEFT JOIN companies c ON o.company_id = c.id
+      LEFT JOIN documents d ON d.opportunity_id = o.id
+      WHERE o.id = ? OR d.content LIKE ?
+      LIMIT 1
+    `;
+    const row = await this.db.one<any>(sql, [jobHash, `%"jobHash":"${jobHash}"%`]);
+    if (!row) return undefined;
+
+    let contentObj: any = {};
+    if (row.doc_content) {
+      try {
+        contentObj = typeof row.doc_content === "string" ? JSON.parse(row.doc_content) : row.doc_content;
+      } catch {}
+    }
+
+    return {
+      jobHash: contentObj.jobHash || row.id,
+      role: row.canonical_title || contentObj.role || "Executive Role",
+      company: row.company_name || contentObj.company || "Target Company",
+      location: row.location || contentObj.location || "Remote",
+      scrapedFrom: contentObj.scrapedFrom || "LinkedIn",
+      postedRelative: contentObj.postedRelative || "Recently Ingested",
+      rawText: contentObj.normalizedText || contentObj.rawText || contentObj.rawDescription || "",
+      dimensions: Array.isArray(contentObj.dimensions) ? contentObj.dimensions : [],
+      primaryConcern: contentObj.primaryConcern || null,
+      whyNow: contentObj.whyNow,
+      positioning: Array.isArray(contentObj.positioning) ? contentObj.positioning : [],
+      applyUrl: contentObj.applyUrl || contentObj.url,
+      primaryProof: contentObj.primaryProof,
+      headspaceInvestment: contentObj.headspaceInvestment,
+      hiringRisk: contentObj.hiringRisk,
+      alternativePath: contentObj.alternativePath,
+    };
   }
 
   private mapRow(row: any): Opportunity {

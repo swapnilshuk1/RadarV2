@@ -8,6 +8,7 @@ import {
 } from "../lib/intelligence/document-server";
 import { triggerDeployFn } from "./api/webhooks/deploy";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
+import { useAttentionPreference } from "../lib/attention-store";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -29,6 +30,7 @@ function ProfilePage() {
   const router = useRouter();
   const navigate = useNavigate();
 
+  const { attentionWindow, setAttentionWindow } = useAttentionPreference();
   const { progress, markEvidenceProvided, markEvidenceSkipped, markIntentSet, markIntentSkipped } = useOnboarding();
 
   const isEvidenceStage = progress.orientationSeen && progress.evidenceStatus === "pending";
@@ -503,6 +505,27 @@ function ProfilePage() {
                 <option value="REMOTE">REMOTE</option>
                 <option value="ON_SITE">ON_SITE</option>
               </select>
+            </div>
+
+            <div>
+              <label className="mono text-[10px] tracking-[0.16em] uppercase font-bold text-foreground/80 block mb-1.5">
+                EXECUTIVE ATTENTION WINDOW (1–10 OPPORTUNITIES)
+              </label>
+              <select
+                className="w-full p-2.5 text-[13px] font-mono rounded-xs border border-border/80 bg-background focus:outline-none focus:border-foreground"
+                value={attentionWindow}
+                onChange={(e) => setAttentionWindow(Number(e.target.value))}
+                data-testid="attention-window-select"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                  <option key={n} value={n}>
+                    {n} {n === 6 ? "(Default — 6 Opportunities)" : `Opportunity${n > 1 ? "s" : ""}`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Controls presentation density without restricting access to the broader pipeline.
+              </p>
             </div>
 
             <button

@@ -32,7 +32,7 @@ import { EnrichmentQueue } from "./scraper/persist/queue";
 import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
 import { FailurePolicyEngine } from "../src/lib/acquisition/failure-taxonomy";
 import { ResponseValidator } from "../src/lib/acquisition/validator";
-import { CheapFilter } from "./scraper/run/cheap-filter";
+import { passesHardFilter } from "./scraper/utils/hard-filter";
 import { HealthManager } from "./scraper/run/health-manager";
 import { QueryMetricsStore } from "./scraper/run/metrics";
 import { getRepositories } from "../src/data/sqlite/provider";
@@ -52,6 +52,77 @@ const HANDLERS: Record<PortalName, PortalHandler> = {
 
 const enrichmentQueue = new EnrichmentQueue();
 
+export function syncManifestProgress(
+  mgr: RunController,
+  stage?: "discover" | "evaluate" | "prioritize" | "complete" | "stopped" | "failed"
+) {
+  const cardsFound = mgr.manifest.cards.length;
+  let evaluated = 0;
+  try {
+    const stats = enrichmentQueue.getRunStats(mgr.runId);
+    evaluated = stats?.completed || 0;
+  } catch {}
+
+  const currentStage =
+    stage ||
+    (mgr.manifest.status === "enriching"
+      ? "evaluate"
+      : mgr.manifest.status === "completed"
+        ? "complete"
+        : mgr.manifest.status === "stopped" || mgr.manifest.status === "stopping" || mgr.manifest.status === "aborted"
+          ? "stopped"
+          : mgr.manifest.status === "failed"
+            ? "failed"
+            : "discover");
+
+  const sources: Record<string, "pending" | "searching" | "completed" | "failed"> = {};
+  for (const portal of mgr.manifest.portals) {
+    const units = mgr.manifest.units.filter((u) => u.portal === portal);
+    const hasRunning = units.some((u) => u.status === "running");
+    const allDone = units.every((u) => u.status === "done" || u.status.startsWith("skipped"));
+    if (hasRunning) sources[portal] = "searching";
+    else if (allDone && units.length > 0) sources[portal] = "completed";
+    else sources[portal] = "pending";
+  }
+
+  mgr.updateCanonicalMetrics({
+    opportunitiesFound: cardsFound,
+    evaluatedCount: evaluated,
+    remainingCount: Math.max(0, cardsFound - evaluated),
+    stage: currentStage,
+    sources,
+  });
+}
+
+const activeContexts = new Map<PortalName, any>();
+const activePages = new Map<PortalName, any>();
+const activePageManagers = new Map<PortalName, PageManager>();
+const activeRunControllers = new Map<string, RunController>();
+
+export async function abortLiveRun(runId?: string): Promise<boolean> {
+  const log = makeLogger("scrape:abort");
+  log(`Instant abort requested for run: ${runId || "active"}`);
+  
+  if (runId && activeRunControllers.has(runId)) {
+    const mgr = activeRunControllers.get(runId)!;
+    mgr.manifest.status = "stopping";
+    mgr.recordActivity("Stopping search... Closing browser workers and saving records");
+  } else {
+    for (const mgr of activeRunControllers.values()) {
+      mgr.manifest.status = "stopping";
+      mgr.recordActivity("Stopping search... Closing browser workers and saving records");
+    }
+  }
+
+  // Force close all browser contexts to cancel active navigations and network calls immediately
+  try {
+    await closeAllPortalContexts();
+  } catch (err: any) {
+    log(`Warning closing contexts on abort: ${err.message}`);
+  }
+  return true;
+}
+
 export interface RunOptions {
   keywords?: string[];
   portals?: PortalName[];
@@ -62,31 +133,11 @@ export interface RunOptions {
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   const log = makeLogger("scrape");
+  const freshRun = process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
+  const mgr = new RunController();
+  activeRunControllers.set(mgr.runId, mgr);
+
   let keywords = opts.keywords;
-  if (!keywords) {
-    try {
-      const profilePath = path.join(process.cwd(), "src", "data", "candidate-profile.json");
-      const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
-      const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
-      const searchPlanOutputPath = path.join(process.cwd(), "src", "data", "search-plan.json");
-      
-      const { CareerIntentModel } = await import("./scraper/run/career-intent");
-      const intent = CareerIntentModel.extractIntent(profilePath, taxonomyPath);
-      
-      const { SearchPlanner } = await import("./scraper/run/search-planner");
-      const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
-      
-      fs.writeFileSync(searchPlanOutputPath, JSON.stringify(searchPlan, null, 2), "utf-8");
-      log(`Generated and persisted Search Plan first-class artifact to: ${searchPlanOutputPath}`);
-      
-      // Select all ranked queries to fully capture the environment!
-      keywords = searchPlan.rankedQueries.map(q => q.query);
-      log(`Search Planner compiled all ${keywords.length} portal queries: ${keywords.join(", ")}`);
-    } catch (e: any) {
-      log(`Search Planner failed to dynamically generate Search Plan (${e.message}). Falling back to static defaults.`, "warn");
-      keywords = DEFAULT_KEYWORDS;
-    }
-  }
   let portals = opts.portals ?? DEFAULT_PORTALS;
   const maxPages = opts.maxPages ?? CONFIG.maxPages;
 
@@ -100,8 +151,35 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     portals = portalsArg.split('=')[1].split(',').map(p => p.trim() as PortalName);
   }
 
-  const freshRun = process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
-  const mgr = new RunController();
+  mgr.recordActivity("Building executive search schema from candidate profile...");
+
+  if (!keywords) {
+    try {
+      const profilePath = path.join(process.cwd(), "src", "data", "candidate-profile.json");
+      const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
+      const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
+      const searchPlanOutputPath = path.join(process.cwd(), "src", "data", "search-plan.json");
+      
+      const { CareerIntentModel } = await import("./scraper/run/career-intent");
+      const intent = CareerIntentModel.extractIntent(profilePath, taxonomyPath);
+      mgr.recordActivity(`Extracted target functions: ${intent.functions.slice(0, 2).join(", ") || "Marketing/Growth"} · Levels: ${intent.targetLevel.join(", ")}`);
+      
+      const { SearchPlanner } = await import("./scraper/run/search-planner");
+      const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
+      
+      fs.writeFileSync(searchPlanOutputPath, JSON.stringify(searchPlan, null, 2), "utf-8");
+      log(`Generated and persisted Search Plan first-class artifact to: ${searchPlanOutputPath}`);
+      
+      // Select all ranked queries to fully capture the environment!
+      keywords = searchPlan.rankedQueries.map(q => q.query);
+      log(`Search Planner compiled all ${keywords.length} portal queries: ${keywords.join(", ")}`);
+      mgr.recordActivity(`Compiled ${keywords.length} executive queries (${keywords.slice(0, 3).join(", ")}...)`);
+    } catch (e: any) {
+      log(`Search Planner failed to dynamically generate Search Plan (${e.message}). Falling back to static defaults.`, "warn");
+      keywords = DEFAULT_KEYWORDS;
+    }
+  }
+
   const { resumed } = mgr.init({
     keywords, portals, maxPages,
     maxCardsPerPage: CONFIG.maxCardsPerPage,
@@ -109,6 +187,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   });
   const plannedUnits = mgr.manifest.units.length;
   log(`Run ${mgr.runId} ${resumed ? "resumed" : "started"} — portals=${mgr.manifest.portals.join(",")} units=${plannedUnits}`);
+  mgr.recordActivity(`Search schema armed: ${plannedUnits} work units across ${portals.join(", ")}`);
 
   // Graceful shutdown: checkpoints already fsync'd — just close journal + browsers.
   const shutdown = async (signal: string) => {
@@ -132,6 +211,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
   const seenCardKeys = new Set<string>();   // cross-portal dedup
   const seenUrls = new Set<string>();       // cross-portal exact URL dedup
+  const seenCanonicalIds = new Set<string>(); // cross-portal canonical ID dedup
 
   const completion = (async () => {
     try {
@@ -144,11 +224,22 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         const units = mgr.pendingUnits().filter((u) => u.portal === portal);
         if (units.length === 0) { plog("no pending units"); return null; }
 
+        if (portal === "LinkedIn") {
+          mgr.recordActivity("Hooking into your LinkedIn profile session...");
+        } else if (portal === "Naukri") {
+          mgr.recordActivity("Establishing authenticated gateway to Naukri...");
+        } else if (portal === "Indeed") {
+          mgr.recordActivity("Saying hello to Indeed stealth channel...");
+        } else {
+          mgr.recordActivity(`Establishing secure session with ${portal}...`);
+        }
+
         let browserContext: any;
         try { browserContext = await getPortalContext(portal); }
         catch (err: any) { 
           plog(`context launch failed: ${err.message}`, "error"); 
           mgr.updatePortalHealth(portal, { status: "error", details: err.message });
+          mgr.recordActivity(`Error connecting to ${portal}: ${err.message}`);
           return null; 
         }
         
@@ -167,6 +258,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         if (sessionStatus === "error") {
           plog(`session error — skipping portal`, "warn");
           mgr.updatePortalHealth(portal, { status: "error", details: `Session error` });
+          mgr.recordActivity(`Session error on ${portal}`);
           activeContexts.delete(portal);
           activePages.delete(portal);
           return null;
@@ -178,16 +270,23 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           try {
             mgr.updatePortalHealth(portal, { status: "navigating", details: "Loading search page..." });
             await searchPage.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
-            // Intentionally NOT closing the page here. We leave it open so the user 
-            // can visually verify the page, solve captchas, or log in during the pause.
             const elapsed = Date.now() - t0;
             mgr.updatePortalHealth(portal, { status: "ready", details: `Logged in & search loaded (${elapsed}ms)` });
+            if (portal === "LinkedIn") {
+              mgr.recordActivity(`✓ Hooked to your LinkedIn profile (${elapsed}ms)`);
+            } else if (portal === "Naukri") {
+              mgr.recordActivity(`✓ Naukri session authenticated (${elapsed}ms)`);
+            } else if (portal === "Indeed") {
+              mgr.recordActivity(`✓ Say hello to Indeed! Connected (${elapsed}ms)`);
+            } else {
+              mgr.recordActivity(`✓ Connected to ${portal} (${elapsed}ms)`);
+            }
           } catch (err: any) {
             mgr.updatePortalHealth(portal, { status: "error", details: `Search nav failed: ${err.message}` });
           }
         } else if (sessionStatus === "gated") {
-          // If gated, ensureSession already left a tab open for manual verification/login.
           mgr.updatePortalHealth(portal, { status: "gated", details: `Waiting for manual login` });
+          mgr.recordActivity(`Portal ${portal} requires authentication/captcha`);
         }
       });
 
@@ -245,13 +344,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         let portalFacts = 0;
 
         for (const unit of units) {
-          try {
-            const currentManifest = JSON.parse(fs.readFileSync(mgr.manifestPath, "utf-8"));
-            if (currentManifest.status === "aborted") {
-               plog("Run aborted by UI during execution. Stopping portal loop.", "warn");
-               break;
-            }
-          } catch {}
+          if (mgr.isCancellationRequested()) {
+             plog("Run cancellation requested (stopping/aborted). Halting portal unit loop.", "warn");
+             break;
+          }
 
           // Adaptive Novelty Scheduler: Skip query page if historical novelty rate is < 5% on this portal (after page 1)
           if (unit.page > 1) {
@@ -263,11 +359,12 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             }
           }
 
-          const outcome = await processUnit(mgr, handler, unit, browserContext, activePage, seenCardKeys, seenUrls, plog);
+          const outcome = await processUnit(mgr, handler, unit, browserContext, activePage, seenCardKeys, seenUrls, seenCanonicalIds, plog);
           if (outcome) {
             portalIngested += outcome.opportunities;
             portalFacts += outcome.factsCreated;
           }
+          syncManifestProgress(mgr, "discover");
           await jitter();
         }
         return { portalIngested, portalFacts };
@@ -282,6 +379,17 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         }
       }
 
+      if (mgr.isCancellationRequested()) {
+        log(`[Scrape] Run ${mgr.runId} was aborted/stopped by user. Finalizing...`, "warn");
+        mgr.recordActivity("Search stopped. Finalizing acquired opportunities...");
+        mgr.finalize("aborted");
+        try {
+          const records = collectRecords();
+          writeLiveScraped(records);
+        } catch {}
+        return { success: false, count: ingestedCount, runId: mgr.runId };
+      }
+
       log(`Enqueued ${ingestedCount} cards for enrichment.`);
 
       // Certification: Ensure no units are left running
@@ -294,6 +402,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
       // Transition to enriching state so the UI tracks it in real-time
       mgr.transitionTo("enriching");
+      mgr.recordActivity("Synthesizing evidence graphs & computing fit scores...");
       
       try {
         log(`[Scrape] Automatically starting inline AI enrichment for run ${mgr.runId}...`);
@@ -317,6 +426,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       mgr.finalize("completed");
+      mgr.recordActivity("Search completed · Executive shortlist updated");
       const runDurationS = ((new Date().getTime() - new Date(mgr.manifest.startedAt).getTime()) / 1000).toFixed(1);
       
       const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
@@ -325,7 +435,6 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       generateAcquisitionReport(mgr.runId);
 
       printAcquisitionTelemetry(mgr);
-
 
       console.log(`
 ============================================================
@@ -353,16 +462,13 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
       mgr.finalize("failed");
       return { success: false, count: 0, runId: mgr.runId };
     } finally {
+      activeRunControllers.delete(mgr.runId);
       await closeAllPortalContexts();
     }
   })();
 
   return { runId: mgr.runId, completion };
 }
-
-const activeContexts = new Map<PortalName, any>();
-const activePages = new Map<PortalName, any>();
-const activePageManagers = new Map<PortalName, PageManager>();
 
 export async function runScraper(opts: Partial<RunControllerOptions> = {}): Promise<{ success: boolean; count: number; runId: string }> {
   const { completion } = await startRun(opts);
@@ -392,6 +498,7 @@ async function processUnit(
   activePage: any,
   seenCardKeys: Set<string>,
   seenUrls: Set<string>,
+  seenCanonicalIds: Set<string>,
   log: ReturnType<typeof makeLogger>
 ): Promise<ProcessOutcome> {
   const outcome: ProcessOutcome = {
@@ -420,6 +527,7 @@ async function processUnit(
   }
 
   mgr.updateUnit(unit.id, { status: "running", startedAt: new Date().toISOString(), attempts: unit.attempts + 1 });
+  mgr.recordActivity(`Searching ${unit.portal}: "${unit.keyword}" (Page ${unit.page})...`);
   try {
     const searchUrl = handler.buildSearchUrl(unit.keyword, unit.page);
     let cards: FeedCard[] = [];
@@ -438,6 +546,7 @@ async function processUnit(
         logger: log,
       });
       mgr.recordListingSuccess(unit.portal);
+      mgr.recordActivity(`Discovered ${cards.length} listings on ${unit.portal} for "${unit.keyword}"`);
     } catch (err: any) {
       mgr.recordListingFailure(unit.portal);
       let errorCategory = "Unknown";
@@ -471,22 +580,24 @@ async function processUnit(
 
     // Cards for a single unit run in parallel with a bounded pool.
     await pool(cards, CONFIG.detailConcurrency, async (feedCard) => {
+      if (mgr.isCancellationRequested()) return null;
+
       const cardUnitId = `${unit.id}#${feedCard.cardHash}`;
       const cardUnit = mgr.manifest.cards.find((c) => c.id === cardUnitId);
       if (!cardUnit || cardUnit.status === "done") return null;
 
       mgr.updateCard(cardUnitId, { status: "running", attempts: cardUnit.attempts + 1 });
+      mgr.recordActivity(`Reading JD: ${feedCard.title} (${feedCard.company})`);
 
       try {
         // 1. Cheap Pre-Filter
-        const preQual = CheapFilter.evaluate({
+        const preQual = passesHardFilter({
           title: feedCard.title,
-          companyName: feedCard.company,
-          location: feedCard.location,
-          rawUrl: feedCard.detailUrl
+          company: feedCard.company,
+          location: feedCard.location || "",
         });
 
-        if (!preQual.shouldAcquire) {
+        if (!preQual.pass) {
           mgr.updateCard(cardUnitId, { status: "skipped_empty", error: preQual.reason });
           return null;
         }
@@ -500,11 +611,24 @@ async function processUnit(
           rawJobId: feedCard.cardHash
         });
 
-        if (seenUrls.has(identity.canonicalUrl)) {
-          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Canonical URL" });
+        // Pre-Detail Duplicate Detection:
+        // Check in-memory sets AND persisted SQLite database before expensive detail extraction.
+        const isInMemoryDuplicate = seenUrls.has(identity.canonicalUrl) || seenCanonicalIds.has(identity.canonicalJobId);
+        let isPersistedDuplicate = false;
+        if (!isInMemoryDuplicate) {
+          const existingOpp = await repos.opportunities.getOpportunity(identity.canonicalJobId).catch(() => undefined);
+          if (existingOpp) isPersistedDuplicate = true;
+        }
+
+        if (isInMemoryDuplicate || isPersistedDuplicate) {
+          mgr.recordTelemetry("duplicatePreDetail");
+          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Canonical URL (Pre-Detail)" });
+          outcome.duplicates++;
           return null;
         }
+
         seenUrls.add(identity.canonicalUrl);
+        seenCanonicalIds.add(identity.canonicalJobId);
 
         // 3. Upsert Discovered Job into Persistent Acquisition Ledger
         const ledgerItem = await repos.acquisition.upsertDiscoveredJob({
@@ -627,7 +751,9 @@ async function processUnit(
         const key = [detailedCard.title, detailedCard.company, detailedCard.location]
           .map((s) => (s || "").toLowerCase().trim()).join("|");
         if (seenCardKeys.has(key)) {
-          mgr.updateCard(cardUnitId, { status: "skipped_empty" });
+          mgr.recordTelemetry("duplicatePostDetail");
+          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Content Hash (Post-Detail)" });
+          outcome.duplicates++;
           return null;
         }
         seenCardKeys.add(key);

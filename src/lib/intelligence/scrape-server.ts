@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import path from "path";
 import fs from "fs";
 import { ARTIFACTS_DIR } from "../../../scripts/scraper/config";
+import { requireAuthUser } from "../auth/guard";
 
 let rebuildTimeout: NodeJS.Timeout | null = null;
 
@@ -86,8 +87,37 @@ if (typeof globalThis !== "undefined") {
   }
 }
 
+let activeScrapeRunLock: { runId: string; startedAt: number } | null = null;
+
+export function getActiveScrapeLock(): { runId: string; startedAt: number } | null {
+  if (!activeScrapeRunLock) return null;
+  const state = getActiveScrapeState();
+  if (!state || !state.isActive) {
+    activeScrapeRunLock = null;
+    return null;
+  }
+  return activeScrapeRunLock;
+}
+
 export const triggerScrapeFn = createServerFn({ method: "POST" })
   .handler(async () => {
+    // 1. Enforce Authentication
+    const user = await requireAuthUser();
+
+    // 2. Enforce Single-Process Mutex
+    const activeState = getActiveScrapeState();
+    const activeLock = getActiveScrapeLock();
+    if (activeState || activeLock) {
+      const activeRunId = activeState?.runId || activeLock?.runId || "active";
+      console.warn(`[Server] triggerScrapeFn rejected: Run ${activeRunId} is already in progress.`);
+      return {
+        success: false,
+        error: `A scraping run is already in progress (${activeRunId}). Concurrent execution is rejected.`,
+        runId: activeRunId,
+        alreadyRunning: true
+      };
+    }
+
     try {
       console.log("[Server] triggerScrapeFn: launching fresh live scraper in background…");
       // Dynamic import isolates Playwright/Node modules from the browser bundler.
@@ -95,14 +125,26 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
       
       const { runId, completion } = await startRun({ resume: false, autoConfirm: true });
       
+      activeScrapeRunLock = { runId, startedAt: Date.now() };
+
       // Fire and forget
-      void completion.catch((err: any) => {
-        console.error(`[Server] background scrape ${runId} failed:`, err);
-      });
+      void completion
+        .then(() => {
+          if (activeScrapeRunLock?.runId === runId) {
+            activeScrapeRunLock = null;
+          }
+        })
+        .catch((err: any) => {
+          console.error(`[Server] background scrape ${runId} failed:`, err);
+          if (activeScrapeRunLock?.runId === runId) {
+            activeScrapeRunLock = null;
+          }
+        });
 
       return { success: true, runId };
     } catch (error: any) {
       console.error("[Server] triggerScrapeFn failed:", error);
+      activeScrapeRunLock = null;
       return { success: false, error: error?.message ?? String(error) };
     }
   });
@@ -110,6 +152,7 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
 export const getRunEventsFn = createServerFn({ method: "GET" })
   .validator((d: { runId: string; afterIndex: number }) => d)
   .handler(async ({ data }) => {
+    await requireAuthUser();
     const { runId, afterIndex } = data;
     const { Journal } = await import("../../../scripts/scraper/run/journal");
     
@@ -166,9 +209,150 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
     };
   });
 
+export function buildCanonicalRunData(runId: string) {
+  const runDir = path.join(ARTIFACTS_DIR, "runs", runId);
+  const manifestPath = path.join(runDir, "manifest.json");
+
+  if (!fs.existsSync(manifestPath)) return null;
+
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+    const opportunitiesFound = manifest.opportunitiesFound ?? manifest.cards?.length ?? 0;
+
+    let evaluatedCount = manifest.evaluatedCount ?? 0;
+    try {
+      const { EnrichmentQueue } = require("../../../scripts/scraper/persist/queue");
+      const queue = new EnrichmentQueue();
+      const stats = queue.getRunStats(runId);
+      if (stats?.completed !== undefined) {
+        evaluatedCount = Math.max(evaluatedCount, stats.completed);
+      }
+    } catch {}
+
+    const remainingCount = Math.max(0, opportunitiesFound - evaluatedCount);
+
+    const ACTIVE_STATES = ["queued", "initializing", "waiting_for_confirmation", "running", "enriching", "stopping", "completing"];
+    const isActive = ACTIVE_STATES.includes(manifest.status);
+
+    const sources = manifest.sources || {
+      LinkedIn: "pending",
+      Naukri: "pending",
+      Indeed: "pending"
+    };
+
+    let stage = manifest.stage;
+    if (!stage) {
+      if (manifest.status === "completed") stage = "complete";
+      else if (manifest.status === "stopped" || manifest.status === "aborted") stage = "stopped";
+      else if (manifest.status === "failed") stage = "failed";
+      else if (manifest.status === "enriching") stage = "evaluate";
+      else stage = "discover";
+    }
+
+    return {
+      runId,
+      status: manifest.status,
+      isActive,
+      stage,
+      opportunitiesFound,
+      evaluatedCount,
+      remainingCount,
+      sources,
+      startedAt: manifest.startedAt,
+      updatedAt: manifest.updatedAt,
+      finishedAt: manifest.finishedAt,
+      portalHealth: manifest.portalHealth || {},
+      recentActivities: manifest.recentActivities || []
+    };
+  } catch (err: any) {
+    console.error(`[Server] Failed to read manifest for run ${runId}:`, err.message);
+    return null;
+  }
+}
+
+export function getActiveScrapeState() {
+  try {
+    const latestPath = path.join(ARTIFACTS_DIR, "runs", "latest.json");
+    if (!fs.existsSync(latestPath)) return null;
+    const latest = JSON.parse(fs.readFileSync(latestPath, "utf-8"));
+    if (!latest?.runId) return null;
+
+    const runData = buildCanonicalRunData(latest.runId);
+    if (runData && runData.isActive) {
+      // If there is no active process lock and updatedAt is >30s old, the run is orphaned
+      const updatedAt = runData.updatedAt ? new Date(runData.updatedAt).getTime() : 0;
+      const ageMs = Date.now() - updatedAt;
+      if (!activeScrapeRunLock && ageMs > 30000) {
+        abortScrapeState(latest.runId);
+        return null;
+      }
+      return runData;
+    }
+    return null; // Active-only per Directive #2
+  } catch {
+    return null;
+  }
+}
+
+export function getRunProgressState(runId: string) {
+  return buildCanonicalRunData(runId);
+}
+
+export async function abortScrapeState(runId: string) {
+  const manifestPath = path.join(ARTIFACTS_DIR, "runs", runId, "manifest.json");
+  try {
+    if (fs.existsSync(manifestPath)) {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+      manifest.status = "stopping";
+      manifest.updatedAt = new Date().toISOString();
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
+      console.log(`[Server] Abort requested for run ${runId}. Manifest status set to 'stopping'.`);
+    }
+    // Forcefully trigger live abort on the running scraper process
+    try {
+      const { abortLiveRun } = await import("../../../scripts/scrape");
+      await abortLiveRun(runId);
+    } catch (e: any) {
+      console.warn(`[Server] Note: abortLiveRun call: ${e.message}`);
+    }
+    return { success: true, status: "stopping" };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export const getActiveScrapeFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    await requireAuthUser();
+    return getActiveScrapeState();
+  });
+
+export const getLatestRunFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    await requireAuthUser();
+    try {
+      const latestPath = path.join(ARTIFACTS_DIR, "runs", "latest.json");
+      if (!fs.existsSync(latestPath)) return null;
+      const latest = JSON.parse(fs.readFileSync(latestPath, "utf-8"));
+      if (!latest?.runId) return null;
+
+      return buildCanonicalRunData(latest.runId);
+    } catch {
+      return null;
+    }
+  });
+
+export const getRunProgressFn = createServerFn({ method: "GET" })
+  .validator((d: { runId: string }) => d)
+  .handler(async ({ data }) => {
+    await requireAuthUser();
+    return getRunProgressState(data.runId);
+  });
+
 export const confirmScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
+    await requireAuthUser();
     const manifestPath = path.join(ARTIFACTS_DIR, "runs", data.runId, "manifest.json");
     try {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
@@ -185,17 +369,12 @@ export const confirmScrapeFn = createServerFn({ method: "POST" })
 export const abortScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    const manifestPath = path.join(ARTIFACTS_DIR, "runs", data.runId, "manifest.json");
-    try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-      if (manifest.status === "waiting_for_confirmation" || manifest.status === "running") {
-        manifest.status = "aborted";
-        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
-      }
-      return { success: true };
-    } catch (e: any) {
-      return { success: false, error: e.message };
+    await requireAuthUser();
+    const result = abortScrapeState(data.runId);
+    if (activeScrapeRunLock?.runId === data.runId) {
+      activeScrapeRunLock = null;
     }
+    return result;
   });
 
 let liveScrapedCache: { data: any[]; timestamp: number } | null = null;
@@ -206,6 +385,7 @@ export function invalidateLiveScrapedCache() {
 
 export const getLiveScrapedFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    await requireAuthUser();
     const now = Date.now();
     if (liveScrapedCache && (now - liveScrapedCache.timestamp < 30_000)) {
       return liveScrapedCache.data;
@@ -276,6 +456,7 @@ function getCorpusJob(): CorpusJobState {
 
 export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
   .handler(async () => {
+    await requireAuthUser();
     try {
       const job = getCorpusJob();
       if (job.status === "running") {
@@ -335,11 +516,13 @@ export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
 
 export const getCorpusRegenerationStatusFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    await requireAuthUser();
     return getCorpusJob();
   });
 
 export const getCorpusHealthFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    await requireAuthUser();
     try {
       const { calculateCorpusHealth } = await import("../../../scripts/corpus/health");
       return calculateCorpusHealth();
@@ -351,6 +534,7 @@ export const getCorpusHealthFn = createServerFn({ method: "GET" })
 
 export const getPipelineStatsFn = createServerFn({ method: "GET" })
   .handler(async () => {
+    await requireAuthUser();
     try {
       const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
       const queue = new EnrichmentQueue();

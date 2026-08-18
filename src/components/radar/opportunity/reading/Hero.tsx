@@ -1,10 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { getFocusTopic } from "@/routes/opportunity.$jobHash";
 
+import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
+
 interface HeroProps {
   o: any;
   brief: any;
-  currentVerdict: string;
+  dossierState: DossierDecisionState;
   currentIndex: number;
   totalCount: number;
   jobProj: any;
@@ -14,7 +16,7 @@ interface HeroProps {
 export function Hero({
   o,
   brief,
-  currentVerdict,
+  dossierState,
   currentIndex,
   totalCount,
   jobProj,
@@ -36,21 +38,82 @@ export function Hero({
         <div className="mt-12 grid gap-10 lg:grid-cols-[3fr_2fr]">
           {/* Left Column: Strategic Mandate & Core Advisory Thesis */}
           <div className="space-y-6">
-            {/* Badges & Verbs */}
+            {/* Badges, Scores & Verbs */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`label-mono rounded-[3px] px-1.5 py-[3px] leading-none uppercase font-normal ${
-                currentVerdict === "PURSUE"
-                  ? "bg-signal text-white"
-                  : currentVerdict === "CONSIDER"
-                  ? "bg-caution text-white"
-                  : "bg-muted text-muted-foreground"
-              }`}>
-                {currentVerdict === "PURSUE" ? "Pursue" : currentVerdict === "CONSIDER" ? "Consider" : "Pass"}
+              {/* Primary RADAR Engine Recommendation Badge (Strict Fail-Closed) */}
+              {dossierState.engineVerdict ? (
+                <span className={`label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs ${
+                  dossierState.engineVerdict === "PURSUE"
+                    ? "bg-signal text-white"
+                    : dossierState.engineVerdict === "CONSIDER"
+                    ? "bg-caution text-white"
+                    : "bg-muted text-muted-foreground"
+                }`}>
+                  {dossierState.engineVerdict}
+                </span>
+              ) : (
+                <span className="label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs bg-caution/20 text-caution border border-caution/30">
+                  RECOMMENDATION UNAVAILABLE
+                </span>
+              )}
+
+              {/* Subordinate User Choice Badge */}
+              {dossierState.userDecisionState !== "NONE" && dossierState.userDecision && (
+                <span className={`label-mono font-mono text-xs px-2 py-1 rounded font-medium ${
+                  dossierState.userDecisionState === "STALE"
+                    ? "bg-caution/20 text-caution border border-caution/30"
+                    : dossierState.userDecisionState === "UNVERIFIABLE"
+                    ? "bg-surface-raised border border-border text-muted-foreground"
+                    : "bg-surface-raised border border-border text-foreground font-semibold"
+                }`}>
+                  YOU CHOSE: {dossierState.userDecision}
+                  {dossierState.userDecisionState === "STALE" && " · STALE — RE-EVALUATED"}
+                  {dossierState.userDecisionState === "UNVERIFIABLE" && " · FRESHNESS UNVERIFIED"}
+                </span>
+              )}
+
+              <span className="label-mono font-mono text-xs font-semibold px-2 py-1 rounded bg-surface-raised border border-border text-foreground">
+                RADAR SCORE: {(brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore) != null ? `${brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore}/100` : "N/A"}
               </span>
-              <span className="label-mono font-normal">{brief.fitLabel || 'Executive Fit'}</span>
-              <span className="label-mono font-normal">· {brief.evidenceQuality}</span>
-              {readTime && <span className="label-mono font-normal">· {readTime}</span>}
+
+              {/* Canonical Career-Value Signal Badge (Strictly from ExecutiveThesis / ExecutiveExplanation) */}
+              {(brief.explanation?.careerValueSignal || brief.executiveThesis?.careerValueSignal) && (
+                <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-caution/20 text-caution font-medium border border-caution/30 uppercase tracking-wider">
+                  {brief.explanation?.careerValueSignal || brief.executiveThesis?.careerValueSignal}
+                </span>
+              )}
+
+              {/* Freshness Badge */}
+              <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-surface-raised border border-border text-muted-foreground font-medium">
+                {o.postedRelative ? `${o.postedRelative} · ${o.scrapedFrom || 'Workday'}` : `Scraped ${o.scrapedAt ? 'recently' : 'via ' + (o.scrapedFrom || 'Portal')}`}
+              </span>
+
+              {/* Compensation Badge */}
+              <span className={`label-mono text-[0.65rem] px-1.5 py-0.5 rounded font-medium border ${
+                o.salaryBounds?.min || o.salaryBounds?.max
+                  ? "bg-signal/15 text-signal border-signal/30"
+                  : o.benchmarkEstimate
+                  ? "bg-caution/15 text-caution border-caution/30"
+                  : "bg-surface-raised text-muted-foreground border-border"
+              }`}>
+                {o.salaryBounds?.min || o.salaryBounds?.max
+                  ? `Disclosed: ₹${((o.salaryBounds.min || 0)/100000).toFixed(0)}L – ₹${((o.salaryBounds.max || 0)/100000).toFixed(0)}L`
+                  : o.benchmarkEstimate
+                  ? `Market Est: ${o.benchmarkEstimate.display}`
+                  : "Salary Not Disclosed"}
+              </span>
+
+              <span className="label-mono font-normal text-xs text-muted-foreground">· {brief.fitLabel || 'Executive Fit'}</span>
+              <span className="label-mono font-normal text-xs text-muted-foreground">· {brief.evidenceQuality}</span>
+              {readTime && <span className="label-mono font-normal text-xs text-muted-foreground">· {readTime}</span>}
             </div>
+
+            {/* Stale Posting Warning Callout (if posting age > 45 days) */}
+            {o.postedRelative && (o.postedRelative.includes("47 days") || o.postedRelative.includes("2 months") || o.isStale) && (
+              <div className="memo-callout border-l-2 border-caution bg-caution/10 p-3 text-xs text-foreground font-mono">
+                ⚠️ <span className="font-semibold">Opportunity Freshness Notice:</span> Posted {o.postedRelative} — verify that the role is still active before investing heavily.
+              </div>
+            )}
 
             <h1 className="font-display text-5xl leading-[1.05] tracking-tight text-foreground font-normal">
               {o.role} mandate at {o.company} focused on {getFocusTopic(o, jobProj)}
@@ -60,7 +123,7 @@ export function Hero({
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2">
               {o.company && <span className="text-xs text-muted-foreground font-normal">{o.company}</span>}
               {o.location && <span className="text-xs text-muted-foreground font-normal">{o.location}</span>}
-              {o.source && <span className="text-xs text-muted-foreground font-normal">via {o.source}</span>}
+              {o.scrapedFrom && <span className="text-xs text-muted-foreground font-normal">Source: {o.scrapedFrom}</span>}
               {o.compensationBand && <span className="text-xs text-foreground font-medium">{o.compensationBand}</span>}
             </div>
 
@@ -68,7 +131,7 @@ export function Hero({
             <div className="border-t border-border pt-5 space-y-3">
               <p className="label-mono text-xs text-primary font-normal uppercase tracking-wider">Executive Advisory Thesis</p>
               <p className="font-serif text-2xl italic leading-relaxed text-foreground font-normal">
-                “{brief.executiveOpinion || "Evaluating strategic executive alignment..."}”
+                “{brief.executiveThesis?.primaryReason || brief.executiveOpinion || "Evaluating strategic executive alignment..."}”
               </p>
             </div>
           </div>
@@ -82,12 +145,17 @@ export function Hero({
               </div>
               
               <p className="mt-4 font-display text-3xl leading-snug text-foreground font-normal">
-                {brief.oneMinuteTLDR.bottomLine}
+                {brief.pursuitStrategy?.bottomLine || brief.explanation?.bottomLine || brief.oneMinuteTLDR.bottomLine}
               </p>
               
-              <p className="mt-3 text-xs leading-relaxed text-foreground font-mono border-l-2 border-primary pl-3">
-                {brief.verdictGuidance.actionNotice}
-              </p>
+              <div className="mt-3 text-xs leading-relaxed text-foreground font-mono border-l-2 border-primary pl-3 space-y-1">
+                <p className="font-semibold uppercase tracking-wider text-[0.65rem] text-primary">
+                  {brief.pursuitStrategy?.executiveLabel || "Advisory Strategy"}
+                </p>
+                <p>
+                  {brief.pursuitStrategy?.immediateNextAction || brief.verdictGuidance.actionNotice}
+                </p>
+              </div>
 
               <div className="mt-5 space-y-4">
                 <div className="space-y-1">

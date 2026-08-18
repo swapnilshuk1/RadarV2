@@ -140,16 +140,8 @@ export function extractReportingLine(input: { title: string; snippet: string; de
   if (!raw) return missing<string>();
   const norm = reportingLineExtractorInstance.normalize(raw);
   if (!norm) return missing<string>();
-  const payload = {
-    value: norm.canonicalValue,
-    rawValue: norm.rawValue,
-    canonicalValue: norm.canonicalValue,
-    confidence: norm.confidence,
-    metadata: norm.metadata,
-    extractorVersion,
-    normalizerVersion
-  };
-  return anchor(JSON.stringify(payload), raw.evidenceSnippet, raw.rawValue, "snippet");
+  const cleanValue = String(norm.canonicalValue || norm.rawValue || "REPORTING").trim();
+  return anchor(cleanValue, raw.evidenceSnippet, raw.rawValue, "snippet");
 }
 
 export const reportingExtractorId = `reportingLine@${extractorVersion}`;

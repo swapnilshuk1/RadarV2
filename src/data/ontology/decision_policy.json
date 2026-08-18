@@ -1,14 +1,16 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "weights": {
-    "identity": 0.35,
-    "career": 0.30,
-    "opportunity": 0.20,
-    "capability": 0.15
+    "career": 0.4615,
+    "capability": 0.2308,
+    "opportunity": 0.3077
   },
   "thresholds": {
-    "pursueScore": 70,
-    "considerScore": 60,
+    "pursueScore": 65,
+    "considerScore": 55,
+    "minPursueSp": 50,
+    "maxPursueFriction": 15,
+    "maxConsiderFriction": 25,
     "identityCutoff": 30,
     "identityPursueCutoff": 60,
     "capabilityCutoff": 0.25,

@@ -125,30 +125,16 @@ async function fetchGeminiContent(prompt: string, inlineFile?: { mimeType: strin
   return content;
 }
 
+import { requireAuthUser } from "../auth/guard";
+
 async function getAuthenticatedUser(): Promise<UserSession> {
-  try {
-    const token = getCookie(SESSION_COOKIE_NAME);
-    if (token) {
-      const { user } = await validateSessionToken(token);
-      if (user) {
-        return {
-          userId: user.id,
-          email: user.email,
-          name: user.name,
-          avatarUrl: user.avatarUrl || undefined,
-          onboarded: user.onboarded
-        };
-      }
-    }
-  } catch (err) {
-    console.warn("[profile-server] Session lookup fallback triggered:", err);
-  }
+  const user = await requireAuthUser();
   return {
-    userId: "swapnil-shukla",
-    email: "swapnil@radar.advisory",
-    name: "Swapnil Shukla",
-    avatarUrl: undefined,
-    onboarded: true
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    avatarUrl: user.avatarUrl || undefined,
+    onboarded: user.onboarded
   };
 }
 
@@ -426,27 +412,16 @@ export const updateIntentSessionFn = createServerFn({ method: "POST" })
     return currentState;
   });
 
-// ─── API: INITIALIZE SESSION (SWAPNIL OR NEW USER) ───────────────────────────
+// ─── API: INITIALIZE SESSION ───────────────────────────
 interface InitializeSessionInput {
-  mode: "swapnil" | "new_user";
+  mode?: "fresh" | "reset";
 }
 
 export const initializeSessionFn = createServerFn({ method: "POST" })
-  .validator((d: InitializeSessionInput) => d)
-  .handler(async ({ data }): Promise<{ success: boolean }> => {
+  .validator((d?: InitializeSessionInput) => d || {})
+  .handler(async (): Promise<{ success: boolean }> => {
     try {
-      let user: UserSession;
-      try {
-        user = await getAuthenticatedUser();
-      } catch {
-        user = {
-          userId: data.mode === "swapnil" ? "swapnil-shukla" : `user-${Date.now()}`,
-          email: data.mode === "swapnil" ? "swapnil@radar.advisory" : "guest@radar.advisory",
-          name: data.mode === "swapnil" ? "Swapnil Shukla" : "Guest Executive",
-          avatarUrl: "https://lh3.googleusercontent.com/a/default-user=s100",
-          onboarded: true
-        };
-      }
+      const user = await getAuthenticatedUser();
       const repos = getRepositories();
 
       console.log("[profile-server] Initializing Fresh Blank Session for candidate...");

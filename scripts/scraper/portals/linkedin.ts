@@ -8,6 +8,53 @@ import { hydrateVirtualizedList } from "../utils/scroll";
 
 const LINKEDIN_GEO_INDIA = "102713980";
 
+export type LinkedInSessionState =
+  | "AUTHENTICATED"
+  | "AUTH_MISSING"
+  | "AUTH_EXPIRED"
+  | "AUTH_INVALID"
+  | "RATE_LIMITED"
+  | "BLOCKED"
+  | "EMPTY_RESULT";
+
+export async function checkLinkedInSessionState(ctx: PortalContext): Promise<LinkedInSessionState> {
+  const cookies = await ctx.browserContext.cookies().catch(() => []);
+  const liAtCookie = cookies.find((c: any) => c.name === "li_at" && c.value && c.value.trim().length > 10);
+
+  if (!liAtCookie) {
+    ctx.logger("[LinkedIn Session] li_at cookie missing -> AUTH_MISSING");
+    return "AUTH_MISSING";
+  }
+
+  const page = ctx.activePage;
+  const currentUrl = page ? page.url() : "";
+  const title = page ? ((await page.title().catch(() => "")) || "") : "";
+
+  if (title.includes("Access Denied") || title.includes("Just a moment") || title.includes("Security Verification")) {
+    return "BLOCKED";
+  }
+  if (title.includes("Too Many Requests") || currentUrl.includes("/429")) {
+    return "RATE_LIMITED";
+  }
+  if (/\/(login|authwall|checkpoint|signup)(\/|$|\?)/.test(currentUrl)) {
+    return "AUTH_EXPIRED";
+  }
+
+  if (page && !/\/(feed|jobs|mynetwork|in\/|messaging)(\/|$|\?)/.test(currentUrl)) {
+    await page.goto("https://www.linkedin.com/feed/", {
+      waitUntil: "domcontentloaded",
+      timeout: CONFIG.navTimeoutMs,
+    }).catch(() => {});
+    await sleep(1000);
+    const postNavUrl = page.url();
+    if (/\/(login|authwall|checkpoint|signup)(\/|$|\?)/.test(postNavUrl)) {
+      return "AUTH_INVALID";
+    }
+  }
+
+  return "AUTHENTICATED";
+}
+
 export const linkedinHandler: PortalHandler = {
   name: "LinkedIn",
   detailStrategy: "auto",
@@ -16,59 +63,16 @@ export const linkedinHandler: PortalHandler = {
     return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(kw)}&location=India&geoId=${LINKEDIN_GEO_INDIA}&start=${start}`;
   },
   async ensureSession(ctx) {
-    const page = ctx.activePage;
-    let keepOpen = false;
     try {
-      // 1. Instant deterministic check via session cookie li_at
-      const cookies = await ctx.browserContext.cookies().catch(() => []);
-      const hasLiAtCookie = cookies.some((c: any) => c.name === "li_at" && c.value && c.value.length > 10);
-      if (hasLiAtCookie) {
-        ctx.logger("✓ Valid LinkedIn session cookie (li_at) verified.");
+      const state = await checkLinkedInSessionState(ctx);
+      ctx.logger(`[LinkedIn Session State] ${state}`);
+      if (state === "AUTHENTICATED") {
         return "ready";
       }
-
-      // 2. Navigation fallback
-      await page.goto("https://www.linkedin.com/feed/", {
-        waitUntil: "domcontentloaded",
-        timeout: CONFIG.navTimeoutMs,
-      }).catch((e: any) => ctx.logger(`Navigation timeout caught (non-fatal): ${e.message}`));
-
-      // Wait for the page to fully settle (React hydration, redirects).
-      await page.waitForLoadState("load", { timeout: 10000 }).catch(() => {});
-
-      const checkLoggedIn = async (): Promise<boolean> => {
-        const url = page.url();
-
-        if (/\/(feed|jobs|mynetwork|in\/|messaging)(\/|$|\?)/.test(url)) {
-          return true;
-        }
-        if (/\/(login|authwall|checkpoint|signup)(\/|$|\?)/.test(url)) {
-          return false;
-        }
-
-        const count = await page
-          .locator(
-            [
-              "#global-nav",
-              "nav[aria-label]",
-              "header[role='banner']",
-              ".global-nav",
-              ".search-global-typeahead__input",
-              "input[placeholder*='Search' i]",
-              ".authentication-outlet",
-            ].join(", ")
-          )
-          .first()
-          .count()
-          .catch(() => 0);
-        return count > 0;
-      };
-
-      if (await checkLoggedIn()) return "ready";
-
-      ctx.logger("LinkedIn not logged in — returning 'gated'.");
-      keepOpen = true;
-      return "gated";
+      if (state === "AUTH_MISSING" || state === "AUTH_EXPIRED" || state === "AUTH_INVALID") {
+        return "gated";
+      }
+      return "error";
     } catch (err: any) {
       ctx.logger(`LinkedIn session probe failed: ${err.message}`);
       return "error";
@@ -82,6 +86,24 @@ export const linkedinHandler: PortalHandler = {
       await page.goto(ctx.searchUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
       await humanize(page);
       await sleep(1500);
+
+      const postNavUrl = page.url();
+      const pageTitle = (await page.title().catch(() => "")) || "";
+
+      if (/\/(login|authwall|checkpoint|signup)(\/|$|\?)/.test(postNavUrl)) {
+        ctx.logger(`[LinkedIn listCards] Redirected to authwall: ${postNavUrl}`);
+        throw new Error("AUTH_EXPIRED: LinkedIn session invalid or redirected to authwall");
+      }
+
+      if (pageTitle.includes("Access Denied") || pageTitle.includes("Just a moment") || pageTitle.includes("Attention Required")) {
+        ctx.logger(`[LinkedIn listCards] Blocked by security challenge: ${pageTitle}`);
+        throw new Error("BLOCKED: LinkedIn search page blocked by security challenge");
+      }
+
+      if (pageTitle.includes("Too Many Requests") || postNavUrl.includes("/429")) {
+        ctx.logger(`[LinkedIn listCards] Rate limited (429)`);
+        throw new Error("RATE_LIMITED: LinkedIn rate limit exceeded");
+      }
 
       const targetMaxCards = CONFIG.getMaxCardsPerPage("LinkedIn");
       const cardSelector = [

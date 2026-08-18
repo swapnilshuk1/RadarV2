@@ -6,7 +6,6 @@
 // everything after it is presentation.
 
 import type { DecisionVerb } from "@/data/opportunity-fixtures";
-import type { PriorityResult } from "./priority";
 import type { Stability } from "./stability";
 import type { ComparativeAnalysis } from "./comparative";
 import type { ExplanationObject } from "./explain";
@@ -30,25 +29,39 @@ export interface ClaimPermissions {
   explicitRisks: string[];
 }
 
+// Decision factor structure - defines the three core dimensions of priority calculation
+export type DecisionFactors = Readonly<{
+  careerValue: number;
+  shortlistingPotential: number;
+  pursuitFriction: number;
+}>;
+
+// Dominant factor in the decision - which of the three factors had the most influence
+export type DominantFactor = "careerValue" | "shortlistingPotential" | "pursuitFriction";
+
 export type RecommendationRecord = Readonly<{
   jobHash: string;
   engineVersion: string;
   recommendationVersion: string; // fingerprint of inputs + engine
   verb: DecisionVerb;
-  rawScore?: number; // Unvetoed continuous numeric fit score [0-100]
-  priority: number | null; // 0 or null if hard vetoed; otherwise rawScore
+  qualityScore: number | null; // Authoritative Model C intrinsic quality score [0-100] or null
+  rawScore?: number | null; // Model C continuous quality score (legacy alias)
+  priority: number | null; // Model C continuous quality score (legacy alias)
   vetoed?: boolean; // True if any hard veto was triggered
   vetoReason?: string | null; // Triggered rule ID (e.g. "G-SUB-TIER-MANDATE-VETO")
   claimPermissions?: ClaimPermissions; // Editorial claim authorization tokens
   confidence?: number;
-  factors?: any;
-  decisionSummary: {
-    careerValue: number;
-    shortlistingPotential: number;
-    pursuitFriction: number;
-  };
+  factors?: Record<string, unknown>;
+  /** P0-A: Evidence grounding state per dimension key */
+  evidenceGrounding?: Record<string, import("@/domain/evidence").EvidenceGroundingState>;
+  decisionSummary: DecisionFactors;
+  triggeredRuleIds?: string[];
   decisionDrivers: DecisionDriver[];
   decisionRisks: DecisionDriver[];
+  relativeDifferentiator?: string;
+  trajectoryUpside?: string;
+  opportunityScoreConfidence?: "HIGH" | "LOW";
+  opportunityScoreSource?: "EXPLICIT" | "FALLBACK";
   confidences: {
     parsing: number;
     matching: number;

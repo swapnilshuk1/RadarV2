@@ -264,6 +264,39 @@
   animation: revealUp 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@keyframes editorialShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--surface-raised) 50%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: editorialShimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes scanLine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.animate-scan-line {
+  animation: scanLine 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 /* Executive Advisory Design System Utilities */
 .glass-header {
   background: oklch(0.985 0.005 85 / 0.85);
@@ -304,25 +337,128 @@
   border-color: oklch(0.96 0.012 75 / 0.25);
 }
 
-/* Floating Navigation Action Dock */
+/* Floating Navigation Action Dock - Apple/macOS Premium Style */
 .floating-dock {
   position: fixed;
   bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
-  background: oklch(0.18 0.02 85 / 0.92);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid oklch(1 0 0 / 0.15);
-  box-shadow: 0 12px 40px -4px oklch(0 0 0 / 0.35);
+  height: 2.75rem; /* 44px exact height for perfect vertical centering and layout sibling matching */
+  width: max-content; /* Critical: forces the browser to calculate width from content, ignoring left: 50% constraints */
+  white-space: nowrap; /* Critical: guarantees children never wrap or overflow the rounded bounds of the pill */
+  display: flex;
+  align-items: center;
+  background: oklch(1 0 0 / 0.85);
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  border: 1px solid oklch(0.22 0.01 85 / 0.08);
   border-radius: 9999px;
-  padding: 0.5rem 1rem;
+  padding: 0 1.25rem;
+  
+  /* Highly prominent, luxurious macOS-style layered ambient drop shadows */
+  box-shadow: 
+    0 1px 2px oklch(0.22 0.01 85 / 0.05),
+    0 8px 24px -4px oklch(0.22 0.01 85 / 0.12),
+    0 16px 48px -12px oklch(0.22 0.01 85 / 0.08);
+  
+  transition: all 240ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dark .floating-dock {
-  background: oklch(0.14 0.022 55 / 0.92);
-  border: 1px solid oklch(0.96 0.012 75 / 0.2);
+  background: oklch(0.18 0.025 55 / 0.8);
+  border: 1px solid oklch(0.96 0.012 75 / 0.15);
+  box-shadow: 
+    0 1px 2px oklch(0 0 0 / 0.2),
+    0 8px 24px -4px oklch(0 0 0 / 0.4),
+    0 16px 48px -12px oklch(0 0 0 / 0.3);
+}
+
+/* Sibling-Consistent Sizing and Typography */
+.dock-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  height: 1.75rem; /* 28px standard button height */
+  padding: 0 0.75rem;
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem; /* Exactly 10.4px */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.dock-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-0.5px);
+}
+
+.dock-btn:active {
+  transform: translateY(0.5px);
+}
+
+.dock-label,
+.dock-text {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dock-text strong {
+  color: var(--foreground);
+  font-weight: 700;
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
+}
+
+.dock-link {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted-foreground);
+  transition: all 150ms ease;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dock-link:hover {
+  color: var(--foreground);
+}
+
+/* Centered unified keyboard badges inside dock buttons */
+.floating-dock kbd {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  height: 1.05rem;
+  min-width: 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.25rem;
+  border-radius: 0.2rem;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  margin-left: 0.25rem;
+  font-weight: 600;
+}
+
+.dark .floating-dock kbd {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Glowing Decision Badges */

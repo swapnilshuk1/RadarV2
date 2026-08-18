@@ -5,6 +5,46 @@
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
 import type { RecommendationRecord } from "./record";
 import { dim } from "./schema";
+import {
+  synthesizeStrategicAdvantage,
+  formatStrategicAdvantage,
+  type StrategicAdvantage,
+} from "./editorial/StrategicAdvantageSynthesizer";
+import {
+  synthesizePrincipalRisk,
+  formatPrincipalRisk,
+  type PrincipalRisk,
+} from "./editorial/PrincipalRiskSynthesizer";
+import {
+  synthesizeCareerValue,
+  formatCareerValue,
+  type CareerValueInterpretation,
+} from "./editorial/CareerValueSynthesizer";
+import {
+  synthesizeEffort,
+  formatEffort,
+  type EffortInterpretation,
+} from "./editorial/EffortSynthesizer";
+import {
+  synthesizeAction,
+  formatAction,
+  type RecommendedAction,
+} from "./editorial/ActionSynthesizer";
+import {
+  synthesizeCapabilityImportance,
+  formatCapabilityImportance,
+  type CapabilityImportanceProfile,
+} from "./editorial/CapabilityImportanceSynthesizer";
+import {
+  synthesizeShortlistingPotential,
+  formatShortlistingPotential,
+  type ShortlistingPotential,
+} from "./editorial/ShortlistingPotentialSynthesizer";
+import {
+  synthesizeEngagementQuality,
+  formatEngagementQuality,
+  type EngagementQuality,
+} from "./editorial/EngagementTypeSynthesizer";
 
 export type RecommendationArchetype = 
   | "Natural Fit" 
@@ -709,10 +749,62 @@ export function playbookNarrative(
   }
   
   const dynamic = generateDynamicNarrative(record, source);
+
+  // P2-A.1: Strategic Advantage Synthesis - "Why Me?"
+  const strategicAdvantage = synthesizeStrategicAdvantage(record, source);
+
+  // P2-A.2: Principal Risk Intelligence - "What should worry me?"
+  const principalRisk = synthesizePrincipalRisk(record, source);
+
+  // P2-A.3: Career Value Interpretation - "Why this opportunity?"
+  const careerValue = synthesizeCareerValue(record, source);
+
+  // P2-A.4: Effort Interpretation - "What will it take?"
+  const effort = synthesizeEffort(record, source);
+
+  // P2-A.5: Action Intelligence - "What should I do next?"
+  const recommendedAction = synthesizeAction(record, source, strategicAdvantage, principalRisk, careerValue, effort);
+
+  // P2-B: Capability Importance - "Which requirements matter most?"
+  const capabilityImportance = synthesizeCapabilityImportance(record, source);
+
+  // P2-C.2: Shortlisting Potential - "How likely to survive initial scrutiny?"
+  const shortlistingPotential = synthesizeShortlistingPotential(record, source);
+
+  // P2-D: Engagement Quality - "What type of engagement is this?"
+  const engagementQuality = synthesizeEngagementQuality(record, source);
+
+  // P1-D: primaryDriver/primaryRisk must be grounded in authoritative decisionDrivers/decisionRisks
+  // Extract from record's authoritative assessment outputs, not hardcoded templates
+  const firstDriver = record.decisionDrivers?.[0];
+
   return {
     ...dynamic,
     recommendation: record.headspace.downgraded
       ? `Saturated: ${record.headspace.reason} (High priority remains, but client capacity reached)`
       : dynamic.recommendation,
+    // P2-A.1: Use strategic advantage synthesis for "Why Me?"
+    primaryDriver: formatStrategicAdvantage(strategicAdvantage),
+    // P2-A.2: Use principal risk synthesis for authoritative risk intelligence
+    primaryRisk: formatPrincipalRisk(principalRisk),
+    // P2-A.3: Use career value interpretation for "Why this opportunity?"
+    whyNow: formatCareerValue(careerValue) || dynamic.whyNow,
+    // P2-A.4: Include effort interpretation in headspace
+    headspace: effort.effortLevel === "high"
+      ? [
+          ...dynamic.headspace,
+          { action: "High preparation required", benefit: effort.statement.slice(0, 100), effort: "High" }
+        ]
+      : dynamic.headspace,
+    // P2-A.5: Use action synthesis for recommended action
+    hiringRisk: formatAction(recommendedAction),
+    // P2-B: Include capability importance in capabilityAlignmentText
+    capabilityAlignmentText: formatCapabilityImportance(capabilityImportance) || dynamic.capabilityAlignmentText,
+    // P2-C.2: Include shortlisting potential (as alternativePath for now)
+    alternativePath: formatShortlistingPotential(shortlistingPotential),
+    // P2-D: Include engagement type in mandateArchetype
+    mandateArchetype: `${dynamic.mandateArchetype || "Executive"} (${engagementQuality.engagementType.replace(/_/g, " ")})`,
+    // P2-A.1: Include strategic advantage category and confidence
+    secondaryDriver: strategicAdvantage.evidence.slice(0, 2).join("; ") || dynamic.secondaryDriver,
   };
 }

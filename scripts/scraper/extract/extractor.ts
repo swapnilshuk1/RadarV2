@@ -102,6 +102,19 @@ export function getLLMQueueStats() {
 // Deterministic-first extraction. LLM is called only when the enrichment
 // policy allows (default: smart — Core-missing only). Provider output is
 // always marked Inferred, never Explicit (extractor-remediation §6).
+export function cleanDimensionValue(val: string | null): string | null {
+  if (!val) return null;
+  const str = String(val).trim();
+  if (str.startsWith("{") && str.includes('"')) {
+    try {
+      const parsed = JSON.parse(str);
+      const clean = parsed.value || parsed.canonicalValue || parsed.rawValue;
+      if (clean) return String(clean).trim();
+    } catch {}
+  }
+  return str;
+}
+
 export async function extract(snapshot: DetailedCard, opts: ExtractOptions = {}): Promise<ExtractionResult> {
   const mode = opts.mode ?? resolveMode();
   const provider = opts.provider ?? defaultProvider;
@@ -121,7 +134,7 @@ export async function extract(snapshot: DetailedCard, opts: ExtractOptions = {})
       importance: spec.importance,
       bucket: toBucket(res.status),
       jdEvidence: {
-        value: res.value,
+        value: cleanDimensionValue(res.value),
         status: res.status,
         evidence: res.evidence,
         provenance: toProvenance(res.status),
@@ -162,7 +175,7 @@ export async function extract(snapshot: DetailedCard, opts: ExtractOptions = {})
       for (const d of toFill) {
         const patch = filled?.[d.key];
         if (patch && patch.value) {
-          d.jdEvidence.value = patch.value;
+          d.jdEvidence.value = cleanDimensionValue(patch.value);
           // Inferred (LLM-provided), NOT Explicit — never claims verbatim.
           d.jdEvidence.status = "Inferred";
           d.jdEvidence.provenance = "llm";

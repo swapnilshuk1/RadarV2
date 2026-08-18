@@ -8,7 +8,7 @@ import { hydrateVirtualizedList } from "../utils/scroll";
 
 export const naukriHandler: PortalHandler = {
   name: "Naukri",
-  detailStrategy: "browser",
+  detailStrategy: "auto",
   buildSearchUrl(kw, page) {
     const slug = kw.toLowerCase().replace(/\s+/g, "-");
     return `https://www.naukri.com/${slug}-jobs-in-india-${page}?k=${encodeURIComponent(kw)}`;
@@ -176,7 +176,10 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       if (httpRes.fetched && httpRes.rawText && httpRes.rawText.length > 100) {
         ctx.recordTelemetry?.("httpSuccessful");
         ctx.logger(`[FastPath] Extracted detail from ${url}`);
-        return httpRes;
+        return {
+          ...httpRes,
+          method: "HTTP_FASTPATH",
+        } as any;
       }
       
       const reason = httpRes.fetchError?.includes("403") ? "403" : 

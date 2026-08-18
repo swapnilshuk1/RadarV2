@@ -1,0 +1,103 @@
+{
+  "timestamp": "2026-08-14T20:30:49.030Z",
+  "totalRecords": 1514,
+  "distribution": {
+    "PURSUE": 367,
+    "CONSIDER": 196,
+    "PASS": 936,
+    "SPARSE_SPEC": 14
+  },
+  "easyTrap": {
+    "totalCandidates": 60,
+    "downgraded": 50,
+    "notDowngraded": 10
+  },
+  "targetCases": [
+    {
+      "jobHash": "j-cc222b05ee62",
+      "found": true,
+      "verb": "CONSIDER",
+      "cv": 31,
+      "sp": 88,
+      "friction": 0,
+      "isEasyTrap": true
+    },
+    {
+      "jobHash": "j-63144d98a1bd",
+      "found": true,
+      "verb": "CONSIDER",
+      "cv": 31,
+      "sp": 88,
+      "friction": 0,
+      "isEasyTrap": true
+    },
+    {
+      "jobHash": "j-f5873c10d6cd",
+      "found": true,
+      "verb": "CONSIDER",
+      "cv": 46,
+      "sp": 87,
+      "friction": 0,
+      "isEasyTrap": true
+    },
+    {
+      "jobHash": "j-46089844ba17",
+      "found": true,
+      "verb": "CONSIDER",
+      "cv": 46,
+      "sp": 87,
+      "friction": 0,
+      "isEasyTrap": true
+    },
+    {
+      "jobHash": "j-2016c3f385e0",
+      "found": true,
+      "verb": "CONSIDER",
+      "cv": 31,
+      "sp": 85,
+      "friction": 0,
+      "isEasyTrap": true
+    },
+    {
+      "jobHash": "j-726da9900c1d",
+      "found": true,
+      "verb": "CONSIDER",
+      "cv": 77,
+      "sp": 91,
+      "friction": 28,
+      "isEasyTrap": false
+    },
+    {
+      "jobHash": "j-87a0a5fabc3a",
+      "found": true,
+      "verb": "PASS",
+      "cv": 84,
+      "sp": 80,
+      "friction": 28,
+      "isEasyTrap": false
+    },
+    {
+      "jobHash": "j-2689dce59aae",
+      "found": true,
+      "verb": "PASS",
+      "cv": 89,
+      "sp": 58,
+      "friction": 0,
+      "isEasyTrap": false
+    }
+  ],
+  "invariants": {
+    "highCvZeroSp": {
+      "total": 0,
+      "pass": 0
+    },
+    "highCvHighFriction": {
+      "total": 4,
+      "notPass": 1
+    },
+    "spConsistency": {
+      "consistent": 1514,
+      "inconsistent": 0
+    }
+  }
+}

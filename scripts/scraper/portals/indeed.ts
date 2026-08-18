@@ -109,6 +109,12 @@ export const indeedHandler: PortalHandler = {
 
           if (!detailUrl || !title) continue;
 
+          const filterRes = passesHardFilter({ title, company, location });
+          if (!filterRes.pass) {
+            ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
+            continue;
+          }
+
           const cardHash = cardHashFor("Indeed", detailUrl);
           const rawHtml = await card.innerHTML().catch(() => "");
           const rawText = ((await card.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();

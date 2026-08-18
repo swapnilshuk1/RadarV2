@@ -15,6 +15,7 @@ import type {
 } from "./entities";
 import type { CandidateProjection } from "../lib/domain/candidate_projection";
 import type { CandidateDocumentRecord, SqliteDocumentStore } from "../data/sqlite/repositories/SqliteDocumentStore";
+import type { OpportunitySource } from "../data/opportunity-fixtures";
 
 /**
  * Repository Contracts
@@ -45,6 +46,9 @@ export interface OpportunityStore {
     companyId?: string;
     lifecycle?: string;
   }): Promise<Opportunity[]>;
+
+  listOpportunitySources(): Promise<OpportunitySource[]>;
+  getOpportunitySource(jobHash: string): Promise<OpportunitySource | undefined>;
 }
 
 export interface AcquisitionLedgerItem {
@@ -134,8 +138,8 @@ export interface DecisionSupportStore {
   latestRecommendationRecords(personId: string, limit: number): Promise<RecommendationRecord[]>;
   getRecommendationRecordForOpportunity(personId: string, opportunityId: string): Promise<RecommendationRecord | undefined>;
   
-  recordUserDecision(personId: string, opportunityId: string, action: string, reason?: string): Promise<void>;
-  getUserDecisions(personId: string): Promise<Record<string, { verb: string; updatedAt?: string }>>;
+  recordUserDecision(personId: string, opportunityId: string, action: string, reason?: string, reviewedFingerprint?: string | null): Promise<void>;
+  getUserDecisions(personId: string): Promise<Record<string, { verb: string; updatedAt?: string; reviewedFingerprint?: string | null }>>;
   deleteUserDecision(personId: string, opportunityId: string): Promise<void>;
   clearUserDecisions(personId: string): Promise<void>;
 }
@@ -143,6 +147,8 @@ export interface DecisionSupportStore {
 // ============================================================================
 // 3. STORAGE ABSTRACTION
 // ============================================================================
+
+import type { SqliteEvaluationStore } from "../data/sqlite/repositories/SqliteEvaluationStore";
 
 export interface StorageProvider {
   sources: SourceStore;
@@ -154,4 +160,5 @@ export interface StorageProvider {
   people: PersonStore;
   decisions: DecisionSupportStore;
   documents: SqliteDocumentStore;
+  evaluations: SqliteEvaluationStore;
 }

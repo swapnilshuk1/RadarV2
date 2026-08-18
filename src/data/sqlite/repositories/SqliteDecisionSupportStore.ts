@@ -33,30 +33,32 @@ export class SqliteDecisionSupportStore implements DecisionSupportStore {
     throw new Error("Method not implemented.");
   }
 
-  async recordUserDecision(personId: string, opportunityId: string, action: string, reason?: string): Promise<void> {
+  async recordUserDecision(personId: string, opportunityId: string, action: string, reason?: string, reviewedFingerprint?: string | null): Promise<void> {
     const id = `${personId}_${opportunityId}`;
     await this.db.execute(
-      `INSERT INTO decisions (id, person_id, opportunity_id, action, reason, lifecycle, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'ACTIVE', CURRENT_TIMESTAMP)
+      `INSERT INTO decisions (id, person_id, opportunity_id, action, reason, reviewed_fingerprint, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
        ON CONFLICT(person_id, opportunity_id) DO UPDATE SET
          action = EXCLUDED.action,
          reason = EXCLUDED.reason,
+         reviewed_fingerprint = EXCLUDED.reviewed_fingerprint,
          updated_at = CURRENT_TIMESTAMP`,
-      [id, personId, opportunityId, action, reason || null]
+      [id, personId, opportunityId, action, reason || null, reviewedFingerprint || null]
     );
   }
 
-  async getUserDecisions(personId: string): Promise<Record<string, { verb: string; updatedAt?: string }>> {
-    const rows = await this.db.many<{ opportunity_id: string; action: string; updated_at: string }>(
-      `SELECT opportunity_id, action, updated_at FROM decisions WHERE person_id = ?`,
+  async getUserDecisions(personId: string): Promise<Record<string, { verb: string; updatedAt?: string; reviewedFingerprint?: string | null }>> {
+    const rows = await this.db.many<{ opportunity_id: string; action: string; updated_at: string; reviewed_fingerprint?: string | null }>(
+      `SELECT opportunity_id, action, updated_at, reviewed_fingerprint FROM decisions WHERE person_id = ?`,
       [personId]
     );
 
-    const result: Record<string, { verb: string; updatedAt?: string }> = {};
+    const result: Record<string, { verb: string; updatedAt?: string; reviewedFingerprint?: string | null }> = {};
     for (const row of rows) {
       result[row.opportunity_id] = {
         verb: row.action,
-        updatedAt: row.updated_at
+        updatedAt: row.updated_at,
+        reviewedFingerprint: row.reviewed_fingerprint || null
       };
     }
     return result;

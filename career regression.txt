@@ -1,0 +1,65 @@
+npx tsx scripts/find-career-regression.ts
+
+No explicit career regression pipeline stage found. Searching for career.regressionScore in record.explanation or trace...
+Found alt candidates: [
+  {
+    jobHash: [32m'j-f5873c10d6cd'[39m,
+    vetoReason: [1mnull[22m,
+    priority: [33m74[39m,
+    trace: {
+      titleProgression: [36m[Object][39m,
+      scopeExpansion: [36m[Object][39m,
+      commercialScale: [36m[Object][39m,
+      brandSignal: [36m[Object][39m,
+      futureOptionality: [36m[Object][39m
+    }
+  },
+  {
+    jobHash: [32m'j-4d8a0ef3fad4'[39m,
+    vetoReason: [32m'G-EXECUTIVE-IDENTITY-MISMATCH'[39m,
+    priority: [33m0[39m,
+    trace: {
+      titleProgression: [36m[Object][39m,
+      scopeExpansion: [36m[Object][39m,
+      commercialScale: [36m[Object][39m,
+      brandSignal: [36m[Object][39m,
+      futureOptionality: [36m[Object][39m
+    }
+  },
+  {
+    jobHash: [32m'j-17cf4bf12862'[39m,
+    vetoReason: [32m'G-EXECUTIVE-IDENTITY-MISMATCH'[39m,
+    priority: [33m0[39m,
+    trace: {
+      titleProgression: [36m[Object][39m,
+      scopeExpansion: [36m[Object][39m,
+      commercialScale: [36m[Object][39m,
+      brandSignal: [36m[Object][39m,
+      futureOptionality: [36m[Object][39m
+    }
+  },
+  {
+    jobHash: [32m'j-84f95017a47d'[39m,
+    vetoReason: [32m'G-EXECUTIVE-IDENTITY-MISMATCH'[39m,
+    priority: [33m0[39m,
+    trace: {
+      titleProgression: [36m[Object][39m,
+      scopeExpansion: [36m[Object][39m,
+      commercialScale: [36m[Object][39m,
+      brandSignal: [36m[Object][39m,
+      futureOptionality: [36m[Object][39m
+    }
+  },
+  {
+    jobHash: [32m'j-ea083c87120a'[39m,
+    vetoReason: [32m'G-EXECUTIVE-IDENTITY-MISMATCH'[39m,
+    priority: [33m0[39m,
+    trace: {
+      titleProgression: [36m[Object][39m,
+      scopeExpansion: [36m[Object][39m,
+      commercialScale: [36m[Object][39m,
+      brandSignal: [36m[Object][39m,
+      futureOptionality: [36m[Object][39m
+    }
+  }
+]

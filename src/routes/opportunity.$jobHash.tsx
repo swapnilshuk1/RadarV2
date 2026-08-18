@@ -1,6 +1,7 @@
 import { createFileRoute, notFound, useRouter } from "@tanstack/react-router";
 import { type DecisionVerb } from "../data/opportunity-fixtures";
-import { getOpportunityFn, getNeighboursFn, getQueueMetricsFn } from "../lib/intelligence/opportunity-server";
+import { getOpportunityDetailsFn } from "../lib/intelligence/opportunity-server";
+import { ClientOpportunityCache } from "../lib/opportunity-cache";
 import { useDecisions } from "../lib/decisions-store";
 import { candidateProfile } from "../data/candidate-profile";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
@@ -13,15 +14,19 @@ import { ExecutiveBriefingSurface } from "@/components/radar/opportunity/surface
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }: { params: { jobHash: string } }) => {
-    const opportunity = await getOpportunityFn({ data: params.jobHash });
-    if (!opportunity) throw notFound();
-    const metrics = await getQueueMetricsFn({ data: params.jobHash });
-    const neighbors = await getNeighboursFn({ data: params.jobHash });
+    // Check client-side opportunity cache first (instant 0ms navigation on cache hit)
+    const cachedDetails = ClientOpportunityCache.getDetails(params.jobHash);
+    if (cachedDetails && cachedDetails.opportunity) {
+      return cachedDetails;
+    }
+
+    const details = await getOpportunityDetailsFn({ data: params.jobHash });
+    if (!details.opportunity) throw notFound();
     return {
-      opportunity,
-      neighbors,
-      currentIndex: metrics.currentIndex,
-      totalCount: metrics.totalCount,
+      opportunity: details.opportunity,
+      neighbors: details.neighbors,
+      currentIndex: details.currentIndex,
+      totalCount: details.totalCount,
     };
   },
   head: ({ loaderData }: { loaderData?: any }) => {
@@ -29,9 +34,10 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
       return { meta: [{ title: "Brief unavailable — RADAR" }, { name: "robots", content: "noindex" }] };
     }
     const o = loaderData.opportunity;
+    const engineVerdict = o.engineRecommendation?.engineVerdict || "DOSSIER";
     return {
       meta: [
-        { title: `${o.decision} · ${o.role} — RADAR Executive Dossier` },
+        { title: `${engineVerdict} · ${o.role} — RADAR Executive Dossier` },
         { name: "description", content: o.recommendation || "Executive advisory dossier" },
       ],
     };
@@ -39,15 +45,21 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
   component: OpportunityBriefView,
 });
 
+import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
+
 function OpportunityBriefView() {
   const { opportunity: o, neighbors, currentIndex, totalCount } = Route.useLoaderData();
   const { decisions, decide: recordDecision } = useDecisions();
   const router = useRouter();
 
-  const currentVerdict: DecisionVerb = (decisions[o.jobHash]?.verb as DecisionVerb) || o.decision;
+  const dossierState = resolveDossierDecisionState(o, decisions[o.jobHash]);
 
   const decide = (verb: DecisionVerb) => {
-    recordDecision(o.jobHash, verb);
+    recordDecision(
+      o.jobHash,
+      verb,
+      dossierState.evaluationFingerprint
+    );
     router.invalidate();
   };
 
@@ -64,7 +76,7 @@ function OpportunityBriefView() {
   const surfaceProps = {
     opportunity: o,
     brief,
-    currentVerdict,
+    dossierState,
     decide,
     neighbors,
     currentIndex,

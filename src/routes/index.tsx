@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { type Opportunity, type DecisionVerb } from "../data/opportunity-fixtures";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
-import { getOpportunitiesFn, injectFreshFn } from "../lib/intelligence/opportunity-server";
+import { getOpportunitiesFn, getShortlistMetricsFn, injectFreshFn } from "../lib/intelligence/opportunity-server";
 import { getScraperCounts } from "../data/scraped-jobs";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
@@ -13,49 +13,38 @@ import { logTelemetry } from "../lib/telemetry";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 import { inferExecutiveMandateArchetype } from "../lib/intelligence/editorial";
 
+import { useScrapeProgress } from "../components/radar/ScrapeProgressProvider";
+import { useAttentionPreference } from "../lib/attention-store";
+import {
+  CANONICAL_CATEGORIES,
+  classifyOpportunityCategories,
+  resolveCanonicalCategoryId,
+  type CategoryId,
+} from "../lib/domain/category_taxonomy";
+
+export function getTimeAwareGreeting(userName?: string): string {
+  const namePart = userName ? `, ${userName}` : "";
+  if (typeof window === "undefined") {
+    return `Good morning${namePart}!`;
+  }
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return `Good morning${namePart}!`;
+  }
+  if (hour >= 12 && hour < 17) {
+    return `Good afternoon${namePart}!`;
+  }
+  return `Good evening${namePart}!`;
+}
+
 const VISIBLE_LIMIT = 10;
 
 function getCategoryTags(o: Opportunity): string[] {
-  const tags = ["All"];
-  const jobProj = JobProjectionBuilder.build(o);
-
-  const mandate = jobProj.trueExecutiveMandate || "COMMERCIAL_EXPANSION";
-  const intent = jobProj.executiveMission?.intent || "ACCELERATE_GROWTH";
-  const title = (o.role || "").toLowerCase();
-  const rawText = (o.role + " " + (o as any).description + " " + o.recommendation).toLowerCase();
-
-  // 1. Transformation
-  if (mandate === "TRANSFORMATION" || mandate === "TURNAROUND" || rawText.includes("transformation") || rawText.includes("modernize") || rawText.includes("overhaul")) {
-    tags.push("Transformation");
-  }
-
-  // 2. Commercial Growth
-  if (mandate === "SCALE" || mandate === "COMMERCIAL_EXPANSION" || intent === "ACCELERATE_GROWTH" || intent === "EXPAND_GEOGRAPHY" || rawText.includes("growth") || rawText.includes("revenue") || rawText.includes("commercial") || rawText.includes("sales")) {
-    tags.push("Commercial Growth");
-  }
-
-  // 3. Country Leadership
-  if (intent === "EXPAND_GEOGRAPHY" || title.includes("country") || title.includes("regional") || title.includes("general manager") || title.includes("managing director") || title.includes("head of") || title.includes("national")) {
-    tags.push("Country Leadership");
-  }
-
-  // 4. Platform & Digital
-  const hasPlatformKeywords = ["platform", "digital", "technology", "crm", "salesforce", "sfmc", "cdp", "product", "software", "saas", "tech"].some(kw => rawText.includes(kw));
-  if (hasPlatformKeywords) {
-    tags.push("Platform & Digital");
-  }
-
-  // 5. Founder-led
-  if (intent === "PROFESSIONALIZE_FOUNDER_COMPANY" || rawText.includes("founder") || rawText.includes("co-founder") || rawText.includes("bootstrapped") || rawText.includes("first hire")) {
-    tags.push("Founder-led");
-  }
-
-  // 6. Private Equity
-  if (intent === "PREPARE_IPO" || intent === "INTEGRATE_ACQUISITION" || rawText.includes("private equity") || rawText.includes("portfolio company") || rawText.includes("venture capital") || rawText.includes("pe-backed") || rawText.includes("vc-backed") || rawText.includes("ipo")) {
-    tags.push("Private Equity");
-  }
-
-  return tags;
+  const cats = classifyOpportunityCategories(o);
+  return cats.map((catId) => {
+    const def = CANONICAL_CATEGORIES.find((c) => c.id === catId);
+    return def ? def.label : catId;
+  });
 }
 
 export const Route = createFileRoute("/")({
@@ -67,21 +56,65 @@ export const Route = createFileRoute("/")({
       { property: "og:description", content: "Today's executive briefing: six mandates cleared the bar. Pursue, consider or pass." },
     ],
   }),
+  staleTime: 0,
   loader: async () => {
+    const [opportunitiesList, metrics] = await Promise.all([
+      getOpportunitiesFn(),
+      getShortlistMetricsFn(),
+    ]);
     return {
-      opportunitiesList: await getOpportunitiesFn(),
+      opportunitiesList,
+      metrics,
     };
   },
   component: Shortlist,
 });
 
 function Shortlist() {
-  const { opportunitiesList } = Route.useLoaderData();
+  const { opportunitiesList, metrics } = Route.useLoaderData();
   const { decisions, decide: recordDecision } = useDecisions();
   const { progress, markArrivalSeen } = useOnboarding();
   const [open, setOpen] = useState<string | null>(null);
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<CategoryId>("all");
+  const [categoryOps, setCategoryOps] = useState<Opportunity[] | null>(null);
+  const [isLoadingCategory, setIsLoadingCategory] = useState(false);
+  const categoryCacheRef = useRef<Map<string, Opportunity[]>>(new Map());
+
+  useEffect(() => {
+    if (selectedCategoryId === "all") {
+      setCategoryOps(null);
+      setIsLoadingCategory(false);
+      return;
+    }
+
+    if (categoryCacheRef.current.has(selectedCategoryId)) {
+      setCategoryOps(categoryCacheRef.current.get(selectedCategoryId)!);
+      setIsLoadingCategory(false);
+      return;
+    }
+
+    let active = true;
+    setIsLoadingCategory(true);
+    getOpportunitiesFn({ data: { categoryId: selectedCategoryId } })
+      .then((ops) => {
+        if (active) {
+          categoryCacheRef.current.set(selectedCategoryId, ops);
+          setCategoryOps(ops);
+          setIsLoadingCategory(false);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load category opportunities:", err);
+        if (active) setIsLoadingCategory(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCategoryId]);
+
+  const activeOps = categoryOps ?? opportunitiesList;
 
   const showArrivalBanner = !progress.arrivalSeen;
   const isBothSkipped = progress.evidenceStatus === "skipped" && progress.intentStatus === "skipped";
@@ -92,22 +125,54 @@ function Shortlist() {
 
   const sourceCounts = useMemo(() => {
     const counts = { LinkedIn: 0, Naukri: 0, Indeed: 0 };
-    for (const o of opportunitiesList) {
+    for (const o of activeOps) {
       const src = o.scrapedFrom as keyof typeof counts;
       if (counts[src] !== undefined) {
         counts[src]++;
       }
     }
     return counts;
-  }, [opportunitiesList]);
+  }, [activeOps]);
+
+  const totalActivePursuits = metrics?.activePursuits ?? 0;
+  const totalShortlisted = metrics?.totalShortlisted ?? 0;
+  const totalSparse = metrics?.engineBreakdown?.sparse ?? 0;
+  const totalDecisionsCount = metrics?.totalDecisions ?? Object.keys(decisions).length;
+  const totalScreenedCount = (metrics?.totalScreened ?? 0) + extraScraped;
+  const integrity = metrics?.integrity;
 
   const remaining = useMemo(
-    () => opportunitiesList.filter((o) => !decisions[o.jobHash]),
-    [opportunitiesList, decisions]
+    () =>
+      activeOps.filter((o) => {
+        const clientRec = decisions[o.jobHash];
+        const currentFingerprint = o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion;
+        if (clientRec && clientRec.reviewedFingerprint && clientRec.reviewedFingerprint === currentFingerprint) {
+          return false;
+        }
+
+        if (o.reviewWorkflowState === "UNREVIEWED") {
+          if (clientRec && !clientRec.reviewedFingerprint) return false;
+          return true;
+        }
+
+        if (o.reviewWorkflowState === "REVIEWED_STALE") {
+          if (clientRec && clientRec.reviewedFingerprint === currentFingerprint) return false;
+          return true;
+        }
+
+        if (o.reviewWorkflowState === "REVIEWED_UNKNOWN") {
+          if (clientRec && clientRec.reviewedFingerprint === currentFingerprint) return false;
+          const action = o.userDecision?.userAction || o.engineRecommendation?.engineVerdict;
+          return action === "PURSUE" || action === "CONSIDER";
+        }
+
+        return false;
+      }),
+    [activeOps, decisions]
   );
 
   const shortlistedOps = useMemo(
-    () => remaining.filter((o) => o.decision === "PURSUE" || o.decision === "CONSIDER"),
+    () => remaining.filter((o) => o.engineRecommendation?.engineVerdict === "PURSUE" || o.engineRecommendation?.engineVerdict === "CONSIDER"),
     [remaining]
   );
 
@@ -116,24 +181,50 @@ function Shortlist() {
     [remaining]
   );
 
+  const { attentionWindow } = useAttentionPreference();
+  const [cursorIndex, setCursorIndex] = useState(0);
+  const [greeting, setGreeting] = useState("Good morning, Swapnil!");
+
+  useEffect(() => {
+    setGreeting(getTimeAwareGreeting("Swapnil"));
+  }, []);
+
   const filteredRemaining = useMemo(() => {
-    if (selectedCategory === "Needs More Signal") {
+    if (selectedCategoryId === "needs_more_signal") {
       return sparseOps;
     }
-    if (selectedCategory === "All") {
-      return shortlistedOps;
+    return shortlistedOps;
+  }, [selectedCategoryId, shortlistedOps, sparseOps]);
+
+  // Ranked Attention Queue with mid-window replenishment:
+  // Shows up to `attentionWindow` items starting from `cursorIndex`.
+  // When an item receives a decision, it leaves filteredRemaining, and the queue automatically
+  // replenishes at the bottom from the next untouched opportunity in the authoritative sequence.
+  const visible = useMemo(() => {
+    return filteredRemaining.slice(cursorIndex, cursorIndex + attentionWindow);
+  }, [filteredRemaining, cursorIndex, attentionWindow]);
+
+  const hasNext = cursorIndex + attentionWindow < filteredRemaining.length;
+  const hasPrev = cursorIndex > 0;
+
+  const handleNext = () => {
+    if (hasNext) {
+      setCursorIndex((prev) => prev + attentionWindow);
     }
-    return shortlistedOps.filter((o) => getCategoryTags(o).includes(selectedCategory));
-  }, [selectedCategory, shortlistedOps, sparseOps]);
+  };
 
-  const visible = filteredRemaining.slice(0, VISIBLE_LIMIT);
+  const handlePrev = () => {
+    if (hasPrev) {
+      setCursorIndex((prev) => Math.max(0, prev - attentionWindow));
+    }
+  };
 
-  const decide = (jobHash: string, verb: DecisionVerb) => {
+  const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
     const openTime = openedTimes[jobHash];
     const duration = openTime ? Date.now() - openTime : 0;
     logTelemetry(jobHash, verb, duration);
 
-    recordDecision(jobHash, verb);
+    recordDecision(jobHash, verb, reviewedFingerprint);
     setOpen((cur) => (cur === jobHash ? null : cur));
 
     setOpenedTimes((prev) => {
@@ -143,69 +234,34 @@ function Shortlist() {
     });
   };
 
-  const [isStarting, setIsStarting] = useState(false);
-
-  const runSearch = async () => {
-    if (activeRunId || isStarting) return;
-    setIsStarting(true);
-
-    try {
-      const res = await triggerScrapeFn();
-      if (res.success && res.runId) {
-        setActiveRunId(res.runId);
-      }
-    } catch (err: any) {
-      console.error("Failed to start scrape run:", err);
-      alert("Failed to start scrape: " + err.message);
-    } finally {
-      setIsStarting(false);
-    }
-  };
-
-  const handleScrapeComplete = async (payload: { runId: string; opportunities: any[] }) => {
-    setActiveRunId(null);
-    try {
-      await confirmScrapeFn({ data: { runId: payload.runId } });
-      const freshRecords = payload.opportunities.map((o) => ({
-        id: o.id || `scraped_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        job_hash: o.jobHash || o.job_hash || String(Math.random()),
-        canonical_title: o.canonicalTitle || o.title || o.role || "Executive Role",
-        role: o.role || "Executive Role",
-        company: o.company || "Target Company",
-        location: o.location || "Remote",
-        recommendation: o.recommendation || "CONSIDER",
-        fit_rationale: o.fitRationale || o.recommendation || "",
-        raw_description: o.description || ""
-      }));
-
-      if (freshRecords.length > 0) {
-        await injectFreshFn({ data: freshRecords });
-        router.invalidate();
-      }
-    } catch (err) {
-      console.error("Failed to fetch fresh records:", err);
-    }
-    setExtraScraped((prev) => prev + 1);
-  };
-
-  const handleRefreshFeed = async () => {
-    try {
-      const freshRecords = await getLiveScrapedFn();
-      if (freshRecords && freshRecords.length > 0) {
-        await injectFreshFn({ data: freshRecords });
-        router.invalidate();
-      }
-    } catch (err) {
-      console.error("Failed to fetch fresh records:", err);
-    }
-    setExtraScraped((prev) => prev + 1);
-  };
-
-  const totalScraped = opportunitiesList.length + extraScraped;
+  const { runState, startScrape, isStarting, restore } = useScrapeProgress();
+  const totalScraped = totalScreenedCount;
 
   return (
     <div className="min-h-screen pb-28 bg-background text-foreground font-sans">
       <main className="mx-auto max-w-[1180px] px-5 sm:px-8 pt-4">
+        {/* Metric Integrity Warning Banner */}
+        {integrity && integrity.status !== "PASS" && (
+          <div className="mb-4 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200 text-xs font-mono flex items-start gap-3">
+            <span className="text-base leading-none">⚠️</span>
+            <div className="flex-1">
+              <p className="font-bold uppercase tracking-wider text-[11px]">Metric Integrity Check Requires Attention</p>
+              <p className="mt-1 text-muted-foreground">
+                Some dashboard counts may be temporarily inconsistent with underlying evaluation data. RADAR is validating evaluation state.
+              </p>
+              {process.env.NODE_ENV !== "production" && integrity.discrepancies.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-amber-500/20 space-y-1 text-[10px]">
+                  {integrity.discrepancies.map((d, i) => (
+                    <div key={i}>
+                      • <span className="font-semibold">{d.metricName}</span>: expected {String(d.expected)}, got {String(d.actual)} ({d.message})
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ────────────────────────────────────────────────────────────────────────
             HEADER BRIEFING SUMMARY
             ──────────────────────────────────────────────────────────────────────── */}
@@ -217,27 +273,27 @@ function Shortlist() {
                 Executive Briefing · {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
               </p>
             </div>
-            <h1 className="mt-2 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-6xl text-foreground font-normal">
-              The shortlist.
+            <h1 className="mt-2 font-display text-[3.25rem] leading-[0.92] tracking-tight sm:text-6xl text-foreground font-normal" suppressHydrationWarning>
+              {greeting}
             </h1>
-            <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground font-normal">
-              Six mandates cleared the bar out of <span className="font-mono text-foreground font-semibold">{totalScraped}</span> scraped this week. Decide on one and the next in line takes its slot.
+            <p className="mt-3 max-w-lg text-lg leading-relaxed text-foreground font-medium">
+              Here are your top opportunities.
             </p>
           </div>
 
           <dl className="flex items-center gap-6 overflow-x-auto sm:gap-8">
             <div className="border-r border-border/40 pr-6 sm:pr-8">
               <dd className="font-display text-4xl sm:text-5xl text-emerald-600 dark:text-emerald-400 tabular-nums font-normal">
-                {String(remaining.filter((o) => o.decision === "PURSUE").length || 6).padStart(2, "0")}
+                {String(totalActivePursuits).padStart(2, "0")}
               </dd>
-              <dt className="label-mono mt-1 text-[0.68rem] text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">Cleared</dt>
+              <dt className="label-mono mt-1 text-[0.68rem] text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">Active Pursuits</dt>
             </div>
 
             <div className="border-r border-border/40 pr-6 sm:pr-8">
               <dd className="font-display text-4xl sm:text-5xl text-foreground tabular-nums font-normal">
-                {Object.keys(decisions).length}
+                {totalDecisionsCount}
               </dd>
-              <dt className="label-mono mt-1 text-[0.68rem] text-muted-foreground font-semibold uppercase tracking-wider">Reviewed</dt>
+              <dt className="label-mono mt-1 text-[0.68rem] text-muted-foreground font-semibold uppercase tracking-wider">Decisions</dt>
             </div>
 
             <div>
@@ -297,113 +353,190 @@ function Shortlist() {
             SHORTLIST QUEUE
             ──────────────────────────────────────────────────────────────────────── */}
         <section className="py-6 sm:py-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/60 mb-6">
-            <div>
-              <h2 className="label-mono text-foreground font-semibold tracking-wider">Shortlist queue · sorted by fit</h2>
-              <span className="label-mono text-xs text-muted-foreground mt-0.5 block">
-                {filteredRemaining.length} opportunities evaluated by RADAR
-              </span>
+          <div className="space-y-3 pb-4 border-b border-border/60 mb-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="label-mono text-foreground font-semibold tracking-wider text-xs sm:text-sm uppercase">
+                {selectedCategoryId === "all"
+                  ? `Sorted by Fit · ${totalShortlisted} Shortlisted`
+                  : `Sorted by Fit · ${
+                      metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? (isLoadingCategory ? "..." : filteredRemaining.length)
+                    } ${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}`}
+              </h2>
+              {selectedCategoryId === "all" && shortlistedOps.length > 0 && shortlistedOps.length !== totalShortlisted && (
+                <span className="label-mono text-[11px] text-muted-foreground">
+                  {shortlistedOps.length} remaining to review
+                </span>
+              )}
             </div>
 
             {/* Human-Friendly Category Filters */}
-            <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap p-1 bg-muted/40 rounded-full border border-border/40 max-w-full scrollbar-none shrink-0">
-              {["All", `Needs More Signal (${sparseOps.length})`, "Transformation", "Commercial Growth", "Country Leadership", "Platform & Digital", "Founder-led", "Private Equity"].map((cat) => {
-                const catKey = cat.startsWith("Needs More Signal") ? "Needs More Signal" : cat;
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {CANONICAL_CATEGORIES.map((catDef) => {
+                const isSelected = selectedCategoryId === catDef.id;
+                const catMetric = metrics?.categoryMetrics?.[catDef.id];
+
+                let countLabel = "";
+                if (catDef.id === "all") {
+                  const cnt = catMetric?.unreviewed ?? remaining.length;
+                  countLabel = ` (${cnt})`;
+                } else if (catDef.id === "needs_more_signal") {
+                  const unrev = catMetric?.unreviewed ?? sparseOps.length;
+                  const tot = catMetric?.total ?? totalSparse;
+                  countLabel = ` (${unrev} / ${tot})`;
+                } else {
+                  const unrev = catMetric?.unreviewed ?? (selectedCategoryId === catDef.id ? filteredRemaining.length : 0);
+                  countLabel = ` (${unrev})`;
+                }
+
+                const displayLabel = `${catDef.label}${countLabel}`;
+
                 return (
                   <button
-                    key={catKey}
+                    key={catDef.id}
                     type="button"
-                    onClick={() => setSelectedCategory(catKey)}
-                    className={`text-[0.62rem] font-mono uppercase tracking-wider px-2.5 py-0.5 whitespace-nowrap shrink-0 transition-all rounded-full cursor-pointer ${
-                      selectedCategory === catKey
-                        ? "bg-foreground text-background font-bold shadow-xs"
-                        : catKey === "Needs More Signal"
-                          ? "text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 font-semibold"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    onClick={() => setSelectedCategoryId(catDef.id)}
+                    className={`inline-flex items-center text-[0.65rem] font-mono uppercase tracking-wider px-3 py-1 rounded-full border transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-foreground text-background border-foreground font-semibold shadow-xs"
+                        : catDef.id === "needs_more_signal"
+                          ? "text-amber-700 dark:text-amber-300 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20 font-semibold"
+                          : "text-muted-foreground bg-surface-raised/40 border-border/60 hover:text-foreground hover:bg-muted/80 hover:border-border"
                     }`}
                   >
-                    {cat}
+                    {isLoadingCategory && isSelected && (
+                      <span className="relative flex h-1.5 w-1.5 mr-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-foreground opacity-75" />
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-foreground" />
+                      </span>
+                    )}
+                    {displayLabel}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <ul className="space-y-3">
-            {visible.map((o, idx) => {
-              const isOpen = open === o.jobHash;
-              const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
+          <div className="space-y-3 min-h-[300px]">
+            {isLoadingCategory ? (
+              <ShortlistSkeletonQueue
+                categoryLabel={CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}
+              />
+            ) : (
+              <ul className="space-y-3">
+                {visible.map((o, idx) => {
+                  const isOpen = open === o.jobHash;
 
-              return (
-                <ShortlistCardRow
-                  key={o.jobHash}
-                  o={o}
-                  idx={idx}
-                  isOpen={isOpen}
-                  openedTimes={openedTimes}
-                  setOpenedTimes={setOpenedTimes}
-                  setOpen={setOpen}
-                  decide={decide}
-                  showArrivalBanner={showArrivalBanner}
-                />
-              );
-            })}
+                  return (
+                    <ShortlistCardRow
+                      key={o.jobHash}
+                      o={o}
+                      idx={idx}
+                      isOpen={isOpen}
+                      openedTimes={openedTimes}
+                      setOpenedTimes={setOpenedTimes}
+                      setOpen={setOpen}
+                      decide={decide}
+                      showArrivalBanner={showArrivalBanner}
+                    />
+                  );
+                })}
 
-            {visible.length === 0 && (
-              <li className="glass-card rounded-xl py-16 text-center font-display text-xl text-muted-foreground">
-                {selectedCategory === "All" 
-                  ? "All shortlist items reviewed!" 
-                  : `No opportunities match "${selectedCategory}".`}
-              </li>
+                {visible.length === 0 && (
+                  <li className="glass-card rounded-xl py-16 text-center font-display text-xl text-muted-foreground list-none">
+                    {selectedCategoryId === "all" 
+                      ? (totalShortlisted > 0 && shortlistedOps.length === 0
+                          ? `All ${totalShortlisted} shortlist opportunities have recorded decisions.`
+                          : "No shortlist opportunities remaining to review.")
+                      : selectedCategoryId === "needs_more_signal"
+                        ? (totalSparse > 0 && sparseOps.length === 0
+                            ? `All ${totalSparse} sparse opportunities have recorded decisions.`
+                            : "No opportunities need more signal.")
+                        : `No unreviewed opportunities match "${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}".`}
+                  </li>
+                )}
+              </ul>
             )}
-          </ul>
+
+            {/* Guided Attention Navigation & Escape Hatch Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-border/60">
+              <div className="flex items-center gap-2">
+                {hasPrev && (
+                  <button
+                    type="button"
+                    onClick={handlePrev}
+                    className="inline-flex items-center gap-1 text-[11px] font-mono font-bold uppercase tracking-wider px-4 py-2 rounded-xs border border-border bg-surface-raised hover:bg-muted transition-colors cursor-pointer"
+                    data-testid="guided-prev-btn"
+                  >
+                    ← Previous
+                  </button>
+                )}
+                {hasNext && (
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="inline-flex items-center gap-1 text-[11px] font-mono font-bold uppercase tracking-wider px-4 py-2 rounded-xs border border-foreground bg-foreground text-background hover:opacity-90 transition-opacity cursor-pointer"
+                    data-testid="guided-next-btn"
+                  >
+                    Next →
+                  </button>
+                )}
+              </div>
+
+              {/* Escape hatch: Introduce "Other matched opportunities →" after guided sequence begins extending beyond initial presentation window */}
+              {(cursorIndex > 0 || filteredRemaining.length > attentionWindow) && (
+                <Link
+                  to="/decisions"
+                  className="inline-flex items-center text-[11.5px] font-mono text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid="escape-hatch-link"
+                >
+                  Other matched opportunities ({filteredRemaining.length}) →
+                </Link>
+              )}
+            </div>
+          </div>
         </section>
       </main>
 
       {/* ────────────────────────────────────────────────────────────────────────
           FLOATING FOOTER STATUS BAR
           ──────────────────────────────────────────────────────────────────────── */}
-      <footer className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4 pointer-events-none">
-        <div className="glass-card rounded-full px-5 py-2 flex items-center gap-4 text-xs shadow-lg border border-border/60 pointer-events-auto backdrop-blur-xl">
-          <button
-            type="button"
-            onClick={runSearch}
-            disabled={isStarting || !!activeRunId}
-            className={`label-mono shrink-0 font-bold px-3 py-1 rounded-full transition-all flex items-center gap-1.5 text-[10px] cursor-pointer shadow-xs ${
-              activeRunId
-                ? "bg-emerald-600 text-white"
-                : "bg-foreground text-background hover:opacity-90"
-            }`}
-          >
-            <span className={`inline-block h-1.5 w-1.5 rounded-full ${activeRunId ? "bg-white animate-ping" : "bg-emerald-400"}`} />
-            {isStarting ? "Starting..." : activeRunId ? "Scraper Active" : "Run Scraper"}
-          </button>
-          <span className="label-mono shrink-0 text-muted-foreground">
-            <span className="text-foreground font-mono font-bold">{totalScraped}</span> scraped
-          </span>
-          <span className="hidden md:inline-block text-border/60">|</span>
-          <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
-            LinkedIn <span className="text-foreground font-mono font-bold">{sourceCounts.LinkedIn}</span>
-          </span>
-          <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
-            Naukri <span className="text-foreground font-mono font-bold">{sourceCounts.Naukri}</span>
-          </span>
-          <span className="label-mono hidden shrink-0 md:inline text-muted-foreground">
-            Indeed <span className="text-foreground font-mono font-bold">{sourceCounts.Indeed}</span>
-          </span>
-          <span className="label-mono shrink-0 text-emerald-600 dark:text-emerald-400 font-bold">
-            → {shortlistedOps.length} on shortlist
-          </span>
-        </div>
-      </footer>
-
-      <ScraperConsole
-        runId={activeRunId}
-        onClose={() => setActiveRunId(null)}
-        onRefreshFeed={handleRefreshFeed}
-        onConfirm={confirmScrapeFn}
-        onAbort={abortScrapeFn}
-      />
+      <div className="floating-dock gap-4 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => {
+            if (runState?.isActive) {
+              restore();
+            } else {
+              void startScrape();
+            }
+          }}
+          disabled={isStarting}
+          className={`dock-btn transition-all shadow-xs ${
+            runState?.isActive
+              ? "bg-emerald-600 text-white"
+              : "bg-foreground text-background hover:opacity-90"
+          }`}
+        >
+          <span className={`inline-block h-1.5 w-1.5 rounded-full ${runState?.isActive ? "bg-white animate-ping" : "bg-emerald-400"}`} />
+          {isStarting ? "Starting..." : runState?.isActive ? "Search Active" : "Run Search"}
+        </button>
+        <span className="dock-text">
+          <strong>{totalScraped}</strong> scraped
+        </span>
+        <span className="hidden md:inline-block text-border/40">|</span>
+        <span className="dock-text hidden md:inline">
+          LinkedIn <strong>{sourceCounts.LinkedIn}</strong>
+        </span>
+        <span className="dock-text hidden md:inline">
+          Naukri <strong>{sourceCounts.Naukri}</strong>
+        </span>
+        <span className="dock-text hidden md:inline">
+          Indeed <strong>{sourceCounts.Indeed}</strong>
+        </span>
+        <span className="dock-text text-emerald-600 dark:text-emerald-400 font-bold">
+          → {selectedCategoryId === "all" ? shortlistedOps.length : (metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? filteredRemaining.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.total ?? filteredRemaining.length)} to review
+        </span>
+      </div>
     </div>
   );
 }
@@ -424,7 +557,7 @@ function ShortlistCardRow({
   openedTimes: Record<string, number>;
   setOpenedTimes: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   setOpen: React.Dispatch<React.SetStateAction<string | null>>;
-  decide: (jobHash: string, verb: DecisionVerb) => void;
+  decide: (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => void;
   showArrivalBanner: boolean;
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
@@ -433,6 +566,19 @@ function ShortlistCardRow({
   const rawScore = o.recommendationResult?.score;
   const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
   const decisionLabel = isSparse ? "needs more signal" : (o.decision?.toLowerCase() || "pursue");
+
+  useEffect(() => {
+    if (isOpen && rowRef.current) {
+      const isMobile = window.innerWidth < 768;
+      const timer = setTimeout(() => {
+        rowRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: isMobile ? "start" : "nearest",
+        });
+      }, 70);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   const badgeClass = 
     o.decision === "CONSIDER" 
@@ -455,7 +601,11 @@ function ShortlistCardRow({
   return (
     <li
       ref={rowRef}
-      className={`scroll-mt-24 glass-card rounded-xl border border-border/60 transition-all duration-200 card-lift overflow-hidden ${
+      className={`scroll-mt-20 sm:scroll-mt-24 glass-card rounded-xl border transition-all duration-300 overflow-hidden ${
+        isOpen
+          ? "border-primary/50 shadow-md ring-1 ring-primary/20 bg-surface-raised"
+          : "border-border/60 hover:border-border card-lift"
+      } ${
         showArrivalBanner && idx === 0 ? "border-l-4 border-l-emerald-500 bg-emerald-500/5" : ""
       }`}
     >
@@ -531,10 +681,67 @@ function ShortlistCardRow({
       >
         <div className="min-h-0">
           {isOpen && (
-            <InlineBrief opportunity={o} onDecide={(verb) => decide(o.jobHash, verb)} />
+            <InlineBrief
+              opportunity={o}
+              onDecide={(verb) =>
+                decide(
+                  o.jobHash,
+                  verb,
+                  o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion
+                )
+              }
+            />
           )}
         </div>
       </div>
     </li>
+  );
+}
+
+function ShortlistSkeletonQueue({ categoryLabel }: { categoryLabel: string }) {
+  return (
+    <div className="space-y-3 animate-reveal">
+      {/* Precision Scan Bar Landmark */}
+      <div className="glass-card rounded-lg px-4 py-2.5 border border-border/60 flex items-center justify-between">
+        <span className="label-mono text-[0.68rem] text-muted-foreground flex items-center gap-2">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
+          CALIBRATING {categoryLabel.toUpperCase()} DOSSIERS...
+        </span>
+        <span className="label-mono text-[0.65rem] text-muted-foreground/80 hidden sm:inline">
+          EVALUATING MANDATE EVIDENCE
+        </span>
+      </div>
+
+      <div className="relative overflow-hidden h-[1.5px] w-full bg-border/40 rounded-full mb-3">
+        <div className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent animate-scan-line" />
+      </div>
+
+      {[1, 2, 3].map((idx) => (
+        <div
+          key={idx}
+          className="glass-card rounded-xl border border-border/50 p-4 sm:p-5 overflow-hidden transition-opacity duration-300"
+          style={{ opacity: 1 - idx * 0.25 }}
+        >
+          <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+            <div className="min-w-0 space-y-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="h-3 w-5 rounded-sm bg-muted/80 animate-pulse" />
+                <div className="h-6 w-48 sm:w-72 rounded-md bg-muted/90 animate-shimmer" />
+                <div className="h-4 w-16 rounded-full bg-muted/60" />
+                <div className="h-4 w-28 rounded-full bg-muted/40 hidden sm:block" />
+              </div>
+
+              <div className="h-3 w-48 rounded bg-muted/60 animate-pulse" />
+              <div className="h-4 w-full max-w-lg rounded bg-muted/40" />
+            </div>
+
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <div className="h-10 w-10 rounded-full bg-muted/80 border border-border/60 animate-pulse" />
+              <div className="h-2.5 w-10 rounded bg-muted/40" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

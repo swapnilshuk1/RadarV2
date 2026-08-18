@@ -1,15 +1,15 @@
 interface OpinionProps {
   brief: any;
-  currentVerdict?: string;
+  engineVerdict?: string | null;
 }
 
-export function Opinion({ brief, currentVerdict }: OpinionProps) {
+export function Opinion({ brief, engineVerdict }: OpinionProps) {
   if (!brief.structuredSections?.synthesis?.thesis) return null;
 
   const verdictBg =
-    currentVerdict === "PURSUE"
+    engineVerdict === "PURSUE"
       ? "bg-pursue-soft"
-      : currentVerdict === "CONSIDER"
+      : engineVerdict === "CONSIDER"
       ? "bg-consider-soft"
       : "bg-surface-raised";
 
@@ -25,7 +25,7 @@ export function Opinion({ brief, currentVerdict }: OpinionProps) {
         </span>
       </div>
       <p className="font-serif italic text-2xl leading-relaxed text-foreground font-normal">
-        {brief.structuredSections.synthesis.thesis}
+        {brief.pursuitStrategy?.bottomLine || brief.explanation?.bottomLine || brief.structuredSections.synthesis.thesis}
       </p>
     </div>
   );

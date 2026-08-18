@@ -160,18 +160,8 @@ export function extractCommercial(input: { title: string; snippet: string; detai
   const norm = commercialExtractorInstance.normalize(raw);
   if (!norm) return missing<string>();
   // Re-map value to category for compatibility
-  const valuePayload = {
-    value: norm.canonicalValue,
-    rawValue: norm.rawValue,
-    canonicalValue: norm.canonicalValue,
-    confidence: norm.confidence,
-    ambiguity: raw.ambiguity,
-    matches: raw.matches,
-    latencyMs: raw.latencyMs,
-    extractorVersion,
-    normalizerVersion
-  };
-  return anchor(JSON.stringify(valuePayload), raw.evidenceSnippet, raw.rawValue, "snippet");
+  const cleanValue = String(norm.canonicalValue || norm.rawValue || "COMMERCIAL").trim();
+  return anchor(cleanValue, raw.evidenceSnippet, raw.rawValue, "snippet");
 }
 
 export const commercialExtractorId = `commercialAccountability@${extractorVersion}`;

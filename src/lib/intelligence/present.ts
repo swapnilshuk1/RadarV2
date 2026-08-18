@@ -1,9 +1,9 @@
-import type { Opportunity, OpportunitySource, RecommendationViewModel, CapabilityCardViewModel } from "@/data/opportunity-fixtures";
+import type { Opportunity, OpportunitySource, RecommendationViewModel, CapabilityCardViewModel, DimensionResult, DimensionKey, EvidenceBucket } from "@/data/opportunity-fixtures";
 import type { RecommendationRecord } from "./record";
 import { format, type Narrative } from "./narrative";
 import { CapabilityEngine, type JobSlice } from "../capability/CapabilityEngine";
-import { CapabilityRecommendationScorer } from "../recommendation/CapabilityRecommendationScorer";
 import { CapabilityOntology } from "../ontology/CapabilityOntology";
+import { SemanticNaturalLanguageResolver } from "./editorial/SemanticNaturalLanguageResolver";
 
 export type Presented = {
   opportunity: Opportunity;
@@ -39,7 +39,7 @@ import type { DecisionConfidence } from "../../domain/entities";
 export function present(
   source: OpportunitySource,
   record: RecommendationRecord,
-  dynamicProfile: any
+  dynamicProfile?: unknown
 ): Presented {
   const narrative = format(record, source);
 
@@ -61,15 +61,15 @@ export function present(
 
   const isPass = record.verb === "PASS";
 
-  // Dynamic Calibrated Decision Confidence based on V4 strategic alignment
-  const scoreValForConfidence = record.priority !== null ? Math.round(record.priority) : 0;
-  const overall = record.priority !== null ? Math.max(0.3, Math.min(0.95, scoreValForConfidence / 100)) : 0.80;
-  const stability = scoreValForConfidence >= 75 ? 0.92 : 0.75;
+    // Pure projection: use confidence from RecommendationRecord directly
+  const overall = record.confidence ?? null;
+  const stability = record.stability === "High" ? 0.92 : record.stability === "Medium" ? 0.75 : 0.50;
   
   let explanation = "Moderate structural alignment; potential promotion scope or scale variance detected.";
-  if (scoreValForConfidence >= 75) {
+  const effectiveQualityScore = record.vetoed ? null : (record.qualityScore ?? record.priority);
+  if (effectiveQualityScore !== null && effectiveQualityScore >= 75) {
     explanation = "Strong structural alignment across operating level and strategic commercial growth mandates.";
-  } else if (scoreValForConfidence < 50) {
+  } else if (effectiveQualityScore !== null && effectiveQualityScore < 50) {
     explanation = "Low alignment; structural level or functional domain mismatch limits suitability.";
   }
 
@@ -80,19 +80,21 @@ export function present(
     explanation
   };
   
-  const scoreVal = record.priority !== null ? Math.round(record.priority) : 0;
-  const scoreStr = record.priority !== null ? `${Math.round(record.priority)}/100` : "N/A";
+  const scoreVal = effectiveQualityScore !== null ? Math.round(effectiveQualityScore) : null;
+  const scoreStr = effectiveQualityScore !== null ? `${Math.round(effectiveQualityScore)}/100` : "N/A";
 
   const recommendationResultViewModel: RecommendationViewModel = {
     score: scoreVal,
     decision: record.verb,
     policyId: "policy-v4.3",
-    policyVersion: "4.3.0",
+    policyVersion: record.recommendationVersion,
     explanation: isPass 
       ? `Evaluated by RADAR V4.3 strategic framework: ${record.verb.toLowerCase()} (Score: ${scoreStr}).`
       : `Dynamically evaluated using RADAR V4.3 strategic framework to ${record.verb.toLowerCase()} (Score: ${scoreStr}).`,
     capabilities: mappedCapabilities,
     decisionConfidence,
+    vetoed: Boolean(record.vetoed),
+    vetoReason: record.vetoReason || null,
   };
 
   // Close the loop with explainability: feed the dynamic human-focused narrative 
@@ -101,11 +103,41 @@ export function present(
     ? `${narrative.headspaceLine} ${narrative.recommendation}`
     : narrative.recommendation;
 
-  const { normalizedText, html, rawText, payload, ...cleanSource } = source as any;
+  const {
+    normalizedText,
+    html,
+    rawText,
+    payload,
+    rawDescription,
+    normalizedDescription,
+    evidenceGrounding,
+    dimensions,
+    ...cleanSource
+  } = source as Record<string, unknown>;
+
+  const cleanDimensions = Array.isArray(source.dimensions)
+    ? source.dimensions.map((d: Record<string, unknown>): DimensionResult => ({
+        key: ((d.key as string) || "mandate") as DimensionKey,
+        label: (d.label as string) || (d.key as string) || "",
+        importance: ((d.importance as string) || "Core") as "Core" | "Supporting" | "Context",
+        bucket: (d.bucket as EvidenceBucket) || "Missing",
+        jdEvidence: {
+          status: ((d.jdEvidence as Record<string, unknown> | undefined)?.status as import("@/data/opportunity-fixtures").Status) || "Explicit",
+          value: typeof (d.jdEvidence as Record<string, unknown> | undefined)?.value === "string" ? String((d.jdEvidence as Record<string, unknown>).value).slice(0, 140) : "",
+          evidence: Array.isArray((d.jdEvidence as Record<string, unknown> | undefined)?.evidence) && ((d.jdEvidence as Record<string, unknown>).evidence as unknown[]).length > 0
+            ? [{
+                quote: typeof ((d.jdEvidence as Record<string, unknown>).evidence as Record<string, unknown>[])[0]?.quote === "string" ? String(((d.jdEvidence as Record<string, unknown>).evidence as Record<string, unknown>[])[0].quote).slice(0, 140) : "",
+                source: "snippet"
+              }]
+            : []
+        }
+      }))
+    : [];
 
   return {
     opportunity: {
-      ...cleanSource,
+      ...source,
+      dimensions: cleanDimensions,
       decision: record.verb,
       recommendation: finalRecommendation,
       whyNow: narrative.whyNow,
@@ -126,6 +158,43 @@ export function present(
       primaryRisk: narrative.primaryRisk,
       tailoringEffort: narrative.tailoringEffort,
       capabilityAlignmentText: narrative.capabilityAlignmentText,
+      // RADAR V4 Canonical Multi-State Multi-Truth Model
+      engineRecommendation: {
+        jobHash: record.jobHash,
+        evaluationFingerprint: record.recommendationVersion,
+        engineVerdict: record.verb as import("../../domain/decision_v4").EngineVerdict,
+        vetoed: Boolean(record.vetoed),
+        vetoReason: record.vetoReason || null,
+        qualityScore: record.vetoed ? null : (record.qualityScore !== null && record.qualityScore !== undefined ? Math.round(record.qualityScore) : null),
+        parsingConfidence: record.confidences?.parsing ?? (record.confidence ?? 0.8),
+        evaluatedAt: new Date().toISOString(),
+        triggeredRuleIds: record.triggeredRuleIds,
+        decisionRisks: record.decisionRisks,
+        decisionDrivers: record.decisionDrivers,
+        relativeDifferentiator: record.relativeDifferentiator,
+        opportunityScoreConfidence: record.opportunityScoreConfidence,
+        opportunityScoreSource: record.opportunityScoreSource,
+        trajectoryUpside: record.trajectoryUpside,
+      },
+      userDecision: null,
+      effectiveDecision: record.verb === "PURSUE" 
+        ? "ENGINE_PURSUIT" 
+        : record.verb === "CONSIDER" 
+          ? "ENGINE_CONSIDER" 
+          : record.verb === "SPARSE_SPEC" 
+            ? "NOT_EVALUABLE" 
+            : "ENGINE_PASS",
+      reviewWorkflowState: "UNREVIEWED",
+      displayScore: effectiveQualityScore !== null ? `${Math.round(effectiveQualityScore)}%` : "—",
+      uiBadge: record.vetoed
+        ? { label: "Vetoed", variant: "pass" as const }
+        : record.verb === "PURSUE"
+          ? { label: "Recommended", variant: "signal" as const }
+          : record.verb === "CONSIDER"
+            ? { label: "Consider", variant: "caution" as const }
+            : { label: "Pass", variant: "muted" as const },
+      // P1-F: Generate executive-facing recommended action based on decision + tailoring effort
+      recommendedAction: (narrative as any).recommendedAction || record.verb,
     },
     record,
     narrative,
