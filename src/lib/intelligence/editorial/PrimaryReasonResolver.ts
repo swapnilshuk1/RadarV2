@@ -152,15 +152,25 @@ export class PrimaryReasonResolver {
     } else if (verdict === "PASS") {
       if (ruleIds.includes("G-SUB-TIER-MANDATE-VETO")) {
         primaryReason = `Sub-tier mandate veto: Role scoping at ${companyStr} is below executive baseline expectations (execution-focused or sub-tier title).`;
-      } else if (ruleIds.includes("G-EXECUTIVE-IDENTITY-MISMATCH")) {
+      } else if (ruleIds.includes("G-EXECUTIVE-IDENTITY-MISMATCH") || ruleIds.includes("G-IDENTITY-VETO")) {
         primaryReason = `Domain identity mismatch: Functional mandate at ${companyStr} diverges from your executive identity baseline.`;
+      } else if (ruleIds.includes("G-COMPATIBILITY-REGRESSION-VETO")) {
+        primaryReason = `Career trajectory regression: Pursuing this role at ${companyStr} represents material career regression relative to your current executive trajectory.`;
+      } else if (ruleIds.includes("POL-D-PASS-PROHIBITIVE-FRICTION")) {
+        primaryReason = `Prohibitive pursuit friction: This is not a quality or capability rejection; the opportunity at ${companyStr} is being passed because the practical pursuit constraints are prohibitive.`;
+      } else if (ruleIds.includes("G-EVIDENCE-INTEGRITY-FAILED") || ruleIds.includes("G-EVIDENCE-GATE-SPARSE-SPEC")) {
+        primaryReason = `Insufficient evidence specification: Opportunity text for ${roleStr} at ${companyStr} lacks verified structural evidence for executive evaluation.`;
+      } else if (ruleIds.includes("G-EXECUTION-VETO")) {
+        primaryReason = `Execution scope mismatch: Role at ${companyStr} is heavily tactical execution without strategic P&L or organizational authority.`;
+      } else if (ruleIds.includes("R-PASS-LOW-PRIORITY")) {
+        primaryReason = `Low strategic priority: Overall fit score at ${companyStr} sits below your active pursuit threshold.`;
       } else {
         primaryReason = `Strategic pass: Operating altitude or role scoping at ${companyStr} represents a structural mismatch from your executive baseline.`;
       }
       provenanceList.push({
         source: "DECISION_POLICY",
         ruleIds,
-        signal: ruleIds.includes("G-SUB-TIER-MANDATE-VETO") ? "G-SUB-TIER-MANDATE-VETO" : "STRATEGIC_PASS",
+        signal: ruleIds[0] || "STRATEGIC_PASS",
       });
 
       if (ctx.capability?.missingCapabilities && ctx.capability.missingCapabilities.length > 0) {

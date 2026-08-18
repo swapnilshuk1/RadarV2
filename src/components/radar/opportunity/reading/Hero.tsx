@@ -73,7 +73,7 @@ export function Hero({
               )}
 
               <span className="label-mono font-mono text-xs font-semibold px-2 py-1 rounded bg-surface-raised border border-border text-foreground">
-                RADAR SCORE: {brief.qualityScore != null ? `${brief.qualityScore}/100` : "N/A"}
+                RADAR SCORE: {(brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore) != null ? `${brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore}/100` : "N/A"}
               </span>
 
               {/* Canonical Career-Value Signal Badge (Strictly from ExecutiveThesis / ExecutiveExplanation) */}

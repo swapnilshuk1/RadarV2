@@ -320,4 +320,78 @@ describe("RADAR V4 Phase P1.2 — Executive Decision Explanation Integrity Suite
     expect(expBefore.verdict).toBe(expAfter.verdict);
     expect(expBefore.primaryReason).toBe(expAfter.primaryReason);
   });
+
+  // Case R: G-COMPATIBILITY-REGRESSION-VETO Explanation Differentiation
+  it("Case R — G-COMPATIBILITY-REGRESSION-VETO: frames PASS as career trajectory regression (not altitude/scoping mismatch)", () => {
+    const opp = createFixture({
+      engineRecommendation: {
+        engineVerdict: "PASS",
+        qualityScore: 72,
+        triggeredRuleIds: ["G-COMPATIBILITY-REGRESSION-VETO"],
+        trajectoryUpside: "REGRESSION",
+      },
+    });
+    const ctx = EditorialContextBuilder.build(opp);
+    const exp = PrimaryReasonResolver.resolve(ctx, opp);
+
+    expect(exp.verdict).toBe("PASS");
+    expect(exp.primaryReason).toContain("Career trajectory regression");
+    expect(exp.primaryReason).not.toContain("Operating altitude or role scoping");
+  });
+
+  // Case S: POL-D-PASS-PROHIBITIVE-FRICTION Semantic Distinction Test
+  it("Case S — POL-D-PASS-PROHIBITIVE-FRICTION: preserves distinction (Quality OK, passed due to prohibitive pursuit constraints)", () => {
+    const opp = createFixture({
+      engineRecommendation: {
+        engineVerdict: "PASS",
+        qualityScore: 85, // High quality / fit
+        triggeredRuleIds: ["POL-D-PASS-PROHIBITIVE-FRICTION"],
+        trajectoryUpside: "HIGH",
+      },
+    });
+    const ctx = EditorialContextBuilder.build(opp);
+    const exp = PrimaryReasonResolver.resolve(ctx, opp);
+
+    expect(exp.verdict).toBe("PASS");
+    expect(exp.primaryReason).toContain("Prohibitive pursuit friction");
+    expect(exp.primaryReason).toContain("This is not a quality or capability rejection");
+    expect(exp.primaryReason).not.toContain("operating altitude");
+    expect(exp.primaryReason).not.toContain("role scoping");
+    expect(exp.primaryReason).not.toContain("executive baseline");
+  });
+
+  // Case T: Fail-Closed PASS Rule Mapping Certification Invariant
+  it("Case T — Fail-Closed Certification Invariant: every PASS rule ID emitted by DecisionPolicyEngine has an explicit mapping", () => {
+    const passRuleIds = [
+      "G-EVIDENCE-GATE-SPARSE-SPEC",
+      "G-EXECUTIVE-IDENTITY-MISMATCH",
+      "G-EVIDENCE-INTEGRITY-FAILED",
+      "G-SUB-TIER-MANDATE-VETO",
+      "G-IDENTITY-VETO",
+      "G-EXECUTION-VETO",
+      "G-COMPATIBILITY-REGRESSION-VETO",
+      "POL-D-PASS-PROHIBITIVE-FRICTION",
+      "R-PASS-LOW-PRIORITY",
+    ];
+
+    const genericFallbackPrefix = "Strategic pass: Operating altitude or role scoping";
+
+    for (const ruleId of passRuleIds) {
+      const opp = createFixture({
+        engineRecommendation: {
+          engineVerdict: "PASS",
+          qualityScore: 60,
+          triggeredRuleIds: [ruleId],
+        },
+      });
+      const ctx = EditorialContextBuilder.build(opp);
+      const exp = PrimaryReasonResolver.resolve(ctx, opp);
+
+      expect(exp.verdict).toBe("PASS");
+      expect(
+        exp.primaryReason.startsWith(genericFallbackPrefix),
+        `PASS rule ID [${ruleId}] fell through to unmapped generic fallback! Every PASS rule must have an explicit mapping.`
+      ).toBe(false);
+    }
+  });
 });

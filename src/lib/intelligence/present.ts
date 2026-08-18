@@ -194,12 +194,7 @@ export function present(
             ? { label: "Consider", variant: "caution" as const }
             : { label: "Pass", variant: "muted" as const },
       // P1-F: Generate executive-facing recommended action based on decision + tailoring effort
-      recommendedAction: SemanticNaturalLanguageResolver.resolveActionRecommendation(
-        record.verb as "PURSUE" | "CONSIDER" | "PASS",
-        source.role,
-        source.company,
-        narrative.tailoringEffort
-      ),
+      recommendedAction: (narrative as any).recommendedAction || record.verb,
     },
     record,
     narrative,

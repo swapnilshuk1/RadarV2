@@ -71,7 +71,7 @@ export function Summary({
             )}
 
             <span className="label-mono font-mono text-xs font-semibold px-2 py-0.5 rounded bg-surface-raised border border-border text-foreground">
-              RADAR SCORE: {brief.qualityScore != null ? `${brief.qualityScore}/100` : "N/A"}
+              RADAR SCORE: {(brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore) != null ? `${brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore}/100` : "N/A"}
             </span>
 
             <span className="label-mono font-normal text-[10px] text-muted-foreground">· Executive Briefing</span>

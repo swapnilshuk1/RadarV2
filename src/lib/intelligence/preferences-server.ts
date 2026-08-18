@@ -14,7 +14,7 @@ export const getUserPreferencesFn = createServerFn({ method: "GET" }).handler(as
   const user = await requireAuthUser();
   const repos = getRepositories();
   const state = (await repos.people.getCandidateState(user.id)) || {};
-  const attentionWindow = sanitizeAttentionWindow(state.attentionWindow);
+  const attentionWindow = sanitizeAttentionWindow(state.attentionWindow ?? (state as any).intent?.maxMonthlyPursuits);
   return { success: true, preferences: { attentionWindow } };
 });
 
@@ -29,6 +29,10 @@ export const saveUserPreferencesFn = createServerFn({ method: "POST" })
     const updatedState = {
       ...currentState,
       attentionWindow: sanitizedWindow,
+      intent: {
+        ...((currentState as any).intent || {}),
+        maxMonthlyPursuits: sanitizedWindow, // Derived compatibility projection
+      },
     };
 
     await repos.people.saveCandidateState(user.id, updatedState);

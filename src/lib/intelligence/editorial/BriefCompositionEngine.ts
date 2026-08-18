@@ -97,6 +97,7 @@ export interface BriefModel {
   certaintyGuidance: string;
   evidenceQuality: "High Evidence Quality" | "Medium Evidence Quality" | "Inferred Evidence";
   qualitativeRecommendation: "Strong Pursue Recommendation" | "Conditional Consideration" | "Strategic Pass";
+  qualityScore: number | null;
   whyNotStronger?: string;
   frictionPreview?: string;
   topUnknownPreview?: string;
@@ -169,7 +170,7 @@ export class BriefCompositionEngine {
       ? "Specific reporting line or operating scale trade-offs require screening verification"
       : "Standard executive application and alignment overhead";
 
-    let recommendedAction = SemanticNaturalLanguageResolver.resolveActionRecommendation(decision, opportunity.role, opportunity.company);
+    let recommendedAction: string = explanation.recommendedAction || "INVESTIGATE";
 
     try {
       const pattern = EditorialPatternSelector.select(editorialContext, opportunity.jobHash, options?.bypassHistory);
@@ -448,6 +449,10 @@ export class BriefCompositionEngine {
         : "Ensure your resume explicitly highlights P&L responsibility to bridge gaps in functional domain coverage."
     };
 
+    const qualityScore = opportunity.engineRecommendation?.vetoed
+      ? null
+      : (opportunity.engineRecommendation?.qualityScore ?? (editorialContext.rawScore != null ? Math.round(editorialContext.rawScore) : null));
+
     return {
       editorialContext,
       executiveThesis,
@@ -456,6 +461,7 @@ export class BriefCompositionEngine {
       executiveOpinion,
       directives,
       memory,
+      qualityScore,
       structuredSections,
       oneMinuteTLDR,
       qualitativeReasoning: qualitativeReasoningChain,

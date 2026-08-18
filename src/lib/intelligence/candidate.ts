@@ -60,11 +60,15 @@ export function loadStrategy(): SearchStrategy {
   };
 }
 
-/** headspaceCapacityPerMonth is additive; default to 5 if unset. */
-export function buildHeadspace(activePursuits: number): HeadspaceState {
-  const capacity =
-    (profile as { headspaceCapacityPerMonth?: number })
-      .headspaceCapacityPerMonth ?? 5;
+/** buildHeadspace reads capacity from canonical attentionWindow or explicit override (1–10, default 6) */
+export function buildHeadspace(activePursuits: number, capacityOverride?: number): HeadspaceState {
+  const rawCap =
+    capacityOverride ??
+    (profile as { attentionWindow?: number; headspaceCapacityPerMonth?: number }).attentionWindow ??
+    (profile as { headspaceCapacityPerMonth?: number }).headspaceCapacityPerMonth ??
+    6;
+  const num = typeof rawCap === "number" ? rawCap : parseInt(String(rawCap), 10);
+  const capacity = isNaN(num) || num < 1 || num > 10 ? 6 : num;
   return {
     capacityPerMonth: capacity,
     activePursuits,
