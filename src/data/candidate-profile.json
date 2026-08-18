@@ -129,7 +129,23 @@
     "Digital Transformation": ["Business Transformation", "Enterprise Transformation", "Operating Model", "Modernization", "Marketing Transformation"]
   },
   "preferences": {
-    "locations": ["Gurugram", "Delhi NCR", "Mumbai", "Bengaluru", "Pune", "India", "APAC"],
+    "locations": [
+      "Gurugram",
+      "Gurgaon",
+      "Delhi",
+      "New Delhi",
+      "Delhi NCR",
+      "NCR",
+      "Noida",
+      "Greater Noida",
+      "Mumbai",
+      "Navi Mumbai",
+      "Bengaluru",
+      "Bangalore",
+      "Pune",
+      "India",
+      "APAC"
+    ],
     "remote": "Hybrid / Flexible",
     "targetMinSalary": "₹1.5 Cr",
     "industries": [

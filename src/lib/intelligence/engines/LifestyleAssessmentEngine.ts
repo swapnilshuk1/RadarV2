@@ -12,18 +12,49 @@ export class LifestyleAssessmentEngine {
     job: JobProjection
   ): LifestyleAssessment {
     const richness = EvidenceRichnessCalculator.calculate(job.originalOpportunity);
-    const jobLocLower = job.location.toLowerCase();
-    const candidatePrefs = candidate.preferredLocations.map(p => p.toLowerCase().trim());
+    const jobLocLower = (job.location || "").toLowerCase().trim();
+    const candidatePrefs = (candidate.preferredLocations || []).map(p => p.toLowerCase().trim());
+
+    const lp: any = locationPolicy;
+    const clusters: Record<string, string[]> = lp.locationClusters || {};
+
+    // Expand candidate preferences with all synonyms from matching clusters
+    const expandedCandidatePrefs = new Set<string>();
+    for (const pref of candidatePrefs) {
+      expandedCandidatePrefs.add(pref);
+      for (const clusterKeywords of Object.values(clusters)) {
+        if (clusterKeywords.some(k => k === pref || pref.includes(k) || k.includes(pref))) {
+          clusterKeywords.forEach(k => expandedCandidatePrefs.add(k));
+        }
+      }
+    }
 
     // 1. Location Fit (Excluding broad country tokens like 'india' for city-specific matching)
-    const specificPrefs = candidatePrefs.filter(p => p !== "india" && p !== "any");
-    let locationFit = specificPrefs.some((pref) => {
-      return jobLocLower.includes(pref);
-    });
-    if (specificPrefs.length === 0 || candidatePrefs.includes("any")) {
+    const broadTokens = new Set(["india", "apac", "any", "global", "worldwide"]);
+    const specificPrefs = Array.from(expandedCandidatePrefs).filter(p => !broadTokens.has(p));
+
+    let locationFit = false;
+
+    if (candidatePrefs.includes("any") || specificPrefs.length === 0) {
+      locationFit = true;
+    } else {
+      // Check if job location matches any expanded preference or cluster
+      locationFit = specificPrefs.some((pref) => {
+        if (!pref) return false;
+        if (jobLocLower.includes(pref) || pref.includes(jobLocLower)) return true;
+        const escaped = pref.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i");
+        return regex.test(jobLocLower);
+      });
+    }
+
+    // Remote / Hybrid work model compatibility
+    if (jobLocLower.includes("remote") && (candidate.preferredWorkModel === "REMOTE" || candidate.preferredWorkModel === "HYBRID" || candidate.preferredWorkModel === "ANY")) {
       locationFit = true;
     }
-    if (jobLocLower.includes("remote") && candidate.preferredWorkModel === "REMOTE") {
+
+    // Country fallback if job is marked as "India" or country-wide
+    if (!locationFit && (jobLocLower === "india" || jobLocLower.includes("india")) && candidatePrefs.some(p => p === "india" || p === "apac")) {
       locationFit = true;
     }
 
@@ -50,7 +81,6 @@ export class LifestyleAssessmentEngine {
 
     // Calculate Location Friction Penalty from location_policy.json
     let locationFrictionPenalty = 0;
-    const lp: any = locationPolicy;
     if (!locationFit) {
       if (lp.secondaryMetros?.keywords?.some((kw: string) => jobLocLower.includes(kw.toLowerCase()))) {
         locationFrictionPenalty = lp.secondaryMetros.penaltyPoints || 5;
@@ -80,3 +110,4 @@ export class LifestyleAssessmentEngine {
     } as any;
   }
 }
+
