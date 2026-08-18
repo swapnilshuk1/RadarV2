@@ -279,4 +279,38 @@ Page (e.g. Executive Dossier, Shortlist Queue)
    - `.label-mono` / `.memo-badge` (`font-mono uppercase tracking-[0.18em] text-[0.65rem]`)
 4. **Audit First Rule**: Before writing or modifying any UI route/component, agents MUST inspect `src/styles.css` to verify available design system classes and enforce 100% token reuse.
 
+---
+
+## 14. Canonical Git Push & Oracle Server Deployment Protocol
+
+Whenever deploying or pushing RADAR v2 to the live Oracle Cloud Server, AI agents MUST follow this exact, deterministic procedure without searching or guessing credentials:
+
+### Target Infrastructure & Credentials:
+- **Server IP**: `130.210.41.232` (or hostname `130.210.41.232.sslip.io`)
+- **SSH User**: `ubuntu`
+- **SSH Private Key Location**: `C:\Users\swapn\.ssh\oracle_official.key` (or `~/.ssh/oracle_official.key`)
+- **SSH Config Alias**: `oracle-radar` (defined in `~/.ssh/config`)
+- **Remote Directory**: `/home/ubuntu/radar-local-v2`
+- **Process Manager**: `pm2` (Process Name: `radar-v2`)
+- **Git Remote**: `origin` -> `https://github.com/swapnilshuk1/RadarV2.git` (Branch: `main`)
+- **Live URL**: `http://130.210.41.232.sslip.io/`
+
+### Automated 1-Command Deployment:
+```bash
+# Run automated full deployment (Typecheck -> Build -> Git Push -> Remote Pull & PM2 Restart)
+npm run deploy
+```
+*Or directly via script:*
+```bash
+# Windows PowerShell:
+.\scripts\deploy.ps1 "Your commit message"
+
+# Node / TypeScript:
+npx tsx scripts/deploy.ts "Your commit message"
+
+# Direct SSH command:
+ssh -o StrictHostKeyChecking=no -i "C:\Users\swapn\.ssh\oracle_official.key" ubuntu@130.210.41.232 "cd /home/ubuntu/radar-local-v2 && git fetch origin main && git reset --hard origin/main && npm install && npm run build && pm2 restart radar-v2 && pm2 status"
+```
+
+
 

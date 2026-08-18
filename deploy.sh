@@ -1,100 +1,44 @@
 #!/bin/bash
-#
-# Deploy RADAR v2 to Oracle Cloud Server
-# Target: http://130.210.41.232.sslip.io/
-#
-
+# RADAR v2 — Oracle Cloud Deployment Script (Bash)
 set -e
 
-echo "=== RADAR v2 P3 Deployment ==="
-echo "Target Server: 130.210.41.232.sslip.io"
-echo ""
+SSH_KEY="${HOME}/.ssh/oracle_official.key"
+REMOTE_HOST="ubuntu@130.210.41.232"
+REMOTE_DIR="/home/ubuntu/radar-local-v2"
+COMMIT_MSG="${1:-Deploy update: $(date '+%Y-%m-%d %H:%M:%S')}"
 
-# Configuration
-SERVER_IP="130.210.41.232"
-SERVER_USER="ubuntu"  # Adjust if different
-DEPLOY_DIR="/opt/radar"
-BACKUP_DIR="/opt/radar-backup-$(date +%Y%m%d-%H%M%S)"
+echo "============================================================"
+echo "       RADAR V2 — ORACLE CLOUD AUTOMATED DEPLOYMENT         "
+echo "============================================================"
+echo "Target Host  : ${REMOTE_HOST}"
+echo "SSH Key      : ${SSH_KEY}"
+echo "Remote Path  : ${REMOTE_DIR}"
+echo "Live Service : http://130.210.41.232.sslip.io/"
+echo "────────────────────────────────────────────────────────────"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-echo -e "${YELLOW}Step 1: Creating deployment package...${NC}"
-# Build should already be done locally
-if [ ! -d ".output" ]; then
-    echo -e "${RED}Error: .output directory not found. Run 'npm run build' first.${NC}"
-    exit 1
+if [ ! -f "${SSH_KEY}" ]; then
+  echo "Error: SSH private key not found at: ${SSH_KEY}"
+  exit 1
 fi
 
-# Create deployment archive (deterministic runtime bundle only)
-tar --exclude='node_modules' \
-    --exclude='.git' \
-    --exclude='.env*' \
-    --exclude='*.sqlite*' \
-    --exclude='*.jsonl' \
-    --exclude='*.log' \
-    --exclude='live-scraped.json' \
-    -czf radar-deploy.tar.gz \
-    .output/ \
-    package.json \
-    package-lock.json \
-    src/data/ontology/
+echo "[1/4] Running local TypeScript typecheck..."
+npx tsc --noEmit
 
-echo -e "${GREEN}✓ Deployment package created: radar-deploy.tar.gz${NC}"
-echo ""
+echo "[2/4] Running local production build..."
+npm run build
 
-echo -e "${YELLOW}Step 2: Deployment Instructions${NC}"
-echo ""
-echo "Since automated SSH deployment is not configured, please run these commands manually:"
-echo ""
-echo "# 1. Copy deployment package to server:"
-echo "scp radar-deploy.tar.gz ${SERVER_USER}@${SERVER_IP}:~/"
-echo ""
-echo "# 2. SSH into server:"
-echo "ssh ${SERVER_USER}@${SERVER_IP}"
-echo ""
-echo "# 3. On the server, run:"
-cat << 'SERVER_COMMANDS'
-# Stop existing service
-sudo systemctl stop radar || true
-
-# Preserve existing .env if present
-if [ -f /opt/radar/.env ]; then
-    sudo cp /opt/radar/.env /tmp/radar.env.bak
+echo "[3/4] Checking and pushing Git changes to origin/main..."
+if [ -n "$(git status --porcelain)" ]; then
+  git add .
+  git commit -m "${COMMIT_MSG}"
 fi
+git push origin main
 
-# Backup existing deployment
-if [ -d /opt/radar ]; then
-    sudo mv /opt/radar /opt/radar-backup-$(date +%Y%m%d-%H%M%S)
-fi
+echo "[4/4] Deploying to Oracle Cloud Server via SSH..."
+ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${REMOTE_HOST}" \
+  "cd ${REMOTE_DIR} && git fetch origin main && git reset --hard origin/main && npm install && npm run build && pm2 restart radar-v2 && pm2 status"
 
-# Create new deployment directory
-sudo mkdir -p /opt/radar
-sudo tar -xzf ~/radar-deploy.tar.gz -C /opt/radar
-
-# Restore .env if preserved
-if [ -f /tmp/radar.env.bak ]; then
-    sudo mv /tmp/radar.env.bak /opt/radar/.env
-fi
-
-sudo chown -R www-data:www-data /opt/radar
-
-# Install dependencies
-cd /opt/radar
-npm ci --production
-
-# Restart service
-sudo systemctl restart radar
-
-# Verify deployment
-curl -s http://localhost:3000/ | head -1
-SERVER_COMMANDS
-
-echo ""
-echo -e "${GREEN}=== Deployment package ready ===${NC}"
-echo ""
-echo "Alternative: If you have a different deployment method configured,"
-echo "please use that instead (e.g., Docker, PM2, etc.)"
+echo "============================================================"
+echo "      DEPLOYMENT COMPLETE — SERVER RUNNING SUCCESSFULLY     "
+echo "      Live URL: http://130.210.41.232.sslip.io/             "
+echo "============================================================"
