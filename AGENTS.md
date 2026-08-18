@@ -18,7 +18,7 @@ This document provides context, domain model guidelines, architectural invariant
 
 ## 2. Core Tech Stack
 - **Framework**: TanStack Start / TanStack Router (SSR + Hydration), Vite, Nitro engine.
-- **Database**: Dual local/remote SQLite via `@libsql/client` (Turso) & `better-sqlite3`.
+- **Database**: Cloud LibSQL via `@libsql/client` (Turso Cloud) — sole source of truth for opportunities, profiles, and decisions. In-memory SQLite (`:memory:`) reserved strictly for fast unit tests.
 - **Database Abstraction**: `DatabaseAdapter` interface (`one`, `many`, `execute`, `transaction`).
 - **Web Scraping**: Playwright Extra with `puppeteer-extra-plugin-stealth`.
 - **Styling**: Vanilla CSS tokens, modern dark mode glassmorphism, responsive components.
@@ -40,10 +40,10 @@ Domain Services (OpportunityService, Scorer, etc.)
 Repositories (src/data/sqlite/repositories/ via StorageProvider)
         │
         ▼
-DatabaseAdapter (src/data/database/)
+DatabaseAdapter (src/data/database/ via getDatabaseAdapter())
         │
         ▼
-SQLite Engine (better-sqlite3 / Turso @libsql/client)
+Turso Cloud Engine (@libsql/client) [In-Memory SQLite solely for unit tests]
 ```
 
 ### Invariants:
@@ -51,6 +51,7 @@ SQLite Engine (better-sqlite3 / Turso @libsql/client)
 2. **UI Isolation**: Repositories, domain entities, and server services MUST NOT import UI components or client state hooks.
 3. **No Raw SQL in UI/Services**: UI routes and domain services MUST NOT execute raw SQL queries; all data access must pass through repository methods on `StorageProvider`.
 4. **Pure DatabaseAdapter**: `DatabaseAdapter` implementations must strictly handle query execution and parameter binding—never embed domain business logic.
+5. **Canonical Database Invariant**: Turso Cloud is the ONLY production/development database (containing 2,231 screened opportunities, user career profiles, and decisions). Local `radar.sqlite` is permanently disabled and eliminated. All scripts and queries MUST call `getDatabaseAdapter()`.
 
 ---
 
@@ -60,10 +61,10 @@ To balance system stability with rapid iteration, agents must distinguish betwee
 
 | Subsystem / Layer | Maturity | Guidance for AI Agents |
 | :--- | :--- | :--- |
-| **`DatabaseAdapter` & Persistence** | 🟢 **STABLE** | Sole source of state. Never alter interface without explicit instruction. Never introduce parallel storage files (`.json`, `.txt`). |
+| **`DatabaseAdapter` & Persistence** | 🟢 **STABLE** | Sole source of state (Turso Cloud). Never alter interface without explicit instruction. Never introduce parallel storage files (`.json`, `.txt`, `.sqlite`). |
 | **Migrations & Core Schema** | 🟢 **STABLE** | Always use incremental migrations (`001_`, `002_`, etc.). Never rewrite historical SQL migrations. |
 | **Repository Contracts (`StorageProvider`)** | 🟢 **STABLE** | Extend existing repositories in `src/data/sqlite/repositories/`. Do not bypass repositories with raw inline queries in UI routes. |
-| **Executive Decision Persistence** | 🟢 **STABLE** | Server functions (`decisions-server.ts`) + client hook (`decisions-store.ts`) sync directly with Turso/SQLite. Keep fast optimistic UI updates intact. |
+| **Executive Decision Persistence** | 🟢 **STABLE** | Server functions (`decisions-server.ts`) + client hook (`decisions-store.ts`) sync directly with Turso Cloud. Keep fast optimistic UI updates intact. |
 | **SSR / Routing Framework** | 🟢 **STABLE** | TanStack Start & Router file routes in `src/routes/`. Preserve route contracts and SSR server function conventions. |
 | **Scraper Portals & Stealth Manager** | 🟡 **IN EVOLUTION** | Portal selectors, HTTP fallbacks, and anti-bot stealth logic adapt continuously to target portal layout changes. |
 | **Qualification & Policy Engine** | 🟡 **IN EVOLUTION** | Scoring weights, evidence matchers, and policy calibration routines (`scripts/run-policy-calibration.ts`) iterate based on benchmark tests. |
@@ -77,7 +78,7 @@ To maintain a lean, high-performing codebase without unnecessary complexity:
 
 0. **ABSOLUTE FIRST COMMANDMENT (NO BANDAID WORKAROUNDS & SYMPTOM SILENCING)**: NEVER offer temporary workarounds, defensive null/empty fallbacks, or bypasses when an underlying system failure or formatting/character constraint warning occurs. A warning or limit is a diagnostic signal of an upstream ontology mismatch. You MUST trace the data lineage upstream and resolve the issue directly at its source (the EKB/Knowledge layer) via semantic normalization, never via local string-cleanup or truncation filters in the editorial/presentation layers.
 1. **Extend Existing Abstractions First**: Before creating a new service, helper, or class, search the codebase. Extend existing repositories (`StorageProvider`) and services rather than writing duplicate or parallel infrastructure.
-2. **Single Source of Persistence**: All persistent domain state (opportunities, companies, documents, user decisions) MUST use `DatabaseAdapter` (Turso/SQLite). NEVER introduce parallel file-based storage (`.json` or `.txt`) for persistent user state.
+2. **Single Source of Persistence**: All persistent domain state (opportunities, companies, documents, user decisions) MUST use `DatabaseAdapter` (Turso Cloud). NEVER introduce parallel file-based storage (`.json`, `.txt`, or `.sqlite`) for persistent user state.
 3. **Ephemeral Cloud Safe**: Assume production runs on ephemeral cloud containers (e.g. Render, Vercel). NEVER write mutable application data to local container filesystems.
 4. **Minimal Viable Abstraction**: Write straightforward, explicit TypeScript functions and SQL queries. Avoid speculative abstractions, unnecessary wrapper classes, or deep inheritance hierarchies.
 5. **Preserve Compatibility & Comments**: Do not remove existing docstrings, TypeScript types, or architecture comments unless explicitly instructed.
@@ -90,7 +91,7 @@ To maintain a lean, high-performing codebase without unnecessary complexity:
 ```
 radar-local-v2/
 ├── AGENTS.md                          # Mandatory agent guidelines and system architecture
-├── radar.sqlite                       # Primary SQLite database file
+├── DEPLOYMENT.md                      # Oracle Cloud server & Git push deployment protocol
 ├── src/
 │   ├── data/                          # Data layer: SQLite providers, schemas, migrations
 │   │   ├── database/                  # DatabaseAdapter interface & LibSQL/Turso implementation

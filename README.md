@@ -75,17 +75,18 @@ RADAR evaluates jobs using two independent, parallel evaluation systems:
 
 ## 💾 Database Models & Persistence
 
-RADAR leverages two key data storage models to preserve state and ensure scraping robustness:
+RADAR leverages two key data storage models:
 
-### 1. Main Ingest Database (`radar.sqlite`)
-* **Purpose**: Serves as the primary operational database housing finalized opportunities, structured dimensions, and candidate profile snapshots.
+### 1. Main Database — Turso Cloud (LibSQL)
+* **Purpose**: Serves as the primary production and development database housing 2,231 screened opportunities, structured dimension evidence graphs, candidate profile snapshots (`ms6i7e3y-4x0chy5fy`), and executive user decisions.
 * **Tables**:
-  * `opportunities`: Job summaries, source URL, role title, company, and location.
-  * `opportunity_dimensions`: Extracted verbatim evidence, confidence metrics, and matching statuses.
-  * `assessments`: History of recommendation records, scores, and decision confidence.
+  * `opportunities`: Job summaries, source URL, role title, company, location, and screening metadata.
+  * `decisions`: User executive decisions (`PURSUE`, `CONSIDER`, `PASS`).
+  * `candidate_evaluations`: Persisted Model C / Policy D evaluation JSON records.
+  * `candidate_profiles`: Executive profiles, preference criteria, and career history.
 
 ### 2. Enrichment Queue Database (`.radar/queue.db`)
-* **Purpose**: A highly resilient SQLite transactional queue implementing **mutual-exclusion leasing** to enable multi-threaded extraction workers to operate concurrently without double-processing.
+* **Purpose**: A local disk staging SQLite queue implementing **mutual-exclusion leasing** to buffer raw scraped HTML payloads before enrichment and synchronization to Turso Cloud.
 * **Tables**:
   * `enrichment_jobs`: Manages individual scrape records with columns for `status` (`PENDING`, `LEASED`, `RUNNING`, `FAILED`, `COMPLETE`), `attempts`, `lease_expires_at`, and `failure_type`.
   * `enrichment_events`: Keeps transactional logs of LLM timeouts, parsing failures, and worker operations for self-healing runs.
