@@ -71,9 +71,15 @@ export class CapabilityAssessmentEngine {
       }
     }
 
+    // Check functional adjacency between candidate identity and job domain
+    const candidateIdentity = (candidate.executiveThemes?.join(" ") || "Commercial & Marketing Leadership").toLowerCase();
+    const isCommercialCandidate = candidateIdentity.includes("commercial") || candidateIdentity.includes("marketing") || candidateIdentity.includes("growth");
+    const isOrthogonalDomain = ["medical", "clinical", "hospital", "nuclear", "supply chain", "logistics", "procurement", "manufacturing", "site strategy"].some(d => jobLower.includes(d));
+
     // 2. Scope of Responsibility & Executive Altitude Ground
+    // Generic executive keywords only grant transferability if the domain is not strictly orthogonal
     const isHighLevelExecutiveCap = ["leadership", "governance", "commercial", "transformation", "executive", "strategy", "management"].some(kw => jobLower.includes(kw));
-    if (isHighLevelExecutiveCap) {
+    if (isHighLevelExecutiveCap && !(isCommercialCandidate && isOrthogonalDomain)) {
       if (candidate.decisionAuthority?.value === "ENTERPRISE" || candidate.commercialScope?.value === "ENTERPRISE") {
         return {
           score: 0.70,
@@ -122,11 +128,6 @@ export class CapabilityAssessmentEngine {
     // 5. Conditional Potential Floor Equation:
     // Floor = Executive Altitude x Identity Overlap x Functional Adjacency
     const isExecutiveLevel = candidate.operatingLevel?.value === "EXECUTIVE" || candidate.commercialScope?.value === "ENTERPRISE";
-    
-    // Check functional adjacency between candidate identity and job domain
-    const candidateIdentity = (candidate.executiveThemes?.join(" ") || "Commercial & Marketing Leadership").toLowerCase();
-    const isCommercialCandidate = candidateIdentity.includes("commercial") || candidateIdentity.includes("marketing") || candidateIdentity.includes("growth");
-    const isOrthogonalDomain = ["medical", "clinical", "hospital", "supply chain", "logistics", "procurement", "manufacturing", "site strategy"].some(d => jobLower.includes(d));
 
     let baselinePotential = 0.20;
     if (isExecutiveLevel) {
@@ -194,12 +195,12 @@ export class CapabilityAssessmentEngine {
     let totalPotentialScoreSum = 0;
     let totalWeightSum = 0;
 
-    const explicitCaps = jobCaps.filter(c => c.source === "explicit");
+    const explicitCaps = jobCaps.filter(c => typeof c === "object" && c !== null && (c as any).source === "explicit");
     const capsToEvaluate = explicitCaps.length > 0 ? explicitCaps : jobCaps;
 
     capsToEvaluate.forEach((jobCapObj) => {
-      const jobCapName = jobCapObj.name;
-      const tier: CapabilityTaxonomyTier = jobCapObj.tier || "EXECUTION_CAPABILITY";
+      const jobCapName = typeof jobCapObj === "string" ? jobCapObj : (jobCapObj as any)?.name || "";
+      const tier: CapabilityTaxonomyTier = typeof jobCapObj === "string" ? "CORE_MANDATE" : ((jobCapObj as any)?.tier || "EXECUTION_CAPABILITY");
       
       let weight = 0.30;
       if (tier === "CORE_MANDATE") weight = 0.40;

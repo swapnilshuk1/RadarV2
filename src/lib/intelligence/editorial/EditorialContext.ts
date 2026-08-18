@@ -62,22 +62,24 @@ export class EditorialContextBuilder {
    */
   public static build(opportunity: Opportunity): EditorialContext {
     const recommendation = opportunity.engineRecommendation;
+    const policyResult = (opportunity as any).policyResult;
 
     // Direct, un-manipulated extraction of engine verdict
+    const rawVerdict = recommendation?.engineVerdict || policyResult?.verdict || policyResult?.recommendation;
     const engineVerdict: EngineVerdict | null =
-      recommendation?.engineVerdict && ["PURSUE", "CONSIDER", "PASS"].includes(recommendation.engineVerdict)
-        ? (recommendation.engineVerdict as EngineVerdict)
+      rawVerdict && ["PURSUE", "CONSIDER", "PASS"].includes(rawVerdict)
+        ? (rawVerdict as EngineVerdict)
         : null;
 
     const recRec = recommendation as Record<string, unknown> | undefined;
 
     // Direct, un-manipulated extraction of career value signals
     const careerValue = {
-      trajectoryUpside: recommendation?.trajectoryUpside ?? null,
-      careerRegressionScore: (recRec?.careerRegressionScore as number | null | undefined) ?? null,
+      trajectoryUpside: recommendation?.trajectoryUpside ?? policyResult?.trajectoryUpside ?? null,
+      careerRegressionScore: (recRec?.careerRegressionScore as number | null | undefined) ?? (policyResult?.careerRegressionScore as number | null | undefined) ?? null,
       careerValueProtection: (recRec?.careerValueProtection as string | null | undefined) ?? null,
-      relativeDifferentiator: recommendation?.relativeDifferentiator ?? null,
-      triggeredRuleIds: recommendation?.triggeredRuleIds ?? [],
+      relativeDifferentiator: recommendation?.relativeDifferentiator ?? policyResult?.relativeDifferentiator ?? null,
+      triggeredRuleIds: recommendation?.triggeredRuleIds ?? policyResult?.triggeredRuleIds ?? [],
     };
 
     // Identity Alignment (if available in engine recommendation or trace)
@@ -121,7 +123,7 @@ export class EditorialContextBuilder {
     };
 
     // Structural metadata heuristics (for legacy UI badges, strictly decoupled from engineVerdict)
-    const rawScore = recommendation?.qualityScore ?? 50;
+    const rawScore = recommendation?.qualityScore ?? policyResult?.qualityScore ?? policyResult?.rawScore ?? opportunity.matchScore ?? 50;
 
     const companyLower = (opportunity.company || "").toLowerCase();
     const roleLower = (opportunity.role || "").toLowerCase();

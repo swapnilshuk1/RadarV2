@@ -53,9 +53,9 @@ export function cleanOntologyConstants(val: string): string {
  * into clean, human-readable display values, stripping large snippets or metadata.
  */
 export function unwrapEvidenceValue(raw: any): string {
-  if (!raw) return "";
+  if (raw === null || raw === undefined) return "";
   if (typeof raw === "boolean") return raw ? "Required" : "Optional";
-  if (Array.isArray(raw)) return raw.map((r) => unwrapEvidenceValue(r)).join(", ");
+  if (Array.isArray(raw)) return raw.map((r) => unwrapEvidenceValue(r)).filter(Boolean).join(", ");
 
   let obj = raw;
   if (typeof raw === "string") {
@@ -64,8 +64,15 @@ export function unwrapEvidenceValue(raw: any): string {
       try {
         obj = JSON.parse(trimmed);
       } catch {
-        return cleanOntologyConstants(trimmed);
+        obj = null;
       }
+    } else if (trimmed.startsWith("{") || trimmed.includes('"value":')) {
+      // Truncated or malformed JSON string: safely extract value if present, else sanitize
+      const match = trimmed.match(/"value"\s*:\s*"([^"]+)"/);
+      if (match && match[1]) {
+        return cleanOntologyConstants(match[1]);
+      }
+      return "";
     } else {
       return cleanOntologyConstants(trimmed);
     }
@@ -89,9 +96,13 @@ export function unwrapEvidenceValue(raw: any): string {
     // Fall back to first readable string property if value/rawValue not found
     const stringVal = Object.values(obj).find((v) => typeof v === "string" && !v.startsWith("{") && !v.includes("extractorVersion"));
     if (stringVal) return cleanOntologyConstants(String(stringVal));
+    return "";
   }
 
-  return cleanOntologyConstants(String(raw));
+  if (typeof raw === "string") {
+    return cleanOntologyConstants(raw);
+  }
+  return "";
 }
 
 /**

@@ -3,6 +3,7 @@ import decisionPolicy from "@/data/ontology/decision_policy.json";
 import { IdentityDistanceCalculator } from "../utils/IdentityDistanceCalculator";
 import { EvidenceGate } from "../gates/EvidenceGate";
 import { QualityScoreCalculator } from "./QualityScoreCalculator";
+import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
 
 export const POLICY_THRESHOLDS = {
   PURSUE: decisionPolicy.thresholds.pursueScore,
@@ -75,10 +76,10 @@ export class DecisionPolicyEngine {
   ): DecisionPolicyResult {
     const triggeredRuleIds: string[] = [];
     
-    const opp = opportunity as unknown as Record<string, unknown>;
-    const car = career as unknown as Record<string, unknown>;
-    const cap = capability as unknown as Record<string, unknown>;
-    const life = lifestyle as unknown as Record<string, unknown>;
+    const opp = (opportunity || {}) as unknown as Record<string, unknown>;
+    const car = (career || {}) as unknown as Record<string, unknown>;
+    const cap = (capability || {}) as unknown as Record<string, unknown>;
+    const life = (lifestyle || {}) as unknown as Record<string, unknown>;
 
     // Construct Grounded Claim Permissions based on explicit evidence
     const descText = (jobDescriptionText || (opp.originalOpportunity as Record<string, unknown> | undefined)?.normalizedText as string || "").toLowerCase();
@@ -218,17 +219,25 @@ export class DecisionPolicyEngine {
       };
     }
 
-    // Pre-Gate: Critical Evidence Integrity Check
+    // Pre-Gate: Critical Evidence Integrity Check & Structural Decisionability Gate
+    const oppOriginal = (opp?.originalOpportunity as Record<string, unknown> | undefined) || opp;
+    const oppForRichness = (dimensions && dimensions.length > 0) ? { dimensions } : oppOriginal;
+    const richness = EvidenceRichnessCalculator.calculate(oppForRichness);
+
+    const isStructuralEvidenceInsufficient = !hasStructuredEvidence && richness.sufficiency === "INSUFFICIENT";
+
     const criticalFailed = 
       identity.status === "FAILED" || 
       capability.status === "FAILED" || 
-      career.status === "FAILED";
+      career.status === "FAILED" ||
+      isStructuralEvidenceInsufficient;
 
     if (criticalFailed) {
       const failedDetails: string[] = [];
       if (identity.status === "FAILED") failedDetails.push(`Identity [${identity.failureCode}]`);
       if (capability.status === "FAILED") failedDetails.push(`Capability [${capability.failureCode}]`);
       if (career.status === "FAILED") failedDetails.push(`Career [${career.failureCode}]`);
+      if (isStructuralEvidenceInsufficient) failedDetails.push("Structural Evidence Missing [NO_GROUNDED_DIMENSIONS]");
 
       return {
         verdict: "NOT_EVALUABLE",

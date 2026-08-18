@@ -140,7 +140,7 @@ export class BriefCompositionEngine {
     // Strict alignment with authoritative engine verdict (null if unevaluated)
     const engineVerdict = editorialContext.engineVerdict;
     const decision: BriefMemory["decision"] =
-      engineVerdict === "PURSUE" ? "PURSUE" : engineVerdict === "PASS" ? "PASS" : "CONSIDER";
+      engineVerdict === "PURSUE" ? "PURSUE" : engineVerdict === "PASS" ? "PASS" : engineVerdict === "CONSIDER" ? "CONSIDER" : null;
 
     const score = editorialContext.rawScore;
     const weights = this.calculateWeights(opportunity);
@@ -170,7 +170,7 @@ export class BriefCompositionEngine {
       ? "Specific reporting line or operating scale trade-offs require screening verification"
       : "Standard executive application and alignment overhead";
 
-    let recommendedAction: string = explanation.recommendedAction || "INVESTIGATE";
+    let recommendedAction: string = explanation.recommendedAction || (engineVerdict ? "INVESTIGATE" : "AWAIT_SIGNAL");
 
     try {
       const pattern = EditorialPatternSelector.select(editorialContext, opportunity.jobHash, options?.bypassHistory);
@@ -221,7 +221,13 @@ export class BriefCompositionEngine {
     const evidenceQuality = editorialContext.evidence?.evidenceQuality || "Inferred Evidence";
 
     const qualitativeRecommendation: BriefModel["qualitativeRecommendation"] =
-      engineVerdict === "PURSUE" ? "Strong Pursue Recommendation" : engineVerdict === "CONSIDER" ? "Conditional Consideration" : "Strategic Pass";
+      engineVerdict === "PURSUE"
+        ? "Strong Pursue Recommendation"
+        : engineVerdict === "CONSIDER"
+        ? "Conditional Consideration"
+        : engineVerdict === "PASS"
+        ? "Strategic Pass"
+        : "Pending Assessment";
 
     const whyNotStronger = isEasyTrapTriggered
       ? "Policy Engine flagged material career-value protection rule: high accessibility/match score, but limited long-term trajectory step-up."
@@ -229,7 +235,9 @@ export class BriefCompositionEngine {
       ? `This role aligns strongly with target executive capabilities and leadership scope for ${opportunity.role}.`
       : engineVerdict === "CONSIDER"
       ? `Operating scope at ${opportunity.company} is scoped at regional execution rather than global C-suite authority.`
-      : "Domain divergence or organizational level regression requires significant transition overhead.";
+      : engineVerdict === "PASS"
+      ? "Domain divergence or organizational level regression requires significant transition overhead."
+      : "Posting is unevaluated or requires further structural evidence.";
 
     const oneMinuteTLDR: OpportunityInOneMinute = {
       whyPursue: [

@@ -63,7 +63,7 @@ export class CareerValueEngine {
     // Calculate via adjacency, capability breadth, seniority, reputation, etc.
     let futureOptionality: DimensionHeuristic = { value: 0.6, reason: "Standard Progression (Evolving Heuristic)", status: "ESTIMATED" };
     const jobCaps = job.capabilities || [];
-    const capabilitiesBroadened = jobCaps.length > candidate.coreCapabilities.length;
+    const capabilitiesBroadened = jobCaps.length > (candidate.coreCapabilities?.length || 0);
     
     if (jobOperatingLevel === "EXECUTIVE" && commercialScale.value >= 0.85) {
       futureOptionality = { value: 0.95, reason: "Path to CEO/Board (High Strategic Exposure)", status: "ESTIMATED" };

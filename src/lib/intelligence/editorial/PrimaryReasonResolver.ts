@@ -118,6 +118,20 @@ export class PrimaryReasonResolver {
           ruleIds,
           signal: "CAREER REGRESSION / PROTECTION",
         });
+      } else if (ruleIds.includes("POL-D-CONSIDER-REACH-ROLE")) {
+        primaryReason = `Reach role opportunity: High strategic upside at ${companyStr}, but requires bridging adjacent capability or scale dimensions.`;
+        provenanceList.push({
+          source: "DECISION_POLICY",
+          ruleIds: ["POL-D-CONSIDER-REACH-ROLE"],
+          signal: "POL-D-CONSIDER-REACH-ROLE",
+        });
+      } else if (ruleIds.includes("POL-D-CONSIDER-HIGH-FRICTION")) {
+        primaryReason = `High location or logistical friction: Strong mandate fit at ${companyStr}, but requires managing material location or commute constraints.`;
+        provenanceList.push({
+          source: "DECISION_POLICY",
+          ruleIds: ["POL-D-CONSIDER-HIGH-FRICTION"],
+          signal: "POL-D-CONSIDER-HIGH-FRICTION",
+        });
       } else if (careerValueSignal === "LIMITED CAREER UPSIDE") {
         primaryReason = `Accessible capability fit, but limited incremental career upside: The role adds limited strategic scope relative to your current remit.`;
         provenanceList.push({

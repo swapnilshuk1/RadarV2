@@ -57,10 +57,6 @@ export function ScrapeProgressPanel() {
     };
   }, []);
 
-  if (!runState || isDismissed) {
-    return null;
-  }
-
   const {
     status,
     isActive,
@@ -70,9 +66,9 @@ export function ScrapeProgressPanel() {
     sources = {},
     portalHealth = {},
     recentActivities = [],
-  } = runState;
+  } = runState || ({} as any);
 
-  const isInitializing = status === "initializing" || runState.runId === "starting";
+  const isInitializing = status === "initializing" || (runState && runState.runId === "starting");
   const isStopping = status === "stopping";
   const isWaitingConfirmation = status === "waiting_for_confirmation";
   const isComplete = status === "completed" || (!isActive && !isStopping && !isInitializing);
@@ -101,7 +97,7 @@ export function ScrapeProgressPanel() {
       }
       return ["› Awaiting live activity stream..."];
     }
-    return recentActivities.slice(0, 4).map((msg) => msg.replace(/^\[\d{2}:\d{2}:\d{2}\]\s*/, ""));
+    return recentActivities.slice(0, 4).map((msg: string) => msg.replace(/^\[\d{2}:\d{2}:\d{2}\]\s*/, ""));
   }, [recentActivities, isInitializing, initStageIndex, schemaQueryIndex]);
 
   // Portal status matrix configuration with personalized status lines
@@ -146,6 +142,10 @@ export function ScrapeProgressPanel() {
       };
     });
   }, [sources, portalHealth, isInitializing]);
+
+  if (!runState || isDismissed) {
+    return null;
+  }
 
   // ──────────────────────────────────────────────────────────────────────────
   // MINIMIZED FLOATING RADAR PILL DOCK
