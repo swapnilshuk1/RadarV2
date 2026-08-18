@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import Database from "better-sqlite3";
 import type { EnrichedOpportunity } from "./enrich";
 import { writeJsonAtomic } from "../scraper/utils/fs-atomic";
 import { EXTRACTION_DIR, LIVE_SCRAPED_JSON } from "../scraper/config";

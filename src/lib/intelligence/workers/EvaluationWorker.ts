@@ -2,6 +2,7 @@ import { getRepositories } from "../../../data/sqlite/provider";
 import { SqliteEvaluationStore } from "../../../data/sqlite/repositories/SqliteEvaluationStore";
 import { OpportunityService } from "../opportunity-service";
 import { candidateProfile } from "../../../data/candidate-profile";
+import { computeIntrinsicFingerprint, classifyFingerprint } from "../fingerprint/EvaluationFingerprint";
 
 export class EvaluationWorker {
   /**
@@ -18,44 +19,115 @@ export class EvaluationWorker {
     }
 
     try {
-      // 2. Validate input hash freshness before running expensive evaluation
-      const currentInputHash = SqliteEvaluationStore.computeInputHash(
-        (candidateProfile as any).version || (candidateProfile as any).id || "v1",
-        job.jobHash,
-        "v4.1",
-        "v2"
-      );
+      // 2. Fetch candidate projection & evaluate opportunity
+      const [projection, oppSource, single] = await Promise.all([
+        repos.people.getLatestProjection(job.personId),
+        repos.opportunities.getOpportunitySource(job.jobHash),
+        OpportunityService.evaluateSinglePresented(job.personId, job.jobHash),
+      ]);
 
-      if (job.inputHash !== currentInputHash) {
-        // Job inputs have been superseded by newer candidate profile or policy
-        await evalStore.markJobFailed(job.id, "Superseded by newer input hash", true);
-        return true;
-      }
-
-      // 3. Execute V4 evaluation engines for candidate-opportunity pair
-      const recommendation = await OpportunityService.evaluateSingleOpportunity(job.personId, job.jobHash);
-
-      if (!recommendation) {
+      if (!single) {
         await evalStore.markJobFailed(job.id, "Opportunity or details unavailable for evaluation");
         return true;
       }
 
-      // 4. Save materialized candidate evaluation record while protecting user overrides
-      const engineVerdict = (["PURSUE", "CONSIDER", "PASS"].includes(recommendation.decision)
-        ? recommendation.decision
+      const { record, narrative } = single;
+      const policyVersion = record.recommendationVersion || "v4.3";
+      const ontologyVersion = "v2";
+
+      // Compute canonical intrinsic fingerprint
+      const canonicalFingerprint = computeIntrinsicFingerprint(
+        projection || candidateProfile,
+        oppSource || single.opportunity,
+        policyVersion,
+        ontologyVersion
+      );
+
+      // If job.inputHash was enqueued as a canonical fingerprint and is already superseded, mark superseded
+      if (
+        classifyFingerprint(job.inputHash) === "CANONICAL_V4" &&
+        job.inputHash !== canonicalFingerprint
+      ) {
+        await evalStore.markJobFailed(job.id, "Superseded by newer canonical input hash", true);
+        return true;
+      }
+
+      const verb0 = (record.trace?.verb0 || record.verb || "CONSIDER") as "PURSUE" | "CONSIDER" | "PASS";
+      const engineVerdict = (["PURSUE", "CONSIDER", "PASS"].includes(verb0)
+        ? verb0
         : "CONSIDER") as "PURSUE" | "CONSIDER" | "PASS";
 
+      const canonicalPayload = {
+        schemaVersion: "v4.2-intrinsic" as const,
+        jobHash: job.jobHash,
+        personId: job.personId,
+        evaluationInputHash: canonicalFingerprint,
+        policyVersion,
+        ontologyVersion,
+        evaluatedAt: new Date().toISOString(),
+        intrinsicVerdict: engineVerdict,
+        intrinsicQualityScore: record.vetoed ? null : (record.qualityScore !== null && record.qualityScore !== undefined ? Math.round(record.qualityScore) : null),
+        parsingConfidence: record.confidences?.parsing ?? (record.confidence ?? 0.8),
+        vetoed: Boolean(record.vetoed),
+        vetoReason: record.vetoReason || null,
+        triggeredRuleIds: record.triggeredRuleIds || [],
+        decisionRisks: record.decisionRisks || [],
+        decisionDrivers: record.decisionDrivers || [],
+        relativeDifferentiator: record.relativeDifferentiator || undefined,
+        trajectoryUpside: record.trajectoryUpside || undefined,
+        opportunityScoreConfidence: record.opportunityScoreConfidence,
+        opportunityScoreSource: record.opportunityScoreSource,
+        evaluationStatus: "COMPLETE" as const,
+        dimensions: (record.trace?.evidenceMapping || []).map((m: any) => ({
+          key: m.key || "mandate",
+          label: m.label || m.key || "",
+          importance: m.importance || "Core",
+          bucket: m.bucket || "Missing",
+          value: m.value || "",
+          quote: m.quote || "",
+        })),
+        esi: record.esi || 0,
+        diligenceStatus: record.diligenceStatus || "READY",
+        baseNarrative: {
+          whyNow: narrative.whyNow,
+          positioning: narrative.positioning,
+          primaryProof: narrative.primaryProof,
+          hiringRisk: narrative.hiringRisk,
+          alternativePath: narrative.alternativePath,
+          recommendationArchetype: narrative.recommendationArchetype,
+          recommendationArchetypeTagline: narrative.recommendationArchetypeTagline,
+          mandateArchetype: narrative.mandateArchetype,
+          primaryDriver: narrative.primaryDriver,
+          secondaryDriver: narrative.secondaryDriver,
+          primaryRisk: narrative.primaryRisk,
+          tailoringEffort: narrative.tailoringEffort,
+          capabilityAlignmentText: narrative.capabilityAlignmentText,
+          baseRecommendationProse: narrative.recommendation,
+          recommendedAction: (narrative as any).recommendedAction || verb0,
+        },
+        auditTrace: {
+          verb0,
+          evaluationTimeFinalVerb: record.trace?.finalVerb,
+          careerValue: record.trace?.factors?.careerValue ?? 0,
+          shortlistingPotential: record.trace?.factors?.shortlistingPotential ?? 0,
+          pursuitFriction: record.trace?.factors?.pursuitFriction ?? 1.0,
+          rawScore: record.trace?.priority ?? 0,
+          evidenceMappingCount: record.trace?.evidenceMapping?.length ?? 0,
+        },
+      };
+
+      // 4. Save materialized candidate evaluation record with intrinsic verb0
       await evalStore.saveEvaluation({
         personId: job.personId,
         jobHash: job.jobHash,
-        policyVersion: recommendation.policyVersion || "v4.1",
-        evaluationInputHash: currentInputHash,
+        policyVersion: canonicalPayload.policyVersion,
+        evaluationInputHash: canonicalFingerprint,
         engineVerdict,
-        engineQualityScore: recommendation.score || 70.0,
+        engineQualityScore: canonicalPayload.intrinsicQualityScore || 70.0,
         effectiveDecision: engineVerdict,
-        qualityScore: recommendation.score || 70.0,
+        qualityScore: canonicalPayload.intrinsicQualityScore || 70.0,
         evaluationStatus: "COMPLETE",
-        evaluationJson: JSON.stringify(recommendation),
+        evaluationJson: JSON.stringify(canonicalPayload),
       });
 
       // 5. Mark job completed in queue

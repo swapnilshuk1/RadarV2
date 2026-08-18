@@ -35,10 +35,9 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import Database from "better-sqlite3";
+import { getDatabaseAdapter } from "../src/data/database";
 import { technologyExtractorInstance } from "./scraper/extract/dimensions/technologyStack";
 import { TechnologyOntology } from "../src/lib/ontology/TechnologyOntology";
-const DB_PATH       = path.resolve(process.cwd(), "radar.sqlite");
 const BASELINE_PATH = path.resolve(process.cwd(), ".radar", "recognition-baseline.json");
 const ONTOLOGY_PATH = path.resolve(process.cwd(), "config", "ontologies", "technology.json");
 const META_PATH     = path.resolve(process.cwd(), "config", "ontologies", "technology.meta.json");
@@ -178,11 +177,6 @@ async function main(): Promise<void> {
   console.log("           RADAR EVIDENCE RECOGNITION REPORT  v1.1");
   console.log("══════════════════════════════════════════════════════════════════════════");
 
-  if (!fs.existsSync(DB_PATH)) {
-    console.error(`  ✗ Database not found: ${DB_PATH}`);
-    process.exit(1);
-  }
-
   const t0 = Date.now();
 
   // Load ontology metadata for provenance
@@ -191,14 +185,15 @@ async function main(): Promise<void> {
     : { version: "unknown", productCount: 0, aliasCount: 0 };
 
   // Compute corpus hash for baseline provenance (hash of all doc IDs, stable across runs)
-  const db = new Database(DB_PATH, { readonly: true });
-  const rows = db.prepare(
-    "SELECT content, created_at FROM documents WHERE payload_type = ? ORDER BY created_at DESC"
-  ).all("Structured") as StoredDoc[];
-  const ids = db.prepare(
-    "SELECT id FROM documents WHERE payload_type = ? ORDER BY created_at DESC"
-  ).all("Structured") as { id: string }[];
-  db.close();
+  const db = getDatabaseAdapter();
+  const rows = await db.many<StoredDoc>(
+    "SELECT content, created_at FROM documents WHERE payload_type = ? ORDER BY created_at DESC",
+    ["Structured"]
+  );
+  const ids = await db.many<{ id: string }>(
+    "SELECT id FROM documents WHERE payload_type = ? ORDER BY created_at DESC",
+    ["Structured"]
+  );
 
   const corpusHash = crypto
     .createHash("sha256")
@@ -211,8 +206,7 @@ async function main(): Promise<void> {
   console.log(`     Recognition source: ${RECOGNITION_SOURCE}`);
   console.log("");
   console.log(`  Corpus    : ${rows.length} structured documents (hash: ${corpusHash}...)`);
-  console.log(`  Ontology  : v${ontologyMeta.version} | ${ontologyMeta.productCount} products | ${ontologyMeta.aliasCount} aliases`);
-  console.log(`  Database  : ${path.basename(DB_PATH)}\n`);
+  console.log(`  Ontology  : v${ontologyMeta.version} | ${ontologyMeta.productCount} products | ${ontologyMeta.aliasCount} aliases\n`);
 
   // ─── Scan Each Document ──────────────────────────────────────────────────
   const byCategoryStats: Record<string, { docsWithEvidence: number; docsRecognized: number }> = {};

@@ -1,6 +1,6 @@
-import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
+import { getDatabaseAdapter } from "../src/data/database";
 import { extractCommercial } from "./scraper/extract/dimensions/commercialAccountability";
 import { extractMandate } from "./scraper/extract/dimensions/mandate";
 import { extractReportingLine } from "./scraper/extract/dimensions/reportingLine";
@@ -41,12 +41,6 @@ async function main() {
     targetDim = args[dimIdx + 1];
   }
 
-  const dbPath = path.resolve(process.cwd(), "radar.sqlite");
-  if (!fs.existsSync(dbPath)) {
-    console.error(`Database not found at ${dbPath}`);
-    process.exit(1);
-  }
-
   const activeConfigs = targetDim === "all"
     ? CONFIGS
     : CONFIGS.filter(c => c.key === targetDim);
@@ -56,11 +50,11 @@ async function main() {
     process.exit(1);
   }
 
-  const db = new Database(dbPath);
-  console.log(`Reprocessing dimensions: [${activeConfigs.map(c => c.key).join(", ")}] over 588 opportunities...`);
+  const db = getDatabaseAdapter();
+  console.log(`Reprocessing dimensions: [${activeConfigs.map(c => c.key).join(", ")}] over opportunities...`);
 
-  const tx = db.transaction(() => {
-    const opportunities = db.prepare("SELECT id, fingerprint FROM opportunities").all() as any[];
+  await db.transaction(async (tx) => {
+    const opportunities = await tx.many<any>("SELECT id, fingerprint FROM opportunities");
     let updatedCount = 0;
     let removedCount = 0;
 
@@ -74,7 +68,7 @@ async function main() {
       const detailText = snapshot.detail?.rawText || "";
 
       // Load existing document content
-      const doc = db.prepare("SELECT id, content FROM documents WHERE opportunity_id = ?").get(opp.id) as any;
+      const doc = await tx.one<any>("SELECT id, content FROM documents WHERE opportunity_id = ?", [opp.id]);
       let extraction: any = {};
       if (doc) {
         try {
@@ -87,7 +81,7 @@ async function main() {
 
       for (const config of activeConfigs) {
         const result = config.extractFn({ title, snippet, detailText });
-        const existingFact = db.prepare("SELECT id FROM facts WHERE opportunity_id = ? AND attribute = ?").get(opp.id, config.key) as any;
+        const existingFact = await tx.one<any>("SELECT id FROM facts WHERE opportunity_id = ? AND attribute = ?", [opp.id, config.key]);
 
         if (result.value !== undefined && result.value !== null) {
           const payload = JSON.parse(result.value);
@@ -117,13 +111,13 @@ async function main() {
 
           // 2. Update facts table
           if (existingFact) {
-            db.prepare("UPDATE facts SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(result.value, existingFact.id);
+            await tx.execute("UPDATE facts SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", [result.value, existingFact.id]);
           } else {
             const factId = `f_${config.key.substring(0, 4)}_${opp.id}`;
-            db.prepare(`
+            await tx.execute(`
               INSERT INTO facts (id, opportunity_id, attribute, value, created_at, updated_at)
               VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            `).run(factId, opp.id, config.key, result.value);
+            `, [factId, opp.id, config.key, result.value]);
           }
           updatedCount++;
         } else {
@@ -143,30 +137,23 @@ async function main() {
 
           // Clean up facts table
           if (existingFact) {
-            db.prepare("DELETE FROM claim_facts WHERE fact_id = ?").run(existingFact.id);
-            db.prepare("DELETE FROM fact_evidence WHERE fact_id = ?").run(existingFact.id);
-            db.prepare("DELETE FROM facts WHERE id = ?").run(existingFact.id);
+            await tx.execute("DELETE FROM claim_facts WHERE fact_id = ?", [existingFact.id]);
+            await tx.execute("DELETE FROM fact_evidence WHERE fact_id = ?", [existingFact.id]);
+            await tx.execute("DELETE FROM facts WHERE id = ?", [existingFact.id]);
             removedCount++;
           }
         }
       }
 
       if (doc) {
-        db.prepare("UPDATE documents SET content = ? WHERE id = ?").run(JSON.stringify(extraction), doc.id);
+        await tx.execute("UPDATE documents SET content = ? WHERE id = ?", [JSON.stringify(extraction), doc.id]);
       }
     }
 
     console.log(`Reprocessing complete. Updated/Inserted facts: ${updatedCount} | Removed stale facts: ${removedCount}`);
   });
 
-  try {
-    tx();
-    console.log("Database transaction committed successfully.");
-  } catch (err) {
-    console.error("Migration transaction failed & rolled back:", err);
-  } finally {
-    db.close();
-  }
+  console.log("Database transaction committed successfully.");
 }
 
-main();
+main().catch(console.error);

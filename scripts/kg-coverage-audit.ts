@@ -1,5 +1,4 @@
-import Database from "better-sqlite3";
-import path from "path";
+import { getDatabaseAdapter } from "../src/data/database";
 
 // Policy dimensions we want to score against
 const POLICY_DIMENSIONS = [
@@ -15,18 +14,16 @@ const POLICY_DIMENSIONS = [
 ];
 
 async function main() {
-  const dbPath = path.resolve(process.cwd(), "radar.sqlite");
-  console.log(`Opening database: ${dbPath}`);
-  const db = new Database(dbPath, { readonly: true });
+  const db = getDatabaseAdapter();
 
   try {
     // Get total opportunities
-    const totalJobsRow = db.prepare("SELECT COUNT(*) as count FROM opportunities WHERE lifecycle IN ('Normalized', 'Verified')").get() as any;
+    const totalJobsRow = await db.one<{ count: number }>("SELECT COUNT(*) as count FROM opportunities WHERE lifecycle IN ('Normalized', 'Verified')");
     const totalJobs = totalJobsRow ? totalJobsRow.count : 0;
     console.log(`Total Opportunities: ${totalJobs}\n`);
 
     // Fetch facts grouped by opportunity
-    const factRows = db.prepare("SELECT opportunity_id, attribute, value FROM facts").all() as any[];
+    const factRows = await db.many<any>("SELECT opportunity_id, attribute, value FROM facts");
     const factsByJob = new Map<string, Record<string, any>>();
     for (const fact of factRows) {
       if (!factsByJob.has(fact.opportunity_id)) {

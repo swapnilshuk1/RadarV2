@@ -1,13 +1,12 @@
-import Database from "better-sqlite3";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import { getDatabaseAdapter } from "../src/data/database";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Paths
-const DB_PATH = path.join(__dirname, "../radar.sqlite");
 const ONTOLOGY_PATH = path.join(__dirname, "../config/ontologies/technology.json");
 const REPORT_DIR = path.join(__dirname, "../config/reports");
 const REPORT_PATH = path.join(REPORT_DIR, "unrecognized-technologies.md");
@@ -503,7 +502,7 @@ class CorpusAnalyticsEngine {
 // ==========================================================================
 // CORE ORCHESTRATION PIPELINE
 // ==========================================================================
-function main() {
+async function main() {
   console.log("==========================================================================");
   console.log("             RADAR EVIDENCE INTELLIGENCE & CORPUS ANALYTICS               ");
   console.log("==========================================================================");
@@ -528,12 +527,8 @@ function main() {
   console.log(`✓ Loaded technology ontology containing ${existingTerms.size} unique terms/aliases.`);
 
   // 2. Connect to Database & fetch normalized JDs
-  if (!fs.existsSync(DB_PATH)) {
-    console.error(`Error: Database not found at ${DB_PATH}`);
-    process.exit(1);
-  }
-  const db = new Database(DB_PATH, { readonly: true });
-  const rows = db.prepare("SELECT content FROM documents").all() as { content: string }[];
+  const db = getDatabaseAdapter();
+  const rows = await db.many<{ content: string }>("SELECT content FROM documents WHERE payload_type = 'Structured'");
   
   const documents: NormalizedDoc[] = [];
   let totalDocs = 0;
@@ -725,4 +720,4 @@ Tool-to-human-skill associations matching specific tools against broad domains o
   console.log("==========================================================================");
 }
 
-main();
+main().catch(console.error);

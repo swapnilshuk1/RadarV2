@@ -398,7 +398,7 @@ export function ScrapeProgressPanel() {
             </div>
 
             <div className="p-2.5 rounded-lg border border-border bg-black/5 dark:bg-black/30 font-mono text-[11px] space-y-1.5 min-h-[84px] max-h-[100px] flex flex-col justify-end overflow-hidden">
-              {activityHistory.map((act, idx) => (
+              {activityHistory.map((act: string, idx: number) => (
                 <div
                   key={idx}
                   className={`flex items-start gap-2 leading-tight transition-all duration-300 ${

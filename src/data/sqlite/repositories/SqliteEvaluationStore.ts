@@ -1,4 +1,5 @@
 import type { DatabaseAdapter } from "../../database/adapter";
+import { computeIntrinsicFingerprint } from "../../../lib/intelligence/fingerprint/EvaluationFingerprint";
 
 export interface CandidateEvaluationRecord {
   personId: string;
@@ -93,9 +94,21 @@ export class SqliteEvaluationStore {
   }
 
   /**
-   * Computes deterministic evaluation_input_hash for candidate-opportunity inputs.
+   * Computes canonical deterministic evaluation_input_hash using SHA-256 and canonical serialization.
    */
-  public static computeInputHash(
+  public static computeCanonicalFingerprint(
+    candidate: any,
+    opportunity: any,
+    policyVersion: string = "v4.3",
+    ontologyVersion: string = "v2"
+  ): string {
+    return computeIntrinsicFingerprint(candidate, opportunity, policyVersion, ontologyVersion);
+  }
+
+  /**
+   * Computes legacy 32-bit evaluation_input_hash for backward compatibility.
+   */
+  public static computeLegacyInputHash(
     candidateProfileVersion: string,
     opportunityVersion: string,
     policyVersion: string,
@@ -109,6 +122,18 @@ export class SqliteEvaluationStore {
       hash |= 0;
     }
     return `eval_hash_${Math.abs(hash).toString(16)}`;
+  }
+
+  /**
+   * Computes evaluation_input_hash for candidate-opportunity inputs.
+   */
+  public static computeInputHash(
+    candidateProfileVersion: string,
+    opportunityVersion: string,
+    policyVersion: string,
+    ontologyVersion: string = "v2"
+  ): string {
+    return this.computeLegacyInputHash(candidateProfileVersion, opportunityVersion, policyVersion, ontologyVersion);
   }
 
   private sanitizeParams(params: any[]): any[] {
@@ -224,9 +249,9 @@ export class SqliteEvaluationStore {
         SUM(CASE WHEN COALESCE(d.action, ce.user_decision_override, ce.effective_decision) = 'PURSUE' THEN 1 ELSE 0 END) as active_pursuits,
         SUM(CASE WHEN COALESCE(d.action, ce.user_decision_override, ce.effective_decision) IN ('PURSUE', 'CONSIDER') THEN 1 ELSE 0 END) as shortlisted_count,
         SUM(CASE WHEN d.action IS NOT NULL OR ce.user_decision_override IS NOT NULL THEN 1 ELSE 0 END) as decisions_count,
-        SUM(CASE WHEN ce.effective_decision = 'PURSUE' THEN 1 ELSE 0 END) as pursue_count,
-        SUM(CASE WHEN ce.effective_decision = 'CONSIDER' THEN 1 ELSE 0 END) as consider_count,
-        SUM(CASE WHEN ce.effective_decision = 'PASS' THEN 1 ELSE 0 END) as pass_count,
+        SUM(CASE WHEN ce.engine_verdict = 'PURSUE' THEN 1 ELSE 0 END) as pursue_count,
+        SUM(CASE WHEN ce.engine_verdict = 'CONSIDER' THEN 1 ELSE 0 END) as consider_count,
+        SUM(CASE WHEN ce.engine_verdict = 'PASS' THEN 1 ELSE 0 END) as pass_count,
         SUM(CASE WHEN ce.evaluation_status = 'SPARSE_SPEC' THEN 1 ELSE 0 END) as sparse_count
       FROM candidate_evaluations ce
       LEFT JOIN latest_decisions d ON ce.person_id = d.person_id AND ce.job_hash = d.opportunity_id AND d.rn = 1

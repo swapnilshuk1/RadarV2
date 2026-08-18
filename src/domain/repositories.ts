@@ -48,6 +48,7 @@ export interface OpportunityStore {
   }): Promise<Opportunity[]>;
 
   listOpportunitySources(): Promise<OpportunitySource[]>;
+  getOpportunitySourcesMap(): Promise<Map<string, OpportunitySource>>;
   getOpportunitySource(jobHash: string): Promise<OpportunitySource | undefined>;
 }
 

@@ -3,8 +3,25 @@ import { SqliteAdapter } from "./sqlite";
 import { TursoAdapter } from "./turso";
 import path from "path";
 import fs from "fs";
-
 import { createRequire } from "module";
+
+export type RadarEnvironment = "dev" | "test" | "staging" | "production";
+
+export function getRadarEnv(): RadarEnvironment {
+  const env = process.env.RADAR_ENV?.toLowerCase();
+  if (env === "dev" || env === "development") return "dev";
+  if (env === "test") return "test";
+  if (env === "staging") return "staging";
+  if (env === "prod" || env === "production") return "production";
+
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1" || process.env.RENDER === "true") {
+    return "production";
+  }
+  if (process.env.NODE_ENV === "test" || process.env.VITEST === "true") {
+    return "test";
+  }
+  return "dev";
+}
 
 function getReq() {
   if (typeof window !== "undefined") return null;
@@ -52,25 +69,44 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
   }
 
   loadEnvFile(".env");
+  loadEnvFile(".env.local");
   loadEnvFile("gemini.env");
   loadEnvFile("groq.env");
 
+  const radarEnv = getRadarEnv();
   const tursoUrl = process.env.TURSO_CONNECTION_URL || process.env.TURSO_DATABASE_URL;
   const tursoToken = process.env.TURSO_AUTH_TOKEN;
-  const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL === "1" || process.env.RENDER === "true";
 
-  if (isProduction && (!tursoUrl || !tursoToken)) {
-    throw new Error("[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment.");
+  // 1. Explicit Test Environment: Allow in-memory SQLite (:memory:)
+  if (radarEnv === "test") {
+    if (dbPath === ":memory:" || (!tursoUrl && !tursoToken)) {
+      let DatabaseConstructor: any = null;
+      const req = getReq();
+      if (req) {
+        try {
+          DatabaseConstructor = req("better-sqlite3");
+        } catch {}
+      }
+
+      if (!DatabaseConstructor) {
+        throw new Error("[DatabaseAdapter] better-sqlite3 module unavailable for in-memory test database");
+      }
+
+      const sqliteDb = new DatabaseConstructor(":memory:");
+      _cachedAdapter = new SqliteAdapter(sqliteDb);
+      return _cachedAdapter;
+    }
   }
 
+  // 2. Turso Connection (Required for Dev, Staging, Production)
   if (tursoUrl && tursoToken) {
     if (!_hasLoggedStartup) {
       console.log("\n─────────────────────────────");
       console.log("RADAR Database Connection");
       console.log("─────────────────────────────");
-      console.log(`Engine      : Turso Cloud`);
+      console.log(`Engine      : Turso Cloud (LibSQL)`);
       console.log(`Target URL  : ${tursoUrl}`);
-      console.log(`Environment : ${isProduction ? "Production" : "Development"}`);
+      console.log(`RADAR_ENV   : ${radarEnv}`);
       console.log("─────────────────────────────\n");
       _hasLoggedStartup = true;
     }
@@ -78,71 +114,18 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
     return _cachedAdapter;
   }
 
-  // Fallback to SQLite (better-sqlite3) for local offline/unit test environments
-  try {
-    let DatabaseConstructor: any = null;
-    const req = getReq();
-    if (req) {
-      try {
-        DatabaseConstructor = req("better-sqlite3");
-      } catch {}
-    }
-
-    if (!DatabaseConstructor) {
-      throw new Error("better-sqlite3 module unavailable in this environment");
-    }
-
-    const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.RENDER);
-    let resolvedPath = dbPath || process.env.SQLITE_DB_PATH;
-    if (!resolvedPath) {
-      const bundledPath = path.resolve(process.cwd(), "radar.sqlite");
-      if (isServerless) {
-        const tmpPath = path.resolve("/tmp", "radar.sqlite");
-        if (!fs.existsSync(tmpPath) && fs.existsSync(bundledPath)) {
-          try {
-            fs.copyFileSync(bundledPath, tmpPath);
-          } catch {}
-        }
-        resolvedPath = tmpPath;
-      } else {
-        resolvedPath = bundledPath;
-      }
-    }
-
-    const sqliteDb = new DatabaseConstructor(resolvedPath);
-    try {
-      sqliteDb.pragma("journal_mode = WAL");
-    } catch {}
-
-    if (!_hasLoggedStartup) {
-      console.log("\n─────────────────────────────");
-      console.log("RADAR Database Connection");
-      console.log("─────────────────────────────");
-      console.log(`Engine      : Local SQLite`);
-      console.log(`Path        : ${resolvedPath}`);
-      console.log("─────────────────────────────\n");
-      _hasLoggedStartup = true;
-    }
-
-    _cachedAdapter = new SqliteAdapter(sqliteDb);
-    return _cachedAdapter;
-  } catch (err: any) {
-    console.error("⚠️ [Database] Failed to initialize SQLite fallback:", err.message);
-    // Return dummy no-op adapter so the app never crashes with unhandled exception
-    _cachedAdapter = {
-      async one<T>() { return null; },
-      async many<T>() { return []; },
-      async execute() { return { rowsAffected: 0 }; },
-      async transaction<T>(fn: (tx: any) => Promise<T>): Promise<T> {
-        return fn({
-          one: async () => null,
-          many: async () => [],
-          execute: async () => ({ rowsAffected: 0 }),
-          transaction: async (f: any) => f(this)
-        });
-      }
-    };
-    return _cachedAdapter;
+  // 3. Strict Fail-Fast: Zero Silent Fallbacks to radar.sqlite or No-Op Adapter
+  switch (radarEnv) {
+    case "production":
+      throw new Error("[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in production environment.");
+    case "staging":
+      throw new Error("[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in staging environment.");
+    case "dev":
+      throw new Error("[DatabaseAdapter] Missing required TURSO_CONNECTION_URL or TURSO_AUTH_TOKEN in dev environment. Local filesystem SQLite fallback (radar.sqlite) is permanently disabled.");
+    case "test":
+      throw new Error("[DatabaseAdapter] Missing database configuration for test environment. Must provide Turso credentials or specify ':memory:' for isolated unit tests.");
+    default:
+      throw new Error(`[DatabaseAdapter] Missing required database configuration for environment: ${radarEnv}`);
   }
 }
 

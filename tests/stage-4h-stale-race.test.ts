@@ -1,19 +1,31 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { getRepositories } from "../src/data/sqlite/provider";
+import { getDatabaseAdapter, resetDatabaseAdapter } from "../src/data/database";
+import { runMigrations } from "../src/data/sqlite/migrations/runner";
 import { SqliteEvaluationStore } from "../src/data/sqlite/repositories/SqliteEvaluationStore";
 import { EvaluationWorker } from "../src/lib/intelligence/workers/EvaluationWorker";
 
 describe("Stage 4H: Stale-Job Race Condition & Superseding Protection", () => {
   const testPersonId = `test_stale_${Date.now()}`;
   const testJobHash = `job_race_${Date.now()}`;
-  const repos = getRepositories();
-  const evalStore = repos.evaluations;
+  let db: any;
+  let evalStore: SqliteEvaluationStore;
 
   beforeEach(async () => {
-    // Ensure clean state for test opportunity
-    const db = (evalStore as any).db;
-    await db.execute(`DELETE FROM evaluation_jobs WHERE person_id = ?`, [testPersonId]);
-    await db.execute(`DELETE FROM candidate_evaluations WHERE person_id = ?`, [testPersonId]);
+    resetDatabaseAdapter();
+    db = getDatabaseAdapter(":memory:");
+    await runMigrations(db);
+    evalStore = new SqliteEvaluationStore(db);
+
+    // Seed parent rows
+    await db.execute(`INSERT INTO companies (id, name) VALUES ('comp_test', 'Acme Test')`);
+    await db.execute(
+      `INSERT INTO people (id, email, meta_schema_version, meta_timestamp) VALUES (?, 'stale@test.internal', 'v1', CURRENT_TIMESTAMP)`,
+      [testPersonId]
+    );
+    await db.execute(
+      `INSERT INTO opportunities (id, company_id, canonical_title, fingerprint, lifecycle) VALUES (?, 'comp_test', 'Title', 'fp_stale', 'ACTIVE')`,
+      [testJobHash]
+    );
   });
 
   it("supersedes and discards stale Job A when Job B with updated input hash is created", async () => {
@@ -45,7 +57,6 @@ describe("Stage 4H: Stale-Job Race Condition & Superseding Protection", () => {
     }
 
     // Verify Job A is marked SUPERSEDED in queue
-    const db = (evalStore as any).db;
     const jobARow = await db.one(`SELECT * FROM evaluation_jobs WHERE id = ?`, [jobAId]);
     expect(jobARow.status).toBe("SUPERSEDED");
 

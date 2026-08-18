@@ -45,6 +45,14 @@ describe("RADAR V4 Phase 7: Population Metrics & Bounded Retrieval Suite", () =>
         UNIQUE(person_id, opportunity_id)
       );
 
+      CREATE TABLE opportunities (
+        id TEXT PRIMARY KEY,
+        canonical_title TEXT,
+        company_id TEXT,
+        location TEXT,
+        created_at TEXT
+      );
+
       CREATE TABLE evaluation_jobs (
         id TEXT PRIMARY KEY, person_id TEXT, job_hash TEXT, input_hash TEXT, status TEXT, attempts INTEGER, available_at TEXT, created_at TEXT
       );
@@ -98,6 +106,11 @@ describe("RADAR V4 Phase 7: Population Metrics & Bounded Retrieval Suite", () =>
           qualityScore: score,
         },
       });
+
+      sqliteDb.prepare("INSERT OR REPLACE INTO opportunities (id, canonical_title, created_at) VALUES (?, ?, datetime('now'))").run(
+        `job_${personId}_${i}`,
+        `Opportunity ${i}`
+      );
 
       await evalStore.saveEvaluation({
         personId,

@@ -13,9 +13,6 @@ export function triggerDebouncedRebuild() {
   }
   rebuildTimeout = setTimeout(async () => {
     try {
-      const { runRebuildReadModels } = await import("../../../scripts/rebuild-read-models");
-      runRebuildReadModels();
-
       const { collectRecords, writeLiveScraped } = await import("../../../scripts/scraper/persist/writer");
       const records = collectRecords();
       writeLiveScraped(records);
@@ -54,8 +51,6 @@ if (typeof globalThis !== "undefined") {
           const jsonPath = path.join(process.cwd(), "src", "data", "live-scraped.json");
           if (!fs.existsSync(jsonPath)) {
             console.log("[Daemon] live-scraped.json missing. Building on boot...");
-            const { runRebuildReadModels } = await import("../../../scripts/rebuild-read-models");
-            runRebuildReadModels();
             const { collectRecords, writeLiveScraped } = await import("../../../scripts/scraper/persist/writer");
             writeLiveScraped(collectRecords());
           }

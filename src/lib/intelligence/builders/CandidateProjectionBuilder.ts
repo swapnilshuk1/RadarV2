@@ -84,6 +84,11 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
     const extractedThemes = profile.executiveIdentity?.executiveThemes || [];
     const executiveThemes = extractedThemes.length > 0 ? extractedThemes : defaultThemes;
 
+    const attentionWindow =
+      (profile as any).attentionWindow ??
+      profile.preferences?.attentionWindow ??
+      (profile as any).headspaceCapacityPerMonth;
+
     return {
       operatingLevel,
       candidateSeniorityLevel,
@@ -94,7 +99,8 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
       coreCapabilities: Array.from(new Set(coreCapabilities)),
       preferredLocations: profile.preferences?.locations || [],
       preferredWorkModel,
-      executiveThemes
+      executiveThemes,
+      attentionWindow
     };
   }
 

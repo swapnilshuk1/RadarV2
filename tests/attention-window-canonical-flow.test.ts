@@ -2,6 +2,10 @@ import { describe, it, expect } from "vitest";
 import { DecisionPolicyEngine } from "../src/lib/intelligence/policy/DecisionPolicyEngine";
 import { buildHeadspace } from "../src/lib/intelligence/candidate";
 import { applyHeadspaceFilter } from "../src/lib/intelligence/headspace-filter";
+import { runEngine, injectFixtureRecords, clearFixtureRecords } from "../src/lib/intelligence/engine";
+import { CandidateProjectionBuilderImpl } from "../src/lib/intelligence/builders/CandidateProjectionBuilder";
+import { candidateProfile } from "../src/data/candidate-profile";
+import { rawOpportunities } from "../src/data/opportunity-fixtures";
 import type { 
   IdentityAssessment, 
   CapabilityAssessment, 
@@ -10,7 +14,7 @@ import type {
   LifestyleAssessment 
 } from "../src/domain/semantic";
 
-describe("Phase 5 — Attention Window Clean Flow & Certification", () => {
+describe("Attention Window Capacity Invariance & Trace Flow", () => {
   const dummyIdentity: IdentityAssessment = {
     status: "COMPLETE",
     verdict: "MATCH",
@@ -61,7 +65,8 @@ describe("Phase 5 — Attention Window Clean Flow & Certification", () => {
     { key: "commercialScope", jdEvidence: { value: "ENTERPRISE", status: "Extracted" } }
   ];
 
-  const evaluateForWindow = (activePursuits: number) => {
+  const evaluateForCapacity = (capacityOverride: number, activePursuits: number = 4) => {
+    // Policy evaluation is strictly isolated and agnostic to capacity
     const policyResult = DecisionPolicyEngine.evaluate(
       dummyIdentity,
       dummyCapability,
@@ -77,47 +82,98 @@ describe("Phase 5 — Attention Window Clean Flow & Certification", () => {
       88 // Authoritative Shortlisting Potential
     );
 
-    const headspace = buildHeadspace(activePursuits);
+    const headspace = buildHeadspace(activePursuits, capacityOverride);
     const headspaceOutcome = applyHeadspaceFilter(policyResult.verdict as any, headspace);
 
     return { policyResult, headspace, headspaceOutcome };
   };
 
-  it("Asserts policyResult is 100% identical across windows 1, 5, and 10 before headspace", () => {
-    const run1 = evaluateForWindow(1);
-    const run5 = evaluateForWindow(5);
-    const run10 = evaluateForWindow(10);
+  it("Varies capacity (2, 6, 10) with fixed active pursuits (4) and proves policy invariance", () => {
+    // Fixed active pursuits = 4; vary capacity window across 2, 6, and 10
+    const runCap2 = evaluateForCapacity(2, 4);
+    const runCap6 = evaluateForCapacity(6, 4);
+    const runCap10 = evaluateForCapacity(10, 4);
 
-    // Intrinsic policy verdicts, scores, and triggered rules MUST NOT be affected by attention window
-    expect(run1.policyResult.verdict).toBe("PURSUE");
-    expect(run1.policyResult.verdict).toBe(run5.policyResult.verdict);
-    expect(run5.policyResult.verdict).toBe(run10.policyResult.verdict);
+    // Intrinsic policy verdicts, scores, and triggered rules MUST be 100% identical
+    expect(runCap2.policyResult.verdict).toBe("PURSUE");
+    expect(runCap2.policyResult.verdict).toBe(runCap6.policyResult.verdict);
+    expect(runCap6.policyResult.verdict).toBe(runCap10.policyResult.verdict);
 
-    expect(run1.policyResult.qualityScore).toBe(run5.policyResult.qualityScore);
-    expect(run5.policyResult.qualityScore).toBe(run10.policyResult.qualityScore);
+    expect(runCap2.policyResult.qualityScore).toBe(runCap6.policyResult.qualityScore);
+    expect(runCap6.policyResult.qualityScore).toBe(runCap10.policyResult.qualityScore);
 
-    expect(run1.policyResult.priorityScore).toBe(run5.policyResult.priorityScore);
-    expect(run5.policyResult.priorityScore).toBe(run10.policyResult.priorityScore);
+    expect(runCap2.policyResult.rawScore).toBe(runCap6.policyResult.rawScore);
+    expect(runCap6.policyResult.rawScore).toBe(runCap10.policyResult.rawScore);
 
-    expect(run1.policyResult.triggeredRuleIds).toEqual(run5.policyResult.triggeredRuleIds);
-    expect(run5.policyResult.triggeredRuleIds).toEqual(run10.policyResult.triggeredRuleIds);
+    expect(runCap2.policyResult.priorityScore).toBe(runCap6.policyResult.priorityScore);
+    expect(runCap6.policyResult.priorityScore).toBe(runCap10.policyResult.priorityScore);
+
+    expect(runCap2.policyResult.triggeredRuleIds).toEqual(runCap6.policyResult.triggeredRuleIds);
+    expect(runCap6.policyResult.triggeredRuleIds).toEqual(runCap10.policyResult.triggeredRuleIds);
   });
 
-  it("Asserts headspace saturation differs cleanly without mutating intrinsic policy score", () => {
-    const run1 = evaluateForWindow(1);
-    const run6 = evaluateForWindow(6);
+  it("Demonstrates asymmetric headspace downgrade when capacity is saturated vs unsaturated", () => {
+    const runCap2 = evaluateForCapacity(2, 4);   // 4 active >= 2 cap -> Saturated
+    const runCap6 = evaluateForCapacity(6, 4);   // 4 active < 6 cap -> Unsaturated
+    const runCap10 = evaluateForCapacity(10, 4); // 4 active < 10 cap -> Unsaturated
 
-    // Run 1 (1 active pursuit < capacity 6) -> unsaturated, not downgraded
-    expect(run1.headspace.saturated).toBe(false);
-    expect(run1.headspaceOutcome.downgraded).toBe(false);
-    expect(run1.headspaceOutcome.finalVerb).toBe("PURSUE");
+    // Capacity 2 is saturated (4 >= 2) -> downgraded to CONSIDER
+    expect(runCap2.headspace.capacityPerMonth).toBe(2);
+    expect(runCap2.headspace.saturated).toBe(true);
+    expect(runCap2.headspaceOutcome.downgraded).toBe(true);
+    expect(runCap2.headspaceOutcome.finalVerb).toBe("CONSIDER");
 
-    // Run 6 (6 active pursuits >= capacity 6) -> saturated, downgraded to CONSIDER in presentation
-    expect(run6.headspace.saturated).toBe(true);
-    expect(run6.headspaceOutcome.downgraded).toBe(true);
-    expect(run6.headspaceOutcome.finalVerb).toBe("CONSIDER");
+    // Capacity 6 is unsaturated (4 < 6) -> retains PURSUE
+    expect(runCap6.headspace.capacityPerMonth).toBe(6);
+    expect(runCap6.headspace.saturated).toBe(false);
+    expect(runCap6.headspaceOutcome.downgraded).toBe(false);
+    expect(runCap6.headspaceOutcome.finalVerb).toBe("PURSUE");
 
-    // Intrinsic Quality Score remains identical
-    expect(run1.policyResult.qualityScore).toBe(run6.policyResult.qualityScore);
+    // Capacity 10 is unsaturated (4 < 10) -> retains PURSUE
+    expect(runCap10.headspace.capacityPerMonth).toBe(10);
+    expect(runCap10.headspace.saturated).toBe(false);
+    expect(runCap10.headspaceOutcome.downgraded).toBe(false);
+    expect(runCap10.headspaceOutcome.finalVerb).toBe("PURSUE");
+  });
+
+  it("Proves RecommendationRecord trace.verb0, trace.finalVerb, and trace.headspace reflect policy -> headspace transition", () => {
+    const builder = new CandidateProjectionBuilderImpl();
+    const projection = builder.fromProfile({
+      ...candidateProfile,
+      attentionWindow: 2 // Saturated capacity for 4 active pursuits
+    } as any);
+
+    // Use BMW India CMO golden fixture (evaluates to PURSUE under normal capacity)
+    const bmwOpp = {
+      ...rawOpportunities[0],
+      rawText: rawOpportunities[0].dimensions
+        .map((d) => (d.jdEvidence as any)?.evidence?.[0]?.quote)
+        .filter(Boolean)
+        .join(". ") + ". Executive leadership position for BMW India.",
+      dimensions: rawOpportunities[0].dimensions.map((d) => ({
+        ...d,
+        jdEvidence: {
+          ...d.jdEvidence,
+          evidence: (d.jdEvidence as any)?.evidence?.map((e: any) => ({ ...e, provenance: "fixture" }))
+        }
+      }))
+    };
+
+    // Run with 4 active pursuits under attentionWindow = 2
+    const result = runEngine(projection, 4, [bmwOpp as any]);
+    const record = result.records[0];
+
+    expect(record).toBeDefined();
+    // Intrinsic policy verb before headspace was PURSUE
+    expect(record.trace.verb0).toBe("PURSUE");
+
+    // Downstream verb reflects final saturated headspace
+    expect(record.verb).toBe("CONSIDER");
+    expect(record.headspace.downgraded).toBe(true);
+    expect(record.headspace.finalVerb).toBe("CONSIDER");
+    expect(record.trace.finalVerb).toBe("CONSIDER");
+    expect(record.trace.headspace.downgraded).toBe(true);
+    expect(record.trace.headspace.finalVerb).toBe("CONSIDER");
+    expect(record.trace.headspace.reason).toContain("at capacity");
   });
 });

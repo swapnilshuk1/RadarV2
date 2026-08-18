@@ -13,6 +13,14 @@ import {
   MetricIntegrityValidator,
   type CanonicalOpportunityMetrics,
 } from "./metric-integrity";
+import {
+  serveEvaluation,
+  adaptLegacyEvaluation,
+  isCanonicalIntrinsicEvaluation,
+  type CandidateServingContext,
+  type CanonicalIntrinsicEvaluationPayload,
+} from "./serving/EvaluationServingEngine";
+import { computeIntrinsicFingerprint } from "./fingerprint/EvaluationFingerprint";
 
 export type ServiceOptions = {
   activePursuits?: number;
@@ -122,15 +130,27 @@ export class OpportunityService {
   /** Hydrates exact opportunity DTOs for user decisions independent of feed rank bounds. */
   static async listDecidedForUser(userId: string): Promise<Opportunity[]> {
     const repos = getRepositories();
-    const userDecisions = await repos.decisions.getUserDecisions(userId);
+    const [userDecisions, projection, sourceMap] = await Promise.all([
+      repos.decisions.getUserDecisions(userId),
+      repos.people.getLatestProjection(userId),
+      repos.opportunities.getOpportunitySourcesMap(),
+    ]);
     const jobHashes = Object.keys(userDecisions);
     if (jobHashes.length === 0) return [];
+
+    const activePursuits = Object.values(userDecisions).filter((d) => d.verb === "PURSUE").length;
+    const attentionWindow = projection?.attentionWindow ?? 6;
+    const candCtx: CandidateServingContext = {
+      personId: userId,
+      attentionWindow,
+      activePursuits,
+    };
 
     const evaluations = await repos.evaluations.getEvaluationsByJobHashes(userId, jobHashes);
     return evaluations
       .map((ev) => {
         try {
-          const opp = JSON.parse(ev.evaluationJson);
+          const rawParsed = JSON.parse(ev.evaluationJson);
           const rawUser = userDecisions[ev.jobHash];
           const userState: UserDecisionStateV4 | null = rawUser ? {
             personId: userId,
@@ -140,13 +160,17 @@ export class OpportunityService {
             updatedAt: rawUser.updatedAt || null,
           } : null;
 
-          return {
-            ...opp,
-            userDecision: userState,
-            effectiveDecision: computeEffectiveDecision(opp.engineRecommendation || ({} as any), userState),
-            reviewWorkflowState: computeReviewWorkflowState(opp.engineRecommendation || ({} as any), userState),
-            decision: userState?.userAction ? userState.userAction : ev.effectiveDecision,
-          } as Opportunity;
+          const oppSource = sourceMap.get(ev.jobHash) || {
+            jobHash: ev.jobHash,
+            role: "Executive Opportunity",
+            company: "Executive Firm",
+            location: "Remote",
+          };
+
+          if (isCanonicalIntrinsicEvaluation(rawParsed)) {
+            return serveEvaluation(rawParsed, candCtx, oppSource, userState);
+          }
+          return adaptLegacyEvaluation(rawParsed, candCtx, oppSource, userState);
         } catch {
           return null;
         }
@@ -154,24 +178,37 @@ export class OpportunityService {
       .filter((o): o is Opportunity => o !== null);
   }
 
-  /** List all opportunity DTOs for a specific user via O(k) materialized evaluations query. */
+  /** List all opportunity DTOs for a specific user via O(k) materialized evaluations query with dynamic contextual serving. */
   static async listForUser(userId: string, options?: ServiceOptions): Promise<Opportunity[]> {
     ensureWorkerDaemonStarted();
     const repos = getRepositories();
 
-    // 1. Fetch materialized candidate evaluations O(k)
-    const [evaluations, userDecisions] = await Promise.all([
+    // 1. Fetch materialized candidate evaluations O(k), serving context & opportunity source metadata
+    const [evaluations, userDecisions, projection, sourceMap] = await Promise.all([
       repos.evaluations.listEvaluationsForUser(userId, 100, options?.categoryId),
       repos.decisions.getUserDecisions(userId),
+      repos.people.getLatestProjection(userId),
+      repos.opportunities.getOpportunitySourcesMap(),
     ]);
 
-    // 2. If pre-computed evaluations exist, return directly (O(k) fast path)
+    const activePursuits = options?.activePursuits !== undefined
+      ? options.activePursuits
+      : Object.values(userDecisions).filter((d) => d.verb === "PURSUE").length;
+    const attentionWindow = projection?.attentionWindow ?? 6;
+
+    const candCtx: CandidateServingContext = {
+      personId: userId,
+      attentionWindow,
+      activePursuits,
+    };
+
+    // 2. If pre-computed evaluations exist, serve dynamically (O(k) fast path)
     if (evaluations.length > 0) {
       return evaluations
         .map((ev) => {
-          let opp: Opportunity;
+          let rawParsed: any;
           try {
-            opp = JSON.parse(ev.evaluationJson);
+            rawParsed = JSON.parse(ev.evaluationJson);
           } catch {
             return null;
           }
@@ -191,14 +228,17 @@ export class OpportunityService {
             updatedAt: ev.updatedAt || null,
           } : null);
 
-          const effectiveDecision = ev.effectiveDecision as any;
-          return {
-            ...opp,
-            userDecision: userState,
-            effectiveDecision: computeEffectiveDecision(opp.engineRecommendation || ({} as any), userState),
-            reviewWorkflowState: computeReviewWorkflowState(opp.engineRecommendation || ({} as any), userState),
-            decision: userState?.userAction ? userState.userAction : ev.effectiveDecision,
-          } as Opportunity;
+          const oppSource = sourceMap.get(ev.jobHash) || {
+            jobHash: ev.jobHash,
+            role: "Executive Opportunity",
+            company: "Executive Firm",
+            location: "Remote",
+          };
+
+          if (isCanonicalIntrinsicEvaluation(rawParsed)) {
+            return serveEvaluation(rawParsed, candCtx, oppSource, userState);
+          }
+          return adaptLegacyEvaluation(rawParsed, candCtx, oppSource, userState);
         })
         .filter((o): o is Opportunity => o !== null)
         .sort((a, b) => {
@@ -222,12 +262,12 @@ export class OpportunityService {
     }
 
     // 3. Fallback for un-materialized initial state: compute once and persist to candidate_evaluations
-    const [projection, oppSources] = await Promise.all([
+    const [freshProjection, oppSources] = await Promise.all([
       repos.people.getLatestProjection(userId),
       repos.opportunities.listOpportunitySources(),
     ]);
 
-    if (!projection) {
+    if (!freshProjection) {
       console.warn(`[OpportunityService] No projection found for user: ${userId}`);
       return [];
     }
@@ -237,7 +277,7 @@ export class OpportunityService {
       active = Object.values(userDecisions).filter((d) => d.verb === "PURSUE").length;
     }
 
-    const { presented } = runEngine(projection, active, oppSources);
+    const { presented } = runEngine(freshProjection, active, oppSources);
     const results: Opportunity[] = [];
 
     for (const p of presented) {
@@ -285,22 +325,91 @@ export class OpportunityService {
       results.push(opp);
 
       // Persist materialized evaluation for O(k) future requests
-      const engineVerdict = (["PURSUE", "CONSIDER", "PASS"].includes(engineRec.engineVerdict)
-        ? engineRec.engineVerdict
+      const verb0 = (p.record.trace?.verb0 || p.record.verb || "CONSIDER") as "PURSUE" | "CONSIDER" | "PASS";
+      const engineVerdict = (["PURSUE", "CONSIDER", "PASS"].includes(verb0)
+        ? verb0
         : "CONSIDER") as "PURSUE" | "CONSIDER" | "PASS";
+
+      const policyVersion = p.record.recommendationVersion || "v4.3";
+      const ontologyVersion = "v2";
+      const canonicalFingerprint = computeIntrinsicFingerprint(
+        freshProjection,
+        p.opportunity,
+        policyVersion,
+        ontologyVersion
+      );
+
+      const canonicalPayload: CanonicalIntrinsicEvaluationPayload = {
+        schemaVersion: "v4.2-intrinsic",
+        jobHash: opp.jobHash,
+        personId: userId,
+        evaluationInputHash: canonicalFingerprint,
+        policyVersion,
+        ontologyVersion,
+        evaluatedAt: new Date().toISOString(),
+        intrinsicVerdict: engineVerdict,
+        intrinsicQualityScore: p.record.vetoed ? null : (p.record.qualityScore !== null && p.record.qualityScore !== undefined ? Math.round(p.record.qualityScore) : null),
+        parsingConfidence: p.record.confidences?.parsing ?? (p.record.confidence ?? 0.8),
+        vetoed: Boolean(p.record.vetoed),
+        vetoReason: p.record.vetoReason || null,
+        triggeredRuleIds: p.record.triggeredRuleIds || [],
+        decisionRisks: p.record.decisionRisks || [],
+        decisionDrivers: p.record.decisionDrivers || [],
+        relativeDifferentiator: p.record.relativeDifferentiator || undefined,
+        trajectoryUpside: p.record.trajectoryUpside || undefined,
+        opportunityScoreConfidence: p.record.opportunityScoreConfidence,
+        opportunityScoreSource: p.record.opportunityScoreSource,
+        evaluationStatus: "COMPLETE",
+        dimensions: (p.record.trace?.evidenceMapping || []).map((m: any) => ({
+          key: m.key || "mandate",
+          label: m.label || m.key || "",
+          importance: m.importance || "Core",
+          bucket: m.bucket || "Missing",
+          value: m.value || "",
+          quote: m.quote || "",
+        })),
+        esi: p.record.esi || 0,
+        diligenceStatus: p.record.diligenceStatus || "READY",
+        baseNarrative: {
+          whyNow: p.narrative.whyNow,
+          positioning: p.narrative.positioning,
+          primaryProof: p.narrative.primaryProof,
+          hiringRisk: p.narrative.hiringRisk,
+          alternativePath: p.narrative.alternativePath,
+          recommendationArchetype: p.narrative.recommendationArchetype,
+          recommendationArchetypeTagline: p.narrative.recommendationArchetypeTagline,
+          mandateArchetype: p.narrative.mandateArchetype,
+          primaryDriver: p.narrative.primaryDriver,
+          secondaryDriver: p.narrative.secondaryDriver,
+          primaryRisk: p.narrative.primaryRisk,
+          tailoringEffort: p.narrative.tailoringEffort,
+          capabilityAlignmentText: p.narrative.capabilityAlignmentText,
+          baseRecommendationProse: p.narrative.recommendation,
+          recommendedAction: (p.narrative as any).recommendedAction || verb0,
+        },
+        auditTrace: {
+          verb0,
+          evaluationTimeFinalVerb: (p.record.trace?.finalVerb as any) || undefined,
+          careerValue: p.record.trace?.factors?.careerValue ?? 0,
+          shortlistingPotential: p.record.trace?.factors?.shortlistingPotential ?? 0,
+          pursuitFriction: p.record.trace?.factors?.pursuitFriction ?? 1.0,
+          rawScore: p.record.trace?.priority ?? 0,
+          evidenceMappingCount: p.record.trace?.evidenceMapping?.length ?? 0,
+        },
+      };
 
       repos.evaluations.saveEvaluation({
         personId: userId,
         jobHash: opp.jobHash,
-        policyVersion: engineRec.evaluationFingerprint || "v4.1",
-        evaluationInputHash: "eval_hash_initial",
+        policyVersion: canonicalPayload.policyVersion,
+        evaluationInputHash: canonicalFingerprint,
         engineVerdict,
-        engineQualityScore: engineRec.qualityScore || 70.0,
+        engineQualityScore: canonicalPayload.intrinsicQualityScore || 70.0,
         userDecisionOverride: userState?.userAction as any,
         effectiveDecision: engineVerdict,
-        qualityScore: engineRec.qualityScore || 70.0,
+        qualityScore: canonicalPayload.intrinsicQualityScore || 70.0,
         evaluationStatus: "COMPLETE",
-        evaluationJson: JSON.stringify(opp),
+        evaluationJson: JSON.stringify(canonicalPayload),
       }).catch(() => {});
     }
 
@@ -324,25 +433,55 @@ export class OpportunityService {
     const repos = getRepositories();
 
     // 1. Check materialized evaluations O(1)
-    const ev = await repos.evaluations.getEvaluation(userId, jobHash);
+    const [ev, oppSource] = await Promise.all([
+      repos.evaluations.getEvaluation(userId, jobHash),
+      repos.opportunities.getOpportunitySource(jobHash),
+    ]);
     if (ev) {
       try {
-        const opp = JSON.parse(ev.evaluationJson);
-        const userDecisions = await repos.decisions.getUserDecisions(userId);
+        const rawParsed = JSON.parse(ev.evaluationJson);
+        const [userDecisions, projection] = await Promise.all([
+          repos.decisions.getUserDecisions(userId),
+          repos.people.getLatestProjection(userId),
+        ]);
+
+        const activePursuits = options?.activePursuits !== undefined
+          ? options.activePursuits
+          : Object.values(userDecisions).filter((d) => d.verb === "PURSUE").length;
+        const attentionWindow = projection?.attentionWindow ?? 6;
+
+        const candCtx: CandidateServingContext = {
+          personId: userId,
+          attentionWindow,
+          activePursuits,
+        };
+
         const rawUser = userDecisions[jobHash];
-        const userState = rawUser ? {
+        const userState: UserDecisionStateV4 | null = rawUser ? {
           personId: userId,
           jobHash,
           userAction: rawUser.verb as any,
           reviewedFingerprint: (rawUser as any).reviewedFingerprint || null,
           updatedAt: rawUser.updatedAt || null,
-        } : null;
-        return {
-          ...opp,
-          userDecision: userState,
-          effectiveDecision: computeEffectiveDecision(opp.engineRecommendation || ({} as any), userState),
-          decision: userState?.userAction ? userState.userAction : ev.effectiveDecision,
+        } : (ev.userDecisionOverride ? {
+          personId: userId,
+          jobHash,
+          userAction: ev.userDecisionOverride as any,
+          reviewedFingerprint: null,
+          updatedAt: ev.updatedAt || null,
+        } : null);
+
+        const oppCtx = oppSource || {
+          jobHash,
+          role: "Executive Opportunity",
+          company: "Executive Firm",
+          location: "Remote",
         };
+
+        if (isCanonicalIntrinsicEvaluation(rawParsed)) {
+          return serveEvaluation(rawParsed, candCtx, oppCtx, userState);
+        }
+        return adaptLegacyEvaluation(rawParsed, candCtx, oppCtx, userState);
       } catch {}
     }
 
@@ -377,8 +516,8 @@ export class OpportunityService {
     injectFreshRecords(records);
   }
 
-  /** Evaluates a single candidate-opportunity pair directly via V4 engines without corpus-wide evaluation. */
-  static async evaluateSingleOpportunity(userId: string, jobHash: string): Promise<any | undefined> {
+  /** Evaluates a single candidate-opportunity pair directly returning full Presented engine bundle. */
+  static async evaluateSinglePresented(userId: string, jobHash: string): Promise<import("./present").Presented | undefined> {
     const repos = getRepositories();
     let projection = await repos.people.getLatestProjection(userId);
     if (!projection) {
@@ -387,7 +526,12 @@ export class OpportunityService {
     }
     const oppSource = await repos.opportunities.getOpportunitySource(jobHash);
     if (!projection || !oppSource) return undefined;
-    const single = runEngineSingle(jobHash, projection, 0, [oppSource]);
+    return runEngineSingle(jobHash, projection, 0, [oppSource]);
+  }
+
+  /** Evaluates a single candidate-opportunity pair directly via V4 engines without corpus-wide evaluation. */
+  static async evaluateSingleOpportunity(userId: string, jobHash: string): Promise<Opportunity | undefined> {
+    const single = await this.evaluateSinglePresented(userId, jobHash);
     return single?.opportunity;
   }
 }

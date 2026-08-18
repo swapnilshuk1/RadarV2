@@ -62,10 +62,12 @@ export function loadStrategy(): SearchStrategy {
 
 /** buildHeadspace reads capacity from canonical attentionWindow or explicit override (1–10, default 6) */
 export function buildHeadspace(activePursuits: number, capacityOverride?: number): HeadspaceState {
+  const prof = profile as { attentionWindow?: number; headspaceCapacityPerMonth?: number; preferences?: { attentionWindow?: number } };
   const rawCap =
     capacityOverride ??
-    (profile as { attentionWindow?: number; headspaceCapacityPerMonth?: number }).attentionWindow ??
-    (profile as { headspaceCapacityPerMonth?: number }).headspaceCapacityPerMonth ??
+    prof.attentionWindow ??
+    prof.preferences?.attentionWindow ??
+    prof.headspaceCapacityPerMonth ??
     6;
   const num = typeof rawCap === "number" ? rawCap : parseInt(String(rawCap), 10);
   const capacity = isNaN(num) || num < 1 || num > 10 ? 6 : num;

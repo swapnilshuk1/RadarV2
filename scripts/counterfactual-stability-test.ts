@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import Database from "better-sqlite3";
+import { getDatabaseAdapter } from "../src/data/database";
 import { DeterministicScorer, type JobSlice } from "../src/lib/recommendation/DeterministicScorer";
 import { ProfileImporter } from "../src/lib/recommendation/ProfileImporter";
 import type { RecommendationPolicy } from "../src/lib/recommendation/RecommendationPolicy";
@@ -23,7 +23,6 @@ function getIdealValueForDimension(dimension: string): any {
 
 async function main() {
   const profilePath = ".radar/profile.yaml";
-  const dbPath = path.resolve(process.cwd(), "radar.sqlite");
 
   console.log("==========================================================================");
   console.log("                  COUNTERFACTUAL STABILITY TEST PLATFORM");
@@ -47,15 +46,15 @@ async function main() {
   console.log(`✓ Policy loaded: ${policy.id} (v${policy.version})`);
 
   // 3. Open DB & Load Jobs
-  const db = new Database(dbPath, { readonly: true });
-  const opportunities = db.prepare(`
+  const db = getDatabaseAdapter();
+  const opportunities = await db.many<any>(`
     SELECT id, fingerprint, canonical_title FROM opportunities WHERE lifecycle IN ('Active', 'Normalized', 'Verified') ORDER BY id ASC
-  `).all() as any[];
+  `);
 
-  console.log(`✓ Loaded ${opportunities.length} opportunities from SQLite.`);
+  console.log(`✓ Loaded ${opportunities.length} opportunities from database.`);
 
   // Load facts
-  const factRows = db.prepare("SELECT opportunity_id, attribute, value FROM facts").all() as any[];
+  const factRows = await db.many<any>("SELECT opportunity_id, attribute, value FROM facts");
   const factsByJob = new Map<string, Record<string, any>>();
   for (const fact of factRows) {
     if (!factsByJob.has(fact.opportunity_id)) factsByJob.set(fact.opportunity_id, {});

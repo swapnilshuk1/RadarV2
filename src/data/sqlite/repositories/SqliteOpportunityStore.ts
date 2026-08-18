@@ -5,6 +5,7 @@ import type { OpportunitySource } from "../../../data/opportunity-fixtures";
 
 export class SqliteOpportunityStore implements OpportunityStore {
   private inFlightSourcesPromise: Promise<OpportunitySource[]> | null = null;
+  private cachedSourcesMap: Map<string, OpportunitySource> | null = null;
 
   constructor(private db: DatabaseAdapter) {}
 
@@ -13,6 +14,7 @@ export class SqliteOpportunityStore implements OpportunityStore {
    */
   public invalidateSourcesCache(): void {
     this.inFlightSourcesPromise = null;
+    this.cachedSourcesMap = null;
   }
 
   async mergeOpportunity(opportunity: Opportunity): Promise<void> {
@@ -101,6 +103,10 @@ export class SqliteOpportunityStore implements OpportunityStore {
   }
 
   async listOpportunitySources(): Promise<OpportunitySource[]> {
+    if (this.cachedSourcesMap) {
+      return Array.from(this.cachedSourcesMap.values());
+    }
+
     if (this.inFlightSourcesPromise) {
       return this.inFlightSourcesPromise;
     }
@@ -162,6 +168,7 @@ export class SqliteOpportunityStore implements OpportunityStore {
         }
       }
 
+      this.cachedSourcesMap = jobHashMap;
       return Array.from(jobHashMap.values());
     })().finally(() => {
       this.inFlightSourcesPromise = null;
@@ -170,7 +177,23 @@ export class SqliteOpportunityStore implements OpportunityStore {
     return this.inFlightSourcesPromise;
   }
 
+  async getOpportunitySourcesMap(): Promise<Map<string, OpportunitySource>> {
+    if (this.cachedSourcesMap) {
+      return this.cachedSourcesMap;
+    }
+    await this.listOpportunitySources();
+    return this.cachedSourcesMap || new Map();
+  }
+
   async getOpportunitySource(jobHash: string): Promise<OpportunitySource | undefined> {
+    if (this.cachedSourcesMap && this.cachedSourcesMap.has(jobHash)) {
+      return this.cachedSourcesMap.get(jobHash);
+    }
+    const map = await this.getOpportunitySourcesMap();
+    if (map.has(jobHash)) {
+      return map.get(jobHash);
+    }
+
     const sql = `
       SELECT o.id as id, o.canonical_title as canonical_title, o.location as location,
              c.name as company_name, d.content as doc_content

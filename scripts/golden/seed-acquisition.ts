@@ -1,33 +1,21 @@
-import Database from "better-sqlite3";
 import { v4 as uuidv4 } from "uuid";
-import path from "path";
-import fs from "fs";
+import { getDatabaseAdapter } from "../../src/data/database";
 
-const DB_PATH = path.join(process.cwd(), ".radar", "acquisition.db");
-
-// Ensure directory exists
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-
-const db = new Database(DB_PATH);
-
-export function seedAcquisition() {
+export async function seedAcquisition() {
   console.log("Seeding Acquisition Domain (V1)...");
-
-  // Create tables if not exist (using the SQL schema we defined)
-  const schemaStr = fs.readFileSync(path.join(process.cwd(), "src", "db", "schema", "acquisition.sql"), "utf-8");
-  db.exec(schemaStr);
+  const db = getDatabaseAdapter();
 
   const versionId = uuidv4();
-  db.prepare(`INSERT OR IGNORE INTO catalog_versions (id, version_string) VALUES (?, ?)`).run(versionId, "v1.0");
+  await db.execute(`INSERT OR IGNORE INTO catalog_versions (id, version_string) VALUES (?, ?)`, [versionId, "v1.0"]);
 
   const campaignId = uuidv4();
-  db.prepare(`INSERT OR IGNORE INTO acquisition_campaigns (id, name) VALUES (?, ?)`).run(campaignId, "Executive Leadership");
+  await db.execute(`INSERT OR IGNORE INTO acquisition_campaigns (id, name) VALUES (?, ?)`, [campaignId, "Executive Leadership"]);
 
   const strategyId = uuidv4();
-  db.prepare(`
+  await db.execute(`
     INSERT OR IGNORE INTO acquisition_strategies (id, campaign_id, catalog_version_id, name, freshness_target_days)
     VALUES (?, ?, ?, ?, ?)
-  `).run(strategyId, campaignId, versionId, "Global Executive Search", 7);
+  `, [strategyId, campaignId, versionId, "Global Executive Search", 7]);
 
   // Define some families and their intents
   const families = [
@@ -65,45 +53,42 @@ export function seedAcquisition() {
 
   let definitionCount = 0;
 
-  const insertFamily = db.prepare(`INSERT INTO search_families (id, strategy_id, name, weight) VALUES (?, ?, ?, ?)`);
-  const insertIntent = db.prepare(`INSERT INTO search_intents (id, family_id, name) VALUES (?, ?, ?)`);
-  const insertTemplate = db.prepare(`INSERT INTO query_templates (id, intent_id, template) VALUES (?, ?, ?)`);
-  const insertDefinition = db.prepare(`INSERT OR IGNORE INTO search_definitions (id, intent_id, portal, location, industry, is_remote, raw_query, status, priority) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-
-  db.transaction(() => {
-    // Clear existing for a clean seed
-    db.prepare(`DELETE FROM search_families WHERE strategy_id = ?`).run(strategyId);
+  await db.transaction(async (tx) => {
+    await tx.execute(`DELETE FROM search_families WHERE strategy_id = ?`, [strategyId]);
     
     for (const fam of families) {
       const famId = uuidv4();
-      insertFamily.run(famId, strategyId, fam.name, fam.weight);
+      await tx.execute(`INSERT INTO search_families (id, strategy_id, name, weight) VALUES (?, ?, ?, ?)`, [famId, strategyId, fam.name, fam.weight]);
 
       for (const intentName of fam.intents) {
         const intentId = uuidv4();
-        insertIntent.run(intentId, famId, intentName);
+        await tx.execute(`INSERT INTO search_intents (id, family_id, name) VALUES (?, ?, ?)`, [intentId, famId, intentName]);
         
         const templateId = uuidv4();
-        insertTemplate.run(templateId, intentId, "{{intent}}"); // Simple template for now
+        await tx.execute(`INSERT INTO query_templates (id, intent_id, template) VALUES (?, ?, ?)`, [templateId, intentId, "{{intent}}"]);
 
-        // Generate Definitions (Portals x Geographies)
-        const portals = ["LinkedIn", "Indeed", "Naukri"]; // Restored Naukri
-        const locations = ["India"]; // Trimmed to 1 location to keep count ~120
-        // 30 families * ~1.3 intents = 40 intents. 40 * 3 = 120 definitions.
+        const portals = ["LinkedIn", "Indeed", "Naukri"];
+        const locations = ["India"];
 
         for (const portal of portals) {
           for (const loc of locations) {
             const defId = uuidv4();
-            const rawQuery = `${intentName}`; // The executable query
+            const rawQuery = `${intentName}`;
             const isRemote = loc === "Remote" ? 1 : 0;
-            const res = insertDefinition.run(defId, intentId, portal, loc, null, isRemote, rawQuery, 'ACTIVE', fam.priority);
-            if (res.changes > 0) definitionCount++;
+            const res = await tx.execute(
+              `INSERT OR IGNORE INTO search_definitions (id, intent_id, portal, location, industry, is_remote, raw_query, status, priority) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [defId, intentId, portal, loc, null, isRemote, rawQuery, 'ACTIVE', fam.priority]
+            );
+            if (res.rowsAffected > 0) definitionCount++;
           }
         }
       }
     }
-  })();
+  });
 
   console.log(`Successfully seeded ${families.length} families, ${families.reduce((acc, f) => acc + f.intents.length, 0)} intents, and ${definitionCount} Search Definitions.`);
 }
 
-seedAcquisition();
+if (process.argv[1]?.includes("seed-acquisition")) {
+  seedAcquisition().catch(console.error);
+}

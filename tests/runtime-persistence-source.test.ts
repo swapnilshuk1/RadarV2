@@ -68,6 +68,7 @@ describe("RADAR Stage 2A: Runtime Persistence Unification & Source-of-Truth", ()
     const mockUser = "test-runtime-user-1";
     vi.spyOn(repos.people, "getLatestProjection").mockResolvedValue(mockProjection);
     vi.spyOn(repos.decisions, "getUserDecisions").mockResolvedValue({});
+    vi.spyOn(repos.evaluations, "listEvaluationsForUser").mockResolvedValue([]);
 
     const mockOppSources: OpportunitySource[] = [
       {

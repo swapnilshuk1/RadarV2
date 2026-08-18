@@ -412,12 +412,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         log(`[Scrape] Enrichment phase failed: ${enrichErr.message}`, "error");
       }
 
-      // Rebuild read models and JSON models
+      // Rebuild JSON models
       try {
-        log(`[Scrape] Rebuilding SQLite read models...`);
-        const { runRebuildReadModels } = await import("./rebuild-read-models");
-        runRebuildReadModels();
-
         const records = collectRecords();
         writeLiveScraped(records);
         log(`Rebuilt live-scraped.json cache with ${records.length} total records.`);

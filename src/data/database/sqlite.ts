@@ -2,7 +2,12 @@ import type { DatabaseAdapter, QueryParams } from "./adapter";
 import type Database from "better-sqlite3";
 
 export class SqliteAdapter implements DatabaseAdapter {
-  constructor(private db: Database.Database) {}
+  constructor(private db: Database.Database) {
+    // In-memory safety assurance: alert if instantiated with non-memory file in non-test mode
+    if (!db.memory && db.name !== ":memory:" && db.name !== "" && process.env.RADAR_ENV !== "test") {
+      console.warn(`[SqliteAdapter] Warning: SqliteAdapter instantiated with persistent file: ${db.name}`);
+    }
+  }
 
   async one<T>(sql: string, params: QueryParams = []): Promise<T | null> {
     const row = this.db.prepare(sql).get(...(params as any[]));

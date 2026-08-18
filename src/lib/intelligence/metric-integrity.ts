@@ -97,7 +97,7 @@ export class MetricIntegrityValidator {
       );
 
       const independentVerdicts = await db.many<{ engine_verdict: string; cnt: number }>(
-        `SELECT effective_decision as engine_verdict, COUNT(*) as cnt FROM candidate_evaluations WHERE person_id = ? GROUP BY effective_decision`,
+        `SELECT engine_verdict, COUNT(*) as cnt FROM candidate_evaluations WHERE person_id = ? GROUP BY engine_verdict`,
         [metrics.personId]
       );
 
@@ -213,8 +213,8 @@ export class MetricIntegrityValidator {
       if (checkEnginePursue.status !== "PASS") discrepancies.push(checkEnginePursue);
 
       // 2. Mathematical Invariant Verification
-      // Invariant 1: Engine breakdown sum <= totalScreened
-      const engineSum = metrics.engineBreakdown.pursue + metrics.engineBreakdown.consider + metrics.engineBreakdown.pass + metrics.engineBreakdown.sparse;
+      // Invariant 1: Engine breakdown sum <= totalScreened (pursue + consider + pass partition the population)
+      const engineSum = metrics.engineBreakdown.pursue + metrics.engineBreakdown.consider + metrics.engineBreakdown.pass;
       const checkEngineSum: MetricIntegrityCheck = {
         code: "INV_ENGINE_SUM_LE_SCREENED",
         metricName: "engineBreakdownSum",
@@ -227,6 +227,20 @@ export class MetricIntegrityValidator {
       };
       checks.push(checkEngineSum);
       if (checkEngineSum.status !== "PASS") discrepancies.push(checkEngineSum);
+
+      // Invariant 1b: Sparse count bounded by totalScreened
+      const checkSparseBound: MetricIntegrityCheck = {
+        code: "INV_SPARSE_LE_SCREENED",
+        metricName: "sparseBreakdownBound",
+        expected: `<= ${metrics.totalScreened}`,
+        actual: metrics.engineBreakdown.sparse,
+        status: metrics.engineBreakdown.sparse <= metrics.totalScreened ? "PASS" : "ERROR",
+        message: metrics.engineBreakdown.sparse <= metrics.totalScreened
+          ? `Sparse breakdown count (${metrics.engineBreakdown.sparse}) is bounded by totalScreened (${metrics.totalScreened}).`
+          : `Sparse breakdown count (${metrics.engineBreakdown.sparse}) exceeds totalScreened (${metrics.totalScreened}).`,
+      };
+      checks.push(checkSparseBound);
+      if (checkSparseBound.status !== "PASS") discrepancies.push(checkSparseBound);
 
       // Invariant 2: Active pursuits <= totalScreened
       const checkPursuitsLeScreened: MetricIntegrityCheck = {

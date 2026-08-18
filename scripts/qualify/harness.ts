@@ -3,9 +3,6 @@ import path from "path";
 import { execSync } from "child_process";
 import { getRepositories } from "../../src/data/sqlite/provider";
 
-const DB_PATH = path.resolve(process.cwd(), "radar.sqlite");
-const GOLDEN_DB_PATH = path.resolve(process.cwd(), "radar.golden.sqlite");
-const EPHEMERAL_DB_PATH = path.resolve(process.cwd(), "radar.cert-run.sqlite");
 const CERT_DIR = path.resolve(process.cwd(), "docs/Certification", new Date().toISOString().split("T")[0]);
 
 interface CertificationReport {
@@ -44,22 +41,8 @@ async function runHarness() {
 
   fs.mkdirSync(CERT_DIR, { recursive: true });
 
-  // 1. Prepare ephemeral database
-  if (fs.existsSync(EPHEMERAL_DB_PATH)) {
-    fs.unlinkSync(EPHEMERAL_DB_PATH);
-  }
-  
-  // Use golden dataset if it exists, otherwise clone current dev db as a baseline
-  const sourceDb = fs.existsSync(GOLDEN_DB_PATH) ? GOLDEN_DB_PATH : DB_PATH;
-  if (fs.existsSync(sourceDb)) {
-     fs.copyFileSync(sourceDb, EPHEMERAL_DB_PATH);
-     console.log(`Cloned database from ${path.basename(sourceDb)} to ephemeral instance.`);
-  } else {
-     console.log("No source database found. Operating on fresh schema.");
-  }
-
-  // Inject ephemeral DB into the provider singleton
-  getRepositories(EPHEMERAL_DB_PATH);
+  // 1. Initialize in-memory repositories
+  getRepositories(":memory:");
 
   // 2. Initialize Report
   const report: CertificationReport = {
@@ -98,11 +81,7 @@ async function runHarness() {
 
   // Layer E
   const { certifyLayerE } = await import("./layer-e");
-  // We need to pass the raw better-sqlite3 db instance to certifyLayerE
-  const { default: Database } = await import("better-sqlite3");
-  const testDb = new Database(EPHEMERAL_DB_PATH);
-  await certifyLayerE(testDb);
-  testDb.close();
+  await certifyLayerE();
 
   // Score calculation
   const gatesPassed = Object.entries(report.scorecard)
@@ -143,14 +122,6 @@ async function runHarness() {
   console.log("Cleaning up ephemeral DB...");
   const { closeDatabase } = await import("../../src/data/sqlite/provider");
   closeDatabase();
-  
-  if (fs.existsSync(EPHEMERAL_DB_PATH)) {
-    try {
-      fs.unlinkSync(EPHEMERAL_DB_PATH);
-    } catch (e: any) {
-      console.warn("Failed to unlink ephemeral DB:", e.message);
-    }
-  }
 }
 
 runHarness().catch(console.error);

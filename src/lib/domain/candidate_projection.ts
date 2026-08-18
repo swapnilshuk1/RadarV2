@@ -14,6 +14,8 @@ export interface CandidateProjection {
   preferredLocations: string[];
   preferredWorkModel: "HYBRID" | "REMOTE" | "ON_SITE" | "ANY";
   executiveThemes: string[];
+  attentionWindow?: number;
+  headspaceCapacityPerMonth?: number;
 }
 
 export interface ProjectionValidationResult {

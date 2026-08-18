@@ -353,9 +353,11 @@ export function runEngine(
       shortlistingPotentialScore // P3-A: Pass authoritative SP
     );
 
-    const finalVerb = policyResult.verdict;
-    const headspaceState = buildHeadspace(activePursuits);
-    const headspaceOutcome = applyHeadspaceFilter(finalVerb, headspaceState);
+    const verb0 = policyResult.verdict;
+    const candAttentionWindow = (candProjObj.attentionWindow as number | undefined) ?? (candProjObj.headspaceCapacityPerMonth as number | undefined);
+    const headspaceState = buildHeadspace(activePursuits, candAttentionWindow);
+    const headspaceOutcome = applyHeadspaceFilter(verb0, headspaceState);
+    const finalVerb = headspaceOutcome.finalVerb;
 
     // Use Continuous Priority Score directly from DecisionPolicyEngine
     const finalScore = policyResult.priorityScore;
@@ -373,8 +375,8 @@ export function runEngine(
     const record: RecommendationRecord = {
       jobHash: raw.jobHash,
       engineVersion: ENGINE_VERSION,
-      recommendationVersion: `${ENGINE_VERSION}:${raw.jobHash}:${headspaceOutcome.finalVerb}`,
-      verb: headspaceOutcome.finalVerb,
+      recommendationVersion: `${ENGINE_VERSION}:${raw.jobHash}:${finalVerb}`,
+      verb: finalVerb,
       qualityScore: finalScore !== null ? finalScore : null,
       rawScore: policyResult.rawScore,
       priority: finalScore !== null ? finalScore : null,
@@ -417,27 +419,23 @@ export function runEngine(
       // P3-A: trace.factors.shortlistingPotential now uses the same authoritative value
       // P3-A: Store full SP calculation for synthesizer consumption
       trace: {
-              priority: finalScore !== null ? finalScore : 0,
-              factors: {
-                careerValue: (carObj.careerScore as number | undefined) ?? 0,
-                shortlistingPotential: shortlistingPotentialScore,
-                pursuitFriction: 1.0
-              },
-              shortlistingPotentialCalculation: shortlistingPotentialCalc,
-              verb0: finalVerb,
-              finalVerb,
-              confidence: policyResult.confidences.recommendation,
-              stability: "High",
-              pipeline: policyResult.pipeline,
-              evidenceMapping: capability.matches || [],
-              careerValueBreakdown,
-              headspace: {
-                finalVerb,
-                downgraded: false,
-                reason: undefined
-              },
-              missing: rawGaps.map((g) => (g.key as string) || ""),
-              timestamp: new Date().toISOString()
+        priority: finalScore !== null ? finalScore : 0,
+        factors: {
+          careerValue: (carObj.careerScore as number | undefined) ?? 0,
+          shortlistingPotential: shortlistingPotentialScore,
+          pursuitFriction: 1.0
+        },
+        shortlistingPotentialCalculation: shortlistingPotentialCalc,
+        verb0,
+        finalVerb,
+        confidence: policyResult.confidences.recommendation,
+        stability: "High",
+        pipeline: policyResult.pipeline,
+        evidenceMapping: capability.matches || [],
+        careerValueBreakdown,
+        headspace: headspaceOutcome,
+        missing: rawGaps.map((g) => (g.key as string) || ""),
+        timestamp: new Date().toISOString()
       } as unknown as RecommendationRecord["trace"],
       esi: capability.overallFit ?? 0,
       diligenceStatus: "READY"
