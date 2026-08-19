@@ -156,8 +156,10 @@ export class EvaluationWorker {
         `SELECT sps.payload_json
          FROM evaluation_contexts ec
          JOIN search_plan_snapshots sps ON ec.search_plan_snapshot_id = sps.id
-         WHERE ec.context_fingerprint = ?`,
-        [job.evaluationContextFingerprint]
+         WHERE ec.context_fingerprint = ?
+           AND ec.tenant_id = ?
+           AND ec.person_id = ?`,
+        [job.evaluationContextFingerprint, job.tenantId, job.personId]
       );
 
       if (!ctxRow) {
@@ -309,27 +311,5 @@ export class EvaluationWorker {
       return null;
     }
     return this.processJob(job);
-  }
-
-  public static async startDaemon(pollIntervalMs = 5000): Promise<void> {
-    const worker = new EvaluationWorker("daemon_1");
-    console.log(`[EvaluationWorker] Daemon started (poll: ${pollIntervalMs}ms)`);
-    
-    const run = async () => {
-      try {
-        const result = await worker.pollAndProcessNext();
-        if (result) {
-          console.log(`[EvaluationWorker] Processed job ${result.jobId}: ${result.status}`);
-          setTimeout(run, 0); // Immediately try for another job
-        } else {
-          setTimeout(run, pollIntervalMs);
-        }
-      } catch (err) {
-        console.error(`[EvaluationWorker] Daemon error:`, err);
-        setTimeout(run, pollIntervalMs);
-      }
-    };
-    
-    run();
   }
 }

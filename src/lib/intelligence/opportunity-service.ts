@@ -53,11 +53,13 @@ const POPULATION_TIER_ORDER: Record<EffectiveDecision, number> = {
 };
 
 let _workerStarted = false;
+let _daemon: any = null;
 function ensureWorkerDaemonStarted() {
   if (_workerStarted || typeof window !== "undefined" || process.env.NODE_ENV === "test") return;
   _workerStarted = true;
-  import("./workers/EvaluationWorker").then(({ EvaluationWorker }) => {
-    EvaluationWorker.startDaemon(2000);
+  import("./EvaluationDaemon").then(({ EvaluationDaemon }) => {
+    _daemon = new EvaluationDaemon(undefined, 2000);
+    _daemon.start();
   }).catch(() => {});
 }
 
@@ -185,7 +187,7 @@ export class OpportunityService {
 
     // 1. Fetch materialized candidate evaluations O(k), serving context & opportunity source metadata
     const [evaluations, userDecisions, projection, sourceMap] = await Promise.all([
-      repos.evaluations.listEvaluationsForUser(userId, 100, options?.categoryId),
+      repos.evaluations.listEvaluationsForUser(userId, undefined, options?.categoryId),
       repos.decisions.getUserDecisions(userId),
       repos.people.getLatestProjection(userId),
       repos.opportunities.getOpportunitySourcesMap(),
