@@ -17,6 +17,7 @@ export interface SearchCriteriaPayload {
   targetRoles: string[];
   targetLocations: string[];
   targetIndustries?: string[];
+  targetEmploymentTypes?: string[];
   excludedCompanies?: string[];
   minimumFitThreshold?: number;
   customParameters?: Record<string, unknown>;
