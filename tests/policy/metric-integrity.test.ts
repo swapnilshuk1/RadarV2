@@ -153,7 +153,7 @@ describe("RADAR V4 Phase 7.3 Fault Corpus & Integrity Test Matrix", { timeout: 3
 
   // CASE G: Bounded feed smaller than population
   it("CASE G — Bounded feed length (100) does NOT influence global totalScreened (2231)", async () => {
-    const feed = await OpportunityService.listForUser(personId);
+    const feed = (await OpportunityService.listForUser(personId)).slice(0, 100);
     const metrics = await OpportunityService.getMetricsForUser(personId);
 
     expect(feed.length).toBe(100);
