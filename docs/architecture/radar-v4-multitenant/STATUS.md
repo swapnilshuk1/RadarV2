@@ -30,7 +30,12 @@
   - **Freshness Evaluation Matrix**: Successfully implemented and verified strict invalidation combinations.
   - **Cross-Tenant Isolation Tests**: Created security tests strictly guarding deputy leaks across `AuthContext`.
   - 100% pass across all tests, type checks, and staging deployment via Oracle SSH.
-* **M4 - Canonical Acquisition + Search Plan Gating**: PENDING.
+* **M4 - Canonical Acquisition + Search Plan Gating**: IN PROGRESS.
+  - **M4.1 - Canonical Schema**: ✅ COMPLETED. (Global canonical_opportunities, opportunity_versions, search_plan_candidates schema built and verified).
+  - **M4.2 - Identity & Versioning**: 🟡 PENDING.
+  - **M4.3 - Attention Gate**: 🟡 PENDING.
+  - **M4.4 - Dual-Write Integration**: 🟡 PENDING.
+  - **M4.5 - Operational Reconciliation**: 🟡 PENDING.
 * **M5 - Distributed Worker Runtime**: PENDING.
 * **M6 - Credential Broker / Source Authentication**: PENDING.
 * **M7 - Production Tenant Migration**: PENDING.
