@@ -737,6 +737,29 @@ async function processUnit(
               timestamp: new Date().toISOString()
             }
           });
+
+          // [M4.4] Shadow Path Dual-Write Injection
+          if (process.env.ENABLE_M4_DUAL_WRITE === "true") {
+            try {
+              const { executeM4ShadowPath } = require("@/lib/intelligence/dualWrite");
+              await executeM4ShadowPath({
+                sourcePortal: unit.portal,
+                sourceJobId: feedCard.cardHash,
+                canonicalUrl: feedCard.detailUrl,
+                jobTitle: feedCard.title,
+                companyName: feedCard.company,
+                location: feedCard.location || "",
+                employmentType: (detail as any)?.employmentType || null,
+                rawContent: detail.rawText || ""
+              });
+              mgr.recordTelemetry("m4ShadowPathSuccess");
+            } catch (err: any) {
+              // HARD GATE CONSTRAINT: Never fail the legacy path
+              log(`[M4.4_SHADOW_FAIL] Error in dual-write shadow path for ${feedCard.cardHash}: ${err.message}`, "error");
+              mgr.recordTelemetry("m4ShadowPathFailure");
+            }
+          }
+
         } else {
           detailedCard = snapshot;
         }

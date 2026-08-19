@@ -136,6 +136,8 @@ export interface RunManifest {
     duplicatePreDetail: number;
     duplicatePostDetail: number;
     llmCalls: number;
+    m4ShadowPathSuccess?: number;
+    m4ShadowPathFailure?: number;
   };
   pageExecutionRecords?: PageExecutionRecord[];
   units: WorkUnit[];
@@ -281,7 +283,7 @@ export interface PortalContext {
   logger: (msg: string) => void;
   isHttpDisabled?: (url: string) => boolean;
   recordHttpFailure?: (url: string, reason: string) => void;
-  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls") => void;
+  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure") => void;
 }
 
 export interface PortalHandler {

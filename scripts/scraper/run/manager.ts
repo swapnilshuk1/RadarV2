@@ -375,9 +375,9 @@ Duplicate Filter   : Pre-Detail=${telemetry.duplicatePreDetail || 0}, Post-Detai
     return (this.detailFailures.get(portal) || 0) >= 10;
   }
 
-  recordTelemetry(event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls"): void {
+  recordTelemetry(event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure"): void {
     if (!this.manifest.telemetry) {
-      this.manifest.telemetry = { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, duplicatePreDetail: 0, duplicatePostDetail: 0, llmCalls: 0 };
+      this.manifest.telemetry = { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, duplicatePreDetail: 0, duplicatePostDetail: 0, llmCalls: 0, m4ShadowPathSuccess: 0, m4ShadowPathFailure: 0 };
     }
     this.manifest.telemetry[event] = (this.manifest.telemetry[event] || 0) + 1;
     this.persistManifest();
