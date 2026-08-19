@@ -25,12 +25,14 @@ export async function executeM4ShadowPath(payload: DualWritePayload, customAdapt
   // 1. Canonical Identity
   const canonicalJobId = computeCanonicalJobId({ source: payload.sourcePortal, sourceJobId: payload.sourceJobId });
 
+  const employmentType = payload.employmentType?.trim() || null;
+
   // 2. Material Versioning
   const contentHash = computeContentHash({
     title: payload.jobTitle,
     companyName: payload.companyName,
     location: payload.location,
-    employmentType: payload.employmentType || "Unknown",
+    employmentType,
     rawContent: payload.rawContent
   });
   const versionId = computeOpportunityVersionId(canonicalJobId, contentHash);
@@ -52,7 +54,7 @@ export async function executeM4ShadowPath(payload: DualWritePayload, customAdapt
     jobTitle: payload.jobTitle,
     companyName: payload.companyName,
     location: payload.location,
-    employmentType: payload.employmentType || "Unknown",
+    employmentType,
     rawContent: payload.rawContent,
     createdAt: new Date().toISOString()
   };

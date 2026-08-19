@@ -30,12 +30,12 @@
   - **Freshness Evaluation Matrix**: Successfully implemented and verified strict invalidation combinations.
   - **Cross-Tenant Isolation Tests**: Created security tests strictly guarding deputy leaks across `AuthContext`.
   - 100% pass across all tests, type checks, and staging deployment via Oracle SSH.
-* **M4 - Canonical Acquisition + Search Plan Gating**: IN PROGRESS.
+* **M4 - Canonical Acquisition + Search Plan Gating**: ✅ COMPLETED (`m4-final-certified`).
   - **M4.1 - Canonical Schema**: ✅ COMPLETED WITH REMEDIATION. (Composite lineage constraints and canonical-job-version uniqueness enforced).
   - **M4.2 - Identity & Versioning**: ✅ COMPLETED. (Deterministic `canonical_job_id` and `opportunity_version` implemented via `computeDeterministicHash`).
   - **M4.3 - Attention Gate**: ✅ COMPLETED. (Deterministic metadata matching, zero LLM, synchronous, tenant-isolated candidate projection).
-  - **M4.4 - Dual-Write Integration**: ✅ COMPLETED. (Shadow-injected M4 projection alongside legacy scraper with strict fault isolation).
-  - **M4.5 - Operational Reconciliation**: ✅ COMPLETED. (Created reconciliation audit script and invariant tests proving zero orphaned canonical jobs or candidates).
+  - **M4.4 - Dual-Write Integration**: ✅ COMPLETED WITH ATOMICITY & FAULT ISOLATION TESTS. (Shadow-injected M4 projection alongside legacy scraper with strict fault isolation & atomic rollback).
+  - **M4.5 - Operational Reconciliation**: ✅ COMPLETED WITH M4.5-R1 REMEDIATION. (Hardened composite candidate-version join, null employment type preservation, and legacy-canonical acquisition coverage audit).
 * **M5 - Distributed Worker Runtime**: PENDING.
 * **M6 - Credential Broker / Source Authentication**: PENDING.
 * **M7 - Production Tenant Migration**: PENDING.

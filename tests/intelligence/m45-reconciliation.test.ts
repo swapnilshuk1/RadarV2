@@ -28,7 +28,15 @@ class TestSqliteAdapter implements DatabaseAdapter {
     return { rowsAffected: info.changes, lastInsertRowid: info.lastInsertRowid };
   }
   async transaction<T>(fn: (tx: DatabaseAdapter) => Promise<T>): Promise<T> {
-    return fn(this);
+    this.db.exec("BEGIN");
+    try {
+      const res = await fn(this);
+      this.db.exec("COMMIT");
+      return res;
+    } catch (err) {
+      this.db.exec("ROLLBACK");
+      throw err;
+    }
   }
 }
 
@@ -175,13 +183,31 @@ describe("Phase M4.5: Operational Reconciliation & Acquisition Audit", () => {
     `);
     expect(orphanedJobs?.count).toBe(0);
 
-    // Check for orphaned candidates (missing version)
+    // Check for orphaned candidates using composite (job_id, version_id) relationship
     const orphanedCandidates = await adapter.one<{ count: number }>(`
       SELECT COUNT(*) as count 
       FROM search_plan_candidates c 
-      LEFT JOIN opportunity_versions v ON c.opportunity_version = v.id 
+      LEFT JOIN opportunity_versions v 
+        ON v.canonical_job_id = c.canonical_job_id 
+       AND v.id = c.opportunity_version 
       WHERE v.id IS NULL
     `);
     expect(orphanedCandidates?.count).toBe(0);
+  });
+
+  test("5. Employment type null preservation invariant test", async () => {
+    await executeM4ShadowPath({
+      sourcePortal: "lever",
+      sourceJobId: "lev-555",
+      canonicalUrl: "https://jobs.lever.co/lev/555",
+      jobTitle: "VP Marketing",
+      companyName: "Growth Co",
+      location: "Remote",
+      employmentType: null,
+      rawContent: "Executive VP Marketing role."
+    }, adapter);
+
+    const ver = await adapter.one<any>("SELECT employment_type FROM opportunity_versions WHERE job_title = 'VP Marketing'");
+    expect(ver.employment_type).toBeNull();
   });
 });

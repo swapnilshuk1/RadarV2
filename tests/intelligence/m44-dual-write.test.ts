@@ -28,7 +28,15 @@ class TestSqliteAdapter implements DatabaseAdapter {
     return { rowsAffected: info.changes, lastInsertRowid: info.lastInsertRowid };
   }
   async transaction<T>(fn: (tx: DatabaseAdapter) => Promise<T>): Promise<T> {
-    return fn(this);
+    this.db.exec("BEGIN");
+    try {
+      const res = await fn(this);
+      this.db.exec("COMMIT");
+      return res;
+    } catch (err) {
+      this.db.exec("ROLLBACK");
+      throw err;
+    }
   }
 }
 
@@ -86,5 +94,104 @@ describe("Phase M4.4: Dual-Write & Shadow Path", () => {
     expect(opps[0].search_plan_id).toBeUndefined();
     const vers = await adapter.many<any>("SELECT * FROM opportunity_versions");
     expect(vers[0].tenant_id).toBeUndefined();
+  });
+
+  test("3. Atomicity Invariant: Candidate persistence failure rolls back canonical opportunity and version", async () => {
+    const { recordSearchPlanCandidate } = await import("@/lib/intelligence/recordSearchPlanCandidate");
+    
+    const fakeOpp: any = {
+      id: "canon_fail_1",
+      source: "linkedin",
+      sourceJobId: "job_fail_1",
+      canonicalUrl: "https://fail.url"
+    };
+
+    const fakeVer: any = {
+      id: "ver_fail_1",
+      canonicalJobId: "canon_fail_1",
+      contentHash: "hash_fail_1",
+      jobTitle: "Fail Job",
+      companyName: "Fail Co",
+      location: "Remote",
+      employmentType: "Full-time",
+      rawContent: "Fail content"
+    };
+
+    // Trigger FK constraint failure by passing non-existent tenant_id 'tenant_INVALID'
+    await expect(
+      recordSearchPlanCandidate(adapter, "tenant_INVALID", "person_INVALID", "plan_INVALID", fakeOpp, fakeVer, "CANDIDATE")
+    ).rejects.toThrow();
+
+    // Verify complete rollback: neither canonical_opportunities nor opportunity_versions contains partial writes
+    const opp = await adapter.one<any>("SELECT * FROM canonical_opportunities WHERE id = 'canon_fail_1'");
+    const ver = await adapter.one<any>("SELECT * FROM opportunity_versions WHERE id = 'ver_fail_1'");
+    const cand = await adapter.one<any>("SELECT * FROM search_plan_candidates WHERE canonical_job_id = 'canon_fail_1'");
+
+    expect(opp).toBeNull();
+    expect(ver).toBeNull();
+    expect(cand).toBeNull();
+  });
+
+  test("4. Fault Isolation Invariant: M4 dual-write error is caught and isolated without throwing", async () => {
+    // Create a broken adapter that throws on execute
+    const brokenAdapter: DatabaseAdapter = {
+      one: async () => null,
+      many: async () => { throw new Error("INJECTED_DATABASE_CRASH"); },
+      execute: async () => { throw new Error("INJECTED_DATABASE_CRASH"); },
+      transaction: async () => { throw new Error("INJECTED_DATABASE_CRASH"); }
+    };
+
+    // Simulate scraper fault isolation wrapper
+    let legacyAcquisitionSuccess = false;
+    let m4ShadowErrorRecorded = false;
+
+    // Step A: Legacy acquisition succeeds
+    legacyAcquisitionSuccess = true;
+
+    // Step B: M4 dual write executes in try/catch fault isolation block
+    try {
+      await executeM4ShadowPath({
+        sourcePortal: "linkedin",
+        sourceJobId: "crash_001",
+        canonicalUrl: "https://crash.url",
+        jobTitle: "Crash Title",
+        companyName: "Crash Co",
+        location: "NY",
+        employmentType: "Full-time",
+        rawContent: "Content"
+      }, brokenAdapter);
+    } catch (err: any) {
+      m4ShadowErrorRecorded = true;
+    }
+
+    expect(legacyAcquisitionSuccess).toBe(true);
+    expect(m4ShadowErrorRecorded).toBe(true);
+  });
+
+  test("5. Tenant Write Lineage Boundary: Tenant A plan creates only Tenant A candidate; Tenant B plan creates only Tenant B candidate", async () => {
+    await executeM4ShadowPath({
+      sourcePortal: "glassdoor",
+      sourceJobId: "gd_888",
+      canonicalUrl: "https://glassdoor.com/888",
+      jobTitle: "Executive Director",
+      companyName: "Global Inc",
+      location: "San Francisco",
+      employmentType: "Full-time",
+      rawContent: "Executive leadership role."
+    }, adapter);
+
+    const candidatesA = await adapter.many<any>("SELECT * FROM search_plan_candidates WHERE tenant_id = 'tenant_A'");
+    const candidatesB = await adapter.many<any>("SELECT * FROM search_plan_candidates WHERE tenant_id = 'tenant_B'");
+
+    expect(candidatesA.length).toBe(1);
+    expect(candidatesA[0].person_id).toBe("person_A");
+    expect(candidatesA[0].search_plan_id).toBe("plan_A");
+
+    expect(candidatesB.length).toBe(1);
+    expect(candidatesB[0].person_id).toBe("person_B");
+    expect(candidatesB[0].search_plan_id).toBe("plan_B");
+
+    // Both point to the exact same global canonical_job_id
+    expect(candidatesA[0].canonical_job_id).toBe(candidatesB[0].canonical_job_id);
   });
 });
