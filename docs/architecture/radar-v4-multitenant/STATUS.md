@@ -32,7 +32,7 @@
   - 100% pass across all tests, type checks, and staging deployment via Oracle SSH.
 * **M4 - Canonical Acquisition + Search Plan Gating**: IN PROGRESS.
   - **M4.1 - Canonical Schema**: ✅ COMPLETED WITH REMEDIATION. (Composite lineage constraints and canonical-job-version uniqueness enforced).
-  - **M4.2 - Identity & Versioning**: 🟡 PENDING.
+  - **M4.2 - Identity & Versioning**: ✅ COMPLETED. (Deterministic `canonical_job_id` and `opportunity_version` implemented via `computeDeterministicHash`).
   - **M4.3 - Attention Gate**: 🟡 PENDING.
   - **M4.4 - Dual-Write Integration**: 🟡 PENDING.
   - **M4.5 - Operational Reconciliation**: 🟡 PENDING.

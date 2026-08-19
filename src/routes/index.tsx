@@ -551,6 +551,52 @@ export function resolveShortlistCardScore(
   return { rawScore, scoreDisplay };
 }
 
+export interface ShortlistCardBadgeState {
+  primaryLabel: string;
+  badgeClass: string;
+  isStale: boolean;
+  staleLabel: "Re-evaluated" | "Review again" | null;
+  previousAction: string | null;
+}
+
+export function resolveShortlistCardBadgeState(o: Opportunity): ShortlistCardBadgeState {
+  const isSparse = o.decision === "SPARSE_SPEC";
+  const engineVerdict = o.engineRecommendation?.engineVerdict || o.decision || "PURSUE";
+  
+  const primaryLabel = isSparse ? "needs more signal" : engineVerdict.toLowerCase();
+  
+  const badgeClass = 
+    engineVerdict === "CONSIDER" 
+      ? "badge-consider" 
+      : engineVerdict === "PASS" 
+        ? "badge-pass" 
+        : (isSparse || engineVerdict === "SPARSE_SPEC")
+          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+          : "badge-pursue";
+          
+  const isStale = o.reviewWorkflowState === "REVIEWED_STALE" || o.reviewWorkflowState === "REVIEWED_UNKNOWN";
+  
+  const staleLabel = 
+    !isStale 
+      ? null 
+      : o.reviewWorkflowState === "REVIEWED_STALE" 
+        ? "Re-evaluated" 
+        : "Review again";
+        
+  const previousAction = 
+    isStale && o.userDecision?.userAction && o.userDecision.userAction !== "NONE"
+      ? o.userDecision.userAction
+      : null;
+      
+  return {
+    primaryLabel,
+    badgeClass,
+    isStale,
+    staleLabel,
+    previousAction,
+  };
+}
+
 function ShortlistCardRow({
   o,
   idx,
@@ -574,7 +620,7 @@ function ShortlistCardRow({
   const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
   const isSparse = o.decision === "SPARSE_SPEC";
   const { rawScore, scoreDisplay } = resolveShortlistCardScore(o, brief);
-  const decisionLabel = isSparse ? "needs more signal" : (o.decision?.toLowerCase() || "pursue");
+  const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
 
   useEffect(() => {
     if (isOpen && rowRef.current) {
@@ -588,15 +634,6 @@ function ShortlistCardRow({
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
-
-  const badgeClass = 
-    o.decision === "CONSIDER" 
-      ? "badge-consider" 
-      : o.decision === "PASS" 
-        ? "badge-pass" 
-        : o.decision === "SPARSE_SPEC"
-          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-          : "badge-pursue";
 
   const scoreClass = 
     isSparse 
@@ -649,8 +686,18 @@ function ShortlistCardRow({
               {o.role}
             </span>
             <span className={`label-mono shrink-0 rounded-full px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider ${badgeClass}`}>
-              {decisionLabel}
+              {primaryLabel}
             </span>
+            {isStale && staleLabel && (
+              <span className="label-mono shrink-0 rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-[0.58rem] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                {staleLabel}
+              </span>
+            )}
+            {previousAction && (
+              <span className="label-mono shrink-0 rounded-full bg-muted/60 border border-border px-2.5 py-0.5 text-[0.58rem] font-medium text-muted-foreground uppercase tracking-wider">
+                Previously {previousAction}
+              </span>
+            )}
             <span className="label-mono hidden rounded-full bg-muted/80 px-2.5 py-0.5 text-[0.62rem] text-muted-foreground sm:inline font-medium">
               {o.mandateArchetype && o.mandateArchetype !== "Growth Marketing" ? o.mandateArchetype : inferExecutiveMandateArchetype(o.role, (o as any).rawText || (o as any).description)}
             </span>

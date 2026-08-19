@@ -20,4 +20,5 @@ The RADAR system is evolving from a single-user architecture to a Multi-Tenant p
 - **M1 - M3**: COMPLETED & FULLY CERTIFIED.
 - **M4 (Canonical Acquisition & Gating)**: 
   - **M4.1**: `020_canonical_acquisition.sql` remediated. Composite ownership limits (tenant/person/plan) and version matching (job/version) mechanically tested via negative valid-but-cross-lineage bounds. M4.1 is COMPLETED WITH REMEDIATION.
-  - **STOP**: Do not proceed to M4.2 without explicit phase-gate certification.
+  - **M4.2**: Deterministic `canonical_job_id` and `opportunity_version` implemented. M4.2 is COMPLETED.
+  - **STOP**: Do not proceed to M4.3 without explicit phase-gate certification.
