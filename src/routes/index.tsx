@@ -541,6 +541,16 @@ function Shortlist() {
   );
 }
 
+export function resolveShortlistCardScore(
+  o: Opportunity,
+  brief?: { qualityScore?: number | null }
+): { rawScore: number | null | undefined; scoreDisplay: string | number } {
+  const isSparse = o.decision === "SPARSE_SPEC";
+  const rawScore = brief?.qualityScore ?? o.engineRecommendation?.qualityScore ?? o.recommendationResult?.score;
+  const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
+  return { rawScore, scoreDisplay };
+}
+
 function ShortlistCardRow({
   o,
   idx,
@@ -563,8 +573,7 @@ function ShortlistCardRow({
   const rowRef = useRef<HTMLLIElement>(null);
   const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
   const isSparse = o.decision === "SPARSE_SPEC";
-  const rawScore = o.recommendationResult?.score;
-  const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
+  const { rawScore, scoreDisplay } = resolveShortlistCardScore(o, brief);
   const decisionLabel = isSparse ? "needs more signal" : (o.decision?.toLowerCase() || "pursue");
 
   useEffect(() => {

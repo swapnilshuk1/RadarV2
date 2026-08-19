@@ -1,8 +1,8 @@
 # Operational Control Plane
 
-**CURRENT PHASE**: M2  
+**CURRENT PHASE**: M3  
 **STATUS**: COMPLETED  
-**NEXT PHASE**: M3 (Evaluation Context & Read Model)  
+**NEXT PHASE**: M4 (Canonical Acquisition + Search Plan Gating)  
 
 ## Phase History
 * **M0 - Contracts, Governance, and Baselines**: COMPLETED. Control documents generated. Golden V4 regression suite frozen as safety net.
@@ -23,7 +23,13 @@
   - **V4 Policy Boundary Protected**: 0 modifications to `DecisionPolicyEngine`, eligibility gates, scoring formulas, or ranking.
   - **Traceability Documented**: Explicitly documented `context.ts` and `CapabilityAssessmentEngine.ts` wiring.
   - 100% pass on all 48 test files (563 tests), EQE certification harness, and SSR/Nitro production build.
-* **M3 - Evaluation Context & Read Model**: PENDING.
+* **M3 - Evaluation Context & Read Model**: COMPLETED & FULLY CERTIFIED.
+  - **Schema & Immutability**: Established `search_plans`, `search_plan_snapshots`, and `evaluation_contexts` strictly without update APIs.
+  - **Relational Integrity**: Enforced materialized evaluations to match payload tenant scope and snapshot identities.
+  - **Fingerprint Contracts**: Implemented SHA-256 serialization bounds exactly as approved.
+  - **Freshness Evaluation Matrix**: Successfully implemented and verified strict invalidation combinations.
+  - **Cross-Tenant Isolation Tests**: Created security tests strictly guarding deputy leaks across `AuthContext`.
+  - 100% pass across all tests, type checks, and staging deployment via Oracle SSH.
 * **M4 - Canonical Acquisition + Search Plan Gating**: PENDING.
 * **M5 - Distributed Worker Runtime**: PENDING.
 * **M6 - Credential Broker / Source Authentication**: PENDING.
