@@ -35,7 +35,7 @@
   - **M4.2 - Identity & Versioning**: ✅ COMPLETED. (Deterministic `canonical_job_id` and `opportunity_version` implemented via `computeDeterministicHash`).
   - **M4.3 - Attention Gate**: ✅ COMPLETED. (Deterministic metadata matching, zero LLM, synchronous, tenant-isolated candidate projection).
   - **M4.4 - Dual-Write Integration**: ✅ COMPLETED. (Shadow-injected M4 projection alongside legacy scraper with strict fault isolation).
-  - **M4.5 - Operational Reconciliation**: 🟡 PENDING.
+  - **M4.5 - Operational Reconciliation**: ✅ COMPLETED. (Created reconciliation audit script and invariant tests proving zero orphaned canonical jobs or candidates).
 * **M5 - Distributed Worker Runtime**: PENDING.
 * **M6 - Credential Broker / Source Authentication**: PENDING.
 * **M7 - Production Tenant Migration**: PENDING.
