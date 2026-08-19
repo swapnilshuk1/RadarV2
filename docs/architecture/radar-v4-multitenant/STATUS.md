@@ -39,10 +39,14 @@
 * **M5 - Distributed Worker Runtime**: IN PROGRESS.
   - **M5.1 - Queue Schema & Repository**: ✅ COMPLETED & CERTIFIED (`m5.1-certified`).
     - Schema migration `021_evaluation_work_queue.sql` applied to Turso Cloud & SQLite.
-    - 4 composite lineage FKs enforced (person-tenant, search_plan-tenant-person, canonical_job-version, candidate-provenance).
+    - 4 composite lineage FKs enforced.
     - `next_attempt_at`, `lease_token`, `locked_by`, `locked_at`, and context deduplication verified.
-    - Unit tests in `tests/persistence/m51-queue-schema.test.ts` passing 100%.
-    - Full regression (624 tests), EQE certification, typecheck, and production build passing 100%.
+  - **M5.2 - Idempotent Work Enqueuer**: ✅ COMPLETED & CERTIFIED (`m5.2-certified`).
+    - Created `src/lib/intelligence/enqueueEvaluationJobs.ts`.
+    - Consumer-only context consumption from M3 `evaluation_contexts` (0 dynamic context creation).
+    - Idempotent `INSERT OR IGNORE` under `unq_eval_job_context` unique constraint.
+    - Unit tests in `tests/intelligence/m52-enqueuer.test.ts` passing 8/8 (100%).
+    - Certified against EQE harness, typecheck, full test suite, and SSR build.
 * **M6 - Credential Broker / Source Authentication**: PENDING.
 * **M7 - Production Tenant Migration**: PENDING.
 * **M8 - Rollout Sequence**: PENDING.
