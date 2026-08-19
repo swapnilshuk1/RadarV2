@@ -1,8 +1,8 @@
 # Operational Control Plane
 
-**CURRENT PHASE**: M3  
-**STATUS**: COMPLETED  
-**NEXT PHASE**: M4 (Canonical Acquisition + Search Plan Gating)  
+**CURRENT PHASE**: M5  
+**STATUS**: IN PROGRESS (M5.1 Certified)  
+**NEXT PHASE**: M5.2 (Idempotent Work Enqueuer)  
 
 ## Phase History
 * **M0 - Contracts, Governance, and Baselines**: COMPLETED. Control documents generated. Golden V4 regression suite frozen as safety net.
@@ -36,7 +36,13 @@
   - **M4.3 - Attention Gate**: ✅ COMPLETED. (Deterministic metadata matching, zero LLM, synchronous, tenant-isolated candidate projection).
   - **M4.4 - Dual-Write Integration**: ✅ COMPLETED WITH ATOMICITY & FAULT ISOLATION TESTS. (Shadow-injected M4 projection alongside legacy scraper with strict fault isolation & atomic rollback).
   - **M4.5 - Operational Reconciliation**: ✅ COMPLETED WITH M4.5-R1 REMEDIATION. (Hardened composite candidate-version join, null employment type preservation, and legacy-canonical acquisition coverage audit).
-* **M5 - Distributed Worker Runtime**: PENDING.
+* **M5 - Distributed Worker Runtime**: IN PROGRESS.
+  - **M5.1 - Queue Schema & Repository**: ✅ COMPLETED & CERTIFIED (`m5.1-certified`).
+    - Schema migration `021_evaluation_work_queue.sql` applied to Turso Cloud & SQLite.
+    - 4 composite lineage FKs enforced (person-tenant, search_plan-tenant-person, canonical_job-version, candidate-provenance).
+    - `next_attempt_at`, `lease_token`, `locked_by`, `locked_at`, and context deduplication verified.
+    - Unit tests in `tests/persistence/m51-queue-schema.test.ts` passing 100%.
+    - Full regression (624 tests), EQE certification, typecheck, and production build passing 100%.
 * **M6 - Credential Broker / Source Authentication**: PENDING.
 * **M7 - Production Tenant Migration**: PENDING.
 * **M8 - Rollout Sequence**: PENDING.
