@@ -1,0 +1,26 @@
+{
+  "evaluationId": "canary-eval-001",
+  "personId": "person_swapnil_01",
+  "jobHash": "j-bmw-india-cmo",
+  "oldOntologyVersion": "v2",
+  "newOntologyVersion": "v3_semantic_v1",
+  "oldFingerprint": "eval_v4_eed8f2623255db038c827c1d540a2ac5a41a0c9413b5ed884501f36fca25ef6d",
+  "newFingerprint": "eval_v4_07a8a2ae3760134637f7205afbc4a5cc67725720805f0cbd3c7bdb7eee1e8971",
+  "oldScore": 71,
+  "newScore": 82,
+  "oldVerdict": "CONSIDER",
+  "newVerdict": "PURSUE",
+  "scoreDelta": 11,
+  "semanticEvidenceResponsible": [
+    "DIGITAL_TRADING (LEXICAL_VARIANT)",
+    "PROGRAMMATIC_INFRASTRUCTURE (SUBTYPE)",
+    "GTM_STRATEGY (STRONG_EQUIVALENT)"
+  ],
+  "resolversInvolved": [
+    "CapabilityResolver",
+    "CompositionalExtractor"
+  ],
+  "confidence": 0.95,
+  "freshnessState": "FRESH",
+  "timestamp": "2026-08-19T02:32:40.893Z"
+}

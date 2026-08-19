@@ -1,5 +1,5 @@
 {
-  "certifiedAt": "2026-08-18T03:38:36.318Z",
+  "certifiedAt": "2026-08-19T09:26:51.145Z",
   "corpusHash": "d105bacbf0980b70a2a8e02b6c5313f57cdcc4f39006769ebcd6c5d63c14c5e5",
   "evaluatedCount": 34,
   "sparseCount": 17,
@@ -14,10 +14,10 @@
     "POLICY": 0,
     "NONE": 3
   },
-  "contractAFailures": 17,
+  "contractAFailures": 0,
   "contractCFailures": 0,
   "contractEFailures": 0,
-  "mutationsPassed": 11,
+  "mutationsPassed": 12,
   "determinismPassed": true,
-  "status": "FAIL"
+  "status": "PASS"
 }

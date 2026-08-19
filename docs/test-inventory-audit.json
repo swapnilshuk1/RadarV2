@@ -1,0 +1,1799 @@
+[
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\architecture-contracts-strong.test.ts",
+    "relativePath": "tests/architecture-contracts-strong.test.ts",
+    "sizeBytes": 13880,
+    "testCount": 9,
+    "pass": false,
+    "durationMs": 24314,
+    "errorSnippet": " FAIL  tests/architecture-contracts-strong.test.ts > Phase-0 Strong Architecture Contract Tests — Hardened > Provenance: structured quotes must be in rawText or have explicit provenance | AssertionErr",
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/present",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "@/data/candidate-profile",
+      "@/lib/intelligence/engines/CapabilityAssessmentEngine",
+      "@/data/ontology/decision_policy.json",
+      "@/lib/intelligence/policy/DecisionPolicyEngine",
+      "@/lib/intelligence/opportunity-provider"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "MIGRATE",
+    "rationale": "Valid invariant with stale assertion needing alignment with V4 contracts"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\attention-management.test.ts",
+    "relativePath": "tests/attention-management.test.ts",
+    "sizeBytes": 8229,
+    "testCount": 12,
+    "pass": true,
+    "durationMs": 5660,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/preferences-server",
+      "../src/routes/index"
+    ],
+    "domain": "policy",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\attention-window-canonical-flow.test.ts",
+    "relativePath": "tests/attention-window-canonical-flow.test.ts",
+    "sizeBytes": 7506,
+    "testCount": 3,
+    "pass": true,
+    "durationMs": 3434,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/policy/DecisionPolicyEngine",
+      "../src/lib/intelligence/candidate",
+      "../src/lib/intelligence/headspace-filter",
+      "../src/lib/intelligence/engine",
+      "../src/lib/intelligence/builders/CandidateProjectionBuilder",
+      "../src/data/candidate-profile",
+      "../src/data/opportunity-fixtures",
+      "../src/domain/semantic"
+    ],
+    "domain": "policy",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\candidate-evidence-firewall.test.ts",
+    "relativePath": "tests/candidate-evidence-firewall.test.ts",
+    "sizeBytes": 13661,
+    "testCount": 25,
+    "pass": true,
+    "durationMs": 3845,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/execution/CandidateEvidenceGraph",
+      "../src/lib/intelligence/execution/ExecutionEvidenceGate",
+      "../src/lib/intelligence/execution/TruthPreservingRewriteEngine",
+      "../src/lib/intelligence/engines/ExecutionEngine",
+      "../src/lib/intelligence/decision-state",
+      "../src/lib/intelligence/editorial/BriefCompositionEngine",
+      "../src/data/candidate-profile.json"
+    ],
+    "domain": "intelligence",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\candidate-projection-integrity.test.ts",
+    "relativePath": "tests/candidate-projection-integrity.test.ts",
+    "sizeBytes": 5385,
+    "testCount": 6,
+    "pass": true,
+    "durationMs": 3152,
+    "imports": [
+      "vitest",
+      "../src/lib/domain/candidate_projection",
+      "../src/lib/intelligence/builders/CandidateProjectionBuilder",
+      "../src/data/candidate-profile",
+      "../src/lib/intelligence/engines/CareerAssessmentEngine",
+      "../src/lib/intelligence/builders/JobProjectionBuilder",
+      "../src/data/sqlite/repositories/SqlitePersonStore",
+      "../src/data/database/adapter"
+    ],
+    "domain": "intelligence",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\candidate-truth-integrity.test.ts",
+    "relativePath": "tests/candidate-truth-integrity.test.ts",
+    "sizeBytes": 13682,
+    "testCount": 14,
+    "pass": true,
+    "durationMs": 3451,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/execution/CandidateEvidenceGraph",
+      "../src/lib/intelligence/execution/ExecutionEvidenceGate",
+      "../src/lib/intelligence/execution/TruthPreservingRewriteEngine",
+      "../src/lib/intelligence/engines/ExecutionEngine",
+      "../src/data/candidate-profile.json",
+      "../src/domain/job_projection",
+      "../src/lib/intelligence/execution/types"
+    ],
+    "domain": "intelligence",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\canonical-identity.test.ts",
+    "relativePath": "tests/canonical-identity.test.ts",
+    "sizeBytes": 4668,
+    "testCount": 8,
+    "pass": false,
+    "durationMs": 12206,
+    "errorSnippet": " FAIL  tests/canonical-identity.test.ts > Stage 2B: Canonical Identity & Candidate Projection Unification > verifies legacy identity 'swapnil-shukla' is completely purged from people table | Assertion",
+    "imports": [
+      "vitest",
+      "../src/data/sqlite/provider",
+      "../src/lib/domain/candidate_projection",
+      "../src/lib/intelligence/opportunity-service"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "MIGRATE",
+    "rationale": "Valid invariant with stale assertion needing alignment with V4 contracts"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\capability-domain-precedence.test.ts",
+    "relativePath": "tests/capability-domain-precedence.test.ts",
+    "sizeBytes": 4564,
+    "testCount": 2,
+    "pass": true,
+    "durationMs": 2722,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/engines/CapabilityAssessmentEngine",
+      "../src/lib/domain/candidate_projection",
+      "../src/lib/domain/job_projection"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\CapabilityEngine.test.ts",
+    "relativePath": "tests/CapabilityEngine.test.ts",
+    "sizeBytes": 7753,
+    "testCount": 7,
+    "pass": true,
+    "durationMs": 3286,
+    "imports": [
+      "vitest",
+      "../src/lib/capability/CapabilityEngine",
+      "../src/lib/ontology/CapabilityOntology"
+    ],
+    "domain": "intelligence",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\career-fallback-audit.test.ts",
+    "relativePath": "tests/career-fallback-audit.test.ts",
+    "sizeBytes": 2760,
+    "testCount": 3,
+    "pass": true,
+    "durationMs": 3040,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/engines/CareerAssessmentEngine",
+      "../src/domain/candidate_projection",
+      "../src/domain/job_projection"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\career-value-editorial-integrity.test.ts",
+    "relativePath": "tests/career-value-editorial-integrity.test.ts",
+    "sizeBytes": 15516,
+    "testCount": 15,
+    "pass": true,
+    "durationMs": 3053,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/editorial/EditorialContext",
+      "../src/lib/intelligence/editorial/ExecutiveThesisBuilder",
+      "../src/lib/intelligence/editorial/BriefCompositionEngine",
+      "../src/data/opportunity-fixtures"
+    ],
+    "domain": "editorial",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\database-join-integrity.test.ts",
+    "relativePath": "tests/database-join-integrity.test.ts",
+    "sizeBytes": 9466,
+    "testCount": 5,
+    "pass": true,
+    "durationMs": 6285,
+    "imports": [
+      "vitest",
+      "../src/data/database",
+      "../src/data/sqlite/repositories/SqliteEvaluationStore",
+      "../src/lib/intelligence/metric-integrity"
+    ],
+    "domain": "persistence",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\database-safety-lockdown.test.ts",
+    "relativePath": "tests/database-safety-lockdown.test.ts",
+    "sizeBytes": 3328,
+    "testCount": 7,
+    "pass": true,
+    "durationMs": 3316,
+    "imports": [
+      "vitest",
+      "fs",
+      "path",
+      "../src/data/database/index"
+    ],
+    "domain": "persistence",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\databaseAdapter.test.ts",
+    "relativePath": "tests/databaseAdapter.test.ts",
+    "sizeBytes": 1532,
+    "testCount": 3,
+    "pass": true,
+    "durationMs": 3349,
+    "imports": [
+      "vitest",
+      "../src/data/database"
+    ],
+    "domain": "persistence",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\decisionability-gating.test.ts",
+    "relativePath": "tests/decisionability-gating.test.ts",
+    "sizeBytes": 7197,
+    "testCount": 4,
+    "pass": true,
+    "durationMs": 2664,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/policy/DecisionPolicyEngine",
+      "../src/lib/domain/candidate_projection",
+      "../src/lib/domain/job_projection"
+    ],
+    "domain": "policy",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\deployment-determinism.test.ts",
+    "relativePath": "tests/deployment-determinism.test.ts",
+    "sizeBytes": 6827,
+    "testCount": 10,
+    "pass": false,
+    "durationMs": 3029,
+    "errorSnippet": " FAIL  tests/deployment-determinism.test.ts > RADAR Stage 2C — Deployment Determinism & Production Invariants > 4. deploy.sh does not package radar.sqlite or live-scraped.json | AssertionError: expect",
+    "imports": [
+      "vitest",
+      "fs",
+      "path",
+      "child_process",
+      "../src/data/database/index"
+    ],
+    "domain": "persistence",
+    "currentContract": true,
+    "disposition": "MIGRATE",
+    "rationale": "Valid invariant with stale assertion needing alignment with V4 contracts"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\dossier-decision-state-integrity.test.ts",
+    "relativePath": "tests/dossier-decision-state-integrity.test.ts",
+    "sizeBytes": 7941,
+    "testCount": 13,
+    "pass": true,
+    "durationMs": 2945,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/decision-state",
+      "../src/lib/intelligence/editorial/BriefCompositionEngine"
+    ],
+    "domain": "policy",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\editorial-hydration-coherence.test.ts",
+    "relativePath": "tests/editorial-hydration-coherence.test.ts",
+    "sizeBytes": 2404,
+    "testCount": 2,
+    "pass": true,
+    "durationMs": 3057,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/editorial/BriefCompositionEngine",
+      "../src/domain/entities"
+    ],
+    "domain": "editorial",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\evaluation-cache-correctness.test.ts",
+    "relativePath": "tests/evaluation-cache-correctness.test.ts",
+    "sizeBytes": 5020,
+    "testCount": 2,
+    "pass": true,
+    "durationMs": 3919,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/engine",
+      "../src/lib/intelligence/cip",
+      "../src/domain/entities",
+      "../src/domain/semantic"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\evaluation-coordinator-events.test.ts",
+    "relativePath": "tests/evaluation-coordinator-events.test.ts",
+    "sizeBytes": 5244,
+    "testCount": 4,
+    "pass": false,
+    "durationMs": 8813,
+    "errorSnippet": " FAIL  tests/evaluation-coordinator-events.test.ts > EvaluationCoordinator Events Invalidation Audit > EVENT 2: PROJECTION_UPDATED - Content-hashed keys naturally invalidate engine cache when projecti",
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/engine",
+      "../src/lib/intelligence/cip",
+      "../src/lib/intelligence/EvaluationCoordinator",
+      "../src/data/sqlite/provider",
+      "../src/domain/entities",
+      "../src/domain/semantic"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "MIGRATE",
+    "rationale": "Valid invariant with stale assertion needing alignment with V4 contracts"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\executive-decision-explanation-integrity.test.ts",
+    "relativePath": "tests/executive-decision-explanation-integrity.test.ts",
+    "sizeBytes": 15284,
+    "testCount": 20,
+    "pass": true,
+    "durationMs": 3077,
+    "imports": [
+      "vitest",
+      "../src/data/opportunity-fixtures",
+      "../src/lib/intelligence/editorial/EditorialContext",
+      "../src/lib/intelligence/editorial/PrimaryReasonResolver",
+      "../src/lib/intelligence/editorial/ExecutiveThesisBuilder",
+      "../src/lib/intelligence/editorial/BriefCompositionEngine"
+    ],
+    "domain": "editorial",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\extraction-boundary-sanitation.test.ts",
+    "relativePath": "tests/extraction-boundary-sanitation.test.ts",
+    "sizeBytes": 2351,
+    "testCount": 6,
+    "pass": true,
+    "durationMs": 2934,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/editorial/SemanticNaturalLanguageResolver"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\filter-integrity.test.ts",
+    "relativePath": "tests/filter-integrity.test.ts",
+    "sizeBytes": 8867,
+    "testCount": 6,
+    "pass": true,
+    "durationMs": 6885,
+    "imports": [
+      "vitest",
+      "../src/data/database",
+      "../src/data/sqlite/repositories/SqliteEvaluationStore",
+      "../src/lib/intelligence/opportunity-service",
+      "../src/lib/intelligence/metric-integrity",
+      "../src/lib/domain/category_taxonomy"
+    ],
+    "domain": "policy",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\indeed-hard-filter.test.ts",
+    "relativePath": "tests/indeed-hard-filter.test.ts",
+    "sizeBytes": 3021,
+    "testCount": 6,
+    "pass": true,
+    "durationMs": 2962,
+    "imports": [
+      "vitest",
+      "../scripts/scraper/utils/hard-filter",
+      "fs",
+      "path",
+      "../utils/hard-filter"
+    ],
+    "domain": "policy",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\job-projection-cache.test.ts",
+    "relativePath": "tests/job-projection-cache.test.ts",
+    "sizeBytes": 4111,
+    "testCount": 6,
+    "pass": true,
+    "durationMs": 3462,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/builders/JobProjectionBuilder"
+    ],
+    "domain": "intelligence",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\metric-integrity.test.ts",
+    "relativePath": "tests/metric-integrity.test.ts",
+    "sizeBytes": 9993,
+    "testCount": 12,
+    "pass": true,
+    "durationMs": 20775,
+    "imports": [
+      "vitest",
+      "../src/data/database",
+      "../src/lib/intelligence/metric-integrity",
+      "../src/lib/intelligence/opportunity-service"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\migration-runner.test.ts",
+    "relativePath": "tests/migration-runner.test.ts",
+    "sizeBytes": 4470,
+    "testCount": 5,
+    "pass": true,
+    "durationMs": 3178,
+    "imports": [
+      "vitest",
+      "fs",
+      "path",
+      "../src/data/sqlite/migrations/runner",
+      "../src/data/database"
+    ],
+    "domain": "persistence",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\model_c_quality.test.ts",
+    "relativePath": "tests/model_c_quality.test.ts",
+    "sizeBytes": 8726,
+    "testCount": 0,
+    "pass": false,
+    "durationMs": 3995,
+    "errorSnippet": " FAIL  tests/model_c_quality.test.ts [ tests/model_c_quality.test.ts ] | Error: No test suite found in file C:/Users/swapn/Downloads/radar-local-v2/tests/model_c_quality.test.ts",
+    "imports": [
+      "../src/lib/intelligence/policy/QualityScoreCalculator",
+      "../src/lib/intelligence/policy/DecisionPolicyEngine",
+      "../src/domain/semantic"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "MIGRATE",
+    "rationale": "Valid invariant with stale assertion needing alignment with V4 contracts"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\normalizeScrapedText.test.ts",
+    "relativePath": "tests/normalizeScrapedText.test.ts",
+    "sizeBytes": 5112,
+    "testCount": 1,
+    "pass": false,
+    "durationMs": 2983,
+    "errorSnippet": " FAIL  tests/normalizeScrapedText.test.ts [ tests/normalizeScrapedText.test.ts ] | Error: No test suite found in file C:/Users/swapn/Downloads/radar-local-v2/tests/normalizeScrapedText.test.ts",
+    "imports": [
+      "../src/lib/text/normalizeScrapedText"
+    ],
+    "domain": "semantic",
+    "currentContract": true,
+    "disposition": "MIGRATE",
+    "rationale": "Valid invariant with stale assertion needing alignment with V4 contracts"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\opportunity-control-plane.test.ts",
+    "relativePath": "tests/opportunity-control-plane.test.ts",
+    "sizeBytes": 13570,
+    "testCount": 13,
+    "pass": true,
+    "durationMs": 3523,
+    "imports": [
+      "vitest",
+      "../src/data/opportunity-fixtures",
+      "../src/domain/decision_v4"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p0\\enrichment-extraction-pipeline.test.ts",
+    "relativePath": "tests/p0/enrichment-extraction-pipeline.test.ts",
+    "sizeBytes": 7045,
+    "testCount": 8,
+    "pass": true,
+    "durationMs": 3790,
+    "imports": [
+      "vitest",
+      "../../scripts/scraper/extract/extractor",
+      "../../src/lib/intelligence/builders/JobProjectionBuilder",
+      "../../src/lib/intelligence/engines/CapabilityAssessmentEngine",
+      "../../src/lib/intelligence/builders/CandidateProjectionBuilder",
+      "../../src/lib/intelligence/policy/DecisionPolicyEngine",
+      "../../src/lib/intelligence/engine",
+      "../../scripts/scraper/types",
+      "../../src/data/candidate-profile"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p0\\invariant-candidate-level.test.ts",
+    "relativePath": "tests/p0/invariant-candidate-level.test.ts",
+    "sizeBytes": 7288,
+    "testCount": 6,
+    "pass": true,
+    "durationMs": 3125,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder"
+    ],
+    "domain": "intelligence",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p0\\invariant-capability-unknown.test.ts",
+    "relativePath": "tests/p0/invariant-capability-unknown.test.ts",
+    "sizeBytes": 4162,
+    "testCount": 5,
+    "pass": true,
+    "durationMs": 2815,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engines/CapabilityAssessmentEngine",
+      "./fixtures/candidate-levels",
+      "@/src/domain/job_projection"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p0\\invariant-evidence.test.ts",
+    "relativePath": "tests/p0/invariant-evidence.test.ts",
+    "sizeBytes": 11686,
+    "testCount": 5,
+    "pass": true,
+    "durationMs": 3677,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "@/domain/evidence"
+    ],
+    "domain": "intelligence",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p0\\invariant-presenter.test.ts",
+    "relativePath": "tests/p0/invariant-presenter.test.ts",
+    "sizeBytes": 10709,
+    "testCount": 8,
+    "pass": true,
+    "durationMs": 3516,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/present",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "./fixtures/sparse-commercial",
+      "./fixtures/grounded-commercial"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p0\\invariant-shortlist.test.ts",
+    "relativePath": "tests/p0/invariant-shortlist.test.ts",
+    "sizeBytes": 4241,
+    "testCount": 3,
+    "pass": false,
+    "durationMs": 3851,
+    "errorSnippet": " FAIL  tests/p0/invariant-shortlist.test.ts > P0-G: Shortlist Exclusion — SPARSE_SPEC → unevaluable bucket > preserves normal opportunities in scoredRanking when mixed with SPARSE_SPEC | AssertionErro",
+    "imports": [
+      "vitest",
+      "./fixtures/sparse-commercial",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "./fixtures/grounded-commercial",
+      "./p0g-test-infrastructure"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Superseded sprint rules with obsolete scoring expectations"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p0\\invariant-sparse-boundary.test.ts",
+    "relativePath": "tests/p0/invariant-sparse-boundary.test.ts",
+    "sizeBytes": 3936,
+    "testCount": 4,
+    "pass": true,
+    "durationMs": 3505,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "./fixtures/sparse-commercial"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p0\\invariant-trace-identity.test.ts",
+    "relativePath": "tests/p0/invariant-trace-identity.test.ts",
+    "sizeBytes": 5981,
+    "testCount": 7,
+    "pass": false,
+    "durationMs": 4018,
+    "errorSnippet": " FAIL  tests/p0/invariant-trace-identity.test.ts > P0-H: Trace Identity Invariant > records contain candidateProjectionHash | AssertionError: expected undefined to be defined |  FAIL  tests/p0/invaria",
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "@/data/candidate-profile"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Superseded sprint rules with obsolete scoring expectations"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p0\\invariant-trace-isolation.test.ts",
+    "relativePath": "tests/p0/invariant-trace-isolation.test.ts",
+    "sizeBytes": 5329,
+    "testCount": 4,
+    "pass": true,
+    "durationMs": 4291,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "./fixtures/sparse-commercial"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p1\\p1a-authoritative-source.test.ts",
+    "relativePath": "tests/p1/p1a-authoritative-source.test.ts",
+    "sizeBytes": 9641,
+    "testCount": 6,
+    "pass": false,
+    "durationMs": 3822,
+    "errorSnippet": " FAIL  tests/p1/p1a-authoritative-source.test.ts > P1-A: Single Authoritative Decision Source > SPARSE_SPEC path uses EvidenceGate then DecisionPolicyEngine | AssertionError: expected 'FAILED' to be '",
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/policy/DecisionPolicyEngine",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "fs",
+      "path",
+      "@/lib/intelligence/priority",
+      "../priority",
+      "./priority",
+      "/lib/intelligence/priority"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Superseded sprint rules with obsolete scoring expectations"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p1\\p1b-career-value-distinct.test.ts",
+    "relativePath": "tests/p1/p1b-career-value-distinct.test.ts",
+    "sizeBytes": 14031,
+    "testCount": 6,
+    "pass": true,
+    "durationMs": 3483,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder"
+    ],
+    "domain": "intelligence",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p1\\p1c-tailoring-effort.test.ts",
+    "relativePath": "tests/p1/p1c-tailoring-effort.test.ts",
+    "sizeBytes": 16368,
+    "testCount": 6,
+    "pass": false,
+    "durationMs": 3607,
+    "errorSnippet": " FAIL  tests/p1/p1c-tailoring-effort.test.ts > P1-C: Tailoring Effort from Capability Gaps > SPARSE_SPEC opportunities do not receive fabricated tailoringEffort | AssertionError: expected 'FAILED' to ",
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "@/lib/intelligence/engines/CapabilityAssessmentEngine"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Superseded sprint rules with obsolete scoring expectations"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p1\\p1d-evidence-backed-explanation.test.ts",
+    "relativePath": "tests/p1/p1d-evidence-backed-explanation.test.ts",
+    "sizeBytes": 9562,
+    "testCount": 7,
+    "pass": false,
+    "durationMs": 3694,
+    "errorSnippet": " FAIL  tests/p1/p1d-evidence-backed-explanation.test.ts > P1-D: Evidence-Backed Recommendation Explanation > D2: recommendation risks are grounded in authoritative decisionRisks | AssertionError: expe",
+    "imports": [
+      "vitest",
+      "@/data/candidate-profile",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/present"
+    ],
+    "domain": "editorial",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Superseded sprint rules with obsolete scoring expectations"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p1\\p1e-ranking-determinism.test.ts",
+    "relativePath": "tests/p1/p1e-ranking-determinism.test.ts",
+    "sizeBytes": 9174,
+    "testCount": 9,
+    "pass": true,
+    "durationMs": 3129,
+    "imports": [
+      "vitest",
+      "@/data/opportunity-fixtures",
+      "@/domain/entities"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p1\\p1f-executive-action.test.ts",
+    "relativePath": "tests/p1/p1f-executive-action.test.ts",
+    "sizeBytes": 11683,
+    "testCount": 12,
+    "pass": false,
+    "durationMs": 5627,
+    "errorSnippet": " FAIL  tests/p1/p1f-executive-action.test.ts > P1-F: Executive Action Model > F1: Every opportunity produces an appropriate actionable recommendation | AssertionError: expected 'sparse_spec' to match ",
+    "imports": [
+      "vitest",
+      "@/data/candidate-profile",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "@/lib/intelligence/engine",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/present"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Superseded sprint rules with obsolete scoring expectations"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p2\\p2a-principal-risk.test.ts",
+    "relativePath": "tests/p2/p2a-principal-risk.test.ts",
+    "sizeBytes": 28149,
+    "testCount": 10,
+    "pass": false,
+    "durationMs": 4347,
+    "errorSnippet": " FAIL  tests/p2/p2a-principal-risk.test.ts > P2-A.2: Principal Risk Intelligence > 2: Peripheral technology gap does not incorrectly become the principal risk | AssertionError: expected 'no material s",
+    "imports": [
+      "vitest",
+      "@/data/candidate-profile",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/present",
+      "@/lib/intelligence/editorial/PrincipalRiskSynthesizer"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Superseded sprint rules with obsolete scoring expectations"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p2\\p2a3-career-value.test.ts",
+    "relativePath": "tests/p2/p2a3-career-value.test.ts",
+    "sizeBytes": 21085,
+    "testCount": 8,
+    "pass": true,
+    "durationMs": 3121,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/editorial/CareerValueSynthesizer"
+    ],
+    "domain": "intelligence",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p2\\p2a4-effort-interpretation.test.ts",
+    "relativePath": "tests/p2/p2a4-effort-interpretation.test.ts",
+    "sizeBytes": 19046,
+    "testCount": 9,
+    "pass": true,
+    "durationMs": 3194,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/editorial/EffortSynthesizer"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p2\\p2a5-action-intelligence.test.ts",
+    "relativePath": "tests/p2/p2a5-action-intelligence.test.ts",
+    "sizeBytes": 10805,
+    "testCount": 10,
+    "pass": true,
+    "durationMs": 2811,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/editorial/ActionSynthesizer"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p2\\p2b-capability-importance.test.ts",
+    "relativePath": "tests/p2/p2b-capability-importance.test.ts",
+    "sizeBytes": 11456,
+    "testCount": 10,
+    "pass": true,
+    "durationMs": 3052,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/editorial/CapabilityImportanceSynthesizer"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p2\\p2c-adversarial-matrix.test.ts",
+    "relativePath": "tests/p2/p2c-adversarial-matrix.test.ts",
+    "sizeBytes": 13068,
+    "testCount": 5,
+    "pass": true,
+    "durationMs": 3064,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/editorial/CareerValueSynthesizer",
+      "@/lib/intelligence/editorial/ShortlistingPotentialSynthesizer",
+      "@/lib/intelligence/editorial/EffortSynthesizer",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p2\\p2c2-shortlisting-potential.test.ts",
+    "relativePath": "tests/p2/p2c2-shortlisting-potential.test.ts",
+    "sizeBytes": 13358,
+    "testCount": 11,
+    "pass": true,
+    "durationMs": 2835,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/editorial/ShortlistingPotentialSynthesizer"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p2\\p2d-engagement-quality.test.ts",
+    "relativePath": "tests/p2/p2d-engagement-quality.test.ts",
+    "sizeBytes": 12450,
+    "testCount": 12,
+    "pass": true,
+    "durationMs": 2753,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/editorial/EngagementTypeSynthesizer"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p2\\p2e-compensation-intelligence.test.ts",
+    "relativePath": "tests/p2/p2e-compensation-intelligence.test.ts",
+    "sizeBytes": 11524,
+    "testCount": 12,
+    "pass": true,
+    "durationMs": 2826,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/editorial/CompensationSynthesizer"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p2\\p2f-confidence-intelligence.test.ts",
+    "relativePath": "tests/p2/p2f-confidence-intelligence.test.ts",
+    "sizeBytes": 11399,
+    "testCount": 12,
+    "pass": true,
+    "durationMs": 2850,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/editorial/ConfidenceSynthesizer"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p2\\p2i-generalization-check.test.ts",
+    "relativePath": "tests/p2/p2i-generalization-check.test.ts",
+    "sizeBytes": 13535,
+    "testCount": 10,
+    "pass": true,
+    "durationMs": 2938,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/record",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/editorial/StrategicAdvantageSynthesizer",
+      "@/lib/intelligence/editorial/CareerValueSynthesizer",
+      "@/lib/intelligence/editorial/EngagementTypeSynthesizer"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p3\\p3a-career-value-protection.test.ts",
+    "relativePath": "tests/p3/p3a-career-value-protection.test.ts",
+    "sizeBytes": 10075,
+    "testCount": 13,
+    "pass": false,
+    "durationMs": 4117,
+    "errorSnippet": " FAIL  tests/p3/p3a-career-value-protection.test.ts > P3-A: Career-Value Protection Rule > Rule 1: Easy Trap Protection > CV < 50 + SP >= 80 + low friction + BACKWARD trajectory cannot be PURSUE | Ass",
+    "imports": [
+      "vitest",
+      "../../src/lib/intelligence/engine",
+      "../../src/lib/intelligence/builders/CandidateProjectionBuilder",
+      "../../src/data/candidate-profile",
+      "../../src/lib/intelligence/record",
+      "../../src/lib/intelligence/engine"
+    ],
+    "domain": "intelligence",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Superseded sprint rules with obsolete scoring expectations"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p3\\p3a-policy-fix.test.ts",
+    "relativePath": "tests/p3/p3a-policy-fix.test.ts",
+    "sizeBytes": 7168,
+    "testCount": 11,
+    "pass": false,
+    "durationMs": 3716,
+    "errorSnippet": " FAIL  tests/p3/p3a-policy-fix.test.ts > P3-A Policy Fix: Easy Trap Rule 1 > Approved Rule 1: CV < 50 + SP >= 80 + Friction < 10 → CONSIDER > CV 31 / SP 90 / Friction 0 → CONSIDER | AssertionError: ex",
+    "imports": [
+      "vitest",
+      "../../src/lib/intelligence/engine",
+      "../../src/lib/intelligence/builders/CandidateProjectionBuilder",
+      "../../src/data/candidate-profile"
+    ],
+    "domain": "policy",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Superseded sprint rules with obsolete scoring expectations"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p3\\p3a-shortlisting-calculator.test.ts",
+    "relativePath": "tests/p3/p3a-shortlisting-calculator.test.ts",
+    "sizeBytes": 15811,
+    "testCount": 16,
+    "pass": true,
+    "durationMs": 2997,
+    "imports": [
+      "vitest",
+      "../../src/lib/intelligence/calculators/ShortlistingPotentialCalculator",
+      "../../src/domain/semantic"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical behavioral test from prior sprints"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p7a-freshness-compensation.test.ts",
+    "relativePath": "tests/p7a-freshness-compensation.test.ts",
+    "sizeBytes": 5224,
+    "testCount": 10,
+    "pass": true,
+    "durationMs": 3093,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/freshness/FreshnessEngine",
+      "../src/lib/intelligence/compensation/CompensationEngine",
+      "../src/lib/intelligence/editorial/BriefCompositionEngine"
+    ],
+    "domain": "other",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Phase 7 patch test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p7c-platform-intelligence.test.ts",
+    "relativePath": "tests/p7c-platform-intelligence.test.ts",
+    "sizeBytes": 10954,
+    "testCount": 22,
+    "pass": true,
+    "durationMs": 3156,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/ats/GreenhouseATS",
+      "../src/lib/intelligence/platform/PlatformIntelligenceEngine",
+      "../src/lib/intelligence/editorial/BriefCompositionEngine"
+    ],
+    "domain": "other",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Phase 7 patch test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\p7d-ux-provenance.test.ts",
+    "relativePath": "tests/p7d-ux-provenance.test.ts",
+    "sizeBytes": 5158,
+    "testCount": 7,
+    "pass": true,
+    "durationMs": 3729,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/platform/PlatformIntelligenceEngine",
+      "../src/lib/intelligence/ats/GreenhouseATS",
+      "../src/lib/intelligence/editorial/BriefCompositionEngine"
+    ],
+    "domain": "other",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Phase 7 patch test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\pass-consider-explanation-coverage.test.ts",
+    "relativePath": "tests/pass-consider-explanation-coverage.test.ts",
+    "sizeBytes": 3073,
+    "testCount": 5,
+    "pass": true,
+    "durationMs": 2818,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/editorial/PrimaryReasonResolver",
+      "../src/lib/intelligence/editorial/EditorialContext"
+    ],
+    "domain": "editorial",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\phase3-forensic-audit.test.ts",
+    "relativePath": "tests/phase3-forensic-audit.test.ts",
+    "sizeBytes": 6858,
+    "testCount": 5,
+    "pass": true,
+    "durationMs": 3906,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/engine",
+      "../src/lib/intelligence/builders/CandidateProjectionBuilder",
+      "../src/data/candidate-profile",
+      "../src/data/sqlite/repositories/SqliteEvaluationStore",
+      "../src/domain/decision_v4",
+      "../src/lib/intelligence/candidate",
+      "../src/lib/intelligence/headspace-filter"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\phase4a-contract.test.ts",
+    "relativePath": "tests/phase4a-contract.test.ts",
+    "sizeBytes": 10744,
+    "testCount": 3,
+    "pass": true,
+    "durationMs": 2859,
+    "imports": [
+      "vitest",
+      "../src/domain/decision_v4",
+      "../src/lib/intelligence/candidate",
+      "../src/lib/intelligence/headspace-filter"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\phase4b-serving-engine.test.ts",
+    "relativePath": "tests/phase4b-serving-engine.test.ts",
+    "sizeBytes": 16725,
+    "testCount": 14,
+    "pass": true,
+    "durationMs": 3197,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/serving/EvaluationServingEngine",
+      "../src/domain/decision_v4"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\phase4c-fingerprint-freshness.test.ts",
+    "relativePath": "tests/phase4c-fingerprint-freshness.test.ts",
+    "sizeBytes": 15813,
+    "testCount": 21,
+    "pass": true,
+    "durationMs": 3194,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/fingerprint/EvaluationFingerprint",
+      "../src/data/database",
+      "../src/data/sqlite/migrations/runner",
+      "../src/data/sqlite/repositories/SqliteEvaluationStore"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\phase4d-optimization.test.ts",
+    "relativePath": "tests/phase4d-optimization.test.ts",
+    "sizeBytes": 13557,
+    "testCount": 5,
+    "pass": true,
+    "durationMs": 4460,
+    "imports": [
+      "vitest",
+      "../src/data/database",
+      "../src/data/sqlite/migrations/runner",
+      "../src/data/sqlite/provider",
+      "../src/lib/intelligence/rematerialization/EvaluationRematerializer",
+      "../src/lib/intelligence/rematerialization/AsyncConcurrencyPool",
+      "../src/lib/intelligence/candidate-sync",
+      "../src/data/opportunity-fixtures"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\phase4d-rematerialization.test.ts",
+    "relativePath": "tests/phase4d-rematerialization.test.ts",
+    "sizeBytes": 17380,
+    "testCount": 8,
+    "pass": true,
+    "durationMs": 4367,
+    "imports": [
+      "vitest",
+      "../src/data/database",
+      "../src/data/sqlite/migrations/runner",
+      "../src/lib/intelligence/rematerialization/EvaluationRematerializer",
+      "../src/lib/intelligence/serving/EvaluationServingEngine",
+      "../src/lib/intelligence/fingerprint/EvaluationFingerprint",
+      "../src/data/candidate-profile",
+      "../src/domain/entities",
+      "../src/data/sqlite/provider",
+      "../src/data/database"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\phase5-serving-invariants.test.ts",
+    "relativePath": "tests/phase5-serving-invariants.test.ts",
+    "sizeBytes": 10876,
+    "testCount": 5,
+    "pass": true,
+    "durationMs": 2887,
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/serving/EvaluationServingEngine",
+      "../src/domain/decision_v4",
+      "../src/lib/intelligence/metric-integrity",
+      "../src/data/database"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\policy_d_boundary.test.ts",
+    "relativePath": "tests/policy_d_boundary.test.ts",
+    "sizeBytes": 9450,
+    "testCount": 0,
+    "pass": false,
+    "durationMs": 2910,
+    "errorSnippet": " FAIL  tests/policy_d_boundary.test.ts [ tests/policy_d_boundary.test.ts ] | Error: No test suite found in file C:/Users/swapn/Downloads/radar-local-v2/tests/policy_d_boundary.test.ts",
+    "imports": [
+      "../src/lib/intelligence/policy/DecisionPolicyEngine",
+      "../src/domain/semantic"
+    ],
+    "domain": "policy",
+    "currentContract": true,
+    "disposition": "MIGRATE",
+    "rationale": "Valid invariant with stale assertion needing alignment with V4 contracts"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\pursuit-strategy-integrity.test.ts",
+    "relativePath": "tests/pursuit-strategy-integrity.test.ts",
+    "sizeBytes": 26078,
+    "testCount": 32,
+    "pass": true,
+    "durationMs": 3125,
+    "imports": [
+      "vitest",
+      "../src/data/opportunity-fixtures",
+      "../src/lib/intelligence/editorial/EditorialContext",
+      "../src/lib/intelligence/editorial/PrimaryReasonResolver",
+      "../src/lib/intelligence/editorial/PursuitStrategyResolver",
+      "../src/lib/intelligence/editorial/BriefCompositionEngine"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\recommendation-golden.test.ts",
+    "relativePath": "tests/recommendation-golden.test.ts",
+    "sizeBytes": 8413,
+    "testCount": 11,
+    "pass": false,
+    "durationMs": 4553,
+    "errorSnippet": " FAIL  tests/recommendation-golden.test.ts > recommendation golden fixtures > BMW India CMO → PURSUE, priority > 0.55 | AssertionError: expected 'SPARSE_SPEC' to be 'PURSUE' // Object.is equality |  F",
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/opportunity-provider",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "@/data/candidate-profile",
+      "@/data/opportunity-fixtures",
+      "@/lib/intelligence/present",
+      "@/lib/intelligence/policy/DecisionPolicyEngine"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "MIGRATE",
+    "rationale": "Valid invariant with stale assertion needing alignment with V4 contracts"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\regression-defects.test.ts",
+    "relativePath": "tests/regression-defects.test.ts",
+    "sizeBytes": 7734,
+    "testCount": 7,
+    "pass": false,
+    "durationMs": 4273,
+    "errorSnippet": " FAIL  tests/regression-defects.test.ts > Defect 2: Trace must contain identity hashes > record.trace contains candidateProjectionHash | AssertionError: expected undefined to be defined |  FAIL  tests",
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engine",
+      "@/lib/intelligence/present",
+      "@/lib/intelligence/builders/CandidateProjectionBuilder",
+      "@/data/candidate-profile"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "MIGRATE",
+    "rationale": "Valid invariant with stale assertion needing alignment with V4 contracts"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\runtime-persistence-source.test.ts",
+    "relativePath": "tests/runtime-persistence-source.test.ts",
+    "sizeBytes": 7997,
+    "testCount": 6,
+    "pass": false,
+    "durationMs": 5211,
+    "errorSnippet": " FAIL  tests/runtime-persistence-source.test.ts > RADAR Stage 2A: Runtime Persistence Unification & Source-of-Truth > 1. OpportunityService loads opportunities through repository/DatabaseAdapter path ",
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/opportunity-service",
+      "@/lib/intelligence/engine",
+      "@/data/sqlite/provider",
+      "@/data/database",
+      "@/data/opportunity-fixtures",
+      "@/lib/domain/candidate_projection",
+      "node:fs",
+      "node:path"
+    ],
+    "domain": "persistence",
+    "currentContract": true,
+    "disposition": "MIGRATE",
+    "rationale": "Valid invariant with stale assertion needing alignment with V4 contracts"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\scrape-progress-persistence.test.ts",
+    "relativePath": "tests/scrape-progress-persistence.test.ts",
+    "sizeBytes": 5361,
+    "testCount": 2,
+    "pass": false,
+    "durationMs": 3570,
+    "errorSnippet": " FAIL  tests/scrape-progress-persistence.test.ts > Scrape Progress & Persistent Control UX Contract > Test 2: Refresh while stopping — maintains stopping status until backend sets stopped | AssertionE",
+    "imports": [
+      "vitest",
+      "fs",
+      "path",
+      "../src/lib/intelligence/scrape-server"
+    ],
+    "domain": "persistence",
+    "currentContract": true,
+    "disposition": "MIGRATE",
+    "rationale": "Valid invariant with stale assertion needing alignment with V4 contracts"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\scraper-bottleneck-fixes.test.ts",
+    "relativePath": "tests/scraper-bottleneck-fixes.test.ts",
+    "sizeBytes": 3134,
+    "testCount": 5,
+    "pass": true,
+    "durationMs": 13888,
+    "imports": [
+      "vitest",
+      "../scripts/scraper/portals/naukri",
+      "../scripts/scraper/portals/linkedin",
+      "../src/lib/acquisition/canonical-identity",
+      "../scripts/scraper/run/search-planner"
+    ],
+    "domain": "scraper",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\security\\auth-authorization.test.ts",
+    "relativePath": "tests/security/auth-authorization.test.ts",
+    "sizeBytes": 11917,
+    "testCount": 15,
+    "pass": true,
+    "durationMs": 5035,
+    "imports": [
+      "vitest",
+      "fs",
+      "path",
+      "child_process",
+      "../../src/lib/auth/guard",
+      "../../src/lib/auth/session",
+      "../../src/data/sqlite/provider",
+      "../../src/lib/intelligence/scrape-server"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\security\\scraper-smoke.test.ts",
+    "relativePath": "tests/security/scraper-smoke.test.ts",
+    "sizeBytes": 1777,
+    "testCount": 3,
+    "pass": true,
+    "durationMs": 4564,
+    "imports": [
+      "vitest",
+      "../../scripts/scraper/portals/linkedin",
+      "../../scripts/scraper/portals/indeed",
+      "../../scripts/scraper/portals/naukri",
+      "../../scripts/scraper/run/manager",
+      "../../src/lib/intelligence/scrape-server"
+    ],
+    "domain": "scraper",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\semantic\\golden_and_adversarial.test.ts",
+    "relativePath": "tests/semantic/golden_and_adversarial.test.ts",
+    "sizeBytes": 36793,
+    "testCount": 77,
+    "pass": true,
+    "durationMs": 3380,
+    "imports": [
+      "vitest",
+      "../../src/lib/intelligence/semantic/SemanticResolutionEngine"
+    ],
+    "domain": "semantic",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\sqlite-retirement-guarantee.test.ts",
+    "relativePath": "tests/sqlite-retirement-guarantee.test.ts",
+    "sizeBytes": 4514,
+    "testCount": 7,
+    "pass": true,
+    "durationMs": 3371,
+    "imports": [
+      "vitest",
+      "fs",
+      "path",
+      "../src/data/database/index",
+      "../src/data/sqlite/migrations/runner"
+    ],
+    "domain": "persistence",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-3f-comparisons.test.ts",
+    "relativePath": "tests/stage-3f-comparisons.test.ts",
+    "sizeBytes": 3234,
+    "testCount": 4,
+    "pass": true,
+    "durationMs": 3459,
+    "imports": [
+      "vitest"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-3f-hashing.test.ts",
+    "relativePath": "tests/stage-3f-hashing.test.ts",
+    "sizeBytes": 2801,
+    "testCount": 5,
+    "pass": true,
+    "durationMs": 2956,
+    "imports": [
+      "vitest"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-3g-cache-isolation.test.ts",
+    "relativePath": "tests/stage-3g-cache-isolation.test.ts",
+    "sizeBytes": 4370,
+    "testCount": 5,
+    "pass": false,
+    "durationMs": 4102,
+    "errorSnippet": " FAIL  tests/stage-3g-cache-isolation.test.ts > Stage 3G Phase C — Cache Safety & Isolation Audit > Test 4 — Opportunity mutation invalidates old cache | AssertionError: expected { jobHash: 'opp-101',",
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/engine",
+      "../src/domain/entities"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Failing intermediate refactoring checkpoint"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-4a-client-cache.test.ts",
+    "relativePath": "tests/stage-4a-client-cache.test.ts",
+    "sizeBytes": 1508,
+    "testCount": 3,
+    "pass": true,
+    "durationMs": 2797,
+    "imports": [
+      "vitest",
+      "../src/lib/opportunity-cache"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-4b-singleflight.test.ts",
+    "relativePath": "tests/stage-4b-singleflight.test.ts",
+    "sizeBytes": 1668,
+    "testCount": 1,
+    "pass": true,
+    "durationMs": 2842,
+    "imports": [
+      "vitest",
+      "../src/data/sqlite/repositories/SqliteOpportunityStore",
+      "../src/data/database/adapter"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-4c-candidate-evaluations.test.ts",
+    "relativePath": "tests/stage-4c-candidate-evaluations.test.ts",
+    "sizeBytes": 6114,
+    "testCount": 3,
+    "pass": true,
+    "durationMs": 3267,
+    "imports": [
+      "vitest",
+      "better-sqlite3",
+      "../src/data/sqlite/repositories/SqliteEvaluationStore",
+      "../src/data/database/adapter"
+    ],
+    "domain": "intelligence",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-4d-ingestion-e2e.test.ts",
+    "relativePath": "tests/stage-4d-ingestion-e2e.test.ts",
+    "sizeBytes": 5499,
+    "testCount": 1,
+    "pass": true,
+    "durationMs": 3056,
+    "imports": [
+      "vitest",
+      "better-sqlite3",
+      "../src/data/sqlite/repositories/SqliteEvaluationStore",
+      "../src/data/database/adapter"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-4e-ok-readpath.test.ts",
+    "relativePath": "tests/stage-4e-ok-readpath.test.ts",
+    "sizeBytes": 4020,
+    "testCount": 1,
+    "pass": true,
+    "durationMs": 3118,
+    "imports": [
+      "vitest",
+      "better-sqlite3",
+      "../src/data/sqlite/repositories/SqliteEvaluationStore",
+      "../src/data/database/adapter"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-4f-benchmarks.test.ts",
+    "relativePath": "tests/stage-4f-benchmarks.test.ts",
+    "sizeBytes": 4265,
+    "testCount": 2,
+    "pass": false,
+    "durationMs": 11387,
+    "errorSnippet": " FAIL  tests/stage-4f-benchmarks.test.ts > Stage 4F: Production Request Path Benchmarks & Telemetry > measures /decisions request path latency and verifies O(k) sub-millisecond retrieval | Error: Test",
+    "imports": [
+      "vitest",
+      "../src/lib/intelligence/opportunity-service",
+      "../src/data/sqlite/provider"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Failing intermediate refactoring checkpoint"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-4g-override-reeval.test.ts",
+    "relativePath": "tests/stage-4g-override-reeval.test.ts",
+    "sizeBytes": 5769,
+    "testCount": 1,
+    "pass": true,
+    "durationMs": 4984,
+    "imports": [
+      "vitest",
+      "better-sqlite3",
+      "../src/data/sqlite/repositories/SqliteEvaluationStore",
+      "../src/data/database/adapter"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-4h-stale-race.test.ts",
+    "relativePath": "tests/stage-4h-stale-race.test.ts",
+    "sizeBytes": 4359,
+    "testCount": 1,
+    "pass": true,
+    "durationMs": 7960,
+    "imports": [
+      "vitest",
+      "../src/data/database",
+      "../src/data/sqlite/migrations/runner",
+      "../src/data/sqlite/repositories/SqliteEvaluationStore",
+      "../src/lib/intelligence/workers/EvaluationWorker"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "REGRESSION",
+    "rationale": "Passing historical refactoring milestone verification"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stage-phase7-population.test.ts",
+    "relativePath": "tests/stage-phase7-population.test.ts",
+    "sizeBytes": 8298,
+    "testCount": 9,
+    "pass": false,
+    "durationMs": 15459,
+    "errorSnippet": " FAIL  tests/stage-phase7-population.test.ts > RADAR V4 Phase 7: Population Metrics & Bounded Retrieval Suite > CASE A: Under boundary (50 evaluations) -> screened = 50, feed = 50 | TypeError: repos.o",
+    "imports": [
+      "vitest",
+      "better-sqlite3",
+      "../src/data/sqlite/repositories/SqliteEvaluationStore",
+      "../src/data/sqlite/repositories/SqliteDecisionSupportStore",
+      "../src/lib/intelligence/opportunity-service",
+      "../src/data/database/adapter",
+      "../src/data/sqlite/provider"
+    ],
+    "domain": "historical_sprint",
+    "currentContract": false,
+    "disposition": "ARCHIVE",
+    "rationale": "Failing intermediate refactoring checkpoint"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\stale-cache-regression.test.ts",
+    "relativePath": "tests/stale-cache-regression.test.ts",
+    "sizeBytes": 8297,
+    "testCount": 6,
+    "pass": true,
+    "durationMs": 11068,
+    "imports": [
+      "vitest",
+      "@/lib/intelligence/engine"
+    ],
+    "domain": "other",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  },
+  {
+    "file": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\tests\\v4-decision-pipeline.test.ts",
+    "relativePath": "tests/v4-decision-pipeline.test.ts",
+    "sizeBytes": 25257,
+    "testCount": 12,
+    "pass": true,
+    "durationMs": 25436,
+    "imports": [
+      "vitest",
+      "../src/domain/decision_v4",
+      "../src/lib/intelligence/opportunity-service",
+      "../src/data/opportunity-fixtures"
+    ],
+    "domain": "policy",
+    "currentContract": true,
+    "disposition": "ACTIVE",
+    "rationale": "Current active contract/architecture test"
+  }
+]

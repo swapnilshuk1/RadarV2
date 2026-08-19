@@ -112,7 +112,7 @@ export class CommercialScopeResolver {
       confidence = 0.99;
     }
     // Check for Turnover / Topline & Bottomline / ₹ Cr business
-    else if (/\b(?:turnover|topline\s+and\s+bottom\s*line|commercial\s+ownership|business\s+unit\s+financial\s+ownership|managed\s+a\s+\$(?:1b|\d+m)\s+business|consumer\s+business|b2b\s+business)\b/i.test(textLower) ||
+    else if (/\b(?:turnover|topline\s+and\s+bottom\s*line|commercial\s+ownership|business\s+unit\s+financial\s+ownership|managed\s+(?:a\s+)?\$(?:1b|\d+m|\d+b|\d+)\s+business|consumer\s+business|b2b\s+business)\b/i.test(textLower) ||
              inrMatch !== null) {
       canonicalConcept = "PNL_RESPONSIBILITY";
       hasPnlOwnership = true;

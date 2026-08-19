@@ -1,0 +1,26 @@
+[
+  {
+    "priority": "P2",
+    "sourceText": "Head - Digital Trading @ Mindshare",
+    "subjectConcept": "DIGITAL_TRADING_LEADERSHIP",
+    "confidence": 0.95,
+    "oldInterpretation": "PASS (Score 54)",
+    "newInterpretation": "CONSIDER (Score 56)",
+    "scoreDelta": 2,
+    "verdictTransition": "PASS -> CONSIDER",
+    "classification": "VALID_SEMANTIC_RECOVERY",
+    "recommendedAction": "Confirm executive capability match in benchmark suite"
+  },
+  {
+    "priority": "P2",
+    "sourceText": "Head - D2C (Direct-to-Consumer) @ YMI Ghar Soaps",
+    "subjectConcept": "D2C_GROWTH_LEADERSHIP",
+    "confidence": 0.88,
+    "oldInterpretation": "Score 70",
+    "newInterpretation": "Score 78",
+    "scoreDelta": 8,
+    "verdictTransition": "CONSIDER -> CONSIDER",
+    "classification": "EXPECTED_QUALIFICATION_ENRICHMENT",
+    "recommendedAction": "Monitor in benchmark suite"
+  }
+]

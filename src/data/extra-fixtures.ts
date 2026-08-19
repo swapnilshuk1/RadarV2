@@ -3,7 +3,7 @@ import { type OpportunitySource } from "./opportunity-fixtures";
 const jd = (value: string | null, quote: string) =>
   value === null
     ? { value: null, status: "Missing" as const, evidence: [] }
-    : { value, status: "Explicit" as const, evidence: [{ quote, source: "snippet" as const }] };
+    : { value, status: "Explicit" as const, evidence: [{ quote, source: "snippet" as const, provenance: "fixture" as const }] };
 
 const proof = (headline: string, detail: string) => ({ headline, detail });
 
@@ -173,3 +173,13 @@ export const extraOpportunities: OpportunitySource[] = [
     ]
   }
 ];
+
+for (const opp of extraOpportunities) {
+  if (!opp.rawText) {
+    const quotes = (opp.dimensions || [])
+      .flatMap((d) => (d.jdEvidence?.evidence || []).map((e: any) => e.quote))
+      .filter(Boolean);
+    opp.rawText = `${opp.role} at ${opp.company} located in ${opp.location}. ${quotes.join(". ")}. Scraped from ${opp.scrapedFrom}.`;
+  }
+}
+

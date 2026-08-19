@@ -20,15 +20,16 @@ export interface NegationDetectionResult {
 }
 
 const EXPLICIT_NEGATION_TRIGGERS = [
-  /\bno\s+(?:direct|indirect|actual|active)?\s*/i,
-  /\bnot\s+(?:responsible|owning|held|having|accountable)\b/i,
+  /\bno\s+(?:direct|indirect|actual|active|formal)?\s*(?:p&l|ownership|responsibility|experience|reports|accountability)\b/i,
+  /\bno\s+(?:direct|indirect|actual|active)\b/i,
+  /\bnot\s+(?:responsible|owning|held|having|accountable|leading)\b/i,
   /\bdoes\s+not\s+(?:own|have|manage|lead)\b/i,
   /\bdid\s+not\s+(?:own|have|manage|lead)\b/i,
   /\bnever\s+(?:had|owned|held|managed)\b/i,
-  /\bwithout\s+(?:direct|any|formal)?\s*/i,
-  /\blacks?\s+(?:direct|any|formal)?\s*/i,
-  /\bzero\s+(?:direct)?\s*/i,
-  /\bnon[- ]/i,
+  /\bwithout\s+(?:direct|any|formal)?\s*(?:p&l|ownership|responsibility|experience|accountability)\b/i,
+  /\black(?:s|ed|ing)?\s+(?:direct|any|formal)?\s*(?:p&l|ownership|responsibility|experience|accountability)\b/i,
+  /\bzero\s+(?:direct|indirect|actual|formal)?\s*(?:p&l|ownership|responsibility|experience|reports|accountability)\b/i,
+  /\bnon[- ](?:executive|commercial|p&l)\b/i,
   /\bneither\b/i,
 ];
 
@@ -67,12 +68,10 @@ export class NegationDetector {
     if (conceptPhrase) {
       const idx = raw.toLowerCase().indexOf(conceptPhrase.toLowerCase());
       if (idx !== -1) {
-        // Take up to 120 chars before and 80 chars after concept, cut at clause boundaries if possible
         const start = Math.max(0, idx - 120);
         const end = Math.min(raw.length, idx + conceptPhrase.length + 80);
         const snippet = raw.substring(start, end);
         
-        // Find nearest clause segment containing concept
         const clauses = snippet.split(CLAUSE_BOUNDARIES);
         const matchingClause = clauses.find(c => c.toLowerCase().includes(conceptPhrase.toLowerCase()));
         if (matchingClause) {

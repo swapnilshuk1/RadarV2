@@ -77,25 +77,66 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
   const tursoUrl = process.env.TURSO_CONNECTION_URL || process.env.TURSO_DATABASE_URL;
   const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-  // 1. Explicit Test Environment: Allow in-memory SQLite (:memory:)
-  if (radarEnv === "test") {
-    if (dbPath === ":memory:" || (!tursoUrl && !tursoToken)) {
-      let DatabaseConstructor: any = null;
-      const req = getReq();
-      if (req) {
-        try {
-          DatabaseConstructor = req("better-sqlite3");
-        } catch {}
-      }
-
-      if (!DatabaseConstructor) {
-        throw new Error("[DatabaseAdapter] better-sqlite3 module unavailable for in-memory test database");
-      }
-
-      const sqliteDb = new DatabaseConstructor(":memory:");
-      _cachedAdapter = new SqliteAdapter(sqliteDb);
-      return _cachedAdapter;
+  // 1. Explicit Test Environment: Default to in-memory SQLite (:memory:) unless RADAR_USE_TURSO is explicitly true
+  if (radarEnv === "test" && process.env.RADAR_USE_TURSO !== "true" && dbPath !== "turso") {
+    let DatabaseConstructor: any = null;
+    const req = getReq();
+    if (req) {
+      try {
+        DatabaseConstructor = req("better-sqlite3");
+      } catch {}
     }
+
+    if (!DatabaseConstructor) {
+      throw new Error("[DatabaseAdapter] better-sqlite3 module unavailable for in-memory test database");
+    }
+
+    if (dbPath === ":memory:") {
+      const freshDb = new DatabaseConstructor(":memory:");
+      freshDb.exec("PRAGMA foreign_keys = OFF;");
+      return new SqliteAdapter(freshDb);
+    }
+
+    if (_cachedAdapter) return _cachedAdapter;
+
+    const sqliteDb = new DatabaseConstructor(":memory:");
+    sqliteDb.exec("PRAGMA foreign_keys = OFF;");
+    _cachedAdapter = new SqliteAdapter(sqliteDb);
+
+    // Auto-apply schema migrations to in-memory SQLite instance for test isolation
+    const migrationsDir = path.resolve(process.cwd(), "src/data/sqlite/migrations");
+    if (fs.existsSync(migrationsDir)) {
+      try {
+        const req = getReq();
+        if (req) {
+          const { splitSqlStatements } = req("../sqlite/migrations/runner");
+          const files = fs.readdirSync(migrationsDir)
+            .filter((f) => f.endsWith(".sql") && !f.endsWith("_rollback.sql"))
+            .sort();
+          for (const file of files) {
+            const sqlContent = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
+            const stmts = splitSqlStatements(sqlContent);
+            for (const stmt of stmts) {
+              try {
+                sqliteDb.exec(stmt);
+              } catch {}
+            }
+          }
+        }
+      } catch (err) {
+        const files = fs.readdirSync(migrationsDir)
+          .filter((f) => f.endsWith(".sql") && !f.endsWith("_rollback.sql"))
+          .sort();
+        for (const file of files) {
+          try {
+            const sqlContent = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
+            sqliteDb.exec(sqlContent);
+          } catch {}
+        }
+      }
+    }
+
+    return _cachedAdapter;
   }
 
   // 2. Turso Connection (Required for Dev, Staging, Production)

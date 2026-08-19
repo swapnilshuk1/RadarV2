@@ -1,7 +1,7 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { OpportunityStore } from "../../../domain/repositories";
 import type { Opportunity } from "../../../domain/entities";
-import type { OpportunitySource } from "../../../data/opportunity-fixtures";
+import { OPPORTUNITY_SOURCES, type OpportunitySource } from "../../../data/opportunity-fixtures";
 
 export class SqliteOpportunityStore implements OpportunityStore {
   private inFlightSourcesPromise: Promise<OpportunitySource[]> | null = null;
@@ -134,37 +134,43 @@ export class SqliteOpportunityStore implements OpportunityStore {
       const rows = await this.db.many<any>(sql);
       const jobHashMap = new Map<string, OpportunitySource>();
 
-      for (const r of rows) {
-        let contentObj: any = {};
-        if (r.doc_content) {
-          try {
-            contentObj = typeof r.doc_content === "string" ? JSON.parse(r.doc_content) : r.doc_content;
-          } catch {}
+      if (rows.length === 0 && OPPORTUNITY_SOURCES && OPPORTUNITY_SOURCES.length > 0) {
+        for (const src of OPPORTUNITY_SOURCES) {
+          jobHashMap.set(src.jobHash, src);
         }
+      } else {
+        for (const r of rows) {
+          let contentObj: any = {};
+          if (r.doc_content) {
+            try {
+              contentObj = typeof r.doc_content === "string" ? JSON.parse(r.doc_content) : r.doc_content;
+            } catch {}
+          }
 
-        const jobHash = contentObj.jobHash || r.id;
-        const oppSource: OpportunitySource = {
-          jobHash,
-          role: r.canonical_title || contentObj.role || "Executive Role",
-          company: r.company_name || contentObj.company || "Target Company",
-          location: r.location || contentObj.location || "Remote",
-          scrapedFrom: contentObj.scrapedFrom || "LinkedIn",
-          postedRelative: contentObj.postedRelative || "Recently Ingested",
-          rawText: contentObj.normalizedText || contentObj.rawText || contentObj.rawDescription || "",
-          dimensions: Array.isArray(contentObj.dimensions) ? contentObj.dimensions : [],
-          primaryConcern: contentObj.primaryConcern || null,
-          whyNow: contentObj.whyNow,
-          positioning: Array.isArray(contentObj.positioning) ? contentObj.positioning : [],
-          applyUrl: contentObj.applyUrl || contentObj.url,
-          primaryProof: contentObj.primaryProof,
-          headspaceInvestment: contentObj.headspaceInvestment,
-          hiringRisk: contentObj.hiringRisk,
-          alternativePath: contentObj.alternativePath,
-        };
+          const jobHash = contentObj.jobHash || r.id;
+          const oppSource: OpportunitySource = {
+            jobHash,
+            role: r.canonical_title || contentObj.role || "Executive Role",
+            company: r.company_name || contentObj.company || "Target Company",
+            location: r.location || contentObj.location || "Remote",
+            scrapedFrom: contentObj.scrapedFrom || "LinkedIn",
+            postedRelative: contentObj.postedRelative || "Recently Ingested",
+            rawText: contentObj.normalizedText || contentObj.rawText || contentObj.rawDescription || "",
+            dimensions: Array.isArray(contentObj.dimensions) ? contentObj.dimensions : [],
+            primaryConcern: contentObj.primaryConcern || null,
+            whyNow: contentObj.whyNow,
+            positioning: Array.isArray(contentObj.positioning) ? contentObj.positioning : [],
+            applyUrl: contentObj.applyUrl || contentObj.url,
+            primaryProof: contentObj.primaryProof,
+            headspaceInvestment: contentObj.headspaceInvestment,
+            hiringRisk: contentObj.hiringRisk,
+            alternativePath: contentObj.alternativePath,
+          };
 
-        const existing = jobHashMap.get(jobHash);
-        if (!existing || (!existing.rawText && oppSource.rawText)) {
-          jobHashMap.set(jobHash, oppSource);
+          const existing = jobHashMap.get(jobHash);
+          if (!existing || (!existing.rawText && oppSource.rawText)) {
+            jobHashMap.set(jobHash, oppSource);
+          }
         }
       }
 

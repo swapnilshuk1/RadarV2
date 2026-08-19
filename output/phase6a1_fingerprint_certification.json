@@ -1,0 +1,26 @@
+{
+  "testA_fingerprint": "eval_v4_8ee26b854c323a826376bc528c7b2ec58017a03bf8be8f6bf5a5c4f8b4e9dccf",
+  "testB_fingerprint": "eval_v4_8ee26b854c323a826376bc528c7b2ec58017a03bf8be8f6bf5a5c4f8b4e9dccf",
+  "testC_fingerprint": "eval_v4_a0f66502e9bec2cc0c5349b44e6f85e0c9afd8df45b6196283cb12293b9147fe",
+  "v2_invariant_preserved": true,
+  "v3_freshness_transition_evolved": true,
+  "payload_fields_changed_in_v2": [],
+  "payload_fields_unchanged_in_v2": [
+    "operatingLevel",
+    "candidateSeniorityLevel",
+    "workNature",
+    "decisionAuthority",
+    "commercialScope",
+    "yearsOfExperience",
+    "coreCapabilities",
+    "preferredLocations",
+    "preferredWorkModel",
+    "executiveThemes",
+    "jobHash",
+    "role",
+    "company",
+    "location",
+    "dimensions"
+  ],
+  "status": "PASS"
+}

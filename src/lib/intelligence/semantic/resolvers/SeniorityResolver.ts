@@ -91,6 +91,15 @@ const DESIGNATION_PATTERNS: readonly DesignationPattern[] = [
     confidence: 0.99,
   },
   {
+    regex: /\bchief\s+(?:commercial|marketing|revenue|growth|product|operating|technology|financial|information|security)\s+officer\b/i,
+    canonicalTitle: "C_SUITE_OFFICER",
+    seniorityBand: "C_SUITE",
+    isFalsePositiveExecutive: false,
+    peopleManagementSignal: true,
+    businessOwnershipSignal: true,
+    confidence: 0.98,
+  },
+  {
     regex: /\b(?:ceo|cmo|cro|cgo|cpo|coo|cfo|cto|cio|ciso)\b/i,
     canonicalTitle: "C_SUITE_OFFICER",
     seniorityBand: "C_SUITE",

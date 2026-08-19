@@ -193,6 +193,14 @@ const CORPORATE_ONTOLOGY: readonly CorporateEntityNode[] = [
   }
 ];
 
+function findNode(name: string): CorporateEntityNode | undefined {
+  const clean = name.toLowerCase().trim();
+  return CORPORATE_ONTOLOGY.find(n =>
+    n.canonicalEntity.toLowerCase() === clean ||
+    n.aliases.some(a => a === clean || clean === a)
+  );
+}
+
 export class OrganizationResolver {
   /**
    * Resolves an organization string against context with false-positive filtering.
@@ -233,65 +241,65 @@ export class OrganizationResolver {
       };
     }
 
-    const rawLower = raw.toLowerCase();
+    const sourceNode = findNode(raw);
+    const targetNode = targetOrg ? findNode(targetOrg) : undefined;
 
-    // Match Corporate Ontology
-    for (const node of CORPORATE_ONTOLOGY) {
-      const isExact = rawLower === node.canonicalEntity.toLowerCase();
-      const isAlias = node.aliases.some(a => rawLower === a || rawLower.includes(a));
+    if (sourceNode) {
+      let semRel: SemanticRelationship = "ALIAS";
+      let evRel: EvidenceRelationship = "DIRECT_EQUIVALENT";
+      let direction: Directionality = "BIDIRECTIONAL_EQUIVALENT";
 
-      if (isExact || isAlias) {
-        // If there's a target organization requirement (e.g. comparing AWS against Amazon)
-        let semRel: SemanticRelationship = isExact ? "EXACT" : "ALIAS";
-        let evRel: EvidenceRelationship = "DIRECT_EQUIVALENT";
-        let direction: Directionality = "BIDIRECTIONAL_EQUIVALENT";
+      if (targetNode) {
+        if (sourceNode.canonicalEntity === targetNode.canonicalEntity) {
+          semRel = "ALIAS";
+          direction = "BIDIRECTIONAL_EQUIVALENT";
+        } else if (sourceNode.parentEntity === targetNode.canonicalEntity) {
+          // Source is child of target
+          if (sourceNode.organizationType === "BUSINESS_UNIT") {
+            semRel = "BUSINESS_UNIT";
+            direction = "BUSINESS_UNIT_OF";
+          } else {
+            semRel = "SUBSIDIARY";
+            direction = "SUBSIDIARY_OF";
+          }
+          evRel = "STRONG_SUPPORT";
+        } else if (targetNode.parentEntity === sourceNode.canonicalEntity) {
+          // Source is parent of target
+          semRel = "PARENT_ENTITY";
+          direction = "PARENT_OF";
+          evRel = "STRONG_SUPPORT";
+        }
+      }
 
-        if (targetOrg) {
-          const targetLower = targetOrg.toLowerCase().trim();
-          
-          if (node.parentEntity && targetLower.includes(node.parentEntity.toLowerCase().replace(/_/g, " "))) {
-            // Source is Subsidiary / BU of Target
-            semRel = node.organizationType === "BUSINESS_UNIT" ? "BUSINESS_UNIT" : "SUBSIDIARY";
-            evRel = "STRONG_SUPPORT"; // Eligible for parent brand capital inheritance
-            direction = node.organizationType === "BUSINESS_UNIT" ? "BUSINESS_UNIT_OF" : "SUBSIDIARY_OF";
-          } else if (targetLower === "google" && node.canonicalEntity === "ALPHABET_INC") {
-            // Source is Parent of Target
-            semRel = "PARENT_ENTITY";
-            evRel = "STRONG_SUPPORT";
-            direction = "PARENT_OF";
+      return {
+        sourceOrganization: raw,
+        canonicalEntity: sourceNode.canonicalEntity,
+        parentEntity: sourceNode.parentEntity,
+        organizationType: sourceNode.organizationType,
+        semanticRelationship: semRel,
+        direction,
+        isTier1Pedigree: sourceNode.isTier1Pedigree,
+        confidence: 0.98,
+        isFalsePositiveContext: false,
+        evidence: {
+          canonicalConcept: sourceNode.canonicalEntity,
+          entityType: "ORGANIZATION",
+          semanticRelationship: semRel,
+          evidenceRelationship: evRel,
+          direction,
+          confidence: 0.98,
+          sourcePhrase: raw,
+          context: fullContext,
+          negated: false,
+          temporalState: "CURRENT",
+          evidenceStrength: "DIRECT_OWNERSHIP",
+          metadata: {
+            parentEntity: sourceNode.parentEntity,
+            organizationType: sourceNode.organizationType,
+            isTier1Pedigree: sourceNode.isTier1Pedigree,
           }
         }
-
-        return {
-          sourceOrganization: raw,
-          canonicalEntity: node.canonicalEntity,
-          parentEntity: node.parentEntity,
-          organizationType: node.organizationType,
-          semanticRelationship: semRel,
-          direction,
-          isTier1Pedigree: node.isTier1Pedigree,
-          confidence: 0.98,
-          isFalsePositiveContext: false,
-          evidence: {
-            canonicalConcept: node.canonicalEntity,
-            entityType: "ORGANIZATION",
-            semanticRelationship: semRel,
-            evidenceRelationship: evRel,
-            direction,
-            confidence: 0.98,
-            sourcePhrase: raw,
-            context: fullContext,
-            negated: false,
-            temporalState: "CURRENT",
-            evidenceStrength: "DIRECT_OWNERSHIP",
-            metadata: {
-              parentEntity: node.parentEntity,
-              organizationType: node.organizationType,
-              isTier1Pedigree: node.isTier1Pedigree,
-            }
-          }
-        };
-      }
+      };
     }
 
     // Default Fallback

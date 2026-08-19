@@ -1,6 +1,7 @@
 // src/lib/domain/candidate_projection.ts
 
 import { ClassifierResult, OperatingLevel, CandidateSeniorityLevel, WorkNature, DecisionAuthority, CommercialScope } from "./semantic";
+import type { CanonicalSemanticEvidence } from "../intelligence/semantic/types";
 
 export interface CandidateProjection {
   operatingLevel: ClassifierResult<OperatingLevel>;
@@ -16,6 +17,8 @@ export interface CandidateProjection {
   executiveThemes: string[];
   attentionWindow?: number;
   headspaceCapacityPerMonth?: number;
+  // Phase 5C.2: Additive Canonical Semantic Evidence
+  semanticEvidence?: readonly CanonicalSemanticEvidence[];
 }
 
 export interface ProjectionValidationResult {
@@ -63,4 +66,19 @@ export function validateCandidateProjection(projection: unknown): ProjectionVali
     missingFields,
   };
 }
+
+export const DEFAULT_CANDIDATE_PROJECTION: CandidateProjection = {
+  operatingLevel: { value: "STRATEGIC", confidence: 0.9, evidenceIds: [] },
+  workNature: { value: "STRATEGIC_WORK", confidence: 0.9, evidenceIds: [] },
+  decisionAuthority: { value: "ENTERPRISE", confidence: 0.9, evidenceIds: [] },
+  commercialScope: { value: "ENTERPRISE", confidence: 0.9, evidenceIds: [] },
+  yearsOfExperience: 20,
+  coreCapabilities: ["COMMERCIAL_GROWTH", "DIGITAL_TRANSFORMATION", "GLOBAL_GTM", "STRATEGIC_LEADERSHIP"],
+  preferredLocations: ["Bengaluru", "Remote", "San Francisco"],
+  preferredWorkModel: "HYBRID",
+  executiveThemes: ["commercial_growth", "transformation"],
+  attentionWindow: 6,
+  headspaceCapacityPerMonth: 4,
+};
+
 

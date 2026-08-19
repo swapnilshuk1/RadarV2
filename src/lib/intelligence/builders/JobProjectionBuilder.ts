@@ -3,6 +3,8 @@ import { OperatingLevelClassifier } from "../classifiers/OperatingLevelClassifie
 import { WorkNatureClassifier } from "../classifiers/WorkNatureClassifier";
 import { DecisionAuthorityClassifier } from "../classifiers/DecisionAuthorityClassifier";
 import { CommercialScopeClassifier } from "../classifiers/CommercialScopeClassifier";
+import { SemanticResolutionEngine } from "../semantic/SemanticResolutionEngine";
+import type { CanonicalSemanticEvidence } from "../semantic/types";
 
 export class JobProjectionBuilder {
 
@@ -158,7 +160,7 @@ export class JobProjectionBuilder {
 
   private static buildUncached(opportunity: any): JobProjection {
     this.actualBuildCount++;
-    const title = opportunity.role || "";
+    const title = opportunity.role || opportunity.canonicalTitle || opportunity.title || "";
     let fullText = (opportunity.description || opportunity.normalizedText || opportunity.rawText || opportunity.rawDescription || "").toLowerCase();
     const fullContext = (title + "\n" + fullText);
     const titleLower = title.toLowerCase();
@@ -176,24 +178,19 @@ export class JobProjectionBuilder {
 
     const isTitleTechLeadership = isExecutiveTechLeader && /(\btechnology\b|\binformation technology\b|\bit\b|\bcio\b|\bcto\b|\bengineering\b|\bsoftware\b|\bdata\b|\bdigital\b|\bai\b)/i.test(titleLower);
 
-    const isTitleOps = this.testKeyword(titleLower, "operations") || 
-                       this.testKeyword(titleLower, "supply chain") || 
-                       this.testKeyword(titleLower, "logistics") || 
-                       this.testKeyword(titleLower, "site strategy");
+    const isTitleOps = /(\boperations\b|\bcoo\b|\bchief operating\b|\bhead of operations\b|\bvp operations\b|\bdelivery\b|\bsupply chain\b|\blogistics\b)/i.test(titleLower);
 
-    // Role-contextual high-confidence non-commercial professional-domain vetoes
-    const companyLower = (opportunity.company || "").toLowerCase();
-    const hasMedicalAffairsVeto = /(\bmedical\b|\bsuperintendent\b|\bhospital\b|\bphysician\b|\bsurgeon\b|\bdoctor\b|\bnursing\b)/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
-    const hasClinicalVeto = /\bclinical\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+    // Negative Domain Exclusions (Explicit Vetoes)
+    const hasMedicalAffairsVeto = /\bmedical affairs\b/i.test(titleLower) && !/commercial|marketing/i.test(titleLower);
+    const hasClinicalVeto = /\bclinical\b/i.test(titleLower);
     const hasBimVeto = /\bbim\b/i.test(titleLower);
-    const hasCivilStructuralVeto = /(\bcivil\b|\bstructural\b)/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
-    const hasQualityVeto = /\bquality\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
-    const hasRecruitmentStaffingVeto = /(\brecruitment\b|\bstaffing\b)/i.test(titleLower) || 
-                                       ((/managing director/i.test(titleLower) || /director/i.test(titleLower)) && (/antal|staffing|recruitment/i.test(companyLower)));
-    const hasSoftwareVeto = isTitleTechIC || /(\bsoftware engineer\b|\bfull stack\b|\bfrontend\b|\bbackend\b|\bjava\b|\bpython\b|\bdeveloper\b)/i.test(titleLower);
-    const hasIndustrialResinVeto = /(\bresin\b|\bpolymer\b)/i.test(titleLower) && !/marketing|growth/i.test(titleLower);
-    const hasTelecomEngVeto = /\btelecom\b/i.test(titleLower) && /(\bengineer\b|\bautomation\b)/i.test(titleLower);
-    const hasHeavyElectronicsVeto = /\bpower electronics\b/i.test(titleLower) && !/marketing director|cmo/i.test(titleLower);
+    const hasCivilStructuralVeto = /(\bcivil\b|\bstructural\b)/i.test(titleLower);
+    const hasQualityVeto = /(\bquality assurance\b|\bqa lead\b|\bquality manager\b|\bqc\b|\btesting\b)/i.test(titleLower) && !/revenue|marketing|growth/i.test(titleLower);
+    const hasRecruitmentStaffingVeto = /(\btalent acquisition\b|\brecruitment\b|\bstaffing\b|\bhuman resources\b|\bhr\b)/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
+    const hasSoftwareVeto = /(\bsoftware engineering\b|\bsde\b|\bfrontend\b|\bbackend\b|\bembedded\b)/i.test(titleLower) && !/head of|vp|director/i.test(titleLower);
+    const hasIndustrialResinVeto = /(\bresin\b|\bpolymers\b|\bchemical manufacturing\b)/i.test(titleLower);
+    const hasTelecomEngVeto = /(\brf engineer\b|\bran engineer\b|\b5g engineer\b|\btelecom field\b)/i.test(titleLower);
+    const hasHeavyElectronicsVeto = /(\bpcb\b|\bsemiconductor fab\b|\bvlsi\b|\bhardware test\b)/i.test(titleLower);
     const hasDerivedDataVeto = /\bderived data\b/i.test(titleLower);
     const hasDeliveryLeaderVeto = /\bdelivery (leader|lead)\b/i.test(titleLower) && !/marketing|growth|commercial/i.test(titleLower);
     const hasItcVeto = /\bitc\b/i.test(titleLower) && !/marketing|growth/i.test(titleLower);
@@ -246,23 +243,30 @@ export class JobProjectionBuilder {
 
     // 2. Extract Capabilities
     const capabilitiesMap = new Map<string, any>();
-    if (opportunity.dimensions && Array.isArray(opportunity.dimensions)) {
-      opportunity.dimensions.forEach((dim: any) => {
-        if (dim.jdEvidence && dim.jdEvidence.value) {
-          let capName = String(dim.jdEvidence.value).trim();
-          if (capName.startsWith("{") && capName.includes('"')) {
-            try {
-              const parsed = JSON.parse(capName);
-              capName = String(parsed.value || parsed.canonicalValue || parsed.rawValue || capName).trim();
-            } catch {}
-          }
-          if (capName.length > 2) {
-            capabilitiesMap.set(capName.toLowerCase(), {
-              name: capName,
-              source: "explicit",
-              confidence: 0.90
-            });
-          }
+    const dims = opportunity.dimensions || opportunity.metadata?.enrichment?.dimensions;
+    if (dims && Array.isArray(dims)) {
+      dims.forEach((dim: any) => {
+        let capName = "";
+        if (typeof dim === "string") {
+          capName = dim.trim();
+        } else if (dim.name) {
+          capName = String(dim.name).trim();
+        } else if (dim.jdEvidence && dim.jdEvidence.value) {
+          capName = String(dim.jdEvidence.value).trim();
+        }
+        if (capName.startsWith("{") && capName.includes('"')) {
+          try {
+            const parsed = JSON.parse(capName);
+            capName = String(parsed.value || parsed.canonicalValue || parsed.rawValue || capName).trim();
+          } catch {}
+        }
+        if (capName.length > 2) {
+          capabilitiesMap.set(capName.toLowerCase(), {
+            name: capName,
+            tier: this.assignCapabilityTier(capName),
+            source: "explicit",
+            confidence: 0.90
+          });
         }
       });
     }
@@ -351,6 +355,16 @@ export class JobProjectionBuilder {
       c.tier = this.assignCapabilityTier(c.name);
     });
 
+    // Phase 5C.2: Canonical Semantic Evidence Extraction
+    const compositional = SemanticResolutionEngine.extractCompositional(fullContext);
+    const semanticEvidence: CanonicalSemanticEvidence[] = [...compositional.evidenceList];
+    for (const cap of capabilities) {
+      const res = SemanticResolutionEngine.resolveCapability(cap.name, undefined, fullContext);
+      if (res && !semanticEvidence.some(e => e.canonicalConcept === res.canonicalConcept && e.sourcePhrase === res.sourcePhrase)) {
+        semanticEvidence.push(res);
+      }
+    }
+
     return {
       jobHash: opportunity.jobHash || "",
       role: title,
@@ -370,7 +384,8 @@ export class JobProjectionBuilder {
       location: opportunity.location || "",
       workModel,
       capabilityExtractionStatus,
-      originalOpportunity: opportunity
+      originalOpportunity: opportunity,
+      semanticEvidence
     };
   }
 }

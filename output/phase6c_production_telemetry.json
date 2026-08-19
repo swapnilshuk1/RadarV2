@@ -1,0 +1,185 @@
+{
+  "totalEvaluationsProcessed": 2233,
+  "ontologyVersion": "v3_semantic_v1",
+  "policyVersion": "v4.3",
+  "totalSemanticEvidenceObjects": 2901,
+  "evaluationsEnriched": 1968,
+  "evaluationsWithNoSemanticEvidence": 265,
+  "evaluationsProducingScoreChanges": 0,
+  "evaluationsProducingVerdictChanges": 0,
+  "evaluationsEnteringCalibrationQuarantine": 0,
+  "evidenceBreakdown": {
+    "ambiguous": 0,
+    "confidenceLessThan075": 880,
+    "negated": 0,
+    "aspirational": 0,
+    "historical": 0,
+    "related": 37,
+    "administrativeContainment": 0
+  },
+  "scoreDeltaDistribution": {
+    "min": 0,
+    "max": 0,
+    "mean": 0,
+    "median": 0,
+    "p90": 0,
+    "p95": 0,
+    "p99": 0,
+    "counts": {
+      "0": 2233,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      ">11": 0,
+      "negative": 0
+    }
+  },
+  "verdictTransitions": {
+    "PASS_TO_CONSIDER": 0,
+    "PASS_TO_PURSUE": 0,
+    "CONSIDER_TO_PURSUE": 0,
+    "CONSIDER_TO_PASS": 0,
+    "PURSUE_TO_CONSIDER": 0,
+    "PURSUE_TO_PASS": 0
+  },
+  "transitionDetails": [],
+  "highRiskTokenAudit": {
+    "target": {
+      "rawDetections": 0,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "apple": {
+      "rawDetections": 0,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "amazon": {
+      "rawDetections": 4,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "shell": {
+      "rawDetections": 0,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "meta": {
+      "rawDetections": 2,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "gm": {
+      "rawDetections": 22,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "md": {
+      "rawDetections": 3,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "lead": {
+      "rawDetections": 172,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "head": {
+      "rawDetections": 640,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "executive": {
+      "rawDetections": 44,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "manager": {
+      "rawDetections": 348,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "director": {
+      "rawDetections": 429,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "account": {
+      "rawDetections": 24,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    },
+    "enterprise": {
+      "rawDetections": 29,
+      "quarantined": 0,
+      "escapedToScoring": 0,
+      "scoreContribution": 0
+    }
+  },
+  "portalStratification": {
+    "workday": {
+      "total": 1724,
+      "enriched": 1526,
+      "sumDelta": 0,
+      "highDeltaCount": 0,
+      "transitions": 0
+    },
+    "linkedin": {
+      "total": 30,
+      "enriched": 28,
+      "sumDelta": 0,
+      "highDeltaCount": 0,
+      "transitions": 0
+    },
+    "naukri": {
+      "total": 479,
+      "enriched": 414,
+      "sumDelta": 0,
+      "highDeltaCount": 0,
+      "transitions": 0
+    }
+  },
+  "operationalHealth": {
+    "resolverLatencyMs": 0.05,
+    "throughputOpsPerSec": 19907,
+    "errorRatePercent": 0,
+    "memoryAnomaliesDetected": false
+  },
+  "safetyInvariants": {
+    "A_rawFalsePositivesEscapingQuarantine": 0,
+    "B_hardGateViolations": 0,
+    "C_unexplainedScoreDeltas": 0,
+    "D_userChoiceMutations": 0,
+    "E_queueStateMutations": 0,
+    "F_fingerprintAnomalies": 0,
+    "G_freshnessAnomalies": 0,
+    "H_bypassingAdapter": 0,
+    "I_relatedAmbiguousSatisfyingHardReqs": 0,
+    "J_aspirationalPromotedToFactual": 0,
+    "K_historicalSatisfyingCurrentOnly": 0,
+    "allInvariantsPassed": true
+  },
+  "status": "🟢 STABLE — CONTINUE PRODUCTION",
+  "timestamp": "2026-08-19T02:47:16.687Z"
+}

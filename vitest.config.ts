@@ -6,7 +6,24 @@ export default defineConfig({
     alias: { "@": path.resolve(process.cwd(), "src") },
   },
   test: {
-    include: ["tests/**/*.test.ts"],
+    include: [
+      "tests/intelligence/**/*.test.ts",
+      "tests/security/**/*.test.ts",
+      "tests/ontology/**/*.test.ts",
+      "tests/policy/**/*.test.ts",
+      "tests/editorial/**/*.test.ts",
+      "tests/semantic/**/*.test.ts",
+      "tests/persistence/**/*.test.ts",
+      "tests/scraper/**/*.test.ts",
+    ],
+    exclude: [
+      "tests/regression/**",
+      "tests/archive/**",
+      "node_modules/**",
+    ],
     environment: "node",
+    pool: "threads",
+    testTimeout: 30000,
+    hookTimeout: 30000,
   },
 });

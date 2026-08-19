@@ -11,6 +11,8 @@ import { OperatingLevel } from "../../domain/semantic";
 import { ICandidateProjectionBuilder } from "../../../domain/builders";
 import type { EvidenceGraph } from "../../../domain/evidence";
 import type { ResolvedOntology } from "../extraction/OntologyResolver";
+import { SemanticResolutionEngine } from "../semantic/SemanticResolutionEngine";
+import type { CanonicalSemanticEvidence } from "../semantic/types";
 
 export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuilder {
   public fromProfile(profile: CandidateProfile): CandidateProjection {
@@ -89,6 +91,17 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
       profile.preferences?.attentionWindow ??
       (profile as any).headspaceCapacityPerMonth;
 
+    // Phase 5C.2: Canonical Semantic Evidence Extraction
+    const compositional = SemanticResolutionEngine.extractCompositional(candidateText);
+    const semanticEvidence: CanonicalSemanticEvidence[] = [...compositional.evidenceList];
+    const uniqueCaps = Array.from(new Set(coreCapabilities));
+    for (const cap of uniqueCaps) {
+      const res = SemanticResolutionEngine.resolveCapability(cap, undefined, candidateText);
+      if (res && !semanticEvidence.some(e => e.canonicalConcept === res.canonicalConcept && e.sourcePhrase === res.sourcePhrase)) {
+        semanticEvidence.push(res);
+      }
+    }
+
     return {
       operatingLevel,
       candidateSeniorityLevel,
@@ -96,11 +109,12 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
       decisionAuthority,
       commercialScope,
       yearsOfExperience: profile.experience?.yearsExperience || 0,
-      coreCapabilities: Array.from(new Set(coreCapabilities)),
+      coreCapabilities: uniqueCaps,
       preferredLocations: profile.preferences?.locations || [],
       preferredWorkModel,
       executiveThemes,
-      attentionWindow
+      attentionWindow,
+      semanticEvidence
     };
   }
 
@@ -146,6 +160,17 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
     const extractedThemes = Array.from(new Set(claims.slice(0, 5)));
     const executiveThemes = extractedThemes.length > 0 ? extractedThemes : defaultThemes;
 
+    // Phase 5C.2: Canonical Semantic Evidence Extraction
+    const compositional = SemanticResolutionEngine.extractCompositional(fullText);
+    const semanticEvidence: CanonicalSemanticEvidence[] = [...compositional.evidenceList];
+    const uniqueSkillsCaps = Array.from(new Set([...caps, ...skills]));
+    for (const cap of uniqueSkillsCaps) {
+      const res = SemanticResolutionEngine.resolveCapability(cap, undefined, fullText);
+      if (res && !semanticEvidence.some(e => e.canonicalConcept === res.canonicalConcept && e.sourcePhrase === res.sourcePhrase)) {
+        semanticEvidence.push(res);
+      }
+    }
+
     return {
       operatingLevel,
       candidateSeniorityLevel,
@@ -153,10 +178,11 @@ export class CandidateProjectionBuilderImpl implements ICandidateProjectionBuild
       decisionAuthority,
       commercialScope,
       yearsOfExperience: 15,
-      coreCapabilities: Array.from(new Set([...caps, ...skills])),
+      coreCapabilities: uniqueSkillsCaps,
       preferredLocations: [],
       preferredWorkModel: "ANY",
-      executiveThemes
+      executiveThemes,
+      semanticEvidence
     };
   }
 }

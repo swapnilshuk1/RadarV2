@@ -1,5 +1,6 @@
 import type { CandidateProjection } from "../domain/candidate_projection";
 import type { OperatingLevel } from "../domain/semantic";
+import type { CompiledOntology } from "../ontology/compiler/types";
 
 const LEVEL_HIERARCHY: Record<string, number> = {
   EXECUTIVE: 5,
@@ -13,6 +14,7 @@ const LEVEL_HIERARCHY: Record<string, number> = {
 export interface CandidateEvaluationContext {
   projection: CandidateProjection;
   candHash?: string;
+  compiledOntology?: CompiledOntology;
 
   // Normalized identity & themes
   primaryIdentityStr: string;
@@ -38,7 +40,8 @@ export interface CandidateEvaluationContext {
 }
 
 export function buildCandidateEvaluationContext(
-  projection: CandidateProjection
+  projection: CandidateProjection,
+  compiledOntology?: CompiledOntology
 ): CandidateEvaluationContext {
   const themes = (projection.executiveThemes || [])
     .map((t: any) => (typeof t === "string" ? t : t?.value || ""))
@@ -77,6 +80,7 @@ export function buildCandidateEvaluationContext(
 
   return {
     projection,
+    compiledOntology,
     primaryIdentityStr,
     normalizedThemesLower,
     candidateProofPool: proofPool,

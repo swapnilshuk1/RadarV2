@@ -4,14 +4,16 @@
  * Compositional evidence extraction across compound executive statements.
  *
  * Example:
- * "Owned a ₹500 Cr consumer business across India with full revenue, margin and team accountability."
+ * "Led the India business across sales, marketing and operations, owning a ₹500 Cr P&L, a 200-person organization and the full GTM strategy."
  * Decomposes into:
- * - COMMERCIAL_SCOPE (₹500 Cr turnover / P&L)
- * - REVENUE_ACCOUNTABILITY (Full revenue ownership)
- * - MARGIN_ACCOUNTABILITY (Commercial margin governance)
- * - ORGANIZATIONAL_SCOPE (Consumer business unit)
+ * - FINANCIAL_SCOPE (₹500 Cr P&L)
  * - GEOGRAPHIC_SCOPE (National / India)
- * - PEOPLE_LEADERSHIP (Team accountability)
+ * - PEOPLE_LEADERSHIP / ORGANIZATIONAL_SCALE (200-person organization)
+ * - SENIORITY_LEADERSHIP (Led the India business)
+ * - FUNCTIONAL_CAPABILITY: SALES (Sales leadership)
+ * - FUNCTIONAL_CAPABILITY: MARKETING (Marketing leadership)
+ * - FUNCTIONAL_CAPABILITY: OPERATIONS (Operations leadership)
+ * - CAPABILITY: GTM_STRATEGY (Full GTM strategy)
  */
 
 import type { CanonicalSemanticEvidence, CompositionalEvidenceResult } from "../types";
@@ -74,16 +76,18 @@ export class CompositionalExtractor {
       }
     }
 
-    // 2. Extract People & Organizational Leadership
-    if (/\b(?:team\s+accountability|managed\s+a\s+team|direct\s+reports|led\s+a\s+team|organization\s+of\s+\d+|people\s+leadership)\b/i.test(raw)) {
+    // 2. Extract People & Organizational Leadership / Scale
+    if (/\b(?:team\s+accountability|managed\s+a\s+team|direct\s+reports|led\s+a\s+team|organization\s+of\s+\d+|\d+-person\s+(?:team|organization|dept|group)?|people\s+leadership)\b/i.test(raw)) {
+      const match = raw.match(/(\d+)-person\s+(?:team|organization|dept|group)?/i);
+      const sourcePhrase = match ? match[0] : "team accountability";
       evidenceList.push({
-        canonicalConcept: "PEOPLE_LEADERSHIP",
+        canonicalConcept: match ? `ORGANIZATIONAL_SCALE_${match[1]}_PEOPLE` : "PEOPLE_LEADERSHIP",
         entityType: "PEOPLE_SCOPE",
         semanticRelationship: "STRONG_EQUIVALENT",
         evidenceRelationship: "DIRECT_EQUIVALENT",
         direction: "BIDIRECTIONAL_EQUIVALENT",
         confidence: 0.96,
-        sourcePhrase: "team accountability",
+        sourcePhrase,
         context: raw,
         negated: negation.negated,
         temporalState: temporal.temporalState,
@@ -91,9 +95,9 @@ export class CompositionalExtractor {
       });
     }
 
-    // 3. Extract Seniority / Designation signals
+    // 3. Extract Seniority / Designation / Leadership signals
     let dominantSeniority;
-    if (/\b(?:ceo|cmo|cro|cgo|vp|president|director|head|manager|lead|coordinator|gm|md)\b/i.test(raw)) {
+    if (/\b(?:ceo|cmo|cro|cgo|vp|president|director|head|manager|lead|led|coordinator|gm|md)\b/i.test(raw)) {
       dominantSeniority = SeniorityResolver.resolve(raw);
       if (!dominantSeniority.evidence.semanticRelationship.includes("AMBIGUOUS")) {
         evidenceList.push(dominantSeniority.evidence);
@@ -116,20 +120,52 @@ export class CompositionalExtractor {
       }
     }
 
-    // 6. Extract Capability signals (GTM, M&A, RevOps, CX, AI, SaaS, D2C, B2B)
-    const capMatches = ["m&a", "gtm", "revops", "cx", "dx", "ai", "genai", "martech", "adtech", "crm", "erp", "saas", "d2c", "b2b", "b2c", "retention"];
-    for (const kw of capMatches) {
-      if (raw.toLowerCase().includes(kw)) {
-        const capEv = CapabilityResolver.resolve(kw, undefined, raw);
-        if (capEv) {
-          evidenceList.push(capEv);
-        }
+    // 6. Extract Functional & Strategic Capabilities
+    const domainKws: Record<string, string> = {
+      sales: "SALES_LEADERSHIP",
+      marketing: "MARKETING_STRATEGY",
+      operations: "OPERATIONAL_EXCELLENCE",
+      gtm: "GTM_STRATEGY",
+      "go-to-market": "GTM_STRATEGY",
+      "m&a": "M_AND_A",
+      revops: "REVENUE_OPERATIONS",
+      saas: "SAAS_BUSINESS_MODEL",
+      d2c: "D2C_GROWTH",
+      b2b: "B2B_COMMERCIAL",
+    };
+
+    for (const [kw, concept] of Object.entries(domainKws)) {
+      if (new RegExp(`\\b${kw}\\b`, "i").test(raw)) {
+        evidenceList.push({
+          canonicalConcept: concept,
+          entityType: "CAPABILITY",
+          semanticRelationship: "STRONG_EQUIVALENT",
+          evidenceRelationship: "DIRECT_EQUIVALENT",
+          direction: "BIDIRECTIONAL_EQUIVALENT",
+          confidence: 0.95,
+          sourcePhrase: kw,
+          context: raw,
+          negated: negation.negated,
+          temporalState: temporal.temporalState,
+          evidenceStrength: negation.evidenceStrength,
+        });
+      }
+    }
+
+    // De-duplicate exact (entityType + canonicalConcept)
+    const seen = new Set<string>();
+    const deduplicatedList: CanonicalSemanticEvidence[] = [];
+    for (const item of evidenceList) {
+      const key = `${item.entityType}:${item.canonicalConcept}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduplicatedList.push(item);
       }
     }
 
     return {
       rawText: raw,
-      evidenceList,
+      evidenceList: deduplicatedList,
       dominantScope,
       dominantSeniority,
       dominantGeography,

@@ -22,17 +22,16 @@ import { buildCandidateEvaluationContext } from "./context";
 // Phase 4 Semantic Imports
 import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
 import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
+import { IdentityAssessmentEngine } from "./engines/IdentityAssessmentEngine";
 import { CapabilityAssessmentEngine } from "./engines/CapabilityAssessmentEngine";
 import { OpportunityAssessmentEngine } from "./engines/OpportunityAssessmentEngine";
 import { CareerAssessmentEngine } from "./engines/CareerAssessmentEngine";
 import { CareerValueEngine } from "./engines/CareerValueEngine";
 import { LifestyleAssessmentEngine } from "./engines/LifestyleAssessmentEngine";
-import { IdentityAssessmentEngine } from "./engines/IdentityAssessmentEngine";
-
-
 import { DecisionPolicyEngine } from "./policy/DecisionPolicyEngine";
 import { EvidenceGate } from "./gates/EvidenceGate";
 import { calculateShortlistingPotentialFromAssessments } from "./calculators/ShortlistingPotentialCalculator";
+import crypto from "node:crypto";
 
 const KEY = "radar.opportunities.v3";
 let baseOpportunitiesCache: OpportunitySource[] | null = null;
@@ -290,6 +289,8 @@ export function runEngine(
           finalVerb: "SPARSE_SPEC",
           confidence: 0.3,
           stability: "Low",
+          candidateProjectionHash: candHash,
+          opportunityContentHash: oppContentHash,
           // P0-C: Pipeline contains ONLY EvidenceGate
           pipeline: [{ stage: "EvidenceGate", status: "SPARSE_SPEC", score: null, reason: "Needs More Signal: < 25 words in job specification." }],
           evidenceMapping: [],
@@ -430,6 +431,8 @@ export function runEngine(
         finalVerb,
         confidence: policyResult.confidences.recommendation,
         stability: "High",
+        candidateProjectionHash: candHash,
+        opportunityContentHash: oppContentHash,
         pipeline: policyResult.pipeline,
         evidenceMapping: capability.matches || [],
         careerValueBreakdown,

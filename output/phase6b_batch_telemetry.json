@@ -1,0 +1,15 @@
+{
+  "batchId": "remat_1787106760898_eygpr",
+  "limit": 10,
+  "totalQueried": 0,
+  "processedCount": 0,
+  "successCount": 0,
+  "failureCount": 0,
+  "unchangedCount": 0,
+  "needsWriteCount": 0,
+  "fingerprintsVerified": true,
+  "userChoicesPreserved": true,
+  "queueStatePreserved": true,
+  "ontologyVersion": "v3_semantic_v1",
+  "timestamp": "2026-08-19T02:32:46.003Z"
+}

@@ -24,6 +24,7 @@ export interface TemporalParsingResult {
 const ASPIRATIONAL_TRIGGERS = [
   /\bseeking\s+(?:a\s+role|an\s+opportunity|to|a\s+position)\b/i,
   /\blooking\s+(?:to|for|forward\s+to)\b/i,
+  /\baim(?:s|ing)?\s+to\b/i,
   /\bdesir(?:es|ing|ed)?\s+to\b/i,
   /\baspir(?:es|ing|ed)?\s+to\b/i,
   /\bwill\s+(?:take|own|lead|manage|be\s+responsible)\b/i,

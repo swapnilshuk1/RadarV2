@@ -4,7 +4,7 @@
  * Directional Capability Resolver with structured ontology mapping.
  *
  * Invariant Rules:
- * - Differentiates Semantic Relationship (ALIAS, SUBTYPE, SUPERTYPE, METRIC_OF)
+ * - Differentiates Semantic Relationship (EXACT, ALIAS, STRONG_EQUIVALENT, SUBTYPE, SUPERTYPE, METRIC_OF)
  *   from Evidence Relationship (DIRECT_EQUIVALENT, STRONG_SUPPORT, PARTIAL_SUPPORT, NON_SATISFYING).
  * - "SUBTYPE" does NOT universally satisfy requirements (e.g. SEO != complete Digital Marketing leadership).
  * - "METRIC_OF" provides quantitative outcome proof, not entire functional ownership.
@@ -27,7 +27,6 @@ interface CapabilityDefinition {
   readonly related: readonly string[];
 }
 
-// Ordered from most specific (GenAI, PMI, Zero-to-One) to broader (AI, Commercial)
 const CANONICAL_CAPABILITIES: readonly CapabilityDefinition[] = [
   {
     canonicalConcept: "ZERO_TO_ONE",
@@ -52,21 +51,21 @@ const CANONICAL_CAPABILITIES: readonly CapabilityDefinition[] = [
   {
     canonicalConcept: "M_AND_A",
     canonicalLabel: "Mergers & Acquisitions",
-    aliases: ["m&a", "m and a", "mergers and acquisitions", "mergers & acquisitions", "m & a", "m&a strategy"],
+    aliases: ["m&a", "m and a", "mergers and acquisitions", "mergers & acquisitions", "m & a"],
     subtypes: ["post-merger integration", "pmi", "carve-out", "due diligence", "deal structuring", "acquisitions integration"],
     supertypes: ["corporate development", "strategic finance", "inorganic growth"],
     metrics: ["deal volume", "integration synergies", "acquired arr"],
-    strongEquivalents: ["inorganic growth leadership", "m&a strategy and execution"],
+    strongEquivalents: ["inorganic growth leadership", "m&a strategy and execution", "m&a strategy"],
     related: ["joint ventures", "strategic partnerships"]
   },
   {
     canonicalConcept: "GTM_STRATEGY",
     canonicalLabel: "Go-to-Market Strategy",
-    aliases: ["gtm", "go to market", "go-to-market", "gtm motion", "gtm strategy", "go to market execution"],
+    aliases: ["gtm", "go to market", "go-to-market", "gtm motion", "gtm strategy"],
     subtypes: ["product launch", "field marketing", "channel gtm", "enterprise gtm", "partner gtm", "plg", "product led growth"],
     supertypes: ["commercial strategy", "growth strategy"],
     metrics: ["pipeline velocity", "win rate", "customer acquisition velocity"],
-    strongEquivalents: ["go-to-market execution", "gtm leadership", "market entry strategy"],
+    strongEquivalents: ["go to market execution", "go-to-market execution", "gtm leadership", "market entry strategy"],
     related: ["sales enablement", "lead gen", "lead generation for sales"]
   },
   {
@@ -92,11 +91,11 @@ const CANONICAL_CAPABILITIES: readonly CapabilityDefinition[] = [
   {
     canonicalConcept: "DIGITAL_TRANSFORMATION",
     canonicalLabel: "Digital Transformation",
-    aliases: ["dx", "digital transformation", "digital modernization", "enterprise modernization"],
+    aliases: ["dx", "digital transformation"],
     subtypes: ["legacy migration", "cloud transformation", "omnichannel digitalization", "process automation", "replatforming"],
     supertypes: ["enterprise strategy", "technology leadership"],
     metrics: ["digital adoption rate", "migration efficiency", "time to market reduction"],
-    strongEquivalents: ["enterprise digital modernization", "digital business transformation"],
+    strongEquivalents: ["enterprise digital modernization", "digital business transformation", "digital modernization", "enterprise modernization"],
     related: ["it service management", "agile transformation"]
   },
   {
@@ -112,7 +111,7 @@ const CANONICAL_CAPABILITIES: readonly CapabilityDefinition[] = [
   {
     canonicalConcept: "MARKETING_TECHNOLOGY",
     canonicalLabel: "Marketing Technology",
-    aliases: ["martech", "mar tech", "marketing technology", "marketing tech stack", "martech stack governance"],
+    aliases: ["martech", "mar tech", "marketing technology", "marketing tech stack"],
     subtypes: ["cdp", "customer data platform", "marketing automation", "tag management", "attribution modeling"],
     supertypes: ["marketing leadership", "marketing operations"],
     metrics: ["mql to sql conversion", "data enrichment rate"],
@@ -162,11 +161,11 @@ const CANONICAL_CAPABILITIES: readonly CapabilityDefinition[] = [
   {
     canonicalConcept: "D2C_COMMERCE",
     canonicalLabel: "Direct to Consumer",
-    aliases: ["d2c", "dtc", "direct to consumer", "direct-to-consumer", "direct 2 consumer", "dtc brand scaling"],
+    aliases: ["d2c", "dtc", "direct to consumer", "direct-to-consumer", "direct 2 consumer"],
     subtypes: ["e-commerce brand scaling", "shopify plus", "omnichannel retail"],
     supertypes: ["consumer commerce", "retail commerce"],
     metrics: ["aov", "average order value", "repeat customer rate", "cac"],
-    strongEquivalents: ["d2c brand scaling", "direct-to-consumer commerce"],
+    strongEquivalents: ["dtc brand scaling", "d2c brand scaling", "direct-to-consumer commerce"],
     related: ["warehousing", "last-mile delivery"]
   },
   {
@@ -222,7 +221,7 @@ const CANONICAL_CAPABILITIES: readonly CapabilityDefinition[] = [
   {
     canonicalConcept: "MODERNIZATION",
     canonicalLabel: "Technical Architecture Modernization",
-    aliases: ["modernization", "architecture modernization", "replatforming", "re-platforming", "re-platforming legacy monolith"],
+    aliases: ["modernization", "architecture modernization", "replatforming", "re-platforming"],
     subtypes: ["microservices migration", "monolith decomposition", "cloud native migration"],
     supertypes: ["technology leadership", "digital transformation"],
     metrics: ["uptime", "deployment frequency", "technical debt reduction"],
@@ -231,9 +230,11 @@ const CANONICAL_CAPABILITIES: readonly CapabilityDefinition[] = [
   }
 ];
 
-function isMatch(input: string, candidate: string): boolean {
-  if (input === candidate) return true;
-  // Exact word boundary regex
+function isExact(input: string, candidate: string): boolean {
+  return input === candidate.toLowerCase();
+}
+
+function isWordMatch(input: string, candidate: string): boolean {
   const escaped = candidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(`(^|\\b)${escaped}(\\b|$)`, "i");
   return regex.test(input);
@@ -277,9 +278,13 @@ export class CapabilityResolver {
     const negation = NegationDetector.analyze(fullContext, raw);
     const temporal = TemporalParser.parse(fullContext);
 
-    // 1. Pass 1: Check Exact Label / Alias
+    // =========================================================================
+    // EXACT MATCH PASS (Full String Equality)
+    // =========================================================================
+
+    // 1. Exact Canonical Label
     for (const def of CANONICAL_CAPABILITIES) {
-      if (inputLower === def.canonicalLabel.toLowerCase()) {
+      if (isExact(inputLower, def.canonicalLabel)) {
         return {
           canonicalConcept: def.canonicalConcept,
           entityType: "CAPABILITY",
@@ -294,30 +299,12 @@ export class CapabilityResolver {
           evidenceStrength: negation.evidenceStrength,
         };
       }
-
-      for (const a of def.aliases) {
-        if (isMatch(inputLower, a)) {
-          return {
-            canonicalConcept: def.canonicalConcept,
-            entityType: "CAPABILITY",
-            semanticRelationship: negation.negated ? "NEGATED" : "ALIAS",
-            evidenceRelationship: negation.negated ? "EXCLUDED" : "DIRECT_EQUIVALENT",
-            direction: "BIDIRECTIONAL_EQUIVALENT",
-            confidence: 0.98,
-            sourcePhrase: raw,
-            context: fullContext,
-            negated: negation.negated,
-            temporalState: temporal.temporalState,
-            evidenceStrength: negation.evidenceStrength,
-          };
-        }
-      }
     }
 
-    // 2. Pass 2: Check Strong Equivalents
+    // 2. Exact Strong Equivalent
     for (const def of CANONICAL_CAPABILITIES) {
       for (const se of def.strongEquivalents) {
-        if (isMatch(inputLower, se)) {
+        if (isExact(inputLower, se)) {
           return {
             canonicalConcept: def.canonicalConcept,
             entityType: "CAPABILITY",
@@ -335,10 +322,10 @@ export class CapabilityResolver {
       }
     }
 
-    // 3. Pass 3: Check Subtypes
+    // 3. Exact Subtype
     for (const def of CANONICAL_CAPABILITIES) {
       for (const sub of def.subtypes) {
-        if (isMatch(inputLower, sub)) {
+        if (isExact(inputLower, sub)) {
           return {
             canonicalConcept: def.canonicalConcept,
             entityType: "CAPABILITY",
@@ -356,10 +343,31 @@ export class CapabilityResolver {
       }
     }
 
-    // 4. Pass 4: Check Metrics
+    // 4. Exact Supertype
+    for (const def of CANONICAL_CAPABILITIES) {
+      for (const sup of def.supertypes) {
+        if (isExact(inputLower, sup)) {
+          return {
+            canonicalConcept: def.canonicalConcept,
+            entityType: "CAPABILITY",
+            semanticRelationship: negation.negated ? "NEGATED" : "SUPERTYPE",
+            evidenceRelationship: negation.negated ? "EXCLUDED" : "PARTIAL_SUPPORT",
+            direction: "SOURCE_TO_TARGET",
+            confidence: 0.90,
+            sourcePhrase: raw,
+            context: fullContext,
+            negated: negation.negated,
+            temporalState: temporal.temporalState,
+            evidenceStrength: negation.evidenceStrength,
+          };
+        }
+      }
+    }
+
+    // 5. Exact Metric
     for (const def of CANONICAL_CAPABILITIES) {
       for (const met of def.metrics) {
-        if (isMatch(inputLower, met)) {
+        if (isExact(inputLower, met)) {
           return {
             canonicalConcept: def.canonicalConcept,
             entityType: "CAPABILITY",
@@ -377,17 +385,17 @@ export class CapabilityResolver {
       }
     }
 
-    // 5. Pass 5: Check Supertypes
+    // 6. Exact Alias
     for (const def of CANONICAL_CAPABILITIES) {
-      for (const sup of def.supertypes) {
-        if (isMatch(inputLower, sup)) {
+      for (const a of def.aliases) {
+        if (isExact(inputLower, a)) {
           return {
             canonicalConcept: def.canonicalConcept,
             entityType: "CAPABILITY",
-            semanticRelationship: negation.negated ? "NEGATED" : "SUPERTYPE",
-            evidenceRelationship: negation.negated ? "EXCLUDED" : "PARTIAL_SUPPORT",
-            direction: "TARGET_TO_SOURCE",
-            confidence: 0.88,
+            semanticRelationship: negation.negated ? "NEGATED" : "ALIAS",
+            evidenceRelationship: negation.negated ? "EXCLUDED" : "DIRECT_EQUIVALENT",
+            direction: "BIDIRECTIONAL_EQUIVALENT",
+            confidence: 0.98,
             sourcePhrase: raw,
             context: fullContext,
             negated: negation.negated,
@@ -398,10 +406,10 @@ export class CapabilityResolver {
       }
     }
 
-    // 6. Pass 6: Check Related
+    // 7. Exact Related
     for (const def of CANONICAL_CAPABILITIES) {
       for (const rel of def.related) {
-        if (isMatch(inputLower, rel)) {
+        if (isExact(inputLower, rel)) {
           return {
             canonicalConcept: def.canonicalConcept,
             entityType: "CAPABILITY",
@@ -414,6 +422,102 @@ export class CapabilityResolver {
             negated: negation.negated,
             temporalState: temporal.temporalState,
             evidenceStrength: "STAKEHOLDER",
+          };
+        }
+      }
+    }
+
+    // =========================================================================
+    // PARTIAL / WORD-BOUNDARY MATCH PASS (For compound phrases)
+    // =========================================================================
+
+    for (const def of CANONICAL_CAPABILITIES) {
+      for (const se of def.strongEquivalents) {
+        if (isWordMatch(inputLower, se)) {
+          return {
+            canonicalConcept: def.canonicalConcept,
+            entityType: "CAPABILITY",
+            semanticRelationship: negation.negated ? "NEGATED" : "STRONG_EQUIVALENT",
+            evidenceRelationship: negation.negated ? "EXCLUDED" : "STRONG_SUPPORT",
+            direction: "BIDIRECTIONAL_EQUIVALENT",
+            confidence: 0.95,
+            sourcePhrase: raw,
+            context: fullContext,
+            negated: negation.negated,
+            temporalState: temporal.temporalState,
+            evidenceStrength: negation.evidenceStrength,
+          };
+        }
+      }
+
+      for (const sub of def.subtypes) {
+        if (isWordMatch(inputLower, sub)) {
+          return {
+            canonicalConcept: def.canonicalConcept,
+            entityType: "CAPABILITY",
+            semanticRelationship: negation.negated ? "NEGATED" : "SUBTYPE",
+            evidenceRelationship: negation.negated ? "EXCLUDED" : "STRONG_SUPPORT",
+            direction: "SOURCE_TO_TARGET",
+            confidence: 0.92,
+            sourcePhrase: raw,
+            context: fullContext,
+            negated: negation.negated,
+            temporalState: temporal.temporalState,
+            evidenceStrength: negation.evidenceStrength,
+          };
+        }
+      }
+
+      for (const sup of def.supertypes) {
+        if (isWordMatch(inputLower, sup)) {
+          return {
+            canonicalConcept: def.canonicalConcept,
+            entityType: "CAPABILITY",
+            semanticRelationship: negation.negated ? "NEGATED" : "SUPERTYPE",
+            evidenceRelationship: negation.negated ? "EXCLUDED" : "PARTIAL_SUPPORT",
+            direction: "SOURCE_TO_TARGET",
+            confidence: 0.90,
+            sourcePhrase: raw,
+            context: fullContext,
+            negated: negation.negated,
+            temporalState: temporal.temporalState,
+            evidenceStrength: negation.evidenceStrength,
+          };
+        }
+      }
+
+      for (const met of def.metrics) {
+        if (isWordMatch(inputLower, met)) {
+          return {
+            canonicalConcept: def.canonicalConcept,
+            entityType: "CAPABILITY",
+            semanticRelationship: negation.negated ? "NEGATED" : "METRIC_OF",
+            evidenceRelationship: negation.negated ? "EXCLUDED" : "STRONG_SUPPORT",
+            direction: "METRIC_FOR",
+            confidence: 0.92,
+            sourcePhrase: raw,
+            context: fullContext,
+            negated: negation.negated,
+            temporalState: temporal.temporalState,
+            evidenceStrength: negation.evidenceStrength,
+          };
+        }
+      }
+
+      for (const a of def.aliases) {
+        if (isWordMatch(inputLower, a)) {
+          return {
+            canonicalConcept: def.canonicalConcept,
+            entityType: "CAPABILITY",
+            semanticRelationship: negation.negated ? "NEGATED" : "ALIAS",
+            evidenceRelationship: negation.negated ? "EXCLUDED" : "DIRECT_EQUIVALENT",
+            direction: "BIDIRECTIONAL_EQUIVALENT",
+            confidence: 0.98,
+            sourcePhrase: raw,
+            context: fullContext,
+            negated: negation.negated,
+            temporalState: temporal.temporalState,
+            evidenceStrength: negation.evidenceStrength,
           };
         }
       }

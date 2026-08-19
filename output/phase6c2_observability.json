@@ -1,0 +1,408 @@
+{
+  "populations": {
+    "PRODUCTION": {
+      "totalOpportunities": 2233,
+      "semanticEvidenceDetectedCount": 1968,
+      "semanticSatisfyingCount": 1955,
+      "semanticScoringEligibleCount": 1069,
+      "semanticScoreChangedCount": 0,
+      "semanticScoreIncreaseCount": 0,
+      "semanticScoreDecreaseCount": 0,
+      "semanticNoOpCount": 1968,
+      "noSemanticEvidenceCount": 265,
+      "scoreDeltaMetrics": {
+        "min": 0,
+        "max": 0,
+        "mean": 0,
+        "median": 0,
+        "p90": 0,
+        "p95": 0,
+        "p99": 0,
+        "stdDev": 0,
+        "positiveCount": 0,
+        "negativeCount": 0,
+        "zeroCount": 2233,
+        "gte1": 0,
+        "gte2": 0,
+        "gte5": 0,
+        "gte8": 0,
+        "gte10": 0,
+        "gt11": 0,
+        "histogram": {
+          "0": 2233,
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0,
+          "5": 0,
+          "6": 0,
+          "7": 0,
+          "8": 0,
+          "9": 0,
+          "10": 0,
+          "11": 0,
+          ">11": 0,
+          "<0": 0
+        }
+      },
+      "maxDelta": 0,
+      "verdictTransitions": {
+        "PASS_TO_CONSIDER": 0,
+        "PASS_TO_PURSUE": 0,
+        "CONSIDER_TO_PURSUE": 0,
+        "CONSIDER_TO_PASS": 0,
+        "PURSUE_TO_CONSIDER": 0,
+        "PURSUE_TO_PASS": 0,
+        "SAME_VERDICT": 2233
+      }
+    },
+    "GOLDEN_FIXTURE": {
+      "totalOpportunities": 14,
+      "maxDelta": 0,
+      "cmoGoldenScoreDelta": 11,
+      "cmoGoldenVerdictTransition": "CONSIDER -> PURSUE"
+    },
+    "OFFLINE_SHADOW": {
+      "totalOpportunities": 0,
+      "maxDelta": 0
+    }
+  },
+  "reconciliationEquation": {
+    "totalOpportunities": 2233,
+    "sumComponents": 2233,
+    "reconciled": true
+  },
+  "polysemousTokenFlow": {
+    "tokens": {
+      "target": {
+        "rawDetection": 0,
+        "contextualResolution": 0,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 0,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "apple": {
+        "rawDetection": 0,
+        "contextualResolution": 0,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 0,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "amazon": {
+        "rawDetection": 4,
+        "contextualResolution": 4,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 0,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "shell": {
+        "rawDetection": 0,
+        "contextualResolution": 0,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 0,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "meta": {
+        "rawDetection": 2,
+        "contextualResolution": 2,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 0,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "gm": {
+        "rawDetection": 22,
+        "contextualResolution": 22,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 0,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "md": {
+        "rawDetection": 3,
+        "contextualResolution": 3,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 0,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "lead": {
+        "rawDetection": 172,
+        "contextualResolution": 172,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 172,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "head": {
+        "rawDetection": 640,
+        "contextualResolution": 640,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 640,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "executive": {
+        "rawDetection": 44,
+        "contextualResolution": 44,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 44,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "manager": {
+        "rawDetection": 348,
+        "contextualResolution": 348,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 348,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "director": {
+        "rawDetection": 429,
+        "contextualResolution": 429,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 429,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "account": {
+        "rawDetection": 24,
+        "contextualResolution": 24,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 24,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      },
+      "enterprise": {
+        "rawDetection": 29,
+        "contextualResolution": 29,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "scoringEligible": 29,
+        "actuallyScored": 0,
+        "scoreContribution": 0
+      }
+    },
+    "falsePositiveScoringEscapes": 0,
+    "assertionPassed": true
+  },
+  "relationshipBreakdown": {
+    "EXACT": {
+      "rawDetected": 1045,
+      "recognized": 1045,
+      "scoringEligible": 1044,
+      "satisfying": 1045,
+      "scoreChanging": 0
+    },
+    "ALIAS": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "ACRONYM": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "LEXICAL_VARIANT": {
+      "rawDetected": 886,
+      "recognized": 886,
+      "scoringEligible": 6,
+      "satisfying": 886,
+      "scoreChanging": 0
+    },
+    "STRONG_EQUIVALENT": {
+      "rawDetected": 886,
+      "recognized": 886,
+      "scoringEligible": 2,
+      "satisfying": 886,
+      "scoreChanging": 0
+    },
+    "SUBTYPE": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "SUPERTYPE": {
+      "rawDetected": 2,
+      "recognized": 2,
+      "scoringEligible": 2,
+      "satisfying": 2,
+      "scoreChanging": 0
+    },
+    "METRIC_OF": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "RELATED": {
+      "rawDetected": 37,
+      "recognized": 37,
+      "scoringEligible": 19,
+      "satisfying": 18,
+      "scoreChanging": 0
+    },
+    "PARENT_ENTITY": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "SUBSIDIARY": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "BUSINESS_UNIT": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "BRAND": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "PRODUCT": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "CITY_ALIAS": {
+      "rawDetected": 45,
+      "recognized": 45,
+      "scoringEligible": 45,
+      "satisfying": 45,
+      "scoreChanging": 0
+    },
+    "METRO_CLUSTER": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "ADMINISTRATIVE_CONTAINMENT": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "AMBIGUOUS": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "NEGATED": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "HISTORICAL": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    },
+    "ASPIRATIONAL": {
+      "rawDetected": 0,
+      "recognized": 0,
+      "scoringEligible": 0,
+      "satisfying": 0,
+      "scoreChanging": 0
+    }
+  },
+  "fingerprintProof": {
+    "testA_v2_baseline": "eval_v4_1a98f554e4e81b6a6c38dc23397e56f254058a8b6edccb791181e0c4e6fab6f1",
+    "testB_v2_shadow": "eval_v4_1a98f554e4e81b6a6c38dc23397e56f254058a8b6edccb791181e0c4e6fab6f1",
+    "testC_v3_semantic_v1": "eval_v4_db39fa3c1dc01996da777e6963b8e9189f300bacbd96e5be8410c2b8446a9cdc",
+    "testA_equals_testB": true,
+    "testB_notEquals_testC": true,
+    "freshnessCounts": {
+      "FRESH": 2233,
+      "STALE": 0,
+      "MISSING_FINGERPRINT": 0,
+      "INVALID_FINGERPRINT": 0,
+      "VERSION_MISMATCH": 0
+    }
+  },
+  "sourceAudit": {
+    "breakdown": {
+      "Workday": 1724,
+      "Naukri": 479,
+      "LinkedIn": 30,
+      "Unknown": 0
+    },
+    "duplicateJobHashes": 0,
+    "missingSourceCount": 0,
+    "totalProduction": 2233
+  },
+  "userAndQueueAudit": {
+    "userDecisionMutations": "USER-MUTATION AUDITABILITY: NOT INSTRUMENTED (Turso decisions table untouched)",
+    "queueStateMutations": "0 mutations detected in evaluation_jobs table"
+  },
+  "operationalTelemetryProvenance": {
+    "productionStorageLatency": "PRODUCTION LATENCY: NOT INSTRUMENTED IN TURSO STORAGE",
+    "offlineLocalBenchmarkTiming": {
+      "latencyMsPerEvaluation": 4.18,
+      "throughputOpsPerSec": 239
+    }
+  },
+  "certificationDecision": "🟢 CERTIFIED — TELEMETRY RECONCILED",
+  "timestamp": "2026-08-19T03:30:57.172Z"
+}
