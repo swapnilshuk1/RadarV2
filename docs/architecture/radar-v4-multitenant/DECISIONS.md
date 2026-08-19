@@ -18,3 +18,8 @@
 ## ADR 4: Stable Job Identity
 **Decision**: `canonical_job_id` is deterministically derived from stable source identity, never content.
 **Rationale**: If a job's text changes, it creates a new `opportunity_version`, but its root identity remains stable for tracking.
+
+## M4.1 Relational Integrity Remediation
+**Context**: During the initial implementation of the M4.1 search_plan_candidates schema, the relational model enforced foreign keys independently: canonical_job_id matched a valid job, and opportunity_version matched a valid version, but did not enforce that the version belonged to that job. Similarly, the ownership hierarchy (tenant_id, person_id, search_plan_id) was not structurally bound.
+**Decision**: We introduced composite index boundaries (idx_people_tenant_lineage, idx_search_plans_lineage) and a unique opportunity constraint UNIQUE(canonical_job_id, id). The search_plan_candidates table now enforces composite foreign keys.
+**Result**: A tenant projection cannot cross ownership boundaries or link a job to another job's version at the database level, strictly enforcing the M4 isolated projection contract.

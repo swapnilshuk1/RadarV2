@@ -15,3 +15,9 @@ The RADAR system is evolving from a single-user architecture to a Multi-Tenant p
 * **No subjective exit gates:** "Looks good" is not acceptable. Every phase requires deterministic tests, schema inspection, and negative tests.
 * **No changing the golden fixtures:** The existing V4 evaluation corpus is the golden regression suite. Do not modify golden fixtures to make failing tests pass.
 * **No destructive migrations:** Expand → dual/read-compatible → verify → switch → contract. Never `DROP` or `ALTER` destructively without a verified rollback plan.
+
+## 4. Current Phase Lock (Checkpoints)
+- **M1 - M3**: COMPLETED & FULLY CERTIFIED.
+- **M4 (Canonical Acquisition & Gating)**: 
+  - **M4.1**: `020_canonical_acquisition.sql` remediated. Composite ownership limits (tenant/person/plan) and version matching (job/version) mechanically tested via negative valid-but-cross-lineage bounds. M4.1 is COMPLETED WITH REMEDIATION.
+  - **STOP**: Do not proceed to M4.2 without explicit phase-gate certification.

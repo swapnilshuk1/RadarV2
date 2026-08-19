@@ -31,7 +31,7 @@
   - **Cross-Tenant Isolation Tests**: Created security tests strictly guarding deputy leaks across `AuthContext`.
   - 100% pass across all tests, type checks, and staging deployment via Oracle SSH.
 * **M4 - Canonical Acquisition + Search Plan Gating**: IN PROGRESS.
-  - **M4.1 - Canonical Schema**: ✅ COMPLETED. (Global canonical_opportunities, opportunity_versions, search_plan_candidates schema built and verified).
+  - **M4.1 - Canonical Schema**: ✅ COMPLETED WITH REMEDIATION. (Composite lineage constraints and canonical-job-version uniqueness enforced).
   - **M4.2 - Identity & Versioning**: 🟡 PENDING.
   - **M4.3 - Attention Gate**: 🟡 PENDING.
   - **M4.4 - Dual-Write Integration**: 🟡 PENDING.
