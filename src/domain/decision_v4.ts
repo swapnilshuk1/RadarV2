@@ -40,6 +40,10 @@ export interface EngineRecommendationV4 {
   readonly jobHash: string;
   readonly evaluationFingerprint: string;
   readonly engineVerdict: EngineVerdict;
+  readonly verb0?: EngineVerdict;
+  readonly headspaceVerdict?: EngineVerdict;
+  readonly headspaceDowngraded?: boolean;
+  readonly headspaceReason?: string;
   readonly vetoed: boolean;
   readonly vetoReason: string | null;
   readonly qualityScore: number | null; // Model C authoritative continuous quality score (0..100 or null)

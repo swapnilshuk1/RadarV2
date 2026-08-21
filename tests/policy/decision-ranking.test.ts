@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   computeEffectiveDecision,
   computeReviewWorkflowState,
@@ -10,6 +10,8 @@ import {
 } from "../../src/domain/decision_v4";
 import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
 import type { Opportunity } from "../../src/data/opportunity-fixtures";
+import { getRepositories } from "../../src/data/sqlite/provider";
+import * as engineModule from "../../src/lib/intelligence/engine";
 
 describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
   // Test Fixture Factory
@@ -382,12 +384,87 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
   });
 
   // ==========================================================================
-  // T11: End-to-End OpportunityService Contract Verification
+  // T11: End-to-End OpportunityService Contract Verification (M5 Materialized Queue)
   // ==========================================================================
-  it("T11: OpportunityService.listForUser returns properly structured V4 opportunities with 4-state workflow", async () => {
-    const userId = "guest-user";
+  it("T11: OpportunityService.listForUser returns properly structured V4 opportunities with 4-state workflow from materialized state without invoking runEngine", async () => {
+    const repos = getRepositories();
+    const userId = "t11-verified-user";
+    const runEngineSpy = vi.spyOn(engineModule, "runEngine");
+
+    // 1. Seed/materialize evaluations into database representing complete, sparse, and vetoed states
+    const items = [
+      {
+        jobHash: "j-t11-pursue",
+        engineVerdict: "PURSUE" as const,
+        engineQualityScore: 92,
+        vetoed: false,
+        vetoReason: null,
+      },
+      {
+        jobHash: "j-t11-consider",
+        engineVerdict: "CONSIDER" as const,
+        engineQualityScore: 78,
+        vetoed: false,
+        vetoReason: null,
+      },
+      {
+        jobHash: "j-t11-vetoed",
+        engineVerdict: "PASS" as const,
+        engineQualityScore: 0,
+        vetoed: true,
+        vetoReason: "G-EXECUTIVE-IDENTITY-MISMATCH",
+      },
+    ];
+
+    for (const item of items) {
+      await repos.evaluations.saveEvaluation({
+        personId: userId,
+        jobHash: item.jobHash,
+        policyVersion: "v4.3",
+        evaluationInputHash: `fp_${item.jobHash}`,
+        engineVerdict: item.engineVerdict,
+        engineQualityScore: item.engineQualityScore,
+        evaluationStatus: "COMPLETE",
+        evaluationJson: JSON.stringify({
+          schemaVersion: "v4.2-intrinsic",
+          jobHash: item.jobHash,
+          personId: userId,
+          evaluationInputHash: `fp_${item.jobHash}`,
+          policyVersion: "v4.3",
+          ontologyVersion: "v2",
+          evaluatedAt: new Date().toISOString(),
+          intrinsicVerdict: item.engineVerdict,
+          intrinsicQualityScore: item.vetoed ? null : item.engineQualityScore,
+          vetoed: item.vetoed,
+          vetoReason: item.vetoReason,
+          parsingConfidence: 0.95,
+          triggeredRuleIds: item.vetoed ? ["RULE_VETO"] : [],
+          decisionRisks: [],
+          decisionDrivers: [],
+          evaluationStatus: "COMPLETE",
+          dimensions: [],
+          esi: 85,
+          diligenceStatus: "VERIFIED",
+          baseNarrative: {
+            baseRecommendationProse: `Executive match for ${item.jobHash}`,
+          },
+          auditTrace: {
+            verb0: item.engineVerdict,
+            careerValue: 80,
+            shortlistingPotential: 85,
+            pursuitFriction: 20,
+            rawScore: item.engineQualityScore,
+            evidenceMappingCount: 5,
+          },
+        }),
+      });
+    }
+
+    // 2. Call OpportunityService.listForUser()
     const opportunities = await OpportunityService.listForUser(userId);
-    expect(opportunities.length).toBeGreaterThan(0);
+
+    // 3. Assert that it returns the expected V4 opportunity structure
+    expect(opportunities.length).toBe(3);
 
     for (const opp of opportunities) {
       // Must have valid engine recommendation object
@@ -407,6 +484,15 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
         expect(opp.engineRecommendation.qualityScore).toBeNull();
       }
     }
+
+    // 4. Assert that an empty materialized population returns []
+    const emptyOps = await OpportunityService.listForUser("t11-nonexistent-user-empty");
+    expect(emptyOps).toEqual([]);
+
+    // 5. Assert that listForUser() does not invoke runEngine()
+    expect(runEngineSpy).not.toHaveBeenCalled();
+
+    runEngineSpy.mockRestore();
   }, 45000);
 
   // ==========================================================================

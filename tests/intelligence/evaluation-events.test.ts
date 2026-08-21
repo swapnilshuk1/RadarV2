@@ -1,3 +1,4 @@
+process.env.RADAR_USE_TURSO = "true";
 import { describe, it, expect, beforeEach } from "vitest";
 import { 
   runEngine, 

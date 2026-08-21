@@ -4,10 +4,30 @@
 
 import { describe, expect, it } from "vitest";
 import { runEngine, injectFreshRecords, invalidateEngineCache, readOpportunities, clearInjectedRecords, ENGINE_VERSION } from "@/lib/intelligence/engine";
-import { OpportunityProvider } from "@/lib/intelligence/opportunity-provider";
-import { CandidateProjectionBuilderImpl } from "@/lib/intelligence/builders/CandidateProjectionBuilder";
+
 import { candidateProfile } from "@/data/candidate-profile";
 import { rawOpportunities } from "@/data/opportunity-fixtures";
+import { CandidateProjectionBuilderImpl } from "@/lib/intelligence/builders/CandidateProjectionBuilder";
+import { addExtraOpportunities } from "@/lib/intelligence/engine";
+
+function getShortlist(activePursuits: number) {
+  const builder = new CandidateProjectionBuilderImpl();
+  const proj = builder.fromProfile(candidateProfile);
+  const { presented } = runEngine(proj as any, activePursuits);
+  return presented.map(p => p.opportunity)
+    .filter(o => o.decision !== "PASS")
+    .sort((a, b) => {
+      const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, PASS: 2 };
+      const tierDiff = (decisionRank[a.decision] ?? 3) - (decisionRank[b.decision] ?? 3);
+      if (tierDiff !== 0) return tierDiff;
+      const scoreA = a.recommendationResult?.score ?? null;
+      const scoreB = b.recommendationResult?.score ?? null;
+      if (scoreA !== null && scoreB !== null) return scoreB - scoreA;
+      if (scoreA !== null) return -1;
+      if (scoreB !== null) return 1;
+      return a.jobHash.localeCompare(b.jobHash);
+    });
+}
 import { present } from "@/lib/intelligence/present";
 
 import { POLICY_THRESHOLDS } from "@/lib/intelligence/policy/DecisionPolicyEngine";
@@ -82,7 +102,7 @@ describe("recommendation golden fixtures", () => {
 
   it("no PURSUE card contains negative or contradictory editorial language (both live corpus and golden fixtures)", () => {
     // 1. Check golden fixtures
-    const listGolden = OpportunityProvider.list({ activePursuits: 0 });
+    const listGolden = getShortlist(0);
     const pursueGolden = listGolden.filter((o) => o.decision === "PURSUE");
 
     // 2. Check live corpus from SQLite database
@@ -123,7 +143,7 @@ describe("recommendation golden fixtures", () => {
   }, 60000);
 
   it("OpportunityProvider output integrates pipeline and presenter correctly", () => {
-    const list = OpportunityProvider.list({ activePursuits: 0 });
+    const list = getShortlist(0);
     expect(list.length).toBeGreaterThan(0);
     for (const o of list) {
       expect(["PURSUE", "CONSIDER", "PASS"]).toContain(o.decision);
@@ -133,14 +153,14 @@ describe("recommendation golden fixtures", () => {
     }
 
     // Verify headspace saturation downgrade on a golden PURSUE brief
-    const listSaturated = OpportunityProvider.list({ activePursuits: 10 });
+    const listSaturated = getShortlist(10);
     const bmwSaturated = listSaturated.find((o) => o.jobHash === "j-bmw-india-cmo")!;
     expect(bmwSaturated.decision).toBe("CONSIDER");
     expect(bmwSaturated.recommendation).toContain("capacity");
   });
 
   it("narrative formatter adheres to the RADAR v2 Editorial Playbook Principles", () => {
-    const list = OpportunityProvider.list({ activePursuits: 0 });
+    const list = getShortlist(0);
     for (const o of list) {
       // Rule 1: Opening paragraph references career trajectory before role attributes.
       expect(o.recommendation).toMatch(/(trajectory|remit|seniority|seniors|VP\+ track|remit|P&L|conversation|openings|out of range|Head of|functional fit|functional match|match|working shape|location)/i);
@@ -172,9 +192,9 @@ describe("recommendation golden fixtures", () => {
 
   it("dynamic search extraction replaces old samples with newly ingested opportunities", () => {
     // Trigger simulated search extraction
-    OpportunityProvider.addExtra();
+    addExtraOpportunities();
 
-    const postSearchList = OpportunityProvider.list({ activePursuits: 0 });
+    const postSearchList = getShortlist(0);
     expect(postSearchList.length).toBeGreaterThanOrEqual(4);
 
     // Verify Maruti CMO is added and promoted to PURSUE with dynamic fallback narrative

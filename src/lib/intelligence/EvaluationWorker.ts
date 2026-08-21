@@ -168,7 +168,13 @@ export class EvaluationWorker {
       
       const snapshotPayload = JSON.parse(ctxRow.payload_json);
       const builder = new CandidateProjectionBuilderImpl();
-      const projection = builder.fromProfile(snapshotPayload);
+      let projection;
+      if (snapshotPayload && snapshotPayload.identity && snapshotPayload.executiveIdentity) {
+        projection = builder.fromProfile(snapshotPayload);
+      } else {
+        const { candidateProfile } = await import("@/data/candidate-profile");
+        projection = builder.fromProfile(candidateProfile);
+      }
 
       const presented = runEngineSingle(
         oppSource.jobHash || job.canonicalJobId,

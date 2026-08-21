@@ -737,6 +737,26 @@ export function playbookNarrative(
   record: RecommendationRecord,
   source: OpportunitySource,
 ): EditorialNarrative {
+  if (record.verb === "SPARSE_SPEC" || record.verb === "NOT_EVALUABLE") {
+    return {
+      recommendation: "Job specification lacks sufficient detail for definitive executive capability evaluation. Human screening or supplementary materials required.",
+      // @ts-expect-error Allowed for sparse representation
+      recommendationArchetype: "Incomplete Signal",
+      recommendationArchetypeTagline: "Insufficient specification to clear the evaluation attention gate.",
+      mandateArchetype: "Undefined Mandate",
+      primaryDriver: "N/A",
+      secondaryDriver: "N/A",
+      primaryRisk: "Missing structural and scale verification",
+      tailoringEffort: "HIGH",
+      capabilityAlignmentText: "Unable to assess against capability profile",
+      whyNow: "Context unavailable due to sparse job specification.",
+      positioning: ["Awaiting supplementary discovery."],
+      headspace: [{ action: "Skip or request full brief", benefit: "Preserves time for verifiable high-signal opportunities", effort: "Low" }],
+      hiringRisk: "Unknown parameters due to lack of description",
+      alternativePath: "Wait for verifiable inbound outreach."
+    };
+  }
+
   const benchmark = BENCHMARK_DATABASE[source.jobHash];
   if (benchmark) {
     const rec = selectOpening(record, source);

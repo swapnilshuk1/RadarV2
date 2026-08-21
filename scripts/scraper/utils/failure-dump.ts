@@ -3,6 +3,46 @@ import path from "path";
 import { Page } from "playwright";
 import { ARTIFACTS_DIR } from "../config";
 
+/**
+ * Sanitizes arbitrary diagnostic strings (errors, titles, URLs, HTML) to ensure
+ * secrets, tokens, cookies, or auth envelopes are not leaked to disk or logs.
+ *
+ * Diagnostic Confidentiality Boundary:
+ * - Textual artifacts (url.txt, title.txt, error.txt, page.html): Known credential patterns,
+ *   tokens, and session identifiers are sanitized via regex substitution.
+ * - Bitmap artifacts (page.png): Diagnostic screenshots are raw browser viewport renders
+ *   and are explicitly unredacted diagnostic bitmaps not guaranteed secret-free.
+ */
+export function sanitizeDiagnosticValue(input: unknown): string {
+  if (input === null || input === undefined) return "";
+  let str = typeof input === "string" ? input : String(input);
+
+  // Redact Bearer / Basic tokens
+  str = str.replace(/Bearer\s+[A-Za-z0-9\-_.~+/]+=*/gi, "Bearer [REDACTED]");
+  str = str.replace(/Basic\s+[A-Za-z0-9+/]+=*/gi, "Basic [REDACTED]");
+
+  // Redact URL query parameter tokens (?token=..., &apiKey=..., &li_at=...)
+  str = str.replace(/([?&](?:li_at|JSESSIONID|session|auth|token|jwt|apiKey|password|secretPayload|secret)=)[^&\s]+/gi, "$1[REDACTED]");
+
+  // Redact sensitive cookies and key-values (li_at, JSESSIONID, auth tokens, secretPayload)
+  str = str.replace(/\b(?:li_at|JSESSIONID|session|auth|token|jwt|apiKey|password|secretPayload|secret)\b\s*[:=]\s*[^\r\n,;]+/gi, (match) => {
+    const eqIdx = match.search(/[:=]/);
+    const key = match.slice(0, eqIdx + 1);
+    return `${key} [REDACTED]`;
+  });
+
+  // Redact header lines
+  str = str.replace(/(?:authorization|cookie|set-cookie)\s*:\s*[^\r\n]+/gi, (match) => {
+    const colonIdx = match.indexOf(":");
+    return `${match.slice(0, colonIdx + 1)} [REDACTED]`;
+  });
+
+  // Redact JSON fields with flexible whitespace
+  str = str.replace(/"(secretPayload|encryptedCiphertext|iv|authTag|token|password|secret|li_at|JSESSIONID)"\s*:\s*"[^"]*"/gi, '"$1":"[REDACTED]"');
+
+  return str;
+}
+
 export async function dumpFailureArtifacts(
   runId: string,
   portal: string,
@@ -23,21 +63,23 @@ export async function dumpFailureArtifacts(
     const titlePath = path.join(dir, `${prefix}title.txt`);
     const errorPath = path.join(dir, `${prefix}error.txt`);
 
-    const url = page.url();
-    fs.writeFileSync(urlPath, url, "utf8");
+    const url = page ? page.url() : "";
+    fs.writeFileSync(urlPath, sanitizeDiagnosticValue(url), "utf8");
 
-    const title = await page.title().catch(() => "Unknown Title");
-    fs.writeFileSync(titlePath, title, "utf8");
+    const title = page ? await page.title().catch(() => "Unknown Title") : "Unknown Title";
+    fs.writeFileSync(titlePath, sanitizeDiagnosticValue(title), "utf8");
 
-    fs.writeFileSync(errorPath, errorMsg, "utf8");
+    fs.writeFileSync(errorPath, sanitizeDiagnosticValue(errorMsg), "utf8");
 
-    const html = await page.content().catch(() => "Failed to get content");
-    fs.writeFileSync(htmlPath, html, "utf8");
+    const html = page ? await page.content().catch(() => "Failed to get content") : "No Page Content";
+    fs.writeFileSync(htmlPath, sanitizeDiagnosticValue(html), "utf8");
 
-    await page.screenshot({ path: pngPath, fullPage: true }).catch(() => {});
+    if (page) {
+      await page.screenshot({ path: pngPath, fullPage: true }).catch(() => {});
+    }
 
     console.log(`[scrape:${portal}] Failure artifacts dumped to ${dir}`);
   } catch (err: any) {
-    console.error(`[scrape:${portal}] Failed to dump failure artifacts: ${err.message}`);
+    console.error(`[scrape:${portal}] Failed to dump failure artifacts: ${sanitizeDiagnosticValue(err.message)}`);
   }
 }

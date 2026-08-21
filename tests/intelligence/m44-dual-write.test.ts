@@ -52,7 +52,9 @@ describe("Phase M4.4: Dual-Write & Shadow Path", () => {
       "009_profile_queryable_columns.sql",
       "018_multi_tenant_foundation.sql",
       "019_evaluation_context_and_read_model.sql",
-      "020_canonical_acquisition.sql"
+      "020_canonical_acquisition.sql",
+      "023_canonical_posted_at.sql",
+      "024_canonical_posting_precision.sql"
     ];
     for (const file of migrationFiles) {
       const sql = fs.readFileSync(path.join(process.cwd(), "src/data/sqlite/migrations", file), "utf-8");

@@ -1,4 +1,4 @@
-import type { DatabaseAdapter } from "@/data/database/DatabaseAdapter";
+import type { DatabaseAdapter } from "@/data/database";
 import { evaluateAttentionGate } from "@/lib/intelligence/AttentionGate";
 import type { OpportunityVersion, SearchPlanCandidate } from "@/lib/domain/canonical_acquisition";
 import type { SearchPlan } from "@/lib/domain/evaluation_context";

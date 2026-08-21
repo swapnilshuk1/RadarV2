@@ -10,6 +10,8 @@
  */
 
 import { describe, it, expect } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 
 import { runEngine, readOpportunities, injectFreshRecords, clearInjectedRecords, computeEvaluationSignature, invalidateEngineCache, ENGINE_VERSION } from "@/lib/intelligence/engine";
 import { present } from "@/lib/intelligence/present";
@@ -18,7 +20,6 @@ import { candidateProfile } from "@/data/candidate-profile";
 import { CapabilityAssessmentEngine } from "@/lib/intelligence/engines/CapabilityAssessmentEngine";
 import decisionPolicy from "@/data/ontology/decision_policy.json";
 import { POLICY_THRESHOLDS } from "@/lib/intelligence/policy/DecisionPolicyEngine";
-import { OpportunityProvider } from "@/lib/intelligence/opportunity-provider";
 
 function deepClone<T>(v: T): T { return JSON.parse(JSON.stringify(v)); }
 
@@ -228,12 +229,23 @@ describe("Phase-0 Strong Architecture Contract Tests — Hardened", () => {
 
   // --- Shortlist & ranking integrity (HARDENED)
   it("Shortlist fidelity & ranking isolation: shortlist items must carry record trace fields and SPARSE_SPEC cannot be in scored ranking", () => {
-    const shortlist = OpportunityProvider.list({ activePursuits: 0 });
-    expect(Array.isArray(shortlist)).toBe(true);
-
     const builder = new CandidateProjectionBuilderImpl();
     const proj = builder.fromProfile(candidateProfile);
     const engine = runEngine(proj as any, 0);
+    const shortlist = engine.presented.map(p => p.opportunity)
+      .filter(o => o.decision !== "PASS")
+      .sort((a, b) => {
+        const decisionRank: Record<string, number> = { PURSUE: 0, CONSIDER: 1, PASS: 2 };
+        const tierDiff = (decisionRank[a.decision] ?? 3) - (decisionRank[b.decision] ?? 3);
+        if (tierDiff !== 0) return tierDiff;
+        const scoreA = a.recommendationResult?.score ?? null;
+        const scoreB = b.recommendationResult?.score ?? null;
+        if (scoreA !== null && scoreB !== null) return scoreB - scoreA;
+        if (scoreA !== null) return -1;
+        if (scoreB !== null) return 1;
+        return a.jobHash.localeCompare(b.jobHash);
+      });
+    expect(Array.isArray(shortlist)).toBe(true);
     const recMap = new Map(engine.records.map(r => [r.jobHash, r]));
 
     // Build scoredRanking per desired invariant: only evaluated & recommendation in {PURSUE, CONSIDER, PASS} & priority != null
@@ -291,6 +303,30 @@ describe("Phase-0 Strong Architecture Contract Tests — Hardened", () => {
         expect(uiScore === null || uiScore === 0 || uiScore === undefined).toBe(true);
       }
     }
+  });
+
+  // --- M5.5 Durable Architectural Isolation Contract ---
+  it("M5.5 Contract: OpportunityService.listForUser MUST NOT import runEngine, call runEngine, call OpportunityProvider, or synchronously evaluate the corpus", () => {
+    const serviceFilePath = path.resolve(process.cwd(), "src/lib/intelligence/opportunity-service.ts");
+    const serviceContent = fs.readFileSync(serviceFilePath, "utf8");
+
+    // 1. MUST NOT import bulk runEngine (only runEngineSingle is permitted for deferred single-item evaluation)
+    expect(serviceContent).not.toMatch(/import\s+[^;]*\brunEngine\b[^;]*from/);
+
+    // 2. MUST NOT call bulk runEngine()
+    expect(serviceContent).not.toMatch(/\brunEngine\s*\(/);
+
+    // 3. MUST NOT import or reference legacy OpportunityProvider
+    expect(serviceContent).not.toContain("OpportunityProvider");
+
+    // 4. listForUser implementation MUST NOT perform synchronous engine runs
+    const listForUserMatch = serviceContent.match(/static\s+async\s+listForUser\s*\([^)]*\)\s*:\s*Promise<Opportunity\[\]>\s*\{([\s\S]*?)\n\s*static\s+async\s+getForUser/);
+    expect(listForUserMatch).not.toBeNull();
+    const listForUserBody = listForUserMatch![1];
+
+    expect(listForUserBody).not.toContain("runEngine");
+    expect(listForUserBody).not.toContain("OpportunityProvider");
+    expect(listForUserBody).toMatch(/repos\.canonicalServing\.listOpportunities|repos\.evaluations\.listEvaluationsForUser/);
   });
 
 });

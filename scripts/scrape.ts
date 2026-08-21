@@ -36,6 +36,12 @@ import { passesHardFilter } from "./scraper/utils/hard-filter";
 import { HealthManager } from "./scraper/run/health-manager";
 import { QueryMetricsStore } from "./scraper/run/metrics";
 import { getRepositories } from "../src/data/sqlite/provider";
+import { CredentialBroker } from "../src/lib/security/CredentialBroker";
+import { establishPortalAuthSession, type PortalAuthSession } from "../src/lib/security/PortalAuthSession";
+import type { AuthContext } from "../src/lib/security/auth";
+import { CanonicalIngestionService } from "../src/lib/acquisition/CanonicalIngestionService";
+
+
 
 import {
   readSnapshotIfFresh,
@@ -97,6 +103,7 @@ export function syncManifestProgress(
 const activeContexts = new Map<PortalName, any>();
 const activePages = new Map<PortalName, any>();
 const activePageManagers = new Map<PortalName, PageManager>();
+const activeAuthSessions = new Map<PortalName, PortalAuthSession>();
 const activeRunControllers = new Map<string, RunController>();
 
 export async function abortLiveRun(runId?: string): Promise<boolean> {
@@ -129,13 +136,13 @@ export interface RunOptions {
   maxPages?: number;
   resume?: boolean;
   autoConfirm?: boolean;
+  authContext?: AuthContext;
 }
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   const log = makeLogger("scrape");
   const freshRun = process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
   const mgr = new RunController();
-  activeRunControllers.set(mgr.runId, mgr);
 
   let keywords = opts.keywords;
   let portals = opts.portals ?? DEFAULT_PORTALS;
@@ -151,8 +158,6 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     portals = portalsArg.split('=')[1].split(',').map(p => p.trim() as PortalName);
   }
 
-  mgr.recordActivity("Building executive search schema from candidate profile...");
-
   if (!keywords) {
     try {
       const profilePath = path.join(process.cwd(), "src", "data", "candidate-profile.json");
@@ -162,7 +167,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       
       const { CareerIntentModel } = await import("./scraper/run/career-intent");
       const intent = CareerIntentModel.extractIntent(profilePath, taxonomyPath);
-      mgr.recordActivity(`Extracted target functions: ${intent.functions.slice(0, 2).join(", ") || "Marketing/Growth"} · Levels: ${intent.targetLevel.join(", ")}`);
+      log(`Career Intent: Functions: ${intent.functions.slice(0, 2).join(", ") || "Marketing/Growth"} · Levels: ${intent.targetLevel.join(", ")}`);
       
       const { SearchPlanner } = await import("./scraper/run/search-planner");
       const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
@@ -173,18 +178,20 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       // Select all ranked queries to fully capture the environment!
       keywords = searchPlan.rankedQueries.map(q => q.query);
       log(`Search Planner compiled all ${keywords.length} portal queries: ${keywords.join(", ")}`);
-      mgr.recordActivity(`Compiled ${keywords.length} executive queries (${keywords.slice(0, 3).join(", ")}...)`);
     } catch (e: any) {
       log(`Search Planner failed to dynamically generate Search Plan (${e.message}). Falling back to static defaults.`, "warn");
       keywords = DEFAULT_KEYWORDS;
     }
   }
-
+  
   const { resumed } = mgr.init({
     keywords, portals, maxPages,
     maxCardsPerPage: CONFIG.maxCardsPerPage,
     resume: freshRun ? false : (opts.resume !== false),
   });
+  
+  activeRunControllers.set(mgr.runId, mgr);
+  mgr.recordActivity("Building executive search schema from candidate profile...");
   const plannedUnits = mgr.manifest.units.length;
   log(`Run ${mgr.runId} ${resumed ? "resumed" : "started"} — portals=${mgr.manifest.portals.join(",")} units=${plannedUnits}`);
   mgr.recordActivity(`Search schema armed: ${plannedUnits} work units across ${portals.join(", ")}`);
@@ -194,6 +201,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     log(`Received ${signal}, checkpointing…`, "warn");
     mgr.journal.append({ type: "signal", signal });
     mgr.finalize("aborted");
+    for (const session of activeAuthSessions.values()) {
+      session.dispose();
+    }
+    activeAuthSessions.clear();
     await closeAllPortalContexts();
     
     try {
@@ -249,10 +260,32 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         const { searchPage, detailPage, searchMutex, detailMutex } = await pageManager.initialize();
         activePages.set(portal, searchPage);
 
+        // Establish JIT PortalAuthSession without retaining plaintext secrets
+        let authSession: PortalAuthSession | null = null;
+        try {
+          const repos = await getRepositories();
+          const broker = new CredentialBroker(repos.credentials);
+          const auth = opts.authContext || {
+            tenantId: "default_tenant",
+            userId: "scraper_runner",
+            permissions: ["read:credentials", "manage:credentials"],
+          };
+          authSession = await establishPortalAuthSession(broker, auth, portal, browserContext);
+          if (authSession) {
+            activeAuthSessions.set(portal, authSession);
+            plog(`authenticated session established (source: ${authSession.source}, version: ${authSession.version})`);
+          }
+        } catch (authErr: any) {
+          plog(`auth session setup error (${authErr.name || "Error"}): ${authErr.message}`, "warn");
+          mgr.updatePortalHealth(portal, { status: "error", details: `Auth setup error: ${authErr.message}` });
+        }
+
         const t0 = Date.now();
         const sessionStatus = await handler.ensureSession({
           runId: mgr.runId, portal, keyword: "-", page: 0, searchUrl: "-", browserContext,
-          searchPage, detailPage, searchMutex, detailMutex, pageManager, activePage: searchPage, logger: plog,
+          searchPage, detailPage, searchMutex, detailMutex, pageManager, activePage: searchPage,
+          authSession: authSession || undefined,
+          logger: plog,
         });
         
         if (sessionStatus === "error") {
@@ -402,8 +435,6 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
       // Transition to enriching state so the UI tracks it in real-time
       mgr.transitionTo("enriching");
-      mgr.recordActivity("Synthesizing evidence graphs & computing fit scores...");
-      
       try {
         log(`[Scrape] Automatically starting inline AI enrichment for run ${mgr.runId}...`);
         const { enrichJobsForRun } = await import("./enrich");
@@ -459,6 +490,10 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
       return { success: false, count: 0, runId: mgr.runId };
     } finally {
       activeRunControllers.delete(mgr.runId);
+      for (const session of activeAuthSessions.values()) {
+        session.dispose();
+      }
+      activeAuthSessions.clear();
       await closeAllPortalContexts();
     }
   })();
@@ -539,7 +574,9 @@ async function processUnit(
         detailMutex: pm?.getMutex("detail"),
         pageManager: pm,
         activePage: pm?.getPage("search") || activePage,
+        authSession: activeAuthSessions.get(unit.portal),
         logger: log,
+        isCancelled: () => mgr.isCancellationRequested(),
       });
       mgr.recordListingSuccess(unit.portal);
       mgr.recordActivity(`Discovered ${cards.length} listings on ${unit.portal} for "${unit.keyword}"`);
@@ -576,9 +613,11 @@ async function processUnit(
 
     // Cards for a single unit run in parallel with a bounded pool.
     await pool(cards, CONFIG.detailConcurrency, async (feedCard) => {
-      if (mgr.isCancellationRequested()) return null;
-
       const cardUnitId = `${unit.id}#${feedCard.cardHash}`;
+      if (mgr.isCancellationRequested()) {
+        mgr.updateCard(cardUnitId, { status: "skipped_pruned", error: "Run cancelled/aborted" });
+        return null;
+      }
       const cardUnit = mgr.manifest.cards.find((c) => c.id === cardUnitId);
       if (!cardUnit || cardUnit.status === "done") return null;
 
@@ -669,6 +708,7 @@ async function processUnit(
             html: detail.rawText || "",
             url: feedCard.detailUrl,
             sourcePortal: unit.portal,
+            httpStatus: detail.httpStatus,
             extractedTitle: feedCard.title,
             extractedCompany: feedCard.company,
             extractedDescription: detail.rawText
@@ -738,26 +778,41 @@ async function processUnit(
             }
           });
 
-          // [M4.4] Shadow Path Dual-Write Injection
-          if (process.env.ENABLE_M4_DUAL_WRITE === "true") {
-            try {
-              const { executeM4ShadowPath } = require("@/lib/intelligence/dualWrite");
-              await executeM4ShadowPath({
-                sourcePortal: unit.portal,
-                sourceJobId: feedCard.cardHash,
-                canonicalUrl: feedCard.detailUrl,
-                jobTitle: feedCard.title,
-                companyName: feedCard.company,
-                location: feedCard.location || "",
-                employmentType: (detail as any)?.employmentType || null,
-                rawContent: detail.rawText || ""
-              });
-              mgr.recordTelemetry("m4ShadowPathSuccess");
-            } catch (err: any) {
-              // HARD GATE CONSTRAINT: Never fail the legacy path
-              log(`[M4.4_SHADOW_FAIL] Error in dual-write shadow path for ${feedCard.cardHash}: ${err.message}`, "error");
-              mgr.recordTelemetry("m4ShadowPathFailure");
+          // [M10.1] Canonical Acquisition Interceptor: Global Identity, Versioning, Attention Gate & Queue
+          try {
+            const canonicalIngest = new CanonicalIngestionService();
+            const ingestRes = await canonicalIngest.ingestOpportunity({
+              sourcePortal: unit.portal,
+              sourceJobId: feedCard.cardHash,
+              canonicalUrl: feedCard.detailUrl,
+              jobTitle: feedCard.title,
+              companyName: feedCard.company,
+              location: feedCard.location || "",
+              employmentType: (detail as any)?.employmentType || null,
+              rawContent: detail.rawText || "",
+              postedAt: feedCard.postedAt,
+              postedPrecision: (feedCard as any)?.postedPrecision || null
+            });
+            mgr.recordTelemetry("canonicalIngestSuccess");
+            if (ingestRes.isNewOpportunity) {
+              mgr.recordTelemetry("canonicalOpportunitiesIngested");
+            } else {
+              mgr.recordTelemetry("canonicalOpportunitiesReused");
             }
+            if (ingestRes.isNewVersion) {
+              mgr.recordTelemetry("newVersionsCreated");
+            } else {
+              mgr.recordTelemetry("duplicateVersionsSuppressed");
+            }
+            if (ingestRes.candidatesProjected > 0) {
+              mgr.recordTelemetry("candidatesProjected", ingestRes.candidatesProjected);
+            }
+            if (ingestRes.jobsEnqueued > 0) {
+              mgr.recordTelemetry("evaluationJobsEnqueued", ingestRes.jobsEnqueued);
+            }
+          } catch (err: any) {
+            log(`[M10_CANONICAL_INGEST_WARN] Canonical acquisition error for ${feedCard.cardHash}: ${err.message}`, "warn");
+            mgr.recordTelemetry("canonicalIngestFailure");
           }
 
         } else {
@@ -827,11 +882,17 @@ async function processUnit(
     let identityFailed = 0;
     let novelAccepted = 0;
     let novelAcquired = 0;
+    let cancelledOrPruned = 0;
 
     for (const feedCard of cards) {
       const cardUnitId = `${unit.id}#${feedCard.cardHash}`;
       const cu = mgr.manifest.cards.find((c) => c.id === cardUnitId);
       if (!cu) continue;
+
+      // Finalize unclassified card states if cancellation occurred
+      if (mgr.isCancellationRequested() && (cu.status === "pending" || cu.status === "running")) {
+        mgr.updateCard(cardUnitId, { status: "skipped_pruned", error: "Run cancelled/aborted" });
+      }
 
       if (cu.status === "skipped_empty") {
         const errStr = cu.error || "";
@@ -844,6 +905,8 @@ async function processUnit(
         }
       } else if (cu.status === "failed") {
         identityFailed++;
+      } else if (cu.status === "skipped_pruned" || cu.status === "skipped_gated") {
+        cancelledOrPruned++;
       } else if (cu.status === "done") {
         if (!cu.isNew) {
           canonicalDuplicates++;
@@ -857,10 +920,10 @@ async function processUnit(
     }
     
     const cardsParsed = cards.length;
-    const classified = canonicalDuplicates + ledgerKnown + hardFiltered + identityFailed + novelAccepted;
+    const classified = canonicalDuplicates + ledgerKnown + hardFiltered + identityFailed + novelAccepted + cancelledOrPruned;
     
     if (classified !== cardsParsed) {
-      log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, Ledger=${ledgerKnown}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, NovelAccepted=${novelAccepted})`, "warn");
+      log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, Ledger=${ledgerKnown}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, NovelAccepted=${novelAccepted}, CancelledPruned=${cancelledOrPruned})`, "warn");
     }
     if (novelAcquired > novelAccepted) {
       log(`[AccountingInvariantViolation] novelAcquired (${novelAcquired}) > novelAccepted (${novelAccepted})`, "warn");

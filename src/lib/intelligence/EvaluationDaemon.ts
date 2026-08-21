@@ -68,4 +68,38 @@ export class EvaluationDaemon {
   public get isDaemonRunning(): boolean {
     return this.isRunning;
   }
+
+  /**
+   * Returns or initializes the global singleton EvaluationDaemon instance.
+   * Guarantees that at most ONE daemon instance runs across SSR, HMR, and server functions.
+   */
+  public static getGlobalDaemon(
+    pollIntervalMs: number = 2000,
+    options?: { adapter?: DatabaseAdapter }
+  ): EvaluationDaemon {
+    const g = globalThis as any;
+    if (!g.__RADAR_EVALUATION_DAEMON__) {
+      g.__RADAR_EVALUATION_DAEMON__ = new EvaluationDaemon(
+        `daemon_singleton_${process.pid || "node"}`,
+        pollIntervalMs,
+        options
+      );
+    }
+    return g.__RADAR_EVALUATION_DAEMON__;
+  }
+
+  /**
+   * Starts the global singleton daemon if it is not already running.
+   */
+  public static startGlobalDaemon(
+    pollIntervalMs: number = 2000,
+    options?: { adapter?: DatabaseAdapter }
+  ): EvaluationDaemon {
+    const daemon = EvaluationDaemon.getGlobalDaemon(pollIntervalMs, options);
+    if (!daemon.isDaemonRunning) {
+      daemon.start();
+    }
+    return daemon;
+  }
 }
+

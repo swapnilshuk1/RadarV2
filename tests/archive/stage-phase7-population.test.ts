@@ -84,6 +84,7 @@ describe("RADAR V4 Phase 7: Population Metrics & Bounded Retrieval Suite", () =>
         getLatestProjection: async () => ({ id: "proj_1" }),
       } as any,
       documents: {} as any,
+      credentials: {} as any,
     });
   });
 

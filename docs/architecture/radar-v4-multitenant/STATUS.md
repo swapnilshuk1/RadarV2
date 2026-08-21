@@ -1,8 +1,8 @@
 # Operational Control Plane
 
-**CURRENT PHASE**: M5  
-**STATUS**: IN PROGRESS (M5.1 Certified)  
-**NEXT PHASE**: M5.2 (Idempotent Work Enqueuer)  
+**CURRENT PHASE**: M7 (Production Tenant Migration)  
+**STATUS**: READY TO START (M6 Fully Certified)  
+**NEXT PHASE**: M7 (Production Tenant Migration)  
 
 ## Phase History
 * **M0 - Contracts, Governance, and Baselines**: COMPLETED. Control documents generated. Golden V4 regression suite frozen as safety net.
@@ -36,17 +36,17 @@
   - **M4.3 - Attention Gate**: ✅ COMPLETED. (Deterministic metadata matching, zero LLM, synchronous, tenant-isolated candidate projection).
   - **M4.4 - Dual-Write Integration**: ✅ COMPLETED WITH ATOMICITY & FAULT ISOLATION TESTS. (Shadow-injected M4 projection alongside legacy scraper with strict fault isolation & atomic rollback).
   - **M4.5 - Operational Reconciliation**: ✅ COMPLETED WITH M4.5-R1 REMEDIATION. (Hardened composite candidate-version join, null employment type preservation, and legacy-canonical acquisition coverage audit).
-* **M5 - Distributed Worker Runtime**: IN PROGRESS.
-  - **M5.1 - Queue Schema & Repository**: ✅ COMPLETED & CERTIFIED (`m5.1-certified`).
-    - Schema migration `021_evaluation_work_queue.sql` applied to Turso Cloud & SQLite.
-    - 4 composite lineage FKs enforced.
-    - `next_attempt_at`, `lease_token`, `locked_by`, `locked_at`, and context deduplication verified.
-  - **M5.2 - Idempotent Work Enqueuer**: ✅ COMPLETED & CERTIFIED (`m5.2-certified`).
-    - Created `src/lib/intelligence/enqueueEvaluationJobs.ts`.
-    - Consumer-only context consumption from M3 `evaluation_contexts` (0 dynamic context creation).
-    - Idempotent `INSERT OR IGNORE` under `unq_eval_job_context` unique constraint.
-    - Unit tests in `tests/intelligence/m52-enqueuer.test.ts` passing 8/8 (100%).
-    - Certified against EQE harness, typecheck, full test suite, and SSR build.
-* **M6 - Credential Broker / Source Authentication**: PENDING.
-* **M7 - Production Tenant Migration**: PENDING.
+* **M5 - Distributed Worker Runtime**: ✅ **COMPLETED AND CERTIFIED (`m5.6-certified`)**.
+  - **Sub-Phase M5.1 — Queue Schema & Lineage**: ✅ **COMPLETED AND CERTIFIED (`m5.1-certified`)**. Migration `021_evaluation_work_queue.sql` applied with additive `evaluation_jobs` table and 4 composite FK lineage invariants.
+  - **Sub-Phase M5.2 — Work Enqueuer & Idempotent Projection Sync**: ✅ **COMPLETED AND CERTIFIED (`m5.2-certified`)**. Implemented `enqueueEvaluationJobs.ts` with consumer-only context lineage and `INSERT OR IGNORE` deduplication.
+  - **Sub-Phase M5.3 — Distributed Worker Runtime**: ✅ **COMPLETED AND CERTIFIED (`m5.3-certified`)**. Implemented `EvaluationWorker.ts` with atomic single-worker job claims (`locked_by`, `lease_token`), `AuthContext` tenant boundary verification, stale-lease guards, durable SQLite exponential retry backoff, and dead-letter queue routing.
+  - **Sub-Phase M5.4 — Durable Evaluation Daemon**: ✅ **COMPLETED AND CERTIFIED (`m5.4-certified`)**. Implemented `EvaluationDaemon.ts` long-running polling daemon with graceful shutdown and exception survival.
+  - **Sub-Phase M5.5 — Complete Eradication of Synchronous Corpus Evaluation**: ✅ **COMPLETED AND CERTIFIED (`m5.5-certified`)**. Removed legacy `OpportunityProvider` and synchronous fallback paths; serving strictly queries materialized records.
+  - **Sub-Phase M5.6 — Post-M5 Runtime Consolidation**: ✅ **COMPLETED AND CERTIFIED (`m5.6-certified`)**. Hardened 7 operational domains from post-M5 scraper run with zero queue/lease regressions.
+* **M6 - Credential Broker / Source Authentication**: ✅ **COMPLETED AND CERTIFIED (`m6-certified`)**.
+  - **Sub-Phase M6.1 — Credential Schema & Store Integration**: ✅ **COMPLETED AND CERTIFIED (`m6.1-certified`)**. Implemented migration `022_source_credentials.sql`, domain entities, and `SqliteCredentialStore` with strict tenant-isolation, composite uniqueness `(tenant_id, source, version)`, and zero-plaintext persistence.
+  - **Sub-Phase M6.2 — Cryptographic Vault & Envelope Encryption**: ✅ **COMPLETED AND CERTIFIED (`m6.2-certified`)**. Implemented authenticated AES-256-GCM envelope encryption (`CredentialVault.ts`), random 12-byte IVs, 16-byte auth tags, key provider abstraction (`InMemoryKeyProvider`, `DevDeterministicKeyProvider`), tamper detection, and zero secret leakage.
+  - **Sub-Phase M6.3 — Credential Broker & JIT Leasing Engine**: ✅ **COMPLETED AND CERTIFIED (`m6.3-certified`)**. Implemented `CredentialBroker.ts` with tenant isolation, decoupled RBAC (`manage:credentials` vs `read:credentials`), transient memory-only JIT leasing, hardened state machine preventing resurrection of superseded credentials (`rotation_required -> active` prohibited), sanitized health reporting, atomic version rotation, and complete audit lineage.
+  - **Sub-Phase M6.4 — Scraper Authentication & JIT Credential Injection**: ✅ **COMPLETED AND CERTIFIED (`m6.4-certified`)**. Implemented `PlaywrightCredentialInjector.ts` and `PortalAuthSession.ts` with fail-closed atomic parsing, canonical registrable domain boundary (`PORTAL_POLICY`), HTTP header CR/LF injection defense, RFC 6265 cookie token validation, diagnostic sanitization in `failure-dump.ts`, and exact auth-health attribution.
+* **M7 - Production Tenant Migration**: READY TO START.
 * **M8 - Rollout Sequence**: PENDING.

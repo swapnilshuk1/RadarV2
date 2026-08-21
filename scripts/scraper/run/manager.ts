@@ -252,7 +252,22 @@ export class RunController {
       }
     }
 
-    const telemetry = this.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, duplicatePreDetail: 0, duplicatePostDetail: 0, llmCalls: 0 };
+    const telemetry = this.manifest.telemetry || {
+      httpAttempted: 0,
+      httpSuccessful: 0,
+      httpFallbacks: 0,
+      duplicatePreDetail: 0,
+      duplicatePostDetail: 0,
+      llmCalls: 0,
+      canonicalIngestSuccess: 0,
+      canonicalIngestFailure: 0,
+      canonicalOpportunitiesIngested: 0,
+      canonicalOpportunitiesReused: 0,
+      newVersionsCreated: 0,
+      duplicateVersionsSuppressed: 0,
+      candidatesProjected: 0,
+      evaluationJobsEnqueued: 0,
+    };
 
     console.log(`
 ================================================================================
@@ -266,6 +281,8 @@ Cards Discovered   : ${cardsDiscovered} total
 Portal Yield       : ${Object.entries(portalBreakdown).map(([p, count]) => `${p}=${count}`).join(" | ") || "None"}
 FastPath Telemetry : Attempted=${telemetry.httpAttempted}, Success=${telemetry.httpSuccessful}, Fallbacks=${telemetry.httpFallbacks}
 Duplicate Filter   : Pre-Detail=${telemetry.duplicatePreDetail || 0}, Post-Detail=${telemetry.duplicatePostDetail || 0}
+Canonical Ingestion: Opps Ingested=${telemetry.canonicalOpportunitiesIngested || 0}, Reused=${telemetry.canonicalOpportunitiesReused || 0}, New Versions=${telemetry.newVersionsCreated || 0}, Suppressed=${telemetry.duplicateVersionsSuppressed || 0}
+Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0}, Jobs Enqueued=${telemetry.evaluationJobsEnqueued || 0}, Ingest Failures=${telemetry.canonicalIngestFailure || 0}
 ================================================================================
 `);
   }
@@ -294,6 +311,7 @@ Duplicate Filter   : Pre-Detail=${telemetry.duplicatePreDetail || 0}, Post-Detai
   }
 
   recordActivity(message: string): void {
+    if (!this.manifest) return;
     if (!this.manifest.recentActivities) {
       this.manifest.recentActivities = [];
     }
@@ -375,11 +393,47 @@ Duplicate Filter   : Pre-Detail=${telemetry.duplicatePreDetail || 0}, Post-Detai
     return (this.detailFailures.get(portal) || 0) >= 10;
   }
 
-  recordTelemetry(event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure"): void {
+  recordTelemetry(
+    event:
+      | "httpAttempted"
+      | "httpSuccessful"
+      | "httpFallbacks"
+      | "duplicatePreDetail"
+      | "duplicatePostDetail"
+      | "llmCalls"
+      | "m4ShadowPathSuccess"
+      | "m4ShadowPathFailure"
+      | "canonicalIngestSuccess"
+      | "canonicalIngestFailure"
+      | "canonicalOpportunitiesIngested"
+      | "canonicalOpportunitiesReused"
+      | "newVersionsCreated"
+      | "duplicateVersionsSuppressed"
+      | "candidatesProjected"
+      | "evaluationJobsEnqueued",
+    amount: number = 1
+  ): void {
     if (!this.manifest.telemetry) {
-      this.manifest.telemetry = { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, duplicatePreDetail: 0, duplicatePostDetail: 0, llmCalls: 0, m4ShadowPathSuccess: 0, m4ShadowPathFailure: 0 };
+      this.manifest.telemetry = {
+        httpAttempted: 0,
+        httpSuccessful: 0,
+        httpFallbacks: 0,
+        duplicatePreDetail: 0,
+        duplicatePostDetail: 0,
+        llmCalls: 0,
+        m4ShadowPathSuccess: 0,
+        m4ShadowPathFailure: 0,
+        canonicalIngestSuccess: 0,
+        canonicalIngestFailure: 0,
+        canonicalOpportunitiesIngested: 0,
+        canonicalOpportunitiesReused: 0,
+        newVersionsCreated: 0,
+        duplicateVersionsSuppressed: 0,
+        candidatesProjected: 0,
+        evaluationJobsEnqueued: 0,
+      };
     }
-    this.manifest.telemetry[event] = (this.manifest.telemetry[event] || 0) + 1;
+    this.manifest.telemetry[event] = ((this.manifest.telemetry[event] as number) || 0) + amount;
     this.persistManifest();
   }
 }

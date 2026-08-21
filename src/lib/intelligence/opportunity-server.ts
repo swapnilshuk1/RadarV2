@@ -32,9 +32,7 @@ export const getQueueMetricsFn = createServerFn({ method: "GET" })
   .validator((d: string) => d)
   .handler(async ({ data: jobHash }) => {
     const user = await requireAuthUser();
-    const { getRepositories } = await import("../../data/sqlite/provider");
-    const repos = getRepositories();
-    const adj = await repos.evaluations.getAdjacentEvaluations(user.id, jobHash);
+    const adj = await OpportunityService.getAdjacentInfo(user.id, jobHash);
     return {
       currentIndex: adj.currentIndex,
       totalCount: adj.totalCount,
@@ -52,29 +50,16 @@ export const getOpportunityDetailsFn = createServerFn({ method: "GET" })
   .validator((d: string) => d)
   .handler(async ({ data: jobHash }) => {
     const user = await requireAuthUser();
-    const [opportunity, neighbors, provider] = await Promise.all([
+    const [opportunity, adj] = await Promise.all([
       OpportunityService.getForUser(user.id, jobHash),
-      OpportunityService.neighboursForUser(user.id, jobHash),
-      import("../../data/sqlite/provider"),
+      OpportunityService.getAdjacentInfo(user.id, jobHash),
     ]);
-    const adj = await provider.getRepositories().evaluations.getAdjacentEvaluations(user.id, jobHash);
     return {
       opportunity,
       currentIndex: adj.currentIndex,
       totalCount: adj.totalCount,
-      neighbors,
+      neighbors: { prev: adj.prev, next: adj.next },
     };
   });
 
-export const addExtraOpportunitiesFn = createServerFn({ method: "POST" })
-  .handler(async () => {
-    await requireAuthUser();
-    OpportunityService.addExtra();
-  });
 
-export const injectFreshFn = createServerFn({ method: "POST" })
-  .validator((d: any[]) => d)
-  .handler(async ({ data: records }) => {
-    await requireAuthUser();
-    OpportunityService.injectFresh(records);
-  });

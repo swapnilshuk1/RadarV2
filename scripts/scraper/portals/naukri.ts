@@ -5,6 +5,7 @@ import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
 import { passesHardFilter } from "../utils/hard-filter";
 import { hydrateVirtualizedList } from "../utils/scroll";
+import { normalizePostingDate } from "../utils/date";
 
 export const naukriHandler: PortalHandler = {
   name: "Naukri",
@@ -32,6 +33,9 @@ export const naukriHandler: PortalHandler = {
         return "error";
       }
       
+      if (ctx.authSession) {
+        await ctx.authSession.reportHealth("active").catch(() => {});
+      }
       return "ready";
     } catch (err: any) {
       ctx.logger(`Naukri session probe failed: ${err.message}`);
@@ -81,7 +85,7 @@ export const naukriHandler: PortalHandler = {
       const maxCards = CONFIG.getMaxCardsPerPage("Naukri");
 
       // Scroll and hydrate full card list on Naukri SRP
-      await hydrateVirtualizedList(
+      const hydration = await hydrateVirtualizedList(
         page,
         {
           cardSelector: CARD_SELECTORS,
@@ -95,11 +99,14 @@ export const naukriHandler: PortalHandler = {
           targetCards: maxCards,
           maxPasses: 10,
           consecutiveStableLimit: 3,
-          minPassDelayMs: 1000,
-          maxPassDelayMs: 2000,
+          minPassDelayMs: 1200,
+          maxPassDelayMs: 2500,
+          isCancelled: ctx.isCancelled,
         },
         ctx.logger
       );
+
+      ctx.logger(`[Naukri Hydration Summary] Discovered ${hydration.finalCount} total cards (initial: ${hydration.initialCount}, passes: ${hydration.passesCompleted}, stabilized: ${hydration.stabilized})`);
 
       const cards = await page.locator(CARD_SELECTORS).all();
       const seenHrefs = new Set<string>();
@@ -119,6 +126,8 @@ export const naukriHandler: PortalHandler = {
           const detailUrl = href.startsWith("http") ? href : `https://www.naukri.com${href.startsWith("/") ? "" : "/"}${href}`;
           if (seenHrefs.has(detailUrl)) continue;
           seenHrefs.add(detailUrl);
+          
+          const rawPosted = ((await card.locator('.job-post-day, span.stat, span.date').first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
 
           const filterRes = passesHardFilter({ title, company, location });
           if (!filterRes.pass) {
@@ -130,17 +139,22 @@ export const naukriHandler: PortalHandler = {
           const rawHtml = await card.innerHTML().catch(() => "");
           const rawText = ((await card.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
           
+          const discoveredAt = new Date().toISOString();
+          const { date: postedAt, precision: postedPrecision } = normalizePostingDate(rawPosted, discoveredAt);
+
           cardsOut.push({
             cardHash,
             portal: "Naukri",
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,
             detailUrl,
-            discoveredAt: new Date().toISOString(),
+            discoveredAt,
             title,
             company,
             location,
             salary,
+            postedAt,
+            postedPrecision,
             rawHtml,
             rawText,
           });

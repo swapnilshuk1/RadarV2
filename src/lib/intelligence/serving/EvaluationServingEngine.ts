@@ -99,6 +99,22 @@ export interface CandidateServingContext {
 export type OpportunityServingContext = Record<string, any>;
 
 /**
+ * Pure helper to compute relative posting time for the UI, without modifying raw state.
+ */
+function formatPostedRelative(postedAt?: string): string {
+  if (!postedAt) return "Age unavailable";
+  const date = new Date(postedAt);
+  if (isNaN(date.getTime())) return "Age unavailable";
+
+  const diffMs = Date.now() - date.getTime();
+  const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  
+  if (diffDays === 0) return "Posted today";
+  if (diffDays === 1) return "Posted 1 day ago";
+  return `Posted ${diffDays} days ago`;
+}
+
+/**
  * Pure Type Guard: Validates whether a cached JSON object follows the canonical v4.2-intrinsic format.
  */
 export function isCanonicalIntrinsicEvaluation(
@@ -140,12 +156,15 @@ export function serveEvaluation(
   const headspaceOutcome = applyHeadspaceFilter(verb0 as any, headspace);
   const finalVerb = headspaceOutcome.finalVerb as EngineVerdict;
 
-  // 4. Construct current served EngineRecommendation
-  const servedEngineRec: EngineRecommendationV4 & { verb0: EngineVerdict; evaluationTimeFinalVerb?: EngineVerdict } = {
+  // 4. Construct current served EngineRecommendation (Intrinsic Verdict + Headspace Advisory)
+  const servedEngineRec: EngineRecommendationV4 & { evaluationTimeFinalVerb?: EngineVerdict } = {
     jobHash: cached.jobHash,
     evaluationFingerprint: cached.evaluationInputHash,
-    engineVerdict: finalVerb,
+    engineVerdict: verb0,
     verb0,
+    headspaceVerdict: finalVerb,
+    headspaceDowngraded: headspaceOutcome.downgraded,
+    headspaceReason: headspaceOutcome.reason,
     evaluationTimeFinalVerb: cached.auditTrace?.evaluationTimeFinalVerb,
     vetoed: cached.vetoed,
     vetoReason: cached.vetoReason,
@@ -174,9 +193,9 @@ export function serveEvaluation(
   const displayScore = cached.intrinsicQualityScore !== null ? `${Math.round(cached.intrinsicQualityScore)}%` : "—";
   const uiBadge = cached.vetoed
     ? { label: "Vetoed", variant: "pass" as const }
-    : finalVerb === "PURSUE"
+    : verb0 === "PURSUE"
       ? { label: "Recommended", variant: "signal" as const }
-      : finalVerb === "CONSIDER"
+      : verb0 === "CONSIDER"
         ? { label: "Consider", variant: "caution" as const }
         : { label: "Pass", variant: "muted" as const };
 
@@ -196,7 +215,7 @@ export function serveEvaluation(
 
   const decisionAction = userDecision?.userAction && userDecision.userAction !== "NONE"
     ? userDecision.userAction
-    : finalVerb;
+    : verb0;
 
   return {
     ...oppCtx,
@@ -204,6 +223,9 @@ export function serveEvaluation(
     role: (oppCtx.role as string) || (oppCtx.title as string) || "Executive Opportunity",
     company: (oppCtx.company as string) || "Executive Firm",
     location: (oppCtx.location as string) || "Remote",
+    applyUrl: (oppCtx.applyUrl as string) || undefined,
+    postedRelative: formatPostedRelative(oppCtx.postedAt as string | undefined),
+    postedPrecision: (oppCtx.postedPrecision as string) || "UNKNOWN",
     dimensions: cleanDimensions,
     decision: decisionAction,
     recommendation: finalRecommendation,
@@ -220,7 +242,7 @@ export function serveEvaluation(
     primaryRisk: cached.baseNarrative.primaryRisk,
     tailoringEffort: cached.baseNarrative.tailoringEffort,
     capabilityAlignmentText: cached.baseNarrative.capabilityAlignmentText,
-    recommendedAction: cached.baseNarrative.recommendedAction || finalVerb,
+    recommendedAction: cached.baseNarrative.recommendedAction || verb0,
     esi: cached.esi,
     diligenceStatus: cached.diligenceStatus as any,
     engineRecommendation: servedEngineRec,
@@ -259,7 +281,11 @@ export function adaptLegacyEvaluation(
     ...(legacyOpp.engineRecommendation || {}),
     jobHash: legacyOpp.jobHash || oppCtx.jobHash || "",
     evaluationFingerprint: legacyOpp.engineRecommendation?.evaluationFingerprint || "legacy_v4.1",
-    engineVerdict: finalVerb,
+    engineVerdict: recordedVerdict,
+    verb0: recordedVerdict,
+    headspaceVerdict: finalVerb,
+    headspaceDowngraded: headspaceOutcome.downgraded,
+    headspaceReason: headspaceOutcome.reason,
     vetoed: Boolean(legacyOpp.engineRecommendation?.vetoed),
     vetoReason: legacyOpp.engineRecommendation?.vetoReason || null,
     qualityScore: legacyOpp.engineRecommendation?.qualityScore ?? legacyOpp.recommendationResult?.score ?? null,
@@ -278,12 +304,15 @@ export function adaptLegacyEvaluation(
 
   const decisionAction = userDecision?.userAction && userDecision.userAction !== "NONE"
     ? userDecision.userAction
-    : finalVerb;
+    : recordedVerdict;
 
   return {
     ...legacyOpp,
     ...oppCtx,
     jobHash: legacyOpp.jobHash || oppCtx.jobHash,
+    applyUrl: (oppCtx.applyUrl as string) || legacyOpp.applyUrl,
+    postedRelative: oppCtx.postedAt ? formatPostedRelative(oppCtx.postedAt as string) : legacyOpp.postedRelative,
+    postedPrecision: (oppCtx.postedPrecision as string) || "UNKNOWN",
     decision: decisionAction,
     recommendation: finalRecommendation,
     engineRecommendation: servedEngineRec,

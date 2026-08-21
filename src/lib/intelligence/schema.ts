@@ -27,10 +27,10 @@ export type OpportunityIntelligence = {
 
 /** Look up a single dimension by key. */
 export function dim(
-  oi: { dimensions: DimensionResult[] },
+  oi: { dimensions?: DimensionResult[] } | undefined,
   key: DimensionKey,
 ): DimensionResult | undefined {
-  return oi.dimensions.find((d) => d.key === key);
+  return oi?.dimensions?.find((d) => d.key === key);
 }
 
 /** All ten dimensions the schema anticipates. Additional dimensions can be

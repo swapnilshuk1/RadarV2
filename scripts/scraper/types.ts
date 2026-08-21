@@ -4,6 +4,8 @@
 //   Assembly     -> RecommendationRecord (schema the app consumes)
 //   Persistence  -> live-scraped.json    (approved system-of-record view)
 
+import type { PortalAuthSession } from "../../src/lib/security/PortalAuthSession";
+
 export type PortalName = "LinkedIn" | "Indeed" | "Naukri";
 
 export type UnitStatus =
@@ -138,6 +140,14 @@ export interface RunManifest {
     llmCalls: number;
     m4ShadowPathSuccess?: number;
     m4ShadowPathFailure?: number;
+    canonicalIngestSuccess?: number;
+    canonicalIngestFailure?: number;
+    canonicalOpportunitiesIngested?: number;
+    canonicalOpportunitiesReused?: number;
+    newVersionsCreated?: number;
+    duplicateVersionsSuppressed?: number;
+    candidatesProjected?: number;
+    evaluationJobsEnqueued?: number;
   };
   pageExecutionRecords?: PageExecutionRecord[];
   units: WorkUnit[];
@@ -156,6 +166,8 @@ export interface FeedCard {
   company: string;
   location: string;
   salary?: string;
+  postedAt?: string;
+  postedPrecision?: "EXACT" | "RELATIVE_ESTIMATE" | "LOWER_BOUND" | "UNKNOWN";
   rawHtml: string;
   rawText: string;
 }
@@ -170,6 +182,7 @@ export interface DetailedCard extends FeedCard {
     rawText?: string;
     fetchError?: string;
     fetchDurationMs?: number;
+    httpStatus?: number;
   };
   telemetry: {
     cardExtractMs: number;
@@ -280,10 +293,12 @@ export interface PortalContext {
   detailMutex?: any;     // transaction-scoped Mutex for detailPage
   pageManager?: any;     // PageManager instance for ownership-aware page lifecycle
   activePage?: any;      // backward-compatibility reference to searchPage
+  authSession?: PortalAuthSession; // JIT authentication session (holds ZERO plaintext secrets)
   logger: (msg: string) => void;
   isHttpDisabled?: (url: string) => boolean;
   recordHttpFailure?: (url: string, reason: string) => void;
-  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure") => void;
+  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure" | "canonicalIngestSuccess" | "canonicalIngestFailure" | "evaluationJobsEnqueued") => void;
+  isCancelled?: () => boolean;
 }
 
 export interface PortalHandler {

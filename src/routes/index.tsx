@@ -3,8 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { type Opportunity, type DecisionVerb } from "../data/opportunity-fixtures";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
-import { getOpportunitiesFn, getShortlistMetricsFn, injectFreshFn } from "../lib/intelligence/opportunity-server";
-import { getScraperCounts } from "../data/scraped-jobs";
+import { getOpportunitiesFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
@@ -145,6 +144,14 @@ function Shortlist() {
     () =>
       activeOps.filter((o) => {
         const clientRec = decisions[o.jobHash];
+        const userVerb = clientRec?.verb || o.userDecision?.userAction;
+
+        // Explicit user decisions (PURSUE, CONSIDER, PASS) belong on decided surfaces (/decisions)
+        // and should not be treated as unresolved Shortlist items even if evaluation fingerprints are stale.
+        if (userVerb === "PURSUE" || userVerb === "CONSIDER" || userVerb === "PASS") {
+          return false;
+        }
+
         const currentFingerprint = o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion;
         if (clientRec && clientRec.reviewedFingerprint && clientRec.reviewedFingerprint === currentFingerprint) {
           return false;

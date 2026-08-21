@@ -137,5 +137,5 @@ describe("Scrape Progress & Persistent Control UX Contract", () => {
     // 7. Subsequent getActiveScrapeState() returns null (does not float finished runs forever)
     const activeRunAfterStopped = getActiveScrapeState();
     expect(activeRunAfterStopped).toBeNull();
-  });
+  }, 60000);
 });

@@ -61,6 +61,11 @@ if (typeof globalThis !== "undefined") {
             console.error("[Daemon] Queue loop error:", err);
             g.__RADAR_DAEMON__.started = false; // allow restart
           });
+
+          // 4. Start background Evaluation Daemon singleton for evaluation_jobs
+          const { EvaluationDaemon } = await import("./EvaluationDaemon");
+          EvaluationDaemon.startGlobalDaemon(2000);
+
           
         } catch (err: any) {
           console.error("[Daemon] Startup failure:", err.message);
@@ -117,8 +122,12 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
       console.log("[Server] triggerScrapeFn: launching fresh live scraper in background…");
       // Dynamic import isolates Playwright/Node modules from the browser bundler.
       const { startRun } = await import("../../../scripts/scrape");
-      
-      const { runId, completion } = await startRun({ resume: false, autoConfirm: true });
+      const authContext: import("../security/auth").AuthContext = {
+        tenantId: (user as any).tenantId || "default_tenant",
+        userId: user.id,
+        permissions: ["read:credentials", "manage:credentials"],
+      };
+      const { runId, completion } = await startRun({ resume: false, autoConfirm: true, authContext });
       
       activeScrapeRunLock = { runId, startedAt: Date.now() };
 
@@ -278,7 +287,7 @@ export function getActiveScrapeState() {
       const updatedAt = runData.updatedAt ? new Date(runData.updatedAt).getTime() : 0;
       const ageMs = Date.now() - updatedAt;
       if (!activeScrapeRunLock && ageMs > 30000) {
-        abortScrapeState(latest.runId);
+        abortScrapeState(latest.runId, true);
         return null;
       }
       return runData;
@@ -293,24 +302,27 @@ export function getRunProgressState(runId: string) {
   return buildCanonicalRunData(runId);
 }
 
-export async function abortScrapeState(runId: string) {
+export async function abortScrapeState(runId: string, force = false) {
   const manifestPath = path.join(ARTIFACTS_DIR, "runs", runId, "manifest.json");
   try {
     if (fs.existsSync(manifestPath)) {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-      manifest.status = "stopping";
+      manifest.status = force ? "aborted" : "stopping";
       manifest.updatedAt = new Date().toISOString();
+      if (force) manifest.finishedAt = manifest.updatedAt;
       fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
-      console.log(`[Server] Abort requested for run ${runId}. Manifest status set to 'stopping'.`);
+      console.log(`[Server] Abort requested for run ${runId}. Manifest status set to '${manifest.status}'.`);
     }
     // Forcefully trigger live abort on the running scraper process
-    try {
-      const { abortLiveRun } = await import("../../../scripts/scrape");
-      await abortLiveRun(runId);
-    } catch (e: any) {
-      console.warn(`[Server] Note: abortLiveRun call: ${e.message}`);
+    if (!force) {
+      try {
+        const { abortLiveRun } = await import("../../../scripts/scrape");
+        await abortLiveRun(runId);
+      } catch (e: any) {
+        console.warn(`[Server] Note: abortLiveRun call: ${e.message}`);
+      }
     }
-    return { success: true, status: "stopping" };
+    return { success: true, status: force ? "aborted" : "stopping" };
   } catch (e: any) {
     return { success: false, error: e.message };
   }
@@ -529,19 +541,23 @@ export const getCorpusHealthFn = createServerFn({ method: "GET" })
 
 export const getPipelineStatsFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    await requireAuthUser();
+    const user = await requireAuthUser();
     try {
       const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
       const queue = new EnrichmentQueue();
       const stats = queue.getGlobalPipelineStats();
       
-      const { getScraperCounts } = await import("../../data/scraped-jobs");
-      const counts = getScraperCounts();
+      // Compute actual database evaluation metrics via canonical serving
+      const { OpportunityService } = await import("./opportunity-service");
+      const metrics = await OpportunityService.getMetricsForUser(user.id);
 
       return {
         ...stats,
-        filtered: counts.filtered,
-        shortlisted: counts.shortlisted
+        discovered: metrics.totalScreened,
+        filtered: metrics.effectiveBreakdown.pass + metrics.effectiveBreakdown.sparse,
+        shortlisted: metrics.effectiveBreakdown.pursue + metrics.effectiveBreakdown.consider,
+        totalDecisions: metrics.totalDecisions,
+        activePursuits: metrics.activePursuits,
       };
     } catch (err: any) {
       console.error("[Server] getPipelineStatsFn failed:", err.message);

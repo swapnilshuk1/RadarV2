@@ -4,6 +4,7 @@ import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
 import { passesHardFilter } from "../utils/hard-filter";
+import { normalizePostingDate } from "../utils/date";
 
 export const indeedHandler: PortalHandler = {
   name: "Indeed",
@@ -29,6 +30,9 @@ export const indeedHandler: PortalHandler = {
         ctx.logger("Indeed CAPTCHA detected — returning 'gated'.");
         keepOpen = true;
         return "gated";
+      }
+      if (ctx.authSession) {
+        await ctx.authSession.reportHealth("active").catch(() => {});
       }
       return "ready";
     } catch (err: any) {
@@ -108,6 +112,8 @@ export const indeedHandler: PortalHandler = {
           }
 
           if (!detailUrl || !title) continue;
+          
+          const rawPosted = ((await card.locator('[data-testid="myJobsStateDate"], span.date, .date').first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
 
           const filterRes = passesHardFilter({ title, company, location });
           if (!filterRes.pass) {
@@ -118,6 +124,8 @@ export const indeedHandler: PortalHandler = {
           const cardHash = cardHashFor("Indeed", detailUrl);
           const rawHtml = await card.innerHTML().catch(() => "");
           const rawText = ((await card.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+          const discoveredAt = new Date().toISOString();
+          const { date: postedAt, precision: postedPrecision } = normalizePostingDate(rawPosted, discoveredAt);
           
           cardsOut.push({
             cardHash,
@@ -125,11 +133,13 @@ export const indeedHandler: PortalHandler = {
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,
             detailUrl,
-            discoveredAt: new Date().toISOString(),
+            discoveredAt,
             title,
             company,
             location,
             salary,
+            postedAt,
+            postedPrecision,
             rawHtml,
             rawText,
           });

@@ -28,15 +28,16 @@ export class SqliteAdapter implements DatabaseAdapter {
   }
 
   async transaction<T>(fn: (tx: DatabaseAdapter) => Promise<T>): Promise<T> {
-    // Sqlite sync transaction wrapper
-    let result: T;
-    const tx = this.db.transaction(() => {
-      // Execute the async function synchronously using un-promised queries inside sqlite transaction
-      // Note: for better-sqlite3, queries run immediately on connection
-    });
-    
-    // For SqliteAdapter, run inner fn passing this adapter
-    result = await fn(this);
-    return result;
+    this.db.exec("BEGIN");
+    try {
+      const result = await fn(this);
+      this.db.exec("COMMIT");
+      return result;
+    } catch (err) {
+      if (this.db.inTransaction) {
+        this.db.exec("ROLLBACK");
+      }
+      throw err;
+    }
   }
 }

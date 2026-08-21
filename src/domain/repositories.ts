@@ -11,7 +11,10 @@ import type {
   ResumeVersion,
   RecommendationRun,
   OpportunityAssessment,
-  RecommendationRecord
+  RecommendationRecord,
+  SourceCredential,
+  CredentialAuditLog,
+  CredentialStatus,
 } from "./entities";
 import type { CandidateProjection } from "../lib/domain/candidate_projection";
 import type { CandidateDocumentRecord, SqliteDocumentStore } from "../data/sqlite/repositories/SqliteDocumentStore";
@@ -139,10 +142,39 @@ export interface DecisionSupportStore {
   latestRecommendationRecords(personId: string, limit: number): Promise<RecommendationRecord[]>;
   getRecommendationRecordForOpportunity(personId: string, opportunityId: string): Promise<RecommendationRecord | undefined>;
   
-  recordUserDecision(personId: string, opportunityId: string, action: string, reason?: string, reviewedFingerprint?: string | null): Promise<void>;
-  getUserDecisions(personId: string): Promise<Record<string, { verb: string; updatedAt?: string; reviewedFingerprint?: string | null }>>;
-  deleteUserDecision(personId: string, opportunityId: string): Promise<void>;
-  clearUserDecisions(personId: string): Promise<void>;
+  recordUserDecision(personId: string, opportunityId: string, action: string, reason?: string, reviewedFingerprint?: string | null, tenantId?: string): Promise<void>;
+  getUserDecisions(personId: string, tenantId?: string): Promise<Record<string, { verb: string; updatedAt?: string; reviewedFingerprint?: string | null }>>;
+  deleteUserDecision(personId: string, opportunityId: string, tenantId?: string): Promise<void>;
+  clearUserDecisions(personId: string, tenantId?: string): Promise<void>;
+}
+
+export interface CredentialStore {
+  saveCredential(credential: SourceCredential): Promise<void>;
+  getCredential(tenantId: string, id: string): Promise<SourceCredential | undefined>;
+  getActiveCredentialForSource(tenantId: string, source: string): Promise<SourceCredential | undefined>;
+  listCredentialsForTenant(tenantId: string, options?: { source?: string; status?: CredentialStatus }): Promise<SourceCredential[]>;
+  updateCredentialStatus(tenantId: string, id: string, status: CredentialStatus, errorReason?: string | null): Promise<void>;
+  updateCredentialUsage(tenantId: string, id: string, lastUsedAt?: string): Promise<void>;
+  updateCredentialVerification(tenantId: string, id: string, lastVerifiedAt?: string): Promise<void>;
+  deleteCredential(tenantId: string, id: string): Promise<void>;
+
+  recordAuditLog(log: CredentialAuditLog): Promise<void>;
+  getAuditLogsForCredential(tenantId: string, credentialId: string): Promise<CredentialAuditLog[]>;
+  listAuditLogsForTenant(tenantId: string, limit?: number): Promise<CredentialAuditLog[]>;
+
+  /**
+   * Atomically executes credential rotation within a single database transaction:
+   * 1. Updates previous active credential to 'rotation_required' (if provided)
+   * 2. Inserts new version credential record
+   * 3. Inserts rotation audit log record
+   * On failure of any step, all database mutations roll back atomically.
+   */
+  rotateCredentialTransaction(params: {
+    tenantId: string;
+    previousActiveCredentialId?: string;
+    newCredential: SourceCredential;
+    auditLog: CredentialAuditLog;
+  }): Promise<void>;
 }
 
 // ============================================================================
@@ -150,6 +182,7 @@ export interface DecisionSupportStore {
 // ============================================================================
 
 import type { SqliteEvaluationStore } from "../data/sqlite/repositories/SqliteEvaluationStore";
+import type { SqliteCanonicalServingStore } from "../data/sqlite/repositories/SqliteCanonicalServingStore";
 
 export interface StorageProvider {
   sources: SourceStore;
@@ -162,4 +195,7 @@ export interface StorageProvider {
   decisions: DecisionSupportStore;
   documents: SqliteDocumentStore;
   evaluations: SqliteEvaluationStore;
+  credentials: CredentialStore;
+  canonicalServing: SqliteCanonicalServingStore;
 }
+
