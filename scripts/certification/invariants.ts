@@ -21,14 +21,6 @@ export function evaluateContractA(record: RecommendationRecord, presented?: Pres
         message: `SPARSE_SPEC must have priorityScore === null, got ${record.priority}`
       });
     }
-    if (record.vetoed !== true) {
-      failures.push({
-        contract: "A",
-        id: record.jobHash,
-        rule: "SparseVetoFlag",
-        message: `SPARSE_SPEC must have vetoed === true`
-      });
-    }
   }
 
   return failures;

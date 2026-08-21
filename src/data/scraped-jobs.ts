@@ -1,6 +1,5 @@
 import { type OpportunitySource, type ScrapeSource } from "./opportunity-fixtures";
 import { readOpportunities } from "../lib/intelligence/engine";
-import { OpportunityProvider } from "../lib/intelligence/opportunity-provider";
 
 export type ScrapedJob = {
   id: string;
@@ -17,9 +16,10 @@ export type ScrapedJob = {
 // were scraped but filtered out before RADAR built a brief.
 export function getScrapedJobs(): ScrapedJob[] {
   const current = readOpportunities();
-  const shortlist = new Set(
-    OpportunityProvider.list({ activePursuits: 0 }).map((o) => o.jobHash),
-  );
+  // Deprecated synchronous evaluation path removed. 
+  // Shortlist metrics are now provided via background daemon pipelines.
+  const shortlist = new Set<string>();
+  
   return current.map((o: OpportunitySource) => {
     const isShortlisted = shortlist.has(o.jobHash);
     return {

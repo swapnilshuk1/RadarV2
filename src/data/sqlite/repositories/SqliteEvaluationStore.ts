@@ -1,4 +1,5 @@
 import type { DatabaseAdapter } from "../../database/adapter";
+import { computeIntrinsicFingerprint } from "../../../lib/intelligence/fingerprint/EvaluationFingerprint";
 
 export interface CandidateEvaluationRecord {
   personId: string;
@@ -67,23 +68,6 @@ export class SqliteEvaluationStore {
               PRIMARY KEY (person_id, job_hash)
             );
           `);
-          await this.db.execute(`
-            CREATE TABLE IF NOT EXISTS evaluation_jobs (
-              id           TEXT PRIMARY KEY,
-              person_id    TEXT NOT NULL,
-              job_hash     TEXT NOT NULL,
-              input_hash   TEXT NOT NULL,
-              status       TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'SUPERSEDED')),
-              attempts     INTEGER NOT NULL DEFAULT 0,
-              lock_owner   TEXT,
-              locked_at    TEXT,
-              available_at TEXT NOT NULL DEFAULT (datetime('now')),
-              completed_at TEXT,
-              last_error   TEXT,
-              created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-              UNIQUE(person_id, job_hash, input_hash)
-            );
-          `);
         } catch (err: any) {
           console.error("⚠️ [SqliteEvaluationStore] Schema init notice:", err?.message || err);
         }
@@ -93,9 +77,21 @@ export class SqliteEvaluationStore {
   }
 
   /**
-   * Computes deterministic evaluation_input_hash for candidate-opportunity inputs.
+   * Computes canonical deterministic evaluation_input_hash using SHA-256 and canonical serialization.
    */
-  public static computeInputHash(
+  public static computeCanonicalFingerprint(
+    candidate: any,
+    opportunity: any,
+    policyVersion: string = "v4.3",
+    ontologyVersion: string = "v2"
+  ): string {
+    return computeIntrinsicFingerprint(candidate, opportunity, policyVersion, ontologyVersion);
+  }
+
+  /**
+   * Computes legacy 32-bit evaluation_input_hash for backward compatibility.
+   */
+  public static computeLegacyInputHash(
     candidateProfileVersion: string,
     opportunityVersion: string,
     policyVersion: string,
@@ -109,6 +105,18 @@ export class SqliteEvaluationStore {
       hash |= 0;
     }
     return `eval_hash_${Math.abs(hash).toString(16)}`;
+  }
+
+  /**
+   * Computes evaluation_input_hash for candidate-opportunity inputs.
+   */
+  public static computeInputHash(
+    candidateProfileVersion: string,
+    opportunityVersion: string,
+    policyVersion: string,
+    ontologyVersion: string = "v2"
+  ): string {
+    return this.computeLegacyInputHash(candidateProfileVersion, opportunityVersion, policyVersion, ontologyVersion);
   }
 
   private sanitizeParams(params: any[]): any[] {
@@ -224,9 +232,9 @@ export class SqliteEvaluationStore {
         SUM(CASE WHEN COALESCE(d.action, ce.user_decision_override, ce.effective_decision) = 'PURSUE' THEN 1 ELSE 0 END) as active_pursuits,
         SUM(CASE WHEN COALESCE(d.action, ce.user_decision_override, ce.effective_decision) IN ('PURSUE', 'CONSIDER') THEN 1 ELSE 0 END) as shortlisted_count,
         SUM(CASE WHEN d.action IS NOT NULL OR ce.user_decision_override IS NOT NULL THEN 1 ELSE 0 END) as decisions_count,
-        SUM(CASE WHEN ce.effective_decision = 'PURSUE' THEN 1 ELSE 0 END) as pursue_count,
-        SUM(CASE WHEN ce.effective_decision = 'CONSIDER' THEN 1 ELSE 0 END) as consider_count,
-        SUM(CASE WHEN ce.effective_decision = 'PASS' THEN 1 ELSE 0 END) as pass_count,
+        SUM(CASE WHEN ce.engine_verdict = 'PURSUE' THEN 1 ELSE 0 END) as pursue_count,
+        SUM(CASE WHEN ce.engine_verdict = 'CONSIDER' THEN 1 ELSE 0 END) as consider_count,
+        SUM(CASE WHEN ce.engine_verdict = 'PASS' THEN 1 ELSE 0 END) as pass_count,
         SUM(CASE WHEN ce.evaluation_status = 'SPARSE_SPEC' THEN 1 ELSE 0 END) as sparse_count
       FROM candidate_evaluations ce
       LEFT JOIN latest_decisions d ON ce.person_id = d.person_id AND ce.job_hash = d.opportunity_id AND d.rn = 1
@@ -367,7 +375,7 @@ export class SqliteEvaluationStore {
   /**
    * Queries evaluated candidate shortlist O(k) with indexed sorting and optional category filtering.
    */
-  async listEvaluationsForUser(personId: string, limit = 50, categoryId = "all"): Promise<CandidateEvaluationRecord[]> {
+  async listEvaluationsForUser(personId: string, limit?: number, categoryId = "all"): Promise<CandidateEvaluationRecord[]> {
     await this.ensureSchema();
     const rows = await this.db.many<any>(
       `
@@ -380,7 +388,7 @@ export class SqliteEvaluationStore {
 
     const mapped = rows.map((r) => this.mapRow(r));
     if (!categoryId || categoryId === "all") {
-      return mapped.slice(0, limit);
+      return limit !== undefined ? mapped.slice(0, limit) : mapped;
     }
 
     const { classifyOpportunityCategories, resolveCanonicalCategoryId } = await import("../../../lib/domain/category_taxonomy");
@@ -397,105 +405,7 @@ export class SqliteEvaluationStore {
       }
     });
 
-    return filtered.slice(0, limit);
-  }
-
-  /**
-   * Enqueues evaluation job in evaluation_jobs queue.
-   */
-  async enqueueJob(personId: string, jobHash: string, inputHash: string): Promise<string> {
-    await this.ensureSchema();
-    const jobId = `job_${personId}_${jobHash}_${inputHash.slice(0, 8)}`;
-    await this.db.execute(
-      `
-      INSERT INTO evaluation_jobs (id, person_id, job_hash, input_hash, status, attempts, available_at, created_at)
-      VALUES (?, ?, ?, ?, 'PENDING', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      ON CONFLICT(person_id, job_hash, input_hash) DO UPDATE SET
-        status = CASE WHEN evaluation_jobs.status = 'FAILED' THEN 'PENDING' ELSE evaluation_jobs.status END,
-        available_at = CURRENT_TIMESTAMP
-      `,
-      this.sanitizeParams([jobId, personId, jobHash, inputHash])
-    );
-    return jobId;
-  }
-
-  /**
-   * Claims next available job from queue with lease recovery timeout (default 5 mins).
-   */
-  async claimJob(lockOwner: string, leaseTimeoutMinutes = 5): Promise<EvaluationJobRecord | null> {
-    await this.ensureSchema();
-    // Reclaim stale RUNNING jobs where locked_at < NOW - leaseTimeout
-    await this.db.execute(
-      `
-      UPDATE evaluation_jobs
-      SET status = 'PENDING', lock_owner = NULL, locked_at = NULL
-      WHERE status = 'RUNNING'
-        AND datetime(locked_at, '+' || ? || ' minutes') < datetime('now')
-      `,
-      this.sanitizeParams([leaseTimeoutMinutes])
-    );
-
-    // Find first PENDING job
-    const row = await this.db.one<any>(
-      `
-      SELECT * FROM evaluation_jobs
-      WHERE status = 'PENDING' AND datetime(available_at) <= datetime('now')
-      ORDER BY created_at ASC
-      LIMIT 1
-      `
-    );
-
-    if (!row) return null;
-
-    // Lock the claimed job
-    await this.db.execute(
-      `
-      UPDATE evaluation_jobs
-      SET status = 'RUNNING', lock_owner = ?, locked_at = CURRENT_TIMESTAMP, attempts = attempts + 1
-      WHERE id = ?
-      `,
-      this.sanitizeParams([lockOwner, row.id])
-    );
-
-    return {
-      id: row.id,
-      personId: row.person_id,
-      jobHash: row.job_hash,
-      inputHash: row.input_hash,
-      status: "RUNNING",
-      attempts: row.attempts + 1,
-      lockOwner,
-      lockedAt: new Date().toISOString(),
-      availableAt: row.available_at,
-    };
-  }
-
-  /**
-   * Marks job COMPLETED in queue.
-   */
-  async markJobCompleted(jobId: string): Promise<void> {
-    await this.db.execute(
-      `
-      UPDATE evaluation_jobs
-      SET status = 'COMPLETED', completed_at = CURRENT_TIMESTAMP, lock_owner = NULL
-      WHERE id = ?
-      `,
-      this.sanitizeParams([jobId])
-    );
-  }
-
-  /**
-   * Marks job FAILED or SUPERSEDED in queue.
-   */
-  async markJobFailed(jobId: string, error: string, isSuperseded = false): Promise<void> {
-    await this.db.execute(
-      `
-      UPDATE evaluation_jobs
-      SET status = ?, last_error = ?, lock_owner = NULL
-      WHERE id = ?
-      `,
-      this.sanitizeParams([isSuperseded ? "SUPERSEDED" : "FAILED", error, jobId])
-    );
+    return limit !== undefined ? filtered.slice(0, limit) : filtered;
   }
 
   private mapRow(r: any): CandidateEvaluationRecord {

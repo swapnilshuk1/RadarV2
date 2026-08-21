@@ -25,7 +25,7 @@ export interface BriefMemory {
   primaryOpportunity: string;
   primaryRisk: string;
   recommendedAction: string;
-  decision: "PURSUE" | "CONSIDER" | "PASS";
+  decision: "PURSUE" | "CONSIDER" | "PASS" | null;
   tradeoff: string;
   first90Days: string;
   whyNow: string;
@@ -96,7 +96,7 @@ export interface BriefModel {
   certaintyLevel: "HIGH" | "MEDIUM" | "LOW";
   certaintyGuidance: string;
   evidenceQuality: "High Evidence Quality" | "Medium Evidence Quality" | "Inferred Evidence";
-  qualitativeRecommendation: "Strong Pursue Recommendation" | "Conditional Consideration" | "Strategic Pass";
+  qualitativeRecommendation: "Strong Pursue Recommendation" | "Conditional Consideration" | "Strategic Pass" | "Pending Assessment";
   qualityScore: number | null;
   whyNotStronger?: string;
   frictionPreview?: string;

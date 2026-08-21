@@ -3,7 +3,10 @@ import { CandidateProjectionBuilderImpl } from '../src/lib/intelligence/builders
 import { candidateProfile } from '../src/data/candidate-profile';
 import { runEngine, readOpportunities } from '../src/lib/intelligence/engine';
 import { present } from '../src/lib/intelligence/present';
-import { OpportunityProvider } from '../src/lib/intelligence/opportunity-provider';
+import { runEngine } from '@/lib/intelligence/engine';
+import { CandidateProjectionBuilderImpl } from '@/lib/intelligence/builders/CandidateProjectionBuilder';
+import { candidateProfile } from '@/data/candidate-profile';
+function getShortlist(active: number) { const builder = new CandidateProjectionBuilderImpl(); const proj = builder.fromProfile(candidateProfile); const { presented } = runEngine(proj as any, active); return presented.map(p => p.opportunity).filter(o => o.decision !== 'PASS'); }
 
 // Replace these jobHashes with canonical ones in your corpus
 const TARGET_JOB_HASHES = [
@@ -20,7 +23,7 @@ function run() {
   const proj = builder.fromProfile(candidateProfile);
   const { records } = runEngine(proj as any, 0);
   const ops = readOpportunities();
-  const shortlist = OpportunityProvider.list({ activePursuits: 0 });
+  const shortlist = getShortlist(0);
 
   for (const jobHash of TARGET_JOB_HASHES) {
     console.log('=== GOLDEN TRACE for', jobHash, '===');

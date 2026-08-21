@@ -123,7 +123,7 @@ export class EditorialContextBuilder {
     };
 
     // Structural metadata heuristics (for legacy UI badges, strictly decoupled from engineVerdict)
-    const rawScore = recommendation?.qualityScore ?? policyResult?.qualityScore ?? policyResult?.rawScore ?? opportunity.matchScore ?? 50;
+    const rawScore = recommendation?.qualityScore ?? policyResult?.qualityScore ?? policyResult?.rawScore ?? (opportunity as Record<string, any>).matchScore ?? 50;
 
     const companyLower = (opportunity.company || "").toLowerCase();
     const roleLower = (opportunity.role || "").toLowerCase();

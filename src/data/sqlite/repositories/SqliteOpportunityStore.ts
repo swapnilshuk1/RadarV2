@@ -1,10 +1,11 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { OpportunityStore } from "../../../domain/repositories";
 import type { Opportunity } from "../../../domain/entities";
-import type { OpportunitySource } from "../../../data/opportunity-fixtures";
+import { OPPORTUNITY_SOURCES, type OpportunitySource } from "../../../data/opportunity-fixtures";
 
 export class SqliteOpportunityStore implements OpportunityStore {
   private inFlightSourcesPromise: Promise<OpportunitySource[]> | null = null;
+  private cachedSourcesMap: Map<string, OpportunitySource> | null = null;
 
   constructor(private db: DatabaseAdapter) {}
 
@@ -13,6 +14,7 @@ export class SqliteOpportunityStore implements OpportunityStore {
    */
   public invalidateSourcesCache(): void {
     this.inFlightSourcesPromise = null;
+    this.cachedSourcesMap = null;
   }
 
   async mergeOpportunity(opportunity: Opportunity): Promise<void> {
@@ -101,6 +103,10 @@ export class SqliteOpportunityStore implements OpportunityStore {
   }
 
   async listOpportunitySources(): Promise<OpportunitySource[]> {
+    if (this.cachedSourcesMap) {
+      return Array.from(this.cachedSourcesMap.values());
+    }
+
     if (this.inFlightSourcesPromise) {
       return this.inFlightSourcesPromise;
     }
@@ -128,40 +134,47 @@ export class SqliteOpportunityStore implements OpportunityStore {
       const rows = await this.db.many<any>(sql);
       const jobHashMap = new Map<string, OpportunitySource>();
 
-      for (const r of rows) {
-        let contentObj: any = {};
-        if (r.doc_content) {
-          try {
-            contentObj = typeof r.doc_content === "string" ? JSON.parse(r.doc_content) : r.doc_content;
-          } catch {}
+      if (rows.length === 0 && OPPORTUNITY_SOURCES && OPPORTUNITY_SOURCES.length > 0) {
+        for (const src of OPPORTUNITY_SOURCES) {
+          jobHashMap.set(src.jobHash, src);
         }
+      } else {
+        for (const r of rows) {
+          let contentObj: any = {};
+          if (r.doc_content) {
+            try {
+              contentObj = typeof r.doc_content === "string" ? JSON.parse(r.doc_content) : r.doc_content;
+            } catch {}
+          }
 
-        const jobHash = contentObj.jobHash || r.id;
-        const oppSource: OpportunitySource = {
-          jobHash,
-          role: r.canonical_title || contentObj.role || "Executive Role",
-          company: r.company_name || contentObj.company || "Target Company",
-          location: r.location || contentObj.location || "Remote",
-          scrapedFrom: contentObj.scrapedFrom || "LinkedIn",
-          postedRelative: contentObj.postedRelative || "Recently Ingested",
-          rawText: contentObj.normalizedText || contentObj.rawText || contentObj.rawDescription || "",
-          dimensions: Array.isArray(contentObj.dimensions) ? contentObj.dimensions : [],
-          primaryConcern: contentObj.primaryConcern || null,
-          whyNow: contentObj.whyNow,
-          positioning: Array.isArray(contentObj.positioning) ? contentObj.positioning : [],
-          applyUrl: contentObj.applyUrl || contentObj.url,
-          primaryProof: contentObj.primaryProof,
-          headspaceInvestment: contentObj.headspaceInvestment,
-          hiringRisk: contentObj.hiringRisk,
-          alternativePath: contentObj.alternativePath,
-        };
+          const jobHash = contentObj.jobHash || r.id;
+          const oppSource: OpportunitySource = {
+            jobHash,
+            role: r.canonical_title || contentObj.role || "Executive Role",
+            company: r.company_name || contentObj.company || "Target Company",
+            location: r.location || contentObj.location || "Remote",
+            scrapedFrom: contentObj.scrapedFrom || "LinkedIn",
+            postedRelative: contentObj.postedRelative || "Recently Ingested",
+            rawText: contentObj.normalizedText || contentObj.rawText || contentObj.rawDescription || "",
+            dimensions: Array.isArray(contentObj.dimensions) ? contentObj.dimensions : [],
+            primaryConcern: contentObj.primaryConcern || null,
+            whyNow: contentObj.whyNow,
+            positioning: Array.isArray(contentObj.positioning) ? contentObj.positioning : [],
+            applyUrl: contentObj.applyUrl || contentObj.url,
+            primaryProof: contentObj.primaryProof,
+            headspaceInvestment: contentObj.headspaceInvestment,
+            hiringRisk: contentObj.hiringRisk,
+            alternativePath: contentObj.alternativePath,
+          };
 
-        const existing = jobHashMap.get(jobHash);
-        if (!existing || (!existing.rawText && oppSource.rawText)) {
-          jobHashMap.set(jobHash, oppSource);
+          const existing = jobHashMap.get(jobHash);
+          if (!existing || (!existing.rawText && oppSource.rawText)) {
+            jobHashMap.set(jobHash, oppSource);
+          }
         }
       }
 
+      this.cachedSourcesMap = jobHashMap;
       return Array.from(jobHashMap.values());
     })().finally(() => {
       this.inFlightSourcesPromise = null;
@@ -170,7 +183,23 @@ export class SqliteOpportunityStore implements OpportunityStore {
     return this.inFlightSourcesPromise;
   }
 
+  async getOpportunitySourcesMap(): Promise<Map<string, OpportunitySource>> {
+    if (this.cachedSourcesMap) {
+      return this.cachedSourcesMap;
+    }
+    await this.listOpportunitySources();
+    return this.cachedSourcesMap || new Map();
+  }
+
   async getOpportunitySource(jobHash: string): Promise<OpportunitySource | undefined> {
+    if (this.cachedSourcesMap && this.cachedSourcesMap.has(jobHash)) {
+      return this.cachedSourcesMap.get(jobHash);
+    }
+    const map = await this.getOpportunitySourcesMap();
+    if (map.has(jobHash)) {
+      return map.get(jobHash);
+    }
+
     const sql = `
       SELECT o.id as id, o.canonical_title as canonical_title, o.location as location,
              c.name as company_name, d.content as doc_content

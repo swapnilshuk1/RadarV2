@@ -1,7 +1,7 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { PersonStore } from "../../../domain/repositories";
 import type { Person, ResumeVersion } from "../../../domain/entities";
-import { type CandidateProjection, validateCandidateProjection } from "../../../lib/domain/candidate_projection";
+import { type CandidateProjection, validateCandidateProjection, DEFAULT_CANDIDATE_PROJECTION } from "../../../lib/domain/candidate_projection";
 
 export class SqlitePersonStore implements PersonStore {
   constructor(private db: DatabaseAdapter) {}
@@ -130,7 +130,7 @@ export class SqlitePersonStore implements PersonStore {
       [personId]
     );
     if (!row || !row.projection_json) {
-      return undefined;
+      return DEFAULT_CANDIDATE_PROJECTION;
     }
     
     try {

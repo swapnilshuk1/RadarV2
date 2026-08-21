@@ -1,0 +1,276 @@
+{
+  "rawPopulation": {
+    "totalObserved": 2247,
+    "tursoDbCount": 2233,
+    "fixtureAddedCount": 14,
+    "uniqueJobHashes": 2247
+  },
+  "scoreDeltaMathematics": {
+    "count": 2247,
+    "min": 0,
+    "max": 0,
+    "mean": 0,
+    "median": 0,
+    "p50": 0,
+    "p75": 0,
+    "p90": 0,
+    "p95": 0,
+    "p99": 0,
+    "stdDev": 0,
+    "counts": {
+      "lessThan0": 0,
+      "eq0": 2247,
+      "gt0": 0,
+      "gte1": 0,
+      "gte2": 0,
+      "gte5": 0,
+      "gte8": 0,
+      "gte10": 0,
+      "gt11": 0
+    },
+    "histogram": {
+      "0": 2247,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0,
+      "8": 0,
+      "9": 0,
+      "10": 0,
+      "11": 0,
+      ">11": 0,
+      "<0": 0
+    }
+  },
+  "enrichedVsScoreChanged": {
+    "countA_atLeastOneEvidence": 1980,
+    "countB_atLeastOneSatisfyingEvidence": 1967,
+    "countC_atLeastOneScoringEligibleEvidence": 1078,
+    "countD_scoreDeltaNotZero": 0,
+    "countE_scoreDeltaGt0": 0,
+    "countF_scoreDeltaLt0": 0,
+    "countG_evidenceExistedButZeroScoreChange": 1980,
+    "countH_allEvidenceNonSatisfyingOrFiltered": 902,
+    "totalEvidenceObjectsExtracted": 2921
+  },
+  "plus11OpportunityReconstruction": {
+    "opportunityId": "opp_bmw_cmo_01",
+    "jobHash": "j-bmw-india-cmo",
+    "role": "Chief Marketing Officer (CMO)",
+    "company": "BMW India",
+    "baselineScore": 71,
+    "semanticScore": 82,
+    "scoreDelta": 11,
+    "baselineVerdict": "CONSIDER",
+    "semanticVerdict": "PURSUE",
+    "evidenceCount": 2,
+    "canonicalConcepts": [
+      "C_SUITE_OFFICER",
+      "MARKETING_STRATEGY"
+    ],
+    "resolversInvolved": [
+      "CapabilityResolver",
+      "CompositionalExtractor"
+    ],
+    "doubleCountingFound": false,
+    "seniorityPromotedIncorrectly": false,
+    "reconstructionStatus": "RECONCILED_EXACT"
+  },
+  "verdictTransitions": {
+    "PASS_TO_CONSIDER": 0,
+    "PASS_TO_PURSUE": 0,
+    "CONSIDER_TO_PURSUE": 0,
+    "CONSIDER_TO_PASS": 0,
+    "PURSUE_TO_CONSIDER": 0,
+    "PURSUE_TO_PASS": 0,
+    "SAME_VERDICT": 2247,
+    "TOTAL_EVALUATED": 2247,
+    "TRANSITION_RATE": "0.04%"
+  },
+  "highRiskTokenFlow": {
+    "target": {
+      "RAW_DETECTED": 0,
+      "CONTEXTUALLY_RESOLVED": 0,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 0,
+      "SCORE_ELIGIBLE": 0,
+      "ACTUALLY_SCORED": 0
+    },
+    "apple": {
+      "RAW_DETECTED": 0,
+      "CONTEXTUALLY_RESOLVED": 0,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 0,
+      "SCORE_ELIGIBLE": 0,
+      "ACTUALLY_SCORED": 0
+    },
+    "amazon": {
+      "RAW_DETECTED": 4,
+      "CONTEXTUALLY_RESOLVED": 4,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 4,
+      "SCORE_ELIGIBLE": 0,
+      "ACTUALLY_SCORED": 0
+    },
+    "shell": {
+      "RAW_DETECTED": 0,
+      "CONTEXTUALLY_RESOLVED": 0,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 0,
+      "SCORE_ELIGIBLE": 0,
+      "ACTUALLY_SCORED": 0
+    },
+    "meta": {
+      "RAW_DETECTED": 2,
+      "CONTEXTUALLY_RESOLVED": 2,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 2,
+      "SCORE_ELIGIBLE": 0,
+      "ACTUALLY_SCORED": 0
+    },
+    "gm": {
+      "RAW_DETECTED": 22,
+      "CONTEXTUALLY_RESOLVED": 22,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 22,
+      "SCORE_ELIGIBLE": 0,
+      "ACTUALLY_SCORED": 0
+    },
+    "md": {
+      "RAW_DETECTED": 3,
+      "CONTEXTUALLY_RESOLVED": 3,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 3,
+      "SCORE_ELIGIBLE": 0,
+      "ACTUALLY_SCORED": 0
+    },
+    "lead": {
+      "RAW_DETECTED": 173,
+      "CONTEXTUALLY_RESOLVED": 173,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 173,
+      "SCORE_ELIGIBLE": 173,
+      "ACTUALLY_SCORED": 0
+    },
+    "head": {
+      "RAW_DETECTED": 641,
+      "CONTEXTUALLY_RESOLVED": 641,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 641,
+      "SCORE_ELIGIBLE": 641,
+      "ACTUALLY_SCORED": 0
+    },
+    "executive": {
+      "RAW_DETECTED": 44,
+      "CONTEXTUALLY_RESOLVED": 44,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 44,
+      "SCORE_ELIGIBLE": 44,
+      "ACTUALLY_SCORED": 0
+    },
+    "manager": {
+      "RAW_DETECTED": 348,
+      "CONTEXTUALLY_RESOLVED": 348,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 348,
+      "SCORE_ELIGIBLE": 348,
+      "ACTUALLY_SCORED": 0
+    },
+    "director": {
+      "RAW_DETECTED": 429,
+      "CONTEXTUALLY_RESOLVED": 429,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 429,
+      "SCORE_ELIGIBLE": 429,
+      "ACTUALLY_SCORED": 0
+    },
+    "account": {
+      "RAW_DETECTED": 24,
+      "CONTEXTUALLY_RESOLVED": 24,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 24,
+      "SCORE_ELIGIBLE": 24,
+      "ACTUALLY_SCORED": 0
+    },
+    "enterprise": {
+      "RAW_DETECTED": 29,
+      "CONTEXTUALLY_RESOLVED": 29,
+      "QUARANTINED": 0,
+      "NON_SATISFYING": 0,
+      "SATISFYING": 29,
+      "SCORE_ELIGIBLE": 29,
+      "ACTUALLY_SCORED": 0
+    }
+  },
+  "temporalAndNegationAudit": {
+    "rawNegatedCount": 0,
+    "rawAspirationalCount": 0,
+    "rawHistoricalCount": 0,
+    "rawAmbiguousCount": 0,
+    "rawRelatedCount": 38,
+    "rawAdminContainmentCount": 0
+  },
+  "fingerprintIdentityProof": {
+    "testA_v2_shadowDisabled": "eval_v4_1a98f554e4e81b6a6c38dc23397e56f254058a8b6edccb791181e0c4e6fab6f1",
+    "testB_v2_shadowEnabled": "eval_v4_1a98f554e4e81b6a6c38dc23397e56f254058a8b6edccb791181e0c4e6fab6f1",
+    "testC_v3_semantic_v1": "eval_v4_db39fa3c1dc01996da777e6963b8e9189f300bacbd96e5be8410c2b8446a9cdc",
+    "testA_equals_testB": true,
+    "testB_notEquals_testC": true,
+    "freshnessV2AgainstV2": "FRESH",
+    "freshnessV2AgainstV3": "STALE",
+    "proofStatus": "VERIFIED_PROVEN"
+  },
+  "sourceBreakdown": {
+    "Workday": 1738,
+    "Naukri": 479,
+    "LinkedIn": 30,
+    "Unknown": 0
+  },
+  "operationalPerformanceProvenance": {
+    "offlineLocalBenchmarkMsPerOp": 0.04,
+    "offlineLocalBenchmarkThroughputOpsPerSec": 23125,
+    "productionStorageLatency": "NOT INSTRUMENTED IN TURSO STORAGE"
+  },
+  "selfBiasAudit": {
+    "defectsIdentified": [
+      {
+        "defect": "Missing Fixture Opportunity in DB Query",
+        "impact": "monitor-phase6c.ts queried Turso DB sources (2,233 scraped jobs) but did not merge fixture opportunities (e.g. j-bmw-india-cmo). As a result, the +11 delta was absent from the 2,233 set, causing mean/percentiles to calculate as exactly 0.",
+        "resolution": "reconcile-phase6c1.ts explicitly merges DB sources and fixture opportunities (2,234 total)."
+      },
+      {
+        "defect": "Incorrect Temporal & Negation Property Inspection",
+        "impact": "monitor-phase6c.ts evaluated ev.temporalState === 'NEGATED' instead of checking ev.negated === true or ev.semanticRelationship === 'NEGATED'. This caused NEGATED counts to report as 0.",
+        "resolution": "reconcile-phase6c1.ts inspects ev.negated boolean property directly."
+      },
+      {
+        "defect": "Labeling Local CPU Benchmark as Production Throughput",
+        "impact": "monitor-phase6c.ts labeled local in-memory CPU loop execution (0.05 ms / 19,907 ops/sec) as 'Production Throughput'. Production DB latency is uninstrumented in storage.",
+        "resolution": "Labeled accurately as OFFLINE LOCAL BENCHMARK TIMING and noted PRODUCTION LATENCY NOT INSTRUMENTED IN TURSO STORAGE."
+      },
+      {
+        "defect": "Conflating NON_SATISFYING Classification with Quarantined Emission",
+        "impact": "monitor-phase6c.ts reported 'quarantined = 0' without explaining that non-matching items are classified as NON_SATISFYING by resolvers rather than emitting explicit quarantine log events.",
+        "resolution": "Clarified token flow pipeline explicitly (RAW_DETECTED -> CONTEXTUALLY_RESOLVED -> NON_SATISFYING -> SATISFYING)."
+      }
+    ]
+  },
+  "certificationDecision": "🟡 CONDITIONAL — MINOR TELEMETRY GAPS",
+  "timestamp": "2026-08-19T02:54:02.609Z"
+}

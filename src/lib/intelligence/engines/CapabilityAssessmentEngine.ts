@@ -4,6 +4,7 @@ import { CapabilityAssessment, EvidenceMatch } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
 import type { CandidateEvaluationContext } from "../context";
 import executiveOntology from "@/data/ontology/executive_ontology.json";
+import { RequirementEvidenceAdapter } from "../semantic/RequirementEvidenceAdapter";
 
 export class CapabilityAssessmentEngine {
 
@@ -59,9 +60,25 @@ export class CapabilityAssessmentEngine {
   private static evaluateCapabilityProof(
     jobCap: string,
     candidateProofPool: string[],
-    candidate: CandidateProjection
+    candidate: CandidateProjection,
+    context?: CandidateEvaluationContext
   ): { score: number; potentialScore: number; reason: string; matchedProof: string } {
     const jobLower = jobCap.toLowerCase().trim();
+
+    // 0. Requirement-Aware Canonical Semantic Evidence Check
+    if (candidate.semanticEvidence && candidate.semanticEvidence.length > 0) {
+      const semResult = RequirementEvidenceAdapter.evaluateCapabilitySatisfaction(jobCap, candidate.semanticEvidence);
+      if (semResult.satisfies) {
+        const score = semResult.strength === "DIRECT_MATCH" ? 1.00 : 0.88;
+        const potentialScore = semResult.strength === "DIRECT_MATCH" ? 1.00 : 0.95;
+        return {
+          score,
+          potentialScore,
+          reason: semResult.reason,
+          matchedProof: semResult.matchedProof || jobCap
+        };
+      }
+    }
 
     // 1. Direct Exact Substring Match
     for (const proof of candidateProofPool) {
@@ -108,7 +125,10 @@ export class CapabilityAssessmentEngine {
     }
 
     // 4. Ontological Relationship Graph Path
-    const relGraph = (executiveOntology as any).relationshipGraph || [];
+    const relGraph =
+      (context?.compiledOntology?.ontology as any)?.relationshipGraph ||
+      (executiveOntology as any).relationshipGraph ||
+      [];
     for (const proof of candidateProofPool) {
       const proofLower = proof.toLowerCase().trim();
       const edge = relGraph.find((e: any) => {
@@ -210,7 +230,7 @@ export class CapabilityAssessmentEngine {
 
       totalWeightSum += weight;
 
-      const proofResult = this.evaluateCapabilityProof(jobCapName, candidateProofPool, candidate);
+      const proofResult = this.evaluateCapabilityProof(jobCapName, candidateProofPool, candidate, context);
 
       totalEvidenceScoreSum += proofResult.score * weight;
       totalPotentialScoreSum += proofResult.potentialScore * weight;

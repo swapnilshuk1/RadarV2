@@ -16,6 +16,8 @@ export interface HydrateOptions {
   minPassDelayMs?: number;
   /** Maximum delay in ms per scroll pass (default: 1500) */
   maxPassDelayMs?: number;
+  /** Optional cancellation token check */
+  isCancelled?: () => boolean;
 }
 
 export interface HydrationResult {
@@ -43,12 +45,22 @@ export async function hydrateVirtualizedList(
     consecutiveStableLimit = 2,
     minPassDelayMs = 800,
     maxPassDelayMs = 1500,
+    isCancelled,
   } = options;
 
   const log = logger || (() => {});
 
+  if (isCancelled?.()) {
+    return { initialCount: 0, finalCount: 0, passesCompleted: 0, stabilized: false };
+  }
+
+  // Helper to safely count cards without falsely reporting 0 on page close
+  const safeCount = async (fallback: number) => {
+    return await page.locator(cardSelector).count().catch(() => fallback);
+  };
+
   // 1. Initial count check
-  let currentCards = await page.locator(cardSelector).count().catch(() => 0);
+  let currentCards = await safeCount(0);
   const initialCount = currentCards;
 
   log(`[Hydration] Initial DOM card count: ${initialCount} (target: ${targetCards})`);
@@ -80,11 +92,16 @@ export async function hydrateVirtualizedList(
   let lastCount = currentCards;
 
   for (let pass = 1; pass <= maxPasses; pass++) {
+    if (isCancelled?.()) {
+      log(`[Hydration] Cancelled before pass ${pass}`);
+      return { initialCount, finalCount: lastCount, passesCompleted, stabilized: false };
+    }
+
     passesCompleted = pass;
 
     // 1. Target the last card element
     const cardsLocator = page.locator(cardSelector);
-    const countBeforeScroll = await cardsLocator.count().catch(() => 0);
+    const countBeforeScroll = await safeCount(lastCount);
     
     if (countBeforeScroll > 0) {
       const lastCard = cardsLocator.nth(countBeforeScroll - 1);
@@ -116,11 +133,21 @@ export async function hydrateVirtualizedList(
       window.dispatchEvent(new Event('scroll', { bubbles: true }));
     }).catch(() => {});
 
+    if (isCancelled?.()) {
+      log(`[Hydration] Cancelled during pass ${pass}`);
+      return { initialCount, finalCount: lastCount, passesCompleted, stabilized: false };
+    }
+
     // Configurable jitter delay to allow portal API to respond and DOM to hydrate
     await jitter(minPassDelayMs, maxPassDelayMs);
 
+    if (isCancelled?.()) {
+      log(`[Hydration] Cancelled after wait in pass ${pass}`);
+      return { initialCount, finalCount: lastCount, passesCompleted, stabilized: false };
+    }
+
     // Re-count cards
-    currentCards = await page.locator(cardSelector).count().catch(() => 0);
+    currentCards = await safeCount(lastCount);
     log(`[Hydration] Pass ${pass}/${maxPasses}: ${lastCount} ➔ ${currentCards} cards`);
 
     // Check progress

@@ -66,8 +66,8 @@ function ScrapedFeed() {
             <Meta label="LinkedIn" value={c.bySource.LinkedIn} />
             <Meta label="Naukri" value={c.bySource.Naukri} />
             <Meta label="Indeed" value={c.bySource.Indeed} />
-            <Meta label="Shortlisted" value={c.shortlisted} tint="text-decision-pursue" />
-            <Meta label="Filtered" value={stats?.failed ? (stats.failed + (c.filtered - 9)) : c.filtered} tint="text-ink-muted" />
+            <Meta label="Shortlisted" value={stats?.shortlisted ?? 0} tint="text-decision-pursue" />
+            <Meta label="Filtered" value={stats?.filtered ?? 0} tint="text-ink-muted" />
           </div>
         </div>
       </section>
@@ -139,14 +139,14 @@ function ScrapedFeed() {
                 <span className="text-ink-muted/40 text-[14px]">➔</span>
                 <PipelineStage 
                   label="Filtered" 
-                  value={stats?.failed ? (stats.failed + (c.filtered - 9)) : c.filtered} 
+                  value={stats?.filtered ?? 0} 
                   sub="Low Alignment"
                   tint="text-ink-muted"
                 />
                 <span className="text-ink-muted/40 text-[14px]">➔</span>
                 <PipelineStage 
                   label="Shortlisted" 
-                  value={c.shortlisted} 
+                  value={stats?.shortlisted ?? 0} 
                   sub="VP+ Match List"
                   tint="text-decision-pursue font-semibold"
                 />

@@ -1,0 +1,4290 @@
+[
+  {
+    "opportunityId": "acme-corp-vp-digital-marketing",
+    "candidateId": "c-001",
+    "portal": "Curated Golden",
+    "industry": "Enterprise / Multi-Industry",
+    "baseline": {
+      "score": 58,
+      "verdict": "CONSIDER",
+      "relevantEvidence": [
+        {
+          "jobCapability": "GTM + CRM + Digital",
+          "candidateCapability": "Digital",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital + CRM",
+          "candidateCapability": "Digital",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Salesforce",
+          "candidateCapability": "Salesforce Marketing Cloud",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 4,
+      "concepts": [
+        "VICE_PRESIDENT",
+        "MUMBAI",
+        "MARKETING_STRATEGY",
+        "GTM_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.98,
+        0.99,
+        0.95,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 57,
+      "verdict": "CONSIDER"
+    },
+    "delta": {
+      "score": -1,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "VP Digital Marketing\nAcme Corp — Mumbai · India\nPosted 8 days ago\nVP Digital Marketing\nExperience in GTM, CRM, and digital platforms.\nGTM, CRM, and digital platforms.\nMumbai · India\nMust be located in Mumbai office (100% on-site).\nStack: Salesforce, GA4.",
+        "canonicalConcept": "VICE_PRESIDENT",
+        "relationship": "EXACT",
+        "confidence": 0.98,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": -1
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "VP Digital Marketing\nAcme Corp — Mumbai · India\nPosted 8 days ago\nVP Digital Marketing\nExperience in GTM, CRM, and digital platforms.\nGTM, CRM, and digital platforms.\nMumbai · India\nMust be located in Mumbai office (100% on-site).\nStack: Salesforce, GA4.",
+        "canonicalConcept": "MUMBAI",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": -1
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": -1
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "gtm",
+        "canonicalConcept": "GTM_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": -1
+      }
+    ]
+  },
+  {
+    "opportunityId": "bmw-india-chief-marketing-officer-cmo",
+    "candidateId": "c-001",
+    "portal": "Curated Golden",
+    "industry": "Enterprise / Multi-Industry",
+    "baseline": {
+      "score": 77,
+      "verdict": "CONSIDER",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Transformation",
+          "candidateCapability": "CRM Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Growth + CRM + Analytics",
+          "candidateCapability": "Growth",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Salesforce CDP",
+          "candidateCapability": "Salesforce CDP",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 4,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "C_SUITE_OFFICER",
+        "GURUGRAM",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.98,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 77,
+      "verdict": "CONSIDER"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Chief Marketing Officer (CMO)\nBMW India — Gurugram · India\nPosted 2 days ago\nChief Marketing Officer (CMO)\nReports directly to the Managing Director and the Board.\nLead the India digital transformation across 22 dealers and CRM.\nOwn the India marketing P&L (₹1.5 Cr+ scale).\nOwn growth marketing, CRM, and analytics for India.\nGurugram · India\nHybrid — 3 days in the Gurugram HQ.\nDeep experience in Salesforce CDP and lifecycle marketing required.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Chief Marketing Officer (CMO)\nBMW India — Gurugram · India\nPosted 2 days ago\nChief Marketing Officer (CMO)\nReports directly to the Managing Director and the Board.\nLead the India digital transformation across 22 dealers and CRM.\nOwn the India marketing P&L (₹1.5 Cr+ scale).\nOwn growth marketing, CRM, and analytics for India.\nGurugram · India\nHybrid — 3 days in the Gurugram HQ.\nDeep experience in Salesforce CDP and lifecycle marketing required.",
+        "canonicalConcept": "C_SUITE_OFFICER",
+        "relationship": "EXACT",
+        "confidence": 0.98,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Chief Marketing Officer (CMO)\nBMW India — Gurugram · India\nPosted 2 days ago\nChief Marketing Officer (CMO)\nReports directly to the Managing Director and the Board.\nLead the India digital transformation across 22 dealers and CRM.\nOwn the India marketing P&L (₹1.5 Cr+ scale).\nOwn growth marketing, CRM, and analytics for India.\nGurugram · India\nHybrid — 3 days in the Gurugram HQ.\nDeep experience in Salesforce CDP and lifecycle marketing required.",
+        "canonicalConcept": "GURUGRAM",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "flipkart-vp-growth-marketing",
+    "candidateId": "c-001",
+    "portal": "Curated Golden",
+    "industry": "Enterprise / Multi-Industry",
+    "baseline": {
+      "score": 76,
+      "verdict": "CONSIDER",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Growth",
+          "candidateCapability": "Growth Strategy",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Growth + CRM",
+          "candidateCapability": "Growth",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Salesforce CDP",
+          "candidateCapability": "Salesforce CDP",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 5,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "C_SUITE_OFFICER",
+        "BENGALURU",
+        "VP_GROWTH_MARKETING_FLIPKART_BENGALURU_INDIA_POSTED_5_DAYS_AGO_VP_GROWTH_MARKETING_REPORTS_TO_CMO_FLIPKART_OWN_INDIA_GROWTH_MARKETING_ACROSS_CATEGORIES_CATEGORY_LEVEL_GROWTH_P_L_GROWTH_CRM_LIFECYCLE_BASED_IN_BENGALURU_HQ_RELOCATION_REQUIRED_HYBRID_3_DAYS_ON_SITE_SALESFORCE_CDP_IN_HOUSE_DATA_PLATFORM_",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "EXACT",
+        "CITY_ALIAS",
+        "LEXICAL_VARIANT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.98,
+        0.99,
+        0.75,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 76,
+      "verdict": "CONSIDER"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "VP Growth Marketing\nFlipkart — Bengaluru · India\nPosted 5 days ago\nVP Growth Marketing\nReports to CMO, Flipkart.\nOwn India growth marketing across categories.\nCategory-level growth P&L.\nGrowth, CRM, lifecycle.\nBased in Bengaluru HQ; relocation required.\nHybrid, 3 days on-site.\nSalesforce CDP + in-house data platform.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "VP Growth Marketing\nFlipkart — Bengaluru · India\nPosted 5 days ago\nVP Growth Marketing\nReports to CMO, Flipkart.\nOwn India growth marketing across categories.\nCategory-level growth P&L.\nGrowth, CRM, lifecycle.\nBased in Bengaluru HQ; relocation required.\nHybrid, 3 days on-site.\nSalesforce CDP + in-house data platform.",
+        "canonicalConcept": "C_SUITE_OFFICER",
+        "relationship": "EXACT",
+        "confidence": 0.98,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "VP Growth Marketing\nFlipkart — Bengaluru · India\nPosted 5 days ago\nVP Growth Marketing\nReports to CMO, Flipkart.\nOwn India growth marketing across categories.\nCategory-level growth P&L.\nGrowth, CRM, lifecycle.\nBased in Bengaluru HQ; relocation required.\nHybrid, 3 days on-site.\nSalesforce CDP + in-house data platform.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "ORGANIZATION",
+        "sourcePhrase": "VP Growth Marketing\nFlipkart — Bengaluru · India\nPosted 5 days ago\nVP Growth Marketing\nReports to CMO, Flipkart.\nOwn India growth marketing across categories.\nCategory-level growth P&L.\nGrowth, CRM, lifecycle.\nBased in Bengaluru HQ; relocation required.\nHybrid, 3 days on-site.\nSalesforce CDP + in-house data platform.",
+        "canonicalConcept": "VP_GROWTH_MARKETING_FLIPKART_BENGALURU_INDIA_POSTED_5_DAYS_AGO_VP_GROWTH_MARKETING_REPORTS_TO_CMO_FLIPKART_OWN_INDIA_GROWTH_MARKETING_ACROSS_CATEGORIES_CATEGORY_LEVEL_GROWTH_P_L_GROWTH_CRM_LIFECYCLE_BASED_IN_BENGALURU_HQ_RELOCATION_REQUIRED_HYBRID_3_DAYS_ON_SITE_SALESFORCE_CDP_IN_HOUSE_DATA_PLATFORM_",
+        "relationship": "LEXICAL_VARIANT",
+        "confidence": 0.75,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "hindustan-unilever-vp-digital-e-commerce",
+    "candidateId": "c-001",
+    "portal": "Curated Golden",
+    "industry": "Enterprise / Multi-Industry",
+    "baseline": {
+      "score": 74,
+      "verdict": "PASS",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Digital + E-com",
+          "candidateCapability": "Digital",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Salesforce",
+          "candidateCapability": "Salesforce Marketing Cloud",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 5,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "C_SUITE_OFFICER",
+        "MUMBAI",
+        "VP_DIGITAL_E_COMMERCE_HINDUSTAN_UNILEVER_MUMBAI_INDIA_POSTED_3_DAYS_AGO_VP_DIGITAL_E_COMMERCE_REPORTS_TO_CMO_HUL_OPERATE_WITHIN_HUL_S_CATEGORY_FIRST_BRAND_STRUCTURE_INDIRECT_P_L_VIA_CATEGORY_OWNERS_DIGITAL_E_COMMERCE_CRM_MUMBAI_INDIA_HYBRID_3_DAYS_AT_HUL_HQ_SALESFORCE_MARKETING_CLOUD_ADOBE_ANALYTICS_",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "EXACT",
+        "CITY_ALIAS",
+        "LEXICAL_VARIANT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.98,
+        0.99,
+        0.75,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 74,
+      "verdict": "PASS"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "VP Digital & E-commerce\nHindustan Unilever — Mumbai · India\nPosted 3 days ago\nVP Digital & E-commerce\nReports to CMO, HUL.\nOperate within HUL's category-first brand structure.\nIndirect P&L via category owners.\nDigital, e-commerce, CRM.\nMumbai · India\nHybrid, 3 days at HUL HQ.\nSalesforce Marketing Cloud + Adobe Analytics.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "VP Digital & E-commerce\nHindustan Unilever — Mumbai · India\nPosted 3 days ago\nVP Digital & E-commerce\nReports to CMO, HUL.\nOperate within HUL's category-first brand structure.\nIndirect P&L via category owners.\nDigital, e-commerce, CRM.\nMumbai · India\nHybrid, 3 days at HUL HQ.\nSalesforce Marketing Cloud + Adobe Analytics.",
+        "canonicalConcept": "C_SUITE_OFFICER",
+        "relationship": "EXACT",
+        "confidence": 0.98,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "VP Digital & E-commerce\nHindustan Unilever — Mumbai · India\nPosted 3 days ago\nVP Digital & E-commerce\nReports to CMO, HUL.\nOperate within HUL's category-first brand structure.\nIndirect P&L via category owners.\nDigital, e-commerce, CRM.\nMumbai · India\nHybrid, 3 days at HUL HQ.\nSalesforce Marketing Cloud + Adobe Analytics.",
+        "canonicalConcept": "MUMBAI",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "ORGANIZATION",
+        "sourcePhrase": "VP Digital & E-commerce\nHindustan Unilever — Mumbai · India\nPosted 3 days ago\nVP Digital & E-commerce\nReports to CMO, HUL.\nOperate within HUL's category-first brand structure.\nIndirect P&L via category owners.\nDigital, e-commerce, CRM.\nMumbai · India\nHybrid, 3 days at HUL HQ.\nSalesforce Marketing Cloud + Adobe Analytics.",
+        "canonicalConcept": "VP_DIGITAL_E_COMMERCE_HINDUSTAN_UNILEVER_MUMBAI_INDIA_POSTED_3_DAYS_AGO_VP_DIGITAL_E_COMMERCE_REPORTS_TO_CMO_HUL_OPERATE_WITHIN_HUL_S_CATEGORY_FIRST_BRAND_STRUCTURE_INDIRECT_P_L_VIA_CATEGORY_OWNERS_DIGITAL_E_COMMERCE_CRM_MUMBAI_INDIA_HYBRID_3_DAYS_AT_HUL_HQ_SALESFORCE_MARKETING_CLOUD_ADOBE_ANALYTICS_",
+        "relationship": "LEXICAL_VARIANT",
+        "confidence": 0.75,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "reliance-retail-chief-growth-officer-d2c",
+    "candidateId": "c-001",
+    "portal": "Curated Golden",
+    "industry": "Enterprise / Multi-Industry",
+    "baseline": {
+      "score": 75,
+      "verdict": "CONSIDER",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Transformation",
+          "candidateCapability": "CRM Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Growth + CRM",
+          "candidateCapability": "Growth",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Salesforce",
+          "candidateCapability": "Salesforce Marketing Cloud",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 5,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "C_SUITE_OFFICER",
+        "MUMBAI",
+        "MARKETING_STRATEGY",
+        "D2C_GROWTH"
+      ],
+      "relationships": [
+        "EXACT",
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.98,
+        0.99,
+        0.95,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 75,
+      "verdict": "CONSIDER"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Chief Growth Officer, D2C\nReliance Retail — Mumbai · India\nPosted 4 days ago\nChief Growth Officer\nReports to the CEO, Reliance Retail Digital.\nRe-platform Salesforce CRM within 12 months.\nOwns D2C P&L (₹300 Cr+ topline).\nGrowth, CRM, and lifecycle marketing.\nMumbai · India\nHybrid, 3 days in Mumbai HQ.\nStack: Salesforce Marketing Cloud, CDP.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Chief Growth Officer, D2C\nReliance Retail — Mumbai · India\nPosted 4 days ago\nChief Growth Officer\nReports to the CEO, Reliance Retail Digital.\nRe-platform Salesforce CRM within 12 months.\nOwns D2C P&L (₹300 Cr+ topline).\nGrowth, CRM, and lifecycle marketing.\nMumbai · India\nHybrid, 3 days in Mumbai HQ.\nStack: Salesforce Marketing Cloud, CDP.",
+        "canonicalConcept": "C_SUITE_OFFICER",
+        "relationship": "EXACT",
+        "confidence": 0.98,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Chief Growth Officer, D2C\nReliance Retail — Mumbai · India\nPosted 4 days ago\nChief Growth Officer\nReports to the CEO, Reliance Retail Digital.\nRe-platform Salesforce CRM within 12 months.\nOwns D2C P&L (₹300 Cr+ topline).\nGrowth, CRM, and lifecycle marketing.\nMumbai · India\nHybrid, 3 days in Mumbai HQ.\nStack: Salesforce Marketing Cloud, CDP.",
+        "canonicalConcept": "MUMBAI",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "d2c",
+        "canonicalConcept": "D2C_GROWTH",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "snapdeal-head-of-performance-marketing",
+    "candidateId": "c-001",
+    "portal": "Curated Golden",
+    "industry": "Enterprise / Multi-Industry",
+    "baseline": {
+      "score": 55,
+      "verdict": "CONSIDER",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "FUNCTIONAL_HEAD",
+        "DELHI",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.96,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 55,
+      "verdict": "CONSIDER"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Head of Performance Marketing\nSnapdeal — Delhi NCR · India\nPosted 11 days ago\n8–10 years of performance marketing experience.\nOwn paid + performance channels.\nPaid + performance.\nDelhi NCR · India\nHybrid, 3 days in-office.",
+        "canonicalConcept": "FUNCTIONAL_HEAD",
+        "relationship": "EXACT",
+        "confidence": 0.96,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Head of Performance Marketing\nSnapdeal — Delhi NCR · India\nPosted 11 days ago\n8–10 years of performance marketing experience.\nOwn paid + performance channels.\nPaid + performance.\nDelhi NCR · India\nHybrid, 3 days in-office.",
+        "canonicalConcept": "DELHI",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "tata-consultancy-services-transformation-lead",
+    "candidateId": "c-001",
+    "portal": "Curated Golden",
+    "industry": "Enterprise / Multi-Industry",
+    "baseline": {
+      "score": 42,
+      "verdict": "PASS",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Agile transformation",
+          "candidateCapability": "Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 2,
+      "concepts": [
+        "TRANSFORMATION_LEAD_TATA_CONSULTANCY_SERVICES_BENGALURU_INDIA_POSTED_12_DAYS_AGO_5_8_YEARS_EXPERIENCE_SCRUM_PMO_AND_PROJECT_MANAGEMENT_SCRUM_PMO_AND_PROJECT_MANAGEMENT_BENGALURU_INDIA",
+        "BENGALURU"
+      ],
+      "relationships": [
+        "LEXICAL_VARIANT",
+        "CITY_ALIAS"
+      ],
+      "confidenceDistribution": [
+        0.6,
+        0.99
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 42,
+      "verdict": "PASS"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Transformation Lead\nTata Consultancy Services — Bengaluru · India\nPosted 12 days ago\n5–8 years experience.\nScrum, PMO, and project management.\nScrum, PMO, and project management.\nBengaluru · India",
+        "canonicalConcept": "TRANSFORMATION_LEAD_TATA_CONSULTANCY_SERVICES_BENGALURU_INDIA_POSTED_12_DAYS_AGO_5_8_YEARS_EXPERIENCE_SCRUM_PMO_AND_PROJECT_MANAGEMENT_SCRUM_PMO_AND_PROJECT_MANAGEMENT_BENGALURU_INDIA",
+        "relationship": "LEXICAL_VARIANT",
+        "confidence": 0.6,
+        "evidenceStrength": "EXCLUDED",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Transformation Lead\nTata Consultancy Services — Bengaluru · India\nPosted 12 days ago\n5–8 years experience.\nScrum, PMO, and project management.\nScrum, PMO, and project management.\nBengaluru · India",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "tata-digital-svp-growth-crm",
+    "candidateId": "c-001",
+    "portal": "Curated Golden",
+    "industry": "Enterprise / Multi-Industry",
+    "baseline": {
+      "score": 74,
+      "verdict": "CONSIDER",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Growth + CRM",
+          "candidateCapability": "Growth",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Salesforce",
+          "candidateCapability": "Salesforce Marketing Cloud",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 4,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "C_SUITE_OFFICER",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.98,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 74,
+      "verdict": "CONSIDER"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "SVP Growth & CRM\nTata Digital — Bengaluru · India\nPosted 1 day ago\nSVP Growth & CRM\nReports to CEO, Tata Digital.\nOwn growth, CRM, and lifecycle across Tata Neu.\nOwns the Tata Neu growth P&L.\nGrowth, CRM, lifecycle.\nBengaluru · India\nHybrid, 3 days in-office.\nStack: Salesforce Marketing Cloud + CDP.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "SVP Growth & CRM\nTata Digital — Bengaluru · India\nPosted 1 day ago\nSVP Growth & CRM\nReports to CEO, Tata Digital.\nOwn growth, CRM, and lifecycle across Tata Neu.\nOwns the Tata Neu growth P&L.\nGrowth, CRM, lifecycle.\nBengaluru · India\nHybrid, 3 days in-office.\nStack: Salesforce Marketing Cloud + CDP.",
+        "canonicalConcept": "C_SUITE_OFFICER",
+        "relationship": "EXACT",
+        "confidence": 0.98,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "SVP Growth & CRM\nTata Digital — Bengaluru · India\nPosted 1 day ago\nSVP Growth & CRM\nReports to CEO, Tata Digital.\nOwn growth, CRM, and lifecycle across Tata Neu.\nOwns the Tata Neu growth P&L.\nGrowth, CRM, lifecycle.\nBengaluru · India\nHybrid, 3 days in-office.\nStack: Salesforce Marketing Cloud + CDP.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "vml-india-vp-performance-marketing",
+    "candidateId": "c-001",
+    "portal": "Curated Golden",
+    "industry": "Enterprise / Multi-Industry",
+    "baseline": {
+      "score": 55,
+      "verdict": "CONSIDER",
+      "relevantEvidence": [
+        {
+          "jobCapability": "GTM + CRM setup",
+          "candidateCapability": "CRM Strategy",
+          "confidence": 0.85,
+          "reason": "Operational Equivalence (CRM Strategy ➔ GTM + CRM setup)"
+        },
+        {
+          "jobCapability": "Performance + CRM",
+          "candidateCapability": "CRM Strategy",
+          "confidence": 0.85,
+          "reason": "Operational Equivalence (CRM Strategy ➔ Performance + CRM)"
+        },
+        {
+          "jobCapability": "Salesforce",
+          "candidateCapability": "Salesforce Marketing Cloud",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 5,
+      "concepts": [
+        "MANAGING_DIRECTOR",
+        "GURUGRAM",
+        "VP_PERFORMANCE_MARKETING_VML_INDIA_GURUGRAM_INDIA_POSTED_6_DAYS_AGO_VP_PERFORMANCE_MARKETING_REPORTS_TO_THE_MANAGING_DIRECTOR_VML_INDIA_REQUIRES_12_YEARS_IN_DIGITAL_MARKETING_GTM_STRATEGY_AND_CRM_SETUPS_EXPERIENCE_MANAGING_10M_MARKETING_FEE_BOOKS_AND_PERFORMANCE_CHANNELS_DIGITAL_MARKETING_GTM_STRATEGY_AND_CRM_SETUPS_GURUGRAM_INDIA_HYBRID_3_DAYS_IN_OFFICE_STACK_SALESFORCE_MARKETING_CLOUD_GOOGLE_ANALYTICS_4_",
+        "MARKETING_STRATEGY",
+        "GTM_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "LEXICAL_VARIANT",
+        "STRONG_EQUIVALENT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.98,
+        0.99,
+        0.75,
+        0.95,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 55,
+      "verdict": "CONSIDER"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "VP Performance Marketing\nVML India — Gurugram · India\nPosted 6 days ago\nVP Performance Marketing\nReports to the Managing Director, VML India.\nRequires 12+ years in digital marketing, GTM strategy, and CRM setups.\nExperience managing $10M+ marketing fee-books and performance channels.\nDigital marketing, GTM strategy, and CRM setups.\nGurugram · India\nHybrid, 3 days in-office.\nStack: Salesforce Marketing Cloud, Google Analytics 4.",
+        "canonicalConcept": "MANAGING_DIRECTOR",
+        "relationship": "EXACT",
+        "confidence": 0.98,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "VP Performance Marketing\nVML India — Gurugram · India\nPosted 6 days ago\nVP Performance Marketing\nReports to the Managing Director, VML India.\nRequires 12+ years in digital marketing, GTM strategy, and CRM setups.\nExperience managing $10M+ marketing fee-books and performance channels.\nDigital marketing, GTM strategy, and CRM setups.\nGurugram · India\nHybrid, 3 days in-office.\nStack: Salesforce Marketing Cloud, Google Analytics 4.",
+        "canonicalConcept": "GURUGRAM",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "ORGANIZATION",
+        "sourcePhrase": "VP Performance Marketing\nVML India — Gurugram · India\nPosted 6 days ago\nVP Performance Marketing\nReports to the Managing Director, VML India.\nRequires 12+ years in digital marketing, GTM strategy, and CRM setups.\nExperience managing $10M+ marketing fee-books and performance channels.\nDigital marketing, GTM strategy, and CRM setups.\nGurugram · India\nHybrid, 3 days in-office.\nStack: Salesforce Marketing Cloud, Google Analytics 4.",
+        "canonicalConcept": "VP_PERFORMANCE_MARKETING_VML_INDIA_GURUGRAM_INDIA_POSTED_6_DAYS_AGO_VP_PERFORMANCE_MARKETING_REPORTS_TO_THE_MANAGING_DIRECTOR_VML_INDIA_REQUIRES_12_YEARS_IN_DIGITAL_MARKETING_GTM_STRATEGY_AND_CRM_SETUPS_EXPERIENCE_MANAGING_10M_MARKETING_FEE_BOOKS_AND_PERFORMANCE_CHANNELS_DIGITAL_MARKETING_GTM_STRATEGY_AND_CRM_SETUPS_GURUGRAM_INDIA_HYBRID_3_DAYS_IN_OFFICE_STACK_SALESFORCE_MARKETING_CLOUD_GOOGLE_ANALYTICS_4_",
+        "relationship": "LEXICAL_VARIANT",
+        "confidence": 0.75,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "gtm",
+        "canonicalConcept": "GTM_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "STAKEHOLDER",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "zestlabs-seed-junior-coordinator-marketing",
+    "candidateId": "c-001",
+    "portal": "Curated Golden",
+    "industry": "Enterprise / Multi-Industry",
+    "baseline": {
+      "score": 38,
+      "verdict": "PASS",
+      "relevantEvidence": []
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "ENTRY_COORDINATOR",
+        "INDIA_REMOTE",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "RELATED",
+        "SUPERTYPE",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.98,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 38,
+      "verdict": "PASS"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Junior Coordinator, Marketing\nZestlabs (Seed) — Remote · India\nPosted 9 days ago\nEntry level marketing assistant with 0–1 years experience.\nHelp run social media channels and cold emails.\nSocial media channels and cold emails.\nRemote · India\nFully remote.",
+        "canonicalConcept": "ENTRY_COORDINATOR",
+        "relationship": "RELATED",
+        "confidence": 0.99,
+        "evidenceStrength": "EXCLUDED",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Junior Coordinator, Marketing\nZestlabs (Seed) — Remote · India\nPosted 9 days ago\nEntry level marketing assistant with 0–1 years experience.\nHelp run social media channels and cold emails.\nSocial media channels and cold emails.\nRemote · India\nFully remote.",
+        "canonicalConcept": "INDIA_REMOTE",
+        "relationship": "SUPERTYPE",
+        "confidence": 0.98,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-10",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-11",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-12",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-13",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-14",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-15",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-16",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-17",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-18",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-19",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-20",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-21",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-22",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-23",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-24",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-25",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-26",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-27",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-28",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-29",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-30",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-31",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-32",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "challenge-33",
+    "candidateId": "c-001",
+    "portal": "Adversarial Challenge",
+    "industry": "Technology / Growth",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "BENGALURU",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Bengaluru. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "BENGALURU",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "bm-0c9ed20d977c9e99",
+    "candidateId": "c-001",
+    "portal": "Benchmark Dataset v1",
+    "industry": "E-Commerce / Commercial",
+    "baseline": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE",
+      "relevantEvidence": []
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "FUNCTIONAL_HEAD",
+        "HEAD_OF_MARKETINGEASILY_APPLYZENARA_HEALTHREMOTE_IN_INDIA_50_00_000_70_00_000_A_YEARHEALTH_INSURANCEPAID_TIME_OFF_EXPERIENCE_WITH_CONFERENCE_AND_EVENT_MARKETING_BOOTH_STRATEGY_LEAD_CAPTURE_FIELD_MARKETING_HEALTHCARE_PREFERRED_SEO_AND_CONTENT_MARKETING_EXPERIENCE_VIEW_ALL_ZENARA_HEALTH_JOBS_INDIA_JOBSSALARY_SEARCH_HEAD_OF_MARKETING_SALARIES_IN_INDIA",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "LEXICAL_VARIANT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.96,
+        0.7,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Head of MarketingEasily applyZenara HealthRemote in India₹50,00,000 - ₹70,00,000 a yearHealth insurancePaid time off Experience with conference and event marketing — booth strategy, lead capture, field marketing (healthcare preferred). SEO and content-marketing experience. View all Zenara Health jobs - India jobsSalary Search: Head of Marketing salaries in India",
+        "canonicalConcept": "FUNCTIONAL_HEAD",
+        "relationship": "EXACT",
+        "confidence": 0.96,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Head of MarketingEasily applyZenara HealthRemote in India₹50,00,000 - ₹70,00,000 a yearHealth insurancePaid time off Experience with conference and event marketing — booth strategy, lead capture, field marketing (healthcare preferred). SEO and content-marketing experience. View all Zenara Health jobs - India jobsSalary Search: Head of Marketing salaries in India",
+        "canonicalConcept": "HEAD_OF_MARKETINGEASILY_APPLYZENARA_HEALTHREMOTE_IN_INDIA_50_00_000_70_00_000_A_YEARHEALTH_INSURANCEPAID_TIME_OFF_EXPERIENCE_WITH_CONFERENCE_AND_EVENT_MARKETING_BOOTH_STRATEGY_LEAD_CAPTURE_FIELD_MARKETING_HEALTHCARE_PREFERRED_SEO_AND_CONTENT_MARKETING_EXPERIENCE_VIEW_ALL_ZENARA_HEALTH_JOBS_INDIA_JOBSSALARY_SEARCH_HEAD_OF_MARKETING_SALARIES_IN_INDIA",
+        "relationship": "LEXICAL_VARIANT",
+        "confidence": 0.7,
+        "evidenceStrength": "EXCLUDED",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "bm-9fcf8d055cf9ca91",
+    "candidateId": "c-001",
+    "portal": "Benchmark Dataset v1",
+    "industry": "E-Commerce / Commercial",
+    "baseline": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE",
+      "relevantEvidence": []
+    },
+    "semantic": {
+      "evidenceCount": 2,
+      "concepts": [
+        "JOB_HIGHLIGHTSEXPERIENCE_IN_AUTOMOTIVE_PARTS_MARKETING_WITH_OEMS_AND_TIER_1_CLIENTS_SKILLED_IN_RFQ_MANAGEMENT_AND_PRODUCT_COSTINGIDENTIFY_AND_APPROACH_NEW_OEMS_DEVELOP_BUSINESS_RELATIONSHIPS_MANAGE_RFQS_SUBMIT_QUOTATIONS_AND_NEGOTIATE_DEALSJOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTIONRESPONSIBLE_FOR_MARKETING_IDENTIFY_TO_APPROACH_NEW_OEMS_AND_DEVELOP_BUSINESS_RELATIONSHIP_FOR_AUTOMOTIVE_PARTS_PRESENTATIONS_INTRODUCE_PRODUCTS_RANGE_TO_OEM_CUSTOMERS_2W_4W_TIER_1_GET_RFQS_KEY_ACCOUNT_CUSTOMERS_EFFICIENT_PRODUCT_COSTING_SUBREQUIRED_CANDIDATE_PROFILEMANAGING_THE_RECEIVED_RFQS_AND_CHECKING_THE_FEASIBILITY_OF_THE_ENQUIRIES_SUBMITTING_THE_QUOTATIONS_TO_CUSTOMERS_AND_NEGOTIATE_WITH_CUSTOMERS_TO_GET_THE_BUSINESS_SHEET_METALROLE_HEAD_MARKETING_INDUSTRY_TYPE_AUTOMOBILE_DEPARTMENT_MARKETING_COMMUNICATION_EMPLOYMENT_TYPE_FULL_TIME_PERMANENTROLE_CATEGORY_MARKETINGEDUCATIONUG_B_TECH_B_E_IN_MECHANICAL_ENGINEERINGKEY_SKILLSSKILLS_HIGHLIGHTED_WITH_ARE_PREFERRED_KEYSKILLSSALESKAMOEMBUSINESS_DEVELOPMENTMARKETINGREPORT_THIS_JOB",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "LEXICAL_VARIANT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.6,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Job highlightsExperience in automotive parts marketing with OEMs and Tier-1 clients, skilled in RFQ management and product costingIdentify and approach new OEMs, develop business relationships, manage RFQs, submit quotations, and negotiate dealsJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob descriptionResponsible for marketing, Identify to approach new OEMs and develop business relationship for Automotive parts.presentations Introduce products range to OEM customers (2W & 4W & Tier-1) get RFQs. Key Account customers. Efficient product costing SubRequired Candidate profileManaging the received RFQs and checking the feasibility of the enquiries.Submitting the Quotations to customers and Negotiate with customers to get the business.Sheet MetalRole: Head - Marketing,Industry Type: Automobile,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: MarketingEducationUG: B.Tech / B.E. in Mechanical EngineeringKey SkillsSkills highlighted with ‘‘ are preferred keyskillsSalesKamOEMBusiness DevelopmentMarketingReport this job",
+        "canonicalConcept": "JOB_HIGHLIGHTSEXPERIENCE_IN_AUTOMOTIVE_PARTS_MARKETING_WITH_OEMS_AND_TIER_1_CLIENTS_SKILLED_IN_RFQ_MANAGEMENT_AND_PRODUCT_COSTINGIDENTIFY_AND_APPROACH_NEW_OEMS_DEVELOP_BUSINESS_RELATIONSHIPS_MANAGE_RFQS_SUBMIT_QUOTATIONS_AND_NEGOTIATE_DEALSJOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTIONRESPONSIBLE_FOR_MARKETING_IDENTIFY_TO_APPROACH_NEW_OEMS_AND_DEVELOP_BUSINESS_RELATIONSHIP_FOR_AUTOMOTIVE_PARTS_PRESENTATIONS_INTRODUCE_PRODUCTS_RANGE_TO_OEM_CUSTOMERS_2W_4W_TIER_1_GET_RFQS_KEY_ACCOUNT_CUSTOMERS_EFFICIENT_PRODUCT_COSTING_SUBREQUIRED_CANDIDATE_PROFILEMANAGING_THE_RECEIVED_RFQS_AND_CHECKING_THE_FEASIBILITY_OF_THE_ENQUIRIES_SUBMITTING_THE_QUOTATIONS_TO_CUSTOMERS_AND_NEGOTIATE_WITH_CUSTOMERS_TO_GET_THE_BUSINESS_SHEET_METALROLE_HEAD_MARKETING_INDUSTRY_TYPE_AUTOMOBILE_DEPARTMENT_MARKETING_COMMUNICATION_EMPLOYMENT_TYPE_FULL_TIME_PERMANENTROLE_CATEGORY_MARKETINGEDUCATIONUG_B_TECH_B_E_IN_MECHANICAL_ENGINEERINGKEY_SKILLSSKILLS_HIGHLIGHTED_WITH_ARE_PREFERRED_KEYSKILLSSALESKAMOEMBUSINESS_DEVELOPMENTMARKETINGREPORT_THIS_JOB",
+        "relationship": "LEXICAL_VARIANT",
+        "confidence": 0.6,
+        "evidenceStrength": "EXCLUDED",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "bm-a8e2eb2d3dfca3d1",
+    "candidateId": "c-001",
+    "portal": "Benchmark Dataset v1",
+    "industry": "E-Commerce / Commercial",
+    "baseline": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE",
+      "relevantEvidence": []
+    },
+    "semantic": {
+      "evidenceCount": 0,
+      "concepts": [],
+      "relationships": [],
+      "confidenceDistribution": [],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": []
+  },
+  {
+    "opportunityId": "bm-baaa8f2f55e025c4",
+    "candidateId": "c-001",
+    "portal": "Benchmark Dataset v1",
+    "industry": "E-Commerce / Commercial",
+    "baseline": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE",
+      "relevantEvidence": []
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "ENTRY_COMMERCIAL_REP",
+        "SALES_LEADERSHIP",
+        "B2B_COMMERCIAL"
+      ],
+      "relationships": [
+        "RELATED",
+        "STRONG_EQUIVALENT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.98,
+        0.95,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Job highlightsUnder Graduate/ Graduate in any discipline. Disclaimer : This job posting has been aggregated from external sourceJob description Perform the following under the guidance/direction of Supervisor/Manager With help of Supervisor/ Manager, Identify the customers for protentional Business Collect the documents from Customers and validate as per the organization norms Logging the case in the system as per SOP and follow the process for disbursement. Fulfil - the Sanction ratio as per organisation requirement Meeting the Customer requirements cross- sell multiple products, under the guidance of Supervisor/ Manager. With help of Manager / Supervisor, empanelment of new vendor and develop relationships with them With help of Manager / Supervisor, ensure compliance to all Audit / RBI regulations. Under Graduate/ Graduate in any discipline Disclaimer : This job posting has been aggregated from external source. Role details, content, and availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.Role: Branch Sales Executive,Industry Type: Financial Services,Department: Sales & Business Development,Employment Type: Full Time, PermanentRole Category: Enterprise & B2B SalesEducationUG: Any GraduatePG: Any PostgraduateKey Skillschannel salespersonal loansdirect marketingdistributor salesbusiness developmentretail salescounter salesdistributioncorporate salessalesmarketingsales executive activitiestwo wheeler loansellingshowroom salesdirect salesReport this job",
+        "canonicalConcept": "ENTRY_COMMERCIAL_REP",
+        "relationship": "RELATED",
+        "confidence": 0.98,
+        "evidenceStrength": "EXCLUDED",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "sales",
+        "canonicalConcept": "SALES_LEADERSHIP",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "b2b",
+        "canonicalConcept": "B2B_COMMERCIAL",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "bm-51e0505ffbe51dd5",
+    "candidateId": "c-001",
+    "portal": "Benchmark Dataset v1",
+    "industry": "E-Commerce / Commercial",
+    "baseline": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE",
+      "relevantEvidence": []
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "JOB_HIGHLIGHTSPROFICIENT_IN_HINDI_COMMUNICATION_WITH_BASIC_ENGLISH_TARGET_ORIENTED_CONFIDENT_IN_CUSTOMER_INTERACTIONCALL_POTENTIAL_CUSTOMERS_EXPLAIN_E_COMMERCE_AND_DIGITAL_MARKETING_PLANS_CONVERT_LEADS_TO_SALES_FOLLOW_UP_AND_MAINTAIN_CALL_RECORDSJOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTION_ROLE_RESPONSIBILITIES_ROLES_RESPONSIBILITIES_SHORT_CALL_POTENTIAL_CUSTOMERS_AND_EXPLAIN_THE_COMPANY_S_E_COMMERCE_AND_DIGITAL_MARKETING_PLANS_UNDERSTAND_CUSTOMER_REQUIREMENTS_AND_RECOMMEND_SUITABLE_PLANS_CONVERT_LEADS_INTO_SALES_BY_EXPLAINING_PLAN_BENEFITS_FOLLOW_UP_WITH_INTERESTED_CUSTOMERS_ACHIEVE_SALES_TARGETS_AND_MAINTAIN_DAILY_CALL_RECORDS_PREFERRED_CANDIDATE_PROFILE_GOOD_COMMUNICATION_SKILLS_IN_HINDI_AND_BASIC_ENGLISH_FRESHERS_AND_EXPERIENCED_CANDIDATES_ARE_WELCOME_COMFORTABLE_WITH_WORK_FROM_HOME_TARGET_ORIENTED_AND_CONFIDENT_IN_SPEAKING_WITH_CUSTOMERS_LAPTOP_AND_STABLE_INTERNET_CONNECTION_REQUIRED_PERKS_AND_BENEFITSWORK_FROM_HOME_ACCESSIBLE_WORKSPACEROLE_BD_PRE_SALES_OTHER_INDUSTRY_TYPE_INTERNET_E_COMMERCE_DEPARTMENT_SALES_BUSINESS_DEVELOPMENT_EMPLOYMENT_TYPE_PART_TIME_FREELANCE_HOMEBASEDROLE_CATEGORY_BD_PRE_SALESEDUCATION_10TH_PASSKEY_SKILLSSKILLS_HIGHLIGHTED_WITH_ARE_PREFERRED_KEYSKILLSDIGITAL_MARKETING_TOOLSSALESE_COMMERCEINTERNET_SERVICESIT_SERVICESMARKETING_SUPPORTREPORT_THIS_JOBREPORT_THIS_JOBINAPPROPRIATE_CONTENTINCOMPLETE_INFORMATION_ABOUT_JOB_COMPANYFAKE_JOB_NON_RECRUITMENT_RELATED_JOB_SCAMDUPLICATE_OF_ANOTHER_JOB_ON_THE_SITEINCORRECT_EMAIL_IDPHONE_NUMBER_NOT_CONTACTABLEOTHER500_500_CHARACTERS_LEFTSUBMIT",
+        "SALES_LEADERSHIP",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "LEXICAL_VARIANT",
+        "STRONG_EQUIVALENT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.75,
+        0.95,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "ORGANIZATION",
+        "sourcePhrase": "Job highlightsProficient in Hindi communication with basic English, target-oriented, confident in customer interactionCall potential customers, explain e-commerce and digital marketing plans, convert leads to sales, follow up, and maintain call recordsJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob description-Role & responsibilities :- Roles & Responsibilities (Short)Call potential customers and explain the company's E-commerce and Digital Marketing plans.Understand customer requirements and recommend suitable plans.Convert leads into sales by explaining plan benefits.Follow up with interested customers.Achieve sales targets and maintain daily call records.Preferred candidate profile -Good communication skills in Hindi and basic English.-Freshers and experienced candidates are welcome.-Comfortable with Work From Home.-Target-oriented and confident in speaking with customers.-Laptop and stable internet connection required.Perks and benefitsWork from home, Accessible workspaceRole: BD / Pre Sales - Other,Industry Type: Internet (E-Commerce),Department: Sales & Business Development,Employment Type: Part Time, Freelance/HomebasedRole Category: BD / Pre SalesEducation: 10th PassKey SkillsSkills highlighted with ‘‘ are preferred keyskillsDigital Marketing ToolsSalesE-commerceInternet ServicesIT ServicesMarketing SupportReport this jobReport this jobInappropriate ContentIncomplete information about job / companyFake job / Non-recruitment related job / ScamDuplicate of another job on the siteIncorrect Email IDPhone number not contactableOther500/500 Characters leftSubmit",
+        "canonicalConcept": "JOB_HIGHLIGHTSPROFICIENT_IN_HINDI_COMMUNICATION_WITH_BASIC_ENGLISH_TARGET_ORIENTED_CONFIDENT_IN_CUSTOMER_INTERACTIONCALL_POTENTIAL_CUSTOMERS_EXPLAIN_E_COMMERCE_AND_DIGITAL_MARKETING_PLANS_CONVERT_LEADS_TO_SALES_FOLLOW_UP_AND_MAINTAIN_CALL_RECORDSJOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTION_ROLE_RESPONSIBILITIES_ROLES_RESPONSIBILITIES_SHORT_CALL_POTENTIAL_CUSTOMERS_AND_EXPLAIN_THE_COMPANY_S_E_COMMERCE_AND_DIGITAL_MARKETING_PLANS_UNDERSTAND_CUSTOMER_REQUIREMENTS_AND_RECOMMEND_SUITABLE_PLANS_CONVERT_LEADS_INTO_SALES_BY_EXPLAINING_PLAN_BENEFITS_FOLLOW_UP_WITH_INTERESTED_CUSTOMERS_ACHIEVE_SALES_TARGETS_AND_MAINTAIN_DAILY_CALL_RECORDS_PREFERRED_CANDIDATE_PROFILE_GOOD_COMMUNICATION_SKILLS_IN_HINDI_AND_BASIC_ENGLISH_FRESHERS_AND_EXPERIENCED_CANDIDATES_ARE_WELCOME_COMFORTABLE_WITH_WORK_FROM_HOME_TARGET_ORIENTED_AND_CONFIDENT_IN_SPEAKING_WITH_CUSTOMERS_LAPTOP_AND_STABLE_INTERNET_CONNECTION_REQUIRED_PERKS_AND_BENEFITSWORK_FROM_HOME_ACCESSIBLE_WORKSPACEROLE_BD_PRE_SALES_OTHER_INDUSTRY_TYPE_INTERNET_E_COMMERCE_DEPARTMENT_SALES_BUSINESS_DEVELOPMENT_EMPLOYMENT_TYPE_PART_TIME_FREELANCE_HOMEBASEDROLE_CATEGORY_BD_PRE_SALESEDUCATION_10TH_PASSKEY_SKILLSSKILLS_HIGHLIGHTED_WITH_ARE_PREFERRED_KEYSKILLSDIGITAL_MARKETING_TOOLSSALESE_COMMERCEINTERNET_SERVICESIT_SERVICESMARKETING_SUPPORTREPORT_THIS_JOBREPORT_THIS_JOBINAPPROPRIATE_CONTENTINCOMPLETE_INFORMATION_ABOUT_JOB_COMPANYFAKE_JOB_NON_RECRUITMENT_RELATED_JOB_SCAMDUPLICATE_OF_ANOTHER_JOB_ON_THE_SITEINCORRECT_EMAIL_IDPHONE_NUMBER_NOT_CONTACTABLEOTHER500_500_CHARACTERS_LEFTSUBMIT",
+        "relationship": "LEXICAL_VARIANT",
+        "confidence": 0.75,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "sales",
+        "canonicalConcept": "SALES_LEADERSHIP",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "bm-66a820cc0c0bfe2c",
+    "candidateId": "c-001",
+    "portal": "Benchmark Dataset v1",
+    "industry": "E-Commerce / Commercial",
+    "baseline": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE",
+      "relevantEvidence": []
+    },
+    "semantic": {
+      "evidenceCount": 5,
+      "concepts": [
+        "COMMERCIAL_SCOPE_GENERAL",
+        "JOB_HIGHLIGHTS3_7_YEARS_IN_DIGITAL_MARKETING_WITH_EXPERTISE_IN_SEO_PPC_SOCIAL_MEDIA_ADS_AND_LEAD_GENERATIONDEVELOP_AND_IMPLEMENT_MARKETING_STRATEGIES_MANAGE_DIGITAL_CAMPAIGNS_GENERATE_LEADS_OPTIMIZE_ROI_AND_COORDINATE_WITH_SALES_TEAMSJOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTION_KEY_RESPONSIBILITIES_DEVELOP_AND_IMPLEMENT_COMPREHENSIVE_MARKETING_STRATEGIES_MANAGE_AND_OPTIMIZE_DIGITAL_MARKETING_CAMPAIGNS_GOOGLE_ADS_META_ADS_SEO_ETC_GENERATE_QUALITY_LEADS_FOR_VISA_AND_IMMIGRATION_SERVICES_MANAGE_SOCIAL_MEDIA_PLATFORMS_AND_CONTENT_STRATEGY_TRACK_MARKETING_PERFORMANCE_AND_OPTIMIZE_ROI_COORDINATE_WITH_SALES_TEAMS_TO_IMPROVE_CONVERSION_RATES_MANAGE_MARKETING_BUDGET_AND_EXTERNAL_AGENCIES_IF_REQUIREDPREFERRED_CANDIDATE_PROFILE_REQUIREMENTS_3_7_YEARS_OF_EXPERIENCE_IN_DIGITAL_MARKETING_MARKETING_LEADERSHIP_STRONG_KNOWLEDGE_OF_SEO_PPC_SOCIAL_MEDIA_ADS_AND_ANALYTICS_EXPERIENCE_IN_LEAD_GENERATION_AND_FUNNEL_OPTIMIZATION_EXCELLENT_LEADERSHIP_AND_COMMUNICATION_SKILLS_EXPERIENCE_IN_THE_VISA_IMMIGRATION_EDUCATION_INDUSTRY_IS_A_PLUSROLE_RESPONSIBILITIES_ROLE_HEAD_DIGITAL_MARKETING_INDUSTRY_TYPE_TRAVEL_TOURISM_DEPARTMENT_MARKETING_COMMUNICATION_EMPLOYMENT_TYPE_FULL_TIME_PERMANENTROLE_CATEGORY_DIGITAL_MARKETINGEDUCATIONUG_ANY_GRADUATEKEY_SKILLSSKILLS_HIGHLIGHTED_WITH_ARE_PREFERRED_KEYSKILLSDIGITAL_MARKETINGONLINE_BRANDINGONLINE_ADVERTISINGMOBILE_MARKETINGINTERNET_MARKETINGSOCIAL_MEDIA_MARKETINGSOCIAL_MEDIA_OPTIMIZATIONSEARCH_ENGINE_OPTIMIZATIONWEB_PROMOTIONONLINE_MARKETINGSEARCH_ENGINE_MARKETINGWEB_MARKETINGSEOREPORT_THIS_JOB",
+        "JOB_HIGHLIGHTS3_7_YEARS_IN_DIGITAL_MARKETING_WITH_EXPERTISE_IN_SEO_PPC_SOCIAL_MEDIA_ADS_AND_LEAD_GENERATIONDEVELOP_AND_IMPLEMENT_MARKETING_STRATEGIES_MANAGE_DIGITAL_CAMPAIGNS_GENERATE_LEADS_OPTIMIZE_ROI_AND_COORDINATE_WITH_SALES_TEAMSJOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTION_KEY_RESPONSIBILITIES_DEVELOP_AND_IMPLEMENT_COMPREHENSIVE_MARKETING_STRATEGIES_MANAGE_AND_OPTIMIZE_DIGITAL_MARKETING_CAMPAIGNS_GOOGLE_ADS_META_ADS_SEO_ETC_GENERATE_QUALITY_LEADS_FOR_VISA_AND_IMMIGRATION_SERVICES_MANAGE_SOCIAL_MEDIA_PLATFORMS_AND_CONTENT_STRATEGY_TRACK_MARKETING_PERFORMANCE_AND_OPTIMIZE_ROI_COORDINATE_WITH_SALES_TEAMS_TO_IMPROVE_CONVERSION_RATES_MANAGE_MARKETING_BUDGET_AND_EXTERNAL_AGENCIES_IF_REQUIREDPREFERRED_CANDIDATE_PROFILE_REQUIREMENTS_3_7_YEARS_OF_EXPERIENCE_IN_DIGITAL_MARKETING_MARKETING_LEADERSHIP_STRONG_KNOWLEDGE_OF_SEO_PPC_SOCIAL_MEDIA_ADS_AND_ANALYTICS_EXPERIENCE_IN_LEAD_GENERATION_AND_FUNNEL_OPTIMIZATION_EXCELLENT_LEADERSHIP_AND_COMMUNICATION_SKILLS_EXPERIENCE_IN_THE_VISA_IMMIGRATION_EDUCATION_INDUSTRY_IS_A_PLUSROLE_RESPONSIBILITIES_ROLE_HEAD_DIGITAL_MARKETING_INDUSTRY_TYPE_TRAVEL_TOURISM_DEPARTMENT_MARKETING_COMMUNICATION_EMPLOYMENT_TYPE_FULL_TIME_PERMANENTROLE_CATEGORY_DIGITAL_MARKETINGEDUCATIONUG_ANY_GRADUATEKEY_SKILLSSKILLS_HIGHLIGHTED_WITH_ARE_PREFERRED_KEYSKILLSDIGITAL_MARKETINGONLINE_BRANDINGONLINE_ADVERTISINGMOBILE_MARKETINGINTERNET_MARKETINGSOCIAL_MEDIA_MARKETINGSOCIAL_MEDIA_OPTIMIZATIONSEARCH_ENGINE_OPTIMIZATIONWEB_PROMOTIONONLINE_MARKETINGSEARCH_ENGINE_MARKETINGWEB_MARKETINGSEOREPORT_THIS_JOB",
+        "SALES_LEADERSHIP",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "RELATED",
+        "LEXICAL_VARIANT",
+        "LEXICAL_VARIANT",
+        "STRONG_EQUIVALENT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.9,
+        0.6,
+        0.75,
+        0.95,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Job highlights3-7 years in digital marketing with expertise in SEO, PPC, social media ads, and lead generationDevelop and implement marketing strategies, manage digital campaigns, generate leads, optimize ROI, and coordinate with sales teamsJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob description Key Responsibilities:• Develop and implement comprehensive marketing strategies• Manage and optimize digital marketing campaigns (Google Ads, Meta Ads, SEO, etc.)• Generate quality leads for visa and immigration services• Manage social media platforms and content strategy• Track marketing performance and optimize ROI• Coordinate with sales teams to improve conversion rates• Manage marketing budget and external agencies if requiredPreferred candidate profile Requirements: 3-7 years of experience in digital marketing / marketing leadership Strong knowledge of SEO, PPC, social media ads, and analytics Experience in lead generation and funnel optimization Excellent leadership and communication skills Experience in the visa / immigration / education industry is a plusRole & responsibilities Role: Head - Digital Marketing,Industry Type: Travel & Tourism,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: Digital MarketingEducationUG: Any GraduateKey SkillsSkills highlighted with ‘‘ are preferred keyskillsDigital MarketingOnline BrandingOnline AdvertisingMobile MarketingInternet MarketingSocial Media MarketingSocial Media OptimizationSearch Engine OptimizationWeb PromotionOnline MarketingSearch Engine MarketingWeb MarketingSEOReport this job",
+        "canonicalConcept": "COMMERCIAL_SCOPE_GENERAL",
+        "relationship": "RELATED",
+        "confidence": 0.9,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Job highlights3-7 years in digital marketing with expertise in SEO, PPC, social media ads, and lead generationDevelop and implement marketing strategies, manage digital campaigns, generate leads, optimize ROI, and coordinate with sales teamsJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob description Key Responsibilities:• Develop and implement comprehensive marketing strategies• Manage and optimize digital marketing campaigns (Google Ads, Meta Ads, SEO, etc.)• Generate quality leads for visa and immigration services• Manage social media platforms and content strategy• Track marketing performance and optimize ROI• Coordinate with sales teams to improve conversion rates• Manage marketing budget and external agencies if requiredPreferred candidate profile Requirements: 3-7 years of experience in digital marketing / marketing leadership Strong knowledge of SEO, PPC, social media ads, and analytics Experience in lead generation and funnel optimization Excellent leadership and communication skills Experience in the visa / immigration / education industry is a plusRole & responsibilities Role: Head - Digital Marketing,Industry Type: Travel & Tourism,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: Digital MarketingEducationUG: Any GraduateKey SkillsSkills highlighted with ‘‘ are preferred keyskillsDigital MarketingOnline BrandingOnline AdvertisingMobile MarketingInternet MarketingSocial Media MarketingSocial Media OptimizationSearch Engine OptimizationWeb PromotionOnline MarketingSearch Engine MarketingWeb MarketingSEOReport this job",
+        "canonicalConcept": "JOB_HIGHLIGHTS3_7_YEARS_IN_DIGITAL_MARKETING_WITH_EXPERTISE_IN_SEO_PPC_SOCIAL_MEDIA_ADS_AND_LEAD_GENERATIONDEVELOP_AND_IMPLEMENT_MARKETING_STRATEGIES_MANAGE_DIGITAL_CAMPAIGNS_GENERATE_LEADS_OPTIMIZE_ROI_AND_COORDINATE_WITH_SALES_TEAMSJOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTION_KEY_RESPONSIBILITIES_DEVELOP_AND_IMPLEMENT_COMPREHENSIVE_MARKETING_STRATEGIES_MANAGE_AND_OPTIMIZE_DIGITAL_MARKETING_CAMPAIGNS_GOOGLE_ADS_META_ADS_SEO_ETC_GENERATE_QUALITY_LEADS_FOR_VISA_AND_IMMIGRATION_SERVICES_MANAGE_SOCIAL_MEDIA_PLATFORMS_AND_CONTENT_STRATEGY_TRACK_MARKETING_PERFORMANCE_AND_OPTIMIZE_ROI_COORDINATE_WITH_SALES_TEAMS_TO_IMPROVE_CONVERSION_RATES_MANAGE_MARKETING_BUDGET_AND_EXTERNAL_AGENCIES_IF_REQUIREDPREFERRED_CANDIDATE_PROFILE_REQUIREMENTS_3_7_YEARS_OF_EXPERIENCE_IN_DIGITAL_MARKETING_MARKETING_LEADERSHIP_STRONG_KNOWLEDGE_OF_SEO_PPC_SOCIAL_MEDIA_ADS_AND_ANALYTICS_EXPERIENCE_IN_LEAD_GENERATION_AND_FUNNEL_OPTIMIZATION_EXCELLENT_LEADERSHIP_AND_COMMUNICATION_SKILLS_EXPERIENCE_IN_THE_VISA_IMMIGRATION_EDUCATION_INDUSTRY_IS_A_PLUSROLE_RESPONSIBILITIES_ROLE_HEAD_DIGITAL_MARKETING_INDUSTRY_TYPE_TRAVEL_TOURISM_DEPARTMENT_MARKETING_COMMUNICATION_EMPLOYMENT_TYPE_FULL_TIME_PERMANENTROLE_CATEGORY_DIGITAL_MARKETINGEDUCATIONUG_ANY_GRADUATEKEY_SKILLSSKILLS_HIGHLIGHTED_WITH_ARE_PREFERRED_KEYSKILLSDIGITAL_MARKETINGONLINE_BRANDINGONLINE_ADVERTISINGMOBILE_MARKETINGINTERNET_MARKETINGSOCIAL_MEDIA_MARKETINGSOCIAL_MEDIA_OPTIMIZATIONSEARCH_ENGINE_OPTIMIZATIONWEB_PROMOTIONONLINE_MARKETINGSEARCH_ENGINE_MARKETINGWEB_MARKETINGSEOREPORT_THIS_JOB",
+        "relationship": "LEXICAL_VARIANT",
+        "confidence": 0.6,
+        "evidenceStrength": "EXCLUDED",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "ORGANIZATION",
+        "sourcePhrase": "Job highlights3-7 years in digital marketing with expertise in SEO, PPC, social media ads, and lead generationDevelop and implement marketing strategies, manage digital campaigns, generate leads, optimize ROI, and coordinate with sales teamsJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob description Key Responsibilities:• Develop and implement comprehensive marketing strategies• Manage and optimize digital marketing campaigns (Google Ads, Meta Ads, SEO, etc.)• Generate quality leads for visa and immigration services• Manage social media platforms and content strategy• Track marketing performance and optimize ROI• Coordinate with sales teams to improve conversion rates• Manage marketing budget and external agencies if requiredPreferred candidate profile Requirements: 3-7 years of experience in digital marketing / marketing leadership Strong knowledge of SEO, PPC, social media ads, and analytics Experience in lead generation and funnel optimization Excellent leadership and communication skills Experience in the visa / immigration / education industry is a plusRole & responsibilities Role: Head - Digital Marketing,Industry Type: Travel & Tourism,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: Digital MarketingEducationUG: Any GraduateKey SkillsSkills highlighted with ‘‘ are preferred keyskillsDigital MarketingOnline BrandingOnline AdvertisingMobile MarketingInternet MarketingSocial Media MarketingSocial Media OptimizationSearch Engine OptimizationWeb PromotionOnline MarketingSearch Engine MarketingWeb MarketingSEOReport this job",
+        "canonicalConcept": "JOB_HIGHLIGHTS3_7_YEARS_IN_DIGITAL_MARKETING_WITH_EXPERTISE_IN_SEO_PPC_SOCIAL_MEDIA_ADS_AND_LEAD_GENERATIONDEVELOP_AND_IMPLEMENT_MARKETING_STRATEGIES_MANAGE_DIGITAL_CAMPAIGNS_GENERATE_LEADS_OPTIMIZE_ROI_AND_COORDINATE_WITH_SALES_TEAMSJOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTION_KEY_RESPONSIBILITIES_DEVELOP_AND_IMPLEMENT_COMPREHENSIVE_MARKETING_STRATEGIES_MANAGE_AND_OPTIMIZE_DIGITAL_MARKETING_CAMPAIGNS_GOOGLE_ADS_META_ADS_SEO_ETC_GENERATE_QUALITY_LEADS_FOR_VISA_AND_IMMIGRATION_SERVICES_MANAGE_SOCIAL_MEDIA_PLATFORMS_AND_CONTENT_STRATEGY_TRACK_MARKETING_PERFORMANCE_AND_OPTIMIZE_ROI_COORDINATE_WITH_SALES_TEAMS_TO_IMPROVE_CONVERSION_RATES_MANAGE_MARKETING_BUDGET_AND_EXTERNAL_AGENCIES_IF_REQUIREDPREFERRED_CANDIDATE_PROFILE_REQUIREMENTS_3_7_YEARS_OF_EXPERIENCE_IN_DIGITAL_MARKETING_MARKETING_LEADERSHIP_STRONG_KNOWLEDGE_OF_SEO_PPC_SOCIAL_MEDIA_ADS_AND_ANALYTICS_EXPERIENCE_IN_LEAD_GENERATION_AND_FUNNEL_OPTIMIZATION_EXCELLENT_LEADERSHIP_AND_COMMUNICATION_SKILLS_EXPERIENCE_IN_THE_VISA_IMMIGRATION_EDUCATION_INDUSTRY_IS_A_PLUSROLE_RESPONSIBILITIES_ROLE_HEAD_DIGITAL_MARKETING_INDUSTRY_TYPE_TRAVEL_TOURISM_DEPARTMENT_MARKETING_COMMUNICATION_EMPLOYMENT_TYPE_FULL_TIME_PERMANENTROLE_CATEGORY_DIGITAL_MARKETINGEDUCATIONUG_ANY_GRADUATEKEY_SKILLSSKILLS_HIGHLIGHTED_WITH_ARE_PREFERRED_KEYSKILLSDIGITAL_MARKETINGONLINE_BRANDINGONLINE_ADVERTISINGMOBILE_MARKETINGINTERNET_MARKETINGSOCIAL_MEDIA_MARKETINGSOCIAL_MEDIA_OPTIMIZATIONSEARCH_ENGINE_OPTIMIZATIONWEB_PROMOTIONONLINE_MARKETINGSEARCH_ENGINE_MARKETINGWEB_MARKETINGSEOREPORT_THIS_JOB",
+        "relationship": "LEXICAL_VARIANT",
+        "confidence": 0.75,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "sales",
+        "canonicalConcept": "SALES_LEADERSHIP",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "bm-b4d52497c6a8d3a2",
+    "candidateId": "c-001",
+    "portal": "Benchmark Dataset v1",
+    "industry": "E-Commerce / Commercial",
+    "baseline": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE",
+      "relevantEvidence": []
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "COMMERCIAL_SCOPE_GENERAL",
+        "JOB_HIGHLIGHTS15_21_YEARS_FMCG_EXPERIENCE_WITH_BRAND_MANAGEMENT_BRAND_POSITIONING_CASTING_AND_PNL_MANAGEMENT_EXPERTISEDEVELOP_BRAND_STRATEGIES_LEAD_PRODUCT_LAUNCHES_ANALYZE_MARKET_TRENDS_AND_COLLABORATE_ON_KPI_SETTINGJOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTIONROLES_AND_RESPONSIBILITIES_DEVELOP_AND_EXECUTE_COMPREHENSIVE_BRAND_STRATEGIES_TO_DRIVE_BUSINESS_GROWTH_AND_INCREASE_CUSTOMER_ENGAGEMENT_LEAD_CROSS_FUNCTIONAL_TEAMS_TO_LAUNCH_NEW_PRODUCTS_SERVICES_AND_CAMPAIGNS_ENSURING_SUCCESSFUL_PROJECT_DELIVERY_ON_TIME_AND_WITHIN_BUDGET_ANALYZE_MARKET_TRENDS_COMPETITOR_ACTIVITY_AND_CONSUMER_BEHAVIOR_TO_INFORM_DATA_DRIVEN_MARKETING_DECISIONS_COLLABORATE_WITH_STAKEHOLDERS_TO_IDENTIFY_KEY_PERFORMANCE_INDICATORS_KPIS_FOR_MEASURING_CAMPAIGN_SUCCESS_JOB_REQUIREMENTS_15_21_YEARS_OF_EXPERIENCE_IN_FMCG_INDUSTRY_WITH_EXPERTISE_IN_BRAND_MANAGEMENT_BRAND_POSITIONING_CASTING_FUNCTIONAL_LEADERSHIP_PROVEN_TRACK_RECORD_OF_DEVELOPING_EFFECTIVE_BRAND_STRATEGIES_THAT_DRIVE_BUSINESS_RESULTS_STRONG_UNDERSTANDING_OF_DIGITAL_MARKETING_CHANNELS_SUCH_AS_SOCIAL_MEDIA_PLATFORMS_EXCELLENT_PNL_MANAGEMENT_SKILLS_WITH_ABILITY_TO_ANALYZE_COMPLEX_FINANCIAL_DATA_ROLE_HEAD_MARKETING_INDUSTRY_TYPE_IRON_STEEL_DEPARTMENT_MARKETING_COMMUNICATION_EMPLOYMENT_TYPE_FULL_TIME_PERMANENTROLE_CATEGORY_MARKETINGEDUCATIONUG_GRADUATION_NOT_REQUIREDKEY_SKILLSSKILLS_HIGHLIGHTED_WITH_ARE_PREFERRED_KEYSKILLSLEADERSHIPBRAND_POSITIONINGBRAND_STRATEGYBRANDBRAND_MARKETINGPNL_MANAGEMENTDIGITAL_MARKETINGMARKETINGFUNCTIONALCASTINGBRAND_MANAGEMENTCAMPAIGN_MANAGEMENTPERFORMANCEREPORT_THIS_JOB",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "RELATED",
+        "LEXICAL_VARIANT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.9,
+        0.6,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Job highlights15-21 years FMCG experience with brand management, brand positioning, casting, and PNL management expertiseDevelop brand strategies, lead product launches, analyze market trends, and collaborate on KPI settingJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob descriptionRoles and Responsibilities :Develop and execute comprehensive brand strategies to drive business growth and increase customer engagement.Lead cross-functional teams to launch new products, services, and campaigns, ensuring successful project delivery on time and within budget.Analyze market trends, competitor activity, and consumer behavior to inform data-driven marketing decisions.Collaborate with stakeholders to identify key performance indicators (KPIs) for measuring campaign success.Job Requirements :15-21 years of experience in FMCG industry with expertise in brand management, brand positioning, casting, functional leadership.Proven track record of developing effective brand strategies that drive business results.Strong understanding of digital marketing channels such as social media platforms.Excellent PNL management skills with ability to analyze complex financial data.Role: Head - Marketing,Industry Type: Iron & Steel,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: MarketingEducationUG: Graduation Not RequiredKey SkillsSkills highlighted with ‘‘ are preferred keyskillsLeadershipBrand PositioningBrand StrategyBrandBrand MarketingPNL ManagementDigital MarketingMarketingFunctionalCastingBrand ManagementCampaign ManagementPerformanceReport this job",
+        "canonicalConcept": "COMMERCIAL_SCOPE_GENERAL",
+        "relationship": "RELATED",
+        "confidence": 0.9,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Job highlights15-21 years FMCG experience with brand management, brand positioning, casting, and PNL management expertiseDevelop brand strategies, lead product launches, analyze market trends, and collaborate on KPI settingJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob descriptionRoles and Responsibilities :Develop and execute comprehensive brand strategies to drive business growth and increase customer engagement.Lead cross-functional teams to launch new products, services, and campaigns, ensuring successful project delivery on time and within budget.Analyze market trends, competitor activity, and consumer behavior to inform data-driven marketing decisions.Collaborate with stakeholders to identify key performance indicators (KPIs) for measuring campaign success.Job Requirements :15-21 years of experience in FMCG industry with expertise in brand management, brand positioning, casting, functional leadership.Proven track record of developing effective brand strategies that drive business results.Strong understanding of digital marketing channels such as social media platforms.Excellent PNL management skills with ability to analyze complex financial data.Role: Head - Marketing,Industry Type: Iron & Steel,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: MarketingEducationUG: Graduation Not RequiredKey SkillsSkills highlighted with ‘‘ are preferred keyskillsLeadershipBrand PositioningBrand StrategyBrandBrand MarketingPNL ManagementDigital MarketingMarketingFunctionalCastingBrand ManagementCampaign ManagementPerformanceReport this job",
+        "canonicalConcept": "JOB_HIGHLIGHTS15_21_YEARS_FMCG_EXPERIENCE_WITH_BRAND_MANAGEMENT_BRAND_POSITIONING_CASTING_AND_PNL_MANAGEMENT_EXPERTISEDEVELOP_BRAND_STRATEGIES_LEAD_PRODUCT_LAUNCHES_ANALYZE_MARKET_TRENDS_AND_COLLABORATE_ON_KPI_SETTINGJOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTIONROLES_AND_RESPONSIBILITIES_DEVELOP_AND_EXECUTE_COMPREHENSIVE_BRAND_STRATEGIES_TO_DRIVE_BUSINESS_GROWTH_AND_INCREASE_CUSTOMER_ENGAGEMENT_LEAD_CROSS_FUNCTIONAL_TEAMS_TO_LAUNCH_NEW_PRODUCTS_SERVICES_AND_CAMPAIGNS_ENSURING_SUCCESSFUL_PROJECT_DELIVERY_ON_TIME_AND_WITHIN_BUDGET_ANALYZE_MARKET_TRENDS_COMPETITOR_ACTIVITY_AND_CONSUMER_BEHAVIOR_TO_INFORM_DATA_DRIVEN_MARKETING_DECISIONS_COLLABORATE_WITH_STAKEHOLDERS_TO_IDENTIFY_KEY_PERFORMANCE_INDICATORS_KPIS_FOR_MEASURING_CAMPAIGN_SUCCESS_JOB_REQUIREMENTS_15_21_YEARS_OF_EXPERIENCE_IN_FMCG_INDUSTRY_WITH_EXPERTISE_IN_BRAND_MANAGEMENT_BRAND_POSITIONING_CASTING_FUNCTIONAL_LEADERSHIP_PROVEN_TRACK_RECORD_OF_DEVELOPING_EFFECTIVE_BRAND_STRATEGIES_THAT_DRIVE_BUSINESS_RESULTS_STRONG_UNDERSTANDING_OF_DIGITAL_MARKETING_CHANNELS_SUCH_AS_SOCIAL_MEDIA_PLATFORMS_EXCELLENT_PNL_MANAGEMENT_SKILLS_WITH_ABILITY_TO_ANALYZE_COMPLEX_FINANCIAL_DATA_ROLE_HEAD_MARKETING_INDUSTRY_TYPE_IRON_STEEL_DEPARTMENT_MARKETING_COMMUNICATION_EMPLOYMENT_TYPE_FULL_TIME_PERMANENTROLE_CATEGORY_MARKETINGEDUCATIONUG_GRADUATION_NOT_REQUIREDKEY_SKILLSSKILLS_HIGHLIGHTED_WITH_ARE_PREFERRED_KEYSKILLSLEADERSHIPBRAND_POSITIONINGBRAND_STRATEGYBRANDBRAND_MARKETINGPNL_MANAGEMENTDIGITAL_MARKETINGMARKETINGFUNCTIONALCASTINGBRAND_MANAGEMENTCAMPAIGN_MANAGEMENTPERFORMANCEREPORT_THIS_JOB",
+        "relationship": "LEXICAL_VARIANT",
+        "confidence": 0.6,
+        "evidenceStrength": "EXCLUDED",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "bm-5f453acca362a34d",
+    "candidateId": "c-001",
+    "portal": "Benchmark Dataset v1",
+    "industry": "E-Commerce / Commercial",
+    "baseline": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE",
+      "relevantEvidence": []
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "ENTRY_COMMERCIAL_REP",
+        "SALES_LEADERSHIP",
+        "B2B_COMMERCIAL"
+      ],
+      "relationships": [
+        "RELATED",
+        "STRONG_EQUIVALENT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.98,
+        0.95,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Job highlightsUnder Graduate/ Graduate in any discipline. Disclaimer : This job posting has been aggregated from external sourceJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob description Perform the following under the guidance/direction of Supervisor/Manager With help of Supervisor/ Manager, Identify the customers for protentional Business Collect the documents from Customers and validate as per the organization norms Logging the case in the system as per SOP and follow the process for disbursement. Fulfil - the Sanction ratio as per organisation requirement Meeting the Customer requirements cross- sell multiple products, under the guidance of Supervisor/ Manager. With help of Manager / Supervisor, empanelment of new vendor and develop relationships with them With help of Manager / Supervisor, ensure compliance to all Audit / RBI regulations. Under Graduate/ Graduate in any discipline Disclaimer : This job posting has been aggregated from external source. Role details, content, and availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.Role: Branch Sales Executive,Industry Type: Financial Services,Department: Sales & Business Development,Employment Type: Full Time, PermanentRole Category: Enterprise & B2B SalesEducationUG: Any GraduatePG: Any PostgraduateKey Skillschannel salespersonal loansdirect marketingdistributor salesbusiness developmentretail salescounter salesdistributioncorporate salessalesmarketingsales executive activitiestwo wheeler loansellingshowroom salesdirect salesReport this job",
+        "canonicalConcept": "ENTRY_COMMERCIAL_REP",
+        "relationship": "RELATED",
+        "confidence": 0.98,
+        "evidenceStrength": "EXCLUDED",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "sales",
+        "canonicalConcept": "SALES_LEADERSHIP",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "b2b",
+        "canonicalConcept": "B2B_COMMERCIAL",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "bm-4b8d52359b64b860",
+    "candidateId": "c-001",
+    "portal": "Benchmark Dataset v1",
+    "industry": "E-Commerce / Commercial",
+    "baseline": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE",
+      "relevantEvidence": []
+    },
+    "semantic": {
+      "evidenceCount": 1,
+      "concepts": [
+        "JOB_HIGHLIGHTS_PROFICIENCY_WITH_ASO_TOOLS_INCLUDING_GOOGLE_PLAY_CONSOLE_AND_OTHER_EXTERNAL_TOOLS_ABILITY_TO_WORK_WITHIN_A_TEAM_AND_INDEPENDENTLY_MINIMUM_2_4_YEARS_OF_EXPERIENCE_WITH_ASO_IN_A_GAME_APP_WITH_MILLION_INSTALLS_JOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTION_BE_IN_CHARGE_OF_ASO_OF_VARIOUS_APPS_AND_GAMES_ANALYZE_THE_CURRENT_STATE_OF_ASO_AND_DEFINE_A_STRATEGY_TO_MAXIMIZE_ORGANIC_USER_ACQUISITION_EXECUTE_THE_ASO_STRATEGY_IN_MULTIPLE_LANGUAGES_WORKING_WITH_DIFFERENT_TEAMS_KEYWORDS_DESCRIPTION_TITLE_SCREENSHOTS_ETC_OPTIMIZE_CONVERSION_RATE_ON_THE_STORE_LISTING_PAGE_WITH_EXPERIMENTS_AND_TRY_TO_MAXIMIZE_THE_SAME_MONITOR_AND_TRACK_RANKINGS_AND_CONVERSION_RATES_USING_ASO_TOOLS_ALWAYS_BE_ON_THE_LOOKOUT_TO_INCREASE_DOWNLOADS_WITH_IMPROVEMENTS_AND_NEW_IDEAS_BE_UP_TO_DATE_WITH_THE_LATEST_ASO_TIPS_TRICKS_HACKS_AND_NEWS_PERFORM_KEYWORD_RESEARCH_FOR_APPS_TO_OPTIMIZE_EXISTING_LISTING_UNCOVER_NEW_OPPORTUNITIES_AND_EXPAND_THE_KEYWORD_SET_OPTIMIZING_APPS_ON_BOTH_PLAY_STORE_AND_APP_STORE_AND_IMPROVING_RANKINGS_FOR_APP_KEYWORDS_BOTH_ON_PLAY_STORE_AND_APP_STORE_IMPROVE_APP_ORGANIC_TRAFFIC_AND_ANALYZE_CLICK_TO_INSTALL_AND_UNINSTALL_RATE_FOR_THE_APPS_KEY_REQUIREMENTS_MINIMUM_2_4_YEARS_OF_EXPERIENCE_WITH_ASO_IN_A_GAME_APP_WITH_MILLION_INSTALLS_EXCELLENT_ANALYTICAL_AND_REPORTING_SKILLS_ENTHUSIASM_AND_ENERGY_TO_FIRE_UP_INTERNAL_TEAMS_GREAT_COMMUNICATION_SKILLS_CREATIVE_AND_ORIGINAL_THINKING_PROFICIENCY_WITH_ASO_TOOLS_INCLUDING_GOOGLE_PLAY_CONSOLE_AND_OTHER_EXTERNAL_TOOLS_ABILITY_TO_WORK_WITHIN_A_TEAM_AND_INDEPENDENTLY_ROLE_OTHER_INDUSTRY_TYPE_EVENTS_LIVE_ENTERTAINMENT_DEPARTMENT_OTHER_EMPLOYMENT_TYPE_FULL_TIME_PERMANENTROLE_CATEGORY_OTHEREDUCATIONUG_ANY_GRADUATEPG_ANY_POSTGRADUATEKEY_SKILLSINCHARGEANALYTICALRESEARCHMONITORINGREPORT_THIS_JOB"
+      ],
+      "relationships": [
+        "LEXICAL_VARIANT"
+      ],
+      "confidenceDistribution": [
+        0.75
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "ORGANIZATION",
+        "sourcePhrase": "Job highlights. Proficiency with ASO tools,including Google Play Console and other external tools. Ability to work within a team and independently Minimum 2-4 years of experience with ASO in a game / app with million+ installs. .Job match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob description Be in charge of ASO of various apps and games. Analyze the current state of ASO and define a strategy to maximize organic user acquisition. Execute the ASO strategy in multiple languages working with different teams - keywords, description, title, screenshots, etc. Optimize conversion rate on the store listing page with experiments and try to maximize the same. Monitor and track rankings and conversion rates using ASO tools. Always be on the lookout to increase downloads with improvements and new ideas. Be up to date with the latest ASO tips, tricks, hacks and news. Perform keyword research for Apps to optimize existing listing, uncover new opportunities, and expand the keyword set. Optimizing Apps on both Play Store and App Store and improving rankings for app keywords both on Play Store and App Store. Improve App organic traffic and Analyze click to install and uninstall rate for the apps. Key Requirements Minimum 2-4 years of experience with ASO in a game/app with million+ installs. Excellent analytical and reporting skills. Enthusiasm and energy to fire up internal teams Great communication skills Creative and original thinking Proficiency with ASO tools, including Google Play Console and other external tools. Ability to work within a team and independently Role: Other,Industry Type: Events / Live Entertainment,Department: Other,Employment Type: Full Time, PermanentRole Category: OtherEducationUG: Any GraduatePG: Any PostgraduateKey SkillsInchargeAnalyticalResearchMonitoringReport this job",
+        "canonicalConcept": "JOB_HIGHLIGHTS_PROFICIENCY_WITH_ASO_TOOLS_INCLUDING_GOOGLE_PLAY_CONSOLE_AND_OTHER_EXTERNAL_TOOLS_ABILITY_TO_WORK_WITHIN_A_TEAM_AND_INDEPENDENTLY_MINIMUM_2_4_YEARS_OF_EXPERIENCE_WITH_ASO_IN_A_GAME_APP_WITH_MILLION_INSTALLS_JOB_MATCH_SCOREEARLY_APPLICANTKEYSKILLSLOCATIONWORK_EXPERIENCEJOB_DESCRIPTION_BE_IN_CHARGE_OF_ASO_OF_VARIOUS_APPS_AND_GAMES_ANALYZE_THE_CURRENT_STATE_OF_ASO_AND_DEFINE_A_STRATEGY_TO_MAXIMIZE_ORGANIC_USER_ACQUISITION_EXECUTE_THE_ASO_STRATEGY_IN_MULTIPLE_LANGUAGES_WORKING_WITH_DIFFERENT_TEAMS_KEYWORDS_DESCRIPTION_TITLE_SCREENSHOTS_ETC_OPTIMIZE_CONVERSION_RATE_ON_THE_STORE_LISTING_PAGE_WITH_EXPERIMENTS_AND_TRY_TO_MAXIMIZE_THE_SAME_MONITOR_AND_TRACK_RANKINGS_AND_CONVERSION_RATES_USING_ASO_TOOLS_ALWAYS_BE_ON_THE_LOOKOUT_TO_INCREASE_DOWNLOADS_WITH_IMPROVEMENTS_AND_NEW_IDEAS_BE_UP_TO_DATE_WITH_THE_LATEST_ASO_TIPS_TRICKS_HACKS_AND_NEWS_PERFORM_KEYWORD_RESEARCH_FOR_APPS_TO_OPTIMIZE_EXISTING_LISTING_UNCOVER_NEW_OPPORTUNITIES_AND_EXPAND_THE_KEYWORD_SET_OPTIMIZING_APPS_ON_BOTH_PLAY_STORE_AND_APP_STORE_AND_IMPROVING_RANKINGS_FOR_APP_KEYWORDS_BOTH_ON_PLAY_STORE_AND_APP_STORE_IMPROVE_APP_ORGANIC_TRAFFIC_AND_ANALYZE_CLICK_TO_INSTALL_AND_UNINSTALL_RATE_FOR_THE_APPS_KEY_REQUIREMENTS_MINIMUM_2_4_YEARS_OF_EXPERIENCE_WITH_ASO_IN_A_GAME_APP_WITH_MILLION_INSTALLS_EXCELLENT_ANALYTICAL_AND_REPORTING_SKILLS_ENTHUSIASM_AND_ENERGY_TO_FIRE_UP_INTERNAL_TEAMS_GREAT_COMMUNICATION_SKILLS_CREATIVE_AND_ORIGINAL_THINKING_PROFICIENCY_WITH_ASO_TOOLS_INCLUDING_GOOGLE_PLAY_CONSOLE_AND_OTHER_EXTERNAL_TOOLS_ABILITY_TO_WORK_WITHIN_A_TEAM_AND_INDEPENDENTLY_ROLE_OTHER_INDUSTRY_TYPE_EVENTS_LIVE_ENTERTAINMENT_DEPARTMENT_OTHER_EMPLOYMENT_TYPE_FULL_TIME_PERMANENTROLE_CATEGORY_OTHEREDUCATIONUG_ANY_GRADUATEPG_ANY_POSTGRADUATEKEY_SKILLSINCHARGEANALYTICALRESEARCHMONITORINGREPORT_THIS_JOB",
+        "relationship": "LEXICAL_VARIANT",
+        "confidence": 0.75,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "bm-56ded03516565fc1",
+    "candidateId": "c-001",
+    "portal": "Benchmark Dataset v1",
+    "industry": "E-Commerce / Commercial",
+    "baseline": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE",
+      "relevantEvidence": []
+    },
+    "semantic": {
+      "evidenceCount": 6,
+      "concepts": [
+        "COMMERCIAL_SCOPE_GENERAL",
+        "REVENUE_ACCOUNTABILITY",
+        "C_SUITE_OFFICER",
+        "MUMBAI",
+        "SALES_LEADERSHIP",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "ASPIRATIONAL",
+        "STRONG_EQUIVALENT",
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.9,
+        0.94,
+        0.98,
+        0.99,
+        0.95,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "NOT_EVALUABLE"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Job highlightsProven experience in marketing leadership roles,preferably in the hospitality industry. . Strong understanding of marketing principles and practices. Experience with marketing automation tools and data analysis softwareJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob descriptionWe are looking for a highly experienced and skilled Chief Marketing Officer to lead our marketing efforts in Mumbai. The ideal candidate will have a strong background in marketing and a proven track record of success.Roles and ResponsibilityDevelop and implement comprehensive marketing strategies to achieve business objectives.Lead cross-functional teams to launch new products and services.Conduct market research and analyze consumer trends to identify opportunities.Manage and maintain relationships with key stakeholders, including customers and partners.Collaborate with the sales team to drive revenue growth.Monitor and report on marketing performance metrics.Job RequirementsProven experience in marketing leadership roles, preferably in the hospitality industry.Strong understanding of marketing principles and practices.Excellent communication and interpersonal skills.Ability to work in a fast-paced environment and adapt to changing priorities.Strong analytical and problem-solving skills.Experience with marketing automation tools and data analysis software.About CompanyRoyal Orchid Hotels Ltd. is a leading hotel management company committed to delivering exceptional guest experiences and driving business success. We are a team of dedicated professionals passionate about hospitality and eager to make a positive impact in our communities.Disclaimer : This job posting has been aggregated from external source. Role detailscontentand availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.Role: Head - Marketing,Industry Type: Hotels & Restaurants,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: MarketingEducationUG: Any GraduatePG: Any PostgraduateKey Skillsdigital marketingmarketing strategiesstrong analytical skillsbrandingmarket researchsalesresearchmarketing automationbrand managementmarketingperformance metricsleadershiphospitalityhotel managementconsumercommunication skillsReport this job",
+        "canonicalConcept": "COMMERCIAL_SCOPE_GENERAL",
+        "relationship": "ASPIRATIONAL",
+        "confidence": 0.9,
+        "evidenceStrength": "EXCLUDED",
+        "temporalState": "ASPIRATIONAL",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "revenue accountability",
+        "canonicalConcept": "REVENUE_ACCOUNTABILITY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.94,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "ASPIRATIONAL",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "SENIORITY_TITLE",
+        "sourcePhrase": "Job highlightsProven experience in marketing leadership roles,preferably in the hospitality industry. . Strong understanding of marketing principles and practices. Experience with marketing automation tools and data analysis softwareJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob descriptionWe are looking for a highly experienced and skilled Chief Marketing Officer to lead our marketing efforts in Mumbai. The ideal candidate will have a strong background in marketing and a proven track record of success.Roles and ResponsibilityDevelop and implement comprehensive marketing strategies to achieve business objectives.Lead cross-functional teams to launch new products and services.Conduct market research and analyze consumer trends to identify opportunities.Manage and maintain relationships with key stakeholders, including customers and partners.Collaborate with the sales team to drive revenue growth.Monitor and report on marketing performance metrics.Job RequirementsProven experience in marketing leadership roles, preferably in the hospitality industry.Strong understanding of marketing principles and practices.Excellent communication and interpersonal skills.Ability to work in a fast-paced environment and adapt to changing priorities.Strong analytical and problem-solving skills.Experience with marketing automation tools and data analysis software.About CompanyRoyal Orchid Hotels Ltd. is a leading hotel management company committed to delivering exceptional guest experiences and driving business success. We are a team of dedicated professionals passionate about hospitality and eager to make a positive impact in our communities.Disclaimer : This job posting has been aggregated from external source. Role detailscontentand availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.Role: Head - Marketing,Industry Type: Hotels & Restaurants,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: MarketingEducationUG: Any GraduatePG: Any PostgraduateKey Skillsdigital marketingmarketing strategiesstrong analytical skillsbrandingmarket researchsalesresearchmarketing automationbrand managementmarketingperformance metricsleadershiphospitalityhotel managementconsumercommunication skillsReport this job",
+        "canonicalConcept": "C_SUITE_OFFICER",
+        "relationship": "EXACT",
+        "confidence": 0.98,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Job highlightsProven experience in marketing leadership roles,preferably in the hospitality industry. . Strong understanding of marketing principles and practices. Experience with marketing automation tools and data analysis softwareJob match scoreEarly ApplicantKeyskillsLocationWork ExperienceJob descriptionWe are looking for a highly experienced and skilled Chief Marketing Officer to lead our marketing efforts in Mumbai. The ideal candidate will have a strong background in marketing and a proven track record of success.Roles and ResponsibilityDevelop and implement comprehensive marketing strategies to achieve business objectives.Lead cross-functional teams to launch new products and services.Conduct market research and analyze consumer trends to identify opportunities.Manage and maintain relationships with key stakeholders, including customers and partners.Collaborate with the sales team to drive revenue growth.Monitor and report on marketing performance metrics.Job RequirementsProven experience in marketing leadership roles, preferably in the hospitality industry.Strong understanding of marketing principles and practices.Excellent communication and interpersonal skills.Ability to work in a fast-paced environment and adapt to changing priorities.Strong analytical and problem-solving skills.Experience with marketing automation tools and data analysis software.About CompanyRoyal Orchid Hotels Ltd. is a leading hotel management company committed to delivering exceptional guest experiences and driving business success. We are a team of dedicated professionals passionate about hospitality and eager to make a positive impact in our communities.Disclaimer : This job posting has been aggregated from external source. Role detailscontentand availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.Role: Head - Marketing,Industry Type: Hotels & Restaurants,Department: Marketing & Communication,Employment Type: Full Time, PermanentRole Category: MarketingEducationUG: Any GraduatePG: Any PostgraduateKey Skillsdigital marketingmarketing strategiesstrong analytical skillsbrandingmarket researchsalesresearchmarketing automationbrand managementmarketingperformance metricsleadershiphospitalityhotel managementconsumercommunication skillsReport this job",
+        "canonicalConcept": "MUMBAI",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "sales",
+        "canonicalConcept": "SALES_LEADERSHIP",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "ASPIRATIONAL",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "ASPIRATIONAL",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "golden-1",
+    "candidateId": "c-001",
+    "portal": "Golden Demo",
+    "industry": "FMCG / Retail",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "MUMBAI",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "MUMBAI",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "golden-2",
+    "candidateId": "c-001",
+    "portal": "Golden Demo",
+    "industry": "FMCG / Retail",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "MUMBAI",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "MUMBAI",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "golden-3",
+    "candidateId": "c-001",
+    "portal": "Golden Demo",
+    "industry": "FMCG / Retail",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "MUMBAI",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "MUMBAI",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "golden-4",
+    "candidateId": "c-001",
+    "portal": "Golden Demo",
+    "industry": "FMCG / Retail",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "MUMBAI",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "MUMBAI",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "golden-5",
+    "candidateId": "c-001",
+    "portal": "Golden Demo",
+    "industry": "FMCG / Retail",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "MUMBAI",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "MUMBAI",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  },
+  {
+    "opportunityId": "golden-6",
+    "candidateId": "c-001",
+    "portal": "Golden Demo",
+    "industry": "FMCG / Retail",
+    "baseline": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC",
+      "relevantEvidence": [
+        {
+          "jobCapability": "Performance Marketing",
+          "candidateCapability": "Performance Marketing",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        },
+        {
+          "jobCapability": "Digital Transformation",
+          "candidateCapability": "Digital Transformation",
+          "confidence": 1,
+          "reason": "Direct Explicit Evidence Match"
+        }
+      ]
+    },
+    "semantic": {
+      "evidenceCount": 3,
+      "concepts": [
+        "PNL_RESPONSIBILITY",
+        "MUMBAI",
+        "MARKETING_STRATEGY"
+      ],
+      "relationships": [
+        "EXACT",
+        "CITY_ALIAS",
+        "STRONG_EQUIVALENT"
+      ],
+      "confidenceDistribution": [
+        0.99,
+        0.99,
+        0.95
+      ],
+      "ambiguousCount": 0,
+      "negatedCount": 0,
+      "historicalCount": 0,
+      "aspirationalCount": 0
+    },
+    "shadowEvaluation": {
+      "score": 0,
+      "verdict": "SPARSE_SPEC"
+    },
+    "delta": {
+      "score": 0,
+      "verdictChanged": false
+    },
+    "attribution": [
+      {
+        "dimension": "FINANCIAL_SCOPE",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "PNL_RESPONSIBILITY",
+        "relationship": "EXACT",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "GEOGRAPHY",
+        "sourcePhrase": "Executive Role at Enterprise Corp in Mumbai. Leading multi-channel growth, performance marketing, brand strategy, digital transformation, and cross-functional teams with full P&L accountability.",
+        "canonicalConcept": "MUMBAI",
+        "relationship": "CITY_ALIAS",
+        "confidence": 0.99,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "CURRENT",
+        "scoreContribution": 0
+      },
+      {
+        "dimension": "CAPABILITY",
+        "sourcePhrase": "marketing",
+        "canonicalConcept": "MARKETING_STRATEGY",
+        "relationship": "STRONG_EQUIVALENT",
+        "confidence": 0.95,
+        "evidenceStrength": "DIRECT_OWNERSHIP",
+        "temporalState": "UNKNOWN",
+        "scoreContribution": 0
+      }
+    ]
+  }
+]

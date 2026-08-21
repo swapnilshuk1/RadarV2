@@ -406,3 +406,56 @@ export interface PlatformIntelligence {
   sourceFreshnessAgeDays: ValueWithAvailability<number>;
 }
 
+// ============================================================================
+// 4. MULTI-TENANT CREDENTIAL BROKER & SOURCE AUTHENTICATION (M6)
+// ============================================================================
+
+export type CredentialStatus =
+  | "pending"
+  | "active"
+  | "expiring"
+  | "invalid"
+  | "revoked"
+  | "rotation_required";
+
+export type CredentialAuditAction =
+  | "created"
+  | "activated"
+  | "leased"
+  | "verified"
+  | "invalidated"
+  | "revoked"
+  | "rotated";
+
+export interface EncryptedCredentialEnvelope {
+  encryptedCiphertext: string;
+  iv: string;
+  authTag: string;
+  keyVersion: string;
+}
+
+export interface SourceCredential extends EncryptedCredentialEnvelope {
+  id: string;
+  tenantId: string;
+  source: string;
+  version: number;
+  status: CredentialStatus;
+
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+  lastVerifiedAt?: string | null;
+  errorReason?: string | null;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CredentialAuditLog {
+  id: string;
+  tenantId: string;
+  credentialId: string;
+  action: CredentialAuditAction;
+  actorUserId?: string | null;
+  details?: string | null;
+  createdAt: string;
+}

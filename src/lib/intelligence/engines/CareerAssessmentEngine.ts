@@ -49,7 +49,10 @@ export class CareerAssessmentEngine {
     let brandCapitalGain = 10;
 
     const bt: any = brandTiers;
-    if (bt.tier1?.keywords?.some((kw: string) => companyText.includes(kw.toLowerCase()))) {
+    const jobOrgEvidence = job.semanticEvidence?.find(e => e.entityType === "ORGANIZATION" && !e.negated);
+    if (jobOrgEvidence && (jobOrgEvidence.metadata as any)?.isTier1Pedigree) {
+      brandCapitalGain = 25; // Tier-1 subsidiary/parent semantic inheritance
+    } else if (bt.tier1?.keywords?.some((kw: string) => companyText.includes(kw.toLowerCase()))) {
       brandCapitalGain = 25; // High Tier-1 Brand Capital Gain (OpenAI, Google, etc.)
     } else if (bt.tier2?.keywords?.some((kw: string) => companyText.includes(kw.toLowerCase()))) {
       brandCapitalGain = 15;

@@ -57,6 +57,20 @@ function writeTracking(next: TrackingMap) {
   } catch {}
 }
 
+export function resolveDecisionsCardScore(
+  o: Opportunity,
+  brief?: { qualityScore?: number | null }
+): string {
+  const score = brief?.qualityScore ?? o.engineRecommendation?.qualityScore ?? o.recommendationResult?.score;
+  if (score !== null && score !== undefined) {
+    return `Fit Index ${score}%`;
+  }
+  if (o.engineRecommendation?.vetoed) {
+    return `Vetoed (${o.engineRecommendation.vetoReason || "Mismatch"})`;
+  }
+  return o.engineRecommendation?.engineVerdict || "Unscored";
+}
+
 export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS" | "UNREVIEWED";
 
 function OpportunitiesPage() {
@@ -347,11 +361,7 @@ function OpportunitiesPage() {
                         )}
                         <span className="text-hairline-strong">·</span>
                         <span className="font-mono uppercase tracking-[0.14em] text-[0.62rem] text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm">
-                          {o.recommendationResult?.score !== null && o.recommendationResult?.score !== undefined
-                            ? `Fit Index ${o.recommendationResult.score}%`
-                            : o.engineRecommendation?.vetoed
-                              ? `Vetoed (${o.engineRecommendation.vetoReason || "Mismatch"})`
-                              : o.engineRecommendation?.engineVerdict || "Unscored"}
+                          {resolveDecisionsCardScore(o, brief)}
                         </span>
                       </div>
 

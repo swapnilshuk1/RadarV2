@@ -1,14 +1,14 @@
 import fs from "fs";
 import path from "path";
-import Database from "better-sqlite3";
-import { DB_PATH, RUNS_DIR, SEARCH_METRICS_NDJSON } from "./scraper/config";
+import { getDatabaseAdapter } from "../src/data/database";
+import { RUNS_DIR, SEARCH_METRICS_NDJSON } from "./scraper/config";
 import type { ExecutionPlan } from "./scraper/types";
 
-function runTrace(definitionId?: string) {
-  const db = new Database(DB_PATH);
+async function runTrace(definitionId?: string) {
+  const db = getDatabaseAdapter();
   
   if (!definitionId) {
-    const def = db.prepare("SELECT id FROM search_definitions WHERE status = 'ACTIVE' ORDER BY RANDOM() LIMIT 1").get() as any;
+    const def = await db.one<any>("SELECT id FROM search_definitions WHERE status = 'ACTIVE' ORDER BY RANDOM() LIMIT 1");
     if (!def) {
       console.error("No active definitions found in DB.");
       process.exit(1);
@@ -19,7 +19,7 @@ function runTrace(definitionId?: string) {
   console.log(`Starting lineage audit for definition: ${definitionId}`);
   
   // Step 1: Definition
-  const defRecord = db.prepare("SELECT * FROM search_definitions WHERE id = ?").get(definitionId) as any;
+  const defRecord = await db.one<any>("SELECT * FROM search_definitions WHERE id = ?", [definitionId]);
   if (!defRecord) {
     console.error(`❌ Definition ${definitionId} not found in database.`);
     process.exit(1);
@@ -71,8 +71,6 @@ function runTrace(definitionId?: string) {
   const runId = manifest.runId;
   const runMetrics = metrics.filter(m => m.runId === runId);
   
-  // Check if every completed (done/failed) unit has a telemetry record?
-  // Only "done" units emit telemetry.
   const doneUnits = executedUnits.filter((u: any) => u.status === "done");
   
   let telemetryMissing = 0;
@@ -94,9 +92,8 @@ function runTrace(definitionId?: string) {
   }
   
   console.log(`✅ Telemetry correctly recorded for all ${doneUnits.length} completed WorkUnits.`);
-  
   console.log(`\n🎉 LINEAGE AUDIT PASSED for ${definitionId}`);
 }
 
 const args = process.argv.slice(2);
-runTrace(args[0]);
+runTrace(args[0]).catch(console.error);

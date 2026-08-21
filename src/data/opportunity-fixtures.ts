@@ -161,7 +161,7 @@ export function applyUrlFor(o: Opportunity): string {
 const jd = (value: string | null, quote: string, source: EvidenceSource = "snippet"): Traced<string> =>
   value === null
     ? { value: null, status: "Missing", evidence: [] }
-    : { value, status: "Explicit", evidence: [{ quote, source }] };
+    : { value, status: "Explicit", evidence: [{ quote, source, provenance: "fixture" } as any] };
 
 const proof = (headline: string, detail: string) => ({ headline, detail });
 
@@ -499,4 +499,16 @@ export const rawOpportunities: OpportunitySource[] = [
     ],
   },
 ];
+
+for (const opp of rawOpportunities) {
+  if (!opp.rawText) {
+    const quotes = (opp.dimensions || [])
+      .flatMap((d) => (d.jdEvidence?.evidence || []).map((e: any) => e.quote))
+      .filter(Boolean);
+    opp.rawText = `${opp.role} at ${opp.company} located in ${opp.location}. ${quotes.join(". ")}. Scraped from ${opp.scrapedFrom}.`;
+  }
+}
+
+export { rawOpportunities as OPPORTUNITY_SOURCES };
+
 

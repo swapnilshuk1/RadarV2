@@ -1,0 +1,63 @@
+{
+  "totalCorpus": 1636,
+  "distributionCounts": {
+    "0": 980,
+    "1": 35,
+    "2": 263,
+    "3": 190,
+    "4": 90,
+    "5": 33,
+    "6": 23,
+    "7": 10,
+    "8": 8,
+    "9": 2,
+    "10": 1,
+    "11": 1,
+    ">11": 0
+  },
+  "topContributingConcepts": [
+    {
+      "concept": "MARKETING_STRATEGY",
+      "count": 921
+    },
+    {
+      "concept": "SALES_LEADERSHIP",
+      "count": 659
+    },
+    {
+      "concept": "OPERATIONAL_EXCELLENCE",
+      "count": 615
+    },
+    {
+      "concept": "COMMERCIAL_SCOPE_GENERAL",
+      "count": 530
+    },
+    {
+      "concept": "REVENUE_ACCOUNTABILITY",
+      "count": 467
+    },
+    {
+      "concept": "PNL_RESPONSIBILITY",
+      "count": 294
+    },
+    {
+      "concept": "GTM_STRATEGY",
+      "count": 277
+    },
+    {
+      "concept": "C_SUITE_OFFICER",
+      "count": 230
+    },
+    {
+      "concept": "BENGALURU",
+      "count": 228
+    },
+    {
+      "concept": "SAN_FRANCISCO",
+      "count": 224
+    }
+  ],
+  "doubleCountingDetected": false,
+  "evidenceInflationDetected": false,
+  "tailBehaviorMechanism": "Distributed domain enrichment across independent strategic and capability dimensions"
+}

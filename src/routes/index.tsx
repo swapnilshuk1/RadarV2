@@ -3,8 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { type Opportunity, type DecisionVerb } from "../data/opportunity-fixtures";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
-import { getOpportunitiesFn, getShortlistMetricsFn, injectFreshFn } from "../lib/intelligence/opportunity-server";
-import { getScraperCounts } from "../data/scraped-jobs";
+import { getOpportunitiesFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
@@ -145,6 +144,14 @@ function Shortlist() {
     () =>
       activeOps.filter((o) => {
         const clientRec = decisions[o.jobHash];
+        const userVerb = clientRec?.verb || o.userDecision?.userAction;
+
+        // Explicit user decisions (PURSUE, CONSIDER, PASS) belong on decided surfaces (/decisions)
+        // and should not be treated as unresolved Shortlist items even if evaluation fingerprints are stale.
+        if (userVerb === "PURSUE" || userVerb === "CONSIDER" || userVerb === "PASS") {
+          return false;
+        }
+
         const currentFingerprint = o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion;
         if (clientRec && clientRec.reviewedFingerprint && clientRec.reviewedFingerprint === currentFingerprint) {
           return false;
@@ -541,6 +548,62 @@ function Shortlist() {
   );
 }
 
+export function resolveShortlistCardScore(
+  o: Opportunity,
+  brief?: { qualityScore?: number | null }
+): { rawScore: number | null | undefined; scoreDisplay: string | number } {
+  const isSparse = o.decision === "SPARSE_SPEC";
+  const rawScore = brief?.qualityScore ?? o.engineRecommendation?.qualityScore ?? o.recommendationResult?.score;
+  const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
+  return { rawScore, scoreDisplay };
+}
+
+export interface ShortlistCardBadgeState {
+  primaryLabel: string;
+  badgeClass: string;
+  isStale: boolean;
+  staleLabel: "Re-evaluated" | "Review again" | null;
+  previousAction: string | null;
+}
+
+export function resolveShortlistCardBadgeState(o: Opportunity): ShortlistCardBadgeState {
+  const isSparse = o.decision === "SPARSE_SPEC";
+  const engineVerdict = o.engineRecommendation?.engineVerdict || o.decision || "PURSUE";
+  
+  const primaryLabel = isSparse ? "needs more signal" : engineVerdict.toLowerCase();
+  
+  const badgeClass = 
+    engineVerdict === "CONSIDER" 
+      ? "badge-consider" 
+      : engineVerdict === "PASS" 
+        ? "badge-pass" 
+        : (isSparse || engineVerdict === "SPARSE_SPEC")
+          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+          : "badge-pursue";
+          
+  const isStale = o.reviewWorkflowState === "REVIEWED_STALE" || o.reviewWorkflowState === "REVIEWED_UNKNOWN";
+  
+  const staleLabel = 
+    !isStale 
+      ? null 
+      : o.reviewWorkflowState === "REVIEWED_STALE" 
+        ? "Re-evaluated" 
+        : "Review again";
+        
+  const previousAction = 
+    isStale && o.userDecision?.userAction && o.userDecision.userAction !== "NONE"
+      ? o.userDecision.userAction
+      : null;
+      
+  return {
+    primaryLabel,
+    badgeClass,
+    isStale,
+    staleLabel,
+    previousAction,
+  };
+}
+
 function ShortlistCardRow({
   o,
   idx,
@@ -563,9 +626,8 @@ function ShortlistCardRow({
   const rowRef = useRef<HTMLLIElement>(null);
   const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
   const isSparse = o.decision === "SPARSE_SPEC";
-  const rawScore = o.recommendationResult?.score;
-  const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
-  const decisionLabel = isSparse ? "needs more signal" : (o.decision?.toLowerCase() || "pursue");
+  const { rawScore, scoreDisplay } = resolveShortlistCardScore(o, brief);
+  const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
 
   useEffect(() => {
     if (isOpen && rowRef.current) {
@@ -579,15 +641,6 @@ function ShortlistCardRow({
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
-
-  const badgeClass = 
-    o.decision === "CONSIDER" 
-      ? "badge-consider" 
-      : o.decision === "PASS" 
-        ? "badge-pass" 
-        : o.decision === "SPARSE_SPEC"
-          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-          : "badge-pursue";
 
   const scoreClass = 
     isSparse 
@@ -640,8 +693,18 @@ function ShortlistCardRow({
               {o.role}
             </span>
             <span className={`label-mono shrink-0 rounded-full px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider ${badgeClass}`}>
-              {decisionLabel}
+              {primaryLabel}
             </span>
+            {isStale && staleLabel && (
+              <span className="label-mono shrink-0 rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-[0.58rem] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                {staleLabel}
+              </span>
+            )}
+            {previousAction && (
+              <span className="label-mono shrink-0 rounded-full bg-muted/60 border border-border px-2.5 py-0.5 text-[0.58rem] font-medium text-muted-foreground uppercase tracking-wider">
+                Previously {previousAction}
+              </span>
+            )}
             <span className="label-mono hidden rounded-full bg-muted/80 px-2.5 py-0.5 text-[0.62rem] text-muted-foreground sm:inline font-medium">
               {o.mandateArchetype && o.mandateArchetype !== "Growth Marketing" ? o.mandateArchetype : inferExecutiveMandateArchetype(o.role, (o as any).rawText || (o as any).description)}
             </span>

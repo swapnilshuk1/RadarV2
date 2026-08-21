@@ -1,12 +1,11 @@
-import Database from "better-sqlite3";
-import path from "path";
+import { getDatabaseAdapter } from "../src/data/database";
 import { CrawlPlanner } from "./scraper/run/planner";
 
-const DB_PATH = path.join(process.cwd(), ".radar", "acquisition.db");
-const db = new Database(DB_PATH);
-
 async function main() {
-  const definitions = db.prepare(`SELECT * FROM search_definitions WHERE status = 'ACTIVE'`).all().map((row: any) => ({
+  const db = getDatabaseAdapter();
+
+  const rows = await db.many<any>(`SELECT * FROM search_definitions WHERE status = 'ACTIVE'`);
+  const definitions = rows.map((row: any) => ({
     id: row.id,
     intentId: row.intent_id,
     portal: row.portal,

@@ -1,0 +1,72 @@
+[
+  {
+    "severity": "P2",
+    "populationType": "PRODUCTION",
+    "opportunityId": "indeed:02c15dbf61c68f88",
+    "source": "Workday",
+    "canonicalConcept": "COMMERCIAL_SCOPE_GENERAL",
+    "evidenceRelationship": "CONTEXTUAL_SUPPORT",
+    "confidence": 0.9,
+    "scoreDelta": 0,
+    "verdictTransition": "NONE",
+    "resolver": "FINANCIAL_SCOPE",
+    "reason": "High-confidence related concept detected without exact alias mapping",
+    "recommendedInvestigation": "Evaluate if domain taxonomy should expand synonym dictionary in Phase 7"
+  },
+  {
+    "severity": "P2",
+    "populationType": "PRODUCTION",
+    "opportunityId": "indeed:6e078b44904f1401",
+    "source": "Workday",
+    "canonicalConcept": "TEAM_LEAD_OPERATIONAL",
+    "evidenceRelationship": "NON_SATISFYING",
+    "confidence": 0.95,
+    "scoreDelta": 0,
+    "verdictTransition": "NONE",
+    "resolver": "SENIORITY_TITLE",
+    "reason": "High-confidence related concept detected without exact alias mapping",
+    "recommendedInvestigation": "Evaluate if domain taxonomy should expand synonym dictionary in Phase 7"
+  },
+  {
+    "severity": "P2",
+    "populationType": "PRODUCTION",
+    "opportunityId": "indeed:b984a05a9e37c782",
+    "source": "Workday",
+    "canonicalConcept": "COMMERCIAL_SCOPE_GENERAL",
+    "evidenceRelationship": "CONTEXTUAL_SUPPORT",
+    "confidence": 0.9,
+    "scoreDelta": 0,
+    "verdictTransition": "NONE",
+    "resolver": "FINANCIAL_SCOPE",
+    "reason": "High-confidence related concept detected without exact alias mapping",
+    "recommendedInvestigation": "Evaluate if domain taxonomy should expand synonym dictionary in Phase 7"
+  },
+  {
+    "severity": "P2",
+    "populationType": "PRODUCTION",
+    "opportunityId": "indeed:ba95335f325252bc",
+    "source": "Workday",
+    "canonicalConcept": "COMMERCIAL_SCOPE_GENERAL",
+    "evidenceRelationship": "CONTEXTUAL_SUPPORT",
+    "confidence": 0.9,
+    "scoreDelta": 0,
+    "verdictTransition": "NONE",
+    "resolver": "FINANCIAL_SCOPE",
+    "reason": "High-confidence related concept detected without exact alias mapping",
+    "recommendedInvestigation": "Evaluate if domain taxonomy should expand synonym dictionary in Phase 7"
+  },
+  {
+    "severity": "P2",
+    "populationType": "PRODUCTION",
+    "opportunityId": "j-010995725905",
+    "source": "Workday",
+    "canonicalConcept": "ENTRY_COMMERCIAL_REP",
+    "evidenceRelationship": "NON_SATISFYING",
+    "confidence": 0.98,
+    "scoreDelta": 0,
+    "verdictTransition": "NONE",
+    "resolver": "SENIORITY_TITLE",
+    "reason": "High-confidence related concept detected without exact alias mapping",
+    "recommendedInvestigation": "Evaluate if domain taxonomy should expand synonym dictionary in Phase 7"
+  }
+]

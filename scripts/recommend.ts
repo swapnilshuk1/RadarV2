@@ -13,7 +13,7 @@
 
 import path from "path";
 import fs from "fs";
-import Database from "better-sqlite3";
+import { getDatabaseAdapter } from "../src/data/database";
 import { randomUUID } from "crypto";
 import { DeterministicScorer, type JobSlice } from "../src/lib/recommendation/DeterministicScorer";
 import { RecommendationCache } from "../src/lib/recommendation/RecommendationCache";
@@ -28,7 +28,6 @@ import type { RecommendationPolicy, RecommendationRun, OpportunityAssessment } f
 const args = process.argv.slice(2);
 const profilePath = args.find(a => a.startsWith("--profile="))?.split("=")[1] ?? ".radar/profile.yaml";
 const limit = parseInt(args.find(a => a.startsWith("--limit="))?.split("=")[1] ?? "999", 10);
-const dbPath = process.env.SQLITE_DB_PATH ?? path.resolve(process.cwd(), "radar.sqlite");
 const policyName = args.find(a => a.startsWith("--policy="))?.split("=")[1] ?? "default";
 
 // ============================================================================
@@ -80,14 +79,10 @@ async function main() {
   console.log(`  ✓ Dimensions: ${Object.keys(policy.weights).join(", ")}`);
 
   // 3. Open database and load jobs
-  console.log(`\n[3/5] Loading jobs from database: ${dbPath}`);
-  if (!fs.existsSync(dbPath)) {
-    console.error(`  ✗ Database not found at: ${dbPath}`);
-    process.exit(1);
-  }
-  const db = new Database(dbPath, { readonly: true });
+  console.log(`\n[3/5] Loading jobs from database...`);
+  const db = getDatabaseAdapter();
   
-  const opportunityRows = db.prepare(`
+  const opportunityRows = await db.many<any>(`
     SELECT 
       o.id as job_id,
       o.fingerprint as job_hash,
@@ -95,15 +90,15 @@ async function main() {
     FROM opportunities o
     WHERE o.lifecycle IN ('Normalized', 'Verified')
     LIMIT ?
-  `).all(limit) as any[];
+  `, [limit]);
 
   console.log(`  ✓ Found ${opportunityRows.length} eligible jobs`);
 
   // 4. Load extraction dimensions for each job from the Knowledge Graph
   console.log(`\n[4/5] Loading Knowledge Graph dimensions...`);
-  const factRows = db.prepare(`
+  const factRows = await db.many<any>(`
     SELECT opportunity_id, attribute, value FROM facts
-  `).all() as any[];
+  `);
 
   const factsByJob = new Map<string, Record<string, { value: string | null }>>();
   for (const fact of factRows) {
@@ -120,7 +115,6 @@ async function main() {
     }
   }
   console.log(`  ✓ Loaded dimensions for ${factsByJob.size} jobs from Knowledge Graph`);
-  db.close();
 
   // 5. Run scorer
   console.log(`\n[5/5] Running Deterministic Scorer...`);

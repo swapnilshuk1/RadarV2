@@ -1,0 +1,380 @@
+{
+  "timestamp": "2026-08-19T03:42:49.581Z",
+  "population": {
+    "totalOpportunities": 2233,
+    "opportunitiesEvaluated": 2233,
+    "opportunitiesWithEvidence": 1968,
+    "opportunitiesWithoutEvidence": 265
+  },
+  "semanticCoverage": {
+    "semanticEvidenceDetectedCount": 1968,
+    "semanticSatisfyingCount": 1955,
+    "semanticScoringEligibleCount": 1069,
+    "semanticScoreChangedCount": 0,
+    "semanticScoreIncreaseCount": 0,
+    "semanticScoreDecreaseCount": 0,
+    "semanticNoOpCount": 1968,
+    "noSemanticEvidenceCount": 265,
+    "reconciliationProof": {
+      "totalOpportunities": 2233,
+      "sum": 2233,
+      "reconciled": true
+    }
+  },
+  "scoreDeltaMetrics": {
+    "min": 0,
+    "max": 0,
+    "mean": 0,
+    "median": 0,
+    "p90": 0,
+    "p95": 0,
+    "p99": 0,
+    "stdDev": 0,
+    "histogram": {
+      "0": 2233,
+      "1": 0,
+      "2": 0,
+      "3": 0,
+      "4": 0,
+      "5": 0,
+      ">5": 0,
+      ">8": 0,
+      ">11": 0,
+      "<0": 0
+    },
+    "positiveCount": 0,
+    "negativeCount": 0,
+    "zeroCount": 2233
+  },
+  "safetyEnvelope": {
+    "PRODUCTION_OBSERVED_MAX": 0,
+    "GOLDEN_CERTIFIED_MAX": 0,
+    "p0Escapes": 0,
+    "p0UnexplainedDeltas": 0
+  },
+  "verdictTransitions": {
+    "summary": {
+      "PASS_TO_CONSIDER": 0,
+      "PASS_TO_PURSUE": 0,
+      "CONSIDER_TO_PURSUE": 0,
+      "CONSIDER_TO_PASS": 0,
+      "PURSUE_TO_CONSIDER": 0,
+      "PURSUE_TO_PASS": 0,
+      "SAME_VERDICT": 2233
+    },
+    "transitions": []
+  },
+  "semanticDistribution": {
+    "relationships": {
+      "RELATED": 37,
+      "STRONG_EQUIVALENT": 886,
+      "EXACT": 1045,
+      "LEXICAL_VARIANT": 886,
+      "CITY_ALIAS": 45,
+      "SUPERTYPE": 2
+    },
+    "top20Concepts": [
+      {
+        "concept": "MARKETING_STRATEGY",
+        "count": 627
+      },
+      {
+        "concept": "DIRECTOR",
+        "count": 278
+      },
+      {
+        "concept": "VICE_PRESIDENT",
+        "count": 247
+      },
+      {
+        "concept": "FUNCTIONAL_HEAD",
+        "count": 219
+      },
+      {
+        "concept": "SALES_LEADERSHIP",
+        "count": 96
+      },
+      {
+        "concept": "OPERATIONAL_EXCELLENCE",
+        "count": 86
+      },
+      {
+        "concept": "SENIOR_DIRECTOR",
+        "count": 63
+      },
+      {
+        "concept": "ASSOCIATE_DIRECTOR",
+        "count": 58
+      },
+      {
+        "concept": "ASSISTANT_VICE_PRESIDENT",
+        "count": 56
+      },
+      {
+        "concept": "MARKETING_HEAD",
+        "count": 49
+      },
+      {
+        "concept": "MARKETING_MANAGER",
+        "count": 44
+      },
+      {
+        "concept": "C_SUITE_OFFICER",
+        "count": 40
+      },
+      {
+        "concept": "SENIOR_VICE_PRESIDENT",
+        "count": 29
+      },
+      {
+        "concept": "BRAND_MANAGER",
+        "count": 27
+      },
+      {
+        "concept": "HEAD_DIGITAL_MARKETING",
+        "count": 20
+      },
+      {
+        "concept": "COMMERCIAL_SCOPE_GENERAL",
+        "count": 18
+      },
+      {
+        "concept": "REVENUE_ACCOUNTABILITY",
+        "count": 18
+      },
+      {
+        "concept": "BUSINESS_UNIT_HEAD",
+        "count": 18
+      },
+      {
+        "concept": "MUMBAI",
+        "count": 18
+      },
+      {
+        "concept": "GTM_STRATEGY",
+        "count": 16
+      }
+    ],
+    "resolverAttributions": {
+      "CommercialScopeResolver": 37,
+      "SeniorityResolver": 0,
+      "GeographyResolver": 151,
+      "CapabilityResolver": 866,
+      "OrganizationResolver": 6
+    }
+  },
+  "confidenceDistribution": {
+    "buckets": {
+      "lt_0_50": 0,
+      "between_0_50_and_0_74": 880,
+      "between_0_75_and_0_84": 6,
+      "between_0_85_and_0_94": 41,
+      "between_0_95_and_1_00": 1974
+    },
+    "meanConfidence": 0.855,
+    "totalEvidenceEvaluated": 2901
+  },
+  "polysemyAudit": {
+    "tokens": {
+      "target": {
+        "rawDetection": 0,
+        "contextualResolution": 0,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 0,
+        "scoringEligible": 0,
+        "actuallyScored": 0
+      },
+      "apple": {
+        "rawDetection": 0,
+        "contextualResolution": 0,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 0,
+        "scoringEligible": 0,
+        "actuallyScored": 0
+      },
+      "amazon": {
+        "rawDetection": 4,
+        "contextualResolution": 4,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 4,
+        "scoringEligible": 0,
+        "actuallyScored": 0
+      },
+      "shell": {
+        "rawDetection": 0,
+        "contextualResolution": 0,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 0,
+        "scoringEligible": 0,
+        "actuallyScored": 0
+      },
+      "meta": {
+        "rawDetection": 2,
+        "contextualResolution": 2,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 2,
+        "scoringEligible": 0,
+        "actuallyScored": 0
+      },
+      "gm": {
+        "rawDetection": 22,
+        "contextualResolution": 22,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 22,
+        "scoringEligible": 0,
+        "actuallyScored": 0
+      },
+      "md": {
+        "rawDetection": 3,
+        "contextualResolution": 3,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 3,
+        "scoringEligible": 0,
+        "actuallyScored": 0
+      },
+      "lead": {
+        "rawDetection": 172,
+        "contextualResolution": 172,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 172,
+        "scoringEligible": 172,
+        "actuallyScored": 0
+      },
+      "head": {
+        "rawDetection": 640,
+        "contextualResolution": 640,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 640,
+        "scoringEligible": 640,
+        "actuallyScored": 0
+      },
+      "executive": {
+        "rawDetection": 44,
+        "contextualResolution": 44,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 44,
+        "scoringEligible": 44,
+        "actuallyScored": 0
+      },
+      "manager": {
+        "rawDetection": 348,
+        "contextualResolution": 348,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 348,
+        "scoringEligible": 348,
+        "actuallyScored": 0
+      },
+      "director": {
+        "rawDetection": 429,
+        "contextualResolution": 429,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 429,
+        "scoringEligible": 429,
+        "actuallyScored": 0
+      },
+      "account": {
+        "rawDetection": 24,
+        "contextualResolution": 24,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 24,
+        "scoringEligible": 24,
+        "actuallyScored": 0
+      },
+      "enterprise": {
+        "rawDetection": 29,
+        "contextualResolution": 29,
+        "falsePositiveClassification": 0,
+        "quarantined": 0,
+        "nonSatisfying": 0,
+        "satisfying": 29,
+        "scoringEligible": 29,
+        "actuallyScored": 0
+      }
+    },
+    "falsePositiveScoringEscapes": 0,
+    "assertionPassed": true
+  },
+  "sourceStratification": {
+    "Workday": {
+      "opportunityCount": 1724,
+      "evidenceDetectedCount": 1526,
+      "scoringEligibleCount": 898,
+      "scoreChangedCount": 0,
+      "meanConfidence": 0.8649,
+      "confidenceSum": 1968.5000000000236,
+      "confidenceCount": 2276
+    },
+    "Naukri": {
+      "opportunityCount": 479,
+      "evidenceDetectedCount": 414,
+      "scoringEligibleCount": 153,
+      "scoreChangedCount": 0,
+      "meanConfidence": 0.8158,
+      "confidenceSum": 477.2500000000014,
+      "confidenceCount": 585
+    },
+    "LinkedIn": {
+      "opportunityCount": 30,
+      "evidenceDetectedCount": 28,
+      "scoringEligibleCount": 18,
+      "scoreChangedCount": 0,
+      "meanConfidence": 0.868,
+      "confidenceSum": 34.720000000000006,
+      "confidenceCount": 40
+    },
+    "Unknown": {
+      "opportunityCount": 0,
+      "evidenceDetectedCount": 0,
+      "scoringEligibleCount": 0,
+      "scoreChangedCount": 0,
+      "meanConfidence": 0,
+      "confidenceSum": 0,
+      "confidenceCount": 0
+    }
+  },
+  "fingerprintStatus": {
+    "testA_v2": "eval_v4_1a98f554e4e81b6a6c38dc23397e56f254058a8b6edccb791181e0c4e6fab6f1",
+    "testB_v2": "eval_v4_1a98f554e4e81b6a6c38dc23397e56f254058a8b6edccb791181e0c4e6fab6f1",
+    "testC_v3": "eval_v4_db39fa3c1dc01996da777e6963b8e9189f300bacbd96e5be8410c2b8446a9cdc",
+    "baselineInvariantVerified": true,
+    "freshnessTransitionVerified": true,
+    "freshCount": 2233,
+    "staleCount": 0,
+    "missingCount": 0,
+    "invalidCount": 0
+  },
+  "operationalPerformance": {
+    "productionStorageLatency": "PRODUCTION LATENCY: NOT INSTRUMENTED IN TURSO STORAGE",
+    "offlineBenchmarkSpeed": {
+      "latencyMsPerEvaluation": 3.32,
+      "throughputOpsPerSec": 301
+    }
+  },
+  "finalDecision": "🟢 STABLE — CONTINUE PRODUCTION"
+}

@@ -1,15 +1,86 @@
 {
   "primaryMetros": {
     "penaltyPoints": 0,
-    "keywords": ["gurugram", "delhi", "ncr", "mumbai", "bengaluru", "bangalore"]
+    "keywords": [
+      "gurugram",
+      "gurgaon",
+      "delhi",
+      "new delhi",
+      "delhi ncr",
+      "ncr",
+      "noida",
+      "greater noida",
+      "faridabad",
+      "ghaziabad",
+      "mumbai",
+      "navi mumbai",
+      "thane",
+      "bengaluru",
+      "bangalore",
+      "blr",
+      "pune"
+    ]
   },
   "secondaryMetros": {
     "penaltyPoints": 5,
-    "keywords": ["pune", "hyderabad", "chennai"]
+    "keywords": [
+      "hyderabad",
+      "secunderabad",
+      "hyd",
+      "chennai",
+      "madras",
+      "kolkata",
+      "ahmedabad"
+    ]
   },
   "regionalTier2": {
     "penaltyPoints": 18,
-    "keywords": ["belgaum", "karnataka", "tier-2", "tier 2"]
+    "keywords": [
+      "belgaum",
+      "karnataka",
+      "tier-2",
+      "tier 2"
+    ]
+  },
+  "locationClusters": {
+    "delhi_ncr": [
+      "delhi",
+      "new delhi",
+      "delhi ncr",
+      "ncr",
+      "national capital region",
+      "gurugram",
+      "gurgaon",
+      "noida",
+      "greater noida",
+      "ghaziabad",
+      "faridabad"
+    ],
+    "bengaluru": [
+      "bengaluru",
+      "bangalore",
+      "blr"
+    ],
+    "mumbai_mmr": [
+      "mumbai",
+      "navi mumbai",
+      "thane",
+      "bombay",
+      "mmr"
+    ],
+    "pune": [
+      "pune",
+      "pcmc"
+    ],
+    "hyderabad": [
+      "hyderabad",
+      "secunderabad",
+      "hyd"
+    ],
+    "chennai": [
+      "chennai",
+      "madras"
+    ]
   },
   "nonPreferredWorkModelPenalty": 10
 }

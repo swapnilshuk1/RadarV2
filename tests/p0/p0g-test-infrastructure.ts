@@ -5,7 +5,10 @@
  * Does not implement business logic - only delegates to production and categorizes results.
  */
 
-import { OpportunityProvider } from "@/lib/intelligence/opportunity-provider";
+import { runEngine } from '@/lib/intelligence/engine';
+import { CandidateProjectionBuilderImpl } from '@/lib/intelligence/builders/CandidateProjectionBuilder';
+import { candidateProfile } from '@/data/candidate-profile';
+function getShortlist(active: number) { const builder = new CandidateProjectionBuilderImpl(); const proj = builder.fromProfile(candidateProfile); const { presented } = runEngine(proj as any, active); return presented.map(p => p.opportunity).filter(o => o.decision !== 'PASS'); }
 import { runEngine, injectFreshRecords, clearInjectedRecords } from "@/lib/intelligence/engine";
 import { CandidateProjectionBuilderImpl } from "@/lib/intelligence/builders/CandidateProjectionBuilder";
 import type { CandidateProfile } from "@/domain/candidate";

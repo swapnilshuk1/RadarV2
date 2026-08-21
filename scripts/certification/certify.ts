@@ -56,6 +56,7 @@ const oppSources = corpusItems.map(c => ({
   location: c.location,
   scrapedFrom: c.source,
   rawText: c.description,
+  provenance: "fixture",
   dimensions: []
 }));
 

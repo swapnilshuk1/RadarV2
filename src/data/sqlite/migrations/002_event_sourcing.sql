@@ -78,12 +78,12 @@ CREATE TABLE IF NOT EXISTS timeline_events (
 );
 
 -- Indexes for Timeline Events (Crucial for Replay & Projections)
-CREATE INDEX idx_timeline_events_occurred_at ON timeline_events(occurred_at);
-CREATE INDEX idx_timeline_events_aggregate ON timeline_events(aggregate_type, aggregate_id);
-CREATE INDEX idx_timeline_events_workspace ON timeline_events(workspace_id);
-CREATE INDEX idx_timeline_events_person ON timeline_events(person_id);
-CREATE INDEX idx_timeline_events_category ON timeline_events(event_category);
-CREATE INDEX idx_timeline_events_type ON timeline_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_timeline_events_occurred_at ON timeline_events(occurred_at);
+CREATE INDEX IF NOT EXISTS idx_timeline_events_aggregate ON timeline_events(aggregate_type, aggregate_id);
+CREATE INDEX IF NOT EXISTS idx_timeline_events_workspace ON timeline_events(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_timeline_events_person ON timeline_events(person_id);
+CREATE INDEX IF NOT EXISTS idx_timeline_events_category ON timeline_events(event_category);
+CREATE INDEX IF NOT EXISTS idx_timeline_events_type ON timeline_events(event_type);
 
 -- 4. Deprecate mutable tables
 DROP TABLE IF EXISTS decisions;

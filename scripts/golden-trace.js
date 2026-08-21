@@ -6,7 +6,10 @@ import { CandidateProjectionBuilderImpl } from '@/lib/intelligence/builders/Cand
 import { candidateProfile } from '@/data/candidate-profile';
 import { runEngine, readOpportunities } from '@/lib/intelligence/engine';
 import { present } from '@/lib/intelligence/present';
-import { OpportunityProvider } from '@/lib/intelligence/opportunity-provider';
+import { runEngine } from '@/lib/intelligence/engine';
+import { CandidateProjectionBuilderImpl } from '@/lib/intelligence/builders/CandidateProjectionBuilder';
+import { candidateProfile } from '@/data/candidate-profile';
+function getShortlist(active: number) { const builder = new CandidateProjectionBuilderImpl(); const proj = builder.fromProfile(candidateProfile); const { presented } = runEngine(proj as any, active); return presented.map(p => p.opportunity).filter(o => o.decision !== 'PASS'); }
 
 const jobHash = process.argv[2];
 if (!jobHash) {
@@ -32,7 +35,7 @@ if (!source) {
   console.log(JSON.stringify(presented, null, 2));
 }
 
-const shortlist = OpportunityProvider.list({ activePursuits: 0 });
+const shortlist = getShortlist(0);
 const listItem = shortlist.find(i => i.jobHash === jobHash);
 console.log('=== Shortlist Item (if any) ===');
 console.log(JSON.stringify(listItem || null, null, 2));

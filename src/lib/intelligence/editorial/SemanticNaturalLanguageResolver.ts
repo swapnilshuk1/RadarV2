@@ -64,14 +64,14 @@ export function unwrapEvidenceValue(raw: any): string {
       try {
         obj = JSON.parse(trimmed);
       } catch {
-        obj = null;
+        // Malformed JSON: return clean fallback without heuristic recovery
+        return "";
       }
-    } else if (trimmed.startsWith("{") || trimmed.includes('"value":')) {
-      // Truncated or malformed JSON string: safely extract value if present, else sanitize
-      const match = trimmed.match(/"value"\s*:\s*"([^"]+)"/);
-      if (match && match[1]) {
-        return cleanOntologyConstants(match[1]);
-      }
+    } else if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      // Truncated/unclosed JSON: return clean fallback without heuristic recovery
+      return "";
+    } else if (trimmed.includes('"value":') || trimmed.includes('"rawValue":')) {
+      // Malformed JSON snippet: return clean fallback without heuristic recovery
       return "";
     } else {
       return cleanOntologyConstants(trimmed);
@@ -90,18 +90,12 @@ export function unwrapEvidenceValue(raw: any): string {
         return cleanOntologyConstants(obj.canonicalValue);
       }
       if (typeof obj.canonicalValue === "object" && Array.isArray(obj.canonicalValue.products)) {
-        return obj.canonicalValue.products.map((p: any) => cleanOntologyConstants(String(p))).join(", ");
+        return obj.canonicalValue.products.map((p: any) => cleanOntologyConstants(String(p))).filter(Boolean).join(", ");
       }
     }
-    // Fall back to first readable string property if value/rawValue not found
-    const stringVal = Object.values(obj).find((v) => typeof v === "string" && !v.startsWith("{") && !v.includes("extractorVersion"));
-    if (stringVal) return cleanOntologyConstants(String(stringVal));
     return "";
   }
 
-  if (typeof raw === "string") {
-    return cleanOntologyConstants(raw);
-  }
   return "";
 }
 

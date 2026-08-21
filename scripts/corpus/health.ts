@@ -1,7 +1,6 @@
 import fs from "fs";
-import path from "path";
-import Database from "better-sqlite3";
 import { LIVE_SCRAPED_JSON } from "../scraper/config";
+import { getDatabaseAdapter } from "../../src/data/database";
 
 export interface CorpusHealthStats {
   totalJobs: number;
@@ -17,9 +16,7 @@ export interface CorpusHealthStats {
 /**
  * Calculates health statistics for the Job Intelligence Corpus.
  */
-export function calculateCorpusHealth(dbPath?: string): CorpusHealthStats {
-  const resolvedDbPath = dbPath || path.resolve(process.cwd(), "radar.sqlite");
-  
+export async function calculateCorpusHealth(): Promise<CorpusHealthStats> {
   let totalJobs = 0;
   let textCoverage = 0;
   let totalDescLength = 0;
@@ -31,21 +28,19 @@ export function calculateCorpusHealth(dbPath?: string): CorpusHealthStats {
   let extractionVersion = "Unknown";
   let editorialCoverage = 0;
 
-  // Let's read from both SQLite and live-scraped.json if available
+  // 1. Read from live-scraped.json if available
   if (fs.existsSync(LIVE_SCRAPED_JSON)) {
     try {
       const records = JSON.parse(fs.readFileSync(LIVE_SCRAPED_JSON, "utf-8")) as any[];
       totalJobs = records.length;
       
       for (const rec of records) {
-        // Extraction Version
         if (rec.extractorVersion && rec.extractorVersion !== "1.0.0") {
           extractionVersion = rec.extractorVersion;
         } else if (rec.dimensionVersion) {
           extractionVersion = rec.dimensionVersion;
         }
 
-        // Text Coverage
         const text = rec.normalizedText || "";
         if (text.length > 50) {
           textCoverage++;
@@ -53,7 +48,6 @@ export function calculateCorpusHealth(dbPath?: string): CorpusHealthStats {
           jobsWithDesc++;
         }
 
-        // Dimensions confidence & quotes
         const dims = Array.isArray(rec.dimensions) ? rec.dimensions : [];
         for (const dim of dims) {
           const status = dim.jdEvidence?.status;
@@ -65,11 +59,9 @@ export function calculateCorpusHealth(dbPath?: string): CorpusHealthStats {
           totalEvidenceQuotes += quotes.length;
         }
 
-        // Capability Coverage
         const hasCaps = rec.dimensions?.some((d: any) => d.jdEvidence?.value !== null);
         if (hasCaps) capabilityCoverage++;
 
-        // Editorial Coverage (whyNow, headspace, positioning, alternativePath, headspaceInvestment)
         const hasEditorial = rec.whyNow || rec.positioning || rec.alternativePath || (Array.isArray(rec.dimensions) && rec.dimensions.length > 0);
         if (hasEditorial) editorialCoverage++;
       }
@@ -78,12 +70,12 @@ export function calculateCorpusHealth(dbPath?: string): CorpusHealthStats {
     }
   }
 
-  // Fallback to SQLite if live-scraped is empty or incomplete
-  if (fs.existsSync(resolvedDbPath)) {
+  // 2. Query canonical DatabaseAdapter if live-scraped is empty or incomplete
+  if (totalJobs === 0) {
     try {
-      const db = new Database(resolvedDbPath, { readonly: true });
-      const oppCountRow = db.prepare("SELECT COUNT(*) as count FROM opportunities").get() as { count: number };
-      const rows = db.prepare("SELECT content FROM documents").all() as { content: string }[];
+      const db = getDatabaseAdapter();
+      const oppCountRow = await db.one<{ count: number }>("SELECT COUNT(*) as count FROM opportunities");
+      const rows = await db.many<{ content: string }>("SELECT content FROM documents WHERE payload_type = 'Structured'");
       
       const dbTotalJobs = Math.max(oppCountRow?.count || 0, rows.length);
       if (dbTotalJobs > totalJobs) {
@@ -111,9 +103,8 @@ export function calculateCorpusHealth(dbPath?: string): CorpusHealthStats {
         if (rec.whyNow || rec.positioning || (Array.isArray(dims) && dims.length > 0)) editorialCoverage++;
         if (rec.extractorVersion) extractionVersion = rec.extractorVersion;
       }
-      db.close();
     } catch (err: any) {
-      console.error("[Health] Error reading SQLite database for statistics:", err.message);
+      console.error("[Health] Error querying DatabaseAdapter for statistics:", err.message);
     }
   }
 
@@ -129,8 +120,8 @@ export function calculateCorpusHealth(dbPath?: string): CorpusHealthStats {
   };
 }
 
-export function displayCorpusHealth() {
-  const stats = calculateCorpusHealth();
+export async function displayCorpusHealth() {
+  const stats = await calculateCorpusHealth();
 
   console.log("\n══════════════════════════════════════════════════════════════════");
   console.log("             JOB INTELLIGENCE CORPUS HEALTH REPORT");
@@ -153,5 +144,5 @@ const isMain = typeof process !== "undefined" &&
   (process.argv[1].endsWith("health.ts") || process.argv[1].endsWith("health"));
 
 if (isMain) {
-  displayCorpusHealth();
+  displayCorpusHealth().catch(console.error);
 }

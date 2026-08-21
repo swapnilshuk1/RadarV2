@@ -1,0 +1,100 @@
+{
+  "totalRawFalsePositiveCandidates": 9,
+  "quarantinedBeforeScoring": 9,
+  "escapedToScoring": 0,
+  "escapedToVerdict": 0,
+  "hardGateViolations": 0,
+  "status": "PASS",
+  "cases": [
+    {
+      "testCase": "apple / podcast",
+      "sourceText": "Produced a technology podcast available on Apple Podcasts and Spotify.",
+      "rawExtractedCount": 0,
+      "adaptedSatisfies": false,
+      "quarantinedBeforeScoring": true,
+      "escapedToScoring": false,
+      "escapedToVerdict": false,
+      "scoreContribution": 0
+    },
+    {
+      "testCase": "meta / meta tags",
+      "sourceText": "Optimized HTML meta tags, OpenGraph data, and header tags for SEO.",
+      "rawExtractedCount": 1,
+      "adaptedSatisfies": false,
+      "quarantinedBeforeScoring": true,
+      "escapedToScoring": false,
+      "escapedToVerdict": false,
+      "scoreContribution": 0
+    },
+    {
+      "testCase": "gm / gross margin",
+      "sourceText": "Improved GM percentage from 42% to 48% across core retail SKUs.",
+      "rawExtractedCount": 0,
+      "adaptedSatisfies": false,
+      "quarantinedBeforeScoring": true,
+      "escapedToScoring": false,
+      "escapedToVerdict": false,
+      "scoreContribution": 0
+    },
+    {
+      "testCase": "gm / gm/m2 paper",
+      "sourceText": "Managed inventory specifications for 120 gm/m2 premium paper stock.",
+      "rawExtractedCount": 0,
+      "adaptedSatisfies": false,
+      "quarantinedBeforeScoring": true,
+      "escapedToScoring": false,
+      "escapedToVerdict": false,
+      "scoreContribution": 0
+    },
+    {
+      "testCase": "md / Medical Doctor",
+      "sourceText": "Collaborated with MD medical doctors on clinical study protocols.",
+      "rawExtractedCount": 0,
+      "adaptedSatisfies": false,
+      "quarantinedBeforeScoring": true,
+      "escapedToScoring": false,
+      "escapedToVerdict": false,
+      "scoreContribution": 0
+    },
+    {
+      "testCase": "lead / lead generation",
+      "sourceText": "Junior SDR responsible for cold calling and outbound lead generation.",
+      "rawExtractedCount": 1,
+      "adaptedSatisfies": false,
+      "quarantinedBeforeScoring": true,
+      "escapedToScoring": false,
+      "escapedToVerdict": false,
+      "scoreContribution": 0
+    },
+    {
+      "testCase": "head / garlic",
+      "sourceText": "Managed agricultural logistics for head of garlic export supply chain.",
+      "rawExtractedCount": 1,
+      "adaptedSatisfies": false,
+      "quarantinedBeforeScoring": true,
+      "escapedToScoring": false,
+      "escapedToVerdict": false,
+      "scoreContribution": 0
+    },
+    {
+      "testCase": "executive / executive assistant",
+      "sourceText": "Executive Assistant supporting the VP of Sales with scheduling.",
+      "rawExtractedCount": 2,
+      "adaptedSatisfies": false,
+      "quarantinedBeforeScoring": true,
+      "escapedToScoring": false,
+      "escapedToVerdict": false,
+      "scoreContribution": 0
+    },
+    {
+      "testCase": "manager / account manager",
+      "sourceText": "Account Manager handling SMB client renewals and support tickets.",
+      "rawExtractedCount": 1,
+      "adaptedSatisfies": false,
+      "quarantinedBeforeScoring": true,
+      "escapedToScoring": false,
+      "escapedToVerdict": false,
+      "scoreContribution": 0
+    }
+  ]
+}

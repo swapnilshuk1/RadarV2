@@ -1,6 +1,6 @@
-import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
+import { getDatabaseAdapter } from "../src/data/database";
 import { DimensionResolver } from "../src/lib/recommendation/DimensionResolver";
 import { DeterministicScorer, type JobSlice } from "../src/lib/recommendation/DeterministicScorer";
 
@@ -53,13 +53,7 @@ function simulateOldMandate(text: string): boolean {
 }
 
 async function main() {
-  const dbPath = path.resolve(process.cwd(), "radar.sqlite");
-  if (!fs.existsSync(dbPath)) {
-    console.error(`Database not found at ${dbPath}`);
-    process.exit(1);
-  }
-
-  const db = new Database(dbPath, { readonly: true });
+  const db = getDatabaseAdapter();
   const resolver = new DimensionResolver();
   const scorer = new DeterministicScorer();
   const profile = { id: "default-profile", hardConstraints: [], technology: [] } as any;
@@ -77,12 +71,12 @@ async function main() {
   } as any;
 
   try {
-    const jobs = db.prepare(`
+    const jobs = await db.many<any>(`
       SELECT id, fingerprint, canonical_title FROM opportunities WHERE lifecycle IN ('Normalized', 'Verified')
-    `).all() as any[];
+    `);
 
-    const factRows = db.prepare("SELECT opportunity_id, attribute, value FROM facts").all() as any[];
-    const docRows = db.prepare("SELECT opportunity_id, content FROM documents").all() as any[];
+    const factRows = await db.many<any>("SELECT opportunity_id, attribute, value FROM facts");
+    const docRows = await db.many<any>("SELECT opportunity_id, content FROM documents");
 
     const factsByJob = new Map<string, Record<string, any>>();
     for (const fact of factRows) {

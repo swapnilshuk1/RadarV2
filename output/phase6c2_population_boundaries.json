@@ -1,0 +1,37 @@
+{
+  "PRODUCTION": {
+    "count": 2233,
+    "sampleIds": [
+      "indeed:02c15dbf61c68f88",
+      "indeed:02cf36e0d562d5e5",
+      "indeed:03e81bccddf7b143",
+      "indeed:060023fac16237b4",
+      "indeed:0c19cc4ecc103951"
+    ],
+    "description": "Live scraped executive job postings stored in Turso Cloud Database"
+  },
+  "GOLDEN_FIXTURE": {
+    "count": 14,
+    "sampleIds": [
+      "j-bmw-india-cmo",
+      "j-reliance-cgo",
+      "j-vml-vp-perf",
+      "j-acme-vp-mumbai",
+      "j-tcs-transformation",
+      "j-zestlabs-coord",
+      "j-tata-digital-svp",
+      "j-hul-vp-digital",
+      "j-flipkart-vp-growth",
+      "j-snapdeal-head-perf",
+      "j-maruti-cmo",
+      "j-zomato-cgo",
+      "j-landmark-cmo",
+      "j-freshworks-cgo"
+    ],
+    "description": "Curated executive golden benchmark fixtures including j-bmw-india-cmo"
+  },
+  "OFFLINE_SHADOW": {
+    "count": 0,
+    "description": "Locally generated test synthetic evaluations not persisted to Turso DB"
+  }
+}

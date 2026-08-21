@@ -14,6 +14,7 @@ export interface HttpFetchResult {
   rawText?: string;
   fetchError?: string;
   fetchDurationMs?: number;
+  httpStatus?: number;
 }
 
 /**
@@ -62,7 +63,7 @@ export async function fastFetchDetail(
       }
 
       if (statusCode < 200 || statusCode >= 400) {
-        return { fetched: false, fetchError: `HTTP ${statusCode}`, fetchDurationMs: Date.now() - t0 };
+        return { fetched: false, fetchError: `HTTP ${statusCode}`, fetchDurationMs: Date.now() - t0, httpStatus: statusCode };
       }
 
       const html = await body.text();
@@ -70,7 +71,7 @@ export async function fastFetchDetail(
 
       const requiredElement = $(requiredSelector);
       if (!requiredElement.length) {
-        return { fetched: false, fetchError: `Required selector "${requiredSelector}" not found (Auth wall / Captcha)`, fetchDurationMs: Date.now() - t0 };
+        return { fetched: false, fetchError: `Required selector "${requiredSelector}" not found (Auth wall / Captcha)`, fetchDurationMs: Date.now() - t0, httpStatus: statusCode };
       }
 
       const textElement = $(textSelector);
@@ -91,6 +92,7 @@ export async function fastFetchDetail(
         rawHtml: textElement.html() || "",
         rawText,
         fetchDurationMs: Date.now() - t0,
+        httpStatus: statusCode
       };
     } catch (err: any) {
       if (attempts < 3 && err.code && (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT')) {

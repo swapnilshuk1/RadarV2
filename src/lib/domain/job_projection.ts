@@ -1,6 +1,7 @@
 // src/lib/domain/job_projection.ts
 
 import { ClassifierResult, OperatingLevel, WorkNature, DecisionAuthority, CommercialScope } from "./semantic";
+import type { CanonicalSemanticEvidence } from "../intelligence/semantic/types";
 
 export type DocumentRegion = 
   | "TITLE"
@@ -99,4 +100,6 @@ export interface JobProjection {
   workModel: "HYBRID" | "REMOTE" | "ON_SITE" | "UNKNOWN";
   capabilityExtractionStatus: "COMPLETE" | "PARTIAL" | "FAILED";
   originalOpportunity?: any;
+  // Phase 5C.2: Additive Canonical Semantic Evidence
+  semanticEvidence?: readonly CanonicalSemanticEvidence[];
 }

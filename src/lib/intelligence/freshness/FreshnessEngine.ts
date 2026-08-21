@@ -16,6 +16,7 @@ export interface FreshnessMetadata {
   ageInDays?: number;
   staleWarning?: string;
   isStale: boolean;
+  precision: "EXACT" | "RELATIVE_ESTIMATE" | "LOWER_BOUND" | "UNKNOWN";
 }
 
 /**
@@ -88,6 +89,7 @@ export function formatTimeElapsed(isoTimestamp?: string): string {
 export function evaluateFreshness(params: {
   postedRelative?: string;
   postedDate?: string;
+  postedPrecision?: "EXACT" | "RELATIVE_ESTIMATE" | "LOWER_BOUND" | "UNKNOWN" | null;
   scrapedAt?: string;
   scrapedFrom?: string;
 }): FreshnessMetadata {
@@ -115,13 +117,13 @@ export function evaluateFreshness(params: {
       postedDateDisplay = `Posted ${ageDays} days ago · ${portal}`;
       staleWarning = `Posted ${ageDays} days ago — verify that the role is still active before investing heavily.`;
     }
-  } else if (params.postedRelative && params.postedRelative.trim().length > 0) {
+  } else if (params.postedRelative && params.postedRelative.trim().length > 0 && params.postedRelative !== "Age unavailable") {
     postedDateDisplay = `${params.postedRelative} · ${portal}`;
     state = "RECENT";
   } else {
     state = "UNKNOWN";
     const scrapedText = formatTimeElapsed(params.scrapedAt);
-    postedDateDisplay = `Posted date unavailable · Last scraped ${scrapedText}`;
+    postedDateDisplay = `Age unavailable · Last scraped ${scrapedText}`;
   }
 
   return {
@@ -132,5 +134,6 @@ export function evaluateFreshness(params: {
     ageInDays: ageDays,
     staleWarning,
     isStale,
+    precision: params.postedPrecision || "UNKNOWN",
   };
 }

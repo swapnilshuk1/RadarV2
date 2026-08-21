@@ -5,6 +5,7 @@ import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
 import { passesHardFilter } from "../utils/hard-filter";
 import { hydrateVirtualizedList } from "../utils/scroll";
+import { normalizePostingDate } from "../utils/date";
 
 const LINKEDIN_GEO_INDIA = "102713980";
 
@@ -67,9 +68,18 @@ export const linkedinHandler: PortalHandler = {
       const state = await checkLinkedInSessionState(ctx);
       ctx.logger(`[LinkedIn Session State] ${state}`);
       if (state === "AUTHENTICATED") {
+        if (ctx.authSession) {
+          await ctx.authSession.reportHealth("active").catch(() => {});
+        }
         return "ready";
       }
-      if (state === "AUTH_MISSING" || state === "AUTH_EXPIRED" || state === "AUTH_INVALID") {
+      if (state === "AUTH_EXPIRED" || state === "AUTH_INVALID") {
+        if (ctx.authSession) {
+          await ctx.authSession.reportHealth("invalid", `LinkedIn session verification returned ${state}`).catch(() => {});
+        }
+        return "gated";
+      }
+      if (state === "AUTH_MISSING") {
         return "gated";
       }
       return "error";
@@ -92,6 +102,9 @@ export const linkedinHandler: PortalHandler = {
 
       if (/\/(login|authwall|checkpoint|signup)(\/|$|\?)/.test(postNavUrl)) {
         ctx.logger(`[LinkedIn listCards] Redirected to authwall: ${postNavUrl}`);
+        if (ctx.authSession) {
+          await ctx.authSession.reportHealth("invalid", "LinkedIn search redirected to authwall").catch(() => {});
+        }
         throw new Error("AUTH_EXPIRED: LinkedIn session invalid or redirected to authwall");
       }
 
@@ -133,6 +146,7 @@ export const linkedinHandler: PortalHandler = {
           consecutiveStableLimit: 5,
           minPassDelayMs: 1500,
           maxPassDelayMs: 3000,
+          isCancelled: ctx.isCancelled,
         },
         ctx.logger
       );
@@ -148,6 +162,12 @@ export const linkedinHandler: PortalHandler = {
           const company = ((await card.locator(".job-card-container__primary-description, .artdeco-entity-lockup__subtitle").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
           const location = ((await card.locator(".job-card-container__metadata-item, .artdeco-entity-lockup__caption").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
           const href = ((await titleEl.getAttribute("href", { timeout: 1000 }).catch(() => "")) || "").trim();
+          
+          const timeEl = card.locator('time').first();
+          const rawDatetime = await timeEl.getAttribute("datetime", { timeout: 500 }).catch(() => null);
+          const rawTimeText = await timeEl.textContent({ timeout: 500 }).catch(() => null);
+          const rawPosted = rawDatetime || rawTimeText || null;
+          
           if (!href || !title) continue;
 
           const filterRes = passesHardFilter({ title, company, location });
@@ -161,16 +181,21 @@ export const linkedinHandler: PortalHandler = {
           const rawHtml = await card.innerHTML().catch(() => "");
           const rawText = ((await card.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
 
+          const discoveredAt = new Date().toISOString();
+          const { date: postedAt, precision: postedPrecision } = normalizePostingDate(rawPosted, discoveredAt);
+
           cardsOut.push({
             cardHash,
             portal: "LinkedIn",
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,
             detailUrl,
-            discoveredAt: new Date().toISOString(),
+            discoveredAt,
             title,
             company,
             location,
+            postedAt,
+            postedPrecision,
             rawHtml,
             rawText,
           });
@@ -210,13 +235,20 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   const t0 = Date.now();
   const page = await ctx.browserContext.newPage();
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
+    const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
+    const httpStatus = response?.status();
+    const pageTitle = await page.title().catch(() => "");
+    
+    // Some 404s might return 200 with a "Not Available" title
+    const isSoft404 = pageTitle.toLowerCase().includes("not available") || pageTitle.toLowerCase().includes("no longer available");
+    const effectiveStatus = isSoft404 ? 404 : httpStatus;
+
     await jitter(600, 1400);
     await page.locator('button[aria-label*="see more" i], .show-more-less-html__button').first().click({ timeout: 1500 }).catch(() => {});
     const container = page.locator(".jobs-description__content, .description__text, .show-more-less-html__markup").first();
     const rawHtml = await container.innerHTML().catch(() => "");
     const rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-    return { fetched: true, rawHtml, rawText, fetchDurationMs: Date.now() - t0 };
+    return { fetched: true, rawHtml, rawText, fetchDurationMs: Date.now() - t0, httpStatus: effectiveStatus };
   } catch (err: any) {
     return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
   } finally {

@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
-import Database from "better-sqlite3";
-import { getDatabase } from "../src/data/sqlite/provider";
+import { getDatabaseAdapter } from "../src/data/database";
 
 async function main() {
   const runDirs = fs.readdirSync(path.join(process.cwd(), ".scraper-artifacts", "runs"))
@@ -60,9 +59,12 @@ async function main() {
   });
   
   // Find executions in DB
-  const db = getDatabase();
+  const db = getDatabaseAdapter();
   console.log(`[OpportunityDiscovery (Database)]`);
-  const discoveries = db.prepare(`SELECT * FROM opportunity_discoveries WHERE first_definition = ?`).all(targetUnit.keyword);
+  const discoveries = await db.many<any>(
+    `SELECT * FROM opportunity_discoveries WHERE first_definition = ?`,
+    [targetUnit.keyword]
+  );
   console.log(`  Found         : ${discoveries.length} discoveries`);
   discoveries.forEach((d: any) => {
     console.log(`  Discovery ID  : ${d.id}`);
