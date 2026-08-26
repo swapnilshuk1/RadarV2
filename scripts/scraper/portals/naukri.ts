@@ -210,42 +210,152 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   const page = ctx.detailPage || ctx.searchPage || ctx.activePage;
   const mutex = ctx.detailMutex || ctx.searchMutex;
 
+  const browserContentSelectors = "[class*='job-desc'], [class*='dang-inner-html'], [class*='JDSummary'], [class*='key-skill'], [class*='styles_job-desc-container'], main";
+
   const doExtract = async () => {
     try {
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
-      await jitter(300, 800);
-      await page.waitForSelector(contentSelectors, { timeout: 5000 }).catch(() => {});
-
-    let rawHtml = "";
-    let rawText = "";
-
-    const candidateSelectors = [
-      "[class*='dang-inner-html']",
-      "section[class*='job-desc']",
-      "[class*='job-desc']",
-      "div[class*='JDSummary']",
-      "[class*='jobDescription']",
-      "#job-description",
-      "main",
-      "article"
-    ];
-
-    for (const sel of candidateSelectors) {
-      const loc = page.locator(sel).first();
-      const txt = ((await loc.textContent({ timeout: 1000 }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
-      if (txt.length > 100) {
-        rawText = txt;
-        rawHtml = (await loc.innerHTML().catch(() => "")) || "";
-        break;
+      
+      // Handle Naukri opening jobs in new tabs when logged in
+      let targetPage = page;
+      const allPages = page.context().pages();
+      if (allPages.length > 1) {
+          targetPage = allPages[allPages.length - 1];
+          await targetPage.bringToFront();
       }
-    }
 
-    if (!rawText) {
-      rawText = ((await page.locator("body").textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-      rawHtml = await page.locator("body").innerHTML().catch(() => "");
-    }
+      await jitter(400, 900);
+      await targetPage.waitForSelector(browserContentSelectors, { timeout: 6000 }).catch(() => {});
 
-    return { fetched: true, rawHtml, rawText, fetchDurationMs: Date.now() - t0 };
+      const parts: { name: string; text: string; html: string }[] = [];
+
+      // 1. Check Primary Job Description Containers
+      let jdHtml = null;
+      let fullJdText = "";
+      const cheerio = require("cheerio");
+
+      // METHOD 1: Clean Next.js State Extraction
+      ctx.logger(`[${ctx.portal}] Attempting extraction via __NEXT_DATA__ JSON payload`);
+      const nextDataText = await targetPage.evaluate(() => {
+          const el = document.querySelector('#__NEXT_DATA__');
+          return el ? el.innerHTML : null;
+      });
+
+      if (nextDataText) {
+           try {
+              const nextData = JSON.parse(nextDataText);
+              if (nextData?.props?.pageProps?.jobDetails?.jobDescription) {
+                  jdHtml = nextData.props.pageProps.jobDetails.jobDescription;
+                  ctx.logger(`[${ctx.portal}] Successfully extracted full JD from Next.js state`);
+              }
+           } catch(e) {
+               ctx.logger(`[${ctx.portal}] Failed to parse __NEXT_DATA__ JSON`);
+           }
+      }
+
+      // METHOD 2: Broad DOM Selector Fallback
+      if (!jdHtml) {
+          ctx.logger(`[${ctx.portal}] Falling back to DOM selector extraction`);
+          const htmlContent = await targetPage.content();
+          const cheerioApi = cheerio.load(htmlContent);
+          
+          const primaryContainers = [
+              "[class*='styles_job-desc-container']",
+              "section[class*='job-desc']",
+              "div.styles_JDSummary",
+              "[class*='jobDescription']",
+              "#job-description",
+              ".dang-inner-html",
+              "[class*='dang-inner-html']",
+              ".job-description",          
+              "div[class*='job-description']",
+              ".styles_JDContainer__",
+              "[class*='JDContainer']"
+          ];
+          
+          for (const sel of primaryContainers) {
+              const elements = cheerioApi(sel);
+              if (elements.length > 0) {
+                  const txt = elements.first().text().trim();
+                  if (txt.length >= 150) {
+                      jdHtml = elements.first().html();
+                      ctx.logger(`[${ctx.portal}] Found JD via selector fallback: ${sel}`);
+                      break;
+                  }
+              }
+          }
+      }
+
+      // METHOD 3: Desperate Text Search Fallback
+      if (!jdHtml) {
+           ctx.logger(`[${ctx.portal}] Falling back to deep innerText search`);
+           const contentNode = await targetPage.evaluate(() => {
+               const nodes = Array.from(document.querySelectorAll('*'));
+               for (let i = 0; i < nodes.length; i++) {
+                   const textContent = nodes[i].textContent;
+                   if (textContent && textContent.trim().toLowerCase() === 'job description') {
+                       let parent = nodes[i].parentElement;
+                       if (parent && parent.innerText.length > 200) {
+                           return parent.innerHTML;
+                       }
+                   }
+               }
+               return null;
+           });
+           if (contentNode) {
+               jdHtml = contentNode;
+               ctx.logger(`[${ctx.portal}] Found JD via deep innerText search`);
+           }
+      }
+
+      if (jdHtml) {
+          const jdDom = cheerio.load(jdHtml);
+          jdDom('br, p, div, li, h1, h2, h3, h4, h5, h6').append('\n');
+          
+          let rawText = jdDom.text();
+          fullJdText = rawText.replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
+          ctx.logger(`[${ctx.portal}] Extracted JD text length: ${fullJdText.length}`);
+          parts.push({ name: "description", text: fullJdText, html: jdHtml });
+      }
+
+      // 2. Check Highlights / Dang Inner HTML if primary was missing or short
+      if (parts.length === 0 || parts[0].text.length < 300) {
+        const highlightLoc = targetPage.locator("[class*='dang-inner-html']").first();
+        const highlightTxt = ((await highlightLoc.textContent({ timeout: 1000 }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
+        if (highlightTxt.length > 50 && (!parts[0] || !parts[0].text.includes(highlightTxt.slice(0, 50)))) {
+          const highlightHtml = (await highlightLoc.innerHTML().catch(() => "")) || "";
+          parts.push({ name: "highlights", text: highlightTxt, html: highlightHtml });
+        }
+      }
+
+      // 3. Check Key Skills Section
+      const skillsLoc = targetPage.locator("[class*='styles_key-skill'], [class*='key-skill']").first();
+      const skillsTxt = ((await skillsLoc.textContent({ timeout: 1000 }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
+      if (skillsTxt.length > 30 && (!parts[0] || !parts[0].text.includes(skillsTxt.slice(0, 30)))) {
+        const skillsHtml = (await skillsLoc.innerHTML().catch(() => "")) || "";
+        parts.push({ name: "skills", text: `Key Skills: ${skillsTxt}`, html: skillsHtml });
+      }
+
+      let rawText = "";
+      let rawHtml = "";
+
+      if (parts.length > 0) {
+        rawText = parts.map((p) => p.text).join("\n\n");
+        rawHtml = parts.map((p) => p.html).join("<hr/>");
+      } else {
+        // Fallback to main or body
+        const mainLoc = targetPage.locator("main, article, [role='main']").first();
+        const mainTxt = ((await mainLoc.textContent({ timeout: 1000 }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
+        if (mainTxt.length >= 100) {
+          rawText = mainTxt;
+          rawHtml = (await mainLoc.innerHTML().catch(() => "")) || "";
+        } else {
+          rawText = ((await targetPage.locator("body").textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+          rawHtml = (await targetPage.locator("body").innerHTML().catch(() => "")) || "";
+        }
+      }
+
+      return { fetched: rawText.length > 0, rawHtml, rawText, fetchDurationMs: Date.now() - t0 };
     } catch (err: any) {
       return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
     }
