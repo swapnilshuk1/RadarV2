@@ -98,19 +98,67 @@ export function validateEvaluationConsistency(evaluation: MaterializedEvaluation
     throw new Error(`MaterializedEvaluation evaluationJson is not valid JSON: ${err.message}`);
   }
 
-  // Validate decision consistency
-  const jsonDecision = parsed.decision || parsed.effective_decision || parsed.engine_verdict;
-  if (jsonDecision && jsonDecision !== evaluation.decision) {
-    throw new Error(
-      `MaterializedEvaluation column mismatch: relational decision '${evaluation.decision}' does not match JSON payload decision '${jsonDecision}'`
-    );
+  const state = evaluation.evaluationState || (evaluation.decision ? "EVALUATED" : "UNKNOWN");
+
+  // 1. Non-Evaluated States: decision and qualityScore MUST be null
+  if (
+    state === "SPARSE_SPEC" ||
+    state === "ACQUISITION_PENDING" ||
+    state === "ACQUISITION_FAILED" ||
+    state === "EXPIRED" ||
+    state === "UNKNOWN"
+  ) {
+    if (evaluation.decision !== null && evaluation.decision !== undefined) {
+      throw new Error(
+        `MaterializedEvaluation invariant violation: relational decision must be null when evaluationState is '${state}', received '${evaluation.decision}'`
+      );
+    }
+    if (evaluation.qualityScore !== null && evaluation.qualityScore !== undefined) {
+      throw new Error(
+        `MaterializedEvaluation invariant violation: relational qualityScore must be null when evaluationState is '${state}', received '${evaluation.qualityScore}'`
+      );
+    }
+    // Consistent with non-evaluated state; internal JSON verdict traces are intentionally ignored
+    return;
   }
 
-  // Validate quality score consistency
-  const jsonScore = parsed.qualityScore ?? parsed.quality_score ?? parsed.engine_quality_score;
-  if (jsonScore !== undefined && Math.abs(Number(jsonScore) - evaluation.qualityScore) > 0.001) {
-    throw new Error(
-      `MaterializedEvaluation column mismatch: relational qualityScore '${evaluation.qualityScore}' does not match JSON payload qualityScore '${jsonScore}'`
-    );
+  // 2. Evaluated State: decision MUST be {PURSUE, CONSIDER, PASS} and qualityScore MUST be a number
+  if (state === "EVALUATED") {
+    if (!evaluation.decision || !["PURSUE", "CONSIDER", "PASS"].includes(evaluation.decision)) {
+      throw new Error(
+        `MaterializedEvaluation invariant violation: relational decision must be PURSUE, CONSIDER, or PASS when evaluationState is 'EVALUATED', received '${evaluation.decision}'`
+      );
+    }
+    if (
+      evaluation.qualityScore === null ||
+      evaluation.qualityScore === undefined ||
+      typeof evaluation.qualityScore !== "number" ||
+      isNaN(evaluation.qualityScore)
+    ) {
+      throw new Error(
+        `MaterializedEvaluation invariant violation: relational qualityScore must be a valid number when evaluationState is 'EVALUATED', received '${evaluation.qualityScore}'`
+      );
+    }
+
+    // Validate decision consistency against payload
+    const jsonDecision = parsed.decision || parsed.effective_decision || parsed.engine_verdict;
+    if (jsonDecision && jsonDecision !== evaluation.decision) {
+      throw new Error(
+        `MaterializedEvaluation column mismatch: relational decision '${evaluation.decision}' does not match JSON payload decision '${jsonDecision}'`
+      );
+    }
+
+    // Validate quality score consistency against payload
+    const jsonScore = parsed.qualityScore ?? parsed.quality_score ?? parsed.engine_quality_score;
+    if (jsonScore !== undefined && jsonScore !== null) {
+      if (Math.abs(Number(jsonScore) - Number(evaluation.qualityScore)) > 0.001) {
+        throw new Error(
+          `MaterializedEvaluation column mismatch: relational qualityScore '${evaluation.qualityScore}' does not match JSON payload qualityScore '${jsonScore}'`
+        );
+      }
+    }
+    return;
   }
+
+  throw new Error(`MaterializedEvaluation has unrecognized evaluationState: '${state}'`);
 }

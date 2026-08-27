@@ -1,0 +1,22 @@
+{
+  "originalUrl": "https://www.naukri.com/job-listings-program-manager-2-zscaler-bengaluru-4-to-9-years-210824502598",
+  "finalUrl": "https://www.naukri.com/job-listings-program-manager-2-zscaler-bengaluru-4-to-9-years-210824502598",
+  "redirectChain": [],
+  "pageTitle": "",
+  "hydrationCondition": "HTTP fetch / Static extraction",
+  "selectorsAttempted": [
+    "[class*='styles_job-desc-container']",
+    "section[class*='job-desc']",
+    "div.styles_JDSummary",
+    "[class*='jobDescription']",
+    "#job-description",
+    ".dang-inner-html",
+    "[class*='dang-inner-html']"
+  ],
+  "selectorSucceeded": "",
+  "rawHtmlLength": 35174,
+  "extractedTextLength": 0,
+  "wordCount": 0,
+  "validatorResult": null,
+  "failureClassification": "EXPERIMENT_ERROR"
+}

@@ -1,0 +1,245 @@
+{
+  "iterations": [
+    {
+      "iteration": 1,
+      "scenario": "PROD Iteration 1",
+      "metrics": {
+        "serverStartupMs": 473.6,
+        "ttfbMs": 1560.7,
+        "fcpMs": 2196,
+        "lcpMs": 2580,
+        "domInteractiveMs": 2166.4,
+        "domCompleteMs": 2461,
+        "hydrationToInteractiveMs": 839.3,
+        "spaNavToDossierMs": 0,
+        "spaNavToDecisionsMs": 130.4,
+        "spaNavBackToShortlistMs": 142.9,
+        "totalRequests": 35,
+        "totalTransferBytes": 947591,
+        "jsModuleCount": 23,
+        "dossierJobHash": ""
+      },
+      "networkSummary": {
+        "requests": 35,
+        "totalBytes": 947591,
+        "jsBytes": 714895,
+        "cssBytes": 133268,
+        "jsonBytes": 0
+      }
+    },
+    {
+      "iteration": 2,
+      "scenario": "PROD Iteration 2",
+      "metrics": {
+        "serverStartupMs": 473.6,
+        "ttfbMs": 791,
+        "fcpMs": 1520,
+        "lcpMs": 1720,
+        "domInteractiveMs": 1289.7,
+        "domCompleteMs": 1745.7,
+        "hydrationToInteractiveMs": 984.5,
+        "spaNavToDossierMs": 0,
+        "spaNavToDecisionsMs": 141.2,
+        "spaNavBackToShortlistMs": 127.3,
+        "totalRequests": 35,
+        "totalTransferBytes": 947591,
+        "jsModuleCount": 23,
+        "dossierJobHash": ""
+      },
+      "networkSummary": {
+        "requests": 35,
+        "totalBytes": 947591,
+        "jsBytes": 714895,
+        "cssBytes": 133268,
+        "jsonBytes": 0
+      }
+    },
+    {
+      "iteration": 3,
+      "scenario": "PROD Iteration 3",
+      "metrics": {
+        "serverStartupMs": 473.6,
+        "ttfbMs": 362.1,
+        "fcpMs": 844,
+        "lcpMs": 1040,
+        "domInteractiveMs": 811.5,
+        "domCompleteMs": 1585.1,
+        "hydrationToInteractiveMs": 1334.1,
+        "spaNavToDossierMs": 0,
+        "spaNavToDecisionsMs": 100.7,
+        "spaNavBackToShortlistMs": 148.4,
+        "totalRequests": 35,
+        "totalTransferBytes": 947591,
+        "jsModuleCount": 23,
+        "dossierJobHash": ""
+      },
+      "networkSummary": {
+        "requests": 35,
+        "totalBytes": 947591,
+        "jsBytes": 714895,
+        "cssBytes": 133268,
+        "jsonBytes": 0
+      }
+    },
+    {
+      "iteration": 4,
+      "scenario": "PROD Iteration 4",
+      "metrics": {
+        "serverStartupMs": 473.6,
+        "ttfbMs": 307.2,
+        "fcpMs": 756,
+        "lcpMs": 956,
+        "domInteractiveMs": 727.5,
+        "domCompleteMs": 1079.4,
+        "hydrationToInteractiveMs": 837.6,
+        "spaNavToDossierMs": 0,
+        "spaNavToDecisionsMs": 139,
+        "spaNavBackToShortlistMs": 137.8,
+        "totalRequests": 35,
+        "totalTransferBytes": 947591,
+        "jsModuleCount": 23,
+        "dossierJobHash": ""
+      },
+      "networkSummary": {
+        "requests": 35,
+        "totalBytes": 947591,
+        "jsBytes": 714895,
+        "cssBytes": 133268,
+        "jsonBytes": 0
+      }
+    },
+    {
+      "iteration": 5,
+      "scenario": "PROD Iteration 5",
+      "metrics": {
+        "serverStartupMs": 473.6,
+        "ttfbMs": 254.9,
+        "fcpMs": 776,
+        "lcpMs": 960,
+        "domInteractiveMs": 747.8,
+        "domCompleteMs": 1122.9,
+        "hydrationToInteractiveMs": 830.2,
+        "spaNavToDossierMs": 0,
+        "spaNavToDecisionsMs": 98.2,
+        "spaNavBackToShortlistMs": 153.1,
+        "totalRequests": 36,
+        "totalTransferBytes": 947591,
+        "jsModuleCount": 23,
+        "dossierJobHash": ""
+      },
+      "networkSummary": {
+        "requests": 36,
+        "totalBytes": 947591,
+        "jsBytes": 714895,
+        "cssBytes": 133268,
+        "jsonBytes": 0
+      }
+    }
+  ],
+  "stats": {
+    "serverStartupMs": {
+      "min": 473.6,
+      "max": 473.6,
+      "p50": 473.6,
+      "p75": 473.6,
+      "p95": 473.6,
+      "mean": 473.6
+    },
+    "ttfbMs": {
+      "min": 254.9,
+      "max": 1560.7,
+      "p50": 362.1,
+      "p75": 791,
+      "p95": 1406.8,
+      "mean": 655.2
+    },
+    "fcpMs": {
+      "min": 756,
+      "max": 2196,
+      "p50": 844,
+      "p75": 1520,
+      "p95": 2060.8,
+      "mean": 1218.4
+    },
+    "lcpMs": {
+      "min": 956,
+      "max": 2580,
+      "p50": 1040,
+      "p75": 1720,
+      "p95": 2408,
+      "mean": 1451.2
+    },
+    "domInteractiveMs": {
+      "min": 727.5,
+      "max": 2166.4,
+      "p50": 811.5,
+      "p75": 1289.7,
+      "p95": 1991.1,
+      "mean": 1148.6
+    },
+    "domCompleteMs": {
+      "min": 1079.4,
+      "max": 2461,
+      "p50": 1585.1,
+      "p75": 1745.7,
+      "p95": 2317.9,
+      "mean": 1598.8
+    },
+    "hydrationToInteractiveMs": {
+      "min": 830.2,
+      "max": 1334.1,
+      "p50": 839.3,
+      "p75": 984.5,
+      "p95": 1264.2,
+      "mean": 965.1
+    },
+    "spaNavToDossierMs": {
+      "min": 0,
+      "max": 0,
+      "p50": 0,
+      "p75": 0,
+      "p95": 0,
+      "mean": 0
+    },
+    "spaNavToDecisionsMs": {
+      "min": 98.2,
+      "max": 141.2,
+      "p50": 130.4,
+      "p75": 139,
+      "p95": 140.8,
+      "mean": 121.9
+    },
+    "spaNavBackToShortlistMs": {
+      "min": 127.3,
+      "max": 153.1,
+      "p50": 142.9,
+      "p75": 148.4,
+      "p95": 152.2,
+      "mean": 141.9
+    },
+    "totalRequests": {
+      "min": 35,
+      "max": 36,
+      "p50": 35,
+      "p75": 35,
+      "p95": 35.8,
+      "mean": 35.2
+    },
+    "totalTransferBytes": {
+      "min": 947591,
+      "max": 947591,
+      "p50": 947591,
+      "p75": 947591,
+      "p95": 947591,
+      "mean": 947591
+    },
+    "jsModuleCount": {
+      "min": 23,
+      "max": 23,
+      "p50": 23,
+      "p75": 23,
+      "p95": 23,
+      "mean": 23
+    }
+  }
+}

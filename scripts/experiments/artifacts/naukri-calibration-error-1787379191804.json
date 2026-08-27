@@ -1,0 +1,17 @@
+{
+  "originalUrl": "https://www.naukri.com/job-listings-frontend-engineer-react-js-javascript-google-india-pvt-ltd-hyderabad-bengaluru-4-to-8-years-060824500000",
+  "finalUrl": "https://www.naukri.com/jobs-in-india?expJD=true",
+  "redirectChain": [
+    "https://www.naukri.com/",
+    "https://www.naukri.com/jobs-in-india?expJD=true"
+  ],
+  "pageTitle": "",
+  "hydrationCondition": "",
+  "selectorsAttempted": [],
+  "selectorSucceeded": "",
+  "rawHtmlLength": 0,
+  "extractedTextLength": 0,
+  "wordCount": 0,
+  "validatorResult": null,
+  "failureClassification": "PARTIAL_CONTENT"
+}

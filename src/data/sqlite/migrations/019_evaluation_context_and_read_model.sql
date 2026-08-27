@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS materialized_evaluations (
     evidence_ids TEXT NOT NULL,
     evaluation_json TEXT NOT NULL,
     materialized_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+    UNIQUE(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
 );
 
 CREATE INDEX IF NOT EXISTS idx_mat_eval_tenant_person_score

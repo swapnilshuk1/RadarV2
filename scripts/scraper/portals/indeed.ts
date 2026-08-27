@@ -43,17 +43,11 @@ export const indeedHandler: PortalHandler = {
   async listCards(ctx) {
     const page = ctx.activePage;
     const cardsOut: FeedCard[] = [];
+    const seenJks = new Set<string>();
+    const seenHashes = new Set<string>();
 
-    // Ordered priority list — pick the first selector that appears in the DOM.
-    // Indeed A/B-tests its markup heavily; using an array is more resilient
-    // than relying on a single class name.
-    const CARD_SELECTORS = [
-      "li[data-jk]",
-      "div.job_seen_beacon",
-      "[class*='job_seen_beacon']",
-      ".slider_container",
-      ".resultContent",
-    ].join(", ");
+    const PRIMARY_CARD_SELECTOR = "div.cardOutline, div.job_seen_beacon, [data-jk]";
+    const FALLBACK_CARD_SELECTORS = ".resultContent, .slider_container";
 
     try {
       const startGoto = Date.now();
@@ -64,21 +58,27 @@ export const indeedHandler: PortalHandler = {
 
       await humanize(page);
 
-      // Wait explicitly for cards instead of networkidle (which times out).
-
-      // Explicit wait for at least one card — up to cardWaitTimeoutMs.
-      ctx.logger(`Waiting for selector: ${CARD_SELECTORS}`);
+      // Explicit wait for at least one card container
+      ctx.logger(`Waiting for selector: ${PRIMARY_CARD_SELECTOR}`);
       const startWait = Date.now();
-      await page.waitForSelector(CARD_SELECTORS, { timeout: CONFIG.cardWaitTimeoutMs }).catch(async (e: any) => {
-         ctx.logger(`Selector timeout after ${Date.now() - startWait}ms`);
-         const { dumpFailureArtifacts } = await import("../utils/failure-dump");
-         await dumpFailureArtifacts(ctx.runId, ctx.portal, page, e.message);
-      });
+      let usedSelector = PRIMARY_CARD_SELECTOR;
+      let matched = await page.waitForSelector(PRIMARY_CARD_SELECTOR, { timeout: 4000 }).catch(() => null);
+      if (!matched) {
+        ctx.logger(`Primary selector timeout after ${Date.now() - startWait}ms, trying fallback selectors: ${FALLBACK_CARD_SELECTORS}`);
+        matched = await page.waitForSelector(FALLBACK_CARD_SELECTORS, { timeout: CONFIG.cardWaitTimeoutMs }).catch(async (e: any) => {
+          ctx.logger(`Fallback selector timeout after ${Date.now() - startWait}ms`);
+          const { dumpFailureArtifacts } = await import("../utils/failure-dump");
+          await dumpFailureArtifacts(ctx.runId, ctx.portal, page, e.message);
+          return null;
+        });
+        if (matched) usedSelector = FALLBACK_CARD_SELECTORS;
+      }
 
       const maxCards = CONFIG.getMaxCardsPerPage("Indeed");
-      const cards = await page.locator(CARD_SELECTORS).all();
-      const sliced = cards.slice(0, maxCards);
-      for (const card of sliced) {
+      const cardElements = await page.locator(usedSelector).all();
+      
+      for (const card of cardElements) {
+        if (cardsOut.length >= maxCards) break;
         try {
           const title = ((await card.locator("h2.jobTitle, .jobTitle, [class*='jobTitle']").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
           const company = ((await card.locator('[data-testid="company-name"], .companyName, [class*="companyName"]').first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
@@ -98,9 +98,15 @@ export const indeedHandler: PortalHandler = {
             if (match) jk = match[1];
           }
 
+          if (jk && seenJks.has(jk)) continue;
+          if (jk) seenJks.add(jk);
+
           let detailUrl = "";
+          let applyRedirectUrl: string | undefined = undefined;
+
           if (jk) {
             detailUrl = `https://in.indeed.com/viewjob?jk=${jk}`;
+            applyRedirectUrl = `https://in.indeed.com/rc/clk?jk=${jk}`;
           } else if (rawHref) {
             try {
               const parsed = new URL(rawHref, "https://in.indeed.com");
@@ -122,6 +128,9 @@ export const indeedHandler: PortalHandler = {
           }
 
           const cardHash = cardHashFor("Indeed", detailUrl);
+          if (seenHashes.has(cardHash)) continue;
+          seenHashes.add(cardHash);
+
           const rawHtml = await card.innerHTML().catch(() => "");
           const rawText = ((await card.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
           const discoveredAt = new Date().toISOString();
@@ -133,6 +142,7 @@ export const indeedHandler: PortalHandler = {
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,
             detailUrl,
+            applyRedirectUrl,
             discoveredAt,
             title,
             company,
@@ -168,7 +178,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       const httpRes = await fastFetchDetail(
         url, 
         "h1.jobsearch-JobInfoHeader-title, .jobsearch-JobInfoHeader-title-container, h1", 
-        "#jobDescriptionText, .jobsearch-jobDescriptionText, [class*='description'], [class*='job-detail'], main, article"
+        "#jobDescriptionText, .jobsearch-jobDescriptionText, [class*='description'], [class*='job-detail'], [data-automation-id='jobPostingDescription'], main, article"
       );
       if (httpRes.fetched) {
         ctx.recordTelemetry?.("httpSuccessful");
@@ -193,11 +203,63 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   const doExtract = async () => {
     try {
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
-      await jitter(300, 800);
-      const container = page.locator("#jobDescriptionText, .jobsearch-jobDescriptionText, [class*='description'], [class*='job-detail'], main, article").first();
-      const rawHtml = await container.innerHTML().catch(() => "");
-      const rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-      return { fetched: true, rawHtml, rawText, fetchDurationMs: Date.now() - t0 };
+      await jitter(400, 900);
+
+      // Check current page URL (might have followed an external ATS redirect from /rc/clk)
+      const currentUrl = page.url();
+      const isExternalAts = !currentUrl.includes("indeed.com");
+
+      const candidateSelectors = [
+        "#jobDescriptionText",
+        ".jobsearch-jobDescriptionText",
+        "[data-testid='jobsearch-JobComponent-description']",
+        "[data-automation-id='jobPostingDescription']", // Workday
+        "#content", // Greenhouse
+        ".posting-requirements", // Lever
+        ".job-description",
+        "#job-description",
+        ".job__description",
+        ".job-details",
+        ".description__text",
+        "[class*='JobDescription']",
+        "main",
+        "article",
+        "[role='main']",
+      ];
+
+      let rawHtml = "";
+      let rawText = "";
+
+      for (const sel of candidateSelectors) {
+        const container = page.locator(sel).first();
+        const txt = ((await container.textContent({ timeout: 1000 }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
+        if (txt.length >= 200) {
+          rawText = txt;
+          rawHtml = (await container.innerHTML().catch(() => "")) || "";
+          break;
+        }
+      }
+
+      // Fallback: If no single container >= 200 chars, try the first non-empty container or body
+      if (!rawText) {
+        const container = page.locator("#jobDescriptionText, .jobsearch-jobDescriptionText, [class*='description'], [class*='job-detail'], main, article").first();
+        rawHtml = (await container.innerHTML().catch(() => "")) || "";
+        rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+      }
+
+      const trimmedText = rawText.trim();
+      if (trimmedText.length < 200) {
+        ctx.logger?.(`[Indeed] Rejecting sparse description (${trimmedText.length} chars) for ${url}`);
+        return {
+          fetched: false,
+          fetchError: `Sparse job description rejected (${trimmedText.length} < 200 chars)`,
+          rawHtml: "",
+          rawText: "",
+          fetchDurationMs: Date.now() - t0,
+        };
+      }
+
+      return { fetched: true, rawHtml, rawText: trimmedText, fetchDurationMs: Date.now() - t0 };
     } catch (err: any) {
       return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
     }

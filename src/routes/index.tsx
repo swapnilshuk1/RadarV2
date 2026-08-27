@@ -184,7 +184,7 @@ function Shortlist() {
   );
 
   const sparseOps = useMemo(
-    () => remaining.filter((o) => o.decision === "SPARSE_SPEC"),
+    () => remaining.filter((o) => (o as any).evaluationState === "SPARSE_SPEC"),
     [remaining]
   );
 
@@ -552,7 +552,7 @@ export function resolveShortlistCardScore(
   o: Opportunity,
   brief?: { qualityScore?: number | null }
 ): { rawScore: number | null | undefined; scoreDisplay: string | number } {
-  const isSparse = o.decision === "SPARSE_SPEC";
+  const isSparse = (o as any).evaluationState === "SPARSE_SPEC";
   const rawScore = brief?.qualityScore ?? o.engineRecommendation?.qualityScore ?? o.recommendationResult?.score;
   const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
   return { rawScore, scoreDisplay };
@@ -567,18 +567,18 @@ export interface ShortlistCardBadgeState {
 }
 
 export function resolveShortlistCardBadgeState(o: Opportunity): ShortlistCardBadgeState {
-  const isSparse = o.decision === "SPARSE_SPEC";
+  const isSparse = (o as any).evaluationState === "SPARSE_SPEC";
   const engineVerdict = o.engineRecommendation?.engineVerdict || o.decision || "PURSUE";
   
   const primaryLabel = isSparse ? "needs more signal" : engineVerdict.toLowerCase();
   
   const badgeClass = 
-    engineVerdict === "CONSIDER" 
-      ? "badge-consider" 
-      : engineVerdict === "PASS" 
-        ? "badge-pass" 
-        : (isSparse || engineVerdict === "SPARSE_SPEC")
-          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+    isSparse
+      ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+      : engineVerdict === "CONSIDER" 
+        ? "badge-consider" 
+        : engineVerdict === "PASS" 
+          ? "badge-pass" 
           : "badge-pursue";
           
   const isStale = o.reviewWorkflowState === "REVIEWED_STALE" || o.reviewWorkflowState === "REVIEWED_UNKNOWN";
@@ -625,7 +625,7 @@ function ShortlistCardRow({
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
   const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
-  const isSparse = o.decision === "SPARSE_SPEC";
+  const isSparse = (o as any).evaluationState === "SPARSE_SPEC";
   const { rawScore, scoreDisplay } = resolveShortlistCardScore(o, brief);
   const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
 

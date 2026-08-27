@@ -50,16 +50,7 @@ export const getOpportunityDetailsFn = createServerFn({ method: "GET" })
   .validator((d: string) => d)
   .handler(async ({ data: jobHash }) => {
     const user = await requireAuthUser();
-    const [opportunity, adj] = await Promise.all([
-      OpportunityService.getForUser(user.id, jobHash),
-      OpportunityService.getAdjacentInfo(user.id, jobHash),
-    ]);
-    return {
-      opportunity,
-      currentIndex: adj.currentIndex,
-      totalCount: adj.totalCount,
-      neighbors: { prev: adj.prev, next: adj.next },
-    };
+    return OpportunityService.getDetailsForUser(user.id, jobHash);
   });
 
 

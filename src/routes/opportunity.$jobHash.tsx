@@ -100,28 +100,31 @@ function OpportunityBriefView() {
   );
 }
 
-export function getFocusTopic(o: any, jobProj: any) {
-  const driver = o.primaryDriver;
-  if (driver && typeof driver === "string" && !driver.toLowerCase().startsWith("head") && driver.length > 5) {
-    return driver;
-  }
-
-  if (jobProj.trueExecutiveMandate) {
+export function getFocusTopic(o: any, jobProj: any): string {
+  if (jobProj?.trueExecutiveMandate) {
     const mandateMap: Record<string, string> = {
       COMMERCIAL_EXPANSION: "commercial growth & market expansion",
       TRANSFORMATION: "digital & operational transformation",
       TURNAROUND: "operational restructuring & revenue repair",
       GOVERNANCE: "pipeline & platform governance",
-      SCALE_UP: "scaling GTM infrastructure"
+      SCALE_UP: "scaling GTM infrastructure",
     };
     if (mandateMap[jobProj.trueExecutiveMandate]) {
       return mandateMap[jobProj.trueExecutiveMandate];
     }
   }
 
-  const coreCap = jobProj.capabilities?.find((c: any) => c.importance === "Core" || c.confidence > 0.7);
-  if (coreCap && coreCap.name) {
+  if (o?.mandateArchetype && typeof o.mandateArchetype === "string" && o.mandateArchetype.length < 40) {
+    return o.mandateArchetype.toLowerCase();
+  }
+
+  const coreCap = jobProj?.capabilities?.find((c: any) => c.importance === "Core" || c.confidence > 0.7);
+  if (coreCap && coreCap.name && coreCap.name.length < 40) {
     return coreCap.name.toLowerCase();
+  }
+
+  if (o?.domain && typeof o.domain === "string" && o.domain.length < 40) {
+    return `${o.domain.toLowerCase()} expansion`;
   }
 
   return "commercial growth and market expansion";

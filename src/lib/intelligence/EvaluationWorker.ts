@@ -1,9 +1,10 @@
 import crypto from "crypto";
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
-import { AuthContext, authorizePersonScope } from "@/lib/security/auth";
-import type { OpportunitySource } from "@/data/opportunity-fixtures";
+import { AuthContext, authorizePersonScope, type AuthorizedPersonScope } from "@/lib/security/auth";
 import { runEngineSingle } from "./engine";
-import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
+import { validateCandidateProjection, DEFAULT_CANDIDATE_PROJECTION } from "../domain/candidate_projection";
+import { TenantScopedPersonStore } from "@/data/sqlite/repositories/TenantScopedPersonStore";
+import { computeEvaluationIdentity } from "@/lib/domain/evaluation_fingerprint";
 
 export interface WorkerOptions {
   adapter?: DatabaseAdapter;
@@ -34,9 +35,17 @@ export class EvaluationWorker {
   public workerId: string;
   private db: DatabaseAdapter;
 
-  constructor(workerId?: string, options?: WorkerOptions) {
-    this.workerId = workerId || `worker_${crypto.randomUUID().slice(0, 8)}`;
-    this.db = options?.adapter || getDatabaseAdapter();
+  constructor(workerIdOrDb?: string | DatabaseAdapter, optionsOrWorkerId?: WorkerOptions | string) {
+    if (typeof workerIdOrDb === "string") {
+      this.workerId = workerIdOrDb;
+      this.db = (optionsOrWorkerId as WorkerOptions)?.adapter || getDatabaseAdapter();
+    } else if (workerIdOrDb && typeof workerIdOrDb === "object") {
+      this.db = workerIdOrDb as DatabaseAdapter;
+      this.workerId = (typeof optionsOrWorkerId === "string" ? optionsOrWorkerId : undefined) || `worker_${crypto.randomUUID().slice(0, 8)}`;
+    } else {
+      this.workerId = `worker_${crypto.randomUUID().slice(0, 8)}`;
+      this.db = getDatabaseAdapter();
+    }
   }
 
   public async claimNextJob(): Promise<ClaimedJob | null> {
@@ -122,8 +131,13 @@ export class EvaluationWorker {
         job_title: string;
         company_name: string;
         location: string;
+        acquisition_status: string;
+        acquisition_quality: string;
+        lifecycle_state: string;
+        evidence_state: string;
       }>(
-        `SELECT raw_content, job_title, company_name, location 
+        `SELECT raw_content, job_title, company_name, location,
+                acquisition_status, acquisition_quality, lifecycle_state, evidence_state 
          FROM opportunity_versions 
          WHERE canonical_job_id = ? AND id = ?`,
         [job.canonicalJobId, job.opportunityVersion]
@@ -135,8 +149,84 @@ export class EvaluationWorker {
         );
       }
 
-      if (versionRow.raw_content.includes("FAIL_FOR_TEST")) {
+      if ((versionRow.raw_content || "").includes("FAIL_FOR_TEST")) {
         throw new Error("[EvaluationWorker] Simulated worker processing failure");
+      }
+
+      const isAcquired = versionRow.acquisition_status === "ACQUIRED";
+      const isLifecycleActive = versionRow.lifecycle_state === "ACTIVE";
+
+      // Dual Guard: Acquisition Trustworthiness + Active Lifecycle
+      if (!isAcquired || !isLifecycleActive) {
+        const evalState = (versionRow.lifecycle_state === "EXPIRED" || versionRow.lifecycle_state === "REMOVED_404")
+          ? "EXPIRED"
+          : (versionRow.acquisition_status === "CAPTURE_FAILED" || versionRow.acquisition_status === "RECOVERY_FAILED")
+          ? "ACQUISITION_FAILED"
+          : "ACQUISITION_PENDING";
+
+        const evalIdentity = computeEvaluationIdentity(
+          job.canonicalJobId,
+          job.opportunityVersion,
+          job.evaluationContextFingerprint
+        );
+        const matId = `mat_${crypto.randomUUID()}`;
+
+        return await this.db.transaction<WorkerProcessingResult>(async (tx) => {
+          const leaseCheck = await tx.one<{ id: string }>(
+            `SELECT id FROM evaluation_jobs WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
+            [job.id, this.workerId, job.leaseToken]
+          );
+          if (!leaseCheck) {
+            return {
+              status: "stale_lease_lost",
+              jobId: job.id,
+              error: "Lease token was lost or replaced before completion",
+            };
+          }
+
+          await tx.execute(
+            `INSERT INTO materialized_evaluations (
+               id, tenant_id, person_id, canonical_job_id, opportunity_version,
+               evaluation_context_fingerprint, evaluation_state, decision, quality_score,
+               rationale, evidence_ids, evaluation_json, materialized_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
+             DO UPDATE SET
+               evaluation_state = EXCLUDED.evaluation_state,
+               decision = EXCLUDED.decision,
+               quality_score = EXCLUDED.quality_score,
+               rationale = EXCLUDED.rationale,
+               evidence_ids = EXCLUDED.evidence_ids,
+               evaluation_json = EXCLUDED.evaluation_json,
+               materialized_at = CURRENT_TIMESTAMP`,
+            [
+              matId,
+              job.tenantId,
+              job.personId,
+              job.canonicalJobId,
+              job.opportunityVersion,
+              job.evaluationContextFingerprint,
+              evalState,
+              JSON.stringify({ status: evalState, reason: "Bypassed evaluation: capture untrusted or job inactive" }),
+              JSON.stringify([]),
+              JSON.stringify({ evaluationState: evalState, bypassed: true }),
+            ]
+          );
+
+          await tx.execute(
+            `UPDATE evaluation_jobs
+             SET status = 'completed',
+                 completed_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
+            [job.id, this.workerId, job.leaseToken]
+          );
+
+          return {
+            status: "completed",
+            jobId: job.id,
+            decision: null as any,
+          };
+        });
       }
       
       let oppSource: OpportunitySource;
@@ -165,15 +255,23 @@ export class EvaluationWorker {
       if (!ctxRow) {
         throw new Error(`[EvaluationWorker] Missing evaluation context snapshot for fingerprint: ${job.evaluationContextFingerprint}`);
       }
-      
-      const snapshotPayload = JSON.parse(ctxRow.payload_json);
-      const builder = new CandidateProjectionBuilderImpl();
-      let projection;
-      if (snapshotPayload && snapshotPayload.identity && snapshotPayload.executiveIdentity) {
-        projection = builder.fromProfile(snapshotPayload);
-      } else {
-        const { candidateProfile } = await import("@/data/candidate-profile");
-        projection = builder.fromProfile(candidateProfile);
+
+      // Authoritative Candidate Profile Resolution for (job.tenantId, job.personId)
+      // 1. Authoritative candidate projection resolution via TenantScopedPersonStore
+      const scope: AuthorizedPersonScope = {
+        tenantId: job.tenantId,
+        personId: job.personId,
+      };
+      const personStore = new TenantScopedPersonStore(this.db, scope);
+      const rawProjection = await personStore.getLatestProjection(job.personId);
+      const projection = rawProjection || DEFAULT_CANDIDATE_PROJECTION;
+
+      // 2. CandidateProjection integrity verification
+      const validation = validateCandidateProjection(projection);
+      if (!validation.valid) {
+        throw new Error(
+          `[EvaluationWorker] Authoritative candidate projection for person '${job.personId}' failed integrity check: missing [${validation.missingFields.join(", ")}]`
+        );
       }
 
       const presented = runEngineSingle(
@@ -183,11 +281,18 @@ export class EvaluationWorker {
         [oppSource]
       );
 
-      const verb = presented?.record?.verb || "CONSIDER";
-      const decision = verb === "PURSUE" ? "PURSUE" : verb === "PASS" ? "PASS" : "CONSIDER";
-      const score = presented?.record?.priority ?? 50;
+      const rawVerb = presented?.record?.verb || presented?.opportunity?.decision || "CONSIDER";
 
-      const matId = `mat_${job.canonicalJobId}_${job.opportunityVersion}_${job.evaluationContextFingerprint.slice(0, 10)}`;
+      const isGenuinelySparse =
+        (rawVerb === "SPARSE_SPEC" || versionRow.evidence_state === "GENUINELY_SPARSE") &&
+        isAcquired &&
+        versionRow.acquisition_quality === "COMPLETE";
+
+      const evaluationState = isGenuinelySparse ? "SPARSE_SPEC" : "EVALUATED";
+      const decision = isGenuinelySparse ? null : (rawVerb === "PURSUE" ? "PURSUE" : rawVerb === "PASS" ? "PASS" : "CONSIDER");
+      const score = isGenuinelySparse ? null : (presented?.record?.priority ?? 50);
+
+      const matId = `mat_${crypto.randomUUID()}`;
 
       const workerResult = await this.db.transaction<WorkerProcessingResult>(async (tx) => {
         const leaseCheck = await tx.one<{ id: string }>(
@@ -205,11 +310,18 @@ export class EvaluationWorker {
         await tx.execute(
           `INSERT INTO materialized_evaluations (
              id, tenant_id, person_id, canonical_job_id, opportunity_version,
-             evaluation_context_fingerprint, decision, quality_score,
+             evaluation_context_fingerprint, evaluation_state, decision, quality_score,
              rationale, evidence_ids, evaluation_json, materialized_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-           ON CONFLICT(canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
-           DO NOTHING`,
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+           ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
+           DO UPDATE SET
+             evaluation_state = EXCLUDED.evaluation_state,
+             decision = EXCLUDED.decision,
+             quality_score = EXCLUDED.quality_score,
+             rationale = EXCLUDED.rationale,
+             evidence_ids = EXCLUDED.evidence_ids,
+             evaluation_json = EXCLUDED.evaluation_json,
+             materialized_at = CURRENT_TIMESTAMP`,
           [
             matId,
             job.tenantId,
@@ -217,6 +329,7 @@ export class EvaluationWorker {
             job.canonicalJobId,
             job.opportunityVersion,
             job.evaluationContextFingerprint,
+            evaluationState,
             decision,
             score,
             JSON.stringify(presented?.record?.explanation || {}),
@@ -244,7 +357,7 @@ export class EvaluationWorker {
         return {
           status: "completed",
           jobId: job.id,
-          decision,
+          decision: decision as any,
         };
       });
 
@@ -259,12 +372,13 @@ export class EvaluationWorker {
           `UPDATE evaluation_jobs
            SET status = 'pending',
                attempts = ?,
+               last_error = ?,
                next_attempt_at = datetime('now', '+' || ? || ' seconds'),
                locked_by = NULL,
                lease_token = NULL,
                locked_at = NULL
            WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-          [nextAttemptNumber, backoffSeconds, job.id, this.workerId, job.leaseToken]
+          [nextAttemptNumber, errorMsg, backoffSeconds, job.id, this.workerId, job.leaseToken]
         );
 
         if (retryRes.rowsAffected === 0) {
@@ -317,5 +431,50 @@ export class EvaluationWorker {
       return null;
     }
     return this.processJob(job);
+  }
+
+  /**
+   * Drains all pending evaluation jobs in the queue until empty or maxJobs reached.
+   * Enables autonomous pipeline completion during scrape runs or background processing.
+   */
+  public async drainQueue(options?: { maxJobs?: number; timeoutMs?: number; concurrency?: number }): Promise<{
+    processed: number;
+    completed: number;
+    failed: number;
+  }> {
+    const maxJobs = options?.maxJobs ?? 1000;
+    const timeoutMs = options?.timeoutMs ?? 180000;
+    const concurrency = Math.max(1, options?.concurrency ?? 3);
+    const startTime = Date.now();
+    let processed = 0;
+    let completed = 0;
+    let failed = 0;
+
+    const runWorkerLoop = async (workerIdx: number) => {
+      const workerInstance = new EvaluationWorker(this.db, `${this.workerId}_${workerIdx}`);
+      let emptyPolls = 0;
+      while (processed < maxJobs && (Date.now() - startTime) < timeoutMs) {
+        const result = await workerInstance.pollAndProcessNext();
+        if (!result) {
+          emptyPolls++;
+          if (emptyPolls >= 3) {
+            break; // Queue is fully drained
+          }
+          await new Promise((r) => setTimeout(r, 150));
+          continue;
+        }
+        emptyPolls = 0;
+        processed++;
+        if (result.status === "completed") {
+          completed++;
+        } else {
+          failed++;
+        }
+      }
+    };
+
+    await Promise.all(Array.from({ length: concurrency }, (_, i) => runWorkerLoop(i)));
+
+    return { processed, completed, failed };
   }
 }

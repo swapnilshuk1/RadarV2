@@ -6,8 +6,9 @@
  */
 
 import type { FailureClass } from "./failure-taxonomy";
+import type { AcquisitionQuality } from "../domain/canonical_acquisition";
 
-export type AcquisitionQuality = "COMPLETE" | "PARTIAL" | "DEGRADED" | "INVALID";
+export type { AcquisitionQuality };
 export type ValidationConfidence = "HIGH" | "MEDIUM" | "LOW" | "UNUSABLE";
 
 export interface ValidationResult {
@@ -60,8 +61,8 @@ export class ResponseValidator {
     }
 
     // 4. Length & Shell Validation
-    const desc = payload.extractedDescription || "";
-    const descLen = desc.trim().length;
+    const desc = (payload.extractedDescription || "").trim();
+    const descLen = desc.length;
 
     if (descLen === 0 && html.length < 300) {
       return { isValid: false, quality: "INVALID", confidence: "UNUSABLE", failureClass: "EMPTY_CONTENT" };
@@ -72,26 +73,38 @@ export class ResponseValidator {
     const company = payload.extractedCompany?.trim() || "";
 
     if (!title && !company && descLen < 200) {
-      return { isValid: false, quality: "DEGRADED", confidence: "LOW", failureClass: "PARTIAL_CONTENT" };
+      return { isValid: false, quality: "INVALID", confidence: "LOW", failureClass: "PARTIAL_CONTENT" };
     }
 
     // 6. Quality & Confidence Rating
-    if (descLen >= 500 && title && company) {
+    if (descLen >= 500) {
       return {
         isValid: true,
         quality: "COMPLETE",
-        confidence: "HIGH",
+        confidence: (title && company) ? "HIGH" : "MEDIUM",
         extractedTitle: title,
         extractedCompany: company,
         extractedDescription: desc
       };
     }
 
-    if (descLen >= 200 || title || company) {
+    if (descLen >= 200) {
       return {
         isValid: true,
         quality: "PARTIAL",
-        confidence: "MEDIUM",
+        confidence: (title || company) ? "MEDIUM" : "LOW",
+        extractedTitle: title,
+        extractedCompany: company,
+        extractedDescription: desc
+      };
+    }
+
+    if (descLen > 0 && descLen < 200) {
+      return {
+        isValid: false,
+        quality: "MINIMAL",
+        confidence: "LOW",
+        failureClass: "PARTIAL_CONTENT",
         extractedTitle: title,
         extractedCompany: company,
         extractedDescription: desc
@@ -99,9 +112,10 @@ export class ResponseValidator {
     }
 
     return {
-      isValid: true,
-      quality: "DEGRADED",
-      confidence: "LOW",
+      isValid: false,
+      quality: "INVALID",
+      confidence: "UNUSABLE",
+      failureClass: "EMPTY_CONTENT",
       extractedTitle: title,
       extractedCompany: company,
       extractedDescription: desc

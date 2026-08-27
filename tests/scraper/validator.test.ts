@@ -25,7 +25,7 @@ describe("ResponseValidator HTTP 404 Handling", () => {
     });
     
     expect(result.isValid).toBe(true);
-    expect(result.quality).toBe("PARTIAL"); // It might be PARTIAL since there's no explicitly extracted dimensions in validate
+    expect(result.quality).toBe("COMPLETE");
     expect(result.failureClass).toBeUndefined();
   });
 

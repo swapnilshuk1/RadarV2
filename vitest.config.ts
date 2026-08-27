@@ -15,6 +15,8 @@ export default defineConfig({
       "tests/semantic/**/*.test.ts",
       "tests/persistence/**/*.test.ts",
       "tests/scraper/**/*.test.ts",
+      "tests/acquisition/**/*.test.ts",
+      "tests/pipeline/**/*.test.ts",
     ],
     exclude: [
       "tests/regression/**",

@@ -1,7 +1,11 @@
+import type { EvaluationState } from "./canonical_acquisition";
+
+export type { EvaluationState };
+
 export interface EvaluationMetrics {
-  overallScore: number;       // Normalized [0..100]
-  capabilityFitScore: number; // [0..100]
-  alignmentScore: number;     // [0..100]
+  overallScore: number | null;       // Normalized [0..100], null if un-evaluable / sparse
+  capabilityFitScore: number | null; // [0..100]
+  alignmentScore: number | null;     // [0..100]
   evidenceSufficiencyIndex: number; // ESI [0.0..1.0]
   certainty: number;          // [0.0..1.0]
 }
@@ -23,10 +27,11 @@ export interface EvaluationFindings {
 
 export interface EvaluationResult {
   jobHash: string;
+  evaluationState: EvaluationState;
   metrics: EvaluationMetrics;
   findings: EvaluationFindings;
   recommendation: {
-    verb: "PURSUE" | "CONSIDER" | "PASS";
+    verb: "PURSUE" | "CONSIDER" | "PASS" | "SPARSE_SPEC" | null;
     rationale: string;
     primaryConcern?: string;
   };

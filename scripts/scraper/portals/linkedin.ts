@@ -248,7 +248,21 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     const container = page.locator(".jobs-description__content, .description__text, .show-more-less-html__markup").first();
     const rawHtml = await container.innerHTML().catch(() => "");
     const rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-    return { fetched: true, rawHtml, rawText, fetchDurationMs: Date.now() - t0, httpStatus: effectiveStatus };
+
+    const trimmedText = rawText.trim();
+    if (trimmedText.length < 200) {
+      ctx.logger?.(`[LinkedIn] Rejecting sparse description (${trimmedText.length} chars) for ${url}`);
+      return {
+        fetched: false,
+        fetchError: `Sparse job description rejected (${trimmedText.length} < 200 chars)`,
+        rawHtml: "",
+        rawText: "",
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: effectiveStatus,
+      };
+    }
+
+    return { fetched: true, rawHtml, rawText: trimmedText, fetchDurationMs: Date.now() - t0, httpStatus: effectiveStatus };
   } catch (err: any) {
     return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
   } finally {

@@ -1,0 +1,16 @@
+{
+  "originalUrl": "https://www.naukri.com/job-listings-software-engineer-oracle-india-pvt-ltd-gandhinagar-bengaluru-hyderabad-pune-chennai-mumbai-2-to-6-years-130824006093",
+  "finalUrl": "https://www.naukri.com/jobs-in-india?expJD=true",
+  "redirectChain": [
+    "https://www.naukri.com/jobs-in-india?expJD=true"
+  ],
+  "pageTitle": "",
+  "hydrationCondition": "",
+  "selectorsAttempted": [],
+  "selectorSucceeded": "",
+  "rawHtmlLength": 0,
+  "extractedTextLength": 0,
+  "wordCount": 0,
+  "validatorResult": null,
+  "failureClassification": "PARTIAL_CONTENT"
+}

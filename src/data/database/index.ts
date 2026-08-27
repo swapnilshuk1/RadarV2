@@ -151,7 +151,14 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
       console.log("─────────────────────────────\n");
       _hasLoggedStartup = true;
     }
-    _cachedAdapter = new TursoAdapter(tursoUrl, tursoToken);
+    let adapter: DatabaseAdapter = new TursoAdapter(tursoUrl, tursoToken);
+    if (process.env.RADAR_FORENSICS === "1") {
+      try {
+        const { DiagnosticDatabaseAdapter } = require("../../../scripts/forensics/forensic-adapter");
+        adapter = new DiagnosticDatabaseAdapter(adapter);
+      } catch {}
+    }
+    _cachedAdapter = adapter;
     return _cachedAdapter;
   }
 

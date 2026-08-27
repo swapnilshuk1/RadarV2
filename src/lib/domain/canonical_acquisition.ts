@@ -1,9 +1,42 @@
 /**
- * M4 Domain Models: Canonical Acquisition & Search Plan Candidates
+ * M4 Domain Models: Canonical Acquisition, Provenance & Search Plan Candidates
  * 
- * These types establish the boundary between global data acquisition
- * and tenant-scoped attention projections, ensuring strict isolation.
+ * These types establish the boundary between global data acquisition,
+ * orthogonal provenance state dimensions, and tenant-scoped attention projections.
  */
+
+export type AcquisitionStatus =
+  | 'UNKNOWN'
+  | 'ACQUIRED'
+  | 'RECOVERY_PENDING'
+  | 'RECOVERY_FAILED'
+  | 'CAPTURE_FAILED';
+
+export type AcquisitionQuality =
+  | 'UNKNOWN'
+  | 'COMPLETE'
+  | 'PARTIAL'
+  | 'MINIMAL'
+  | 'INVALID';
+
+export type LifecycleState =
+  | 'UNKNOWN'
+  | 'ACTIVE'
+  | 'EXPIRED'
+  | 'REMOVED_404';
+
+export type EvidenceState =
+  | 'UNVERIFIED'
+  | 'SUFFICIENT'
+  | 'GENUINELY_SPARSE';
+
+export type EvaluationState =
+  | 'UNKNOWN'
+  | 'ACQUISITION_PENDING'
+  | 'ACQUISITION_FAILED'
+  | 'SPARSE_SPEC'
+  | 'EVALUATED'
+  | 'EXPIRED';
 
 export interface CanonicalOpportunity {
   id: string; // Deterministic SHA256 of Canonical Serialization
@@ -24,6 +57,11 @@ export interface OpportunityVersion {
   location: string | null;
   employmentType: string | null;
   rawContent: string;
+  acquisitionStatus: AcquisitionStatus;
+  acquisitionQuality: AcquisitionQuality;
+  failureClass?: string | null;
+  lifecycleState: LifecycleState;
+  evidenceState: EvidenceState;
   createdAt: string;
 }
 
@@ -37,4 +75,29 @@ export interface SearchPlanCandidate {
   opportunityVersion: string;
   attentionDecision: AttentionDecision;
   createdAt: string;
+}
+
+export type RecoveryQueueStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'RECOVERED'
+  | 'EXHAUSTED'
+  | 'GENUINELY_SPARSE';
+
+export interface RecoveryQueueItem {
+  id: string;
+  tenantId: string;
+  canonicalJobId: string;
+  opportunityVersionId: string;
+  source: string;
+  canonicalUrl: string;
+  reason: string;
+  failureClass: string;
+  attemptCount: number;
+  status: RecoveryQueueStatus;
+  nextAttemptAt: string;
+  lastAttemptAt?: string | null;
+  lastError?: string | null;
+  createdAt: string;
+  completedAt?: string | null;
 }

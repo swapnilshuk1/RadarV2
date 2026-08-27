@@ -35,6 +35,7 @@ export class RunController {
   listingFailures: Map<string, number> = new Map();
   detailFailures: Map<string, number> = new Map();
   failedHttpUrls: Map<string, string> = new Map();
+  private isFinalized: boolean = false;
 
   init(opts: RunControllerOptions): { resumed: boolean } {
     const latest = readJsonSafe<{ runId: string }>(LATEST_POINTER);
@@ -225,6 +226,9 @@ export class RunController {
   }
 
   finalize(status: UnitStatus | "completed" | "failed" | "aborted"): void {
+    if (this.isFinalized) return;
+    this.isFinalized = true;
+
     this.manifest.status = (["completed", "failed", "aborted"].includes(status as string)
       ? status
       : "completed") as RunManifest["status"];

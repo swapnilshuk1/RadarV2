@@ -99,18 +99,18 @@ export function classifyOpportunityCategories(o: {
   trueExecutiveMandate?: string;
   executiveMission?: { intent?: string };
   evaluationStatus?: string;
+  evaluationState?: string;
 }): CategoryId[] {
   const categories: CategoryId[] = ["all"];
 
   const role = (o.role || "").toLowerCase();
   const desc = (o.description || "").toLowerCase();
-  const rec = (o.recommendation || "").toLowerCase();
-  const rawText = `${role} ${desc} ${rec}`;
+  const rawText = `${role} ${desc}`;
   const mandate = (o.trueExecutiveMandate || "").toUpperCase();
   const intent = (o.executiveMission?.intent || "").toUpperCase();
 
-  // 1. Needs More Signal
-  if (o.evaluationStatus === "SPARSE_SPEC" || rec.includes("sparse") || mandate === "SPARSE_SPEC") {
+  // 1. Needs More Signal - Strictly orthogonal evaluation state derived
+  if (o.evaluationState === "SPARSE_SPEC") {
     categories.push("needs_more_signal");
   }
 

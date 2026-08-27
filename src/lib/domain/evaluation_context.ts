@@ -63,6 +63,8 @@ export interface EvaluationIdentity {
   idempotencyKey: string; // SHA-256 of (canonicalJobId, opportunityVersion, evaluationContextFingerprint)
 }
 
+import type { EvaluationState } from "./canonical_acquisition";
+
 export type EvaluationDecision = "PURSUE" | "CONSIDER" | "PASS";
 
 export interface MaterializedEvaluation {
@@ -72,8 +74,9 @@ export interface MaterializedEvaluation {
   canonicalJobId: string;
   opportunityVersion: string;
   evaluationContextFingerprint: string;
-  decision: EvaluationDecision;
-  qualityScore: number;
+  evaluationState: EvaluationState;
+  decision: EvaluationDecision | null;
+  qualityScore: number | null;
   rationale: string;
   evidenceIds: string[];
   evaluationJson: string; // Serialized representation

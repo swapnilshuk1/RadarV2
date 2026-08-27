@@ -118,6 +118,7 @@ export class SqliteCanonicalServingStore {
          ov.raw_content as description,
          spc.attention_decision as attention_decision,
          me.id as evaluation_id,
+         me.evaluation_state as evaluation_state,
          me.decision as engine_decision,
          me.quality_score as quality_score,
          me.rationale as rationale,
@@ -176,7 +177,8 @@ export class SqliteCanonicalServingStore {
       if (targetCategory) {
         const oppPartial = {
           role: r.job_title || rawParsed.role || rawParsed.title,
-          evaluationStatus: rawParsed.evaluationStatus || "COMPLETE",
+          evaluationStatus: rawParsed.evaluationStatus || (r.evaluation_state === "SPARSE_SPEC" ? "SPARSE_SPEC" : "COMPLETE"),
+          evaluationState: r.evaluation_state,
           recommendation: r.engine_decision || rawParsed.engineRecommendation?.engineVerdict,
           description: r.job_title || rawParsed.role,
         };
@@ -213,6 +215,9 @@ export class SqliteCanonicalServingStore {
       } else {
         opp = adaptLegacyEvaluation(rawParsed, candCtx, oppSource, userState);
       }
+
+      // Populate evaluationState
+      (opp as any).evaluationState = r.evaluation_state || "UNKNOWN";
 
       // Apply canonical effective decision resolver (M8.2)
       const canonicalEffectiveDecision = resolveEffectiveDecision({
@@ -394,6 +399,48 @@ export class SqliteCanonicalServingStore {
   }
 
   /**
+   * High-performance single-request loader for executive opportunity dossier.
+   * Resolves active evaluation context once and satisfies both target opportunity and adjacent neighbors.
+   */
+  async getOpportunityDetails(
+    scope: AuthorizedPersonScope,
+    jobHash: string,
+    options?: ServiceOptions
+  ): Promise<{
+    opportunity: Opportunity | undefined;
+    currentIndex: number;
+    totalCount: number;
+    neighbors: { prev: Opportunity | undefined; next: Opportunity | undefined };
+  }> {
+    const all = await this.listOpportunities(scope, options);
+    const totalCount = all.length;
+
+    const idx = all.findIndex((o) => o.jobHash === jobHash || (o as any).canonicalJobId === jobHash);
+    if (idx !== -1) {
+      const opportunity = all[idx];
+      return {
+        opportunity,
+        currentIndex: idx + 1,
+        totalCount: totalCount || 1,
+        neighbors: {
+          prev: idx > 0 ? all[idx - 1] : undefined,
+          next: idx < totalCount - 1 ? all[idx + 1] : undefined,
+        },
+      };
+    }
+
+    // Fallback: If opportunity is not in the active candidate list (e.g. direct deep-link or historical link),
+    // fetch single opportunity directly to preserve INV-DOSSIER-INDEPENDENCE.
+    const opportunity = await this.getOpportunity(scope, jobHash, options);
+    return {
+      opportunity,
+      currentIndex: 1,
+      totalCount: totalCount || 1,
+      neighbors: { prev: undefined, next: undefined },
+    };
+  }
+
+  /**
    * Computes authoritative canonical opportunity metrics for the authorized scope.
    */
   async getOpportunityMetrics(scope: AuthorizedPersonScope): Promise<CanonicalOpportunityMetrics> {
@@ -489,7 +536,7 @@ export class SqliteCanonicalServingStore {
       const cats = classifyOpportunityCategories({
         role: opp.role,
         evaluationStatus: (opp as any).evaluationStatus,
-        recommendation: (opp as any).recommendation,
+        evaluationState: (opp as any).evaluationState,
         description: opp.role,
       });
 

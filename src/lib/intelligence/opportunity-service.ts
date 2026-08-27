@@ -159,4 +159,24 @@ export class OpportunityService {
     const repos = getRepositories();
     return repos.canonicalServing.getAdjacentOpportunities(scope, jobHash);
   }
+
+  /**
+   * High-performance single-request loader for executive opportunity dossier.
+   * Resolves authorized scope once and retrieves opportunity with adjacent navigation metadata.
+   */
+  static async getDetailsForUser(
+    userId: string,
+    jobHash: string,
+    options?: ServiceOptions,
+    requestedTenantId?: string
+  ): Promise<{
+    opportunity: Opportunity | undefined;
+    currentIndex: number;
+    totalCount: number;
+    neighbors: { prev: Opportunity | undefined; next: Opportunity | undefined };
+  }> {
+    const scope = await resolveScope(userId, requestedTenantId);
+    const repos = getRepositories();
+    return repos.canonicalServing.getOpportunityDetails(scope, jobHash, options);
+  }
 }

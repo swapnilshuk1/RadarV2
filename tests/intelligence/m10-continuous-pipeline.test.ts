@@ -123,7 +123,9 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
       "021_evaluation_work_queue.sql",
       "023_canonical_posted_at.sql",
       "024_canonical_posting_precision.sql",
-      "025_canonical_decisions.sql"
+      "025_canonical_decisions.sql",
+      "026_canonical_acquisition_integrity.sql",
+      "027_materialized_evaluations_nullable_decision.sql"
     ];
 
     for (const file of migrationFiles) {
@@ -182,6 +184,27 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
         ontology_version, ontology_fingerprint, policy_version, profile_version, created_at
       ) VALUES (?, ?, ?, ?, '2.1.0', 'ont_fp_m10', 'v4_strict', 'prof_v1_m10', CURRENT_TIMESTAMP)
     `).run(contextFingerprintA, TENANT_A, PERSON_A, "sps_m10_a");
+
+    const candidateProjectionA = {
+      operatingLevel: { value: "STRATEGIC", confidence: 0.95, evidenceIds: ["ev_1"] },
+      workNature: { value: "STRATEGIC_WORK", confidence: 0.95, evidenceIds: ["ev_2"] },
+      decisionAuthority: { value: "ENTERPRISE", confidence: 0.95, evidenceIds: ["ev_3"] },
+      commercialScope: { value: "NONE", confidence: 0.95, evidenceIds: ["ev_4"] },
+      yearsOfExperience: 18,
+      coreCapabilities: ["SOFTWARE_ENGINEERING", "SYSTEM_ARCHITECTURE", "CLOUD_INFRASTRUCTURE", "TECH_LEADERSHIP"],
+      preferredLocations: ["Bengaluru", "Remote"],
+      preferredWorkModel: "HYBRID",
+      executiveThemes: ["cloud_infrastructure", "engineering_scale"],
+      attentionWindow: 4,
+      headspaceCapacityPerMonth: 2,
+    };
+
+    sqliteDb.prepare(`
+      INSERT INTO career_profiles (
+        id, person_id, timeline, skills, projection_json, projection_generated_at,
+        current_title, years_experience, archetype, preferred_work_model, created_at, updated_at
+      ) VALUES (?, ?, '[]', '[]', ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).run("cp_m10_a", PERSON_A, JSON.stringify(candidateProjectionA), "VP of Engineering & AI", 18, "Engineering & AI Leader", "HYBRID");
   });
 
   // ===========================================================================
