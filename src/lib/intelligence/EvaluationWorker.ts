@@ -5,6 +5,7 @@ import { runEngineSingle } from "./engine";
 import { validateCandidateProjection, DEFAULT_CANDIDATE_PROJECTION } from "../domain/candidate_projection";
 import { TenantScopedPersonStore } from "@/data/sqlite/repositories/TenantScopedPersonStore";
 import { computeEvaluationIdentity } from "@/lib/domain/evaluation_fingerprint";
+import type { OpportunitySource } from "@/data/opportunity-fixtures";
 
 export interface WorkerOptions {
   adapter?: DatabaseAdapter;
