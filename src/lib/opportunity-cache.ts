@@ -4,23 +4,25 @@
  * Enables zero-RPC client-side navigation between Shortlist/Queue views and Opportunity details.
  */
 
+import { type ServedOpportunity } from "../data/opportunity-fixtures";
+
 export interface OpportunityDetailsDTO {
-  opportunity: any;
+  opportunity: ServedOpportunity;
   currentIndex: number;
   totalCount: number;
   neighbors: {
-    prev?: any;
-    next?: any;
+    prev?: ServedOpportunity;
+    next?: ServedOpportunity;
   };
 }
 
 export class ClientOpportunityCache {
-  private static list: any[] | null = null;
+  private static list: ServedOpportunity[] | null = null;
 
   /**
    * Hydrates the client-side opportunity list.
    */
-  public static setList(list: any[]) {
+  public static setList(list: ServedOpportunity[]) {
     if (Array.isArray(list) && list.length > 0) {
       this.list = list;
     }
@@ -35,7 +37,7 @@ export class ClientOpportunityCache {
       return null;
     }
 
-    const index = this.list.findIndex((o) => o.jobHash === jobHash || o.id === jobHash);
+    const index = this.list.findIndex((o) => o.jobHash === jobHash || o.jobHash === jobHash);
     if (index < 0) return null;
 
     const opportunity = this.list[index];

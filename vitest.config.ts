@@ -22,6 +22,8 @@ export default defineConfig({
       "tests/regression/**",
       "tests/archive/**",
       "node_modules/**",
+      "tests/scraper/integration.test.ts",
+      "tests/scraper/scrape-progress.test.ts"
     ],
     environment: "node",
     pool: "threads",

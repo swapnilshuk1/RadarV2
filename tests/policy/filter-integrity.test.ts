@@ -182,6 +182,13 @@ describe("RADAR Phase 7.3 — Filter Population Integrity & Taxonomy Test Suite"
 
   it("CASE K & L: MetricIntegrityValidator enforces category bounds", async () => {
     const userA = makeUser("usr_case_k");
+    const db = getDatabaseAdapter();
+    const tenantId = `tenant_${userA}`;
+    await db.execute(`INSERT OR IGNORE INTO tenants (id, status) VALUES (?, 'active')`, [tenantId]);
+    await db.execute(`INSERT OR IGNORE INTO people (id, email, name, role, onboarded, email_verified, tenant_id) VALUES (?, ?, 'Test', 'user', 1, 1, ?)`, [userA, `${userA}@example.com`, tenantId]);
+    await db.execute(`INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status) VALUES (?, ?, 'user', '[]', 'active')`, [userA, tenantId]);
+    await db.execute(`INSERT OR IGNORE INTO search_plans (id, tenant_id, person_id, title, status, criteria_json) VALUES (?, ?, ?, 'Plan', 'active', '{}')`, [`sp_${userA}`, tenantId, userA]);
+    
     const metrics = await OpportunityService.getMetricsForUser(userA);
     expect(metrics.integrity.status).toBe("PASS");
 

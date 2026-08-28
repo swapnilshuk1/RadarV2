@@ -115,7 +115,7 @@ export class OpportunityService {
   /**
    * Lists all candidate opportunity DTOs for a specific user via the canonical joined query with dynamic contextual serving.
    */
-  static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string): Promise<Opportunity[]> {
+  static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity[]> {
     ensureWorkerDaemonStarted();
     const scope = await resolveScope(userId, requestedTenantId);
     const repos = getRepositories();
@@ -126,7 +126,7 @@ export class OpportunityService {
    * Gets a single computed opportunity DTO by hash strictly within the authorized canonical population.
    * Zero fallback to legacy un-scoped evaluators.
    */
-  static async getForUser(userId: string, jobHash: string, options?: ServiceOptions, requestedTenantId?: string): Promise<Opportunity | undefined> {
+  static async getForUser(userId: string, jobHash: string, options?: ServiceOptions, requestedTenantId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity | undefined> {
     const scope = await resolveScope(userId, requestedTenantId);
     const repos = getRepositories();
     return repos.canonicalServing.getOpportunity(scope, jobHash, options);
@@ -140,7 +140,7 @@ export class OpportunityService {
     jobHash: string,
     options?: ServiceOptions,
     requestedTenantId?: string
-  ): Promise<{ prev: Opportunity | undefined; next: Opportunity | undefined }> {
+  ): Promise<{ prev: import("../../data/opportunity-fixtures").ServedOpportunity | undefined; next: import("../../data/opportunity-fixtures").ServedOpportunity | undefined }> {
     const scope = await resolveScope(userId, requestedTenantId);
     const repos = getRepositories();
     const adj = await repos.canonicalServing.getAdjacentOpportunities(scope, jobHash);
@@ -154,7 +154,7 @@ export class OpportunityService {
     userId: string,
     jobHash: string,
     requestedTenantId?: string
-  ): Promise<{ currentIndex: number; totalCount: number; prev?: Opportunity; next?: Opportunity }> {
+  ): Promise<{ currentIndex: number; totalCount: number; prev?: import("../../data/opportunity-fixtures").ServedOpportunity; next?: import("../../data/opportunity-fixtures").ServedOpportunity }> {
     const scope = await resolveScope(userId, requestedTenantId);
     const repos = getRepositories();
     return repos.canonicalServing.getAdjacentOpportunities(scope, jobHash);
@@ -170,10 +170,10 @@ export class OpportunityService {
     options?: ServiceOptions,
     requestedTenantId?: string
   ): Promise<{
-    opportunity: Opportunity | undefined;
+    opportunity: import("../../data/opportunity-fixtures").ServedOpportunity | undefined;
     currentIndex: number;
     totalCount: number;
-    neighbors: { prev: Opportunity | undefined; next: Opportunity | undefined };
+    neighbors: { prev: import("../../data/opportunity-fixtures").ServedOpportunity | undefined; next: import("../../data/opportunity-fixtures").ServedOpportunity | undefined };
   }> {
     const scope = await resolveScope(userId, requestedTenantId);
     const repos = getRepositories();

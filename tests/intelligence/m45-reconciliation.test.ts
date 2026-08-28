@@ -40,33 +40,24 @@ class TestSqliteAdapter implements DatabaseAdapter {
   }
 }
 
+import { runMigrations } from "@/data/sqlite/migrations/runner";
+
 describe("Phase M4.5: Operational Reconciliation & Acquisition Audit", () => {
   let sqliteDb: Database.Database;
   let adapter: TestSqliteAdapter;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     sqliteDb = new Database(":memory:");
     sqliteDb.pragma("foreign_keys = ON");
-    const migrationFiles = [
-      "001_initial_schema.sql",
-      "009_profile_queryable_columns.sql",
-      "018_multi_tenant_foundation.sql",
-      "019_evaluation_context_and_read_model.sql",
-      "020_canonical_acquisition.sql",
-      "023_canonical_posted_at.sql",
-      "024_canonical_posting_precision.sql"
-    ];
-    for (const file of migrationFiles) {
-      const sql = fs.readFileSync(path.join(process.cwd(), "src/data/sqlite/migrations", file), "utf-8");
-      sqliteDb.exec(sql);
-    }
+    adapter = new TestSqliteAdapter(sqliteDb);
+    await runMigrations(adapter);
+
     sqliteDb.exec("INSERT INTO tenants (id, status) VALUES ('tenant_1', 'active')");
     sqliteDb.exec("INSERT INTO people (id, email, tenant_id) VALUES ('person_1', 'exec@test.com', 'tenant_1')");
     sqliteDb.exec(`INSERT INTO search_plans (id, tenant_id, person_id, status, title, criteria_json) VALUES 
       ('plan_1', 'tenant_1', 'person_1', 'active', 'VP Product', '{"targetRoles":["VP Product","Chief Product Officer"]}'),
       ('plan_2', 'tenant_1', 'person_1', 'active', 'Engineering', '{"targetRoles":["VP Engineering"]}')
     `);
-    adapter = new TestSqliteAdapter(sqliteDb);
   });
 
   test("1. Dual-write ingestion produces 100% reconciled canonical jobs, versions, and candidate projections", async () => {

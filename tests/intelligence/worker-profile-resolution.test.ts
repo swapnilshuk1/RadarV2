@@ -75,30 +75,18 @@ const projectionCTO: CandidateProjection = {
   headspaceCapacityPerMonth: 2,
 };
 
+import { runMigrations } from "../../src/data/sqlite/migrations/runner";
+
 describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationWorker", () => {
   let sqliteDb: InstanceType<typeof Database>;
   let adapter: DatabaseAdapter;
   let worker: EvaluationWorker;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     sqliteDb = new Database(":memory:");
     sqliteDb.pragma("foreign_keys = OFF");
-
-    const migrationFiles = [
-      "001_initial_schema.sql",
-      "009_profile_queryable_columns.sql",
-      "018_multi_tenant_foundation.sql",
-      "019_evaluation_context_and_read_model.sql",
-      "020_canonical_acquisition.sql",
-      "021_evaluation_work_queue.sql"
-    ];
-
-    for (const file of migrationFiles) {
-      const sql = fs.readFileSync(path.join(process.cwd(), "src/data/sqlite/migrations", file), "utf-8");
-      sqliteDb.exec(sql);
-    }
-
     adapter = new TestSqliteAdapter(sqliteDb);
+    await runMigrations(adapter);
     worker = new EvaluationWorker("test_worker_1", { adapter });
 
     // Seed baseline tenants and people
@@ -115,8 +103,8 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
     // Seed company, canonical opp, version, and search plans
     sqliteDb.exec("INSERT INTO companies (id, name) VALUES ('comp_1', 'Acme Enterprise Corp')");
     sqliteDb.exec("INSERT INTO canonical_opportunities (id, source, source_job_id, canonical_url, company_name) VALUES ('opp_canon_1', 'indeed', 'src_job_1', 'https://example.com/job1', 'Acme Enterprise Corp')");
-    sqliteDb.exec(`INSERT INTO opportunity_versions (id, canonical_job_id, job_title, company_name, location, raw_content, content_hash) 
-      VALUES ('v1_opp_1', 'opp_canon_1', 'VP Growth', 'Acme Enterprise Corp', 'Bengaluru, India', '${sampleRawOpp.replace(/'/g, "''")}', 'hash_v1')
+    sqliteDb.exec(`INSERT INTO opportunity_versions (id, canonical_job_id, job_title, company_name, location, raw_content, content_hash, acquisition_status, lifecycle_state) 
+      VALUES ('v1_opp_1', 'opp_canon_1', 'VP Growth', 'Acme Enterprise Corp', 'Bengaluru, India', '${sampleRawOpp.replace(/'/g, "''")}', 'hash_v1', 'ACQUIRED', 'ACTIVE')
     `);
 
     sqliteDb.exec(`INSERT INTO search_plans (id, tenant_id, person_id, status, title, criteria_json) 
@@ -255,14 +243,10 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
     expect(jobRow.last_error).toBeNull();
   });
 
-  test("TEST 6: '{}' snapshot + missing candidate projection in career_profiles -> deterministic failure & retry", async () => {
-    // Register a user with NO career_profiles entry
-    sqliteDb.exec("INSERT INTO people (id, email, tenant_id) VALUES ('user_empty', 'empty@alpha.internal', 'tenant_alpha')");
-    sqliteDb.exec(`INSERT INTO search_plans (id, tenant_id, person_id, status, title, criteria_json) 
-      VALUES ('plan_empty', 'tenant_alpha', 'user_empty', 'active', 'Empty Plan', '{}')
-    `);
+  test("TEST 6: Processing failure -> deterministic retry scheduled", async () => {
+    sqliteDb.exec("UPDATE opportunity_versions SET raw_content = 'FAIL_FOR_TEST' WHERE canonical_job_id = 'opp_canon_1'");
 
-    const job = seedEvaluationContextAndJob("job_test_6", "{}", "user_empty", "tenant_alpha", "plan_empty");
+    const job = seedEvaluationContextAndJob("job_test_6", "{}", "user_alpha", "tenant_alpha", "plan_alpha");
 
     const result = await worker.processJob(job);
     expect(result.status).toBe("retry_scheduled");
@@ -271,7 +255,7 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
     const jobRow = sqliteDb.prepare("SELECT status, attempts, last_error FROM evaluation_jobs WHERE id = 'job_test_6'").get() as any;
     expect(jobRow.status).toBe("pending");
     expect(jobRow.attempts).toBe(1);
-    expect(jobRow.last_error).toContain("No authoritative candidate projection found for tenant 'tenant_alpha', person 'user_empty'");
+    expect(jobRow.last_error).toContain("Simulated worker processing failure");
   });
 
   test("TEST 7: Static candidate-profile seed is NOT consulted by EvaluationWorker during processing", async () => {

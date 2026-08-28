@@ -40,6 +40,8 @@ class TestSqliteAdapter implements DatabaseAdapter {
   }
 }
 
+import { runMigrations } from "@/data/sqlite/migrations/runner";
+
 describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Lineage Contract", () => {
   let sqliteDb: Database.Database;
   let adapter: TestSqliteAdapter;
@@ -78,27 +80,11 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
     }
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     sqliteDb = new Database(":memory:");
     sqliteDb.pragma("foreign_keys = ON");
-
-    const migrationFiles = [
-      "001_initial_schema.sql",
-      "006_recreate_decisions.sql",
-      "009_profile_queryable_columns.sql",
-      "018_multi_tenant_foundation.sql",
-      "019_evaluation_context_and_read_model.sql",
-      "020_canonical_acquisition.sql",
-      "021_evaluation_work_queue.sql",
-      "025_canonical_decisions.sql"
-    ];
-
-    for (const file of migrationFiles) {
-      const sql = fs.readFileSync(path.join(process.cwd(), "src/data/sqlite/migrations", file), "utf-8");
-      sqliteDb.exec(sql);
-    }
-
     adapter = new TestSqliteAdapter(sqliteDb);
+    await runMigrations(adapter);
 
     // Setup tenant, person, and search plan
     sqliteDb.prepare(`INSERT INTO tenants (id, status, created_at, updated_at) VALUES (?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).run(TENANT_ID);
@@ -128,8 +114,8 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
     });
 
     sqliteDb.prepare(`
-      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, acquisition_status, lifecycle_state, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACQUIRED', 'ACTIVE', CURRENT_TIMESTAMP)
     `).run(oppVersion, canonicalJobId, "hash_001", "VP of Growth & Marketing", "Scale Corp", "Bengaluru", "Full-time", rawContentJson);
 
     sqliteDb.prepare(`
@@ -248,8 +234,8 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
     `).run(canonicalJobId, "LinkedIn", "det-job-missing", "https://linkedin.com/jobs/missing", "Missing Corp");
 
     sqliteDb.prepare(`
-      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, acquisition_status, lifecycle_state, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACQUIRED', 'ACTIVE', CURRENT_TIMESTAMP)
     `).run(oppVersion, canonicalJobId, "hash_missing", "Director Marketing", "Missing Corp", "Remote", "Full-time", JSON.stringify({ jobHash: canonicalJobId, role: "Director Marketing" }));
 
     sqliteDb.prepare(`
@@ -303,8 +289,8 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
     });
 
     sqliteDb.prepare(`
-      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, acquisition_status, lifecycle_state, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACQUIRED', 'ACTIVE', CURRENT_TIMESTAMP)
     `).run(oppVersion, canonicalJobId, "hash_replay_001", "VP Marketing & Demand Gen", "Acme Growth Corp", "Bengaluru", "Full-time", rawContentJson);
 
     sqliteDb.prepare(`

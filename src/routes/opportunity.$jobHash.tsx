@@ -1,5 +1,5 @@
-import { createFileRoute, notFound, useRouter } from "@tanstack/react-router";
-import { type DecisionVerb } from "../data/opportunity-fixtures";
+import { createFileRoute, notFound, useRouter, Link } from "@tanstack/react-router";
+import { type DecisionVerb, type ServedOpportunity, type EvaluatedOpportunity, isEvaluated, isUnmaterialized, isUnavailable } from "../data/opportunity-fixtures";
 import { getOpportunityDetailsFn } from "../lib/intelligence/opportunity-server";
 import { ClientOpportunityCache } from "../lib/opportunity-cache";
 import { useDecisions } from "../lib/decisions-store";
@@ -11,6 +11,7 @@ import { CapabilityAssessmentEngine } from "../lib/intelligence/engines/Capabili
 import { ExecutionEngine } from "../lib/intelligence/engines/ExecutionEngine";
 import { ReadingSurface } from "@/components/radar/opportunity/surfaces/ReadingSurface";
 import { ExecutiveBriefingSurface } from "@/components/radar/opportunity/surfaces/ExecutiveBriefingSurface";
+import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }: { params: { jobHash: string } }) => {
@@ -29,15 +30,18 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
       totalCount: details.totalCount,
     };
   },
-  head: ({ loaderData }: { loaderData?: any }) => {
+  head: ({ loaderData }) => {
     if (!loaderData) {
-      return { meta: [{ title: "Brief unavailable — RADAR" }, { name: "robots", content: "noindex" }] };
+      return { meta: [{ title: "Brief unavailable - RADAR" }, { name: "robots", content: "noindex" }] };
     }
     const o = loaderData.opportunity;
+    if (!isEvaluated(o)) {
+      return { meta: [{ title: `${o.evaluationState} - RADAR Dossier` }] };
+    }
     const engineVerdict = o.engineRecommendation?.engineVerdict || "DOSSIER";
     return {
       meta: [
-        { title: `${engineVerdict} · ${o.role} — RADAR Executive Dossier` },
+        { title: `${engineVerdict} : ${o.role} - RADAR Executive Dossier` },
         { name: "description", content: o.recommendation || "Executive advisory dossier" },
       ],
     };
@@ -45,36 +49,56 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
   component: OpportunityBriefView,
 });
 
-import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
-
-function OpportunityBriefView() {
-  const { opportunity: o, neighbors, currentIndex, totalCount } = Route.useLoaderData();
+export function OpportunityBriefView() {
+  const { opportunity, neighbors, currentIndex, totalCount } = Route.useLoaderData();
+  const o = opportunity;
   const { decisions, decide: recordDecision } = useDecisions();
   const router = useRouter();
 
-  const dossierState = resolveDossierDecisionState(o, decisions[o.jobHash]);
+  if (isUnmaterialized(o)) {
+    return (
+      <div className="memo-container py-16 text-center">
+        <h2 className="text-xl font-serif text-foreground mb-4">Pending Materialization</h2>
+        <p className="text-muted-foreground mb-8">This opportunity is queued for evaluation under your active context.</p>
+        <Link to="/" className="text-primary hover:underline">Return to Shortlist</Link>
+      </div>
+    );
+  }
+
+  if (isUnavailable(o)) {
+    return (
+      <div className="memo-container py-16 text-center">
+        <h2 className="text-xl font-serif text-foreground mb-4">Opportunity Unavailable</h2>
+        <p className="text-muted-foreground mb-8">State: {o.evaluationState}</p>
+        <Link to="/" className="text-primary hover:underline">Return to Shortlist</Link>
+      </div>
+    );
+  }
+  
+  if (!isEvaluated(o)) { return null; }
+  const evalOpp = o;
+  const dossierState = resolveDossierDecisionState(evalOpp, decisions[evalOpp.jobHash]);
 
   const decide = (verb: DecisionVerb) => {
     recordDecision(
-      o.jobHash,
+      evalOpp.jobHash,
       verb,
       dossierState.evaluationFingerprint
     );
     router.invalidate();
   };
 
-  const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
-  const jobProj = JobProjectionBuilder.build(o);
+  const brief = BriefCompositionEngine.compose(evalOpp, { bypassHistory: true });
+  const jobProj = JobProjectionBuilder.build(evalOpp);
   
-  // Real candidate projection built dynamically using the canonical builder and candidate profile
   const candidateProj = new CandidateProjectionBuilderImpl().fromProfile(candidateProfile);
   
   const capEval = CapabilityAssessmentEngine.evaluate(candidateProj, jobProj);
   const executionPkg = ExecutionEngine.validateDecision(candidateProj, jobProj);
-  const rawDimensions = o.dimensions || (o as any).evidenceDimensions || [];
+  const rawDimensions = evalOpp.dimensions || [];
 
   const surfaceProps = {
-    opportunity: o,
+    opportunity: evalOpp,
     brief,
     dossierState,
     decide,
@@ -100,7 +124,7 @@ function OpportunityBriefView() {
   );
 }
 
-export function getFocusTopic(o: any, jobProj: any): string {
+export function getFocusTopic(o: EvaluatedOpportunity, jobProj: any): string {
   if (jobProj?.trueExecutiveMandate) {
     const mandateMap: Record<string, string> = {
       COMMERCIAL_EXPANSION: "commercial growth & market expansion",
@@ -123,8 +147,9 @@ export function getFocusTopic(o: any, jobProj: any): string {
     return coreCap.name.toLowerCase();
   }
 
-  if (o?.domain && typeof o.domain === "string" && o.domain.length < 40) {
-    return `${o.domain.toLowerCase()} expansion`;
+  const optAny = o as any;
+  if (optAny?.domain && typeof optAny.domain === "string" && optAny.domain.length < 40) {
+    return `${optAny.domain.toLowerCase()} expansion`;
   }
 
   return "commercial growth and market expansion";

@@ -608,7 +608,7 @@ export class HistoricalRecoveryEngine {
     }
 
     // 3. For recovered rich content, construct OpportunitySource and run engine
-    const oppSource: OpportunitySource = {
+    const oppSource: OpportunitySource = { evaluationState: "LEGACY",
       jobHash: v2.canonicalJobId,
       role: v2.jobTitle,
       company: v2.companyName,

@@ -7,6 +7,7 @@ import * as path from "path";
 import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
 import { SqliteCanonicalServingStore } from "../../src/data/sqlite/repositories/SqliteCanonicalServingStore";
 import { serveEvaluation } from "../../src/lib/intelligence/serving/EvaluationServingEngine";
+import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 
 describe("M9.2C Canonical Posting-Date Provenance", () => {
   let db: DatabaseAdapter;
@@ -18,26 +19,13 @@ describe("M9.2C Canonical Posting-Date Provenance", () => {
   const personId = "person_pd";
   const scope = { tenantId, personId };
 
-  beforeAll(() => {
+  beforeAll(async () => {
     sqliteDb = new Database(":memory:");
     db = new SqliteAdapter(sqliteDb);
     ingestionService = new CanonicalIngestionService(db);
     servingStore = new SqliteCanonicalServingStore(db);
 
-    const migrationFiles = [
-      "001_initial_schema.sql",
-      "009_profile_queryable_columns.sql",
-      "018_multi_tenant_foundation.sql",
-      "019_evaluation_context_and_read_model.sql",
-      "020_canonical_acquisition.sql",
-      "023_canonical_posted_at.sql",
-      "024_canonical_posting_precision.sql"
-    ];
-
-    for (const file of migrationFiles) {
-      const sql = fs.readFileSync(path.join(process.cwd(), "src/data/sqlite/migrations", file), "utf-8");
-      sqliteDb.exec(sql);
-    }
+    await runMigrations(db);
 
     sqliteDb.exec(`
       INSERT INTO tenants (id, status) VALUES ('${tenantId}', 'active');

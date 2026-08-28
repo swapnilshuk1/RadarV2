@@ -39,6 +39,8 @@ class TestSqliteAdapter implements DatabaseAdapter {
   }
 }
 
+import { runMigrations } from "@/data/sqlite/migrations/runner";
+
 describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protocol", () => {
   let sqliteDb: Database.Database;
   let adapter: TestSqliteAdapter;
@@ -53,25 +55,11 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
     preferences: { locations: ["Bengaluru"] }
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     sqliteDb = new Database(":memory:");
     sqliteDb.pragma("foreign_keys = ON");
-
-    const migrationFiles = [
-      "001_initial_schema.sql",
-      "009_profile_queryable_columns.sql",
-      "018_multi_tenant_foundation.sql",
-      "019_evaluation_context_and_read_model.sql",
-      "020_canonical_acquisition.sql",
-      "021_evaluation_work_queue.sql"
-    ];
-
-    for (const file of migrationFiles) {
-      const sql = fs.readFileSync(path.join(process.cwd(), "src/data/sqlite/migrations", file), "utf-8");
-      sqliteDb.exec(sql);
-    }
-
     adapter = new TestSqliteAdapter(sqliteDb);
+    await runMigrations(adapter);
 
     sqliteDb.exec("INSERT INTO tenants (id, status) VALUES ('tenant_A', 'active'), ('tenant_B', 'active')");
     sqliteDb.exec("INSERT INTO people (id, email, tenant_id) VALUES ('person_A', 'execA@test.com', 'tenant_A'), ('person_B', 'execB@test.com', 'tenant_B')");
@@ -87,8 +75,8 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
     sqliteDb.exec(`INSERT INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES 
       ('job_1', 'linkedin', '101', 'https://job.1')
     `);
-    sqliteDb.exec(`INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, raw_content) VALUES 
-      ('ver_1a', 'job_1', 'chash_1a', 'VP Product', 'Acme', '{"jobHash":"job_1","role":"VP Product","company":"Acme","rawDescription":"Executive product role"}')
+    sqliteDb.exec(`INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, raw_content, acquisition_status, lifecycle_state) VALUES 
+      ('ver_1a', 'job_1', 'chash_1a', 'VP Product', 'Acme', '{"jobHash":"job_1","role":"VP Product","company":"Acme","rawDescription":"Executive product role"}', 'ACQUIRED', 'ACTIVE')
     `);
     sqliteDb.exec(`INSERT INTO search_plan_candidates (search_plan_id, tenant_id, person_id, canonical_job_id, opportunity_version, attention_decision) VALUES 
       ('plan_A', 'tenant_A', 'person_A', 'job_1', 'ver_1a', 'CANDIDATE')
@@ -203,11 +191,10 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
     const result = await worker1.processJob(claim1!);
     expect(result.status).toBe("completed");
 
-    // Check DB: the manually inserted evaluation must remain, and the worker1 should NOT overwrite it 
-    // due to ON CONFLICT DO NOTHING
+    // Check DB: exactly 1 materialized evaluation exists (UPSERT without duplicates)
     const matList = await adapter.many<any>("SELECT * FROM materialized_evaluations WHERE tenant_id = 'tenant_A'");
     expect(matList.length).toBe(1);
-    expect(matList[0].decision).toBe("PASS"); // Remains from manual insert
+    expect(matList[0].decision).toBe("CONSIDER"); // Authoritative worker UPSERT result
   });
 
   test("9. AuthContext negative test: Mismatched tenant fails authorization", async () => {

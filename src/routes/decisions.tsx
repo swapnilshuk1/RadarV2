@@ -1,3 +1,4 @@
+import { type ServedOpportunity, isEvaluated, isUnavailable, type EvaluatedOpportunity } from "../data/opportunity-fixtures";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { applyUrlFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
@@ -75,7 +76,10 @@ export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS" | "UNREVIEWED";
 
 function OpportunitiesPage() {
   const { decisions, undo, clear, hydrated } = useDecisions();
-  const { opportunitiesList } = Route.useLoaderData();
+  const { opportunitiesList: rawOpportunities } = Route.useLoaderData();
+  // Phase 4: Non-evaluated variants must not contribute to counts or enter the ledger.
+  const opportunitiesList = useMemo(() => rawOpportunities.filter(isEvaluated), [rawOpportunities]);
+  
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -296,7 +300,7 @@ function OpportunitiesPage() {
               <span>Sorted by Pipeline Recency</span>
             </div>
 
-            {displayedOpportunities.map((o) => {
+            {displayedOpportunities.map((o: EvaluatedOpportunity) => {
               const verb = getUserVerb(o);
               const applyUrl = applyUrlFor(o);
 
@@ -361,7 +365,7 @@ function OpportunitiesPage() {
                         )}
                         <span className="text-hairline-strong">·</span>
                         <span className="font-mono uppercase tracking-[0.14em] text-[0.62rem] text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm">
-                          {resolveDecisionsCardScore(o, brief)}
+                          {resolveDecisionsCardScore(o as any, brief)}
                         </span>
                       </div>
 

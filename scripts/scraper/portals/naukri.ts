@@ -578,4 +578,28 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   return mutex ? mutex.runExclusive(() => doExtract()) : doExtract();
 }
 
+export function classifyNaukriHtml(html: string, title: string): { state: string; count?: number; marker?: string; reason?: string; title?: string } {
+  if (title.includes("Just a moment") || title.includes("Access Denied") || html.includes("Cloudflare DDoS protection")) {
+    return { state: "BLOCKED", title };
+  }
+  
+  if (html.includes("zero-result") || html.includes("No matching jobs found")) {
+    return { state: "ZERO_RESULTS", reason: "zero-result" };
+  }
+  
+  if (html.includes("Naukri TopTier")) {
+    return { state: "TOPTIER_SHELL", marker: "Naukri TopTier" };
+  }
+  
+  if (html.includes("srp-jobtuple-wrapper") || html.includes("jobTuple") || html.includes("job-tuple")) {
+    return { state: "RESULTS", count: 1 };
+  }
+  
+  if (html.includes("id=\"__next\"") || html.includes("id=\"app-root\"")) {
+    return { state: "UNHYDRATED_SPA" };
+  }
+  
+  return { state: "UNKNOWN" };
+}
+
 

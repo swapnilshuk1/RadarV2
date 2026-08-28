@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type Opportunity, type DecisionVerb } from "../data/opportunity-fixtures";
+import { type Opportunity, type DecisionVerb, type ServedOpportunity, isEvaluated, isUnavailable, isUnmaterialized } from "../data/opportunity-fixtures";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
 import { getOpportunitiesFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
@@ -76,9 +76,9 @@ function Shortlist() {
   const [open, setOpen] = useState<string | null>(null);
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
   const [selectedCategoryId, setSelectedCategoryId] = useState<CategoryId>("all");
-  const [categoryOps, setCategoryOps] = useState<Opportunity[] | null>(null);
+  const [categoryOps, setCategoryOps] = useState<ServedOpportunity[] | null>(null);
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
-  const categoryCacheRef = useRef<Map<string, Opportunity[]>>(new Map());
+  const categoryCacheRef = useRef<Map<string, ServedOpportunity[]>>(new Map());
 
   useEffect(() => {
     if (selectedCategoryId === "all") {
@@ -142,7 +142,9 @@ function Shortlist() {
 
   const remaining = useMemo(
     () =>
-      activeOps.filter((o) => {
+      activeOps.filter((o: ServedOpportunity) => {
+        if (!isEvaluated(o)) return true; // We don't filter out unavailable states; they show up.
+        
         const clientRec = decisions[o.jobHash];
         const userVerb = clientRec?.verb || o.userDecision?.userAction;
 
@@ -179,12 +181,18 @@ function Shortlist() {
   );
 
   const shortlistedOps = useMemo(
-    () => remaining.filter((o) => o.engineRecommendation?.engineVerdict === "PURSUE" || o.engineRecommendation?.engineVerdict === "CONSIDER"),
+    () => remaining.filter((o) => {
+       if (isEvaluated(o)) {
+          return o.engineRecommendation?.engineVerdict === "PURSUE" || o.engineRecommendation?.engineVerdict === "CONSIDER";
+       }
+       if (isUnavailable(o) && o.evaluationState === "SPARSE_SPEC") return false;
+       return true; // Show UNMATERIALIZED, ACQUISITION_PENDING, etc. in the main list
+    }),
     [remaining]
   );
 
   const sparseOps = useMemo(
-    () => remaining.filter((o) => (o as any).evaluationState === "SPARSE_SPEC"),
+    () => remaining.filter((o) => isUnavailable(o) && o.evaluationState === "SPARSE_SPEC"),
     [remaining]
   );
 
@@ -433,7 +441,7 @@ function Shortlist() {
                 {visible.map((o, idx) => {
                   const isOpen = open === o.jobHash;
 
-                  return (
+                  return isEvaluated(o) ? (
                     <ShortlistCardRow
                       key={o.jobHash}
                       o={o}
@@ -445,6 +453,8 @@ function Shortlist() {
                       decide={decide}
                       showArrivalBanner={showArrivalBanner}
                     />
+                  ) : (
+                    <MinimalStateCard key={o.jobHash} o={o} />
                   );
                 })}
 
@@ -552,9 +562,8 @@ export function resolveShortlistCardScore(
   o: Opportunity,
   brief?: { qualityScore?: number | null }
 ): { rawScore: number | null | undefined; scoreDisplay: string | number } {
-  const isSparse = (o as any).evaluationState === "SPARSE_SPEC";
   const rawScore = brief?.qualityScore ?? o.engineRecommendation?.qualityScore ?? o.recommendationResult?.score;
-  const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
+  const scoreDisplay = rawScore === null || rawScore === undefined ? "—" : rawScore;
   return { rawScore, scoreDisplay };
 }
 
@@ -567,15 +576,22 @@ export interface ShortlistCardBadgeState {
 }
 
 export function resolveShortlistCardBadgeState(o: Opportunity): ShortlistCardBadgeState {
-  const isSparse = (o as any).evaluationState === "SPARSE_SPEC";
+  if ((o as any).evaluationState === "SPARSE_SPEC" || o.engineRecommendation?.engineVerdict === "SPARSE_SPEC") {
+    return {
+      primaryLabel: "needs more signal",
+      badgeClass: "badge-sparse text-amber-600 bg-amber-500/10 border border-amber-500/20",
+      isStale: false,
+      staleLabel: null,
+      previousAction: null,
+    };
+  }
+
   const engineVerdict = o.engineRecommendation?.engineVerdict || o.decision || "PURSUE";
   
-  const primaryLabel = isSparse ? "needs more signal" : engineVerdict.toLowerCase();
+  const primaryLabel = engineVerdict.toLowerCase();
   
   const badgeClass = 
-    isSparse
-      ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-      : engineVerdict === "CONSIDER" 
+    engineVerdict === "CONSIDER" 
         ? "badge-consider" 
         : engineVerdict === "PASS" 
           ? "badge-pass" 
@@ -604,6 +620,55 @@ export function resolveShortlistCardBadgeState(o: Opportunity): ShortlistCardBad
   };
 }
 
+
+function MinimalStateCard({ o }: { o: ServedOpportunity }) {
+  let label = "Unavailable";
+  let badgeClass = "bg-muted text-muted-foreground border-border";
+  
+  if (isUnmaterialized(o)) {
+    label = "Evaluation Pending";
+    badgeClass = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20";
+  } else if (isUnavailable(o)) {
+    switch (o.evaluationState) {
+      case "ACQUISITION_PENDING":
+        label = "Fetching Details";
+        badgeClass = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20";
+        break;
+      case "ACQUISITION_FAILED":
+      case "NOT_EVALUABLE":
+        label = "Cannot Evaluate";
+        badgeClass = "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20";
+        break;
+      case "EXPIRED":
+        label = "Expired";
+        badgeClass = "bg-muted text-muted-foreground border-border";
+        break;
+      default:
+        label = o.evaluationState;
+        break;
+    }
+  }
+
+  return (
+    <li className="group relative block w-full text-left transition-all bg-surface-raised border border-border/40 shadow-xs rounded-xl p-4 flex items-center justify-between opacity-80 grayscale-[30%]">
+      <span className="flex min-w-0 flex-1 flex-col gap-1.5 pl-3 border-l-2 border-border/30">
+        <span className="flex items-center gap-2">
+          <span className="font-display text-lg text-foreground font-normal">
+            {o.role}
+          </span>
+          <span className={`label-mono shrink-0 rounded-full px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider ${badgeClass}`}>
+            {label}
+          </span>
+        </span>
+        <span className="label-mono block truncate text-muted-foreground font-medium text-[0.72rem]">
+          {o.company} · {o.location} · {o.scrapedFrom}
+        </span>
+      </span>
+    </li>
+  );
+}
+
+
 function ShortlistCardRow({
   o,
   idx,
@@ -625,7 +690,6 @@ function ShortlistCardRow({
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
   const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
-  const isSparse = (o as any).evaluationState === "SPARSE_SPEC";
   const { rawScore, scoreDisplay } = resolveShortlistCardScore(o, brief);
   const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
 
@@ -643,13 +707,11 @@ function ShortlistCardRow({
   }, [isOpen]);
 
   const scoreClass = 
-    isSparse 
-      ? "border-amber-500/40 text-amber-600 bg-amber-500/10 dark:text-amber-400" 
-      : (typeof rawScore === "number" && rawScore >= 75)
-        ? "score-badge-high" 
-        : (typeof rawScore === "number" && rawScore >= 60)
-          ? "score-badge-mid" 
-          : "score-badge-low";
+    (typeof rawScore === "number" && rawScore >= 75)
+      ? "score-badge-high" 
+      : (typeof rawScore === "number" && rawScore >= 60)
+        ? "score-badge-mid" 
+        : "score-badge-low";
 
   return (
     <li

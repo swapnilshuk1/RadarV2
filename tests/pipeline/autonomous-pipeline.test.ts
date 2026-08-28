@@ -99,6 +99,7 @@ describe("RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJ
       "025_canonical_decisions.sql",
       "026_canonical_acquisition_integrity.sql",
       "027_materialized_evaluations_nullable_decision.sql",
+      "028_active_evaluation_context_pointers.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -216,7 +217,7 @@ describe("RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJ
     // 5. Query Canonical Serving Store for the active person scope
     const feed = await servingStore.listOpportunities({ tenantId: TENANT_ID, personId: PERSON_ID });
     expect(feed.length).toBe(1);
-    expect(feed[0].canonicalJobId).toBe(ingestRes.canonicalJobId);
+    expect(feed[0].jobHash).toBe(rawPayload.sourceJobId);
     expect(feed[0].role).toBe("VP of Engineering & AI Systems");
     expect(feed[0].company).toBe("Acme Cognitive Systems");
     expect(["PURSUE", "CONSIDER", "PASS"]).toContain(feed[0].engineRecommendation?.engineVerdict);

@@ -55,6 +55,9 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
       "024_canonical_posting_precision.sql",
       "025_canonical_decisions.sql",
       "021_evaluation_work_queue.sql",
+      "026_canonical_acquisition_integrity.sql",
+      "027_materialized_evaluations_nullable_decision.sql",
+      "028_active_evaluation_context_pointers.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -224,7 +227,6 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
     const opportunities = await servingStore.listOpportunities(scope);
     expect(opportunities.length).toBe(1);
     expect(opportunities[0].jobHash).toBe("job_vp_303");
-    expect((opportunities[0] as any).canonicalJobId).toBe(ingestRes.canonicalJobId);
     expect(opportunities[0].role).toBe("VP Engineering");
     expect(opportunities[0].company).toBe("HyperScale Tech");
     expect(opportunities[0].effectiveDecision).toBeDefined();

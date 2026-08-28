@@ -53,7 +53,10 @@ describe("Sub-Phase M5.1: Durable Evaluation Work Queue Schema & Composite Invar
       "018_multi_tenant_foundation.sql",
       "019_evaluation_context_and_read_model.sql",
       "020_canonical_acquisition.sql",
-      "021_evaluation_work_queue.sql"
+      "021_evaluation_work_queue.sql",
+      "025_canonical_decisions.sql",
+      "026_canonical_acquisition_integrity.sql",
+      "027_materialized_evaluations_nullable_decision.sql",
     ];
 
     for (const file of migrationFiles) {

@@ -25,7 +25,15 @@
 
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { AuthorizedPersonScope } from "../../../lib/security/auth";
-import type { Opportunity } from "../../../data/opportunity-fixtures";
+import type {
+  Opportunity,
+  ServedOpportunity,
+  EvaluatedOpportunity,
+  UnavailableOpportunity,
+  UnmaterializedOpportunity,
+  ScrapeSource
+} from "../../../data/opportunity-fixtures";
+import { isEvaluated } from "../../../data/opportunity-fixtures";
 import {
   serveEvaluation,
   adaptLegacyEvaluation,
@@ -58,13 +66,168 @@ const POPULATION_TIER_ORDER: Record<string, number> = {
   ENGINE_PASS: 5,
 };
 
+function toScrapeSource(val: unknown): ScrapeSource {
+  if (val === "LinkedIn" || val === "Naukri" || val === "Indeed") return val as ScrapeSource;
+  return "LinkedIn";
+}
+
+function toUnavailableState(val: unknown): UnavailableOpportunity["evaluationState"] | null {
+  if (
+    val === "SPARSE_SPEC" ||
+    val === "NOT_EVALUABLE" ||
+    val === "ACQUISITION_PENDING" ||
+    val === "ACQUISITION_FAILED" ||
+    val === "EXPIRED"
+  ) {
+    return val as UnavailableOpportunity["evaluationState"];
+  }
+  return null;
+}
+
+function toUserAction(val: unknown): import("../../../domain/decision_v4").UserAction {
+  if (val === "PURSUE" || val === "CONSIDER" || val === "PASS" || val === "NONE") {
+    return val as import("../../../domain/decision_v4").UserAction;
+  }
+  return "NONE";
+}
+
+function toEngineVerdict(val: unknown): import("../../../domain/decision_v4").EngineVerdict | null {
+  if (val === "PURSUE" || val === "CONSIDER" || val === "PASS" || val === "SPARSE_SPEC") {
+    return val as import("../../../domain/decision_v4").EngineVerdict;
+  }
+  return null;
+}
+
+function toAttentionDecision(val: unknown): "CANDIDATE" | "NOT_CANDIDATE" {
+  if (val === "CANDIDATE" || val === "NOT_CANDIDATE") {
+    return val;
+  }
+  return "NOT_CANDIDATE";
+}
+
 export class SqliteCanonicalServingStore {
   constructor(private db: DatabaseAdapter) {}
+
+  /**
+   * Safely binds an evaluation context to its scope using an INSERT ... SELECT 
+   * to guarantee the tenant/person/snapshot lineage exists in the database.
+   */
+  async bindEvaluationContextScope(
+    contextFingerprint: string, 
+    tenantId: string, 
+    personId: string, 
+    searchPlanId: string
+  ): Promise<boolean> {
+    const res = await this.db.execute(
+      `INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+       SELECT ec.context_fingerprint, ec.tenant_id, ec.person_id, sps.search_plan_id
+       FROM evaluation_contexts ec
+       JOIN search_plan_snapshots sps ON sps.id = ec.search_plan_snapshot_id
+       WHERE ec.context_fingerprint = ?
+         AND ec.tenant_id = ?
+         AND ec.person_id = ?
+         AND sps.search_plan_id = ?
+       ON CONFLICT DO NOTHING`,
+      [contextFingerprint, tenantId, personId, searchPlanId]
+    );
+    return res.rowsAffected > 0;
+  }
+
+  /**
+   * Activates a bound evaluation context pointer.
+   */
+  async activateContextPointer(
+    contextFingerprint: string,
+    tenantId: string,
+    personId: string,
+    searchPlanId: string
+  ): Promise<boolean> {
+    try {
+      await this.db.execute(
+        `INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+         VALUES (?, ?, ?, ?, 'system')
+         ON CONFLICT (tenant_id, person_id, search_plan_id) 
+         DO UPDATE SET context_fingerprint = excluded.context_fingerprint, activated_at = CURRENT_TIMESTAMP, activated_by = excluded.activated_by`,
+        [tenantId, personId, searchPlanId, contextFingerprint]
+      );
+      return true;
+    } catch {
+      return false; // Foreign key constraint violation on scopes
+    }
+  }
+
+  /**
+   * Computes the rematerialisation manifest, strictly isolated to the specified context footprint.
+   */
+  async getRematerialisationManifest(
+    contextFingerprint: string,
+    tenantId: string,
+    personId: string,
+    searchPlanId: string
+  ): Promise<{ totalActiveOpportunities: number; materializedCount: number; coveragePercentage: number; isReady: boolean }> {
+    const totalRow = await this.db.one<{ count: number }>(
+      `SELECT COUNT(DISTINCT spc.canonical_job_id) as count
+       FROM search_plan_candidates spc
+       JOIN canonical_opportunities co ON spc.canonical_job_id = co.id
+       JOIN opportunity_versions ov ON co.id = ov.canonical_job_id AND spc.opportunity_version = ov.id
+       WHERE spc.search_plan_id = ?
+         AND spc.tenant_id = ?
+         AND spc.person_id = ?
+         AND spc.attention_decision = 'CANDIDATE'
+         AND ov.lifecycle_state = 'ACTIVE'`,
+      [searchPlanId, tenantId, personId]
+    );
+    const totalActiveOpportunities = totalRow?.count || 0;
+
+    const matRow = await this.db.one<{ count: number }>(
+      `SELECT COUNT(DISTINCT me.canonical_job_id) as count
+       FROM materialized_evaluations me
+       JOIN search_plan_candidates spc ON spc.canonical_job_id = me.canonical_job_id AND spc.opportunity_version = me.opportunity_version
+       JOIN canonical_opportunities co ON spc.canonical_job_id = co.id
+       JOIN opportunity_versions ov ON co.id = ov.canonical_job_id AND spc.opportunity_version = ov.id
+       WHERE me.evaluation_context_fingerprint = ?
+         AND me.tenant_id = ?
+         AND me.person_id = ?
+         AND spc.search_plan_id = ?
+         AND spc.attention_decision = 'CANDIDATE'
+         AND ov.lifecycle_state = 'ACTIVE'`,
+      [contextFingerprint, tenantId, personId, searchPlanId]
+    );
+    const materializedCount = matRow?.count || 0;
+
+    const coveragePercentage = totalActiveOpportunities > 0 
+      ? Math.round((materializedCount / totalActiveOpportunities) * 100) 
+      : 100;
+    const isReady = coveragePercentage === 100;
+
+    return { totalActiveOpportunities, materializedCount, coveragePercentage, isReady };
+  }
 
   /**
    * Resolves the active evaluation context and search plan for the authorized scope.
    */
   async getActiveContext(scope: AuthorizedPersonScope): Promise<{ searchPlanId: string; contextFingerprint: string } | undefined> {
+    // 1. Try to get the explicitly activated pointer
+    const activePointer = await this.db.one<{ search_plan_id: string; context_fingerprint: string }>(
+      `SELECT aec.search_plan_id, aec.context_fingerprint
+       FROM active_evaluation_contexts aec
+       JOIN search_plans sp ON sp.id = aec.search_plan_id AND sp.tenant_id = aec.tenant_id AND sp.person_id = aec.person_id
+       WHERE aec.tenant_id = ?
+         AND aec.person_id = ?
+         AND sp.status = 'active'
+       ORDER BY aec.activated_at DESC
+       LIMIT 1`,
+      [scope.tenantId, scope.personId]
+    );
+
+    if (activePointer) {
+      return {
+        searchPlanId: activePointer.search_plan_id,
+        contextFingerprint: activePointer.context_fingerprint,
+      };
+    }
+
+    // 2. Fallback to legacy chronological resolution
     const row = await this.db.one<{ search_plan_id: string; context_fingerprint: string }>(
       `SELECT sp.id as search_plan_id, ec.context_fingerprint
        FROM search_plans sp
@@ -79,7 +242,7 @@ export class SqliteCanonicalServingStore {
        WHERE sp.tenant_id = ? 
          AND sp.person_id = ? 
          AND sp.status = 'active'
-       ORDER BY ec.created_at DESC 
+       ORDER BY ec.created_at DESC, ec.context_fingerprint DESC 
        LIMIT 1`,
       [scope.tenantId, scope.personId]
     );
@@ -96,9 +259,10 @@ export class SqliteCanonicalServingStore {
    */
   async listOpportunities(
     scope: AuthorizedPersonScope,
-    options?: ServiceOptions
-  ): Promise<Opportunity[]> {
-    const context = await this.getActiveContext(scope);
+    options?: ServiceOptions,
+    _resolvedContext?: { searchPlanId: string; contextFingerprint: string }
+  ): Promise<ServedOpportunity[]> {
+    const context = _resolvedContext || await this.getActiveContext(scope);
     if (!context) return [];
 
     // Single deterministic joined canonical query with windowed decision deduplication
@@ -161,26 +325,73 @@ export class SqliteCanonicalServingStore {
       ? resolveCanonicalCategoryId(options.categoryId) 
       : null;
 
-    const opportunities: Opportunity[] = [];
+    const opportunities: ServedOpportunity[] = [];
 
     for (const r of rows) {
-      if (!r.evaluation_json) continue;
+      const safeScrapeSource = toScrapeSource(r.source);
+      
+      const unavailState = toUnavailableState(r.evaluation_state);
+      if (unavailState !== null) {
+        const unavail: UnavailableOpportunity = {
+          evaluationState: unavailState,
+          jobHash: String(r.source_job_id),
+          role: r.job_title || "Unknown Role",
+          company: r.company_name || "Unknown Company",
+          location: r.location || "Unknown",
+          postedRelative: "recently",
+          scrapedFrom: safeScrapeSource,
+          applyUrl: r.apply_url || undefined,
+          reasonCode: unavailState
+        };
+        opportunities.push(unavail);
+        continue;
+      }
 
-      let rawParsed: any;
+      if (!r.evaluation_json) {
+        const unmat: UnmaterializedOpportunity = {
+          evaluationState: "UNMATERIALIZED",
+          jobHash: String(r.source_job_id),
+          role: r.job_title || "Unknown Role",
+          company: r.company_name || "Unknown Company",
+          location: r.location || "Unknown",
+          postedRelative: "recently",
+          scrapedFrom: safeScrapeSource,
+          applyUrl: r.apply_url || undefined,
+          contextFingerprint: context.contextFingerprint
+        };
+        opportunities.push(unmat);
+        continue;
+      }
+
+      let rawParsed: unknown;
       try {
         rawParsed = JSON.parse(r.evaluation_json);
       } catch {
+        const unmat: UnmaterializedOpportunity = {
+          evaluationState: "UNMATERIALIZED",
+          jobHash: String(r.source_job_id),
+          role: r.job_title || "Unknown Role",
+          company: r.company_name || "Unknown Company",
+          location: r.location || "Unknown",
+          postedRelative: "recently",
+          scrapedFrom: safeScrapeSource,
+          applyUrl: r.apply_url || undefined,
+          contextFingerprint: context.contextFingerprint
+        };
+        opportunities.push(unmat);
         continue;
       }
 
       // Category filter check if requested
       if (targetCategory) {
+        const obj = rawParsed as Record<string, unknown>;
+        const rec = obj.engineRecommendation as Record<string, unknown> | undefined;
         const oppPartial = {
-          role: r.job_title || rawParsed.role || rawParsed.title,
-          evaluationStatus: rawParsed.evaluationStatus || (r.evaluation_state === "SPARSE_SPEC" ? "SPARSE_SPEC" : "COMPLETE"),
+          role: r.job_title || (typeof obj.role === "string" ? obj.role : "") || (typeof obj.title === "string" ? obj.title : ""),
+          evaluationStatus: (typeof obj.evaluationStatus === "string" ? obj.evaluationStatus : (r.evaluation_state === "SPARSE_SPEC" ? "SPARSE_SPEC" : "COMPLETE")),
           evaluationState: r.evaluation_state,
-          recommendation: r.engine_decision || rawParsed.engineRecommendation?.engineVerdict,
-          description: r.job_title || rawParsed.role,
+          recommendation: r.engine_decision || (rec && typeof rec.engineVerdict === "string" ? rec.engineVerdict : undefined),
+          description: r.job_title || (typeof obj.role === "string" ? obj.role : ""),
         };
         const cats = classifyOpportunityCategories(oppPartial);
         if (!cats.includes(targetCategory)) {
@@ -191,15 +402,13 @@ export class SqliteCanonicalServingStore {
       const userState: UserDecisionStateV4 | null = r.user_action ? {
         personId: scope.personId,
         jobHash: r.source_job_id,
-        userAction: r.user_action,
+        userAction: toUserAction(r.user_action),
         reviewedFingerprint: null,
         updatedAt: r.user_decision_updated_at,
       } : null;
 
       const oppSource = {
         jobHash: r.source_job_id,
-        canonicalJobId: r.canonical_job_id,
-        opportunityVersion: r.opportunity_version_id,
         role: r.job_title || "Executive Opportunity",
         company: r.company_name || "Executive Firm",
         location: r.location || "Remote",
@@ -209,38 +418,39 @@ export class SqliteCanonicalServingStore {
         postedPrecision: r.posted_precision,
       };
 
-      let opp: Opportunity;
+      let opp: EvaluatedOpportunity;
       if (isCanonicalIntrinsicEvaluation(rawParsed)) {
-        opp = serveEvaluation(rawParsed, candCtx, oppSource, userState);
+        opp = serveEvaluation(rawParsed, candCtx, oppSource, userState) as EvaluatedOpportunity;
       } else {
-        opp = adaptLegacyEvaluation(rawParsed, candCtx, oppSource, userState);
+        opp = adaptLegacyEvaluation(rawParsed, candCtx, oppSource, userState) as EvaluatedOpportunity;
       }
 
-      // Populate evaluationState
-      (opp as any).evaluationState = r.evaluation_state || "UNKNOWN";
-
-      // Apply canonical effective decision resolver (M8.2)
       const canonicalEffectiveDecision = resolveEffectiveDecision({
-        attentionDecision: r.attention_decision as any,
-        engineVerdict: (opp.engineRecommendation?.engineVerdict || r.engine_decision) as any,
+        attentionDecision: toAttentionDecision(r.attention_decision),
+        engineVerdict: toEngineVerdict(opp.engineRecommendation?.engineVerdict || r.engine_decision),
         vetoed: opp.engineRecommendation?.vetoed,
         qualityScore: opp.engineRecommendation?.qualityScore,
-        userAction: (userState?.userAction || "NONE") as any,
+        userAction: toUserAction(userState?.userAction || "NONE"),
       });
 
       opp.effectiveDecision = canonicalEffectiveDecision;
-
       opportunities.push(opp);
     }
 
     // Deterministic population sort: Tier Order -> Quality Score DESC -> jobHash ASC
     opportunities.sort((a, b) => {
-      const tierA = POPULATION_TIER_ORDER[a.effectiveDecision || "ENGINE_PASS"] ?? 5;
-      const tierB = POPULATION_TIER_ORDER[b.effectiveDecision || "ENGINE_PASS"] ?? 5;
+      const aEval = isEvaluated(a);
+      const bEval = isEvaluated(b);
+
+      const effA = aEval && a.effectiveDecision ? a.effectiveDecision : "ENGINE_PASS";
+      const effB = bEval && b.effectiveDecision ? b.effectiveDecision : "ENGINE_PASS";
+
+      const tierA = POPULATION_TIER_ORDER[effA] ?? 5;
+      const tierB = POPULATION_TIER_ORDER[effB] ?? 5;
       if (tierA !== tierB) return tierA - tierB;
 
-      const scoreA = a.engineRecommendation?.qualityScore ?? a.recommendationResult?.score ?? null;
-      const scoreB = b.engineRecommendation?.qualityScore ?? b.recommendationResult?.score ?? null;
+      const scoreA = aEval ? (a.engineRecommendation?.qualityScore ?? a.recommendationResult?.score ?? null) : null;
+      const scoreB = bEval ? (b.engineRecommendation?.qualityScore ?? b.recommendationResult?.score ?? null) : null;
 
       if (scoreA !== null && scoreB !== null) {
         const scoreDiff = scoreB - scoreA;
@@ -262,9 +472,10 @@ export class SqliteCanonicalServingStore {
   async getOpportunity(
     scope: AuthorizedPersonScope,
     jobHash: string,
-    options?: ServiceOptions
-  ): Promise<Opportunity | undefined> {
-    const context = await this.getActiveContext(scope);
+    options?: ServiceOptions,
+    _resolvedContext?: { searchPlanId: string; contextFingerprint: string }
+  ): Promise<ServedOpportunity | undefined> {
+    const context = _resolvedContext || await this.getActiveContext(scope);
     if (!context) return undefined;
 
     const row = await this.db.one<any>(
@@ -282,6 +493,7 @@ export class SqliteCanonicalServingStore {
          ov.posted_precision as posted_precision,
          spc.attention_decision as attention_decision,
          me.id as evaluation_id,
+         me.evaluation_state as evaluation_state,
          me.decision as engine_decision,
          me.quality_score as quality_score,
          me.rationale as rationale,
@@ -310,33 +522,79 @@ export class SqliteCanonicalServingStore {
       [context.contextFingerprint, scope.tenantId, scope.personId, context.searchPlanId, jobHash, jobHash, jobHash]
     );
 
-    if (!row || !row.evaluation_json) return undefined;
+    if (!row) return undefined;
 
-    let rawParsed: any;
+    const unavailState = toUnavailableState(row.evaluation_state);
+    if (unavailState !== null) {
+      return {
+        evaluationState: unavailState,
+        jobHash: String(row.source_job_id),
+        role: row.job_title || "Unknown Role",
+        company: row.company_name || "Unknown Company",
+        location: row.location || "Unknown",
+        postedRelative: "recently",
+        scrapedFrom: toScrapeSource(row.source),
+        applyUrl: row.apply_url || undefined,
+        reasonCode: unavailState
+      } as UnavailableOpportunity;
+    }
+
+    if (!row.evaluation_json) {
+      return {
+        evaluationState: "UNMATERIALIZED",
+        jobHash: String(row.source_job_id),
+        role: row.job_title || "Unknown Role",
+        company: row.company_name || "Unknown Company",
+        location: row.location || "Unknown",
+        postedRelative: "recently",
+        scrapedFrom: toScrapeSource(row.source),
+        applyUrl: row.apply_url || undefined,
+        contextFingerprint: context.contextFingerprint
+      } as UnmaterializedOpportunity;
+    }
+
+    let rawParsed: unknown;
     try {
       rawParsed = JSON.parse(row.evaluation_json);
     } catch {
-      return undefined;
+      return {
+        evaluationState: "UNMATERIALIZED",
+        jobHash: String(row.source_job_id),
+        role: row.job_title || "Unknown Role",
+        company: row.company_name || "Unknown Company",
+        location: row.location || "Unknown",
+        postedRelative: "recently",
+        scrapedFrom: toScrapeSource(row.source),
+        applyUrl: row.apply_url || undefined,
+        contextFingerprint: context.contextFingerprint
+      } as UnmaterializedOpportunity;
     }
 
     const userState: UserDecisionStateV4 | null = row.user_action ? {
       personId: scope.personId,
       jobHash: row.source_job_id,
-      userAction: row.user_action,
+      userAction: toUserAction(row.user_action),
       reviewedFingerprint: null,
       updatedAt: row.user_decision_updated_at,
     } : null;
 
+    let activePursuits = options?.activePursuits;
+    if (activePursuits === undefined) {
+      const activePursuitRow = await this.db.one<{ cnt: number }>(
+        `SELECT COUNT(*) as cnt FROM canonical_decisions WHERE tenant_id = ? AND person_id = ? AND action = 'PURSUE'`,
+        [scope.tenantId, scope.personId]
+      );
+      activePursuits = Number(activePursuitRow?.cnt || 0);
+    }
+
     const candCtx: CandidateServingContext = {
       personId: scope.personId,
       attentionWindow: 6,
-      activePursuits: options?.activePursuits ?? 0,
+      activePursuits,
     };
 
     const oppSource = {
       jobHash: row.source_job_id,
-      canonicalJobId: row.canonical_job_id,
-      opportunityVersion: row.opportunity_version_id,
       role: row.job_title || "Executive Opportunity",
       company: row.company_name || "Executive Firm",
       location: row.location || "Remote",
@@ -346,19 +604,19 @@ export class SqliteCanonicalServingStore {
       postedPrecision: row.posted_precision,
     };
 
-    let opp: Opportunity;
+    let opp: EvaluatedOpportunity;
     if (isCanonicalIntrinsicEvaluation(rawParsed)) {
-      opp = serveEvaluation(rawParsed, candCtx, oppSource, userState);
+      opp = serveEvaluation(rawParsed, candCtx, oppSource, userState) as EvaluatedOpportunity;
     } else {
-      opp = adaptLegacyEvaluation(rawParsed, candCtx, oppSource, userState);
+      opp = adaptLegacyEvaluation(rawParsed, candCtx, oppSource, userState) as EvaluatedOpportunity;
     }
 
     opp.effectiveDecision = resolveEffectiveDecision({
-      attentionDecision: row.attention_decision as any,
-      engineVerdict: (opp.engineRecommendation?.engineVerdict || row.engine_decision) as any,
+      attentionDecision: toAttentionDecision(row.attention_decision),
+      engineVerdict: toEngineVerdict(opp.engineRecommendation?.engineVerdict || row.engine_decision),
       vetoed: opp.engineRecommendation?.vetoed,
       qualityScore: opp.engineRecommendation?.qualityScore,
-      userAction: (userState?.userAction || "NONE") as any,
+      userAction: userState?.userAction || "NONE",
     });
 
     return opp;
@@ -369,7 +627,29 @@ export class SqliteCanonicalServingStore {
    */
   async listDecidedOpportunities(scope: AuthorizedPersonScope): Promise<Opportunity[]> {
     const opps = await this.listOpportunities(scope);
-    return opps.filter((o) => o.userDecision && o.userDecision.userAction !== "NONE");
+    return opps
+      .filter(isEvaluated)
+      .filter((o) => o.userDecision && o.userDecision.userAction !== "NONE");
+  }
+
+  /**
+   * Resolves canonical and source job ID aliases against the persistence layer.
+   * Ensures that the serving domain is only exposed to the single unified `jobHash`.
+   */
+  private async resolveJobHashAlias(
+    scope: AuthorizedPersonScope,
+    jobHash: string,
+    searchPlanId: string
+  ): Promise<string> {
+    const row = await this.db.one<{ source_job_id: string }>(
+      `SELECT co.source_job_id
+       FROM search_plan_candidates spc
+       JOIN canonical_opportunities co ON co.id = spc.canonical_job_id
+       WHERE spc.tenant_id = ? AND spc.person_id = ? AND spc.search_plan_id = ?
+         AND (co.source_job_id = ? OR co.id = ? OR spc.canonical_job_id = ?) LIMIT 1`,
+      [scope.tenantId, scope.personId, searchPlanId, jobHash, jobHash, jobHash]
+    );
+    return row ? String(row.source_job_id) : jobHash;
   }
 
   /**
@@ -377,15 +657,22 @@ export class SqliteCanonicalServingStore {
    */
   async getAdjacentOpportunities(
     scope: AuthorizedPersonScope,
-    jobHash: string
-  ): Promise<{ prev: Opportunity | undefined; next: Opportunity | undefined; currentIndex: number; totalCount: number }> {
-    const all = await this.listOpportunities(scope);
+    jobHash: string,
+    _resolvedContext?: { searchPlanId: string; contextFingerprint: string }
+  ): Promise<{ prev: ServedOpportunity | undefined; next: ServedOpportunity | undefined; currentIndex: number; totalCount: number }> {
+    const context = _resolvedContext || await this.getActiveContext(scope);
+    if (!context) {
+      return { prev: undefined, next: undefined, currentIndex: 1, totalCount: 1 };
+    }
+
+    const resolvedJobHash = await this.resolveJobHashAlias(scope, jobHash, context.searchPlanId);
+    const all = await this.listOpportunities(scope, undefined, context);
     const totalCount = all.length;
     if (totalCount === 0) {
       return { prev: undefined, next: undefined, currentIndex: 1, totalCount: 1 };
     }
 
-    const idx = all.findIndex((o) => o.jobHash === jobHash || (o as any).canonicalJobId === jobHash);
+    const idx = all.findIndex((o) => o.jobHash === resolvedJobHash);
     if (idx === -1) {
       return { prev: undefined, next: undefined, currentIndex: 1, totalCount };
     }
@@ -407,15 +694,26 @@ export class SqliteCanonicalServingStore {
     jobHash: string,
     options?: ServiceOptions
   ): Promise<{
-    opportunity: Opportunity | undefined;
+    opportunity: ServedOpportunity | undefined;
     currentIndex: number;
     totalCount: number;
-    neighbors: { prev: Opportunity | undefined; next: Opportunity | undefined };
+    neighbors: { prev: ServedOpportunity | undefined; next: ServedOpportunity | undefined };
   }> {
-    const all = await this.listOpportunities(scope, options);
+    const context = await this.getActiveContext(scope);
+    if (!context) {
+      return {
+        opportunity: undefined,
+        currentIndex: 1,
+        totalCount: 1,
+        neighbors: { prev: undefined, next: undefined },
+      };
+    }
+
+    const resolvedJobHash = await this.resolveJobHashAlias(scope, jobHash, context.searchPlanId);
+    const all = await this.listOpportunities(scope, options, context);
     const totalCount = all.length;
 
-    const idx = all.findIndex((o) => o.jobHash === jobHash || (o as any).canonicalJobId === jobHash);
+    const idx = all.findIndex((o) => o.jobHash === resolvedJobHash);
     if (idx !== -1) {
       const opportunity = all[idx];
       return {
@@ -431,7 +729,7 @@ export class SqliteCanonicalServingStore {
 
     // Fallback: If opportunity is not in the active candidate list (e.g. direct deep-link or historical link),
     // fetch single opportunity directly to preserve INV-DOSSIER-INDEPENDENCE.
-    const opportunity = await this.getOpportunity(scope, jobHash, options);
+    const opportunity = await this.getOpportunity(scope, jobHash, options, context);
     return {
       opportunity,
       currentIndex: 1,
@@ -495,58 +793,76 @@ export class SqliteCanonicalServingStore {
     };
 
     for (const opp of opps) {
-      const engineVerb = opp.engineRecommendation?.engineVerdict || "PASS";
-      if (engineVerb === "PURSUE") engineBreakdown.pursue++;
-      else if (engineVerb === "CONSIDER") engineBreakdown.consider++;
-      else if (engineVerb === "SPARSE_SPEC") engineBreakdown.sparse++;
-      else engineBreakdown.pass++;
+      if (isEvaluated(opp)) {
+        const engineVerb = opp.engineRecommendation?.engineVerdict || "PASS";
+        if (engineVerb === "PURSUE") engineBreakdown.pursue++;
+        else if (engineVerb === "CONSIDER") engineBreakdown.consider++;
+        else if (engineVerb === "SPARSE_SPEC") engineBreakdown.sparse++;
+        else engineBreakdown.pass++;
 
-      const userAct = opp.userDecision?.userAction || "NONE";
-      if (userAct === "PURSUE") {
-        userBreakdown.pursue++;
-        userBreakdown.total++;
-        totalDecisions++;
-      } else if (userAct === "CONSIDER") {
-        userBreakdown.consider++;
-        userBreakdown.total++;
-        totalDecisions++;
-      } else if (userAct === "PASS") {
-        userBreakdown.pass++;
-        userBreakdown.total++;
-        totalDecisions++;
-      }
-
-      const eff = opp.effectiveDecision;
-      if (eff === "ENGINE_PURSUIT" || eff === "USER_CONFIRMED") {
-        effectiveBreakdown.pursue++;
-        activePursuits++;
-        totalShortlisted++;
-      } else if (eff === "PREFERENCE_OVERRIDE" || eff === "ENGINE_CONSIDER") {
-        effectiveBreakdown.consider++;
-        totalShortlisted++;
-      } else if (eff === "NOT_EVALUABLE") {
-        effectiveBreakdown.sparse++;
-      } else {
-        effectiveBreakdown.pass++;
-      }
-
-      const isReviewed = userAct !== "NONE";
-      const isShortlisted = eff === "ENGINE_PURSUIT" || eff === "USER_CONFIRMED" || eff === "PREFERENCE_OVERRIDE" || eff === "ENGINE_CONSIDER";
-
-      const cats = classifyOpportunityCategories({
-        role: opp.role,
-        evaluationStatus: (opp as any).evaluationStatus,
-        evaluationState: (opp as any).evaluationState,
-        description: opp.role,
-      });
-
-      for (const catId of cats) {
-        if (!categoryCounts[catId]) {
-          categoryCounts[catId] = { total: 0, unreviewed: 0, shortlisted: 0 };
+        const userAct = opp.userDecision?.userAction || "NONE";
+        if (userAct === "PURSUE") {
+          userBreakdown.pursue++;
+          userBreakdown.total++;
+          totalDecisions++;
+        } else if (userAct === "CONSIDER") {
+          userBreakdown.consider++;
+          userBreakdown.total++;
+          totalDecisions++;
+        } else if (userAct === "PASS") {
+          userBreakdown.pass++;
+          userBreakdown.total++;
+          totalDecisions++;
         }
-        categoryCounts[catId].total++;
-        if (!isReviewed) categoryCounts[catId].unreviewed++;
-        if (isShortlisted) categoryCounts[catId].shortlisted++;
+
+        const eff = opp.effectiveDecision;
+        if (eff === "ENGINE_PURSUIT" || eff === "USER_CONFIRMED") {
+          effectiveBreakdown.pursue++;
+          activePursuits++;
+          totalShortlisted++;
+        } else if (eff === "PREFERENCE_OVERRIDE" || eff === "ENGINE_CONSIDER") {
+          effectiveBreakdown.consider++;
+          totalShortlisted++;
+        } else if (eff === "NOT_EVALUABLE") {
+          effectiveBreakdown.sparse++;
+        } else {
+          effectiveBreakdown.pass++;
+        }
+
+        const isReviewed = userAct !== "NONE";
+        const isShortlisted = eff === "ENGINE_PURSUIT" || eff === "USER_CONFIRMED" || eff === "PREFERENCE_OVERRIDE" || eff === "ENGINE_CONSIDER";
+
+        const cats = classifyOpportunityCategories({
+          role: opp.role,
+          evaluationStatus: (opp as EvaluatedOpportunity & { evaluationStatus?: string }).evaluationStatus,
+          evaluationState: opp.evaluationState,
+          description: opp.role,
+        });
+
+        cats.forEach((cat) => {
+          if (categoryCounts[cat]) {
+            categoryCounts[cat].total++;
+            if (!isReviewed) categoryCounts[cat].unreviewed++;
+            if (isShortlisted) categoryCounts[cat].shortlisted++;
+          }
+        });
+      } else {
+        // Unmaterialized or Unavailable treated as PASS/Unreviewed for metrics
+        engineBreakdown.pass++;
+        effectiveBreakdown.pass++;
+        const cats = classifyOpportunityCategories({
+          role: opp.role,
+          evaluationStatus: opp.evaluationState === "SPARSE_SPEC" ? "SPARSE_SPEC" : "COMPLETE",
+          evaluationState: opp.evaluationState,
+          description: opp.role,
+        });
+
+        cats.forEach((cat) => {
+          if (categoryCounts[cat]) {
+            categoryCounts[cat].total++;
+            categoryCounts[cat].unreviewed++;
+          }
+        });
       }
     }
 

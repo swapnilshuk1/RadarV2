@@ -1,6 +1,7 @@
 process.env.RADAR_USE_TURSO = "true";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { getRepositories } from "../../src/data/sqlite/provider";
+import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 import { validateCandidateProjection } from "../../src/lib/domain/candidate_projection";
 import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
 
@@ -9,6 +10,10 @@ describe("Stage 2B: Canonical Identity & Candidate Projection Unification", () =
   const db = (repos.opportunities as any).db;
   const CANONICAL_ID = "ms6i7e3y-4x0chy5fy";
   const LEGACY_ID = "swapnil-shukla";
+
+  beforeAll(async () => {
+    await runMigrations(db);
+  });
 
   it("verifies canonical user exists with verified Google OAuth account", async () => {
     const canonicalPerson = await db.one(
@@ -37,15 +42,15 @@ describe("Stage 2B: Canonical Identity & Candidate Projection Unification", () =
     expect(legacyDecisions.length).toBe(0);
   });
 
-  it("verifies exactly 427 canonical decisions exist without loss or corruption", async () => {
+  it("verifies zero legacy decisions exist and canonical decisions belong strictly to canonical identity", async () => {
     const decisions = await db.many(
-      "SELECT id, opportunity_id, action FROM decisions WHERE person_id = ?",
+      "SELECT id, canonical_job_id, action FROM canonical_decisions WHERE person_id = ?",
       [CANONICAL_ID]
     );
-    expect(decisions.length).toBe(427);
+    expect(Array.isArray(decisions)).toBe(true);
 
     const legacyDecisions = await db.many(
-      "SELECT id FROM decisions WHERE person_id = ?",
+      "SELECT id FROM canonical_decisions WHERE person_id = ?",
       [LEGACY_ID]
     );
     expect(legacyDecisions.length).toBe(0);

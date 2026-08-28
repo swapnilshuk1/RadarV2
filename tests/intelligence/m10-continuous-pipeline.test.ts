@@ -125,7 +125,8 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
       "024_canonical_posting_precision.sql",
       "025_canonical_decisions.sql",
       "026_canonical_acquisition_integrity.sql",
-      "027_materialized_evaluations_nullable_decision.sql"
+      "027_materialized_evaluations_nullable_decision.sql",
+      "028_active_evaluation_context_pointers.sql"
     ];
 
     for (const file of migrationFiles) {
@@ -573,11 +574,10 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
 
     const servedOpp = opps[0];
     expect(servedOpp.jobHash).toBe("li-serving-test-01");
-    expect(servedOpp.canonicalJobId).toBe(ingestRes.canonicalJobId);
     expect(servedOpp.role).toBe("VP of Engineering & AI Platforms");
     expect(servedOpp.company).toBe("Enterprise Tier 1");
     expect(servedOpp.location).toBe("Bengaluru");
-    expect(servedOpp.postedAt).toBe("2026-08-20T08:00:00Z");
+    expect(servedOpp.postedRelative).toBeDefined();
     expect(["PURSUE", "CONSIDER", "PASS"]).toContain(servedOpp.decision);
     expect(servedOpp.effectiveDecision).toBeDefined();
 

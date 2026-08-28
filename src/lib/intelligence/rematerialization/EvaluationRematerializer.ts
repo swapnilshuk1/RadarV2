@@ -723,7 +723,7 @@ export class EvaluationRematerializer {
           }
 
           const resolvedJobHash = contentObj.jobHash || row.id;
-          const oppSource: OpportunitySource = {
+          const oppSource: OpportunitySource = { evaluationState: "LEGACY",
             jobHash: resolvedJobHash,
             role: row.canonical_title || contentObj.role || "Executive Role",
             company: row.company_name || contentObj.company || "Target Company",

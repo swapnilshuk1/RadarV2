@@ -49,22 +49,22 @@ export interface CanonicalIntrinsicEvaluationPayload {
   // Dimensional Evidence & Status
   readonly evaluationStatus: "COMPLETE" | "SPARSE_SPEC";
   readonly dimensions: Array<{
-    key: string;
+    key: DimensionKey;
     label: string;
-    importance: string;
-    bucket: string;
+    importance: "Core" | "Supporting" | "Context";
+    bucket: EvidenceBucket;
     value: string;
     quote: string;
   }>;
   readonly esi: number;
-  readonly diligenceStatus: string;
+  readonly diligenceStatus: "READY" | "INSUFFICIENT" | "STALE" | "FAILED" | "UNKNOWN";
 
   // Pre-Synthesized Editorial Base Copy (Immutable)
   readonly baseNarrative: {
     readonly whyNow?: string;
-    readonly positioning?: any;
-    readonly primaryProof?: any;
-    readonly hiringRisk?: any;
+    readonly positioning?: string[];
+    readonly primaryProof?: { headline: string; detail: string };
+    readonly hiringRisk?: string;
     readonly alternativePath?: string;
     readonly recommendationArchetype?: string;
     readonly recommendationArchetypeTagline?: string;
@@ -72,7 +72,7 @@ export interface CanonicalIntrinsicEvaluationPayload {
     readonly primaryDriver?: string;
     readonly secondaryDriver?: string;
     readonly primaryRisk?: string;
-    readonly tailoringEffort?: string;
+    readonly tailoringEffort?: "LOW" | "MODERATE" | "HIGH";
     readonly capabilityAlignmentText?: string;
     readonly baseRecommendationProse: string;
     readonly recommendedAction?: string;
@@ -96,12 +96,22 @@ export interface CandidateServingContext {
   readonly activePursuits: number;
 }
 
-export type OpportunityServingContext = Record<string, any>;
+export type OpportunityServingContext = {
+  jobHash?: string;
+  role?: string;
+  title?: string;
+  company?: string;
+  location?: string;
+  scrapedFrom?: string;
+  applyUrl?: string;
+  postedAt?: string;
+  postedPrecision?: string;
+};
 
 /**
  * Pure helper to compute relative posting time for the UI, without modifying raw state.
  */
-function formatPostedRelative(postedAt?: string): string {
+export function formatPostedRelative(postedAt?: string): string {
   if (!postedAt) return "Age unavailable";
   const date = new Date(postedAt);
   if (isNaN(date.getTime())) return "Age unavailable";
@@ -153,7 +163,7 @@ export function serveEvaluation(
   const headspace = buildHeadspace(candCtx.activePursuits, candCtx.attentionWindow);
 
   // 3. Apply headspace filter dynamically
-  const headspaceOutcome = applyHeadspaceFilter(verb0 as any, headspace);
+  const headspaceOutcome = applyHeadspaceFilter(verb0, headspace);
   const finalVerb = headspaceOutcome.finalVerb as EngineVerdict;
 
   // 4. Construct current served EngineRecommendation (Intrinsic Verdict + Headspace Advisory)
@@ -201,10 +211,10 @@ export function serveEvaluation(
 
   const cleanDimensions: DimensionResult[] = Array.isArray(cached.dimensions)
     ? cached.dimensions.map((d) => ({
-        key: (d.key || "mandate") as DimensionKey,
+        key: d.key || "mandate",
         label: d.label || d.key || "",
-        importance: (d.importance || "Core") as "Core" | "Supporting" | "Context",
-        bucket: (d.bucket || "Missing") as EvidenceBucket,
+        importance: d.importance || "Core",
+        bucket: d.bucket || "Missing",
         jdEvidence: {
           status: "Explicit",
           value: d.value || "",
@@ -218,21 +228,23 @@ export function serveEvaluation(
     : verb0;
 
   return {
-    ...oppCtx,
+    evaluationState: "EVALUATED",
     jobHash: cached.jobHash,
-    role: (oppCtx.role as string) || (oppCtx.title as string) || "Executive Opportunity",
-    company: (oppCtx.company as string) || "Executive Firm",
-    location: (oppCtx.location as string) || "Remote",
-    applyUrl: (oppCtx.applyUrl as string) || undefined,
-    postedRelative: formatPostedRelative(oppCtx.postedAt as string | undefined),
-    postedPrecision: (oppCtx.postedPrecision as string) || "UNKNOWN",
+    role: oppCtx.role || oppCtx.title || "Executive Opportunity",
+    company: oppCtx.company || "Executive Firm",
+    location: oppCtx.location || "Remote",
+    scrapedFrom: (oppCtx.scrapedFrom === "Naukri" || oppCtx.scrapedFrom === "Indeed") ? oppCtx.scrapedFrom : "LinkedIn",
+    applyUrl: oppCtx.applyUrl || undefined,
+    postedRelative: formatPostedRelative(oppCtx.postedAt),
     dimensions: cleanDimensions,
     decision: decisionAction,
     recommendation: finalRecommendation,
     whyNow: cached.baseNarrative.whyNow,
-    positioning: cached.baseNarrative.positioning,
+    primaryConcern: null,
+    positioning: cached.baseNarrative.positioning || [],
     primaryProof: cached.baseNarrative.primaryProof,
-    hiringRisk: cached.baseNarrative.hiringRisk,
+    headspace: [],
+    hiringRisk: cached.baseNarrative.hiringRisk || "Unknown",
     alternativePath: cached.baseNarrative.alternativePath,
     recommendationArchetype: cached.baseNarrative.recommendationArchetype,
     recommendationArchetypeTagline: cached.baseNarrative.recommendationArchetypeTagline,
@@ -244,14 +256,26 @@ export function serveEvaluation(
     capabilityAlignmentText: cached.baseNarrative.capabilityAlignmentText,
     recommendedAction: cached.baseNarrative.recommendedAction || verb0,
     esi: cached.esi,
-    diligenceStatus: cached.diligenceStatus as any,
+    diligenceStatus: cached.diligenceStatus,
     engineRecommendation: servedEngineRec,
     userDecision,
     effectiveDecision,
     reviewWorkflowState,
     displayScore,
     uiBadge,
-  } as unknown as Opportunity;
+  };
+}
+
+/**
+ * Adapts legacy DecisionVerb or unknown strings into a strict EngineVerdict.
+ * Safely maps NOT_EVALUABLE -> SPARSE_SPEC to preserve the missing-context semantics.
+ */
+function adaptEngineVerdict(verb: unknown): EngineVerdict {
+  if (verb === "PURSUE") return "PURSUE";
+  if (verb === "CONSIDER") return "CONSIDER";
+  if (verb === "PASS") return "PASS";
+  if (verb === "NOT_EVALUABLE" || verb === "SPARSE_SPEC") return "SPARSE_SPEC";
+  return "CONSIDER";
 }
 
 /**
@@ -264,17 +288,15 @@ export function adaptLegacyEvaluation(
   oppCtx: OpportunityServingContext,
   userDecision: UserDecisionStateV4 | null
 ): Opportunity {
-  const recordedVerdict: EngineVerdict = (
-    legacyOpp.engineRecommendation?.engineVerdict ||
-    legacyOpp.decision ||
-    "CONSIDER"
-  ) as EngineVerdict;
+  const recordedVerdict = adaptEngineVerdict(
+    legacyOpp.engineRecommendation?.engineVerdict || legacyOpp.decision
+  );
 
   // Build current headspace
   const headspace = buildHeadspace(candCtx.activePursuits, candCtx.attentionWindow);
 
   // Apply headspace filter to recorded verdict
-  const headspaceOutcome = applyHeadspaceFilter(recordedVerdict as any, headspace);
+  const headspaceOutcome = applyHeadspaceFilter(recordedVerdict, headspace);
   const finalVerb = headspaceOutcome.finalVerb as EngineVerdict;
 
   const servedEngineRec: EngineRecommendationV4 & { legacyStatus: "LEGACY_NON_CANONICAL" } = {
@@ -307,17 +329,42 @@ export function adaptLegacyEvaluation(
     : recordedVerdict;
 
   return {
-    ...legacyOpp,
-    ...oppCtx,
-    jobHash: legacyOpp.jobHash || oppCtx.jobHash,
-    applyUrl: (oppCtx.applyUrl as string) || legacyOpp.applyUrl,
-    postedRelative: oppCtx.postedAt ? formatPostedRelative(oppCtx.postedAt as string) : legacyOpp.postedRelative,
-    postedPrecision: (oppCtx.postedPrecision as string) || "UNKNOWN",
+    evaluationState: "LEGACY",
+    jobHash: legacyOpp.jobHash || oppCtx.jobHash || "",
+    role: oppCtx.role || oppCtx.title || legacyOpp.role || "Executive Opportunity",
+    company: oppCtx.company || legacyOpp.company || "Executive Firm",
+    location: oppCtx.location || legacyOpp.location || "Remote",
+    scrapedFrom: (oppCtx.scrapedFrom === "Naukri" || oppCtx.scrapedFrom === "Indeed") ? oppCtx.scrapedFrom : legacyOpp.scrapedFrom || "LinkedIn",
+    applyUrl: oppCtx.applyUrl || legacyOpp.applyUrl || undefined,
+    postedRelative: oppCtx.postedAt ? formatPostedRelative(oppCtx.postedAt) : legacyOpp.postedRelative || "Age unavailable",
     decision: decisionAction,
     recommendation: finalRecommendation,
+    whyNow: legacyOpp.whyNow,
+    primaryConcern: legacyOpp.primaryConcern || null,
+    positioning: legacyOpp.positioning || [],
+    primaryProof: legacyOpp.primaryProof,
+    headspace: legacyOpp.headspace || [],
+    headspaceInvestment: legacyOpp.headspaceInvestment,
+    dimensions: legacyOpp.dimensions || [],
+    hiringRisk: legacyOpp.hiringRisk || "Unknown",
+    alternativePath: legacyOpp.alternativePath,
+    recommendationResult: legacyOpp.recommendationResult,
+    esi: legacyOpp.esi,
+    diligenceStatus: legacyOpp.diligenceStatus,
+    recommendationArchetype: legacyOpp.recommendationArchetype,
+    recommendationArchetypeTagline: legacyOpp.recommendationArchetypeTagline,
+    mandateArchetype: legacyOpp.mandateArchetype,
+    primaryDriver: legacyOpp.primaryDriver,
+    secondaryDriver: legacyOpp.secondaryDriver,
+    primaryRisk: legacyOpp.primaryRisk,
+    tailoringEffort: legacyOpp.tailoringEffort,
+    capabilityAlignmentText: legacyOpp.capabilityAlignmentText,
+    recommendedAction: legacyOpp.recommendedAction,
     engineRecommendation: servedEngineRec,
     userDecision,
     effectiveDecision,
     reviewWorkflowState,
-  } as Opportunity;
+    displayScore: legacyOpp.displayScore,
+    uiBadge: legacyOpp.uiBadge,
+  };
 }

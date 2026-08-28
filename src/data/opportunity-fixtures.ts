@@ -26,9 +26,9 @@ export type DimensionKey =
 
 export type EvidenceBucket = "Matched" | "Adjacent" | "Missing" | "Contradicted";
 
-export type OpportunitySource = Omit<
-  Opportunity,
-  | "decision"
+export type OpportunitySource = { evaluationState?: "LEGACY" | "EVALUATED" } & Omit<
+  EvaluatedOpportunity,
+  "evaluationState" | "decision"
   | "recommendation"
   | "whyNow"
   | "positioning"
@@ -91,7 +91,8 @@ export interface RecommendationViewModel {
   vetoReason?: string | null;
 }
 
-export type Opportunity = {
+export type EvaluatedOpportunity = {
+  evaluationState: "EVALUATED" | "LEGACY";
   jobHash: string;
   role: string;
   company: string;
@@ -168,6 +169,7 @@ const proof = (headline: string, detail: string) => ({ headline, detail });
 export const rawOpportunities: OpportunitySource[] = [
   // 1 · PURSUE — golden: BMW India CMO, Gurugram
   {
+    evaluationState: "LEGACY",
     jobHash: "j-bmw-india-cmo",
     role: "Chief Marketing Officer (CMO)",
     company: "BMW India",
@@ -204,6 +206,7 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 2 · PURSUE — Reliance Retail CGO, Mumbai
   {
+    evaluationState: "LEGACY",
     jobHash: "j-reliance-cgo",
     role: "Chief Growth Officer, D2C",
     company: "Reliance Retail",
@@ -240,6 +243,7 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 3 · CONSIDER — golden: VML VP Performance Marketing, Gurugram (Apply This Week)
   {
+    evaluationState: "LEGACY",
     jobHash: "j-vml-vp-perf",
     role: "VP Performance Marketing",
     company: "VML India",
@@ -279,6 +283,7 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 4 · CONSIDER — golden: Acme Corp VP Digital Marketing, Mumbai (Monitor Closely — on-site)
   {
+    evaluationState: "LEGACY",
     jobHash: "j-acme-vp-mumbai",
     role: "VP Digital Marketing",
     company: "Acme Corp",
@@ -317,6 +322,7 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 5 · PASS — golden: TCS Transformation Lead, Bengaluru (level mismatch)
   {
+    evaluationState: "LEGACY",
     jobHash: "j-tcs-transformation",
     role: "Transformation Lead",
     company: "Tata Consultancy Services",
@@ -351,6 +357,7 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 6 · PASS — golden: entry-level rejection (Zestlabs — Junior Coordinator, Remote India)
   {
+    evaluationState: "LEGACY",
     jobHash: "j-zestlabs-coord",
     role: "Junior Coordinator, Marketing",
     company: "Zestlabs (Seed)",
@@ -384,6 +391,7 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 7 · PURSUE — Tata Digital, Bengaluru
   {
+    evaluationState: "LEGACY",
     jobHash: "j-tata-digital-svp",
     role: "SVP Growth & CRM",
     company: "Tata Digital",
@@ -414,6 +422,7 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 8 · CONSIDER — HUL Mumbai
   {
+    evaluationState: "LEGACY",
     jobHash: "j-hul-vp-digital",
     role: "VP Digital & E-commerce",
     company: "Hindustan Unilever",
@@ -443,6 +452,7 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 9 · CONSIDER — Flipkart Bengaluru
   {
+    evaluationState: "LEGACY",
     jobHash: "j-flipkart-vp-growth",
     role: "VP Growth Marketing",
     company: "Flipkart",
@@ -472,6 +482,7 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 10 · PASS — Snapdeal, senior in title only
   {
+    evaluationState: "LEGACY",
     jobHash: "j-snapdeal-head-perf",
     role: "Head of Performance Marketing",
     company: "Snapdeal",
@@ -508,6 +519,48 @@ for (const opp of rawOpportunities) {
     opp.rawText = `${opp.role} at ${opp.company} located in ${opp.location}. ${quotes.join(". ")}. Scraped from ${opp.scrapedFrom}.`;
   }
 }
+
+
+export type UnavailableOpportunity = {
+  evaluationState: "SPARSE_SPEC" | "NOT_EVALUABLE" | "ACQUISITION_PENDING" | "ACQUISITION_FAILED" | "EXPIRED";
+  jobHash: string;
+  role: string;
+  company: string;
+  location: string;
+  postedRelative: string;
+  scrapedFrom: ScrapeSource;
+  applyUrl?: string;
+  reasonCode?: string;
+};
+
+export type UnmaterializedOpportunity = {
+  evaluationState: "UNMATERIALIZED";
+  jobHash: string;
+  role: string;
+  company: string;
+  location: string;
+  postedRelative: string;
+  scrapedFrom: ScrapeSource;
+  applyUrl?: string;
+  contextFingerprint: string;
+};
+
+export type ServedOpportunity = EvaluatedOpportunity | UnavailableOpportunity | UnmaterializedOpportunity;
+
+export function isEvaluated(opp: ServedOpportunity): opp is EvaluatedOpportunity {
+  return opp.evaluationState === "EVALUATED" || opp.evaluationState === "LEGACY" || !opp.evaluationState;
+}
+
+export function isUnavailable(opp: ServedOpportunity): opp is UnavailableOpportunity {
+  return opp.evaluationState === "SPARSE_SPEC" || opp.evaluationState === "NOT_EVALUABLE" || opp.evaluationState === "ACQUISITION_PENDING" || opp.evaluationState === "ACQUISITION_FAILED" || opp.evaluationState === "EXPIRED";
+}
+
+export function isUnmaterialized(opp: ServedOpportunity): opp is UnmaterializedOpportunity {
+  return opp.evaluationState === "UNMATERIALIZED";
+}
+
+// Keep Opportunity alias for components we haven't migrated yet
+export type Opportunity = EvaluatedOpportunity;
 
 export { rawOpportunities as OPPORTUNITY_SOURCES };
 

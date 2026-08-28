@@ -1,5 +1,5 @@
 process.env.RADAR_USE_TURSO = "true";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import { 
   runEngine, 
   injectFixtureRecords,
@@ -12,6 +12,7 @@ import {
 } from "../../src/lib/intelligence/cip";
 import { EvaluationCoordinator } from "../../src/lib/intelligence/EvaluationCoordinator";
 import { getRepositories } from "../../src/data/sqlite/provider";
+import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 import type { CandidateProjection } from "../../src/domain/entities";
 import type { OpportunitySource } from "../../src/domain/semantic";
 
@@ -23,6 +24,10 @@ describe("EvaluationCoordinator Events Invalidation Audit", () => {
   const builder = new CandidateProjectionBuilderImpl();
   const mockProjection1: CandidateProjection = builder.fromProfile(candidateProfile);
   mockProjection1.personId = testPersonId;
+
+  beforeAll(async () => {
+    await runMigrations();
+  });
 
   beforeEach(() => {
     invalidateEngineCache();

@@ -14,19 +14,27 @@ describe("P0-B & P0-C & P0-D Security Regression Suite", () => {
   let regularToken: string;
   let adminToken: string;
 
+  const testTenantId = `tenant-${Date.now()}`;
+
   beforeAll(async () => {
+    // 0. Create test tenant
+    await db.execute(
+      `INSERT INTO tenants (id, status) VALUES (?, 'active')`,
+      [testTenantId]
+    );
+
     // 1. Create test regular user
     await db.execute(
-      `INSERT INTO people (id, email, name, role, onboarded, email_verified, created_at, updated_at)
-       VALUES (?, ?, ?, 'user', 1, 1, datetime('now'), datetime('now'))`,
-      [testRegularUserId, `${testRegularUserId}@example.com`, "Test Regular User"]
+      `INSERT INTO people (id, email, name, role, onboarded, email_verified, tenant_id, created_at, updated_at)
+       VALUES (?, ?, ?, 'user', 1, 1, ?, datetime('now'), datetime('now'))`,
+      [testRegularUserId, `${testRegularUserId}@example.com`, "Test Regular User", testTenantId]
     );
 
     // 2. Create test admin user
     await db.execute(
-      `INSERT INTO people (id, email, name, role, onboarded, email_verified, created_at, updated_at)
-       VALUES (?, ?, ?, 'admin', 1, 1, datetime('now'), datetime('now'))`,
-      [testAdminUserId, `${testAdminUserId}@example.com`, "Test Admin User"]
+      `INSERT INTO people (id, email, name, role, onboarded, email_verified, tenant_id, created_at, updated_at)
+       VALUES (?, ?, ?, 'admin', 1, 1, ?, datetime('now'), datetime('now'))`,
+      [testAdminUserId, `${testAdminUserId}@example.com`, "Test Admin User", testTenantId]
     );
 
     // 3. Create active sessions
@@ -122,21 +130,28 @@ describe("P0-B & P0-C & P0-D Security Regression Suite", () => {
       const { getRepositories } = await import("../../src/data/sqlite/provider");
       const repos = getRepositories();
 
-      // Save a decision for testRegularUserId
+      // Create a test canonical opportunity first
       const testOpId = `op-test-${Date.now()}`;
-      await repos.decisions.recordUserDecision(testRegularUserId, testOpId, "PURSUE", "Strong fit");
+      await db.execute(
+        `INSERT INTO canonical_opportunities (id, source, source_job_id, canonical_url, company_name)
+         VALUES (?, 'test', ?, 'https://test', 'Test Corp')`,
+        [testOpId, testOpId]
+      );
+
+      // Save a decision for testRegularUserId
+      await repos.decisions.recordUserDecision(testRegularUserId, testOpId, "PURSUE", "Strong fit", null, testTenantId);
 
       // Verify regular user can read it
-      const userDecisions = await repos.decisions.getUserDecisions(testRegularUserId);
+      const userDecisions = await repos.decisions.getUserDecisions(testRegularUserId, testTenantId);
       expect(userDecisions[testOpId]).toBeDefined();
       expect(userDecisions[testOpId].verb).toBe("PURSUE");
 
       // Verify admin user has empty decisions (no cross-contamination)
-      const adminDecisions = await repos.decisions.getUserDecisions(testAdminUserId);
+      const adminDecisions = await repos.decisions.getUserDecisions(testAdminUserId, testTenantId);
       expect(adminDecisions[testOpId]).toBeUndefined();
 
       // Cleanup
-      await repos.decisions.deleteUserDecision(testRegularUserId, testOpId);
+      await repos.decisions.deleteUserDecision(testRegularUserId, testOpId, testTenantId);
     });
 
     it("cross-user explanation requests are rejected when not admin", async () => {

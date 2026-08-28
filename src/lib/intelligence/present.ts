@@ -133,10 +133,10 @@ export function present(
         }
       }))
     : [];
-
   return {
     opportunity: {
       ...source,
+      evaluationState: (source.evaluationState ?? "EVALUATED") as "EVALUATED" | "LEGACY",
       dimensions: cleanDimensions,
       decision: record.verb,
       recommendation: finalRecommendation,

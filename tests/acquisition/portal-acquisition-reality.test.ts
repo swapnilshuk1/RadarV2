@@ -102,7 +102,7 @@ function setupFullCanonicalSchema(db: Database.Database) {
       evaluation_context_fingerprint TEXT NOT NULL, evaluation_state TEXT NOT NULL DEFAULT 'EVALUATED',
       decision TEXT, quality_score REAL, rationale TEXT, evidence_ids TEXT,
       evaluation_json TEXT NOT NULL, materialized_at DATETIME NOT NULL,
-      UNIQUE(canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+      UNIQUE(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
     );
 
     CREATE TABLE canonical_decisions (
@@ -121,6 +121,27 @@ function setupFullCanonicalSchema(db: Database.Database) {
     CREATE UNIQUE INDEX idx_recovery_queue_active_version 
     ON recovery_queue(opportunity_version_id) 
     WHERE status IN ('PENDING', 'PROCESSING');
+
+    CREATE TABLE evaluation_context_scopes (
+      context_fingerprint TEXT NOT NULL PRIMARY KEY,
+      tenant_id TEXT NOT NULL,
+      person_id TEXT NOT NULL,
+      search_plan_id TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(context_fingerprint, tenant_id, person_id, search_plan_id)
+    );
+
+    CREATE TABLE active_evaluation_contexts (
+      tenant_id TEXT NOT NULL,
+      person_id TEXT NOT NULL,
+      search_plan_id TEXT NOT NULL,
+      context_fingerprint TEXT NOT NULL,
+      activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      activated_by TEXT NOT NULL,
+      PRIMARY KEY (tenant_id, person_id, search_plan_id),
+      FOREIGN KEY (context_fingerprint, tenant_id, person_id, search_plan_id) 
+          REFERENCES evaluation_context_scopes(context_fingerprint, tenant_id, person_id, search_plan_id)
+    );
   `);
 }
 
