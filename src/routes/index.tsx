@@ -175,7 +175,8 @@ function Shortlist() {
 
         if (o.reviewWorkflowState === "REVIEWED_UNKNOWN") {
           if (clientRec && clientRec.reviewedFingerprint === currentFingerprint) return false;
-          const action = o.userDecision?.userAction || o.engineRecommendation?.engineVerdict;
+          const userAction = o.userDecision?.userAction && o.userDecision.userAction !== "NONE" ? o.userDecision.userAction : undefined;
+          const action = userAction || o.engineRecommendation?.engineVerdict;
           return action === "PURSUE" || action === "CONSIDER";
         }
 
