@@ -288,7 +288,10 @@ export function adaptLegacyEvaluation(
   oppCtx: OpportunityServingContext,
   userDecision: UserDecisionStateV4 | null
 ): Opportunity {
-  const rawVerb = legacyOpp.engineRecommendation?.engineVerdict
+  const recObj = legacyOpp.record || legacyOpp.engineRecommendation || legacyOpp;
+  const rawVerb = recObj.engineVerdict
+    || recObj.verb
+    || legacyOpp.engineRecommendation?.engineVerdict
     || legacyOpp.decision
     || legacyOpp.verb
     || legacyOpp.verdict;
@@ -303,18 +306,19 @@ export function adaptLegacyEvaluation(
 
   const servedEngineRec: EngineRecommendationV4 & { legacyStatus: "LEGACY_NON_CANONICAL" } = {
     ...(legacyOpp.engineRecommendation || {}),
-    jobHash: legacyOpp.jobHash || oppCtx.jobHash || "",
-    evaluationFingerprint: legacyOpp.engineRecommendation?.evaluationFingerprint || "legacy_v4.1",
+    ...(legacyOpp.record || {}),
+    jobHash: legacyOpp.jobHash || legacyOpp.opportunity?.jobHash || oppCtx.jobHash || "",
+    evaluationFingerprint: recObj.evaluationFingerprint || legacyOpp.engineRecommendation?.evaluationFingerprint || "legacy_v4.1",
     engineVerdict: recordedVerdict,
     verb0: recordedVerdict,
     headspaceVerdict: finalVerb,
     headspaceDowngraded: headspaceOutcome.downgraded,
     headspaceReason: headspaceOutcome.reason,
-    vetoed: Boolean(legacyOpp.engineRecommendation?.vetoed),
-    vetoReason: legacyOpp.engineRecommendation?.vetoReason || null,
-    qualityScore: legacyOpp.engineRecommendation?.qualityScore ?? legacyOpp.recommendationResult?.score ?? null,
-    parsingConfidence: legacyOpp.engineRecommendation?.parsingConfidence ?? 0.8,
-    evaluatedAt: legacyOpp.engineRecommendation?.evaluatedAt || new Date().toISOString(),
+    vetoed: Boolean(recObj.vetoed ?? legacyOpp.engineRecommendation?.vetoed),
+    vetoReason: recObj.vetoReason || legacyOpp.engineRecommendation?.vetoReason || null,
+    qualityScore: recObj.qualityScore ?? legacyOpp.engineRecommendation?.qualityScore ?? legacyOpp.recommendationResult?.score ?? null,
+    parsingConfidence: recObj.parsingConfidence ?? legacyOpp.engineRecommendation?.parsingConfidence ?? 0.8,
+    evaluatedAt: recObj.evaluatedAt || legacyOpp.engineRecommendation?.evaluatedAt || new Date().toISOString(),
     legacyStatus: "LEGACY_NON_CANONICAL",
   };
 
