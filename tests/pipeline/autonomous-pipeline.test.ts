@@ -220,7 +220,7 @@ describe("RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJ
     expect(feed[0].jobHash).toBe(rawPayload.sourceJobId);
     expect(feed[0].role).toBe("VP of Engineering & AI Systems");
     expect(feed[0].company).toBe("Acme Cognitive Systems");
-    expect(["PURSUE", "CONSIDER", "PASS"]).toContain(feed[0].engineRecommendation?.engineVerdict);
+    expect(["PURSUE", "CONSIDER", "PASS", "SPARSE_SPEC"]).toContain(feed[0].engineRecommendation?.engineVerdict);
     expect(feed[0].effectiveDecision).toBeDefined();
   });
 

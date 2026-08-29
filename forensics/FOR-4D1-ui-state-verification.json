@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-08-29T02:37:23.865Z",
+  "phase": "FOR-4D1",
+  "shortlistCardRendering": {
+    "unmaterializedMinimalCardsInShortlist": 0,
+    "evaluatedCardsInShortlist": 2098,
+    "evaluationPendingCardsDisplayed": 0
+  },
+  "companyNameRendering": {
+    "authoritativeCompanyNamesPreserved": [
+      "Puffy",
+      "Accenture",
+      "Microsoft",
+      "Swiggy"
+    ],
+    "missingCompanyFallbackState": "Company not available",
+    "fabricatedCompanyNamesUsed": false
+  },
+  "status": "UI_STATE_CLEAN"
+}

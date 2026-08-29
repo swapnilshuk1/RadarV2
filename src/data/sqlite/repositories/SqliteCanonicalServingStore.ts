@@ -348,11 +348,25 @@ export class SqliteCanonicalServingStore {
       }
 
       if (!r.evaluation_json) {
+        if (targetCategory) {
+          const cats = classifyOpportunityCategories({
+            role: r.job_title || "",
+            evaluationStatus: "COMPLETE",
+            evaluationState: "UNMATERIALIZED",
+            description: r.job_title || "",
+          });
+          if (!cats.includes(targetCategory)) {
+            continue;
+          }
+        }
+        const displayComp = (r.company_name && r.company_name !== "Unknown" && r.company_name !== "Unknown Company")
+          ? r.company_name
+          : "Company not available";
         const unmat: UnmaterializedOpportunity = {
           evaluationState: "UNMATERIALIZED",
           jobHash: String(r.source_job_id),
           role: r.job_title || "Unknown Role",
-          company: r.company_name || "Unknown Company",
+          company: displayComp,
           location: r.location || "Unknown",
           postedRelative: "recently",
           scrapedFrom: safeScrapeSource,
@@ -367,11 +381,25 @@ export class SqliteCanonicalServingStore {
       try {
         rawParsed = JSON.parse(r.evaluation_json);
       } catch {
+        if (targetCategory) {
+          const cats = classifyOpportunityCategories({
+            role: r.job_title || "",
+            evaluationStatus: "COMPLETE",
+            evaluationState: "UNMATERIALIZED",
+            description: r.job_title || "",
+          });
+          if (!cats.includes(targetCategory)) {
+            continue;
+          }
+        }
+        const displayComp = (r.company_name && r.company_name !== "Unknown" && r.company_name !== "Unknown Company")
+          ? r.company_name
+          : "Company not available";
         const unmat: UnmaterializedOpportunity = {
           evaluationState: "UNMATERIALIZED",
           jobHash: String(r.source_job_id),
           role: r.job_title || "Unknown Role",
-          company: r.company_name || "Unknown Company",
+          company: displayComp,
           location: r.location || "Unknown",
           postedRelative: "recently",
           scrapedFrom: safeScrapeSource,
@@ -407,10 +435,14 @@ export class SqliteCanonicalServingStore {
         updatedAt: r.user_decision_updated_at,
       } : null;
 
+      const displayCompany = (r.company_name && r.company_name !== "Unknown" && r.company_name !== "Unknown Company")
+        ? r.company_name
+        : "Company not available";
+
       const oppSource = {
         jobHash: r.source_job_id,
         role: r.job_title || "Executive Opportunity",
-        company: r.company_name || "Executive Firm",
+        company: displayCompany,
         location: r.location || "Remote",
         scrapedFrom: r.source || "LinkedIn",
         applyUrl: r.apply_url,

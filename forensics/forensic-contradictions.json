@@ -1,0 +1,63 @@
+[
+  {
+    "id": "CONT-001",
+    "title": "Serving Population Split / Pipeline Staging Bottleneck",
+    "tablesInvolved": [
+      "opportunities",
+      "canonical_opportunities",
+      "documents"
+    ],
+    "fieldsInvolved": [
+      "opportunities.id",
+      "canonical_opportunities.id",
+      "documents.opportunity_id"
+    ],
+    "observedValues": {
+      "opportunities_count": 895,
+      "canonical_opportunities_count": 632,
+      "difference": 263
+    },
+    "whyContradictory": "895 records exist in staging table 'opportunities', but only 632 reach 'canonical_opportunities'. Exactly 269 raw staging records (starting with 'o_') have corresponding document payloads in 'documents', but zero representation in 'canonical_opportunities'. Exactly 626 records are portal-prefixed legacy staging records.",
+    "severity": "HIGH",
+    "confidence": "PROVEN"
+  },
+  {
+    "id": "CONT-002",
+    "title": "Unmaterialized Evaluation Jobs",
+    "tablesInvolved": [
+      "evaluation_jobs",
+      "materialized_evaluations"
+    ],
+    "fieldsInvolved": [
+      "evaluation_jobs.id",
+      "materialized_evaluations.evaluation_job_id"
+    ],
+    "observedValues": {
+      "evaluation_jobs_count": 3204,
+      "materialized_evaluations_count": 3201,
+      "unmaterialized_difference": 3
+    },
+    "whyContradictory": "3,204 evaluation jobs were enqueued/processed, but only 3,201 materialized evaluations exist in Turso Cloud. Exactly 3 evaluation jobs failed to materialize output.",
+    "severity": "MEDIUM",
+    "confidence": "PROVEN"
+  },
+  {
+    "id": "CONT-003",
+    "title": "Zero Decision Persistence in Live Turso Database",
+    "tablesInvolved": [
+      "decisions",
+      "canonical_decisions"
+    ],
+    "fieldsInvolved": [
+      "decisions.action",
+      "canonical_decisions.action"
+    ],
+    "observedValues": {
+      "decisions_count": 0,
+      "canonical_decisions_count": 0
+    },
+    "whyContradictory": "Both 'decisions' and 'canonical_decisions' tables in production Turso Cloud contain exactly 0 rows, despite executive decisions having been recorded in client UI states.",
+    "severity": "CRITICAL",
+    "confidence": "PROVEN"
+  }
+]

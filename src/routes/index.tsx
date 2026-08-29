@@ -81,6 +81,10 @@ function Shortlist() {
   const categoryCacheRef = useRef<Map<string, ServedOpportunity[]>>(new Map());
 
   useEffect(() => {
+    categoryCacheRef.current.clear();
+  }, [opportunitiesList]);
+
+  useEffect(() => {
     if (selectedCategoryId === "all") {
       setCategoryOps(null);
       setIsLoadingCategory(false);
@@ -186,7 +190,7 @@ function Shortlist() {
           return o.engineRecommendation?.engineVerdict === "PURSUE" || o.engineRecommendation?.engineVerdict === "CONSIDER";
        }
        if (isUnavailable(o) && o.evaluationState === "SPARSE_SPEC") return false;
-       return true; // Show UNMATERIALIZED, ACQUISITION_PENDING, etc. in the main list
+       return false; // Exclude UNMATERIALIZED/backlog items from executive shortlist feed
     }),
     [remaining]
   );

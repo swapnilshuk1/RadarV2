@@ -1,0 +1,86 @@
+{
+  "wave": 9,
+  "considerCount": 8,
+  "considerAudits": [
+    {
+      "canonicalJobId": "df29660aa9d2ff91c23a61256012e1e59f13c3a4146c4248caa33871d620c65d",
+      "company": null,
+      "title": "Info Edge - Head - Growth - iimjobs & hirist (8-12 yrs)",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "e08d8e3bfe54fc9c45b15fb27cbd9b0aa82c91a918463248ef0cf6c3ff71a7fa",
+      "company": null,
+      "title": "Director - AM_CP",
+      "verdict": "CONSIDER",
+      "score": 59,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "e8c04eb8f39006bc759bc33501a30e939a4306502ff7b2ea5611f5050d2f6391",
+      "company": null,
+      "title": "Chief Marketing Officer (CMO)",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "ed1e601b92331ab6ecc74fbff502e7f2c9b609c2b4553f5b709b001612278d4e",
+      "company": null,
+      "title": "Director - Corporate Communications (18-25 yrs)",
+      "verdict": "CONSIDER",
+      "score": 59,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "f0b5a0b0a876856881dc5c27fe8d93ff29a77f72b5dbfd20d00712f5707399ef",
+      "company": null,
+      "title": "Snapmint - Director - Growth & Retention (5-12 yrs)",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "f2b37e73e3cbe467bd6035b667f9103d30043de275684ac917ebd69c19a6b511",
+      "company": null,
+      "title": "Head Customer Success- SAAS Platform",
+      "verdict": "CONSIDER",
+      "score": 56,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "f959704329aa7783bd8ed225df079ef4220829459316faf3da72868d041e432b",
+      "company": null,
+      "title": "Adityaram Properties - Head - Marketing (15-20 yrs)",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "fdd7dc84c5d2163b88bdb26f7e9755f83d6431c7db663ce2095e7f4ca042d1ff",
+      "company": null,
+      "title": "Vice President/Head - Marketing - Boiler Manufacturing Firm (20-25 yrs)",
+      "verdict": "CONSIDER",
+      "score": 59,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    }
+  ]
+}

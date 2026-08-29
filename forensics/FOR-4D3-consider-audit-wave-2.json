@@ -1,0 +1,96 @@
+{
+  "wave": 2,
+  "considerCount": 9,
+  "considerAudits": [
+    {
+      "canonicalJobId": "247b991f38aa9f1ad8cf556326656d53733c76bac24293435d248b1bd1440ee5",
+      "company": null,
+      "title": "AI / Artificial Intelligence Practice Manager",
+      "verdict": "CONSIDER",
+      "score": 60,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "260d24ecd4bfa6c3cb4559520fd9605fb5a8f61038e2063af082cd000f38be48",
+      "company": null,
+      "title": "Senior Director - Marketing, India",
+      "verdict": "CONSIDER",
+      "score": 56,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "2f2cf6cc3fdb28e06d93cf752c22ac57452dc4928b48ba629c9d8a3439fc142e",
+      "company": null,
+      "title": "Brick&Bolt - Chief Marketing Officer (12-16 yrs)",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "31b8258f9b6a74c808ffa6b87453958415cb30a1a8580dab33693c6d577ba775",
+      "company": null,
+      "title": "Marketing Head",
+      "verdict": "CONSIDER",
+      "score": 64,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "33ddf0a51ee0c8946433f18879be5353ac3469814bd939ab48ec016c380f9175",
+      "company": null,
+      "title": "The Indus Valley - Vice President - Marketing (15-20 yrs)",
+      "verdict": "CONSIDER",
+      "score": 62,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "366777cd1da554cfc91fcecda5407d6cec29f547d7e3319ac567516f9d8353e0",
+      "company": null,
+      "title": "Director - Marketing - eCommerce (12-15 yrs)",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "366fed05933d81c5aab50fae9eb8643d1e2005f4f3da3d79e9a54abe215de5e8",
+      "company": null,
+      "title": "VP Director",
+      "verdict": "CONSIDER",
+      "score": 60,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "3b998f85aa6c309e97ba6497c1a8c18fa2d05145c2a0e2c0a476e5915dac6706",
+      "company": null,
+      "title": "Head - Sales - Media Digital Tech Platform (15-25 yrs)",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "3c289729709fdd71618f6b7607276e6b096186e188a25eff0ec70d6c78ba4f90",
+      "company": null,
+      "title": "Fabel Services - Head - Growth Marketing (10-15 yrs)",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    }
+  ]
+}

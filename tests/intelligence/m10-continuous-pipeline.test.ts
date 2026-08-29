@@ -578,7 +578,7 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
     expect(servedOpp.company).toBe("Enterprise Tier 1");
     expect(servedOpp.location).toBe("Bengaluru");
     expect(servedOpp.postedRelative).toBeDefined();
-    expect(["PURSUE", "CONSIDER", "PASS"]).toContain(servedOpp.decision);
+    expect(["PURSUE", "CONSIDER", "PASS", "SPARSE_SPEC"]).toContain(servedOpp.decision);
     expect(servedOpp.effectiveDecision).toBeDefined();
 
     // 3. User records explicit PASS decision

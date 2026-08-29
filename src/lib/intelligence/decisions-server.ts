@@ -32,7 +32,8 @@ export const syncDecisionsFn = createServerFn({ method: "POST" })
         await repos.decisions.recordUserDecision(scope.personId, jobHash, entry.verb, undefined, entry.reviewedFingerprint, scope.tenantId);
       }
     }
-    return { success: true };
+    const updatedMap = await repos.decisions.getUserDecisions(scope.personId, scope.tenantId);
+    return { success: true, decisions: updatedMap };
   });
 
 export const undoDecisionFn = createServerFn({ method: "POST" })

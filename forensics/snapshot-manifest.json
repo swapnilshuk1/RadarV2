@@ -1,0 +1,380 @@
+{
+  "snapshotId": "turso_snapshot_20260829005309",
+  "source": {
+    "system": "Turso Cloud (LibSQL)",
+    "databaseUrl": "libsql://radar-db-swapnilshuk1.aws-ap-south-1.turso.io",
+    "environment": "dev"
+  },
+  "mode": "READ_ONLY",
+  "extractionStartedAt": "2026-08-29T00:52:05.406Z",
+  "extractionCompletedAt": "2026-08-29T00:53:09.043Z",
+  "sqliteFile": "radar-turso-snapshot-2026-08-29.sqlite",
+  "fileSizeBytes": 113577984,
+  "fileSizeMb": "108.32 MB",
+  "consistencyStatus": "SNAPSHOT CONSISTENT",
+  "fidelityCheckPassed": true,
+  "foreignKeyViolationsCount": 0,
+  "tables": {
+    "_migrations": {
+      "rowCount": 29,
+      "schemaHash": "ca57b5aaa266540c63ab0e4d16def3b48aad201ec9999afbc233fc88ebde9a45",
+      "contentHash": "ecdaa225b5728132a1b89c567e658bebfc89a01415e4a6b583e8c9c6ae9d0c04"
+    },
+    "_test_contract": {
+      "rowCount": 2,
+      "schemaHash": "7805642fab0be5cbd0108ea554f571c7d8f77244b08400e7a800efc1a5a8972d",
+      "contentHash": "c95e1fdf9f607cbc92705f92e1d5de750b7cfe7ed97418fe26477a7f8e7f90ab"
+    },
+    "acquisition_ledger": {
+      "rowCount": 632,
+      "schemaHash": "d8e11afbb2ae85ceed8cd9794691d74b355f8021cbac95178d05992efa48c451",
+      "contentHash": "f9c03c9aec6c74e1d8c256a0e633c35b4ca8c88918272c182b2874fa99cbdc5f"
+    },
+    "active_evaluation_contexts": {
+      "rowCount": 0,
+      "schemaHash": "317b1e30fb9aa6654baab39b3ce67f7e74f1f665e1e886d8b1b9ef7848f904b5",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "assessment_records": {
+      "rowCount": 0,
+      "schemaHash": "b057571f4e6e3c16da161ff8c3d299f468636f28b4d8efd8c8ae8c6b14d417fc",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "assessments": {
+      "rowCount": 0,
+      "schemaHash": "2f18286040013b33001d1f15ffb4023ec1c79d91e21400e1f848744fb90a3400",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "auth_sessions": {
+      "rowCount": 35,
+      "schemaHash": "f51500963ac26f0d858e4e6b6bc9b88e904186422aa9c64c3822889c22cd1924",
+      "contentHash": "d3abf7ba5d4ce486bfae4a8c64b9b9def5db36663984d69899724d3c79385f6f"
+    },
+    "calibration_runs": {
+      "rowCount": 6,
+      "schemaHash": "df2d074ff78d175175d425fb62248734a471f9d71c40d720061f885adffe9bc6",
+      "contentHash": "3ccd35562fe84850a5971def0c1cc513b6275075f8616eb6b31eac9944375d27"
+    },
+    "candidate_documents": {
+      "rowCount": 2,
+      "schemaHash": "fa80df306771bcce5bb737e799f38936cb0e917645ffc599470bd588df064088",
+      "contentHash": "451d3e5ea98f8102b4f67dc7817f5583480e8455a36185ab4bf17694ca03786b"
+    },
+    "candidate_evaluations": {
+      "rowCount": 0,
+      "schemaHash": "1be09100fa7a840c1c369178ad071ba7e8c6fe35532570c9cd15ef9520c258b1",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "candidate_projection": {
+      "rowCount": 2,
+      "schemaHash": "751022137bff3fe829be08029570181c8713ad513ebf597085565ff3e491770b",
+      "contentHash": "fb8b6e4d2ef89faaad92171ea513362ceec3872e7e329e9ca3e290e08b4ebb20"
+    },
+    "canonical_decisions": {
+      "rowCount": 0,
+      "schemaHash": "b83caaaaa06b941d3b355e71b06f2774be321eff0264ee78a4904a1a0785badb",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "canonical_opportunities": {
+      "rowCount": 632,
+      "schemaHash": "a0af39b6167f91e38f22cbabcaa7514384c7d7c745955d7f5957897db296afcd",
+      "contentHash": "7a9b787d1335cf58efd6d8217b7cfa02bdd176737171adf83e2c9e89e647dd52"
+    },
+    "career_intents": {
+      "rowCount": 0,
+      "schemaHash": "2617085b96177d68f182cf8b3da876ae8384dc174965993cd977927d9755a6eb",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "career_profiles": {
+      "rowCount": 7,
+      "schemaHash": "2bd94564698f6d4463301babaa62111d58c9f51c7e45808512551121445f0599",
+      "contentHash": "0d632d2c280dc4b9c3f1b1b42a4ad0b37175040c5b8bfd80cbef78abf8f29b1d"
+    },
+    "claim_facts": {
+      "rowCount": 0,
+      "schemaHash": "a26f987e00633810ac62f7548f49409d5c169b66e19f859547a920fcb65de93b",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "claims": {
+      "rowCount": 0,
+      "schemaHash": "a5251263243f70a48f29389850b21a66c3a1eb7c97934d9dbbaaad2ed62ebc59",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "companies": {
+      "rowCount": 2010,
+      "schemaHash": "7bbb8c6473f9c461c9fa0618d3fdd90a2ef6edadbc4ef64d19f3cf609ed5852d",
+      "contentHash": "ea857ca190fdc6e55698b631f1ee65dd7a7bb2089b24f896a58815833fb65e40"
+    },
+    "credential_audit_logs": {
+      "rowCount": 0,
+      "schemaHash": "1bf9ab1f2b78d401448e1bc89ceec6242c2ad09029543980b1630fe8966b5540",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "decisions": {
+      "rowCount": 0,
+      "schemaHash": "0bb02af50e491770143fd7daefa17f68f286fa4ee7cec6fa36b8c1b3c06094fa",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "document_contents": {
+      "rowCount": 0,
+      "schemaHash": "adbc9bf2ce004ed6434cf513cb231140e9e7e66a235c528c71d9bdc8d7a69603",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "documents": {
+      "rowCount": 269,
+      "schemaHash": "420a3b22bdc22d777b2b844df437039ce0701680de5c862ebae7a8ae0f6c3b10",
+      "contentHash": "bbb4e10ac09008d29a4e0d8e83d91d2b78445b52fb14dc0662ee17112461f20f"
+    },
+    "dossier_views": {
+      "rowCount": 0,
+      "schemaHash": "6a05627bfc5ae0f13ff2795da0f155ef6ef6bd4c048c041ca05d2649b0a0ca21",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_evidence_clusters": {
+      "rowCount": 0,
+      "schemaHash": "4ca9eadfaaf8ee5d39604a6f71da5566f51077bd4a162481ac4bb5d63cfd03f5",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_evidence_provenance": {
+      "rowCount": 0,
+      "schemaHash": "50816fd16a807f2773eacfe17b0132bdf4f37d64dd1c4179017b575fea91ffc1",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_knowledge_debt": {
+      "rowCount": 0,
+      "schemaHash": "648db38b725220fb7a6b2443e15968380307eb27aa6eeb6e91bd3a5c425ededf",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_pipeline_candidate_capabilities": {
+      "rowCount": 0,
+      "schemaHash": "5d2ecb437d68b1918fe971e5376ca653b239a7387f3b48ec8f4da05a84bfe3e1",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_pipeline_proposals": {
+      "rowCount": 0,
+      "schemaHash": "8f4ec99b0283bff62afdf8dea652469dbe85993b3b3f9d099ef71fb3ef129e93",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_pipeline_raw_observations": {
+      "rowCount": 0,
+      "schemaHash": "a23e0b276bdda42dfc09be48b134becce2d599743a109f6cc24c3db339bdea35",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_published_aliases": {
+      "rowCount": 113,
+      "schemaHash": "7d93f14318a4e583a0b542551b164c88e7a900dd6a1ef4480291a8e7c4064ea0",
+      "contentHash": "01a390569e04a26c9f090071843a52957d4004e851931b1b2af1dcb61f2ce6d7"
+    },
+    "ekb_published_capabilities": {
+      "rowCount": 19,
+      "schemaHash": "e54c0e1c6d7335f8d16c66c71d1ae2ae95ed740192faafed9f9e5fd517046287",
+      "contentHash": "fee7ae3c0751cff05372516821217837f69bdd61e8d07ba6fe9ab7014eb8c9fa"
+    },
+    "ekb_published_capability_graph": {
+      "rowCount": 0,
+      "schemaHash": "2398d9af888464d0714fb81b2cebc9367b41a3e845b212b295579b140dcc6b37",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_published_embeddings": {
+      "rowCount": 0,
+      "schemaHash": "c5ed3994ea70261c2c0f3a40dca9e87e688a1229090612423b080102992ef2d7",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_published_mobility_graph": {
+      "rowCount": 0,
+      "schemaHash": "7184d043803916fed2bb64dfc3450d9fc71e7ee5101ed63c4a8797cca656d514",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_published_platform_graph": {
+      "rowCount": 0,
+      "schemaHash": "a29ffefe98ba1ebfdbecd195fe4e099874032400a0a63eb23636fe61ecd3eaf3",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_published_relationships": {
+      "rowCount": 0,
+      "schemaHash": "6caf4ea36913cae56852c5aff0f1ad2a228ce310e456d2dd4219b0fc3daf736a",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_published_versions": {
+      "rowCount": 1,
+      "schemaHash": "e8e442106f7bef315e602a44852e062893c5f7b25bb0167939d458d99713adc1",
+      "contentHash": "1c76ca521a4a34f13ccf920ab832da36d243e159df29be9534254fca2d4fdc75"
+    },
+    "ekb_release_candidates": {
+      "rowCount": 0,
+      "schemaHash": "1856afe078d17eda9feb736ef7b9bf349eea7d1d5d4843725fc4255e12aebcc1",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "ekb_temporal_evidence": {
+      "rowCount": 0,
+      "schemaHash": "5ce1c00f6db7a9fe5f6c2d6e25186b1082613a7f95ad7caa73f7023399bc1a48",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "evaluation_context_scopes": {
+      "rowCount": 0,
+      "schemaHash": "4a5672cc6bc4f2cfb8061d68da4ca816b4c10a89195d707fad955a71b9040dfc",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "evaluation_contexts": {
+      "rowCount": 15,
+      "schemaHash": "e08d7473b39c7e98827bd955e894cfd15cd6b8173751f344fdaa9474c64fee7f",
+      "contentHash": "06ccced2ef53b63091d18fb85375892000e286f6dc119867325afc8fd7ae1833"
+    },
+    "evaluation_jobs": {
+      "rowCount": 3204,
+      "schemaHash": "9c8cdc1475864bea5d37d62161a87be38cc35a35a04b3d1762b329f23eb26497",
+      "contentHash": "a0bb4b742f97a672f076e0369b8d524b364d1ab7bd70ebfeb1b4039e77cd5af6"
+    },
+    "evaluation_signatures": {
+      "rowCount": 0,
+      "schemaHash": "5e8d6070404a3df688d7a84d86c7858f9fccd8083ee58af41b9d146a46d05365",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "evidence": {
+      "rowCount": 599,
+      "schemaHash": "0ee3fdca654dec7d78378c61915db306cab91a835f46d02dfb217741a8b5883d",
+      "contentHash": "a602c112600c350fc060d0e04810d357e3fda2de3f2d1f5dbff2a69f7ea8dfb9"
+    },
+    "evidence_graphs": {
+      "rowCount": 2,
+      "schemaHash": "75746606ff4305e516257bf4f8428b7118dde8f30e201d5ab226d07e4b8b594a",
+      "contentHash": "e8185ef1e578412bcf5c79fb10fb6ea907ad36feae48a86c7e9081eb9fa4bd17"
+    },
+    "fact_evidence": {
+      "rowCount": 593,
+      "schemaHash": "6a803b11a70be38ea1bd7f55cedcf798ed0903e81e34c3cee4e4d925a9dde811",
+      "contentHash": "c3bdb66c40f5d7730e1e0b137baa5dd15e034902c7f9b0613b25bd477952ff19"
+    },
+    "facts": {
+      "rowCount": 593,
+      "schemaHash": "2aba90f8813bff06c1b889c43098e9d09a1168edbe128438a164e8f1282a5fa1",
+      "contentHash": "6d17806d14d91ba18b5e8fc5c1393ffe7d6ec407a884931d667d66f90dc93ba5"
+    },
+    "intent": {
+      "rowCount": 3,
+      "schemaHash": "f85d5c3df8a5ce565661f198f4cf5292090545d6f43aa573227f441ef9712aca",
+      "contentHash": "d46f2e38df1b385ae05a1860a3468713291d6307764d622711e0369053e66fdb"
+    },
+    "match_claims": {
+      "rowCount": 0,
+      "schemaHash": "49dff7992ef450d435a0eff9a5874fc2142fe2e8c0d168bb842d2ecf0d69cb26",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "matches": {
+      "rowCount": 0,
+      "schemaHash": "0555a6e0065d41c2deef33aaeac4ff3305c69771befda976d7307e5534399578",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "materialized_evaluations": {
+      "rowCount": 3201,
+      "schemaHash": "c487ba54ca0aace5b2479a812b6f58f8374e5e46b120556f5bcaaf1aa2753747",
+      "contentHash": "8ac49fa09b164a5fe8882f67684dea0c8a6997bb8218bcfceb008ea261895a38"
+    },
+    "memberships": {
+      "rowCount": 4,
+      "schemaHash": "ac1a4781d3af6d1e98a7ae6e649f488ad3058b0b9a43230d943d76bb273e7c45",
+      "contentHash": "87ef33fc108d405077ef1954946b29272eec1570594a37f7a8ac68077482eaf1"
+    },
+    "oauth_accounts": {
+      "rowCount": 1,
+      "schemaHash": "290f87c433974274f3e43a0c523740701e6313e252d91e72209b36cefe08ed75",
+      "contentHash": "918a505dd6c75b8d0d55f19bb2885ae9f195bdd639ef7723192084982ede9cfb"
+    },
+    "opportunities": {
+      "rowCount": 895,
+      "schemaHash": "f84983b48f3ef40f8cc16d2a8f2c038f038dd12a5aafe6154daf2caaf3ce227d",
+      "contentHash": "48f495831666bd8aa3474ed519dac46021bd6fc37ed6b085012b036ff7c244d1"
+    },
+    "opportunity_discoveries": {
+      "rowCount": 258,
+      "schemaHash": "ddf4a1554e1234a4d53369eeb134eba731d17fcf905a1fbbbd8dbd307290214a",
+      "contentHash": "d24085996947904e1003478030384ac05027ff79292616ab80a05166e45d3027"
+    },
+    "opportunity_versions": {
+      "rowCount": 632,
+      "schemaHash": "189869c69b7200849643cc693b0822ab5657f5cbf553e3394e93274e43a01696",
+      "contentHash": "c855819c2b668fb66b850f7eeefd8d978a73eda7a57d0cd92172f31dd7404755"
+    },
+    "people": {
+      "rowCount": 9,
+      "schemaHash": "91bab45bc864a6b5063e03b72fdbcd8d661b8c77333eed28412b3effe25801b3",
+      "contentHash": "ab3f555419a6871f40ba902544770cbb8fe7e7f08b2b9b387e4bb357c805c7ca"
+    },
+    "policy_comparisons": {
+      "rowCount": 6,
+      "schemaHash": "255372e2480888df2c08088c9f1494037771acac0dcff9ccb4dfe2530473e904",
+      "contentHash": "ffdfc9cd97e30b2f1d67db67dbf4ff432e75874b5477c8f27c10d01ff759a3d3"
+    },
+    "preference_profiles": {
+      "rowCount": 0,
+      "schemaHash": "a214230f989b3feb769192292d3f2b2ca39e974c727c16633466b13c24d46edc",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "recommendation_snapshots": {
+      "rowCount": 0,
+      "schemaHash": "ef33d5842aa3cdb9c18a3f3f552431b996e209af0843e420f8e57d9de0e786a1",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "recommendations": {
+      "rowCount": 0,
+      "schemaHash": "1c77956990d4e9e16d37335dfa88c39a10a2535195c45ddee204ad766fe44061",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "recovery_queue": {
+      "rowCount": 6,
+      "schemaHash": "c4712c4199ba22b5e86c545d9d8678d98d96a38b6e902861cd7f49ea6bdebe14",
+      "contentHash": "73848bd3043885ec623daf9f5f0090361ab52d26241948552bae9c6ad3416d9f"
+    },
+    "resume_versions": {
+      "rowCount": 0,
+      "schemaHash": "07ef0181c78d1f7bb13fb4a72afa6b9928622b0ddc040b8a9fec245e53137de8",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "search_plan_candidates": {
+      "rowCount": 4424,
+      "schemaHash": "efa65eb57724ce4f232851277b27b053af6eacf004849d143b6a3d63ee5fd319",
+      "contentHash": "66c41ef91de44066021ee4a2ed7660900c5aa0ab2673f7bdc140138dc300dfc7"
+    },
+    "search_plan_snapshots": {
+      "rowCount": 15,
+      "schemaHash": "d0b0acd431dcd4fb5f4835a2081f9e7d130ea5ce6f6171b94bc003997d168fa3",
+      "contentHash": "65aaa0e7a560e96e9c05b29563fe9559d3c600648b898e8c454916fa25b82912"
+    },
+    "search_plans": {
+      "rowCount": 8,
+      "schemaHash": "343f7982a1c1267bfce8912b27213ef8e03dab68afaf3350084414bec8a290be",
+      "contentHash": "4ec24621f3b30a3a496f9e5a245297ba1afd4244d8ddc89296f9d04f24528bec"
+    },
+    "source_credentials": {
+      "rowCount": 0,
+      "schemaHash": "e1c080e2d76a74044e7f2416265ad394586527d7ab2ddf7b4776f81b86dbc220",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "sources": {
+      "rowCount": 3,
+      "schemaHash": "d558ef810d617fe9885eb225d1abc936e7ae596991155c0c77f076eb4e3c7953",
+      "contentHash": "34a0e0b92a2b31af34e93e03e177b9646ae2df84f5e77511f08be894f913ba0b"
+    },
+    "tenants": {
+      "rowCount": 8,
+      "schemaHash": "9b3e7c901e0bea382399c9e2b2e39eba641215288e63426d090da5cc6290a4c0",
+      "contentHash": "c57759f5233e1b2852e5b2b1cc8deba9dece334aa2a39c1719cd5e76c1f382a3"
+    },
+    "timeline_events": {
+      "rowCount": 0,
+      "schemaHash": "493fe9b9f98429ae01b3946fd7bb6b826ba3456d49582b50f484fe7d61987768",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "users": {
+      "rowCount": 3,
+      "schemaHash": "fffd306d48fae90538050d2ad3b6e817310cfb3a4e4f346ade5a5148e904e4af",
+      "contentHash": "ba6bca8bc33615b45a602460148fafa5c8a145e5525dbac4cf18eb5daefd0b09"
+    },
+    "workspaces": {
+      "rowCount": 0,
+      "schemaHash": "f5808412fa8e88d442fc99df27843a9d7f1dcb5cc9f28a4fc87c187fd4614cb9",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "overallSnapshotHash": "06c54a65a4a95425c73dc282579f4de538518179c7544690e81cd09f361ee5f5"
+}

@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-08-29T03:13:10.742Z",
+  "serverTruth": {
+    "totalScreened": 3002,
+    "totalShortlisted": 720,
+    "unreviewedShortlist": 233,
+    "totalDecisions": 1498,
+    "activePursuits": 308,
+    "sparseSpec": 639
+  },
+  "clientDerived": {
+    "activeOpsCount": 3002,
+    "shortlistedOpsCount": 233,
+    "remainingCount": 1504,
+    "sparseOpsCount": 639
+  },
+  "alignment": "100% PERFECTLY SYNCHRONIZED"
+}

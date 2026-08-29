@@ -42,6 +42,9 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  if (isRedirect(error)) {
+    throw error;
+  }
   console.error("[Root Error Boundary]", error);
   const router = useRouter();
 

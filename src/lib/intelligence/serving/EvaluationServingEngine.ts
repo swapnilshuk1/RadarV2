@@ -231,7 +231,7 @@ export function serveEvaluation(
     evaluationState: "EVALUATED",
     jobHash: cached.jobHash,
     role: oppCtx.role || oppCtx.title || "Executive Opportunity",
-    company: oppCtx.company || "Executive Firm",
+    company: (oppCtx.company && oppCtx.company !== "Unknown" && oppCtx.company !== "Unknown Company") ? oppCtx.company : "Company not available",
     location: oppCtx.location || "Remote",
     scrapedFrom: (oppCtx.scrapedFrom === "Naukri" || oppCtx.scrapedFrom === "Indeed") ? oppCtx.scrapedFrom : "LinkedIn",
     applyUrl: oppCtx.applyUrl || undefined,
@@ -275,7 +275,7 @@ function adaptEngineVerdict(verb: unknown): EngineVerdict {
   if (verb === "CONSIDER") return "CONSIDER";
   if (verb === "PASS") return "PASS";
   if (verb === "NOT_EVALUABLE" || verb === "SPARSE_SPEC") return "SPARSE_SPEC";
-  return "CONSIDER";
+  return "SPARSE_SPEC";
 }
 
 /**
@@ -288,9 +288,11 @@ export function adaptLegacyEvaluation(
   oppCtx: OpportunityServingContext,
   userDecision: UserDecisionStateV4 | null
 ): Opportunity {
-  const recordedVerdict = adaptEngineVerdict(
-    legacyOpp.engineRecommendation?.engineVerdict || legacyOpp.decision
-  );
+  const rawVerb = legacyOpp.engineRecommendation?.engineVerdict
+    || legacyOpp.decision
+    || legacyOpp.verb
+    || legacyOpp.verdict;
+  const recordedVerdict = adaptEngineVerdict(rawVerb);
 
   // Build current headspace
   const headspace = buildHeadspace(candCtx.activePursuits, candCtx.attentionWindow);
@@ -332,7 +334,7 @@ export function adaptLegacyEvaluation(
     evaluationState: "LEGACY",
     jobHash: legacyOpp.jobHash || oppCtx.jobHash || "",
     role: oppCtx.role || oppCtx.title || legacyOpp.role || "Executive Opportunity",
-    company: oppCtx.company || legacyOpp.company || "Executive Firm",
+    company: (oppCtx.company && oppCtx.company !== "Unknown" && oppCtx.company !== "Unknown Company") ? oppCtx.company : (legacyOpp.company && legacyOpp.company !== "Unknown" && legacyOpp.company !== "Unknown Company") ? legacyOpp.company : "Company not available",
     location: oppCtx.location || legacyOpp.location || "Remote",
     scrapedFrom: (oppCtx.scrapedFrom === "Naukri" || oppCtx.scrapedFrom === "Indeed") ? oppCtx.scrapedFrom : legacyOpp.scrapedFrom || "LinkedIn",
     applyUrl: oppCtx.applyUrl || legacyOpp.applyUrl || undefined,

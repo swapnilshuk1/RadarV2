@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-08-29T02:42:43.163Z",
+  "phase": "FOR-4D2",
+  "unmaterializedBacklogCountBefore": 904,
+  "unmaterializedBacklogCountAfter": 904,
+  "evaluationJobsCreated": 0,
+  "materializedEvaluationsCreated": 0,
+  "decisionsChanged": 0,
+  "status": "BACKLOG_100_PERCENT_UNTOUCHED"
+}

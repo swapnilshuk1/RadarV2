@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-08-29T03:06:32.030Z",
+  "endpoints": [
+    {
+      "fn": "getOpportunitiesFn",
+      "method": "GET",
+      "payload": {},
+      "responseCount": 3002
+    },
+    {
+      "fn": "getShortlistMetricsFn",
+      "method": "GET",
+      "payload": {},
+      "responseTotalScreened": 3002,
+      "responseTotalShortlisted": 720
+    }
+  ],
+  "repeatedRequestLoop": false,
+  "latencyMs": 85
+}
