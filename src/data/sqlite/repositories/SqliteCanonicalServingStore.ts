@@ -435,8 +435,11 @@ export class SqliteCanonicalServingStore {
         updatedAt: r.user_decision_updated_at,
       } : null;
 
+      const rawComp = (rawParsed as any)?.opportunity?.company || (rawParsed as any)?.company || (rawParsed as any)?.record?.company;
       const displayCompany = (r.company_name && r.company_name !== "Unknown" && r.company_name !== "Unknown Company")
         ? r.company_name
+        : (rawComp && rawComp !== "Unknown" && rawComp !== "Unknown Company")
+        ? rawComp
         : "Company not available";
 
       const oppSource = {

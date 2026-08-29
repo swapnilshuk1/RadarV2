@@ -338,7 +338,15 @@ export function adaptLegacyEvaluation(
     evaluationState: "LEGACY",
     jobHash: legacyOpp.jobHash || oppCtx.jobHash || "",
     role: oppCtx.role || oppCtx.title || legacyOpp.role || "Executive Opportunity",
-    company: (oppCtx.company && oppCtx.company !== "Unknown" && oppCtx.company !== "Unknown Company") ? oppCtx.company : (legacyOpp.company && legacyOpp.company !== "Unknown" && legacyOpp.company !== "Unknown Company") ? legacyOpp.company : "Company not available",
+    company: (oppCtx.company && oppCtx.company !== "Unknown" && oppCtx.company !== "Unknown Company")
+      ? oppCtx.company
+      : (legacyOpp.company && legacyOpp.company !== "Unknown" && legacyOpp.company !== "Unknown Company")
+      ? legacyOpp.company
+      : (legacyOpp.opportunity?.company && legacyOpp.opportunity.company !== "Unknown" && legacyOpp.opportunity.company !== "Unknown Company")
+      ? legacyOpp.opportunity.company
+      : (legacyOpp.record?.company && legacyOpp.record.company !== "Unknown" && legacyOpp.record.company !== "Unknown Company")
+      ? legacyOpp.record.company
+      : "Company not available",
     location: oppCtx.location || legacyOpp.location || "Remote",
     scrapedFrom: (oppCtx.scrapedFrom === "Naukri" || oppCtx.scrapedFrom === "Indeed") ? oppCtx.scrapedFrom : legacyOpp.scrapedFrom || "LinkedIn",
     applyUrl: oppCtx.applyUrl || legacyOpp.applyUrl || undefined,
