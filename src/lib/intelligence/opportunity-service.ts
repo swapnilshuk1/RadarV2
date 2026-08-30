@@ -145,7 +145,15 @@ export class OpportunityService {
     ensureWorkerDaemonStarted();
     const scope = await resolveScope(userId, requestedTenantId);
     const queries = this.getServingQueries();
-    const feed = await queries.getFeed(scope, undefined, { categoryId: options?.categoryId as any }, 24);
+    const feed = await queries.getFeed(
+      scope,
+      undefined,
+      {
+        categoryId: options?.categoryId as any,
+        decisionFilter: "unreviewed",
+      },
+      50
+    );
 
     return feed.items.map((f) => {
       if (f.evaluationState === "SPARSE_SPEC" || f.evaluationState === "UNMATERIALIZED") {
