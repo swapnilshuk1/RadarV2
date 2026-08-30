@@ -1,0 +1,12 @@
+{
+  "candidateIntegrity": {
+    "orphanCandidates": 0,
+    "isClean": true
+  },
+  "decisionIntegrity": {
+    "orphanDecisions": 0,
+    "isClean": true
+  },
+  "canonicalJobUniqueness": "PASS",
+  "versionIntegrity": "PASS"
+}

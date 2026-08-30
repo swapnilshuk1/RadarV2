@@ -266,6 +266,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           rationale TEXT,
           evidence_ids TEXT,
           evaluation_json TEXT NOT NULL,
+          vetoed INTEGER NOT NULL DEFAULT 0,
           materialized_at DATETIME NOT NULL,
           UNIQUE(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
         );

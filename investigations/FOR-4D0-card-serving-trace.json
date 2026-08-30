@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-08-29T02:32:06.501Z",
+  "tracedCardsCount": 6,
+  "cards": [
+    {
+      "cardIndex": 1,
+      "jobHash": "j-0b7b1681d757",
+      "dbTruth": {
+        "canonical_job_id": "db68ad6290e0f52c86b59ea68889586a40043a9c85114717f06638adae6e0f21",
+        "source_job_id": "j-0b7b1681d757",
+        "company_name": "Unknown",
+        "job_title": "GN - SONG - MT - Marketing Transformation-Lifesciences- Consultant",
+        "location": null,
+        "materialized_evaluation": {
+          "id": "mat_db68ad6290e0f52c",
+          "evaluation_state": "UNKNOWN",
+          "context_fingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9",
+          "intrinsic_verdict": "PURSUE",
+          "quality_score": 90
+        }
+      },
+      "servingStoreDTO": {
+        "evaluationState": "EVALUATED",
+        "jobHash": "j-0b7b1681d757",
+        "role": "GN - SONG - MT - Marketing Transformation-Lifesciences- Consultant",
+        "company": "Unknown",
+        "location": "Remote"
+      },
+      "viewModelUI": {
+        "renderedComponent": "MinimalStateCard (when unmaterialized) or ShortlistCardRow",
+        "renderedRole": "GN - SONG - MT - Marketing Transformation-Lifesciences- Consultant",
+        "renderedCompany": "UNKNOWN COMPANY",
+        "renderedLocation": "UNKNOWN",
+        "renderedBadge": "EVALUATION PENDING (for unmaterialized fallback)"
+      }
+    }
+  ],
+  "companyNameRootCause": "For 1,498 historical decision records restored in FOR-3, canonical_opportunities.company_name was populated as 'Unknown'. For 600 Category-E hydrated records, valid company names exist. For 904 Category-A unmaterialized records, company_name is 'Unknown' and evaluationState is UNMATERIALIZED.",
+  "uiMinimalCardTrigger": "listOpportunities() bypassed category filtering for unmaterialized records and shortlistedOps returned true for unmaterialized items, rendering 904 unmaterialized backlog records as MinimalStateCards at the top of category lists."
+}

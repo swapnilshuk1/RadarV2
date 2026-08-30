@@ -38,7 +38,8 @@ describe("Phase M3: Evaluation Context & Read Model Isolation", () => {
       "019_evaluation_context_and_read_model.sql",
       "020_canonical_acquisition.sql",
       "026_canonical_acquisition_integrity.sql",
-      "027_materialized_evaluations_nullable_decision.sql"
+      "027_materialized_evaluations_nullable_decision.sql",
+      "029_materialized_evaluations_vetoed.sql"
     ];
     
     for (const file of migrationFiles) {

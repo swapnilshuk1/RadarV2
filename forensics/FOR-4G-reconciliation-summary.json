@@ -1,0 +1,102 @@
+{
+  "totalCandidates": 3002,
+  "countCurrentEvaluated": 2363,
+  "countCurrentSparse": 639,
+  "countCurrentNoEval": 0,
+  "countHistoricalOnly": 0,
+  "countMultipleContext": 600,
+  "cdCategories": {
+    "A_active_and_attached": 1508,
+    "B_inactive_candidate": 0,
+    "C_inactive_search_plan": 0,
+    "D_different_person": 0,
+    "E_different_tenant": 0,
+    "F_duplicate": 0,
+    "G_legacy": 0,
+    "H_orphan": 1,
+    "I_other": 0
+  },
+  "actionChangesCount": 255,
+  "actionChangesSample": [
+    {
+      "canonical_job_id": "eccfe4c45fe394034b80708ad66bb536d671a2ee4080fa97b5a2cfc24f4c6211",
+      "source_job_id": "j-0379479f0b86",
+      "historical_action": "CONSIDER",
+      "canonical_action": "PASS",
+      "historical_timestamp": "2026-08-16T00:00:00.000Z",
+      "canonical_timestamp": "2026-08-29 01:48:44"
+    },
+    {
+      "canonical_job_id": "c72ffe5132dce25e6ac34528dccbe1786fe09646176a4efc05a4ae5ba99b96c5",
+      "source_job_id": "j-0a5b3c5f63e7",
+      "historical_action": "PASS",
+      "canonical_action": "PURSUE",
+      "historical_timestamp": "2026-08-16T00:00:00.000Z",
+      "canonical_timestamp": "2026-08-29 01:48:44"
+    },
+    {
+      "canonical_job_id": "62fcab65b8d4e3ef2d931d51e2ef09753b3d229b7212c9b5a6a272f9763c1700",
+      "source_job_id": "j-22b86a7804ae",
+      "historical_action": "CONSIDER",
+      "canonical_action": "PURSUE",
+      "historical_timestamp": "2026-08-16T00:00:00.000Z",
+      "canonical_timestamp": "2026-08-29 01:48:44"
+    },
+    {
+      "canonical_job_id": "9f9958d9f8f3afe6076b9a1922e34c7dbe0b0a8d9e0fb28ab2693e05db672a49",
+      "source_job_id": "j-38239011e477",
+      "historical_action": "PASS",
+      "canonical_action": "PURSUE",
+      "historical_timestamp": "2026-08-16T00:00:00.000Z",
+      "canonical_timestamp": "2026-08-29 01:48:45"
+    },
+    {
+      "canonical_job_id": "62515051b3458635c7274b71b647fd31e8a8774c63aef29fc2a0e952156324b6",
+      "source_job_id": "j-3c7a0573de05",
+      "historical_action": "PASS",
+      "canonical_action": "PURSUE",
+      "historical_timestamp": "2026-08-16T00:00:00.000Z",
+      "canonical_timestamp": "2026-08-29 01:48:45"
+    },
+    {
+      "canonical_job_id": "f380ab5b19d857ed42892cd864fb91cc76be37644b0e46de087278629c4cd4ea",
+      "source_job_id": "j-512955a729b1",
+      "historical_action": "CONSIDER",
+      "canonical_action": "PURSUE",
+      "historical_timestamp": "2026-08-16T00:00:00.000Z",
+      "canonical_timestamp": "2026-08-29 01:48:45"
+    },
+    {
+      "canonical_job_id": "01c41d2663cd32785a9bf2892f8d103c26a1307f5ad922e9bca2e616c0ecfec4",
+      "source_job_id": "j-5774df989b48",
+      "historical_action": "CONSIDER",
+      "canonical_action": "PURSUE",
+      "historical_timestamp": "2026-08-16T00:00:00.000Z",
+      "canonical_timestamp": "2026-08-29 01:48:45"
+    },
+    {
+      "canonical_job_id": "ce8b19f72a9697432a4971a83be7aa6035d83757e3edb6e2c5a976e66add2092",
+      "source_job_id": "j-78a7b3a39a1f",
+      "historical_action": "PASS",
+      "canonical_action": "PURSUE",
+      "historical_timestamp": "2026-08-16T00:00:00.000Z",
+      "canonical_timestamp": "2026-08-29 01:48:45"
+    },
+    {
+      "canonical_job_id": "f648f44dcdea6117d0dc716aa91588c2e7408fc35f4a6da69cda78a3e35d8d62",
+      "source_job_id": "j-7c45e6232ae3",
+      "historical_action": "PURSUE",
+      "canonical_action": "CONSIDER",
+      "historical_timestamp": "2026-08-16T00:00:00.000Z",
+      "canonical_timestamp": "2026-08-29 01:48:46"
+    },
+    {
+      "canonical_job_id": "4dcd0c65c1ad8a6fd60d39c7d3c8fcec7caea1b9dddc07f93f2910539c57eb9f",
+      "source_job_id": "j-810c060a01d3",
+      "historical_action": "PASS",
+      "canonical_action": "PURSUE",
+      "historical_timestamp": "2026-08-16T00:00:00.000Z",
+      "canonical_timestamp": "2026-08-29 01:48:46"
+    }
+  ]
+}

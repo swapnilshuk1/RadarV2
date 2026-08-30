@@ -331,7 +331,12 @@ export class SqliteCanonicalServingStore {
       const safeScrapeSource = toScrapeSource(r.source);
       
       const unavailState = toUnavailableState(r.evaluation_state);
-      if (unavailState !== null) {
+      const hasUserDecision = Boolean(r.user_action && r.user_action !== "NONE");
+
+      // For unreviewed opportunities, sparse specs remain unavailable.
+      // If an opportunity has an explicit user decision and evaluation JSON,
+      // adapt it so that the user's decision is represented in the Decisions surface.
+      if (unavailState !== null && (!hasUserDecision || !r.evaluation_json)) {
         const unavail: UnavailableOpportunity = {
           evaluationState: unavailState,
           jobHash: String(r.source_job_id),
@@ -341,7 +346,14 @@ export class SqliteCanonicalServingStore {
           postedRelative: "recently",
           scrapedFrom: safeScrapeSource,
           applyUrl: r.apply_url || undefined,
-          reasonCode: unavailState
+          reasonCode: unavailState,
+          userDecision: hasUserDecision ? {
+            personId: scope.personId,
+            jobHash: r.source_job_id,
+            userAction: toUserAction(r.user_action),
+            reviewedFingerprint: null,
+            updatedAt: r.user_decision_updated_at,
+          } : null
         };
         opportunities.push(unavail);
         continue;
@@ -469,6 +481,9 @@ export class SqliteCanonicalServingStore {
       });
 
       opp.effectiveDecision = canonicalEffectiveDecision;
+      if (r.evaluation_state === "SPARSE_SPEC") {
+        (opp as any).evaluationState = "SPARSE_SPEC";
+      }
       opportunities.push(opp);
     }
 
@@ -827,6 +842,12 @@ export class SqliteCanonicalServingStore {
       private_equity: { total: 0, unreviewed: 0, shortlisted: 0 },
     };
 
+    let userConfirmedCount = 0;
+    let preferenceOverrideCount = 0;
+    let vetoOverrideCount = 0;
+    let reviewQueueCount = 0;
+    const sparseDecisionsBreakdown = { pursue: 0, consider: 0, pass: 0, total: 0 };
+
     for (const opp of opps) {
       if (isEvaluated(opp)) {
         const engineVerb = opp.engineRecommendation?.engineVerdict || "PASS";
@@ -851,21 +872,30 @@ export class SqliteCanonicalServingStore {
         }
 
         const eff = opp.effectiveDecision;
-        if (eff === "ENGINE_PURSUIT" || eff === "USER_CONFIRMED") {
+        if (eff === "USER_CONFIRMED") userConfirmedCount++;
+        else if (eff === "PREFERENCE_OVERRIDE") preferenceOverrideCount++;
+        else if (eff === "VETO_OVERRIDE") vetoOverrideCount++;
+
+        const isReviewed = userAct !== "NONE";
+        if (!isReviewed && (engineVerb === "PURSUE" || engineVerb === "CONSIDER")) {
+          reviewQueueCount++;
+        }
+
+        if (eff === "ENGINE_PURSUIT" || eff === "USER_CONFIRMED" || eff === "VETO_OVERRIDE") {
           effectiveBreakdown.pursue++;
           activePursuits++;
-          totalShortlisted++;
         } else if (eff === "PREFERENCE_OVERRIDE" || eff === "ENGINE_CONSIDER") {
           effectiveBreakdown.consider++;
-          totalShortlisted++;
         } else if (eff === "NOT_EVALUABLE") {
           effectiveBreakdown.sparse++;
         } else {
           effectiveBreakdown.pass++;
         }
 
-        const isReviewed = userAct !== "NONE";
-        const isShortlisted = eff === "ENGINE_PURSUIT" || eff === "USER_CONFIRMED" || eff === "PREFERENCE_OVERRIDE" || eff === "ENGINE_CONSIDER";
+        // Shortlisted by RADAR recommendation engine:
+        // Opportunities where RADAR recommends PURSUE or CONSIDER.
+        // User decisions (including VETO_OVERRIDE where Engine=PASS) belong to Decided surfaces, NOT Shortlist.
+        const isShortlisted = engineVerb === "PURSUE" || engineVerb === "CONSIDER";
 
         const cats = classifyOpportunityCategories({
           role: opp.role,
@@ -882,9 +912,20 @@ export class SqliteCanonicalServingStore {
           }
         });
       } else {
-        // Unmaterialized or Unavailable treated as PASS/Unreviewed for metrics
+        // Unmaterialized or Unavailable treated as PASS for metrics
         engineBreakdown.pass++;
         effectiveBreakdown.pass++;
+
+        const userDecision = (opp as any).userDecision;
+        const isSparseReviewed = Boolean(userDecision?.userAction && userDecision.userAction !== "NONE");
+        if (isSparseReviewed && userDecision) {
+          sparseDecisionsBreakdown.total++;
+          const act = userDecision.userAction;
+          if (act === "PURSUE") sparseDecisionsBreakdown.pursue++;
+          else if (act === "CONSIDER") sparseDecisionsBreakdown.consider++;
+          else if (act === "PASS") sparseDecisionsBreakdown.pass++;
+        }
+
         const cats = classifyOpportunityCategories({
           role: opp.role,
           evaluationStatus: opp.evaluationState === "SPARSE_SPEC" ? "SPARSE_SPEC" : "COMPLETE",
@@ -895,13 +936,14 @@ export class SqliteCanonicalServingStore {
         cats.forEach((cat) => {
           if (categoryCounts[cat]) {
             categoryCounts[cat].total++;
-            categoryCounts[cat].unreviewed++;
+            if (!isSparseReviewed) categoryCounts[cat].unreviewed++;
           }
         });
       }
     }
 
     const remainingToReview = Math.max(0, totalScreened - totalDecisions);
+    totalShortlisted = engineBreakdown.pursue + engineBreakdown.consider;
 
     return {
       personId: scope.personId,
@@ -913,6 +955,27 @@ export class SqliteCanonicalServingStore {
       totalShortlisted,
       totalDecisions,
       remainingToReview,
+      discoveryMetrics: {
+        engineQualified: totalShortlisted,
+        actionableReviewQueue: reviewQueueCount,
+        unreviewedSparse: categoryCounts["needs_more_signal"]?.unreviewed || (categoryCounts["needs_more_signal"]?.total ?? engineBreakdown.sparse),
+      },
+      decisionMetrics: {
+        totalDecided: totalDecisions,
+        userConfirmed: userConfirmedCount,
+        preferenceOverride: preferenceOverrideCount,
+        vetoOverride: vetoOverrideCount,
+        userPassed: userBreakdown.pass,
+        userPursueTotal: userBreakdown.pursue,
+        userConsiderTotal: userBreakdown.consider,
+        userPassTotal: userBreakdown.pass,
+        sparseDecisions: {
+          total: sparseDecisionsBreakdown.total,
+          pursue: sparseDecisionsBreakdown.pursue,
+          consider: sparseDecisionsBreakdown.consider,
+          pass: sparseDecisionsBreakdown.pass,
+        },
+      },
       engineBreakdown,
       userBreakdown,
       effectiveBreakdown,

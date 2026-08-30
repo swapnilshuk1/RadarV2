@@ -531,6 +531,8 @@ export type UnavailableOpportunity = {
   scrapedFrom: ScrapeSource;
   applyUrl?: string;
   reasonCode?: string;
+  userDecision?: import("../domain/decision_v4").UserDecisionStateV4 | null;
+  effectiveDecision?: import("../domain/decision_v4").EffectiveDecision;
 };
 
 export type UnmaterializedOpportunity = {
@@ -543,6 +545,8 @@ export type UnmaterializedOpportunity = {
   scrapedFrom: ScrapeSource;
   applyUrl?: string;
   contextFingerprint: string;
+  userDecision?: import("../domain/decision_v4").UserDecisionStateV4 | null;
+  effectiveDecision?: import("../domain/decision_v4").EffectiveDecision;
 };
 
 export type ServedOpportunity = EvaluatedOpportunity | UnavailableOpportunity | UnmaterializedOpportunity;

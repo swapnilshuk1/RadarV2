@@ -1,7 +1,10 @@
 /**
- * ClientOpportunityCache
- * In-memory client-side cache store for evaluated opportunity DTOs.
- * Enables zero-RPC client-side navigation between Shortlist/Queue views and Opportunity details.
+ * src/lib/opportunity-cache.ts
+ *
+ * RADAR v2 — Phase 12 Client Opportunity Cache Integration.
+ *
+ * Client-side memory cache for served opportunity dossiers and navigation contexts.
+ * Enables instant 0ms navigation between Shortlist/Queue views and Opportunity details.
  */
 
 import { type ServedOpportunity } from "../data/opportunity-fixtures";
@@ -11,51 +14,56 @@ export interface OpportunityDetailsDTO {
   currentIndex: number;
   totalCount: number;
   neighbors: {
-    prev?: ServedOpportunity;
-    next?: ServedOpportunity;
+    prev?: string | ServedOpportunity;
+    next?: string | ServedOpportunity;
   };
 }
 
 export class ClientOpportunityCache {
-  private static list: ServedOpportunity[] | null = null;
+  private static dossierMap = new Map<string, OpportunityDetailsDTO>();
 
   /**
-   * Hydrates the client-side opportunity list.
+   * Caches a single evaluated opportunity dossier with its navigation context.
    */
-  public static setList(list: ServedOpportunity[]) {
-    if (Array.isArray(list) && list.length > 0) {
-      this.list = list;
+  public static setDetails(jobHash: string, details: OpportunityDetailsDTO): void {
+    if (jobHash && details?.opportunity) {
+      this.dossierMap.set(jobHash, details);
     }
   }
 
   /**
    * Retrieves opportunity details directly from client memory if available.
-   * Returns null if not cached or if running on server during SSR.
    */
   public static getDetails(jobHash: string): OpportunityDetailsDTO | null {
-    if (!this.list || this.list.length === 0) {
-      return null;
+    return this.dossierMap.get(jobHash) || null;
+  }
+
+  /**
+   * Legacy compatibility helper.
+   */
+  public static setList(list: ServedOpportunity[]): void {
+    if (Array.isArray(list)) {
+      for (let i = 0; i < list.length; i++) {
+        const opp = list[i];
+        if (opp?.jobHash) {
+          this.setDetails(opp.jobHash, {
+            opportunity: opp,
+            currentIndex: i + 1,
+            totalCount: list.length,
+            neighbors: {
+              prev: i > 0 ? list[i - 1].jobHash : undefined,
+              next: i < list.length - 1 ? list[i + 1].jobHash : undefined,
+            },
+          });
+        }
+      }
     }
-
-    const index = this.list.findIndex((o) => o.jobHash === jobHash || o.jobHash === jobHash);
-    if (index < 0) return null;
-
-    const opportunity = this.list[index];
-    return {
-      opportunity,
-      currentIndex: index + 1,
-      totalCount: this.list.length,
-      neighbors: {
-        prev: index > 0 ? this.list[index - 1] : undefined,
-        next: index < this.list.length - 1 ? this.list[index + 1] : undefined,
-      },
-    };
   }
 
   /**
    * Clears client cache if needed (e.g. on logout or user decision resets).
    */
-  public static clear() {
-    this.list = null;
+  public static clear(): void {
+    this.dossierMap.clear();
   }
 }

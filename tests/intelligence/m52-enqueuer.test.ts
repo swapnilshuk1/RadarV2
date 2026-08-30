@@ -62,6 +62,7 @@ describe("Sub-Phase M5.2: Work Enqueuer & Idempotent Projection Sync", () => {
       "025_canonical_decisions.sql",
       "026_canonical_acquisition_integrity.sql",
       "027_materialized_evaluations_nullable_decision.sql",
+      "029_materialized_evaluations_vetoed.sql",
     ];
 
     for (const file of migrationFiles) {

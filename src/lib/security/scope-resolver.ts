@@ -1,0 +1,223 @@
+/**
+ * src/lib/security/scope-resolver.ts
+ *
+ * RADAR v2 — Consolidated Scope & Active Context Resolver (Phase 4).
+ *
+ * Consolidates sequential queries (people -> memberships -> authenticateTenantMembership ->
+ * authorizePersonScope + getActiveContext) into a single deterministic query round-trip.
+ *
+ * Invariants:
+ * 1. Zero Authorization Weakening: Rejection conditions (inactive, revoked, missing, ambiguous, cross-tenant)
+ *    produce exact semantic parity with legacy auth functions.
+ * 2. Strict Precedence: Active pointer table has strict priority over chronological evaluation context fallback.
+ * 3. Zero Cartesian Multiplication: Subquery scalar projections prevent Cartesian row explosion across multiple plans/snapshots.
+ */
+
+import { getDatabaseAdapter, type DatabaseAdapter } from "../../data/database";
+import { TenantIsolationError, type AuthorizedPersonScope } from "./auth";
+
+export interface ActiveServingContext {
+  readonly searchPlanId: string;
+  readonly contextFingerprint: string;
+}
+
+export interface ResolvedServingScope {
+  readonly scope: AuthorizedPersonScope;
+  readonly activeContext?: ActiveServingContext;
+}
+
+interface RawScopeContextRow {
+  person_id: string | null;
+  person_tenant_id: string | null;
+  target_tenant_id: string | null;
+  active_membership_count: number;
+  target_membership_status: string | null;
+  target_membership_revoked_at: string | null;
+  pointer_context_fingerprint: string | null;
+  pointer_search_plan_id: string | null;
+  fallback_context_fingerprint: string | null;
+  fallback_search_plan_id: string | null;
+}
+
+/**
+ * Resolves AuthorizedPersonScope and active evaluation context in a single deterministic query round-trip.
+ */
+export async function resolveServingScope(
+  userId: string,
+  requestedTenantId?: string,
+  adapter?: DatabaseAdapter
+): Promise<ResolvedServingScope> {
+  const db = adapter || getDatabaseAdapter();
+
+  const row = await db.one<RawScopeContextRow>(
+    `SELECT 
+       p.id AS person_id,
+       p.tenant_id AS person_tenant_id,
+
+       COALESCE(
+         ?,
+         p.tenant_id,
+         (SELECT m.tenant_id 
+          FROM memberships m 
+          WHERE m.user_id = u.target_user_id AND m.status = 'active' AND m.revoked_at IS NULL 
+          LIMIT 1)
+       ) AS target_tenant_id,
+
+       (SELECT COUNT(*) 
+        FROM memberships m 
+        WHERE m.user_id = u.target_user_id AND m.status = 'active' AND m.revoked_at IS NULL
+       ) AS active_membership_count,
+
+       (SELECT m.status 
+        FROM memberships m 
+        WHERE m.user_id = u.target_user_id 
+          AND m.tenant_id = COALESCE(?, p.tenant_id, (SELECT m2.tenant_id FROM memberships m2 WHERE m2.user_id = u.target_user_id AND m2.status = 'active' AND m2.revoked_at IS NULL LIMIT 1))
+       ) AS target_membership_status,
+
+       (SELECT m.revoked_at 
+        FROM memberships m 
+        WHERE m.user_id = u.target_user_id 
+          AND m.tenant_id = COALESCE(?, p.tenant_id, (SELECT m2.tenant_id FROM memberships m2 WHERE m2.user_id = u.target_user_id AND m2.status = 'active' AND m2.revoked_at IS NULL LIMIT 1))
+       ) AS target_membership_revoked_at,
+
+       (SELECT aec.context_fingerprint
+        FROM active_evaluation_contexts aec
+        JOIN search_plans sp ON sp.id = aec.search_plan_id AND sp.tenant_id = aec.tenant_id AND sp.person_id = aec.person_id
+        WHERE aec.person_id = u.target_user_id
+          AND aec.tenant_id = COALESCE(?, p.tenant_id, (SELECT m2.tenant_id FROM memberships m2 WHERE m2.user_id = u.target_user_id AND m2.status = 'active' AND m2.revoked_at IS NULL LIMIT 1))
+          AND sp.status = 'active'
+        ORDER BY aec.activated_at DESC
+        LIMIT 1
+       ) AS pointer_context_fingerprint,
+
+       (SELECT aec.search_plan_id
+        FROM active_evaluation_contexts aec
+        JOIN search_plans sp ON sp.id = aec.search_plan_id AND sp.tenant_id = aec.tenant_id AND sp.person_id = aec.person_id
+        WHERE aec.person_id = u.target_user_id
+          AND aec.tenant_id = COALESCE(?, p.tenant_id, (SELECT m2.tenant_id FROM memberships m2 WHERE m2.user_id = u.target_user_id AND m2.status = 'active' AND m2.revoked_at IS NULL LIMIT 1))
+          AND sp.status = 'active'
+        ORDER BY aec.activated_at DESC
+        LIMIT 1
+       ) AS pointer_search_plan_id,
+
+       (SELECT ec.context_fingerprint
+        FROM search_plans sp
+        JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id AND sps.tenant_id = sp.tenant_id AND sps.person_id = sp.person_id
+        JOIN evaluation_contexts ec ON ec.search_plan_snapshot_id = sps.id AND ec.tenant_id = sp.tenant_id AND ec.person_id = sp.person_id
+        WHERE sp.person_id = u.target_user_id
+          AND sp.tenant_id = COALESCE(?, p.tenant_id, (SELECT m2.tenant_id FROM memberships m2 WHERE m2.user_id = u.target_user_id AND m2.status = 'active' AND m2.revoked_at IS NULL LIMIT 1))
+          AND sp.status = 'active'
+        ORDER BY ec.created_at DESC, ec.context_fingerprint DESC
+        LIMIT 1
+       ) AS fallback_context_fingerprint,
+
+       (SELECT sp.id
+        FROM search_plans sp
+        JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id AND sps.tenant_id = sp.tenant_id AND sps.person_id = sp.person_id
+        JOIN evaluation_contexts ec ON ec.search_plan_snapshot_id = sps.id AND ec.tenant_id = sp.tenant_id AND ec.person_id = sp.person_id
+        WHERE sp.person_id = u.target_user_id
+          AND sp.tenant_id = COALESCE(?, p.tenant_id, (SELECT m2.tenant_id FROM memberships m2 WHERE m2.user_id = u.target_user_id AND m2.status = 'active' AND m2.revoked_at IS NULL LIMIT 1))
+          AND sp.status = 'active'
+        ORDER BY ec.created_at DESC, ec.context_fingerprint DESC
+        LIMIT 1
+       ) AS fallback_search_plan_id
+
+     FROM (SELECT ? AS target_user_id) u
+     LEFT JOIN people p ON p.id = u.target_user_id`,
+    [
+      requestedTenantId || null,
+      requestedTenantId || null,
+      requestedTenantId || null,
+      requestedTenantId || null,
+      requestedTenantId || null,
+      requestedTenantId || null,
+      requestedTenantId || null,
+      userId,
+    ]
+  );
+
+  if (!row) {
+    throw new TenantIsolationError(`Person ${userId} not found.`);
+  }
+
+  // 1. Explicit Requested Tenant Path
+  if (requestedTenantId) {
+    if (row.target_membership_status === null) {
+      throw new TenantIsolationError(`User ${userId} has no membership in tenant ${requestedTenantId}.`);
+    }
+    if (row.target_membership_status !== "active" || row.target_membership_revoked_at !== null) {
+      throw new TenantIsolationError(`Membership for user ${userId} in tenant ${requestedTenantId} is inactive or revoked.`);
+    }
+    if (!row.person_id) {
+      throw new TenantIsolationError(`Person ${userId} not found.`);
+    }
+    if (row.person_tenant_id === null) {
+      throw new TenantIsolationError(`Person ${userId} is a legacy/unassigned record and cannot be accessed by tenant ${requestedTenantId}.`);
+    }
+    if (row.person_tenant_id !== requestedTenantId) {
+      throw new TenantIsolationError(`Access denied. Person ${userId} does not belong to tenant ${requestedTenantId}.`);
+    }
+  } else {
+    // 2. Implicit Tenant Path
+    if (!row.person_id && row.active_membership_count === 0) {
+      throw new TenantIsolationError(`User ${userId} has no active tenant memberships.`);
+    }
+
+    if (!row.person_tenant_id) {
+      if (row.active_membership_count > 1) {
+        throw new TenantIsolationError(
+          `Ambiguous tenant context for user ${userId}. Multiple active memberships found; explicit tenantId required.`
+        );
+      }
+      if (row.active_membership_count === 0) {
+        throw new TenantIsolationError(`User ${userId} has no active tenant memberships.`);
+      }
+    }
+
+    const resolvedTenantId = row.target_tenant_id;
+    if (!resolvedTenantId) {
+      throw new TenantIsolationError(`User ${userId} has no active tenant memberships.`);
+    }
+
+    if (row.target_membership_status === null) {
+      throw new TenantIsolationError(`User ${userId} has no membership in tenant ${resolvedTenantId}.`);
+    }
+    if (row.target_membership_status !== "active" || row.target_membership_revoked_at !== null) {
+      throw new TenantIsolationError(`Membership for user ${userId} in tenant ${resolvedTenantId} is inactive or revoked.`);
+    }
+    if (!row.person_id) {
+      throw new TenantIsolationError(`Person ${userId} not found.`);
+    }
+    if (row.person_tenant_id === null) {
+      throw new TenantIsolationError(`Person ${userId} is a legacy/unassigned record and cannot be accessed by tenant ${resolvedTenantId}.`);
+    }
+    if (row.person_tenant_id !== resolvedTenantId) {
+      throw new TenantIsolationError(`Access denied. Person ${userId} does not belong to tenant ${resolvedTenantId}.`);
+    }
+  }
+
+  const finalTenantId = requestedTenantId || row.target_tenant_id!;
+  const scope: AuthorizedPersonScope = {
+    tenantId: finalTenantId,
+    personId: userId,
+  };
+
+  // 3. Derive Active Evaluation Context with strict pointer precedence
+  let activeContext: ActiveServingContext | undefined;
+  if (row.pointer_context_fingerprint && row.pointer_search_plan_id) {
+    activeContext = {
+      searchPlanId: row.pointer_search_plan_id,
+      contextFingerprint: row.pointer_context_fingerprint,
+    };
+  } else if (row.fallback_context_fingerprint && row.fallback_search_plan_id) {
+    activeContext = {
+      searchPlanId: row.fallback_search_plan_id,
+      contextFingerprint: row.fallback_context_fingerprint,
+    };
+  }
+
+  return {
+    scope,
+    activeContext,
+  };
+}

@@ -1,0 +1,29 @@
+{
+  "totalEvaluated": 865,
+  "qualityScoreZeroCount": 0,
+  "qualityScorePositiveCount": 859,
+  "qualityScoreNullCount": 6,
+  "scoreByVerdict": {
+    "PURSUE": {
+      "total": 22,
+      "zero": 0,
+      "positive": 22,
+      "min": 65,
+      "max": 83
+    },
+    "CONSIDER": {
+      "total": 421,
+      "zero": 0,
+      "positive": 421,
+      "min": 50,
+      "max": 64
+    },
+    "PASS": {
+      "total": 416,
+      "zero": 0,
+      "positive": 416,
+      "min": 34,
+      "max": 80
+    }
+  }
+}

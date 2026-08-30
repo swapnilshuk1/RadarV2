@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-08-29T03:06:32.013Z",
+  "totalActiveCandidates": 3002,
+  "cohorts": {
+    "HISTORICAL_RESTORED": 1498,
+    "FOR4C_HYDRATED": 600,
+    "FOR4D3_EVALUATED_PURSUE": 12,
+    "FOR4D3_EVALUATED_CONSIDER": 221,
+    "FOR4D3_EVALUATED_PASS": 198,
+    "FOR4D3_SPARSE_SPEC": 473,
+    "OTHER": 0
+  },
+  "checksum": "3002_EXACT_MUTUALLY_EXCLUSIVE_POPULATION"
+}

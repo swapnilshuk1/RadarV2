@@ -1,0 +1,29 @@
+{
+  "capturedAt": "2026-08-29T21:21:49.435Z",
+  "authoritativeScope": {
+    "tenantId": "tenant_default",
+    "personId": "ms6i7e3y-4x0chy5fy",
+    "searchPlanId": "sp_canonical_swapnil",
+    "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+  },
+  "activePointer": null,
+  "activeSearchPlan": {
+    "id": "sp_canonical_swapnil",
+    "tenant_id": "tenant_default",
+    "person_id": "ms6i7e3y-4x0chy5fy",
+    "status": "active",
+    "created_at": "2026-08-20 18:32:51"
+  },
+  "counts": {
+    "canonical_opportunities": 3035,
+    "opportunity_versions": 3034,
+    "search_plan_candidates_all": 6826,
+    "active_search_plan_candidates": 3002,
+    "materialized_evaluations_total": 5604,
+    "canonical_decisions": 1509,
+    "legacy_decisions": 600,
+    "evaluation_jobs": 3204,
+    "evaluation_contexts": 15,
+    "search_plans": 8
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "LinkedIn": {
+    "total": 1950,
+    "evaluated": 336,
+    "sparse": 116,
+    "pursue": 22,
+    "consider": 105,
+    "pass": 209,
+    "avgScore": 52.99
+  },
+  "Naukri": {
+    "total": 833,
+    "evaluated": 417,
+    "sparse": 416,
+    "pursue": 0,
+    "consider": 237,
+    "pass": 180,
+    "avgScore": 50
+  },
+  "Indeed": {
+    "total": 219,
+    "evaluated": 112,
+    "sparse": 107,
+    "pursue": 0,
+    "consider": 79,
+    "pass": 33,
+    "avgScore": 50
+  }
+}

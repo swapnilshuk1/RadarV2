@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-08-29T02:42:43.158Z",
+  "phase": "FOR-4D2",
+  "serverFnLatencyMs": 432,
+  "clientRenderMs": 15,
+  "categoryCacheHitMs": 1,
+  "totalUserPerceivedLoadMs": 447,
+  "performanceBottleneck": "NONE"
+}

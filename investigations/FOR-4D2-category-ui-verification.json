@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-08-29T02:42:43.155Z",
+  "phase": "FOR-4D2",
+  "categories": {
+    "all": {
+      "expected": 2098,
+      "actual": 2098,
+      "unmatLeakage": 0
+    },
+    "needs_more_signal": {
+      "expected": 15,
+      "actual": 15,
+      "unmatLeakage": 0
+    },
+    "transformation": {
+      "expected": 27,
+      "actual": 27,
+      "unmatLeakage": 0
+    },
+    "commercial_growth": {
+      "expected": 34,
+      "actual": 34,
+      "unmatLeakage": 0
+    },
+    "country_leadership": {
+      "expected": 12,
+      "actual": 12,
+      "unmatLeakage": 0
+    },
+    "platform_digital": {
+      "expected": 45,
+      "actual": 45,
+      "unmatLeakage": 0
+    },
+    "founder_led": {
+      "expected": 8,
+      "actual": 8,
+      "unmatLeakage": 0
+    },
+    "private_equity": {
+      "expected": 5,
+      "actual": 5,
+      "unmatLeakage": 0
+    }
+  },
+  "status": "ALL_CATEGORIES_RECONCILED"
+}

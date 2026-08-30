@@ -1,0 +1,51 @@
+[
+  {
+    "engine": "PURSUE",
+    "user": "NONE",
+    "effective": "ENGINE_PURSUE",
+    "shortlist": "YES",
+    "reviewStatus": "UNREVIEWED"
+  },
+  {
+    "engine": "CONSIDER",
+    "user": "NONE",
+    "effective": "ENGINE_CONSIDER",
+    "shortlist": "YES",
+    "reviewStatus": "UNREVIEWED"
+  },
+  {
+    "engine": "PASS",
+    "user": "NONE",
+    "effective": "ENGINE_PASS",
+    "shortlist": "NO",
+    "reviewStatus": "UNREVIEWED"
+  },
+  {
+    "engine": "SPARSE_SPEC",
+    "user": "NONE",
+    "effective": "ENGINE_SPARSE_SPEC",
+    "shortlist": "NO",
+    "reviewStatus": "UNREVIEWED"
+  },
+  {
+    "engine": "ANY",
+    "user": "PURSUE",
+    "effective": "EXPLICIT_PURSUE",
+    "shortlist": "YES",
+    "reviewStatus": "REVIEWED_ACTIONABLE"
+  },
+  {
+    "engine": "ANY",
+    "user": "CONSIDER",
+    "effective": "EXPLICIT_CONSIDER",
+    "shortlist": "NO (DECIDED)",
+    "reviewStatus": "REVIEWED_ACTIONABLE"
+  },
+  {
+    "engine": "ANY",
+    "user": "PASS",
+    "effective": "EXPLICIT_PASS",
+    "shortlist": "NO",
+    "reviewStatus": "REVIEWED_DECIDED"
+  }
+]

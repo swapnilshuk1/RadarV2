@@ -1,0 +1,36 @@
+{
+  "totalMat": 5604,
+  "activeMat": 3003,
+  "stateCounts": [
+    {
+      "evaluation_state": "EVALUATED",
+      "cnt": 865
+    },
+    {
+      "evaluation_state": "SPARSE_SPEC",
+      "cnt": 639
+    },
+    {
+      "evaluation_state": "UNKNOWN",
+      "cnt": 1499
+    }
+  ],
+  "validIntrinsicTargetCount": 1498,
+  "candDecCount": 1509,
+  "spcCount": 6826,
+  "coCount": 3035,
+  "ovCount": 3034,
+  "decCount": 600,
+  "targetIdsSample": [
+    "mat_c14ce6b1c7e154e4",
+    "mat_084b185e73e81b31",
+    "mat_3b77e73def690d88",
+    "mat_9efcfbc5aab0e7e3",
+    "mat_21446c60287bcdbf",
+    "mat_72d637285744315f",
+    "mat_56914e5754974f81",
+    "mat_44e9e9779c033fdd",
+    "mat_561b6b47943d8b64",
+    "mat_28847291915e1dcb"
+  ]
+}

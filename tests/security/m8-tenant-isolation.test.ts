@@ -37,6 +37,7 @@ describe("Milestone M8 — Multi-Tenant Isolation & Adversarial Security", () =>
       "026_canonical_acquisition_integrity.sql",
       "027_materialized_evaluations_nullable_decision.sql",
       "028_active_evaluation_context_pointers.sql",
+      "029_materialized_evaluations_vetoed.sql",
     ];
 
     for (const file of migrationFiles) {

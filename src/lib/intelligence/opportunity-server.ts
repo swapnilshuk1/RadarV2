@@ -9,6 +9,28 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
     return OpportunityService.listForUser(user.id, { categoryId: data?.categoryId });
   });
 
+export const getFeedFn = createServerFn({ method: "GET" })
+  .validator(
+    (d?: {
+      cursor?: string;
+      categoryId?: string;
+      decisionFilter?: "all" | "unreviewed" | "decided";
+      pageSize?: number;
+    }) => d
+  )
+  .handler(async ({ data }) => {
+    const user = await requireAuthUser();
+    return OpportunityService.getFeedForUser(
+      user.id,
+      data?.cursor as any,
+      {
+        categoryId: data?.categoryId as any,
+        decisionFilter: data?.decisionFilter,
+      },
+      data?.pageSize
+    );
+  });
+
 export const getShortlistMetricsFn = createServerFn({ method: "GET" })
   .handler(async () => {
     const user = await requireAuthUser();

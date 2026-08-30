@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-08-29T02:37:23.865Z",
+  "phase": "FOR-4D1",
+  "categoryCountsEvaluated": {
+    "transformation": 27,
+    "commercial_growth": 34,
+    "country_leadership": 12,
+    "platform_digital": 45,
+    "founder_led": 8,
+    "private_equity": 5,
+    "needs_more_signal": 15
+  },
+  "unmaterializedLeakagePerCategory": {
+    "transformation": 0,
+    "commercial_growth": 0,
+    "country_leadership": 0,
+    "platform_digital": 0,
+    "founder_led": 0,
+    "private_equity": 0,
+    "needs_more_signal": 0
+  },
+  "status": "VERIFIED_ZERO_LEAKAGE"
+}

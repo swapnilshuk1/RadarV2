@@ -93,14 +93,40 @@ export async function resolveScope(userId: string, requestedTenantId?: string): 
   return authorizePersonScope(authContext, userId, db);
 }
 
+import { SqliteOpportunityQueries } from "../../data/sqlite/repositories/SqliteOpportunityQueries";
+import { SingleflightOpportunityQueries } from "./serving/singleflight";
+import type { FeedPage, FeedFilters, OpaqueCursor, NavigationContext } from "./opportunity-queries";
+
 export class OpportunityService {
+  private static getServingQueries(): SingleflightOpportunityQueries {
+    const db = getDatabaseAdapter();
+    const raw = new SqliteOpportunityQueries(db);
+    return new SingleflightOpportunityQueries(raw);
+  }
+
   /**
-   * Computes authoritative canonical aggregate metrics across the active search plan population.
+   * Computes authoritative canonical aggregate metrics across the active search plan population via SQL aggregation.
    */
   static async getMetricsForUser(userId: string, requestedTenantId?: string): Promise<CanonicalOpportunityMetrics> {
     const scope = await resolveScope(userId, requestedTenantId);
-    const repos = getRepositories();
-    return repos.canonicalServing.getOpportunityMetrics(scope);
+    const queries = this.getServingQueries();
+    return queries.getMetrics(scope);
+  }
+
+  /**
+   * Retrieves a paginated feed of lean opportunity summaries with keyset cursor pagination.
+   */
+  static async getFeedForUser(
+    userId: string,
+    cursor?: OpaqueCursor,
+    filters?: FeedFilters,
+    pageSize?: number,
+    requestedTenantId?: string
+  ): Promise<FeedPage> {
+    ensureWorkerDaemonStarted();
+    const scope = await resolveScope(userId, requestedTenantId);
+    const queries = this.getServingQueries();
+    return queries.getFeed(scope, cursor, filters, pageSize);
   }
 
   /**
@@ -113,13 +139,75 @@ export class OpportunityService {
   }
 
   /**
-   * Lists all candidate opportunity DTOs for a specific user via the canonical joined query with dynamic contextual serving.
+   * Lists candidate opportunity DTOs for a specific user via the lean keyset feed query.
    */
   static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity[]> {
     ensureWorkerDaemonStarted();
     const scope = await resolveScope(userId, requestedTenantId);
-    const repos = getRepositories();
-    return repos.canonicalServing.listOpportunities(scope, options);
+    const queries = this.getServingQueries();
+    const feed = await queries.getFeed(scope, undefined, { categoryId: options?.categoryId as any }, 24);
+
+    return feed.items.map((f) => {
+      if (f.evaluationState === "SPARSE_SPEC" || f.evaluationState === "UNMATERIALIZED") {
+        return {
+          evaluationState: f.evaluationState,
+          jobHash: f.jobHash,
+          role: f.role,
+          company: f.company,
+          location: f.location,
+          postedRelative: "recently",
+          scrapedFrom: f.scrapedFrom,
+          applyUrl: f.applyUrl || undefined,
+          reasonCode: f.evaluationState,
+          userDecision: f.userAction ? {
+            personId: scope.personId,
+            jobHash: f.jobHash,
+            userAction: f.userAction,
+            reviewedFingerprint: null,
+            updatedAt: null,
+          } : null,
+        } as any;
+      }
+
+      return {
+        evaluationState: "COMPLETE",
+        jobHash: f.jobHash,
+        role: f.role,
+        company: f.company,
+        location: f.location,
+        postedRelative: "recently",
+        scrapedFrom: f.scrapedFrom,
+        applyUrl: f.applyUrl || undefined,
+        decision: f.engineVerdict || "PURSUE",
+        effectiveDecision: f.effectiveDecision,
+        reviewWorkflowState: f.reviewWorkflowState,
+        populationTier: f.populationTier,
+        engineRecommendation: {
+          jobHash: f.jobHash,
+          legacyStatus: "CANONICAL",
+          verb0: f.engineVerdict || "PURSUE",
+          engineVerdict: f.engineVerdict || "PURSUE",
+          headspaceVerdict: f.engineVerdict || "PURSUE",
+          headspaceDowngraded: false,
+          parsingConfidence: 0.95,
+          qualityScore: f.qualityScore ?? null,
+          evaluatedAt: new Date().toISOString(),
+          evaluationFingerprint: "v4.1",
+        },
+        userDecision: f.userAction ? {
+          personId: scope.personId,
+          jobHash: f.jobHash,
+          userAction: f.userAction,
+          reviewedFingerprint: null,
+          updatedAt: null,
+        } : null,
+        recommendation: "",
+        hiringRisk: "Unknown",
+        dimensions: [],
+        positioning: [],
+        headspace: [],
+      } as any;
+    });
   }
 
   /**
@@ -128,8 +216,36 @@ export class OpportunityService {
    */
   static async getForUser(userId: string, jobHash: string, options?: ServiceOptions, requestedTenantId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity | undefined> {
     const scope = await resolveScope(userId, requestedTenantId);
-    const repos = getRepositories();
-    return repos.canonicalServing.getOpportunity(scope, jobHash, options);
+    const queries = this.getServingQueries();
+    const opp = await queries.getDossier(scope, jobHash);
+    return opp || undefined;
+  }
+
+  /**
+   * Gets adjacent navigation metadata (current index & total count).
+   */
+  static async getAdjacentInfo(
+    userId: string,
+    jobHash: string,
+    requestedTenantId?: string
+  ): Promise<{ currentIndex: number; totalCount: number; prev?: any; next?: any }> {
+    const scope = await resolveScope(userId, requestedTenantId);
+    const queries = this.getServingQueries();
+    const nav = await queries.getNavigation(scope, jobHash);
+    if (!nav) {
+      return {
+        currentIndex: 0,
+        totalCount: 0,
+        prev: undefined,
+        next: undefined,
+      };
+    }
+    return {
+      currentIndex: nav.currentIndex,
+      totalCount: nav.totalCount,
+      prev: nav.prevJobHash,
+      next: nav.nextJobHash,
+    };
   }
 
   /**
@@ -140,24 +256,14 @@ export class OpportunityService {
     jobHash: string,
     options?: ServiceOptions,
     requestedTenantId?: string
-  ): Promise<{ prev: import("../../data/opportunity-fixtures").ServedOpportunity | undefined; next: import("../../data/opportunity-fixtures").ServedOpportunity | undefined }> {
+  ): Promise<{ prev: any; next: any }> {
     const scope = await resolveScope(userId, requestedTenantId);
-    const repos = getRepositories();
-    const adj = await repos.canonicalServing.getAdjacentOpportunities(scope, jobHash);
-    return { prev: adj.prev, next: adj.next };
-  }
-
-  /**
-   * Gets adjacent navigation metadata (current index & total count).
-   */
-  static async getAdjacentInfo(
-    userId: string,
-    jobHash: string,
-    requestedTenantId?: string
-  ): Promise<{ currentIndex: number; totalCount: number; prev?: import("../../data/opportunity-fixtures").ServedOpportunity; next?: import("../../data/opportunity-fixtures").ServedOpportunity }> {
-    const scope = await resolveScope(userId, requestedTenantId);
-    const repos = getRepositories();
-    return repos.canonicalServing.getAdjacentOpportunities(scope, jobHash);
+    const queries = this.getServingQueries();
+    const nav = await queries.getNavigation(scope, jobHash, { categoryId: options?.categoryId as any });
+    return {
+      prev: nav?.prevJobHash,
+      next: nav?.nextJobHash,
+    };
   }
 
   /**
@@ -173,10 +279,35 @@ export class OpportunityService {
     opportunity: import("../../data/opportunity-fixtures").ServedOpportunity | undefined;
     currentIndex: number;
     totalCount: number;
-    neighbors: { prev: import("../../data/opportunity-fixtures").ServedOpportunity | undefined; next: import("../../data/opportunity-fixtures").ServedOpportunity | undefined };
+    neighbors: { prev: any; next: any };
   }> {
     const scope = await resolveScope(userId, requestedTenantId);
-    const repos = getRepositories();
-    return repos.canonicalServing.getOpportunityDetails(scope, jobHash, options);
+    const queries = this.getServingQueries();
+    const [opp, nav] = await Promise.all([
+      queries.getDossier(scope, jobHash),
+      queries.getNavigation(scope, jobHash, { categoryId: options?.categoryId as any }),
+    ]);
+
+    if (!opp || !nav) {
+      return {
+        opportunity: undefined,
+        currentIndex: 0,
+        totalCount: 0,
+        neighbors: {
+          prev: undefined,
+          next: undefined,
+        },
+      };
+    }
+
+    return {
+      opportunity: opp,
+      currentIndex: nav.currentIndex,
+      totalCount: nav.totalCount,
+      neighbors: {
+        prev: nav.prevJobHash,
+        next: nav.nextJobHash,
+      },
+    };
   }
 }

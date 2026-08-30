@@ -55,20 +55,34 @@ export class SqliteMaterializedEvaluationStore {
     const evidenceIdsJson = JSON.stringify(evaluation.evidenceIds || []);
     const now = evaluation.materializedAt || new Date().toISOString();
 
+    let vetoed = 0;
+    if ((evaluation as any).vetoed !== undefined) {
+      vetoed = (evaluation as any).vetoed ? 1 : 0;
+    } else if (evaluation.evaluationJson) {
+      try {
+        const p = JSON.parse(evaluation.evaluationJson);
+        const rec = p.record || p.engineRecommendation || p;
+        vetoed = Boolean(p.vetoed ?? rec.vetoed) ? 1 : 0;
+      } catch {
+        vetoed = 0;
+      }
+    }
+
     // 4. Idempotently insert into materialized_evaluations
     await this.db.execute(
       `INSERT INTO materialized_evaluations (
          id, tenant_id, person_id, canonical_job_id, opportunity_version,
          evaluation_context_fingerprint, evaluation_state, decision, quality_score, rationale,
-         evidence_ids, evaluation_json, materialized_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         evidence_ids, evaluation_json, vetoed, materialized_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) DO UPDATE SET
          evaluation_state = EXCLUDED.evaluation_state,
          quality_score = EXCLUDED.quality_score,
          decision = EXCLUDED.decision,
          rationale = EXCLUDED.rationale,
          evidence_ids = EXCLUDED.evidence_ids,
-         evaluation_json = EXCLUDED.evaluation_json`,
+         evaluation_json = EXCLUDED.evaluation_json,
+         vetoed = EXCLUDED.vetoed`,
       [
         evaluationId,
         scope.tenantId,
@@ -82,6 +96,7 @@ export class SqliteMaterializedEvaluationStore {
         evaluation.rationale,
         evidenceIdsJson,
         evaluation.evaluationJson,
+        vetoed,
         now,
       ]
     );

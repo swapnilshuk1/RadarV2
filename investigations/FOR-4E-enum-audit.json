@@ -1,0 +1,21 @@
+{
+  "discoveredMismatches": [
+    {
+      "file": "src/data/sqlite/repositories/SqliteCanonicalServingStore.ts",
+      "lines": "853-865",
+      "function": "getExecutiveMetrics",
+      "severity": "CRITICAL",
+      "issue": "Checks against obsolete V3 enums ('ENGINE_PURSUIT', 'USER_CONFIRMED', 'PREFERENCE_OVERRIDE') instead of V4 enums ('ENGINE_PURSUE', 'EXPLICIT_PURSUE', 'EXPLICIT_CONSIDER').",
+      "impact": "Server function metric aggregation fails to count EXPLICIT_PURSUE (330) and ENGINE_PURSUE (18), silently dropping them into the PASS bucket."
+    }
+  ],
+  "supportedV4Enums": [
+    "EXPLICIT_PURSUE",
+    "ENGINE_PURSUE",
+    "EXPLICIT_CONSIDER",
+    "ENGINE_CONSIDER",
+    "EXPLICIT_PASS",
+    "ENGINE_PASS",
+    "ENGINE_SPARSE_SPEC"
+  ]
+}

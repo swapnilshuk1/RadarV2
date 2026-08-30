@@ -57,6 +57,7 @@ describe("Sub-Phase M5.1: Durable Evaluation Work Queue Schema & Composite Invar
       "025_canonical_decisions.sql",
       "026_canonical_acquisition_integrity.sql",
       "027_materialized_evaluations_nullable_decision.sql",
+      "029_materialized_evaluations_vetoed.sql",
     ];
 
     for (const file of migrationFiles) {

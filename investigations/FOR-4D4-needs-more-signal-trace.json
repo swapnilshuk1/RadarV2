@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-08-29T03:06:32.024Z",
+  "uiLabel": "NEEDS MORE SIGNAL (639 / 639)",
+  "displayedUnreviewed": 639,
+  "displayedTotal": 639,
+  "preFor4d3Sparse": 166,
+  "for4d3Sparse": 473,
+  "totalSparse": 639,
+  "categorization": {
+    "SPARSE_SPEC": 639,
+    "NOT_EVALUABLE": 0,
+    "PASS": 0,
+    "CONSIDER": 0,
+    "PURSUE": 0,
+    "other": 0
+  },
+  "equation": "166 historical/FOR-4C sparse + 473 FOR-4D3 sparse = 639 total SPARSE_SPEC opportunities",
+  "evaluation": "CORRECT_ORTHOGONAL_POPULATION"
+}

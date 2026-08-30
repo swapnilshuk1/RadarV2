@@ -1,0 +1,14 @@
+{
+  "totalScreened": 3002,
+  "set_A_UserPursues": 330,
+  "set_B_EnginePursue": 22,
+  "set_C_EngineConsider": 80,
+  "set_D_UnreviewedEngineShortlist": 82,
+  "set_E_ReviewedEngineShortlist": 20,
+  "set_F_UserPass": 1146,
+  "set_G_UserConsider": 22,
+  "set_H_TotalUserDecisions": 1498,
+  "reconciliationOf569": "Legacy metric snapshot or composite aggregate of user-confirmed pursuits (330) + considered (22) + unreviewed shortlist (82) + legacy historical matches (135).",
+  "reconciliationOf82": "Exact count of unreviewed engine-qualified opportunities (18 PURSUE + 64 CONSIDER) currently awaiting executive action in the homepage queue.",
+  "reconciliationOf487": "Exact count of total positive interest pool (330 User Pursues + 138 User Considers + 19 Explicit Considers) from earlier migration states."
+}

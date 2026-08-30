@@ -1,0 +1,66 @@
+{
+  "wave": 7,
+  "considerCount": 6,
+  "considerAudits": [
+    {
+      "canonicalJobId": "b226a665e7a981cd5cc431502f506010eeb8d161504e65ae4b046ed05acf0f88",
+      "company": null,
+      "title": "The Indus Valley - Vice President - Marketing & Growth (15-20 yrs)",
+      "verdict": "CONSIDER",
+      "score": 62,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "b231ef307de03cea0ca80b6b2cbf24ca9fa6b5d73fea8522744a915895de8b4a",
+      "company": null,
+      "title": "LiquiLoans - Head - Growth Strategy (10-15 yrs)",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "b33bd117f95550fa849f4130b3c3bf56c84ba8cd7d675535b9eb290ae3fa0e16",
+      "company": null,
+      "title": "AVP - L&D",
+      "verdict": "CONSIDER",
+      "score": 60,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "b4fbcfa1416863db0fadcfc811af1b7087efa4dae4a3691c3067b43c24697529",
+      "company": null,
+      "title": "Associate Director - Markets - CHS - CBS - C&I - BD & CE Leadership",
+      "verdict": "CONSIDER",
+      "score": 63,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "b9de7be4775b0e39893bf8fbd404b7acc054b5bbc6e4d0c824c10fc96c398e58",
+      "company": null,
+      "title": "Group Bayport - Business Head - Signs & Display (15-20 yrs)",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "c03212350150fe69822e998438d1b9fa2adbd4bfe6929d4f90fddd5d6a0cda3f",
+      "company": null,
+      "title": "Chief Marketing Officer",
+      "verdict": "CONSIDER",
+      "score": 62,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    }
+  ]
+}

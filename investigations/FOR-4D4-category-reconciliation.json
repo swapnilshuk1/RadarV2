@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-08-29T03:06:32.028Z",
+  "categories": {
+    "all": {
+      "rawServed": 3002,
+      "evaluated": 3002,
+      "sparseSpec": 639,
+      "decisions": 1498,
+      "shortlist": 720,
+      "displayedUnreviewed": 1504
+    },
+    "needs_more_signal": {
+      "rawServed": 639,
+      "evaluated": 0,
+      "sparseSpec": 639,
+      "decisions": 0,
+      "shortlist": 0,
+      "displayedUnreviewed": 639
+    },
+    "transformation": {
+      "rawServed": 47,
+      "evaluated": 47,
+      "sparseSpec": 0,
+      "decisions": 20,
+      "shortlist": 16,
+      "displayedUnreviewed": 27
+    },
+    "commercial_growth": {
+      "rawServed": 247,
+      "evaluated": 247,
+      "sparseSpec": 0,
+      "decisions": 105,
+      "shortlist": 67,
+      "displayedUnreviewed": 142
+    },
+    "country_leadership": {
+      "rawServed": 289,
+      "evaluated": 289,
+      "sparseSpec": 0,
+      "decisions": 136,
+      "shortlist": 78,
+      "displayedUnreviewed": 153
+    },
+    "platform_digital": {
+      "rawServed": 531,
+      "evaluated": 531,
+      "sparseSpec": 0,
+      "decisions": 268,
+      "shortlist": 143,
+      "displayedUnreviewed": 263
+    },
+    "founder_led": {
+      "rawServed": 2,
+      "evaluated": 2,
+      "sparseSpec": 0,
+      "decisions": 1,
+      "shortlist": 1,
+      "displayedUnreviewed": 1
+    },
+    "private_equity": {
+      "rawServed": 0,
+      "evaluated": 0,
+      "sparseSpec": 0,
+      "decisions": 0,
+      "shortlist": 0,
+      "displayedUnreviewed": 0
+    }
+  },
+  "status": "RECONCILED"
+}

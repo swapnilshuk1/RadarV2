@@ -101,7 +101,7 @@ function setupFullCanonicalSchema(db: Database.Database) {
       canonical_job_id TEXT NOT NULL, opportunity_version TEXT NOT NULL,
       evaluation_context_fingerprint TEXT NOT NULL, evaluation_state TEXT NOT NULL DEFAULT 'EVALUATED',
       decision TEXT, quality_score REAL, rationale TEXT, evidence_ids TEXT,
-      evaluation_json TEXT NOT NULL, materialized_at DATETIME NOT NULL,
+      evaluation_json TEXT NOT NULL, vetoed INTEGER NOT NULL DEFAULT 0, materialized_at DATETIME NOT NULL,
       UNIQUE(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
     );
 

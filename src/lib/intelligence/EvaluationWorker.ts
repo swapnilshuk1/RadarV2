@@ -189,8 +189,8 @@ export class EvaluationWorker {
             `INSERT INTO materialized_evaluations (
                id, tenant_id, person_id, canonical_job_id, opportunity_version,
                evaluation_context_fingerprint, evaluation_state, decision, quality_score,
-               rationale, evidence_ids, evaluation_json, materialized_at
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, CURRENT_TIMESTAMP)
+               rationale, evidence_ids, evaluation_json, vetoed, materialized_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP)
              ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
              DO UPDATE SET
                evaluation_state = EXCLUDED.evaluation_state,
@@ -199,6 +199,7 @@ export class EvaluationWorker {
                rationale = EXCLUDED.rationale,
                evidence_ids = EXCLUDED.evidence_ids,
                evaluation_json = EXCLUDED.evaluation_json,
+               vetoed = EXCLUDED.vetoed,
                materialized_at = CURRENT_TIMESTAMP`,
             [
               matId,
@@ -292,6 +293,8 @@ export class EvaluationWorker {
       const evaluationState = isGenuinelySparse ? "SPARSE_SPEC" : "EVALUATED";
       const decision = isGenuinelySparse ? null : (rawVerb === "PURSUE" ? "PURSUE" : rawVerb === "PASS" ? "PASS" : "CONSIDER");
       const score = isGenuinelySparse ? null : (presented?.record?.priority ?? 50);
+      const isVetoed = Boolean(presented?.record?.vetoed ?? (presented as any)?.vetoed ?? false);
+      const vetoedScalar = isVetoed ? 1 : 0;
 
       const matId = `mat_${crypto.randomUUID()}`;
 
@@ -312,8 +315,8 @@ export class EvaluationWorker {
           `INSERT INTO materialized_evaluations (
              id, tenant_id, person_id, canonical_job_id, opportunity_version,
              evaluation_context_fingerprint, evaluation_state, decision, quality_score,
-             rationale, evidence_ids, evaluation_json, materialized_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+             rationale, evidence_ids, evaluation_json, vetoed, materialized_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
            ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
            DO UPDATE SET
              evaluation_state = EXCLUDED.evaluation_state,
@@ -322,6 +325,7 @@ export class EvaluationWorker {
              rationale = EXCLUDED.rationale,
              evidence_ids = EXCLUDED.evidence_ids,
              evaluation_json = EXCLUDED.evaluation_json,
+             vetoed = EXCLUDED.vetoed,
              materialized_at = CURRENT_TIMESTAMP`,
           [
             matId,
@@ -336,6 +340,7 @@ export class EvaluationWorker {
             JSON.stringify(presented?.record?.explanation || {}),
             JSON.stringify(presented?.record?.triggeredRuleIds || []),
             JSON.stringify(presented || {}),
+            vetoedScalar,
           ]
         );
 

@@ -59,8 +59,20 @@ export interface CanonicalOpportunityMetrics {
 
   // Global Core Metrics
   readonly totalScreened: number;
+
+  /**
+   * @deprecated Cross-stage metric summing unreviewed engine pursuits and user decisions.
+   * For user decisions, inspect `decisionMetrics.userPursueTotal` (472).
+   * For active review queue, inspect `discoveryMetrics.actionableReviewQueue` (82).
+   */
   readonly activePursuits: number;
+
+  /**
+   * Total opportunities shortlisted/qualified by RADAR's recommendation engine (389 Pursue + 256 Consider = 645).
+   * Strictly decoupled from user decision overrides (does NOT include VETO_OVERRIDE).
+   */
   readonly totalShortlisted: number;
+
   readonly totalDecisions: number;
   readonly remainingToReview: number;
 
@@ -68,6 +80,29 @@ export interface CanonicalOpportunityMetrics {
   readonly engineBreakdown: MetricBreakdown;
   readonly userBreakdown: UserDecisionMetrics;
   readonly effectiveBreakdown: MetricBreakdown;
+
+  // Canonical Stage Breakdown (Disambiguating Discovery/Shortlist vs Decisions)
+  readonly discoveryMetrics?: {
+    readonly engineQualified: number;       // 645 (389 Pursue + 256 Consider)
+    readonly actionableReviewQueue: number; // 82 (22 Pursue + 60 Consider unreviewed)
+    readonly unreviewedSparse: number;      // 639
+  };
+  readonly decisionMetrics?: {
+    readonly totalDecided: number;          // 1,498
+    readonly userConfirmed: number;         // 308 (Engine Pursue + User Pursue)
+    readonly preferenceOverride: number;    // 46 (Engine Consider + User Pursue/Consider overrides)
+    readonly vetoOverride: number;          // 122 (Engine Pass + User Pursue)
+    readonly userPassed: number;            // 889 (Explicit user pass)
+    readonly userPursueTotal: number;       // 472 (Total explicit user Pursue decisions)
+    readonly userConsiderTotal: number;     // 137 (Total explicit user Consider decisions)
+    readonly userPassTotal: number;         // 889 (Total explicit user Pass decisions)
+    readonly sparseDecisions?: {
+      readonly total: number;               // 10
+      readonly pursue: number;              // 2
+      readonly consider: number;            // 1
+      readonly pass: number;                // 7
+    };
+  };
 
   // Authoritative Category Population Metrics
   readonly categoryMetrics?: Record<string, { total: number; unreviewed: number; shortlisted: number }>;

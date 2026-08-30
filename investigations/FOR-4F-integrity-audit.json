@@ -1,0 +1,12 @@
+{
+  "auditDate": "2026-08-29T21:22:20.051Z",
+  "status": "INVESTIGATION_ONLY_READ_ONLY",
+  "tursoMutations": 0,
+  "applicationMutations": 0,
+  "activeCandidatesVerified": true,
+  "allCandidatesAccountedFor": true,
+  "zeroOrphanCandidates": true,
+  "zeroOrphanDecisions": true,
+  "historicalDecisionsPreserved": false,
+  "sparseSpecIntegrityPreserved": true
+}
