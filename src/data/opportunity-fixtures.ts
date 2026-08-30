@@ -552,7 +552,7 @@ export type UnmaterializedOpportunity = {
 export type ServedOpportunity = EvaluatedOpportunity | UnavailableOpportunity | UnmaterializedOpportunity;
 
 export function isEvaluated(opp: ServedOpportunity): opp is EvaluatedOpportunity {
-  return opp.evaluationState === "EVALUATED" || opp.evaluationState === "LEGACY" || !opp.evaluationState;
+  return opp.evaluationState === "COMPLETE" || opp.evaluationState === "EVALUATED" || opp.evaluationState === "LEGACY" || !opp.evaluationState;
 }
 
 export function isUnavailable(opp: ServedOpportunity): opp is UnavailableOpportunity {
