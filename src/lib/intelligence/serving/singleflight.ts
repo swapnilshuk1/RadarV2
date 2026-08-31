@@ -25,6 +25,8 @@ import type {
 import type { CanonicalOpportunityMetrics } from "../metric-integrity";
 import type { ServedOpportunity } from "../../../data/opportunity-fixtures";
 import { servingTelemetry, ServingStopwatch } from "./observability";
+import { getDatabaseAdapter } from "../../../data/database";
+import { SqliteOpportunityQueries } from "../../../data/sqlite/repositories/SqliteOpportunityQueries";
 
 export interface SingleflightResult<T> {
   readonly result: T;
@@ -57,18 +59,19 @@ export class SingleflightGroup {
   }
 
   /**
-   * Scope-safe key builder ensuring complete tenant/user and parameter isolation.
+   * Scope-safe key builder ensuring complete tenant, person, search-plan, and parameter isolation.
    */
   static buildKey(
-    scope: { tenantId: string; personId: string },
+    scope: { tenantId: string; personId: string; activeSearchPlanId?: string; searchPlanId?: string },
     queryType: string,
     params: Record<string, unknown>
   ): string {
+    const planId = scope.activeSearchPlanId || (scope as any).searchPlanId || "default";
     const sortedEntries = Object.entries(params)
       .filter(([_, v]) => v !== undefined && v !== null)
       .sort(([a], [b]) => a.localeCompare(b));
     const paramStr = JSON.stringify(sortedEntries);
-    return `${scope.tenantId}:${scope.personId}:${queryType}:${paramStr}`;
+    return `${scope.tenantId}:${scope.personId}:${planId}:${queryType}:${paramStr}`;
   }
 
   /**
@@ -90,6 +93,46 @@ export class SingleflightOpportunityQueries implements OpportunityQueries {
     group?: SingleflightGroup
   ) {
     this.group = group || new SingleflightGroup();
+  }
+
+  /**
+   * Returns the durable process-level singleton instance of SingleflightOpportunityQueries.
+   * Survives across SSR requests and Nitro server function invocations.
+   */
+  public static getGlobalInstance(rawQueries?: OpportunityQueries): SingleflightOpportunityQueries {
+    const g = globalThis as any;
+    if (!g.__RADAR_SINGLEFLIGHT_OPPORTUNITY_QUERIES__) {
+      const inner = rawQueries || new SqliteOpportunityQueries(getDatabaseAdapter());
+      g.__RADAR_SINGLEFLIGHT_OPPORTUNITY_QUERIES__ = new SingleflightOpportunityQueries(inner);
+    }
+    return g.__RADAR_SINGLEFLIGHT_OPPORTUNITY_QUERIES__;
+  }
+
+  /**
+   * Overrides the global singleton instance (useful for test harnesses).
+   */
+  public static setGlobalInstance(instance: SingleflightOpportunityQueries | null): void {
+    const g = globalThis as any;
+    if (instance === null) {
+      delete g.__RADAR_SINGLEFLIGHT_OPPORTUNITY_QUERIES__;
+    } else {
+      g.__RADAR_SINGLEFLIGHT_OPPORTUNITY_QUERIES__ = instance;
+    }
+  }
+
+  /**
+   * Resets the global singleton instance.
+   */
+  public static resetGlobalInstance(): void {
+    const g = globalThis as any;
+    delete g.__RADAR_SINGLEFLIGHT_OPPORTUNITY_QUERIES__;
+  }
+
+  /**
+   * Returns the number of currently in-flight coalesced operations.
+   */
+  public get inFlightCount(): number {
+    return this.group.activeCount;
   }
 
   async getFeed(

@@ -99,9 +99,7 @@ import type { FeedPage, FeedFilters, OpaqueCursor, NavigationContext } from "./o
 
 export class OpportunityService {
   private static getServingQueries(): SingleflightOpportunityQueries {
-    const db = getDatabaseAdapter();
-    const raw = new SqliteOpportunityQueries(db);
-    return new SingleflightOpportunityQueries(raw);
+    return SingleflightOpportunityQueries.getGlobalInstance();
   }
 
   /**

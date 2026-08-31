@@ -94,6 +94,7 @@ RADAR v2 Test Architecture
 | `tests/serving/keyset_pagination.test.ts` | Keyset pagination returns deterministic, contiguous pages without duplicate rows. | **Stage 5** |
 | `tests/serving/cursor.test.ts` | Opaque cursor encoding, decoding, validation, and tamper-resistance. | **Stage 5** |
 | `tests/serving/singleflight_and_observability.test.ts` | Singleflight request coalescing prevents duplicate concurrent database queries. | **Stage 5** |
+| `tests/serving/singleflight-scope-isolation.test.ts` | 10 concurrent requests coalesce to 1 underlying query; complete tenant, person, and search-plan scope isolation. | **Stage 5** |
 | `tests/serving/dossier_and_navigation.test.ts` | Dossier detail fetching and next/previous candidate navigation indices. | **Stage 5** |
 | `tests/serving/sql_feed_parity.test.ts` | Serving feed SQL queries match materialized evaluation and user decision states. | **Stage 5** |
 
@@ -336,6 +337,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/serving/opportunity-queries-contract.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 4 | 17 |
 | `tests/serving/route_server_functions_parity.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 1 | 7 |
 | `tests/serving/singleflight_and_observability.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 4 | 21 |
+| `tests/serving/singleflight-scope-isolation.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 7 | 25 |
 | `tests/serving/sql_feed_parity.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 6 | 22 |
 | `tests/serving/sql_metrics_aggregation.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 2 | 24 |
 
