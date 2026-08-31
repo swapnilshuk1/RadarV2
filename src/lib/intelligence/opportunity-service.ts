@@ -202,6 +202,10 @@ export class OpportunityService {
           evaluatedAt: new Date().toISOString(),
           evaluationFingerprint: "v4.1",
         },
+        recommendationResult: {
+          score: f.qualityScore ?? null,
+          vetoed: f.populationTier === 3,
+        },
         userDecision: f.userAction ? {
           personId: scope.personId,
           jobHash: f.jobHash,

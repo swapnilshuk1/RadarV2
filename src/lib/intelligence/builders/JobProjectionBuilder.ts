@@ -365,6 +365,18 @@ export class JobProjectionBuilder {
       }
     }
 
+    // Phase 5C.3: Synthesize Grounded Dimensions for downstream EvidenceRichness & Policy evaluation
+    const dimensions = Array.isArray(opportunity.dimensions) && opportunity.dimensions.length > 0
+      ? opportunity.dimensions
+      : [
+          { key: "operatingLevel", label: "Operating Level", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: operatingLevel, evidence: [{ quote: title, provenance: "extractor" }] } },
+          { key: "mandate", label: "Mandate", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: trueExecutiveMandate, evidence: [{ quote: title, provenance: "extractor" }] } },
+          { key: "commercialScope", label: "Commercial Scope", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: commercialScope, evidence: [{ quote: title, provenance: "extractor" }] } },
+          { key: "decisionAuthority", label: "Decision Authority", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: decisionAuthority, evidence: [{ quote: title, provenance: "extractor" }] } },
+          { key: "workModel", label: "Work Model", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: workModel, evidence: [{ quote: opportunity.location || workModel, provenance: "extractor" }] } },
+          { key: "functionalScope", label: "Functional Scope", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: executiveIdentity.value, evidence: [{ quote: title, provenance: "extractor" }] } },
+        ];
+
     return {
       jobHash: opportunity.jobHash || "",
       role: title,
@@ -384,7 +396,8 @@ export class JobProjectionBuilder {
       location: opportunity.location || "",
       workModel,
       capabilityExtractionStatus,
-      originalOpportunity: opportunity,
+      dimensions,
+      originalOpportunity: { ...opportunity, dimensions },
       semanticEvidence
     };
   }

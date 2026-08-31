@@ -348,9 +348,9 @@ export function runEngine(
       jobProjV4.executiveIdentity.value,
       candIdentityVal,
       rawJobText,
-      hasStructuredEvidence,
+      hasStructuredEvidence || !!((jobProjV4 as any).dimensions && (jobProjV4 as any).dimensions.length > 0),
       undefined, // evidenceGrounding - not used
-      undefined, // dimensions - not used
+      (jobProjV4 as any).dimensions, // pass synthesized/grounded dimensions
       shortlistingPotentialScore // P3-A: Pass authoritative SP
     );
 

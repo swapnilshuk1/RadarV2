@@ -100,6 +100,7 @@ export interface JobProjection {
   workModel: "HYBRID" | "REMOTE" | "ON_SITE" | "UNKNOWN";
   capabilityExtractionStatus: "COMPLETE" | "PARTIAL" | "FAILED";
   originalOpportunity?: any;
+  dimensions?: any[];
   // Phase 5C.2: Additive Canonical Semantic Evidence
   semanticEvidence?: readonly CanonicalSemanticEvidence[];
 }
