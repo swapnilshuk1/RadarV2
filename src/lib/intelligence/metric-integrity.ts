@@ -107,6 +107,15 @@ export interface CanonicalOpportunityMetrics {
   // Authoritative Category Population Metrics
   readonly categoryMetrics?: Record<string, { total: number; unreviewed: number; shortlisted: number }>;
 
+  // Authoritative Portal Discovery Metrics (Search Plan Population DB-wide)
+  readonly portalMetrics?: {
+    readonly LinkedIn: number;
+    readonly Naukri: number;
+    readonly Indeed: number;
+    readonly other: number;
+    readonly total: number;
+  };
+
   // Metric Integrity Check Result
   readonly integrity: MetricIntegrityResult;
 }

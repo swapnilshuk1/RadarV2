@@ -382,9 +382,11 @@ function Shortlist() {
                       metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? (isLoadingCategory ? "..." : filteredRemaining.length)
                     } ${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}`}
               </h2>
-              {selectedCategoryId === "all" && shortlistedOps.length > 0 && shortlistedOps.length !== totalShortlisted && (
+              {selectedCategoryId === "all" && (
                 <span className="label-mono text-[11px] text-muted-foreground">
-                  {shortlistedOps.length} remaining to review
+                  {metrics?.discoveryMetrics?.actionableReviewQueue !== undefined
+                    ? `${metrics.discoveryMetrics.actionableReviewQueue} remaining to review`
+                    : `${shortlistedOps.length} on page`}
                 </span>
               )}
             </div>
@@ -543,20 +545,20 @@ function Shortlist() {
           {isStarting ? "Starting..." : runState?.isActive ? "Search Active" : "Run Search"}
         </button>
         <span className="dock-text">
-          <strong>{totalScraped}</strong> scraped
+          <strong>{(metrics?.portalMetrics?.total ?? totalScraped).toLocaleString()}</strong> candidates
         </span>
         <span className="hidden md:inline-block text-border/40">|</span>
         <span className="dock-text hidden md:inline">
-          LinkedIn <strong>{sourceCounts.LinkedIn}</strong>
+          LinkedIn <strong>{(metrics?.portalMetrics?.LinkedIn ?? sourceCounts.LinkedIn).toLocaleString()}</strong>
         </span>
         <span className="dock-text hidden md:inline">
-          Naukri <strong>{sourceCounts.Naukri}</strong>
+          Naukri <strong>{(metrics?.portalMetrics?.Naukri ?? sourceCounts.Naukri).toLocaleString()}</strong>
         </span>
         <span className="dock-text hidden md:inline">
-          Indeed <strong>{sourceCounts.Indeed}</strong>
+          Indeed <strong>{(metrics?.portalMetrics?.Indeed ?? sourceCounts.Indeed).toLocaleString()}</strong>
         </span>
         <span className="dock-text text-emerald-600 dark:text-emerald-400 font-bold">
-          → {selectedCategoryId === "all" ? shortlistedOps.length : (metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? filteredRemaining.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.total ?? filteredRemaining.length)} to review
+          → {selectedCategoryId === "all" ? (metrics?.discoveryMetrics?.actionableReviewQueue ?? shortlistedOps.length) : (metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? filteredRemaining.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.total ?? filteredRemaining.length)} to review
         </span>
       </div>
     </div>

@@ -395,6 +395,8 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
       sqliteDb.exec(`
         CREATE TABLE tenants (id TEXT PRIMARY KEY, name TEXT);
         INSERT INTO tenants (id, name) VALUES ('t1', 'Tenant 1');
+        CREATE TABLE people (id TEXT PRIMARY KEY, tenant_id TEXT, is_active INTEGER DEFAULT 1);
+        INSERT INTO people (id, tenant_id, is_active) VALUES ('p1', 't1', 1);
         CREATE TABLE search_plans (id TEXT PRIMARY KEY, tenant_id TEXT, person_id TEXT, status TEXT, criteria_json TEXT);
         INSERT INTO search_plans (id, tenant_id, person_id, status, criteria_json)
         VALUES ('sp1', 't1', 'p1', 'active', '{"targetSeniority":["VP"],"targetRoles":["VP of Sales"],"targetLocations":["Remote"]}');
@@ -455,6 +457,8 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
       sqliteDb.exec(`
         CREATE TABLE tenants (id TEXT PRIMARY KEY, name TEXT);
         INSERT INTO tenants (id, name) VALUES ('t1', 'Tenant 1');
+        CREATE TABLE people (id TEXT PRIMARY KEY, tenant_id TEXT, is_active INTEGER DEFAULT 1);
+        INSERT INTO people (id, tenant_id, is_active) VALUES ('p1', 't1', 1);
         CREATE TABLE search_plans (id TEXT PRIMARY KEY, tenant_id TEXT, person_id TEXT, status TEXT, criteria_json TEXT);
         INSERT INTO search_plans (id, tenant_id, person_id, status, criteria_json)
         VALUES ('sp1', 't1', 'p1', 'active', '{"targetSeniority":["VP"],"targetRoles":["VP of Sales"],"targetLocations":["Remote"]}');

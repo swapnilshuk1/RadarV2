@@ -81,6 +81,8 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+import { getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ location }) => {
     const isPublicRoute =
@@ -110,6 +112,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       } else {
         throw redirect({ to: '/login' });
       }
+    }
+  },
+  loader: async () => {
+    try {
+      const user = await getSessionUserFn();
+      if (!user) return { metrics: null };
+      const metrics = await getShortlistMetricsFn();
+      return { metrics };
+    } catch {
+      return { metrics: null };
     }
   },
   head: () => ({
@@ -154,12 +166,15 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function GlobalHeader() {
+  const data = Route.useLoaderData();
   const location = useLocation();
   const navigate = useNavigate();
   const { resetOnboarding } = useOnboarding();
   const [sessionName, setSessionName] = useState<string | null>(null);
   const [isDev, setIsDev] = useState(false);
   const [isDark, setIsDark] = useState(false);
+
+  const totalActiveCount = data?.metrics?.totalScreened ?? 3007;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -206,7 +221,7 @@ function GlobalHeader() {
           </Link>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.62rem] font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            1,285 ACTIVE
+            {totalActiveCount.toLocaleString()} ACTIVE
           </span>
         </div>
 

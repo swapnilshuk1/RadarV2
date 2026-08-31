@@ -591,9 +591,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       ]
     );
 
-    // 2. Lean Scalar Query for Category and Effective Decision Aggregation
+    // 2. Lean Scalar Query for Category, Portal, and Effective Decision Aggregation
     const rows = await this.db.many<{
       role: string;
+      source: string;
       decision: string | null;
       evaluation_state: string;
       vetoed: number;
@@ -601,6 +602,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     }>(
       `SELECT 
          COALESCE(ov.job_title, 'Executive Opportunity') AS role,
+         COALESCE(co.source, 'LinkedIn') AS source,
          me.decision AS decision,
          CASE WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 'SPARSE_SPEC' WHEN me.id IS NOT NULL THEN 'COMPLETE' ELSE 'UNMATERIALIZED' END AS evaluation_state,
          COALESCE(me.vetoed, 0) AS vetoed,
@@ -630,10 +632,25 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       private_equity: { total: 0, unreviewed: 0, shortlisted: 0 },
     };
 
+    const portalMetrics = {
+      LinkedIn: 0,
+      Naukri: 0,
+      Indeed: 0,
+      other: 0,
+      total: 0,
+    };
+
     const effectiveBreakdown = { pursue: 0, consider: 0, pass: 0, sparse: 0 };
     let activePursuits = 0;
 
     for (const r of rows) {
+      portalMetrics.total++;
+      const src = r.source as "LinkedIn" | "Naukri" | "Indeed";
+      if (src === "LinkedIn") portalMetrics.LinkedIn++;
+      else if (src === "Naukri") portalMetrics.Naukri++;
+      else if (src === "Indeed") portalMetrics.Indeed++;
+      else portalMetrics.other++;
+
       const isEvaluated = r.evaluation_state === "COMPLETE";
       const isReviewed = r.action !== "NONE";
       const engineVerb = r.decision || "PASS";
@@ -758,6 +775,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       userBreakdown,
       effectiveBreakdown,
       categoryMetrics: categoryCounts,
+      portalMetrics,
       integrity: {
         status: "PASS",
         validatedAt: generatedAt,
