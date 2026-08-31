@@ -49,7 +49,26 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
   let llmMs = 0;
   
   try {
-    const snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
+    // Load payload from BlobStore (or fallback to snapshot_path for legacy unmigrated rows)
+    let snapStr: string | null = null;
+    const payloadKey = job.payload_key || (job.snapshot_path ? (job.snapshot_path.startsWith("snapshots/") ? job.snapshot_path : `snapshots/${job.job_hash}.json`) : null);
+
+    if (payloadKey) {
+      const { getBlobStore } = await import("../src/lib/storage/blob-store");
+      const blobBuf = await getBlobStore().get(payloadKey);
+      if (blobBuf) {
+        snapStr = blobBuf.toString("utf-8");
+      }
+    }
+
+    if (!snapStr && job.snapshot_path && fs.existsSync(job.snapshot_path)) {
+      snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
+    }
+
+    if (!snapStr) {
+      throw new Error(`Enrichment payload not found for job ${job.id} (key: ${payloadKey}, path: ${job.snapshot_path})`);
+    }
+
     const detailedCard = JSON.parse(snapStr) as DetailedCard;
     
     // Check if we already have a fresh, valid-version extraction on disk that covers full JD if present

@@ -9,6 +9,7 @@ export interface EnrichmentJob {
   job_hash: string;
   pipeline_version: string;
   snapshot_path: string;
+  payload_key: string;
   run_id: string;
   execution_plan_id: string;
   definition_id: string;
@@ -43,7 +44,7 @@ export class EnrichmentQueue {
   public async enqueue(
     id: string,
     jobHash: string,
-    snapshotPath: string,
+    snapshotPathOrPayloadKey: string,
     pipelineVersion: string,
     provenance: {
       runId: string;
@@ -58,22 +59,29 @@ export class EnrichmentQueue {
       searchQuery: string;
     },
     businessPriority: number = 0,
-    executionPriority: number = 0
+    executionPriority: number = 0,
+    explicitPayloadKey?: string
   ): Promise<boolean> {
     try {
+      const payloadKey = explicitPayloadKey || (snapshotPathOrPayloadKey.startsWith("snapshots/") || snapshotPathOrPayloadKey.startsWith("blobs/")
+        ? snapshotPathOrPayloadKey
+        : `snapshots/${jobHash}.json`);
+      const snapshotPath = snapshotPathOrPayloadKey;
+
       const res = await this.db.execute(
         `INSERT INTO enrichment_jobs 
-        (id, job_hash, pipeline_version, snapshot_path, 
+        (id, job_hash, pipeline_version, snapshot_path, payload_key,
          run_id, execution_plan_id, definition_id, family_id, portal, page,
          catalog_version, planner_version, rule_version, search_query,
          status, business_priority, execution_priority, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(job_hash) DO NOTHING`,
         [
           id,
           jobHash,
           pipelineVersion,
           snapshotPath,
+          payloadKey,
           provenance.runId,
           provenance.executionPlanId,
           provenance.definitionId,

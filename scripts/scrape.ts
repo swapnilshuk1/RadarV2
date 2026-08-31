@@ -1188,6 +1188,14 @@ async function processUnit(
           company: cleanCompany
         } as import("./scraper/types").DetailedCard;
 
+        const payloadKey = `snapshots/${filteredCard.cardHash}.json`;
+        try {
+          const { getBlobStore } = await import("../src/lib/storage/blob-store");
+          await getBlobStore().put(payloadKey, JSON.stringify(detailedCard), "application/json");
+        } catch (e: any) {
+          log(`Failed to write blob ${payloadKey}: ${e.message}`, "warn");
+        }
+
         await enrichmentQueue.enqueue(
           cardUnitId,
           filteredCard.cardHash,
@@ -1206,7 +1214,8 @@ async function processUnit(
             searchQuery: unit.keyword
           },
           10, // business_priority
-          0   // execution_priority
+          0,   // execution_priority
+          payloadKey
         );
         
         mgr.updateCard(cardUnitId, { status: "done" });
