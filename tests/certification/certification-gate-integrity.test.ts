@@ -62,9 +62,11 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "tests/intelligence/semantic-evidence-integrity-regression.test.ts",
       "tests/intelligence/metrics-portal-breakdown.test.ts",
       "tests/persistence/queue-crash-restart.test.ts",
+      "tests/persistence/scrape-run-state-machine.test.ts",
       "tests/security/scope-resolver-equivalence.test.ts",
       "tests/security/deploy-attack-surface-removed.test.ts",
       "tests/security/scrape-tenant-identity.test.ts",
+      "tests/security/scrape-run-ownership.test.ts",
       "tests/ontology/tenant-ontology-compiler.test.ts",
       "tests/serving/cursor.test.ts",
       "tests/serving/dossier_and_navigation.test.ts",
@@ -85,7 +87,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
     ];
 
     expect(certificationManifest).toHaveLength(5);
-    expect(EXPECTED_CERTIFICATION_FILE_COUNT).toBe(32);
+    expect(EXPECTED_CERTIFICATION_FILE_COUNT).toBe(34);
     expect(certificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
     expect(uniqueCertificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
     expect([...certificationTestFiles].sort()).toEqual([...expectedFiles].sort());

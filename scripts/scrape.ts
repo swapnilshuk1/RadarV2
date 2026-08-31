@@ -242,11 +242,39 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   log(`Run ${mgr.runId} ${resumed ? "resumed" : "started"} — portals=${mgr.manifest.portals.join(",")} units=${plannedUnits}`);
   mgr.recordActivity(`Search schema armed: ${plannedUnits} work units across ${portals.join(", ")}`);
 
+  let runScope: any = null;
+  if (opts.authContext) {
+    runScope = {
+      tenantId: opts.authContext.tenantId,
+      personId: opts.authContext.userId,
+      roles: [],
+    };
+    try {
+      const repos = getRepositories();
+      await repos.scrapeRuns.createRun(runScope, {
+        id: mgr.runId,
+        searchPlanId: opts.searchPlanId || "default",
+        portalTargets: portals,
+        initialStatus: "initializing",
+        config: { maxPages, keywords: resolvedKeywords },
+      });
+      log(`Created durable scrape_run in Turso Cloud: ${mgr.runId} for tenant ${runScope.tenantId}`);
+    } catch (e: any) {
+      log(`Failed to create durable scrape_run: ${e.message}`, "warn");
+      throw e;
+    }
+  }
+
   // Graceful shutdown: checkpoints already fsync'd — just close journal + browsers.
   const shutdown = async (signal: string) => {
     log(`Received ${signal}, checkpointing…`, "warn");
     mgr.journal.append({ type: "signal", signal });
     mgr.finalize("aborted");
+    if (runScope) {
+      try {
+        await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "aborted", `Interrupted by ${signal}`);
+      } catch {}
+    }
     for (const session of activeAuthSessions.values()) {
       session.dispose();
     }
@@ -274,6 +302,11 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     try {
       // Phase 1: Initializing
       mgr.transitionTo("initializing");
+      if (runScope) {
+        try {
+          await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "running");
+        } catch {}
+      }
 
       await pool(portals, CONFIG.portalConcurrency, async (portal) => {
         const plog = makeLogger(`scrape:${portal}`);
@@ -510,10 +543,20 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       mgr.finalize("completed");
+      const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
+      if (runScope) {
+        try {
+          const repos = getRepositories();
+          await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
+            totalDiscovered: mgr.manifest.cards.length,
+            totalEnqueued: ingestedCount,
+            metrics: tm as any,
+          });
+          await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "completed");
+        } catch {}
+      }
       mgr.recordActivity("Search completed · Executive shortlist updated");
       const runDurationS = ((new Date().getTime() - new Date(mgr.manifest.startedAt).getTime()) / 1000).toFixed(1);
-      
-      const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
       
       const { generateAcquisitionReport } = await import("./scraper/run/report");
       generateAcquisitionReport(mgr.runId);
@@ -544,6 +587,11 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
     } catch (err: any) {
       log(`Fatal: ${err.message}`, "error");
       mgr.finalize("failed");
+      if (runScope) {
+        try {
+          await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "failed", err.message);
+        } catch {}
+      }
       return { success: false, count: 0, runId: mgr.runId };
     } finally {
       activeRunControllers.delete(mgr.runId);

@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { ARTIFACTS_DIR } from "../../../scripts/scraper/config";
 import { requireAuthUser } from "../auth/guard";
+import { getRepositories } from "../../data/sqlite/provider";
 
 let rebuildTimeout: NodeJS.Timeout | null = null;
 
@@ -104,24 +105,23 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
     // 1. Enforce Authentication
     const user = await requireAuthUser();
 
-    // 2. Enforce Single-Process Mutex
-    const activeState = getActiveScrapeState();
-    const activeLock = getActiveScrapeLock();
-    if (activeState || activeLock) {
-      const activeRunId = activeState?.runId || activeLock?.runId || "active";
-      console.warn(`[Server] triggerScrapeFn rejected: Run ${activeRunId} is already in progress.`);
-      return {
-        success: false,
-        error: `A scraping run is already in progress (${activeRunId}). Concurrent execution is rejected.`,
-        runId: activeRunId,
-        alreadyRunning: true
-      };
-    }
-
     try {
       console.log("[Server] triggerScrapeFn: resolving verified scraper auth scope…");
       const { resolveScraperAuthContext } = await import("../security/scope-resolver");
       const { authContext, scope, activeContext } = await resolveScraperAuthContext(user.id);
+      const repos = getRepositories();
+
+      // Per-tenant/person concurrency check in Turso Cloud
+      const existingActive = await repos.scrapeRuns.getActiveRun(scope);
+      if (existingActive) {
+        console.warn(`[Server] triggerScrapeFn rejected: Active run ${existingActive.id} already exists for tenant ${scope.tenantId}, person ${scope.personId}`);
+        return {
+          success: false,
+          error: `A scraping run is already in progress (${existingActive.id}). Concurrent execution for your account is rejected.`,
+          runId: existingActive.id,
+          alreadyRunning: true
+        };
+      }
 
       console.log(`[Server] triggerScrapeFn: launching background scraper for tenant ${authContext.tenantId} (person: ${scope.personId})…`);
       // Dynamic import isolates Playwright/Node modules from the browser bundler.
@@ -335,36 +335,105 @@ export const getActiveScrapeFn = createServerFn({ method: "GET" })
 
 export const getLatestRunFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    await requireAuthUser();
-    try {
-      const latestPath = path.join(ARTIFACTS_DIR, "runs", "latest.json");
-      if (!fs.existsSync(latestPath)) return null;
-      const latest = JSON.parse(fs.readFileSync(latestPath, "utf-8"));
-      if (!latest?.runId) return null;
+    const user = await requireAuthUser();
+    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { scope } = await resolveServingScope(user.id);
+    const repos = getRepositories();
 
-      return buildCanonicalRunData(latest.runId);
-    } catch {
-      return null;
+    // 1. Query Turso Cloud for the caller's scoped latest run
+    const latestDbRun = await repos.scrapeRuns.getLatestRun(scope);
+    if (!latestDbRun) return null;
+
+    // 2. Hydrate canonical run data (fall back to disk manifest if available for local activity details)
+    const diskData = buildCanonicalRunData(latestDbRun.id);
+    if (diskData) {
+      return {
+        ...diskData,
+        status: latestDbRun.status,
+        opportunitiesFound: Math.max(diskData.opportunitiesFound || 0, latestDbRun.totalDiscovered),
+      };
     }
+
+    return {
+      runId: latestDbRun.id,
+      status: latestDbRun.status,
+      isActive: ["queued", "initializing", "running", "waiting_for_confirmation"].includes(latestDbRun.status),
+      stage: latestDbRun.status === "completed" ? "complete" : latestDbRun.status,
+      opportunitiesFound: latestDbRun.totalDiscovered,
+      evaluatedCount: latestDbRun.totalEnqueued,
+      remainingCount: 0,
+      sources: {},
+      startedAt: latestDbRun.startedAt || latestDbRun.createdAt,
+      updatedAt: latestDbRun.updatedAt,
+      finishedAt: latestDbRun.finishedAt || undefined,
+      portalHealth: {},
+      recentActivities: [],
+    };
   });
 
 export const getRunProgressFn = createServerFn({ method: "GET" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    await requireAuthUser();
-    return getRunProgressState(data.runId);
+    const user = await requireAuthUser();
+    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { scope } = await resolveServingScope(user.id);
+    const repos = getRepositories();
+
+    const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
+    if (!dbRun) {
+      const { TenantIsolationError } = await import("../security/auth");
+      throw new TenantIsolationError(`Scrape run '${data.runId}' not found or unauthorized for current tenant/person.`);
+    }
+
+    const diskData = getRunProgressState(data.runId);
+    if (diskData) {
+      return {
+        ...diskData,
+        status: dbRun.status,
+      };
+    }
+
+    return {
+      runId: dbRun.id,
+      status: dbRun.status,
+      isActive: ["queued", "initializing", "running", "waiting_for_confirmation"].includes(dbRun.status),
+      stage: dbRun.status === "completed" ? "complete" : dbRun.status,
+      opportunitiesFound: dbRun.totalDiscovered,
+      evaluatedCount: dbRun.totalEnqueued,
+      remainingCount: 0,
+      sources: {},
+      startedAt: dbRun.startedAt || dbRun.createdAt,
+      updatedAt: dbRun.updatedAt,
+      finishedAt: dbRun.finishedAt || undefined,
+      portalHealth: {},
+      recentActivities: [],
+    };
   });
 
 export const confirmScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    await requireAuthUser();
+    const user = await requireAuthUser();
+    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { scope } = await resolveServingScope(user.id);
+    const repos = getRepositories();
+
+    const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
+    if (!dbRun) {
+      const { TenantIsolationError } = await import("../security/auth");
+      throw new TenantIsolationError(`Cannot confirm run '${data.runId}': unauthorized or not found.`);
+    }
+
+    await repos.scrapeRuns.updateRunStatus(scope, data.runId, "running");
+
     const manifestPath = path.join(ARTIFACTS_DIR, "runs", data.runId, "manifest.json");
     try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-      if (manifest.status === "waiting_for_confirmation") {
-        manifest.status = "running";
-        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
+      if (fs.existsSync(manifestPath)) {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+        if (manifest.status === "waiting_for_confirmation") {
+          manifest.status = "running";
+          fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
+        }
       }
       return { success: true };
     } catch (e: any) {
@@ -375,11 +444,19 @@ export const confirmScrapeFn = createServerFn({ method: "POST" })
 export const abortScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    await requireAuthUser();
-    const result = abortScrapeState(data.runId);
-    if (activeScrapeRunLock?.runId === data.runId) {
-      activeScrapeRunLock = null;
+    const user = await requireAuthUser();
+    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { scope } = await resolveServingScope(user.id);
+    const repos = getRepositories();
+
+    const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
+    if (!dbRun) {
+      const { TenantIsolationError } = await import("../security/auth");
+      throw new TenantIsolationError(`Cannot abort run '${data.runId}': unauthorized or not found.`);
     }
+
+    await repos.scrapeRuns.updateRunStatus(scope, data.runId, "stopping");
+    const result = abortScrapeState(data.runId);
     return result;
   });
 

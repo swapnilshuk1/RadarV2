@@ -184,6 +184,7 @@ export interface CredentialStore {
 import type { SqliteEvaluationStore } from "../data/sqlite/repositories/SqliteEvaluationStore";
 import type { SqliteCanonicalServingStore } from "../data/sqlite/repositories/SqliteCanonicalServingStore";
 import type { SqliteEvaluationContextStore } from "../data/sqlite/repositories/SqliteEvaluationContextStore";
+import type { SqliteScrapeRunStore } from "../data/sqlite/repositories/SqliteScrapeRunStore";
 
 export interface StorageProvider {
   sources: SourceStore;
@@ -199,5 +200,6 @@ export interface StorageProvider {
   credentials: CredentialStore;
   canonicalServing: SqliteCanonicalServingStore;
   evaluationContexts: SqliteEvaluationContextStore;
+  scrapeRuns: SqliteScrapeRunStore;
 }
 
