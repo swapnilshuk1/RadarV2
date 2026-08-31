@@ -110,6 +110,27 @@ async function runProductionSmoke() {
       throw new Error("Scraper auth failed to reject unknown user!");
     }
     console.log(`  ✔ Invariant holds: Unauthenticated/unverified users strictly rejected with TenantIsolationError.`);
+
+    // 6. Distributed BlobStore Connectivity & Health Check
+    console.log("\n▶ [6/6] Auditing Distributed BlobStore Connectivity & Payload Resolution...");
+    const { getBlobStore } = await import("../src/lib/storage/blob-store");
+    const blobStore = getBlobStore();
+    const blobHealth = await blobStore.healthCheck();
+    if (!blobHealth.ok) {
+      throw new Error(`BlobStore health check failed on backend ${blobHealth.backend}: ${blobHealth.error}`);
+    }
+    console.log(`  ✔ BlobStore backend "${blobHealth.backend}" is operational and responsive.`);
+
+    const probeKey = `snapshots/smoke-probe-${Date.now()}.json`;
+    const probePayload = JSON.stringify({ smoke: true, time: new Date().toISOString() });
+    await blobStore.put(probeKey, probePayload, "application/json");
+    const fetched = await blobStore.get(probeKey);
+    if (!fetched || fetched.toString("utf-8") !== probePayload) {
+      throw new Error(`BlobStore readback verification failed for ${probeKey}`);
+    }
+    await blobStore.delete(probeKey);
+    console.log(`  ✔ Invariant holds: Payload write/read/delete roundtrip verified without host container coupling.`);
+
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log("\n============================================================");
     console.log("              ✅ PRODUCTION SMOKE PASS");

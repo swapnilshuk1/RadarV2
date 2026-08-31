@@ -6,7 +6,7 @@
  * this manifest rather than maintaining independent lists.
  */
 
-export const EXPECTED_CERTIFICATION_FILE_COUNT = 35;
+export const EXPECTED_CERTIFICATION_FILE_COUNT = 37;
 
 export const certificationManifest = [
   {
@@ -37,6 +37,8 @@ export const certificationManifest = [
       "tests/persistence/queue-crash-restart.test.ts",
       "tests/persistence/scrape-run-state-machine.test.ts",
       "tests/persistence/cross-instance-payload-retrieval.test.ts",
+      "tests/persistence/distributed-lease-contention.test.ts",
+      "tests/persistence/blob-store-connectivity.test.ts",
     ],
   },
   {

@@ -87,11 +87,11 @@ Host oracle-radar 130.210.41.232 130.210.41.232.sslip.io
 
 ---
 
-## 5. Operational Topology & Single-Instance Scraper Limitation (ADR-003)
+## 5. Operational Topology & Distributed Execution Protocol (ADR-003 Active)
 
-Until the distributed `scrape_runs` state machine and `BlobStore` object storage layer are deployed (specified in `docs/architecture/ADR-003-multi-tenant-scrape-runs-and-blob-storage.md`):
+The distributed `scrape_runs` state machine and `BlobStore` object storage layers are deployed and production-certified:
 
-1. **Host-Colocated Execution**: Live Playwright browser scraping must run as a single-instance process hosted on the production server (`130.210.41.232`).
-2. **Local Snapshot Storage**: Scraped card HTML payloads and snapshots reside on the host filesystem under `.radar/artifacts/snapshots/`.
-3. **Colocated Worker Leases**: The background enrichment worker daemon (`scripts/enrich.ts` / `EvaluationWorker`) must run on the same server instance as the scraper so that `snapshot_path` references remain resolvable.
-4. **Tenant Scoping Boundary**: Tenant and candidate isolation is strictly enforced across user authentication, active search plan selection, evaluation contexts, and keyset serving queries. Run progress observation and cancellation controls operate on the local host instance until ADR-003 is shipped.
+1. **Decoupled Execution**: Live scraping and background enrichment workers (`scripts/enrich.ts` / `EvaluationWorker`) can run across independent hosts and container instances.
+2. **Durable Object Storage**: Scraped card payloads and snapshots are managed via `BlobStore` and referenced by durable `payload_key` in Turso Cloud (`enrichment_jobs`), removing local disk colocation requirements.
+3. **Distributed Worker Leases**: Workers lease jobs concurrently from Turso Cloud using transactional atomic leasing with lease expiration and automatic crash failover.
+4. **Tenant Scoping & Run Ownership**: All run lifecycles, cancellations, audit events, and metrics are tenant-isolated in Turso (`scrape_runs`, `scrape_run_events`) with database-enforced per-scope mutex preventing duplicate active runs.

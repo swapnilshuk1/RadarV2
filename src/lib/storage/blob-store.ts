@@ -25,6 +25,7 @@ export interface BlobStore {
   get(key: string): Promise<Buffer | null>;
   exists(key: string): Promise<boolean>;
   delete(key: string): Promise<void>;
+  healthCheck(): Promise<{ ok: boolean; backend: string; error?: string }>;
 }
 
 /**
@@ -72,6 +73,22 @@ export class LocalFsBlobStore implements BlobStore {
       fs.unlinkSync(targetPath);
     }
   }
+
+  async healthCheck(): Promise<{ ok: boolean; backend: string; error?: string }> {
+    try {
+      const probeKey = "_health/probe.json";
+      const payload = JSON.stringify({ ts: Date.now() });
+      await this.put(probeKey, payload);
+      const read = await this.get(probeKey);
+      if (!read || read.toString("utf-8") !== payload) {
+        throw new Error("Payload readback mismatch");
+      }
+      await this.delete(probeKey);
+      return { ok: true, backend: "local_filesystem" };
+    } catch (e: any) {
+      return { ok: false, backend: "local_filesystem", error: e.message };
+    }
+  }
 }
 
 /**
@@ -97,6 +114,22 @@ export class MemoryBlobStore implements BlobStore {
 
   async delete(key: string): Promise<void> {
     this.store.delete(key);
+  }
+
+  async healthCheck(): Promise<{ ok: boolean; backend: string; error?: string }> {
+    try {
+      const probeKey = "_health/probe.json";
+      const payload = JSON.stringify({ ts: Date.now() });
+      await this.put(probeKey, payload);
+      const read = await this.get(probeKey);
+      if (!read || read.toString("utf-8") !== payload) {
+        throw new Error("Payload readback mismatch");
+      }
+      await this.delete(probeKey);
+      return { ok: true, backend: "in_memory" };
+    } catch (e: any) {
+      return { ok: false, backend: "in_memory", error: e.message };
+    }
   }
 }
 
@@ -155,6 +188,22 @@ export class S3CompatibleBlobStore implements BlobStore {
   async delete(key: string): Promise<void> {
     const url = this.getUrl(key);
     await fetch(url, { method: "DELETE" });
+  }
+
+  async healthCheck(): Promise<{ ok: boolean; backend: string; error?: string }> {
+    try {
+      const probeKey = "_health/probe.json";
+      const payload = JSON.stringify({ ts: Date.now() });
+      await this.put(probeKey, payload);
+      const read = await this.get(probeKey);
+      if (!read || read.toString("utf-8") !== payload) {
+        throw new Error("Payload readback mismatch");
+      }
+      await this.delete(probeKey);
+      return { ok: true, backend: "s3_compatible" };
+    } catch (e: any) {
+      return { ok: false, backend: "s3_compatible", error: e.message };
+    }
   }
 }
 

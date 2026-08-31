@@ -1,6 +1,6 @@
 # ADR-003 — Multi-Tenant Scrape Runs and Durable Blob Storage Architecture
 
-- **Status**: Proposed / Approved for Design (Phase 3)
+- **Status**: Accepted & Implemented (Phases 4A, 4B, 4C Production Certified)
 - **Date**: 2026-09-01
 - **Domain**: Scraping Pipeline, Multi-Tenancy, Distributed Ingestion & Storage
 

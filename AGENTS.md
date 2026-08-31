@@ -167,10 +167,11 @@ The scraping pipeline uses a stealth Playwright engine managed by `RunController
 - **Cloud Flags**: When running in cloud containers, scrapers inject `--no-sandbox`, `--disable-gpu`, `--disable-setuid-sandbox` and set `headless: true`.
 - **Session Management**: Public job search pages are prioritized to prevent login locks. For authenticated portals, session cookies are restored from local state.
 
-### Operational Boundaries & Distributed Roadmap (ADR-003)
-- **Host Single-Instance Execution**: Live Playwright browser scraping currently runs as a single-instance process on the designated Oracle host.
-- **Snapshot Colocation**: Scraped card HTML snapshots are stored locally under `.radar/artifacts/snapshots/` until the durable `BlobStore` abstraction (ADR-003) is deployed. Enrichment worker instances must be colocated on the same host.
-- **Queue State vs. Run Control**: Queue jobs and leasing events reside in Turso Cloud (`enrichment_jobs`), but run progress and cancellation controls are host-bound until the `scrape_runs` table (ADR-003) is migrated.
+### Distributed Scraper & Enrichment Architecture (ADR-003 Active)
+- **Distributed Multi-Instance Execution**: Scraper and enrichment worker instances can run across decoupled host environments.
+- **Durable Multi-Tenant Scrape Runs**: Run state, event logs, and cancel/abort lifecycle reside durably in Turso Cloud (`scrape_runs`, `scrape_run_events`) with database-enforced mutex per scope.
+- **Decoupled BlobStore Payloads**: Card payloads and snapshots are stored via `BlobStore` (`payload_key` in `enrichment_jobs`), enabling remote worker nodes to retrieve payloads without shared container disks.
+- **Distributed Leasing Protocol**: Workers safely lease batches concurrently with database-enforced mutual exclusion, lease expirations, and automatic crash failover.
 
 ---
 

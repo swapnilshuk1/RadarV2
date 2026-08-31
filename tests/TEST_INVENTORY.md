@@ -48,6 +48,8 @@ RADAR v2 Test Architecture
 | `tests/persistence/queue-crash-restart.test.ts` | Turso operational queue crash recovery, idempotency, concurrent lease exclusion, and zero filesystem state. | **Stage 3** |
 | `tests/persistence/scrape-run-state-machine.test.ts` | Atomic active run race, cross-tenant/person concurrency, terminal immutability, restart durability. | **Stage 3** |
 | `tests/persistence/cross-instance-payload-retrieval.test.ts` | Distributed BlobStore payload retrieval across isolated process/disk instances, missing blob graceful failure. | **Stage 3** |
+| `tests/persistence/distributed-lease-contention.test.ts` | Multi-instance concurrent lease mutual exclusion, non-claiming loser invariant, and crash failover. | **Stage 3** |
+| `tests/persistence/blob-store-connectivity.test.ts` | Multi-backend BlobStore connectivity, S3 REST protocol, 404/error handling, and synthetic probe healthCheck. | **Stage 3** |
 
 ---
 
@@ -156,7 +158,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (175 Total Files)
+## 3. Complete Test File Registry (177 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -247,6 +249,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/persistence/queue-crash-restart.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 7 | 25 |
 | `tests/persistence/scrape-run-state-machine.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 5 | 20 |
 | `tests/persistence/cross-instance-payload-retrieval.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 2 | 10 |
+| `tests/persistence/distributed-lease-contention.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 2 | 12 |
+| `tests/persistence/blob-store-connectivity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 4 | 14 |
 | `tests/persistence/m61-credential-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 54 |
 | `tests/persistence/m7-tenant-migration.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 7 | 15 |
 | `tests/persistence/migration-runner.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 19 |
