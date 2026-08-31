@@ -226,6 +226,7 @@ export interface ScraperAuthResolution {
   readonly authContext: import("./auth").AuthContext;
   readonly scope: AuthorizedPersonScope;
   readonly activeContext?: ActiveServingContext;
+  readonly membership: { readonly role: string; readonly permissions: readonly string[] };
 }
 
 /**
@@ -297,6 +298,10 @@ export async function resolveScraperAuthContext(
     authContext,
     scope: resolved.scope,
     activeContext: resolved.activeContext,
+    membership: {
+      role: membership.role,
+      permissions,
+    },
   };
 }
 

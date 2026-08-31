@@ -9,7 +9,8 @@
 
 import { getDatabaseAdapter } from "../src/data/database";
 import { SqliteOpportunityQueries } from "../src/data/sqlite/repositories/SqliteOpportunityQueries";
-import { resolveServingScope } from "../src/lib/security/scope-resolver";
+import { resolveServingScope, resolveScraperAuthContext } from "../src/lib/security/scope-resolver";
+import { TenantIsolationError } from "../src/lib/security/auth";
 
 async function runProductionSmoke() {
   console.log("\n============================================================");
@@ -85,6 +86,30 @@ async function runProductionSmoke() {
     }
     console.log(`  ✔ Invariant holds: All recorded decisions (${allRecordedDecisions}) = evaluated (${evaluatedDecisions}) + sparse (${sparseDecisions}).`);
 
+    // 5. Scraper Identity Provenance & RBAC Isolation Verification
+    console.log("\n▶ [5/5] Auditing Scraper Identity Provenance & Tenant Isolation...");
+    const scraperResolution = await resolveScraperAuthContext(userId, undefined, db);
+    console.log(`  ✔ Authenticated User -> Scraper Identity: userId="${scraperResolution.authContext.userId}", tenantId="${scraperResolution.authContext.tenantId}"`);
+    console.log(`  ✔ Verified Membership Role: "${scraperResolution.membership.role}" (run:scraper authorized)`);
+    console.log(`  ✔ Turso Active Search Plan: "${scraperResolution.activeContext?.searchPlanId || "none"}"`);
+
+    if (scraperResolution.authContext.userId !== userId) {
+      throw new Error(`Scraper identity mismatch: expected ${userId}, got ${scraperResolution.authContext.userId}`);
+    }
+
+    // Negative verification: unknown user rejection
+    let rejectedUnknown = false;
+    try {
+      await resolveScraperAuthContext("non_existent_smoke_user", undefined, db);
+    } catch (e: any) {
+      if (e instanceof TenantIsolationError || e.name === "TenantIsolationError") {
+        rejectedUnknown = true;
+      }
+    }
+    if (!rejectedUnknown) {
+      throw new Error("Scraper auth failed to reject unknown user!");
+    }
+    console.log(`  ✔ Invariant holds: Unauthenticated/unverified users strictly rejected with TenantIsolationError.`);
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log("\n============================================================");
     console.log("              ✅ PRODUCTION SMOKE PASS");
