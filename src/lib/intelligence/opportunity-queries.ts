@@ -44,6 +44,7 @@ export interface FeedSummary {
   readonly evaluationState: "COMPLETE" | "SPARSE_SPEC" | "UNMATERIALIZED";
   readonly engineVerdict?: EngineVerdict | null;
   readonly qualityScore?: number | null;
+  readonly vetoed: boolean;
   readonly userAction?: UserAction | null;
   readonly effectiveDecision: EffectiveDecision;
   readonly populationTier: number;

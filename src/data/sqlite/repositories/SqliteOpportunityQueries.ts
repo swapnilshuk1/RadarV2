@@ -485,6 +485,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       evaluationState: r.evaluation_state,
       engineVerdict: (r.engine_verdict as EngineVerdict) || null,
       qualityScore: r.quality_score,
+      vetoed: Boolean(r.vetoed),
       userAction: (r.user_action === "NONE" ? null : (r.user_action as UserAction)),
       effectiveDecision: r.effective_decision as EffectiveDecision,
       populationTier: r.population_tier,

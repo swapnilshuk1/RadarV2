@@ -204,7 +204,7 @@ export class OpportunityService {
         },
         recommendationResult: {
           score: f.qualityScore ?? null,
-          vetoed: f.populationTier === 3,
+          vetoed: f.vetoed,
         },
         userDecision: f.userAction ? {
           personId: scope.personId,

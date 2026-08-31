@@ -339,6 +339,8 @@ export function runEngine(
     const candProjObj = candProjV4 as unknown as Record<string, unknown>;
     const candIdentityVal = ((candProjObj.executiveIdentity as Record<string, unknown> | undefined)?.value as string) || "Commercial & Marketing Leadership";
 
+    const groundedDimensions = jobProjV4.dimensions || [];
+
     const policyResult = DecisionPolicyEngine.evaluate(
       identity,
       capability,
@@ -348,9 +350,9 @@ export function runEngine(
       jobProjV4.executiveIdentity.value,
       candIdentityVal,
       rawJobText,
-      hasStructuredEvidence || !!((jobProjV4 as any).dimensions && (jobProjV4 as any).dimensions.length > 0),
+      hasStructuredEvidence || groundedDimensions.length > 0,
       undefined, // evidenceGrounding - not used
-      (jobProjV4 as any).dimensions, // pass synthesized/grounded dimensions
+      groundedDimensions, // typed GroundedOpportunityDimension[]
       shortlistingPotentialScore // P3-A: Pass authoritative SP
     );
 

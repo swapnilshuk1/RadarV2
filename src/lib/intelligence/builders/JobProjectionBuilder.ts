@@ -1,4 +1,4 @@
-import { JobProjection, ExecutiveIdentity, OperatingContext, TrueExecutiveMandate, CapabilityTaxonomyTier, OrganizationalIntent, ExecutiveMission } from "../../domain/job_projection";
+import { JobProjection, GroundedOpportunityDimension, ExecutiveIdentity, OperatingContext, TrueExecutiveMandate, CapabilityTaxonomyTier, OrganizationalIntent, ExecutiveMission } from "../../domain/job_projection";
 import { OperatingLevelClassifier } from "../classifiers/OperatingLevelClassifier";
 import { WorkNatureClassifier } from "../classifiers/WorkNatureClassifier";
 import { DecisionAuthorityClassifier } from "../classifiers/DecisionAuthorityClassifier";
@@ -366,16 +366,17 @@ export class JobProjectionBuilder {
     }
 
     // Phase 5C.3: Synthesize Grounded Dimensions for downstream EvidenceRichness & Policy evaluation
-    const dimensions = Array.isArray(opportunity.dimensions) && opportunity.dimensions.length > 0
-      ? opportunity.dimensions
-      : [
-          { key: "operatingLevel", label: "Operating Level", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: operatingLevel, evidence: [{ quote: title, provenance: "extractor" }] } },
-          { key: "mandate", label: "Mandate", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: trueExecutiveMandate, evidence: [{ quote: title, provenance: "extractor" }] } },
-          { key: "commercialScope", label: "Commercial Scope", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: commercialScope, evidence: [{ quote: title, provenance: "extractor" }] } },
-          { key: "decisionAuthority", label: "Decision Authority", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: decisionAuthority, evidence: [{ quote: title, provenance: "extractor" }] } },
-          { key: "workModel", label: "Work Model", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: workModel, evidence: [{ quote: opportunity.location || workModel, provenance: "extractor" }] } },
-          { key: "functionalScope", label: "Functional Scope", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: executiveIdentity.value, evidence: [{ quote: title, provenance: "extractor" }] } },
-        ];
+    const dimensions = buildGroundedDimensions(
+      title,
+      opportunity.location || "",
+      operatingLevel.value,
+      trueExecutiveMandate,
+      commercialScope.value,
+      decisionAuthority.value,
+      workModel,
+      executiveIdentity.value,
+      opportunity.dimensions
+    );
 
     return {
       jobHash: opportunity.jobHash || "",
@@ -401,4 +402,32 @@ export class JobProjectionBuilder {
       semanticEvidence
     };
   }
+}
+
+/**
+ * Authoritative factory for grounded structural opportunity dimensions.
+ * Guarantees compile-time type agreement between JobProjection and DecisionPolicyEngine.
+ */
+export function buildGroundedDimensions(
+  title: string,
+  location: string,
+  operatingLevel: string,
+  trueExecutiveMandate: string,
+  commercialScope: string,
+  decisionAuthority: string,
+  workModel: string,
+  executiveIdentityValue: string,
+  existingDimensions?: readonly GroundedOpportunityDimension[]
+): GroundedOpportunityDimension[] {
+  if (Array.isArray(existingDimensions) && existingDimensions.length > 0) {
+    return [...existingDimensions];
+  }
+  return [
+    { key: "operatingLevel", label: "Operating Level", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: operatingLevel, evidence: [{ quote: title, provenance: "extractor" }] } },
+    { key: "mandate", label: "Mandate", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: trueExecutiveMandate, evidence: [{ quote: title, provenance: "extractor" }] } },
+    { key: "commercialScope", label: "Commercial Scope", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: commercialScope, evidence: [{ quote: title, provenance: "extractor" }] } },
+    { key: "decisionAuthority", label: "Decision Authority", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: decisionAuthority, evidence: [{ quote: title, provenance: "extractor" }] } },
+    { key: "workModel", label: "Work Model", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: workModel, evidence: [{ quote: location || workModel, provenance: "extractor" }] } },
+    { key: "functionalScope", label: "Functional Scope", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: executiveIdentityValue, evidence: [{ quote: title, provenance: "extractor" }] } },
+  ];
 }

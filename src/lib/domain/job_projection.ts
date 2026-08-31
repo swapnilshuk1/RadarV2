@@ -67,6 +67,24 @@ export interface ExecutiveMission {
   successConditions: string[];
 }
 
+export interface GroundedDimensionEvidence {
+  quote?: string;
+  provenance?: "curated" | "extractor" | "gold" | "fixture" | "onboarder";
+}
+
+export interface GroundedOpportunityDimension {
+  key: string;
+  label: string;
+  importance: "Core" | "Supporting" | "Context";
+  bucket: "Matched" | "Adjacent" | "Missing" | "Contradicted";
+  jdEvidence: {
+    status: "Explicit" | "Implicit" | "Missing" | "Missing Evidence";
+    value?: string;
+    evidence?: GroundedDimensionEvidence[];
+  };
+  candidateProof?: { headline: string; detail: string };
+}
+
 export interface JobProjection {
   jobHash: string;
   role: string;
@@ -100,7 +118,7 @@ export interface JobProjection {
   workModel: "HYBRID" | "REMOTE" | "ON_SITE" | "UNKNOWN";
   capabilityExtractionStatus: "COMPLETE" | "PARTIAL" | "FAILED";
   originalOpportunity?: any;
-  dimensions?: any[];
+  dimensions?: readonly GroundedOpportunityDimension[];
   // Phase 5C.2: Additive Canonical Semantic Evidence
   semanticEvidence?: readonly CanonicalSemanticEvidence[];
 }
