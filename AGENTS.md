@@ -190,23 +190,37 @@ When a user swipes or makes a decision on an opportunity:
 
 ---
 
-## 12. Development & Verification Commands
+## 12. Continuous Certification Gate & Development Commands
+
+RADAR v2 enforces a single, authoritative continuous certification workflow:
+```
+Code Change ──► Affected Contracts ──► npm run certify ──► Deploy ──► npm run smoke
+```
+
+### Invariant-First Contributor Protocol (Mandatory for all AI Agents):
+Whenever touching, modifying, or writing tests:
+1. **Identify the Invariant**: State what system behavior, data relationship, security boundary, or UI contract is being verified.
+2. **Check for Authoritative Home**: Inspect `tests/TEST_INVENTORY.md` to locate the canonical domain suite.
+3. **If Unique and Valid**: Keep and modernize the test in its proper canonical domain.
+4. **If Duplicate**: Consolidate into the authoritative suite rather than proliferating milestone-numbered files (`mXX`, `pXX`, `phaseXX`).
+5. **If Obsolete**: Archive to `tests/archive/` with explicit written justification.
+6. **Continuous Certification Gate**: Ensure `npm run certify` and `npm run smoke` pass cleanly before declaring completion.
 
 ```bash
-# Type check TypeScript code
+# 1. Authoritative Continuous Certification Gate (TypeScript + 7 Deterministic Stages)
+npm run certify
+
+# 2. Production Post-Deployment Smoke Check (Live Turso Health & Feed Parity)
+npm run smoke
+
+# 3. Unified System Diagnostic Inspection
+npm run diagnose
+
+# 4. Type check TypeScript code
 npx tsc --noEmit
 
-# Build production bundle (SSR + Nitro)
+# 5. Build production bundle (SSR + Nitro)
 npm run build
-
-# Run Executive Qualification Harness (EQE)
-npm run test:eqe
-
-# Run Live Scraper Pipeline locally
-npx tsx scripts/scrape.ts
-
-# Audit Database Lineage & Health
-npx tsx scripts/audit-lineage.ts
 ```
 
 ---

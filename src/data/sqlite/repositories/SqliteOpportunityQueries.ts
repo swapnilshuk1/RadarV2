@@ -724,7 +724,11 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     }
 
     const totalScreened = agg?.total_screened || 0;
-    const totalDecisions = agg?.user_total || 0;
+    const evaluatedDecisions = agg?.user_total || 0;
+    const sparseDecisionsTotal = agg?.sparse_decisions_total || 0;
+    const allRecordedDecisions = evaluatedDecisions + sparseDecisionsTotal;
+    const totalDecisions = evaluatedDecisions; // Preserving backward compatibility
+
     const engineBreakdown = {
       pursue: agg?.engine_pursue || 0,
       consider: agg?.engine_consider || 0,
@@ -749,6 +753,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       activePursuits,
       totalShortlisted,
       totalDecisions,
+      evaluatedDecisions,
+      allRecordedDecisions,
       remainingToReview,
       discoveryMetrics: {
         engineQualified: totalShortlisted,
@@ -757,6 +763,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       },
       decisionMetrics: {
         totalDecided: totalDecisions,
+        evaluatedDecisions,
+        allRecordedDecisions,
         userConfirmed: agg?.user_confirmed || 0,
         preferenceOverride: agg?.preference_override || 0,
         vetoOverride: agg?.veto_override || 0,

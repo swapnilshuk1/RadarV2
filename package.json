@@ -26,8 +26,10 @@
     "eval:viewer": "tsx scripts/eval/viewer/server.ts",
     "test:regression": "vitest run --config vitest.regression.config.ts",
     "test:full": "vitest run --config vitest.full.config.ts",
-    "certify": "tsx scripts/certification/certify.ts",
-    "certify:radar": "tsx scripts/certification/certify.ts",
+    "certify": "tsx scripts/certify.ts",
+    "certify:radar": "tsx scripts/certify.ts",
+    "smoke": "tsx scripts/smoke_production.ts",
+    "diagnose": "tsx scripts/diagnose.ts",
     "test:eqe": "npm run certify",
     "db:reset-corpus": "tsx scripts/db/reset-corpus.ts --confirm",
     "deploy": "tsx scripts/deploy.ts"

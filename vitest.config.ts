@@ -7,6 +7,7 @@ export default defineConfig({
   },
   test: {
     include: [
+      "tests/certification/**/*.test.ts",
       "tests/intelligence/**/*.test.ts",
       "tests/security/**/*.test.ts",
       "tests/ontology/**/*.test.ts",

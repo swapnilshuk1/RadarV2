@@ -1,0 +1,4397 @@
+{
+  "totalTests": 165,
+  "testCategories": {
+    "archive": [
+      {
+        "relPath": "tests/archive/p0/invariant-shortlist.test.ts",
+        "lines": 98,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P0-G: Shortlist Exclusion — SPARSE_SPEC → unevaluable bucket"
+        ]
+      },
+      {
+        "relPath": "tests/archive/p0/invariant-trace-identity.test.ts",
+        "lines": 119,
+        "sizeKb": 6,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P0-H: Trace Identity Invariant"
+        ]
+      },
+      {
+        "relPath": "tests/archive/p1/p1a-authoritative-source.test.ts",
+        "lines": 234,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P1-A: Single Authoritative Decision Source"
+        ]
+      },
+      {
+        "relPath": "tests/archive/p1/p1c-tailoring-effort.test.ts",
+        "lines": 372,
+        "sizeKb": 16,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P1-C: Tailoring Effort from Capability Gaps"
+        ]
+      },
+      {
+        "relPath": "tests/archive/p1/p1d-evidence-backed-explanation.test.ts",
+        "lines": 215,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P1-D: Evidence-Backed Recommendation Explanation"
+        ]
+      },
+      {
+        "relPath": "tests/archive/p1/p1f-executive-action.test.ts",
+        "lines": 280,
+        "sizeKb": 11,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P1-F: Executive Action Model"
+        ]
+      },
+      {
+        "relPath": "tests/archive/p2/p2a-principal-risk.test.ts",
+        "lines": 667,
+        "sizeKb": 27,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P2-A.2: Principal Risk Intelligence",
+          "P2-A.2: Principal Risk Edge Cases"
+        ]
+      },
+      {
+        "relPath": "tests/archive/p3/p3a-career-value-protection.test.ts",
+        "lines": 241,
+        "sizeKb": 10,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P3-A: Career-Value Protection Rule",
+          "Rule 1: Easy Trap Protection",
+          "Rule 2: Preserve Legitimate Behaviors",
+          "Rule 3: No Arbitrary Thresholds",
+          "Rule 4: No Fabricated Strategic Rationale",
+          "Specific Corpus Cases",
+          "Regression Protection"
+        ]
+      },
+      {
+        "relPath": "tests/archive/p3/p3a-policy-fix.test.ts",
+        "lines": 169,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P3-A Policy Fix: Easy Trap Rule 1",
+          "Approved Rule 1: CV < 50 + SP >= 80 + Friction < 10 → CONSIDER",
+          "Rule 1 Boundaries (NOT subject to rule)",
+          "Target Cases"
+        ]
+      },
+      {
+        "relPath": "tests/archive/phase3-forensic-audit.test.ts",
+        "lines": 156,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 3 Forensic Audit Unit & Invariant Tests"
+        ]
+      },
+      {
+        "relPath": "tests/archive/stage-3g-cache-isolation.test.ts",
+        "lines": 115,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Stage 3G Phase C — Cache Safety & Isolation Audit"
+        ]
+      },
+      {
+        "relPath": "tests/archive/stage-checkpoints/stage-4f-benchmarks.test.ts",
+        "lines": 80,
+        "sizeKb": 4,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Stage 4F: Production Request Path Benchmarks & Telemetry"
+        ]
+      },
+      {
+        "relPath": "tests/archive/stage-phase7-population.test.ts",
+        "lines": 216,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 Phase 7: Population Metrics & Bounded Retrieval Suite"
+        ]
+      }
+    ],
+    "editorial": [
+      {
+        "relPath": "tests/editorial/career-value-integrity.test.ts",
+        "lines": 409,
+        "sizeKb": 15,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "RADAR V4 — Career-Value Editorial Integrity Suite (Cases A–O)"
+        ]
+      },
+      {
+        "relPath": "tests/editorial/explanation-composition.test.ts",
+        "lines": 67,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 3 — Editorial Hydration & Single Recommendation Source of Truth"
+        ]
+      },
+      {
+        "relPath": "tests/editorial/explanation-contract.test.ts",
+        "lines": 398,
+        "sizeKb": 15,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 Phase P1.2 — Executive Decision Explanation Integrity Suite (Cases A–Q)"
+        ]
+      },
+      {
+        "relPath": "tests/editorial/shortlist-badge-resolution.test.ts",
+        "lines": 155,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Shortlist Card Badge Resolution Regression Tests"
+        ]
+      },
+      {
+        "relPath": "tests/editorial/ui-score-resolution.test.ts",
+        "lines": 126,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "UI Score Resolution — Shortlist & Decisions Pages"
+        ]
+      },
+      {
+        "relPath": "tests/editorial/verdict-coverage.test.ts",
+        "lines": 87,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 6 — PASS & CONSIDER Explanation Coverage"
+        ]
+      }
+    ],
+    "intelligence": [
+      {
+        "relPath": "tests/intelligence/active-context-resolution.test.ts",
+        "lines": 150,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Active Context Resolution"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/architecture-contracts.test.ts",
+        "lines": 332,
+        "sizeKb": 16,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase-0 Strong Architecture Contract Tests — Hardened"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/candidate-projection.test.ts",
+        "lines": 126,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Candidate Projection Integrity & Parity"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/canonical-acquisition-integrity.test.ts",
+        "lines": 839,
+        "sizeKb": 33,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Canonical Acquisition Integrity & Provenance (V4 Phase 2)",
+          "ResponseValidator",
+          "Category Taxonomy - Anti-Heuristic Verification",
+          "EvaluationWorker Dual Guard & SPARSE_SPEC Preservation",
+          "CanonicalIngestionService - Orthogonal States & Recovery Ingestion",
+          "validateEvaluationConsistency - Orthogonal Evaluation State Contract",
+          "Authoritative Needs More Signal Derivation (Directive 1)",
+          "Final Orthogonal State Transition Matrix (Directive 5)"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/canonical-identity.test.ts",
+        "lines": 113,
+        "sizeKb": 4,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Stage 2B: Canonical Identity & Candidate Projection Unification"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/canonical-ingestion-fk-regression.test.ts",
+        "lines": 229,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Canonical Ingestion Foreign Key & Idempotency Invariants"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/capability-precedence.test.ts",
+        "lines": 101,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 1 — Capability Assessment Domain Precedence"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/capability.test.ts",
+        "lines": 215,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "CapabilityEngine Integration Tests"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/career.test.ts",
+        "lines": 65,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 4 — Fallback Semantics Verification Audit"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/editorial-boundary.test.ts",
+        "lines": 101,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Test F: Editorial Boundary (BriefCompositionEngine)"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/engine-intrinsic.test.ts",
+        "lines": 51,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "EvaluationArtifact Intrinsic Boundary"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/evaluation-events.test.ts",
+        "lines": 142,
+        "sizeKb": 5,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "EvaluationCoordinator Events Invalidation Audit"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/evidence-proof-chain.test.ts",
+        "lines": 302,
+        "sizeKb": 13,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 — 25-Point Adversarial Candidate-Evidence Firewall Matrix (A-Y)"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/for4d1_serving_contract.test.ts",
+        "lines": 276,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "FOR-4D1 Serving Contract & Shortlist Fixes"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/for4d5_client_freshness.test.ts",
+        "lines": 166,
+        "sizeKb": 6,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "FOR-4D5 Client Freshness & Revalidation Integrity"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/for4k_bug03_bug04.test.ts",
+        "lines": 110,
+        "sizeKb": 5,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "FOR-4K: BUG-03 and BUG-04 Authoritative Tests"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/identity.test.ts",
+        "lines": 274,
+        "sizeKb": 13,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Candidate Truth-Preservation Architecture (Phase 8.2B Hardened)"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/job-projection-cache.test.ts",
+        "lines": 107,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "JobProjectionBuilder Optimization & Cache Correctness"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m10-continuous-pipeline.test.ts",
+        "lines": 853,
+        "sizeKb": 38,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m42-identity-versioning.test.ts",
+        "lines": 101,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase M4.2: Identity & Versioning Contracts",
+          "A. Canonical Identity",
+          "B. Material Content Fingerprint",
+          "C. Opportunity Version"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m43-attention-gate.test.ts",
+        "lines": 200,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase M4.3: Attention Gate",
+          "Deterministic Logic Rules",
+          "Persistence & Isolation"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m44-dual-write.test.ts",
+        "lines": 191,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase M4.4: Dual-Write & Shadow Path"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m45-reconciliation.test.ts",
+        "lines": 207,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase M4.5: Operational Reconciliation & Acquisition Audit"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m52-enqueuer.test.ts",
+        "lines": 227,
+        "sizeKb": 11,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Sub-Phase M5.2: Work Enqueuer & Idempotent Projection Sync"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m53-worker.test.ts",
+        "lines": 236,
+        "sizeKb": 11,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protocol"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m8-canonical-serving.test.ts",
+        "lines": 274,
+        "sizeKb": 13,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Milestone M8 — Canonical Executive Serving Store & Resolution",
+          "Canonical Serving Queries",
+          "Effective Decision Precedence Truth Table"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m9-canonical-loop.test.ts",
+        "lines": 286,
+        "sizeKb": 12,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Milestone M9 — Close Canonical Production Loop"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m9_2c-posting-date.test.ts",
+        "lines": 159,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "M9.2C Canonical Posting-Date Provenance",
+          "Scraper Date Normalization Unit Tests"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m9_3-decision-write-path.test.ts",
+        "lines": 113,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "M9.3 Canonical Decision Write-Path"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m9_3-decisions-store-client.test.ts",
+        "lines": 156,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "M9.3 decisions-store Client Reconciliation & Warning Loop Termination"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m9_3-server-boundary.test.ts",
+        "lines": 121,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "M9.3 Canonical Decision Write-Path Server Integration"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m9_3-sync-decisions-reconciliation.test.ts",
+        "lines": 192,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "M9.3 Decision Synchronization & Orphan Reconciliation"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m9_4_1-evaluation-determinism.test.ts",
+        "lines": 430,
+        "sizeKb": 20,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Lineage Contract"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/m9_4_1-multi-tenant-isolation.test.ts",
+        "lines": 174,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "M9.4.1 Forensic Certification: Multi-Tenant Zero-Orphan & Cross-Tenant Boundary Contract"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/metrics-portal-breakdown.test.ts",
+        "lines": 161,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Metrics Portal Breakdown & Aggregation Invariants"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/model-c-quality.test.ts",
+        "lines": 302,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Model C Quality Architecture Tests"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/payload-mapper.test.ts",
+        "lines": 163,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "PayloadMapper",
+          "Validation checks",
+          "Runtime Schema Guards"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/read-routing.test.ts",
+        "lines": 63,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "EvaluationServingEngine Read Routing"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/recommendation-golden.test.ts",
+        "lines": 212,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "recommendation golden fixtures"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/schema-contract.test.ts",
+        "lines": 52,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Schema Contract"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/semantic-evidence-integrity-regression.test.ts",
+        "lines": 172,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Semantic Evidence Integrity & Boundary Invariants",
+          "Boundary 1: Rich Executive Job Description",
+          "Boundary 2: Genuinely Sparse Specification",
+          "Boundary 3: Authoritative Veto vs Serving Population Tier Invariant"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/serving-contract.test.ts",
+        "lines": 74,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 4 Serving Contract"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/serving_verdict_integrity.test.ts",
+        "lines": 114,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "FOR-3 — Serving Verdict Integrity Suite (No Silent Fallback to CONSIDER)"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/worker-profile-resolution.test.ts",
+        "lines": 275,
+        "sizeKb": 13,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationWorker"
+        ]
+      }
+    ],
+    "acquisition": [
+      {
+        "relPath": "tests/acquisition/historical-recovery-lineage.test.ts",
+        "lines": 421,
+        "sizeKb": 18,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "RADAR V4 — Historical Recovery & Lineage Integrity Suite"
+        ]
+      },
+      {
+        "relPath": "tests/acquisition/portal-acquisition-reality.test.ts",
+        "lines": 452,
+        "sizeKb": 21,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Adversarial Portal Acquisition & Certification Suite (RADAR V4 Phase 2)",
+          "1. Indeed Acquisition Reality & External ATS Contract",
+          "2. Naukri Acquisition Reality & Multi-Container Aggregation",
+          "3. UI State Contract & Zero Heuristics Invariant"
+        ]
+      }
+    ],
+    "other": [
+      {
+        "relPath": "tests/ontology/tenant-ontology-compiler.test.ts",
+        "lines": 339,
+        "sizeKb": 14,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase M2: Tenant-Aware Ontology Compiler Suite",
+          "1. Canonical Immutability Invariant",
+          "2. Cross-Tenant Isolation & Contamination Prevention",
+          "3. Purely Semantic Fingerprint & Determinism",
+          "4. Exhaustive Legacy Baseline Parity",
+          "5. Extraction & Evaluation Context Isolation Integration"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/active_pointer_precedence.test.ts",
+        "lines": 61,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Active Pointer Precedence"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/adapter-contracts.test.ts",
+        "lines": 47,
+        "sizeKb": 1,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "DatabaseAdapter Contract Tests"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/database-safety.test.ts",
+        "lines": 96,
+        "sizeKb": 3,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 Phase 2A — Database Safety Lockdown"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/deployment-determinism.test.ts",
+        "lines": 141,
+        "sizeKb": 6,
+        "hasTurso": true,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR Stage 2C — Deployment Determinism & Production Invariants"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/evaluation_context_pointers.test.ts",
+        "lines": 56,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Evaluation Context Pointers Integrity"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/evaluation_context_pointer_trigger.test.ts",
+        "lines": 45,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Evaluation Context Scope Triggers"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/evaluation_pointer_flow.test.ts",
+        "lines": 184,
+        "sizeKb": 10,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "getActiveContext and getRematerialisationManifest"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/join-integrity.test.ts",
+        "lines": 227,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 — Database Join Integrity & Deduplication Suite"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/m41-canonical-schema.test.ts",
+        "lines": 128,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase M4.1: Canonical Schema & Isolation Contracts"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/m51-queue-schema.test.ts",
+        "lines": 193,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Sub-Phase M5.1: Durable Evaluation Work Queue Schema & Composite Invariants"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/m61-credential-schema.test.ts",
+        "lines": 382,
+        "sizeKb": 14,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Sub-Phase M6.1: Multi-Tenant Credential Store Schema & Repository Contracts"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/m7-tenant-migration.test.ts",
+        "lines": 110,
+        "sizeKb": 6,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Milestone M7: Production Tenant Migration & Lineage Validation"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/migration-runner.test.ts",
+        "lines": 116,
+        "sizeKb": 4,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 2B: Migration Runner Canonical Infrastructure"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/runtime-source-proof.test.ts",
+        "lines": 223,
+        "sizeKb": 8,
+        "hasTurso": true,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "RADAR Stage 2A: Runtime Persistence Unification & Source-of-Truth"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/sqlite-retirement.test.ts",
+        "lines": 121,
+        "sizeKb": 4,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 Phase 2C — SQLite Retirement & Canonical Database Guarantee"
+        ]
+      },
+      {
+        "relPath": "tests/pipeline/autonomous-pipeline.test.ts",
+        "lines": 321,
+        "sizeKb": 14,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJECTION)"
+        ]
+      },
+      {
+        "relPath": "tests/pipeline/EvaluationWorker.test.ts",
+        "lines": 271,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "EvaluationWorker - Phase 2C Integration"
+        ]
+      },
+      {
+        "relPath": "tests/pipeline/worker_veto_write_path.test.ts",
+        "lines": 85,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Validation of Worker & Repository Veto Write Path"
+        ]
+      },
+      {
+        "relPath": "tests/policy/attention-management.test.ts",
+        "lines": 202,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "W4 — Attention Management & Guided Presentation Suite"
+        ]
+      },
+      {
+        "relPath": "tests/policy/attention-window.test.ts",
+        "lines": 180,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Attention Window Capacity Invariance & Trace Flow"
+        ]
+      },
+      {
+        "relPath": "tests/policy/decision-ranking.test.ts",
+        "lines": 622,
+        "sizeKb": 30,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "RADAR V4 Decision State, Review State & Ranking Pipeline"
+        ]
+      },
+      {
+        "relPath": "tests/policy/dossier-decision-state.test.ts",
+        "lines": 217,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 — Dossier Decision-State & Editorial Integrity"
+        ]
+      },
+      {
+        "relPath": "tests/policy/eligibility-gates.test.ts",
+        "lines": 176,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 2 — Overall Evidence Decisionability Gating"
+        ]
+      },
+      {
+        "relPath": "tests/policy/filter-integrity.test.ts",
+        "lines": 209,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR Phase 7.3 — Filter Population Integrity & Taxonomy Test Suite"
+        ]
+      },
+      {
+        "relPath": "tests/policy/headspace-serving-contract.test.ts",
+        "lines": 308,
+        "sizeKb": 15,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Headspace Serving Contract Regression Suite"
+        ]
+      },
+      {
+        "relPath": "tests/policy/indeed-filter.test.ts",
+        "lines": 75,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Indeed Hard Filter Defect Fix & Extraction Boundary Verification"
+        ]
+      },
+      {
+        "relPath": "tests/policy/metric-integrity.test.ts",
+        "lines": 264,
+        "sizeKb": 14,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "RADAR V4 Phase 7.3 Fault Corpus & Integrity Test Matrix"
+        ]
+      },
+      {
+        "relPath": "tests/policy/opportunity-control-plane.test.ts",
+        "lines": 277,
+        "sizeKb": 13,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 — W3 Opportunity Control Plane Acceptance Tests"
+        ]
+      },
+      {
+        "relPath": "tests/policy/policy-invariants.test.ts",
+        "lines": 274,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Policy D Boundary Invariant Tests"
+        ]
+      },
+      {
+        "relPath": "tests/policy/pursue-queue-isolation.test.ts",
+        "lines": 163,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Pursue Queue Isolation & Shortlist Filtering Invariants"
+        ]
+      },
+      {
+        "relPath": "tests/policy/pursuit-strategy.test.ts",
+        "lines": 607,
+        "sizeKb": 25,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 Phase P1.3 — Pursuit Strategy & Effort Allocation Integrity Suite (Cases A–AF)"
+        ]
+      },
+      {
+        "relPath": "tests/policy/regression-defects.test.ts",
+        "lines": 202,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Defect 1: Evidence provenance must be explicit",
+          "Defect 2: Trace must contain identity hashes",
+          "Defect 3: Presenter uses record confidence directly"
+        ]
+      },
+      {
+        "relPath": "tests/policy/shortlist-unresolved-queue.test.ts",
+        "lines": 299,
+        "sizeKb": 14,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Shortlist / Evaluation Queue Unresolved Eligibility Policy"
+        ]
+      },
+      {
+        "relPath": "tests/regression/evaluation-cache.test.ts",
+        "lines": 135,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Evaluation Pipeline Cache Correctness - Regression Suite"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p0-enrichment-extraction-pipeline.test.ts",
+        "lines": 172,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "RADAR V4 Pipeline Repair - Regression Suite"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p0-invariant-candidate-level.test.ts",
+        "lines": 167,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P0-E: Candidate Level Invariant"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p0-invariant-capability-unknown.test.ts",
+        "lines": 104,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P0-D: Capability UNKNOWN Semantics Invariant"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p0-invariant-evidence.test.ts",
+        "lines": 304,
+        "sizeKb": 11,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P0-A: Evidence Grounding & Provenance Invariant"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p0-invariant-presenter.test.ts",
+        "lines": 258,
+        "sizeKb": 10,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P0-F: Presenter Pure Projection Invariant"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p0-invariant-sparse-boundary.test.ts",
+        "lines": 101,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P0-B: Evidence Gate Boundary Invariant"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p0-invariant-trace-isolation.test.ts",
+        "lines": 133,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P0-C: Pipeline Isolation Invariant"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p1-p1b-career-value-distinct.test.ts",
+        "lines": 307,
+        "sizeKb": 14,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P1-B: Career Value Distinct from Capability Fit"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p1-p1e-ranking-determinism.test.ts",
+        "lines": 253,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P1-E: Ranking Determinism"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p2-p2a3-career-value.test.ts",
+        "lines": 523,
+        "sizeKb": 21,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P2-A.3: Career Value Interpretation",
+          "P2-A.3: Career Value Edge Cases"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p2-p2a4-effort-interpretation.test.ts",
+        "lines": 516,
+        "sizeKb": 19,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P2-A.4: Effort Interpretation",
+          "P2-A.4: Effort Edge Cases"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p2-p2a5-action-intelligence.test.ts",
+        "lines": 297,
+        "sizeKb": 11,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P2-A.5: Recommended Action Intelligence",
+          "P2-A.5: Action Edge Cases"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p2-p2b-capability-importance.test.ts",
+        "lines": 306,
+        "sizeKb": 11,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P2-B: Capability Importance",
+          "P2-B: Capability Importance Edge Cases"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p2-p2c-adversarial-matrix.test.ts",
+        "lines": 284,
+        "sizeKb": 13,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P2-C Adversarial Test Matrix"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p2-p2c2-shortlisting-potential.test.ts",
+        "lines": 358,
+        "sizeKb": 13,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P2-C.2: Shortlisting Potential",
+          "P2-C: Signal Independence",
+          "P2-C.2: Shortlisting Edge Cases"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p2-p2d-engagement-quality.test.ts",
+        "lines": 365,
+        "sizeKb": 12,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P2-D: Engagement Quality",
+          "P2-D: Engagement Edge Cases"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p2-p2e-compensation-intelligence.test.ts",
+        "lines": 346,
+        "sizeKb": 11,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P2-E: Compensation Intelligence",
+          "P2-E: Compensation Edge Cases"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p2-p2f-confidence-intelligence.test.ts",
+        "lines": 371,
+        "sizeKb": 11,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P2-F: Confidence Intelligence",
+          "P2-F: Confidence Edge Cases"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p2-p2i-generalization-check.test.ts",
+        "lines": 367,
+        "sizeKb": 13,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P2-I: Generalization Check"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p3-p3a-shortlisting-calculator.test.ts",
+        "lines": 428,
+        "sizeKb": 15,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P3-A: Shortlisting Potential Calculator Regression",
+          "Formula Preservation - OLD P2-C === NEW Calculator",
+          "Component Score Verification",
+          "Formula Independence",
+          "Determinism"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p7a-freshness-compensation.test.ts",
+        "lines": 128,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P7-A — Opportunity Freshness & Compensation Enrichment"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p7c-platform-intelligence.test.ts",
+        "lines": 246,
+        "sizeKb": 11,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P7-C — Platform Intelligence & Direct ATS First Vertical Slice",
+          "Track A: Direct ATS Ingestion (Greenhouse)",
+          "Track B: Local Platform Session Bridge",
+          "Score Invariants: Platform signals do NOT mutate core scoring",
+          "Adaptive UI & Depth Rules"
+        ]
+      },
+      {
+        "relPath": "tests/regression/p7d-ux-provenance.test.ts",
+        "lines": 120,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "P7-D — Platform Intelligence UX, Provenance & Depth Reversibility",
+          "Depth Reversibility & Pure Score Invariance",
+          "Provenance Mode Classification",
+          "Greenhouse Direct ATS Acquisition Path"
+        ]
+      },
+      {
+        "relPath": "tests/regression/phase4a-contract.test.ts",
+        "lines": 286,
+        "sizeKb": 11,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 4A: Canonical Candidate Evaluation Contract Unit Tests"
+        ]
+      },
+      {
+        "relPath": "tests/regression/phase4b-serving-engine.test.ts",
+        "lines": 359,
+        "sizeKb": 16,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 Phase 4B — Canonical Intrinsic Evaluation & Dynamic Serving Suite"
+        ]
+      },
+      {
+        "relPath": "tests/regression/phase4d-optimization.test.ts",
+        "lines": 368,
+        "sizeKb": 13,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 Phase 4D-E: Rematerialization Worker Optimization",
+          "1. Bounded Concurrency Pool",
+          "2. Batch-Level Prefetching & Deduplication",
+          "3. Row-Level Failure Isolation",
+          "4. Dry Run vs Write Mode Equivalence",
+          "5. Continuous Migration Loop"
+        ]
+      },
+      {
+        "relPath": "tests/regression/phase4d-rematerialization.test.ts",
+        "lines": 524,
+        "sizeKb": 17,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 Phase 4D: Controlled Canonical Re-Materialization",
+          "1. Rematerialization Correctness & Legacy -> Canonical Transition",
+          "2. Idempotency & Freshness Bypassing",
+          "3. User Decision Preservation & Semantics",
+          "4. Dry Run Mode & Zero Writes Guarantee",
+          "5. Serving Invariant & Headspace Dynamic Calculation",
+          "6. Batching & Cursor Pagination"
+        ]
+      },
+      {
+        "relPath": "tests/regression/phase5-serving-invariants.test.ts",
+        "lines": 275,
+        "sizeKb": 11,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "RADAR V4 Phase 5 Serving-Layer & Read-Path Invariant Proof Suite"
+        ]
+      },
+      {
+        "relPath": "tests/regression/stage-3f-comparisons.test.ts",
+        "lines": 84,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Stage 3F — Comparison Construction Optimization"
+        ]
+      },
+      {
+        "relPath": "tests/regression/stage-3f-hashing.test.ts",
+        "lines": 81,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Stage 3F — Content Hashing Optimization"
+        ]
+      },
+      {
+        "relPath": "tests/regression/stage-4a-client-cache.test.ts",
+        "lines": 48,
+        "sizeKb": 1,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Gate 1: Client-Side Opportunity Cache Reuse"
+        ]
+      },
+      {
+        "relPath": "tests/regression/stage-4b-singleflight.test.ts",
+        "lines": 50,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Gate 2: Singleflight Request Coalescing"
+        ]
+      },
+      {
+        "relPath": "tests/regression/stale-cache-regression.test.ts",
+        "lines": 230,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "DEFINITIVE PROOF: baseOpportunitiesCache staleness bug",
+          "FIX SPECIFICATION"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/auth-security.test.ts",
+        "lines": 308,
+        "sizeKb": 13,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P0-B & P0-C & P0-D Security Regression Suite",
+          "P0-B: Identity & Authorization",
+          "P0-C / SEC-03: Scraper Mutex & Access Control",
+          "SEC-01: Environment-Only DB Configuration & Secret Scanning",
+          "SEC-07: Secret Hygiene & Tracked Configuration Integrity"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/journal-lifecycle.test.ts",
+        "lines": 130,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P1: Scraper Journal Lifecycle & Shutdown Resilience"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/live-test-policy.test.ts",
+        "lines": 8,
+        "sizeKb": 0,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Live Test Policy Safety"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/m56-operational-consolidation.test.ts",
+        "lines": 143,
+        "sizeKb": 6,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "M5.6 Operational Consolidation & Accounting Invariant Suite"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/naukri-state.test.ts",
+        "lines": 97,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "P1: Naukri Portal-State Recognition & Failure Classification"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/scrape-progress.test.ts",
+        "lines": 142,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Scrape Progress & Persistent Control UX Contract"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/scraper-control.test.ts",
+        "lines": 80,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Scraper Bottleneck Fixes & Optimization Regression Tests"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/scraper-smoke.test.ts",
+        "lines": 44,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Scraper Infrastructure Smoke Test"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/validator.test.ts",
+        "lines": 44,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "ResponseValidator HTTP 404 Handling"
+        ]
+      },
+      {
+        "relPath": "tests/security/evaluation-context-isolation.test.ts",
+        "lines": 222,
+        "sizeKb": 10,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase M3: Evaluation Context & Read Model Isolation"
+        ]
+      },
+      {
+        "relPath": "tests/security/m62-credential-vault.test.ts",
+        "lines": 383,
+        "sizeKb": 15,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Sub-Phase M6.2: Cryptographic Vault & Envelope Encryption Security Invariants"
+        ]
+      },
+      {
+        "relPath": "tests/security/m63-credential-broker.test.ts",
+        "lines": 613,
+        "sizeKb": 25,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Sub-Phase M6.3: Credential Broker & JIT Leasing Engine Invariants",
+          "1. Tenant Isolation & Cross-Tenant Guards",
+          "2. RBAC Permission Enforcement & Canonical Vocabulary",
+          "3. Authorization Precedes Decryption Invariant",
+          "4. JIT Leasing & Plaintext Non-Retention",
+          "5. Expiry Semantics",
+          "6. Lifecycle Transitions & State Machine",
+          "7. Atomic Rotation & Transactional Failure Injection",
+          "8. Sentinel Secret Zero-Leakage Invariant",
+          "9. Mechanical Architecture & Boundary Tests"
+        ]
+      },
+      {
+        "relPath": "tests/security/m64-scraper-credential-injection.test.ts",
+        "lines": 740,
+        "sizeKb": 27,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Sub-Phase M6.4 — Scraper Authentication & JIT Credential Injection",
+          "Invariant 1: Lease-Only Acquisition via Broker",
+          "Invariant 2: Authorization-Before-Injection & Strict Error Attribution",
+          "Invariant 3: Atomic Fail-Closed Payload Validation",
+          "Invariant 4: Strict Domain Isolation & Registrable Domain Boundary Enforcement",
+          "Invariant 5: Header Isolation & Forbidden Header Policy",
+          "Invariant 6: Secret Non-Observability & Sanitization",
+          "Invariant 7: Strict Tenant Isolation",
+          "Invariant 8: Accurate Auth-Health Attribution (Rule 4)",
+          "Invariant 9: Zero Credential Retention in PortalAuthSession",
+          "Malicious Credential Payload & CR/LF Injection Suite"
+        ]
+      },
+      {
+        "relPath": "tests/security/m8-tenant-isolation.test.ts",
+        "lines": 158,
+        "sizeKb": 8,
+        "hasTurso": true,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Milestone M8 — Multi-Tenant Isolation & Adversarial Security"
+        ]
+      },
+      {
+        "relPath": "tests/security/phase13_cross_tenant_pentest.test.ts",
+        "lines": 258,
+        "sizeKb": 13,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 13: Security Certification & Cross-Tenant Penetration Test",
+          "1. Cross-Tenant Isolation (Tenant A -> Tenant B)",
+          "2. Cross-Person Isolation (Person A vs Person C within Tenant A)",
+          "3. Search Plan & Context Isolation",
+          "4. Keyset Cursor Scope Replay & Tampering",
+          "5. Negative-Response Zero Data Disclosure",
+          "6. Malformed & SQL-Injection Shaped Identifiers"
+        ]
+      },
+      {
+        "relPath": "tests/security/scope-resolver-equivalence.test.ts",
+        "lines": 332,
+        "sizeKb": 14,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 4: Consolidated Scope & Context Resolver Equivalence"
+        ]
+      },
+      {
+        "relPath": "tests/security/tenant-isolation.test.ts",
+        "lines": 211,
+        "sizeKb": 10,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Tenant Isolation Foundation (Phase M1)",
+          "authenticateTenantMembership",
+          "authorizePersonScope",
+          "TenantScopedPersonStore",
+          "M1 Schema Inspection (Turso/SQLite Schema Verification)"
+        ]
+      },
+      {
+        "relPath": "tests/semantic/controlled_integration.test.ts",
+        "lines": 215,
+        "sizeKb": 10,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Phase 5C.2: Controlled Semantic Integration Suite",
+          "1. Projection Builder Semantic Evidence Attachment",
+          "2. Domain-by-Domain Integration Tests",
+          "3. Hard Score Invariance & Policy Safety",
+          "4. Adversarial False-Positive Resistance"
+        ]
+      },
+      {
+        "relPath": "tests/semantic/extraction-sanitation.test.ts",
+        "lines": 58,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Extraction Boundary Loss-Safe Sanitation"
+        ]
+      },
+      {
+        "relPath": "tests/semantic/normalization.test.ts",
+        "lines": 118,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "normalizeScrapedText Unit Tests"
+        ]
+      },
+      {
+        "relPath": "tests/semantic/ontology.test.ts",
+        "lines": 669,
+        "sizeKb": 36,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "RADAR V4 Phase 5C — Semantic Core Verification (160+ Cases)",
+          "Capabilities Suite (40 Cases)",
+          "Financial / Commercial Scope Suite (35 Cases)",
+          "Designations / Seniority Suite (35 Cases)",
+          "Geography & Directional Containment Suite (35 Cases)",
+          "Brands & Organizations Directional Suite (30 Cases)",
+          "Compositional Multi-Dimensional Evidence Extraction"
+        ]
+      },
+      {
+        "relPath": "tests/semantic/phase6a1_threshold_boundaries.test.ts",
+        "lines": 109,
+        "sizeKb": 6,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "PHASE 6A.1 — DECISION-THRESHOLD BOUNDARY TEST SUITE"
+        ]
+      },
+      {
+        "relPath": "tests/semantic/phase6c_production_observability.test.ts",
+        "lines": 158,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "PHASE 6C.2 — Permanent Production Observability & Boundary Contracts"
+        ]
+      },
+      {
+        "relPath": "tests/semantic/phase6d_production_monitoring.test.ts",
+        "lines": 202,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "PHASE 6D — Permanent Production Monitoring & Drift Regression Suite"
+        ]
+      },
+      {
+        "relPath": "tests/serving/cursor.test.ts",
+        "lines": 185,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 3: Opaque Keyset Cursor Engine",
+          "1. Encoding & Opaque Wire Format",
+          "2. Deterministic Round-Trip Verification",
+          "3. Null & Empty Cursor Handling (Page 1 Request)",
+          "4. Encoder Boundary & Validation Guards",
+          "5. Decoder Tamper & Corruption Resistance"
+        ]
+      },
+      {
+        "relPath": "tests/serving/dossier_and_navigation.test.ts",
+        "lines": 181,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 8: Dossier Point Lookup & Navigation Suite",
+          "1. Point Lookup (getDossier)",
+          "2. Navigation Context (getNavigation)"
+        ]
+      },
+      {
+        "relPath": "tests/serving/keyset_pagination.test.ts",
+        "lines": 202,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 6: Keyset Pagination & Deterministic Ordering",
+          "1. NULL-Score & Lexicographic Ordering Boundary Suite",
+          "2. Cursor Round-Trip Precision"
+        ]
+      },
+      {
+        "relPath": "tests/serving/opportunity-queries-contract.test.ts",
+        "lines": 104,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 3: OpportunityQueries Query Contract & DTOs"
+        ]
+      },
+      {
+        "relPath": "tests/serving/route_server_functions_parity.test.ts",
+        "lines": 79,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Phase 11 & 12: Route Server Function & Client Cache Suite",
+          "1. ClientOpportunityCache (Phase 12)"
+        ]
+      },
+      {
+        "relPath": "tests/serving/singleflight_and_observability.test.ts",
+        "lines": 146,
+        "sizeKb": 6,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Phase 9 & 10: Singleflight & Observability Suite"
+        ]
+      },
+      {
+        "relPath": "tests/serving/sql_feed_parity.test.ts",
+        "lines": 239,
+        "sizeKb": 12,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 5: Lean SQL Feed Projection & Parity Certification",
+          "1. Architectural Source Invariants",
+          "2. Synthetic Veto Edge-Case Parity Suite"
+        ]
+      },
+      {
+        "relPath": "tests/serving/sql_metrics_aggregation.test.ts",
+        "lines": 181,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 7: SQL Metrics Aggregation Suite",
+          "1. Architectural & AST Invariants",
+          "2. Comprehensive Edge Fixture Decision Matrix"
+        ]
+      }
+    ]
+  },
+  "totalScripts": 487,
+  "scripts": [
+    {
+      "relPath": "scripts/analyze-decision-coherence.ts",
+      "lines": 389,
+      "sizeKb": 13
+    },
+    {
+      "relPath": "scripts/analyze-high-sp-pass.ts",
+      "lines": 177,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/analyze-raw-jd-reporting-line.ts",
+      "lines": 165,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/apply-migration-010.ts",
+      "lines": 30,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/apply-migration-011.ts",
+      "lines": 29,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/audit-125-jd-provenance.ts",
+      "lines": 96,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/audit-20-profiles.ts",
+      "lines": 287,
+      "sizeKb": 16
+    },
+    {
+      "relPath": "scripts/audit-30-jds-editorial.ts",
+      "lines": 165,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/audit-50-real-50-golden-jds.ts",
+      "lines": 409,
+      "sizeKb": 20
+    },
+    {
+      "relPath": "scripts/audit-altitude-failure-attribution.ts",
+      "lines": 290,
+      "sizeKb": 17
+    },
+    {
+      "relPath": "scripts/audit-any-usage.ts",
+      "lines": 158,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/audit-candidate-truth-integrity.ts",
+      "lines": 106,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/audit-decision-policy-failures.ts",
+      "lines": 245,
+      "sizeKb": 13
+    },
+    {
+      "relPath": "scripts/audit-diagnostic-chain.ts",
+      "lines": 338,
+      "sizeKb": 17
+    },
+    {
+      "relPath": "scripts/audit-editorial-authority.ts",
+      "lines": 126,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/audit-executive-explanation-authority.ts",
+      "lines": 116,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/audit-final-migration.ts",
+      "lines": 53,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/audit-lineage.ts",
+      "lines": 90,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/audit-mandate-failure-attribution.ts",
+      "lines": 266,
+      "sizeKb": 14
+    },
+    {
+      "relPath": "scripts/audit-narrative-coherence.ts",
+      "lines": 274,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/audit-phase73-filter-integrity.ts",
+      "lines": 69,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/audit-phase73-metric-integrity.ts",
+      "lines": 128,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/audit-phase8-lineage.ts",
+      "lines": 115,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/audit-pursue-consider-breakdown.ts",
+      "lines": 189,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/audit-pursuit-strategy-authority.ts",
+      "lines": 136,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/audit-pursuit-strategy-coherence.ts",
+      "lines": 188,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/audit-reconciled-stage4-matrix.ts",
+      "lines": 283,
+      "sizeKb": 17
+    },
+    {
+      "relPath": "scripts/audit-remaining-10-stage4.ts",
+      "lines": 282,
+      "sizeKb": 16
+    },
+    {
+      "relPath": "scripts/audit-repository-decision-fallbacks.ts",
+      "lines": 93,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/audit-score-component-decomposition.ts",
+      "lines": 273,
+      "sizeKb": 14
+    },
+    {
+      "relPath": "scripts/audit-second-order-forensic.ts",
+      "lines": 393,
+      "sizeKb": 24
+    },
+    {
+      "relPath": "scripts/audit-string-fragility.ts",
+      "lines": 132,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/audit-w3-control-plane.ts",
+      "lines": 81,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/audit-w4-attention-management.ts",
+      "lines": 51,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/audit_34_colon_prefix.ts",
+      "lines": 81,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/backfill-acquisition-integrity.ts",
+      "lines": 323,
+      "sizeKb": 13
+    },
+    {
+      "relPath": "scripts/backfill-evaluations.ts",
+      "lines": 155,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/backfill_company_names.ts",
+      "lines": 52,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/benchmark-jd-accuracy.ts",
+      "lines": 82,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/benchmark-rematerializer.ts",
+      "lines": 231,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/benchmark-semantic-integration.ts",
+      "lines": 232,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/benchmarks/audit_all_metrics.ts",
+      "lines": 68,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/benchmarks/audit_tests_and_scripts.ts",
+      "lines": 84,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/benchmarks/benchmark-serving-baseline.ts",
+      "lines": 237,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/benchmarks/browser_verification.ts",
+      "lines": 205,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/benchmarks/capture_live_screenshot.ts",
+      "lines": 62,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/benchmarks/capture_metrics_verified.ts",
+      "lines": 41,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/benchmarks/check_scraped_status.ts",
+      "lines": 43,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/benchmarks/debug_scope_resolution.ts",
+      "lines": 30,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/benchmarks/diagnose_mismatch.ts",
+      "lines": 73,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/benchmarks/dry_run_normalization.ts",
+      "lines": 83,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/benchmarks/generate-golden-dataset.ts",
+      "lines": 173,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/benchmarks/inspect_context_fingerprint.ts",
+      "lines": 47,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/benchmarks/inspect_eval_json.ts",
+      "lines": 21,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/benchmarks/inspect_plans.ts",
+      "lines": 26,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/benchmarks/inspect_three.ts",
+      "lines": 41,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/benchmarks/profile_shortlist.ts",
+      "lines": 31,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/benchmarks/run_phase14_performance_certification.ts",
+      "lines": 262,
+      "sizeKb": 12
+    },
+    {
+      "relPath": "scripts/benchmarks/test_category_and_decisions.ts",
+      "lines": 58,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/benchmarks/test_controlled_scrape.ts",
+      "lines": 132,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/benchmarks/test_feed_rank.ts",
+      "lines": 39,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/benchmarks/test_full_lifecycle_e2e.ts",
+      "lines": 124,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/benchmarks/test_resolver_parity.ts",
+      "lines": 171,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/benchmarks/test_scope_live_comparison.ts",
+      "lines": 49,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/benchmarks/test_simulated_parity.ts",
+      "lines": 181,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/benchmarks/trace_pipeline_lifecycle.ts",
+      "lines": 246,
+      "sizeKb": 10
+    },
+    {
+      "relPath": "scripts/benchmarks/verify_phase11_route_parity.ts",
+      "lines": 167,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/benchmarks/verify_phase5_feed_parity.ts",
+      "lines": 162,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/benchmarks/verify_phase6_live_pagination.ts",
+      "lines": 158,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/benchmarks/verify_phase7_metrics_parity.ts",
+      "lines": 133,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/benchmarks/verify_phase8_dossier_parity.ts",
+      "lines": 183,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/benchmarks/verify_phase9_10_singleflight_and_telemetry.ts",
+      "lines": 108,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/certification/build-corpus.ts",
+      "lines": 133,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/certification/certify.ts",
+      "lines": 227,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/certification/invariants.ts",
+      "lines": 96,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/certification/mutations.ts",
+      "lines": 136,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/certify-editorial-integrity.ts",
+      "lines": 121,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/certify-executive-explanation-integrity.ts",
+      "lines": 80,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/certify-phase6a1.ts",
+      "lines": 442,
+      "sizeKb": 19
+    },
+    {
+      "relPath": "scripts/certify-pursuit-strategy-integrity.ts",
+      "lines": 103,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/check-404.ts",
+      "lines": 13,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/check-diag-overrides.ts",
+      "lines": 61,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/check-diag-pursuits-lean.ts",
+      "lines": 51,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/check-diag-pursuits.ts",
+      "lines": 70,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/check-diag-weekday.ts",
+      "lines": 56,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/check-diag.ts",
+      "lines": 64,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/check-headspace-downgrade.ts",
+      "lines": 37,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/check-job.ts",
+      "lines": 17,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/check-success.ts",
+      "lines": 23,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/check_12_canonical.ts",
+      "lines": 27,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/check_canonical_sources.ts",
+      "lines": 14,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/check_docs.ts",
+      "lines": 33,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/check_doc_keys.ts",
+      "lines": 17,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/check_opp_ids.ts",
+      "lines": 14,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/check_pursue_veto.ts",
+      "lines": 42,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/check_rationale.ts",
+      "lines": 17,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/check_veto_correlation.ts",
+      "lines": 40,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/check_veto_population.ts",
+      "lines": 64,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/cohort-comprehensive-audit.ts",
+      "lines": 188,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/cohort-diagnosis-phase1.ts",
+      "lines": 72,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/cohort-diagnosis-phase1b.ts",
+      "lines": 79,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/cohort-diagnosis-phase1c.ts",
+      "lines": 69,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/compare_legacy_and_canonical_decisions.ts",
+      "lines": 45,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/compensation-trace-analysis.ts",
+      "lines": 550,
+      "sizeKb": 23
+    },
+    {
+      "relPath": "scripts/corpus/enrich.ts",
+      "lines": 77,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/corpus/health.ts",
+      "lines": 149,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/corpus/ingest.ts",
+      "lines": 85,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/corpus/normalize.ts",
+      "lines": 61,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/corpus/pipeline.ts",
+      "lines": 83,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/corpus/publish.ts",
+      "lines": 173,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/corpus-forensics.ts",
+      "lines": 619,
+      "sizeKb": 29
+    },
+    {
+      "relPath": "scripts/corpus-recognition-report.ts",
+      "lines": 584,
+      "sizeKb": 32
+    },
+    {
+      "relPath": "scripts/counterfactual-stability-test.ts",
+      "lines": 280,
+      "sizeKb": 12
+    },
+    {
+      "relPath": "scripts/db/reset-corpus.ts",
+      "lines": 213,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/debug-case-j-cc222b05ee62.ts",
+      "lines": 206,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/debug-cv-protection.ts",
+      "lines": 72,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/debug_all_failing.ts",
+      "lines": 50,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/debug_metrics.ts",
+      "lines": 35,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/debug_remote_opps.ts",
+      "lines": 31,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/debug_stack.ts",
+      "lines": 35,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/debug_test.ts",
+      "lines": 57,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/deploy.ps1",
+      "lines": 53,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/deploy.ts",
+      "lines": 88,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/diag-golden-trace.ts",
+      "lines": 51,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/diag-missing-trace.ts",
+      "lines": 28,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/diag-ungrounded-evidence.ts",
+      "lines": 37,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/diagnose-counts.ts",
+      "lines": 57,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/diagnose-leaked-items.ts",
+      "lines": 59,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/diagnose-metric-integrity.ts",
+      "lines": 71,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/diagnose-nona-score-verdict-conflict.ts",
+      "lines": 364,
+      "sizeKb": 24
+    },
+    {
+      "relPath": "scripts/diagnose-phase7-population.ts",
+      "lines": 123,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/diagnose-phase73-filter-integrity.ts",
+      "lines": 274,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/diagnose-presentation-layer.ts",
+      "lines": 263,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/diagnose-text-availability.ts",
+      "lines": 97,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/diagnose_anomalous_records.ts",
+      "lines": 48,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/diagnose_failure_cluster.ts",
+      "lines": 66,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/diagnose_migrate.ts",
+      "lines": 29,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/diagnose_naukri_dom.ts",
+      "lines": 16,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/diagnose_pilot_writes.ts",
+      "lines": 34,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/dump-20-profiles-dataset.ts",
+      "lines": 192,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/dump-decision-examples.ts",
+      "lines": 166,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/dump-pursue.ts",
+      "lines": 30,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/enrich.ts",
+      "lines": 461,
+      "sizeKb": 17
+    },
+    {
+      "relPath": "scripts/eval/metrics.ts",
+      "lines": 133,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/eval/run-cv-truth-audit.ts",
+      "lines": 330,
+      "sizeKb": 19
+    },
+    {
+      "relPath": "scripts/eval/run-v4-editorial-audit.ts",
+      "lines": 252,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/eval/run-v4-executive-explanation-audit.ts",
+      "lines": 228,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/eval/run-v4-pursuit-strategy-audit.ts",
+      "lines": 234,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/eval/run.ts",
+      "lines": 97,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/contradiction-scanner.ts",
+      "lines": 141,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/corpus-sampler.ts",
+      "lines": 349,
+      "sizeKb": 13
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/cv-truth-auditor.ts",
+      "lines": 706,
+      "sizeKb": 25
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/generic-language-miner.ts",
+      "lines": 123,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/human-review-compiler.ts",
+      "lines": 135,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/index.ts",
+      "lines": 284,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/interplay-matrix.ts",
+      "lines": 164,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/mutation-tester.ts",
+      "lines": 244,
+      "sizeKb": 10
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/report-generator.ts",
+      "lines": 253,
+      "sizeKb": 14
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/runner.ts",
+      "lines": 326,
+      "sizeKb": 12
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/types.ts",
+      "lines": 236,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/eval/v4-simulation/verbatim-auditor.ts",
+      "lines": 284,
+      "sizeKb": 10
+    },
+    {
+      "relPath": "scripts/eval/viewer/server.ts",
+      "lines": 58,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/evidence-gap-attribution.ts",
+      "lines": 388,
+      "sizeKb": 17
+    },
+    {
+      "relPath": "scripts/experimental-editorial.ts",
+      "lines": 259,
+      "sizeKb": 10
+    },
+    {
+      "relPath": "scripts/experiments/audit_naukri_acquisition_matrix.ts",
+      "lines": 283,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/experiments/indeed-calibration.ts",
+      "lines": 186,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/experiments/indeed-supervised.ts",
+      "lines": 349,
+      "sizeKb": 15
+    },
+    {
+      "relPath": "scripts/experiments/inspect_indeed_apply.ts",
+      "lines": 65,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/experiments/inspect_indeed_detail.ts",
+      "lines": 78,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/experiments/inspect_indeed_search_dom.ts",
+      "lines": 61,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/experiments/inspect_naukri_detail_dom.ts",
+      "lines": 38,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/experiments/inspect_naukri_partial_payloads.ts",
+      "lines": 78,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/experiments/inspect_network.ts",
+      "lines": 51,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/experiments/inspect_react.ts",
+      "lines": 90,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/experiments/inspect_search_api.ts",
+      "lines": 59,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/experiments/inspect_search_cards.ts",
+      "lines": 58,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/experiments/inspect_selectors.ts",
+      "lines": 49,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/experiments/inspect_vp_digital.ts",
+      "lines": 41,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/experiments/intercept_naukri.ts",
+      "lines": 67,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/experiments/naukri-calibration.ts",
+      "lines": 187,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/experiments/naukri-interactive-login.ts",
+      "lines": 330,
+      "sizeKb": 13
+    },
+    {
+      "relPath": "scripts/experiments/naukri-supervised-test.ps1",
+      "lines": 3,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/experiments/naukri-supervised.ts",
+      "lines": 209,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/experiments/patch-naukri.ts",
+      "lines": 95,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/experiments/patch_naukri.ts",
+      "lines": 110,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/experiments/probe_indeed_live.ts",
+      "lines": 79,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/experiments/query_naukri.ts",
+      "lines": 10,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/experiments/summarize_partial_links.ts",
+      "lines": 67,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/experiments/test_ats_text_extraction.ts",
+      "lines": 331,
+      "sizeKb": 16
+    },
+    {
+      "relPath": "scripts/experiments/test_direct_fetch.ts",
+      "lines": 45,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/experiments/test_external_links.ts",
+      "lines": 39,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/experiments/test_extraction_methods.ts",
+      "lines": 112,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/experiments/test_indeed_redirect.ts",
+      "lines": 33,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/experiments/test_naukri_60_card_live_cohort.ts",
+      "lines": 267,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/experiments/test_search_headful.ts",
+      "lines": 39,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/experiments/test_search_toptier.ts",
+      "lines": 48,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/experiments/test_urls_stealth.ts",
+      "lines": 52,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/extract_34_colon_prefix.ts",
+      "lines": 97,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/final-queue-contract-verification.ts",
+      "lines": 169,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/find-affected-pursue-records.ts",
+      "lines": 61,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/find-career-regression.ts",
+      "lines": 27,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/forensic-inspect-two-jobs.ts",
+      "lines": 66,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/forensics/export-turso-snapshot.ts",
+      "lines": 348,
+      "sizeKb": 14
+    },
+    {
+      "relPath": "scripts/forensics/for1_contradictions_and_lineage_graph.ts",
+      "lines": 107,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/forensics/for1_eval_evidence_docs_decisions.ts",
+      "lines": 131,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/forensics/for1_opportunity_and_canonical.ts",
+      "lines": 158,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/forensics/for1_report_generator.ts",
+      "lines": 199,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/forensics/for1_schema_profiles_graph.ts",
+      "lines": 184,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/forensics/for2_phase11_to_14_contradictions_and_report.ts",
+      "lines": 196,
+      "sizeKb": 10
+    },
+    {
+      "relPath": "scripts/forensics/for2_phase1_inventory.ts",
+      "lines": 96,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/forensics/for2_phase2_oracle_extraction.ts",
+      "lines": 95,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/forensics/for2_phase3_timeline.ts",
+      "lines": 67,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/forensics/for2_phase4_to_10_reconciliation.ts",
+      "lines": 157,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/forensics/for3_phase1d_controlled_mutation.ts",
+      "lines": 567,
+      "sizeKb": 23
+    },
+    {
+      "relPath": "scripts/forensics/for3_phase1_dryrun_certification.ts",
+      "lines": 311,
+      "sizeKb": 13
+    },
+    {
+      "relPath": "scripts/forensics/for3_step1_export_baseline.ts",
+      "lines": 94,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/forensics/for3_step2_build_remediation_ledger.ts",
+      "lines": 331,
+      "sizeKb": 12
+    },
+    {
+      "relPath": "scripts/forensics/forensic-adapter.ts",
+      "lines": 188,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/forensics/runtime-profiler.ts",
+      "lines": 575,
+      "sizeKb": 21
+    },
+    {
+      "relPath": "scripts/forensics/server-diagnostics.ts",
+      "lines": 277,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/forensic_corpus_audit.ts",
+      "lines": 372,
+      "sizeKb": 15
+    },
+    {
+      "relPath": "scripts/forensic_sparse_capture.ts",
+      "lines": 53,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/gate0_inspection.ts",
+      "lines": 101,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/generate-forensic-audit-doc.ts",
+      "lines": 196,
+      "sizeKb": 15
+    },
+    {
+      "relPath": "scripts/generate-plan.ts",
+      "lines": 28,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/generate-report.ts",
+      "lines": 169,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/generate-test-manifest.ts",
+      "lines": 389,
+      "sizeKb": 17
+    },
+    {
+      "relPath": "scripts/generate_34_evidence_table.ts",
+      "lines": 84,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/generate_tables.ts",
+      "lines": 37,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/golden/seed-acquisition.ts",
+      "lines": 95,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/golden/seed-from-fixtures.ts",
+      "lines": 105,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/golden-demo-dataset.ts",
+      "lines": 161,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/golden-trace.js",
+      "lines": 41,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/hydrate_all_jobs.ts",
+      "lines": 122,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/inspect-scores.ts",
+      "lines": 20,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_12.ts",
+      "lines": 30,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_24.ts",
+      "lines": 92,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/inspect_34_unmatched.ts",
+      "lines": 37,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/inspect_56.ts",
+      "lines": 66,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/inspect_all_decisions.ts",
+      "lines": 36,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_ambiguous.ts",
+      "lines": 24,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_candidate_evaluations.ts",
+      "lines": 69,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/inspect_canonical_decisions.ts",
+      "lines": 11,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/inspect_cases.ts",
+      "lines": 98,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/inspect_columns.ts",
+      "lines": 14,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_decisions.ts",
+      "lines": 12,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_eval_contexts.ts",
+      "lines": 24,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_eval_jobs.ts",
+      "lines": 14,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_failing_jobs.ts",
+      "lines": 18,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_fast.ts",
+      "lines": 111,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/inspect_gate1.ts",
+      "lines": 31,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_j_mapping.ts",
+      "lines": 20,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_me.ts",
+      "lines": 35,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_opportunities_mapping.ts",
+      "lines": 64,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/inspect_people.ts",
+      "lines": 10,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/inspect_people_db.ts",
+      "lines": 14,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/inspect_profile_tables.ts",
+      "lines": 18,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_recovery.ts",
+      "lines": 31,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_sample_colon.ts",
+      "lines": 27,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_sample_decisions.ts",
+      "lines": 24,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_schema.ts",
+      "lines": 10,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/inspect_service.ts",
+      "lines": 67,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/inspect_snapshots.ts",
+      "lines": 14,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/inspect_sparse_report.ts",
+      "lines": 52,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/inspect_tenants.ts",
+      "lines": 32,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/inspect_users_memberships.ts",
+      "lines": 12,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/inventory_tests.ts",
+      "lines": 157,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/investigate-json-leakage.ts",
+      "lines": 52,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/investigate-reporting-line.ts",
+      "lines": 110,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/kg-coverage-audit.ts",
+      "lines": 104,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/list-sample-records.ts",
+      "lines": 27,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/list-tables.ts",
+      "lines": 13,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/list_opp_tables.ts",
+      "lines": 16,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/m45-operational-reconciliation.ts",
+      "lines": 76,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/m9_4_full_audit.ts",
+      "lines": 181,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/m9_4_migrate.ts",
+      "lines": 149,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/m9_4_phase1_recon.ts",
+      "lines": 46,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/m9_4_post_migration_audit.ts",
+      "lines": 142,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/m9_4_reconnaissance.ts",
+      "lines": 84,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/measure_category_coverage.ts",
+      "lines": 129,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/migrate-production-tenant-fast.ts",
+      "lines": 349,
+      "sizeKb": 13
+    },
+    {
+      "relPath": "scripts/migrate-production-tenant.ts",
+      "lines": 294,
+      "sizeKb": 12
+    },
+    {
+      "relPath": "scripts/migrate-profile-to-db.ts",
+      "lines": 46,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/migrations/run_and_verify_029.ts",
+      "lines": 106,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/migrations/run_and_verify_030_scalar_sync.ts",
+      "lines": 217,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/mine-unrecognized-tech.ts",
+      "lines": 724,
+      "sizeKb": 31
+    },
+    {
+      "relPath": "scripts/monitor-phase6c.ts",
+      "lines": 374,
+      "sizeKb": 15
+    },
+    {
+      "relPath": "scripts/monitor-phase6d.ts",
+      "lines": 629,
+      "sizeKb": 24
+    },
+    {
+      "relPath": "scripts/mutation-causality.js",
+      "lines": 48,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/overlap5.ts",
+      "lines": 14,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/p2-corpus-calibration.ts",
+      "lines": 552,
+      "sizeKb": 23
+    },
+    {
+      "relPath": "scripts/p2a-corpus-spot-check.ts",
+      "lines": 99,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/p2a-test-strategic-advantage.ts",
+      "lines": 158,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/p2a2-verify-principal-risk.ts",
+      "lines": 241,
+      "sizeKb": 10
+    },
+    {
+      "relPath": "scripts/p2c-validate-signals.ts",
+      "lines": 320,
+      "sizeKb": 13
+    },
+    {
+      "relPath": "scripts/p3a-corpus-comparison.ts",
+      "lines": 212,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/p3a-full-corpus-analysis.ts",
+      "lines": 268,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/p4a-complete-score-semantics.ts",
+      "lines": 574,
+      "sizeKb": 25
+    },
+    {
+      "relPath": "scripts/p4a-comprehensive-forensics.ts",
+      "lines": 806,
+      "sizeKb": 31
+    },
+    {
+      "relPath": "scripts/p4a-phase2-anomaly-deep-dive.ts",
+      "lines": 247,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/p4a-phase2-corpus-analysis.ts",
+      "lines": 279,
+      "sizeKb": 10
+    },
+    {
+      "relPath": "scripts/p4a61_human_boundary_validation.ts",
+      "lines": 170,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/p4a61_qualitative_evaluator.ts",
+      "lines": 291,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/p4a6_policy_d_coherence_audit.ts",
+      "lines": 381,
+      "sizeKb": 18
+    },
+    {
+      "relPath": "scripts/p4a6_policy_simulation.ts",
+      "lines": 392,
+      "sizeKb": 20
+    },
+    {
+      "relPath": "scripts/p4a7_production_corpus_audit.ts",
+      "lines": 136,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/p4a_analyze_model_c.ts",
+      "lines": 155,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/p4a_audit.ts",
+      "lines": 72,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/p4a_audit_baseline.ts",
+      "lines": 191,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/p4a_audit_deep.ts",
+      "lines": 96,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/p4a_audit_drill.ts",
+      "lines": 55,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/p4a_audit_forensic.ts",
+      "lines": 143,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/p4a_audit_simulation.ts",
+      "lines": 246,
+      "sizeKb": 12
+    },
+    {
+      "relPath": "scripts/p4a_audit_stats.ts",
+      "lines": 68,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/p4a_corpus_validation.ts",
+      "lines": 146,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/p4a_extract_model_c.ts",
+      "lines": 89,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/p4b_full_corpus_dossier_audit.ts",
+      "lines": 279,
+      "sizeKb": 13
+    },
+    {
+      "relPath": "scripts/p6-live-demo-observation.ts",
+      "lines": 45,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/print-cols.ts",
+      "lines": 23,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/print-proj-json.ts",
+      "lines": 22,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/process_evaluations.ts",
+      "lines": 54,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/qa-bootstrap.ts",
+      "lines": 216,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/qa-eval.ts",
+      "lines": 187,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/qa-review-ui.ts",
+      "lines": 166,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/qa-shortlist-interactive.ts",
+      "lines": 129,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/qualify/harness.ts",
+      "lines": 128,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/qualify/layer-b.ts",
+      "lines": 150,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/qualify/layer-d.ts",
+      "lines": 55,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/qualify/layer-e.ts",
+      "lines": 11,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/recommend.ts",
+      "lines": 341,
+      "sizeKb": 14
+    },
+    {
+      "relPath": "scripts/reconcile-5-phases.ts",
+      "lines": 294,
+      "sizeKb": 12
+    },
+    {
+      "relPath": "scripts/reconcile-phase6c1.ts",
+      "lines": 620,
+      "sizeKb": 25
+    },
+    {
+      "relPath": "scripts/reconcile-phase6c2.ts",
+      "lines": 580,
+      "sizeKb": 23
+    },
+    {
+      "relPath": "scripts/reconcile-production-population.ts",
+      "lines": 150,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/reconcile_all_2904_opportunities.ts",
+      "lines": 126,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/reconcile_all_legacy_decisions.ts",
+      "lines": 148,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/reconcile_corpus.ts",
+      "lines": 48,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/reconciliation-5d1.ts",
+      "lines": 332,
+      "sizeKb": 15
+    },
+    {
+      "relPath": "scripts/reconciliation-5d2.ts",
+      "lines": 324,
+      "sizeKb": 15
+    },
+    {
+      "relPath": "scripts/refined_audit.ts",
+      "lines": 95,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/rematerialize-evaluations.ts",
+      "lines": 172,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/reorganize_tests.ts",
+      "lines": 60,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/reprocess-corpus.ts",
+      "lines": 160,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/retry_and_process_evaluations.ts",
+      "lines": 60,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/retry_last_job.ts",
+      "lines": 37,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/rollout-phase6b.ts",
+      "lines": 288,
+      "sizeKb": 13
+    },
+    {
+      "relPath": "scripts/run-golden-trace-clean.ts",
+      "lines": 52,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/run-golden-trace-for.js",
+      "lines": 41,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/run-historical-recovery.ts",
+      "lines": 272,
+      "sizeKb": 14
+    },
+    {
+      "relPath": "scripts/run-migrations-explicit.ts",
+      "lines": 10,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/run-production-benchmark.ts",
+      "lines": 275,
+      "sizeKb": 16
+    },
+    {
+      "relPath": "scripts/run-shadow-6a.ts",
+      "lines": 472,
+      "sizeKb": 18
+    },
+    {
+      "relPath": "scripts/run_accurate_gate4.ts",
+      "lines": 102,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/run_portal_browser_proof.ts",
+      "lines": 480,
+      "sizeKb": 20
+    },
+    {
+      "relPath": "scripts/scrape.ts",
+      "lines": 1388,
+      "sizeKb": 58
+    },
+    {
+      "relPath": "scripts/scraper/config.ts",
+      "lines": 134,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/scraper/enrich/cache.ts",
+      "lines": 57,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/scraper/enrich/contract.ts",
+      "lines": 25,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/enrich/gemini.ts",
+      "lines": 168,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/scraper/enrich/policy.ts",
+      "lines": 27,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/enrich/providers/gemini.ts",
+      "lines": 12,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/scraper/enrich/providers/groq.ts",
+      "lines": 129,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/scraper/enrich/providers/index.ts",
+      "lines": 34,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/enrich/providers/noop.ts",
+      "lines": 9,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/scraper/extract/anchor.ts",
+      "lines": 43,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/extract/contract.ts",
+      "lines": 17,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/extract/dimensions/commercialAccountability.ts",
+      "lines": 168,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/scraper/extract/dimensions/functionalScope.ts",
+      "lines": 25,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/extract/dimensions/geography.ts",
+      "lines": 22,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/extract/dimensions/mandate.ts",
+      "lines": 143,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/scraper/extract/dimensions/reportingLine.ts",
+      "lines": 148,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/scraper/extract/dimensions/requiredLevel.ts",
+      "lines": 54,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/scraper/extract/dimensions/technologyStack.ts",
+      "lines": 157,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/scraper/extract/dimensions/workModel.ts",
+      "lines": 19,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/extract/extractor.ts",
+      "lines": 209,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/scraper/extract/registry.ts",
+      "lines": 101,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/scraper/extract/sentences.ts",
+      "lines": 11,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/scraper/persist/ingest.ts",
+      "lines": 68,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/scraper/persist/queue.ts",
+      "lines": 470,
+      "sizeKb": 17
+    },
+    {
+      "relPath": "scripts/scraper/persist/writer.ts",
+      "lines": 71,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/scraper/portals/base.ts",
+      "lines": 139,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/scraper/portals/indeed.ts",
+      "lines": 273,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/scraper/portals/linkedin.ts",
+      "lines": 274,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/scraper/portals/naukri.ts",
+      "lines": 606,
+      "sizeKb": 27
+    },
+    {
+      "relPath": "scripts/scraper/run/career-intent.ts",
+      "lines": 100,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/scraper/run/health-manager.ts",
+      "lines": 166,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/scraper/run/journal.ts",
+      "lines": 67,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/scraper/run/manager.ts",
+      "lines": 444,
+      "sizeKb": 16
+    },
+    {
+      "relPath": "scripts/scraper/run/metrics.ts",
+      "lines": 76,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/scraper/run/page-manager.ts",
+      "lines": 204,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/scraper/run/planner.ts",
+      "lines": 117,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/scraper/run/report.ts",
+      "lines": 185,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/scraper/run/search-planner.ts",
+      "lines": 110,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/scraper/telemetry/certify.ts",
+      "lines": 125,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/scraper/types.ts",
+      "lines": 381,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/scraper/utils/concurrency.ts",
+      "lines": 24,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/utils/date.ts",
+      "lines": 70,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/scraper/utils/failure-dump.ts",
+      "lines": 86,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/scraper/utils/fs-atomic.ts",
+      "lines": 50,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/utils/hard-filter.ts",
+      "lines": 71,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/scraper/utils/hash.ts",
+      "lines": 33,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/utils/http-fetch.ts",
+      "lines": 107,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/scraper/utils/jitter.ts",
+      "lines": 28,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/utils/limit.ts",
+      "lines": 45,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/utils/logger.ts",
+      "lines": 12,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/scraper/utils/mutex.ts",
+      "lines": 51,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/utils/sanitize.ts",
+      "lines": 75,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/scraper/utils/scroll.ts",
+      "lines": 177,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/scraper/utils/url.ts",
+      "lines": 22,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/scraper/versions.ts",
+      "lines": 14,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/seed-ekb-store.ts",
+      "lines": 99,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/select_diagnostic_urls.ts",
+      "lines": 72,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/smoke-test-turso.ts",
+      "lines": 55,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/smoke_turso_m10.ts",
+      "lines": 237,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/sync-candidate-projection.ts",
+      "lines": 36,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/test-acceptance.ts",
+      "lines": 204,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/test-acquisition-resilience.ts",
+      "lines": 145,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/test-capability-evidence-states.ts",
+      "lines": 131,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/test-document-ingestion.ts",
+      "lines": 40,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/test-domain-veto-shadow.ts",
+      "lines": 171,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/test-dynamic-search-plan.ts",
+      "lines": 43,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/test-editorial-qa.ts",
+      "lines": 105,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/test-editorial-remediation.ts",
+      "lines": 177,
+      "sizeKb": 9
+    },
+    {
+      "relPath": "scripts/test-ekb-compilation.ts",
+      "lines": 93,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/test-enrich-validation.ts",
+      "lines": 100,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/test-executive-seniority.ts",
+      "lines": 184,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/test-identity-invariants.ts",
+      "lines": 74,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/test-mandate-scope.ts",
+      "lines": 58,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/test-phase2-contradiction-scan.ts",
+      "lines": 34,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/test-phase2-overrides.ts",
+      "lines": 60,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/test-phase3-baseline.ts",
+      "lines": 131,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/test-phase4-baseline.ts",
+      "lines": 178,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/test-phase6-contradictions.ts",
+      "lines": 415,
+      "sizeKb": 14
+    },
+    {
+      "relPath": "scripts/test-projection-pipeline.ts",
+      "lines": 68,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/test-projection-regression.ts",
+      "lines": 130,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/test-search-planning.ts",
+      "lines": 35,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/test-title-invariance.ts",
+      "lines": 95,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/test-track-a-intelligence.ts",
+      "lines": 111,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/test-zero-shot-synthesis.ts",
+      "lines": 68,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/test_json_extract.ts",
+      "lines": 19,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/test_live_compare.ts",
+      "lines": 34,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/test_opp_prefix.ts",
+      "lines": 97,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/test_remote_metrics.ts",
+      "lines": 13,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "scripts/test_scope_live.ts",
+      "lines": 52,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/trace-error.ts",
+      "lines": 40,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/trace-error2.ts",
+      "lines": 51,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/trace-error3.ts",
+      "lines": 20,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/trace-forensics.ts",
+      "lines": 144,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/trace-pipeline-weekday.ts",
+      "lines": 56,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/trace-unit.ts",
+      "lines": 100,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/trace_needs_signal.ts",
+      "lines": 104,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/validate-graph.ts",
+      "lines": 119,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/validate-ontology.ts",
+      "lines": 258,
+      "sizeKb": 12
+    },
+    {
+      "relPath": "scripts/verify-all-readpaths.ts",
+      "lines": 383,
+      "sizeKb": 16
+    },
+    {
+      "relPath": "scripts/verify-defect-fixes.ts",
+      "lines": 63,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/verify-e2e-pipeline.ts",
+      "lines": 111,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/verify-migration-equality.ts",
+      "lines": 89,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/verify-p4c-representative-cases.ts",
+      "lines": 47,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/verify-preflight.ts",
+      "lines": 27,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/verify-pursue-fix.ts",
+      "lines": 78,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/verify-turso-staging.ts",
+      "lines": 42,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/verify_69_quarantined.ts",
+      "lines": 46,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/verify_all_2904_opportunities.ts",
+      "lines": 113,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/verify_all_427_decisions.ts",
+      "lines": 54,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/verify_assessments.ts",
+      "lines": 75,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/verify_classifiers.ts",
+      "lines": 125,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/verify_easy_trap.ts",
+      "lines": 144,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/verify_gate5_posting_dates.ts",
+      "lines": 42,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/verify_gate5_semantics.ts",
+      "lines": 36,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/verify_gate6_eval_queue.ts",
+      "lines": 39,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/verify_gate7_tenant_isolation.ts",
+      "lines": 49,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/verify_live_cross_tenant_turso.ts",
+      "lines": 255,
+      "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/verify_m9.ts",
+      "lines": 229,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/verify_m9_1.ts",
+      "lines": 99,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/verify_m9_3_schema.ts",
+      "lines": 22,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/verify_policy.ts",
+      "lines": 68,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/verify_projections.ts",
+      "lines": 66,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/__tests__/enrichment-extraction-pipeline.test.ts",
+      "lines": 178,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "deploy.sh",
+      "lines": 45,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "eslint.config.js",
+      "lines": 41,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "remote_deploy.sh",
+      "lines": 10,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "temp.js",
+      "lines": 14,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "test.js",
+      "lines": 2,
+      "sizeKb": 0
+    },
+    {
+      "relPath": "vite.config.ts",
+      "lines": 81,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "vitest.config.ts",
+      "lines": 35,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "vitest.full.config.ts",
+      "lines": 28,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "vitest.regression.config.ts",
+      "lines": 22,
+      "sizeKb": 0
+    }
+  ]
+}

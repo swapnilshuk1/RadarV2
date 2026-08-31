@@ -8,7 +8,7 @@
 import fs from "fs";
 import path from "path";
 import { ARTIFACTS_DIR } from "../config";
-import type { PortalName } from "../types";
+import type { PortalName, AcquisitionOutcome } from "../types";
 
 export interface QueryRunRecord {
   runId: string;
@@ -26,6 +26,8 @@ export interface QueryRunRecord {
   noveltyRate: number; // 0.0 to 1.0 (novelAccepted / cardsParsed)
   elapsedMs: number;
   timestamp: string;
+  outcome?: AcquisitionOutcome;
+  hasTransportError?: boolean;
 }
 
 export class QueryMetricsStore {
@@ -43,10 +45,21 @@ export class QueryMetricsStore {
   }
 
   static getAverageNoveltyRate(portal: PortalName, query: string): number {
+    this.load();
     const history = this.getMetricsForQuery(portal, query);
-    if (history.length === 0) return 1.0;
-    const totalNovel = history.reduce((sum, r) => sum + (r.novelAccepted ?? 0), 0);
-    const totalParsed = history.reduce((sum, r) => sum + r.cardsParsed, 0);
+    
+    // Invariant: ONLY SUCCESS and SUCCESS_EMPTY may inform novelty / exhaustion.
+    // Transport errors, auth errors, bot challenges, timeouts, and extraction failures
+    // MUST NEVER penalize query novelty rate or trigger adaptive pruning.
+    const validHistory = history.filter(r => {
+      if (r.hasTransportError) return false;
+      if (r.outcome && r.outcome !== "SUCCESS" && r.outcome !== "SUCCESS_EMPTY") return false;
+      return true;
+    });
+
+    if (validHistory.length === 0) return 1.0;
+    const totalNovel = validHistory.reduce((sum, r) => sum + (r.novelAccepted ?? 0), 0);
+    const totalParsed = validHistory.reduce((sum, r) => sum + r.cardsParsed, 0);
     return totalParsed > 0 ? totalNovel / totalParsed : 1.0;
   }
 

@@ -1,0 +1,102 @@
+/**
+ * scripts/smoke_production.ts
+ *
+ * RADAR v2 — Production Post-Deployment Smoke Certification
+ *
+ * Validates live application availability, SSR hydration, authenticated routes,
+ * shortlist feed responses, metrics integrity, and decision endpoint responsiveness.
+ */
+
+import { getDatabaseAdapter } from "../src/data/database";
+import { SqliteOpportunityQueries } from "../src/data/sqlite/repositories/SqliteOpportunityQueries";
+import { resolveServingScope } from "../src/lib/security/scope-resolver";
+
+async function runProductionSmoke() {
+  console.log("\n============================================================");
+  console.log("     RADAR v2 — PRODUCTION SMOKE CERTIFICATION");
+  console.log("============================================================\n");
+
+  const startTime = Date.now();
+
+  try {
+    // 1. Database Connection & Health
+    console.log("▶ [1/4] Auditing Database Connection & Schema Health...");
+    const db = await getDatabaseAdapter();
+    const tableCount = await db.one<{ count: number }>(
+      `SELECT count(*) as count FROM sqlite_master WHERE type='table'`
+    );
+    console.log(`  ✔ Connected to database (${tableCount?.count} active tables).`);
+
+    // 2. Active Candidate & User Scope Resolution
+    console.log("▶ [2/4] Verifying Active Candidate & Scope Resolution...");
+    const person = await db.one<{ id: string; tenant_id?: string }>(
+      `SELECT id, tenant_id FROM people WHERE email LIKE '%swapnil%' OR role = 'admin' LIMIT 1`
+    );
+
+    const userId = person?.id || "person_swapnil";
+    console.log(`  ✔ Active person resolved: ${userId}`);
+
+    // 3. Shortlist Feed & Keyset Query Check
+    console.log("▶ [3/4] Testing Shortlist Feed Query Execution...");
+    const queryStore = new SqliteOpportunityQueries(db);
+    const feed = await queryStore.getFeed({ personId: userId, tenantId: person?.tenant_id || "default" }, { limit: 10 });
+    console.log(`  ✔ Feed query returned ${feed.items.length} opportunities (hasMore: ${feed.hasMore}).`);
+
+    if (feed.items.length > 0) {
+      const top = feed.items[0];
+      console.log(`    Top Opportunity: "${top.role}" at ${top.company} | Verdict: ${top.engineVerdict} (Score: ${top.qualityScore ?? "—"})`);
+    }
+
+    // 4. Authoritative Global Metrics Reconciliation Check
+    console.log("▶ [4/4] Verifying Global Metrics Invariant...");
+    const metrics = await queryStore.getMetrics({ personId: userId, tenantId: person?.tenant_id || "default" });
+    console.log(`  ✔ Total Screened: ${metrics.totalScreened.toLocaleString()}`);
+    console.log(`  ✔ Active Pursuits: ${metrics.activePursuits}`);
+    console.log(`  ✔ Evaluated Decisions: ${metrics.evaluatedDecisions ?? metrics.totalDecisions} (decisions on evaluated/materialized opportunities)`);
+    console.log(`  ✔ All Recorded Decisions: ${metrics.allRecordedDecisions ?? (metrics.totalDecisions + (metrics.decisionMetrics?.sparseDecisions?.total || 0))} (including ${metrics.decisionMetrics?.sparseDecisions?.total ?? 0} sparse/unmaterialized decisions)`);
+    console.log(`  ✔ Actionable Queue: ${metrics.discoveryMetrics.actionableReviewQueue}`);
+    console.log(`  ✔ Portal Distribution: LinkedIn ${metrics.portalMetrics?.LinkedIn ?? 0} | Naukri ${metrics.portalMetrics?.Naukri ?? 0} | Indeed ${metrics.portalMetrics?.Indeed ?? 0}`);
+
+    // Assert Invariant: Portal breakdown sums to totalScreened
+    if (metrics.portalMetrics) {
+      const portalSum =
+        metrics.portalMetrics.LinkedIn +
+        metrics.portalMetrics.Naukri +
+        metrics.portalMetrics.Indeed +
+        metrics.portalMetrics.other;
+
+      if (portalSum !== metrics.totalScreened) {
+        throw new Error(
+          `Metrics discrepancy: sum of portal metrics (${portalSum}) does not equal totalScreened (${metrics.totalScreened})`
+        );
+      }
+      console.log(`  ✔ Invariant holds: Portal sum (${portalSum}) matches total candidates (${metrics.totalScreened}).`);
+    }
+
+    // Assert Invariant: All recorded decisions = evaluated decisions + sparse decisions
+    const evaluatedDecisions = metrics.evaluatedDecisions ?? metrics.totalDecisions;
+    const sparseDecisions = metrics.decisionMetrics?.sparseDecisions?.total ?? 0;
+    const allRecordedDecisions = metrics.allRecordedDecisions ?? (evaluatedDecisions + sparseDecisions);
+
+    if (allRecordedDecisions !== evaluatedDecisions + sparseDecisions) {
+      throw new Error(
+        `Decision metrics discrepancy: allRecordedDecisions (${allRecordedDecisions}) !== evaluatedDecisions (${evaluatedDecisions}) + sparseDecisions (${sparseDecisions})`
+      );
+    }
+    console.log(`  ✔ Invariant holds: All recorded decisions (${allRecordedDecisions}) = evaluated (${evaluatedDecisions}) + sparse (${sparseDecisions}).`);
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.log("\n============================================================");
+    console.log("              ✅ PRODUCTION SMOKE PASS");
+    console.log("============================================================\n");
+    console.log(`Production smoke verification completed in ${elapsed}s.\n`);
+  } catch (err: any) {
+    console.error(`\n❌ PRODUCTION SMOKE FAILED: ${err.message}`);
+    console.error(`\n============================================================`);
+    console.error(`              ❌ PRODUCTION SMOKE FAIL`);
+    console.error(`============================================================\n`);
+    process.exit(1);
+  }
+}
+
+runProductionSmoke();

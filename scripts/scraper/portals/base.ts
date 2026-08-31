@@ -96,10 +96,11 @@ export async function getPortalContext(portal: PortalName): Promise<any> {
     });
   } catch (err: any) {
     const msg = err?.message ?? "";
+    console.error(`[BrowserLaunchError] userDataDir: ${userDataDir} msg: ${msg}`);
     if (
       msg.includes("existing browser session") ||
       msg.includes("already in use") ||
-      msg.includes("lock")
+      msg.includes("ProcessSingleton")
     ) {
       throw new Error(`Browser profile is already in use by another scraper. Please wait for it to finish or close the conflicting process. (${userDataDir})`);
     } else {
