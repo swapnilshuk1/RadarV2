@@ -15,6 +15,25 @@ describe("Milestone M7: Production Tenant Migration & Lineage Validation", () =>
   let evalStore: SqliteMaterializedEvaluationStore;
 
   beforeAll(async () => {
+    // Seed minimum fixture
+    await db.execute(`INSERT INTO tenants (id, status) VALUES (?, 'active')`, [TENANT_ID]);
+    await db.execute(`INSERT INTO users (id, email) VALUES (?, 'test@test.com')`, [PERSON_ID]);
+    await db.execute(`INSERT INTO memberships (user_id, tenant_id, role, permissions, status) VALUES (?, ?, 'owner', '["manage:search_plan"]', 'active')`, [PERSON_ID, TENANT_ID]);
+    await db.execute(`INSERT INTO people (id, email, name, role, onboarded, email_verified, tenant_id) VALUES (?, 'test@test.com', 'Test', 'user', 1, 1, ?)`, [PERSON_ID, TENANT_ID]);
+    await db.execute(`INSERT INTO search_plans (id, tenant_id, person_id, title, status, criteria_json) VALUES ('sp_canonical_swapnil', ?, ?, 'Executive Career Search Plan', 'active', '{"targetSeniority": ["Director"]}')`, [TENANT_ID, PERSON_ID]);
+    await db.execute(`INSERT INTO search_plan_snapshots (id, search_plan_id, tenant_id, person_id, snapshot_hash, payload_json) VALUES ('snap1', 'sp_canonical_swapnil', ?, ?, 'hash1', '{}')`, [TENANT_ID, PERSON_ID]);
+    await db.execute(`INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES ('ctx1', ?, ?, 'snap1', '3.0.0', 'of1', 'v4.1', '1.0')`, [TENANT_ID, PERSON_ID]);
+    
+    // Seed canonical opps and candidates
+    await db.execute(`INSERT INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES ('cjob1', 'test', 'sj1', 'http')`);
+    await db.execute(`INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content) VALUES ('v1', 'cjob1', 'ch1', 'Dir', 'raw')`);
+    await db.execute(`INSERT INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, 'sp_canonical_swapnil', 'cjob1', 'v1', 'CANDIDATE')`, [TENANT_ID, PERSON_ID]);
+    await db.execute(`INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, decision, quality_score, evidence_ids, evaluation_json) VALUES ('me1', ?, ?, 'cjob1', 'v1', 'ctx1', 'CONSIDER', 85, '[]', '{}')`, [TENANT_ID, PERSON_ID]);
+
+    for (let i = 0; i < 400; i++) {
+        await db.execute(`INSERT INTO decisions (id, person_id, opportunity_id, action, updated_at) VALUES (?, ?, ?, 'PASS', datetime('now'))`, [`d_${i}`, PERSON_ID, `op_${i}`]);
+    }
+
     contextStore = new SqliteEvaluationContextStore(db);
     evalStore = new SqliteMaterializedEvaluationStore(db);
   });

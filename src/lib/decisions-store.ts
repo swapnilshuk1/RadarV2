@@ -59,9 +59,9 @@ export function useDecisions() {
       try {
         const res = await getDecisionsFn();
         if (res && res.success && res.decisions) {
-          const serverMap: DecisionMap = {};
+          let currentServerMap: DecisionMap = {};
           for (const [hash, val] of Object.entries(res.decisions)) {
-            serverMap[hash] = {
+            currentServerMap[hash] = {
               verb: val.verb as DecisionVerb,
               at: val.updatedAt ? new Date(val.updatedAt).getTime() : Date.now(),
               reviewedFingerprint: (val as any).reviewedFingerprint || null
@@ -69,16 +69,27 @@ export function useDecisions() {
           }
 
           // 3. Auto-sync local storage decisions to server if local has unsynced items
-          if (typeof window !== "undefined" && Object.keys(initialLocal).length > 0 && Object.keys(initialLocal).length > Object.keys(serverMap).length) {
-            await syncDecisionsFn({ data: { decisions: initialLocal } });
-            window.localStorage.setItem(SYNC_FLAG, "true");
+          const hasUnsynced = Object.keys(initialLocal).length > 0 && Object.keys(initialLocal).some((k) => !currentServerMap[k]);
+          if (typeof window !== "undefined" && hasUnsynced) {
+            const syncRes = await syncDecisionsFn({ data: { decisions: initialLocal } });
+            if (syncRes && syncRes.success && syncRes.decisions) {
+              const reconciledMap: DecisionMap = {};
+              for (const [hash, val] of Object.entries(syncRes.decisions)) {
+                reconciledMap[hash] = {
+                  verb: val.verb as DecisionVerb,
+                  at: val.updatedAt ? new Date(val.updatedAt).getTime() : Date.now(),
+                  reviewedFingerprint: (val as any).reviewedFingerprint || null
+                };
+              }
+              currentServerMap = reconciledMap;
+              window.localStorage.setItem(SYNC_FLAG, "true");
+            }
           }
 
-          // 4. Merge server decisions into client state
-          const merged = { ...initialLocal, ...serverMap };
+          // 4. Update client state to authoritative server decisions
           if (isMounted) {
-            setDecisions(merged);
-            writeLocal(merged);
+            setDecisions(currentServerMap);
+            writeLocal(currentServerMap);
           }
         }
       } catch (err) {

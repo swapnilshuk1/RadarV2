@@ -1,0 +1,28 @@
+{
+  "oracleTotal": 2231,
+  "oracleVerbs": {
+    "SPARSE_SPEC": 665,
+    "CONSIDER": 412,
+    "PASS": 997,
+    "PURSUE": 156,
+    "NOT_EVALUABLE": 1
+  },
+  "auditTotal": 1514,
+  "auditVerbs": {
+    "CONSIDER": 196,
+    "PASS": 936,
+    "PURSUE": 367,
+    "SPARSE_SPEC": 14,
+    "NOT_EVALUABLE": 1
+  },
+  "modelCTotal": 1514,
+  "modelCDecisions": {
+    "SPARSE_SPEC": 1116,
+    "PASS": 248,
+    "PURSUE": 92,
+    "CONSIDER": 58
+  },
+  "oracleAuditOverlap": 1513,
+  "uniqueOracleHashes": 2231,
+  "uniqueAuditHashes": 1514
+}

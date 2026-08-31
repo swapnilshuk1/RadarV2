@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-08-29T02:53:20.706Z",
+  "tenantId": "tenant_default",
+  "personId": "ms6i7e3y-4x0chy5fy",
+  "searchPlanId": "sp_canonical_swapnil",
+  "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9",
+  "policyVersion": "4.2.0",
+  "ontologyVersion": "1.1.0"
+}

@@ -1,0 +1,14 @@
+{
+  "totalJobs": 3204,
+  "statusBreakdown": [
+    {
+      "status": "completed",
+      "count": 3198
+    },
+    {
+      "status": "dead_letter",
+      "count": 6
+    }
+  ],
+  "notes": "Jobs represent historical background evaluation batch executions. No active daemon is currently processing."
+}

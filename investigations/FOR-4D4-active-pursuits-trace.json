@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-08-29T03:06:32.028Z",
+  "uiLabel": "308 ACTIVE PURSUITS",
+  "displayedValue": 308,
+  "canonicalPursueDecisions": 308,
+  "for4d3EnginePursueVerdicts": 12,
+  "for4d3UserPursueDecisionsWritten": 0,
+  "explanation": "308 reflects explicit user decisions with action='PURSUE' in canonical_decisions. FOR-4D3 engine verdicts do not mutate user decisions.",
+  "evaluation": "CORRECT"
+}

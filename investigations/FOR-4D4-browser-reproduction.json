@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-08-29T03:06:32.034Z",
+  "screenshotValues": {
+    "activePursuits": 308,
+    "decisions": 1498,
+    "screened": 3002,
+    "shortlisted": 487,
+    "allPill": 1504,
+    "needsMoreSignalPill": "639 / 639",
+    "transformationPill": 27,
+    "commercialGrowthPill": 142,
+    "countryLeadershipPill": 153,
+    "platformDigitalPill": 263,
+    "founderLedPill": 1,
+    "privateEquityPill": 0
+  },
+  "serverTruthValues": {
+    "activePursuits": 308,
+    "decisions": 1498,
+    "screened": 3002,
+    "shortlisted": 720,
+    "allPill": 1504,
+    "needsMoreSignalPill": "639 / 639",
+    "transformationPill": 27,
+    "commercialGrowthPill": 142,
+    "countryLeadershipPill": 153,
+    "platformDigitalPill": 263,
+    "founderLedPill": 1,
+    "privateEquityPill": 0
+  },
+  "matchStatus": "ALL_EXACT_EXCEPT_SHORTLISTED_WHICH_IS_STALE_PRE_REFRESH_CACHE"
+}

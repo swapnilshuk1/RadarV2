@@ -130,7 +130,7 @@ export class SqlitePersonStore implements PersonStore {
       [personId]
     );
     if (!row || !row.projection_json) {
-      return DEFAULT_CANDIDATE_PROJECTION;
+      return undefined;
     }
     
     try {

@@ -1,0 +1,34 @@
+{
+  "screened": 3002,
+  "totalDecisions": 1508,
+  "userPursues": 474,
+  "userPasses": 896,
+  "userConsiders": 138,
+  "enginePursueTotal": 22,
+  "engineConsiderTotal": 421,
+  "engineQualifiedTotal": 443,
+  "unreviewedEngineShortlist": 443,
+  "reviewedEngineShortlist": 0,
+  "unreviewedSparseSpec": 629,
+  "totalSparseSpec": 639,
+  "totalEvaluated": 865,
+  "effectiveDecisions": {
+    "ENGINE_PASS": 422,
+    "PREFERENCE_OVERRIDE": 138,
+    "ENGINE_CONSIDER": 421,
+    "USER_CONFIRMED": 474,
+    "USER_PASSED": 896,
+    "NOT_EVALUABLE": 629,
+    "ENGINE_PURSUIT": 22
+  },
+  "shortlistStates": {
+    "CURRENTLY_SHORTLISTED": 421,
+    "PREVIOUSLY_SHORTLISTED": 0,
+    "NOT_SHORTLISTED": 2581
+  },
+  "reviewStates": {
+    "UNREVIEWED": 1494,
+    "REVIEWED_ACTIONABLE": 612,
+    "REVIEWED_DECIDED": 896
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "wave": 4,
+  "considerCount": 8,
+  "considerAudits": [
+    {
+      "canonicalJobId": "5db1b38f7fb63427724ef99a50849f633fa7d0a596757cb27db410a5f6fd6010",
+      "company": null,
+      "title": "Chief Marketing Officer",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "62e08bcf7813761d0afdddd22f49e5f2d2305f996773217dce77edf077fbfe05",
+      "company": null,
+      "title": "India Head",
+      "verdict": "CONSIDER",
+      "score": 60,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "6354fd45b5b804247e5e3c1fd831f2b45cf995bc77fc2268879c65ba5a89f6c0",
+      "company": null,
+      "title": "Presales - Solutions & Offering (IT Services)",
+      "verdict": "CONSIDER",
+      "score": 59,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "6738f70ebbbaaac67eb017df5e57de7ddb57776b3e425b1f58ef073d684ae619",
+      "company": null,
+      "title": "Marketing Head",
+      "verdict": "CONSIDER",
+      "score": 57,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "690e362832cee86b0ad997a548229e97d9285020ef6baf07f60efcf3d0c6eeaf",
+      "company": null,
+      "title": "Sales Head",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "6ae6c3307061f2bfb070c0a4870894396ae23b3a5ed4a5355707c5ef234a48c2",
+      "company": null,
+      "title": "SAP Procurement Process Lead",
+      "verdict": "CONSIDER",
+      "score": 56,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "71cb9448a9a98cd0683f1fcce4c2c61fc2d2341cea7a284e188abed523e5f7f6",
+      "company": null,
+      "title": "Vice President",
+      "verdict": "CONSIDER",
+      "score": 55,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "727a183ef67493dc89803d644452bcfd93d319dda1c96029510659eafbd7a108",
+      "company": null,
+      "title": "Group Account Director",
+      "verdict": "CONSIDER",
+      "score": 62,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    }
+  ]
+}

@@ -100,9 +100,10 @@ describe("UI Score Resolution — Shortlist & Decisions Pages", () => {
   it("6. Vetoed / Sparse cases preserve existing display behaviors", () => {
     const sparseOpp: Opportunity = {
       ...baseOpportunity,
-      decision: "SPARSE_SPEC" as any,
+      evaluationState: "SPARSE_SPEC" as any,
+      decision: null as any,
       engineRecommendation: {
-        qualityScore: 85,
+        qualityScore: null,
       } as any,
     };
 

@@ -202,7 +202,7 @@ export async function extract(snapshot: DetailedCard, opts: ExtractOptions = {})
     primaryConcern: null,
     applyUrl,
     dimensions: dims,
-    normalizedText: detailText || snippet,
+    normalizedText: detailText || "",
     telemetry: { deterministicMs: detMs, llmMs, llmCalled, llmFallbackReason },
   };
 }

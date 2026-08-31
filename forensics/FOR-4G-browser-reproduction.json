@@ -1,0 +1,132 @@
+{
+  "headerMetrics": {
+    "activePursuits": 330,
+    "totalShortlisted": 569,
+    "remainingToReview": 1504,
+    "shortlistedQueueCount": 82,
+    "totalDecisions": 1498,
+    "totalScreened": 3002
+  },
+  "categoryCounts": {
+    "all": {
+      "total": 3002,
+      "unreviewed": 1504,
+      "shortlisted": 569
+    },
+    "needs_more_signal": {
+      "total": 639,
+      "unreviewed": 639,
+      "shortlisted": 0
+    },
+    "transformation": {
+      "total": 111,
+      "unreviewed": 27,
+      "shortlisted": 15
+    },
+    "commercial_growth": {
+      "total": 377,
+      "unreviewed": 142,
+      "shortlisted": 142
+    },
+    "country_leadership": {
+      "total": 326,
+      "unreviewed": 153,
+      "shortlisted": 75
+    },
+    "platform_digital": {
+      "total": 805,
+      "unreviewed": 263,
+      "shortlisted": 188
+    },
+    "founder_led": {
+      "total": 7,
+      "unreviewed": 1,
+      "shortlisted": 1
+    },
+    "private_equity": {
+      "total": 0,
+      "unreviewed": 0,
+      "shortlisted": 0
+    }
+  },
+  "firstPageCards": [
+    {
+      "cardRank": 1,
+      "jobHash": "o_5bc343d7",
+      "role": "Senior Director - Performance Marketing (Remote)",
+      "company": "Puffy",
+      "location": "Mumbai, Maharashtra, India (Remote)",
+      "evaluationState": "LEGACY",
+      "engineVerdict": "PURSUE",
+      "qualityScore": 83,
+      "userAction": "NONE",
+      "effectiveDecision": "ENGINE_PURSUIT",
+      "ledgerMatched": false
+    },
+    {
+      "cardRank": 2,
+      "jobHash": "o_5bd8c613",
+      "role": "Sr. VP, Head Tele Sales & Customer Success",
+      "company": "IndiaMART InterMESH Limited",
+      "location": "Noida, Uttar Pradesh, India (On-site)",
+      "evaluationState": "LEGACY",
+      "engineVerdict": "PURSUE",
+      "qualityScore": 80,
+      "userAction": "NONE",
+      "effectiveDecision": "ENGINE_PURSUIT",
+      "ledgerMatched": false
+    },
+    {
+      "cardRank": 3,
+      "jobHash": "o_735ac2c3",
+      "role": "VP - Global eMarketplace Growth & Partnerships",
+      "company": "Mahasurya Ventures India",
+      "location": "Gurugram, Mumbai(Mulund), Siliguri",
+      "evaluationState": "LEGACY",
+      "engineVerdict": "PURSUE",
+      "qualityScore": 80,
+      "userAction": "NONE",
+      "effectiveDecision": "ENGINE_PURSUIT",
+      "ledgerMatched": false
+    },
+    {
+      "cardRank": 4,
+      "jobHash": "o_6e55244c",
+      "role": "VP- Marketing",
+      "company": "Infrrd",
+      "location": "India",
+      "evaluationState": "LEGACY",
+      "engineVerdict": "PURSUE",
+      "qualityScore": 78,
+      "userAction": "NONE",
+      "effectiveDecision": "ENGINE_PURSUIT",
+      "ledgerMatched": false
+    },
+    {
+      "cardRank": 5,
+      "jobHash": "o_27a76849",
+      "role": "Chief Operating Officer (SEO Marketing Agency)",
+      "company": "Smart Moves Talent Crafters Pvt. Ltd.",
+      "location": "Mumbai, Maharashtra, India (On-site)",
+      "evaluationState": "LEGACY",
+      "engineVerdict": "PURSUE",
+      "qualityScore": 74,
+      "userAction": "NONE",
+      "effectiveDecision": "ENGINE_PURSUIT",
+      "ledgerMatched": false
+    },
+    {
+      "cardRank": 6,
+      "jobHash": "o_faf6c934",
+      "role": "Head of Growth Marketing",
+      "company": "Titan",
+      "location": "Mumbai, Maharashtra",
+      "evaluationState": "LEGACY",
+      "engineVerdict": "PURSUE",
+      "qualityScore": 74,
+      "userAction": "NONE",
+      "effectiveDecision": "ENGINE_PURSUIT",
+      "ledgerMatched": false
+    }
+  ]
+}

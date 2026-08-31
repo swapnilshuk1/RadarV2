@@ -1,0 +1,397 @@
+[
+  {
+    "recordName": "Digital Advisory Director (Accordion)",
+    "canonicalJobId": "j-a8b9e9a27827",
+    "sourcePortal": "Indeed",
+    "canonicalUrl": "https://in.indeed.com/rc/clk?jk=cdfc18533516735f",
+    "browserContextInfo": {
+      "userDataDir": ".scraper-cache/profiles/indeed",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    },
+    "navigation": {
+      "start": "2026-08-22T04:49:11.661Z",
+      "durationMs": 6655,
+      "waitUntil": "domcontentloaded"
+    },
+    "redirectChain": [
+      "https://in.indeed.com/rc/clk?jk=cdfc18533516735f",
+      "https://www.accordion.com/careers/current-openings/digital-advisory-director/",
+      "https://www.accordion.com/__challenge",
+      "https://www.accordion.com/careers/current-openings/digital-advisory-director/",
+      "https://www.accordion.com/wp-content/uploads/2024/05/accordion-logo-white.svg",
+      "https://www.accordion.com/wp-content/uploads/2024/04/accordion-logo.svg",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/js/ScrollMagic.min.js",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/js/jquery-3.7.1.min.js",
+      "https://www.accordion.com/wp-content/plugins/complianz-gdpr/assets/css/cookieblocker.min.css?ver=1787151242",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/js/jquery-ui-draggable.min.js?cb=12.30.2024",
+      "https://www.accordion.com/wp-content/uploads/complianz/css/banner-1-optin.css?ver=1787151252",
+      "https://www.accordion.com/wp-content/themes/accordion/style.css?cb=173680930436&ver=7.1",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/css/modules.css?cb=802956176175&ver=7.1",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/js/global.js?cb=299821266616",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/css/singles.css?cb=610040210685&ver=7.1",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/css/iconmoon.css?cb=347563472127&ver=7.1",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/fonts/MessinaSansWeb-Regular.woff2",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/fonts/MessinaSansWeb-SemiBold.woff2",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/fonts/MessinaSansWeb-Bold.woff2",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/fonts/MessinaSansMonoWeb-Regular.woff2",
+      "https://www.accordion.com/wp-content/themes/accordion/assets/fonts/icomoon.ttf?ai595n",
+      "https://www.accordion.com/wp-content/plugins/complianz-gdpr/cookiebanner/js/complianz.min.js?ver=1787151242",
+      "blob:https://www.accordion.com/a256be5a-f469-4a97-849f-ff5cfd3f1760",
+      "https://www.googletagmanager.com/gtag/js?id=AW-799933593",
+      "https://www.accordion.com/wp-includes/js/wp-emoji-release.min.js?ver=7.1",
+      "https://www.google.com/ccm/collect?rcb=18&frm=0&apvc=1&auid=1173152435.1784662979&dt=Digital%20Advisory%20Director%20%7C%20Accordion&tid=AW-799933593&en=page_view&dl=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&dr=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&scrsrc=www.googletagmanager.com&rnd=1262530499.1787374163&navt=r&npa=0&did=dZTNiMT&gdid=dZTNiMT&gtm=45be68j0v9126831978za200zd9126831978xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&tft=1787374163410&tfd=1673&tids=AW-799933593&fmt=8",
+      "https://www.google.com/rmkt/collect/799933593/?random=1787374163383&cv=11&fst=1787374163383&fmt=8&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be68j0v9126831978za200zd9126831978xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&ref=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&rcb=18&frm=0&tiba=Digital%20Advisory%20Director%20%7C%20Accordion&did=dZTNiMT&gdid=dZTNiMT&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1173152435.1784662979&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&data=event%3Dgtag.config&ept=68&gcp=5",
+      "https://analytics.google.com/g/collect?v=2&tid=G-50QNKKBKYB&gtm=45be68j0v9126831978za200zd9126831978&_p=1787374162490&gcd=13l3l3l3l1l1&npa=0&dma=0&gdid=dZTNiMT&_eu=AAgAAGQC&are=1&cid=1979919197.1784662979&frm=0&pscdl=noapi&rcb=18&sr=1280x800&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=10.0&uaw=0&ul=en-gb&gaf=2&_s=2&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&sid=1787374163&sct=3&seg=0&dl=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&dr=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&dt=Digital%20Advisory%20Director%20%7C%20Accordion&en=Visiting_individual_job_listing&_et=7&tfd=1665",
+      "https://analytics.google.com/g/collect?v=2&tid=G-50QNKKBKYB&gtm=45be68j0v9126831978za200zd9126831978&_p=1787374162490&gcd=13l3l3l3l1l1&npa=0&dma=0&gdid=dZTNiMT&_eu=AgACAGQC&are=1&cid=1979919197.1784662979&frm=0&pscdl=noapi&rcb=18&sr=1280x800&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=10.0&uaw=0&ul=en-gb&gaf=2&_s=3&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&sid=1787374163&sct=3&seg=1&dl=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&dr=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&dt=Digital%20Advisory%20Director%20%7C%20Accordion&en=page_view&_ee=1&_et=14&tfd=1670",
+      "https://analytics.google.com/g/collect?v=2&tid=G-50QNKKBKYB&gtm=45be68j0v9126831978za200zd9126831978&_p=1787374162490&_gaz=1&gcd=13l3l3l3l1l1&npa=0&dma=0&gdid=dZTNiMT&_eu=AgAAAGQC&are=1&cid=1979919197.1784662979&frm=0&pscdl=noapi&rcb=18&sr=1280x800&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uam=&uamb=0&uap=Windows&uapv=10.0&uaw=0&ul=en-gb&gaf=2&_s=1&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&sid=1787374163&sct=3&seg=0&dl=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&dr=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&dt=Digital%20Advisory%20Director%20%7C%20Accordion&en=page_view&_ss=1&_ee=1&tfd=1634",
+      "https://www.google.com/rmkt/collect/799933593/?random=1787374163291&cv=11&fst=1787374163291&fmt=8&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be68j0v9126831978za200zd9126831978xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&ref=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&rcb=18&frm=0&tiba=Digital%20Advisory%20Director%20%7C%20Accordion&did=dZTNiMT&gdid=dZTNiMT&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1173152435.1784662979&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&data=event%3Dgtag.config&ept=68&gcp=5",
+      "https://js.hs-scripts.com/8976893.js?integration=WordPress&ver=11.3.70",
+      "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/799933593/?random=1787374163291&cv=11&fst=1787374163291&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be68j0v9126831978za200zd9126831978xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&ref=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&rcb=18&frm=0&tiba=Digital%20Advisory%20Director%20%7C%20Accordion&did=dZTNiMT&gdid=dZTNiMT&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1173152435.1784662979&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&data=event%3Dgtag.config&ept=9&rfmt=3&fmt=4",
+      "https://ad.doubleclick.net/ccm/s/collect?auid=1173152435.1784662979&gtm=45be68j0v9126831978za200zd9126831978xec&fmt=8",
+      "https://stats.g.doubleclick.net/g/collect?v=2&tid=G-50QNKKBKYB&cid=1979919197.1784662979&gtm=45be68j0v9126831978za200zd9126831978&rcb=18&aip=1&dma=0&gcd=13l3l3l3l1l1&npa=0&frm=0&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423",
+      "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/799933593/?random=1787374163383&cv=11&fst=1787374163383&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be68j0v9126831978za200zd9126831978xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&ref=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&rcb=18&frm=0&tiba=Digital%20Advisory%20Director%20%7C%20Accordion&did=dZTNiMT&gdid=dZTNiMT&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1173152435.1784662979&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&data=event%3Dgtag.config&ept=9&rfmt=3&fmt=4",
+      "https://www.google.co.in/ads/ga-audiences?v=1&t=sr&slf_rd=1&_r=4&tid=G-50QNKKBKYB&cid=1979919197.1784662979&gtm=45be68j0v9126831978za200zd9126831978&rcb=18&aip=1&dma=0&gcd=13l3l3l3l1l1&npa=0&frm=0&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&z=57529250",
+      "https://www.google.co.in/pagead/1p-user-list/799933593/?random=1787374163291&cv=11&fst=1787371200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be68j0v9126831978za200zd9126831978xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&ref=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&rcb=18&frm=0&tiba=Digital%20Advisory%20Director%20%7C%20Accordion&did=dZTNiMT&gdid=dZTNiMT&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1173152435.1784662979&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&data=event%3Dgtag.config&ept=9&rfmt=3&fmt=3&is_vtc=1&cid=CAQS-gEAEQoqgapzi6U21scjleyI_0MNyzTNcCC8pOkbQ1idqyBPsawlp081-eU-VZEv_4Icf0j7TV33Fw3KPFmvkgvZDwItwsnTZtnhFC0Gd0IHxrKMzeaCMkEkApMgEXpvBUy1svA-6x6Zm0ySYQ0hrwFLNjeIIW76oUBX98r09WFPmGS0xn4pxX7s5C30SUWoAGtfBA8HTZbWVWf0QJKBm-Hb_ACnzFSAEctJpO2fC3AvMlHKcYlUD-Q_Y4GUhY5bmNT56URvmY0o5zkjdIYbQmx2zPM_w4NhmNavUFKVdC8AL76Fl6wRO0J7WASYgfTdliRgQdsznGgpHgwS&random=2510602079&rmt_tld=1&ipr=y",
+      "https://www.google.com/pagead/1p-user-list/799933593/?random=1787374163291&cv=11&fst=1787371200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be68j0v9126831978za200zd9126831978xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&ref=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&rcb=18&frm=0&tiba=Digital%20Advisory%20Director%20%7C%20Accordion&did=dZTNiMT&gdid=dZTNiMT&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1173152435.1784662979&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&data=event%3Dgtag.config&ept=9&rfmt=3&fmt=3&is_vtc=1&cid=CAQS-gEAEQoqgapzi6U21scjleyI_0MNyzTNcCC8pOkbQ1idqyBPsawlp081-eU-VZEv_4Icf0j7TV33Fw3KPFmvkgvZDwItwsnTZtnhFC0Gd0IHxrKMzeaCMkEkApMgEXpvBUy1svA-6x6Zm0ySYQ0hrwFLNjeIIW76oUBX98r09WFPmGS0xn4pxX7s5C30SUWoAGtfBA8HTZbWVWf0QJKBm-Hb_ACnzFSAEctJpO2fC3AvMlHKcYlUD-Q_Y4GUhY5bmNT56URvmY0o5zkjdIYbQmx2zPM_w4NhmNavUFKVdC8AL76Fl6wRO0J7WASYgfTdliRgQdsznGgpHgwS&random=2510602079&rmt_tld=0&ipr=y",
+      "https://www.google.com/pagead/1p-user-list/799933593/?random=1787374163383&cv=11&fst=1787371200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be68j0v9126831978za200zd9126831978xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&ref=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&rcb=18&frm=0&tiba=Digital%20Advisory%20Director%20%7C%20Accordion&did=dZTNiMT&gdid=dZTNiMT&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1173152435.1784662979&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&data=event%3Dgtag.config&ept=9&rfmt=3&fmt=3&is_vtc=1&cid=CAQS-gEAQM4h3LcjpSm4bz1UVb1FH7gCsxM8mL_DDoJa8GxzqiH1K3Uu-26cn5oFIzE5Cm1jgTTUOMJRtFJ1HiDwouiCreHg6hKCtJKw7cIZKjiAjBI9wvayjshi-Bv_9SMMZV-uV7t8n0bS-ikj-xjlSs8mJ8lGL_fVyAp1BGad3OlxLEbgTFLM0i3wpciRnDOih-Xk106fxy3yy6hjKilL8zaS1gWqZdCEDCdsBdbt53crEa_kvrLP6VdyOi12G2RJSpBJ19-4miLjqEL-tcvY7uCSIe43qgFCBW9oK__TpEPUU2FunBmc6Z0qIiD7S3QHnwA3R4tIcX3L0sWf&random=3234895831&rmt_tld=0&ipr=y",
+      "https://www.google.co.in/pagead/1p-user-list/799933593/?random=1787374163383&cv=11&fst=1787371200000&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45be68j0v9126831978za200zd9126831978xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938465~115938469~118897920~118897930~119367802~119367810~120315471~120385423&u_w=1280&u_h=800&url=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&ref=https%3A%2F%2Fwww.accordion.com%2Fcareers%2Fcurrent-openings%2Fdigital-advisory-director%2F&rcb=18&frm=0&tiba=Digital%20Advisory%20Director%20%7C%20Accordion&did=dZTNiMT&gdid=dZTNiMT&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1173152435.1784662979&uaa=x86&uab=64&uafvl=Chromium%3B149.0.7827.55%7CNot)A%253BBrand%3B24.0.0.0&uamb=0&uam=&uap=Windows&uapv=10.0&uaw=0&data=event%3Dgtag.config&ept=9&rfmt=3&fmt=3&is_vtc=1&cid=CAQS-gEAQM4h3LcjpSm4bz1UVb1FH7gCsxM8mL_DDoJa8GxzqiH1K3Uu-26cn5oFIzE5Cm1jgTTUOMJRtFJ1HiDwouiCreHg6hKCtJKw7cIZKjiAjBI9wvayjshi-Bv_9SMMZV-uV7t8n0bS-ikj-xjlSs8mJ8lGL_fVyAp1BGad3OlxLEbgTFLM0i3wpciRnDOih-Xk106fxy3yy6hjKilL8zaS1gWqZdCEDCdsBdbt53crEa_kvrLP6VdyOi12G2RJSpBJ19-4miLjqEL-tcvY7uCSIe43qgFCBW9oK__TpEPUU2FunBmc6Z0qIiD7S3QHnwA3R4tIcX3L0sWf&random=3234895831&rmt_tld=1&ipr=y",
+      "https://js.hs-analytics.net/analytics/1787373900000/8976893.js"
+    ],
+    "finalUrl": "https://www.accordion.com/careers/current-openings/digital-advisory-director/",
+    "httpStatus": 200,
+    "pageTitle": "Digital Advisory Director | Accordion",
+    "domReadyState": "interactive",
+    "hydrationSignals": {
+      "hasRoot": false,
+      "hasNext": false,
+      "hasAngular": false,
+      "hasReact": false,
+      "bodyLength": 17269
+    },
+    "candidateSelectorsTested": [
+      {
+        "selector": "#jobDescriptionText",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": ".jobsearch-jobDescriptionText",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "[data-testid='jobsearch-JobComponent-description']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "[data-automation-id='jobPostingDescription']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "#content",
+        "count": 1,
+        "textLength": 21568
+      },
+      {
+        "selector": ".posting-requirements",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": ".job-description",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "#job-description",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": ".job__description",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": ".job-details",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": ".description__text",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "[class*='JobDescription']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "main",
+        "count": 1,
+        "textLength": 21568
+      },
+      {
+        "selector": "article",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "[role='main']",
+        "count": 1,
+        "textLength": 21568
+      }
+    ],
+    "matchedSelector": "#content",
+    "extractedRawTextLength": 21568,
+    "extractedNormalizedTextLength": 21568,
+    "extractedTextPreview500": ".acor-top-banner { position: absolute; z-index: 1; margin-top:90px; left:0; top:0; width: 84%; padding-top:16px; padding-bottom:16px; background-color: var(--citron); color: var(--graymed); font-size: 16px; line-height: 18px; letter-spacing: var(--letterspacing); font-family: var(--font); text-align: center; padding-left:var(--margin); padding-right:var(--margin); } .acor-top-banner a { text-decoration: underline; color: var(--graymed); } .acor-top-banner p { margin:0; padding-bottom:10px; } @me",
+    "titleFound": true,
+    "companyFound": true,
+    "expectedContainerExists": true,
+    "containerHasEmptyText": false,
+    "contentAppearsAfterAdditionalTime": false,
+    "contentAppearsAfterScroll": false,
+    "cloudflareAuthwallVisible": false,
+    "responseValidatorResult": {
+      "isValid": true,
+      "quality": "COMPLETE",
+      "confidence": "HIGH",
+      "extractedTitle": "Digital Advisory Director",
+      "extractedCompany": "Accordion",
+      "extractedDescription": ".acor-top-banner { position: absolute; z-index: 1; margin-top:90px; left:0; top:0; width: 84%; padding-top:16px; padding-bottom:16px; background-color: var(--citron); color: var(--graymed); font-size: 16px; line-height: 18px; letter-spacing: var(--letterspacing); font-family: var(--font); text-align: center; padding-left:var(--margin); padding-right:var(--margin); } .acor-top-banner a { text-decoration: underline; color: var(--graymed); } .acor-top-banner p { margin:0; padding-bottom:10px; } @media screen and (max-width: 1200px) { .acor-top-banner { font-size:14px; line-height: 16px; margin-top:80px } } @media screen and (max-width: 767px) { .acor-top-banner { font-size:14px; line-height: 16px; margin-top:80px; padding-top:10px; padding-bottom:10px; } } Be alert: Scammers are impersonating recruiters on job boards, falsely offering jobs and soliciting money or personal information from job seekers. To protect yourself, only communicate with recruiters using official Accordion.com email addresses, be cautious of requests for sensitive information or money, and verify information directly from our website. function insertTopBanner1(){ $(\"body\").prepend('<div class=\"acor-top-banner\">'+$(\"#top-banner-text-1\").html()+'</div>'); $(\"#content\").css(\"padding-top\",\"80px\"); } insertTopBanner1(); HomeJob OpeningsDigital Advisory Director Digital Advisory Director APPLY NOW LOCATIONLondon DEPARTMENT CFO Technology LOCATIONLondon DEPARTMENT CFO Technology Company Overview We are the better way to work in finance. As private equity’s value creation partner, we sit at the heart of PE—where sponsors and CFOs meet. Through financial consulting rooted in data, technology, and AI, we help clients drive values supporting the office of the CFO to drive end-to-end value creation. If you crave challenging work and are looking to grow, come solve complex issues alongside 1,600+ finance & technology experts in a supportive, collaborative environment. As we build our European footprint, the London office presents a unique entrepreneurial opportunity to shape our presence and accelerate growth across the region—while benefiting from the support and stability of an established, industry-leading firm. Backed by premier private equity firms and headquartered in New York with 11 offices around the globe, we are a high-growth, entrepreneurial firm looking for people who want to be part of building something great. Come make your mark. Practice Description Accordion’s CFO Technology Practice effectively and efficiently delivers the digital services and solutions to support organizational strategic initiatives. Our CFO Technology experts work cross-functionally — alongside practitioners from all corners of Accordion — to arm CFOs with the appropriate digital solutions needed to implement the team’s business process recommendations and to capitalize on value creation opportunities. From ERP, CPM, Analytics, Data Integration, RPA, and beyond, CFO Tech provides finance leaders with a single, objective partner capable of delivering from strategy to execution. This role will be based in our London office. Ideal candidates should be local to the desired location, with the flexibility to work remotely 1-2 days a week, blending the best of both worlds for efficiency and collaboration. Role Context CFOs and finance functions in PE-backed businesses frequently face technology challenges that are complex, cross-cutting, and poorly served by single-system or domain expertise. The Digital Advisory Director exists to address exactly these situations. Operating across the full landscape of finance technology e.g., from ERP and CRM through to EPM, automation, and data, this role brings strategic clarity to ambiguous technology problems and orchestrates the right specialist resources to deliver against them. It is a role defined by breadth, commercial judgement, and the ability to connect finance operations with the technology decisions that shape them. What You’ll Do: Digital Advisory Delivery Lead finance technology diagnostic processes for clients that cut across ERP, CRM, EPM, and adjacent systems, often with a spike in one area depending on the nature of the diagnostic Deliver surgical and focused advisory on finance technology strategy, solution architecture, and technology transformation Facilitate impartial system selection processes, managing competitive vendor evaluations while maintaining advisory independence Provide credible, informed perspective on AI and automation in the finance function including where it adds value, what the risks are, and what readiness looks like Rapidly distill insights from data and client interactions to inform technology advisory recommendations that will support the delivery of finance focused value creation Lead the technology workstream in transaction-related scenarios including carve-outs, integrations, and first-100-day scenarios Define and communicate finance systems architecture recommendations both designing from scratch and articulating the implications of existing architectures to technical and non-technical stakeholders Technology Programme Delivery Operate as programme-level orchestrator on larger system-focused engagements, bringing together deep specialist resources (e.g., NetSuite, Salesforce, Anaplan) to deliver unified outcomes Oversee delivery of complex technology transformation programmes across multiple workstreams Integrate with other Accordion practices and domain experts (Data and Analytics, Strategic Finance, Transformation etc.) to deliver performance improvement across the finance function Carefully manage large complex project budgets and engagement economics on behalf of the wider project team Be responsible for coaching and guiding project teams towards A+ delivery for Accordion’s clients Commercial and CFO Technology Practice Development Own key client relationships on projects and act as a trusted advisor to CFOs, finance leaders, and PE operating partners Originate follow-on work through consistent high-quality delivery Scope, price, and propose advisory engagements Play a key role in market-facing business development including support in opportunity origination, proposal development, responding to RFP’s and client relationship building at both the PE sponsor and portfolio company level Play a central role in the ongoing development and growth of the CFO Technology Practice in the UK and Europe You Have A minimum of 7 years of experience in technology and digital related roles. Consulting experience is a must have Extensive experience advising and/or delivering technology for private equity backed businesses Strong and diverse experience across the finance function and related processes, including demonstrated knowledge on how the finance function operates, not just the systems that support it Technology solution architecture experience specifically defining finance systems architecture from scratch and explaining the implications of existing architecture to both technical and management audiences alike Breadth of exposure across multiple finance and business technologies (e.g., ERP, CRM, EPM, BI, automation tooling). Breadth of experience is preferred versus single-system depth Experience overseeing complex transformation or technology programmes within the finance function Experience managing multi-disciplinary teams to deliver high quality project outcomes A credible and current point of view on AI and automation in the finance function Preferred Hands-on experience evaluating, designing or implementing AI and automation tooling in a finance / OCFO context Hands-on experience working with finance systems and software implementation partners Exposure to technology and digital topics in a transaction setting e.g., separation and carve-out planning, disentanglement under TSA scenarios, Day 1 readiness etc. Experience working directly with PE operating partners and portfolio company CFOs You Are Able to comfortably operate at the pace and intensity that is associated with PE backed businesses including managing high urgency requests, compressed timescales and a push for tangible results Able to produce written deliverables to a standard that is expected of PE operating partners and portfolio company management teams. This would include board packs, diagnostic outputs, strategic recommendations Comfortable and confident in navigating senior stakeholders with credibility Able to move fluidly between strategic and operational levels of detail Able to bring clarity to ambiguous situations Someone who is comfortable working in small teams with high levels of autonomy and accountability Location and working arrangement: London-based, hybrid with preference for in-office or client-site Regular and extensive travel across Europe to work with clients in the relevant jurisdictions Accordion is an Equal Opportunity Employer. We are committed to building a team that represents a variety of backgrounds, perspectives, and skills. We do not discriminate on the basis of race, colour, religion, marital status, age, national origin, ancestry, physical or mental disability, medical​​​ condition, pregnancy, genetic information, gender, sexual orientation, gender identity or ​expression, military status, or any other status protected under law. Please note that as per Accordion policy, we do not accept unsolicited resumes from third-party recruiters unless such recruiters are engaged to provide candidates for a specified opening and in alignment with our inclusive diversity values. Any employment agency, person or entity that submits an unsolicited resume does so with the understanding that Accordion will have the right to hire that applicant at its discretion without any fee owed to the submitting employment agency, person or entity. #LI-JR1 APPLY NOW Apply now. Digital Advisory Director CFO Technology London Upload your resume* UPLOAD Upload your resume* UPLOAD How did you hear about Accordion?*Please selectCompany WebsiteGlassdoorIndeed.comLinkedInReferralOtherGDPR Statement of Acknowledgement *Applicant privacy notice This notice serves to inform you that personal data about you has been collected by Accordion Partners UK Limited (“Accordion UK”) and/or Accordion Partners Financial EU Ltd. (“Accordion PFEU”) (collectively, Accordion UK and Accordion PFEU as “Accordion”), which is located at 1 Sherwood St, Suite 2.07, London W1F 7BL, United Kingdom and 2 Dublin Landings, N Wall Dublin, D01 F7X3, respectively, and can be contacted by emailing privacy@accordion.com, because Accordion wishes to evaluate your candidacy for employment at Accordion. Your personal data was either obtained directly from you, from publicly available sources (e.g. LinkedIn) or provided to Accordion by someone who referred you for potential employment. Accordion and their parent company Accordion Partners LLC, based in New York, USA are joint controllers of your personal data and Accordion’s. The types of personal data that Accordion has about you In connection with your application for work with us, we will collect, store, and use the information you have provided to us in your CV and covering letter; the information you have provided on your application form, including name, title, address, telephone number, personal email address, date of birth, employment history, qualifications; and any information you provide to us during an interview. We may also collect, store and use the following \"special categories\" of more sensitive personal data, including information about your race or ethnicity, health and disability status, religious beliefs, sexual orientation and political opinions. How Accordion will use your personal data Your personal data will be processed for the purposes of managing Accordion’s recruitment related activities, which include setting up and conducting interviews and tests for applicants, evaluating and assessing the results thereto, and as is otherwise needed in the recruitment and hiring processes. Our lawful basis for using your information in this way under Art. 6(1)(f) of Regulation (EU) 2016/679 (General Data Protection Regulation) as necessary for the purposes of the legitimate interests pursued by Accordion, which are the solicitation, evaluation, and selection of applicants for employment. We will use information about your health and disability status to consider whether we need to provide appropriate adjustments during the recruitment process, for example whether adjustments need to be made. We will use information about your race or national or ethnic origin, religious, philosophical or moral beliefs, or your sexual life or sexual orientation, to ensure meaningful equal opportunity monitoring and reporting. Candidates are entirely free to decide whether or not to provide such information and your application will not be affected either way. If you fail to provide personal data If you fail to provide information when requested that is necessary for us to consider your application (such as evidence of qualifications or work history), we will not be able to process your application successfully. Who Accordion shares your personal data with Your personal data has been shared with Greenhouse Software, Inc., a cloud services provider located in the United States of America and engaged by Accordion to help manage its recruitment and hiring process on Accordion’s behalf. Your personal data may also be shared with other Accordion group companies, service providers, professional advisors, regulatory bodies, courts or government departments and agencies, where their use is consistent with the purposes set out in this privacy policy or as required by law. Accordingly, if you are located outside of the United States, your personal data will be transferred outside of the UK or the European Economic Area, including to the United States and India, and in particular to Accordion Partners LLC, and its subsidiaries, along with Accordion Partners India PVT LTD. Because the European Union Commission has determined that United States and India’s data privacy laws do not ensure an adequate level of protection for personal data collected from EU data subjects, the transfer will be subject to appropriate additional safeguards under either the standard contractual clauses or another recognised safeguard such as the Data Privacy Framework. For more information on how we safeguard your personal data please contact privacy@accordion.com. How long Accordion keeps your personal data Successful applicants: If your application for employment or engagement is successful, personal data gathered during the recruitment process will be transferred to our HR management system and retained during your employment in accordance with our staff privacy policy. Your information will remain in Greenhouse for up to four years. Unsuccessful applicants: If your application for employment or engagement is unsuccessful, we will hold your data on file for 6 months after the end of the relevant recruitment process in order to enable Accordion to comply with any legal obligations or for the exercise or defence of legal claims (subject to any applicable legal or regulatory obligations to retain such information for a longer period). It is likely that we will wish to retain your data for a further period of 6 months (from the end of the initial 6 months after the end of the recruitment process) on the basis that a further opportunity may arise in the future and we may wish to consider you for that. If you do not want us to keep your data for this purpose, please let us know by contacting us at privacy@accordion.com . At the end of that period (or if you withdraw your consent prior to this) we will securely destroy your personal data in accordance with applicable laws and regulations. In the event that any court actions or other legal proceedings are pending or impending, personal data will be deleted after termination of the court action or legal proceeding as appropriate. Automated decision-making You will not be subject to decisions that will have a significant impact on you based solely on automated decision-making. Your rights Under the GDPR, you have rights relating to your personal data in certain circumstances. These are the right to request access to your personal data, to request that your personal data be rectified or erased, and to request that processing of your personal data be restricted or to object to the processing. You also have the right to data portability and to withdraw your consent if that is the lawful basis being relied upon to process your personal data. In addition, you may lodge a complaint with an EU supervisory authority (list here). The UK supervisory authority is the Information Commissioner (here). Further Information If you require any further clarification regarding this privacy notice, please contact privacy@accordion.com or using the contact details provided to you as part of your application.Please selectAcknowledge/Confirm *Required SUBMIT APPLICATION function applyNow(){ $(\"#job-modal\").addClass(\"show\"); } function closejobContact(){ $(\"#job-modal\").removeClass(\"show\"); } function pickFile(e){ let file = e.target.files[0]; const inpname = $(this).attr(\"name\"); $(\"#filelabel-\"+inpname).text(file.name); console.log(\"pickFile\", inpname, file.name); } function validateJobField(field){ let failed = false; if(field.attr(\"required\")){ if(field.hasClass(\"acor-multi-select-chkbxs\")){ if(field.find(\".acor-multi-select-chkbxs-item\").length == 0){ if($(\"#required-multi-select\").length){ } else { field.after('<div class=\"acor-job-required\" id=\"required-multi-select\">Please select at least one location</div>'); } failed = true; } else { $(\"#required-multi-select\").remove(); } } else if(field.attr(\"name\") == \"resume_text\"){ } else if(field.attr(\"name\") == \"email\"){ if(!validateEmail(field.val()) || field.val().trim() == \"\"){ if($(\"#required-\"+field.attr(\"name\")).length){ } else { field.after('<div class=\"acor-job-required\" id=\"required-'+field.attr(\"name\")+'\">Please enter a valid email</div>'); } failed = true; } else { $(\"#required-\"+field.attr(\"name\")).remove(); } } else if(field.attr(\"name\") == \"resume\"){ if(field.val() == '' && $(\"#resume_text\").val() == ''){ if($(\"#required-\"+field.attr(\"name\")).length){ } else { field.after('<div class=\"acor-job-required\" id=\"required-'+field.attr(\"name\")+'\">This field is required</div>'); } failed = true; } else { $(\"#required-\"+field.attr(\"name\")).remove(); } } else { if(field.val().trim() == \"\"){ if($(\"#required-\"+field.attr(\"name\")).length){ } else { field.after('<div class=\"acor-job-required\" id=\"required-'+field.attr(\"name\")+'\">This field is required</div>'); } failed = true; } else { $(\"#required-\"+field.attr(\"name\")).remove(); } } } return failed; } function validateJobsForm(showPopUp){ let failed = false; $(\".form-check\").each(function(i){ //console.log($(this).attr(\"required\")); if(failed == false){ failed = validateJobField($(this)); } else { validateJobField($(this)); } }); if(failed){ showAlert(\"One or more fields are missing an input or are invalid. Please review your submission and try again.\"); } else { //submit the data showSubmitting(); const greenhouseURL = '/wp-content/themes/accordion/global/greenhouse.php'; $.ajax({ url: greenhouseURL, type: 'POST', data: new FormData(document.getElementById(\"jobs-form\")), contentType: false, cache: false, processData: false, success() { jsAlertClose(); closejobContact(); showAlert(\"Your submission was sent!\"); }, error(response) { console.warn('Ajax error or error from GreenHouse API: ', response); jsAlertClose(); showAlert(\"There was an error submiting this form. Please try again or reach out through our contact form.\"); } }); } } function updateJobsMultiSelect(parent, label, add, value){ console.log(\"updateJobsMultiSelect\", label); const target = parent.children(\".acor-multi-select-chkbxs-label\").first(); if(add){ if(target.text() == \"Select one or more from below\"){ target.html(\"\"); } target.append('<div class=\"acor-multi-select-chkbxs-item\">'+label+'</div>'); parent.children(\"select\").first().append('<option value=\"'+value+'\" selected=\"selected\" id=\"option-'+value+'\">'+label+'</option>'); } else { let count = 0; target.children(\".acor-multi-select-chkbxs-item\").each(function(i){ //console.log($(this).text(), value); if($(this).text() == label){ $(this).remove(); } else { count += 1; } }); $(\"#option-\"+value).remove(); if(count == 0){ target.text(\"Select one or more from below\"); } } validateJobField(parent); } function setupJobsForm(){ $(\".acor-input-file\").on(\"change\",pickFile); $(\".acor-multi-select-chkbxs\").on(\"click\",function(e){ $(this).toggleClass('show'); e.stopPropagation(); }); $(document).on(\"click\", function(){ $(\".acor-multi-select-chkbxs\").removeClass(\"show\"); }); $(\".acor-multi-select-checkbox-h\").on(\"click\", function(e){ e.preventDefault(); e.stopPropagation(); const inputField = $(this).children('input').first(); if(inputField.is(':checked')) { inputField.prop(\"checked\", false); updateJobsMultiSelect($(this).parents(\".acor-multi-select-chkbxs\").first(), inputField.attr(\"data-label\"), false, inputField.val()); } else { inputField.prop(\"checked\", true); updateJobsMultiSelect($(this).parents(\".acor-multi-select-chkbxs\").first(), inputField.attr(\"data-label\"), true, inputField.val()); } }); $(\".form-check\").on(\"change\",function(){ validateJobField($(this)); }); $(\"#submit-app\").on(\"click\", function(){validateJobsForm(true);}); } $(document).ready(setupJobsForm);"
+    },
+    "acquisitionStatus": "ACQUIRED",
+    "acquisitionQuality": "COMPLETE",
+    "failureClass": null,
+    "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\docs\\artifacts\\indeed_j-a8b9e9a27827.html",
+    "screenshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\docs\\artifacts\\indeed_j-a8b9e9a27827.png",
+    "classification": "A. BROWSER CAN RECOVER SOURCE"
+  },
+  {
+    "recordName": "Marketing Manager Healthcare (REPUTED GROUP)",
+    "canonicalJobId": "j-dca748b4c4c8",
+    "sourcePortal": "Naukri",
+    "canonicalUrl": "https://www.naukri.com/job-listings-marketing-manager-healthcare-thrissur-kerala-vesat-management-thrissur-8-to-12-years-040826023823",
+    "browserContextInfo": {
+      "userDataDir": ".scraper-cache/profiles/naukri",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0.0.0",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      }
+    },
+    "navigation": {
+      "start": "2026-08-22T04:49:27.564Z",
+      "durationMs": 2605,
+      "waitUntil": "domcontentloaded"
+    },
+    "redirectChain": [
+      "https://www.naukri.com/job-listings-marketing-manager-healthcare-thrissur-kerala-vesat-management-thrissur-8-to-12-years-040826023823",
+      "https://static.naukimg.com/s/9/1950/_next/static/css/b0fb00d33c9f87d6.css",
+      "https://static.naukimg.com/s/9/1950/_next/static/css/01a3256bed711867.css",
+      "https://static.naukimg.com/s/9/1950/_next/static/css/6297be6fb005fdad.css",
+      "https://static.naukimg.com/s/9/1950/_next/static/css/89e7e68009da27f0.css",
+      "https://static.naukimg.com/s/9/1950/_next/static/css/a56b7c7c8e7d5bb6.css",
+      "https://static.naukimg.com/s/0/0/i/transparentImg.png",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/app/jobs/layout-9a44ed6d461c4737.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/main-app-673d58ab130505f8.js",
+      "https://www.naukri.com/akam/13/72a313b8",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/X.f5187c55.svg",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/6952-6ef44882bd44feca.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/4333-7ca52f416aac9f4a.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/5927-a17508b318308608.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/1766-ddb2bd526802c5ea.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/6735-d8c3d79b44ffdfe5.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/2489-c89a15e9373bfcb4.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/webpack-746a7769c5a58efe.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/3145-d1e00b5306734da5.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/2868-92d6a16031f32166.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/ErrorBanner-82c2c7d248b43ef1.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/app/jobs/%5Bslug%5D/page-c78cd4c2f06adb7f.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/6137-58be2e4738316245.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/3978-10503f73817e9e8d.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/2059-5c67f8cbcf519edb.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/app/layout-f9e8a759be6806d1.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/1164-cbc7ceb96a2e0628.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/9976-395e970d0cd6d160.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/7692-bb734d92ffc8bfa5.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/5323-397dc9d30ad6b183.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/2117-b7828e402f894e2c.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/3590-de407f8bcc5736fe.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/7648-e0239f16a7a3b466.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/app/error-525d8e7ec40d9154.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/500-c14192c517dc452a.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/9000-0f0efc1ef8488a72.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/9292-397109f5db371d60.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/fd9d1056-a864b1d29ca24ac6.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/Figtree-600.5fcf6a29.woff2",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/Figtree-400.5fcf6a29.woff2",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/5fcf6a294352fb48-s.p.woff2",
+      "https://static.naukimg.com/s/0/1/j/ub_v1.16.min.js",
+      "https://static.naukimg.com/s/0/0/j/nLoggerJB_v3.4.min.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/tracking.49aad605dec21ac1.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/9851.b5ea1a8a8ea5505b.js",
+      "https://www.naukri.com/akam/13/pixel_72a313b8",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/ArrowSquareOut.65d1b44d.svg",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/Check.09e61bed.svg",
+      "https://static.naukimg.com/s/0/0/c/fonts/static/figtree/_Xms-HUzqDCFdgfMm4S9DQ.woff2",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/9737-7475de91b1d00817.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/1837-90f7de7dcc9b741b.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/gnb/j/vendors~ni-desktop-gnb-notif-center-revamped~ni-gnb-drawer~ni-gnb-notif-center~ni-gnb-search-bar.067422dd.min.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/gnb/j/ni-gnb-search-bar.5a12821f.min.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/5941.2bccedba83fe7cd1.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/gnb/j/vendors~ni-gnb-search-bar.c9dff335.min.js",
+      "https://www.naukri.com/cloudgateway-apply/whtma-services/v0/apply/aurus/v1/user/self/apply-count",
+      "https://www.naukri.com/cloudgateway-aurus/aurus-jobseeker-profile-wrapper/v0/jobseeker/users/self/getConcierge",
+      "https://static.naukimg.com/s/9/1950/_next/static/gnb/j/ni-gnb-sse-comp.fd60da3c.min.js",
+      "https://static.naukimg.com/s/9/1950/_next/static/chunks/jobs-listing.20b7dfa2c4111d6d.js",
+      "https://lg.naukri.com/uba?data={%22rt.start%22:%22navigation%22,%22t_resp%22:%221029%22,%22t_page%22:%221904%22,%22t_done%22:%222933%22,%22r%22:%22%22,%22t_resr%22:{},%22u%22:%22nmit-https%3A%2F%2Fwww.naukri.com%2Fjob-listings-marketing-manager-healthcare-thrissur-kerala-vesat-management-thrissur-8-to-12-years-040826023823%22,%22nt_dns%22:%220%22,%22nt_red%22:%220%22,%22nt_plt%22:%22492%22,%22nt_render%22:%221597%22,%22nt_req%22:%22374%22,%22nt_res%22:%22120%22,%22nt_tcp%22:%220%22,%22appId%22:1950,%22tag%22:%22jobseeker-pwa-toptier-nmit%22,%22eventName%22:%22newMonkPerformance%22,%22tenantId%22:1,%22deviceType%22:%22SERVER%22}&rad=0.6822464648434176",
+      "https://www.naukri.com/jobapi/v4/job/040826023823?aurusRequest=true",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/jobsPlaceholder.3aebcf55.svg",
+      "https://static.naukimg.com/s/0/0/c/fonts/static/figtree/_Xms-HUzqDCFdgfMm4q9DbZs.woff2",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/MapPinN300.211635aa.svg",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/CoinsN300.2cc75ad5.svg",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/SkillsN300.068a9438.svg",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/BriefcaseN300.5b6041d1.svg",
+      "https://static.naukimg.com/s/9/1950/_next/static/gnb/j/ni-aurus-gnb-drawer.2a476cc3.min.js",
+      "https://logs.naukri.com/uba",
+      "https://static.naukimg.com/s/0/0/c/fonts/static/figtree/_Xms-HUzqDCFdgfMm4q9DbZs.woff2",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/StarOrange.e5cb2aba.svg",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/CompanyLogo.d5d3a117.svg",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/CalendarStarN300.007a511a.svg",
+      "https://static.naukimg.com/s/0/0/i/toptier/naukri-toptier-logo.svg",
+      "https://static.naukimg.com/s/0/0/i/toptier/home.svg",
+      "https://static.naukimg.com/s/0/0/i/toptier/activity.svg",
+      "https://static.naukimg.com/s/9/1950/_next/static/media/naukri-toptier-short.efcbe1ad.png?w=16",
+      "https://img.naukimg.com/logo_images/groups/v1/4816661.gif?w=64",
+      "https://static.naukimg.com/s/0/0/i/toptier/minisFeed.svg",
+      "https://static.naukimg.com/s/0/0/i/toptier/naukri360.svg",
+      "https://static.naukimg.com/s/0/0/i/toptier/services.svg",
+      "https://static.naukimg.com/s/0/0/i/toptier/instagram.svg",
+      "https://img.naukimg.com/logo_images/groups/v1/4816661.gif?w=48",
+      "https://static.naukimg.com/s/0/0/i/toptier/twitter.svg",
+      "https://static.naukimg.com/s/0/0/i/toptier/linkedin.svg",
+      "https://static.naukimg.com/s/0/0/i/toptier/facebook.svg",
+      "https://static.naukimg.com/s/0/0/i/toptier/infoedge-logo.svg",
+      "https://static.naukimg.com/s/0/0/i/toptier/android-app.png",
+      "https://www.naukri.com/recommendapi/v1/notify?appStatus=&rmj=1784659684770&recoJobs=&profileViews=1784659684770&criticalActions=&FF=&NL=&RR=&recruiterSearch=&jobId=null&_=1787374171404",
+      "https://static.naukimg.com/s/0/0/i/toptier/ios-app.png",
+      "https://media.naukri.com/media/jphotov1/l244%253ALukcMT692QocGrmxGUUCYZ40xnolZ806g1s37QYSqn1kkq3MDrGOvfPftr0%253D",
+      "https://static.naukimg.com/s/0/0/c/fonts/static/figtree/_Xms-HUzqDCFdgfMm4q9DbZs.woff2",
+      "https://www.naukri.com/cloudgateway-mynaukri/resman-aggregator-services/v1/users/self/gnbapi/config",
+      "https://static.naukimg.com/s/0/0/c/fonts/static/figtree/_Xms-HUzqDCFdgfMm4q9DbZs.woff2",
+      "https://www.naukri.com/cloudgateway-mynaukri/resman-aggregator-services/v1/users/self/dashboard?properties=userDetails,profilePerformance,incompleteSection,isPaidUser,profileSegment,lookupData,res360NotifType,photoInfo,campusData,relevancyInbox,aiInterviewEligibility,aiInterviewEligibility"
+    ],
+    "finalUrl": "https://www.naukri.com/job-listings-marketing-manager-healthcare-thrissur-kerala-vesat-management-thrissur-8-to-12-years-040826023823",
+    "httpStatus": 200,
+    "pageTitle": "Naukri TopTier",
+    "domReadyState": "complete",
+    "hydrationSignals": {
+      "hasRoot": false,
+      "hasNext": false,
+      "hasAngular": false,
+      "hasReact": false,
+      "bodyLength": 1909
+    },
+    "candidateSelectorsTested": [
+      {
+        "selector": "[class*='styles_job-desc-container']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "section[class*='job-desc']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "[class*='job-desc']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "div[class*='JDSummary']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "[class*='styles_JDJobs-recJob-desc']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "[class*='dang-inner-html']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "[class*='styles_key-skill']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "[class*='key-skill']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "[class*='jobDescription']",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "#job-description",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "main",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "article",
+        "count": 0,
+        "textLength": 0
+      },
+      {
+        "selector": "[role='main']",
+        "count": 0,
+        "textLength": 0
+      }
+    ],
+    "matchedSelector": "body",
+    "extractedRawTextLength": 1863,
+    "extractedNormalizedTextLength": 1863,
+    "extractedTextPreview500": "Home Activity Minis Feed Naukri 360 Naukri Pro Resume Pro Resume Writing Services Interview Pro Services Resume writing Text resume Visual resume Resume critique Find Jobs Jobs4u Priority applicant Contact us Get recruiter's attention Resume display Monthly subscriptions Basic & premium plans Free resume resources Resume maker Resume quality score Resume samples Job letter samples Search jobs here... REPUTED GROUP Posted by Vesat Management Marketing Manager-Healthcare - Thrissur- Kerala Thrissu",
+    "titleFound": true,
+    "companyFound": true,
+    "expectedContainerExists": false,
+    "containerHasEmptyText": false,
+    "contentAppearsAfterAdditionalTime": false,
+    "contentAppearsAfterScroll": false,
+    "cloudflareAuthwallVisible": false,
+    "responseValidatorResult": {
+      "isValid": true,
+      "quality": "COMPLETE",
+      "confidence": "HIGH",
+      "extractedTitle": "Marketing Manager-Healthcare",
+      "extractedCompany": "REPUTED GROUP",
+      "extractedDescription": "Home Activity Minis Feed Naukri 360 Naukri Pro Resume Pro Resume Writing Services Interview Pro Services Resume writing Text resume Visual resume Resume critique Find Jobs Jobs4u Priority applicant Contact us Get recruiter's attention Resume display Monthly subscriptions Basic & premium plans Free resume resources Resume maker Resume quality score Resume samples Job letter samples Search jobs here... REPUTED GROUP Posted by Vesat Management Marketing Manager-Healthcare - Thrissur- Kerala Thrissur ₹12L - ₹15L/year Marketing Management, Atl Btl, Brand Marketing, Brand Management, Healthcare Marketing 8-12 Yrs 17d ago Quick apply Expertise Brand Marketing Healthcare Marketing Marketing Management Brand Management Atl Btl Job Description Role & responsibilities BUSINESS &MARKETING STRATEGY , DIGITAL MARKETING ,MARKET RESARCH, / COMPETITIVE INTITIVE INTELLIENCE , BRAND AND CROSS -VERTICAL SYNERGY , PR, CONTENT AND STAKE HOLDER MANAGEMENT ,BUDGET &PERFORMANCE , SERVICE MARKETING, SEO, SEM SOCIAL , CONTENT MARKETING Preferred candidate profile MBA (MARKETING ) WITH EXP IN MARKETING OF HEALTHCARE SERVICES/ BRAND BUILDING/ STRATEGIC MARKETING --------DIGITAL MARKETING EXPERT , BRAND BUILDING --- SALARY--------------BEST IN THE INDUSTRY EMAIL---------------vesat_hrd@yahoo.in ES SATHEESAN BTECH (MECH), MBA MANAGING DIRECTOR www.vesatindia.com 9847260383/ 8606078383/ 98463 83434 View more Compensation CTC range₹12L - ₹15L/year Quick apply Applied All about us Vesat Management HEALTH CARE-HOSPITAL SERVICES Founded: 2006 Social links About us Careers Employer home Sitemap Credits Help center Summons/Notices Grievances Report issue Privacy policy Terms & conditions Fraud alert Trust & safety Apply on the go Get real-time updates on the app All trademarks are the property of their respective owners All rights reserved © 2026 Info Edge (India) Ltd."
+    },
+    "acquisitionStatus": "ACQUIRED",
+    "acquisitionQuality": "COMPLETE",
+    "failureClass": null,
+    "snapshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\docs\\artifacts\\naukri_j-dca748b4c4c8.html",
+    "screenshotPath": "C:\\Users\\swapn\\Downloads\\radar-local-v2\\docs\\artifacts\\naukri_j-dca748b4c4c8.png",
+    "classification": "A. BROWSER CAN RECOVER SOURCE"
+  }
+]

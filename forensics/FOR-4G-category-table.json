@@ -1,0 +1,74 @@
+{
+  "all": {
+    "total": 3002,
+    "evaluated": 2363,
+    "sparse": 639,
+    "user_decided": 1498,
+    "engine_qualified": 645,
+    "effective_shortlist": 691,
+    "reviewable": 82
+  },
+  "needs_more_signal": {
+    "total": 639,
+    "evaluated": 0,
+    "sparse": 639,
+    "user_decided": 0,
+    "engine_qualified": 0,
+    "effective_shortlist": 0,
+    "reviewable": 0
+  },
+  "transformation": {
+    "total": 111,
+    "evaluated": 110,
+    "sparse": 1,
+    "user_decided": 84,
+    "engine_qualified": 15,
+    "effective_shortlist": 23,
+    "reviewable": 1
+  },
+  "commercial_growth": {
+    "total": 377,
+    "evaluated": 371,
+    "sparse": 6,
+    "user_decided": 235,
+    "engine_qualified": 161,
+    "effective_shortlist": 158,
+    "reviewable": 27
+  },
+  "country_leadership": {
+    "total": 326,
+    "evaluated": 325,
+    "sparse": 1,
+    "user_decided": 173,
+    "engine_qualified": 83,
+    "effective_shortlist": 85,
+    "reviewable": 15
+  },
+  "platform_digital": {
+    "total": 805,
+    "evaluated": 802,
+    "sparse": 3,
+    "user_decided": 542,
+    "engine_qualified": 208,
+    "effective_shortlist": 239,
+    "reviewable": 22
+  },
+  "founder_led": {
+    "total": 7,
+    "evaluated": 7,
+    "sparse": 0,
+    "user_decided": 6,
+    "engine_qualified": 1,
+    "effective_shortlist": 2,
+    "reviewable": 0
+  },
+  "private_equity": {
+    "total": 0,
+    "evaluated": 0,
+    "sparse": 0,
+    "user_decided": 0,
+    "engine_qualified": 0,
+    "effective_shortlist": 0,
+    "reviewable": 0
+  }
+}

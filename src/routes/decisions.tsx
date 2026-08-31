@@ -1,3 +1,4 @@
+import { type ServedOpportunity, isEvaluated, isUnavailable, type EvaluatedOpportunity } from "../data/opportunity-fixtures";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { applyUrlFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
@@ -75,7 +76,14 @@ export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS" | "UNREVIEWED";
 
 function OpportunitiesPage() {
   const { decisions, undo, clear, hydrated } = useDecisions();
-  const { opportunitiesList } = Route.useLoaderData();
+  const { opportunitiesList: rawOpportunities } = Route.useLoaderData();
+  // Phase 4: Non-evaluated variants without decisions must not contribute to counts or enter the ledger.
+  // Explicit user decisions (including those on sparse specifications) remain preserved and represented.
+  const opportunitiesList = useMemo(
+    () => rawOpportunities.filter((o) => isEvaluated(o) || Boolean(decisions[o.jobHash]?.verb || (o as any).userDecision?.userAction)),
+    [rawOpportunities, decisions]
+  );
+  
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -113,10 +121,10 @@ function OpportunitiesPage() {
   };
 
   // Helper to get effective user decision verb for an opportunity
-  const getUserVerb = (o: Opportunity): DecisionVerb | null => {
+  const getUserVerb = (o: Opportunity | ServedOpportunity): DecisionVerb | null => {
     const recorded = decisions[o.jobHash];
     if (recorded?.verb) return recorded.verb;
-    if (o.userDecision?.userAction) return o.userDecision.userAction as DecisionVerb;
+    if ((o as any).userDecision?.userAction) return (o as any).userDecision.userAction as DecisionVerb;
     return null;
   };
 
@@ -296,7 +304,7 @@ function OpportunitiesPage() {
               <span>Sorted by Pipeline Recency</span>
             </div>
 
-            {displayedOpportunities.map((o) => {
+            {displayedOpportunities.map((o: any) => {
               const verb = getUserVerb(o);
               const applyUrl = applyUrlFor(o);
 
@@ -361,7 +369,7 @@ function OpportunitiesPage() {
                         )}
                         <span className="text-hairline-strong">·</span>
                         <span className="font-mono uppercase tracking-[0.14em] text-[0.62rem] text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm">
-                          {resolveDecisionsCardScore(o, brief)}
+                          {resolveDecisionsCardScore(o as any, brief)}
                         </span>
                       </div>
 

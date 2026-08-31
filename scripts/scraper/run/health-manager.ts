@@ -103,7 +103,11 @@ export class HealthManager {
     this.recordBrowserSuccess(portal);
   }
 
-  static recordFailure(portal: string, reason: string): { action: "REPLACE_PAGE" | "RESET_CONTEXT" | "PAUSE_SESSION" } {
+  static recordFailure(portal: string, reason: string): { action: "REPLACE_PAGE" | "RESET_CONTEXT" | "PAUSE_SESSION" | "IGNORE" } {
+    const itemLevelFailures = ["EMPTY_CONTENT", "PARTIAL_CONTENT", "REMOVED_404", "UNKNOWN_FAILURE"];
+    if (itemLevelFailures.includes(reason)) {
+      return { action: "IGNORE" };
+    }
     return this.recordBrowserFailure(portal, reason);
   }
 

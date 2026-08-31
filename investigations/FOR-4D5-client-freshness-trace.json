@@ -1,0 +1,7 @@
+{
+  "timestamp": "2026-08-29T03:13:10.732Z",
+  "staleStateObserved": "487 SHORTLISTED rendered from unrefreshed client browser tab loaded prior to FOR-4D3 background evaluation run.",
+  "rootCause": "Route loader cache in TanStack Router held pre-FOR-4D3 loader response where totalShortlisted was 487 and new backlog was unmaterialized. Category filter cache in index.tsx was holding stale category opportunity arrays across re-renders.",
+  "remediation": "Added useEffect watching loader opportunitiesList to clear categoryCacheRef on route revalidation, combined with staleTime: 0 route loader execution.",
+  "status": "RESOLVED"
+}

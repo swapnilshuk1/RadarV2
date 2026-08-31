@@ -13,6 +13,8 @@ export interface AuthContext {
 export interface AuthorizedPersonScope {
   tenantId: string;
   personId: string;
+  activeSearchPlanId?: string;
+  activeEvaluationContextId?: string;
 }
 
 export class TenantIsolationError extends Error {

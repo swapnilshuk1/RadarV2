@@ -18,6 +18,7 @@ export function splitSqlStatements(sql: string): string[] {
   let inString: "'" | '"' | null = null;
   let inLineComment = false;
   let inBlockComment = false;
+  let beginDepth = 0;
 
   for (let i = 0; i < sql.length; i++) {
     const char = sql[i];
@@ -69,7 +70,20 @@ export function splitSqlStatements(sql: string): string[] {
       continue;
     }
 
-    if (char === ";") {
+    // A robust BEGIN ... END depth tracker
+    if (!/[a-zA-Z0-9_]/.test(char)) {
+      const match = /(?:^|[^a-zA-Z0-9_])([a-zA-Z0-9_]+)$/.exec(current);
+      if (match) {
+        const word = match[1].toUpperCase();
+        if (word === "BEGIN") {
+          beginDepth++;
+        } else if (word === "END") {
+          beginDepth = Math.max(0, beginDepth - 1);
+        }
+      }
+    }
+
+    if (char === ";" && beginDepth === 0) {
       const trimmed = current.trim();
       if (trimmed.length > 0) {
         statements.push(trimmed);

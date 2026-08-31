@@ -1,0 +1,16 @@
+{
+  "dbDecisionsCount": 1509,
+  "servedDecisionsCount": 1498,
+  "discrepancyDelta": 11,
+  "excludedDecisionDetails": [
+    {
+      "canonicalJobId": "7e3589afb485195b6e3eb31f13e3048c48aea4356740e72c68f8ad4354fda89e",
+      "action": "PASS",
+      "reason": "Historical decision from executive evaluation audit",
+      "source": "LinkedIn",
+      "sourceJobId": "j-2570118dab32",
+      "companyName": "Historical Restored Company",
+      "explanation": "This 1 decision row references canonical job ID 7e3589afb485195b6e3eb31f13e3048c48aea4356740e72c68f8ad4354fda89e, which is the 1 legacy opportunity without an opportunity_versions row. Because SqliteCanonicalServingStore queries search_plan_candidates via INNER JOIN on opportunity_versions, this 1 decision is not joined into the candidate serving stream, resulting in exactly 1,498 served decisions in the UI."
+    }
+  ]
+}

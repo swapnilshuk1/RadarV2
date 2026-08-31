@@ -11,7 +11,21 @@ import {
 import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
 import type { Opportunity } from "../../src/data/opportunity-fixtures";
 import { getRepositories } from "../../src/data/sqlite/provider";
+import { getDatabaseAdapter } from "../../src/data/database/index";
 import * as engineModule from "../../src/lib/intelligence/engine";
+
+async function seedTenantUser(userId: string) {
+  const db = getDatabaseAdapter();
+  const tenantId = `tenant_${userId}`;
+  await db.execute(`INSERT OR IGNORE INTO tenants (id, status) VALUES (?, 'active')`, [tenantId]);
+  await db.execute(`INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)`, [userId, `${userId}@example.com`]);
+  await db.execute(`INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status) VALUES (?, ?, 'user', '[]', 'active')`, [userId, tenantId]);
+  await db.execute(`INSERT OR IGNORE INTO people (id, email, name, role, onboarded, email_verified, tenant_id) VALUES (?, ?, 'Test', 'user', 1, 1, ?)`, [userId, `${userId}@example.com`, tenantId]);
+  await db.execute(`INSERT OR IGNORE INTO search_plans (id, tenant_id, person_id, title, status, criteria_json) VALUES (?, ?, ?, 'Plan', 'active', '{}')`, [`sp_${userId}`, tenantId, userId]);
+  await db.execute(`INSERT OR IGNORE INTO search_plan_snapshots (id, search_plan_id, tenant_id, person_id, snapshot_hash, payload_json) VALUES (?, ?, ?, ?, 'hash', '{}')`, [`snap_${userId}`, `sp_${userId}`, tenantId, userId]);
+  await db.execute(`INSERT OR IGNORE INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES (?, ?, ?, ?, '3.0.0', 'of1', 'v4.1', '1.0')`, [`ctx_${userId}`, tenantId, userId, `snap_${userId}`]);
+  return tenantId;
+}
 
 describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
   // Test Fixture Factory
@@ -389,6 +403,7 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
   it("T11: OpportunityService.listForUser returns properly structured V4 opportunities with 4-state workflow from materialized state without invoking runEngine", async () => {
     const repos = getRepositories();
     const userId = "t11-verified-user";
+    const tenantId = await seedTenantUser(userId);
     const runEngineSpy = vi.spyOn(engineModule, "runEngine");
 
     // 1. Seed/materialize evaluations into database representing complete, sparse, and vetoed states
@@ -412,37 +427,28 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
         engineVerdict: "PASS" as const,
         engineQualityScore: 0,
         vetoed: true,
-        vetoReason: "G-EXECUTIVE-IDENTITY-MISMATCH",
+        vetoReason: "Missing essential mandate",
       },
     ];
 
     for (const item of items) {
-      await repos.evaluations.saveEvaluation({
-        personId: userId,
-        jobHash: item.jobHash,
-        policyVersion: "v4.3",
-        evaluationInputHash: `fp_${item.jobHash}`,
-        engineVerdict: item.engineVerdict,
-        engineQualityScore: item.engineQualityScore,
-        evaluationStatus: "COMPLETE",
-        evaluationJson: JSON.stringify({
+      await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES (?, 'test', ?, 'http')`, [item.jobHash, item.jobHash]);
+      await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content) VALUES ('v1', ?, 'ch1', 'Dir', 'raw')`, [item.jobHash]);
+      await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, 'v1', 'CANDIDATE')`, [tenantId, userId, `sp_${userId}`, item.jobHash]);
+      await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO materialized_evaluations 
+        (canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, rationale, evidence_ids, evaluation_json) 
+        VALUES (?, 'v1', ?, ?, ?, 'EVALUATED', ?, ?, 'rationale', '[]', ?)`, 
+        [item.jobHash, tenantId, userId, `ctx_${userId}`, item.engineVerdict, item.vetoed ? null : item.engineQualityScore, JSON.stringify({
           schemaVersion: "v4.2-intrinsic",
           jobHash: item.jobHash,
           personId: userId,
-          evaluationInputHash: `fp_${item.jobHash}`,
+          evaluationInputHash: "fp-v4",
           policyVersion: "v4.3",
           ontologyVersion: "v2",
           evaluatedAt: new Date().toISOString(),
           intrinsicVerdict: item.engineVerdict,
           intrinsicQualityScore: item.vetoed ? null : item.engineQualityScore,
           vetoed: item.vetoed,
-          vetoReason: item.vetoReason,
-          parsingConfidence: 0.95,
-          triggeredRuleIds: item.vetoed ? ["RULE_VETO"] : [],
-          decisionRisks: [],
-          decisionDrivers: [],
-          evaluationStatus: "COMPLETE",
-          dimensions: [],
           esi: 85,
           diligenceStatus: "VERIFIED",
           baseNarrative: {
@@ -457,7 +463,7 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
             evidenceMappingCount: 5,
           },
         }),
-      });
+      ]);
     }
 
     // 2. Call OpportunityService.listForUser()
@@ -486,6 +492,7 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
     }
 
     // 4. Assert that an empty materialized population returns []
+    await seedTenantUser("t11-nonexistent-user-empty");
     const emptyOps = await OpportunityService.listForUser("t11-nonexistent-user-empty");
     expect(emptyOps).toEqual([]);
 

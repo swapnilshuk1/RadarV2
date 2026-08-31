@@ -153,7 +153,19 @@ export interface RunManifest {
   units: WorkUnit[];
   cards: CardUnit[];
 }
-// ---------- Pipeline Stages (Immutable) ----------
+
+export type AcquisitionRoute =
+  | "DISCOVERY_RICH"
+  | "ATS_ENRICHED"
+  | "DISCOVERY_FALLBACK_PARTIAL"
+  | "DISCOVERY_QUICKAPPLY_PARTIAL"
+  | "DETAIL_PAGE_BROWSER"
+  | "DETAIL_PAGE_HTTP";
+
+export type EnrichmentStatus =
+  | "ENRICHED_SUCCESS"
+  | "ENRICHED_FAILED"
+  | "NOT_APPLICABLE";
 
 export interface FeedCard {
   cardHash: string;
@@ -170,12 +182,19 @@ export interface FeedCard {
   postedPrecision?: "EXACT" | "RELATIVE_ESTIMATE" | "LOWER_BOUND" | "UNKNOWN";
   rawHtml: string;
   rawText: string;
+  // Executive Enrichment Metadata
+  applyRedirectUrl?: string;
+  jobApplyType?: string;
+  companyApplyJob?: boolean;
 }
 
 // DetailedCard replaces JobSnapshot as the payload post-acquisition
 export interface DetailedCard extends FeedCard {
   snapshotSchemaVersion: string;
   scraperVersion: string;
+  acquisitionRoute?: AcquisitionRoute;
+  enrichmentStatus?: EnrichmentStatus;
+  fallbackRoute?: string;
   detail: {
     fetched: boolean;
     rawHtml?: string;

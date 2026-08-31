@@ -1,0 +1,45 @@
+[
+  {
+    "id": "HIST-CONT-001",
+    "title": "Historical Corpus Replacement & Serving Shrinkage",
+    "historicalEvidence": "2,231 opportunities recorded in behavioral-fingerprint-oracle.json (1,566 evaluated, 665 sparse).",
+    "currentEvidence": "632 canonical opportunities in canonical_opportunities table in live Turso snapshot.",
+    "conflictingValues": {
+      "historical_oracle_opportunities": 2231,
+      "historical_evaluated_opportunities": 1566,
+      "current_canonical_serving_opportunities": 632,
+      "surviving_canonical_match_count": 99,
+      "absent_historical_opportunities": 2132
+    },
+    "severity": "CRITICAL",
+    "confidence": "PROVEN",
+    "rootCauseSummary": "Subsequent scraping and identity migration runs introduced canonicalization filters that isolated legacy portal-prefixed job hashes and established a new 632-item canonical serving tier."
+  },
+  {
+    "id": "HIST-CONT-002",
+    "title": "Complete User Decision Wipe in Production Database",
+    "historicalEvidence": "1,514 evaluated opportunity decisions recorded in audit_records.json and model_c_records.json (367 PURSUE, 196 CONSIDER, 936 PASS).",
+    "currentEvidence": "0 rows in decisions and 0 rows in canonical_decisions in current production Turso snapshot.",
+    "conflictingValues": {
+      "historical_audit_decisions": 1514,
+      "current_turso_db_decisions": 0
+    },
+    "severity": "CRITICAL",
+    "confidence": "PROVEN",
+    "rootCauseSummary": "User decisions were persisted exclusively in client-side localStorage or volatile state and never synchronized or backfilled into Turso Cloud tables."
+  },
+  {
+    "id": "HIST-CONT-003",
+    "title": "Raw Staging Pipeline Bottleneck (269 Stranded Jobs)",
+    "historicalEvidence": "Raw documents ingested during recent scraping sessions.",
+    "currentEvidence": "269 raw opportunities (o_...) in opportunities table and 269 raw payloads in documents table, but 0 in canonical_opportunities.",
+    "conflictingValues": {
+      "raw_staged_opportunities": 269,
+      "raw_documents_ingested": 269,
+      "canonical_promotions": 0
+    },
+    "severity": "HIGH",
+    "confidence": "PROVEN",
+    "rootCauseSummary": "Scraper pipeline ingested document payloads into staging tables but did not execute CanonicalIngestionService to promote them to canonical_opportunities."
+  }
+]

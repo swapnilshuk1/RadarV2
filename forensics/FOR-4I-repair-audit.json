@@ -1,0 +1,32 @@
+{
+  "repairedRowsCount": 1498,
+  "postCounts": [
+    {
+      "evaluation_state": "EVALUATED",
+      "cnt": 2363
+    },
+    {
+      "evaluation_state": "SPARSE_SPEC",
+      "cnt": 639
+    },
+    {
+      "evaluation_state": "UNKNOWN",
+      "cnt": 1
+    }
+  ],
+  "candStateCounts": [
+    {
+      "evaluation_state": "EVALUATED",
+      "cnt": 2363
+    },
+    {
+      "evaluation_state": "SPARSE_SPEC",
+      "cnt": 639
+    }
+  ],
+  "tableInvariants": {
+    "totalMat": 5604,
+    "candDecCount": 1509,
+    "spcCount": 6826
+  }
+}

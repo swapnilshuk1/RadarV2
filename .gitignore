@@ -46,9 +46,9 @@ groq.env
 # RADAR local data
 .scraper-artifacts/
 .scraper-cache/
-radar.sqlite
-radar.sqlite-shm
-radar.sqlite-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 *.ndjson
 
 # Scraper browser profiles (Playwright/Chrome cache — large, machine-specific)

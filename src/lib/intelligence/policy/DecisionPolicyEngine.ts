@@ -1,4 +1,5 @@
 import { IdentityAssessment, CapabilityAssessment, OpportunityAssessment, CareerAssessment, LifestyleAssessment, DecisionVerdict, EvaluationStatus, Recommendation } from "../../domain/semantic";
+import type { GroundedOpportunityDimension } from "../../domain/job_projection";
 import decisionPolicy from "@/data/ontology/decision_policy.json";
 import { IdentityDistanceCalculator } from "../utils/IdentityDistanceCalculator";
 import { EvidenceGate } from "../gates/EvidenceGate";
@@ -30,7 +31,7 @@ export interface DecisionDriver {
 export interface DecisionPolicyResult {
   verdict: DecisionVerdict;
   evaluationStatus: EvaluationStatus;
-  recommendation: Recommendation;
+  recommendation: Recommendation | null;
   qualityScore: number | null; // Authoritative Model C intrinsic quality score
   rawScore: number | null;     // Legacy compatibility alias (equals qualityScore)
   priorityScore: number | null;// Legacy compatibility alias (equals qualityScore)
@@ -71,7 +72,7 @@ export class DecisionPolicyEngine {
     jobDescriptionText?: string,
     hasStructuredEvidence: boolean = false,
     evidenceGrounding?: Record<string, string>,
-    dimensions?: Array<{ key: string; jdEvidence?: { value?: string } }>,
+    dimensions?: readonly GroundedOpportunityDimension[] | readonly { key: string; jdEvidence?: { value?: string } }[],
     shortlistingPotentialScore?: number // P3-A: Pre-calculated authoritative SP
   ): DecisionPolicyResult {
     const triggeredRuleIds: string[] = [];

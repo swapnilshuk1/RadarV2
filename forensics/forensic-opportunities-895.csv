@@ -1,0 +1,896 @@
+id,company_id,canonical_title,location,created_at,id_prefix,has_raw_document,classification,evidence_level
+linkedin:bcb795115916d7ba,"uniphore","VP, Product Engineering","Bengaluru, Karnataka, India (On-site)",2026-08-27T15:47:37.347Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:402ea76a2e83eee5,"nike","Senior Director of Software Engineering - Marketing Technology, ITC","Karnataka, India (On-site)",2026-08-27T15:47:37.487Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:a884f118d4feb088,"byteridge","VP - Engineering (Remote: India)","India (Remote)",2026-08-27T15:47:38.720Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:aa32c973f4546247,"innovaccer","0001-Vice President, Implementation Engineering","Noida, Uttar Pradesh, India (On-site)",2026-08-27T15:47:41.752Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:4dd2f795f972c48e,"serko","Director of Engineering","Bengaluru, Karnataka, India (Hybrid)",2026-08-27T15:47:41.865Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:c13d0c061e279f50,"aerospike","Senior Director Of Engineering","Bengaluru, Karnataka, India (Hybrid)",2026-08-27T15:47:43.080Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:e77c8eab5c2377cb,"conga","VP, Head of (Quality) Engineering","Bengaluru, Karnataka, India (On-site)",2026-08-27T15:47:45.273Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:a485d812fabd4449,"quantiphi","Program Director – Digital Engineering Programs","Bengaluru, Karnataka, India (Hybrid)",2026-08-27T15:47:46.971Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:782bc239dcee4f42,"tide","Head of Engineering, Commercial Services","Hyderabad, Telangana, India (Hybrid)",2026-08-27T15:47:47.025Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:7c35dc41b20b3801,"monetizemore","Director of Engineering (Remote)","India (Remote)",2026-08-27T15:47:49.238Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:b0739f50d3a1c75b,"ethos","Expert Opportunity - VP of Engineering ($80/hr, up to $1,600/week)","India (Remote)",2026-08-27T15:47:50.814Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:fead1cb18791edfe,"barclays","VP - Engineering Lead","Pune Division, Maharashtra, India (On-site)",2026-08-27T15:47:52.267Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:5443d52ccc90be78,"questhiring","Senior Director of Engineering","Gurugram, Haryana, India (Hybrid)",2026-08-27T15:47:53.846Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:cb1519bde1a4597d,"sonicwall-sled","Senior Director, Data & AI Engineering","Pune Division, Maharashtra, India (Hybrid)",2026-08-27T15:47:53.895Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:a06e420a9bad5ffb,"valgenesis","Director / Senior Manager, Test Engineering","Hyderabad, Telangana, India (On-site)",2026-08-27T15:47:56.115Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:fef98d34e920f429,"happiest-minds-technologies","DIRECTOR ENGINEERING - Project Management","Bengaluru, Karnataka, India (On-site)",2026-08-27T15:47:57.322Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:84ed1917fa56f44e,"zeta-global","Director of Engineering","Bengaluru, Karnataka, India (Hybrid)",2026-08-27T15:47:58.484Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:1bc4f83f17942645,"quest-global","Head of Engineering – Production & Operations.","Bengaluru, Karnataka, India (Hybrid)",2026-08-27T15:47:58.627Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:4e7ceee5d32e98fe,"inoptra-digital","Director / Sr. Director / Manager – Data Engineering (+ Analytics + ADMS)","India (Remote)",2026-08-27T15:48:02.467Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:1c7867d2418ae2a9,"apple","Engineering Manager - Digital Asset Management","Hyderabad, Telangana, India (Remote)",2026-08-27T15:48:03.851Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:b50d0fcf700ee378,"live-connections","Senior Engineering Manager @ Chennai/Hyderabad/50-55L/Need from Product orgs with B.E/B.Tech ONLY/Strong hands-on experience with a core dotnet, ReactJS background","Chennai, Tamil Nadu, India (On-site)",2026-08-27T15:48:03.973Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:2f11eaf76b604a3c,"mrsool--------","Engineering Manager","India (Remote)",2026-08-27T15:48:05.789Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:28137a1210dd2818,"zillow","Director, Engineering","Bengaluru, Karnataka, India (On-site)",2026-08-27T15:48:08.030Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:1ca04a599f41d8c0,"confidential","Head of Engineering","Kochi, Kerala, India (On-site)",2026-08-27T15:48:08.135Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_f4c28888,"confidential","Head of Engineering","Kochi, Kerala, India (On-site)",2026-08-27T15:48:19.152Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:1c027d2eaea86288,"ablehunt-consulting","VP & Head Engineering | Manufacturing FMCG | Gurugram |","Gurugram, Delhi / NCR, Manesar",2026-08-27T15:57:26.018Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f35f8fd5eb26313e,"tefa-technologies","Vice President - Engineering - FinTech/Payments (10-15 yrs)","Gurugram",2026-08-27T15:57:27.783Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:b5c8bd552d36a07b,"jasper-colin-research","Jasper Colin Research - Vice President - Engineering (15-20 yrs)","Gurugram",2026-08-27T15:57:27.801Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f53835a70144e617,"head-hunters","VP- Engineering","Pune",2026-08-27T15:57:29.659Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:9aa118fdfcfd0b31,"byteridge","VP - Engineering (Remote: India)","Remote",2026-08-27T15:57:31.041Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:65dd25190a5b1770,"ayekart-fintech","SVP / VP of Engineering and Delivery","Mumbai",2026-08-27T15:57:31.175Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ed352afe9f9df12e,"info-edge","AI VP/SVP Engineering","Noida",2026-08-27T15:57:33.242Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:88c9d53226050615,"yes-madam","Yes Madam - Engineering Vice President (10-17 yrs)","Noida",2026-08-27T15:57:33.354Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:afc7b1fafdc0d07a,"digirecruitx","VP of Engineering","Pune",2026-08-27T15:57:34.549Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_49b6173f,"ablehunt-consulting","VP & Head Engineering | Manufacturing FMCG | Gurugram |","Gurugram, Delhi / NCR, Manesar",2026-08-27T15:57:35.190Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:72ccee1ddcdc572c,"digirecruitx","VP of Engineering","Pune",2026-08-27T15:57:36.650Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:6f209ff371232589,"creditpe","VP of Engineering","Thiruvananthapuram",2026-08-27T15:57:36.692Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:932434afd2dc1341,"barclays","Engineering Manager VP","Pune",2026-08-27T15:57:39.379Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4891438bbf1fa31e,"success-pact-consulting","VP of Engineering - Robotics and Physical AI","Bengaluru",2026-08-27T15:57:40.869Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:9d9cdadd62abb8e5,"barclays","Engineering Manager VP","Pune",2026-08-27T15:57:42.360Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4e16861d21999f97,"barclays","VP Engineering","Pune",2026-08-27T15:57:44.478Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:198c7d62a41862af,"barclays","Engineering Manager VP","Pune",2026-08-27T15:57:44.592Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:8bfc77388771e8af,"velsera","VP, Engineering","Pune",2026-08-27T15:57:46.966Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_a25fca61,"tefa-technologies","Vice President - Engineering - FinTech/Payments (10-15 yrs)","Gurugram",2026-08-27T15:57:46.218Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:bed22ecf64c9b08b,"doers-tech","VP of Engineering","Chennai",2026-08-27T15:57:48.472Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2e7e2261005df1e7,"morgan-placement","VP - Engineering and Maintenance","Ahmedabad, Virochan Nagar",2026-08-27T15:57:48.539Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1a59cfc1cb7d9185,"the-modern-dimension","VP Engineering","New Delhi, Bengaluru",2026-08-27T15:57:50.803Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_50f80268,"jasper-colin-research","Jasper Colin Research - Vice President - Engineering (15-20 yrs)","Gurugram",2026-08-27T15:57:59.242Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_d1376756,"head-hunters","VP- Engineering","Pune",2026-08-27T15:58:10.466Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ed7e8fd9,"ayekart-fintech","SVP / VP of Engineering and Delivery","Mumbai",2026-08-27T15:58:18.363Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a7141b9f,"info-edge","AI VP/SVP Engineering","Noida",2026-08-27T15:58:25.299Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_5f77d0fe,"yes-madam","Yes Madam - Engineering Vice President (10-17 yrs)","Noida",2026-08-27T15:58:32.271Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_14f40ede,"byteridge","VP - Engineering (Remote: India)","Remote",2026-08-27T15:58:36.952Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_83c7c92a,"digirecruitx","VP of Engineering","Pune",2026-08-27T15:58:39.243Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_3f7dabb0,"barclays","Engineering Manager VP","Pune",2026-08-27T15:58:46.661Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_889dfbee,"creditpe","VP of Engineering","Thiruvananthapuram",2026-08-27T15:58:46.769Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_c8bdc1cf,"success-pact-consulting","VP of Engineering - Robotics and Physical AI","Bengaluru",2026-08-27T15:58:54.001Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_6f1ca086,"barclays","VP Engineering","Pune",2026-08-27T15:58:55.546Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a722018c,"velsera","VP, Engineering","Pune",2026-08-27T15:59:00.948Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_eea79df0,"morgan-placement","VP - Engineering and Maintenance","Ahmedabad, Virochan Nagar",2026-08-27T16:06:45.455Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_12c1f77e,"the-modern-dimension","VP Engineering","New Delhi, Bengaluru",2026-08-27T16:06:47.904Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_63dc03ba,"doers-tech","VP of Engineering","Chennai",2026-08-27T16:07:26.586Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:9de57415b5a231e6,"people-process-teck","Chief Marketing Officer & BD","Pune",2026-08-27T17:00:19.216Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:532d73d733196ae8,"easemytrip","Chief Marketing Officer","Gurugram",2026-08-27T17:00:19.234Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:bef0e5ca5309db6f,"brick-bolt","Brick&Bolt - Chief Marketing Officer (20-30 yrs)","Bengaluru",2026-08-27T17:00:21.673Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5c458d2881600bd2,"brick-bolt","Brick&Bolt - Chief Marketing Officer (20-30 yrs)","Bengaluru",2026-08-27T17:00:23.339Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:27ca1e1eb999b0e2,"brick-bolt","Brick&Bolt - Chief Marketing Officer (20-30 yrs)","Bengaluru",2026-08-27T17:00:23.358Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f62d6e8ce262c189,"brick-bolt","Brick&Bolt - Chief Marketing Officer (20-30 yrs)","Bengaluru",2026-08-27T17:00:25.536Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2a5958f80d3213cf,"brick-bolt","Brick&Bolt - Chief Marketing Officer (12-16 yrs)","Karnataka, Bangalore",2026-08-27T17:00:27.000Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:b92137373ec61036,"royal-orchid---regenta-hotels","Royal Orchid Hotels - Chief Marketing Officer (10-28 yrs)","Mumbai",2026-08-27T17:00:27.020Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c9a40b15357cb7b0,"tescra","Tescra -  Chief Marketing Officer - SaaS - AI/HR Tech (12-20 yrs)","Bengaluru",2026-08-27T17:00:29.118Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ca219200a1d4cc80,"navin-housing-properties","Navin's -  Chief Marketing Officer (20-25 yrs)","Chennai",2026-08-27T17:00:30.389Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:eeb3ec729ad369c6,"tescra","Tescra -  Chief Marketing Officer - SaaS - AI/HR Tech (12-20 yrs)","Bengaluru",2026-08-27T17:00:30.405Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:acce4e3023feb430,"fusion-business-solutions","Chief Marketing Officer","Udaipur",2026-08-27T17:00:33.302Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f70f4d0ad230bc47,"people-alliance-workforce","Chief Marketing Officer/ General Manager -S&M Cement Building Industry","Guwahati, Kolkata, Jabalpur",2026-08-27T17:00:34.575Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:22c17ebec3d3f0e0,"moris-media","Chief Marketing Officer (CMO)","Noida",2026-08-27T17:00:36.775Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:306f1bf7bc1f8803,"kreon-financial-services","Chief Marketing Officer","Chennai",2026-08-27T17:00:44.574Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_f68c5f5c,"brick-bolt","Brick&Bolt - Chief Marketing Officer (20-30 yrs)","Bengaluru",2026-08-27T17:01:01.925Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_40a74497,"brick-bolt","Brick&Bolt - Chief Marketing Officer (12-16 yrs)","Karnataka, Bangalore",2026-08-27T17:01:11.808Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_d5441d80,"c_bba4d296","Royal Orchid Hotels - Chief Marketing Officer (10-28 yrs)","Mumbai",2026-08-27T17:01:27.499Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_23d1f15f,"tescra","Tescra -  Chief Marketing Officer - SaaS - AI/HR Tech (12-20 yrs)","Bengaluru",2026-08-27T17:01:37.827Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_e86b4fbb,"navin-housing-properties","Navin's -  Chief Marketing Officer (20-25 yrs)","Chennai",2026-08-27T17:01:55.432Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:af90f9c619d48786,"the-grand-group","Chief Growth Officer - Hospitality Industry (20-25 yrs)","Gurugram",2026-08-27T17:02:05.723Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7898067a49aae688,"indigo","Director of Digital Marketing - IndiGo Airlines","Gurugram",2026-08-27T17:02:05.750Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ded87e4c41600351,"3i-infotech","Senior Vice President - Chief Growth Officer (20-25 yrs)","Mumbai, Navi Mumbai",2026-08-27T17:02:08.775Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c8ad472fad89931d,"resustainability","Regional Head – Marketing & Business Development (North)","Gurugram, Delhi / NCR",2026-08-27T17:02:10.660Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5d3020a614c2027c,"artemis-medicare","Chief Research & Business Officer","Gurugram",2026-08-27T17:02:13.123Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:249b88e688a192a4,"v2-retail","Chief Information Officer (CIO)","Gurugram",2026-08-27T17:02:13.201Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2b503fef04f2754a,"caterpillar-signs","Group Bayport - Business Head - Signs & Display (15-20 yrs)","Gurugram",2026-08-27T17:02:15.502Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:07e6c93de8b7d7cc,"head-hunters","Chief Operating Officer","Hybrid - Jaipur",2026-08-27T17:02:15.591Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_7a6c7f9f,"people-alliance-workforce","Chief Marketing Officer/ General Manager -S&M Cement Building Industry","Guwahati, Kolkata, Jabalpur",2026-08-27T17:02:13.477Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:4b066f9e8828568b,"kg-foundations","Chief Operating Offcer","Chennai(Mylapore)",2026-08-27T17:02:16.637Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:87dc3b1d78a327cf,"xfactor-hiring","Chief Technology Officer","Mumbai, New Delhi, Bengaluru",2026-08-27T17:02:19.543Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:203010a26fcafdee,"tecnovisions","VP ( Brand Strategy & Creative Intelligence)","Gurugram",2026-08-27T17:02:19.640Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:3d42251b8f48cf52,"mantras2success-consultants","Chief Operating Officer","Ahmedabad",2026-08-27T17:02:20.880Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:8237fc72a4ea8005,"kcc-buildcon","Vice President Projects","Gurugram(Sector 67)",2026-08-27T17:02:24.192Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:475f62958ca40f3f,"policybazaar","Policybazaar - Head - Product (5-12 yrs)","Gurugram",2026-08-27T17:02:24.207Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5179e7aa7f17599d,"corenza","Vice President - Finance - CA (18-20 yrs)","Gurugram",2026-08-27T17:02:26.187Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5bb5056e2ddd0444,"athena-executive-search-and-consulting","Chief Human Resource Officer","Gurugram",2026-08-27T17:02:27.210Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:28cd35838f8f3b59,"fact-personnel","CFO - Please apply only if You meet the criteria: Respect your time.","Mumbai Suburban, Navi Mumbai, Mumbai (All Areas)",2026-08-27T17:02:27.682Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:86133a11972dff17,"frobin-technologies","AGM or DGM Channel Sales and Distribution","Chennai",2026-08-27T17:02:29.705Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_809a3e4c,"the-grand-group","Chief Growth Officer - Hospitality Industry (20-25 yrs)","Gurugram",2026-08-27T17:02:29.165Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:34bf7088d1a43467,"eversub","HR Transformation & Operations","Gurugram",2026-08-27T17:02:30.617Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_bd8ba157,"indigo","Director of Digital Marketing - IndiGo Airlines","Gurugram",2026-08-27T17:02:46.186Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+indeed:bd303c3b32161df1,"careerbricks-learning-solutions","Head of E-Commerce","Unknown, Haryana",2026-08-27T17:02:56.704Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:cb6cce6b30b99706,"sfj-business-solutions","Senior Marketing Manager","Remote",2026-08-27T17:03:04.999Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_e9acf419,"3i-infotech","Senior Vice President - Chief Growth Officer (20-25 yrs)","Mumbai, Navi Mumbai",2026-08-27T17:03:07.058Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+indeed:b8c29f443d8a7170,"hp","Head of Marketing Strategy, Planning and Operations","Gurugram, Haryana",2026-08-27T17:03:16.949Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:e5f12f2bec4744e4,"saaki-argus---averil-consulting","Head of Marketing, Branding","Chennai, Tamil Nadu",2026-08-27T17:03:35.373Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:3e972f3841bb600a,"sarthee-consultancy","Chief Marketing And Sales Officer","Gurugram",2026-08-27T17:03:38.811Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e92c9f07b2730411,"salmon-commerce","AVP - Strategy & Planning","Gurugram",2026-08-27T17:03:40.381Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:bc21f7f59d7cf621,"urban-company--uc-","Senior Manager- Business Finance","Gurugram",2026-08-27T17:03:40.396Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:aa30e3d88a73ec37,"sks-enterpprises","Chief Revenue Officer","Gurugram",2026-08-27T17:03:48.005Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:8c047b413ca62b60,"saaki-argus---averil-consulting","Chief Manager - Performance Marketing","Chennai, Tamil Nadu",2026-08-27T17:03:48.034Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:eaaa91f871e1830d,"iron-mountain","Enterprise Sales Account Manager","Gurugram",2026-08-27T17:03:50.672Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:8fae4df4776a86d2,"accenture","ACN S&C-GN-Strategy-Corporate Strategy & Growth - Manager","Gurugram",2026-08-27T17:03:50.751Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:aca35f0b25229192,"losung360","Regional Sales Head | Enterprise Sales , Warehousing & Transportation","Gurugram, Chennai, Mumbai (All Areas)",2026-08-27T17:03:50.914Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_80b099fd,"artemis-medicare","Chief Research & Business Officer","Gurugram",2026-08-27T17:03:42.308Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:b15c77266bd7df3b,"sentiss-pharma","Sentiss Pharma - Deputy General Manager/Senior Manager - Legal & Company Secretary (10-12 yrs)","Gurugram",2026-08-27T17:03:54.050Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f23a2056bfa2fa51,"persol","General Manager - After Sales Service ( Commercial Vehicle Dealer )","Chennai",2026-08-27T17:03:54.147Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c550ee16ed1ec717,"xpertreach","Head of Strategic Alliances","Gurugram",2026-08-27T17:04:07.133Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:ace875556ca39867,"eastwestpharma","Vice President - Marketing","India",2026-08-27T17:04:07.114Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:cf36ea08ed6c64b2,"emgage","Sr. Marketing Manager","Ahmedabad, Gujarat",2026-08-27T17:04:09.983Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_869bd85,"caterpillar-signs","Group Bayport - Business Head - Signs & Display (15-20 yrs)","Gurugram",2026-08-27T17:04:16.840Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+indeed:2849c465335469ef,"medorah-meditek-pvt--ltd","Product Manager","Gurugram, Haryana",2026-08-27T17:04:22.172Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:bccbceddd1548c58,"skill-lync","Brand Manager","Unknown, Karnataka",2026-08-27T17:04:35.934Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_5535d86e,"head-hunters","Chief Operating Officer","Hybrid - Jaipur",2026-08-27T17:04:46.332Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+indeed:2bd81afeb410774b,"benovymed-healthcare","Chief Marketing Officer -Global","Delhi, Delhi",2026-08-27T17:04:53.209Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:146e696e2036919c,"screens-player","Chief Marketing Officer (CMO)","Andheri West, Mumbai, Maharashtra",2026-08-27T17:05:02.169Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_77520efc,"kg-foundations","Chief Operating Offcer","Chennai(Mylapore)",2026-08-27T17:05:04.404Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+indeed:b84cde0dfb952515,"stucred","Chief Marketing Officer","India",2026-08-27T17:05:15.040Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:166a5b5aae951a95,"aelius-consultants-delhi","Chief Human Resource Officer","Gurugram, Delhi / NCR, Noida",2026-08-27T17:05:16.675Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:3a71253eea7eb193,"pms-consulting","Chief Technology Officer - Digital Lending (15-28 yrs)","Gurugram",2026-08-27T17:05:16.820Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:317b26261f01586e,"laqshya-media-group","Laqshya Media Group -  Chief Business Officer - Digital (15-20 yrs)","Mumbai",2026-08-27T17:05:17.898Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:972f0d4f908e4f1c,"career-usher","Deputy General Manager  - Learning & Organization Development - Manufacturing (12-20 yrs)","Gurugram",2026-08-27T17:05:19.966Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0e6c26523bda29da,"career-usher","Deputy General Manager  - Learning & Organization Development - Manufacturing (12-20 yrs)","Gurugram",2026-08-27T17:05:21.717Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:44cb18f9c7d1ccd1,"barclays","AVP Regulatory Assurance","Gurugram",2026-08-27T17:05:21.818Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:1aa00e537af6587b,"vulcury-venture-studio-and-advisors","Director of Growth (India-Based)","Remote",2026-08-27T17:05:28.410Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_633730e,"c_46c8f856","Chief Operating Officer","Ahmedabad",2026-08-27T17:05:27.834Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+indeed:eeefe01df25abf0c,"vulcury-venture-studio-and-advisors","Director of Growth (India-Based)","Remote",2026-08-27T17:05:41.075Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:b7608dac7df079d7,"metamorph","Head of Growth and GTM Manager | HealthTech | 4 to  yrs | Bengaluru","Bengaluru, Karnataka, India (On-site)",2026-08-27T17:05:42.801Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:5ffd478d4d9db42d,"recex-co","Vice President – Digital Marketing","Navi Mumbai, Maharashtra, India (On-site)",2026-08-27T17:05:42.840Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:42e4700ed8b222fd,"puffy","Senior Director - Performance Marketing (Remote)","Delhi, India (Remote)",2026-08-27T17:05:42.881Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:de0c31b156252bd5,"gmr-group","AGM - Marketing -","Bengaluru, Karnataka, India (On-site)",2026-08-27T17:05:47.871Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:9a328e9a5c487ecb,"nians","Marketing Director","India (Remote)",2026-08-27T17:05:48.002Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:bd26f411f7608ee2,"triptease","Market Director / Senior Market Director, India Subcontinent","Remote in India",2026-08-27T17:05:59.750Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_da999ddd,"policybazaar","Policybazaar - Head - Product (5-12 yrs)","Gurugram",2026-08-27T17:06:27.159Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_f5dc64c9,"corenza","Vice President - Finance - CA (18-20 yrs)","Gurugram",2026-08-27T17:06:44.041Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ff3f8de7,"athena-executive-search-and-consulting","Chief Human Resource Officer","Gurugram",2026-08-27T17:06:56.395Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_2a29b51b,"fact-personnel","CFO - Please apply only if You meet the criteria: Respect your time.","Mumbai Suburban, Navi Mumbai, Mumbai (All Areas)",2026-08-27T17:07:07.472Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:5ca3258554fe3c72,"flipspaces","Associate Vice President Operations","Hyderabad, Pune, Mumbai (All Areas)",2026-08-27T17:07:11.854Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:08b9daa1762fd7dc,"acme-cleantech-solutions","Integrated Marketing Lead","Gurugram",2026-08-27T17:07:11.876Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:78d3c31acfdd25c3,"mindshare","Vice President, Commerce","Mumbai",2026-08-27T17:07:16.305Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:fefcdd83ee565748,"plastemartjobs","Sales Director","Mumbai",2026-08-27T17:07:18.247Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:3152ef6da0acc38c,"nielsen-sports","Lead Product Manager","Bengaluru",2026-08-27T17:07:18.265Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:31a17d699444142a,"coindcx","Senior Manager /AD Talent Acquisition (Leadership)","Bengaluru",2026-08-27T17:07:21.419Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:627fed0684017e34,"ana-associates","VP/SVP/Director Corporate Sales EB/NON EB Insurance Broking","Delhi / NCR, Hyderabad, Mumbai (All Areas)",2026-08-27T17:07:21.518Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0b733ddff4cb816b,"saviynt","Sales Director","Mumbai",2026-08-27T17:07:22.466Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:06289e91009a8903,"casagrand","SVP Fund Raising","Chennai",2026-08-27T17:07:25.888Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_f205b43c,"frobin-technologies","AGM or DGM Channel Sales and Distribution","Chennai",2026-08-27T17:07:25.657Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:f137e811f4643bf5,"indifi-technologies","Indifi Technologies - Associate Director - Business Development (3-6 yrs)","Gurugram",2026-08-27T17:07:27.659Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ef090a1fd5a83d78,"indifi-technologies","Indifi Technologies - Associate Director - Business Development (3-6 yrs)","Gurugram",2026-08-27T17:07:27.676Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5acfb16310b99cd8,"aspyra-hr-services","AVP Data analytics (banking domain) - US MNC (Analytics)","Hybrid - Gurugram, Bengaluru",2026-08-27T17:07:29.798Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:09ba4780f9449884,"true-credits","True Credits - Head - Risk (10-16 yrs)","Gurugram",2026-08-27T17:07:30.086Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c51a93c6b98ee154,"true-credits","True Credits - Head - Risk (10-16 yrs)","Gurugram",2026-08-27T17:07:31.223Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f482b1a60837fddd,"aspyra-hr-services","AVP Data analytics /Business Analytics - US MNC (Analytics)","Hybrid - Gurugram, Bengaluru",2026-08-27T17:07:32.321Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7c1977cdf204d3df,"ana-associates","Corporate Sales AVP/VP/SVP EB/NON EB Insurance Broking","Delhi / NCR, Pune, Mumbai (All Areas)",2026-08-27T17:07:33.448Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0005654be7a81f4e,"ana-associates","Corporate Sales AVP/VP/SVP EB/NON EB Insurance Broking","Delhi / NCR, Pune, Mumbai (All Areas)",2026-08-27T17:07:35.224Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:de13a964c8ed660d,"matrix-hr-technologies","Group Manager / SVP Fundraising - Industrial","Chennai",2026-08-27T17:07:41.314Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:67e15590b4464f40,"venus-remedies--vrl-","Production Head- Injectable Production","Baddi",2026-08-27T17:07:43.639Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_b7f173fc,"eversub","HR Transformation & Operations","Gurugram",2026-08-27T17:07:50.970Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_49029b83,"c_5bc3569f","Senior Manager- Business Finance","Gurugram",2026-08-27T17:08:22.165Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_4309ef6b,"iron-mountain","Enterprise Sales Account Manager","Gurugram",2026-08-27T17:08:32.079Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_234fd9da,"c_e4b93eb9","ACN S&C-GN-Strategy-Corporate Strategy & Growth - Manager","Gurugram",2026-08-27T17:08:44.589Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:7fb3ba0b07d34e92,"golden-opportunities","Practice Lead (Capital Markets Operations & Transformation) AGM / AVP","Mumbai, Chennai, Bengaluru",2026-08-27T17:08:50.584Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:377e2800a85b400b,"black-turtle","Vice President - Credit Risk & Market Risk Regulatory & Transformation (12-20 yrs)","Mumbai, Bengaluru",2026-08-27T17:08:52.441Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:06cc2c05b467a88b,"black-turtle","Vice President - Credit Risk & Market Risk Regulatory & Transformation (12-20 yrs)","Mumbai, Bengaluru",2026-08-27T17:08:52.472Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4d27762bc3815ec1,"black-turtle","Vice President - Credit Risk & Market Risk Regulatory & Transformation (12-20 yrs)","Mumbai, Bengaluru",2026-08-27T17:08:55.209Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:20c572bc8af87409,"black-turtle","Vice President - Credit Risk & Market Risk Regulatory & Transformation (12-20 yrs)","Mumbai, Bengaluru",2026-08-27T17:08:56.505Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0daeec04d90668af,"capgemini","AEP Architect","Gurugram, Kolkata, Bengaluru",2026-08-27T17:08:56.519Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7476703b51d9527d,"barclays","AVP - PC Central Controls","Pune, Chennai",2026-08-27T17:08:58.860Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:3d500659a0044823,"tavant","Lead Salesforce Data Cloud QA Engineer","Hybrid - Hyderabad, Pune, Bengaluru",2026-08-27T17:08:58.950Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:b76213485c840928,"aveva","Sales Account Manager - Life Sciences","Mumbai, Hyderabad, Bengaluru",2026-08-27T17:08:59.982Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_848686b9,"sentiss-pharma","Sentiss Pharma - Deputy General Manager/Senior Manager - Legal & Company Secretary (10-12 yrs)","Gurugram",2026-08-27T17:08:58.218Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:92d1c22e59ec97ae,"optimum-solutions","Project Manager - Wealth Management","Hybrid - Pune, Chennai",2026-08-27T17:09:02.541Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:51ca2b3dd19e0e67,"crisil","Full Stack Engineer (Python)","Gurugram, Mumbai, Pune",2026-08-27T17:09:02.564Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:802f30cf9bd167f2,"everest-business-advisory-india","Everest Group- Research & Advisory - Practice Director -HLS","Hybrid - Gurugram(Sector 47), Bengaluru(Manayata Tech Park)",2026-08-27T17:09:05.068Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:311da39701c8e457,"vconstruct","Sr Technical Manager - Steel Detailing","Pune, Chennai",2026-08-27T17:09:11.188Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:fdd9e8ce815b62fe,"symbiosis-management-consultants","State Head","Delhi / NCR, Mumbai(Maharashtra Nagar), Chandigarh",2026-08-27T17:09:11.226Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:b6c6a922ad9b8dfa,"sigma-allied-services","Opportunity_Gen AI Manager","Gurugram, Bengaluru, Mumbai (All Areas)",2026-08-27T17:09:12.216Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4f941cfeecc34ee6,"tech-mahindra","Netcool Architect","Hyderabad, Pune",2026-08-27T17:09:14.942Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:198fc15b48d5f36b,"xceedance","Lead Business Analyst (BIA Platform)","Hybrid - Delhi / NCR, Pune, Bengaluru",2026-08-27T17:09:14.967Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:dcdde2047cc60988,"s-p-global-market-intelligence","Senior Data Engineer","Gurugram, Hyderabad",2026-08-27T17:09:16.845Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2a1e59f5c4cee428,"primesoft-solutions","BDM -  Digital Transformation ( Custom web & mobile apps )","Mumbai, Hyderabad, Bengaluru",2026-08-27T17:09:17.841Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:485b19347db0c0b4,"gspann","Presales - Solutions & Offering (IT Services)","Delhi / NCR, Hyderabad, Pune",2026-08-27T17:09:18.025Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_4e4ba140,"persol","General Manager - After Sales Service ( Commercial Vehicle Dealer )","Chennai",2026-08-27T17:09:15.638Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_bec67912,"xpertreach","Head of Strategic Alliances","Gurugram",2026-08-27T17:09:34.601Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ce0432b0,"skill-lync","Brand Manager","Unknown, Karnataka",2026-08-27T17:09:47.147Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_8f9b88e2,"screens-player","Chief Marketing Officer (CMO)","Andheri West, Mumbai, Maharashtra",2026-08-27T17:10:00.084Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a5482f4b,"stucred","Chief Marketing Officer","India",2026-08-27T17:10:10.612Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ffbdfddd,"aelius-consultants-delhi","Chief Human Resource Officer","Gurugram, Delhi / NCR, Noida",2026-08-27T17:10:20.288Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:dc0682ac53011aa1,"ciel-hr","Chief of Office - Founders Office","Coimbatore",2026-08-27T17:10:24.273Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:aae12a861191da67,"kantar","Vice President- Consumer Insights","Gurugram",2026-08-27T17:10:24.296Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c27ec203a20d30ff,"unacademy","Assistant Vice President, Growth","Bengaluru",2026-08-27T17:10:24.310Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:72739627a4e30986,"pylon-management-consulting","Vice President - Wealth Management - Bank (16-25 yrs)","Gurugram",2026-08-27T17:10:28.223Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0be9901b7af4e778,"pylon-management-consulting","Vice President - Wealth Management - Bank (16-20 yrs)","Gurugram",2026-08-27T17:10:28.240Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:de47a3d45da856d0,"impact-investment-exchange","Associate Vice President, Strategic Initiatives - India","Mumbai",2026-08-27T17:10:31.100Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4967a9a3cc8b095e,"pylon-management-consulting","Vice President - Wealth Management - Bank (16-20 yrs)","Gurugram",2026-08-27T17:10:31.221Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_8b69c225,"pms-consulting","Chief Technology Officer - Digital Lending (15-28 yrs)","Gurugram",2026-08-27T17:10:29.700Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:9e699e7226440ef9,"barclays","Program Lead - India Strategy Private Bank","Mumbai",2026-08-27T17:10:33.845Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f876be1e93b1a168,"randstad","Director - Finance Business Partner","Bengaluru",2026-08-27T17:10:33.885Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:70e044efa41db425,"pylon-management-consulting","Group Operations Manager - Bank (18-28 yrs)","Gurugram",2026-08-27T17:10:37.668Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c8c0bd2b0a646da4,"pylon-management-consulting","Group Operations Manager - Bank (18-28 yrs)","Gurugram",2026-08-27T17:10:37.755Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:12ececcd806ee48a,"pylon-management-consulting","Group Operations Manager - Bank (18-28 yrs)","Gurugram",2026-08-27T17:10:53.796Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:d58a7d1165ea0509,"uruvyacas-research-and-technological-solutions-pvt---","Chief Operating Officer (COO)","Remote",2026-08-27T17:10:53.927Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a796a79390ac62ff,"pylon-management-consulting","Group Operations Manager - Bank (18-28 yrs)","Gurugram",2026-08-27T17:10:53.943Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:a5ede76adcf7fe12,"saaki-argus---averil-consulting","VP/SVP - India Sales","Mumbai, Maharashtra",2026-08-27T17:10:53.966Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:fd9d2eb6359f1316,"schoolapply","Partnerships Acquisitions Manager, India","Remote in Delhi",2026-08-27T17:10:53.985Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:212d47b248e2169a,"kaleidofin","Kaleidofin - Senior Manager/Assistant Vice President - Debt Capital Markets (5-9 yrs)","Mumbai, Chennai, Bengaluru",2026-08-27T17:10:58.113Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:22c154b12739c234,"kaleidofin","Kaleidofin - Senior Manager/Assistant Vice President - Debt Capital Markets (5-9 yrs)","Mumbai, Chennai, Bengaluru",2026-08-27T17:10:59.706Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:dd75ab313ea214ce,"kaleidofin","Kaleidofin - Senior Manager/Assistant Vice President - Debt Capital Markets (5-9 yrs)","Mumbai, Chennai, Bengaluru",2026-08-27T17:10:59.725Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_ea23c558,"laqshya-media-group","Laqshya Media Group -  Chief Business Officer - Digital (15-20 yrs)","Mumbai",2026-08-27T17:10:54.743Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:22f6d3baf11fb599,"kkr-india-asset-finance","Operations - Treasury Operations - AVP (Payments & Security)","Gurugram",2026-08-27T17:11:03.373Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:8c003726968fe99f,"hire-resources","General Manager - Finance & Commercial, Beverage Industry, Mohali","Ludhiana, Mohali, Panchkula",2026-08-27T17:11:03.470Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:deebc4ba1c8203c5,"kaleidofin","Kaleidofin - Senior Manager/Assistant Vice President - Debt Capital Markets (5-9 yrs)","Mumbai, Chennai, Bengaluru",2026-08-27T17:11:03.490Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:953a756050d43968,"easebuzz-pvt-ltd","Vice President - Business Development (West)","Mumbai, Maharashtra",2026-08-27T17:11:21.541Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:060023fac16237b4,"easebuzz-pvt-ltd","Senior Vice President - Business Development (North)","Delhi",2026-08-27T17:11:21.571Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:c1f321764a32911a,"isha-one-coach-consult","VICE PRESIDENT","Santacruz, Mumbai, Maharashtra",2026-08-27T17:11:23.846Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:3f3c0d79ddd485a0,"blockfills","Vice President of Product Development","Remote",2026-08-27T17:11:25.550Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:a2957ed693dfac92,"benovymed-healthcare","VP -Business Operation-India /Global","Delhi, Delhi",2026-08-27T17:11:27.384Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:fbc17f52bca02354,"tracxn-technologies","AVP Business Strategy & Operations","Bengaluru, Karnataka",2026-08-27T17:11:29.276Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:26ddc90359fe084d,"xpert-times","Chief Operating Officer","Delhi, Delhi",2026-08-27T17:11:31.003Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:5a4a694b44d9047e,"mos-global-","Vice President","Chennai, Tamil Nadu",2026-08-27T17:11:32.642Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:2331691f14bb577f,"experian","Director – Global Innovation Centre Operations & Strategy","Hybrid work in Hyderabad, Telangana",2026-08-27T17:11:34.512Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_a1bce9e1,"career-usher","Deputy General Manager  - Learning & Organization Development - Manufacturing (12-20 yrs)","Gurugram",2026-08-27T17:11:24.101Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+indeed:7d52c99a76da17a7,"bharatiya-global-infomedia","Chief Operating Officer (CEO)","Noida, Uttar Pradesh",2026-08-27T17:11:49.408Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_cde5149a,"flipspaces","Associate Vice President Operations","Hyderabad, Pune, Mumbai (All Areas)",2026-08-27T17:12:04.025Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+linkedin:76a3e57ce3d4658d,"deloitte","Consulting-Marketing Ops-Operations Vice President","Hyderabad, Telangana, India (On-site)",2026-08-27T17:12:19.166Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:b3b285f142731283,"clinikally--yc-s22-","VP of Growth","Gurugram, Haryana, India (On-site)",2026-08-27T17:12:19.189Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:b863d2eb51ce62de,"one97-communications-limited","Marketing Director - Paytm(Agentic AI)","Noida, Uttar Pradesh, India (On-site)",2026-08-27T17:12:19.228Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:5e87de21897e6da7,"lascade","Head of Growth","Kochi, Kerala, India (On-site)",2026-08-27T17:12:24.282Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:f47645cfe9666c11,"pump-dynamics","Senior Director of Marketing-SAAS","Chennai, Tamil Nadu, India (On-site)",2026-08-27T17:12:25.799Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:cbc6ac625ada0f36,"recex-co","Vice President – Digital Marketing","Navi Mumbai, Maharashtra, India (On-site)",2026-08-27T17:12:25.817Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_3d124e58,"acme-cleantech-solutions","Integrated Marketing Lead","Gurugram",2026-08-27T17:12:24.324Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+linkedin:00e81991fbab2d6c,"puffy","Senior Director - Performance Marketing (Remote)","Mumbai, Maharashtra, India (Remote)",2026-08-27T17:12:29.477Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ebadb8403cbbbf3c,"the-fourth-wall-noida","Head of marketing","Noida",2026-08-27T17:12:29.503Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:3a15bcdcd24ba4c4,"growthschool","Head of Marketing","Bengaluru",2026-08-27T17:12:29.517Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:13ba68b55e1b15a1,"the-indus-valley","The Indus Valley - Vice President - Marketing & Growth (15-20 yrs)","Bengaluru",2026-08-27T17:12:32.904Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:028eba73a80112f1,"pepper","Head of GTM - US","Mumbai, Maharashtra, India (On-site)",2026-08-27T17:12:32.905Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:ce075fde4b898041,"myntra","Deputy Director - Brand Marketing","Bengaluru, Karnataka, India (On-site)",2026-08-27T17:12:32.907Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:44ce2f00dddea5c1,"the-indus-valley","The Indus Valley - Vice President - Marketing (15-20 yrs)","Bengaluru",2026-08-27T17:12:36.503Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:56122e691983b5c7,"kefilo","Chief marketing officer (Part-time, Equity only)","India (Remote)",2026-08-27T17:12:40.763Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f4ba774f600f87d0,"acz-global","Marketing Head","Bengaluru",2026-08-27T17:12:40.771Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ef41467a2465aec1,"imagicaaworld-entertainment-limited","Head of Marketing","Pune",2026-08-27T17:12:40.879Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:62b5c99cceb6f16d,"unosecur","Head of Marketing","Bengaluru, Karnataka, India (On-site)",2026-08-27T17:12:40.935Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:89b0c2071f1f77f3,"talentiser","Head-D2C - Gurgaon || CTC Upto 35 LPA || fast-growing D2C Beauty & Personal Care brand","Gurugram, Haryana, India (On-site)",2026-08-27T17:12:45.919Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:991311c80f265aad,"rmx-industries","Marketing Head","Jalandhar",2026-08-27T17:12:45.991Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_e0984448,"plastemartjobs","Sales Director","Mumbai",2026-08-27T17:12:44.500Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+linkedin:17e1efa8aa540dd1,"upraisal-people-productivity-performance---best-executive-search-firm","Chief Marketing Officer","Mumbai Metropolitan Region (On-site)",2026-08-27T17:12:48.190Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0240c1dc982e5ec2,"plastemartjobs","Vice President -Marketing","Mumbai",2026-08-27T17:12:48.192Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:730883bf5b6a5f6b,"loginext","Vice President - Marketing","Mumbai",2026-08-27T17:12:48.291Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:0b70b2c7a8d207a1,"netcom-learning-","AVP - Marketing Operation","Hyderabad, Telangana, India (On-site)",2026-08-27T17:12:48.313Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:b1f31d672a2c2acc,"ns-global-corporation","Associate Vice President Market Intelligence & Research","Bengaluru",2026-08-27T17:12:52.185Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:b1faa7337317d796,"piramal-pharma-ltd","Chief Manager - Performance Marketing","Mumbai, Maharashtra, India (On-site)",2026-08-27T17:12:54.049Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:52d131de41704644,"verona-matchmaking","Head of Growth & Marketing","Gurugram, Haryana, India (On-site)",2026-08-27T17:12:54.113Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:60f359892e41d34c,"nahar-group","VP-Marketing","Mumbai",2026-08-27T17:12:54.130Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1bfc5ea7d555b673,"amor-management-consultants","Marketing Head","Kozhikode",2026-08-27T17:12:55.157Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a46482672a88272b,"dr-b-lal-clinical-laboratory","Head - Marketing & Growth","Jaipur(Malviya Nagar)",2026-08-27T17:13:01.284Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:319696732ede660e,"aspire-higher-hr-solutions","Marketing Head","Chennai",2026-08-27T17:13:01.365Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7be777afe75a7d6c,"mcube-placements","Marketing Head","Ghaziabad",2026-08-27T17:13:02.431Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:98c1f1ff96bb8ea0,"growel-softech","Vice President/Head - Marketing - Boiler Manufacturing Firm (20-25 yrs)","Mumbai",2026-08-27T17:13:05.373Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:008dc10b12309c8f,"crisil","Assistant Vice President Markets","Mumbai",2026-08-27T17:13:05.517Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4c42e482a5c3520b,"consolidated","Head Marketing","Kochi, Mumbai, Chennai, Coimbatore, Bengaluru",2026-08-27T17:13:07.862Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2507adde0ef0c925,"square-solutions","Head Marketing","Noida",2026-08-27T17:13:09.035Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_d1753c10,"nielsen-sports","Lead Product Manager","Bengaluru",2026-08-27T17:13:04.051Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_9d3686bf,"c_d9bee4d1","Senior Manager /AD Talent Acquisition (Leadership)","Bengaluru",2026-08-27T17:13:21.882Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_4f92d2c9,"ana-associates","VP/SVP/Director Corporate Sales EB/NON EB Insurance Broking","Delhi / NCR, Hyderabad, Mumbai (All Areas)",2026-08-27T17:13:35.957Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_1a377bdf,"saviynt","Sales Director","Mumbai",2026-08-27T17:13:50.086Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_97638eba,"casagrand","SVP Fund Raising","Chennai",2026-08-27T17:14:06.101Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:667bd92813713884,"people-impact","Vice President","Bengaluru",2026-08-27T17:14:14.204Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a4de36418e4b8220,"quadrangle","Vice President","Bengaluru",2026-08-27T17:14:14.236Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:b115d8f4bda148a8,"korra-worldwide-advertising","Vice President - Growth and Strategy","Gurugram",2026-08-27T17:14:17.187Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:42cd4aa44902f23a,"srmb-srijan","VICE PRESIDENT","Kolkata",2026-08-27T17:14:17.329Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:29f4508d79d904cf,"flipspaces","Flipspaces - Assistant Vice President - Growth (15-20 yrs)","Mumbai",2026-08-27T17:14:20.316Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0bdb2b8bab20b294,"flipspaces","Flipspaces - Assistant Vice President - Growth (15-20 yrs)","Mumbai",2026-08-27T17:14:23.392Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5109992ba70f9a75,"flipspaces","Flipspaces - Assistant Vice President - Growth (15-20 yrs)","Mumbai",2026-08-27T17:14:23.405Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4cf037e0254b3635,"flipspaces","Flipspaces - Assistant Vice President - Growth (15-20 yrs)","Mumbai",2026-08-27T17:14:27.252Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:da23fae6e506217a,"flipspaces","Flipspaces - Assistant Vice President - Growth (15-20 yrs)","Mumbai",2026-08-27T17:14:28.816Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:16130aa28e29285e,"flipspaces","Flipspaces - Assistant Vice President - Growth (15-20 yrs)","Mumbai",2026-08-27T17:14:28.825Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:78f56ee691e38d14,"flipspaces","Flipspaces - Assistant Vice President - Growth (15-20 yrs)","Mumbai",2026-08-27T17:14:30.879Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a19e2b2e825cd2df,"annexmed","Vice President","Kolkata, Mumbai, New Delhi, Hyderabad, Pune, Chennai, Bengaluru",2026-08-27T17:14:30.962Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:743fa6d6adffb660,"paytm","Paytm - Associate Vice President - Growth Management - IIM/ISB/MDI/FMS (5-10 yrs)","Noida",2026-08-27T17:14:32.057Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:98ad6eac4bcd67aa,"ethnus","Vice President Fundraising Ethnus Foundation","Bengaluru",2026-08-27T17:14:34.139Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:b8f56820b95d3b0f,"ibridge-techsoft","Vice President - Contingent Workforce Management","Remote",2026-08-27T17:14:34.225Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:d4a2c9a5e372cb6f,"pss-global","Vice President - Fundraising","Mumbai",2026-08-27T17:14:36.352Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_4541c270,"indifi-technologies","Indifi Technologies - Associate Director - Business Development (3-6 yrs)","Gurugram",2026-08-27T17:14:37.020Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_60a7d2ad,"aspyra-hr-services","AVP Data analytics (banking domain) - US MNC (Analytics)","Hybrid - Gurugram, Bengaluru",2026-08-27T17:14:50.873Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_5a95a76b,"true-credits","True Credits - Head - Risk (10-16 yrs)","Gurugram",2026-08-27T17:15:05.397Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+indeed:5d0cd93e88495f9d,"cialfo","Vice President, Global Growth and Marketing","Delhi, Delhi",2026-08-27T17:15:11.004Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:841ee7ce571d01d3,"oliver-agency---apac","Head of Growth - India","Mumbai, Maharashtra",2026-08-27T17:15:12.821Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:b181e66a6c5d735e,"rgb-web-tech","VP Director","Chandigarh",2026-08-27T17:15:14.804Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:03f71af5d18495dd,"electricpe","Head of Strategic Initiatives","Bengaluru, Karnataka",2026-08-27T17:15:16.393Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:da79986b10d2b9fd,"rgb-web-tech","Chief Operating Officer","Chandigarh",2026-08-27T17:15:18.234Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:6408d4b903ecdec5,"shopse-digital-finance","Senior Manager / Associate Director - Growth","Mumbai, Maharashtra",2026-08-27T17:15:34.352Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:474c8cc4abd59431,"bridge-et-al-","Head of Operations","Mumbai, Maharashtra",2026-08-27T17:15:36.069Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:ebdad068fcd413e8,"zycus","Vice President of Global Business Development","Mumbai, Maharashtra",2026-08-27T17:15:37.890Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:f3456c1bac0f19f5,"kp-groups","Vice President","Surat, Gujarat",2026-08-27T17:15:40.365Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:11fb90ddb0f8542d,"loop","Director of Strategy & Operations","Bengaluru, Karnataka",2026-08-27T17:15:43.841Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:2d8207325ce64fd9,"iix-global","Associate Vice President, Strategic Initiatives - India","Mumbai, Maharashtra",2026-08-27T17:16:13.552Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:51d634f694daa93c,"board-match-up","Chief Executive Officer","Mumbai, Maharashtra",2026-08-27T17:16:13.567Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:10f214bad1175d0d,"aivar-innovations","Head of Partnerships - India","Bengaluru, Karnataka",2026-08-27T17:16:19.191Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a2abcb88ea66e940,"spencer-n-hills-consulting","Assistant Vice President Digital Transformation","Noida",2026-08-27T17:16:22.481Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a893ff320a52d377,"forward","Deputy Vice President - Digital Partnership","Mumbai, Bengaluru",2026-08-27T17:16:22.559Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e386da46de539535,"dbs-bank","Assistant Vice President, Digital Platform Speciliast","Mumbai",2026-08-27T17:16:24.879Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c06dfb5d50c70828,"velocitai-digital","Vice President (VP) Sales","Gurugram",2026-08-27T17:16:26.233Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:d2642170ae7d17bf,"jubilant-pharmova","Jubilant Bhartia Group - Senior Manager - Business Excellence - IIM/ISB/MDI/FMS (18-20 yrs)","Noida",2026-08-27T17:16:26.390Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:22f3589c79ccb193,"bean-hr-consulting","Senior Vice President/Vice President - Transitions - Insurance (20-25 yrs)","Gurugram",2026-08-27T17:16:28.906Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:6f8d592f4a3a3b8a,"corrohealth","AVP - L&D","Noida",2026-08-27T17:16:30.518Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1bf762014bf2c370,"moody-s-analytics","Moody's - Assistant Vice President - Product Analysis/Digital Assets Domain (7-10 yrs)","Gurugram, Bengaluru",2026-08-27T17:16:30.640Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:626bda789ca444de,"moody-s-analytics","Moody - Assistant Vice President - Product Analysis/Digital Assets Domain (7-10 yrs)","Gurugram, Bengaluru",2026-08-27T17:16:33.337Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f3b603ed2bd371c6,"moody-s-analytics","Moody - Assistant Vice President - Product Analysis/Digital Assets Domain (7-10 yrs)","Gurugram, Bengaluru",2026-08-27T17:16:33.374Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:23f8f526183637c2,"titanium-consulting-mumbai","Hiring For a Vice President - Finance & Accounting Solutioning","Delhi / NCR, Kochi, Kolkata, Hyderabad, Pune, Chennai, Bengaluru, Mumbai (All Areas)",2026-08-27T17:16:35.820Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f30c096ea0524d6b,"mindshare","Associate Vice President, Marketplace and Partnerships","Gurugram",2026-08-27T17:16:36.923Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_3f2d84bc,"aspyra-hr-services","AVP Data analytics /Business Analytics - US MNC (Analytics)","Hybrid - Gurugram, Bengaluru",2026-08-27T17:16:19.940Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:fc903997df11f2b7,"digidarts-marketing","Business Development Manager","Gurugram",2026-08-27T17:16:38.443Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0ea3b7fa89b42dea,"ey","Associate Vice President","Gurugram",2026-08-27T17:16:38.568Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a54408eff7848f20,"barclays","VP Finance Control Assurance","Gurugram",2026-08-27T17:16:41.158Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c2ba40e64ee9745a,"barclays","Transaction Monitoring analytics - AVP","Gurugram",2026-08-27T17:16:44.851Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:105364fe14843d37,"barclays","Product Consumer Credit - AVP","Gurugram",2026-08-27T17:16:44.869Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:09f04200001246a4,"barclays","AVP Basel IV Regulatory Capital","Gurugram",2026-08-27T17:16:49.541Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_ee868ac0,"ana-associates","Corporate Sales AVP/VP/SVP EB/NON EB Insurance Broking","Delhi / NCR, Pune, Mumbai (All Areas)",2026-08-27T17:16:54.115Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_fb519ad1,"matrix-hr-technologies","Group Manager / SVP Fundraising - Industrial","Chennai",2026-08-27T17:17:13.009Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_5913e8ab,"venus-remedies--vrl-","Production Head- Injectable Production","Baddi",2026-08-27T17:17:35.832Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_c2974a75,"black-turtle","Vice President - Credit Risk & Market Risk Regulatory & Transformation (12-20 yrs)","Mumbai, Bengaluru",2026-08-27T17:17:47.849Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:46d1840e812da949,"lodha","Associate Vice President - Customer Experience","Mumbai",2026-08-27T17:18:00.981Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:64e6ac268f18bfce,"parle-global-technologies","Parle Global Technologies - Assistant Vice President/Vice President - Customer Care (20-30 yrs)","Mumbai",2026-08-27T17:18:00.997Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:52b40a1a22531851,"quadrangle","Vice President","Bengaluru",2026-08-27T17:18:01.081Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_85638481,"c_a175eb96","AEP Architect","Gurugram, Kolkata, Bengaluru",2026-08-27T17:18:00.437Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:a664105dbe88a19e,"forward","Head - Customer Insights","Mumbai",2026-08-27T17:18:04.254Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:9dfc57d3f9279d13,"sbi-sg","Assistant Vice President - Customer Relationship Management","Mumbai",2026-08-27T17:18:05.348Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:b7697b5912951eb1,"ramco-industries","Vice President Works","Chennai(Mylapore)",2026-08-27T17:18:07.212Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ce4f9d0b986a0578,"manfin-infotech-ltd","Vice President - Management Division","Ahmedabad",2026-08-27T17:18:07.452Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:98a2922b6f6abb62,"kp-group","Vice President","Surat",2026-08-27T17:18:07.533Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:6afa31c7480ebba7,"yes-madam","YesMadam - Vice President - Supply - Onboarding (8-12 yrs)","Noida",2026-08-27T17:18:10.563Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:688606f8ec6c6dcc,"yes-madam","YesMadam - Vice President - Supply - Onboarding (8-12 yrs)","Noida",2026-08-27T17:18:12.011Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:d492577219fe37ad,"hsbc","VP Information Management","Bengaluru",2026-08-27T17:18:12.026Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2f909100603abcd3,"yes-madam","YesMadam - Vice President - Supply - Onboarding (8-12 yrs)","Noida",2026-08-27T17:18:14.369Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:cbf7801cfe9778d4,"yes-madam","YesMadam - Vice President - Supply - Onboarding (8-12 yrs)","Noida",2026-08-27T17:18:15.983Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7d3289d1d13ed8c8,"trust-group","Vice President NBFC Sales Capital Market","Mumbai",2026-08-27T17:18:15.999Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:04c5a6d061a6da02,"credit-saison-india","Assistant Vice President - Customer Experience","Thane",2026-08-27T17:18:18.090Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2076c14499bb4097,"bindal-stainless-sirmaur","Vice President-Electrical","Paonta Sahib",2026-08-27T17:18:19.333Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2551c2fbdfd63020,"hsbc","HORECA All india GM","Ahmedabad",2026-08-27T17:18:20.463Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_fea3549b,"barclays","AVP - PC Central Controls","Pune, Chennai",2026-08-27T17:18:15.256Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:cb9ed82ea89241e0,"barclays","DCF Lead","Pune",2026-08-27T17:18:21.714Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:162d278530ff4303,"anandrathi","HNI Desk Head","Nagpur",2026-08-27T17:18:21.715Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a018a6ee59d8128a,"one-atmosphere","Marketing Head - Luxury Hospitality","Gurugram(Sector 74)",2026-08-27T17:19:27.070Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:074f408fc35ef356,"see---recruit","Head - Marketing (15-22 yrs)","Mumbai",2026-08-27T17:19:27.102Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e691add6a70a7a2d,"superstuff","Head of Marketing","Gurugram",2026-08-27T17:19:29.421Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2323428984bce3bb,"essence-hr-services","Marketing Head","Siliguri",2026-08-27T17:19:29.551Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:478caf4447f9f645,"adityaram-properties","Adityaram Properties - Head - Marketing (15-20 yrs)","Chennai",2026-08-27T17:19:31.248Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:a055441a59519fac,"invokhr","Chief manager Customer Life Cycle","Gurugram, Haryana",2026-08-27T17:19:34.003Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0377060ecc0f773e,"nlb-services","AI Practice Head (India & US Market)","Gurugram, Noida, New Delhi",2026-08-27T17:19:35.925Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:c74fb989d025659a,"saaki-argus---averil-consulting","Head of Delivery/COO","Chennai, Tamil Nadu",2026-08-27T17:19:37.105Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:9f066afed01a48e9,"plastemartjobs","Marketing Head","Mumbai",2026-08-27T17:19:37.106Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:56aa734d220442db,"asian-heart-institute","Chief Operating Officer","Mumbai, Maharashtra",2026-08-27T17:19:38.570Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:603c3478a859dd40,"hrd-house","Marketing Head - Animal Health - Poultry/Cattle/Dairy - Mumbai.","Mumbai",2026-08-27T17:19:38.591Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:22fd94c284cfa852,"crowdpouch","Chief in Technology","Bengaluru, Karnataka",2026-08-27T17:20:00.680Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:26ae8fc1284f1557,"saaki-argus---averil-consulting","Sr Manager- Customer Experience","Bengaluru, Karnataka",2026-08-27T17:20:00.982Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:453952fed7ffe3b5,"husk-power-systems","Head CRM","Patna, Bihar",2026-08-27T17:20:04.939Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:1899263716adb2c7,"nudge","General Manager - Delivery (AI-native Marketing)","Bengaluru, Karnataka, India (On-site)",2026-08-27T17:20:04.959Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:d1cd3697bfbe21b7,"deloitte","Consulting-Marketing Ops-Operations Vice President","Chennai, Tamil Nadu, India (On-site)",2026-08-27T17:20:05.053Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:50be545d8352a5d8,"zero-gravity-communications","Head of Digital Marketing","Ahmedabad, Gujarat, India (On-site)",2026-08-27T17:20:05.039Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:45804295268f335d,"saaki-argus---averil-consulting","Head - Account Management","Chennai, Tamil Nadu",2026-08-27T17:20:10.192Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:bc68db300896c85c,"z47-portfolio-company","Head of Marketing","Bengaluru, Karnataka, India (On-site)",2026-08-27T17:20:11.937Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:02c2630a07b45c39,"cvent","Senior Vice President / Vice President, Marketing – India","Gurugram, Haryana, India (On-site)",2026-08-27T17:20:12.150Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:0151ee3194cd0e49,"smart-moves-talent-crafters-pvt--ltd-","Chief Operating Officer (SEO Marketing Agency)","Mumbai, Maharashtra, India (On-site)",2026-08-27T17:20:13.165Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:5618620233cffb97,"pump-dynamics","Head of Marketing-SAAS","Chennai, Tamil Nadu, India (On-site)",2026-08-27T17:20:17.036Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:ac3cede41730193c,"vaynermedia","Director, Strategy","Gurugram, Haryana, India (On-site)",2026-08-27T17:20:18.428Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_2dee11b0,"tavant","Lead Salesforce Data Cloud QA Engineer","Hybrid - Hyderabad, Pune, Bengaluru",2026-08-27T17:20:00.116Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+linkedin:a6d7cf561a29b7c1,"ascendion","Global Head Digital Marketing","Bengaluru, Karnataka, India (On-site)",2026-08-27T17:20:20.239Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:d21af99124e2cd49,"luke-coutinho-holistic-healing-systems","Marketing Head","India (Remote)",2026-08-27T17:20:21.995Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:9cd7b0f0e19eb8b7,"blufig","Head of Marketing/ Team Lead- Digital Marketing","Bengaluru South, Karnataka, India (On-site)",2026-08-27T17:20:23.468Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:8d5bf713efcdf213,"golden-opportunities","Head Marketing","Delhi, India (On-site)",2026-08-27T17:20:23.718Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:7fff86fecc70804a,"oliver---the-brandtech-group","Head of Growth - India","Mumbai, Maharashtra, India (Hybrid)",2026-08-27T17:20:26.785Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:74f0f1a8a9606ebc,"saaki-argus---averil-consulting","Chief Manager- Contact Centre Operations","Chennai, Tamil Nadu",2026-08-27T17:20:26.822Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:24305aee42fd50fd,"kasturi-housing-pvt-ltd","Sr. Executive - CRM","Pune, Maharashtra",2026-08-27T17:20:28.150Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:b458e72ddf08fe3a,"jobgether","Performance Director","India (Remote)",2026-08-27T17:20:30.572Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:c765896bc34f6bdf,"unique-builders","Vice President","Jaipur, Rajasthan",2026-08-27T17:20:31.598Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_a4c8b629,"aveva","Sales Account Manager - Life Sciences","Mumbai, Hyderabad, Bengaluru",2026-08-27T17:21:17.469Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:885c2613b295245e,"arimax-global","India Head","Mumbai(Lower Parel)",2026-08-27T17:21:33.720Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e2f0856c3670bb99,"fabel-services","Fabel Services - Head - Growth Marketing (10-15 yrs)","Gurugram",2026-08-27T17:21:35.138Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0b505f41127af918,"studiokon-ventures","SKV India - Head - Client Success (12-15 yrs)","Gurugram",2026-08-27T17:21:35.152Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e400990b18561089,"studiokon-ventures","SKV India - Head - Client Success (12-18 yrs)","Gurugram",2026-08-27T17:21:37.742Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_f0530b1f,"optimum-solutions","Project Manager - Wealth Management","Hybrid - Pune, Chennai",2026-08-27T17:21:34.671Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:4f9cdc27fb6e0267,"sun-pharma","MPD Head - Solitra","Mumbai",2026-08-27T17:21:39.391Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ee4bc6958ff4fb78,"studiokon-ventures","SKV India - Head - Client Success (12-18 yrs)","Gurugram",2026-08-27T17:21:39.406Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:8685439fe4f51796,"nlb-services","AI Head","Gurugram, Noida",2026-08-27T17:21:41.774Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7f42f4a481a719cc,"liquiloans","LiquiLoans - Head - Growth Strategy (10-15 yrs)","Mumbai",2026-08-27T17:21:43.880Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:8d691c97f3432987,"liquiloans","LiquiLoans - Head - Growth Strategy (10-15 yrs)","Mumbai",2026-08-27T17:21:43.903Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:546cec6bd1152527,"hoora-technologies","Growth Head","Nagpur",2026-08-27T17:21:46.298Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:863bc677ea7de453,"liquiloans","LiquiLoans - Head - Growth Strategy (10-15 yrs)","Mumbai",2026-08-27T17:21:49.864Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a2094d3694b9e49d,"quadrangle","Info Edge - Head - Growth - iimjobs & hirist (8-12 yrs)","Noida",2026-08-27T17:21:51.215Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:62e4a69209df0777,"quadrangle","Info Edge - Head - Growth - iimjobs & hirist (8-12 yrs)","Noida",2026-08-27T17:21:51.233Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ce6b6dd53dd5a4a8,"quadrangle","Info Edge - Head - Growth - iimjobs.com & hirist.tech (8-12 yrs)","Noida",2026-08-27T17:21:53.743Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5a396a62ff24071e,"aspiration","YouTube Head","Mumbai",2026-08-27T17:21:54.061Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a7cba44f881ad4ae,"si-uk","Head of Referral Partners","Noida",2026-08-27T17:21:55.200Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:6bb89157dd210354,"shreeyam-power-and-steel-industries","Head SMS","Gandhidham",2026-08-27T17:21:57.740Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_c5f7064d,"crisil","Full Stack Engineer (Python)","Gurugram, Mumbai, Pune",2026-08-27T17:21:54.601Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:83fa2b78f8a93616,"shreeyam-power-and-steel-industries","Head  Steel Melting Shop (SMS)","Gandhidham",2026-08-27T17:21:59.473Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e85536fef8f2575c,"skiad","Head - Growth Marketing -B2B FINTECH SAAS","Bengaluru",2026-08-27T17:21:59.723Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_5f9944f9,"everest-business-advisory-india","Everest Group- Research & Advisory - Practice Director -HLS","Hybrid - Gurugram(Sector 47), Bengaluru(Manayata Tech Park)",2026-08-27T17:22:13.621Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_df0f3fd,"vconstruct","Sr Technical Manager - Steel Detailing","Pune, Chennai",2026-08-27T17:22:29.746Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_b7881787,"symbiosis-management-consultants","State Head","Delhi / NCR, Mumbai(Maharashtra Nagar), Chandigarh",2026-08-27T17:22:45.233Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_5db10eca,"sigma-allied-services","Opportunity_Gen AI Manager","Gurugram, Bengaluru, Mumbai (All Areas)",2026-08-27T17:23:01.732Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_181254dc,"tech-mahindra","Netcool Architect","Hyderabad, Pune",2026-08-27T17:23:18.970Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+indeed:267572cd53248b2c,"amerisave-mortgage-corp-","Chief Technology Officer - India","Remote",2026-08-27T17:23:38.679Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:bed0953f53420b40,"design-n-buy","AVP / VP - Customer Success","Ahmedabad, Gujarat",2026-08-27T17:23:40.589Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_c0396c83,"xceedance","Lead Business Analyst (BIA Platform)","Hybrid - Delhi / NCR, Pune, Bengaluru",2026-08-27T17:23:34.174Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+indeed:056977594dd9b57c,"sunniva-global","Head - Operations","Gurugram, Haryana",2026-08-27T17:23:42.480Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:5a4d04181f0b7ec0,"brandloom","Chief Operations Officer (COO)","Mumbai, Maharashtra",2026-08-27T17:23:44.654Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:f52f3d9883b5f9b8,"thrillophilia","Head of Customer Experiences","Jaipur, Rajasthan",2026-08-27T17:23:46.156Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:296d98bc75c548e5,"dhanalakshmi-hire-purchase---leasing","Head- Operations","Kerala",2026-08-27T17:23:47.870Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:a35cfc6231bb54b1,"valuementor","VP - Head of Sales – Global Markets","Kochi, Kerala",2026-08-27T17:23:49.731Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2f2cd25e95a1c368,"new-era-india","Head Digital Marketing","Hybrid - Gurugram",2026-08-27T17:23:51.697Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a2f875158f09e4ba,"dimensions-hrd-consultants","Head - Digital Marketing - Financial Services (14-20 yrs)","Mumbai",2026-08-27T17:23:52.059Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:881290ca0be99650,"dimensions-hrd-consultants","Head - Digital Marketing - Financial Services (14-20 yrs)","Mumbai",2026-08-27T17:23:53.021Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:92a9e10cd988ad82,"dimensions-hrd-consultants","Head - Digital Marketing - Financial Services (14-20 yrs)","Mumbai",2026-08-27T17:23:54.193Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:105aa36e9cd305e0,"dimensions-hrd-consultants","Head - Digital Marketing - Financial Services (14-20 yrs)","Mumbai",2026-08-27T17:23:55.353Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c0c6660849657ddd,"tefa-technologies","Head - Digital Products - Banking/FinTech (10-15 yrs)","Mumbai",2026-08-27T17:23:56.432Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:d1674a3729ee775f,"mynavi-solutions-india","Head - Sales - Media Digital Tech Platform (15-25 yrs)","Gurugram",2026-08-27T17:23:57.981Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:10b8367b31f46d74,"pms-consulting","Chief Technology Officer (15-20 yrs)","Gurugram",2026-08-27T17:23:59.199Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e576b77232f6851e,"pms-consulting","Chief Technology Officer (15-20 yrs)","Gurugram",2026-08-27T17:24:00.322Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2ae5695ecf79aa05,"shrikrishiv-marketing","Head - Voice AI & Generative AI - Demand Generation","Mumbai, Navi Mumbai, Mumbai (All Areas)",2026-08-27T17:24:02.552Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f19bbe901b04b3a4,"mnr-solutions","National Sales Head - Digital Post Press Business (15-20 yrs)","Mumbai",2026-08-27T17:24:02.680Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:cbc01c730c1e6f6d,"shanti-informatics","Masters' Union - Head - Visa & Mobility (10-16 yrs)","Gurugram",2026-08-27T17:24:03.822Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f516934f681a21ad,"waaree-energies","BMS Head","Valsad, Vapi, Navsari",2026-08-27T17:24:06.231Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:059a7ede231340d2,"sucoso-services","Head, Digital Strategy and Architecture","Pune",2026-08-27T17:24:08.766Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:3309422382ee9af6,"mediawaley","Chief Operating Officer (COO)","Mohali, Punjab",2026-08-27T17:24:08.775Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:c78085694cdd32d8,"india1atm","Head – Strategic Alliance (_/ VP)","Bengaluru, Karnataka",2026-08-27T17:24:11.172Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_7dae748a,"s-p-global-market-intelligence","Senior Data Engineer","Gurugram, Hyderabad",2026-08-27T17:24:43.225Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_aed4fabd,"primesoft-solutions","BDM -  Digital Transformation ( Custom web & mobile apps )","Mumbai, Hyderabad, Bengaluru",2026-08-27T17:25:03.293Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:39c05318f049a84d,"sarthee-consultancy","Sales & Marketing Head Personal Care","Gurugram, South Africa, Dubai, Central African Republic",2026-08-27T17:25:07.899Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:52004f7cc34385fa,"snapmint-credit-advisory","Snapmint - Director - Growth & Retention (5-12 yrs)","Bengaluru",2026-08-27T17:25:09.128Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:9e4fc823c98e4e62,"salesforce","VP, Employee Success Business Partner","Bengaluru",2026-08-27T17:25:09.236Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f55e9c9c66ab9905,"adecco-india","Business Head / Category Head (D2C)","Gurugram",2026-08-27T17:25:10.296Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f90602dd9dd26efb,"mcube-placements","Chief Business Head  Real Estate Developer Gurugram","Gurugram",2026-08-27T17:25:13.444Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:26f8a282f2c06cae,"kpmg-assurance-and-consulting-services-llp","Director","Gurugram",2026-08-27T17:25:13.456Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7617214eae3a3057,"axtria","Director","Gurugram",2026-08-27T17:25:15.644Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7c5967a12f587e0d,"gaurs","Head CRM","Noida(Sector 129)",2026-08-27T17:25:17.167Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:42d97b34051e9ef4,"unacademy","Associate Director - Sales","Bengaluru",2026-08-27T17:25:18.196Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:b5ca89e464510fd6,"exotic-mile","D2C Website Manager","Gurugram",2026-08-27T17:25:19.648Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:66779e56afb6b377,"si-uk","Head of Referral Partners","Bandra",2026-08-27T17:25:21.592Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:3438dce5e287d585,"skipperseil","Dy. General Manager/General Manager-Sales & Marketing (Domestic Head)","Gurugram",2026-08-27T17:25:21.682Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:9e7a457e9145db52,"oxycure","Sales Head","Gurugram",2026-08-27T17:25:22.989Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_a39225db,"gspann","Presales - Solutions & Offering (IT Services)","Delhi / NCR, Hyderabad, Pune",2026-08-27T17:25:22.471Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:789567938b75aa97,"accenture","Industry Techno & Strategy Architect - Telco - Senior Manager","Gurugram",2026-08-27T17:25:25.215Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:3265500d45d11197,"pwc-service-delivery-center","Manager","Gurugram",2026-08-27T17:25:25.298Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_9ceb52d7,"pylon-management-consulting","Vice President - Wealth Management - Bank (16-25 yrs)","Gurugram",2026-08-27T17:25:37.725Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_882bb1d0,"pylon-management-consulting","Vice President - Wealth Management - Bank (16-20 yrs)","Gurugram",2026-08-27T17:26:03.051Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_c59cd967,"impact-investment-exchange","Associate Vice President, Strategic Initiatives - India","Mumbai",2026-08-27T17:26:26.388Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ca9443fd,"barclays","Program Lead - India Strategy Private Bank","Mumbai",2026-08-27T17:26:44.479Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_48df16f,"randstad","Director - Finance Business Partner","Bengaluru",2026-08-27T17:27:02.915Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:e6c42705b5670440,"careallianz","Head of Organizational Architecting and High Performance Organization","Kolkata, Mumbai, New Delhi, Hyderabad, Pune, Chennai, Bengaluru",2026-08-27T17:27:09.638Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a8028429ce685dc8,"info-edge","Head Customer Success","Noida",2026-08-27T17:27:09.648Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ba51703b04f11c96,"forward","Head Customer Engagement","Mumbai(Lower Parel)",2026-08-27T17:27:09.671Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:55999c23d0a71ac1,"enterprise-hiring-solutions-bangalore","Head Customer Success- SAAS Platform","Mumbai",2026-08-27T17:27:14.597Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:aa739dcb675fd1f2,"wilco-source","ServiceNow Tower Head","Hyderabad",2026-08-27T17:27:14.718Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:dd6284d892e41d3a,"true-credits","True Credits - Head - Customer Management (10-16 yrs)","Gurugram",2026-08-27T17:27:14.748Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4b6ab6d2e5cfd349,"waaree-energies","EMS Head","Valsad, Vapi",2026-08-27T17:27:18.954Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:00d6d94f7a7a052e,"wilco-source","ServiceNow Tower Head","Hyderabad",2026-08-27T17:27:18.981Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:1ad10ce75d9814cc,"saaki-argus---averil-consulting","Digital Transformation Head","Coimbatore, Tamil Nadu",2026-08-27T17:27:32.317Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:cf14b417ebd2e74e,"saaki-argus---averil-consulting","Chief Technology Officer","Chennai, Tamil Nadu",2026-08-27T17:27:34.773Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:d15d44e751b37404,"tachyon-it-solutions-pvt-ltd","Head of AI","",2026-08-27T17:27:36.915Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:07c5c14fe86414aa,"blueberry-labs-private-limited","Chief Technology Officer","Hyderabad, Telangana",2026-08-27T17:27:39.985Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:d1013f952c60c9f6,"emgage","CTO","Mumbai, Maharashtra",2026-08-27T17:27:42.463Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:22fdff1c3f0fe6a5,"cvent","Senior Vice President / Vice President, Marketing – India","Hybrid work in Gurugram, Haryana",2026-08-27T17:27:44.841Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_c8cc3533,"pylon-management-consulting","Group Operations Manager - Bank (18-28 yrs)","Gurugram",2026-08-27T17:28:00.654Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_3fbf33e7,"kaleidofin","Kaleidofin - Senior Manager/Assistant Vice President - Debt Capital Markets (5-9 yrs)","Mumbai, Chennai, Bengaluru",2026-08-27T17:28:32.470Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:226cc745cefebb24,"elitecon-international","Head Product Marketing","Noida",2026-08-27T17:29:19.765Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4d2dab6d391bb646,"seven-n-half","MarTech Lead","Mumbai",2026-08-27T17:29:19.773Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f22daa7788bfe8c1,"z1-tech","AVP/VP Strategic Alliance","Gurugram",2026-08-27T17:29:24.323Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:bad7cff98f06c2c4,"kantar","Group Account Director","Gurugram",2026-08-27T17:29:24.346Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:fbbf23d04a17582d,"welspun-world","P2P COE Head","Ahmedabad",2026-08-27T17:29:24.421Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:46971cfe045ee375,"r2r-consults","Complex Head","Vadodara",2026-08-27T17:29:28.111Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ed4eea48783ba846,"nibav-lifts","HRBP Head","Chennai",2026-08-27T17:29:28.236Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:9236ed9d2c41e53c,"lead-hr-services","Head - PED","Chennai",2026-08-27T17:29:29.503Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2b4e973defb70efd,"mahasurya-ventures-india","Head - Metallurgy & Heat Treatment","Rajkot",2026-08-27T17:29:31.917Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:3fc245635128b939,"adonis-recruitment-consultants","Manager / Head - NPI / PED /NPI (Micro Fasteners / Fasteners exp must)","Oragadam, Sriperumbudur, Chennai(Oragadam Industrial Corridor)",2026-08-27T17:29:31.999Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_4bd4defb,"hire-resources","General Manager - Finance & Commercial, Beverage Industry, Mohali","Ludhiana, Mohali, Panchkula",2026-08-27T17:29:32.780Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_50296cd1,"isha-one-coach-consult","VICE PRESIDENT","Santacruz, Mumbai, Maharashtra",2026-08-27T17:29:45.885Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_cf65e5ab,"blockfills","Vice President of Product Development","Remote",2026-08-27T17:30:06.771Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:39fd8768623fa1d6,"solix-technologies","Director Marketing","Hyderabad(HITEC City +2)",2026-08-27T17:30:22.334Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:3158d7b961feab06,"placewell-solutions","Associate Director Marketing Personal Care","Mumbai",2026-08-27T17:30:22.355Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:287767456b843c53,"aptita-services","Director - Marketing - eCommerce (12-15 yrs)","Bengaluru",2026-08-27T17:30:24.749Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0fca261c08750b10,"aptita-services","Director - Marketing - eCommerce (12-15 yrs)","Bengaluru",2026-08-27T17:30:26.079Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ed3e3c7fb14c4976,"zycus-infotech","Zycus - Director - Marketing (10-13 yrs)","Mumbai, Bengaluru",2026-08-27T17:30:27.640Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:eeb849404662eb2f,"tech-stalwart-solution","Director of Growth Marketing","Kolkata, Mumbai, New Delhi, Hyderabad, Pune, Chennai, Bengaluru",2026-08-27T17:30:27.662Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e9184fbbb7b47501,"crisil","Director - Private Markets","Mumbai",2026-08-27T17:30:31.208Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:87d224e142eff722,"zycus-infotech","Zycus - Director - Marketing (10-13 yrs)","Mumbai, Bengaluru",2026-08-27T17:30:32.685Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:95e992b8dd1e44a5,"zycus-infotech","Zycus - Director - Marketing (10-13 yrs)","Mumbai, Bengaluru",2026-08-27T17:30:33.024Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_70d4079a,"c_cdc78ddf","Vice President","Chennai, Tamil Nadu",2026-08-27T17:30:27.067Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:ace1f1027e78f99b,"zycus-infotech","Zycus - Director - Marketing (10-13 yrs)","Mumbai, Bengaluru",2026-08-27T17:30:35.723Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ef552ed298764794,"trufid-services","Marketing Director","Mumbai",2026-08-27T17:30:36.341Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e19a23e21255d25a,"phenom-cloud-india-pvt-ltd","Director Marketing","Vijayawada",2026-08-27T17:30:38.310Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5ab016a74a5b818a,"moris-media","SALES AND MARKETING DIRECTOR","Noida",2026-08-27T17:30:42.248Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:975673445358b83c,"pepsico","International RGM Future Capabilities Director","Gurugram",2026-08-27T17:30:42.348Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5add4b05530dc7b8,"dtcc","Market Risk Director","Chennai",2026-08-27T17:30:46.750Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_5bc343d7,"c_dce4559","Senior Director - Performance Marketing (Remote)","Mumbai, Maharashtra, India (Remote)",2026-08-27T17:30:45.440Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_1820537,"c_d7e606f2","The Indus Valley - Vice President - Marketing & Growth (15-20 yrs)","Bengaluru",2026-08-27T17:31:03.908Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_e31e5aba,"c_d7e606f2","The Indus Valley - Vice President - Marketing (15-20 yrs)","Bengaluru",2026-08-27T17:31:26.777Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:9c62b20ca551c091,"mancer-consulting-services","Director - Corporate Communications (18-25 yrs)","Gurugram",2026-08-27T17:31:42.558Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a9391a756473da98,"mancer-consulting-services","Director - Corporate Communications (18-25 yrs)","Gurugram",2026-08-27T17:31:42.569Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:103d138d0f94d432,"mancer-consulting-services","Director - Corporate Communications (18-25 yrs)","Gurugram",2026-08-27T17:31:42.592Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:64204c304f754a72,"edmo","Director/ VP of Marketing","Noida, Uttar Pradesh",2026-08-27T17:31:47.582Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7e92a7e07dd177ca,"mancer-consulting-services","Director - Corporate Communications (18-25 yrs)","Gurugram",2026-08-27T17:31:47.635Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c85770669498ccb9,"mancer-consulting-services","Director - Corporate Communications (18-25 yrs)","Gurugram",2026-08-27T17:31:47.671Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:49aabbff693eb525,"fresche-solutions","Head of Lead Generation - Remote - FS453","Remote in Hyderabad, Telangana",2026-08-27T17:31:52.206Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:cb6e9b410c6d530a,"mediamonks","Creative Director (AI)","Gurugram",2026-08-27T17:31:52.209Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:132532ddc9679052,"scymes-services-pvt-limited","HEAD OF DIGITAL TRANSFORMATION INDIA","Thiruvallur District, Tamil Nadu",2026-08-27T17:31:52.208Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0574682c9f9f5004,"jaquar-group","Retail Head","Gurugram",2026-08-27T17:31:52.285Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:829c871daddf233a,"zenara-health","Head of Marketing","Remote in India",2026-08-27T17:31:57.051Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:6764b3f268ab692e,"makemytrip","Associate Revenue Manager","Gurugram",2026-08-27T17:31:57.050Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c4e77690d0e7cc8f,"orange","B2B Portfolio Architect: Digital Enabler","Gurugram",2026-08-27T17:31:57.168Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:e2d233e7694c9114,"flosum","Director of Demand Generation (India)","Remote in India",2026-08-27T17:31:58.318Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:60e8211a6fd84531,"manpowergroup-services-india","Practice Director CSA Engineering","Gurugram, Bengaluru",2026-08-27T17:31:59.430Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:e7e4a19a41ea1fae,"bharatiya-global-infomedia","Chief Technical Officer (CTO)","Noida, Uttar Pradesh",2026-08-27T17:32:01.088Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:31bda937ca67f9ff,"mancer-consulting-services","Director - Credit Risk Model Development (15-22 yrs)","Gurugram",2026-08-27T17:32:02.299Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:aebe8a1e09344203,"rj-consultants","Head Automative Business Developer","Gurugram",2026-08-27T17:32:03.438Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:23afd9e102d0387a,"mancer-consulting-services","Director - Corporate Communications (18-25 yrs)","Gurugram",2026-08-27T17:32:05.659Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:655e2397fb8b0ed9,"mancer-consulting-services","Director - Corporate Communications (18-25 yrs)","Gurugram",2026-08-27T17:32:06.853Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0a93234f8dbe2ad7,"moodys-analytics","Associate / Senior Associate /Delivery Lead /Delivery Manager","Gurugram",2026-08-27T17:32:07.067Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a864d2989e0e1ff5,"crescendo-global-leadership-hiring-india","Associate Director-Public Finance -Govt/Infra-15 Years -Pune/Mumbai","Hybrid - Gurugram, Mumbai, Pune",2026-08-27T17:32:08.992Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:d553b26ead2809f5,"ptc","Associate Channel Account Manager","Gurugram",2026-08-27T17:32:09.393Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_f9293999,"mcube-placements","Marketing Head","Ghaziabad",2026-08-27T17:32:15.170Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ab9b0476,"growel-softech","Vice President/Head - Marketing - Boiler Manufacturing Firm (20-25 yrs)","Mumbai",2026-08-27T17:32:34.507Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_3eb29d26,"crisil","Assistant Vice President Markets","Mumbai",2026-08-27T17:32:53.300Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:80ecfcb110c8f05b,"riverforest-connections","Director/Associate Director - Business Development (Oil & Gas)","Hybrid - Gurugram, Mumbai (All Areas)",2026-08-27T17:32:57.514Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0947b33789450fcc,"deloitte-shared-services-india","Deloitte - Associate Director - Workforce Transformation - IIM/FMS/MDI/XLRI (10-15 yrs)","Mumbai, Bengaluru, Delhi NCR",2026-08-27T17:33:06.158Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:de88e21b16f3a91e,"deloitte-shared-services-india","Deloitte - Associate Director - Workforce Transformation - IIM/FMS/MDI/XLRI (10-15 yrs)","Mumbai, Bengaluru, Delhi NCR",2026-08-27T17:33:06.132Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f64d5f7aea08b77f,"mastercard","Director - Revenue Operations (Strategy & Transformation)","Gurugram",2026-08-27T17:33:06.346Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0117fb9bd843a9db,"thrive-management-services","Sr. Director, Transformation","Mohali",2026-08-27T17:33:09.431Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:80f6949b21dd7aa3,"mancer-consulting-services","SeviceNow Director (16-25 yrs)","Gurugram",2026-08-27T17:33:10.846Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:3ed60752d0ab231a,"mancer-consulting-services","SeviceNow Director (16-25 yrs)","Gurugram",2026-08-27T17:33:10.848Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:d0810e5e71f78395,"mancer-consulting-services","SeviceNow Director (16-25 yrs)","Gurugram",2026-08-27T17:33:13.052Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7d657a40b9800ebc,"nlb-services","AI Sales Director","Gurugram, Delhi / NCR, Noida",2026-08-27T17:33:14.239Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a91a600a98c9fecf,"mancer-consulting-services","SeviceNow Director (16-25 yrs)","Gurugram",2026-08-27T17:33:14.512Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:565a75e36d8312a3,"mancer-consulting-services","Senior Director - RCM Operations","Hybrid - Gurugram, Noida",2026-08-27T17:33:16.418Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_ad8c47bf,"quadrangle","Vice President","Bengaluru",2026-08-27T17:33:14.589Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:8a18a2cca6007431,"golden-opportunities","Director - FPNA (Insurance)","Gurugram",2026-08-27T17:33:17.632Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1cef4c055d461b66,"nlb-services","AVP/Director- Data Solution & Analytics","Gurugram, Noida",2026-08-27T17:33:17.724Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:bf21f0d4621a0a67,"bmc-software","Director - Mainframe Modernisation and transformation","Pune",2026-08-27T17:33:18.897Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:abd969e5fe32d927,"accenture","Business Transformation Assoc Director","Gurugram",2026-08-27T17:33:21.875Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5da786359c47dca5,"accenture","Business Transformation Assoc Director","Gurugram",2026-08-27T17:33:27.148Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:de576f83a296a7e2,"mobikwik","Associate Director_HR Operations","Gurugram",2026-08-27T17:33:27.164Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_5cc6f7e,"flipspaces","Flipspaces - Assistant Vice President - Growth (15-20 yrs)","Mumbai",2026-08-27T17:33:34.894Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_87efe64c,"ethnus","Vice President Fundraising Ethnus Foundation","Bengaluru",2026-08-27T17:33:52.571Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_988fcf76,"ibridge-techsoft","Vice President - Contingent Workforce Management","Remote",2026-08-27T17:34:09.653Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:62b4db5df2edb466,"teva-global-business-services","On Site CMO Manager-Sr Manager Quality Assurance","Bengaluru(Hebbal)",2026-08-27T17:34:26.012Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a3206dfc65916e1b,"upahar-india","Vice President, CMO/CDMO (International Business Development)","Hyderabad, Mumbai (All Areas)",2026-08-27T17:34:26.049Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:aab8a2550976692b,"sun-pharma","Sr. Manager- CMO","Mumbai",2026-08-27T17:34:27.166Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_75355b7b,"c_c5a8c6f8","VP Director","Chandigarh",2026-08-27T17:34:24.071Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:996ef2689bad8043,"seven-consultancy","Chief Medical Officer","Hyderabad",2026-08-27T17:34:29.664Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ac45d9d04f52524b,"ss-clinical-services","Doctor - M.B.B.S","Chennai",2026-08-27T17:34:29.673Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:939ec0a92d802a8e,"benovymed-healthcare-private-limited","Medical Director/Sr. Consultant - Oncology","Kolkata",2026-08-27T17:34:31.517Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1f8a28b65a5d927a,"benovymed-healthcare-private-limited","Medical Director/Sr. Consultant - Oncology","Jaipur",2026-08-27T17:34:37.281Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:cbf21a80298c3c8b,"haria-l-g-rotary-hospital","Doctors","Vapi",2026-08-27T17:34:37.330Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:eecdbdffb257dcdd,"doctors-door","CMO","Pollachi",2026-08-27T17:34:39.673Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c2b300e19bd53089,"benovymed-healthcare-private-limited","Medical Director/Senior Consultant - Oncology","Navi Mumbai",2026-08-27T17:34:39.758Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:711ea31b18b73bb3,"aizant","Assistant Manager/Dy Manager - Business Development For CMO","Hyderabad",2026-08-27T17:34:42.599Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:9eb382a6e9c13e50,"amazon","Sr. Product Manager, IN CX Improvements, Amazon Customer Service","Bengaluru, Karnataka, India (On-site)",2026-08-27T17:34:42.618Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:ca47c6d10c0e84df,"ukg","VP. Global Support","Pune Division, Maharashtra, India (On-site)",2026-08-27T17:34:42.640Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:4a746e13d5bfd28d,"deloitte","Consulting-C&M-Digital Foundry-Contac Centre -Operations Vice President","Chennai, Tamil Nadu, India (On-site)",2026-08-27T17:34:42.656Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a2db2348b1089f52,"benovymed-healthcare-private-limited","Medical Director/Sr. Consultant - Oncology","Faridabad",2026-08-27T17:34:47.293Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1d24e7f539d5ba0b,"iqvia-biotech","Associate Medical Safety Director","Bengaluru",2026-08-27T17:34:47.296Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:bca4a4c5e9505623,"medipharma-konnect","Doctor – Rheumatology","Mumbai",2026-08-27T17:34:48.615Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:75af3085e72324e3,"ethos","Expert Opportunity - Director of Customer Success ($70/hr, up to $1,400/week)","India (Remote)",2026-08-27T17:34:51.818Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:f8739e3f6eed7d6b,"doconline","VP – Lifetime Customer Value","",2026-08-27T17:34:51.846Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:62fd6fd43fc861f8,"lenskart-com","Head of Customer Experience","Gurugram, Haryana, India (On-site)",2026-08-27T17:34:51.856Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1bd52ccd81d9a3d2,"medipharma-konnect","Doctor - Rheumatology (Full Time)","Mumbai",2026-08-27T17:34:51.966Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_888a7421,"electricpe","Head of Strategic Initiatives","Bengaluru, Karnataka",2026-08-27T17:34:47.042Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:b761220ecb82334c,"sara-medicaid","MD/DNB Anesthetist doctors","Delhi / NCR, Bahadurgarh, Faridabad(Mathura Road)",2026-08-27T17:34:55.645Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:2814b44246d286d8,"amgen","Director Of Customer Experience & Order-to-Cash","Hyderabad, Telangana, India (On-site)",2026-08-27T17:35:01.185Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:b1060935a34d78f1,"jpmorganchase","Executive Director - Customer Success","Bengaluru, Karnataka, India (On-site)",2026-08-27T17:35:01.236Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:09dd1acb823b2b94,"uptimeai-inc-","Senior Manager, Customer Success Lead – APAC & Middle East","Bengaluru East, Karnataka, India (Hybrid)",2026-08-27T17:35:01.274Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2602ffd069e9a2b3,"medicoplacements","Gynaecologist Doctor","Kadapa",2026-08-27T17:35:01.298Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:433732e4253af790,"chaitanyahr-consultancy","Anaesthetist Doctor","Hubballi",2026-08-27T17:35:02.446Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ec629b66fc30d858,"medicoplacements","Gynaecologist Doctor","Nellore",2026-08-27T17:35:06.918Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:0ef98d2465dc1069,"international-sos","Head of Service Delivery","New Delhi, Delhi, India (On-site)",2026-08-27T17:35:07.102Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:4c7f1df5a9c8d5e5,"indiamart-intermesh-limited","Sr. VP, Head Tele Sales & Customer Success","Noida, Uttar Pradesh, India (On-site)",2026-08-27T17:35:08.743Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:79d98afc4c72636b,"golden-opportunities","Head CRM/ senior CRM Specialist","Chennai, Tamil Nadu, India (On-site)",2026-08-27T17:35:08.901Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:77b6804ccf6e4ca8,"infrrd","VP- Marketing","India",2026-08-27T17:35:26.936Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:ee030bbd2fd06aa0,"saaki-argus---averil-consulting","AVP - Marketing","Chennai, Tamil Nadu",2026-08-27T17:35:26.955Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:6653550efdc1e9f9,"isocrates","Senior Manager - Partner Success","Mysuru, Karnataka",2026-08-27T17:35:26.969Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+linkedin:16697b31f5bfabce,"credit-saison-india","AVP - Customer Experience","Mumbai, Maharashtra, India (On-site)",2026-08-27T17:35:27.010Z,linkedin,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:23339847cbf1b206,"vectorstack","Senior Business Development Manager","Bengaluru, Karnataka",2026-08-27T17:35:35.417Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:dc9880aeb172ccd4,"ltm","Associate Director","Unknown, Unknown, Maharashtra",2026-08-27T17:36:08.632Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:3afbda380eb15c2b,"saaki-argus---averil-consulting","Performance & Brand Marketing","Chennai, Tamil Nadu",2026-08-27T17:36:11.867Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:7c5592510608d780,"saaki-argus---averil-consulting","Global Marketing Head","Delhi",2026-08-27T17:36:13.964Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:b7498a87b0a0c194,"irov-technologies-private-limited","Senior Marketing Manager / Head of Marketing","Kochi, Kerala",2026-08-27T17:36:20.001Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:d847292c0bd50d19,"acuiti-labs","Chief Marketing Officer (CMO)","Pune, Maharashtra",2026-08-27T17:36:20.109Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a1ffff3196ec252c,"assort-1-corp-services-limited","Senior VP – Marketing -Polymers","Mumbai",2026-08-27T17:36:34.909Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:efdeb67f45085d05,"the-placer-noida","VP Marketing Head Hydrocarbon","Mumbai",2026-08-27T17:36:34.939Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2341711b00994756,"corporate-destination","GM/VP-Marketing (For Bangalore/Chennai) only from two wheeler industry","Chennai, Bengaluru",2026-08-27T17:36:34.953Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_a67a51bd,"c_c5a8c6f8","Chief Operating Officer","Chandigarh",2026-08-27T17:36:13.381Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_f51e0540,"shopse-digital-finance","Senior Manager / Associate Director - Growth","Mumbai, Maharashtra",2026-08-27T17:37:19.581Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_f45de3cd,"bridge-et-al","Head of Operations","Mumbai, Maharashtra",2026-08-27T17:37:43.929Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_14e6ce03,"zycus","Vice President of Global Business Development","Mumbai, Maharashtra",2026-08-27T17:38:03.062Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:fda32bd64b3bb530,"mahasurya-ventures-india","VP - Global eMarketplace Growth & Partnerships","Gurugram, Mumbai(Mulund), Siliguri",2026-08-27T17:38:05.795Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:33a2a43077ef7d11,"continuity-1","Growth Lead","Remote",2026-08-27T17:38:05.835Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:127e7bb604c843d1,"axtria","Associate Director","Noida",2026-08-27T17:38:05.871Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:10fbe544e4d75183,"annexmed","Vice President","Kolkata, Mumbai, New Delhi, Hyderabad, Pune, Chennai, Bengaluru",2026-08-27T17:38:10.326Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:d9e56e72c1474535,"realty-360-degree","AVP / VP","Noida",2026-08-27T17:38:14.906Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:a3888714c7b4ee6d,"deutsche-bank","Origination Coverage, VP","Bengaluru",2026-08-27T17:38:14.917Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:96ad38c9f9af93ed,"jubilant-pharmova","Associate Director/ Director Executive Compensation","Noida(Sector 16A)",2026-08-27T17:38:15.306Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:fea31c4a6143ab6f,"axtria","Senior Manager","Bengaluru",2026-08-27T17:38:19.248Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2bbd4f63297f4561,"axtria","Senior Manager","Pune",2026-08-27T17:38:19.337Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f9b95b0fa783b62a,"axtria","Senior Manager","Noida",2026-08-27T17:38:20.452Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:418bccbd8b681380,"r3-consultant","Vice President - Land Acquisition","Kolkata",2026-08-27T17:38:23.302Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:726256ed215cddc1,"foundation-for-economic-development","Partner / State Director","Chennai",2026-08-27T17:38:23.338Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_19ba814f,"iix-global","Associate Vice President, Strategic Initiatives - India","Mumbai, Maharashtra",2026-08-27T17:38:24.389Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_7afedf9d,"spencer-n-hills-consulting","Assistant Vice President Digital Transformation","Noida",2026-08-27T17:38:40.896Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_5a050947,"velocitai-digital","Vice President (VP) Sales","Gurugram",2026-08-27T17:38:56.795Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a869db63,"bean-hr-consulting","Senior Vice President/Vice President - Transitions - Insurance (20-25 yrs)","Gurugram",2026-08-27T17:39:10.136Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:3c80d93d0e1a172f,"ey","Associate Director - Markets - CHS - CBS - C&I - BD & CE Leadership","Mumbai",2026-08-27T17:39:29.923Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:76dffa5a32a5debd,"align-technology","Associate Director, Marketing Excellence","Mumbai",2026-08-27T17:39:30.988Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4cb2cd802a53b928,"jones-lang-lasalle--jll-","Senior Director - Marketing, India","Mumbai",2026-08-27T17:39:32.160Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_b3ff1b15,"corrohealth","AVP - L&D","Noida",2026-08-27T17:39:23.410Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:1d5a79fd0ea43134,"black-turtle","Associate Director - Market Risk & Model Validation (10-17 yrs)","Bengaluru",2026-08-27T17:39:33.362Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0f0d8e9b37b8d329,"claight-corporation-expert-market-research","Procurement Director Market Research Services","Noida",2026-08-27T17:39:33.365Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:fcec5a9bd26838cf,"skanai","VP - Product Marketing","India",2026-08-27T17:39:49.637Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:7b0bbde76e79744e,"pernod-ricard-india-private-limited","Senior Manager- Brand Marketing","Gurugram, Haryana",2026-08-27T17:39:51.968Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:69401cd4060b8db0,"sarvam","Senior Manager, Growth Marketing","Bengaluru, Karnataka",2026-08-27T17:39:53.595Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:521a47baf677152f,"titan","Head of Growth Marketing","Mumbai, Maharashtra",2026-08-27T17:40:11.128Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:cd824463dc77e2d6,"loginextsolutions","Vice President - Marketing","Mumbai, Maharashtra",2026-08-27T17:40:16.849Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:811bd5ed1581774a,"rgb-web-tech","Chief Marketing Officer","Chandigarh",2026-08-27T17:40:19.818Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:39c9fc84108adc77,"ssterling-workforce-enterprises-private-limited","Chief Marketing Officer","Bandra, Mumbai, Maharashtra",2026-08-27T17:40:41.657Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:5a02d0ded8e248a3,"portcast","Marketing Director","Remote",2026-08-27T17:40:46.824Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:b15e5798915aea26,"portage-point-partners","Vice President, Commercial Strategy // CRM Enablement & Adoption","Hybrid work in Gurugram, Haryana",2026-08-27T17:40:50.017Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:209d58536cbf2bbf,"gowin-training","Vice President – Marketing (FinTech)","Hyderabad, Telangana",2026-08-27T17:40:53.058Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:4414d813ba48be65,"vml","Senior Director - CRM","Hybrid work in Gurugram, Haryana",2026-08-27T17:40:55.303Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:8f363a47657a5010,"inmobi","Senior Manager - Product Marketing","Bengaluru, Karnataka",2026-08-27T17:40:58.133Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:dda0182bc6375ddc,"kugelblitz-private-limited","Marketing Head","Jaipur, Rajasthan",2026-08-27T17:40:58.033Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:ac1db002fea217f2,"skanai","Head of Content Marketing","Remote in India",2026-08-27T17:41:00.655Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_9538db7c,"moody-s-analytics","Moody's - Assistant Vice President - Product Analysis/Digital Assets Domain (7-10 yrs)","Gurugram, Bengaluru",2026-08-27T17:39:46.591Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:a42b55f58a258b9a,"ey","Consulting- Regulatory Compliance – Senior Manager","Gurugram, New Delhi, Bengaluru",2026-08-27T17:42:01.517Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:676453035f5a64fa,"tyroo","Lead - Account Manager  (Lead COE - Native Business)","Gurugram",2026-08-27T17:42:01.538Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f68c44a97f9e2f69,"black-turtle","Director - Compliance - Banking (18-26 yrs)","Gurugram, Noida",2026-08-27T17:42:05.524Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:bdf3d224f75e8f0d,"golden-opportunities","F&A COE - AGM / AVP","Gurugram, Mumbai, Pune",2026-08-27T17:42:05.990Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:de9c3e51e25d7e76,"gspann","AI / Artificial Intelligence Practice Manager","Gurugram, Hyderabad, Bengaluru",2026-08-27T17:42:07.041Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e4ab8626f2236a5a,"golden-opportunities","F&A COE - AGM / AVP","Gurugram, Mumbai, Pune",2026-08-27T17:42:10.008Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7f3502e94e5881df,"gspann","AI Practice Manager","Gurugram, Noida, Hyderabad",2026-08-27T17:42:10.144Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:9e2ddf8aa2eb2eec,"axa-xl","Senior HR PMO & AI Enablement Manager","Gurugram, Bengaluru",2026-08-27T17:42:12.854Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1388fd3edeca5a9e,"tata-consultancy-services","Apriso COE Lead(Solution Architect)","Delhi / NCR, Pune, Bengaluru",2026-08-27T17:42:12.867Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4b6887b116c77b4d,"dataart-technologies","AI Consultant / AI CoE Lead (Pune-based)","Pune",2026-08-27T17:42:14.168Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:f684a1a332a7a17a,"jade-global","Oracle CoE & GTM Leader - Cloud & EBS (SCM | FIN | HCM | CX)","Pune",2026-08-27T17:42:16.563Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5c5ffdec181814d5,"forward-eye-technologies","SAP Procurement Process Lead","Noida",2026-08-27T17:42:16.580Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1464bd217d92ecae,"hr-india-solutions","Successfactors Employee Central Payroll Senior Manager","Gurugram",2026-08-27T17:42:18.753Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:af688ed13cab2c01,"fidelity-international","HR Business Partner","Gurugram",2026-08-27T17:42:20.005Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:74eda3746293f962,"american-express","Analyst/Sr. Analyst - Risk Management","Gurugram",2026-08-27T17:42:20.022Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:b17efb361aaf8f31,"american-express","Analyst/Sr. Analyst-Data Science","Gurugram",2026-08-27T17:42:22.268Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_acbad44e,"moody-s-analytics","Moody - Assistant Vice President - Product Analysis/Digital Assets Domain (7-10 yrs)","Gurugram, Bengaluru",2026-08-27T17:42:25.114Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_1e168959,"titanium-consulting-mumbai","Hiring For a Vice President - Finance & Accounting Solutioning","Delhi / NCR, Kochi, Kolkata, Hyderabad, Pune, Chennai, Bengaluru, Mumbai (All Areas)",2026-08-27T17:43:00.230Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:24e111c9cf911cbf,"mongodb","Director, Global Quote-to-Cash Operations (India COE)","Gurugram",2026-08-27T17:43:26.307Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:61d5b8fb2e0d108a,"wilco-source","Tower Head / Director","Hyderabad",2026-08-27T17:43:26.323Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:fe8ce6aaa91d2ae0,"axtria","Director - AM_CP","Gurugram",2026-08-27T17:43:26.421Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:858cfc91ae660b2e,"r1-rcm","Director","Chennai",2026-08-27T17:43:29.621Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0ffff85c6bf4fa90,"schneider-electric","Principal, Sustainability Sales","Mumbai",2026-08-27T17:43:30.920Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_d434804f,"mindshare","Associate Vice President, Marketplace and Partnerships","Gurugram",2026-08-27T17:43:25.361Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:a859b15601c7a48c,"future-gate-hr-solutions","Director","Ahmedabad, Bengaluru, Vadodara",2026-08-27T17:43:32.070Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:364b8466e0c91b3b,"movate-technologies","Director","Chennai",2026-08-27T17:43:33.563Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:65eb9f0af8c7627a,"wilco-source","MuleSoft Tower Head/ Director","Hyderabad",2026-08-27T17:43:34.540Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:6509099937ea31d9,"r1-rcm","Director- AR Follow Up","Hyderabad",2026-08-27T17:43:40.729Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:baec3be0307bc6ca,"singhi-advisors","Partner / Director","Mumbai",2026-08-27T17:43:40.823Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7b6e8c2874efb350,"omam-consultants","Director - Company Secretary - ITeS/BPO (18-26 yrs)","Pune",2026-08-27T17:43:43.266Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:6448de8c633771e2,"l--oreal-india-pvt-ltd","Senior Program Manager - General Trade Planning","Mumbai",2026-08-27T17:43:43.345Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0ded737f927e043b,"aveva","Senior Manager, Workplace Experience","Hyderabad, Bengaluru",2026-08-27T17:43:44.305Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:512bfa485ca5ad66,"dmi-finance","Senior Manager","Noida",2026-08-27T17:43:46.515Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:47a6ffd6acf43f1e,"ey","EYP - VME - Manager","Hyderabad",2026-08-27T17:43:46.651Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5884559b7684f8b0,"convate-consultancy-services","General Manager","Kolkata",2026-08-27T17:43:47.621Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2e6a3ea9ae592122,"brightcode-software-services","Manager","Ranchi",2026-08-27T17:43:49.601Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:8811f9dbf8c6962b,"kp-group","Manager","Surat",2026-08-27T17:43:49.696Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ec393c56667bebce,"gold-plus-glass-industry","General Manager","Delhi / NCR, Roorkee, Belagavi",2026-08-27T17:43:50.642Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_f39845a5,"digidarts-marketing","Business Development Manager","Gurugram",2026-08-27T17:43:50.022Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:c90ec4435b0b50cb,"bunge","Sr Manager - RTR","Mohali",2026-08-27T17:44:11.514Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:cc15f81f7becbbd6,"seco-tools","Marketing Strategy & Transformation Lead","Pune, Maharashtra",2026-08-27T17:44:45.720Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:e3e54cc1587d28bd,"saaki-argus---averil-consulting","Head- Strategy- Gold Business","Chennai, Tamil Nadu",2026-08-27T17:44:49.966Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:551daef3543af0b1,"saaki-argus---averil-consulting","Head - Growth Strategy","Coimbatore, Tamil Nadu",2026-08-27T17:44:53.235Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:5c0261b0323116e0,"shivrai-technologies-pvt-ltd-","Partner - Revenue and Growth - PUNE","Pune, Maharashtra",2026-08-27T17:45:18.286Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:9c467adf96699b3e,"saaki-argus---averil-consulting","Lead Generation Head","Noida, Uttar Pradesh",2026-08-27T17:45:22.499Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:c772923942f4dbce,"saaki-argus---averil-consulting","Lead - New Business Growth","Chennai, Tamil Nadu",2026-08-27T17:45:22.506Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:57ebdd5a38c04412,"eduonix-learning-solutions-pvt-ltd","Manager Alliances & Partnerships","Unknown, Maharashtra",2026-08-27T17:45:30.972Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:23a261971679649f,"adani-group","Project Head","Mumbai, Hyderabad",2026-08-27T17:46:34.366Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1658ad68b36089a7,"hurix","Senior Director/ AVP_Talent Acquisition","Mumbai, Pune, Chennai",2026-08-27T17:46:34.374Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c18ea421a5cbeadc,"automation-anywhere","Director- Global Partner Enablement","Hybrid - Bengaluru",2026-08-27T17:46:34.408Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ca60f4965ac2be0e,"rang-technologies","Center Head - US Recruitment","Ahmedabad, Vadodara",2026-08-27T17:46:38.808Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:40a860f1a54e8b40,"golden-opportunities","Centre of Excellence FCC - Director","Bengaluru",2026-08-27T17:46:38.836Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:259c0b1b3535de1b,"topnotch-recruitment-consultants","Client Service Transformation(Asset Management)","Hybrid - India, Bengaluru",2026-08-27T17:46:38.936Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_bc18bbbc,"barclays","VP Finance Control Assurance","Gurugram",2026-08-27T17:46:11.651Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:aee28abe607005cd,"zinnov-management-consulting","HRBP Associate Director","Hyderabad, Chennai, Bengaluru",2026-08-27T17:46:42.537Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:246eae2ede38690f,"golden-opportunities","COE Order Management - AGM / AVP","Chennai",2026-08-27T17:46:42.549Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:2218de82388a07c9,"tarantula-net","Senior Manager, Delivery & Customer Success","Hybrid - Hyderabad",2026-08-27T17:46:45.085Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5c0772802ef24b2b,"solarsquare-energy","Solar Square - Associate Director - Center of Excellence (3-8 yrs)","Bengaluru",2026-08-27T17:46:48.915Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:0c09f2b0133202ea,"solarsquare-energy","Solar Square - Associate Director - Center of Excellence (3-8 yrs)","Mumbai",2026-08-27T17:46:49.200Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e1296ec99654db08,"jones-lang-lasalle-property-consultants","Quality Assurance/Quality Control Head  - Data Center Constructions","Hyderabad",2026-08-27T17:46:49.335Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:fe0fc130a9f21192,"accenture","Business Transformation Assoc Manager","Gurugram",2026-08-27T17:47:02.873Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e858d96a9596410c,"aanseacore","Oracle Fusion Center of Excellence","Chennai",2026-08-27T17:47:02.923Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c5eb50f0e128767c,"solarsquare-energy","Solar Square - Associate Director - Center of Excellence (3-8 yrs)","Mumbai",2026-08-27T17:47:04.240Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:02175f3cc6b806dc,"tech-mahindra","Salesforce Architect","Hybrid - Noida, Pune, Mumbai (All Areas)",2026-08-27T17:47:06.641Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:399508089542ad3e,"omnitech-engineering","General Manager/Senior General Manager - Production","Rajkot",2026-08-27T17:47:06.728Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:462eb81ede807f84,"info-edge","Hiring Specialist - HR Center of Excellence | Info Edge India | Noida","Noida",2026-08-27T17:47:07.781Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:4d45505738b44ddb,"msx-international","Regional Distribution Center Operations Manager","Pune",2026-08-27T17:47:10.071Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:bd577f3246007de9,"astar-data","BI Solution Architect","Bengaluru",2026-08-27T17:47:10.186Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_effd7774,"ey","Associate Vice President","Gurugram",2026-08-27T17:47:04.554Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_2d88daaf,"barclays","Transaction Monitoring analytics - AVP","Gurugram",2026-08-27T17:47:48.533Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_3edb47ea,"barclays","Product Consumer Credit - AVP","Gurugram",2026-08-27T17:48:22.694Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:3010c69863a26d88,"orcapod-consulting-services","Business Head","Hyderabad, Bengaluru",2026-08-27T17:49:01.763Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:54cd6841ed00d142,"chadwick-professional-services","Director / Talent Acquisition Leader (MediaTech GCC)","Hyderabad, Bengaluru, Mumbai (All Areas)",2026-08-27T17:49:01.850Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1cd1c62184d7b1fb,"vlaunchu","GCC Setup & Consulting Leader","Bengaluru",2026-08-27T17:49:05.365Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_8cd80932,"barclays","AVP Basel IV Regulatory Capital","Gurugram",2026-08-27T17:48:55.196Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:85089205ee3d7e8a,"chaudhary-group","Head- Export sales lead","Gurugram",2026-08-27T17:49:06.568Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:62889584a2d4eb62,"firstcall-hresource","Manager","Gurugram, Hyderabad, Bengaluru",2026-08-27T17:49:07.697Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:ea10f43af29c7263,"rockwell-automation","Industry Consultant","Gurugram",2026-08-27T17:49:07.973Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:fd225c21534da6e6,"blj-tech-geeks","Senior Manager/GCC Account Lead - Solution Architecture (12-20 yrs)","Hyderabad, Pune, Bengaluru",2026-08-27T17:49:10.482Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e37bd6b099254133,"haarvard-management-consultants","Solution Sales & Services Lead (Senior Role)","Remote",2026-08-27T17:49:12.764Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:c49069bb3457fe47,"crescendo-global-leadership-hiring-india","Head IT Risk","Navi Mumbai, Chennai",2026-08-27T17:49:19.401Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:1a0e97ad1ea108e4,"indihire-consultants","Head-HR Operations","Hyderabad",2026-08-27T17:49:19.770Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:eac8b6d87aacccbd,"vlaunchu","Lead / Principal Consultant - HR Consulting (GCC)","Bengaluru",2026-08-27T17:49:22.396Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:6dc16d7683fe2cff,"krbl-limited","Legal Head","Noida, Ghaziabad, Greater Noida",2026-08-27T17:49:23.505Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:5df57d006bb1ebb6,"cvent","Senior Manager, Business Transformation","Hybrid work in Gurugram, Haryana",2026-08-27T17:49:25.573Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:7865ee9964d25352,"kenvue","Lead Finance Analyst APAC GCC FP&A","Bengaluru",2026-08-27T17:49:27.963Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:d7d6488aad3fc850,"vml","Manager - Strategy & Planning","Hybrid work in Gurugram, Haryana",2026-08-27T17:49:27.966Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:d62a5905f8f47e4e,"codincity-digital-technologies","Sales Enterprise Manager","Gurugram, Noida, New Delhi",2026-08-27T17:49:27.968Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:3a4ce131cb3021a1,"eyet-innovations-software-solutions","Chief Marketing Officer","Edapalli, Kerala",2026-08-27T17:49:28.073Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:21bbcba43965396c,"teamplus-staffing-solution","GCC IT Lead - chennai  ITSM, ITAM, and ITOM- EPC industry","Chennai",2026-08-27T17:49:30.104Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:ea4549782df14c99,"portage-point-partners","Director, Commercial Strategy // Consumer Insights","Hybrid work in Gurugram, Haryana",2026-08-27T17:49:32.345Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:fa8bbb5d60e5c5f6,"aanseacore","Oracle Fusion HCM Lead","Chennai",2026-08-27T17:49:33.516Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:af5b3598b6df4348,"alfanar","Planning Manager (Lead Planner role)- Gurgaon","Gurugram",2026-08-27T17:49:33.691Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:e365cd162dffab4a,"sg-lottery-india","Associate Manager- Management Accounting","Hybrid - Bengaluru",2026-08-27T17:49:37.336Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:e52e9403f8fdb75d,"kharesiya-brands-pvt-ltd","Vice President - Business Head","Dwarka, Delhi, Delhi",2026-08-27T17:49:37.339Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:8bce688a15f6af6c,"antarctica","Head of Global Partnerships & Alliances","Hybrid work in Mumbai, Maharashtra",2026-08-27T17:49:37.565Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+indeed:bdcee0a25caca1f8,"visista","VP - Sales & Marketing","Hyderabad, Telangana",2026-08-27T17:49:41.274Z,indeed,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_40dead42,"forward","Head - Customer Insights","Mumbai",2026-08-27T17:50:03.682Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_26375df3,"sbi-sg","Assistant Vice President - Customer Relationship Management","Mumbai",2026-08-27T17:50:34.485Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+naukri:fc92c6c218dce071,"aanseacore","Head - IT, Cybersecurity & Digital - India GCC","Chennai",2026-08-27T17:51:03.513Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:b5d1526de01f4f52,"tata-consultancy-services","Business Head (GCC Sales)","Bengaluru",2026-08-27T17:51:03.534Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:739bbee8dcc50aef,"wilco-source","MuleSoft / Integration Tower Head","Hybrid - Hyderabad",2026-08-27T17:51:03.559Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:191d77dbbf47cf50,"crescendo-global-leadership-hiring-india","Head - IT Risk/Cybersecurity - Banking (15-20 yrs)","Navi Mumbai, Chennai",2026-08-27T17:51:07.173Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:313ea61883e420e7,"saaki-argus-and-averil-consulting","Site Head (GCC)","Chennai",2026-08-27T17:51:07.212Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:5b4f77c51c3741d7,"cloud-angles-digital-transformation","CA0324 - Center Head GCC Technical","Noida",2026-08-27T17:51:09.648Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:805f71dfe166956e,"wilco-source","MuleSoft Tower Head","Hyderabad",2026-08-27T17:51:09.753Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:866fad890b0c5ce8,"crescendo-global-leadership-hiring-india","Head - IT Risk/Cyber Security (15-20 yrs)","Navi Mumbai, Chennai",2026-08-27T17:51:12.202Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+naukri:41b68e64246085c2,"live-connections","Sr. Manager Cargo Operations","Thane",2026-08-27T17:51:12.365Z,naukri,NO,PORTAL_PREFIXED_LEGACY_STAGING,LEVEL 3: Source + Native ID
+o_23732273,"yes-madam","YesMadam - Vice President - Supply - Onboarding (8-12 yrs)","Noida",2026-08-27T17:51:24.458Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_84b2707d,"c_aae3db2a","Assistant Vice President - Customer Experience","Thane",2026-08-27T17:51:51.284Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_1e1e329f,"barclays","DCF Lead","Pune",2026-08-27T17:52:09.068Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_aa71fa21,"adityaram-properties","Adityaram Properties - Head - Marketing (15-20 yrs)","Chennai",2026-08-27T17:52:27.851Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_9573a379,"nlb-services","AI Practice Head (India & US Market)","Gurugram, Noida, New Delhi",2026-08-27T17:52:47.515Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_918385a5,"plastemartjobs","Marketing Head","Mumbai",2026-08-27T17:53:00.862Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_6d5723bd,"hrd-house","Marketing Head - Animal Health - Poultry/Cattle/Dairy - Mumbai.","Mumbai",2026-08-27T17:53:16.997Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_bbce6cec,"saaki-argus---averil-consulting","Sr Manager- Customer Experience","Bengaluru, Karnataka",2026-08-27T17:53:36.598Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_53856a04,"z47-portfolio-company","Head of Marketing","Bengaluru, Karnataka, India (On-site)",2026-08-27T17:53:52.534Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_27a76849,"c_cd50310c","Chief Operating Officer (SEO Marketing Agency)","Mumbai, Maharashtra, India (On-site)",2026-08-27T17:54:18.347Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ae0fb021,"blufig","Head of Marketing/ Team Lead- Digital Marketing","Bengaluru South, Karnataka, India (On-site)",2026-08-27T17:54:41.569Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_7c19fe62,"saaki-argus---averil-consulting","Chief Manager- Contact Centre Operations","Chennai, Tamil Nadu",2026-08-27T17:55:03.863Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_e18912b,"c_bf350c95","Sr. Executive - CRM","Pune, Maharashtra",2026-08-27T17:55:21.048Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_5068041d,"unique-builders","Vice President","Jaipur, Rajasthan",2026-08-27T17:55:37.740Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_c8cdcca3,"c_58ad1f00","India Head","Mumbai(Lower Parel)",2026-08-27T17:55:50.866Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_9c5489ca,"fabel-services","Fabel Services - Head - Growth Marketing (10-15 yrs)","Gurugram",2026-08-27T17:56:08.047Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_7392fc77,"studiokon-ventures","SKV India - Head - Client Success (12-15 yrs)","Gurugram",2026-08-27T17:56:25.966Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_f6576111,"studiokon-ventures","SKV India - Head - Client Success (12-18 yrs)","Gurugram",2026-08-27T17:56:44.468Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_823e7867,"sun-pharma","MPD Head - Solitra","Mumbai",2026-08-27T17:57:04.089Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a9fc3a03,"liquiloans","LiquiLoans - Head - Growth Strategy (10-15 yrs)","Mumbai",2026-08-27T17:57:20.519Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_aec326aa,"quadrangle","Info Edge - Head - Growth - iimjobs & hirist (8-12 yrs)","Noida",2026-08-27T17:57:40.535Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_44b8f2ff,"quadrangle","Info Edge - Head - Growth - iimjobs.com & hirist.tech (8-12 yrs)","Noida",2026-08-27T17:57:59.285Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_6de987d0,"aspiration","YouTube Head","Mumbai",2026-08-27T17:58:17.937Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_1b6ee4a8,"shreeyam-power-and-steel-industries","Head  Steel Melting Shop (SMS)","Gandhidham",2026-08-27T17:58:33.991Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_4ebb1cb9,"c_c20fa036","Chief Technology Officer - India","Remote",2026-08-27T17:58:49.329Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_2c85d9ae,"design-n-buy","AVP / VP - Customer Success","Ahmedabad, Gujarat",2026-08-27T17:59:11.182Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_805167fd,"sunniva-global","Head - Operations","Gurugram, Haryana",2026-08-27T17:59:30.397Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_d7c90f37,"c_d111445f","Chief Operations Officer (COO)","Mumbai, Maharashtra",2026-08-27T17:59:47.302Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_13db88df,"dhanalakshmi-hire-purchase---leasing","Head- Operations","Kerala",2026-08-27T18:00:08.365Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_61417bb6,"valuementor","VP - Head of Sales – Global Markets","Kochi, Kerala",2026-08-27T18:00:15.649Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_43623d23,"dimensions-hrd-consultants","Head - Digital Marketing - Financial Services (14-20 yrs)","Mumbai",2026-08-27T18:00:42.114Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_36df0c9c,"tefa-technologies","Head - Digital Products - Banking/FinTech (10-15 yrs)","Mumbai",2026-08-27T18:01:03.379Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_5ec9e23a,"mynavi-solutions-india","Head - Sales - Media Digital Tech Platform (15-25 yrs)","Gurugram",2026-08-27T18:01:21.831Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_1f6de219,"pms-consulting","Chief Technology Officer (15-20 yrs)","Gurugram",2026-08-27T18:01:43.417Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ba6e748e,"shanti-informatics","Masters' Union - Head - Visa & Mobility (10-16 yrs)","Gurugram",2026-08-27T18:02:07.579Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_1a0d572f,"waaree-energies","BMS Head","Valsad, Vapi, Navsari",2026-08-27T18:02:27.785Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_61df20fa,"mediawaley","Chief Operating Officer (COO)","Mohali, Punjab",2026-08-27T18:02:43.940Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a1b40a52,"india1atm","Head – Strategic Alliance (_/ VP)","Bengaluru, Karnataka",2026-08-27T18:03:02.282Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_8057382c,"snapmint-credit-advisory","Snapmint - Director - Growth & Retention (5-12 yrs)","Bengaluru",2026-08-27T18:03:20.921Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_1fe34337,"c_ff60a170","VP, Employee Success Business Partner","Bengaluru",2026-08-27T18:03:43.546Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_cdbf8098,"mcube-placements","Chief Business Head  Real Estate Developer Gurugram","Gurugram",2026-08-27T18:04:04.517Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_85d0c349,"kpmg-assurance-and-consulting-services-llp","Director","Gurugram",2026-08-27T18:04:22.998Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_fe398bc1,"axtria","Director","Gurugram",2026-08-27T18:04:43.871Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_78220d0e,"gaurs","Head CRM","Noida(Sector 129)",2026-08-27T18:05:03.110Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_3b3192f6,"unacademy","Associate Director - Sales","Bengaluru",2026-08-27T18:05:19.954Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_7bf56b5e,"exotic-mile","D2C Website Manager","Gurugram",2026-08-27T18:05:36.233Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a0d9428c,"skipperseil","Dy. General Manager/General Manager-Sales & Marketing (Domestic Head)","Gurugram",2026-08-27T18:05:51.639Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_e21f54f3,"oxycure","Sales Head","Gurugram",2026-08-27T18:06:11.020Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_1763d479,"pwc-service-delivery-center","Manager","Gurugram",2026-08-27T18:06:28.724Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_487c30b6,"info-edge","Head Customer Success","Noida",2026-08-27T18:06:45.830Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ebdbf1bf,"enterprise-hiring-solutions-bangalore","Head Customer Success- SAAS Platform","Mumbai",2026-08-27T18:07:02.505Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_c2533870,"c_4a73d66","ServiceNow Tower Head","Hyderabad",2026-08-27T18:07:16.788Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_d2ea1ec5,"true-credits","True Credits - Head - Customer Management (10-16 yrs)","Gurugram",2026-08-27T18:07:31.485Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_81caac0c,"c_884509e6","Head of AI","Unknown",2026-08-27T18:07:48.724Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_74f10ecb,"blueberry-labs-private-limited","Chief Technology Officer","Hyderabad, Telangana",2026-08-27T18:08:06.022Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a0fd7e63,"elitecon-international","Head Product Marketing","Noida",2026-08-27T18:08:21.802Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_13b2de5,"seven-n-half","MarTech Lead","Mumbai",2026-08-27T18:08:37.697Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_f2b75e4c,"c_b48562a6","Group Account Director","Gurugram",2026-08-27T18:08:51.791Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_73be1c3b,"nibav-lifts","HRBP Head","Chennai",2026-08-27T18:09:11.897Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_d22f24ba,"lead-hr-services","Head - PED","Chennai",2026-08-27T18:09:29.053Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_694b79b1,"adonis-recruitment-consultants","Manager / Head - NPI / PED /NPI (Micro Fasteners / Fasteners exp must)","Oragadam, Sriperumbudur, Chennai(Oragadam Industrial Corridor)",2026-08-27T18:09:44.490Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_67d3e88a,"placewell-solutions","Associate Director Marketing Personal Care","Mumbai",2026-08-27T18:09:59.534Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_12dbce8e,"aptita-services","Director - Marketing - eCommerce (12-15 yrs)","Bengaluru",2026-08-27T18:10:18.254Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_bdcc93c8,"c_de8bef36","International RGM Future Capabilities Director","Gurugram",2026-08-27T18:10:38.562Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_14e11b2b,"dtcc","Market Risk Director","Chennai",2026-08-27T18:10:55.339Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_19b4c4ae,"c_a5462401","Director - Corporate Communications (18-25 yrs)","Gurugram",2026-08-27T18:11:13.290Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_9a3038f4,"mediamonks","Creative Director (AI)","Gurugram",2026-08-27T18:11:31.697Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_28506f9,"scymes-services-pvt-limited","HEAD OF DIGITAL TRANSFORMATION INDIA","Thiruvallur District, Tamil Nadu",2026-08-27T18:11:53.584Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_c85eb1e2,"makemytrip","Associate Revenue Manager","Gurugram",2026-08-27T18:12:16.814Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a41d02b8,"manpowergroup-services-india","Practice Director CSA Engineering","Gurugram, Bengaluru",2026-08-27T18:12:33.182Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_3b2a757,"c_653477f9","Chief Technical Officer (CTO)","Noida, Uttar Pradesh",2026-08-27T18:12:53.923Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_16ed1f48,"moodys-analytics","Associate / Senior Associate /Delivery Lead /Delivery Manager","Gurugram",2026-08-27T18:13:28.550Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_f04fde27,"c_592d8d0b","Associate Director-Public Finance -Govt/Infra-15 Years -Pune/Mumbai","Hybrid - Gurugram, Mumbai, Pune",2026-08-27T18:13:50.694Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a3d19c98,"ptc","Associate Channel Account Manager","Gurugram",2026-08-27T18:14:27.638Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_b694b8e1,"riverforest-connections","Director/Associate Director - Business Development (Oil & Gas)","Hybrid - Gurugram, Mumbai (All Areas)",2026-08-27T18:14:52.632Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_c933258f,"deloitte-shared-services-india","Deloitte - Associate Director - Workforce Transformation - IIM/FMS/MDI/XLRI (10-15 yrs)","Mumbai, Bengaluru, Delhi NCR",2026-08-27T18:15:26.199Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_227930bb,"c_a5462401","SeviceNow Director (16-25 yrs)","Gurugram",2026-08-27T18:15:51.083Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_b3677345,"nlb-services","AI Sales Director","Gurugram, Delhi / NCR, Noida",2026-08-27T18:16:20.489Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_8911644f,"c_a5462401","Senior Director - RCM Operations","Hybrid - Gurugram, Noida",2026-08-27T18:16:45.449Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_5b3b74cf,"nlb-services","AVP/Director- Data Solution & Analytics","Gurugram, Noida",2026-08-27T18:17:15.340Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_4c9e98b8,"bmc-software","Director - Mainframe Modernisation and transformation","Pune",2026-08-27T18:17:33.131Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_f9871ba8,"c_e4b93eb9","Business Transformation Assoc Director","Gurugram",2026-08-27T18:17:46.373Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_2a6537d0,"mobikwik","Associate Director_HR Operations","Gurugram",2026-08-27T18:18:07.005Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_346cd102,"teva-global-business-services","On Site CMO Manager-Sr Manager Quality Assurance","Bengaluru(Hebbal)",2026-08-27T18:18:36.572Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_b72b6b43,"upahar-india","Vice President, CMO/CDMO (International Business Development)","Hyderabad, Mumbai (All Areas)",2026-08-27T18:19:04.489Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_75a57595,"sun-pharma","Sr. Manager- CMO","Mumbai",2026-08-27T18:19:26.785Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_77b7041a,"ss-clinical-services","Doctor - M.B.B.S","Chennai",2026-08-27T18:19:47.496Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_facf0333,"c_29fb01d0","Medical Director/Sr. Consultant - Oncology","Kolkata",2026-08-27T18:20:16.901Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_8c5fbc94,"c_29fb01d0","Medical Director/Sr. Consultant - Oncology","Jaipur",2026-08-27T18:20:37.603Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_5c8c6dd9,"haria-l-g-rotary-hospital","Doctors","Vapi",2026-08-27T18:20:54.363Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ee2cc159,"c_29fb01d0","Medical Director/Senior Consultant - Oncology","Navi Mumbai",2026-08-27T18:21:12.216Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_298da5d1,"aizant","Assistant Manager/Dy Manager - Business Development For CMO","Hyderabad",2026-08-27T18:21:39.537Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_d62f7c4b,"c_b87eb5c","VP. Global Support","Pune Division, Maharashtra, India (On-site)",2026-08-27T18:22:06.619Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ee05d40b,"c_cff40a8b","Consulting-C&M-Digital Foundry-Contac Centre -Operations Vice President","Chennai, Tamil Nadu, India (On-site)",2026-08-27T18:22:31.107Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_277b1fec,"c_29fb01d0","Medical Director/Sr. Consultant - Oncology","Faridabad",2026-08-27T18:23:07.483Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_f2299f5e,"iqvia-biotech","Associate Medical Safety Director","Bengaluru",2026-08-27T18:23:29.973Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_7bdb2e13,"medipharma-konnect","Doctor – Rheumatology","Mumbai",2026-08-27T18:25:21.368Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_3ec97c16,"c_c02a580","Expert Opportunity - Director of Customer Success ($70/hr, up to $1,400/week)","India (Remote)",2026-08-27T18:25:49.150Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_64121042,"medipharma-konnect","Doctor - Rheumatology (Full Time)","Mumbai",2026-08-27T18:26:42.067Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_30df9c53,"sara-medicaid","MD/DNB Anesthetist doctors","Delhi / NCR, Bahadurgarh, Faridabad(Mathura Road)",2026-08-27T18:27:04.252Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_98034fa8,"c_dfc18dd","Senior Manager, Customer Success Lead – APAC & Middle East","Bengaluru East, Karnataka, India (Hybrid)",2026-08-27T18:27:23.123Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_6fbb5133,"medicoplacements","Gynaecologist Doctor","Kadapa",2026-08-27T18:27:44.672Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_7dc93182,"chaitanyahr-consultancy","Anaesthetist Doctor","Hubballi",2026-08-27T18:28:03.087Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_cb1feef3,"medicoplacements","Gynaecologist Doctor","Nellore",2026-08-27T18:28:16.696Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_5bd8c613,"c_77fcf5a7","Sr. VP, Head Tele Sales & Customer Success","Noida, Uttar Pradesh, India (On-site)",2026-08-27T18:28:35.400Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_6e55244c,"infrrd","VP- Marketing","India",2026-08-27T18:28:58.753Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_e1fe84c1,"c_fee63842","Senior Manager - Partner Success","Mysuru, Karnataka",2026-08-27T18:29:23.220Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_735ac2c3,"mahasurya-ventures-india","VP - Global eMarketplace Growth & Partnerships","Gurugram, Mumbai(Mulund), Siliguri",2026-08-27T18:29:45.637Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_32b6179f,"continuity-1","Growth Lead","Remote",2026-08-27T18:30:09.993Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_9a1f0b2b,"axtria","Associate Director","Noida",2026-08-27T18:30:30.539Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_8a154b14,"realty-360-degree","AVP / VP","Noida",2026-08-27T18:30:53.311Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a043b827,"c_125e153e","Origination Coverage, VP","Bengaluru",2026-08-27T18:31:07.990Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_44ac2a34,"jubilant-pharmova","Associate Director/ Director Executive Compensation","Noida(Sector 16A)",2026-08-27T18:31:24.915Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_cc2b2dd4,"axtria","Senior Manager","Bengaluru",2026-08-27T18:31:53.780Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_84745513,"axtria","Senior Manager","Pune",2026-08-27T18:32:21.061Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_fcc8213a,"foundation-for-economic-development","Partner / State Director","Chennai",2026-08-27T18:32:45.029Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_8349a1fe,"ey","Associate Director - Markets - CHS - CBS - C&I - BD & CE Leadership","Mumbai",2026-08-27T18:33:12.451Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_d82bb29,"align-technology","Associate Director, Marketing Excellence","Mumbai",2026-08-27T18:33:43.563Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_591437d,"jones-lang-lasalle--jll-","Senior Director - Marketing, India","Mumbai",2026-08-27T18:34:24.469Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_f6bca512,"black-turtle","Associate Director - Market Risk & Model Validation (10-17 yrs)","Bengaluru",2026-08-27T18:37:38.753Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_50c7ee9,"claight-corporation-expert-market-research","Procurement Director Market Research Services","Noida",2026-08-27T18:40:00.719Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_8a55c1a7,"pernod-ricard-india-private-limited","Senior Manager- Brand Marketing","Gurugram, Haryana",2026-08-27T18:41:11.663Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a02062b5,"sarvam","Senior Manager, Growth Marketing","Bengaluru, Karnataka",2026-08-27T18:42:41.937Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_faf6c934,"titan","Head of Growth Marketing","Mumbai, Maharashtra",2026-08-27T18:46:32.702Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_10347d03,"loginextsolutions","Vice President - Marketing","Mumbai, Maharashtra",2026-08-27T18:48:10.389Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_83b87286,"c_c5a8c6f8","Chief Marketing Officer","Chandigarh",2026-08-27T18:48:37.293Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_643ae3d9,"ssterling-workforce-enterprises-private-limited","Chief Marketing Officer","Bandra, Mumbai, Maharashtra",2026-08-27T18:49:14.449Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_14301c9e,"vml","Senior Director - CRM","Hybrid work in Gurugram, Haryana",2026-08-27T18:49:41.032Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_c6c65910,"inmobi","Senior Manager - Product Marketing","Bengaluru, Karnataka",2026-08-28T17:32:51.829Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_ac720c29,"kugelblitz-private-limited","Marketing Head","Jaipur, Rajasthan",2026-08-28T17:32:59.868Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_4697d13c,"ey","Consulting- Regulatory Compliance – Senior Manager","Gurugram, New Delhi, Bengaluru",2026-08-28T17:33:08.090Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_f243537b,"tyroo","Lead - Account Manager  (Lead COE - Native Business)","Gurugram",2026-08-28T17:33:16.005Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a298ac8e,"black-turtle","Director - Compliance - Banking (18-26 yrs)","Gurugram, Noida",2026-08-28T17:33:24.434Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a4c6a020,"gspann","AI / Artificial Intelligence Practice Manager","Gurugram, Hyderabad, Bengaluru",2026-08-28T17:33:32.841Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_eca779a2,"gspann","AI Practice Manager","Gurugram, Noida, Hyderabad",2026-08-28T17:33:41.053Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_70dc7eb8,"axa-xl","Senior HR PMO & AI Enablement Manager","Gurugram, Bengaluru",2026-08-28T17:33:52.613Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_457af3b7,"c_fcf4d062","Apriso COE Lead(Solution Architect)","Delhi / NCR, Pune, Bengaluru",2026-08-28T17:34:03.955Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_3fe23d1c,"dataart-technologies","AI Consultant / AI CoE Lead (Pune-based)","Pune",2026-08-28T17:34:12.431Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_8e1cb797,"jade-global","Oracle CoE & GTM Leader - Cloud & EBS (SCM | FIN | HCM | CX)","Pune",2026-08-28T17:34:23.367Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_7680dc7a,"forward-eye-technologies","SAP Procurement Process Lead","Noida",2026-08-28T17:34:32.152Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_a7cbf198,"fidelity-international","HR Business Partner","Gurugram",2026-08-28T22:39:50.230Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_c8038b00,"american-express","Analyst/Sr. Analyst - Risk Management","Gurugram",2026-08-28T22:39:57.820Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested
+o_b010362d,"mongodb","Director, Global Quote-to-Cash Operations (India COE)","Gurugram",2026-08-28T23:10:07.759Z,o_,YES,RAW_STAGED_UNCANONICALIZED,LEVEL 1: Raw Document Ingested

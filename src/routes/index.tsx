@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type Opportunity, type DecisionVerb } from "../data/opportunity-fixtures";
+import { type Opportunity, type DecisionVerb, type ServedOpportunity, isEvaluated, isUnavailable, isUnmaterialized } from "../data/opportunity-fixtures";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
 import { getOpportunitiesFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
@@ -76,9 +76,13 @@ function Shortlist() {
   const [open, setOpen] = useState<string | null>(null);
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
   const [selectedCategoryId, setSelectedCategoryId] = useState<CategoryId>("all");
-  const [categoryOps, setCategoryOps] = useState<Opportunity[] | null>(null);
+  const [categoryOps, setCategoryOps] = useState<ServedOpportunity[] | null>(null);
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
-  const categoryCacheRef = useRef<Map<string, Opportunity[]>>(new Map());
+  const categoryCacheRef = useRef<Map<string, ServedOpportunity[]>>(new Map());
+
+  useEffect(() => {
+    categoryCacheRef.current.clear();
+  }, [opportunitiesList]);
 
   useEffect(() => {
     if (selectedCategoryId === "all") {
@@ -142,7 +146,9 @@ function Shortlist() {
 
   const remaining = useMemo(
     () =>
-      activeOps.filter((o) => {
+      activeOps.filter((o: ServedOpportunity) => {
+        if (!isEvaluated(o)) return true; // We don't filter out unavailable states; they show up.
+        
         const clientRec = decisions[o.jobHash];
         const userVerb = clientRec?.verb || o.userDecision?.userAction;
 
@@ -169,7 +175,8 @@ function Shortlist() {
 
         if (o.reviewWorkflowState === "REVIEWED_UNKNOWN") {
           if (clientRec && clientRec.reviewedFingerprint === currentFingerprint) return false;
-          const action = o.userDecision?.userAction || o.engineRecommendation?.engineVerdict;
+          const userAction = o.userDecision?.userAction && o.userDecision.userAction !== "NONE" ? o.userDecision.userAction : undefined;
+          const action = userAction || o.engineRecommendation?.engineVerdict;
           return action === "PURSUE" || action === "CONSIDER";
         }
 
@@ -179,12 +186,18 @@ function Shortlist() {
   );
 
   const shortlistedOps = useMemo(
-    () => remaining.filter((o) => o.engineRecommendation?.engineVerdict === "PURSUE" || o.engineRecommendation?.engineVerdict === "CONSIDER"),
+    () => remaining.filter((o) => {
+       if (isEvaluated(o)) {
+          return o.engineRecommendation?.engineVerdict === "PURSUE" || o.engineRecommendation?.engineVerdict === "CONSIDER";
+       }
+       if (isUnavailable(o) && o.evaluationState === "SPARSE_SPEC") return false;
+       return false; // Exclude UNMATERIALIZED/backlog items from executive shortlist feed
+    }),
     [remaining]
   );
 
   const sparseOps = useMemo(
-    () => remaining.filter((o) => o.decision === "SPARSE_SPEC"),
+    () => remaining.filter((o) => isUnavailable(o) && o.evaluationState === "SPARSE_SPEC"),
     [remaining]
   );
 
@@ -369,9 +382,11 @@ function Shortlist() {
                       metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? (isLoadingCategory ? "..." : filteredRemaining.length)
                     } ${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}`}
               </h2>
-              {selectedCategoryId === "all" && shortlistedOps.length > 0 && shortlistedOps.length !== totalShortlisted && (
+              {selectedCategoryId === "all" && (
                 <span className="label-mono text-[11px] text-muted-foreground">
-                  {shortlistedOps.length} remaining to review
+                  {metrics?.discoveryMetrics?.actionableReviewQueue !== undefined
+                    ? `${metrics.discoveryMetrics.actionableReviewQueue} remaining to review`
+                    : `${shortlistedOps.length} on page`}
                 </span>
               )}
             </div>
@@ -433,7 +448,7 @@ function Shortlist() {
                 {visible.map((o, idx) => {
                   const isOpen = open === o.jobHash;
 
-                  return (
+                  return isEvaluated(o) ? (
                     <ShortlistCardRow
                       key={o.jobHash}
                       o={o}
@@ -445,6 +460,8 @@ function Shortlist() {
                       decide={decide}
                       showArrivalBanner={showArrivalBanner}
                     />
+                  ) : (
+                    <MinimalStateCard key={o.jobHash} o={o} />
                   );
                 })}
 
@@ -528,20 +545,20 @@ function Shortlist() {
           {isStarting ? "Starting..." : runState?.isActive ? "Search Active" : "Run Search"}
         </button>
         <span className="dock-text">
-          <strong>{totalScraped}</strong> scraped
+          <strong>{(metrics?.portalMetrics?.total ?? totalScraped).toLocaleString()}</strong> candidates
         </span>
         <span className="hidden md:inline-block text-border/40">|</span>
         <span className="dock-text hidden md:inline">
-          LinkedIn <strong>{sourceCounts.LinkedIn}</strong>
+          LinkedIn <strong>{(metrics?.portalMetrics?.LinkedIn ?? sourceCounts.LinkedIn).toLocaleString()}</strong>
         </span>
         <span className="dock-text hidden md:inline">
-          Naukri <strong>{sourceCounts.Naukri}</strong>
+          Naukri <strong>{(metrics?.portalMetrics?.Naukri ?? sourceCounts.Naukri).toLocaleString()}</strong>
         </span>
         <span className="dock-text hidden md:inline">
-          Indeed <strong>{sourceCounts.Indeed}</strong>
+          Indeed <strong>{(metrics?.portalMetrics?.Indeed ?? sourceCounts.Indeed).toLocaleString()}</strong>
         </span>
         <span className="dock-text text-emerald-600 dark:text-emerald-400 font-bold">
-          → {selectedCategoryId === "all" ? shortlistedOps.length : (metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? filteredRemaining.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.total ?? filteredRemaining.length)} to review
+          → {selectedCategoryId === "all" ? (metrics?.discoveryMetrics?.actionableReviewQueue ?? shortlistedOps.length) : (metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? filteredRemaining.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.total ?? filteredRemaining.length)} to review
         </span>
       </div>
     </div>
@@ -552,9 +569,8 @@ export function resolveShortlistCardScore(
   o: Opportunity,
   brief?: { qualityScore?: number | null }
 ): { rawScore: number | null | undefined; scoreDisplay: string | number } {
-  const isSparse = o.decision === "SPARSE_SPEC";
   const rawScore = brief?.qualityScore ?? o.engineRecommendation?.qualityScore ?? o.recommendationResult?.score;
-  const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
+  const scoreDisplay = rawScore === null || rawScore === undefined ? "—" : rawScore;
   return { rawScore, scoreDisplay };
 }
 
@@ -567,18 +583,25 @@ export interface ShortlistCardBadgeState {
 }
 
 export function resolveShortlistCardBadgeState(o: Opportunity): ShortlistCardBadgeState {
-  const isSparse = o.decision === "SPARSE_SPEC";
+  if ((o as any).evaluationState === "SPARSE_SPEC" || o.engineRecommendation?.engineVerdict === "SPARSE_SPEC") {
+    return {
+      primaryLabel: "needs more signal",
+      badgeClass: "badge-sparse text-amber-600 bg-amber-500/10 border border-amber-500/20",
+      isStale: false,
+      staleLabel: null,
+      previousAction: null,
+    };
+  }
+
   const engineVerdict = o.engineRecommendation?.engineVerdict || o.decision || "PURSUE";
   
-  const primaryLabel = isSparse ? "needs more signal" : engineVerdict.toLowerCase();
+  const primaryLabel = engineVerdict.toLowerCase();
   
   const badgeClass = 
     engineVerdict === "CONSIDER" 
-      ? "badge-consider" 
-      : engineVerdict === "PASS" 
-        ? "badge-pass" 
-        : (isSparse || engineVerdict === "SPARSE_SPEC")
-          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+        ? "badge-consider" 
+        : engineVerdict === "PASS" 
+          ? "badge-pass" 
           : "badge-pursue";
           
   const isStale = o.reviewWorkflowState === "REVIEWED_STALE" || o.reviewWorkflowState === "REVIEWED_UNKNOWN";
@@ -604,6 +627,55 @@ export function resolveShortlistCardBadgeState(o: Opportunity): ShortlistCardBad
   };
 }
 
+
+function MinimalStateCard({ o }: { o: ServedOpportunity }) {
+  let label = "Unavailable";
+  let badgeClass = "bg-muted text-muted-foreground border-border";
+  
+  if (isUnmaterialized(o)) {
+    label = "Evaluation Pending";
+    badgeClass = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20";
+  } else if (isUnavailable(o)) {
+    switch (o.evaluationState) {
+      case "ACQUISITION_PENDING":
+        label = "Fetching Details";
+        badgeClass = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20";
+        break;
+      case "ACQUISITION_FAILED":
+      case "NOT_EVALUABLE":
+        label = "Cannot Evaluate";
+        badgeClass = "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20";
+        break;
+      case "EXPIRED":
+        label = "Expired";
+        badgeClass = "bg-muted text-muted-foreground border-border";
+        break;
+      default:
+        label = o.evaluationState;
+        break;
+    }
+  }
+
+  return (
+    <li className="group relative block w-full text-left transition-all bg-surface-raised border border-border/40 shadow-xs rounded-xl p-4 flex items-center justify-between opacity-80 grayscale-[30%]">
+      <span className="flex min-w-0 flex-1 flex-col gap-1.5 pl-3 border-l-2 border-border/30">
+        <span className="flex items-center gap-2">
+          <span className="font-display text-lg text-foreground font-normal">
+            {o.role}
+          </span>
+          <span className={`label-mono shrink-0 rounded-full px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider ${badgeClass}`}>
+            {label}
+          </span>
+        </span>
+        <span className="label-mono block truncate text-muted-foreground font-medium text-[0.72rem]">
+          {o.company} · {o.location} · {o.scrapedFrom}
+        </span>
+      </span>
+    </li>
+  );
+}
+
+
 function ShortlistCardRow({
   o,
   idx,
@@ -625,7 +697,6 @@ function ShortlistCardRow({
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
   const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
-  const isSparse = o.decision === "SPARSE_SPEC";
   const { rawScore, scoreDisplay } = resolveShortlistCardScore(o, brief);
   const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
 
@@ -643,13 +714,11 @@ function ShortlistCardRow({
   }, [isOpen]);
 
   const scoreClass = 
-    isSparse 
-      ? "border-amber-500/40 text-amber-600 bg-amber-500/10 dark:text-amber-400" 
-      : (typeof rawScore === "number" && rawScore >= 75)
-        ? "score-badge-high" 
-        : (typeof rawScore === "number" && rawScore >= 60)
-          ? "score-badge-mid" 
-          : "score-badge-low";
+    (typeof rawScore === "number" && rawScore >= 75)
+      ? "score-badge-high" 
+      : (typeof rawScore === "number" && rawScore >= 60)
+        ? "score-badge-mid" 
+        : "score-badge-low";
 
   return (
     <li

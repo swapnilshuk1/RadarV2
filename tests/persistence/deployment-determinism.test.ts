@@ -112,9 +112,7 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
     const servicePath = path.resolve(process.cwd(), "src/lib/intelligence/opportunity-service.ts");
     const serviceContent = fs.readFileSync(servicePath, "utf-8");
 
-    
-    expect(serviceContent).toContain("repos.people.getLatestProjection(");
-    expect(serviceContent).toContain("repos.decisions.getUserDecisions(");
+    expect(serviceContent).toContain("repos.canonicalServing.listOpportunities(");
     expect(serviceContent).not.toContain("live-scraped.json");
     expect(serviceContent).not.toContain("radar.sqlite");
   });

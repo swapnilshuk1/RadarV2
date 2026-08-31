@@ -1,0 +1,96 @@
+{
+  "wave": 6,
+  "considerCount": 9,
+  "considerAudits": [
+    {
+      "canonicalJobId": "8e102c9379b4fd6f908473a1cb4d4776dd0c4f59c905c6494cd5a4b3fdb8308e",
+      "company": null,
+      "title": "State Head",
+      "verdict": "CONSIDER",
+      "score": 56,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "9bdba7de84ac2aaa7a2b753f15d836b77a265921c3e79d84c886b805033d3220",
+      "company": null,
+      "title": "Head of Strategic Initiatives",
+      "verdict": "CONSIDER",
+      "score": 57,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "a06e1aab46eb4d8abcd2651e91fef9ac116594bdb6c5681a77f60f3cffe6ba6c",
+      "company": null,
+      "title": "Associate Director Marketing Personal Care",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "a0f0a82fe2b4a8ecb81dd37a286f9f2a0f10f2f7cbfb15c0393aca4838ca5a58",
+      "company": null,
+      "title": "General Manager - After Sales Service ( Commercial Vehicle Dealer )",
+      "verdict": "CONSIDER",
+      "score": 57,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "a5156050dc03b0f242857f39b96e10d6a5d941fdaeef3b3770fd4bf3fba03159",
+      "company": null,
+      "title": "Brick&Bolt - Chief Marketing Officer (20-30 yrs)",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "a63e9702119fc180c60ef5ef91b9e277c5944102f3f7f837cd05c4b2ee35c4f9",
+      "company": null,
+      "title": "Chief Marketing Officer",
+      "verdict": "CONSIDER",
+      "score": 61,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "a9da361435064cad3784b25d3f8c5e1e9f07d8f2091a4f2940fefc24d4ab13ce",
+      "company": null,
+      "title": "VP - Head of Sales – Global Markets",
+      "verdict": "CONSIDER",
+      "score": 64,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "aa2eb3049487cf4f3c13dcf7d4194d741e78d485f791743ce2ba826323cab18b",
+      "company": null,
+      "title": "Assistant Vice President Markets",
+      "verdict": "CONSIDER",
+      "score": 58,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    },
+    {
+      "canonicalJobId": "ab938c218e069dd72397946ef753c45d58ea290978858dd9fd343d2fa3c43361",
+      "company": null,
+      "title": "Integrated Marketing Lead",
+      "verdict": "CONSIDER",
+      "score": 56,
+      "hasRationale": true,
+      "hasEvidence": true,
+      "contextFingerprint": "fbcfc83c5f8e7257aa2b92e1fbd91acfebf47c5f4ca3fcd167def146839b0ba9"
+    }
+  ]
+}

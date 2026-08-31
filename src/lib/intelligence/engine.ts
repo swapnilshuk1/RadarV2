@@ -339,6 +339,8 @@ export function runEngine(
     const candProjObj = candProjV4 as unknown as Record<string, unknown>;
     const candIdentityVal = ((candProjObj.executiveIdentity as Record<string, unknown> | undefined)?.value as string) || "Commercial & Marketing Leadership";
 
+    const groundedDimensions = jobProjV4.dimensions || [];
+
     const policyResult = DecisionPolicyEngine.evaluate(
       identity,
       capability,
@@ -348,9 +350,9 @@ export function runEngine(
       jobProjV4.executiveIdentity.value,
       candIdentityVal,
       rawJobText,
-      hasStructuredEvidence,
+      hasStructuredEvidence || groundedDimensions.length > 0,
       undefined, // evidenceGrounding - not used
-      undefined, // dimensions - not used
+      groundedDimensions, // typed GroundedOpportunityDimension[]
       shortlistingPotentialScore // P3-A: Pass authoritative SP
     );
 
@@ -501,4 +503,33 @@ export function runEngineSingle(
 
   const { presented } = runEngine(projection, activePursuits, currentAuthored);
   return presented.find(p => p.opportunity.jobHash === jobHash);
+}
+
+export type EvaluationArtifact = {
+  record: any;
+  opportunity?: any;
+  jobProjection?: any;
+  recommendation?: any;
+};
+
+export function runEngineSingleIntrinsic(
+  jobHash: string,
+  candidateProjection: any,
+  activePursuitsCount: number,
+  opps?: OpportunitySource[]
+): EvaluationArtifact | undefined {
+  const currentAuthored = opps ?? memoryCache ?? readOpportunities();
+  const raw = currentAuthored.find((o) => o.jobHash === jobHash);
+  if (!raw) return undefined;
+
+  const presented = runEngineSingle(jobHash, candidateProjection, activePursuitsCount, currentAuthored);
+  if (!presented) return undefined;
+
+  const jobProj = JobProjectionBuilder.build(raw);
+
+  return {
+    record: presented.record,
+    jobProjection: jobProj,
+    recommendation: (presented as any).recommendationResult,
+  };
 }

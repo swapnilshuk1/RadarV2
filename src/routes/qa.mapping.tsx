@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { type DimensionResult, type Opportunity } from "../data/opportunity-fixtures";
+import { type DimensionResult, type Opportunity, isEvaluated } from "../data/opportunity-fixtures";
 import { getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
 import { candidateProfile } from "../data/candidate-profile";
 
@@ -70,7 +70,11 @@ function analyze(list: Opportunity[]): Cell[] {
 
 function MappingQA() {
   const { opportunitiesList } = Route.useLoaderData();
-  const rows = analyze(opportunitiesList);
+  // QA mapping analyzes dimension/candidateProof relationships — these fields only exist on
+  // EvaluatedOpportunity. Non-evaluated rows (SPARSE_SPEC, ACQUISITION_PENDING, UNMATERIALIZED)
+  // have no dimensions to map, so we narrow explicitly rather than letting them silently error.
+  const evaluatedOpps: Opportunity[] = opportunitiesList.filter(isEvaluated);
+  const rows = analyze(evaluatedOpps);
   const totalMappable = rows.filter((r) => r.dim.jdEvidence.status !== "Missing").length;
   const withProof = rows.filter((r) => r.dim.candidateProof).length;
   const withDetected = rows.filter((r) => r.paths.length > 0).length;

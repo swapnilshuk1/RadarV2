@@ -117,10 +117,11 @@ describe("Shortlist Card Badge Resolution Regression Tests", () => {
   it("F. SPARSE_SPEC remains unchanged", () => {
     const opp: Opportunity = {
       ...baseOpportunity,
-      decision: "SPARSE_SPEC",
+      evaluationState: "SPARSE_SPEC" as any,
+      decision: null as any,
       reviewWorkflowState: "UNREVIEWED",
       engineRecommendation: {
-        engineVerdict: "SPARSE_SPEC",
+        engineVerdict: null as any,
         qualityScore: null,
         vetoed: false,
       } as any,

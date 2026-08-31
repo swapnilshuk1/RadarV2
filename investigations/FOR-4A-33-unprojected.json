@@ -1,0 +1,11 @@
+[
+  {
+    "index": 1,
+    "canonicalJobId": "7e3589afb485195b6e3eb31f13e3048c48aea4356740e72c68f8ad4354fda89e",
+    "source": "LinkedIn",
+    "sourceJobId": "j-2570118dab32",
+    "companyName": "Historical Restored Company",
+    "versionCount": 0,
+    "reason": "MISSING_VERSION: Pre-existing legacy record in canonical_opportunities without version payload in opportunity_versions."
+  }
+]

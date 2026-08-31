@@ -1,0 +1,40 @@
+{
+  "currentMetrics": {
+    "userPursue": 474,
+    "userConsider": 138,
+    "userPass": 896,
+    "userNone": 1494,
+    "effective": {
+      "ENGINE_PURSUIT": 22,
+      "ENGINE_CONSIDER": 193,
+      "USER_CONFIRMED": 310,
+      "PREFERENCE_OVERRIDE": 47,
+      "VETO_OVERRIDE": 122,
+      "USER_PASSED": 896,
+      "ENGINE_PASS": 416,
+      "NOT_EVALUABLE": 996
+    },
+    "shortlist": 694,
+    "activePursuits": 454,
+    "reviewQueue": 82
+  },
+  "historicalMetrics": {
+    "userPursue": 367,
+    "userConsider": 196,
+    "userPass": 935,
+    "userNone": 1504,
+    "effective": {
+      "ENGINE_PURSUIT": 22,
+      "ENGINE_CONSIDER": 256,
+      "USER_CONFIRMED": 367,
+      "PREFERENCE_OVERRIDE": 0,
+      "VETO_OVERRIDE": 0,
+      "USER_PASSED": 935,
+      "ENGINE_PASS": 416,
+      "NOT_EVALUABLE": 1006
+    },
+    "shortlist": 645,
+    "activePursuits": 389,
+    "reviewQueue": 82
+  }
+}

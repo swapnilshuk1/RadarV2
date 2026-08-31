@@ -1,0 +1,1168 @@
+[
+  {
+    "sourceTable": "acquisition_ledger",
+    "targetTable": "canonical_opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "active_evaluation_contexts",
+    "targetTable": "evaluation_context_scopes",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "context_fingerprint",
+    "targetColumn": "context_fingerprint",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "active_evaluation_contexts",
+    "targetTable": "evaluation_context_scopes",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "tenant_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "active_evaluation_contexts",
+    "targetTable": "evaluation_context_scopes",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "person_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "active_evaluation_contexts",
+    "targetTable": "evaluation_context_scopes",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "search_plan_id",
+    "targetColumn": "search_plan_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "active_evaluation_contexts",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "active_evaluation_contexts",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "active_evaluation_contexts",
+    "targetTable": "search_plans",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "search_plan_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "assessment_records",
+    "targetTable": "evaluation_signatures",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "evaluation_signature",
+    "targetColumn": "evaluation_signature",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "assessments",
+    "targetTable": "matches",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "match_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "auth_sessions",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "user_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "candidate_documents",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "candidate_documents",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "candidate_evaluations",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "candidate_projection",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "candidate_projection",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "canonical_decisions",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "canonical_decisions",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "tenant_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "canonical_decisions",
+    "targetTable": "canonical_opportunities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "canonical_decisions",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "canonical_decisions",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "canonical_decisions",
+    "targetTable": "canonical_opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "career_intents",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "career_intents",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "career_profiles",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "career_profiles",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "claim_facts",
+    "targetTable": "facts",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "fact_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "claim_facts",
+    "targetTable": "claims",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "claim_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "claims",
+    "targetTable": "opportunities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "claims",
+    "targetTable": "opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "credential_audit_logs",
+    "targetTable": "source_credentials",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "credential_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "credential_audit_logs",
+    "targetTable": "tenants",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id",
+    "onDelete": "RESTRICT",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "credential_audit_logs",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "decisions",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "decisions",
+    "targetTable": "opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "document_contents",
+    "targetTable": "candidate_documents",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "document_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "documents",
+    "targetTable": "opportunities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "documents",
+    "targetTable": "sources",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "source_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "documents",
+    "targetTable": "opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "dossier_views",
+    "targetTable": "evaluation_signatures",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "evaluation_signature",
+    "targetColumn": "evaluation_signature",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "ekb_evidence_provenance",
+    "targetTable": "ekb_published_capabilities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "capability_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "ekb_published_aliases",
+    "targetTable": "ekb_published_capabilities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "capability_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "ekb_published_capabilities",
+    "targetTable": "ekb_published_versions",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "version_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "ekb_published_embeddings",
+    "targetTable": "ekb_published_capabilities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "capability_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "ekb_published_relationships",
+    "targetTable": "ekb_published_versions",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "version_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "ekb_temporal_evidence",
+    "targetTable": "ekb_published_capabilities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "capability_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_context_scopes",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "evaluation_context_scopes",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "evaluation_context_scopes",
+    "targetTable": "search_plans",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "search_plan_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "evaluation_contexts",
+    "targetTable": "search_plan_snapshots",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "search_plan_snapshot_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_contexts",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_contexts",
+    "targetTable": "tenants",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_contexts",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "evaluation_contexts",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "search_plan_candidates",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "tenant_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "search_plan_candidates",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "person_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "search_plan_candidates",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "search_plan_id",
+    "targetColumn": "search_plan_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "search_plan_candidates",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "canonical_job_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "search_plan_candidates",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "opportunity_version",
+    "targetColumn": "opportunity_version",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "opportunity_versions",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "canonical_job_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "opportunity_versions",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "opportunity_version",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "search_plans",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "search_plan_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "search_plans",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "tenant_id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "search_plans",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "person_id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "tenant_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "search_plans",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "search_plan_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "evaluation_jobs",
+    "targetTable": "canonical_opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "evidence",
+    "targetTable": "documents",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "document_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evidence_graphs",
+    "targetTable": "candidate_documents",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "document_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evidence_graphs",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "evidence_graphs",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "fact_evidence",
+    "targetTable": "evidence",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "evidence_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "fact_evidence",
+    "targetTable": "facts",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "fact_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "facts",
+    "targetTable": "opportunities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "facts",
+    "targetTable": "opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "intent",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "candidate_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "match_claims",
+    "targetTable": "claims",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "claim_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "match_claims",
+    "targetTable": "matches",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "match_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "matches",
+    "targetTable": "opportunities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "matches",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "matches",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "matches",
+    "targetTable": "opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "materialized_evaluations",
+    "targetTable": "evaluation_contexts",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "evaluation_context_fingerprint",
+    "targetColumn": "context_fingerprint",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "materialized_evaluations",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "materialized_evaluations",
+    "targetTable": "tenants",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "materialized_evaluations",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "materialized_evaluations",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "materialized_evaluations",
+    "targetTable": "canonical_opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "memberships",
+    "targetTable": "tenants",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "memberships",
+    "targetTable": "users",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "user_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "memberships",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "oauth_accounts",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "user_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "opportunities",
+    "targetTable": "companies",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "company_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "opportunity_discoveries",
+    "targetTable": "opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "opportunity_versions",
+    "targetTable": "canonical_opportunities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "opportunity_versions",
+    "targetTable": "canonical_opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "people",
+    "targetTable": "tenants",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "people",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "preference_profiles",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "preference_profiles",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "recommendation_snapshots",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "recommendation_snapshots",
+    "targetTable": "opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "recommendations",
+    "targetTable": "assessments",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "assessment_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "recommendations",
+    "targetTable": "opportunities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "recommendations",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "recommendations",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "recommendations",
+    "targetTable": "opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "recovery_queue",
+    "targetTable": "tenants",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "recovery_queue",
+    "targetTable": "opportunity_versions",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "opportunity_version_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "recovery_queue",
+    "targetTable": "canonical_opportunities",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "recovery_queue",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "recovery_queue",
+    "targetTable": "canonical_opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "resume_versions",
+    "targetTable": "candidate_projection",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "career_profile_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "opportunity_versions",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "canonical_job_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "opportunity_versions",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "opportunity_version",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "search_plans",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "search_plan_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "search_plans",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "tenant_id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "search_plans",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "person_id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "tenant_id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "tenants",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "search_plans",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "search_plan_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "search_plan_candidates",
+    "targetTable": "canonical_opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "canonical_job_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "search_plan_snapshots",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_snapshots",
+    "targetTable": "tenants",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_snapshots",
+    "targetTable": "search_plans",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "search_plan_id",
+    "targetColumn": "id",
+    "onDelete": "CASCADE",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plan_snapshots",
+    "targetTable": "search_plans",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "search_plan_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "search_plan_snapshots",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "search_plan_snapshots",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "search_plans",
+    "targetTable": "people",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "person_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plans",
+    "targetTable": "tenants",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id",
+    "onDelete": "NO ACTION",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "search_plans",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "search_plans",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "source_credentials",
+    "targetTable": "tenants",
+    "relationshipType": "EXPLICIT_FOREIGN_KEY",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id",
+    "onDelete": "RESTRICT",
+    "onUpdate": "NO ACTION"
+  },
+  {
+    "sourceTable": "source_credentials",
+    "targetTable": "tenants",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "tenant_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "timeline_events",
+    "targetTable": "people",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "person_id",
+    "targetColumn": "id"
+  },
+  {
+    "sourceTable": "timeline_events",
+    "targetTable": "opportunities",
+    "relationshipType": "EXACT_ID_MATCH",
+    "sourceColumn": "opportunity_id",
+    "targetColumn": "id"
+  }
+]

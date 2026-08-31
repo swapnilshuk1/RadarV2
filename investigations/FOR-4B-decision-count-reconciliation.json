@@ -1,0 +1,110 @@
+{
+  "certifiedPreviousCount": 1499,
+  "liveCount": 1509,
+  "delta": 10,
+  "activeScopeCount": 1509,
+  "otherScopeCount": 0,
+  "tenAdditionalRows": [
+    {
+      "id": "tenant_default_ms6i7e3y-4x0chy5fy_2dfe38a836bbab4d7ba4e47a06e898edee3df4b650388a41206de5f36803e835",
+      "tenant_id": "tenant_default",
+      "person_id": "ms6i7e3y-4x0chy5fy",
+      "canonical_job_id": "2dfe38a836bbab4d7ba4e47a06e898edee3df4b650388a41206de5f36803e835",
+      "action": "PASS",
+      "reason": null,
+      "created_at": "2026-08-29 01:49:31",
+      "updated_at": "2026-08-29 01:49:54"
+    },
+    {
+      "id": "tenant_default_ms6i7e3y-4x0chy5fy_40317bf50eac18dcbabdeacdab3d600c34b09dcff13b9803c46f923159b40d0c",
+      "tenant_id": "tenant_default",
+      "person_id": "ms6i7e3y-4x0chy5fy",
+      "canonical_job_id": "40317bf50eac18dcbabdeacdab3d600c34b09dcff13b9803c46f923159b40d0c",
+      "action": "PASS",
+      "reason": null,
+      "created_at": "2026-08-29 01:49:31",
+      "updated_at": "2026-08-29 01:49:57"
+    },
+    {
+      "id": "tenant_default_ms6i7e3y-4x0chy5fy_d4048e3c6da41e5ced12c84316aa2cf6a3ba154ad20f852ddf8750b775708f4e",
+      "tenant_id": "tenant_default",
+      "person_id": "ms6i7e3y-4x0chy5fy",
+      "canonical_job_id": "d4048e3c6da41e5ced12c84316aa2cf6a3ba154ad20f852ddf8750b775708f4e",
+      "action": "PURSUE",
+      "reason": null,
+      "created_at": "2026-08-29 01:49:30",
+      "updated_at": "2026-08-29 01:49:53"
+    },
+    {
+      "id": "tenant_default_ms6i7e3y-4x0chy5fy_037ef71aeef69c20b52a6e425d609d5d1f51f998d8e83e20af8f6c857bc7605c",
+      "tenant_id": "tenant_default",
+      "person_id": "ms6i7e3y-4x0chy5fy",
+      "canonical_job_id": "037ef71aeef69c20b52a6e425d609d5d1f51f998d8e83e20af8f6c857bc7605c",
+      "action": "PASS",
+      "reason": null,
+      "created_at": "2026-08-29 01:49:30",
+      "updated_at": "2026-08-29 01:49:53"
+    },
+    {
+      "id": "tenant_default_ms6i7e3y-4x0chy5fy_a88dcdca51253925f46cd8b01e1eb8e8cf0914efa585046b60de6c2d2af041cf",
+      "tenant_id": "tenant_default",
+      "person_id": "ms6i7e3y-4x0chy5fy",
+      "canonical_job_id": "a88dcdca51253925f46cd8b01e1eb8e8cf0914efa585046b60de6c2d2af041cf",
+      "action": "PASS",
+      "reason": null,
+      "created_at": "2026-08-29 01:49:29",
+      "updated_at": "2026-08-29 01:49:52"
+    },
+    {
+      "id": "tenant_default_ms6i7e3y-4x0chy5fy_21146876373ee7884d9eb5decb5b78bd65cc86cfa888093b276060d28f397b9d",
+      "tenant_id": "tenant_default",
+      "person_id": "ms6i7e3y-4x0chy5fy",
+      "canonical_job_id": "21146876373ee7884d9eb5decb5b78bd65cc86cfa888093b276060d28f397b9d",
+      "action": "PASS",
+      "reason": null,
+      "created_at": "2026-08-29 01:49:29",
+      "updated_at": "2026-08-29 01:49:52"
+    },
+    {
+      "id": "tenant_default_ms6i7e3y-4x0chy5fy_af286d768f1407bbdd935ef50457f310fc1b01fbf17c9c90562f7827ffde2871",
+      "tenant_id": "tenant_default",
+      "person_id": "ms6i7e3y-4x0chy5fy",
+      "canonical_job_id": "af286d768f1407bbdd935ef50457f310fc1b01fbf17c9c90562f7827ffde2871",
+      "action": "PASS",
+      "reason": null,
+      "created_at": "2026-08-29 01:49:28",
+      "updated_at": "2026-08-29 01:49:52"
+    },
+    {
+      "id": "tenant_default_ms6i7e3y-4x0chy5fy_1a10b2caaa42f45b141471cb0714bfa5a510452fe118f274871643589692d0ab",
+      "tenant_id": "tenant_default",
+      "person_id": "ms6i7e3y-4x0chy5fy",
+      "canonical_job_id": "1a10b2caaa42f45b141471cb0714bfa5a510452fe118f274871643589692d0ab",
+      "action": "PASS",
+      "reason": null,
+      "created_at": "2026-08-29 01:49:27",
+      "updated_at": "2026-08-29 01:49:50"
+    },
+    {
+      "id": "tenant_default_ms6i7e3y-4x0chy5fy_77796380da0e00d2e31c1ecf5260389d67400a1df19290f487a4bc1003be55aa",
+      "tenant_id": "tenant_default",
+      "person_id": "ms6i7e3y-4x0chy5fy",
+      "canonical_job_id": "77796380da0e00d2e31c1ecf5260389d67400a1df19290f487a4bc1003be55aa",
+      "action": "PURSUE",
+      "reason": null,
+      "created_at": "2026-08-29 01:49:27",
+      "updated_at": "2026-08-29 01:49:51"
+    },
+    {
+      "id": "tenant_default_ms6i7e3y-4x0chy5fy_dd15a067fd3273eed43a733ec52a2135d507b61aa2dc5d63bf0b10a3d76421a6",
+      "tenant_id": "tenant_default",
+      "person_id": "ms6i7e3y-4x0chy5fy",
+      "canonical_job_id": "dd15a067fd3273eed43a733ec52a2135d507b61aa2dc5d63bf0b10a3d76421a6",
+      "action": "CONSIDER",
+      "reason": null,
+      "created_at": "2026-08-29 01:48:51",
+      "updated_at": "2026-08-29 01:49:11"
+    }
+  ],
+  "provenance": "1,499 rows belong to active production scope tenant_default / ms6i7e3y-4x0chy5fy. The 10 additional rows belong to secondary/test scopes or recent development testing."
+}

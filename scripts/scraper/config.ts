@@ -84,7 +84,7 @@ export const CONFIG = {
   maxCardsPerPage: 10,
   portalMaxCardsPerPage: {
     LinkedIn: 25,
-    Naukri: 20,
+    Naukri: 60,
     Indeed: 15,
   } as Record<string, number>,
   getMaxCardsPerPage(portalName?: string): number {
@@ -94,9 +94,9 @@ export const CONFIG = {
     return this.maxCardsPerPage;
   },
   portalConcurrency: Number((!isBrowser && process.env?.PORTAL_CONCURRENCY) || 3),
-  detailConcurrency: Number((!isBrowser && process.env?.DETAIL_CONCURRENCY) || 8),
+  detailConcurrency: Number((!isBrowser && process.env?.DETAIL_CONCURRENCY) || 3),
   llmConcurrency: Number((!isBrowser && process.env?.LLM_CONCURRENCY) || 2),
-  navTimeoutMs: 30_000,
+  navTimeoutMs: 60_000,
   detailTimeoutMs: 15_000,
   captchaGateWaitMs: 120_000,    // 2 min manual solve budget
   captchaPollMs: 5_000,          // check interval

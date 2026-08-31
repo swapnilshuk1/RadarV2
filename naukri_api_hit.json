@@ -1,0 +1,2267 @@
+{
+  "url": "https://www.naukri.com/jobapi/v3/search?noOfResults=20&urlType=search_by_keyword&searchType=adv&keyword=cxo&pageNo=1&k=cxo&seoKey=cxo-jobs&src=directSearch&latLong=",
+  "method": "GET",
+  "body": {
+    "noOfJobs": 129554,
+    "clusters": {
+      "salaryRange": [
+        {
+          "id": "0to3",
+          "count": 33575,
+          "label": "0-3 Lakhs"
+        },
+        {
+          "id": "3to6",
+          "count": 75181,
+          "label": "3-6 Lakhs"
+        },
+        {
+          "id": "6to10",
+          "count": 65167,
+          "label": "6-10 Lakhs"
+        },
+        {
+          "id": "10to15",
+          "count": 33348,
+          "label": "10-15 Lakhs"
+        },
+        {
+          "id": "15to25",
+          "count": 16270,
+          "label": "15-25 Lakhs"
+        },
+        {
+          "id": "25to50",
+          "count": 9588,
+          "label": "25-50 Lakhs"
+        },
+        {
+          "id": "50to75",
+          "count": 1682,
+          "label": "50-75 Lakhs"
+        },
+        {
+          "id": "75to100",
+          "count": 431,
+          "label": "75-100 Lakhs"
+        },
+        {
+          "id": "100to500",
+          "count": 215,
+          "label": "1-5 Cr"
+        },
+        {
+          "id": "501",
+          "count": 3,
+          "label": "5+ Cr"
+        }
+      ],
+      "promotedJobs": [
+        {
+          "id": "250826024976"
+        },
+        {
+          "id": "140826029869"
+        },
+        {
+          "id": "120826017941"
+        },
+        {
+          "id": "250826921716"
+        },
+        {
+          "id": "181125016497"
+        },
+        {
+          "id": "210826932000"
+        },
+        {
+          "id": "040826023492"
+        },
+        {
+          "id": "060826016594"
+        },
+        {
+          "id": "260626018106"
+        },
+        {
+          "id": "110826027539"
+        },
+        {
+          "id": "090826001769"
+        },
+        {
+          "id": "090826001776"
+        },
+        {
+          "id": "140826016470"
+        },
+        {
+          "id": "220825921833"
+        },
+        {
+          "id": "140826920645"
+        },
+        {
+          "id": "060826012136"
+        },
+        {
+          "id": "070826019944"
+        },
+        {
+          "id": "190826931485"
+        },
+        {
+          "id": "190826933424"
+        },
+        {
+          "id": "050826021149"
+        }
+      ],
+      "wfhType": [
+        {
+          "id": "0",
+          "count": 125208,
+          "label": "Work from office"
+        },
+        {
+          "id": "2",
+          "count": 2605,
+          "label": "Remote"
+        },
+        {
+          "id": "3",
+          "count": 1741,
+          "label": "Hybrid"
+        }
+      ],
+      "topGroupId": [
+        {
+          "id": "172058",
+          "count": 3145,
+          "label": "Tata Capital"
+        },
+        {
+          "id": "242",
+          "count": 1517,
+          "label": "Bajaj Finance"
+        },
+        {
+          "id": "10476",
+          "count": 858,
+          "label": "Accenture"
+        },
+        {
+          "id": "144830",
+          "count": 847,
+          "label": "Paytm"
+        },
+        {
+          "id": "243080",
+          "count": 524,
+          "label": "EY"
+        },
+        {
+          "id": "2827660",
+          "count": 368,
+          "label": "Policybazaar"
+        },
+        {
+          "id": "1194340",
+          "count": 323,
+          "label": "NoBroker"
+        },
+        {
+          "id": "62866",
+          "count": 294,
+          "label": "Berger Paints"
+        },
+        {
+          "id": "124792",
+          "count": 250,
+          "label": "Info Edge"
+        },
+        {
+          "id": "509622",
+          "count": 241,
+          "label": "Delhivery"
+        },
+        {
+          "id": "20738",
+          "count": 208,
+          "label": "IndiaMART"
+        },
+        {
+          "id": "869714",
+          "count": 190,
+          "label": "Marriott"
+        },
+        {
+          "id": "67548",
+          "count": 158,
+          "label": "Hdfc Bank"
+        },
+        {
+          "id": "4611515",
+          "count": 143,
+          "label": "Niva Bupa"
+        },
+        {
+          "id": "552300",
+          "count": 143,
+          "label": "Glenmark Pharmaceuticals"
+        }
+      ],
+      "stipend": [
+        {
+          "id": "unpaid",
+          "count": 912,
+          "label": "Unpaid"
+        },
+        {
+          "id": "0To10",
+          "count": 78,
+          "label": "0-10k"
+        },
+        {
+          "id": "10To20",
+          "count": 173,
+          "label": "10k-20k"
+        },
+        {
+          "id": "20To30",
+          "count": 53,
+          "label": "20k-30k"
+        },
+        {
+          "id": "30To40",
+          "count": 6,
+          "label": "30k-40k"
+        },
+        {
+          "id": "40To50",
+          "count": 5,
+          "label": "40k-50k"
+        },
+        {
+          "id": "50To1",
+          "count": 1,
+          "label": "50k and above"
+        }
+      ],
+      "employement": [
+        {
+          "id": "1",
+          "count": 101601,
+          "label": "Company Jobs"
+        },
+        {
+          "id": "2",
+          "count": 27953,
+          "label": "Consultant Jobs"
+        }
+      ],
+      "featuredCompanies": [
+        {
+          "id": "40103",
+          "count": 1,
+          "label": "Chetu",
+          "url": "/job-listings-human-resource-manager-chetu-noida-6-to-11-years-190826036782"
+        },
+        {
+          "id": "6762",
+          "count": 30,
+          "label": "Conduent",
+          "url": "/conduent-jobs-careers-6762?keyword=cxo&src=fcc&companyId=6762"
+        },
+        {
+          "id": "93084",
+          "count": 3,
+          "label": "The Hackett Group",
+          "url": "/the-hackett-group-jobs-careers-93084?keyword=cxo&src=fcc&companyId=93084"
+        }
+      ],
+      "business_size": [
+        {
+          "id": "211",
+          "count": 30986,
+          "label": "Corporate"
+        },
+        {
+          "id": "213",
+          "count": 8759,
+          "label": "Foreign MNC"
+        },
+        {
+          "id": "62",
+          "count": 6775,
+          "label": "Startup"
+        },
+        {
+          "id": "217",
+          "count": 5678,
+          "label": "Indian MNC"
+        },
+        {
+          "id": "63",
+          "count": 276,
+          "label": "Others"
+        },
+        {
+          "id": "215",
+          "count": 25,
+          "label": "Govt/PSU"
+        },
+        {
+          "id": "60",
+          "count": 14,
+          "label": "MNC"
+        }
+      ],
+      "citiesGid": [
+        {
+          "id": "9508",
+          "count": 24633,
+          "label": "Delhi / NCR"
+        },
+        {
+          "id": "9509",
+          "count": 19751,
+          "label": "Mumbai (All Areas)"
+        },
+        {
+          "id": "97",
+          "count": 17124,
+          "label": "Bengaluru"
+        },
+        {
+          "id": "134",
+          "count": 15510,
+          "label": "Mumbai"
+        },
+        {
+          "id": "6",
+          "count": 9764,
+          "label": "New Delhi"
+        },
+        {
+          "id": "139",
+          "count": 9731,
+          "label": "Pune"
+        },
+        {
+          "id": "17",
+          "count": 9184,
+          "label": "Hyderabad"
+        },
+        {
+          "id": "183",
+          "count": 8280,
+          "label": "Chennai"
+        },
+        {
+          "id": "73",
+          "count": 7164,
+          "label": "Gurugram"
+        },
+        {
+          "id": "51",
+          "count": 5700,
+          "label": "Ahmedabad"
+        },
+        {
+          "id": "220",
+          "count": 5656,
+          "label": "Noida"
+        },
+        {
+          "id": "232",
+          "count": 4753,
+          "label": "Kolkata"
+        },
+        {
+          "id": "323",
+          "count": 2455,
+          "label": "Thane"
+        },
+        {
+          "id": "173",
+          "count": 2205,
+          "label": "Jaipur"
+        },
+        {
+          "id": "138",
+          "count": 2168,
+          "label": "Navi Mumbai"
+        },
+        {
+          "id": "64",
+          "count": 1940,
+          "label": "Surat"
+        },
+        {
+          "id": "125",
+          "count": 1801,
+          "label": "Indore"
+        },
+        {
+          "id": "184",
+          "count": 1795,
+          "label": "Coimbatore"
+        },
+        {
+          "id": "216",
+          "count": 1623,
+          "label": "Lucknow"
+        },
+        {
+          "id": "65",
+          "count": 1598,
+          "label": "Vadodara"
+        },
+        {
+          "id": "110",
+          "count": 1522,
+          "label": "Kochi"
+        },
+        {
+          "id": "136",
+          "count": 1513,
+          "label": "Nagpur"
+        },
+        {
+          "id": "4",
+          "count": 1384,
+          "label": "Chandigarh"
+        },
+        {
+          "id": "137",
+          "count": 1139,
+          "label": "Nashik"
+        },
+        {
+          "id": "63",
+          "count": 930,
+          "label": "Rajkot"
+        }
+      ],
+      "functionalAreaGid": [
+        {
+          "id": "14",
+          "count": 100666,
+          "label": "Sales & Business Development"
+        },
+        {
+          "id": "9",
+          "count": 3985,
+          "label": "Marketing & Communication"
+        },
+        {
+          "id": "1",
+          "count": 3798,
+          "label": "BFSI, Investments & Trading"
+        },
+        {
+          "id": "2",
+          "count": 2882,
+          "label": "Customer Success, Service & Operations"
+        },
+        {
+          "id": "5",
+          "count": 2687,
+          "label": "Engineering - Software & QA"
+        },
+        {
+          "id": "6",
+          "count": 2025,
+          "label": "Finance & Accounting"
+        },
+        {
+          "id": "11",
+          "count": 1257,
+          "label": "Production, Manufacturing & Engineering"
+        },
+        {
+          "id": "19",
+          "count": 1146,
+          "label": "Consulting"
+        },
+        {
+          "id": "7",
+          "count": 1097,
+          "label": "Human Resources"
+        },
+        {
+          "id": "12",
+          "count": 857,
+          "label": "Project & Program Management"
+        },
+        {
+          "id": "37",
+          "count": 834,
+          "label": "Other"
+        },
+        {
+          "id": "3",
+          "count": 797,
+          "label": "Data Science & Analytics"
+        },
+        {
+          "id": "35",
+          "count": 784,
+          "label": "Strategic & Top Management"
+        },
+        {
+          "id": "29",
+          "count": 724,
+          "label": "Procurement & Supply Chain"
+        },
+        {
+          "id": "25",
+          "count": 682,
+          "label": "Healthcare & Life Sciences"
+        }
+      ],
+      "internshipDuration": [
+        {
+          "id": "1",
+          "count": 16,
+          "label": "1 Month"
+        },
+        {
+          "id": "2",
+          "count": 30,
+          "label": "2 Months"
+        },
+        {
+          "id": "3",
+          "count": 243,
+          "label": "3 Months"
+        },
+        {
+          "id": "4",
+          "count": 17,
+          "label": "4 Months"
+        },
+        {
+          "id": "5",
+          "count": 2,
+          "label": "5 Months"
+        },
+        {
+          "id": "6",
+          "count": 185,
+          "label": "6 Months"
+        },
+        {
+          "id": "-1",
+          "count": 735,
+          "label": "Flexible"
+        }
+      ],
+      "ugCourseGid": [
+        {
+          "id": "9502",
+          "count": 110735,
+          "label": "Any Graduate"
+        },
+        {
+          "id": "12",
+          "count": 7693,
+          "label": "B.Tech / B.E."
+        },
+        {
+          "id": "5",
+          "count": 3858,
+          "label": "B.B.A. / B.M.S."
+        },
+        {
+          "id": "15",
+          "count": 2184,
+          "label": "Diploma"
+        },
+        {
+          "id": "11",
+          "count": 2073,
+          "label": "B.Sc"
+        },
+        {
+          "id": "9501",
+          "count": 1863,
+          "label": "Graduation Not Required"
+        },
+        {
+          "id": "6",
+          "count": 1729,
+          "label": "B.Com"
+        },
+        {
+          "id": "2",
+          "count": 813,
+          "label": "B.A - Bachelor of Arts"
+        },
+        {
+          "id": "4",
+          "count": 741,
+          "label": "B.C.A."
+        },
+        {
+          "id": "10",
+          "count": 605,
+          "label": "B.Pharma"
+        },
+        {
+          "id": "13",
+          "count": 204,
+          "label": "LLB - Bachelor of Laws"
+        },
+        {
+          "id": "7",
+          "count": 138,
+          "label": "B.Ed"
+        },
+        {
+          "id": "14",
+          "count": 138,
+          "label": "M.B.B.S."
+        }
+      ],
+      "glbl_RoleCat": [
+        {
+          "id": "1067",
+          "count": 39630,
+          "label": "Retail & B2C Sales"
+        },
+        {
+          "id": "1065",
+          "count": 29863,
+          "label": "BD / Pre Sales"
+        },
+        {
+          "id": "1066",
+          "count": 23407,
+          "label": "Enterprise & B2B Sales"
+        },
+        {
+          "id": "1068",
+          "count": 7766,
+          "label": "Sales Support & Operations"
+        },
+        {
+          "id": "1050",
+          "count": 2374,
+          "label": "Marketing"
+        },
+        {
+          "id": "1028",
+          "count": 2311,
+          "label": "Software Development"
+        },
+        {
+          "id": "1005",
+          "count": 990,
+          "label": "Life Insurance"
+        },
+        {
+          "id": "1013",
+          "count": 957,
+          "label": "Operations"
+        },
+        {
+          "id": "1167",
+          "count": 834,
+          "label": "Other"
+        },
+        {
+          "id": "1001",
+          "count": 750,
+          "label": "Banking Operations"
+        }
+      ],
+      "pgCourseGid": [
+        {
+          "id": "9511",
+          "count": 82700,
+          "label": "Any Postgraduate"
+        },
+        {
+          "id": "13",
+          "count": 10346,
+          "label": "MBA/PGDM"
+        },
+        {
+          "id": "9510",
+          "count": 2097,
+          "label": "Post Graduation Not Required"
+        },
+        {
+          "id": "1",
+          "count": 1055,
+          "label": "CA"
+        },
+        {
+          "id": "11",
+          "count": 712,
+          "label": "MS/M.Sc(Science)"
+        },
+        {
+          "id": "12",
+          "count": 628,
+          "label": "M.Tech"
+        },
+        {
+          "id": "14",
+          "count": 381,
+          "label": "MCA"
+        },
+        {
+          "id": "8",
+          "count": 248,
+          "label": "M.Com"
+        },
+        {
+          "id": "16",
+          "count": 242,
+          "label": "PG Diploma"
+        },
+        {
+          "id": "15",
+          "count": 202,
+          "label": "Medical-MS/MD"
+        },
+        {
+          "id": "10",
+          "count": 171,
+          "label": "M.Pharma"
+        },
+        {
+          "id": "5",
+          "count": 133,
+          "label": "LLM"
+        }
+      ],
+      "industryTypeGid": [
+        {
+          "id": "109",
+          "count": 20138,
+          "label": "IT Services & Consulting"
+        },
+        {
+          "id": "127",
+          "count": 14736,
+          "label": "Recruitment / Staffing"
+        },
+        {
+          "id": "113",
+          "count": 9026,
+          "label": "Financial Services"
+        },
+        {
+          "id": "112",
+          "count": 5904,
+          "label": "Banking"
+        },
+        {
+          "id": "156",
+          "count": 5392,
+          "label": "Industrial Equipment / Machinery"
+        },
+        {
+          "id": "115",
+          "count": 5117,
+          "label": "Insurance"
+        },
+        {
+          "id": "133",
+          "count": 4855,
+          "label": "Education / Training"
+        },
+        {
+          "id": "169",
+          "count": 4735,
+          "label": "Real Estate"
+        },
+        {
+          "id": "132",
+          "count": 3998,
+          "label": "Pharmaceutical & Life Sciences"
+        },
+        {
+          "id": "172",
+          "count": 2914,
+          "label": "Advertising & Marketing"
+        },
+        {
+          "id": "102",
+          "count": 2706,
+          "label": "BPM / BPO"
+        },
+        {
+          "id": "126",
+          "count": 2703,
+          "label": "Management Consulting"
+        },
+        {
+          "id": "164",
+          "count": 2382,
+          "label": "Engineering & Construction"
+        },
+        {
+          "id": "150",
+          "count": 2301,
+          "label": "Building Material"
+        },
+        {
+          "id": "167",
+          "count": 1986,
+          "label": "Power"
+        }
+      ]
+    },
+    "jobDetails": [
+      {
+        "title": "Senior Manager - Software Sales",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/20302.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/20302.gif",
+        "jobId": "060726504088",
+        "currency": "INR",
+        "footerPlaceholderLabel": "30+ Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Schneider Electric",
+        "isSaved": false,
+        "tagsAndSkills": "Market development,Substation automation,Solution selling,Industrial automation,cxo,Operations,Building management system,digital transformation",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "5-10 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Mumbai"
+          }
+        ],
+        "companyId": 1138730,
+        "jdURL": "/job-listings-senior-manager-software-sales-schneider-electric-india-pvt-ltd-mumbai-5-to-10-years-060726504088",
+        "staticUrl": "schneider-electric-jobs-careers-18252",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/schneider-electric-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 5449,
+          "AggregateRating": "4.1",
+          "Title": "Schneider Electric Reviews by Employees"
+        },
+        "jobDescription": "Preferred Domain Expertise <br><br>General Qualifications & Experience",
+        "showMultipleApply": false,
+        "groupId": 20302,
+        "isTopGroup": 0,
+        "createdDate": 1783340631000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "5-10 Yrs",
+        "minimumExperience": "5",
+        "maximumExperience": "10",
+        "applyByTime": "9:53 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=060726504088&logstr=srprestapi",
+        "applyRedirectUrl": "https://careers.se.com/jobs/125055?lang=en-us&previousLocale=en-US",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "brandedJD": {
+          "templateId": 28265
+        },
+        "roleCategoryGid": "1065",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Regional Sales Manager",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/4423242.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/4423242.gif",
+        "jobId": "140826014269",
+        "currency": "INR",
+        "footerPlaceholderLabel": "12 Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Elasticrun",
+        "isSaved": false,
+        "tagsAndSkills": "Business Development,Cross Functional Coordination,Revenue Growth,Commercial Negotiations,Cxo Level Engagement,Key Account Management,Sales Management,Pricing Strategy",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "6-10 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Bengaluru"
+          }
+        ],
+        "companyId": 3144112,
+        "jdURL": "/job-listings-regional-sales-manager-elasticrun-bengaluru-6-to-10-years-140826014269",
+        "staticUrl": "elasticrun-jobs-careers-3144112",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/elasticrun-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 2765,
+          "AggregateRating": "3.6",
+          "Title": "ElasticRun Reviews by Employees"
+        },
+        "jobDescription": " . Educational Background: BE / B Tech<br><br>Please note: The HR team at ElasticRun will only reach out to you through official email addresses and will never request sensitive information or documents (such as passwords,bank details,OTPs,etc.)<br><br> an MBA is highly preferred<br><br>Strong experience in selling to B2C / D2C brands is highly preferred",
+        "showMultipleApply": false,
+        "groupId": 4423242,
+        "isTopGroup": 0,
+        "createdDate": 1786690200491,
+        "mode": "airex",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "6-10 Yrs",
+        "minimumExperience": "6",
+        "maximumExperience": "10",
+        "applyByTime": "4:20 PM",
+        "companyApplyJob": false,
+        "walkinJob": false,
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": true,
+        "roleCategoryGid": "1068",
+        "todaysJob": false,
+        "jobAgentEligle": true,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Manager / Senior Manager Sales and Marketing / Business Development",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/4627645.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/4627645.gif",
+        "jobId": "220626503114",
+        "currency": "INR",
+        "footerPlaceholderLabel": "30+ Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Sathguru Management Consultants",
+        "isSaved": false,
+        "tagsAndSkills": "Direct sales,Market development,Networking,Senior Executive,Relationship building,Consulting,cxo,Key account management",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "8-10 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Hyderabad"
+          }
+        ],
+        "companyId": 1880488,
+        "jdURL": "/job-listings-manager-senior-manager-sales-and-marketing-business-development-sathguru-management-consultants-pvt-ltd-hyderabad-8-to-10-years-220626503114",
+        "staticUrl": "sathguru-management-consultants-jobs-careers-827165",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/sathguru-management-consultants-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 33,
+          "AggregateRating": "3.2",
+          "Title": "Sathguru Management Consultants Reviews by Employees"
+        },
+        "jobDescription": "Experience: 8 10 years . <br><br>Ensure achievement of annual business goals while delivering an exceptional client and participant experience. <br><br>Ideal Candidate Profile . Education & Experience <br><br>Proven experience in selling high-value solutions and engaging with senior business leaders and decision-makers",
+        "showMultipleApply": false,
+        "groupId": 4627645,
+        "isTopGroup": 0,
+        "createdDate": 1782124902000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "8-10 Yrs",
+        "minimumExperience": "8",
+        "maximumExperience": "10",
+        "applyByTime": "8:11 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=220626503114&logstr=srprestapi",
+        "applyRedirectUrl": "https://careers.sathguru.com/job/manager-senior-manager-sales-and-marketing-business-development-executive-education/",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "roleCategoryGid": "1065",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Senior Executive/Assistant Manager-Direct Sales-Naukri.com,Noida",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/124792.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/124792.gif",
+        "jobId": "030826004513",
+        "currency": "INR",
+        "footerPlaceholderLabel": "23 Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Info Edge",
+        "isSaved": false,
+        "tagsAndSkills": "Inside Sales,B2B Sales,New Client Acquisition,Hunting,SaaS Sales,Direct Sales,End to End Sales,IT Sales",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "1-4 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "5-8 Lacs PA"
+          },
+          {
+            "type": "location",
+            "label": "Noida"
+          }
+        ],
+        "companyId": 1981,
+        "jdURL": "/job-listings-senior-executive-assistant-manager-direct-sales-naukri-com-noida-info-edge-noida-1-to-4-years-030826004513",
+        "staticUrl": "info-edge-jobs-careers-1407",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/info-edge-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 2451,
+          "AggregateRating": "3.8",
+          "Title": "Info Edge Reviews by Employees"
+        },
+        "jobDescription": "Collaborate with cross-functional teams such as pre-sales engineers and delivery professionals to deliver high-quality solutions that meet customer needs. Job Requirements :  . 1-4 years of experience in B2B software solution sales or enterprise sales within the IT services & consulting industry",
+        "showMultipleApply": false,
+        "groupId": 124792,
+        "isTopGroup": 0,
+        "createdDate": 1785736547139,
+        "mode": "airex",
+        "board": "1",
+        "vacancy": 5,
+        "salaryDetail": {
+          "minimumSalary": 500000,
+          "maximumSalary": 800000,
+          "currency": "INR",
+          "hideSalary": false,
+          "variablePercentage": 0
+        },
+        "experienceText": "1-4 Yrs",
+        "minimumExperience": "1",
+        "maximumExperience": "4",
+        "applyByTime": "3:25 PM",
+        "companyApplyJob": false,
+        "walkinJob": false,
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": true,
+        "brandedJD": {
+          "templateId": 3021
+        },
+        "roleCategoryGid": "1066",
+        "todaysJob": false,
+        "jobAgentEligle": true,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Senior Manager- Cross Border Sales (Business Development)",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/509622.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/509622.gif",
+        "jobId": "210726033724",
+        "currency": "INR",
+        "footerPlaceholderLabel": "22 Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Delhivery",
+        "isSaved": false,
+        "tagsAndSkills": "Air Freight,Sales,Export Sales,International Operations,International Logistics,International Sales,B2B,Freight Forwarding",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "7-12 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Bengaluru"
+          }
+        ],
+        "companyId": 841281,
+        "jdURL": "/job-listings-senior-manager-cross-border-sales-business-development-delhivery-bengaluru-7-to-12-years-210726033724",
+        "staticUrl": "delhivery-jobs-careers-841281",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/delhivery-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 8188,
+          "AggregateRating": "3.8",
+          "Title": "Delhivery Reviews by Employees"
+        },
+        "jobDescription": "Preferred Experience <br><br>Collaborate with operations,pricing,and customer experience teams <br><br> 6 to 12 years of experience in Air Express / International Courier / Cross Border Parcel business <br><br>Strong experience in hunting,client acquisition,and revenue ownership",
+        "showMultipleApply": false,
+        "groupId": 509622,
+        "isTopGroup": 0,
+        "createdDate": 1785815990373,
+        "mode": "jp",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "7-12 Yrs",
+        "minimumExperience": "7",
+        "maximumExperience": "12",
+        "applyByTime": "1:29 PM",
+        "companyApplyJob": false,
+        "walkinJob": false,
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": true,
+        "roleCategoryGid": "1066",
+        "todaysJob": false,
+        "jobAgentEligle": true,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Sr Business Development Manager - Hunting For SaaS Sales",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/52806.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/52806.gif",
+        "jobId": "260826500552",
+        "currency": "INR",
+        "footerPlaceholderLabel": "1 Day Ago",
+        "footerPlaceholderColor": "green",
+        "companyName": "Thomson Reuters",
+        "isSaved": false,
+        "tagsAndSkills": "mental health,ai,outside sales,business development,accounting,classification,journalism,marketing",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "10-15 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Mumbai"
+          }
+        ],
+        "companyId": 3866046,
+        "jdURL": "/job-listings-sr-business-development-manager-hunting-for-saas-sales-thomson-reuters-india-pvt-ltd-mumbai-10-to-15-years-260826500552",
+        "staticUrl": "thomson-reuters-jobs-careers-19140",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/thomson-reuters-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 1974,
+          "AggregateRating": "3.7",
+          "Title": "Thomson Reuters Reviews by Employees"
+        },
+        "jobDescription": "Would you like to join an organization that is consistently recognized as a Top Employer to Work For across a broad range of categories,such as Culture,Work-Life Balance,Diversity Inclusion,Opportunities for Women,Social Impact,Volunteerism<br><br>Minimum of 10+ years successful outside sales experience in professional B2B environments . .",
+        "showMultipleApply": false,
+        "groupId": 52806,
+        "isTopGroup": 0,
+        "createdDate": 1787735567000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "10-15 Yrs",
+        "minimumExperience": "10",
+        "maximumExperience": "15",
+        "applyByTime": "6:42 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=260826500552&logstr=srprestapi",
+        "applyRedirectUrl": "https://thomsonreuters.wd5.myworkdayjobs.com/en-US/External_Career_Site/job/India-Mumbai-Maharashtra/Senior-Business-Development-Manager---Hunting-for-SaaS-Sales_JREQ200540",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "brandedJD": {
+          "templateId": 8633
+        },
+        "roleCategoryGid": "1065",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "IT Sales Manager",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/152272.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/152272.gif",
+        "jobId": "020626500539",
+        "currency": "INR",
+        "footerPlaceholderLabel": "30+ Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Pratham Software",
+        "isSaved": false,
+        "tagsAndSkills": "Outbound,Product engineering,Consulting,Technology leadership,Presales,cxo,Business solutions,it services sales",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "3-5 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Jaipur"
+          }
+        ],
+        "companyId": 124429774,
+        "jdURL": "/job-listings-it-sales-manager-pratham-software-psi-jaipur-3-to-5-years-020626500539",
+        "staticUrl": "pratham-jobs-careers-76440",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/pratham-software-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 96,
+          "AggregateRating": "3.7",
+          "Title": "Pratham Software Reviews by Employees"
+        },
+        "jobDescription": "Represent Pratham Software at CXO level and build long-term relationships that compound into strategic accounts . MUST HAVE . MBA from a Tier-1 institution . 3-5 years of B2B IT services sales experience with a consistent track record of opening new logos . Hunter mindset you open doors,you dont just manage whats been handed to you .",
+        "showMultipleApply": false,
+        "groupId": 152272,
+        "isTopGroup": 0,
+        "createdDate": 1780395286000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "3-5 Yrs",
+        "minimumExperience": "3",
+        "maximumExperience": "5",
+        "applyByTime": "7:44 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=020626500539&logstr=srprestapi",
+        "applyRedirectUrl": "https://www.thepsi.com/careers/open-positions/",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "roleCategoryGid": "1066",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "IT Sales Manager Cybersecurity",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/11762783.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/11762783.gif",
+        "jobId": "180326500129",
+        "currency": "INR",
+        "footerPlaceholderLabel": "30+ Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "The Closing Gap",
+        "isSaved": false,
+        "tagsAndSkills": "IT services,Solution sales,Presales,IT sales,cxo,Sales initiatives,RFP,Sales management",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "5-10 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Mumbai"
+          }
+        ],
+        "companyId": 125314058,
+        "jdURL": "/job-listings-it-sales-manager-cybersecurity-the-closing-gap-mumbai-5-to-10-years-180326500129",
+        "staticUrl": "the-closing-gap-jobs-careers-125314058",
+        "jobDescription": "<span> IT Sales Manager \\Cybersecurity | Enterprise Sales | Mumbai  <br /> Company: The Closing Gap  <br /> Location: Mumbai, Maharashtra  <br /> Employment Type: Full\\-Time  <br /> Experience: 5+ Years (Minimum 3 Years in Cybersecurity Sales)  <br /> Seniority Level: Senior  <br /> <br /> Role Overview  <br /> <p> We are looking for a results\\-driven IT Sales Manager \\Cybersecurity to lead enterprise sales initiatives and drive business growth. The ideal candidate will have strong experience in cybersecurity solutions sales , managing end\\-to\\-end sales cycles, and building long\\-term relationships with enterprise clients.  <br /> <br /> Key Responsibilities  <br /> </p><ul> <li> <p> Identify and develop new business opportunities in cybersecurity sales  <br /> </p> </li><li> <p> Manage the complete sales cycle from lead generation to deal closure  <br /> </p> </li><li> <p> Engage with enterprise clients to understand security requirements and propose tailored solutions  <br /> </p> </li><li> <p> Build and maintain strong relationships with CXO\\-level stakeholders and decision\\-makers  <br /> </p> </li><li> <p> Collaborate with pre\\-sales and technical teams for solution demonstrations  <br /> </p> </li><li> <p> Handle RFPs, proposals, and contract negotiations  <br /> </p> </li><li> <p> Drive upselling, cross\\-selling, and account growth  <br /> </p> </li><li> <p> Achieve and exceed revenue and sales targets  <br /> </p> </li><li> <p> Maintain accurate data in CRM and provide sales forecasts  </p> </li> </ul> <p> Key Requirements  <br /> </p><ul> <li> <p> 5+ years of experience in IT Sales , with at least 3 years in Cybersecurity Sales  <br /> </p> </li><li> <p> Strong understanding of cybersecurity products, solutions, and frameworks  <br /> </p> </li><li> <p> Experience handling enterprise\\-level clients and large accounts  <br /> </p> </li><li> <p> Knowledge of IT infrastructure, cloud platforms (AWS\\/Azure), firewalls, and compliance standards  <br /> </p> </li><li> <p> Proven ability to close high\\-value deals independently  <br /> </p> </li><li> <p> Experience in RFP management, tendering, and large deal closures  <br /> </p> </li><li> <p> Excellent communication, negotiation, and presentation skills  <br /> </p> </li><li> <p> Strong network within IT decision\\-makers and CXO\\-level stakeholders (preferred)  </p> </li> </ul> </span>",
+        "showMultipleApply": false,
+        "groupId": 11762783,
+        "isTopGroup": 0,
+        "createdDate": 1773819010000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "5-10 Yrs",
+        "minimumExperience": "5",
+        "maximumExperience": "10",
+        "applyByTime": "5 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=180326500129&logstr=srprestapi",
+        "applyRedirectUrl": "https://theclosinggap.zohorecruit.in/jobs/Careers/180003000003050103",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "roleCategoryGid": "1066",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Business Development (Lead, Manager, Head)",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/12480492.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/12480492.gif",
+        "jobId": "170826016315",
+        "currency": "INR",
+        "footerPlaceholderLabel": "2 Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Fullcircle Healing",
+        "isSaved": false,
+        "tagsAndSkills": "Employee Benefit,Cxo,Corporate Sales,Mental wellness,New Client Acquisition,Wellness,B2B Sales,Enterprise Sales",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "4-9 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Pune, Bengaluru, Mumbai (All Areas)"
+          }
+        ],
+        "companyId": 125021507,
+        "jdURL": "/job-listings-business-development-lead-manager-head-fullcircle-healing-pune-bengaluru-mumbai-all-areas-4-to-9-years-170826016315",
+        "staticUrl": "fullcircle-healing-jobs-careers-125021507",
+        "jobDescription": "Bachelors degree in Business,Healthcare,or related field <br><br>MBA or equivalent qualification preferred <br><br>4 - 16 years of experience in Business Development / Sales,preferably in: . <br><br>Preferred Competencies <br><br>Experience: 4 - 16 Years <br><br>Proven experience in B2B consultative and solution selling <br><br>Experience working with CRM tools and sales analytics",
+        "showMultipleApply": false,
+        "groupId": 12480492,
+        "isTopGroup": 0,
+        "createdDate": 1787567396752,
+        "mode": "jp",
+        "board": "1",
+        "vacancy": 6,
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "4-9 Yrs",
+        "minimumExperience": "4",
+        "maximumExperience": "9",
+        "applyByTime": "7:59 PM",
+        "companyApplyJob": false,
+        "walkinJob": false,
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": true,
+        "roleCategoryGid": "1066",
+        "todaysJob": false,
+        "jobAgentEligle": true,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Business Development Manager - Ei Sales",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/60890.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/60890.gif",
+        "jobId": "240826922572",
+        "currency": "INR",
+        "footerPlaceholderLabel": "2 Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Schindler",
+        "isSaved": false,
+        "tagsAndSkills": "Business Development,Communication Skills,Sales,Time Management Skills,Customer Relationship Management,Maintenance,Service Contracts,Relationship management",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "7-8 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Bengaluru"
+          }
+        ],
+        "companyId": 79208,
+        "jdURL": "/job-listings-business-development-manager-ei-sales-schindler-india-pvt-ltd-bengaluru-7-to-8-years-240826922572",
+        "staticUrl": "schindler-jobs-careers-4582",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/schindler-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 2043,
+          "AggregateRating": "3.9",
+          "Title": "Schindler Reviews by Employees"
+        },
+        "jobDescription": "Ensure timely and smooth execution of service conditions with support from Branch EI Team and collection of outstanding dues.  . What you bring . For the Executive / Senior Executive - EI Sales position,Schindler seeks people with:  Expertise - Desired experience in commercial roles in similar industries for at least two years",
+        "showMultipleApply": false,
+        "groupId": 60890,
+        "isTopGroup": 0,
+        "createdDate": 1787573250947,
+        "mode": "jp",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "7-8 Yrs",
+        "minimumExperience": "7",
+        "maximumExperience": "8",
+        "applyByTime": "9:37 PM",
+        "companyApplyJob": false,
+        "walkinJob": false,
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "roleCategoryGid": "1065",
+        "todaysJob": false,
+        "jobAgentEligle": true,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Senior Manager - Software Sales",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/20302.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/20302.gif",
+        "jobId": "060726504087",
+        "currency": "INR",
+        "footerPlaceholderLabel": "30+ Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Schneider Electric",
+        "isSaved": false,
+        "tagsAndSkills": "Market development,Substation automation,Solution selling,Industrial automation,cxo,Operations,Building management system,digital transformation",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "5-10 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Gurugram"
+          }
+        ],
+        "companyId": 1138730,
+        "jdURL": "/job-listings-senior-manager-software-sales-schneider-electric-india-pvt-ltd-gurugram-5-to-10-years-060726504087",
+        "staticUrl": "schneider-electric-jobs-careers-18252",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/schneider-electric-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 5449,
+          "AggregateRating": "4.1",
+          "Title": "Schneider Electric Reviews by Employees"
+        },
+        "jobDescription": "<div> Role Overview This role is responsible for driving growth of Schneider Electric s software and digital solutions portfolio across India, including Energy, Industrial and Building segments. The position focuses on leading consultative, multi-stakeholder sales cycles and positioning software as a key driver of digital transformation, operational efficiency and sustainability outcomes. Key Software Areas Energy: PME, EPO, ETAP Real-Time, Substation Automation (EPAS) Industrial Software: AVEVA Plant SCADA, AVEVA System Platform, AVEVA MES, AVEVA Unified Operations Center, EcoStruxure Process Expert, EcoStruxure Automation Expert Building Management System </div> <strong> Key Responsibilities </strong> <ul> <li> Sales & Business Development Drive end-to-end software sales cycles from opportunity creation to closure across assigned territories/accounts Build and manage a strong pipeline of qualified opportunities to meet order and sales growth targets Lead complex, multi-stakeholder deals involving Customers, Consultants, Contractors, EcoXpert Partners, System Integrators etc. </li> <li> Consultative & Solution Selling Understand customer business challenges and position software-led solutions (digital twin, analytics, automation) as business enablers Drive solution shaping, technical qualification and value articulation Work closely with Region/ Branch Sales, Prescription & Business Division teams for demos, architectures and technical proposals </li> <li> Account & Customer Leadership Develop and execute account-specific software growth strategies Build strong relationships with CXOs, IT/OT leaders, plant heads and engineering teams Identify expansion opportunities within existing and new customers </li> <li> Partner & Ecosystem Engagement Collaborate with System Integrators, EcoXpert partners, Consultants and other channel partners to drive execution & new opportunities Work with internal teams (Regional/ Branch sales, Solution Architects/ SAEs/PAEs, Marketing) to shape winning proposals </li> <li> Market Development Track market trends, competitor positioning and evolving customer needs </li> </ul> <div> <strong> Preferred Domain Expertise </strong>  Candidates are expected to bring depth in at least one domain: Power systems / utilities / substation automation Industrial automation / SCADA / EAE Smart buildings / BMS / energy efficiency Digital transformation / IT-OT convergence </div> <div> <strong> Key Skills </strong>  Strong business + technical storytelling Ability to engage senior stakeholders (CXO / plant / IT/OT) Commercial acumen and negotiation capability Collaboration across cross-functional teams Learning agility across evolving software portfolio </div> <div> <strong> General Success Profile (What will differentiate candidates) </strong>  Ability to sell outcomes, not products (efficiency, sustainability, reliability) Comfort in hybrid role (sales + solution shaping) Strong hunter mindset with strategic account capability </div> <div> Location(s): Mumbai, Delhi, Bangalore, Kolkata/ Bhubaneshwar, Ahmedabad </div> <div> <strong> General Qualifications & Experience </strong>  Education: Engineering background is a must At-least 5 years of experience in software sales, industrial automation or digital solutions, preferably from the same industry Proven experience in enterprise or consultative selling Strong ability to manage complex sales cycles and multiple stakeholders Good understanding of industrial/energy domains and customer workflows Experience working with partners or ecosystem-driven sales models </div>\n\nDisclaimer: This job posting has been aggregated from external source. Role details, content, and availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.",
+        "showMultipleApply": false,
+        "groupId": 20302,
+        "isTopGroup": 0,
+        "createdDate": 1783340631000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "5-10 Yrs",
+        "minimumExperience": "5",
+        "maximumExperience": "10",
+        "applyByTime": "9:53 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=060726504087&logstr=srprestapi",
+        "applyRedirectUrl": "https://careers.se.com/jobs/125054?lang=en-us&previousLocale=en-US",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "brandedJD": {
+          "templateId": 28265
+        },
+        "roleCategoryGid": "1065",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Senior Manager - Software Sales",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/20302.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/20302.gif",
+        "jobId": "060726504086",
+        "currency": "INR",
+        "footerPlaceholderLabel": "30+ Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Schneider Electric",
+        "isSaved": false,
+        "tagsAndSkills": "Market development,Substation automation,Solution selling,Industrial automation,cxo,Operations,Building management system,digital transformation",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "5-10 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Ahmedabad"
+          }
+        ],
+        "companyId": 1138730,
+        "jdURL": "/job-listings-senior-manager-software-sales-schneider-electric-india-pvt-ltd-ahmedabad-5-to-10-years-060726504086",
+        "staticUrl": "schneider-electric-jobs-careers-18252",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/schneider-electric-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 5449,
+          "AggregateRating": "4.1",
+          "Title": "Schneider Electric Reviews by Employees"
+        },
+        "jobDescription": "Preferred Domain Expertise .",
+        "showMultipleApply": false,
+        "groupId": 20302,
+        "isTopGroup": 0,
+        "createdDate": 1783340630000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "5-10 Yrs",
+        "minimumExperience": "5",
+        "maximumExperience": "10",
+        "applyByTime": "9:53 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=060726504086&logstr=srprestapi",
+        "applyRedirectUrl": "https://careers.se.com/jobs/125053?lang=en-us&previousLocale=en-US",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "brandedJD": {
+          "templateId": 28265
+        },
+        "roleCategoryGid": "1065",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Senior Manager - Software Sales",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/20302.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/20302.gif",
+        "jobId": "060726500908",
+        "currency": "INR",
+        "footerPlaceholderLabel": "30+ Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Schneider Electric",
+        "isSaved": false,
+        "tagsAndSkills": "Market development,Substation automation,Solution selling,Industrial automation,cxo,Operations,Building management system,digital transformation",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "5-10 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Kolkata"
+          }
+        ],
+        "companyId": 1138730,
+        "jdURL": "/job-listings-senior-manager-software-sales-schneider-electric-india-pvt-ltd-kolkata-5-to-10-years-060726500908",
+        "staticUrl": "schneider-electric-jobs-careers-18252",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/schneider-electric-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 5449,
+          "AggregateRating": "4.1",
+          "Title": "Schneider Electric Reviews by Employees"
+        },
+        "jobDescription": "Preferred Domain <br><br>Qualifications Experience",
+        "showMultipleApply": false,
+        "groupId": 20302,
+        "isTopGroup": 0,
+        "createdDate": 1783334811000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "5-10 Yrs",
+        "minimumExperience": "5",
+        "maximumExperience": "10",
+        "applyByTime": "8:16 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=060726500908&logstr=srprestapi",
+        "applyRedirectUrl": "https://careers.se.com/jobs/125056?lang=en-us&previousLocale=en-US",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "brandedJD": {
+          "templateId": 28265
+        },
+        "roleCategoryGid": "1066",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Senior Manager - Services Sales BD",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/20302.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/20302.gif",
+        "jobId": "240826500648",
+        "currency": "INR",
+        "footerPlaceholderLabel": "2 Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Schneider Electric",
+        "isSaved": false,
+        "tagsAndSkills": "customer success,channel partner,business development,cybersecurity,customer relationship management,bid management,automation,automation solutions",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "8-10 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "New Delhi"
+          }
+        ],
+        "companyId": 1138730,
+        "jdURL": "/job-listings-senior-manager-services-sales-bd-schneider-electric-india-pvt-ltd-new-delhi-8-to-10-years-240826500648",
+        "staticUrl": "schneider-electric-jobs-careers-18252",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/schneider-electric-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 5449,
+          "AggregateRating": "4.1",
+          "Title": "Schneider Electric Reviews by Employees"
+        },
+        "jobDescription": "Educational Qualification: Diploma /B E/ B Tech - Electrical/ EEE.  <br><br>Experience in retrofitting and panel modernization business. Service-sales background (AMC,OMC,Spares). SAP and SFDC proficiency. Diploma/ B E /B Tech Electrical / EEE. Strong customer-facing and presentation skills.",
+        "showMultipleApply": false,
+        "groupId": 20302,
+        "isTopGroup": 0,
+        "createdDate": 1787565930000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "8-10 Yrs",
+        "minimumExperience": "8",
+        "maximumExperience": "10",
+        "applyByTime": "7:35 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=240826500648&logstr=srprestapi",
+        "applyRedirectUrl": "https://careers.se.com/jobs/130725?lang=en-us&previousLocale=en-US",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "brandedJD": {
+          "templateId": 28265
+        },
+        "roleCategoryGid": "1067",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Senior Business Development Manager - Hunting For SaaS Sales",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/52806.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/52806.gif",
+        "jobId": "020726501705",
+        "currency": "INR",
+        "footerPlaceholderLabel": "30+ Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Thomson Reuters",
+        "isSaved": false,
+        "tagsAndSkills": "Career development,Interpersonal skills,Sales,Skill development,Time management,Consulting,Flex,Manager Technology",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "10-15 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Bengaluru"
+          }
+        ],
+        "companyId": 3866046,
+        "jdURL": "/job-listings-senior-business-development-manager-hunting-for-saas-sales-thomson-reuters-india-pvt-ltd-bengaluru-10-to-15-years-020726501705",
+        "staticUrl": "thomson-reuters-jobs-careers-69001",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/thomson-reuters-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 1974,
+          "AggregateRating": "3.7",
+          "Title": "Thomson Reuters Reviews by Employees"
+        },
+        "jobDescription": "Would you like to join an organization that is consistently recognized as a Top Employer to Work For across a broad range of categories,such as Culture,Work-Life Balance,Diversity & Inclusion,Opportunities for Women,Social Impact,Volunteerism<br><br>Minimum of 10+ years successful outside sales experience in professional B2B environments . .",
+        "showMultipleApply": false,
+        "groupId": 52806,
+        "isTopGroup": 0,
+        "createdDate": 1782980623000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "10-15 Yrs",
+        "minimumExperience": "10",
+        "maximumExperience": "15",
+        "applyByTime": "5:53 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=020726501705&logstr=srprestapi",
+        "applyRedirectUrl": "https://thomsonreuters.wd5.myworkdayjobs.com/en-US/External_Career_Site/job/India-Bengaluru-Karnataka/Senior-Business-Development-Manager---Hunting-for-SaaS-Sales_JREQ201672",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "brandedJD": {
+          "templateId": 8633
+        },
+        "roleCategoryGid": "1065",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Deputy Manager/ Manager- Corporate Sales",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/124792.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/124792.gif",
+        "jobId": "260826016464",
+        "currency": "INR",
+        "footerPlaceholderLabel": "1 Day Ago",
+        "footerPlaceholderColor": "green",
+        "companyName": "Info Edge",
+        "isSaved": false,
+        "tagsAndSkills": "Enterprise Sales,Hunting,SaaS Sales,Key Accounts,End to End Sales,Institutional Sales,B2B Sales,Revenue Generation",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "3-8 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "9-13 Lacs PA"
+          },
+          {
+            "type": "location",
+            "label": "Chennai"
+          }
+        ],
+        "companyId": 1981,
+        "jdURL": "/job-listings-deputy-manager-manager-corporate-sales-info-edge-chennai-3-to-8-years-260826016464",
+        "staticUrl": "info-edge-jobs-careers-1407",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/info-edge-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 2451,
+          "AggregateRating": "3.8",
+          "Title": "Info Edge Reviews by Employees"
+        },
+        "jobDescription": "Acquire new education institutes,colleges and universities for digital campaigns and advertisements . <br><br>Develop a good understanding of spend for Shiksha.com and effectiveness of other channels used . <br><br>Sales experience preferably with the digital / online industry .",
+        "showMultipleApply": false,
+        "groupId": 124792,
+        "isTopGroup": 0,
+        "createdDate": 1787729114156,
+        "mode": "airex",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 900000,
+          "maximumSalary": 1300000,
+          "currency": "INR",
+          "hideSalary": false,
+          "variablePercentage": 0
+        },
+        "experienceText": "3-8 Yrs",
+        "minimumExperience": "3",
+        "maximumExperience": "8",
+        "applyByTime": "4:55 PM",
+        "companyApplyJob": false,
+        "walkinJob": false,
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": true,
+        "brandedJD": {
+          "templateId": 3021
+        },
+        "roleCategoryGid": "1065",
+        "todaysJob": false,
+        "jobAgentEligle": true,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Business Development Manager (Sales) - Managed IT Services",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/6037833.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/6037833.gif",
+        "jobId": "120826502186",
+        "currency": "INR",
+        "footerPlaceholderLabel": "14 Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Metamorfs",
+        "isSaved": false,
+        "tagsAndSkills": "IT services,Telecom,Bfsi,Strategic partnerships,Technology solutions,Stakeholder management,New business acquisition,Key account management",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "6-11 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Bengaluru"
+          }
+        ],
+        "companyId": 3354592,
+        "jdURL": "/job-listings-business-development-manager-sales-managed-it-services-metamorfs-infotech-pvt-ltd-bengaluru-6-to-11-years-120826502186",
+        "staticUrl": "metamorfs-jobs-careers-3252196",
+        "jobDescription": "6+ years of B2B Enterprise Sales Business Development experience. Strong expertise in Enterprise Sales,Key Account Management Contract Negotiation. <br><br>Required Skills<br><br>Experience selling IT / Technology Solutions.",
+        "showMultipleApply": false,
+        "groupId": 6037833,
+        "isTopGroup": 0,
+        "createdDate": 1786535846000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "6-11 Yrs",
+        "minimumExperience": "6",
+        "maximumExperience": "11",
+        "applyByTime": "9:27 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=120826502186&logstr=srprestapi",
+        "applyRedirectUrl": "https://www.metamorfs.com/careers",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "roleCategoryGid": "1065",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Senior Sales Manager",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/11276.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/11276.gif",
+        "jobId": "240826033009",
+        "currency": "INR",
+        "footerPlaceholderLabel": "2 Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Confidential",
+        "isSaved": false,
+        "tagsAndSkills": "New Client Acquisition,End to End Sales,B2B Sales,Sales,Enterprise Sales,Hunting,Client Onboarding,Deal Closure",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "10-15 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Mumbai (All Areas)"
+          }
+        ],
+        "companyId": 125651546,
+        "jdURL": "/job-listings-senior-sales-manager-confidential-mumbai-all-areas-10-to-15-years-240826033009",
+        "staticUrl": "confidential-jobs-careers-4010138",
+        "jobDescription": "Candidate should be able to discuss on first level of requirements with respect to Application Services & Solution to identify and qualify the opportunities<br><br>Required Skills & Experience:  . 8+ Years in B2B software / IT sales,with proven experience in selling software application services <br><br>Experience selling software application services,ERP,Automation,Analytics,AI,etc",
+        "showMultipleApply": false,
+        "groupId": 11276,
+        "isTopGroup": 0,
+        "createdDate": 1787592402261,
+        "mode": "jp",
+        "board": "1",
+        "vacancy": 3,
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "10-15 Yrs",
+        "minimumExperience": "10",
+        "maximumExperience": "15",
+        "applyByTime": "2:56 AM",
+        "companyApplyJob": false,
+        "walkinJob": false,
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": true,
+        "roleCategoryGid": "1066",
+        "todaysJob": false,
+        "jobAgentEligle": true,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Assistant Manager / Senior Manager Corporate Sales",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/3408840.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/3408840.gif",
+        "jobId": "270526503346",
+        "currency": "INR",
+        "footerPlaceholderLabel": "30+ Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "DocOnline",
+        "isSaved": false,
+        "tagsAndSkills": "Relationship management,Client solutions,B2B,Health care services,Marketing operations,cxo,Client acquisition,Management",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "5-12 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Bengaluru"
+          }
+        ],
+        "companyId": 4204928,
+        "jdURL": "/job-listings-assistant-manager-senior-manager-corporate-sales-doconline-health-india-bengaluru-5-to-12-years-270526503346",
+        "staticUrl": "doconline-jobs-careers-2635032",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/doconline-health-india-pvt-ltd-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 72,
+          "AggregateRating": "4.2",
+          "Title": "Doconline Health India Reviews by Employees"
+        },
+        "jobDescription": "<span> <ul> <li> Drive B2B corporate sales and revenue growth through new client acquisition and relationship management </li> <li> Build and manage a high-potential sales pipeline to meet monthly closures and targets </li> <li> Engage build strong relationships at CXO-level with corporate clients using a top-down approach </li> <li> Promote new and existing healthcare services through strategic campaigns, both digital and on-ground </li> <li> Keep track of market trends and develop pricing strategies to stay ahead of the competition </li> <li> Work cross-functionally with marketing, operations, and clinical teams to deliver best-in-class client solutions </li> </ul> <br /> <span> <b> </b> </span> </span>\n\nDisclaimer: This job posting has been aggregated from external source. Role details, content, and availability are subject to change. Applicants are advised to confirm the latest information directly on the company website before applying.",
+        "showMultipleApply": false,
+        "groupId": 3408840,
+        "isTopGroup": 0,
+        "createdDate": 1779883199000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "5-12 Yrs",
+        "minimumExperience": "5",
+        "maximumExperience": "12",
+        "applyByTime": "9:29 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=270526503346&logstr=srprestapi",
+        "applyRedirectUrl": "https://www.doconline.com/career",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "roleCategoryGid": "1066",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      },
+      {
+        "title": "Sr Inside Sales manager",
+        "logoPath": "https://img.naukimg.com/logo_images/groups/v1/472974.gif",
+        "logoPathV3": "https://img.naukimg.com/logo_images/groups/v1/472974.gif",
+        "jobId": "220526502532",
+        "currency": "INR",
+        "footerPlaceholderLabel": "30+ Days Ago",
+        "footerPlaceholderColor": "grey",
+        "companyName": "Simplilearn",
+        "isSaved": false,
+        "tagsAndSkills": "Outbound,B2C,data science,UPS,Digital marketing,Inside sales,Individual Contributor,b2c sales",
+        "placeholders": [
+          {
+            "type": "experience",
+            "label": "0-5 Yrs"
+          },
+          {
+            "type": "salary",
+            "label": "Not disclosed"
+          },
+          {
+            "type": "location",
+            "label": "Bengaluru"
+          }
+        ],
+        "companyId": 1617008,
+        "jdURL": "/job-listings-sr-inside-sales-manager-simplilearn-solutions-bengaluru-0-to-5-years-220526502532",
+        "staticUrl": "simplilearn-jobs-careers-737939",
+        "ambitionBoxData": {
+          "Url": "https://www.ambitionbox.com/reviews/simplilearn-reviews?utm_campaign=srp_ratings&utm_medium=desktop&utm_source=naukri",
+          "ReviewsCount": 947,
+          "AggregateRating": "3.7",
+          "Title": "Simplilearn Reviews by Employees"
+        },
+        "jobDescription": "Willingness to work in rotational shifts / weekends (as required for B2C audiences). Disclaimer: This job posting has been aggregated from external source<br><br> Desired Candidate Profile . Graduate in any discipline (MBA preferred but not mandatory)",
+        "showMultipleApply": false,
+        "groupId": 472974,
+        "isTopGroup": 0,
+        "createdDate": 1779451718000,
+        "mode": "crawled",
+        "board": "1",
+        "salaryDetail": {
+          "minimumSalary": 0,
+          "maximumSalary": 0,
+          "currency": "INR",
+          "hideSalary": true,
+          "variablePercentage": 0,
+          "minSalaryPerMonth": 0,
+          "maxSalaryPerMonth": 0,
+          "ctcBreakup": {}
+        },
+        "experienceText": "0-5 Yrs",
+        "minimumExperience": "0",
+        "maximumExperience": "5",
+        "applyByTime": "9:38 PM",
+        "companyApplyJob": true,
+        "walkinJob": false,
+        "companyApplyUrl": "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=220526502532&logstr=srprestapi",
+        "applyRedirectUrl": "https://www.simplilearn.com/job-openings?job_id=z5G7h3l6a1kMvyS65NP3c2rOiisrIYxZmuTu8eZGXy8=",
+        "segmentedTemplateId": "Template1",
+        "questionnaireIdPresent": false,
+        "roleCategoryGid": "1066",
+        "todaysJob": false,
+        "jobAgentEligle": false,
+        "segmentedQuestions": false,
+        "saved": false
+      }
+    ],
+    "fatFooter": [
+      {
+        "tab": "Top Companies",
+        "highlight": false,
+        "urlSet": [
+          {
+            "text": "Info Edge",
+            "url": "https://www.naukri.com/info-edge-overview-124792"
+          },
+          {
+            "text": "Tata Capital",
+            "url": "https://www.naukri.com/tata-capital-overview-172058"
+          },
+          {
+            "text": "Policybazaar",
+            "url": "https://www.naukri.com/policybazaar-overview-2827660"
+          },
+          {
+            "text": "NoBroker",
+            "url": "https://www.naukri.com/nobroker-overview-1194340"
+          },
+          {
+            "text": "Paytm",
+            "url": "https://www.naukri.com/paytm-overview-144830"
+          },
+          {
+            "text": "EY",
+            "url": "https://www.naukri.com/ey-overview-243080"
+          },
+          {
+            "text": "Accenture",
+            "url": "https://www.naukri.com/accenture-overview-10476"
+          },
+          {
+            "text": "Bajaj Finance",
+            "url": "https://www.naukri.com/bajaj-finance-overview-242"
+          },
+          {
+            "text": "Berger Paints",
+            "url": "https://www.naukri.com/berger-paints-overview-62866"
+          },
+          {
+            "text": "Delhivery",
+            "url": "https://www.naukri.com/delhivery-overview-509622"
+          }
+        ]
+      }
+    ],
+    "suggesterModel": {
+      "qparams": {
+        "pFarea": 18
+      }
+    },
+    "seo": {
+      "title": "Cxo Jobs - 129554 Cxo Job Vacancies In August 2026 - Naukri.com",
+      "descp": "129554 Cxo Jobs Available On Naukri.com. Explore Cxo Job Vacancies In Your Desired Locations Now!"
+    },
+    "bellyFilters": {
+      "positions": [
+        7,
+        10,
+        16
+      ],
+      "order": [
+        "salaryRange",
+        "citiesGid",
+        "topGroupId"
+      ]
+    },
+    "sid": "17877763314822837",
+    "isLoggedIn": false,
+    "variantName": "algo5",
+    "clusterOrder": [
+      "wfhType",
+      "experience",
+      "functionalAreaGid",
+      "citiesGid",
+      "salaryRange",
+      "business_size",
+      "roleGid",
+      "glbl_RoleCat",
+      "stipend",
+      "internshipDuration",
+      "ugCourseGid",
+      "employement",
+      "industryTypeGid",
+      "topCompanyId",
+      "topGroupId",
+      "freshness"
+    ],
+    "internshipSRP": false,
+    "faq": {
+      "faqTabHeading": "Frequently asked question",
+      "faqQnA": [
+        {
+          "question": "What are the challenges of working as a CXO?",
+          "answer": "The challenges of working as a CXO include long hours, high pressure, and the need to make difficult decisions."
+        },
+        {
+          "question": "What is the hiring process for CXO jobs in India?",
+          "answer": "The hiring process for CXO jobs in India typically involves a series of interviews, background checks, and reference checks."
+        },
+        {
+          "question": "What skills are required to be successful in a CXO role?",
+          "answer": "The skills required to be successful in a CXO role include strong leadership, strategic thinking, financial acumen, and the ability to motivate and inspire others."
+        },
+        {
+          "question": "What is the career progression for CXO jobs in India?",
+          "answer": "The career progression for CXO jobs in India typically involves taking on more responsibility and higher levels of leadership."
+        },
+        {
+          "question": "What is the job market like for CXO jobs in India?",
+          "answer": "The job market for CXO jobs in India is competitive, with a limited number of positions available."
+        }
+      ]
+    },
+    "showAgentPickedTag": false
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "auditTimestamp": "2026-08-29T21:07:07.399Z",
+  "scope": {
+    "tenantId": "tenant_default",
+    "personId": "ms6i7e3y-4x0chy5fy"
+  },
+  "databaseCounts": {
+    "canonical_opportunities": 3035,
+    "opportunity_versions": 3034,
+    "search_plan_candidates_all": 6826,
+    "active_search_plan_candidates": 3002,
+    "materialized_evaluations": 5604,
+    "canonical_decisions": 1509,
+    "legacy_decisions": 600,
+    "evaluation_jobs": 3204,
+    "evaluation_contexts": 15,
+    "search_plans": 8
+  },
+  "activeCandidatesSummary": {
+    "total": 3002,
+    "evaluated": 865,
+    "sparseSpec": 639,
+    "unmaterialized": 0,
+    "nullScores": 645,
+    "zeroScores": 0,
+    "positiveScores": 859,
+    "userDecisions": {
+      "PURSUE": 474,
+      "CONSIDER": 138,
+      "PASS": 896,
+      "NONE": 1494
+    },
+    "engineVerdicts": {
+      "PURSUE": 22,
+      "CONSIDER": 421,
+      "PASS": 422,
+      "SPARSE_SPEC": 639,
+      "NULL": 0
+    },
+    "sources": {
+      "LinkedIn": 1950,
+      "Naukri": 833,
+      "Indeed": 219
+    }
+  }
+}

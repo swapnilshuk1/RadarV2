@@ -26,7 +26,13 @@ import {
   computeOpportunityVersionId,
 } from "@/lib/domain/canonical_identity";
 import { evaluateAttentionGate } from "@/lib/intelligence/AttentionGate";
-import type { OpportunityVersion } from "@/lib/domain/canonical_acquisition";
+import type {
+  OpportunityVersion,
+  AcquisitionStatus,
+  AcquisitionQuality,
+  LifecycleState,
+  EvidenceState,
+} from "@/lib/domain/canonical_acquisition";
 import type { SearchCriteriaPayload } from "@/lib/domain/evaluation_context";
 
 export interface IngestOpportunityPayload {
@@ -40,6 +46,11 @@ export interface IngestOpportunityPayload {
   postedAt?: string | null;
   postedPrecision?: "EXACT" | "RELATIVE_ESTIMATE" | "LOWER_BOUND" | "UNKNOWN" | null;
   rawContent: string;
+  acquisitionStatus?: AcquisitionStatus;
+  acquisitionQuality?: AcquisitionQuality;
+  failureClass?: string | null;
+  lifecycleState?: LifecycleState;
+  evidenceState?: EvidenceState;
 }
 
 export interface IngestScopeFilter {
@@ -79,6 +90,25 @@ export class CanonicalIngestionService {
     const rawContent = payload.rawContent.trim();
     const canonicalUrl = payload.canonicalUrl.trim() || `https://radar.internal/jobs/${source}/${sourceJobId}`;
 
+    const descLen = rawContent.length;
+    const acquisitionQuality: AcquisitionQuality = payload.acquisitionQuality || (
+      descLen >= 500 ? "COMPLETE" :
+      descLen >= 200 ? "PARTIAL" :
+      descLen > 0 ? "MINIMAL" :
+      "INVALID"
+    );
+    const acquisitionStatus: AcquisitionStatus = payload.acquisitionStatus || (
+      (acquisitionQuality === "COMPLETE" || acquisitionQuality === "PARTIAL") ? "ACQUIRED" :
+      acquisitionQuality === "MINIMAL" ? "RECOVERY_PENDING" :
+      "CAPTURE_FAILED"
+    );
+    const lifecycleState: LifecycleState = payload.lifecycleState || "ACTIVE";
+    const evidenceState: EvidenceState = payload.evidenceState || "UNVERIFIED";
+    const failureClass = payload.failureClass || (
+      acquisitionQuality === "MINIMAL" ? "PARTIAL_CONTENT" :
+      acquisitionQuality === "INVALID" ? "EMPTY_CONTENT" : null
+    );
+
     // 1. Compute Deterministic Canonical Identities
     const canonicalJobId = computeCanonicalJobId({ source, sourceJobId });
     const contentHash = computeContentHash({
@@ -99,19 +129,30 @@ export class CanonicalIngestionService {
       location,
       employmentType,
       rawContent,
+      acquisitionStatus,
+      acquisitionQuality,
+      failureClass,
+      lifecycleState,
+      evidenceState,
       createdAt: new Date().toISOString(),
     };
 
-    // 2. Fetch Active Search Plans (optionally filtered by tenant/person scope)
-    let planQuery = `SELECT id, tenant_id, person_id, criteria_json FROM search_plans WHERE status = 'active'`;
+    // 2. Fetch Active Search Plans (strictly joined to verified people & tenants to enforce referential integrity)
+    let planQuery = `
+      SELECT sp.id, sp.tenant_id, sp.person_id, sp.criteria_json 
+      FROM search_plans sp
+      JOIN people p ON sp.person_id = p.id AND sp.tenant_id = p.tenant_id
+      JOIN tenants t ON sp.tenant_id = t.id
+      WHERE sp.status = 'active'
+    `;
     const planParams: unknown[] = [];
 
     if (scopeFilter?.tenantId) {
-      planQuery += ` AND tenant_id = ?`;
+      planQuery += ` AND sp.tenant_id = ?`;
       planParams.push(scopeFilter.tenantId);
     }
     if (scopeFilter?.personId) {
-      planQuery += ` AND person_id = ?`;
+      planQuery += ` AND sp.person_id = ?`;
       planParams.push(scopeFilter.personId);
     }
 
@@ -122,12 +163,13 @@ export class CanonicalIngestionService {
       criteria_json: string | null;
     }>(planQuery, planParams);
 
-    // 3. Perform Atomic Transaction: Opportunities + Versions + SearchPlanCandidates + EvaluationJobs
+    // 3. Perform Atomic Transaction: Opportunities + Versions + SearchPlanCandidates + EvaluationJobs + RecoveryQueue
     const candidateDecisions: Record<string, "CANDIDATE" | "NOT_CANDIDATE"> = {};
     let candidatesProjected = 0;
     let jobsEnqueued = 0;
     let isNewOpportunity = false;
     let isNewVersion = false;
+    let effectiveVersionId = versionId;
 
     await this.db.transaction(async (tx) => {
       // 3.0 Check if canonical opportunity already exists
@@ -151,8 +193,10 @@ export class CanonicalIngestionService {
       const versionRes = await tx.execute(
         `INSERT INTO opportunity_versions (
            id, canonical_job_id, content_hash, job_title, company_name,
-           location, employment_type, posted_at, posted_precision, raw_content, created_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+           location, employment_type, posted_at, posted_precision, raw_content,
+           acquisition_status, acquisition_quality, failure_class, lifecycle_state, evidence_state,
+           created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
          ON CONFLICT(canonical_job_id, content_hash) DO NOTHING`,
         [
           versionId,
@@ -164,12 +208,52 @@ export class CanonicalIngestionService {
           employmentType,
           postedAt,
           payload.postedPrecision || "UNKNOWN",
-          rawContent
+          rawContent,
+          acquisitionStatus,
+          acquisitionQuality,
+          failureClass,
+          lifecycleState,
+          evidenceState,
         ]
       );
       isNewVersion = versionRes.rowsAffected > 0;
 
-      // 3.3 Project Candidates & Enqueue Evaluation Jobs for each Active Search Plan
+      // 3.2.1 Resolve Authoritative Version ID:
+      // Whether newly inserted or pre-existing from an earlier run, fetch the canonical ID that exists in the database
+      const existingVersion = await tx.one<{ id: string }>(
+        `SELECT id FROM opportunity_versions WHERE canonical_job_id = ? AND content_hash = ?`,
+        [canonicalJobId, contentHash]
+      );
+      effectiveVersionId = existingVersion?.id || versionId;
+
+      // 3.3 Recovery Queue Enqueue if capture is MINIMAL / RECOVERY_PENDING
+      if (acquisitionStatus === "RECOVERY_PENDING" || acquisitionQuality === "MINIMAL") {
+        const recoveryId = `rec_${effectiveVersionId.slice(0, 16)}`;
+        for (const plan of activePlans) {
+          try {
+            await tx.execute(
+              `INSERT INTO recovery_queue (
+                 id, tenant_id, canonical_job_id, opportunity_version_id, source, canonical_url,
+                 reason, failure_class, attempt_count, status, next_attempt_at, created_at
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+              [
+                recoveryId,
+                plan.tenant_id,
+                canonicalJobId,
+                effectiveVersionId,
+                source,
+                canonicalUrl,
+                `Sparse or incomplete content capture (${descLen} chars)`,
+                failureClass || "PARTIAL_CONTENT",
+              ]
+            );
+          } catch {
+            // Handled if duplicate active recovery exists
+          }
+        }
+      }
+
+      // 3.4 Project Candidates & Enqueue Evaluation Jobs for each Active Search Plan
       for (const plan of activePlans) {
         let criteria: SearchCriteriaPayload = {
           targetSeniority: [],
@@ -191,7 +275,7 @@ export class CanonicalIngestionService {
         const gateResult = evaluateAttentionGate(versionRecord, criteria);
         candidateDecisions[plan.id] = gateResult.decision;
 
-        // Upsert SearchPlanCandidate
+        // Upsert SearchPlanCandidate with authoritative effectiveVersionId
         await tx.execute(
           `INSERT INTO search_plan_candidates (
              tenant_id, person_id, search_plan_id, canonical_job_id,
@@ -204,7 +288,7 @@ export class CanonicalIngestionService {
             plan.person_id,
             plan.id,
             canonicalJobId,
-            versionId,
+            effectiveVersionId,
             gateResult.decision,
           ]
         );
@@ -225,7 +309,7 @@ export class CanonicalIngestionService {
 
             if (evalContext?.context_fingerprint) {
               const fingerprint = evalContext.context_fingerprint;
-              const jobId = `job_${canonicalJobId.slice(0, 8)}_${versionId.slice(0, 8)}_${fingerprint.slice(0, 8)}`;
+              const jobId = `job_${crypto.randomUUID()}`;
 
               const enqueueRes = await tx.execute(
                 `INSERT INTO evaluation_jobs (
@@ -241,7 +325,7 @@ export class CanonicalIngestionService {
                   plan.person_id,
                   plan.id,
                   canonicalJobId,
-                  versionId,
+                  effectiveVersionId,
                   fingerprint,
                 ]
               );
@@ -250,8 +334,8 @@ export class CanonicalIngestionService {
                 jobsEnqueued++;
               }
             }
-          } catch {
-            // Ignore if evaluation_jobs table or evaluation_contexts is not present in lightweight test fixtures
+          } catch (err: any) {
+            console.error("[CanonicalIngestionService] Enqueue error:", err.message);
           }
         }
       }
@@ -259,7 +343,7 @@ export class CanonicalIngestionService {
 
     return {
       canonicalJobId,
-      opportunityVersion: versionId,
+      opportunityVersion: effectiveVersionId,
       isNewOpportunity,
       isNewVersion,
       plansEvaluated: activePlans.length,

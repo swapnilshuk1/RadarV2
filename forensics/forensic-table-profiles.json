@@ -1,0 +1,4170 @@
+{
+  "_migrations": {
+    "tableName": "_migrations",
+    "rowCount": 29,
+    "columnCount": 3,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 29
+      },
+      "migration_name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 29
+      },
+      "applied_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 17
+      }
+    }
+  },
+  "_test_contract": {
+    "tableName": "_test_contract",
+    "rowCount": 2,
+    "columnCount": 3,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "val": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      }
+    }
+  },
+  "acquisition_ledger": {
+    "tableName": "acquisition_ledger",
+    "rowCount": 632,
+    "columnCount": 24,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "canonical_job_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "source_portal": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "source_job_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "canonical_url": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "title": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 491
+      },
+      "company_name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 435
+      },
+      "location": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 179
+      },
+      "state": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "terminal_state": {
+        "nullCount": 632,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "claimed_by": {
+        "nullCount": 632,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "claimed_at": {
+        "nullCount": 632,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "lease_expires_at": {
+        "nullCount": 632,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "attempt_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "last_failure_class": {
+        "nullCount": 626,
+        "nullRate": 0.9905,
+        "distinctCount": 1
+      },
+      "last_acquisition_method": {
+        "nullCount": 6,
+        "nullRate": 0.0095,
+        "distinctCount": 4
+      },
+      "acquisition_quality": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "validation_confidence": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "first_seen_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "last_seen_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "last_acquired_at": {
+        "nullCount": 6,
+        "nullRate": 0.0095,
+        "distinctCount": 626
+      },
+      "freshness_state": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      }
+    }
+  },
+  "active_evaluation_contexts": {
+    "tableName": "active_evaluation_contexts",
+    "rowCount": 0,
+    "columnCount": 6,
+    "primaryKeys": [
+      "tenant_id",
+      "person_id",
+      "search_plan_id"
+    ],
+    "columns": {
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "search_plan_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "context_fingerprint": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "activated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "activated_by": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "assessment_records": {
+    "tableName": "assessment_records",
+    "rowCount": 0,
+    "columnCount": 6,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "evaluation_signature": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "job_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "candidate_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "record_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "assessments": {
+    "tableName": "assessments",
+    "rowCount": 0,
+    "columnCount": 18,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "match_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "capability_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "career_growth_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "leadership_scope_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "compensation_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "industry_alignment_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "location_fit_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "lifestyle_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "confidence_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "auth_sessions": {
+    "tableName": "auth_sessions",
+    "rowCount": 35,
+    "columnCount": 3,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 35
+      },
+      "user_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "expires_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 35
+      }
+    }
+  },
+  "calibration_runs": {
+    "tableName": "calibration_runs",
+    "rowCount": 6,
+    "columnCount": 13,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "policy_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "profile_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "corpus_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "volatility": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "excellent_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "good_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "average_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "weak_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "insufficient_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "avg_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "avg_confidence": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      }
+    }
+  },
+  "candidate_documents": {
+    "tableName": "candidate_documents",
+    "rowCount": 2,
+    "columnCount": 11,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "filename": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "storage_uri": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "mime_type": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "document_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "stage": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "error_message": {
+        "nullCount": 2,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      }
+    }
+  },
+  "candidate_evaluations": {
+    "tableName": "candidate_evaluations",
+    "rowCount": 0,
+    "columnCount": 12,
+    "primaryKeys": [
+      "person_id",
+      "job_hash"
+    ],
+    "columns": {
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "job_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "policy_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "evaluation_input_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "engine_verdict": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "engine_quality_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "user_decision_override": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "effective_decision": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "quality_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "evaluation_status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "evaluation_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "candidate_projection": {
+    "tableName": "candidate_projection",
+    "rowCount": 2,
+    "columnCount": 13,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "timeline": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "skills": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "meta_schema_version": {
+        "nullCount": 2,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 2,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 2,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 2,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 2,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 2,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "claims": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      }
+    }
+  },
+  "canonical_decisions": {
+    "tableName": "canonical_decisions",
+    "rowCount": 0,
+    "columnCount": 9,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "canonical_job_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "action": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "reason": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "reviewed_fingerprint": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "canonical_opportunities": {
+    "tableName": "canonical_opportunities",
+    "rowCount": 632,
+    "columnCount": 7,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "source": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "source_job_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "canonical_url": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "company_name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 435
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 625
+      },
+      "last_seen_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 625
+      }
+    }
+  },
+  "career_intents": {
+    "tableName": "career_intents",
+    "rowCount": 0,
+    "columnCount": 9,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "min_salary_usd": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "preferred_locations": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "target_titles": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "preferred_work_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "travel_tolerance": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "career_profiles": {
+    "tableName": "career_profiles",
+    "rowCount": 7,
+    "columnCount": 12,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "timeline": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "skills": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "projection_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 5
+      },
+      "projection_generated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "current_title": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "years_experience": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 4
+      },
+      "archetype": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 4
+      },
+      "preferred_work_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      }
+    }
+  },
+  "claim_facts": {
+    "tableName": "claim_facts",
+    "rowCount": 0,
+    "columnCount": 2,
+    "primaryKeys": [
+      "claim_id",
+      "fact_id"
+    ],
+    "columns": {
+      "claim_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "fact_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "claims": {
+    "tableName": "claims",
+    "rowCount": 0,
+    "columnCount": 12,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "opportunity_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "statement": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "confidence": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "companies": {
+    "tableName": "companies",
+    "rowCount": 2010,
+    "columnCount": 16,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2010
+      },
+      "name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1564
+      },
+      "industry": {
+        "nullCount": 2010,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "hq": {
+        "nullCount": 1753,
+        "nullRate": 0.8721,
+        "distinctCount": 103
+      },
+      "size": {
+        "nullCount": 2010,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "tech_stack": {
+        "nullCount": 2010,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "hiring_velocity": {
+        "nullCount": 2010,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "growth_signal": {
+        "nullCount": 2010,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1810
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1810
+      },
+      "meta_schema_version": {
+        "nullCount": 257,
+        "nullRate": 0.1279,
+        "distinctCount": 2
+      },
+      "meta_extractor_version": {
+        "nullCount": 1212,
+        "nullRate": 0.603,
+        "distinctCount": 1
+      },
+      "meta_prompt_version": {
+        "nullCount": 2010,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 1212,
+        "nullRate": 0.603,
+        "distinctCount": 1
+      },
+      "meta_run_id": {
+        "nullCount": 257,
+        "nullRate": 0.1279,
+        "distinctCount": 33
+      },
+      "meta_timestamp": {
+        "nullCount": 257,
+        "nullRate": 0.1279,
+        "distinctCount": 1753
+      }
+    }
+  },
+  "credential_audit_logs": {
+    "tableName": "credential_audit_logs",
+    "rowCount": 0,
+    "columnCount": 7,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "credential_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "action": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "actor_user_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "details": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "decisions": {
+    "tableName": "decisions",
+    "rowCount": 0,
+    "columnCount": 16,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "opportunity_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "recommendation_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "action": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "reason": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "lifecycle": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "reviewed_fingerprint": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "document_contents": {
+    "tableName": "document_contents",
+    "rowCount": 0,
+    "columnCount": 5,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "document_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "raw_text": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "text_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "documents": {
+    "tableName": "documents",
+    "rowCount": 269,
+    "columnCount": 14,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 269
+      },
+      "source_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "opportunity_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 269
+      },
+      "payload_type": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "content": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 269
+      },
+      "lifecycle": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 269
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 269
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_prompt_version": {
+        "nullCount": 269,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 269
+      }
+    }
+  },
+  "dossier_views": {
+    "tableName": "dossier_views",
+    "rowCount": 0,
+    "columnCount": 6,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "evaluation_signature": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "job_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "candidate_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "presented_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_evidence_clusters": {
+    "tableName": "ekb_evidence_clusters",
+    "rowCount": 0,
+    "columnCount": 9,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "concept_stem": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "cv_document_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "jd_document_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "recruiter_note_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "sample_snippets_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "adaptive_threshold": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_evidence_provenance": {
+    "tableName": "ekb_evidence_provenance",
+    "rowCount": 0,
+    "columnCount": 7,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "capability_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "cv_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "jd_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "recruiter_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "compiler_confidence": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "version_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_knowledge_debt": {
+    "tableName": "ekb_knowledge_debt",
+    "rowCount": 0,
+    "columnCount": 7,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "term_or_node": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "debt_category": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "diagnostic_message": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "document_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_pipeline_candidate_capabilities": {
+    "tableName": "ekb_pipeline_candidate_capabilities",
+    "rowCount": 0,
+    "columnCount": 8,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "suggested_name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "domain_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "discipline_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "maturity_stage": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "observation_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "compiler_confidence": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_pipeline_proposals": {
+    "tableName": "ekb_pipeline_proposals",
+    "rowCount": 0,
+    "columnCount": 6,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "proposal_type": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "proposal_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "rejection_reason": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_pipeline_raw_observations": {
+    "tableName": "ekb_pipeline_raw_observations",
+    "rowCount": 0,
+    "columnCount": 7,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "document_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "source_type": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "raw_term": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "normalized_stem": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "context_snippet": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_published_aliases": {
+    "tableName": "ekb_published_aliases",
+    "rowCount": 113,
+    "columnCount": 5,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 113
+      },
+      "version_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "capability_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 19
+      },
+      "alias_term": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 111
+      },
+      "normalized_stem": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 111
+      }
+    }
+  },
+  "ekb_published_capabilities": {
+    "tableName": "ekb_published_capabilities",
+    "rowCount": 19,
+    "columnCount": 6,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 19
+      },
+      "version_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "canonical_name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 19
+      },
+      "domain_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 4
+      },
+      "discipline_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 10
+      },
+      "description": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 19
+      }
+    }
+  },
+  "ekb_published_capability_graph": {
+    "tableName": "ekb_published_capability_graph",
+    "rowCount": 0,
+    "columnCount": 5,
+    "primaryKeys": [
+      "version_id",
+      "source_capability_id",
+      "target_capability_id"
+    ],
+    "columns": {
+      "version_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "source_capability_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "target_capability_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "relation_type": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "cost": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_published_embeddings": {
+    "tableName": "ekb_published_embeddings",
+    "rowCount": 0,
+    "columnCount": 4,
+    "primaryKeys": [
+      "capability_id"
+    ],
+    "columns": {
+      "capability_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "version_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "vector_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "model_identifier": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_published_mobility_graph": {
+    "tableName": "ekb_published_mobility_graph",
+    "rowCount": 0,
+    "columnCount": 5,
+    "primaryKeys": [
+      "version_id",
+      "source_title",
+      "target_title"
+    ],
+    "columns": {
+      "version_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "source_title": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "target_title": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "transition_frequency": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "friction_cost": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_published_platform_graph": {
+    "tableName": "ekb_published_platform_graph",
+    "rowCount": 0,
+    "columnCount": 4,
+    "primaryKeys": [
+      "version_id",
+      "capability_id",
+      "product_name"
+    ],
+    "columns": {
+      "version_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "capability_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "platform_vendor": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "product_name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_published_relationships": {
+    "tableName": "ekb_published_relationships",
+    "rowCount": 0,
+    "columnCount": 10,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "version_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "source_capability_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "target_capability_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "relation_type": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "statistical_cost": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "confidence": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "derived_from": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "algorithm_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "last_recomputed": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_published_versions": {
+    "tableName": "ekb_published_versions",
+    "rowCount": 1,
+    "columnCount": 8,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "major": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "minor": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "patch": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "quality_report_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "promoted_by": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "published_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      }
+    }
+  },
+  "ekb_release_candidates": {
+    "tableName": "ekb_release_candidates",
+    "rowCount": 0,
+    "columnCount": 5,
+    "primaryKeys": [
+      "version_id"
+    ],
+    "columns": {
+      "version_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "compilation_report_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "compiled_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "published_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "ekb_temporal_evidence": {
+    "tableName": "ekb_temporal_evidence",
+    "rowCount": 0,
+    "columnCount": 9,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "capability_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "year_month": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "cv_frequency": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "jd_frequency": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "recruiter_frequency": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "extraction_confidence": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "evidence_confidence": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "evaluation_context_scopes": {
+    "tableName": "evaluation_context_scopes",
+    "rowCount": 0,
+    "columnCount": 5,
+    "primaryKeys": [
+      "context_fingerprint"
+    ],
+    "columns": {
+      "context_fingerprint": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "search_plan_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "evaluation_contexts": {
+    "tableName": "evaluation_contexts",
+    "rowCount": 15,
+    "columnCount": 9,
+    "primaryKeys": [
+      "context_fingerprint"
+    ],
+    "columns": {
+      "context_fingerprint": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 15
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "search_plan_snapshot_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 15
+      },
+      "ontology_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "ontology_fingerprint": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 4
+      },
+      "policy_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "profile_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 4
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 9
+      }
+    }
+  },
+  "evaluation_jobs": {
+    "tableName": "evaluation_jobs",
+    "rowCount": 3204,
+    "columnCount": 18,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3204
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "search_plan_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "canonical_job_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "opportunity_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "evaluation_context_fingerprint": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "attempts": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 4
+      },
+      "max_attempts": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "next_attempt_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 849
+      },
+      "last_error": {
+        "nullCount": 3085,
+        "nullRate": 0.9629,
+        "distinctCount": 4
+      },
+      "locked_by": {
+        "nullCount": 6,
+        "nullRate": 0.0019,
+        "distinctCount": 11
+      },
+      "lease_token": {
+        "nullCount": 6,
+        "nullRate": 0.0019,
+        "distinctCount": 3198
+      },
+      "locked_at": {
+        "nullCount": 8,
+        "nullRate": 0.0025,
+        "distinctCount": 917
+      },
+      "completed_at": {
+        "nullCount": 6,
+        "nullRate": 0.0019,
+        "distinctCount": 916
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 846
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 846
+      }
+    }
+  },
+  "evaluation_signatures": {
+    "tableName": "evaluation_signatures",
+    "rowCount": 0,
+    "columnCount": 6,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "job_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "candidate_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "evaluation_signature": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "evidence": {
+    "tableName": "evidence",
+    "rowCount": 599,
+    "columnCount": 13,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 599
+      },
+      "document_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 256
+      },
+      "text": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 100
+      },
+      "section": {
+        "nullCount": 599,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "quality_score": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 256
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 256
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_prompt_version": {
+        "nullCount": 599,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 256
+      }
+    }
+  },
+  "evidence_graphs": {
+    "tableName": "evidence_graphs",
+    "rowCount": 2,
+    "columnCount": 8,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "document_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "graph_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      }
+    }
+  },
+  "fact_evidence": {
+    "tableName": "fact_evidence",
+    "rowCount": 593,
+    "columnCount": 2,
+    "primaryKeys": [
+      "fact_id",
+      "evidence_id"
+    ],
+    "columns": {
+      "fact_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 593
+      },
+      "evidence_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 592
+      }
+    }
+  },
+  "facts": {
+    "tableName": "facts",
+    "rowCount": 593,
+    "columnCount": 12,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 593
+      },
+      "opportunity_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 253
+      },
+      "attribute": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 8
+      },
+      "value": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 34
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 253
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 253
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_prompt_version": {
+        "nullCount": 593,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 253
+      }
+    }
+  },
+  "intent": {
+    "tableName": "intent",
+    "rowCount": 3,
+    "columnCount": 7,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "candidate_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "desired_roles": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "preferred_locations": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "salary_band": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "industries": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      }
+    }
+  },
+  "match_claims": {
+    "tableName": "match_claims",
+    "rowCount": 0,
+    "columnCount": 2,
+    "primaryKeys": [
+      "match_id",
+      "claim_id"
+    ],
+    "columns": {
+      "match_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "claim_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "matches": {
+    "tableName": "matches",
+    "rowCount": 0,
+    "columnCount": 11,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "opportunity_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "materialized_evaluations": {
+    "tableName": "materialized_evaluations",
+    "rowCount": 3201,
+    "columnCount": 13,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3201
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "canonical_job_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 635
+      },
+      "opportunity_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 633
+      },
+      "evaluation_context_fingerprint": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "evaluation_state": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "decision": {
+        "nullCount": 33,
+        "nullRate": 0.0103,
+        "distinctCount": 2
+      },
+      "quality_score": {
+        "nullCount": 33,
+        "nullRate": 0.0103,
+        "distinctCount": 1
+      },
+      "rationale": {
+        "nullCount": 1,
+        "nullRate": 0.0003,
+        "distinctCount": 4
+      },
+      "evidence_ids": {
+        "nullCount": 1,
+        "nullRate": 0.0003,
+        "distinctCount": 4
+      },
+      "evaluation_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1992
+      },
+      "materialized_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 923
+      }
+    }
+  },
+  "memberships": {
+    "tableName": "memberships",
+    "rowCount": 4,
+    "columnCount": 7,
+    "primaryKeys": [
+      "user_id",
+      "tenant_id"
+    ],
+    "columns": {
+      "user_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "role": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "permissions": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "revoked_at": {
+        "nullCount": 4,
+        "nullRate": 1,
+        "distinctCount": 0
+      }
+    }
+  },
+  "oauth_accounts": {
+    "tableName": "oauth_accounts",
+    "rowCount": 1,
+    "columnCount": 3,
+    "primaryKeys": [
+      "provider",
+      "provider_user_id"
+    ],
+    "columns": {
+      "provider": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "provider_user_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "user_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      }
+    }
+  },
+  "opportunities": {
+    "tableName": "opportunities",
+    "rowCount": 895,
+    "columnCount": 16,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 895
+      },
+      "company_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 469
+      },
+      "canonical_title": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 491
+      },
+      "location": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 180
+      },
+      "employment_type": {
+        "nullCount": 626,
+        "nullRate": 0.6994,
+        "distinctCount": 1
+      },
+      "posting_window": {
+        "nullCount": 626,
+        "nullRate": 0.6994,
+        "distinctCount": 126
+      },
+      "fingerprint": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 895
+      },
+      "lifecycle": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 895
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 895
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "meta_extractor_version": {
+        "nullCount": 626,
+        "nullRate": 0.6994,
+        "distinctCount": 1
+      },
+      "meta_prompt_version": {
+        "nullCount": 895,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 626,
+        "nullRate": 0.6994,
+        "distinctCount": 1
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 5
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 895
+      }
+    }
+  },
+  "opportunity_discoveries": {
+    "tableName": "opportunity_discoveries",
+    "rowCount": 258,
+    "columnCount": 7,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 258
+      },
+      "opportunity_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 258
+      },
+      "execution_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "source_name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "first_portal": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "first_definition": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 26
+      },
+      "discovered_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 257
+      }
+    }
+  },
+  "opportunity_versions": {
+    "tableName": "opportunity_versions",
+    "rowCount": 632,
+    "columnCount": 16,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "canonical_job_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "content_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 586
+      },
+      "job_title": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 491
+      },
+      "company_name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 435
+      },
+      "location": {
+        "nullCount": 3,
+        "nullRate": 0.0047,
+        "distinctCount": 178
+      },
+      "employment_type": {
+        "nullCount": 632,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "raw_content": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 580
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 623
+      },
+      "posted_at": {
+        "nullCount": 162,
+        "nullRate": 0.2563,
+        "distinctCount": 311
+      },
+      "posted_precision": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 4
+      },
+      "acquisition_status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "acquisition_quality": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "failure_class": {
+        "nullCount": 626,
+        "nullRate": 0.9905,
+        "distinctCount": 1
+      },
+      "lifecycle_state": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "evidence_state": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      }
+    }
+  },
+  "people": {
+    "tableName": "people",
+    "rowCount": 9,
+    "columnCount": 18,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 9
+      },
+      "email": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 9
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "meta_schema_version": {
+        "nullCount": 9,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 9,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 9,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 9,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 9,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 9,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "avatar_url": {
+        "nullCount": 8,
+        "nullRate": 0.8889,
+        "distinctCount": 1
+      },
+      "onboarded": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "role": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "email_verified": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "name": {
+        "nullCount": 8,
+        "nullRate": 0.8889,
+        "distinctCount": 1
+      },
+      "candidate_state": {
+        "nullCount": 9,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "onboarding_progress": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      }
+    }
+  },
+  "policy_comparisons": {
+    "tableName": "policy_comparisons",
+    "rowCount": 6,
+    "columnCount": 14,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "champion_policy_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "candidate_policy_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "corpus_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "profile_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "stability_index": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "volatility": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "excellent_delta": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "good_delta": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "average_delta": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "weak_delta": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "insufficient_delta": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "winner": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      }
+    }
+  },
+  "preference_profiles": {
+    "tableName": "preference_profiles",
+    "rowCount": 0,
+    "columnCount": 15,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "remote": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "preferred_industries": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "target_compensation": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "travel_willingness": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "company_size": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "recommendation_snapshots": {
+    "tableName": "recommendation_snapshots",
+    "rowCount": 0,
+    "columnCount": 18,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "snapshot_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "opportunity_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "recommendation_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "confidence": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "summary": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "graph_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "recommendations": {
+    "tableName": "recommendations",
+    "rowCount": 0,
+    "columnCount": 16,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "opportunity_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "assessment_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "summary": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "reasons": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "risks": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "lifecycle": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "recovery_queue": {
+    "tableName": "recovery_queue",
+    "rowCount": 6,
+    "columnCount": 15,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "canonical_job_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "opportunity_version_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "source": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "canonical_url": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "reason": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "failure_class": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "attempt_count": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "next_attempt_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "last_attempt_at": {
+        "nullCount": 6,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "last_error": {
+        "nullCount": 6,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "completed_at": {
+        "nullCount": 6,
+        "nullRate": 1,
+        "distinctCount": 0
+      }
+    }
+  },
+  "resume_versions": {
+    "tableName": "resume_versions",
+    "rowCount": 0,
+    "columnCount": 13,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "career_profile_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "type": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "achievements": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "custom_statement": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "search_plan_candidates": {
+    "tableName": "search_plan_candidates",
+    "rowCount": 4424,
+    "columnCount": 7,
+    "primaryKeys": [
+      "tenant_id",
+      "person_id",
+      "search_plan_id",
+      "canonical_job_id",
+      "opportunity_version"
+    ],
+    "columns": {
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "search_plan_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "canonical_job_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "opportunity_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 632
+      },
+      "attention_decision": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 847
+      }
+    }
+  },
+  "search_plan_snapshots": {
+    "tableName": "search_plan_snapshots",
+    "rowCount": 15,
+    "columnCount": 7,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 15
+      },
+      "search_plan_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 7
+      },
+      "snapshot_hash": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 14
+      },
+      "payload_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 9
+      }
+    }
+  },
+  "search_plans": {
+    "tableName": "search_plans",
+    "rowCount": 8,
+    "columnCount": 8,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 8
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 8
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 8
+      },
+      "title": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 5
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "criteria_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      }
+    }
+  },
+  "source_credentials": {
+    "tableName": "source_credentials",
+    "rowCount": 0,
+    "columnCount": 15,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "tenant_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "source": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "encrypted_ciphertext": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "iv": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "auth_tag": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "key_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "expires_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "last_used_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "last_verified_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "error_reason": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "sources": {
+    "tableName": "sources",
+    "rowCount": 3,
+    "columnCount": 12,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "type": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "url": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_prompt_version": {
+        "nullCount": 3,
+        "nullRate": 1,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      }
+    }
+  },
+  "tenants": {
+    "tableName": "tenants",
+    "rowCount": 8,
+    "columnCount": 4,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 8
+      },
+      "status": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 1
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 6
+      }
+    }
+  },
+  "timeline_events": {
+    "tableName": "timeline_events",
+    "rowCount": 0,
+    "columnCount": 21,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "workspace_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "person_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "opportunity_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "aggregate_type": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "aggregate_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "event_category": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "event_type": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "event_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "occurred_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "recommendation_snapshot_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "payload_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "metadata_json": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  },
+  "users": {
+    "tableName": "users",
+    "rowCount": 3,
+    "columnCount": 3,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "email": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 3
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 2
+      }
+    }
+  },
+  "workspaces": {
+    "tableName": "workspaces",
+    "rowCount": 0,
+    "columnCount": 13,
+    "primaryKeys": [
+      "id"
+    ],
+    "columns": {
+      "id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_by": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "owner": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "name": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "configuration_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "created_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "updated_at": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_schema_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_extractor_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_prompt_version": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_model": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_run_id": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      },
+      "meta_timestamp": {
+        "nullCount": 0,
+        "nullRate": 0,
+        "distinctCount": 0
+      }
+    }
+  }
+}

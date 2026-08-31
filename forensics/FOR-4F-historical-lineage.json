@@ -1,0 +1,12 @@
+{
+  "totalHistoricalWithDecisions": 1508,
+  "inActiveContextEvaluated": 0,
+  "inActiveContextSparse": 10,
+  "inPreviousContextOnly": 0,
+  "withNoEvaluationAnywhere": 0,
+  "userActionsBreakdown": {
+    "PURSUE": 474,
+    "PASS": 896,
+    "CONSIDER": 138
+  }
+}
