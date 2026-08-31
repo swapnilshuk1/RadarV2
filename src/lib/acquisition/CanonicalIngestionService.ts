@@ -137,16 +137,22 @@ export class CanonicalIngestionService {
       createdAt: new Date().toISOString(),
     };
 
-    // 2. Fetch Active Search Plans (optionally filtered by tenant/person scope)
-    let planQuery = `SELECT id, tenant_id, person_id, criteria_json FROM search_plans WHERE status = 'active'`;
+    // 2. Fetch Active Search Plans (strictly joined to verified people & tenants to enforce referential integrity)
+    let planQuery = `
+      SELECT sp.id, sp.tenant_id, sp.person_id, sp.criteria_json 
+      FROM search_plans sp
+      JOIN people p ON sp.person_id = p.id AND sp.tenant_id = p.tenant_id
+      JOIN tenants t ON sp.tenant_id = t.id
+      WHERE sp.status = 'active'
+    `;
     const planParams: unknown[] = [];
 
     if (scopeFilter?.tenantId) {
-      planQuery += ` AND tenant_id = ?`;
+      planQuery += ` AND sp.tenant_id = ?`;
       planParams.push(scopeFilter.tenantId);
     }
     if (scopeFilter?.personId) {
-      planQuery += ` AND person_id = ?`;
+      planQuery += ` AND sp.person_id = ?`;
       planParams.push(scopeFilter.personId);
     }
 
@@ -163,6 +169,7 @@ export class CanonicalIngestionService {
     let jobsEnqueued = 0;
     let isNewOpportunity = false;
     let isNewVersion = false;
+    let effectiveVersionId = versionId;
 
     await this.db.transaction(async (tx) => {
       // 3.0 Check if canonical opportunity already exists
@@ -211,9 +218,17 @@ export class CanonicalIngestionService {
       );
       isNewVersion = versionRes.rowsAffected > 0;
 
+      // 3.2.1 Resolve Authoritative Version ID:
+      // Whether newly inserted or pre-existing from an earlier run, fetch the canonical ID that exists in the database
+      const existingVersion = await tx.one<{ id: string }>(
+        `SELECT id FROM opportunity_versions WHERE canonical_job_id = ? AND content_hash = ?`,
+        [canonicalJobId, contentHash]
+      );
+      effectiveVersionId = existingVersion?.id || versionId;
+
       // 3.3 Recovery Queue Enqueue if capture is MINIMAL / RECOVERY_PENDING
       if (acquisitionStatus === "RECOVERY_PENDING" || acquisitionQuality === "MINIMAL") {
-        const recoveryId = `rec_${versionId.slice(0, 16)}`;
+        const recoveryId = `rec_${effectiveVersionId.slice(0, 16)}`;
         for (const plan of activePlans) {
           try {
             await tx.execute(
@@ -225,7 +240,7 @@ export class CanonicalIngestionService {
                 recoveryId,
                 plan.tenant_id,
                 canonicalJobId,
-                versionId,
+                effectiveVersionId,
                 source,
                 canonicalUrl,
                 `Sparse or incomplete content capture (${descLen} chars)`,
@@ -238,7 +253,7 @@ export class CanonicalIngestionService {
         }
       }
 
-      // 3.3 Project Candidates & Enqueue Evaluation Jobs for each Active Search Plan
+      // 3.4 Project Candidates & Enqueue Evaluation Jobs for each Active Search Plan
       for (const plan of activePlans) {
         let criteria: SearchCriteriaPayload = {
           targetSeniority: [],
@@ -260,7 +275,7 @@ export class CanonicalIngestionService {
         const gateResult = evaluateAttentionGate(versionRecord, criteria);
         candidateDecisions[plan.id] = gateResult.decision;
 
-        // Upsert SearchPlanCandidate
+        // Upsert SearchPlanCandidate with authoritative effectiveVersionId
         await tx.execute(
           `INSERT INTO search_plan_candidates (
              tenant_id, person_id, search_plan_id, canonical_job_id,
@@ -273,7 +288,7 @@ export class CanonicalIngestionService {
             plan.person_id,
             plan.id,
             canonicalJobId,
-            versionId,
+            effectiveVersionId,
             gateResult.decision,
           ]
         );
@@ -310,7 +325,7 @@ export class CanonicalIngestionService {
                   plan.person_id,
                   plan.id,
                   canonicalJobId,
-                  versionId,
+                  effectiveVersionId,
                   fingerprint,
                 ]
               );
@@ -328,7 +343,7 @@ export class CanonicalIngestionService {
 
     return {
       canonicalJobId,
-      opportunityVersion: versionId,
+      opportunityVersion: effectiveVersionId,
       isNewOpportunity,
       isNewVersion,
       plansEvaluated: activePlans.length,

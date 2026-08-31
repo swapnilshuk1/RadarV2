@@ -92,7 +92,7 @@ export interface RecommendationViewModel {
 }
 
 export type EvaluatedOpportunity = {
-  evaluationState: "EVALUATED" | "LEGACY";
+  evaluationState: "EVALUATED" | "COMPLETE" | "LEGACY";
   jobHash: string;
   role: string;
   company: string;
