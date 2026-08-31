@@ -74,6 +74,7 @@ RADAR v2 Test Architecture
 | :--- | :--- | :---: |
 | `tests/policy/eligibility-gates.test.ts` | Strict evaluation of core eligibility criteria (location, seniority, operating model). | Full Suite |
 | `tests/policy/headspace-serving-contract.test.ts` | Executive headspace capacity capping and active pursuit thresholding. | Full Suite |
+| `tests/policy/atomic-plan-activation.test.ts` | Replacing career intent produces a complete, immediately routeable evaluation context or rolls back without stale-plan exposure. | Full Suite |
 | `tests/intelligence/recommendation-golden.test.ts` | Deterministic end-to-end evaluation against golden candidate and job fixtures. | Full Suite |
 
 ---
@@ -151,7 +152,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (171 Total Files)
+## 3. Complete Test File Registry (172 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -250,6 +251,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/pipeline/worker_veto_write_path.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 4 |
 | `tests/policy/attention-management.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 12 | 37 |
 | `tests/policy/attention-window.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 32 |
+| `tests/policy/atomic-plan-activation.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 14 |
 | `tests/policy/decision-ranking.test.ts` | Decision Persistence | **KEEP** | Full Suite | 12 | 64 |
 | `tests/policy/dossier-decision-state.test.ts` | Decision Persistence | **KEEP** | Full Suite | 13 | 38 |
 | `tests/policy/eligibility-gates.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 14 |

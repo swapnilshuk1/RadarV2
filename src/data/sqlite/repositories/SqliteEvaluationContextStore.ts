@@ -23,8 +23,154 @@ import {
 } from "@/lib/domain/evaluation_fingerprint";
 import crypto from "node:crypto";
 
+export interface SearchPlanActivationInput {
+  title: string;
+  criteria: SearchCriteriaPayload;
+  ontologyVersion: string;
+  ontologyFingerprint: string;
+  policyVersion: string;
+  profileVersion: string;
+  activatedBy: string;
+}
+
+export interface ActivatedSearchPlan {
+  plan: SearchPlan;
+  snapshot: SearchPlanSnapshot;
+  context: EvaluationContext;
+}
+
 export class SqliteEvaluationContextStore {
   constructor(private db: DatabaseAdapter) {}
+
+  /**
+   * Replaces the active search plan for one authorized person as one durable
+   * transaction.  A reader can therefore observe either the prior active
+   * lineage or the complete replacement lineage, never a partial plan.
+   */
+  async replaceActiveSearchPlan(
+    scope: AuthorizedPersonScope,
+    input: SearchPlanActivationInput
+  ): Promise<ActivatedSearchPlan> {
+    const now = new Date().toISOString();
+    const planId = `sp_${crypto.randomUUID()}`;
+    const snapshotHash = computeSearchPlanSnapshotHash(input.criteria);
+    // Snapshot hashes describe content, not identity. Two successive plans can
+    // intentionally have identical criteria, so the row id must remain unique.
+    const snapshotId = `sps_${crypto.randomUUID()}`;
+    const contextFingerprint = computeEvaluationContextFingerprint({
+      tenantId: scope.tenantId,
+      personId: scope.personId,
+      searchPlanSnapshotId: snapshotId,
+      ontologyVersion: input.ontologyVersion,
+      ontologyFingerprint: input.ontologyFingerprint,
+      policyVersion: input.policyVersion,
+      profileVersion: input.profileVersion,
+    });
+    const criteriaJson = JSON.stringify(input.criteria);
+
+    await this.db.transaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO search_plans (id, tenant_id, person_id, title, status, criteria_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'active', ?, ?, ?)`,
+        [planId, scope.tenantId, scope.personId, input.title, criteriaJson, now, now]
+      );
+
+      await tx.execute(
+        `INSERT INTO search_plan_snapshots (id, search_plan_id, tenant_id, person_id, snapshot_hash, payload_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [snapshotId, planId, scope.tenantId, scope.personId, snapshotHash, criteriaJson, now]
+      );
+
+      await tx.execute(
+        `INSERT INTO evaluation_contexts (
+           context_fingerprint, tenant_id, person_id, search_plan_snapshot_id,
+           ontology_version, ontology_fingerprint, policy_version, profile_version, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          contextFingerprint,
+          scope.tenantId,
+          scope.personId,
+          snapshotId,
+          input.ontologyVersion,
+          input.ontologyFingerprint,
+          input.policyVersion,
+          input.profileVersion,
+          now,
+        ]
+      );
+
+      // The INSERT ... SELECT is deliberate: it keeps the database trigger as
+      // the final authority for context-to-plan lineage.
+      await tx.execute(
+        `INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+         SELECT ec.context_fingerprint, ec.tenant_id, ec.person_id, sps.search_plan_id
+         FROM evaluation_contexts ec
+         JOIN search_plan_snapshots sps ON sps.id = ec.search_plan_snapshot_id
+         WHERE ec.context_fingerprint = ?
+           AND ec.tenant_id = ?
+           AND ec.person_id = ?
+           AND sps.search_plan_id = ?`,
+        [contextFingerprint, scope.tenantId, scope.personId, planId]
+      );
+
+      await tx.execute(
+        `INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT (tenant_id, person_id, search_plan_id)
+         DO UPDATE SET context_fingerprint = excluded.context_fingerprint,
+                       activated_at = CURRENT_TIMESTAMP,
+                       activated_by = excluded.activated_by`,
+        [scope.tenantId, scope.personId, planId, contextFingerprint, input.activatedBy]
+      );
+
+      // Retain immutable plan/context history while making the replacement the
+      // sole routeable plan and pointer for this person.
+      await tx.execute(
+        `DELETE FROM active_evaluation_contexts
+         WHERE tenant_id = ? AND person_id = ? AND search_plan_id <> ?`,
+        [scope.tenantId, scope.personId, planId]
+      );
+      await tx.execute(
+        `UPDATE search_plans
+         SET status = 'archived', updated_at = ?
+         WHERE tenant_id = ? AND person_id = ? AND status = 'active' AND id <> ?`,
+        [now, scope.tenantId, scope.personId, planId]
+      );
+    });
+
+    return {
+      plan: {
+        id: planId,
+        tenantId: scope.tenantId,
+        personId: scope.personId,
+        title: input.title,
+        status: "active",
+        criteria: input.criteria,
+        createdAt: now,
+        updatedAt: now,
+      },
+      snapshot: {
+        id: snapshotId,
+        searchPlanId: planId,
+        tenantId: scope.tenantId,
+        personId: scope.personId,
+        snapshotHash,
+        payload: input.criteria,
+        createdAt: now,
+      },
+      context: {
+        contextFingerprint,
+        tenantId: scope.tenantId,
+        personId: scope.personId,
+        searchPlanSnapshotId: snapshotId,
+        ontologyVersion: input.ontologyVersion,
+        ontologyFingerprint: input.ontologyFingerprint,
+        policyVersion: input.policyVersion,
+        profileVersion: input.profileVersion,
+        createdAt: now,
+      },
+    };
+  }
 
   /**
    * Creates a new search plan scoped to the authorized tenant and person.
@@ -103,7 +249,9 @@ export class SqliteEvaluationContextStore {
     }
 
     const snapshotHash = computeSearchPlanSnapshotHash(criteria);
-    const snapshotId = `sps_${snapshotHash.slice(0, 16)}`;
+    // The content hash is unique only within a plan. Keep the row identity
+    // independent so two plans with identical criteria remain valid lineage.
+    const snapshotId = `sps_${crypto.randomUUID()}`;
     const payloadJson = JSON.stringify(criteria);
     const now = new Date().toISOString();
 
