@@ -17,6 +17,13 @@ import * as fs from "fs";
 import * as path from "path";
 import { execSync, spawnSync } from "child_process";
 import { STAGES } from "../../scripts/certify";
+import {
+  certificationManifest,
+  certificationTestFiles,
+  EXPECTED_CERTIFICATION_FILE_COUNT,
+  uniqueCertificationTestFiles,
+} from "../../scripts/certification/manifest";
+import { filesForAffectedGroups, selectAffectedGroupIds } from "../../scripts/certification/affected";
 
 describe("Certification Gate Integrity & Anti-Regression Contract", () => {
   const certifyScriptPath = path.resolve(process.cwd(), "scripts/certify.ts");
@@ -26,12 +33,12 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
     expect(STAGES).toHaveLength(7);
 
     const expectedStageKeywords = [
-      { name: "TypeScript", cmd: "tsc --noEmit" },
-      { name: "Four Boundary Journeys", cmd: "tests/certification/" },
-      { name: "Ingestion & Lineage", cmd: "canonical-ingestion-fk-regression" },
-      { name: "Multi-Tenant & Scope Security", cmd: "scope-resolver-equivalence" },
-      { name: "Serving Store & Keyset", cmd: "tests/serving/" },
-      { name: "Editorial Governance", cmd: "tests/editorial/" },
+      { name: "TypeScript", cmd: "tsconfig.verify.json" },
+      { name: "Four Boundary Journeys", cmd: "vitest.certification.config.ts" },
+      { name: "Ingestion & Lineage", cmd: "Unified Vitest certification manifest" },
+      { name: "Multi-Tenant & Scope Security", cmd: "Unified Vitest certification manifest" },
+      { name: "Serving Store & Keyset", cmd: "Unified Vitest certification manifest" },
+      { name: "Editorial Governance", cmd: "Unified Vitest certification manifest" },
       { name: "Production SSR Bundle Build", cmd: "npm run build" },
     ];
 
@@ -41,19 +48,48 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
     });
   });
 
-  it("2. asserts critical bug-prevention suites are explicitly enumerated in stage commands", () => {
-    const stage3 = STAGES.find((s) => s.command.includes("canonical-ingestion-fk-regression"));
-    expect(stage3).toBeDefined();
-    expect(stage3!.command).toContain("canonical-ingestion-fk-regression.test.ts");
-    expect(stage3!.command).toContain("canonical-acquisition-integrity.test.ts");
-    expect(stage3!.command).toContain("canonical-identity.test.ts");
-    expect(stage3!.command).toContain("semantic-evidence-integrity-regression.test.ts");
-    expect(stage3!.command).toContain("metrics-portal-breakdown.test.ts");
+  it("2. asserts the reviewed certification manifest contains exactly the required files once", () => {
+    const expectedFiles = [
+      "tests/certification/certification-gate-integrity.test.ts",
+      "tests/certification/journey_a_acquisition_to_evaluation.test.ts",
+      "tests/certification/journey_b_semantic_grounding_to_policy.test.ts",
+      "tests/certification/journey_c_decision_persistence_to_dto.test.ts",
+      "tests/certification/journey_d_loader_to_ui_rendering.test.ts",
+      "tests/certification/test-inventory-audit.test.ts",
+      "tests/intelligence/canonical-ingestion-fk-regression.test.ts",
+      "tests/intelligence/canonical-acquisition-integrity.test.ts",
+      "tests/intelligence/canonical-identity.test.ts",
+      "tests/intelligence/semantic-evidence-integrity-regression.test.ts",
+      "tests/intelligence/metrics-portal-breakdown.test.ts",
+      "tests/security/scope-resolver-equivalence.test.ts",
+      "tests/security/deploy-attack-surface-removed.test.ts",
+      "tests/security/scrape-tenant-identity.test.ts",
+      "tests/ontology/tenant-ontology-compiler.test.ts",
+      "tests/serving/cursor.test.ts",
+      "tests/serving/dossier_and_navigation.test.ts",
+      "tests/serving/keyset_pagination.test.ts",
+      "tests/serving/opportunity-queries-contract.test.ts",
+      "tests/serving/route_server_functions_parity.test.ts",
+      "tests/serving/singleflight_and_observability.test.ts",
+      "tests/serving/sql_feed_parity.test.ts",
+      "tests/serving/sql_metrics_aggregation.test.ts",
+      "tests/editorial/career-value-integrity.test.ts",
+      "tests/editorial/explanation-composition.test.ts",
+      "tests/editorial/explanation-contract.test.ts",
+      "tests/editorial/shortlist-badge-resolution.test.ts",
+      "tests/editorial/ui-score-resolution.test.ts",
+      "tests/editorial/verdict-coverage.test.ts",
+    ];
 
-    const stage4 = STAGES.find((s) => s.command.includes("scope-resolver-equivalence"));
-    expect(stage4).toBeDefined();
-    expect(stage4!.command).toContain("scope-resolver-equivalence.test.ts");
-    expect(stage4!.command).toContain("tenant-ontology-compiler.test.ts");
+    expect(certificationManifest).toHaveLength(5);
+    expect(EXPECTED_CERTIFICATION_FILE_COUNT).toBe(29);
+    expect(certificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
+    expect(uniqueCertificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
+    expect([...certificationTestFiles].sort()).toEqual([...expectedFiles].sort());
+
+    for (const file of certificationTestFiles) {
+      expect(fs.existsSync(path.resolve(process.cwd(), file)), `Certification file "${file}" is missing`).toBe(true);
+    }
   });
 
   it("3. asserts zero shell bypasses or swallowed exit codes exist in certify.ts", () => {
@@ -68,7 +104,19 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
     expect(certifyScriptContent).toContain("CERTIFICATION PASS");
   });
 
-  it("4. asserts failing subprocess terminates certification gate with non-zero exit code", () => {
+  it("3a. keeps affected-test feedback conservative and manifest-derived", () => {
+    expect(selectAffectedGroupIds(["package.json"])).toEqual(certificationManifest.map((group) => group.id));
+    expect(selectAffectedGroupIds(["src/lib/intelligence/editorial/BriefCompositionEngine.ts"])).toEqual([
+      "boundary-journeys",
+      "editorial-governance",
+    ]);
+    expect(selectAffectedGroupIds(["unmapped/future-system.ts"])).toEqual(certificationManifest.map((group) => group.id));
+    expect(filesForAffectedGroups(["tenant-security"])).toEqual(
+      certificationManifest.find((group) => group.id === "tenant-security")!.files
+    );
+  });
+
+  it("4. asserts failing subprocess terminates certification gate with non-zero exit code", { timeout: 60000 }, () => {
     let threw = false;
     let errorOutput = "";
 

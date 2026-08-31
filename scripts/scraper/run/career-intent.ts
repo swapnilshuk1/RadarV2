@@ -17,11 +17,46 @@ export interface CareerIntent {
 
 export class CareerIntentModel {
   /**
-   * Translates the raw Candidate Profile / Database Versioned Intent into a
-   * dynamic Career Intent representation.
-   * Dual-Read Backward Compatible Fallback:
-   * 1. Attempt to fetch latest versioned intent from SQLite database.
-   * 2. Fall back seamlessly to static candidate-profile.json fixture.
+   * Derives dynamic Career Intent directly from an in-memory or database-stored
+   * CandidateState object, eliminating static filesystem dependencies.
+   */
+  public static extractIntentFromCandidateState(candidateState: any, _taxonomyPath?: string): CareerIntent {
+    const intentData = candidateState?.intent || {};
+    const targetRoles = intentData.targetRoles || [];
+    const targetTitles = targetRoles.map((r: any) => typeof r === "string" ? r : r?.title).filter(Boolean);
+    const preferredLocations = intentData.locations || ["Gurugram", "Remote India"];
+    const industries = intentData.industries || [];
+    const profileFunctions = intentData.functions || [];
+
+    const targetLevels = new Set<string>();
+    targetTitles.forEach((title: string) => {
+      const lower = title.toLowerCase();
+      if (lower.includes("cmo") || lower.includes("chief") || lower.includes("cco")) targetLevels.add("Chief");
+      if (lower.includes("vp") || lower.includes("vice president")) targetLevels.add("VP");
+      if (lower.includes("director")) targetLevels.add("Director");
+      if (lower.includes("svp") || lower.includes("senior vice president")) targetLevels.add("SVP");
+      if (lower.includes("head") || lower.includes("lead")) targetLevels.add("Head");
+    });
+
+    if (targetLevels.size === 0) {
+      targetLevels.add("VP").add("Head").add("Chief");
+    }
+
+    return {
+      targetLevel: Array.from(targetLevels),
+      functions: profileFunctions.length > 0 ? profileFunctions : ["Marketing", "Growth"],
+      operatingModels: ["B2B", "Enterprise", "Scale-up"],
+      ownership: ["P&L", "Commercial"],
+      industries,
+      exclusions: [],
+      targetTitles: targetTitles.length > 0 ? targetTitles : ["Vice President", "Chief Commercial Officer", "Head of Growth"],
+      preferredLocations,
+    };
+  }
+
+  /**
+   * Translates raw Candidate Profile fixture into dynamic Career Intent.
+   * Reserved strictly for local/offline unit test fixtures.
    */
   public static extractIntent(profilePath: string, taxonomyPath: string): CareerIntent {
     let targetTitles: string[] = [];

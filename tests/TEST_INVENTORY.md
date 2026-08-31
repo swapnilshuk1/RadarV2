@@ -113,6 +113,7 @@ RADAR v2 Test Architecture
 | :--- | :--- | :---: |
 | `tests/security/scope-resolver-equivalence.test.ts` | Strict multi-tenant scope isolation: zero data leaks across distinct tenant boundaries. | **Stage 4** |
 | `tests/security/deploy-attack-surface-removed.test.ts` | Zero app-layer deployment endpoints, firewall flushing, or SSH mutations. | **Stage 4** |
+| `tests/security/scrape-tenant-identity.test.ts` | Authenticated scraper identity, DB membership RBAC, zero default_tenant fallback. | **Stage 4** |
 | `tests/ontology/tenant-ontology-compiler.test.ts` | Tenant-customized ontology definitions compile and validate within tenant sandboxes. | **Stage 4** |
 | `tests/security/m62-credential-vault.test.ts` | AES-256 envelope encryption and key rotation for portal scraper credentials. | Full Suite |
 
@@ -318,6 +319,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/security/m8-tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 5 | 16 |
 | `tests/security/phase13_cross_tenant_pentest.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 13 | 21 |
 | `tests/security/scope-resolver-equivalence.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 13 | 39 |
+| `tests/security/scrape-tenant-identity.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 7 | 25 |
 | `tests/security/tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 16 | 43 |
 | `tests/semantic/controlled_integration.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 11 | 33 |
 | `tests/semantic/extraction-sanitation.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 14 |

@@ -19,6 +19,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { STAGES } from "../../scripts/certify";
+import { certificationTestFiles } from "../../scripts/certification/manifest";
 
 describe("Test Inventory Self-Auditing & Governance Contract", () => {
   const inventoryPath = path.resolve(process.cwd(), "tests/TEST_INVENTORY.md");
@@ -99,27 +100,11 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
     }
   });
 
-  it("4. asserts every test referenced in scripts/certify.ts exists on disk", () => {
-    const certifyScript = fs.readFileSync(
-      path.resolve(process.cwd(), "scripts/certify.ts"),
-      "utf-8"
-    );
-
-    // Extract all test paths from certify.ts
-    const referencedSuites = [
-      "tests/intelligence/canonical-ingestion-fk-regression.test.ts",
-      "tests/intelligence/canonical-acquisition-integrity.test.ts",
-      "tests/intelligence/canonical-identity.test.ts",
-      "tests/intelligence/semantic-evidence-integrity-regression.test.ts",
-      "tests/intelligence/metrics-portal-breakdown.test.ts",
-      "tests/security/scope-resolver-equivalence.test.ts",
-      "tests/ontology/tenant-ontology-compiler.test.ts",
-    ];
-
-    for (const suite of referencedSuites) {
+  it("4. asserts every manifest certification test exists on disk", () => {
+    for (const suite of certificationTestFiles) {
       expect(
         fs.existsSync(path.resolve(process.cwd(), suite)),
-        `Referenced suite "${suite}" in scripts/certify.ts does not exist on disk!`
+        `Certification suite "${suite}" in the manifest does not exist on disk!`
       ).toBe(true);
     }
   });
@@ -130,6 +115,9 @@ describe("Test Inventory Self-Auditing & Governance Contract", () => {
       expect(stage.name).toBeDefined();
       expect(stage.command).toBeDefined();
       expect(stage.command.length).toBeGreaterThan(0);
+      if (stage.execution === "reported-by-manifest") {
+        expect(stage.command).toContain("Unified Vitest certification manifest");
+      }
       expect(stage.description).toBeDefined();
     }
   });

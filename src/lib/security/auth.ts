@@ -1,6 +1,14 @@
 import { DatabaseAdapter } from "../../data/database";
 
-export type Permission = 'read:evaluation' | 'write:evaluation' | 'manage:search_plan' | 'manage:credentials' | 'read:credentials' | 'read:person' | 'write:person';
+export type Permission =
+  | 'read:evaluation'
+  | 'write:evaluation'
+  | 'manage:search_plan'
+  | 'run:scraper'
+  | 'manage:credentials'
+  | 'read:credentials'
+  | 'read:person'
+  | 'write:person';
 
 // 1. Authentication context establishes who is calling
 export interface AuthContext {

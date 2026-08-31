@@ -57,4 +57,15 @@ describe("Checkpoint A: Deployment Attack Surface Removal Contract", () => {
       }
     }
   });
+
+  it("Invariant 4: Requests to deleted /api/webhooks/deploy produce strict 404 JSON response", async () => {
+    const serverEntry = (await import("../../src/server")).default;
+    const req = new Request("http://localhost:3000/api/webhooks/deploy", { method: "POST" });
+    const res = await serverEntry.fetch(req, {}, {});
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")?.includes("application/json")).toBe(true);
+    const body = await res.json();
+    expect(body.error).toBe("Not Found");
+    expect(body.path).toBe("/api/webhooks/deploy");
+  });
 });

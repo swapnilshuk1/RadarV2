@@ -28,6 +28,7 @@ import type { FeedCard, PortalHandler, PortalName, WorkUnit, AcquisitionAttempt,
 
 import { sanitizeCompanyName } from "./scraper/utils/sanitize";
 import { normalizeUrl } from "./scraper/utils/url";
+import { getDatabaseAdapter } from "../src/data/database";
 import { fastFetchDetail } from "./scraper/utils/http-fetch";
 import { EnrichmentQueue } from "./scraper/persist/queue";
 import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
@@ -138,6 +139,7 @@ export interface RunOptions {
   resume?: boolean;
   autoConfirm?: boolean;
   authContext?: AuthContext;
+  searchPlanId?: string;
 }
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
@@ -175,32 +177,61 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
   if (!keywords) {
     try {
-      const profilePath = path.join(process.cwd(), "src", "data", "candidate-profile.json");
       const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
       const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
-      const searchPlanOutputPath = path.join(process.cwd(), "src", "data", "search-plan.json");
-      
-      const { CareerIntentModel } = await import("./scraper/run/career-intent");
-      const intent = CareerIntentModel.extractIntent(profilePath, taxonomyPath);
-      log(`Career Intent: Functions: ${intent.functions.slice(0, 2).join(", ") || "Marketing/Growth"} · Levels: ${intent.targetLevel.join(", ")}`);
-      
-      const { SearchPlanner } = await import("./scraper/run/search-planner");
-      const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
-      
-      fs.writeFileSync(searchPlanOutputPath, JSON.stringify(searchPlan, null, 2), "utf-8");
-      log(`Generated and persisted Search Plan first-class artifact to: ${searchPlanOutputPath}`);
-      
-      // Select all ranked queries to fully capture the environment!
-      keywords = searchPlan.rankedQueries.map(q => q.query);
-      log(`Search Planner compiled all ${keywords.length} portal queries: ${keywords.join(", ")}`);
+      const db = getDatabaseAdapter();
+
+      let searchPlan: any = null;
+
+      // 1. Try to load candidate's active search plan from Turso
+      if (opts.authContext) {
+        const planRow = opts.searchPlanId
+          ? await db.one<{ criteria_json: string }>(
+              `SELECT criteria_json FROM search_plans WHERE id = ? AND tenant_id = ? AND person_id = ?`,
+              [opts.searchPlanId, opts.authContext.tenantId, opts.authContext.userId]
+            )
+          : await db.one<{ criteria_json: string }>(
+              `SELECT criteria_json FROM search_plans WHERE tenant_id = ? AND person_id = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1`,
+              [opts.authContext.tenantId, opts.authContext.userId]
+            );
+
+        if (planRow?.criteria_json) {
+          searchPlan = JSON.parse(planRow.criteria_json);
+          log(`Loaded active search plan from Turso for tenant ${opts.authContext.tenantId}`);
+        }
+      }
+
+      // 2. If no plan in Turso, generate dynamically from candidate state in Turso
+      if (!searchPlan && opts.authContext) {
+        const repos = getRepositories();
+        const candidateState = await repos.people.getCandidateState(opts.authContext.userId);
+        if (candidateState?.intent) {
+          const { CareerIntentModel } = await import("./scraper/run/career-intent");
+          const intent = CareerIntentModel.extractIntentFromCandidateState(candidateState, taxonomyPath);
+          const { SearchPlanner } = await import("./scraper/run/search-planner");
+          searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
+          log(`Dynamically compiled search plan from candidate state in Turso`);
+        }
+      }
+
+      if (searchPlan?.rankedQueries?.length > 0) {
+        const planKeywords = searchPlan.rankedQueries.map((q: any) => q.query);
+        keywords = planKeywords;
+        log(`Search Planner compiled all ${planKeywords.length} portal queries: ${planKeywords.join(", ")}`);
+      } else {
+        log(`No active search plan found in Turso. Using default executive keywords.`, "warn");
+        keywords = DEFAULT_KEYWORDS;
+      }
     } catch (e: any) {
-      log(`Search Planner failed to dynamically generate Search Plan (${e.message}). Falling back to static defaults.`, "warn");
+      log(`Search Planner failed to load Search Plan (${e.message}). Falling back to defaults.`, "warn");
       keywords = DEFAULT_KEYWORDS;
     }
   }
   
+  const resolvedKeywords = keywords || DEFAULT_KEYWORDS;
+
   const { resumed } = mgr.init({
-    keywords, portals, maxPages,
+    keywords: resolvedKeywords, portals, maxPages,
     maxCardsPerPage: CONFIG.maxCardsPerPage,
     resume: freshRun ? false : (opts.resume !== false),
   });
@@ -278,17 +309,16 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         // Establish JIT PortalAuthSession without retaining plaintext secrets
         let authSession: PortalAuthSession | null = null;
         try {
-          const repos = await getRepositories();
-          const broker = new CredentialBroker(repos.credentials);
-          const auth = opts.authContext || {
-            tenantId: "default_tenant",
-            userId: "scraper_runner",
-            permissions: ["read:credentials", "manage:credentials"],
-          };
-          authSession = await establishPortalAuthSession(broker, auth, portal, browserContext);
-          if (authSession) {
-            activeAuthSessions.set(portal, authSession);
-            plog(`authenticated session established (source: ${authSession.source}, version: ${authSession.version})`);
+          if (opts.authContext) {
+            const repos = await getRepositories();
+            const broker = new CredentialBroker(repos.credentials);
+            authSession = await establishPortalAuthSession(broker, opts.authContext, portal, browserContext);
+            if (authSession) {
+              activeAuthSessions.set(portal, authSession);
+              plog(`authenticated session established (source: ${authSession.source}, version: ${authSession.version})`);
+            }
+          } else {
+            plog(`No tenant authContext provided; proceeding unauthenticated for portal ${portal}`);
           }
         } catch (authErr: any) {
           plog(`auth session setup error (${authErr.name || "Error"}): ${authErr.message}`, "warn");

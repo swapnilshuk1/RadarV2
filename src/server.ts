@@ -46,9 +46,28 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const url = new URL(request.url);
+
+    // Invariant: Privileged webhooks are completely eliminated from the runtime.
+    if (url.pathname.startsWith("/api/webhooks")) {
+      return new Response(JSON.stringify({ error: "Not Found", path: url.pathname }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    }
+
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
+
+      // Invariant: Non-existent /api/* routes must return 404 JSON, not client-side HTML shells
+      if (url.pathname.startsWith("/api/") && response.headers.get("content-type")?.includes("text/html")) {
+        return new Response(JSON.stringify({ error: "Not Found", path: url.pathname }), {
+          status: 404,
+          headers: { "content-type": "application/json" },
+        });
+      }
+
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);

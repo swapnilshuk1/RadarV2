@@ -119,15 +119,19 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
     }
 
     try {
-      console.log("[Server] triggerScrapeFn: launching fresh live scraper in background…");
+      console.log("[Server] triggerScrapeFn: resolving verified scraper auth scope…");
+      const { resolveScraperAuthContext } = await import("../security/scope-resolver");
+      const { authContext, scope, activeContext } = await resolveScraperAuthContext(user.id);
+
+      console.log(`[Server] triggerScrapeFn: launching background scraper for tenant ${authContext.tenantId} (person: ${scope.personId})…`);
       // Dynamic import isolates Playwright/Node modules from the browser bundler.
       const { startRun } = await import("../../../scripts/scrape");
-      const authContext: import("../security/auth").AuthContext = {
-        tenantId: (user as any).tenantId || "default_tenant",
-        userId: user.id,
-        permissions: ["read:credentials", "manage:credentials"],
-      };
-      const { runId, completion } = await startRun({ resume: false, autoConfirm: true, authContext });
+      const { runId, completion } = await startRun({
+        resume: false,
+        autoConfirm: true,
+        authContext,
+        searchPlanId: activeContext?.searchPlanId,
+      });
       
       activeScrapeRunLock = { runId, startedAt: Date.now() };
 

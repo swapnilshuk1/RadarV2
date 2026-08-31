@@ -13,43 +13,49 @@
  */
 
 import { execSync } from "child_process";
+import { certificationManifest } from "./certification/manifest";
 
 export interface Stage {
   name: string;
   command: string;
   description: string;
+  execution?: "command" | "reported-by-manifest";
 }
 
 export const STAGES: Stage[] = [
   {
     name: "Stage 1: TypeScript Static Verification",
-    command: "npx tsc --noEmit",
+    command: "npx tsc -p tsconfig.verify.json --noEmit",
     description: "Strict compile-time type agreement across domain and UI layers",
   },
   {
     name: "Stage 2: Four Boundary Journeys (A, B, C, D)",
-    command: "npx vitest run tests/certification/",
+    command: "npx vitest run --config vitest.certification.config.ts",
     description: "End-to-end integration across acquisition, semantic policy, decision persistence, and UI rendering",
   },
   {
     name: "Stage 3: Canonical Ingestion & Lineage Contracts",
-    command: "npx vitest run tests/intelligence/canonical-ingestion-fk-regression.test.ts tests/intelligence/canonical-acquisition-integrity.test.ts tests/intelligence/canonical-identity.test.ts tests/intelligence/semantic-evidence-integrity-regression.test.ts tests/intelligence/metrics-portal-breakdown.test.ts",
+    command: "Unified Vitest certification manifest (executed once in Stage 2)",
     description: "FK integrity, content hashing, version lineage, and global metric aggregations",
+    execution: "reported-by-manifest",
   },
   {
     name: "Stage 4: Multi-Tenant & Scope Security Isolation",
-    command: "npx vitest run tests/security/scope-resolver-equivalence.test.ts tests/security/deploy-attack-surface-removed.test.ts tests/ontology/tenant-ontology-compiler.test.ts",
+    command: "Unified Vitest certification manifest (executed once in Stage 2)",
     description: "Strict tenant isolation, credential broker boundaries, and scope resolution",
+    execution: "reported-by-manifest",
   },
   {
     name: "Stage 5: Serving Store & Keyset Pagination Invariants",
-    command: "npx vitest run tests/serving/",
+    command: "Unified Vitest certification manifest (executed once in Stage 2)",
     description: "Feed ordering parity, opaque cursor stability, dossier navigation, and singleflight coalescing",
+    execution: "reported-by-manifest",
   },
   {
     name: "Stage 6: Editorial Governance & Verdict Contracts",
-    command: "npx vitest run tests/editorial/",
+    command: "Unified Vitest certification manifest (executed once in Stage 2)",
     description: "Rule 13 executive prose compliance, score resolution, and badge mappings",
+    execution: "reported-by-manifest",
   },
   {
     name: "Stage 7: Production SSR Bundle Build",
@@ -65,6 +71,12 @@ export function runCertification(stages: Stage[] = STAGES) {
 
   const startTime = Date.now();
   let completedStages = 0;
+  const profile = process.argv.includes("--profile");
+  let manifestCompleted = false;
+
+  if (profile) {
+    console.log("Profile mode enabled: TypeScript diagnostics and verbose Vitest results will be emitted.\n");
+  }
 
   for (const stage of stages) {
     console.log(`\n▶ [${completedStages + 1}/${stages.length}] ${stage.name}`);
@@ -73,7 +85,23 @@ export function runCertification(stages: Stage[] = STAGES) {
 
     const stageStart = Date.now();
     try {
-      execSync(stage.command, { stdio: "inherit", env: process.env });
+      if (stage.execution === "reported-by-manifest") {
+        if (!manifestCompleted) {
+          throw new Error("The unified certification manifest did not complete before logical group reporting.");
+        }
+        console.log("  Verified by the single Stage 2 Vitest invocation.");
+      } else {
+        const command = profile && stage.name.includes("TypeScript")
+          ? `${stage.command} --extendedDiagnostics`
+          : profile && stage.name.includes("Boundary Journeys")
+            ? `${stage.command} --reporter=verbose`
+            : stage.command;
+        execSync(command, { stdio: "inherit", env: process.env });
+        if (stage.name.includes("Boundary Journeys")) {
+          manifestCompleted = true;
+          console.log(`  Unified manifest verified ${certificationManifest.length} logical groups in one Vitest process.`);
+        }
+      }
       const elapsed = ((Date.now() - stageStart) / 1000).toFixed(2);
       console.log(`✔ ${stage.name} passed (${elapsed}s)`);
       completedStages++;

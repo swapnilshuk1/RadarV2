@@ -348,62 +348,62 @@ export const updateIntentSessionFn = createServerFn({ method: "POST" })
     
     await repos.people.saveCandidateState(user.userId, currentState);
 
-    // DYNAMIC RE-PLANNING: Invoke CareerIntent extraction and SearchPlanner!
+    // DYNAMIC RE-PLANNING: Invoke CareerIntent extraction and SearchPlanner persisted to Turso!
     try {
-      console.log("[profile-server] Triggering automatic Search Re-Planning...");
+      console.log("[profile-server] Triggering automatic Search Re-Planning for Turso Cloud...");
       const path = getNodePath();
-      const fs = getNodeFs();
-      if (path && fs) {
-        // Create a temporary mock of the profile file for the scraper
-        const tempProfilePath = path.join(process.cwd(), ".radar", `temp-profile-${user.userId}.json`);
-        
-        const legacyProfileComp = {
-          identity: {
-            name: currentState.session?.name || currentState.identity.identity.archetype,
-            currentTitle: currentState.intent.targetRoles[0]?.title || "Executive Leader"
-          },
-          executiveIdentity: currentState.identity.identity,
-          experience: {
-            yearsExperience: 20,
-            teamSizeManaged: currentState.identity.leadership.largestTeam,
-            feeBookScale: currentState.identity.leadership.budgetScale,
-            plOwnership: true,
-            boardInteraction: currentState.identity.leadership.boardExposure,
-            achievements: currentState.identity.achievements
-          },
-          leadershipProfile: {
-            largestTeam: currentState.identity.leadership.largestTeam,
-            globalMarkets: currentState.identity.leadership.globalMarketsCount,
-            regions: currentState.intent.locations,
-            budgetResponsibility: currentState.identity.leadership.budgetScale,
-            commercialOwnership: true,
-            boardExposure: currentState.identity.leadership.boardExposure,
-            globalPrograms: true,
-            peopleLeadership: true,
-            matrixLeadership: true,
-            vendorManagement: true,
-            clientLeadership: true
-          },
-          evidence: currentState.identity.evidence,
-          capabilities: currentState.identity.capabilities.categories,
-          headspaceCapacityPerMonth: currentState.intent.maxMonthlyPursuits
-        };
-        fs.writeFileSync(tempProfilePath, JSON.stringify(legacyProfileComp, null, 2), "utf-8");
-        
+      if (path) {
         const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
         const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
-        const searchPlanOutputPath = path.join(process.cwd(), "src", "data", "search-plan.json");
         
-        const { CareerIntentModel } = await import("../../../scripts/scraper/run/career-intent");
-        const intent = CareerIntentModel.extractIntent(tempProfilePath, taxonomyPath);
-        
+        const targetTitles = (currentState.intent.targetRoles || []).map((r: any) => r?.title || String(r));
+        const preferredLocations = currentState.intent.locations || [];
+        const industries = currentState.intent.industries || [];
+        const profileFunctions = currentState.intent.functions || [];
+
+        const targetLevels = new Set<string>();
+        targetTitles.forEach((title: string) => {
+          const lower = title.toLowerCase();
+          if (lower.includes("cmo") || lower.includes("chief") || lower.includes("cco")) targetLevels.add("Chief");
+          if (lower.includes("vp") || lower.includes("vice president")) targetLevels.add("VP");
+          if (lower.includes("director")) targetLevels.add("Director");
+          if (lower.includes("svp") || lower.includes("senior vice president")) targetLevels.add("SVP");
+          if (lower.includes("head") || lower.includes("lead")) targetLevels.add("Head");
+        });
+        if (targetLevels.size === 0) {
+          targetLevels.add("VP").add("Head").add("Chief");
+        }
+
+        const intent = {
+          targetLevel: Array.from(targetLevels),
+          functions: profileFunctions.length > 0 ? profileFunctions : ["Marketing", "Growth"],
+          operatingModels: ["B2B", "Enterprise", "Scale-up"],
+          ownership: ["P&L", "Commercial"],
+          industries,
+          exclusions: [] as string[],
+          targetTitles: targetTitles.length > 0 ? targetTitles : ["Chief Marketing Officer", "VP Marketing", "Head of Growth"],
+          preferredLocations: preferredLocations.length > 0 ? preferredLocations : ["Gurugram", "Bengaluru", "Remote India"],
+        };
+
         const { SearchPlanner } = await import("../../../scripts/scraper/run/search-planner");
         const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
-        
-        fs.writeFileSync(searchPlanOutputPath, JSON.stringify(searchPlan, null, 2), "utf-8");
-        console.log(`[profile-server] Successfully regenerated search-plan.json with ${searchPlan.rankedQueries.length} compiled queries!`);
-        
-        fs.unlinkSync(tempProfilePath);
+
+        const { resolveServingScope } = await import("../security/scope-resolver");
+        const { scope } = await resolveServingScope(user.userId);
+
+        const savedPlan = await repos.evaluationContexts.createSearchPlan(
+          scope,
+          "Executive Career Search Plan",
+          searchPlan as any
+        );
+
+        await repos.evaluationContexts.createSearchPlanSnapshot(
+          scope,
+          savedPlan.id,
+          searchPlan as any
+        );
+
+        console.log(`[profile-server] Successfully compiled and persisted Search Plan ${savedPlan.id} into Turso with ${searchPlan.rankedQueries.length} queries!`);
       }
     } catch (e: any) {
       console.error("[profile-server] Automated search planning failed:", e.message);

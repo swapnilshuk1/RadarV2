@@ -27,6 +27,8 @@
     "test:regression": "vitest run --config vitest.regression.config.ts",
     "test:full": "vitest run --config vitest.full.config.ts",
     "certify": "tsx scripts/certify.ts",
+    "certify:profile": "tsx scripts/certify.ts --profile",
+    "certify:affected": "tsx scripts/certification/affected.ts",
     "certify:radar": "tsx scripts/certify.ts",
     "smoke": "tsx scripts/smoke_production.ts",
     "diagnose": "tsx scripts/diagnose.ts",

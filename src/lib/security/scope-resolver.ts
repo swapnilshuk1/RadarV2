@@ -221,3 +221,82 @@ export async function resolveServingScope(
     activeContext,
   };
 }
+
+export interface ScraperAuthResolution {
+  readonly authContext: import("./auth").AuthContext;
+  readonly scope: AuthorizedPersonScope;
+  readonly activeContext?: ActiveServingContext;
+}
+
+/**
+ * Resolves verified AuthContext, AuthorizedPersonScope, and active search context
+ * for scraper execution strictly from database membership and roles.
+ *
+ * Invariants:
+ * 1. ZERO fallback to "default_tenant" or fabricated permissions.
+ * 2. Caller must possess active membership in the target tenant.
+ * 3. Caller must possess 'run:scraper', 'manage:search_plan', or 'admin' role.
+ */
+export async function resolveScraperAuthContext(
+  userId: string,
+  requestedTenantId?: string,
+  adapter?: DatabaseAdapter
+): Promise<ScraperAuthResolution> {
+  const db = adapter || getDatabaseAdapter();
+  const resolved = await resolveServingScope(userId, requestedTenantId, db);
+  const tenantId = resolved.scope.tenantId;
+
+  const membership = await db.one<{ role: string; permissions: string }>(
+    `SELECT role, permissions FROM memberships WHERE user_id = ? AND tenant_id = ? AND status = 'active' AND revoked_at IS NULL`,
+    [userId, tenantId]
+  );
+
+  if (!membership) {
+    throw new TenantIsolationError(`User ${userId} has no active membership in tenant ${tenantId}.`);
+  }
+
+  let permissions: import("./auth").Permission[] = [];
+  try {
+    permissions = JSON.parse(membership.permissions || "[]");
+  } catch {
+    permissions = [];
+  }
+
+  const isAdmin = membership.role === "admin";
+  const canRunScraper = isAdmin || permissions.includes("run:scraper") || permissions.includes("manage:search_plan");
+
+  if (!canRunScraper) {
+    throw new TenantIsolationError(`User ${userId} lacks 'run:scraper' or 'manage:search_plan' permission in tenant ${tenantId}.`);
+  }
+
+  const effectivePermissions: import("./auth").Permission[] = isAdmin
+    ? [
+        "run:scraper",
+        "manage:search_plan",
+        "manage:credentials",
+        "read:credentials",
+        "read:evaluation",
+        "write:evaluation",
+        "read:person",
+        "write:person",
+      ]
+    : [
+        "run:scraper",
+        "read:credentials",
+        ...(permissions.includes("manage:credentials") ? (["manage:credentials"] as const) : []),
+        ...(permissions.includes("manage:search_plan") ? (["manage:search_plan"] as const) : []),
+      ];
+
+  const authContext: import("./auth").AuthContext = {
+    userId,
+    tenantId,
+    permissions: effectivePermissions,
+  };
+
+  return {
+    authContext,
+    scope: resolved.scope,
+    activeContext: resolved.activeContext,
+  };
+}
+
