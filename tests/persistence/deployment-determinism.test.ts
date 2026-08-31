@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 import { getDatabaseAdapter, resetDatabaseAdapter } from "../../src/data/database/index";
+import { getRepositories } from "../../src/data/sqlite/provider";
+import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
 
 describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", () => {
   const origEnv = { ...process.env };
@@ -108,13 +110,30 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
     expect(engineContent).not.toContain("better-sqlite3");
   });
 
-  it("8. OpportunityService.listForUser accepts opportunities from repositories exclusively", () => {
+  it("8. OpportunityService delegates serving queries exclusively to repos.canonicalServing and DatabaseAdapter", async () => {
     const servicePath = path.resolve(process.cwd(), "src/lib/intelligence/opportunity-service.ts");
     const serviceContent = fs.readFileSync(servicePath, "utf-8");
 
-    expect(serviceContent).toContain("repos.canonicalServing.listOpportunities(");
+    // Static isolation: zero filesystem data artifacts
     expect(serviceContent).not.toContain("live-scraped.json");
     expect(serviceContent).not.toContain("radar.sqlite");
+    expect(serviceContent).not.toContain("better-sqlite3");
+
+    // Behavioral assertion: OpportunityService serving queries delegate to repos.canonicalServing
+    const repos = getRepositories();
+    const feedSpy = vi.spyOn(repos.canonicalServing, "getFeed").mockResolvedValueOnce({
+      items: [],
+      nextCursor: "",
+      totalCount: 0,
+      hasMore: false,
+    });
+
+    const mockScope = { tenantId: "tenant_test", personId: "user_test", roles: [] };
+    const queries = (OpportunityService as any).getServingQueries();
+    await queries.getFeed(mockScope);
+
+    expect(feedSpy).toHaveBeenCalled();
+    feedSpy.mockRestore();
   });
 
   it("9. SqliteOpportunityStore.listOpportunitySources queries DatabaseAdapter", () => {

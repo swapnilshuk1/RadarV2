@@ -25,8 +25,7 @@ import type {
 import type { CanonicalOpportunityMetrics } from "../metric-integrity";
 import type { ServedOpportunity } from "../../../data/opportunity-fixtures";
 import { servingTelemetry, ServingStopwatch } from "./observability";
-import { getDatabaseAdapter } from "../../../data/database";
-import { SqliteOpportunityQueries } from "../../../data/sqlite/repositories/SqliteOpportunityQueries";
+import { getRepositories } from "../../../data/sqlite/provider";
 
 export interface SingleflightResult<T> {
   readonly result: T;
@@ -102,7 +101,7 @@ export class SingleflightOpportunityQueries implements OpportunityQueries {
   public static getGlobalInstance(rawQueries?: OpportunityQueries): SingleflightOpportunityQueries {
     const g = globalThis as any;
     if (!g.__RADAR_SINGLEFLIGHT_OPPORTUNITY_QUERIES__) {
-      const inner = rawQueries || new SqliteOpportunityQueries(getDatabaseAdapter());
+      const inner = rawQueries || getRepositories().canonicalServing;
       g.__RADAR_SINGLEFLIGHT_OPPORTUNITY_QUERIES__ = new SingleflightOpportunityQueries(inner);
     }
     return g.__RADAR_SINGLEFLIGHT_OPPORTUNITY_QUERIES__;

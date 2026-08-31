@@ -93,13 +93,13 @@ export async function resolveScope(userId: string, requestedTenantId?: string): 
   return authorizePersonScope(authContext, userId, db);
 }
 
-import { SqliteOpportunityQueries } from "../../data/sqlite/repositories/SqliteOpportunityQueries";
 import { SingleflightOpportunityQueries } from "./serving/singleflight";
 import type { FeedPage, FeedFilters, OpaqueCursor, NavigationContext } from "./opportunity-queries";
 
 export class OpportunityService {
   private static getServingQueries(): SingleflightOpportunityQueries {
-    return SingleflightOpportunityQueries.getGlobalInstance();
+    const repos = getRepositories();
+    return SingleflightOpportunityQueries.getGlobalInstance(repos.canonicalServing);
   }
 
   /**

@@ -49,6 +49,15 @@ import {
 import { resolveEffectiveDecision } from "../../../lib/intelligence/decision-resolver";
 import { classifyOpportunityCategories, resolveCanonicalCategoryId } from "../../../lib/domain/category_taxonomy";
 import type { CanonicalOpportunityMetrics } from "../../../lib/intelligence/metric-integrity";
+import { SqliteOpportunityQueries } from "./SqliteOpportunityQueries";
+import type {
+  OpportunityQueries,
+  FeedPage,
+  FeedFilters,
+  OpaqueCursor,
+  NavigationContext,
+} from "../../../lib/intelligence/opportunity-queries";
+import type { ServingStopwatch } from "../../../lib/intelligence/serving/observability";
 
 export type ServiceOptions = {
   activePursuits?: number;
@@ -105,8 +114,55 @@ function toAttentionDecision(val: unknown): "CANDIDATE" | "NOT_CANDIDATE" {
   return "NOT_CANDIDATE";
 }
 
-export class SqliteCanonicalServingStore {
-  constructor(private db: DatabaseAdapter) {}
+export class SqliteCanonicalServingStore implements OpportunityQueries {
+  private leanQueries: SqliteOpportunityQueries;
+
+  constructor(private db: DatabaseAdapter) {
+    this.leanQueries = new SqliteOpportunityQueries(db);
+  }
+
+  /**
+   * Retrieves a keyset-paginated feed of lean opportunity summaries.
+   */
+  async getFeed(
+    scope: AuthorizedPersonScope,
+    cursor?: OpaqueCursor,
+    filters?: FeedFilters,
+    pageSize?: number,
+    stopwatch?: ServingStopwatch
+  ): Promise<FeedPage> {
+    return this.leanQueries.getFeed(scope, cursor, filters, pageSize, stopwatch);
+  }
+
+  /**
+   * Computes holistic executive metrics across the candidate population.
+   */
+  async getMetrics(
+    scope: AuthorizedPersonScope
+  ): Promise<CanonicalOpportunityMetrics> {
+    return this.leanQueries.getMetrics(scope);
+  }
+
+  /**
+   * Point lookup for a single opportunity dossier.
+   */
+  async getDossier(
+    scope: AuthorizedPersonScope,
+    jobHash: string
+  ): Promise<ServedOpportunity | null> {
+    return this.leanQueries.getDossier(scope, jobHash);
+  }
+
+  /**
+   * Point lookup for previous/next adjacent navigation.
+   */
+  async getNavigation(
+    scope: AuthorizedPersonScope,
+    jobHash: string,
+    filters?: FeedFilters
+  ): Promise<NavigationContext | null> {
+    return this.leanQueries.getNavigation(scope, jobHash, filters);
+  }
 
   /**
    * Safely binds an evaluation context to its scope using an INSERT ... SELECT 

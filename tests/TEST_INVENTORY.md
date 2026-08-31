@@ -98,6 +98,7 @@ RADAR v2 Test Architecture
 | `tests/serving/singleflight-scope-isolation.test.ts` | 10 concurrent requests coalesce to 1 underlying query; complete tenant, person, and search-plan scope isolation. | **Stage 5** |
 | `tests/serving/dossier_and_navigation.test.ts` | Dossier detail fetching and next/previous candidate navigation indices. | **Stage 5** |
 | `tests/serving/sql_feed_parity.test.ts` | Serving feed SQL queries match materialized evaluation and user decision states. | **Stage 5** |
+| `tests/persistence/deployment-determinism.test.ts` | OpportunityService delegates serving queries exclusively to repos.canonicalServing and DatabaseAdapter with zero filesystem fallbacks. | **Stage 5** |
 
 ---
 
@@ -233,7 +234,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/persistence/active_pointer_precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 3 |
 | `tests/persistence/adapter-contracts.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 7 |
 | `tests/persistence/database-safety.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 7 | 11 |
-| `tests/persistence/deployment-determinism.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 10 | 31 |
+| `tests/persistence/deployment-determinism.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 10 | 31 |
 | `tests/persistence/evaluation_context_pointer_trigger.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 3 |
 | `tests/persistence/evaluation_context_pointers.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 6 |
 | `tests/persistence/evaluation_pointer_flow.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 19 |
