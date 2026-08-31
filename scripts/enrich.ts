@@ -44,7 +44,7 @@ async function rateLimitedExtract(card: DetailedCard) {
 }
 
 async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist/queue").EnrichmentJob): Promise<{llmMs: number; busyMs: number; dimensions?: any}> {
-  queue.markRunning(job.id);
+  await queue.markRunning(job.id);
   const tStart = Date.now();
   let llmMs = 0;
   
@@ -92,9 +92,9 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
     }
     
     if (isFromCache) {
-      queue.markCompleted(job.id, "skipped LLM / cached");
+      await queue.markCompleted(job.id, "skipped LLM / cached");
     } else {
-      queue.markCompleted(job.id);
+      await queue.markCompleted(job.id);
     }
 
     return { 
@@ -124,10 +124,10 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
       const backoffIndex = Math.min(job.attempts, BACKOFF_SECONDS.length - 1);
       const delaySec = BACKOFF_SECONDS[backoffIndex];
       const nextRetryAt = new Date(Date.now() + delaySec * 1000).toISOString();
-      queue.markRetry(job.id, failureType, msg, nextRetryAt);
+      await queue.markRetry(job.id, failureType, msg, nextRetryAt);
       log(`Job ${job.id} failed (${failureType}), retrying in ${delaySec}s`, "warn");
     } else {
-      queue.markFailed(job.id, failureType, msg);
+      await queue.markFailed(job.id, failureType, msg);
       log(`Job ${job.id} fatally failed: ${msg}`, "error");
     }
     return { llmMs, busyMs: (Date.now() - tStart) - llmMs };
@@ -138,8 +138,8 @@ function filteredCardHash(card: DetailedCard) {
   return card.cardHash;
 }
 
-function printDashboard(queue: EnrichmentQueue, workerStats: any) {
-  const { counts, age, failureDistribution, throughput } = queue.getDashboardStats();
+async function printDashboard(queue: EnrichmentQueue, workerStats: any) {
+  const { counts, age, failureDistribution, throughput } = await queue.getDashboardStats();
   
   const stateMap: Record<string, number> = {
     PENDING: 0, LEASED: 0, RUNNING: 0, RETRY: 0, COMPLETE: 0, FAILED: 0
@@ -229,10 +229,10 @@ async function startWorker() {
     }
   };
 
-  process.on("SIGINT", () => {
+  process.on("SIGINT", async () => {
     console.log("\nGenerating End-of-Run Validation Report...");
     
-    const { counts, failureDistribution, throughput } = queue.getDashboardStats();
+    const { counts, failureDistribution, throughput } = await queue.getDashboardStats();
     const stateMap: Record<string, number> = { PENDING: 0, LEASED: 0, RUNNING: 0, RETRY: 0, COMPLETE: 0, FAILED: 0 };
     for (const row of counts) { stateMap[row.status] = row.count; }
     
@@ -274,23 +274,21 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
   });
 
   // Create an initial dashboard print
-  printDashboard(queue, workerStats);
-
-
+  await printDashboard(queue, workerStats);
 
   let idleCount = 0;
   
   while (true) {
     // Attempt to lease up to CONFIG.llmConcurrency jobs
     const tPoll = Date.now();
-    const jobs = queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency, 300); // 5 min lease
+    const jobs = await queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency, 300); // 5 min lease
     workerStats.pollingMs += (Date.now() - tPoll);
     
     if (jobs.length === 0) {
       idleCount++;
       
       const tPollStats = Date.now();
-      const stats = queue.getDashboardStats();
+      const stats = await queue.getDashboardStats();
       workerStats.pollingMs += (Date.now() - tPollStats);
       
       const hasRetries = stats.counts.some((c: any) => c.status === "RETRY" && c.count > 0);
@@ -305,7 +303,7 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
 
       if (idleCount % 12 === 0) {
         // Print dashboard every minute if idle (5s * 12)
-        printDashboard(queue, workerStats);
+        await printDashboard(queue, workerStats);
       }
       await new Promise(r => setTimeout(r, 5000));
       continue;
@@ -337,7 +335,7 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
     workerStats.llmMs += (batchLlmMs / Math.max(1, jobs.length));
     workerStats.busyMs += (batchBusyMs / Math.max(1, jobs.length));
     
-    printDashboard(queue, workerStats);
+    await printDashboard(queue, workerStats);
   }
 }
 
@@ -361,21 +359,21 @@ export async function enrichJobsForRun(runId: string) {
       }
     } catch {}
 
-    const pendingCount = queue.getPendingCountForRun(runId);
+    const pendingCount = await queue.getPendingCountForRun(runId);
     if (pendingCount === 0) {
       log(`[Enrich] All jobs for run ${runId} have been successfully processed.`);
       break;
     }
 
     // Recover any leases expired globally during our run
-    queue.recoverExpiredLeases();
+    await queue.recoverExpiredLeases();
 
     // Lease jobs only for this run!
-    const jobs = queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency);
+    const jobs = await queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency);
 
     if (jobs.length === 0) {
       // Check if there are any jobs currently cooling down in retry status
-      const hasRetries = queue.hasRetriesForRun(runId);
+      const hasRetries = await queue.hasRetriesForRun(runId);
       if (hasRetries) {
         log(`[Enrich] Active jobs in retry cooling-down. Sleeping for ${emptyBackoffMs}ms...`);
         await new Promise(r => setTimeout(r, emptyBackoffMs));
@@ -407,7 +405,7 @@ export async function enrichGlobalQueue(onJobCompleted?: () => void) {
   
   while (true) {
     // Check global pending stats (getGlobalPipelineStats returns counts)
-    const stats = queue.getGlobalPipelineStats();
+    const stats = await queue.getGlobalPipelineStats();
     if (stats.pending + stats.retry === 0 && stats.leased === 0 && stats.enriching === 0) {
       // Nothing to process. Sleep for 10 seconds to eliminate idle CPU and SQLite polling overhead.
       await new Promise(r => setTimeout(r, 10000));
@@ -415,10 +413,10 @@ export async function enrichGlobalQueue(onJobCompleted?: () => void) {
     }
 
     // Recover any leases expired globally
-    queue.recoverExpiredLeases();
+    await queue.recoverExpiredLeases();
 
     // Lease jobs globally
-    const jobs = queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency);
+    const jobs = await queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency);
 
     if (jobs.length === 0) {
       // If there are still items but we leased 0, they might be in retry status.

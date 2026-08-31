@@ -19,7 +19,7 @@ export interface Stage {
   name: string;
   command: string;
   description: string;
-  execution?: "command" | "reported-by-manifest";
+  execution?: "command" | "manifest" | "reported-by-manifest";
 }
 
 export const STAGES: Stage[] = [
@@ -32,6 +32,7 @@ export const STAGES: Stage[] = [
     name: "Stage 2: Four Boundary Journeys (A, B, C, D)",
     command: "npx vitest run --config vitest.certification.config.ts",
     description: "End-to-end integration across acquisition, semantic policy, decision persistence, and UI rendering",
+    execution: "manifest",
   },
   {
     name: "Stage 3: Canonical Ingestion & Lineage Contracts",
@@ -72,10 +73,11 @@ export function runCertification(stages: Stage[] = STAGES) {
   const startTime = Date.now();
   let completedStages = 0;
   const profile = process.argv.includes("--profile");
+  const verboseTestProfile = process.env.CERTIFY_PROFILE_VERBOSE === "1";
   let manifestCompleted = false;
 
   if (profile) {
-    console.log("Profile mode enabled: TypeScript diagnostics and verbose Vitest results will be emitted.\n");
+    console.log("Profile mode enabled: TypeScript diagnostics and stage timings will be emitted.\n");
   }
 
   for (const stage of stages) {
@@ -93,11 +95,11 @@ export function runCertification(stages: Stage[] = STAGES) {
       } else {
         const command = profile && stage.name.includes("TypeScript")
           ? `${stage.command} --extendedDiagnostics`
-          : profile && stage.name.includes("Boundary Journeys")
+          : verboseTestProfile && stage.execution === "manifest"
             ? `${stage.command} --reporter=verbose`
             : stage.command;
         execSync(command, { stdio: "inherit", env: process.env });
-        if (stage.name.includes("Boundary Journeys")) {
+        if (stage.execution === "manifest") {
           manifestCompleted = true;
           console.log(`  Unified manifest verified ${certificationManifest.length} logical groups in one Vitest process.`);
         }

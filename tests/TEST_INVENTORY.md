@@ -45,6 +45,7 @@ RADAR v2 Test Architecture
 | `tests/intelligence/canonical-ingestion-fk-regression.test.ts` | Resolves existing `opportunity_versions.id` on conflict; zero orphan foreign keys. | **Stage 3** |
 | `tests/intelligence/canonical-acquisition-integrity.test.ts` | Multi-portal acquisition payload validation, SHA-256 content hashing, and version lineage. | **Stage 3** |
 | `tests/intelligence/canonical-identity.test.ts` | Idempotent candidate projection creation and search plan link stability. | **Stage 3** |
+| `tests/persistence/queue-crash-restart.test.ts` | Turso operational queue crash recovery, idempotency, concurrent lease exclusion, and zero filesystem state. | **Stage 3** |
 
 ---
 
@@ -237,6 +238,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/persistence/join-integrity.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 15 |
 | `tests/persistence/m41-canonical-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 6 |
 | `tests/persistence/m51-queue-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 7 | 26 |
+| `tests/persistence/queue-crash-restart.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 7 | 25 |
 | `tests/persistence/m61-credential-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 54 |
 | `tests/persistence/m7-tenant-migration.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 7 | 15 |
 | `tests/persistence/migration-runner.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 19 |

@@ -42,7 +42,7 @@ if (typeof globalThis !== "undefined") {
           // 1. Recover expired leases
           const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
           const queue = new EnrichmentQueue();
-          const recovered = queue.recoverExpiredLeases();
+          const recovered = await queue.recoverExpiredLeases();
           if (recovered > 0) {
             console.log(`[Daemon] Recovered ${recovered} expired leases.`);
           }
@@ -188,13 +188,13 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
       if (e.type === "extraction_written") summary.extracted++;
     }
 
-    // Load active enrichment stats from queue.db
+    // Load active enrichment stats from canonical Turso operational queue
     let enrichmentStats: any = null;
     let isEnriching = false;
     try {
       const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
       const queue = new EnrichmentQueue();
-      enrichmentStats = queue.getRunStats(runId);
+      enrichmentStats = await queue.getRunStats(runId);
       if (enrichmentStats && enrichmentStats.total > 0 && (enrichmentStats.pending + enrichmentStats.processing > 0)) {
         isEnriching = true;
       }
@@ -217,7 +217,7 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
     };
   });
 
-export function buildCanonicalRunData(runId: string) {
+export function buildCanonicalRunData(runId: string, enrichmentCompleted?: number) {
   const runDir = path.join(ARTIFACTS_DIR, "runs", runId);
   const manifestPath = path.join(runDir, "manifest.json");
 
@@ -228,14 +228,9 @@ export function buildCanonicalRunData(runId: string) {
     const opportunitiesFound = manifest.opportunitiesFound ?? manifest.cards?.length ?? 0;
 
     let evaluatedCount = manifest.evaluatedCount ?? 0;
-    try {
-      const { EnrichmentQueue } = require("../../../scripts/scraper/persist/queue");
-      const queue = new EnrichmentQueue();
-      const stats = queue.getRunStats(runId);
-      if (stats?.completed !== undefined) {
-        evaluatedCount = Math.max(evaluatedCount, stats.completed);
-      }
-    } catch {}
+    if (enrichmentCompleted !== undefined) {
+      evaluatedCount = Math.max(evaluatedCount, enrichmentCompleted);
+    }
 
     const remainingCount = Math.max(0, opportunitiesFound - evaluatedCount);
 
@@ -549,7 +544,7 @@ export const getPipelineStatsFn = createServerFn({ method: "GET" })
     try {
       const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
       const queue = new EnrichmentQueue();
-      const stats = queue.getGlobalPipelineStats();
+      const stats = await queue.getGlobalPipelineStats();
       
       // Compute actual database evaluation metrics via canonical serving
       const { OpportunityService } = await import("./opportunity-service");

@@ -60,14 +60,14 @@ const HANDLERS: Record<PortalName, PortalHandler> = {
 
 const enrichmentQueue = new EnrichmentQueue();
 
-export function syncManifestProgress(
+export async function syncManifestProgress(
   mgr: RunController,
   stage?: "discover" | "evaluate" | "prioritize" | "complete" | "stopped" | "failed"
 ) {
   const cardsFound = mgr.manifest.cards.length;
   let evaluated = 0;
   try {
-    const stats = enrichmentQueue.getRunStats(mgr.runId);
+    const stats = await enrichmentQueue.getRunStats(mgr.runId);
     evaluated = stats?.completed || 0;
   } catch {}
 
@@ -442,7 +442,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             portalIngested += outcome.opportunities;
             portalFacts += outcome.factsCreated;
           }
-          syncManifestProgress(mgr, "discover");
+          await syncManifestProgress(mgr, "discover");
           await jitter();
         }
         return { portalIngested, portalFacts };
@@ -1140,7 +1140,7 @@ async function processUnit(
           company: cleanCompany
         } as import("./scraper/types").DetailedCard;
 
-        enrichmentQueue.enqueue(
+        await enrichmentQueue.enqueue(
           cardUnitId,
           filteredCard.cardHash,
           snapshotPath,
