@@ -84,3 +84,14 @@ Host oracle-radar 130.210.41.232 130.210.41.232.sslip.io
     StrictHostKeyChecking no
     IdentitiesOnly yes
 ```
+
+---
+
+## 5. Operational Topology & Single-Instance Scraper Limitation (ADR-003)
+
+Until the distributed `scrape_runs` state machine and `BlobStore` object storage layer are deployed (specified in `docs/architecture/ADR-003-multi-tenant-scrape-runs-and-blob-storage.md`):
+
+1. **Host-Colocated Execution**: Live Playwright browser scraping must run as a single-instance process hosted on the production server (`130.210.41.232`).
+2. **Local Snapshot Storage**: Scraped card HTML payloads and snapshots reside on the host filesystem under `.radar/artifacts/snapshots/`.
+3. **Colocated Worker Leases**: The background enrichment worker daemon (`scripts/enrich.ts` / `EvaluationWorker`) must run on the same server instance as the scraper so that `snapshot_path` references remain resolvable.
+4. **Tenant Scoping Boundary**: Tenant and candidate isolation is strictly enforced across user authentication, active search plan selection, evaluation contexts, and keyset serving queries. Run progress observation and cancellation controls operate on the local host instance until ADR-003 is shipped.
