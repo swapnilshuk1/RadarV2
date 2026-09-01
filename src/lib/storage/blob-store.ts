@@ -28,11 +28,61 @@ export interface BlobStore {
   healthCheck(): Promise<{ ok: boolean; backend: string; error?: string }>;
 }
 
+export interface ArtifactStoreLimits {
+  maxBytes: number;
+  maxFiles: number;
+  retentionHours: number;
+}
+
+export interface ArtifactStoreStats {
+  files: number;
+  bytes: number;
+  oldestUpdatedAt: string | null;
+  retentionEligibleFiles: number;
+  retentionEligibleBytes: number;
+}
+
+const DEFAULT_ARTIFACT_LIMITS: ArtifactStoreLimits = {
+  maxBytes: 512 * 1024 * 1024,
+  maxFiles: 5_000,
+  retentionHours: 7 * 24,
+};
+
+export class ArtifactStoreCapacityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ArtifactStoreCapacityError";
+  }
+}
+
+function positiveInteger(value: string | undefined, fallback: number, name: string): number {
+  if (value == null || value === "") return fallback;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new BlobStoreConfigurationError(`${name} must be a positive integer.`);
+  }
+  return parsed;
+}
+
+export function resolveArtifactStoreLimits(env: NodeJS.ProcessEnv = process.env): ArtifactStoreLimits {
+  return {
+    maxBytes: positiveInteger(env.RADAR_ARTIFACT_MAX_BYTES, DEFAULT_ARTIFACT_LIMITS.maxBytes, "RADAR_ARTIFACT_MAX_BYTES"),
+    maxFiles: positiveInteger(env.RADAR_ARTIFACT_MAX_FILES, DEFAULT_ARTIFACT_LIMITS.maxFiles, "RADAR_ARTIFACT_MAX_FILES"),
+    retentionHours: positiveInteger(env.RADAR_ARTIFACT_RETENTION_HOURS, DEFAULT_ARTIFACT_LIMITS.retentionHours, "RADAR_ARTIFACT_RETENTION_HOURS"),
+  };
+}
+
 /**
  * Local Filesystem Blob Store (used for local development / single-instance testing).
  */
 export class LocalFsBlobStore implements BlobStore {
-  constructor(private baseDir: string = path.resolve(process.cwd(), ".radar/artifacts/blobs")) {
+  private readonly resolvedBaseDir: string;
+
+  constructor(
+    private baseDir: string = path.resolve(process.cwd(), ".radar/artifacts/blobs"),
+    private limits: ArtifactStoreLimits = resolveArtifactStoreLimits(),
+  ) {
+    this.resolvedBaseDir = path.resolve(this.baseDir);
     if (!fs.existsSync(this.baseDir)) {
       fs.mkdirSync(this.baseDir, { recursive: true });
     }
@@ -40,7 +90,36 @@ export class LocalFsBlobStore implements BlobStore {
 
   private resolvePath(key: string): string {
     const cleanKey = key.replace(/^\/+/, "");
-    return path.join(this.baseDir, cleanKey);
+    const targetPath = path.resolve(this.resolvedBaseDir, cleanKey);
+    if (targetPath !== this.resolvedBaseDir && !targetPath.startsWith(`${this.resolvedBaseDir}${path.sep}`)) {
+      throw new BlobStoreConfigurationError(`Artifact key escapes the configured store: ${key}`);
+    }
+    return targetPath;
+  }
+
+  public getStats(now = Date.now()): ArtifactStoreStats {
+    const cutoff = now - this.limits.retentionHours * 60 * 60 * 1000;
+    const stats: ArtifactStoreStats = { files: 0, bytes: 0, oldestUpdatedAt: null, retentionEligibleFiles: 0, retentionEligibleBytes: 0 };
+    const visit = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const itemPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) visit(itemPath);
+        else if (entry.isFile()) {
+          const item = fs.statSync(itemPath);
+          stats.files += 1;
+          stats.bytes += item.size;
+          if (!stats.oldestUpdatedAt || item.mtimeMs < Date.parse(stats.oldestUpdatedAt)) {
+            stats.oldestUpdatedAt = item.mtime.toISOString();
+          }
+          if (item.mtimeMs < cutoff) {
+            stats.retentionEligibleFiles += 1;
+            stats.retentionEligibleBytes += item.size;
+          }
+        }
+      }
+    };
+    if (fs.existsSync(this.resolvedBaseDir)) visit(this.resolvedBaseDir);
+    return stats;
   }
 
   async put(key: string, data: Buffer | Uint8Array | string, _contentType?: string): Promise<string> {
@@ -50,6 +129,15 @@ export class LocalFsBlobStore implements BlobStore {
       fs.mkdirSync(dir, { recursive: true });
     }
     const buf = typeof data === "string" ? Buffer.from(data, "utf-8") : Buffer.from(data);
+    const current = this.getStats();
+    const existingBytes = fs.existsSync(targetPath) ? fs.statSync(targetPath).size : 0;
+    const projectedBytes = current.bytes - existingBytes + buf.byteLength;
+    const projectedFiles = current.files + (existingBytes ? 0 : 1);
+    if (projectedBytes > this.limits.maxBytes || projectedFiles > this.limits.maxFiles) {
+      throw new ArtifactStoreCapacityError(
+        `Artifact store capacity exceeded (projected ${projectedBytes}/${this.limits.maxBytes} bytes, ${projectedFiles}/${this.limits.maxFiles} files). Canonical Turso writes are unaffected.`
+      );
+    }
     fs.writeFileSync(targetPath, buf);
     return key;
   }
@@ -242,6 +330,7 @@ export function resolveDeploymentMode(env: NodeJS.ProcessEnv = process.env): Dep
 export function describeBlobStoreConfiguration(env: NodeJS.ProcessEnv = process.env): {
   mode: DeploymentMode;
   artifactBackend: "local_filesystem" | "s3_compatible";
+  artifactLimits: ArtifactStoreLimits | null;
 } {
   const mode = resolveDeploymentMode(env);
   const hasRemoteConfiguration = Boolean(env.BLOB_STORAGE_ENDPOINT && env.BLOB_STORAGE_BUCKET);
@@ -250,7 +339,11 @@ export function describeBlobStoreConfiguration(env: NodeJS.ProcessEnv = process.
       "Distributed deployment mode requires remote object storage (BLOB_STORAGE_ENDPOINT and BLOB_STORAGE_BUCKET)."
     );
   }
-  return { mode, artifactBackend: hasRemoteConfiguration ? "s3_compatible" : "local_filesystem" };
+  return {
+    mode,
+    artifactBackend: hasRemoteConfiguration ? "s3_compatible" : "local_filesystem",
+    artifactLimits: hasRemoteConfiguration ? null : resolveArtifactStoreLimits(env),
+  };
 }
 
 let _globalBlobStore: BlobStore | null = null;
@@ -264,7 +357,7 @@ export function getBlobStore(options?: { enforceDistributed?: boolean }): BlobSt
     if (config.artifactBackend === "s3_compatible") {
       _globalBlobStore = new S3CompatibleBlobStore();
     } else {
-      _globalBlobStore = new LocalFsBlobStore();
+      _globalBlobStore = new LocalFsBlobStore(undefined, config.artifactLimits || resolveArtifactStoreLimits());
     }
   }
   return _globalBlobStore;

@@ -116,6 +116,20 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
       await queue.markCompleted(job.id);
     }
 
+    // The canonical evaluation and lineage have been persisted before this
+    // point. The acquisition payload is no longer required for serving or a
+    // successful retry, so release the bounded local/remote artifact promptly.
+    if (payloadKey) {
+      try {
+        const { getBlobStore } = await import("../src/lib/storage/blob-store");
+        await getBlobStore().delete(payloadKey);
+      } catch (cleanupError: any) {
+        // Completion is canonical and must not be rolled back because an
+        // ephemeral acquisition-artifact cleanup later fails.
+        log(`[Enrich] Completed job ${job.id}, but could not delete payload ${payloadKey}: ${cleanupError.message}`, "warn");
+      }
+    }
+
     return { 
       llmMs, 
       busyMs: (Date.now() - tStart) - llmMs, 
@@ -474,4 +488,3 @@ if (isMain) {
     process.exit(1);
   });
 }
-

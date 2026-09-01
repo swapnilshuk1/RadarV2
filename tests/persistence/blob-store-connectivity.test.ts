@@ -3,6 +3,7 @@ import {
   LocalFsBlobStore,
   MemoryBlobStore,
   S3CompatibleBlobStore,
+  ArtifactStoreCapacityError,
   BlobStoreConfigurationError,
   describeBlobStoreConfiguration,
   getBlobStore,
@@ -19,6 +20,7 @@ describe("Phase 4C: BlobStore Connectivity & Backend Protocol Verification", () 
     expect(describeBlobStoreConfiguration({ RADAR_DEPLOYMENT_MODE: "single_host" } as NodeJS.ProcessEnv)).toEqual({
       mode: "single_host",
       artifactBackend: "local_filesystem",
+      artifactLimits: { maxBytes: 512 * 1024 * 1024, maxFiles: 5_000, retentionHours: 7 * 24 },
     });
   });
 
@@ -59,6 +61,20 @@ describe("Phase 4C: BlobStore Connectivity & Backend Protocol Verification", () 
 
     // Clean up test directory
     if (fs.existsSync(testDir)) {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it("2b. LocalFsBlobStore rejects quota exhaustion and path escapes before persistence", async () => {
+    const testDir = path.resolve(process.cwd(), ".radar/test_blob_capacity_" + Date.now());
+    const fsStore = new LocalFsBlobStore(testDir, { maxBytes: 8, maxFiles: 1, retentionHours: 1 });
+    try {
+      await fsStore.put("snapshots/one.json", "12345678");
+      await expect(fsStore.put("snapshots/two.json", "x")).rejects.toThrow(ArtifactStoreCapacityError);
+      await expect(fsStore.put("../outside.json", "x")).rejects.toThrow(BlobStoreConfigurationError);
+      expect(fsStore.getStats().files).toBe(1);
+      expect(fsStore.getStats().bytes).toBe(8);
+    } finally {
       fs.rmSync(testDir, { recursive: true, force: true });
     }
   });

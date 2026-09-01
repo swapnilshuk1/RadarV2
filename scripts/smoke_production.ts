@@ -113,10 +113,20 @@ async function runProductionSmoke() {
 
     // 6. Distributed BlobStore Connectivity & Health Check
     console.log("\n▶ [6/6] Auditing Distributed BlobStore Connectivity & Payload Resolution...");
-    const { describeBlobStoreConfiguration, getBlobStore } = await import("../src/lib/storage/blob-store");
+    const { describeBlobStoreConfiguration, getBlobStore, LocalFsBlobStore } = await import("../src/lib/storage/blob-store");
     const blobConfig = describeBlobStoreConfiguration();
     console.log(`  Deployment mode: ${blobConfig.mode}; artifact backend: ${blobConfig.artifactBackend}.`);
+    if (blobConfig.artifactLimits) {
+      console.log(`  Artifact budget: ${blobConfig.artifactLimits.maxBytes} bytes / ${blobConfig.artifactLimits.maxFiles} files / ${blobConfig.artifactLimits.retentionHours}h retention.`);
+    }
     const blobStore = getBlobStore();
+    if (blobStore instanceof LocalFsBlobStore) {
+      const stats = blobStore.getStats();
+      console.log(`  Artifact usage: ${stats.bytes} bytes / ${stats.files} files; retention-eligible: ${stats.retentionEligibleBytes} bytes / ${stats.retentionEligibleFiles} files.`);
+      if (stats.bytes > (blobConfig.artifactLimits?.maxBytes ?? Number.MAX_SAFE_INTEGER) || stats.files > (blobConfig.artifactLimits?.maxFiles ?? Number.MAX_SAFE_INTEGER)) {
+        throw new Error("Local artifact spool exceeds its configured budget.");
+      }
+    }
     const blobHealth = await blobStore.healthCheck();
     if (!blobHealth.ok) {
       throw new Error(`BlobStore health check failed on backend ${blobHealth.backend}: ${blobHealth.error}`);
