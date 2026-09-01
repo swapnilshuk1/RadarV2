@@ -4,7 +4,7 @@ import { EvidenceDrawer } from "../briefing/EvidenceDrawer";
 import { StrategyWorkspace } from "../briefing/StrategyWorkspace";
 import { ExecutiveActionButton } from "@/components/radar/actions";
 import { Button } from "@/components/ui/button";
-import { applyUrlFor, type DecisionVerb } from "@/data/opportunity-fixtures";
+import { applicationActionFor, type DecisionVerb } from "@/data/opportunity-fixtures";
 import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
 
 interface ExecutiveBriefingSurfaceProps {
@@ -41,6 +41,7 @@ export function ExecutiveBriefingSurface({
   executionPkg,
 }: ExecutiveBriefingSurfaceProps) {
   const provenanceLabel = getBriefProvenanceLabel(brief);
+  const applicationAction = applicationActionFor(o);
 
   return (
     <div className="min-h-screen pb-36 bg-background text-foreground font-sans">
@@ -126,13 +127,13 @@ export function ExecutiveBriefingSurface({
             </div>
 
             {/* Right Column: Apply button */}
-            {o.applyUrl ? (
+            {applicationAction ? (
               <Button
                 asChild
                 className="w-full flex items-center justify-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal h-auto"
               >
-                <a href={applyUrlFor(o)} target="_blank" rel="noopener noreferrer">
-                  Apply direct →
+                <a href={applicationAction.url} target="_blank" rel="noopener noreferrer">
+                  {applicationAction.label} →
                 </a>
               </Button>
             ) : null}

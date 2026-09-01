@@ -144,18 +144,35 @@ export type EvaluatedOpportunity = {
   uiBadge?: { label: string; variant: "signal" | "caution" | "pass" | "muted" };
 };
 
-/** Derive the apply URL from the scraped source when a direct one wasn't captured. */
-export function applyUrlFor(o: Opportunity): string {
-  if (o.applyUrl) return o.applyUrl;
+export interface ApplicationAction {
+  url: string;
+  label: "Apply direct" | "Search LinkedIn" | "Search Naukri" | "Search Indeed";
+  isDirect: boolean;
+}
+
+/**
+ * Produces an application action without ever exposing an internal ingestion
+ * placeholder as an external destination. A portal search is intentionally
+ * labeled as such when the original posting URL was not captured.
+ */
+export function applicationActionFor(o: Opportunity): ApplicationAction | undefined {
+  if (isExternalPostingUrl(o.applyUrl)) {
+    return { url: o.applyUrl, label: "Apply direct", isDirect: true };
+  }
   const q = encodeURIComponent(`${o.role} ${o.company}`);
   switch (o.scrapedFrom) {
     case "LinkedIn":
-      return `https://www.linkedin.com/jobs/search/?keywords=${q}&location=India`;
+      return { url: `https://www.linkedin.com/jobs/search/?keywords=${q}&location=India`, label: "Search LinkedIn", isDirect: false };
     case "Naukri":
-      return `https://www.naukri.com/${encodeURIComponent(o.role.toLowerCase().replace(/\s+/g, "-"))}-jobs`;
+      return { url: `https://www.naukri.com/${encodeURIComponent(o.role.toLowerCase().replace(/\s+/g, "-"))}-jobs`, label: "Search Naukri", isDirect: false };
     case "Indeed":
-      return `https://in.indeed.com/jobs?q=${q}&l=India`;
+      return { url: `https://in.indeed.com/jobs?q=${q}&l=India`, label: "Search Indeed", isDirect: false };
   }
+}
+
+/** @deprecated Use applicationActionFor when rendering application controls. */
+export function applyUrlFor(o: Opportunity): string | undefined {
+  return applicationActionFor(o)?.url;
 }
 
 // Helpers to keep fixture rows short.
@@ -569,3 +586,4 @@ export type Opportunity = EvaluatedOpportunity;
 export { rawOpportunities as OPPORTUNITY_SOURCES };
 
 
+import { isExternalPostingUrl } from "@/lib/acquisition/external-posting-url";

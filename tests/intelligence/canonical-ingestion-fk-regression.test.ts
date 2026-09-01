@@ -15,7 +15,9 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
-import { CanonicalIngestionService } from "@/lib/acquisition/CanonicalIngestionService";
+import { CanonicalIngestionService, InvalidCanonicalUrlError } from "@/lib/acquisition/CanonicalIngestionService";
+import { applicationActionFor } from "@/data/opportunity-fixtures";
+import { extractExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
 
 class StrictTestSqliteAdapter implements DatabaseAdapter {
   constructor(public db: Database.Database) {}
@@ -144,6 +146,47 @@ describe("Canonical Ingestion Foreign Key & Idempotency Invariants", () => {
     );
     expect(version).toBeDefined();
     expect(version?.id).toBe(res.opportunityVersion);
+  });
+
+  it("rejects an absent or internal canonical URL instead of manufacturing an apply destination", async () => {
+    const payload = {
+      sourcePortal: "LinkedIn",
+      sourceJobId: "missing-url-job",
+      canonicalUrl: "",
+      jobTitle: "VP Marketing",
+      companyName: "Acme",
+      location: "Bengaluru",
+      rawContent: "A sufficiently detailed executive marketing mandate for ingestion.",
+    };
+
+    await expect(ingestionService.ingestOpportunity(payload)).rejects.toBeInstanceOf(InvalidCanonicalUrlError);
+    await expect(ingestionService.ingestOpportunity({ ...payload, canonicalUrl: "https://radar.internal/jobs/linkedin/missing-url-job" })).rejects.toBeInstanceOf(InvalidCanonicalUrlError);
+  });
+
+  it("labels a historical internal URL as a portal search, never as direct application", () => {
+    const action = applicationActionFor({
+      jobHash: "o_735ac2c3",
+      role: "VP Marketing",
+      company: "Mahasurya Ventures India",
+      scrapedFrom: "LinkedIn",
+      applyUrl: "https://radar.internal/jobs/linkedin/o_735ac2c3",
+    } as any);
+
+    expect(action).toEqual({
+      url: "https://www.linkedin.com/jobs/search/?keywords=VP%20Marketing%20Mahasurya%20Ventures%20India&location=India",
+      label: "Search LinkedIn",
+      isDirect: false,
+    });
+  });
+
+  it("recovers only an external applyUrl from a structured historical payload", () => {
+    expect(extractExternalPostingUrl(JSON.stringify({
+      scrapedFrom: "Naukri",
+      applyUrl: "https://www.naukri.com/job-listings-vp-growth-acme-mumbai-1234567890",
+    }))).toBe("https://www.naukri.com/job-listings-vp-growth-acme-mumbai-1234567890");
+    expect(extractExternalPostingUrl(JSON.stringify({
+      applyUrl: "https://radar.internal/jobs/naukri/o_legacy",
+    }))).toBeUndefined();
   });
 
   it("2. Idempotent Ingestion (DO NOTHING Path): Re-ingesting identical opportunity succeeds without FK error", async () => {

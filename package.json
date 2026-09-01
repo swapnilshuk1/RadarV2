@@ -32,6 +32,7 @@
     "certify:radar": "tsx scripts/certify.ts",
     "smoke": "tsx scripts/smoke_production.ts",
     "diagnose": "tsx scripts/diagnose.ts",
+    "repair:canonical-urls": "tsx scripts/repair-canonical-apply-urls.ts",
     "test:eqe": "npm run certify",
     "db:reset-corpus": "tsx scripts/db/reset-corpus.ts --confirm",
     "deploy": "tsx scripts/deploy.ts"
