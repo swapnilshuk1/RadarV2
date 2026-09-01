@@ -33,6 +33,18 @@ type EditorialInput = {
   decision?: unknown;
 };
 
+import {
+  isMeaningfulEvidenceQuote,
+  MANDATE_BEARING_DIMENSION_KEYS,
+  isMandateBearingDimensionKey,
+} from "@/domain/evidence";
+
+export {
+  isMeaningfulEvidenceQuote,
+  MANDATE_BEARING_DIMENSION_KEYS,
+  isMandateBearingDimensionKey,
+};
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" ? value as Record<string, unknown> : null;
 }
@@ -77,14 +89,32 @@ export class AdvisoryConstitution {
 
     const text = asText(input.description) || asText(input.normalizedText) || asText(input.rawText) || asText(input.rawDescription);
     const dimensions = Array.isArray(input.dimensions) ? input.dimensions : [];
+
+    const hasExplicitMeaningfulEvidence = (record: Record<string, unknown> | null): boolean => {
+      if (!record) return false;
+      const evidence = asRecord(record.jdEvidence);
+      if (evidence?.status !== "Explicit") return false;
+      const quotes = Array.isArray(evidence.evidence)
+        ? (evidence.evidence as unknown[]).map((e) => asRecord(e)?.quote).filter(isMeaningfulEvidenceQuote)
+        : [];
+      const singleQuote = typeof evidence.quote === "string" && isMeaningfulEvidenceQuote(evidence.quote);
+      return quotes.length > 0 || singleQuote;
+    };
+
     const explicitEvidenceCount = dimensions.filter((dimension) => {
       const record = asRecord(dimension);
-      const evidence = asRecord(record?.jdEvidence);
-      return evidence?.status === "Explicit";
+      return hasExplicitMeaningfulEvidence(record);
     }).length;
+
+    const hasMandateBearingEvidence = dimensions.some((dimension) => {
+      const record = asRecord(dimension);
+      const key = asText(record?.key);
+      return isMandateBearingDimensionKey(key) && hasExplicitMeaningfulEvidence(record);
+    });
+
     const hasEvaluation = Boolean(input.engineRecommendation || input.recommendationResult);
 
-    if (text.length >= 200 || (hasEvaluation && explicitEvidenceCount > 0)) {
+    if (text.length >= 200 || (hasEvaluation && hasMandateBearingEvidence)) {
       return { state: "EVALUATED", isSufficient: true };
     }
 

@@ -4,6 +4,7 @@ import { format, type Narrative } from "./narrative";
 import { CapabilityEngine, type JobSlice } from "../capability/CapabilityEngine";
 import { CapabilityOntology } from "../ontology/CapabilityOntology";
 import { SemanticNaturalLanguageResolver } from "./editorial/SemanticNaturalLanguageResolver";
+import { isMeaningfulEvidenceQuote } from "@/domain/evidence";
 
 export type Presented = {
   opportunity: Opportunity;
@@ -103,44 +104,69 @@ export function present(
     ? `${narrative.headspaceLine} ${narrative.recommendation}`
     : narrative.recommendation;
 
-  const {
-    normalizedText,
-    html,
-    rawText,
-    payload,
-    rawDescription,
-    normalizedDescription,
-    evidenceGrounding,
-    dimensions,
-    ...cleanSource
-  } = source as Record<string, unknown>;
-
   const cleanDimensions = Array.isArray(source.dimensions)
-    ? source.dimensions.map((d: Record<string, unknown>): DimensionResult => ({
-        key: ((d.key as string) || "mandate") as DimensionKey,
-        label: (d.label as string) || (d.key as string) || "",
-        importance: ((d.importance as string) || "Core") as "Core" | "Supporting" | "Context",
-        bucket: (d.bucket as EvidenceBucket) || "Missing",
-        jdEvidence: {
-          status: ((d.jdEvidence as Record<string, unknown> | undefined)?.status as import("@/data/opportunity-fixtures").Status) || "Explicit",
-          value: typeof (d.jdEvidence as Record<string, unknown> | undefined)?.value === "string" ? String((d.jdEvidence as Record<string, unknown>).value).slice(0, 140) : "",
-          evidence: Array.isArray((d.jdEvidence as Record<string, unknown> | undefined)?.evidence) && ((d.jdEvidence as Record<string, unknown>).evidence as unknown[]).length > 0
-            ? [{
-                quote: typeof ((d.jdEvidence as Record<string, unknown>).evidence as Record<string, unknown>[])[0]?.quote === "string" ? String(((d.jdEvidence as Record<string, unknown>).evidence as Record<string, unknown>[])[0].quote).slice(0, 140) : "",
-                source: "snippet"
-              }]
-            : []
+    ? source.dimensions.map((d: Record<string, unknown>): DimensionResult => {
+        const jdEv = d.jdEvidence as Record<string, unknown> | undefined;
+        const rawStatus = (jdEv?.status as import("@/data/opportunity-fixtures").Status | undefined) || "Missing";
+        const rawEvidenceArr = Array.isArray(jdEv?.evidence) ? (jdEv.evidence as unknown[]) : [];
+        const rawQuote = typeof (rawEvidenceArr[0] as Record<string, unknown> | undefined)?.quote === "string"
+          ? String((rawEvidenceArr[0] as Record<string, unknown>).quote)
+          : typeof jdEv?.quote === "string"
+          ? String(jdEv.quote)
+          : typeof d.quote === "string"
+          ? String(d.quote)
+          : "";
+        const rawValue = typeof jdEv?.value === "string" ? String(jdEv.value) : typeof d.value === "string" ? String(d.value) : "";
+
+        const hasValidQuote = isMeaningfulEvidenceQuote(rawQuote);
+        const hasValue = typeof rawValue === "string" && rawValue.trim().length > 0;
+
+        let finalStatus: import("@/data/opportunity-fixtures").Status = rawStatus;
+        if (rawStatus === "Explicit") {
+          if (!hasValidQuote) {
+            finalStatus = "Missing";
+          }
         }
-      }))
+
+        const isExplicit = finalStatus === "Explicit";
+        let finalValue = "";
+        if (isExplicit) {
+          finalValue = hasValue ? rawValue.slice(0, 140) : rawQuote.slice(0, 140);
+        } else if (finalStatus !== "Missing") {
+          finalValue = typeof rawValue === "string" ? rawValue.slice(0, 140) : "";
+        }
+        const finalEvidence: { quote: string; source: import("@/data/opportunity-fixtures").EvidenceSource }[] = isExplicit && hasValidQuote
+          ? [{ quote: rawQuote.slice(0, 140), source: "snippet" }]
+          : [];
+
+        return {
+          key: ((d.key as string) || "mandate") as DimensionKey,
+          label: (d.label as string) || (d.key as string) || "",
+          importance: ((d.importance as string) || "Core") as "Core" | "Supporting" | "Context",
+          bucket: finalStatus === "Missing" ? "Missing" : ((d.bucket as EvidenceBucket) || "Missing"),
+          jdEvidence: {
+            status: finalStatus,
+            value: finalValue,
+            evidence: finalEvidence,
+          },
+        };
+      })
     : [];
   return {
     opportunity: {
-      ...source,
+      jobHash: source.jobHash,
+      role: source.role,
+      company: source.company,
+      location: source.location,
+      postedRelative: source.postedRelative || "recently",
+      scrapedFrom: source.scrapedFrom || "LinkedIn",
+      applyUrl: source.applyUrl,
       evaluationState: (source.evaluationState ?? "EVALUATED") as "EVALUATED" | "LEGACY",
       dimensions: cleanDimensions,
       decision: record.verb,
       recommendation: finalRecommendation,
       whyNow: narrative.whyNow,
+      primaryConcern: source.primaryConcern || null,
       positioning: narrative.positioning,
       primaryProof: narrative.primaryProof,
       headspaceInvestment: narrative.headspaceInvestment,

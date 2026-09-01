@@ -102,4 +102,236 @@ describe("Editorial evidence sufficiency contract", () => {
     expect(getBriefProvenanceLabel({ explanation: { evidenceStrength: "SUPPORTED" }, evidenceQuality: "High Evidence Quality" }))
       .toBe("High Evidence Quality · Claim strength reflects recorded evidence.");
   });
+
+  it("validates quotes with the shared isMeaningfulEvidenceQuote predicate", async () => {
+    const { isMeaningfulEvidenceQuote } = await import("@/lib/intelligence/editorial/AdvisoryConstitution");
+    expect(isMeaningfulEvidenceQuote("")).toBe(false);
+    expect(isMeaningfulEvidenceQuote("   ")).toBe(false);
+    expect(isMeaningfulEvidenceQuote(",")).toBe(false);
+    expect(isMeaningfulEvidenceQuote("...")).toBe(false);
+    expect(isMeaningfulEvidenceQuote(" - ")).toBe(false);
+    expect(isMeaningfulEvidenceQuote("P&L")).toBe(true);
+    expect(isMeaningfulEvidenceQuote("Lead marketing team")).toBe(true);
+    expect(isMeaningfulEvidenceQuote("Reports to CEO")).toBe(true);
+  });
+
+  it("unlocks EVALUATED only when explicit evidence is from a mandate-bearing dimension", () => {
+    // Mandate-bearing dimension (mandate, functionalScope, commercialAccountability, reportingLine, requiredLevel)
+    const mandateOpp = sparseOpportunity({
+      dimensions: [{
+        key: "mandate",
+        label: "Mandate",
+        importance: "Core",
+        bucket: "Matched",
+        jdEvidence: {
+          status: "Explicit",
+          value: "Lead corporate transformation",
+          evidence: [{ quote: "Lead corporate transformation", source: "snippet" }],
+        },
+      }] as Opportunity["dimensions"],
+    });
+    const sufficiency = AdvisoryConstitution.validateDataSufficiency(mandateOpp);
+    expect(sufficiency.state).toBe("EVALUATED");
+    expect(sufficiency.isSufficient).toBe(true);
+
+    // Non-mandate dimension alone (geography / location)
+    const geoOnlyOpp = sparseOpportunity({
+      dimensions: [{
+        key: "geography" as any,
+        label: "Location",
+        importance: "Context",
+        bucket: "Matched",
+        jdEvidence: {
+          status: "Explicit",
+          value: "Gurugram",
+          evidence: [{ quote: "Gurugram", source: "snippet" }],
+        },
+      }] as Opportunity["dimensions"],
+    });
+    const geoSufficiency = AdvisoryConstitution.validateDataSufficiency(geoOnlyOpp);
+    expect(geoSufficiency.state).toBe("SPARSE_SPEC");
+    expect(geoSufficiency.isSufficient).toBe(false);
+    expect(geoSufficiency.message).toContain("not provide enough evidence");
+  });
+
+  it("rejects punctuation or meaningless quotes from satisfying the constitutional evidence gate", () => {
+    const invalidQuoteOpp = sparseOpportunity({
+      dimensions: [{
+        key: "mandate",
+        label: "Mandate",
+        importance: "Core",
+        bucket: "Matched",
+        jdEvidence: {
+          status: "Explicit",
+          value: "...",
+          evidence: [{ quote: "...", source: "snippet" }],
+        },
+      }] as Opportunity["dimensions"],
+    });
+    const sufficiency = AdvisoryConstitution.validateDataSufficiency(invalidQuoteOpp);
+    expect(sufficiency.state).toBe("SPARSE_SPEC");
+    expect(sufficiency.isSufficient).toBe(false);
+  });
+
+  it("rejects an Explicit dimension when value is meaningful but quote is punctuation (PL_OWNERSHIP + ,)", async () => {
+    const adversarialOpp = sparseOpportunity({
+      dimensions: [{
+        key: "commercialAccountability",
+        label: "P&L Accountability",
+        importance: "Core",
+        bucket: "Matched",
+        jdEvidence: {
+          status: "Explicit",
+          value: "PL_OWNERSHIP",
+          quote: ",",
+          evidence: [{ quote: ",", source: "snippet" }],
+        },
+      }] as Opportunity["dimensions"],
+    });
+
+    // 1. Constitutional sufficiency must fail closed and return SPARSE_SPEC
+    const sufficiency = AdvisoryConstitution.validateDataSufficiency(adversarialOpp);
+    expect(sufficiency.state).toBe("SPARSE_SPEC");
+    expect(sufficiency.isSufficient).toBe(false);
+
+    // 2. adaptLegacyEvaluation must demote Explicit to Missing when quote is invalid
+    const { adaptLegacyEvaluation } = await import("@/lib/intelligence/serving/EvaluationServingEngine");
+    const legacyEnvelope = {
+      opportunity: {
+        jobHash: "pl-test-1",
+        role: "Chief Commercial Officer",
+        company: "Acme",
+        dimensions: adversarialOpp.dimensions,
+      },
+      record: { jobHash: "pl-test-1", verb: "PURSUE", qualityScore: 85 },
+      narrative: { recommendation: "Test" },
+    };
+    const candCtx = { personId: "p1", attentionWindow: 6, activePursuits: 0 };
+    const oppCtx = { jobHash: "pl-test-1", role: "Chief Commercial Officer", company: "Acme" };
+    const served = adaptLegacyEvaluation(legacyEnvelope, candCtx, oppCtx, null);
+    expect(served.dimensions[0].jdEvidence.status).toBe("Missing");
+    expect(served.dimensions[0].jdEvidence.value).toBe("");
+    expect(served.dimensions[0].jdEvidence.evidence).toHaveLength(0);
+
+    // 3. present() normalizer must also demote Explicit to Missing when quote is invalid
+    const { present } = await import("@/lib/intelligence/present");
+    const presented = present(
+      {
+        jobHash: "pl-test-1",
+        role: "Chief Commercial Officer",
+        company: "Acme",
+        location: "Mumbai",
+        dimensions: [{
+          key: "commercialAccountability",
+          label: "P&L Accountability",
+          importance: "Core",
+          bucket: "Matched",
+          jdEvidence: {
+            status: "Explicit",
+            value: "PL_OWNERSHIP",
+            quote: ",",
+            evidence: [{ quote: ",", source: "snippet" }],
+          },
+        }],
+      } as any,
+      {
+        jobHash: "pl-test-1",
+        verb: "PURSUE",
+        decision: "PURSUE",
+        priority: 85,
+        fitDimensions: [{ dimension: "commercialAccountability", score: 10 }],
+        headspace: { downgraded: false },
+        confidences: { recommendation: 0.9 },
+        stability: "High",
+        comparison: { higherThan: [], lowerThan: [] },
+        explanation: { missingEvidence: [] },
+      } as any
+    );
+    expect(presented.opportunity.dimensions[0].jdEvidence.status).toBe("Missing");
+    expect(presented.opportunity.dimensions[0].jdEvidence.value).toBe("");
+  });
+
+  it("safely adapts legacy Presented envelopes without leaking legacy editorial narrative", async () => {
+    const { adaptLegacyEvaluation } = await import("@/lib/intelligence/serving/EvaluationServingEngine");
+
+    // Simulates an EvaluationWorker record that persisted JSON.stringify(presented)
+    const storedPresentedEnvelope = {
+      opportunity: {
+        jobHash: "titan-growth-1",
+        role: "Head of Growth Marketing",
+        company: "Titan",
+        location: "Bengaluru",
+        dimensions: [
+          {
+            key: "mandate",
+            label: "Mandate",
+            importance: "Core",
+            bucket: "Matched",
+            jdEvidence: {
+              status: "Explicit",
+              value: "Scale direct-to-consumer e-commerce",
+              evidence: [{ quote: "Scale direct-to-consumer e-commerce", source: "snippet" }],
+            },
+          },
+          {
+            key: "reportingLine",
+            label: "Reporting Line",
+            importance: "Core",
+            bucket: "Matched",
+            jdEvidence: {
+              status: "Explicit",
+              value: ",", // Invalid quote
+              evidence: [{ quote: ",", source: "snippet" }],
+            },
+          },
+        ],
+        recommendation: "Unsafe historical narrative from legacy envelope",
+        primaryDriver: "Unsafe legacy primary driver",
+        primaryRisk: "Unsafe legacy primary risk",
+        hiringRisk: "Critical",
+        whyNow: "Unsafe why now",
+      },
+      record: {
+        jobHash: "titan-growth-1",
+        verb: "PURSUE",
+        qualityScore: 92,
+      },
+      narrative: {
+        recommendation: "Unsafe historical narrative from legacy envelope",
+      },
+    };
+
+    const candCtx = { personId: "p1", attentionWindow: 6, activePursuits: 0 };
+    const oppCtx = {
+      jobHash: "titan-growth-1",
+      role: "Head of Growth Marketing",
+      company: "Titan",
+      location: "Bengaluru",
+    };
+
+    const served = adaptLegacyEvaluation(storedPresentedEnvelope, candCtx, oppCtx, null);
+
+    // Dimensions extracted and sanitized
+    expect(served.dimensions).toHaveLength(2);
+    expect(served.dimensions[0].key).toBe("mandate");
+    expect(served.dimensions[0].jdEvidence.status).toBe("Explicit");
+    expect(served.dimensions[0].jdEvidence.value).toBe("Scale direct-to-consumer e-commerce");
+
+    // Invalid quote was demoted to Missing
+    expect(served.dimensions[1].key).toBe("reportingLine");
+    expect(served.dimensions[1].jdEvidence.status).toBe("Missing");
+    expect(served.dimensions[1].jdEvidence.value).toBe("");
+
+    // Legacy editorial narratives were NOT leaked into served DTO
+    expect(served.recommendation).toBe("");
+    expect(served.primaryDriver).toBeUndefined();
+    expect(served.primaryRisk).toBeUndefined();
+    expect(served.whyNow).toBeUndefined();
+    expect(served.hiringRisk).toBe("Unknown");
+
+    // Constitutional sufficiency recognizes the valid mandate dimension
+    const sufficiency = AdvisoryConstitution.validateDataSufficiency(served);
+    expect(sufficiency.state).toBe("EVALUATED");
+    expect(sufficiency.isSufficient).toBe(true);
+  });
 });

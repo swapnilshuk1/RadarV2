@@ -56,6 +56,7 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
     vetoed?: number;
     evaluationState?: string;
     userAction?: string;
+    customEvalJson?: string;
   }) {
     const oppId = `opp_${params.id}`;
     const verId = `ver_${params.id}`;
@@ -78,7 +79,7 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
       [oppId, verId]
     );
 
-    const evalJson = JSON.stringify({
+    const evalJson = params.customEvalJson || JSON.stringify({
       schema_version: "v4.1",
       engineVerdict: params.engineVerdict || "PASS",
       qualityScore: params.score,
@@ -132,6 +133,63 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
       expect(evaluated.effectiveDecision).toBe("USER_CONFIRMED");
       expect(evaluated.userDecision?.userAction).toBe("PURSUE");
       expect(evaluated.engineRecommendation?.qualityScore).toBe(95);
+    });
+
+    it("hydrates nested dimensions from legacy Presented envelope and does not stream raw text to DTO", async () => {
+      const presentedEnvelope = JSON.stringify({
+        opportunity: {
+          jobHash: "titan_growth_job",
+          role: "Head of Growth Marketing",
+          company: "Titan",
+          location: "Bengaluru",
+          dimensions: [
+            {
+              key: "mandate",
+              label: "Mandate",
+              importance: "Core",
+              bucket: "Matched",
+              jdEvidence: {
+                status: "Explicit",
+                value: "Lead full-funnel digital marketing across watch brands",
+                evidence: [{ quote: "Lead full-funnel digital marketing across watch brands", source: "snippet" }],
+              },
+            },
+          ],
+          recommendation: "Legacy text that must not be copied directly",
+        },
+        record: {
+          jobHash: "titan_growth_job",
+          verb: "PURSUE",
+          qualityScore: 92,
+        },
+        narrative: {
+          recommendation: "Legacy text that must not be copied directly",
+        },
+      });
+
+      await seedItem({
+        id: "titan_growth_job",
+        title: "Head of Growth Marketing",
+        engineVerdict: "PURSUE",
+        score: 92,
+        customEvalJson: presentedEnvelope,
+      });
+
+      const dossier = await queries.getDossier(scope, "titan_growth_job");
+      expect(dossier).not.toBeNull();
+      expect(dossier?.jobHash).toBe("titan_growth_job");
+      expect(dossier?.dimensions).toHaveLength(1);
+      expect(dossier?.dimensions[0].key).toBe("mandate");
+      expect(dossier?.dimensions[0].jdEvidence.status).toBe("Explicit");
+      expect(dossier?.dimensions[0].jdEvidence.value).toBe("Lead full-funnel digital marketing across watch brands");
+
+      // Verify no raw text blobs leaked onto the served DTO
+      const anyDossier = dossier as any;
+      expect(anyDossier.raw_content).toBeUndefined();
+      expect(anyDossier.rawText).toBeUndefined();
+      expect(anyDossier.rawDescription).toBeUndefined();
+      expect(anyDossier.normalizedText).toBeUndefined();
+      expect(anyDossier.description).toBeUndefined();
     });
 
     it("returns null for non-existent or cross-tenant jobHash", async () => {
