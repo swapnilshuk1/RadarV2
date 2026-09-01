@@ -30,6 +30,9 @@ describe("Naukri Browser-Context Pagination Lifecycle Contract", () => {
       }),
       url: vi.fn().mockReturnValue("https://www.naukri.com/chief-marketing-officer-jobs-in-india-2?k=Chief%20Marketing%20Officer&pageNo=2"),
       title: vi.fn().mockResolvedValue("Chief Marketing Officer Jobs"),
+      waitForSelector: vi.fn().mockResolvedValue(null),
+      locator: vi.fn(() => ({ count: vi.fn().mockResolvedValue(0), all: vi.fn().mockResolvedValue([]) })),
+      mouse: { wheel: vi.fn().mockResolvedValue(null) },
       evaluate: vi.fn().mockResolvedValue([])
     };
 
@@ -63,6 +66,9 @@ describe("Naukri Browser-Context Pagination Lifecycle Contract", () => {
       goto: vi.fn().mockResolvedValue(null),
       url: vi.fn().mockReturnValue("https://www.naukri.com/chief-marketing-officer-jobs-in-india-1"),
       title: vi.fn().mockResolvedValue("Chief Marketing Officer Jobs"),
+      waitForSelector: vi.fn().mockResolvedValue(null),
+      locator: vi.fn(() => ({ count: vi.fn().mockResolvedValue(0), all: vi.fn().mockResolvedValue([]) })),
+      mouse: { wheel: vi.fn().mockResolvedValue(null) },
       evaluate: vi.fn().mockImplementation(async (fn: any, args: any) => {
         evaluateCalls.push(JSON.stringify(args));
         return [];

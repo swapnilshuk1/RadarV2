@@ -1083,7 +1083,21 @@ async function processUnit(
           HealthManager.recordSuccess(unit.portal);
 
           // Post-Detail Company Resolution & Lineage Enforcement
-          const effectiveCompany = (detail.extractedCompany || feedCard.company || "").trim() || "Confidential / Unknown";
+          const rawCompany = (detail.extractedCompany || feedCard.company || "").trim();
+          const isConfidentialOrMissing = !rawCompany || /^(confidential|unknown|undisclosed|stealth|private)\b/i.test(rawCompany);
+
+          let effectiveCompany: string;
+          let companyId: string;
+
+          if (isConfidentialOrMissing) {
+            effectiveCompany = rawCompany || "Confidential Employer";
+            // Scoped surrogate company ID per opportunity to maintain entity lineage isolation
+            companyId = `confidential:${unit.portal.toLowerCase()}:${feedCard.cardHash || ledgerItem.sourceJobId || ledgerItem.id}`;
+          } else {
+            effectiveCompany = rawCompany;
+            companyId = effectiveCompany.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+          }
+
           feedCard.company = effectiveCompany;
 
           // Re-derive canonical identity with resolved company
@@ -1121,7 +1135,6 @@ async function processUnit(
             lastAcquisitionMethod: acquisitionRoute
           });
 
-          const companyId = effectiveCompany.toLowerCase().replace(/[^a-z0-9]/g, "-");
           await repos.companies.registerCompany({
             id: companyId,
             name: effectiveCompany,

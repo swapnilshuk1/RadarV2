@@ -74,36 +74,126 @@ export class SearchPlanner {
       });
     }
 
-    // Normalized matching sets for ontology lookups
-    const matchTokens = new Set<string>();
-    targetTitles.forEach((t) => t.toLowerCase().split(/\s+/).forEach((tok) => tok.length > 2 && matchTokens.add(tok)));
-    functions.forEach((f) => f.toLowerCase().split(/\s+/).forEach((tok) => tok.length > 2 && matchTokens.add(tok)));
-    operatingModels.forEach((m) => m.toLowerCase().split(/\s+/).forEach((tok) => tok.length > 2 && matchTokens.add(tok)));
-    ownership.forEach((o) => o.toLowerCase().split(/\s+/).forEach((tok) => tok.length > 2 && matchTokens.add(tok)));
-    targetLevels.forEach((l) => l.toLowerCase().split(/\s+/).forEach((tok) => tok.length > 2 && matchTokens.add(tok)));
+    // Helper: Extract functional tokens excluding generic seniority tokens
+    const SENIORITY_TOKENS = new Set([
+      "chief", "c-level", "cxo", "vp", "vice", "president", "svp", "evp",
+      "director", "head", "lead", "officer", "manager", "global", "executive", "senior"
+    ]);
 
-    const matchesIntent = (conceptName: string, phrases: string[]): boolean => {
-      const lowerConcept = conceptName.toLowerCase();
-      // Direct substring match with declared criteria
-      for (const t of targetTitles) {
-        if (lowerConcept.includes(t.toLowerCase()) || t.toLowerCase().includes(lowerConcept)) return true;
-      }
-      for (const f of functions) {
-        if (lowerConcept.includes(f.toLowerCase()) || f.toLowerCase().includes(lowerConcept)) return true;
-      }
-      for (const m of operatingModels) {
-        if (lowerConcept.includes(m.toLowerCase()) || m.toLowerCase().includes(lowerConcept)) return true;
-      }
-      for (const o of ownership) {
-        if (lowerConcept.includes(o.toLowerCase()) || o.toLowerCase().includes(lowerConcept)) return true;
-      }
-      // Token overlap match
-      for (const token of matchTokens) {
-        if (lowerConcept.includes(token)) return true;
-        for (const phrase of phrases) {
-          if (phrase.toLowerCase().includes(token)) return true;
+    const STOP_WORDS = new Set([
+      "of", "and", "the", "in", "for", "to", "a", "an", "&"
+    ]);
+
+    const extractFunctionalTokens = (text: string): Set<string> => {
+      const tokens = new Set<string>();
+      const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/);
+      for (const w of words) {
+        if (w.length > 2 && !SENIORITY_TOKENS.has(w) && !STOP_WORDS.has(w)) {
+          tokens.add(w);
         }
       }
+      return tokens;
+    };
+
+    const extractSeniorityTokens = (text: string): Set<string> => {
+      const tokens = new Set<string>();
+      const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/);
+      for (const w of words) {
+        if (SENIORITY_TOKENS.has(w)) {
+          tokens.add(w);
+        }
+      }
+      return tokens;
+    };
+
+    const candidateFunctionalTokens = new Set<string>();
+    functions.forEach((f) => extractFunctionalTokens(f).forEach((t) => candidateFunctionalTokens.add(t)));
+    targetTitles.forEach((t) => extractFunctionalTokens(t).forEach((t) => candidateFunctionalTokens.add(t)));
+
+    const candidateSeniorityTokens = new Set<string>();
+    targetLevels.forEach((l) => extractSeniorityTokens(l).forEach((t) => candidateSeniorityTokens.add(t)));
+    targetTitles.forEach((t) => extractSeniorityTokens(t).forEach((t) => candidateSeniorityTokens.add(t)));
+
+    const candidateDomainTerms = new Set<string>();
+    operatingModels.forEach((m) => candidateDomainTerms.add(m.toLowerCase().trim()));
+    ownership.forEach((o) => candidateDomainTerms.add(o.toLowerCase().trim()));
+    functions.forEach((f) => candidateDomainTerms.add(f.toLowerCase().trim()));
+    targetTitles.forEach((t) => candidateDomainTerms.add(t.toLowerCase().trim()));
+
+    const matchesDimensionConcept = (dimensionKey: string, conceptName: string, phrases: string[]): boolean => {
+      const allConceptPhrases = [conceptName, ...phrases].map((p) => p.toLowerCase());
+
+      // 1. Direct match: Exact or substring match against any declared candidate title or domain term
+      for (const t of targetTitles) {
+        const lowerT = t.toLowerCase();
+        for (const p of allConceptPhrases) {
+          if (lowerT === p || lowerT.includes(p) || p.includes(lowerT)) return true;
+        }
+      }
+
+      for (const domainTerm of candidateDomainTerms) {
+        if (!domainTerm) continue;
+        for (const p of allConceptPhrases) {
+          if (domainTerm === p || (domainTerm.length > 3 && (p.includes(domainTerm) || domainTerm.includes(p)))) {
+            return true;
+          }
+        }
+      }
+
+      // 2. Target Roles dimension: Must match FUNCTION + SENIORITY conjunction
+      if (dimensionKey === "targetRoles") {
+        const conceptFuncTokens = extractFunctionalTokens(conceptName);
+        phrases.forEach((p) => extractFunctionalTokens(p).forEach((t) => conceptFuncTokens.add(t)));
+
+        let functionMatches = false;
+        if (candidateFunctionalTokens.size === 0) {
+          functionMatches = false;
+        } else {
+          for (const tok of conceptFuncTokens) {
+            if (candidateFunctionalTokens.has(tok)) {
+              functionMatches = true;
+              break;
+            }
+          }
+        }
+
+        if (!functionMatches) return false;
+
+        if (candidateSeniorityTokens.size > 0) {
+          const conceptSeniorityTokens = extractSeniorityTokens(conceptName);
+          phrases.forEach((p) => extractSeniorityTokens(p).forEach((t) => conceptSeniorityTokens.add(t)));
+
+          let seniorityMatches = false;
+          for (const s of conceptSeniorityTokens) {
+            if (candidateSeniorityTokens.has(s)) {
+              seniorityMatches = true;
+              break;
+            }
+          }
+          return seniorityMatches;
+        }
+
+        return true;
+      }
+
+      // 3. Functional expertise: Must match candidate functional tokens
+      if (dimensionKey === "functionalExpertise") {
+        const conceptFuncTokens = extractFunctionalTokens(conceptName);
+        phrases.forEach((p) => extractFunctionalTokens(p).forEach((t) => conceptFuncTokens.add(t)));
+
+        for (const tok of conceptFuncTokens) {
+          if (candidateFunctionalTokens.has(tok)) return true;
+        }
+        return false;
+      }
+
+      // 4. Other dimensions (leadershipModel, platformOwnership, strategicMandate):
+      // Token overlap only against functional tokens / domain terms, NEVER generic seniority tokens
+      const conceptFuncTokens = extractFunctionalTokens(conceptName);
+      for (const tok of conceptFuncTokens) {
+        if (candidateFunctionalTokens.has(tok)) return true;
+      }
+
       return false;
     };
 
@@ -118,7 +208,7 @@ export class SearchPlanner {
           for (const [conceptName, portalPhrases] of Object.entries(conceptMap)) {
             const phrases = portalPhrases || [];
             // Strictly check if concept matches candidate intent
-            if (matchesIntent(conceptName, phrases)) {
+            if (matchesDimensionConcept(dimensionKey, conceptName, phrases)) {
               for (const phrase of phrases) {
                 const lowerPhrase = phrase.toLowerCase();
                 if (!seenQueries.has(lowerPhrase)) {

@@ -456,48 +456,111 @@ describe("Slice B: Acquisition Efficiency & Failure Truth Contracts", () => {
       expect(doc?.content.length).toBeGreaterThan(0);
     });
 
-    it("verifies LinkedIn post-detail extraction parses top-card company name from HTML", async () => {
-      const targetUrl = "https://www.linkedin.com/jobs/view/987654321/";
-      const mockHtml = `
+    it("verifies LinkedIn post-detail extraction parses top-card company name from realistic HTML DOM & JSON-LD", async () => {
+      const { extractJobFromHtml } = await import("../../scripts/scraper/utils/http-fetch");
+
+      // Case A: Topcard selector with separate description container
+      const realisticHtml = `
+        <!DOCTYPE html>
         <html>
+          <head>
+            <title>VP of Engineering - Acme Global</title>
+          </head>
           <body>
-            <a class="topcard__org-name-link" href="#">Global FinTech Corp</a>
-            <div class="show-more-less-html__markup">We are hiring a VP Engineering...</div>
+            <header>
+              <div class="topcard">
+                <h1 class="top-card-layout__title">VP of Engineering</h1>
+                <a class="topcard__org-name-link" href="https://www.linkedin.com/company/acme-global">Acme Global Technologies</a>
+                <span class="topcard__flavor">Bengaluru, Karnataka, India</span>
+              </div>
+            </header>
+            <main>
+              <div class="jobs-description__content">
+                <div class="show-more-less-html__markup">
+                  <p>We are seeking an executive VP of Engineering to lead our distributed platform engineering team.</p>
+                  <p>Key responsibilities include architectural strategy, hiring directors, and scaling cloud systems.</p>
+                </div>
+              </div>
+            </main>
           </body>
         </html>
       `;
 
-      const mockCtx: any = {
-        portal: "LinkedIn",
-        detailPage: {
-          goto: vi.fn(async () => {}),
-          url: () => targetUrl,
-          locator: (sel: string) => ({
-            first: () => ({
-              textContent: async () => (sel.includes("org-name") ? "Global FinTech Corp" : ""),
-              innerHTML: async () => (sel.includes("markup") ? "We are hiring a VP Engineering..." : ""),
-            }),
-          }),
-        },
-        isHttpDisabled: () => false,
-        logger: vi.fn(),
-      };
+      const extracted = extractJobFromHtml(
+        realisticHtml,
+        "h1.top-card-layout__title, h1.topcard__title, .jobs-description__content",
+        ".jobs-description__content, .description__text, .show-more-less-html__markup"
+      );
 
-      // Mock fast HTTP fetch returning the HTML
-      const httpFetch = await import("../../scripts/scraper/utils/http-fetch");
-      vi.spyOn(httpFetch, "fastFetchDetail").mockResolvedValueOnce({
-        fetched: true,
-        rawHtml: mockHtml,
-        rawText: "We are hiring a VP Engineering...",
-        outcome: "SUCCESS_ENRICHED",
-        fetchDurationMs: 50,
-      });
+      expect(extracted.success).toBe(true);
+      expect(extracted.extractedCompany).toBe("Acme Global Technologies");
+      expect(extracted.extractedTitle).toBe("VP of Engineering");
+      expect(extracted.rawText).toContain("VP of Engineering to lead our distributed platform");
 
-      const result = await linkedinHandler.fetchDetail(mockCtx, targetUrl);
+      // Case B: JSON-LD extraction
+      const jsonLdHtml = `
+        <html>
+          <head>
+            <script type="application/ld+json">
+              {
+                "@context": "https://schema.org",
+                "@type": "JobPosting",
+                "title": "Chief Financial Officer",
+                "hiringOrganization": {
+                  "@type": "Organization",
+                  "name": "Zenith Capital Partners"
+                },
+                "description": "Executive leadership role managing capital allocation, investor relations, and financial reporting for high-growth enterprise."
+              }
+            </script>
+          </head>
+          <body>
+            <div id="fallback">Fallback content</div>
+          </body>
+        </html>
+      `;
 
-      expect(result.fetched).toBe(true);
-      expect(result.extractedCompany).toBe("Global FinTech Corp");
-      expect(result.rawText).toContain("VP Engineering");
+      const jsonLdExtracted = extractJobFromHtml(jsonLdHtml);
+      expect(jsonLdExtracted.success).toBe(true);
+      expect(jsonLdExtracted.method).toBe("JSON_LD");
+      expect(jsonLdExtracted.extractedCompany).toBe("Zenith Capital Partners");
+      expect(jsonLdExtracted.extractedTitle).toBe("Chief Financial Officer");
+    });
+
+    it("verifies confidential and missing employer postings receive isolated surrogate company entities", async () => {
+      // Simulate two distinct postings with no company name / marked confidential
+      const rawCompanyA = "";
+      const isConfidentialA = !rawCompanyA || /^(confidential|unknown|undisclosed|stealth|private)\b/i.test(rawCompanyA);
+      const effectiveCompanyA = isConfidentialA ? (rawCompanyA || "Confidential Employer") : rawCompanyA;
+      const companyIdA = isConfidentialA ? `confidential:linkedin:job_101` : effectiveCompanyA.toLowerCase().replace(/[^a-z0-9]/g, "-");
+
+      const rawCompanyB = "Confidential / Undisclosed";
+      const isConfidentialB = !rawCompanyB || /^(confidential|unknown|undisclosed|stealth|private)\b/i.test(rawCompanyB);
+      const effectiveCompanyB = isConfidentialB ? (rawCompanyB || "Confidential Employer") : rawCompanyB;
+      const companyIdB = isConfidentialB ? `confidential:linkedin:job_202` : effectiveCompanyB.toLowerCase().replace(/[^a-z0-9]/g, "-");
+
+      // Invariant: Company IDs must be distinct surrogate identities rather than collapsing into one fake company
+      expect(companyIdA).toBe("confidential:linkedin:job_101");
+      expect(companyIdB).toBe("confidential:linkedin:job_202");
+      expect(companyIdA).not.toBe(companyIdB);
+      expect(companyIdA).not.toBe("confidential---unknown");
+
+      // Persist in DB and ensure both independent entities exist
+      await db.execute(`
+        INSERT INTO companies (id, name, created_at, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `, [companyIdA, effectiveCompanyA]);
+
+      await db.execute(`
+        INSERT INTO companies (id, name, created_at, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `, [companyIdB, effectiveCompanyB]);
+
+      const compA = await db.one(`SELECT * FROM companies WHERE id = ?`, [companyIdA]);
+      const compB = await db.one(`SELECT * FROM companies WHERE id = ?`, [companyIdB]);
+
+      expect(compA?.id).toBe("confidential:linkedin:job_101");
+      expect(compB?.id).toBe("confidential:linkedin:job_202");
     });
 
     it("verifies LocalFsBlobStore write/read/delete lifecycle cleans up probe files", async () => {

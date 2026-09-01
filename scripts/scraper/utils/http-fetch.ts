@@ -17,6 +17,8 @@ export interface HttpFetchResult {
   fetched: boolean;
   rawHtml?: string;
   rawText?: string;
+  extractedTitle?: string;
+  extractedCompany?: string;
   fetchError?: string;
   fetchDurationMs?: number;
   httpStatus?: number;
@@ -203,6 +205,8 @@ export function extractJobFromHtml(
   success: boolean;
   rawHtml: string;
   rawText: string;
+  extractedTitle?: string;
+  extractedCompany?: string;
   method: "JSON_LD" | "TARGETED_DOM" | "SANITIZED_DOM";
   quality: ContentQualityResult;
   outcome: AcquisitionOutcome;
@@ -217,6 +221,8 @@ export function extractJobFromHtml(
         success: true,
         rawHtml: jsonLdResult.rawHtml,
         rawText: jsonLdResult.rawText,
+        extractedTitle: jsonLdResult.title,
+        extractedCompany: jsonLdResult.company,
         method: "JSON_LD",
         quality,
         outcome: "SUCCESS"
@@ -227,6 +233,17 @@ export function extractJobFromHtml(
   // --- Tier 2: Sanitized Cheerio DOM ---
   const $ = cheerio.load(html);
 
+  // Extract topcard company and title before sanitization/stripping
+  const topcardCompanyText = $(
+    "a.topcard__org-name-link, a.top-card-layout__first-subline-link, .job-details-jobs-unified-top-card__company-name, .topcard__flavor:first-of-type, .topcard__org-name, [data-company-name], .company-name"
+  ).first().text().replace(/\s+/g, " ").trim();
+  const extractedCompany = topcardCompanyText || jsonLdResult?.company || undefined;
+
+  const topcardTitleText = $(
+    "h1.top-card-layout__title, h1.topcard__title, .job-details-jobs-unified-top-card__job-title, h1"
+  ).first().text().replace(/\s+/g, " ").trim();
+  const extractedTitle = topcardTitleText || jsonLdResult?.title || undefined;
+
   if (requiredSelector) {
     const req = $(requiredSelector);
     if (!req.length) {
@@ -234,6 +251,8 @@ export function extractJobFromHtml(
         success: false,
         rawHtml: "",
         rawText: "",
+        extractedTitle,
+        extractedCompany,
         method: "TARGETED_DOM",
         quality: {
           tier: "NON_JOB",
@@ -313,6 +332,8 @@ export function extractJobFromHtml(
       success: false,
       rawHtml: "",
       rawText: "",
+      extractedTitle,
+      extractedCompany,
       method: "SANITIZED_DOM",
       quality: {
         tier: "NON_JOB",
@@ -340,6 +361,8 @@ export function extractJobFromHtml(
       success: false,
       rawHtml,
       rawText,
+      extractedTitle,
+      extractedCompany,
       method: extractionMethod,
       quality,
       outcome: "EXTRACTION_FAILURE",
@@ -351,6 +374,8 @@ export function extractJobFromHtml(
     success: true,
     rawHtml,
     rawText,
+    extractedTitle,
+    extractedCompany,
     method: extractionMethod,
     quality,
     outcome: "SUCCESS"
@@ -462,6 +487,8 @@ export async function fastFetchDetail(
         fetched: true,
         rawHtml: extracted.rawHtml,
         rawText: extracted.rawText,
+        extractedTitle: extracted.extractedTitle,
+        extractedCompany: extracted.extractedCompany,
         fetchDurationMs: Date.now() - t0,
         httpStatus: statusCode,
         outcome: "SUCCESS",

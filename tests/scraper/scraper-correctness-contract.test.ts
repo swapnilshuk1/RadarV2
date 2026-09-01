@@ -231,6 +231,35 @@ describe("Scraper Correctness & Invariant Contract Suite", () => {
       expect(hasSecurity).toBe(false);
     });
 
+    it("ensures Seniority token (e.g. 'Chief') does not leak disjoint functional C-suite roles", async () => {
+      const path = await import("node:path");
+      const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
+      const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
+      const { SearchPlanner } = await import("../../scripts/scraper/run/search-planner");
+
+      const cfoPlan = SearchPlanner.plan(
+        {
+          targetLevel: ["Chief"],
+          functions: ["Finance"],
+          targetTitles: ["Chief Financial Officer"],
+          preferredLocations: ["Mumbai"],
+        },
+        taxonomyPath,
+        lexiconPath
+      );
+
+      expect(cfoPlan.rankedQueries.length).toBeGreaterThan(0);
+      const emittedQueries = cfoPlan.rankedQueries.map((q) => q.query.toLowerCase());
+
+      // Invariant: CFO must never emit CMO, CGO, CDO, CCO, CPO, or CISO queries
+      expect(emittedQueries.some((q) => q.includes("marketing") || q.includes("cmo"))).toBe(false);
+      expect(emittedQueries.some((q) => q.includes("growth officer") || q.includes("cgo"))).toBe(false);
+      expect(emittedQueries.some((q) => q.includes("customer officer") || q.includes("cco"))).toBe(false);
+      expect(emittedQueries.some((q) => q.includes("digital officer") || q.includes("cdo"))).toBe(false);
+      expect(emittedQueries.some((q) => q.includes("product officer") || q.includes("cpo"))).toBe(false);
+      expect(emittedQueries.some((q) => q.includes("security officer") || q.includes("ciso"))).toBe(false);
+    });
+
     it("ensures authenticated run with active plan resolves exactly compiled queries and never DEFAULT_KEYWORDS", async () => {
       const criteria = {
         targetRoles: ["Chief Technology Officer"],

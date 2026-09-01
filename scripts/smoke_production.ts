@@ -130,19 +130,28 @@ async function runProductionSmoke() {
 
     const probeKey = `snapshots/smoke-probe-${Date.now()}.json`;
     const probePayload = JSON.stringify({ smoke: true, time: new Date().toISOString() });
+    let putSucceeded = false;
     try {
       await blobStore.put(probeKey, probePayload, "application/json");
+      putSucceeded = true;
       const fetched = await blobStore.get(probeKey);
       if (!fetched || fetched.toString("utf-8") !== probePayload) {
         throw new Error(`BlobStore readback verification failed for ${probeKey}`);
       }
       if (blobHealth.backend === "local_filesystem") {
-        console.log(`  ✔ Invariant holds: Payload write/read/delete roundtrip verified on local filesystem store (cleaned up probe).`);
+        console.log(`  ✔ Invariant holds: Payload write/read/delete roundtrip verified on local filesystem store.`);
       } else {
-        console.log(`  ✔ Invariant holds: Payload write/read/delete roundtrip verified on distributed object store (${blobHealth.backend}) without host container coupling (cleaned up probe).`);
+        console.log(`  ✔ Invariant holds: Payload write/read/delete roundtrip verified on distributed object store (${blobHealth.backend}) without host container coupling.`);
       }
     } finally {
-      await blobStore.delete(probeKey).catch(() => {});
+      if (putSucceeded) {
+        await blobStore.delete(probeKey);
+        const stillExists = await blobStore.exists(probeKey);
+        if (stillExists) {
+          throw new Error(`BlobStore probe deletion verification failed: ${probeKey} still exists after deletion.`);
+        }
+        console.log(`  ✔ Invariant holds: Probe artifact ${probeKey} cleanly deleted and verified.`);
+      }
     }
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);

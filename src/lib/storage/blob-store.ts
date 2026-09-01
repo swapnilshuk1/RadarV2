@@ -207,12 +207,23 @@ export class S3CompatibleBlobStore implements BlobStore {
   }
 }
 
+export class BlobStoreConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BlobStoreConfigurationError";
+  }
+}
+
 let _globalBlobStore: BlobStore | null = null;
 
-export function getBlobStore(): BlobStore {
+export function getBlobStore(options?: { enforceDistributed?: boolean }): BlobStore {
   if (!_globalBlobStore) {
     if (process.env.BLOB_STORAGE_ENDPOINT && process.env.BLOB_STORAGE_BUCKET) {
       _globalBlobStore = new S3CompatibleBlobStore();
+    } else if (options?.enforceDistributed || process.env.RADAR_DEPLOYMENT_MODE === "distributed") {
+      throw new BlobStoreConfigurationError(
+        "Distributed deployment mode requires remote object storage (BLOB_STORAGE_ENDPOINT and BLOB_STORAGE_BUCKET), but no remote storage is configured."
+      );
     } else {
       _globalBlobStore = new LocalFsBlobStore();
     }
@@ -223,3 +234,4 @@ export function getBlobStore(): BlobStore {
 export function setBlobStore(store: BlobStore | null): void {
   _globalBlobStore = store;
 }
+

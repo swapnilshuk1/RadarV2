@@ -255,18 +255,9 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       ctx.recordTelemetry?.("httpSuccessful");
       ctx.logger(`[FastPath] Extracted detail from ${url}`);
       
-      let extractedCompany: string | undefined = undefined;
-      if (httpRes.rawHtml) {
-        const $ = cheerio.load(httpRes.rawHtml);
-        const companyText = $(
-          "a.topcard__org-name-link, a.top-card-layout__first-subline-link, .job-details-jobs-unified-top-card__company-name, .topcard__flavor:first-of-type, .topcard__org-name"
-        ).first().text();
-        extractedCompany = companyText.replace(/\s+/g, " ").trim() || undefined;
-      }
-
       return {
         ...httpRes,
-        extractedCompany,
+        extractedCompany: httpRes.extractedCompany,
       };
     }
     ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError} — falling back to Playwright`);

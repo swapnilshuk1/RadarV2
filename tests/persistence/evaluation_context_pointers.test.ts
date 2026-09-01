@@ -100,4 +100,30 @@ describe("Evaluation Context Pointers Integrity", () => {
     expect(lineage.planId).toBe("plan_B");
     expect(lineage.title).toBe("Plan B");
   });
+
+  it("enforces remote object storage in distributed mode and rejects silent local fallback", async () => {
+    const { getBlobStore, setBlobStore, BlobStoreConfigurationError } = await import("../../src/lib/storage/blob-store");
+    
+    setBlobStore(null);
+    const prevMode = process.env.RADAR_DEPLOYMENT_MODE;
+    const prevEndpoint = process.env.BLOB_STORAGE_ENDPOINT;
+    const prevBucket = process.env.BLOB_STORAGE_BUCKET;
+
+    try {
+      process.env.RADAR_DEPLOYMENT_MODE = "distributed";
+      delete process.env.BLOB_STORAGE_ENDPOINT;
+      delete process.env.BLOB_STORAGE_BUCKET;
+
+      expect(() => getBlobStore()).toThrow(BlobStoreConfigurationError);
+    } finally {
+      if (prevMode !== undefined) {
+        process.env.RADAR_DEPLOYMENT_MODE = prevMode;
+      } else {
+        delete process.env.RADAR_DEPLOYMENT_MODE;
+      }
+      if (prevEndpoint) process.env.BLOB_STORAGE_ENDPOINT = prevEndpoint;
+      if (prevBucket) process.env.BLOB_STORAGE_BUCKET = prevBucket;
+      setBlobStore(null);
+    }
+  });
 });
