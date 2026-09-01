@@ -35,17 +35,24 @@ const NON_INDIA_LOCATIONS = [
   /\beurope\b/i,
 ];
 
+export interface HardFilterOptions {
+  allowMissingCompany?: boolean;
+}
+
 /**
  * Returns true if the card PASSES the hard filter (i.e. should be processed).
  * Returns false if it should be immediately skipped.
  */
-export function passesHardFilter(card: CardData): { pass: boolean; reason?: string } {
+export function passesHardFilter(
+  card: CardData,
+  options?: HardFilterOptions
+): { pass: boolean; reason?: string } {
   const title = (card.title || "").trim();
   const company = (card.company || "").trim();
 
   if (!title && !company) return { pass: false, reason: "Missing title and company name" };
   if (!title) return { pass: false, reason: "Missing title" };
-  if (!company) return { pass: false, reason: "Missing company name" };
+  if (!company && !options?.allowMissingCompany) return { pass: false, reason: "Missing company name" };
 
   for (const p of NON_JOB_PATTERNS) {
     if (p.test(title)) return { pass: false, reason: `Non-job page title: "${title}"` };

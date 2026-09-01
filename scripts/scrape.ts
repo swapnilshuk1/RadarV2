@@ -140,6 +140,7 @@ export interface RunOptions {
   autoConfirm?: boolean;
   authContext?: AuthContext;
   searchPlanId?: string;
+  resolvedPlan?: import("../src/lib/security/scope-resolver").ResolvedScraperPlan;
 }
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
@@ -175,60 +176,41 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     opts.autoConfirm = true;
   }
 
-  if (!keywords) {
-    try {
-      const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
-      const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
-      const db = getDatabaseAdapter();
+  if (opts.authContext) {
+    // Authoritative resolution contract: resolve persisted search plan or dynamic candidate plan strictly from Turso
+    const { resolveActiveScraperPlan } = await import("../src/lib/security/scope-resolver");
+    const db = getDatabaseAdapter();
+    const scope = { tenantId: opts.authContext.tenantId, personId: opts.authContext.userId };
+    const resolvedPlan = opts.resolvedPlan || (await resolveActiveScraperPlan(
+      scope,
+      undefined,
+      db,
+      opts.searchPlanId
+    ));
 
-      let searchPlan: any = null;
-
-      // 1. Try to load candidate's active search plan from Turso
-      if (opts.authContext) {
-        const planRow = opts.searchPlanId
-          ? await db.one<{ criteria_json: string }>(
-              `SELECT criteria_json FROM search_plans WHERE id = ? AND tenant_id = ? AND person_id = ?`,
-              [opts.searchPlanId, opts.authContext.tenantId, opts.authContext.userId]
-            )
-          : await db.one<{ criteria_json: string }>(
-              `SELECT criteria_json FROM search_plans WHERE tenant_id = ? AND person_id = ? AND status = 'active' ORDER BY updated_at DESC LIMIT 1`,
-              [opts.authContext.tenantId, opts.authContext.userId]
-            );
-
-        if (planRow?.criteria_json) {
-          searchPlan = JSON.parse(planRow.criteria_json);
-          log(`Loaded active search plan from Turso for tenant ${opts.authContext.tenantId}`);
-        }
-      }
-
-      // 2. If no plan in Turso, generate dynamically from candidate state in Turso
-      if (!searchPlan && opts.authContext) {
-        const repos = getRepositories();
-        const candidateState = await repos.people.getCandidateState(opts.authContext.userId);
-        if (candidateState?.intent) {
-          const { CareerIntentModel } = await import("./scraper/run/career-intent");
-          const intent = CareerIntentModel.extractIntentFromCandidateState(candidateState, taxonomyPath);
-          const { SearchPlanner } = await import("./scraper/run/search-planner");
-          searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
-          log(`Dynamically compiled search plan from candidate state in Turso`);
-        }
-      }
-
-      if (searchPlan?.rankedQueries?.length > 0) {
-        const planKeywords = searchPlan.rankedQueries.map((q: any) => q.query);
-        keywords = planKeywords;
-        log(`Search Planner compiled all ${planKeywords.length} portal queries: ${planKeywords.join(", ")}`);
-      } else {
-        log(`No active search plan found in Turso. Using default executive keywords.`, "warn");
-        keywords = DEFAULT_KEYWORDS;
-      }
-    } catch (e: any) {
-      log(`Search Planner failed to load Search Plan (${e.message}). Falling back to defaults.`, "warn");
-      keywords = DEFAULT_KEYWORDS;
+    if (!resolvedPlan || resolvedPlan.queries.length === 0) {
+      const errorMsg = `[ScraperAuth] No active search plan found in Turso Cloud for tenant ${opts.authContext.tenantId} (person: ${opts.authContext.userId}). Scraper execution aborted (fallback keywords disabled for authenticated sessions).`;
+      log(errorMsg, "error");
+      throw new Error(errorMsg);
     }
+
+    keywords = resolvedPlan.queries;
+
+    log(
+      `Resolved active evaluation context:\n` +
+      `  tenant=${scope.tenantId}\n` +
+      `  person=${scope.personId}\n` +
+      `  searchPlan=${resolvedPlan.searchPlanId}\n` +
+      `  snapshot=${resolvedPlan.snapshotId || "dynamic"}\n` +
+      `  queries=${resolvedPlan.queryCount}\n\n` +
+      `Using persisted search plan; fallback keywords disabled.`
+    );
+  } else if (!keywords) {
+    keywords = DEFAULT_KEYWORDS;
+    log(`Running in offline unauthenticated mode: using manual/default keywords (${keywords.length} queries).`);
   }
   
-  const resolvedKeywords = keywords || DEFAULT_KEYWORDS;
+  const resolvedKeywords = keywords;
 
   const { resumed } = mgr.init({
     keywords: resolvedKeywords, portals, maxPages,

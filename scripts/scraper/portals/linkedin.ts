@@ -156,6 +156,7 @@ export const linkedinHandler: PortalHandler = {
       const cards = await page.locator(cardSelector).all();
       const sliced = cards.slice(0, targetMaxCards);
       for (const card of sliced) {
+        if (ctx.isCancelled?.() || page?.isClosed?.()) break;
         try {
           const titleEl = card.locator('a.job-card-list__title, a.job-card-container__link').first();
           const title = ((await titleEl.textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
@@ -170,10 +171,13 @@ export const linkedinHandler: PortalHandler = {
           
           if (!href || !title) continue;
 
-          const filterRes = passesHardFilter({ title, company, location });
+          const filterRes = passesHardFilter({ title, company, location }, { allowMissingCompany: true });
           if (!filterRes.pass) {
             ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
             continue;
+          }
+          if (!company) {
+            ctx.logger(`[LinkedIn Discovery] Preserving card "${title}" without card company; deferring company resolution to detail extraction`);
           }
 
           const detailUrl = href.startsWith("http") ? href : `https://www.linkedin.com${href}`;
@@ -204,7 +208,14 @@ export const linkedinHandler: PortalHandler = {
         }
       }
     } catch (err: any) {
-      ctx.logger(`LinkedIn listCards failed: ${err.message}`);
+      const isCancelledOrClosed = ctx.isCancelled?.() || page?.isClosed?.() ||
+        err?.message?.includes("Target page, context or browser has been closed") ||
+        err?.message?.includes("browser has been closed");
+      if (isCancelledOrClosed) {
+        ctx.logger(`LinkedIn listCards cancelled cleanly during run shutdown.`);
+      } else {
+        ctx.logger(`LinkedIn listCards failed: ${err.message}`);
+      }
     }
     return cardsOut;
   },

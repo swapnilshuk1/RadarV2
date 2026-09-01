@@ -108,7 +108,7 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
     try {
       console.log("[Server] triggerScrapeFn: resolving verified scraper auth scope…");
       const { resolveScraperAuthContext } = await import("../security/scope-resolver");
-      const { authContext, scope, activeContext } = await resolveScraperAuthContext(user.id);
+      const { authContext, scope, activeContext, resolvedPlan } = await resolveScraperAuthContext(user.id);
       const repos = getRepositories();
 
       // Per-tenant/person concurrency check in Turso Cloud
@@ -131,6 +131,7 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
         autoConfirm: true,
         authContext,
         searchPlanId: activeContext?.searchPlanId,
+        resolvedPlan,
       });
       
       activeScrapeRunLock = { runId, startedAt: Date.now() };

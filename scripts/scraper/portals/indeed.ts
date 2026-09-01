@@ -248,15 +248,19 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       }
 
       const trimmedText = rawText.trim();
-      if (trimmedText.length < 200) {
-        ctx.logger?.(`[Indeed] Rejecting sparse description (${trimmedText.length} chars) for ${url}`);
+      if (trimmedText.length === 0) {
+        ctx.logger?.(`[Indeed] Empty job description for ${url}`);
         return {
           fetched: false,
-          fetchError: `Sparse job description rejected (${trimmedText.length} < 200 chars)`,
+          fetchError: `Empty job description`,
           rawHtml: "",
           rawText: "",
           fetchDurationMs: Date.now() - t0,
         };
+      }
+
+      if (trimmedText.length < 200) {
+        ctx.logger?.(`[Indeed] Preserving sparse description (${trimmedText.length} chars, quality=SPARSE) for ${url}`);
       }
 
       return { fetched: true, rawHtml, rawText: trimmedText, fetchDurationMs: Date.now() - t0 };

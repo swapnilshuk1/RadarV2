@@ -313,6 +313,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/scraper/journal-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 22 |
 | `tests/scraper/live-test-policy.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 1 | 1 |
 | `tests/scraper/m56-operational-consolidation.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 18 |
+| `tests/scraper/m57-slice-a-correctness.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 8 | 24 |
 | `tests/scraper/naukri-state.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 10 |
 | `tests/scraper/scrape-progress.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 20 |
 | `tests/scraper/scraper-control.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 11 |
