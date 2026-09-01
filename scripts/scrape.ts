@@ -1237,6 +1237,9 @@ async function processUnit(
           await getBlobStore().put(payloadKey, JSON.stringify(detailedCard), "application/json");
         } catch (e: any) {
           log(`Failed to write blob ${payloadKey}: ${e.message}`, "warn");
+          mgr.updateCard(cardUnitId, { status: "failed", error: `Acquisition artifact rejected: ${e.message}` });
+          mgr.journal.append({ type: "card_failed", cardId: cardUnitId, error: `Acquisition artifact rejected: ${e.message}` });
+          return null;
         }
 
         await enrichmentQueue.enqueue(
