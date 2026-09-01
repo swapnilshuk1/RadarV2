@@ -121,17 +121,28 @@ async function runProductionSmoke() {
     }
     console.log(`  ✔ BlobStore backend "${blobHealth.backend}" is operational and responsive.`);
 
+    const isDistributedMode = process.env.RADAR_DEPLOYMENT_MODE === "distributed";
+    if (isDistributedMode && blobHealth.backend === "local_filesystem") {
+      throw new Error(
+        `[BlobStore] RADAR_DEPLOYMENT_MODE=distributed requires a remote object store (S3/R2), but local_filesystem is active.`
+      );
+    }
+
     const probeKey = `snapshots/smoke-probe-${Date.now()}.json`;
     const probePayload = JSON.stringify({ smoke: true, time: new Date().toISOString() });
-    await blobStore.put(probeKey, probePayload, "application/json");
-    const fetched = await blobStore.get(probeKey);
-    if (!fetched || fetched.toString("utf-8") !== probePayload) {
-      throw new Error(`BlobStore readback verification failed for ${probeKey}`);
-    }
-    if (blobHealth.backend === "local_filesystem") {
-      console.log(`  ✔ Invariant holds: Payload write/read/delete roundtrip verified on local filesystem store.`);
-    } else {
-      console.log(`  ✔ Invariant holds: Payload write/read/delete roundtrip verified on distributed object store (${blobHealth.backend}) without host container coupling.`);
+    try {
+      await blobStore.put(probeKey, probePayload, "application/json");
+      const fetched = await blobStore.get(probeKey);
+      if (!fetched || fetched.toString("utf-8") !== probePayload) {
+        throw new Error(`BlobStore readback verification failed for ${probeKey}`);
+      }
+      if (blobHealth.backend === "local_filesystem") {
+        console.log(`  ✔ Invariant holds: Payload write/read/delete roundtrip verified on local filesystem store (cleaned up probe).`);
+      } else {
+        console.log(`  ✔ Invariant holds: Payload write/read/delete roundtrip verified on distributed object store (${blobHealth.backend}) without host container coupling (cleaned up probe).`);
+      }
+    } finally {
+      await blobStore.delete(probeKey).catch(() => {});
     }
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);

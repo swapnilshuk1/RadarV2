@@ -2,11 +2,18 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import Database from "better-sqlite3";
 import { SqliteCanonicalServingStore } from "../../src/data/sqlite/repositories/SqliteCanonicalServingStore";
+import {
+  SqliteEvaluationContextStore,
+  EvaluationContextConflictError,
+  NoActiveEvaluationContextError,
+  NoActivePlanError
+} from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { setupLineageTestFixture } from "./lineage_fixture";
 
 describe("Evaluation Context Pointers Integrity", () => {
   let db: any;
   let store: SqliteCanonicalServingStore;
+  let evalContextStore: SqliteEvaluationContextStore;
 
   beforeAll(async () => {
     const rawDb = new Database(":memory:");
@@ -15,6 +22,7 @@ describe("Evaluation Context Pointers Integrity", () => {
     await setupLineageTestFixture(db);
 
     store = new SqliteCanonicalServingStore(db);
+    evalContextStore = new SqliteEvaluationContextStore(db);
   });
 
   it("prevents false bindings missing actual lineage", async () => {
@@ -51,5 +59,45 @@ describe("Evaluation Context Pointers Integrity", () => {
 
     const active = await db.one<{ context_fingerprint: string }>(`SELECT context_fingerprint FROM active_evaluation_contexts WHERE tenant_id = 'tenant_A'`);
     expect(active?.context_fingerprint).toBe("fingerprint_A");
+  });
+
+  it("resolves active search plan and exact snapshot via pointer", async () => {
+    const lineage = await evalContextStore.getActiveSearchPlanWithSnapshot({
+      tenantId: "tenant_A",
+      personId: "person_A",
+    });
+
+    expect(lineage.planId).toBe("plan_A");
+    expect(lineage.snapshotId).toBe("sps_A");
+    expect(lineage.contextFingerprint).toBe("fingerprint_A");
+    expect(lineage.title).toBe("Plan A");
+  });
+
+  it("rejects searchPlanId and contextFingerprint conflict with EvaluationContextConflictError", async () => {
+    await expect(
+      evalContextStore.getActiveSearchPlanWithSnapshot(
+        { tenantId: "tenant_A", personId: "person_A" },
+        { searchPlanId: "plan_mismatch", contextFingerprint: "fingerprint_A" }
+      )
+    ).rejects.toThrow(EvaluationContextConflictError);
+  });
+
+  it("throws NoActiveEvaluationContextError when no pointer exists and override is not allowed", async () => {
+    await expect(
+      evalContextStore.getActiveSearchPlanWithSnapshot({
+        tenantId: "tenant_B",
+        personId: "person_B",
+      })
+    ).rejects.toThrow(NoActiveEvaluationContextError);
+  });
+
+  it("allows explicit search plan override without pointer when authorized", async () => {
+    const lineage = await evalContextStore.getActiveSearchPlanWithSnapshot(
+      { tenantId: "tenant_B", personId: "person_B" },
+      { searchPlanId: "plan_B", allowOverrideWithoutPointer: true }
+    );
+
+    expect(lineage.planId).toBe("plan_B");
+    expect(lineage.title).toBe("Plan B");
   });
 });

@@ -6,6 +6,7 @@ import { humanize, jitter, sleep } from "../utils/jitter";
 import { passesHardFilter } from "../utils/hard-filter";
 import { hydrateVirtualizedList } from "../utils/scroll";
 import { normalizePostingDate } from "../utils/date";
+import * as cheerio from "cheerio";
 
 const LINKEDIN_GEO_INDIA = "102713980";
 
@@ -253,7 +254,20 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     if (httpRes.fetched) {
       ctx.recordTelemetry?.("httpSuccessful");
       ctx.logger(`[FastPath] Extracted detail from ${url}`);
-      return httpRes;
+      
+      let extractedCompany: string | undefined = undefined;
+      if (httpRes.rawHtml) {
+        const $ = cheerio.load(httpRes.rawHtml);
+        const companyText = $(
+          "a.topcard__org-name-link, a.top-card-layout__first-subline-link, .job-details-jobs-unified-top-card__company-name, .topcard__flavor:first-of-type, .topcard__org-name"
+        ).first().text();
+        extractedCompany = companyText.replace(/\s+/g, " ").trim() || undefined;
+      }
+
+      return {
+        ...httpRes,
+        extractedCompany,
+      };
     }
     ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError} — falling back to Playwright`);
   }
@@ -275,6 +289,13 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     const rawHtml = await container.innerHTML().catch(() => "");
     const rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
 
+    // Extract company name from topcard container
+    const companyLocator = page.locator(
+      'a.topcard__org-name-link, a.top-card-layout__first-subline-link, .job-details-jobs-unified-top-card__company-name, .topcard__flavor:first-of-type, .topcard__org-name'
+    ).first();
+    const companyText = ((await companyLocator.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+    const extractedCompany = companyText.length > 0 ? companyText : undefined;
+
     const trimmedText = rawText.trim();
     if (trimmedText.length === 0) {
       ctx.logger?.(`[LinkedIn] Empty job description for ${url}`);
@@ -285,6 +306,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         rawText: "",
         fetchDurationMs: Date.now() - t0,
         httpStatus: effectiveStatus,
+        extractedCompany,
       };
     }
 
@@ -300,6 +322,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       fetchDurationMs: Date.now() - t0,
       httpStatus: effectiveStatus,
       quality: isSparse ? ("SPARSE" as const) : ("VALID" as const),
+      extractedCompany,
     };
   } catch (err: any) {
     return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };

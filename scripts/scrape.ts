@@ -175,12 +175,14 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     opts.autoConfirm = true;
   }
 
+  let resolvedPlan: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan | undefined = opts.resolvedPlan;
+
   if (opts.authContext) {
     // Authoritative resolution contract: resolve persisted search plan strictly via ScraperPlanResolver
     const { ScraperPlanResolver } = await import("../src/lib/intelligence/ScraperPlanResolver");
     const db = getDatabaseAdapter();
     const scope = { tenantId: opts.authContext.tenantId, personId: opts.authContext.userId };
-    const resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
+    resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
       scope,
       undefined,
       db,
@@ -235,7 +237,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       const repos = getRepositories();
       await repos.scrapeRuns.createRun(runScope, {
         id: mgr.runId,
-        searchPlanId: opts.searchPlanId || "default",
+        searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
         portalTargets: portals,
         initialStatus: "initializing",
         config: { maxPages, keywords: resolvedKeywords },
@@ -757,12 +759,12 @@ async function processUnit(
       mgr.recordActivity(`Reading JD: ${feedCard.title} (${feedCard.company})`);
 
       try {
-        // 1. Cheap Pre-Filter
+        // 1. Cheap Pre-Filter (Allow missing company for LinkedIn pre-detail extraction)
         const preQual = passesHardFilter({
           title: feedCard.title,
           company: feedCard.company,
           location: feedCard.location || "",
-        });
+        }, { allowMissingCompany: unit.portal === "LinkedIn" });
 
         if (!preQual.pass) {
           mgr.updateCard(cardUnitId, { status: "skipped_empty", error: preQual.reason });
@@ -774,7 +776,7 @@ async function processUnit(
           portal: unit.portal,
           url: feedCard.detailUrl,
           title: feedCard.title,
-          companyName: feedCard.company,
+          companyName: feedCard.company || "Confidential / Unknown",
           rawJobId: feedCard.cardHash
         });
 
@@ -1053,7 +1055,8 @@ async function processUnit(
             // Ensure sparse/un-enriched captures enter Canonical Ingestion pipeline
             // Acquisition failure is not opportunity invalidity:
             // Opportunity enters canonical pipeline with MINIMAL / RECOVERY_PENDING state
-            if (feedCard.title && feedCard.company) {
+            const sparseCompany = (detail.extractedCompany || feedCard.company || "").trim() || "Confidential / Unknown";
+            if (feedCard.title && sparseCompany) {
               try {
                 const canonicalIngest = new CanonicalIngestionService();
                 await canonicalIngest.ingestOpportunity({
@@ -1061,10 +1064,10 @@ async function processUnit(
                   sourceJobId: feedCard.cardHash,
                   canonicalUrl: feedCard.detailUrl,
                   jobTitle: feedCard.title,
-                  companyName: feedCard.company,
+                  companyName: sparseCompany,
                   location: feedCard.location || "",
                   employmentType: (detail as any)?.employmentType || null,
-                  rawContent: detail.rawText || `${feedCard.title} at ${feedCard.company}`,
+                  rawContent: detail.rawText || `${feedCard.title} at ${sparseCompany}`,
                   postedAt: feedCard.postedAt,
                   postedPrecision: (feedCard as any)?.postedPrecision || null
                 });
@@ -1079,8 +1082,22 @@ async function processUnit(
 
           HealthManager.recordSuccess(unit.portal);
 
+          // Post-Detail Company Resolution & Lineage Enforcement
+          const effectiveCompany = (detail.extractedCompany || feedCard.company || "").trim() || "Confidential / Unknown";
+          feedCard.company = effectiveCompany;
+
+          // Re-derive canonical identity with resolved company
+          const resolvedIdentity = resolveCanonicalIdentity({
+            portal: unit.portal,
+            url: feedCard.detailUrl,
+            title: feedCard.title,
+            companyName: effectiveCompany,
+            rawJobId: feedCard.cardHash
+          });
+
           detailedCard = {
             ...feedCard,
+            company: effectiveCompany,
             snapshotSchemaVersion: SNAPSHOT_SCHEMA_VERSION,
             scraperVersion: SCRAPER_VERSION,
             acquisitionRoute,
@@ -1104,10 +1121,10 @@ async function processUnit(
             lastAcquisitionMethod: acquisitionRoute
           });
 
-          const companyId = feedCard.company.toLowerCase().replace(/[^a-z0-9]/g, "-");
+          const companyId = effectiveCompany.toLowerCase().replace(/[^a-z0-9]/g, "-");
           await repos.companies.registerCompany({
             id: companyId,
-            name: feedCard.company,
+            name: effectiveCompany,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             provenance: {
@@ -1118,11 +1135,11 @@ async function processUnit(
           });
 
           await repos.opportunities.mergeOpportunity({
-            id: identity.canonicalJobId,
+            id: resolvedIdentity.canonicalJobId,
             companyId,
             canonicalTitle: feedCard.title,
             location: feedCard.location,
-            fingerprint: identity.canonicalJobId,
+            fingerprint: resolvedIdentity.canonicalJobId,
             lifecycle: "Verified",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),

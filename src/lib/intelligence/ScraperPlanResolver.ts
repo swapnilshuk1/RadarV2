@@ -11,13 +11,16 @@
  *   business criteria compilation and query ranking.
  * - Single source of truth for converting persisted search plans / snapshots into
  *   executable queries for the scraper engine.
+ * - Never executes raw SQL: delegates all persistence to StorageProvider.evaluationContexts.
  */
 
 import path from "node:path";
-import { getDatabaseAdapter, type DatabaseAdapter } from "../../data/database";
+import { getRepositories, createRepositories } from "../../data/sqlite/provider";
+import type { DatabaseAdapter } from "../../data/database";
 import type { AuthorizedPersonScope } from "../security/auth";
 import type { ActiveServingContext } from "../security/scope-resolver";
 import type { SearchCriteriaPayload } from "../domain/evaluation_context";
+import { InsufficientSearchCriteriaError } from "../../../scripts/scraper/run/search-planner";
 
 export interface ResolvedScraperPlan {
   readonly searchPlanId: string;
@@ -30,83 +33,61 @@ export interface ResolvedScraperPlan {
   readonly source: "persisted_active_plan";
 }
 
-interface PlanRow {
-  id: string;
-  title: string;
-  criteria_json: string;
-  snapshot_id?: string;
-  snapshot_payload?: string;
-}
-
 export class ScraperPlanResolver {
   /**
    * Resolves the active search plan for an authorized scope and compiles ranked queries.
-   * Returns undefined if no persisted plan or valid candidate intent exists.
+   * Enforces zero-fallback: throws an explicit error if plan is missing, inactive, or has insufficient criteria.
    */
   static async resolveActivePlan(
     scope: AuthorizedPersonScope,
     activeContext?: ActiveServingContext,
     adapter?: DatabaseAdapter,
     searchPlanIdOverride?: string
-  ): Promise<ResolvedScraperPlan | undefined> {
-    const db = adapter || getDatabaseAdapter();
+  ): Promise<ResolvedScraperPlan> {
+    const repos = adapter ? createRepositories(adapter) : getRepositories();
     const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
     const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
 
     const targetPlanId = searchPlanIdOverride || activeContext?.searchPlanId;
+    const targetFingerprint = activeContext?.contextFingerprint;
 
-    let planRow: PlanRow | null = null;
+    // Resolve authoritative active plan and exact snapshot via repository store
+    const lineage = await repos.evaluationContexts.getActiveSearchPlanWithSnapshot(scope, {
+      searchPlanId: targetPlanId,
+      contextFingerprint: targetFingerprint,
+      allowOverrideWithoutPointer: !!searchPlanIdOverride,
+    });
 
-    if (targetPlanId) {
-      planRow = await db.one<PlanRow>(
-        `SELECT sp.id, sp.title, sp.criteria_json, sps.id AS snapshot_id, sps.payload_json AS snapshot_payload
-         FROM search_plans sp
-         LEFT JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id AND sps.tenant_id = sp.tenant_id AND sps.person_id = sp.person_id
-         WHERE sp.id = ? AND sp.tenant_id = ? AND sp.person_id = ?
-         ORDER BY sps.created_at DESC
-         LIMIT 1`,
-        [targetPlanId, scope.tenantId, scope.personId]
-      );
-    }
-
-    if (!planRow) {
-      planRow = await db.one<PlanRow>(
-        `SELECT sp.id, sp.title, sp.criteria_json, sps.id AS snapshot_id, sps.payload_json AS snapshot_payload
-         FROM search_plans sp
-         LEFT JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id AND sps.tenant_id = sp.tenant_id AND sps.person_id = sp.person_id
-         WHERE sp.tenant_id = ? AND sp.person_id = ? AND sp.status = 'active'
-         ORDER BY sp.updated_at DESC, sps.created_at DESC
-         LIMIT 1`,
-        [scope.tenantId, scope.personId]
-      );
-    }
-
-    if (!planRow) {
-      return undefined;
-    }
-
-    const planId = planRow.id;
-    const planTitle = planRow.title;
-    const snapshotId = planRow.snapshot_id || undefined;
-    const rawPayload = planRow.snapshot_payload || planRow.criteria_json;
-    let criteria: SearchCriteriaPayload | null = null;
-    try {
-      criteria = JSON.parse(rawPayload);
-    } catch {
-      criteria = null;
-    }
-
+    const criteria = lineage.criteria;
     if (!criteria) {
-      return undefined;
+      throw new InsufficientSearchCriteriaError(
+        `[ScraperPlanResolver] Search plan '${lineage.planId}' has no valid criteria payload.`
+      );
     }
 
-    // Synthesize CareerIntent and compile discrete SearchPlan queries
     const targetRoles: string[] = criteria.targetRoles || [];
     const targetSeniority: string[] = criteria.targetSeniority || [];
     const targetLocations: string[] = criteria.targetLocations || [];
     const targetIndustries: string[] = criteria.targetIndustries || [];
     const customParams = (criteria.customParameters as Record<string, unknown>) || {};
-    const functions = (customParams.functions as string[]) || [];
+    const functions: string[] = Array.isArray(customParams.functions)
+      ? (customParams.functions as string[])
+      : Array.isArray(customParams.function)
+      ? (customParams.function as string[])
+      : [];
+    const operatingModels: string[] = Array.isArray(customParams.operatingModels)
+      ? (customParams.operatingModels as string[])
+      : [];
+    const ownership: string[] = Array.isArray(customParams.ownership)
+      ? (customParams.ownership as string[])
+      : [];
+
+    // Zero-fallback invariant: Must have at least targetRoles or declared functions
+    if (targetRoles.length === 0 && functions.length === 0) {
+      throw new InsufficientSearchCriteriaError(
+        `[ScraperPlanResolver] Search plan '${lineage.planId}' has insufficient criteria to compile search queries. Target roles or functions must be defined.`
+      );
+    }
 
     const targetLevels = new Set<string>(targetSeniority);
     if (targetLevels.size === 0) {
@@ -119,30 +100,33 @@ export class ScraperPlanResolver {
         if (lower.includes("head") || lower.includes("lead")) targetLevels.add("Head");
       });
     }
-    if (targetLevels.size === 0) {
-      targetLevels.add("VP").add("Head").add("Chief");
-    }
 
     const { SearchPlanner } = await import("../../../scripts/scraper/run/search-planner");
     const intent = {
       targetLevel: Array.from(targetLevels),
-      functions: functions.length > 0 ? functions : ["Marketing", "Growth"],
-      operatingModels: ["B2B", "Enterprise", "Scale-up"],
-      ownership: ["P&L", "Commercial"],
+      functions,
+      operatingModels,
+      ownership,
       industries: targetIndustries,
       exclusions: criteria.excludedCompanies || [],
-      targetTitles: targetRoles.length > 0 ? targetRoles : ["Vice President", "Chief Commercial Officer", "Head of Growth"],
-      preferredLocations: targetLocations.length > 0 ? targetLocations : ["Gurugram", "Remote India"],
+      targetTitles: targetRoles,
+      preferredLocations: targetLocations,
     };
 
     const compiledPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
     const queries = (compiledPlan.rankedQueries || []).map((q: any) => q.query);
 
+    if (queries.length === 0) {
+      throw new InsufficientSearchCriteriaError(
+        `[ScraperPlanResolver] Search plan '${lineage.planId}' generated 0 ranked queries from criteria.`
+      );
+    }
+
     return {
-      searchPlanId: planId,
-      snapshotId,
-      contextFingerprint: activeContext?.contextFingerprint,
-      title: planTitle,
+      searchPlanId: lineage.planId,
+      snapshotId: lineage.snapshotId,
+      contextFingerprint: lineage.contextFingerprint,
+      title: lineage.title,
       criteria,
       queries,
       queryCount: queries.length,
@@ -152,3 +136,4 @@ export class ScraperPlanResolver {
 }
 
 export const resolveActiveScraperPlan = ScraperPlanResolver.resolveActivePlan;
+

@@ -73,6 +73,22 @@ describe("Scraper Correctness & Invariant Contract Suite", () => {
          VALUES (?, ?, ?, ?, 'active', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         ["sp_exec_1", "tenant_test", "user_exec_1", "Executive Marketing Plan", JSON.stringify(criteria)]
       );
+      await db.execute(
+        `INSERT INTO search_plan_snapshots (id, tenant_id, person_id, search_plan_id, snapshot_hash, payload_json) VALUES (?, ?, ?, ?, ?, ?)`,
+        ["sps_exec_1", "tenant_test", "user_exec_1", "sp_exec_1", "hash_sp1", JSON.stringify(criteria)]
+      );
+      await db.execute(
+        `INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ["fp_exec_1", "tenant_test", "user_exec_1", "sps_exec_1", "v1", "hash_ont", "v1", "v1"]
+      );
+      await db.execute(
+        `INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id) VALUES (?, ?, ?, ?)`,
+        ["fp_exec_1", "tenant_test", "user_exec_1", "sp_exec_1"]
+      );
+      await db.execute(
+        `INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by) VALUES (?, ?, ?, ?, ?)`,
+        ["tenant_test", "user_exec_1", "sp_exec_1", "fp_exec_1", "system"]
+      );
 
       const scope = { tenantId: "tenant_test", personId: "user_exec_1" };
       const resolved = await ScraperPlanResolver.resolveActivePlan(scope, undefined, db);
@@ -102,6 +118,22 @@ describe("Scraper Correctness & Invariant Contract Suite", () => {
         `INSERT INTO search_plans (id, tenant_id, person_id, title, status, criteria_json, created_at, updated_at)
          VALUES (?, ?, ?, ?, 'active', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         ["sp_exec_2", "tenant_test", "user_exec_1", "Commercial Growth Plan", JSON.stringify(criteria)]
+      );
+      await db.execute(
+        `INSERT INTO search_plan_snapshots (id, tenant_id, person_id, search_plan_id, snapshot_hash, payload_json) VALUES (?, ?, ?, ?, ?, ?)`,
+        ["sps_exec_2", "tenant_test", "user_exec_1", "sp_exec_2", "hash_sp2", JSON.stringify(criteria)]
+      );
+      await db.execute(
+        `INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ["fp_exec_2", "tenant_test", "user_exec_1", "sps_exec_2", "v1", "hash_ont", "v1", "v1"]
+      );
+      await db.execute(
+        `INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id) VALUES (?, ?, ?, ?)`,
+        ["fp_exec_2", "tenant_test", "user_exec_1", "sp_exec_2"]
+      );
+      await db.execute(
+        `INSERT OR REPLACE INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by) VALUES (?, ?, ?, ?, ?)`,
+        ["tenant_test", "user_exec_1", "sp_exec_2", "fp_exec_2", "system"]
       );
 
       // Security resolver strictly verifies identity, membership, and scope
@@ -144,8 +176,7 @@ describe("Scraper Correctness & Invariant Contract Suite", () => {
       );
 
       const scope = { tenantId: "tenant_test", personId: "user_no_plan" };
-      const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, undefined, db);
-      expect(resolvedPlan).toBeUndefined();
+      await expect(ScraperPlanResolver.resolveActivePlan(scope, undefined, db)).rejects.toThrow();
 
       const authContext = {
         userId: "user_no_plan",
@@ -159,7 +190,45 @@ describe("Scraper Correctness & Invariant Contract Suite", () => {
         startRun({
           authContext,
         })
-      ).rejects.toThrow(/No active search plan found in Turso Cloud/);
+      ).rejects.toThrow();
+    });
+
+    it("fails fast with InsufficientSearchCriteriaError when search plan has empty criteria or generates zero queries", async () => {
+      await db.execute(
+        `INSERT INTO search_plans (id, tenant_id, person_id, title, status, criteria_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'active', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        ["sp_empty_criteria", "tenant_test", "user_exec_1", "Empty Criteria Plan", JSON.stringify({})]
+      );
+
+      const scope = { tenantId: "tenant_test", personId: "user_exec_1" };
+      await expect(
+        ScraperPlanResolver.resolveActivePlan(scope, undefined, db, "sp_empty_criteria")
+      ).rejects.toThrow(/insufficient criteria/i);
+    });
+
+    it("verifies SearchPlanner only emits queries derived from criteria and not unselected lexicon concepts", async () => {
+      const path = await import("node:path");
+      const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
+      const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
+      const { SearchPlanner } = await import("../../scripts/scraper/run/search-planner");
+
+      const plan = SearchPlanner.plan(
+        {
+          targetLevel: ["VP"],
+          functions: ["Growth"],
+          targetTitles: ["VP Growth"],
+          preferredLocations: ["Bengaluru"],
+        },
+        taxonomyPath,
+        lexiconPath
+      );
+
+      expect(plan.rankedQueries.length).toBeGreaterThan(0);
+      // Queries must relate to Growth/VP, and not unselected domains like Security or Supply Chain
+      const hasGrowth = plan.rankedQueries.some((q) => q.query.toLowerCase().includes("growth"));
+      expect(hasGrowth).toBe(true);
+      const hasSecurity = plan.rankedQueries.some((q) => q.query.toLowerCase().includes("ciso") || q.query.toLowerCase().includes("security"));
+      expect(hasSecurity).toBe(false);
     });
 
     it("ensures authenticated run with active plan resolves exactly compiled queries and never DEFAULT_KEYWORDS", async () => {
@@ -177,7 +246,7 @@ describe("Scraper Correctness & Invariant Contract Suite", () => {
       );
 
       const scope = { tenantId: "tenant_test", personId: "user_exec_1" };
-      const resolved = await resolveActiveScraperPlan(scope, undefined, db);
+      const resolved = await resolveActiveScraperPlan(scope, undefined, db, planId);
       expect(resolved).toBeDefined();
       expect(resolved?.searchPlanId).toBe(planId);
       expect(resolved?.source).toBe("persisted_active_plan");

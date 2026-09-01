@@ -455,5 +455,80 @@ describe("Slice B: Acquisition Efficiency & Failure Truth Contracts", () => {
       expect(doc?.content.length).toBeLessThan(200);
       expect(doc?.content.length).toBeGreaterThan(0);
     });
+
+    it("verifies LinkedIn post-detail extraction parses top-card company name from HTML", async () => {
+      const targetUrl = "https://www.linkedin.com/jobs/view/987654321/";
+      const mockHtml = `
+        <html>
+          <body>
+            <a class="topcard__org-name-link" href="#">Global FinTech Corp</a>
+            <div class="show-more-less-html__markup">We are hiring a VP Engineering...</div>
+          </body>
+        </html>
+      `;
+
+      const mockCtx: any = {
+        portal: "LinkedIn",
+        detailPage: {
+          goto: vi.fn(async () => {}),
+          url: () => targetUrl,
+          locator: (sel: string) => ({
+            first: () => ({
+              textContent: async () => (sel.includes("org-name") ? "Global FinTech Corp" : ""),
+              innerHTML: async () => (sel.includes("markup") ? "We are hiring a VP Engineering..." : ""),
+            }),
+          }),
+        },
+        isHttpDisabled: () => false,
+        logger: vi.fn(),
+      };
+
+      // Mock fast HTTP fetch returning the HTML
+      const httpFetch = await import("../../scripts/scraper/utils/http-fetch");
+      vi.spyOn(httpFetch, "fastFetchDetail").mockResolvedValueOnce({
+        fetched: true,
+        rawHtml: mockHtml,
+        rawText: "We are hiring a VP Engineering...",
+        outcome: "SUCCESS_ENRICHED",
+        fetchDurationMs: 50,
+      });
+
+      const result = await linkedinHandler.fetchDetail(mockCtx, targetUrl);
+
+      expect(result.fetched).toBe(true);
+      expect(result.extractedCompany).toBe("Global FinTech Corp");
+      expect(result.rawText).toContain("VP Engineering");
+    });
+
+    it("verifies LocalFsBlobStore write/read/delete lifecycle cleans up probe files", async () => {
+      const { LocalFsBlobStore } = await import("../../src/lib/storage/blob-store");
+      const path = await import("node:path");
+      const fs = await import("node:fs");
+
+      const tempDir = path.resolve(process.cwd(), ".radar/artifacts/blobs_test");
+      const store = new LocalFsBlobStore(tempDir);
+
+      const probeKey = `snapshots/test-probe-${Date.now()}.json`;
+      const payload = JSON.stringify({ test: true });
+
+      try {
+        await store.put(probeKey, payload, "application/json");
+        const existsBefore = await store.exists(probeKey);
+        expect(existsBefore).toBe(true);
+
+        const readBack = await store.get(probeKey);
+        expect(readBack?.toString("utf-8")).toBe(payload);
+      } finally {
+        await store.delete(probeKey);
+      }
+
+      const existsAfter = await store.exists(probeKey);
+      expect(existsAfter).toBe(false);
+
+      // Clean up test directory if empty
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
   });
 });

@@ -204,6 +204,7 @@ export interface DetailedCard extends FeedCard {
     fetchDurationMs?: number;
     httpStatus?: number;
     quality?: "VALID" | "SPARSE" | "EMPTY" | "ERROR";
+    extractedCompany?: string;
   };
   acquisitionAttempts?: AcquisitionAttempt[];
   telemetry: {

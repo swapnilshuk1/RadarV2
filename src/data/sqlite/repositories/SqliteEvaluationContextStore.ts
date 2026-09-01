@@ -406,4 +406,208 @@ export class SqliteEvaluationContextStore {
       createdAt: row.created_at,
     };
   }
+
+  /**
+   * Authoritatively resolves the active search plan and immutable snapshot for an authorized scope.
+   * Enforces strict context pointer precedence, conflict validation, and zero silent snapshot drift.
+   */
+  async getActiveSearchPlanWithSnapshot(
+    scope: AuthorizedPersonScope,
+    options?: GetActiveSearchPlanOptions
+  ): Promise<ActiveSearchPlanLineage> {
+    const targetPlanId = options?.searchPlanId;
+    const targetFingerprint = options?.contextFingerprint;
+
+    // 1. Conflict Check: if both searchPlanId and contextFingerprint are supplied, assert they match
+    if (targetPlanId && targetFingerprint) {
+      const row = await this.db.one<any>(
+        `SELECT ec.context_fingerprint, sps.search_plan_id, sp.id AS plan_id, sp.title, sp.status, sp.criteria_json,
+                sps.id AS snapshot_id, sps.snapshot_hash, sps.payload_json
+         FROM evaluation_contexts ec
+         JOIN search_plan_snapshots sps ON sps.id = ec.search_plan_snapshot_id
+         JOIN search_plans sp ON sp.id = sps.search_plan_id
+         WHERE ec.context_fingerprint = ?
+           AND ec.tenant_id = ?
+           AND ec.person_id = ?
+           AND sps.tenant_id = ?
+           AND sps.person_id = ?
+           AND sp.tenant_id = ?
+           AND sp.person_id = ?`,
+        [targetFingerprint, scope.tenantId, scope.personId, scope.tenantId, scope.personId, scope.tenantId, scope.personId]
+      );
+
+      if (!row) {
+        throw new NoActiveEvaluationContextError(
+          `No evaluation context found for fingerprint '${targetFingerprint}' in tenant '${scope.tenantId}'`
+        );
+      }
+
+      if (row.search_plan_id !== targetPlanId) {
+        throw new EvaluationContextConflictError(
+          `Context fingerprint '${targetFingerprint}' belongs to searchPlan '${row.search_plan_id}', but override requested '${targetPlanId}'`
+        );
+      }
+
+      if (row.status !== "active") {
+        throw new NoActivePlanError(`Search plan '${row.plan_id}' is not active (status: '${row.status}')`);
+      }
+
+      const rawPayload = row.payload_json || row.criteria_json;
+      return {
+        planId: row.plan_id,
+        title: row.title,
+        status: row.status,
+        criteria: JSON.parse(rawPayload),
+        snapshotId: row.snapshot_id,
+        snapshotHash: row.snapshot_hash,
+        contextFingerprint: row.context_fingerprint,
+      };
+    }
+
+    // 2. Explicit contextFingerprint Resolution (Exact snapshot binding)
+    if (targetFingerprint) {
+      const row = await this.db.one<any>(
+        `SELECT ec.context_fingerprint, sps.search_plan_id, sp.id AS plan_id, sp.title, sp.status, sp.criteria_json,
+                sps.id AS snapshot_id, sps.snapshot_hash, sps.payload_json
+         FROM evaluation_contexts ec
+         JOIN search_plan_snapshots sps ON sps.id = ec.search_plan_snapshot_id
+         JOIN search_plans sp ON sp.id = sps.search_plan_id
+         WHERE ec.context_fingerprint = ?
+           AND ec.tenant_id = ?
+           AND ec.person_id = ?
+           AND sps.tenant_id = ?
+           AND sps.person_id = ?
+           AND sp.tenant_id = ?
+           AND sp.person_id = ?`,
+        [targetFingerprint, scope.tenantId, scope.personId, scope.tenantId, scope.personId, scope.tenantId, scope.personId]
+      );
+
+      if (!row) {
+        throw new NoActiveEvaluationContextError(
+          `No evaluation context found for fingerprint '${targetFingerprint}' in tenant '${scope.tenantId}'`
+        );
+      }
+
+      if (row.status !== "active") {
+        throw new NoActivePlanError(`Search plan '${row.plan_id}' is not active (status: '${row.status}')`);
+      }
+
+      const rawPayload = row.payload_json || row.criteria_json;
+      return {
+        planId: row.plan_id,
+        title: row.title,
+        status: row.status,
+        criteria: JSON.parse(rawPayload),
+        snapshotId: row.snapshot_id,
+        snapshotHash: row.snapshot_hash,
+        contextFingerprint: row.context_fingerprint,
+      };
+    }
+
+    // 3. Explicit Override Path (Authorized override without pointer)
+    if (targetPlanId && options?.allowOverrideWithoutPointer) {
+      const row = await this.db.one<any>(
+        `SELECT sp.id AS plan_id, sp.title, sp.status, sp.criteria_json,
+                sps.id AS snapshot_id, sps.snapshot_hash, sps.payload_json
+         FROM search_plans sp
+         LEFT JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id
+           AND sps.tenant_id = sp.tenant_id
+           AND sps.person_id = sp.person_id
+         WHERE sp.id = ? AND sp.tenant_id = ? AND sp.person_id = ? AND sp.status = 'active'
+         ORDER BY sps.created_at DESC
+         LIMIT 1`,
+        [targetPlanId, scope.tenantId, scope.personId]
+      );
+
+      if (!row) {
+        throw new NoActivePlanError(
+          `No active search plan found with ID '${targetPlanId}' for tenant '${scope.tenantId}' and person '${scope.personId}'`
+        );
+      }
+
+      const rawPayload = row.payload_json || row.criteria_json;
+      return {
+        planId: row.plan_id,
+        title: row.title,
+        status: row.status,
+        criteria: JSON.parse(rawPayload),
+        snapshotId: row.snapshot_id || `sps_legacy_${row.plan_id}`,
+        snapshotHash: row.snapshot_hash || computeSearchPlanSnapshotHash(JSON.parse(rawPayload)),
+        contextFingerprint: undefined,
+      };
+    }
+
+    // 4. Default Authenticated Execution: Require active pointer in active_evaluation_contexts
+    const row = await this.db.one<any>(
+      `SELECT aec.context_fingerprint, aec.search_plan_id, sp.id AS plan_id, sp.title, sp.status, sp.criteria_json,
+              sps.id AS snapshot_id, sps.snapshot_hash, sps.payload_json
+       FROM active_evaluation_contexts aec
+       JOIN evaluation_contexts ec ON ec.context_fingerprint = aec.context_fingerprint
+         AND ec.tenant_id = aec.tenant_id
+         AND ec.person_id = aec.person_id
+       JOIN search_plan_snapshots sps ON sps.id = ec.search_plan_snapshot_id
+         AND sps.tenant_id = aec.tenant_id
+         AND sps.person_id = aec.person_id
+       JOIN search_plans sp ON sp.id = aec.search_plan_id
+         AND sp.tenant_id = aec.tenant_id
+         AND sp.person_id = aec.person_id
+       WHERE aec.tenant_id = ? AND aec.person_id = ? AND sp.status = 'active'
+       LIMIT 1`,
+      [scope.tenantId, scope.personId]
+    );
+
+    if (!row) {
+      throw new NoActiveEvaluationContextError(
+        `No active evaluation context pointer found in Turso Cloud for tenant '${scope.tenantId}' (person: '${scope.personId}'). Authenticated scraping requires an active search plan pointer.`
+      );
+    }
+
+    const rawPayload = row.payload_json || row.criteria_json;
+    return {
+      planId: row.plan_id,
+      title: row.title,
+      status: row.status,
+      criteria: JSON.parse(rawPayload),
+      snapshotId: row.snapshot_id,
+      snapshotHash: row.snapshot_hash,
+      contextFingerprint: row.context_fingerprint,
+    };
+  }
+}
+
+export class EvaluationContextConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EvaluationContextConflictError";
+  }
+}
+
+export class NoActiveEvaluationContextError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NoActiveEvaluationContextError";
+  }
+}
+
+export class NoActivePlanError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NoActivePlanError";
+  }
+}
+
+export interface ActiveSearchPlanLineage {
+  planId: string;
+  title: string;
+  status: string;
+  criteria: SearchCriteriaPayload;
+  snapshotId: string;
+  snapshotHash: string;
+  contextFingerprint?: string;
+}
+
+export interface GetActiveSearchPlanOptions {
+  searchPlanId?: string;
+  contextFingerprint?: string;
+  allowOverrideWithoutPointer?: boolean;
 }
