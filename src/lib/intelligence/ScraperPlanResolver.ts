@@ -27,7 +27,7 @@ export interface ResolvedScraperPlan {
   readonly criteria: SearchCriteriaPayload;
   readonly queries: string[];
   readonly queryCount: number;
-  readonly source: "persisted_active_plan" | "dynamic_candidate_state";
+  readonly source: "persisted_active_plan";
 }
 
 interface PlanRow {
@@ -81,56 +81,19 @@ export class ScraperPlanResolver {
       );
     }
 
-    let criteria: SearchCriteriaPayload | null = null;
-    let source: "persisted_active_plan" | "dynamic_candidate_state" = "persisted_active_plan";
-    let planId = "";
-    let planTitle = "";
-    let snapshotId: string | undefined = undefined;
-
-    if (planRow) {
-      planId = planRow.id;
-      planTitle = planRow.title;
-      snapshotId = planRow.snapshot_id || undefined;
-      const rawPayload = planRow.snapshot_payload || planRow.criteria_json;
-      try {
-        criteria = JSON.parse(rawPayload);
-      } catch {
-        criteria = null;
-      }
+    if (!planRow) {
+      return undefined;
     }
 
-    // Fallback to candidate state in Turso if no active plan row exists
-    if (!criteria) {
-      try {
-        const { getRepositories } = await import("../../data/sqlite/provider");
-        const repos = getRepositories();
-        const candidateState = await repos.people.getCandidateState(scope.personId);
-        if (candidateState?.intent) {
-          const { CareerIntentModel } = await import("../../../scripts/scraper/run/career-intent");
-          const intent = CareerIntentModel.extractIntentFromCandidateState(candidateState, taxonomyPath);
-          const { SearchPlanner } = await import("../../../scripts/scraper/run/search-planner");
-          const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
-          const queries = searchPlan.rankedQueries?.map((q: any) => q.query) || [];
-          if (queries.length > 0) {
-            return {
-              searchPlanId: `dynamic_${scope.personId}`,
-              contextFingerprint: activeContext?.contextFingerprint,
-              title: "Dynamic Candidate Career Plan",
-              criteria: {
-                targetRoles: intent.targetTitles,
-                targetSeniority: intent.targetLevel,
-                targetLocations: intent.preferredLocations,
-                targetIndustries: intent.industries,
-              },
-              queries,
-              queryCount: queries.length,
-              source: "dynamic_candidate_state",
-            };
-          }
-        }
-      } catch {
-        // Ignore candidate state lookup failure
-      }
+    const planId = planRow.id;
+    const planTitle = planRow.title;
+    const snapshotId = planRow.snapshot_id || undefined;
+    const rawPayload = planRow.snapshot_payload || planRow.criteria_json;
+    let criteria: SearchCriteriaPayload | null = null;
+    try {
+      criteria = JSON.parse(rawPayload);
+    } catch {
+      criteria = null;
     }
 
     if (!criteria) {
@@ -183,7 +146,7 @@ export class ScraperPlanResolver {
       criteria,
       queries,
       queryCount: queries.length,
-      source,
+      source: "persisted_active_plan",
     };
   }
 }

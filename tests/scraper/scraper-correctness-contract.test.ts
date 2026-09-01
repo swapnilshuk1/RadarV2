@@ -25,6 +25,7 @@ import { ScraperPlanResolver, resolveActiveScraperPlan } from "../../src/lib/int
 import { passesHardFilter } from "../../scripts/scraper/utils/hard-filter";
 import { startRun } from "../../scripts/scrape";
 import { linkedinHandler } from "../../scripts/scraper/portals/linkedin";
+import { indeedHandler } from "../../scripts/scraper/portals/indeed";
 
 describe("Scraper Correctness & Invariant Contract Suite", () => {
   let db: SqliteAdapter;
@@ -118,8 +119,8 @@ describe("Scraper Correctness & Invariant Contract Suite", () => {
   });
 
   describe("2. Zero Fallback & Zero Units Invariant for Authenticated Runs", () => {
-    it("throws an explicit actionable error and produces zero run / zero work units when no active plan exists", async () => {
-      // User has membership but no search_plans in db
+    it("throws an explicit actionable error and produces zero run / zero work units when no active plan exists (even if candidate profile exists)", async () => {
+      // User has membership AND candidate profile in db, but NO active search_plans row
       await db.execute(`INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)`, [
         "user_no_plan",
         "noplan@domain.com",
@@ -135,6 +136,16 @@ describe("Scraper Correctness & Invariant Contract Suite", () => {
         "member",
         JSON.stringify(["run:scraper"]),
       ]);
+
+      // Seed career profile in db to prove candidate-state fallback is strictly disabled
+      await db.execute(
+        `INSERT INTO career_profiles (id, person_id, timeline, skills) VALUES (?, ?, ?, ?)`,
+        ["cp_no_plan", "user_no_plan", JSON.stringify([{ role: "Chief Marketing Officer" }]), JSON.stringify(["Marketing"])]
+      );
+
+      const scope = { tenantId: "tenant_test", personId: "user_no_plan" };
+      const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, undefined, db);
+      expect(resolvedPlan).toBeUndefined();
 
       const authContext = {
         userId: "user_no_plan",
@@ -177,15 +188,67 @@ describe("Scraper Correctness & Invariant Contract Suite", () => {
   });
 
   describe("3. Indeed Sparse Description Preservation (SPARSE != INVALID)", () => {
-    it("preserves descriptions under 200 characters without rejecting with fetched: false", () => {
+    it("exercises indeedHandler.fetchDetail and preserves descriptions under 200 characters with fetched: true and SPARSE log", async () => {
+      const sparseHtml = "<p>Leading marketing team for enterprise SaaS product. 10+ years experience required.</p>";
       const sparseText = "Leading marketing team for enterprise SaaS product. 10+ years experience required.";
-      expect(sparseText.length).toBeLessThan(200);
-      expect(sparseText.length).toBeGreaterThan(0);
+      const targetUrl = "https://in.indeed.com/viewjob?jk=sparse123";
 
-      // Verify sparse text evaluates properly in quality checks
-      const trimmedText = sparseText.trim();
-      const isPreserved = trimmedText.length > 0;
-      expect(isPreserved).toBe(true);
+      const logs: string[] = [];
+      const mockPage: any = {
+        goto: async () => {},
+        url: () => targetUrl,
+        locator: (sel: string) => ({
+          first: () => ({
+            textContent: async () => (sel.includes("jobDescriptionText") || sel.includes("main") ? sparseText : ""),
+            innerHTML: async () => (sel.includes("jobDescriptionText") || sel.includes("main") ? sparseHtml : ""),
+          }),
+        }),
+      };
+
+      const mockCtx: any = {
+        portal: "Indeed",
+        detailPage: mockPage,
+        isHttpDisabled: () => true,
+        logger: (msg: string) => logs.push(msg),
+      };
+
+      const result = await indeedHandler.fetchDetail(mockCtx, targetUrl);
+
+      expect(result.fetched).toBe(true);
+      expect(result.rawText).toBe(sparseText);
+      expect(result.rawText.length).toBeLessThan(200);
+      expect(result.rawText.length).toBeGreaterThan(0);
+      expect(result.rawHtml).toBe(sparseHtml);
+      expect(logs.some((l) => l.includes("Preserving sparse description") && l.includes("quality=SPARSE"))).toBe(true);
+    });
+
+    it("returns fetched: false with explicit error when job description is genuinely empty", async () => {
+      const targetUrl = "https://in.indeed.com/viewjob?jk=empty123";
+
+      const logs: string[] = [];
+      const mockPage: any = {
+        goto: async () => {},
+        url: () => targetUrl,
+        locator: () => ({
+          first: () => ({
+            textContent: async () => "",
+            innerHTML: async () => "",
+          }),
+        }),
+      };
+
+      const mockCtx: any = {
+        portal: "Indeed",
+        detailPage: mockPage,
+        isHttpDisabled: () => true,
+        logger: (msg: string) => logs.push(msg),
+      };
+
+      const result = await indeedHandler.fetchDetail(mockCtx, targetUrl);
+
+      expect(result.fetched).toBe(false);
+      expect(result.fetchError).toBe("Empty job description");
+      expect(logs.some((l) => l.includes("Empty job description"))).toBe(true);
     });
   });
 
