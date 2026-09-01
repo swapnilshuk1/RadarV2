@@ -260,6 +260,56 @@ describe("Scraper Correctness & Invariant Contract Suite", () => {
       expect(emittedQueries.some((q) => q.includes("security officer") || q.includes("ciso"))).toBe(false);
     });
 
+    it("ensures generic seniority title 'VP' with Finance function emits zero Marketing/Growth queries", async () => {
+      const path = await import("node:path");
+      const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
+      const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
+      const { SearchPlanner } = await import("../../scripts/scraper/run/search-planner");
+
+      const vpFinancePlan = SearchPlanner.plan(
+        {
+          targetLevel: ["VP"],
+          functions: ["Finance", "Treasury"],
+          targetTitles: ["VP"],
+          preferredLocations: ["Bengaluru"],
+        },
+        taxonomyPath,
+        lexiconPath
+      );
+
+      expect(vpFinancePlan.rankedQueries.length).toBeGreaterThan(0);
+      const emittedQueries = vpFinancePlan.rankedQueries.map((q) => q.query.toLowerCase());
+
+      // Invariant: VP Finance with targetTitles: ["VP"] must never substring match Marketing/Growth lexicon concepts
+      expect(emittedQueries.some((q) => q.includes("marketing") || q.includes("growth") || q.includes("demand") || q.includes("martech"))).toBe(false);
+      expect(emittedQueries).toContain("vp");
+    });
+
+    it("ensures generic qualifier 'Global' with Legal function emits zero Global Marketing queries", async () => {
+      const path = await import("node:path");
+      const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
+      const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
+      const { SearchPlanner } = await import("../../scripts/scraper/run/search-planner");
+
+      const legalPlan = SearchPlanner.plan(
+        {
+          targetLevel: ["Director"],
+          functions: ["Legal", "Compliance"],
+          ownership: ["Global"],
+          targetTitles: ["General Counsel"],
+          preferredLocations: ["Mumbai"],
+        },
+        taxonomyPath,
+        lexiconPath
+      );
+
+      expect(legalPlan.rankedQueries.length).toBeGreaterThan(0);
+      const emittedQueries = legalPlan.rankedQueries.map((q) => q.query.toLowerCase());
+
+      // Invariant: Global qualifier must never match "Global Marketing" without marketing function
+      expect(emittedQueries.some((q) => q.includes("marketing") || q.includes("shared services marketing"))).toBe(false);
+    });
+
     it("ensures authenticated run with active plan resolves exactly compiled queries and never DEFAULT_KEYWORDS", async () => {
       const criteria = {
         targetRoles: ["Chief Technology Officer"],

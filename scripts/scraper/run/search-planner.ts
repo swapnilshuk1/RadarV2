@@ -123,24 +123,71 @@ export class SearchPlanner {
     const matchesDimensionConcept = (dimensionKey: string, conceptName: string, phrases: string[]): boolean => {
       const allConceptPhrases = [conceptName, ...phrases].map((p) => p.toLowerCase());
 
-      // 1. Direct match: Exact or substring match against any declared candidate title or domain term
+      // 1. Exact full matches:
       for (const t of targetTitles) {
-        const lowerT = t.toLowerCase();
-        for (const p of allConceptPhrases) {
-          if (lowerT === p || lowerT.includes(p) || p.includes(lowerT)) return true;
-        }
-      }
-
-      for (const domainTerm of candidateDomainTerms) {
-        if (!domainTerm) continue;
-        for (const p of allConceptPhrases) {
-          if (domainTerm === p || (domainTerm.length > 3 && (p.includes(domainTerm) || domainTerm.includes(p)))) {
+        const lowerT = t.toLowerCase().trim();
+        if (allConceptPhrases.includes(lowerT)) {
+          const tFuncTokens = extractFunctionalTokens(lowerT);
+          if (tFuncTokens.size > 0 || candidateFunctionalTokens.size === 0) {
             return true;
           }
         }
       }
 
-      // 2. Target Roles dimension: Must match FUNCTION + SENIORITY conjunction
+      for (const domainTerm of candidateDomainTerms) {
+        if (!domainTerm) continue;
+        const lowerD = domainTerm.toLowerCase().trim();
+        if (allConceptPhrases.includes(lowerD)) {
+          const dFuncTokens = extractFunctionalTokens(lowerD);
+          if (dFuncTokens.size > 0 || candidateFunctionalTokens.size === 0) {
+            return true;
+          }
+        }
+      }
+
+      // 2. Substring matching: ONLY valid if there is genuine functional token overlap
+      for (const t of targetTitles) {
+        const lowerT = t.toLowerCase().trim();
+        const tFuncTokens = extractFunctionalTokens(lowerT);
+        if (tFuncTokens.size === 0) continue; // Pure seniority words (e.g. "VP", "Director", "Chief") cannot substring match functional concepts
+
+        for (const p of allConceptPhrases) {
+          if (lowerT.includes(p) || p.includes(lowerT)) {
+            const pFuncTokens = extractFunctionalTokens(p);
+            let hasOverlap = false;
+            for (const tok of tFuncTokens) {
+              if (pFuncTokens.has(tok)) {
+                hasOverlap = true;
+                break;
+              }
+            }
+            if (hasOverlap) return true;
+          }
+        }
+      }
+
+      for (const domainTerm of candidateDomainTerms) {
+        if (!domainTerm) continue;
+        const lowerD = domainTerm.toLowerCase().trim();
+        const dFuncTokens = extractFunctionalTokens(lowerD);
+        if (dFuncTokens.size === 0) continue; // Non-functional or generic terms (e.g. "global", "lead") cannot substring match
+
+        for (const p of allConceptPhrases) {
+          if (lowerD.length > 3 && (p.includes(lowerD) || lowerD.includes(p))) {
+            const pFuncTokens = extractFunctionalTokens(p);
+            let hasOverlap = false;
+            for (const tok of dFuncTokens) {
+              if (pFuncTokens.has(tok)) {
+                hasOverlap = true;
+                break;
+              }
+            }
+            if (hasOverlap) return true;
+          }
+        }
+      }
+
+      // 3. Target Roles dimension: Must match FUNCTION + SENIORITY conjunction
       if (dimensionKey === "targetRoles") {
         const conceptFuncTokens = extractFunctionalTokens(conceptName);
         phrases.forEach((p) => extractFunctionalTokens(p).forEach((t) => conceptFuncTokens.add(t)));
@@ -176,7 +223,7 @@ export class SearchPlanner {
         return true;
       }
 
-      // 3. Functional expertise: Must match candidate functional tokens
+      // 4. Functional expertise: Must match candidate functional tokens
       if (dimensionKey === "functionalExpertise") {
         const conceptFuncTokens = extractFunctionalTokens(conceptName);
         phrases.forEach((p) => extractFunctionalTokens(p).forEach((t) => conceptFuncTokens.add(t)));
@@ -187,7 +234,7 @@ export class SearchPlanner {
         return false;
       }
 
-      // 4. Other dimensions (leadershipModel, platformOwnership, strategicMandate):
+      // 5. Other dimensions (leadershipModel, platformOwnership, strategicMandate):
       // Token overlap only against functional tokens / domain terms, NEVER generic seniority tokens
       const conceptFuncTokens = extractFunctionalTokens(conceptName);
       for (const tok of conceptFuncTokens) {
