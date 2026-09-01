@@ -309,9 +309,10 @@ export const naukriHandler: PortalHandler = {
         err?.message?.includes("browser has been closed");
       if (isCancelledOrClosed) {
         ctx.logger(`Naukri listCards cancelled cleanly during run shutdown.`);
-      } else {
-        ctx.logger(`Naukri listCards failed: ${err.message}`);
+        return [];
       }
+      ctx.logger(`Naukri listCards failed: ${err.message}`);
+      throw err;
     } finally {
       page?.off?.("response", onResponse);
     }
@@ -441,7 +442,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
                   const clone = cheerio.load(elements.first().html() || "");
                   clone('br, p, div, li, h1, h2, h3, h4, h5, h6').append('\n');
                   const txt = clone.text().replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
-                  if (txt.length >= 150) {
+                  if (txt.length >= 50) {
                       jdHtml = elements.first().html();
                       ctx.logger(`[${ctx.portal}] Found JD via selector fallback: ${sel} (${txt.length} chars)`);
                       break;
@@ -459,7 +460,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
                    const textContent = nodes[i].textContent;
                    if (textContent && textContent.trim().toLowerCase() === 'job description') {
                        let parent = nodes[i].parentElement;
-                       if (parent && parent.innerText.length > 200) {
+                       if (parent && parent.innerText.length > 50) {
                            return parent.innerHTML;
                        }
                    }
@@ -510,12 +511,12 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         // Fallback to main or body
         const mainLoc = targetPage.locator("main, article, [role='main']").first();
         const mainTxt = ((await mainLoc.textContent({ timeout: 1000 }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
-        if (mainTxt.length >= 200) {
+        if (mainTxt.length >= 50) {
           rawText = mainTxt;
           rawHtml = (await mainLoc.innerHTML().catch(() => "")) || "";
         } else {
           const bodyTxt = ((await targetPage.locator("body").textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-          if (bodyTxt.length >= 200) {
+          if (bodyTxt.length >= 50) {
             rawText = bodyTxt;
             rawHtml = (await targetPage.locator("body").innerHTML().catch(() => "")) || "";
           }
@@ -523,18 +524,29 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       }
 
       const trimmedText = rawText.trim();
-      if (trimmedText.length < 200) {
-        ctx.logger(`[${ctx.portal}] Rejecting sparse description (${trimmedText.length} chars) for ${url}`);
+      if (trimmedText.length === 0) {
+        ctx.logger(`[${ctx.portal}] Empty job description for ${url}`);
         return {
           fetched: false,
-          fetchError: `Sparse job description rejected (${trimmedText.length} < 200 chars)`,
+          fetchError: "Empty job description",
           rawHtml: "",
           rawText: "",
           fetchDurationMs: Date.now() - t0,
         };
       }
 
-      return { fetched: true, rawHtml, rawText: trimmedText, fetchDurationMs: Date.now() - t0 };
+      const isSparse = trimmedText.length < 200;
+      if (isSparse) {
+        ctx.logger(`[${ctx.portal}] Preserving sparse description (${trimmedText.length} chars, quality=SPARSE) for ${url}`);
+      }
+
+      return {
+        fetched: true,
+        rawHtml,
+        rawText: trimmedText,
+        fetchDurationMs: Date.now() - t0,
+        quality: isSparse ? ("SPARSE" as const) : ("VALID" as const),
+      };
     } catch (err: any) {
       return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
     }

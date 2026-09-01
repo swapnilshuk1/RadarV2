@@ -50,6 +50,8 @@ RADAR v2 Test Architecture
 | `tests/persistence/cross-instance-payload-retrieval.test.ts` | Distributed BlobStore payload retrieval across isolated process/disk instances, missing blob graceful failure. | **Stage 3** |
 | `tests/persistence/distributed-lease-contention.test.ts` | Multi-instance concurrent lease mutual exclusion, non-claiming loser invariant, and crash failover. | **Stage 3** |
 | `tests/persistence/blob-store-connectivity.test.ts` | Multi-backend BlobStore connectivity, S3 REST protocol, 404/error handling, and synthetic probe healthCheck. | **Stage 3** |
+| `tests/scraper/scraper-correctness-contract.test.ts` | Authoritative active-plan resolution, zero fallback/zero units for authenticated runs, and Indeed sparse detail preservation. | Full Suite |
+| `tests/scraper/scraper-acquisition-contract.test.ts` | LinkedIn fast hydration & exit, universal sparse preservation (LinkedIn/Naukri), and failure transparency without fake empty results. | Full Suite |
 
 ---
 
@@ -314,6 +316,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/scraper/live-test-policy.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 1 | 1 |
 | `tests/scraper/m56-operational-consolidation.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 18 |
 | `tests/scraper/scraper-correctness-contract.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 9 | 27 |
+| `tests/scraper/scraper-acquisition-contract.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 13 | 36 |
 | `tests/scraper/naukri-state.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 10 |
 | `tests/scraper/scrape-progress.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 20 |
 | `tests/scraper/scraper-control.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 11 |

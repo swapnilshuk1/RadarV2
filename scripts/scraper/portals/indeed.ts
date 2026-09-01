@@ -158,7 +158,15 @@ export const indeedHandler: PortalHandler = {
         }
       }
     } catch (err: any) {
+      const isCancelledOrClosed = ctx.isCancelled?.() || page?.isClosed?.() ||
+        err?.message?.includes("Target page, context or browser has been closed") ||
+        err?.message?.includes("browser has been closed");
+      if (isCancelledOrClosed) {
+        ctx.logger(`Indeed listCards cancelled cleanly during run shutdown.`);
+        return [];
+      }
       ctx.logger(`Indeed listCards failed: ${err.message}`);
+      throw err;
     }
     return cardsOut;
   },
@@ -263,7 +271,13 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         ctx.logger?.(`[Indeed] Preserving sparse description (${trimmedText.length} chars, quality=SPARSE) for ${url}`);
       }
 
-      return { fetched: true, rawHtml, rawText: trimmedText, fetchDurationMs: Date.now() - t0 };
+      return {
+        fetched: true,
+        rawHtml,
+        rawText: trimmedText,
+        fetchDurationMs: Date.now() - t0,
+        quality: trimmedText.length < 200 ? ("SPARSE" as const) : ("VALID" as const),
+      };
     } catch (err: any) {
       return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
     }

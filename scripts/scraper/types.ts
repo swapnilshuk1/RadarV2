@@ -203,6 +203,7 @@ export interface DetailedCard extends FeedCard {
     fetchError?: string;
     fetchDurationMs?: number;
     httpStatus?: number;
+    quality?: "VALID" | "SPARSE" | "EMPTY" | "ERROR";
   };
   acquisitionAttempts?: AcquisitionAttempt[];
   telemetry: {
@@ -237,6 +238,7 @@ export interface JobSnapshot {
     rawText?: string;
     fetchError?: string;
     fetchDurationMs?: number;
+    quality?: "VALID" | "SPARSE" | "EMPTY" | "ERROR";
   };
   telemetry: {
     cardExtractMs: number;

@@ -644,6 +644,7 @@ async function processUnit(
     return outcome;
   }
 
+  const unitStartTime = Date.now();
   mgr.updateUnit(unit.id, { status: "running", startedAt: new Date().toISOString(), attempts: unit.attempts + 1 });
   mgr.recordActivity(`Searching ${unit.portal}: "${unit.keyword}" (Page ${unit.page})...`);
   try {
@@ -685,10 +686,10 @@ async function processUnit(
       mgr.recordListingFailure(unit.portal);
       let errorCategory = "Unknown";
       const msg = err.message.toLowerCase();
-      if (msg.includes("timeout")) errorCategory = "Timeout";
+      if (msg.includes("timeout") || msg.includes("etimedout")) errorCategory = "Timeout";
       else if (msg.includes("navigat")) errorCategory = "Navigation";
       else if (msg.includes("selector")) errorCategory = "Selector";
-      else if (msg.includes("blocked")) errorCategory = "Blocked";
+      else if (msg.includes("blocked") || msg.includes("rate limit") || msg.includes("auth_expired") || msg.includes("429") || msg.includes("406")) errorCategory = "Blocked";
       
       if (errorCategory === "Blocked") {
         mgr.updatePortalHealth(unit.portal, { status: "error", details: "Blocked by anti-bot", score: 0 });
@@ -697,6 +698,36 @@ async function processUnit(
       log(`listCards failed for ${unit.id} [${errorCategory}]: ${err.message}`, "error");
       outcome.status = "failed";
       outcome.warnings.push(`listCards failed: ${err.message}`);
+
+      let unitAcqOutcome: "ANTI_BOT" | "TIMEOUT" | "TRANSPORT_ERROR" = "TRANSPORT_ERROR";
+      if (errorCategory === "Blocked" || msg.includes("406") || msg.includes("429") || msg.includes("cloudflare")) {
+        unitAcqOutcome = "ANTI_BOT";
+      } else if (errorCategory === "Timeout") {
+        unitAcqOutcome = "TIMEOUT";
+      }
+
+      try {
+        QueryMetricsStore.record({
+          runId: mgr.runId,
+          portal: unit.portal,
+          query: unit.keyword,
+          page: unit.page,
+          cardsSeen: 0,
+          cardsParsed: 0,
+          canonicalDuplicates: 0,
+          ledgerKnown: 0,
+          hardFiltered: 0,
+          identityFailed: 0,
+          novelAccepted: 0,
+          novelAcquired: 0,
+          noveltyRate: 1.0, // Excluded from novelty degradation
+          elapsedMs: Date.now() - unitStartTime,
+          timestamp: new Date().toISOString(),
+          outcome: unitAcqOutcome,
+          hasTransportError: true,
+        });
+      } catch {}
+
       return outcome;
     }
 
