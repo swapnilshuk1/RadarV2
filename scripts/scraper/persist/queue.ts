@@ -190,6 +190,30 @@ export class EnrichmentQueue {
     await this.logEvent(jobId, "JOB_FAILED", JSON.stringify({ errorMsg }));
   }
 
+  /**
+   * Only terminal jobs whose payload is not shared by active work are eligible
+   * for retention cleanup. This prevents a filesystem cleanup from breaking a
+   * pending, leased, running, or retrying enrichment job.
+   */
+  public async getExpiredTerminalPayloadKeys(cutoffIso: string): Promise<string[]> {
+    const rows = await this.db.many<{ payload_key: string }>(
+      `SELECT DISTINCT terminal.payload_key
+       FROM enrichment_jobs AS terminal
+       WHERE terminal.status IN ('COMPLETE', 'FAILED')
+         AND terminal.payload_key IS NOT NULL
+         AND terminal.payload_key != ''
+         AND COALESCE(terminal.completed_at, terminal.created_at) < ?
+         AND NOT EXISTS (
+           SELECT 1
+           FROM enrichment_jobs AS active
+           WHERE active.payload_key = terminal.payload_key
+             AND active.status NOT IN ('COMPLETE', 'FAILED')
+         )`,
+      [cutoffIso],
+    );
+    return rows.map((row) => row.payload_key);
+  }
+
   public async logEvent(jobId: string, eventType: string, details?: string): Promise<void> {
     try {
       await this.db.execute(

@@ -171,6 +171,26 @@ function filteredCardHash(card: DetailedCard) {
   return card.cardHash;
 }
 
+async function cleanupExpiredTerminalPayloads(queue: EnrichmentQueue): Promise<void> {
+  const { getBlobStore, resolveArtifactStoreLimits } = await import("../src/lib/storage/blob-store");
+  const retentionHours = resolveArtifactStoreLimits().retentionHours;
+  const cutoffIso = new Date(Date.now() - retentionHours * 60 * 60 * 1000).toISOString();
+  const payloadKeys = await queue.getExpiredTerminalPayloadKeys(cutoffIso);
+  if (payloadKeys.length === 0) return;
+
+  const blobStore = getBlobStore();
+  let deleted = 0;
+  for (const payloadKey of payloadKeys) {
+    try {
+      await blobStore.delete(payloadKey);
+      deleted += 1;
+    } catch (error: any) {
+      log(`[Enrich] Retention cleanup could not delete ${payloadKey}: ${error.message}`, "warn");
+    }
+  }
+  log(`[Enrich] Retention cleanup removed ${deleted}/${payloadKeys.length} terminal payloads older than ${retentionHours}h.`);
+}
+
 async function printDashboard(queue: EnrichmentQueue, workerStats: any) {
   const { counts, age, failureDistribution, throughput } = await queue.getDashboardStats();
   
@@ -244,6 +264,7 @@ Schema Errors:  ${workerStats.dimensions.schemaErrors}${failureStr}
 async function startWorker() {
   log(`Starting Enrichment Worker [${WORKER_ID}]`);
   const queue = new EnrichmentQueue();
+  await cleanupExpiredTerminalPayloads(queue);
   
   const workerStats = {
     startTime: Date.now(),
