@@ -179,6 +179,7 @@ export class EnrichmentQueue {
     await this.db.execute(
       `UPDATE enrichment_jobs 
       SET status = 'FAILED', 
+          completed_at = CURRENT_TIMESTAMP,
           failure_type = ?, 
           last_error = ?,
           attempts = attempts + 1,
@@ -202,7 +203,7 @@ export class EnrichmentQueue {
        WHERE terminal.status IN ('COMPLETE', 'FAILED')
          AND terminal.payload_key IS NOT NULL
          AND terminal.payload_key != ''
-         AND COALESCE(terminal.completed_at, terminal.created_at) < ?
+         AND datetime(COALESCE(terminal.completed_at, terminal.created_at)) < datetime(?)
          AND NOT EXISTS (
            SELECT 1
            FROM enrichment_jobs AS active

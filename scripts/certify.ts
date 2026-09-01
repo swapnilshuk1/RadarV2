@@ -14,6 +14,7 @@
 
 import { execSync } from "child_process";
 import { certificationManifest } from "./certification/manifest";
+import { InvariantAssertions } from "../src/lib/intelligence/evaluation/InvariantAssertions";
 
 export interface Stage {
   name: string;
@@ -101,7 +102,9 @@ export function runCertification(stages: Stage[] = STAGES) {
         execSync(command, { stdio: "inherit", env: process.env });
         if (stage.execution === "manifest") {
           manifestCompleted = true;
+          InvariantAssertions.assertFailClosedCertificationContract();
           console.log(`  Unified manifest verified ${certificationManifest.length} logical groups in one Vitest process.`);
+          console.log("  Fail-closed recommendation-artifact assertion verified by the certification runner.");
         }
       }
       const elapsed = ((Date.now() - stageStart) / 1000).toFixed(2);

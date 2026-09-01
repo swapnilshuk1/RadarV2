@@ -60,6 +60,21 @@ describe("Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Inva
     expect(count?.c).toBe(1);
   });
 
+  it("retains a newly failed old job until the failure retention window actually expires", async () => {
+    const provenance = {
+      runId: "run_retention", executionPlanId: "plan_retention", definitionId: "def_retention", familyId: "fam_retention",
+      portal: "LinkedIn", page: 1, catalogVersion: "1", plannerVersion: "1", ruleVersion: "1", searchQuery: "Retention test",
+    };
+    await queue.enqueue("retention_job", "retention_hash", "snapshots/retention.json", "ext_v2", provenance, 1, 0, "snapshots/retention.json");
+    await adapter.execute("UPDATE enrichment_jobs SET created_at = datetime('now', '-10 days') WHERE id = ?", ["retention_job"]);
+    await queue.markFailed("retention_job", "UNKNOWN", "new failure");
+
+    const completed = await adapter.one<{ completed_at: string | null }>("SELECT completed_at FROM enrichment_jobs WHERE id = ?", ["retention_job"]);
+    expect(completed?.completed_at).toBeTruthy();
+    const eligible = await queue.getExpiredTerminalPayloadKeys(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+    expect(eligible).not.toContain("snapshots/retention.json");
+  });
+
   it("Invariant 2: Priority Ordering — Highest business + execution priority leased first", async () => {
     const baseProv = {
       runId: "run_prio",

@@ -111,6 +111,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
     expect(certifyScriptContent).toContain("process.exit(1)");
     expect(certifyScriptContent).toContain("CERTIFICATION FAIL");
     expect(certifyScriptContent).toContain("CERTIFICATION PASS");
+    expect(certifyScriptContent).toContain("assertFailClosedCertificationContract");
   });
 
   it("3a. keeps affected-test feedback conservative and manifest-derived", () => {

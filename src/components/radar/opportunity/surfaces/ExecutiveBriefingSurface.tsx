@@ -19,6 +19,16 @@ interface ExecutiveBriefingSurfaceProps {
   executionPkg: any;
 }
 
+export function getBriefProvenanceLabel(brief: {
+  evidenceQuality?: string;
+  explanation?: { evidenceStrength?: string };
+}): string {
+  if (brief.explanation?.evidenceStrength === "INSUFFICIENT") {
+    return "Insufficient evidence — verification pending.";
+  }
+  return `${brief.evidenceQuality || "Evidence quality unavailable"} · Claim strength reflects recorded evidence.`;
+}
+
 export function ExecutiveBriefingSurface({
   opportunity: o,
   brief,
@@ -30,6 +40,8 @@ export function ExecutiveBriefingSurface({
   jobProj,
   executionPkg,
 }: ExecutiveBriefingSurfaceProps) {
+  const provenanceLabel = getBriefProvenanceLabel(brief);
+
   return (
     <div className="min-h-screen pb-36 bg-background text-foreground font-sans">
       <Summary
@@ -70,7 +82,7 @@ export function ExecutiveBriefingSurface({
               </summary>
               <div className="mt-4 space-y-4 border-t border-border/40 pt-4">
                 <p><strong>Methodology:</strong> Multi-hop evidence graph traversal, dual-vector alignment, and policy scoring.</p>
-                <p><strong>Provenance:</strong> {brief.evidenceQuality} · Verified against 5 core capability ontologies.</p>
+                <p><strong>Provenance:</strong> {provenanceLabel}</p>
                 <p><strong>Engine:</strong> RADAR v2.4 Editorial Engine · Protocol INV-DATA-SUFFICIENCY active.</p>
               </div>
             </details>

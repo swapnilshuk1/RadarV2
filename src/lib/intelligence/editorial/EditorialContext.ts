@@ -181,7 +181,7 @@ export class EditorialContextBuilder {
     let pnlProvenance: ProvenanceSource = "UNKNOWN";
 
     const commercialAccDim = opportunity.dimensions?.find((d) => d.key === "commercialAccountability");
-    if (commercialAccDim) {
+    if (commercialAccDim?.jdEvidence?.status === "Explicit") {
       const val = commercialAccDim.jdEvidence?.value;
       if (typeof val === "boolean") {
         hasPnlOwnership = val;

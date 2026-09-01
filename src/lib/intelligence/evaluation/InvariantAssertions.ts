@@ -53,7 +53,7 @@ export class InvariantAssertions {
    * Rule 3: Decision Boundary & Verb Consistency
    */
   public static verifyDecisionBoundaries(record: RecommendationRecord): InvariantValidationResult {
-    const validVerbs = ["PURSUE", "CONSIDER", "PASS", "SPARSE_SPEC", "DEFERRED_EVALUATION"];
+    const validVerbs = ["PURSUE", "CONSIDER", "PASS", "SPARSE_SPEC", "NOT_EVALUABLE", "DEFERRED_EVALUATION"];
     if (!validVerbs.includes(record.verb)) {
       return { passed: false, ruleName: "DecisionBoundaries", error: `Invalid recommendation verb: ${record.verb}` };
     }
@@ -93,5 +93,18 @@ export class InvariantAssertions {
       this.verifyDecisionBoundaries(record),
       this.verifyEditorialPresence(record)
     ];
+  }
+
+  /** Invoked by the authoritative certification runner, not only unit tests. */
+  public static assertFailClosedCertificationContract(): void {
+    const absent = {} as RecommendationRecord;
+    const results = [
+      this.verifyExecutionGate(absent),
+      this.verifyCompatibilityGate(absent),
+      this.verifyEditorialPresence(absent),
+    ];
+    if (results.some((result) => result.passed)) {
+      throw new Error("InvariantAssertions must fail closed when required recommendation artifacts are absent.");
+    }
   }
 }

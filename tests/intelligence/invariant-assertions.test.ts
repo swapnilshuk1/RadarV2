@@ -34,4 +34,8 @@ describe("Canonical invariant assertions", () => {
     const sparse = { ...baseRecord, verb: "SPARSE_SPEC" } as RecommendationRecord;
     expect(InvariantAssertions.verifyEditorialPresence(sparse).passed).toBe(true);
   });
+
+  it("exposes the same fail-closed assertion through the certification runner contract", () => {
+    expect(() => InvariantAssertions.assertFailClosedCertificationContract()).not.toThrow();
+  });
 });
