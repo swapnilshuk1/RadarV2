@@ -140,13 +140,12 @@ export interface RunOptions {
   autoConfirm?: boolean;
   authContext?: AuthContext;
   searchPlanId?: string;
-  resolvedPlan?: import("../src/lib/security/scope-resolver").ResolvedScraperPlan;
+  resolvedPlan?: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan;
 }
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   const log = makeLogger("scrape");
   const freshRun = process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
-  const mgr = new RunController();
 
   let keywords = opts.keywords;
   let portals = opts.portals ?? DEFAULT_PORTALS;
@@ -177,11 +176,11 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   }
 
   if (opts.authContext) {
-    // Authoritative resolution contract: resolve persisted search plan or dynamic candidate plan strictly from Turso
-    const { resolveActiveScraperPlan } = await import("../src/lib/security/scope-resolver");
+    // Authoritative resolution contract: resolve persisted search plan strictly via ScraperPlanResolver
+    const { ScraperPlanResolver } = await import("../src/lib/intelligence/ScraperPlanResolver");
     const db = getDatabaseAdapter();
     const scope = { tenantId: opts.authContext.tenantId, personId: opts.authContext.userId };
-    const resolvedPlan = opts.resolvedPlan || (await resolveActiveScraperPlan(
+    const resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
       scope,
       undefined,
       db,
@@ -212,6 +211,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   
   const resolvedKeywords = keywords;
 
+  const mgr = new RunController();
   const { resumed } = mgr.init({
     keywords: resolvedKeywords, portals, maxPages,
     maxCardsPerPage: CONFIG.maxCardsPerPage,

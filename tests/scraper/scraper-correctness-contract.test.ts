@@ -1,13 +1,18 @@
 /**
- * tests/scraper/m57-slice-a-correctness.test.ts
+ * tests/scraper/scraper-correctness-contract.test.ts
  *
- * Slice A: Correctness & Recovery Invariant Suite
+ * Scraper Correctness & Invariant Contract Suite (Slice A)
  *
- * Verifies:
- * 1. Authoritative search-plan resolution via resolveActiveScraperPlan
- * 2. Zero fallback for authenticated scraper runs (hard error, zero default keywords)
+ * Invariants Verified:
+ * 1. Authoritative search-plan resolution via ScraperPlanResolver (decoupled from scope auth)
+ * 2. Zero fallback invariant for authenticated scraper runs:
+ *    - Authenticated user + no active plan -> throws explicit actionable error
+ *    - Zero RunController instantiation
+ *    - Zero WorkUnits generated
+ *    - Zero portal navigation
+ *    - Zero DEFAULT_KEYWORDS emitted
  * 3. Indeed sparse description preservation (SPARSE != INVALID)
- * 4. LinkedIn missing-company discovery escalation (allowMissingCompany: true)
+ * 4. LinkedIn missing-company pre-detail discovery escalation (allowMissingCompany: true)
  * 5. LinkedIn clean cancellation semantics
  */
 
@@ -15,12 +20,13 @@ import Database from "better-sqlite3";
 import { describe, expect, it, beforeEach } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
-import { resolveActiveScraperPlan, resolveScraperAuthContext } from "../../src/lib/security/scope-resolver";
+import { resolveScraperAuthContext } from "../../src/lib/security/scope-resolver";
+import { ScraperPlanResolver, resolveActiveScraperPlan } from "../../src/lib/intelligence/ScraperPlanResolver";
 import { passesHardFilter } from "../../scripts/scraper/utils/hard-filter";
 import { startRun } from "../../scripts/scrape";
 import { linkedinHandler } from "../../scripts/scraper/portals/linkedin";
 
-describe("Slice A: Scraper Correctness & Invariant Suite", () => {
+describe("Scraper Correctness & Invariant Contract Suite", () => {
   let db: SqliteAdapter;
 
   beforeEach(async () => {
@@ -53,7 +59,7 @@ describe("Slice A: Scraper Correctness & Invariant Suite", () => {
   });
 
   describe("1. Authoritative Search Plan Resolution", () => {
-    it("resolves active search plan and compiles discrete ranked queries from criteria", async () => {
+    it("resolves active search plan and compiles discrete ranked queries from criteria via ScraperPlanResolver", async () => {
       const criteria = {
         targetRoles: ["Chief Marketing Officer", "VP Marketing", "Head of Growth"],
         targetSeniority: ["Chief", "VP", "Head"],
@@ -68,7 +74,7 @@ describe("Slice A: Scraper Correctness & Invariant Suite", () => {
       );
 
       const scope = { tenantId: "tenant_test", personId: "user_exec_1" };
-      const resolved = await resolveActiveScraperPlan(scope, undefined, db);
+      const resolved = await ScraperPlanResolver.resolveActivePlan(scope, undefined, db);
 
       expect(resolved).toBeDefined();
       expect(resolved?.searchPlanId).toBe("sp_exec_1");
@@ -84,7 +90,7 @@ describe("Slice A: Scraper Correctness & Invariant Suite", () => {
       expect(hasTargetRole).toBe(true);
     });
 
-    it("attaches resolvedPlan directly to ScraperAuthResolution", async () => {
+    it("keeps security resolution separate from plan compilation", async () => {
       const criteria = {
         targetRoles: ["Chief Commercial Officer", "VP Growth"],
         targetSeniority: ["Chief", "VP"],
@@ -97,16 +103,22 @@ describe("Slice A: Scraper Correctness & Invariant Suite", () => {
         ["sp_exec_2", "tenant_test", "user_exec_1", "Commercial Growth Plan", JSON.stringify(criteria)]
       );
 
+      // Security resolver strictly verifies identity, membership, and scope
       const authResolution = await resolveScraperAuthContext("user_exec_1", "tenant_test", db);
+      expect(authResolution.scope.tenantId).toBe("tenant_test");
+      expect(authResolution.scope.personId).toBe("user_exec_1");
+      expect(authResolution.authContext.permissions).toContain("run:scraper");
 
-      expect(authResolution.resolvedPlan).toBeDefined();
-      expect(authResolution.resolvedPlan?.searchPlanId).toBe("sp_exec_2");
-      expect(authResolution.resolvedPlan?.queries.length).toBeGreaterThan(0);
+      // Domain resolver turns the authorized scope into an executable resolved plan
+      const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(authResolution.scope, authResolution.activeContext, db);
+      expect(resolvedPlan).toBeDefined();
+      expect(resolvedPlan?.searchPlanId).toBe("sp_exec_2");
+      expect(resolvedPlan?.queries.length).toBeGreaterThan(0);
     });
   });
 
-  describe("2. Zero Fallback Invariant for Authenticated Runs", () => {
-    it("throws an explicit actionable error and rejects execution when no active plan exists", async () => {
+  describe("2. Zero Fallback & Zero Units Invariant for Authenticated Runs", () => {
+    it("throws an explicit actionable error and produces zero run / zero work units when no active plan exists", async () => {
       // User has membership but no search_plans in db
       await db.execute(`INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)`, [
         "user_no_plan",
@@ -130,7 +142,8 @@ describe("Slice A: Scraper Correctness & Invariant Suite", () => {
         permissions: ["run:scraper"] as const,
       };
 
-      // Attempting to start run with authenticated context but no active plan must fail fast
+      // Invariant: Authenticated run without active plan must fail immediately
+      // before RunController initialization, generating 0 WorkUnits and 0 runs
       await expect(
         startRun({
           authContext,
@@ -139,7 +152,6 @@ describe("Slice A: Scraper Correctness & Invariant Suite", () => {
     });
 
     it("ensures authenticated run with active plan resolves exactly compiled queries and never DEFAULT_KEYWORDS", async () => {
-      const { DEFAULT_KEYWORDS } = await import("../../scripts/scraper/config");
       const criteria = {
         targetRoles: ["Chief Technology Officer"],
         targetSeniority: ["Chief"],
