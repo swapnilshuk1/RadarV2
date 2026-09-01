@@ -1,6 +1,7 @@
 import type { DatabaseAdapter } from "./adapter";
 import { SqliteAdapter } from "./sqlite";
 import { TursoAdapter } from "./turso";
+import { splitSqlStatements } from "../sqlite/migrations/runner";
 import path from "path";
 import fs from "fs";
 import { createRequire } from "module";
@@ -93,45 +94,42 @@ export function getDatabaseAdapter(dbPath?: string): DatabaseAdapter {
 
     if (dbPath === ":memory:") {
       const freshDb = new DatabaseConstructor(":memory:");
-      freshDb.exec("PRAGMA foreign_keys = OFF;");
+      freshDb.exec("PRAGMA foreign_keys = ON;");
       return new SqliteAdapter(freshDb);
     }
 
     if (_cachedAdapter) return _cachedAdapter;
 
     const sqliteDb = new DatabaseConstructor(":memory:");
-    sqliteDb.exec("PRAGMA foreign_keys = OFF;");
+    sqliteDb.exec("PRAGMA foreign_keys = ON;");
     _cachedAdapter = new SqliteAdapter(sqliteDb);
 
     // Auto-apply schema migrations to in-memory SQLite instance for test isolation
     const migrationsDir = path.resolve(process.cwd(), "src/data/sqlite/migrations");
     if (fs.existsSync(migrationsDir)) {
-      try {
-        const req = getReq();
-        if (req) {
-          const { splitSqlStatements } = req("../sqlite/migrations/runner");
-          const files = fs.readdirSync(migrationsDir)
-            .filter((f) => f.endsWith(".sql") && !f.endsWith("_rollback.sql"))
-            .sort();
-          for (const file of files) {
-            const sqlContent = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
-            const stmts = splitSqlStatements(sqlContent);
-            for (const stmt of stmts) {
-              try {
-                sqliteDb.exec(stmt);
-              } catch {}
-            }
-          }
-        }
-      } catch (err) {
-        const files = fs.readdirSync(migrationsDir)
-          .filter((f) => f.endsWith(".sql") && !f.endsWith("_rollback.sql"))
-          .sort();
-        for (const file of files) {
+      const files = fs.readdirSync(migrationsDir)
+        .filter((f) => f.endsWith(".sql") && !f.endsWith("_rollback.sql"))
+        .sort();
+      for (const file of files) {
+        const sqlContent = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
+        const stmts = splitSqlStatements(sqlContent);
+        for (const stmt of stmts) {
           try {
-            const sqlContent = fs.readFileSync(path.join(migrationsDir, file), "utf-8");
-            sqliteDb.exec(sqlContent);
-          } catch {}
+            sqliteDb.exec(stmt);
+          } catch (error) {
+            const sql = stmt.toUpperCase();
+            const message = error instanceof Error ? error.message : String(error);
+            // Historical migration 005 predates the decisions-table recreation.
+            // Keep the same narrowly-scoped replay compatibility as runMigrations;
+            // every other migration error is fatal in the test harness.
+            if (
+              (sql.includes("CREATE INDEX IF NOT EXISTS") || sql.includes("CREATE UNIQUE INDEX IF NOT EXISTS")) &&
+              message.includes("no such table")
+            ) {
+              continue;
+            }
+            throw new Error(`[DatabaseAdapter] Failed applying test migration ${file}: ${error instanceof Error ? error.message : String(error)}`);
+          }
         }
       }
     }

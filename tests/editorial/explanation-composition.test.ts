@@ -31,7 +31,7 @@ describe("Phase 3 — Editorial Hydration & Single Recommendation Source of Trut
       companyId: "comp-2",
       companyName: "Pass Corp",
       location: "London",
-      description: "VP Sales enterprise expansion",
+      description: "VP Sales enterprise expansion role with published responsibilities for enterprise account strategy, revenue planning, customer retention, sales leadership, territory execution, pipeline governance, and cross-functional coordination. The recruiter will confirm the final reporting line, team scope, and approved commercial resources during screening.",
       dimensions: [],
       policyResult: {
         verdict: "PASS",

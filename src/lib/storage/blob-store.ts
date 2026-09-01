@@ -214,16 +214,55 @@ export class BlobStoreConfigurationError extends Error {
   }
 }
 
+export type DeploymentMode = "single_host" | "distributed";
+
+/**
+ * Production topology is an explicit contract. Non-production callers retain
+ * a single-host default so unit tests and local tools do not require a
+ * deployment environment file.
+ */
+export function resolveDeploymentMode(env: NodeJS.ProcessEnv = process.env): DeploymentMode {
+  const configured = env.RADAR_DEPLOYMENT_MODE;
+  if (configured === "single_host" || configured === "distributed") {
+    return configured;
+  }
+  if (configured) {
+    throw new BlobStoreConfigurationError(
+      `Unsupported RADAR_DEPLOYMENT_MODE '${configured}'. Expected 'single_host' or 'distributed'.`
+    );
+  }
+  if (env.RADAR_ENV === "production" || env.NODE_ENV === "production") {
+    throw new BlobStoreConfigurationError(
+      "Production requires explicit RADAR_DEPLOYMENT_MODE ('single_host' or 'distributed')."
+    );
+  }
+  return "single_host";
+}
+
+export function describeBlobStoreConfiguration(env: NodeJS.ProcessEnv = process.env): {
+  mode: DeploymentMode;
+  artifactBackend: "local_filesystem" | "s3_compatible";
+} {
+  const mode = resolveDeploymentMode(env);
+  const hasRemoteConfiguration = Boolean(env.BLOB_STORAGE_ENDPOINT && env.BLOB_STORAGE_BUCKET);
+  if (mode === "distributed" && !hasRemoteConfiguration) {
+    throw new BlobStoreConfigurationError(
+      "Distributed deployment mode requires remote object storage (BLOB_STORAGE_ENDPOINT and BLOB_STORAGE_BUCKET)."
+    );
+  }
+  return { mode, artifactBackend: hasRemoteConfiguration ? "s3_compatible" : "local_filesystem" };
+}
+
 let _globalBlobStore: BlobStore | null = null;
 
 export function getBlobStore(options?: { enforceDistributed?: boolean }): BlobStore {
   if (!_globalBlobStore) {
-    if (process.env.BLOB_STORAGE_ENDPOINT && process.env.BLOB_STORAGE_BUCKET) {
+    const config = describeBlobStoreConfiguration();
+    if (options?.enforceDistributed && config.mode !== "distributed") {
+      throw new BlobStoreConfigurationError("This caller requires distributed BlobStore mode, but RADAR_DEPLOYMENT_MODE is not 'distributed'.");
+    }
+    if (config.artifactBackend === "s3_compatible") {
       _globalBlobStore = new S3CompatibleBlobStore();
-    } else if (options?.enforceDistributed || process.env.RADAR_DEPLOYMENT_MODE === "distributed") {
-      throw new BlobStoreConfigurationError(
-        "Distributed deployment mode requires remote object storage (BLOB_STORAGE_ENDPOINT and BLOB_STORAGE_BUCKET), but no remote storage is configured."
-      );
     } else {
       _globalBlobStore = new LocalFsBlobStore();
     }
@@ -234,4 +273,3 @@ export function getBlobStore(options?: { enforceDistributed?: boolean }): BlobSt
 export function setBlobStore(store: BlobStore | null): void {
   _globalBlobStore = store;
 }
-

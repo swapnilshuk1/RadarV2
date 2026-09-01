@@ -113,7 +113,9 @@ async function runProductionSmoke() {
 
     // 6. Distributed BlobStore Connectivity & Health Check
     console.log("\n▶ [6/6] Auditing Distributed BlobStore Connectivity & Payload Resolution...");
-    const { getBlobStore } = await import("../src/lib/storage/blob-store");
+    const { describeBlobStoreConfiguration, getBlobStore } = await import("../src/lib/storage/blob-store");
+    const blobConfig = describeBlobStoreConfiguration();
+    console.log(`  Deployment mode: ${blobConfig.mode}; artifact backend: ${blobConfig.artifactBackend}.`);
     const blobStore = getBlobStore();
     const blobHealth = await blobStore.healthCheck();
     if (!blobHealth.ok) {
@@ -121,7 +123,7 @@ async function runProductionSmoke() {
     }
     console.log(`  ✔ BlobStore backend "${blobHealth.backend}" is operational and responsive.`);
 
-    const isDistributedMode = process.env.RADAR_DEPLOYMENT_MODE === "distributed";
+    const isDistributedMode = blobConfig.mode === "distributed";
     if (isDistributedMode && blobHealth.backend === "local_filesystem") {
       throw new Error(
         `[BlobStore] RADAR_DEPLOYMENT_MODE=distributed requires a remote object store (S3/R2), but local_filesystem is active.`

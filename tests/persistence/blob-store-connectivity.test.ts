@@ -3,13 +3,25 @@ import {
   LocalFsBlobStore,
   MemoryBlobStore,
   S3CompatibleBlobStore,
+  BlobStoreConfigurationError,
+  describeBlobStoreConfiguration,
   getBlobStore,
+  resolveDeploymentMode,
   setBlobStore,
 } from "../../src/lib/storage/blob-store";
 import fs from "fs";
 import path from "path";
 
 describe("Phase 4C: BlobStore Connectivity & Backend Protocol Verification", () => {
+  it("0. requires an explicit production mode and rejects ambiguous values", () => {
+    expect(() => resolveDeploymentMode({ RADAR_ENV: "production" } as NodeJS.ProcessEnv)).toThrow(BlobStoreConfigurationError);
+    expect(() => resolveDeploymentMode({ RADAR_DEPLOYMENT_MODE: "multi_host" } as NodeJS.ProcessEnv)).toThrow(BlobStoreConfigurationError);
+    expect(describeBlobStoreConfiguration({ RADAR_DEPLOYMENT_MODE: "single_host" } as NodeJS.ProcessEnv)).toEqual({
+      mode: "single_host",
+      artifactBackend: "local_filesystem",
+    });
+  });
+
   it("1. MemoryBlobStore roundtrip & health check", async () => {
     const memStore = new MemoryBlobStore();
     const check = await memStore.healthCheck();

@@ -7,7 +7,11 @@ export type CareerValueProtection = "DOWNSCALED" | "EXCLUDED" | "CLEAR" | string
 export type OrganizationType = "founder_led" | "institutional" | "private_equity" | "public_company";
 export type TransformationStage = "none" | "modernization" | "turnaround";
 export type ScoreTier = "HIGH" | "MEDIUM" | "LOW";
-export type ProvenanceSource = "ENGINE_VERIFIED" | "TITLE_HEURISTIC";
+/**
+ * Editorial provenance is deliberately conservative: a title or company name
+ * may suggest a hypothesis, but it must not qualify as observed evidence.
+ */
+export type ProvenanceSource = "OBSERVED" | "INFERRED" | "UNKNOWN";
 
 export interface EditorialContext {
   readonly engineVerdict: EngineVerdict | null;
@@ -51,7 +55,8 @@ export interface EditorialContext {
   readonly pnlProvenance: ProvenanceSource;
   readonly mandateProvenance: ProvenanceSource;
   readonly scoreTier: ScoreTier;
-  readonly rawScore: number;
+  /** Null means the opportunity has not produced an authoritative score. */
+  readonly rawScore: number | null;
 }
 
 export class EditorialContextBuilder {
@@ -123,7 +128,10 @@ export class EditorialContextBuilder {
     };
 
     // Structural metadata heuristics (for legacy UI badges, strictly decoupled from engineVerdict)
-    const rawScore = recommendation?.qualityScore ?? policyResult?.qualityScore ?? policyResult?.rawScore ?? (opportunity as Record<string, any>).matchScore ?? 50;
+    const candidateScore = recommendation?.qualityScore ?? policyResult?.qualityScore ?? policyResult?.rawScore ?? (opportunity as Record<string, unknown>).matchScore;
+    const rawScore = typeof candidateScore === "number" && Number.isFinite(candidateScore)
+      ? candidateScore
+      : null;
 
     const companyLower = (opportunity.company || "").toLowerCase();
     const roleLower = (opportunity.role || "").toLowerCase();
@@ -152,12 +160,12 @@ export class EditorialContextBuilder {
     else if (isPublic) organizationType = "public_company";
 
     let transformationStage: TransformationStage = "none";
-    let mandateProvenance: ProvenanceSource = "TITLE_HEURISTIC";
+    let mandateProvenance: ProvenanceSource = "UNKNOWN";
 
     const mandateDim = opportunity.dimensions?.find((d) => d.key === "mandate");
     if (
       mandateDim &&
-      (mandateDim.jdEvidence?.status === "Explicit" || mandateDim.jdEvidence?.status === "Inferred") &&
+      mandateDim.jdEvidence?.status === "Explicit" &&
       mandateDim.jdEvidence?.value
     ) {
       const val = String(mandateDim.jdEvidence.value).toLowerCase();
@@ -166,32 +174,23 @@ export class EditorialContextBuilder {
       } else if (val.includes("transformation") || val.includes("digitiz") || val.includes("moderniz")) {
         transformationStage = "modernization";
       }
-      mandateProvenance = "ENGINE_VERIFIED";
-    }
-
-    if (mandateProvenance === "TITLE_HEURISTIC") {
-      const isTurnaround = roleLower.includes("turnaround") || roleLower.includes("restructure");
-      const isModernization =
-        roleLower.includes("transformation") || roleLower.includes("digitiz") || roleLower.includes("moderniz");
-
-      if (isTurnaround) transformationStage = "turnaround";
-      else if (isModernization) transformationStage = "modernization";
+      mandateProvenance = "OBSERVED";
     }
 
     let hasPnlOwnership = false;
-    let pnlProvenance: ProvenanceSource = "TITLE_HEURISTIC";
+    let pnlProvenance: ProvenanceSource = "UNKNOWN";
 
     const commercialAccDim = opportunity.dimensions?.find((d) => d.key === "commercialAccountability");
     if (commercialAccDim) {
       const val = commercialAccDim.jdEvidence?.value;
       if (typeof val === "boolean") {
         hasPnlOwnership = val;
-        pnlProvenance = "ENGINE_VERIFIED";
+        pnlProvenance = "OBSERVED";
       } else if (val !== undefined && val !== null) {
         const strVal = String(val).toLowerCase();
         if (strVal === "false" || strVal === "none" || strVal === "no") {
           hasPnlOwnership = false;
-          pnlProvenance = "ENGINE_VERIFIED";
+          pnlProvenance = "OBSERVED";
         } else if (
           strVal === "true" ||
           strVal.includes("p&l") ||
@@ -204,22 +203,9 @@ export class EditorialContextBuilder {
           strVal.includes("category")
         ) {
           hasPnlOwnership = true;
-          pnlProvenance = "ENGINE_VERIFIED";
+          pnlProvenance = "OBSERVED";
         }
       }
-    }
-
-    if (pnlProvenance === "TITLE_HEURISTIC") {
-      hasPnlOwnership =
-        roleLower.includes("cmo") ||
-        roleLower.includes("cgo") ||
-        roleLower.includes("cro") ||
-        roleLower.includes("ceo") ||
-        roleLower.includes("coo") ||
-        roleLower.includes("general manager") ||
-        roleLower.includes("business head") ||
-        roleLower.includes("p&l") ||
-        roleLower.includes("vp");
     }
 
     const scoreTier: ScoreTier =

@@ -9,6 +9,38 @@ export interface AdvisoryRuleCheck {
   reason: string;
 }
 
+export type EditorialEvidenceState = "EVALUATED" | "SPARSE_SPEC" | "UNEVALUATED" | "UNAVAILABLE";
+
+export interface EditorialSufficiency {
+  readonly state: EditorialEvidenceState;
+  readonly isSufficient: boolean;
+  readonly message?: string;
+}
+
+type EditorialInput = {
+  role?: unknown;
+  canonicalTitle?: unknown;
+  company?: unknown;
+  companyName?: unknown;
+  description?: unknown;
+  normalizedText?: unknown;
+  rawText?: unknown;
+  rawDescription?: unknown;
+  dimensions?: unknown;
+  engineRecommendation?: unknown;
+  recommendationResult?: unknown;
+  evaluationState?: unknown;
+  decision?: unknown;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" ? value as Record<string, unknown> : null;
+}
+
+function asText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 export class AdvisoryConstitution {
   
   public static readonly PRINCIPLES = {
@@ -24,50 +56,68 @@ export class AdvisoryConstitution {
   /**
    * Enforces INV-DATA-SUFFICIENCY: Prohibits high-confidence editorial synthesis on low-evidence inputs.
    */
-  public static validateDataSufficiency(opportunity: any): { isSufficient: boolean; message?: string } {
-    const text = (opportunity.description || opportunity.normalizedText || "").trim();
-    
-    // Prohibit synthesis on JDs with fewer than 200 characters or missing description
-    if (!text || text.length < 200) {
+  public static validateDataSufficiency(opportunity: unknown): EditorialSufficiency {
+    const input = asRecord(opportunity) as EditorialInput | null;
+    if (!input || !(asText(input.role) || asText(input.canonicalTitle)) || !(asText(input.company) || asText(input.companyName))) {
       return {
+        state: "UNAVAILABLE",
+        isSufficient: false,
+        message: "The opportunity record is incomplete and cannot support an executive brief."
+      };
+    }
+
+    const declaredState = asText(input.evaluationState);
+    if (declaredState === "SPARSE_SPEC" || input.decision === "SPARSE_SPEC") {
+      return {
+        state: "SPARSE_SPEC",
+        isSufficient: false,
+        message: "The published role specification is sparse. Confirm the mandate, reporting line, and decision rights during the initial recruiter conversation."
+      };
+    }
+
+    const text = asText(input.description) || asText(input.normalizedText) || asText(input.rawText) || asText(input.rawDescription);
+    const dimensions = Array.isArray(input.dimensions) ? input.dimensions : [];
+    const explicitEvidenceCount = dimensions.filter((dimension) => {
+      const record = asRecord(dimension);
+      const evidence = asRecord(record?.jdEvidence);
+      return evidence?.status === "Explicit";
+    }).length;
+    const hasEvaluation = Boolean(input.engineRecommendation || input.recommendationResult);
+
+    if (text.length >= 200 || (hasEvaluation && explicitEvidenceCount > 0)) {
+      return { state: "EVALUATED", isSufficient: true };
+    }
+
+    if (hasEvaluation || explicitEvidenceCount > 0 || text.length > 0) {
+      return {
+        state: "SPARSE_SPEC",
         isSufficient: false,
         message: "The available job description does not provide enough evidence to determine why the role exists. This is a useful topic to explore during the initial recruiter conversation."
       };
     }
 
-    return { isSufficient: true };
+    return {
+      state: "UNEVALUATED",
+      isSufficient: false,
+      message: "No evaluated evidence is available yet. Complete the structured evaluation before drawing conclusions about the role."
+    };
   }
 
   /**
    * Translates organizational intent and job parameters into a highly tailored, non-repetitive corporate-driver paragraph.
    */
-  public static getWhyThisRoleExistsParagraph(opportunity: any, jobProj: any, focusTopic: string): string {
-    const company = jobProj?.company || opportunity.company || "the company";
-    const role = jobProj?.role || opportunity.role || "this role";
+  public static getWhyThisRoleExistsParagraph(opportunity: unknown, jobProj: unknown, focusTopic: string): string {
+    const input = asRecord(opportunity) as EditorialInput | null;
+    const projection = asRecord(jobProj);
+    const company = asText(projection?.company) || asText(input?.company) || asText(input?.companyName) || "the company";
+    const role = asText(projection?.role) || asText(input?.role) || asText(input?.canonicalTitle) || "this role";
     const topic = focusTopic || "commercial growth & market expansion";
 
-    // 1. Dynamic sparse data handling - premium partner tone rather than flat error message
-    const text = (opportunity.description || opportunity.normalizedText || "").trim();
-    if (!text || text.length < 200) {
-      return `Published details for the ${role} seat at ${company} remain highly sparse, suggesting either a stealth-mandate or an unformed organizational charter. Senior leadership typically creates this role to establish operational rigor where founder-led processes have reached their structural ceiling. In the absence of a detailed GTM brief, your immediate priority during screening must be to clarify if this is an active transformation mandate or a steady-state maintenance function.`;
+    const sufficiency = this.validateDataSufficiency(opportunity);
+    if (!sufficiency.isSufficient) {
+      return `Published details for the ${role} seat at ${company} are limited. Confirm the ${topic} mandate, reporting line, team scope, and decision rights during the initial recruiter conversation.`;
     }
 
-    // 2. High-altitude organizational driver generation
-    const intent = jobProj?.executiveMission?.intent || "ACCELERATE_GROWTH";
-    const missionStatement = jobProj?.executiveMission?.statement || "";
-
-    const intentParagraphs: Record<string, string> = {
-      REPLACE_FAILED_LEADER: `${company} is prioritizing immediate stabilization of its ${topic} function following a period of leadership disruption. This seat is being structured with direct team oversight and clear operational metrics to repair execution bottlenecks, rather than merely maintaining existing department operations.`,
-      BUILD_NEW_CAPABILITY: `${company} is building its dedicated ${topic} capabilities from the ground up to capture unaddressed enterprise demand. This is a greenfield 0-to-1 mandate that requires an operator comfortable with establishing team structures and vendor standards from scratch, rather than managing a legacy hierarchy.`,
-      PROFESSIONALIZE_FOUNDER_COMPANY: `${company} is professionalizing its commercial operations to transition away from founder-dependent decision-making. The mandate is to establish institutional processes and standard GTM governance to ensure commercial repeatability and clean pipeline visibility.`,
-      PREPARE_IPO: `${company} is aligning its commercial systems and financial transparency for public market readiness. This seat functions as a critical governance anchor, requiring clean compliance records, auditable CRM practices, and institutional P&L maturity ahead of their upcoming listing.`,
-      INTEGRATE_ACQUISITION: `${company} is consolidating its post-merger operations to capture immediate revenue synergies across its expanded portfolio. The executive in this seat will merge legacy team cultures and align redundant software stacks onto a single commercial playbook.`,
-      REPAIR_EXECUTION: `${company} is correcting fragmented commercial delivery and rebuilding operational rigor under a consolidated leader. Success requires auditing current client delivery pipelines, pruning low-yield channels, and enforcing strict operating standards.`,
-      EXPAND_GEOGRAPHY: `${company} is launching localized commercial hubs to scale its footprint in ${opportunity.location || "new regional markets"}. This is an expansion-led mandate where regional cultural fluency and local network leverage are prioritized over corporate headquarters pedigree.`,
-      COMMERCIALIZE_TECHNOLOGY: `${company} is translating its core technology assets into distinct, high-yield commercial offerings. The mission is to transform a product-centric organization into an outbound enterprise engine with scalable pricing, clear contract governance, and proactive GTM execution.`,
-      ACCELERATE_GROWTH: `${company} is scaling its outbound velocity to sustain high growth. The mandate is to transition from opportunistic sales into a systematic, repeatable customer acquisition engine with full operational accountability.`
-    };
-
-    return intentParagraphs[intent] || `${company} is consolidating its ${topic} function under a unified leader to capture emerging market demand. This seat exists to drive immediate commercial expansion and establish predictable operating governance across the region.`;
+    return `The published description identifies a ${topic} focus for the ${role} seat at ${company}. Use the recruiter conversation to validate the operating mandate, reporting line, and resources behind that description.`;
   }
 }

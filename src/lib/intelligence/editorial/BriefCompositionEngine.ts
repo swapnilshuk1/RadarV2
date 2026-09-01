@@ -9,6 +9,7 @@ import { EditorialPatternSelector } from "./EditorialPatternSelector";
 import { NarrativeComposer } from "./NarrativeComposer";
 import { SemanticNaturalLanguageResolver, unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
 import { ExecutiveKnowledgeNormalizationPipeline } from "../ekb/ExecutiveKnowledgeNormalizationPipeline";
+import { AdvisoryConstitution } from "./AdvisoryConstitution";
 
 export interface BriefSectionMeta {
   id: string;
@@ -133,6 +134,11 @@ export class BriefCompositionEngine {
 
     // Authoritative Projection Layer
     const editorialContext = EditorialContextBuilder.build(opportunity);
+    const sufficiency = AdvisoryConstitution.validateDataSufficiency(opportunity);
+    if (!sufficiency.isSufficient) {
+      return this.composeEvidenceLimitedBrief(opportunity, editorialContext, sufficiency.message || "The available evidence is insufficient for an executive recommendation.");
+    }
+
     const executiveThesis = ExecutiveThesisBuilder.build(editorialContext, opportunity);
     const explanation = executiveThesis.explanation || PrimaryReasonResolver.resolve(editorialContext, opportunity);
     const pursuitStrategy = PursuitStrategyResolver.resolve(explanation, editorialContext);
@@ -142,7 +148,7 @@ export class BriefCompositionEngine {
     const decision: BriefMemory["decision"] =
       engineVerdict === "PURSUE" ? "PURSUE" : engineVerdict === "PASS" ? "PASS" : engineVerdict === "CONSIDER" ? "CONSIDER" : null;
 
-    const score = editorialContext.rawScore;
+    const score = editorialContext.rawScore ?? 0;
     const weights = this.calculateWeights(opportunity);
     const strategy = this.deriveStrategy(weights, opportunity);
 
@@ -505,7 +511,7 @@ export class BriefCompositionEngine {
   }
 
   private static calculateWeights(opportunity: Opportunity) {
-    const score = opportunity.recommendationResult?.score ?? 50;
+    const score = opportunity.recommendationResult?.score ?? 0;
     const base = score / 100;
     return {
       fit: Math.min(0.95, base + 0.1),
@@ -530,6 +536,115 @@ export class BriefCompositionEngine {
     return {
       focusTitle: "Scope Verification Required",
       heroAnchor: `Validate functional reporting line and budget authority at ${opportunity.company}`,
+    };
+  }
+
+  /**
+   * The only permitted fallback for sparse or unevaluated opportunities. It is
+   * intentionally factual and useful, rather than a generic recommendation.
+   */
+  private static composeEvidenceLimitedBrief(
+    opportunity: Opportunity,
+    editorialContext: EditorialContext,
+    limitation: string,
+  ): BriefModel {
+    const role = opportunity.role || "This role";
+    const company = opportunity.company || "the company";
+    const location = opportunity.location || "the listed location";
+    const headline = `Assessment pending: ${role} at ${company}.`;
+    const explanation: ExecutiveDecisionExplanation = {
+      verdict: null,
+      headline,
+      bottomLine: limitation,
+      primaryReason: limitation,
+      supportingReasons: [],
+      careerValueSignal: null,
+      tradeoff: null,
+      evidenceStrength: "INSUFFICIENT",
+      keyUncertainty: "The published mandate, reporting line, and decision rights require verification.",
+      recommendedAction: "INVESTIGATE",
+      ruleIds: ["SPARSE_SPECIFICATION"],
+      provenance: [{ source: "JOB_REQUIREMENT", signal: "INSUFFICIENT_EVIDENCE" }],
+    };
+    const executiveThesis: ExecutiveThesis = {
+      verdict: null,
+      headline,
+      careerValueSignal: null,
+      primaryReason: limitation,
+      tradeoff: null,
+      relativeDifferentiator: null,
+      ruleIds: explanation.ruleIds,
+      explanation,
+    };
+    const pursuitStrategy = PursuitStrategyResolver.resolve(explanation, editorialContext);
+    const questions: RankedUnknown[] = [
+      { rank: "CRITICAL", label: "Mandate and reporting line", question: "What business outcome, reporting line, and decision rights are assigned to this role?" },
+      { rank: "IMPORTANT", label: "Team and resources", question: "What team, budget, and hiring authority are already approved?" },
+      { rank: "SECONDARY", label: "Compensation", question: "What are the base, variable, and equity components?" },
+    ];
+    const safePoints = [
+      `Published identity: ${role} at ${company}.`,
+      `Listed location: ${location}.`,
+    ];
+
+    return {
+      editorialContext,
+      executiveThesis,
+      explanation,
+      pursuitStrategy,
+      memory: {
+        headline,
+        retentionSentence: `Published details for ${role} at ${company} require validation before a recommendation can be made.`,
+        primaryOpportunity: "Complete mandate verification before allocating application effort.",
+        primaryRisk: "The published specification does not establish operating scope, reporting line, or decision rights.",
+        recommendedAction: "INVESTIGATE",
+        decision: null,
+        tradeoff: "Do not infer mandate scope from title alone.",
+        first90Days: "Not assessed until the role specification is verified.",
+        whyNow: "The role is listed, but the available evidence is insufficient for an executive conclusion.",
+      },
+      structuredSections: {
+        context: { thesis: limitation, transition: "Verify the core mandate before deciding whether the role warrants further time." },
+        mandate: { thesis: "Mandate not established from the published evidence." },
+        synthesis: { thesis: limitation },
+        evidence: { thesis: "No recommendation-level evidence has been established." },
+        strategy: { thesis: "Use the initial conversation to establish scope before tailoring an application." },
+      },
+      oneMinuteTLDR: {
+        whyPursue: safePoints,
+        watchFor: ["Reporting line and decision rights are not established.", "Team, budget, and compensation require confirmation."],
+        bottomLine: "Investigate before investing application effort.",
+      },
+      qualitativeReasoning: [{ layer: "Evidence Availability", ratingLabel: "Requires Verification", becausePoints: ["Published details are limited"], evidenceSnippet: limitation }],
+      qualitativeReasoningChain: [{ layer: "Evidence Availability", ratingLabel: "Requires Verification", becausePoints: ["Published details are limited"], evidenceSnippet: limitation }],
+      strategicUpside: { headline: "Evidence Required", points: safePoints },
+      decisionSensitivity: {
+        becomesPursueIf: ["The recruiter confirms a mandate that matches the evaluated candidate criteria."],
+        becomesPassIf: ["The confirmed scope, reporting line, or work model conflicts with the candidate criteria."],
+      },
+      rankedUnknowns: questions,
+      deliverablesWork: [],
+      deliverablesValue: [],
+      deliverablesProvenance: [],
+      deliverables: { workRequired: [], businessValue: [], provenance: [] },
+      proofPoints: [],
+      fitProofs: [],
+      certaintyLevel: "LOW",
+      certaintyGuidance: limitation,
+      evidenceQuality: "Inferred Evidence",
+      qualitativeRecommendation: "Pending Assessment",
+      qualityScore: null,
+      whyNotStronger: limitation,
+      topUnknownPreview: "Critical Unknown: mandate, reporting line, and decision rights are not established.",
+      strategy: { focusTitle: "Scope Verification Required", heroAnchor: `Verify the published scope for ${role} at ${company}.` },
+      narrative: { intent: "Verify the mandate before deciding." },
+      verdictGuidance: {
+        actionNotice: "INVESTIGATE",
+        tradeoffStatement: "Do not infer mandate scope from title alone.",
+        pauseTrigger: "Pause application work until the core role specification is confirmed.",
+      },
+      executiveOpinion: limitation,
+      directives: { action: "Confirm mandate, reporting line, and resources during the initial recruiter conversation." },
     };
   }
 }

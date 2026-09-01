@@ -44,7 +44,7 @@ RADAR v2 Test Architecture
 | :--- | :--- | :---: |
 | `tests/intelligence/canonical-ingestion-fk-regression.test.ts` | Resolves existing `opportunity_versions.id` on conflict; zero orphan foreign keys. | **Stage 3** |
 | `tests/intelligence/canonical-acquisition-integrity.test.ts` | Multi-portal acquisition payload validation, SHA-256 content hashing, and version lineage. | **Stage 3** |
-| `tests/intelligence/canonical-identity.test.ts` | Idempotent candidate projection creation and search plan link stability. | **Stage 3** |
+| `tests/intelligence/canonical-identity.test.ts` | Opt-in live canonical-account audit; never part of deterministic certification. | Operator only |
 | `tests/persistence/queue-crash-restart.test.ts` | Turso operational queue crash recovery, idempotency, concurrent lease exclusion, and zero filesystem state. | **Stage 3** |
 | `tests/persistence/scrape-run-state-machine.test.ts` | Atomic active run race, cross-tenant/person concurrency, terminal immutability, restart durability. | **Stage 3** |
 | `tests/persistence/cross-instance-payload-retrieval.test.ts` | Distributed BlobStore payload retrieval across isolated process/disk instances, missing blob graceful failure. | **Stage 3** |
@@ -160,7 +160,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (177 Total Files)
+## 3. Complete Test File Registry (179 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -189,6 +189,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/certification/test-inventory-audit.test.ts` | Certification Integrity | **KEEP** | Full Suite | 11 | 20 |
 | `tests/editorial/career-value-integrity.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 15 | 42 |
 | `tests/editorial/explanation-composition.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 2 | 3 |
+| `tests/editorial/evidence-sufficiency-contract.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 3 | 12 |
 | `tests/editorial/explanation-contract.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 20 | 55 |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 7 | 25 |
 | `tests/editorial/ui-score-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 6 | 14 |
@@ -197,7 +198,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/architecture-contracts.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 10 | 38 |
 | `tests/intelligence/candidate-projection.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 23 |
 | `tests/intelligence/canonical-acquisition-integrity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 21 | 65 |
-| `tests/intelligence/canonical-identity.test.ts` | Identity & Candidate Projection | **KEEP** | Stage 3 | 7 | 27 |
+| `tests/intelligence/canonical-identity.test.ts` | Identity & Candidate Projection | **KEEP** | Operator only (`RADAR_RUN_LIVE_IDENTITY_TESTS=true`) | 7 | 27 |
 | `tests/intelligence/canonical-ingestion-fk-regression.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 3 | 22 |
 | `tests/intelligence/capability-precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 11 |
 | `tests/intelligence/capability.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 7 | 28 |
@@ -237,6 +238,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 13 |
 | `tests/intelligence/serving_verdict_integrity.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 11 | 20 |
 | `tests/intelligence/worker-profile-resolution.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 7 | 24 |
+| `tests/intelligence/invariant-assertions.test.ts` | Evaluation & Policy | **KEEP** | Stage 3 | 3 | 5 |
 | `tests/ontology/tenant-ontology-compiler.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 10 | 55 |
 | `tests/persistence/active_pointer_precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 3 |
 | `tests/persistence/adapter-contracts.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 7 |
