@@ -171,3 +171,29 @@ export function computeEvidenceGroundingMap(
   
   return groundingMap;
 }
+
+/**
+ * Shared evidence quote predicate:
+ * A quote is meaningful only when:
+ * - trimmed length is at least 3; and
+ * - it contains at least one Unicode letter or number.
+ * This rejects "", whitespace, ",", "...", while allowing concise evidence like "P&L".
+ */
+export function isMeaningfulEvidenceQuote(quote: unknown): boolean {
+  if (typeof quote !== "string") return false;
+  const trimmed = quote.trim();
+  if (trimmed.length < 3) return false;
+  return /\p{L}|\p{N}/u.test(trimmed);
+}
+
+export const MANDATE_BEARING_DIMENSION_KEYS = new Set([
+  "mandate",
+  "functionalScope",
+  "commercialAccountability",
+  "reportingLine",
+  "requiredLevel",
+]);
+
+export function isMandateBearingDimensionKey(key: unknown): boolean {
+  return typeof key === "string" && MANDATE_BEARING_DIMENSION_KEYS.has(key);
+}

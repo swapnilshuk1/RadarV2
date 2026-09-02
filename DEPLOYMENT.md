@@ -84,3 +84,14 @@ Host oracle-radar 130.210.41.232 130.210.41.232.sslip.io
     StrictHostKeyChecking no
     IdentitiesOnly yes
 ```
+
+---
+
+## 5. Operational Topology & Distributed Execution Protocol (ADR-003 Active)
+
+The distributed `scrape_runs` state machine and `BlobStore` object storage layers are deployed and production-certified:
+
+1. **Decoupled Execution**: Live scraping and background enrichment workers (`scripts/enrich.ts` / `EvaluationWorker`) can run across independent hosts and container instances.
+2. **Durable Object Storage**: Scraped card payloads and snapshots are managed via `BlobStore` and referenced by durable `payload_key` in Turso Cloud (`enrichment_jobs`), removing local disk colocation requirements.
+3. **Distributed Worker Leases**: Workers lease jobs concurrently from Turso Cloud using transactional atomic leasing with lease expiration and automatic crash failover.
+4. **Tenant Scoping & Run Ownership**: All run lifecycles, cancellations, audit events, and metrics are tenant-isolated in Turso (`scrape_runs`, `scrape_run_events`) with database-enforced per-scope mutex preventing duplicate active runs.

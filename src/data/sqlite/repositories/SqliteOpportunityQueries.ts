@@ -724,7 +724,11 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     }
 
     const totalScreened = agg?.total_screened || 0;
-    const totalDecisions = agg?.user_total || 0;
+    const evaluatedDecisions = agg?.user_total || 0;
+    const sparseDecisionsTotal = agg?.sparse_decisions_total || 0;
+    const allRecordedDecisions = evaluatedDecisions + sparseDecisionsTotal;
+    const totalDecisions = evaluatedDecisions; // Preserving backward compatibility
+
     const engineBreakdown = {
       pursue: agg?.engine_pursue || 0,
       consider: agg?.engine_consider || 0,
@@ -749,6 +753,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       activePursuits,
       totalShortlisted,
       totalDecisions,
+      evaluatedDecisions,
+      allRecordedDecisions,
       remainingToReview,
       discoveryMetrics: {
         engineQualified: totalShortlisted,
@@ -757,6 +763,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       },
       decisionMetrics: {
         totalDecided: totalDecisions,
+        evaluatedDecisions,
+        allRecordedDecisions,
         userConfirmed: agg?.user_confirmed || 0,
         preferenceOverride: agg?.preference_override || 0,
         vetoOverride: agg?.veto_override || 0,
@@ -799,7 +807,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
    * Point lookup for a single opportunity dossier with full narrative and evidence artifacts.
    * Invariants:
    * 1. Point-Scoped: Constrained by tenant_id, person_id, search_plan_id, activeContext, and jobHash.
-   * 2. Heavy-Column Boundary: evaluation_json and raw_content are strictly bounded to this single record.
+   * 2. Heavy-Column Boundary: evaluation_json is strictly bounded to this single record (raw_content excluded from served DTO).
    * 3. Zero Corpus Hydration: Exactly 1 row fetched, zero listOpportunities() calls.
    */
   async getDossier(
@@ -824,7 +832,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       employment_type: string | null;
       posted_at: string | null;
       posted_precision: string | null;
-      raw_content: string | null;
       attention_decision: string;
       evaluation_id: string | null;
       evaluation_state: string | null;
@@ -850,7 +857,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          ov.employment_type AS employment_type,
          ov.posted_at AS posted_at,
          ov.posted_precision AS posted_precision,
-         ov.raw_content AS raw_content,
          spc.attention_decision AS attention_decision,
          me.id AS evaluation_id,
          me.evaluation_state AS evaluation_state,

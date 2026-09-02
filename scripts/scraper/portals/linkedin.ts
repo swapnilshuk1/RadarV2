@@ -6,6 +6,7 @@ import { humanize, jitter, sleep } from "../utils/jitter";
 import { passesHardFilter } from "../utils/hard-filter";
 import { hydrateVirtualizedList } from "../utils/scroll";
 import { normalizePostingDate } from "../utils/date";
+import * as cheerio from "cheerio";
 
 const LINKEDIN_GEO_INDIA = "102713980";
 
@@ -118,6 +119,20 @@ export const linkedinHandler: PortalHandler = {
         throw new Error("RATE_LIMITED: LinkedIn rate limit exceeded");
       }
 
+      // Fast check for explicit zero-results indicators before entering scroll hydration
+      const isZeroResults = await page.evaluate(() => {
+        const text = document.body ? (document.body.innerText || "") : "";
+        if (text.includes("No matching jobs found") || text.includes("No matching jobs") || text.includes("No exact matches found")) {
+          return true;
+        }
+        return !!document.querySelector(".jobs-search-no-results-banner, .jobs-search-no-results, div.jobs-search-two-pane__no-results-banner");
+      }).catch(() => false);
+
+      if (isZeroResults) {
+        ctx.logger(`[LinkedIn listCards] Explicit zero-results banner detected for "${ctx.keyword}". Skipping hydration.`);
+        return [];
+      }
+
       const targetMaxCards = CONFIG.getMaxCardsPerPage("LinkedIn");
       const cardSelector = [
         "div.job-card-container",
@@ -135,17 +150,17 @@ export const linkedinHandler: PortalHandler = {
         "main",
       ];
 
-      // Perform hyper-patient stabilized virtualized scrolling
+      // Perform stabilized virtualized scrolling (calibrated: max 10 passes, 2 stable passes)
       const hydration = await hydrateVirtualizedList(
         page,
         {
           cardSelector,
           containerSelectors,
           targetCards: targetMaxCards,
-          maxPasses: 25,
-          consecutiveStableLimit: 5,
-          minPassDelayMs: 1500,
-          maxPassDelayMs: 3000,
+          maxPasses: 10,
+          consecutiveStableLimit: 2,
+          minPassDelayMs: 600,
+          maxPassDelayMs: 1200,
           isCancelled: ctx.isCancelled,
         },
         ctx.logger
@@ -156,6 +171,7 @@ export const linkedinHandler: PortalHandler = {
       const cards = await page.locator(cardSelector).all();
       const sliced = cards.slice(0, targetMaxCards);
       for (const card of sliced) {
+        if (ctx.isCancelled?.() || page?.isClosed?.()) break;
         try {
           const titleEl = card.locator('a.job-card-list__title, a.job-card-container__link').first();
           const title = ((await titleEl.textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
@@ -170,10 +186,13 @@ export const linkedinHandler: PortalHandler = {
           
           if (!href || !title) continue;
 
-          const filterRes = passesHardFilter({ title, company, location });
+          const filterRes = passesHardFilter({ title, company, location }, { allowMissingCompany: true });
           if (!filterRes.pass) {
             ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
             continue;
+          }
+          if (!company) {
+            ctx.logger(`[LinkedIn Discovery] Preserving card "${title}" without card company; deferring company resolution to detail extraction`);
           }
 
           const detailUrl = href.startsWith("http") ? href : `https://www.linkedin.com${href}`;
@@ -204,7 +223,15 @@ export const linkedinHandler: PortalHandler = {
         }
       }
     } catch (err: any) {
+      const isCancelledOrClosed = ctx.isCancelled?.() || page?.isClosed?.() ||
+        err?.message?.includes("Target page, context or browser has been closed") ||
+        err?.message?.includes("browser has been closed");
+      if (isCancelledOrClosed) {
+        ctx.logger(`LinkedIn listCards cancelled cleanly during run shutdown.`);
+        return [];
+      }
       ctx.logger(`LinkedIn listCards failed: ${err.message}`);
+      throw err;
     }
     return cardsOut;
   },
@@ -227,7 +254,11 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     if (httpRes.fetched) {
       ctx.recordTelemetry?.("httpSuccessful");
       ctx.logger(`[FastPath] Extracted detail from ${url}`);
-      return httpRes;
+      
+      return {
+        ...httpRes,
+        extractedCompany: httpRes.extractedCompany,
+      };
     }
     ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError} — falling back to Playwright`);
   }
@@ -249,20 +280,41 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     const rawHtml = await container.innerHTML().catch(() => "");
     const rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
 
+    // Extract company name from topcard container
+    const companyLocator = page.locator(
+      'a.topcard__org-name-link, a.top-card-layout__first-subline-link, .job-details-jobs-unified-top-card__company-name, .topcard__flavor:first-of-type, .topcard__org-name'
+    ).first();
+    const companyText = ((await companyLocator.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+    const extractedCompany = companyText.length > 0 ? companyText : undefined;
+
     const trimmedText = rawText.trim();
-    if (trimmedText.length < 200) {
-      ctx.logger?.(`[LinkedIn] Rejecting sparse description (${trimmedText.length} chars) for ${url}`);
+    if (trimmedText.length === 0) {
+      ctx.logger?.(`[LinkedIn] Empty job description for ${url}`);
       return {
         fetched: false,
-        fetchError: `Sparse job description rejected (${trimmedText.length} < 200 chars)`,
+        fetchError: "Empty job description",
         rawHtml: "",
         rawText: "",
         fetchDurationMs: Date.now() - t0,
         httpStatus: effectiveStatus,
+        extractedCompany,
       };
     }
 
-    return { fetched: true, rawHtml, rawText: trimmedText, fetchDurationMs: Date.now() - t0, httpStatus: effectiveStatus };
+    const isSparse = trimmedText.length < 200;
+    if (isSparse) {
+      ctx.logger?.(`[LinkedIn] Preserving sparse description (${trimmedText.length} chars, quality=SPARSE) for ${url}`);
+    }
+
+    return {
+      fetched: true,
+      rawHtml,
+      rawText: trimmedText,
+      fetchDurationMs: Date.now() - t0,
+      httpStatus: effectiveStatus,
+      quality: isSparse ? ("SPARSE" as const) : ("VALID" as const),
+      extractedCompany,
+    };
   } catch (err: any) {
     return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
   } finally {

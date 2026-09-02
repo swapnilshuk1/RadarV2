@@ -15,7 +15,8 @@ export type UnitStatus =
   | "failed"
   | "skipped_gated"
   | "skipped_empty"
-  | "skipped_pruned";
+  | "skipped_pruned"
+  | "aborted";
 
 // ---------- Manifest / Journal ----------
 
@@ -202,7 +203,10 @@ export interface DetailedCard extends FeedCard {
     fetchError?: string;
     fetchDurationMs?: number;
     httpStatus?: number;
+    quality?: "VALID" | "SPARSE" | "EMPTY" | "ERROR";
+    extractedCompany?: string;
   };
+  acquisitionAttempts?: AcquisitionAttempt[];
   telemetry: {
     cardExtractMs: number;
     detailExtractMs: number;
@@ -235,6 +239,7 @@ export interface JobSnapshot {
     rawText?: string;
     fetchError?: string;
     fetchDurationMs?: number;
+    quality?: "VALID" | "SPARSE" | "EMPTY" | "ERROR";
   };
   telemetry: {
     cardExtractMs: number;
@@ -377,4 +382,42 @@ export interface BenchmarkEntry {
 export interface BenchmarkSuite {
   version: string;
   entries: BenchmarkEntry[];
+}
+
+// ---------- First-Class Acquisition State & Content Quality Contracts ----------
+
+export type AcquisitionOutcome =
+  | "SUCCESS"
+  | "SUCCESS_EMPTY"
+  | "TRANSPORT_ERROR"
+  | "AUTH_ERROR"
+  | "ANTI_BOT"
+  | "TIMEOUT"
+  | "PARSE_ERROR"
+  | "SOURCE_REDIRECT"
+  | "EXTRACTION_FAILURE";
+
+export type ContentQualityTier = "VALID" | "SPARSE" | "NON_JOB";
+
+export interface ContentQualityResult {
+  tier: ContentQualityTier;
+  confidence: number;
+  wordCount: number;
+  characterCount: number;
+  codeRatio: number;
+  hasJobTitle: boolean;
+  hasJobDescription: boolean;
+  boilerplateDetected?: string[];
+  reasons: string[];
+}
+
+export interface AcquisitionAttempt {
+  method: string;
+  url: string;
+  timestamp: string;
+  httpStatus?: number;
+  outcome: AcquisitionOutcome;
+  qualityTier?: ContentQualityTier;
+  extractionMethod?: "JSON_LD" | "TARGETED_DOM" | "SANITIZED_DOM" | "FALLBACK_CARD";
+  details?: string;
 }

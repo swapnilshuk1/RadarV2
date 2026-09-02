@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { Opportunity, DecisionVerb } from "../../data/opportunity-fixtures";
-import { applyUrlFor } from "../../data/opportunity-fixtures";
+import { applicationActionFor } from "../../data/opportunity-fixtures";
 import { PreviewCompositionEngine } from "../../lib/intelligence/editorial/PreviewCompositionEngine";
 import { inferExecutiveMandateArchetype } from "../../lib/intelligence/editorial";
 
@@ -12,6 +12,7 @@ export function InlineBrief({
   onDecide: (verb: DecisionVerb) => void;
 }) {
   const preview = PreviewCompositionEngine.compose(o);
+  const applicationAction = applicationActionFor(o);
   const trackName = o.mandateArchetype && o.mandateArchetype !== "Growth Marketing" 
     ? o.mandateArchetype 
     : inferExecutiveMandateArchetype(o.role, (o as any).rawText || (o as any).description);
@@ -92,15 +93,15 @@ export function InlineBrief({
               Open full dossier ↗
             </Link>
 
-            <a
-              href={applyUrlFor(o)}
+            {applicationAction && <a
+              href={applicationAction.url}
               target="_blank"
               rel="noreferrer"
               className="px-3.5 py-2 rounded-full border border-border/60 font-mono text-xs text-foreground hover:bg-muted font-semibold cursor-pointer"
               onClick={(e) => e.stopPropagation()}
             >
-              Apply direct
-            </a>
+              {applicationAction.label}
+            </a>}
           </div>
 
           <div className="grid grid-cols-3 gap-1.5">

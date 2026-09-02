@@ -1,7 +1,0 @@
-{
-  "certifiedPreviousCount": 6826,
-  "liveTableCount": 6826,
-  "distinctCanonicalJobsTotal": 3034,
-  "activeScopeCandidates": 3002,
-  "explanation": "6,826 is the total physical row count in the search_plan_candidates table in Turso Cloud. 3,034 is the count of distinct canonical job IDs linked to active candidate projections for the user scope."
-}

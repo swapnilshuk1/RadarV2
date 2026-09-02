@@ -4,7 +4,7 @@ import { EvidenceDrawer } from "../briefing/EvidenceDrawer";
 import { StrategyWorkspace } from "../briefing/StrategyWorkspace";
 import { ExecutiveActionButton } from "@/components/radar/actions";
 import { Button } from "@/components/ui/button";
-import { applyUrlFor, type DecisionVerb } from "@/data/opportunity-fixtures";
+import { applicationActionFor, type DecisionVerb } from "@/data/opportunity-fixtures";
 import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
 
 interface ExecutiveBriefingSurfaceProps {
@@ -19,6 +19,16 @@ interface ExecutiveBriefingSurfaceProps {
   executionPkg: any;
 }
 
+export function getBriefProvenanceLabel(brief: {
+  evidenceQuality?: string;
+  explanation?: { evidenceStrength?: string };
+}): string {
+  if (brief.explanation?.evidenceStrength === "INSUFFICIENT") {
+    return "Insufficient evidence — verification pending.";
+  }
+  return `${brief.evidenceQuality || "Evidence quality unavailable"} · Claim strength reflects recorded evidence.`;
+}
+
 export function ExecutiveBriefingSurface({
   opportunity: o,
   brief,
@@ -30,6 +40,9 @@ export function ExecutiveBriefingSurface({
   jobProj,
   executionPkg,
 }: ExecutiveBriefingSurfaceProps) {
+  const provenanceLabel = getBriefProvenanceLabel(brief);
+  const applicationAction = applicationActionFor(o);
+
   return (
     <div className="min-h-screen pb-36 bg-background text-foreground font-sans">
       <Summary
@@ -70,7 +83,7 @@ export function ExecutiveBriefingSurface({
               </summary>
               <div className="mt-4 space-y-4 border-t border-border/40 pt-4">
                 <p><strong>Methodology:</strong> Multi-hop evidence graph traversal, dual-vector alignment, and policy scoring.</p>
-                <p><strong>Provenance:</strong> {brief.evidenceQuality} · Verified against 5 core capability ontologies.</p>
+                <p><strong>Provenance:</strong> {provenanceLabel}</p>
                 <p><strong>Engine:</strong> RADAR v2.4 Editorial Engine · Protocol INV-DATA-SUFFICIENCY active.</p>
               </div>
             </details>
@@ -114,13 +127,13 @@ export function ExecutiveBriefingSurface({
             </div>
 
             {/* Right Column: Apply button */}
-            {o.applyUrl ? (
+            {applicationAction ? (
               <Button
                 asChild
                 className="w-full flex items-center justify-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal h-auto"
               >
-                <a href={applyUrlFor(o)} target="_blank" rel="noopener noreferrer">
-                  Apply direct →
+                <a href={applicationAction.url} target="_blank" rel="noopener noreferrer">
+                  {applicationAction.label} →
                 </a>
               </Button>
             ) : null}

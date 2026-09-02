@@ -42,7 +42,8 @@ export class CanonicalEvaluator {
     const lifestyleResult = LifestyleAssessmentEngine.evaluate(candidate, jobProjection);
 
     const jdText = raw.normalizedText || raw.rawText || raw.description || "";
-    const hasStructured = Array.isArray(raw.dimensions) && raw.dimensions.length > 0;
+    const groundedDimensions = jobProjection.dimensions || [];
+    const hasStructured = (Array.isArray(raw.dimensions) && raw.dimensions.length > 0) || groundedDimensions.length > 0;
 
     const decisionResult = DecisionPolicyEngine.evaluate(
       identityResult,
@@ -53,7 +54,9 @@ export class CanonicalEvaluator {
       jobProjection.role,
       "Commercial & Marketing Leadership",
       jdText,
-      hasStructured
+      hasStructured,
+      undefined,
+      groundedDimensions
     );
 
     const record = {

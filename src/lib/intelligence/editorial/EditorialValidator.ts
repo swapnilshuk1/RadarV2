@@ -75,7 +75,7 @@ export class EditorialValidator {
       if (avoids.organizationType && avoids.organizationType.includes(ctx.organizationType)) {
         return { isValid: false, reason: `Pattern avoids organizationType '${ctx.organizationType}'` };
       }
-      if (avoids.maxScore !== undefined && ctx.rawScore > avoids.maxScore) {
+      if (avoids.maxScore !== undefined && ctx.rawScore !== null && ctx.rawScore > avoids.maxScore) {
         return { isValid: false, reason: `Score ${ctx.rawScore} exceeds pattern maxScore ${avoids.maxScore}` };
       }
     }
@@ -91,7 +91,7 @@ export class EditorialValidator {
       if (requires.hasPnlOwnership && !ctx.hasPnlOwnership) {
         return { isValid: false, reason: `Pattern requires hasPnlOwnership = true, but context lacks P&L signals` };
       }
-      if (requires.minScore !== undefined && ctx.rawScore < requires.minScore) {
+      if (requires.minScore !== undefined && (ctx.rawScore === null || ctx.rawScore < requires.minScore)) {
         return { isValid: false, reason: `Score ${ctx.rawScore} below pattern minScore ${requires.minScore}` };
       }
     }

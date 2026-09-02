@@ -1,9 +1,0 @@
-{
-  "totalActiveCandidates": 3002,
-  "servedCount": 3002,
-  "coverage": "100%",
-  "sparseSpecRepresentation": "PASS (639 sparse specs served as unavailable/sparse)",
-  "evaluatedRepresentation": "PASS (2,363 evaluated served with decision/scores)",
-  "effectiveDecisionResolution": "PASS (resolveEffectiveDecision deterministic)",
-  "metricAggregationBug": "CRITICAL: SqliteCanonicalServingStore.ts getExecutiveMetrics checks obsolete enums."
-}

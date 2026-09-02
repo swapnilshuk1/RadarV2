@@ -1,5 +1,6 @@
 import type { Opportunity } from "../../../data/opportunity-fixtures";
 import type { EditorialPattern, EditorialVariableMap } from "./EditorialPattern";
+import { AdvisoryConstitution } from "./AdvisoryConstitution";
 
 export interface ComposedNarrative {
   patternId: string;
@@ -19,6 +20,26 @@ export interface ComposedNarrative {
 
 export class NarrativeComposer {
   public static compose(pattern: EditorialPattern, opportunity: Opportunity): ComposedNarrative {
+    const sufficiency = AdvisoryConstitution.validateDataSufficiency(opportunity);
+    if (!sufficiency.isSufficient) {
+      const role = opportunity.role || "this role";
+      const company = opportunity.company || "the company";
+      const limitation = sufficiency.message || "The available evidence is insufficient for an executive recommendation.";
+      return {
+        patternId: "evidence-limited",
+        strategyId: "scope-verification",
+        angleId: "insufficient-evidence",
+        editorialThesis: limitation,
+        editorialRisk: "Published evidence does not establish the mandate, reporting line, or decision rights.",
+        headline: `Assessment pending: ${role} at ${company}.`,
+        opening: limitation,
+        decisionGuidance: {
+          proceedIf: "Proceed only after the recruiter confirms the mandate, reporting line, and available resources.",
+          pauseIf: "Pause application preparation until the published scope is verified."
+        }
+      };
+    }
+
     // Extract P&L Scale if available from dimensions
     const pnlDim = opportunity.dimensions?.find(d => d.key === "commercialAccountability");
     const pnlScale = pnlDim?.jdEvidence?.value ? String(pnlDim.jdEvidence.value) : undefined;

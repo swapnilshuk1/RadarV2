@@ -167,6 +167,12 @@ The scraping pipeline uses a stealth Playwright engine managed by `RunController
 - **Cloud Flags**: When running in cloud containers, scrapers inject `--no-sandbox`, `--disable-gpu`, `--disable-setuid-sandbox` and set `headless: true`.
 - **Session Management**: Public job search pages are prioritized to prevent login locks. For authenticated portals, session cookies are restored from local state.
 
+### Distributed Scraper & Enrichment Architecture (ADR-003 Active)
+- **Distributed Multi-Instance Execution**: Scraper and enrichment worker instances can run across decoupled host environments.
+- **Durable Multi-Tenant Scrape Runs**: Run state, event logs, and cancel/abort lifecycle reside durably in Turso Cloud (`scrape_runs`, `scrape_run_events`) with database-enforced mutex per scope.
+- **Decoupled BlobStore Payloads**: Card payloads and snapshots are stored via `BlobStore` (`payload_key` in `enrichment_jobs`), enabling remote worker nodes to retrieve payloads without shared container disks.
+- **Distributed Leasing Protocol**: Workers safely lease batches concurrently with database-enforced mutual exclusion, lease expirations, and automatic crash failover.
+
 ---
 
 ## 10. Evaluation & Qualification Pipeline
@@ -190,23 +196,37 @@ When a user swipes or makes a decision on an opportunity:
 
 ---
 
-## 12. Development & Verification Commands
+## 12. Continuous Certification Gate & Development Commands
+
+RADAR v2 enforces a single, authoritative continuous certification workflow:
+```
+Code Change ──► Affected Contracts ──► npm run certify ──► Deploy ──► npm run smoke
+```
+
+### Invariant-First Contributor Protocol (Mandatory for all AI Agents):
+Whenever touching, modifying, or writing tests:
+1. **Identify the Invariant**: State what system behavior, data relationship, security boundary, or UI contract is being verified.
+2. **Check for Authoritative Home**: Inspect `tests/TEST_INVENTORY.md` to locate the canonical domain suite.
+3. **If Unique and Valid**: Keep and modernize the test in its proper canonical domain.
+4. **If Duplicate**: Consolidate into the authoritative suite rather than proliferating milestone-numbered files (`mXX`, `pXX`, `phaseXX`).
+5. **If Obsolete**: Archive to `tests/archive/` with explicit written justification.
+6. **Continuous Certification Gate**: Ensure `npm run certify` and `npm run smoke` pass cleanly before declaring completion.
 
 ```bash
-# Type check TypeScript code
+# 1. Authoritative Continuous Certification Gate (TypeScript + 7 Deterministic Stages)
+npm run certify
+
+# 2. Production Post-Deployment Smoke Check (Live Turso Health & Feed Parity)
+npm run smoke
+
+# 3. Unified System Diagnostic Inspection
+npm run diagnose
+
+# 4. Type check TypeScript code
 npx tsc --noEmit
 
-# Build production bundle (SSR + Nitro)
+# 5. Build production bundle (SSR + Nitro)
 npm run build
-
-# Run Executive Qualification Harness (EQE)
-npm run test:eqe
-
-# Run Live Scraper Pipeline locally
-npx tsx scripts/scrape.ts
-
-# Audit Database Lineage & Health
-npx tsx scripts/audit-lineage.ts
 ```
 
 ---

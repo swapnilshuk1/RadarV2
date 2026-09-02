@@ -34,6 +34,7 @@ import type {
   EvidenceState,
 } from "@/lib/domain/canonical_acquisition";
 import type { SearchCriteriaPayload } from "@/lib/domain/evaluation_context";
+import { isExternalPostingUrl } from "./external-posting-url";
 
 export interface IngestOpportunityPayload {
   sourcePortal: string;
@@ -69,6 +70,13 @@ export interface CanonicalIngestionResult {
   jobsEnqueued: number;
 }
 
+export class InvalidCanonicalUrlError extends Error {
+  constructor(sourcePortal: string, sourceJobId: string) {
+    super(`Cannot ingest ${sourcePortal}:${sourceJobId} without a captured external posting URL.`);
+    this.name = "InvalidCanonicalUrlError";
+  }
+}
+
 export class CanonicalIngestionService {
   private db: DatabaseAdapter;
 
@@ -88,7 +96,10 @@ export class CanonicalIngestionService {
     const employmentType = payload.employmentType || null;
     const postedAt = payload.postedAt || null;
     const rawContent = payload.rawContent.trim();
-    const canonicalUrl = payload.canonicalUrl.trim() || `https://radar.internal/jobs/${source}/${sourceJobId}`;
+    const canonicalUrl = payload.canonicalUrl.trim();
+    if (!isExternalPostingUrl(canonicalUrl)) {
+      throw new InvalidCanonicalUrlError(source, sourceJobId);
+    }
 
     const descLen = rawContent.length;
     const acquisitionQuality: AcquisitionQuality = payload.acquisitionQuality || (

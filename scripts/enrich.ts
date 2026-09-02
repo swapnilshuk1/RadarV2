@@ -44,12 +44,31 @@ async function rateLimitedExtract(card: DetailedCard) {
 }
 
 async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist/queue").EnrichmentJob): Promise<{llmMs: number; busyMs: number; dimensions?: any}> {
-  queue.markRunning(job.id);
+  await queue.markRunning(job.id);
   const tStart = Date.now();
   let llmMs = 0;
   
   try {
-    const snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
+    // Load payload from BlobStore (or fallback to snapshot_path for legacy unmigrated rows)
+    let snapStr: string | null = null;
+    const payloadKey = job.payload_key || (job.snapshot_path ? (job.snapshot_path.startsWith("snapshots/") ? job.snapshot_path : `snapshots/${job.job_hash}.json`) : null);
+
+    if (payloadKey) {
+      const { getBlobStore } = await import("../src/lib/storage/blob-store");
+      const blobBuf = await getBlobStore().get(payloadKey);
+      if (blobBuf) {
+        snapStr = blobBuf.toString("utf-8");
+      }
+    }
+
+    if (!snapStr && job.snapshot_path && fs.existsSync(job.snapshot_path)) {
+      snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
+    }
+
+    if (!snapStr) {
+      throw new Error(`Enrichment payload not found for job ${job.id} (key: ${payloadKey}, path: ${job.snapshot_path})`);
+    }
+
     const detailedCard = JSON.parse(snapStr) as DetailedCard;
     
     // Check if we already have a fresh, valid-version extraction on disk that covers full JD if present
@@ -92,9 +111,23 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
     }
     
     if (isFromCache) {
-      queue.markCompleted(job.id, "skipped LLM / cached");
+      await queue.markCompleted(job.id, "skipped LLM / cached");
     } else {
-      queue.markCompleted(job.id);
+      await queue.markCompleted(job.id);
+    }
+
+    // The canonical evaluation and lineage have been persisted before this
+    // point. The acquisition payload is no longer required for serving or a
+    // successful retry, so release the bounded local/remote artifact promptly.
+    if (payloadKey) {
+      try {
+        const { getBlobStore } = await import("../src/lib/storage/blob-store");
+        await getBlobStore().delete(payloadKey);
+      } catch (cleanupError: any) {
+        // Completion is canonical and must not be rolled back because an
+        // ephemeral acquisition-artifact cleanup later fails.
+        log(`[Enrich] Completed job ${job.id}, but could not delete payload ${payloadKey}: ${cleanupError.message}`, "warn");
+      }
     }
 
     return { 
@@ -124,10 +157,10 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
       const backoffIndex = Math.min(job.attempts, BACKOFF_SECONDS.length - 1);
       const delaySec = BACKOFF_SECONDS[backoffIndex];
       const nextRetryAt = new Date(Date.now() + delaySec * 1000).toISOString();
-      queue.markRetry(job.id, failureType, msg, nextRetryAt);
+      await queue.markRetry(job.id, failureType, msg, nextRetryAt);
       log(`Job ${job.id} failed (${failureType}), retrying in ${delaySec}s`, "warn");
     } else {
-      queue.markFailed(job.id, failureType, msg);
+      await queue.markFailed(job.id, failureType, msg);
       log(`Job ${job.id} fatally failed: ${msg}`, "error");
     }
     return { llmMs, busyMs: (Date.now() - tStart) - llmMs };
@@ -138,8 +171,28 @@ function filteredCardHash(card: DetailedCard) {
   return card.cardHash;
 }
 
-function printDashboard(queue: EnrichmentQueue, workerStats: any) {
-  const { counts, age, failureDistribution, throughput } = queue.getDashboardStats();
+async function cleanupExpiredTerminalPayloads(queue: EnrichmentQueue): Promise<void> {
+  const { getBlobStore, resolveArtifactStoreLimits } = await import("../src/lib/storage/blob-store");
+  const retentionHours = resolveArtifactStoreLimits().retentionHours;
+  const cutoffIso = new Date(Date.now() - retentionHours * 60 * 60 * 1000).toISOString();
+  const payloadKeys = await queue.getExpiredTerminalPayloadKeys(cutoffIso);
+  if (payloadKeys.length === 0) return;
+
+  const blobStore = getBlobStore();
+  let deleted = 0;
+  for (const payloadKey of payloadKeys) {
+    try {
+      await blobStore.delete(payloadKey);
+      deleted += 1;
+    } catch (error: any) {
+      log(`[Enrich] Retention cleanup could not delete ${payloadKey}: ${error.message}`, "warn");
+    }
+  }
+  log(`[Enrich] Retention cleanup removed ${deleted}/${payloadKeys.length} terminal payloads older than ${retentionHours}h.`);
+}
+
+async function printDashboard(queue: EnrichmentQueue, workerStats: any) {
+  const { counts, age, failureDistribution, throughput } = await queue.getDashboardStats();
   
   const stateMap: Record<string, number> = {
     PENDING: 0, LEASED: 0, RUNNING: 0, RETRY: 0, COMPLETE: 0, FAILED: 0
@@ -211,6 +264,7 @@ Schema Errors:  ${workerStats.dimensions.schemaErrors}${failureStr}
 async function startWorker() {
   log(`Starting Enrichment Worker [${WORKER_ID}]`);
   const queue = new EnrichmentQueue();
+  await cleanupExpiredTerminalPayloads(queue);
   
   const workerStats = {
     startTime: Date.now(),
@@ -229,10 +283,10 @@ async function startWorker() {
     }
   };
 
-  process.on("SIGINT", () => {
+  process.on("SIGINT", async () => {
     console.log("\nGenerating End-of-Run Validation Report...");
     
-    const { counts, failureDistribution, throughput } = queue.getDashboardStats();
+    const { counts, failureDistribution, throughput } = await queue.getDashboardStats();
     const stateMap: Record<string, number> = { PENDING: 0, LEASED: 0, RUNNING: 0, RETRY: 0, COMPLETE: 0, FAILED: 0 };
     for (const row of counts) { stateMap[row.status] = row.count; }
     
@@ -274,23 +328,21 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
   });
 
   // Create an initial dashboard print
-  printDashboard(queue, workerStats);
-
-
+  await printDashboard(queue, workerStats);
 
   let idleCount = 0;
   
   while (true) {
     // Attempt to lease up to CONFIG.llmConcurrency jobs
     const tPoll = Date.now();
-    const jobs = queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency, 300); // 5 min lease
+    const jobs = await queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency, 300); // 5 min lease
     workerStats.pollingMs += (Date.now() - tPoll);
     
     if (jobs.length === 0) {
       idleCount++;
       
       const tPollStats = Date.now();
-      const stats = queue.getDashboardStats();
+      const stats = await queue.getDashboardStats();
       workerStats.pollingMs += (Date.now() - tPollStats);
       
       const hasRetries = stats.counts.some((c: any) => c.status === "RETRY" && c.count > 0);
@@ -305,7 +357,7 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
 
       if (idleCount % 12 === 0) {
         // Print dashboard every minute if idle (5s * 12)
-        printDashboard(queue, workerStats);
+        await printDashboard(queue, workerStats);
       }
       await new Promise(r => setTimeout(r, 5000));
       continue;
@@ -337,7 +389,7 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
     workerStats.llmMs += (batchLlmMs / Math.max(1, jobs.length));
     workerStats.busyMs += (batchBusyMs / Math.max(1, jobs.length));
     
-    printDashboard(queue, workerStats);
+    await printDashboard(queue, workerStats);
   }
 }
 
@@ -361,21 +413,21 @@ export async function enrichJobsForRun(runId: string) {
       }
     } catch {}
 
-    const pendingCount = queue.getPendingCountForRun(runId);
+    const pendingCount = await queue.getPendingCountForRun(runId);
     if (pendingCount === 0) {
       log(`[Enrich] All jobs for run ${runId} have been successfully processed.`);
       break;
     }
 
     // Recover any leases expired globally during our run
-    queue.recoverExpiredLeases();
+    await queue.recoverExpiredLeases();
 
     // Lease jobs only for this run!
-    const jobs = queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency);
+    const jobs = await queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency);
 
     if (jobs.length === 0) {
       // Check if there are any jobs currently cooling down in retry status
-      const hasRetries = queue.hasRetriesForRun(runId);
+      const hasRetries = await queue.hasRetriesForRun(runId);
       if (hasRetries) {
         log(`[Enrich] Active jobs in retry cooling-down. Sleeping for ${emptyBackoffMs}ms...`);
         await new Promise(r => setTimeout(r, emptyBackoffMs));
@@ -407,7 +459,7 @@ export async function enrichGlobalQueue(onJobCompleted?: () => void) {
   
   while (true) {
     // Check global pending stats (getGlobalPipelineStats returns counts)
-    const stats = queue.getGlobalPipelineStats();
+    const stats = await queue.getGlobalPipelineStats();
     if (stats.pending + stats.retry === 0 && stats.leased === 0 && stats.enriching === 0) {
       // Nothing to process. Sleep for 10 seconds to eliminate idle CPU and SQLite polling overhead.
       await new Promise(r => setTimeout(r, 10000));
@@ -415,10 +467,10 @@ export async function enrichGlobalQueue(onJobCompleted?: () => void) {
     }
 
     // Recover any leases expired globally
-    queue.recoverExpiredLeases();
+    await queue.recoverExpiredLeases();
 
     // Lease jobs globally
-    const jobs = queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency);
+    const jobs = await queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency);
 
     if (jobs.length === 0) {
       // If there are still items but we leased 0, they might be in retry status.
@@ -457,4 +509,3 @@ if (isMain) {
     process.exit(1);
   });
 }
-

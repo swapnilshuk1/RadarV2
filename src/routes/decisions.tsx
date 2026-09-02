@@ -1,7 +1,7 @@
 import { type ServedOpportunity, isEvaluated, isUnavailable, type EvaluatedOpportunity } from "../data/opportunity-fixtures";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
-import { applyUrlFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
+import { applicationActionFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
 import { useDecisions, type DecisionRecord } from "../lib/decisions-store";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
 import { getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
@@ -306,7 +306,7 @@ function OpportunitiesPage() {
 
             {displayedOpportunities.map((o: any) => {
               const verb = getUserVerb(o);
-              const applyUrl = applyUrlFor(o);
+              const applicationAction = applicationActionFor(o);
 
               // Recompose brief models for context
               const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
@@ -440,14 +440,14 @@ function OpportunitiesPage() {
                       >
                         Track
                       </button>
-                      {verb === "PURSUE" && applyUrl && (
+                      {verb === "PURSUE" && applicationAction && (
                         <a
-                          href={applyUrl}
+                          href={applicationAction.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="ml-auto text-xs uppercase tracking-[0.14em] font-mono text-decision-pursue hover:underline"
                         >
-                          Apply directly ↗
+                          {applicationAction.label} ↗
                         </a>
                       )}
                     </div>

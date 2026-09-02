@@ -1,11 +1,17 @@
-process.env.RADAR_USE_TURSO = "true";
 import { describe, it, expect, beforeAll } from "vitest";
 import { getRepositories } from "../../src/data/sqlite/provider";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 import { validateCandidateProjection } from "../../src/lib/domain/candidate_projection";
 import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
 
-describe("Stage 2B: Canonical Identity & Candidate Projection Unification", () => {
+const runLiveIdentityAudit = process.env.RADAR_RUN_LIVE_IDENTITY_TESTS === "true";
+
+/**
+ * This is an operator audit of a named live account, not a deterministic
+ * certification test. It is opt-in because it reads production identity data
+ * and runs migrations against the selected Turso database.
+ */
+describe.runIf(runLiveIdentityAudit)("Stage 2B: Canonical Identity & Candidate Projection Unification", () => {
   const repos = getRepositories();
   const db = (repos.opportunities as any).db;
   const CANONICAL_ID = "ms6i7e3y-4x0chy5fy";

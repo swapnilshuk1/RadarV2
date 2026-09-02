@@ -74,6 +74,13 @@ export interface CanonicalOpportunityMetrics {
   readonly totalShortlisted: number;
 
   readonly totalDecisions: number;
+  /**
+   * Explicit disambiguation of user decision metrics:
+   * - `evaluatedDecisions`: User decisions recorded against fully materialized/evaluated opportunities (1,498).
+   * - `allRecordedDecisions`: All user decisions across all search plan candidates including sparse/unmaterialized (1,509).
+   */
+  readonly evaluatedDecisions?: number;
+  readonly allRecordedDecisions?: number;
   readonly remainingToReview: number;
 
   // Granular Distributions
@@ -89,6 +96,8 @@ export interface CanonicalOpportunityMetrics {
   };
   readonly decisionMetrics?: {
     readonly totalDecided: number;          // 1,498
+    readonly evaluatedDecisions?: number;   // 1,498 (decisions on evaluated/materialized opportunities)
+    readonly allRecordedDecisions?: number; // 1,509 (all decisions including sparse/unmaterialized)
     readonly userConfirmed: number;         // 308 (Engine Pursue + User Pursue)
     readonly preferenceOverride: number;    // 46 (Engine Consider + User Pursue/Consider overrides)
     readonly vetoOverride: number;          // 122 (Engine Pass + User Pursue)
@@ -97,10 +106,10 @@ export interface CanonicalOpportunityMetrics {
     readonly userConsiderTotal: number;     // 137 (Total explicit user Consider decisions)
     readonly userPassTotal: number;         // 889 (Total explicit user Pass decisions)
     readonly sparseDecisions?: {
-      readonly total: number;               // 10
+      readonly total: number;               // 11
       readonly pursue: number;              // 2
       readonly consider: number;            // 1
-      readonly pass: number;                // 7
+      readonly pass: number;                // 8
     };
   };
 

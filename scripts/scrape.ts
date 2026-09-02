@@ -24,10 +24,11 @@ import { indeedHandler } from "./scraper/portals/indeed";
 import { naukriHandler } from "./scraper/portals/naukri";
 import { closeAllPortalContexts, getPortalContext } from "./scraper/portals/base";
 import { PageManager } from "./scraper/run/page-manager";
-import type { FeedCard, PortalHandler, PortalName, WorkUnit } from "./scraper/types";
+import type { FeedCard, PortalHandler, PortalName, WorkUnit, AcquisitionAttempt, AcquisitionOutcome } from "./scraper/types";
 
 import { sanitizeCompanyName } from "./scraper/utils/sanitize";
 import { normalizeUrl } from "./scraper/utils/url";
+import { getDatabaseAdapter } from "../src/data/database";
 import { fastFetchDetail } from "./scraper/utils/http-fetch";
 import { EnrichmentQueue } from "./scraper/persist/queue";
 import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
@@ -59,14 +60,14 @@ const HANDLERS: Record<PortalName, PortalHandler> = {
 
 const enrichmentQueue = new EnrichmentQueue();
 
-export function syncManifestProgress(
+export async function syncManifestProgress(
   mgr: RunController,
   stage?: "discover" | "evaluate" | "prioritize" | "complete" | "stopped" | "failed"
 ) {
   const cardsFound = mgr.manifest.cards.length;
   let evaluated = 0;
   try {
-    const stats = enrichmentQueue.getRunStats(mgr.runId);
+    const stats = await enrichmentQueue.getRunStats(mgr.runId);
     evaluated = stats?.completed || 0;
   } catch {}
 
@@ -138,12 +139,13 @@ export interface RunOptions {
   resume?: boolean;
   autoConfirm?: boolean;
   authContext?: AuthContext;
+  searchPlanId?: string;
+  resolvedPlan?: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan;
 }
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   const log = makeLogger("scrape");
   const freshRun = process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
-  const mgr = new RunController();
 
   let keywords = opts.keywords;
   let portals = opts.portals ?? DEFAULT_PORTALS;
@@ -173,34 +175,47 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     opts.autoConfirm = true;
   }
 
-  if (!keywords) {
-    try {
-      const profilePath = path.join(process.cwd(), "src", "data", "candidate-profile.json");
-      const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
-      const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
-      const searchPlanOutputPath = path.join(process.cwd(), "src", "data", "search-plan.json");
-      
-      const { CareerIntentModel } = await import("./scraper/run/career-intent");
-      const intent = CareerIntentModel.extractIntent(profilePath, taxonomyPath);
-      log(`Career Intent: Functions: ${intent.functions.slice(0, 2).join(", ") || "Marketing/Growth"} · Levels: ${intent.targetLevel.join(", ")}`);
-      
-      const { SearchPlanner } = await import("./scraper/run/search-planner");
-      const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
-      
-      fs.writeFileSync(searchPlanOutputPath, JSON.stringify(searchPlan, null, 2), "utf-8");
-      log(`Generated and persisted Search Plan first-class artifact to: ${searchPlanOutputPath}`);
-      
-      // Select all ranked queries to fully capture the environment!
-      keywords = searchPlan.rankedQueries.map(q => q.query);
-      log(`Search Planner compiled all ${keywords.length} portal queries: ${keywords.join(", ")}`);
-    } catch (e: any) {
-      log(`Search Planner failed to dynamically generate Search Plan (${e.message}). Falling back to static defaults.`, "warn");
-      keywords = DEFAULT_KEYWORDS;
+  let resolvedPlan: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan | undefined = opts.resolvedPlan;
+
+  if (opts.authContext) {
+    // Authoritative resolution contract: resolve persisted search plan strictly via ScraperPlanResolver
+    const { ScraperPlanResolver } = await import("../src/lib/intelligence/ScraperPlanResolver");
+    const db = getDatabaseAdapter();
+    const scope = { tenantId: opts.authContext.tenantId, personId: opts.authContext.userId };
+    resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
+      scope,
+      undefined,
+      db,
+      opts.searchPlanId
+    ));
+
+    if (!resolvedPlan || resolvedPlan.queries.length === 0) {
+      const errorMsg = `[ScraperAuth] No active search plan found in Turso Cloud for tenant ${opts.authContext.tenantId} (person: ${opts.authContext.userId}). Scraper execution aborted (fallback keywords disabled for authenticated sessions).`;
+      log(errorMsg, "error");
+      throw new Error(errorMsg);
     }
+
+    keywords = resolvedPlan.queries;
+
+    log(
+      `Resolved active evaluation context:\n` +
+      `  tenant=${scope.tenantId}\n` +
+      `  person=${scope.personId}\n` +
+      `  searchPlan=${resolvedPlan.searchPlanId}\n` +
+      `  snapshot=${resolvedPlan.snapshotId || "dynamic"}\n` +
+      `  queries=${resolvedPlan.queryCount}\n\n` +
+      `Using persisted search plan; fallback keywords disabled.`
+    );
+  } else if (!keywords) {
+    keywords = DEFAULT_KEYWORDS;
+    log(`Running in offline unauthenticated mode: using manual/default keywords (${keywords.length} queries).`);
   }
   
+  const resolvedKeywords = keywords;
+
+  const mgr = new RunController();
   const { resumed } = mgr.init({
-    keywords, portals, maxPages,
+    keywords: resolvedKeywords, portals, maxPages,
     maxCardsPerPage: CONFIG.maxCardsPerPage,
     resume: freshRun ? false : (opts.resume !== false),
   });
@@ -211,11 +226,39 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   log(`Run ${mgr.runId} ${resumed ? "resumed" : "started"} — portals=${mgr.manifest.portals.join(",")} units=${plannedUnits}`);
   mgr.recordActivity(`Search schema armed: ${plannedUnits} work units across ${portals.join(", ")}`);
 
+  let runScope: any = null;
+  if (opts.authContext) {
+    runScope = {
+      tenantId: opts.authContext.tenantId,
+      personId: opts.authContext.userId,
+      roles: [],
+    };
+    try {
+      const repos = getRepositories();
+      await repos.scrapeRuns.createRun(runScope, {
+        id: mgr.runId,
+        searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
+        portalTargets: portals,
+        initialStatus: "initializing",
+        config: { maxPages, keywords: resolvedKeywords },
+      });
+      log(`Created durable scrape_run in Turso Cloud: ${mgr.runId} for tenant ${runScope.tenantId}`);
+    } catch (e: any) {
+      log(`Failed to create durable scrape_run: ${e.message}`, "warn");
+      throw e;
+    }
+  }
+
   // Graceful shutdown: checkpoints already fsync'd — just close journal + browsers.
   const shutdown = async (signal: string) => {
     log(`Received ${signal}, checkpointing…`, "warn");
     mgr.journal.append({ type: "signal", signal });
     mgr.finalize("aborted");
+    if (runScope) {
+      try {
+        await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "aborted", `Interrupted by ${signal}`);
+      } catch {}
+    }
     for (const session of activeAuthSessions.values()) {
       session.dispose();
     }
@@ -243,6 +286,11 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     try {
       // Phase 1: Initializing
       mgr.transitionTo("initializing");
+      if (runScope) {
+        try {
+          await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "running");
+        } catch {}
+      }
 
       await pool(portals, CONFIG.portalConcurrency, async (portal) => {
         const plog = makeLogger(`scrape:${portal}`);
@@ -278,17 +326,16 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         // Establish JIT PortalAuthSession without retaining plaintext secrets
         let authSession: PortalAuthSession | null = null;
         try {
-          const repos = await getRepositories();
-          const broker = new CredentialBroker(repos.credentials);
-          const auth = opts.authContext || {
-            tenantId: "default_tenant",
-            userId: "scraper_runner",
-            permissions: ["read:credentials", "manage:credentials"],
-          };
-          authSession = await establishPortalAuthSession(broker, auth, portal, browserContext);
-          if (authSession) {
-            activeAuthSessions.set(portal, authSession);
-            plog(`authenticated session established (source: ${authSession.source}, version: ${authSession.version})`);
+          if (opts.authContext) {
+            const repos = await getRepositories();
+            const broker = new CredentialBroker(repos.credentials);
+            authSession = await establishPortalAuthSession(broker, opts.authContext, portal, browserContext);
+            if (authSession) {
+              activeAuthSessions.set(portal, authSession);
+              plog(`authenticated session established (source: ${authSession.source}, version: ${authSession.version})`);
+            }
+          } else {
+            plog(`No tenant authContext provided; proceeding unauthenticated for portal ${portal}`);
           }
         } catch (authErr: any) {
           plog(`auth session setup error (${authErr.name || "Error"}): ${authErr.message}`, "warn");
@@ -412,7 +459,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             portalIngested += outcome.opportunities;
             portalFacts += outcome.factsCreated;
           }
-          syncManifestProgress(mgr, "discover");
+          await syncManifestProgress(mgr, "discover");
           await jitter();
         }
         return { portalIngested, portalFacts };
@@ -480,10 +527,20 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       mgr.finalize("completed");
+      const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
+      if (runScope) {
+        try {
+          const repos = getRepositories();
+          await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
+            totalDiscovered: mgr.manifest.cards.length,
+            totalEnqueued: ingestedCount,
+            metrics: tm as any,
+          });
+          await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "completed");
+        } catch {}
+      }
       mgr.recordActivity("Search completed · Executive shortlist updated");
       const runDurationS = ((new Date().getTime() - new Date(mgr.manifest.startedAt).getTime()) / 1000).toFixed(1);
-      
-      const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
       
       const { generateAcquisitionReport } = await import("./scraper/run/report");
       generateAcquisitionReport(mgr.runId);
@@ -514,6 +571,11 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
     } catch (err: any) {
       log(`Fatal: ${err.message}`, "error");
       mgr.finalize("failed");
+      if (runScope) {
+        try {
+          await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "failed", err.message);
+        } catch {}
+      }
       return { success: false, count: 0, runId: mgr.runId };
     } finally {
       activeRunControllers.delete(mgr.runId);
@@ -534,7 +596,7 @@ export async function runScraper(opts: Partial<RunControllerOptions> = {}): Prom
 }
 
 export type ProcessOutcome = {
-  status: "completed" | "failed" | "skipped_gated" | "skipped_empty";
+  status: "completed" | "failed" | "skipped_gated" | "skipped_empty" | "aborted";
   listingCount: number;
   detailCount: number;
   opportunities: number;
@@ -584,6 +646,7 @@ async function processUnit(
     return outcome;
   }
 
+  const unitStartTime = Date.now();
   mgr.updateUnit(unit.id, { status: "running", startedAt: new Date().toISOString(), attempts: unit.attempts + 1 });
   mgr.recordActivity(`Searching ${unit.portal}: "${unit.keyword}" (Page ${unit.page})...`);
   try {
@@ -605,16 +668,30 @@ async function processUnit(
         logger: log,
         isCancelled: () => mgr.isCancellationRequested(),
       });
+      if (mgr.isCancellationRequested()) {
+        outcome.status = "aborted";
+        return outcome;
+      }
       mgr.recordListingSuccess(unit.portal);
       mgr.recordActivity(`Discovered ${cards.length} listings on ${unit.portal} for "${unit.keyword}"`);
     } catch (err: any) {
+      const isAbortError = mgr.isCancellationRequested() ||
+        err?.message?.includes("Target page, context or browser has been closed") ||
+        err?.message?.includes("browser has been closed");
+
+      if (isAbortError) {
+        log(`listCards for ${unit.id} aborted cleanly during cancellation.`, "info");
+        outcome.status = "aborted";
+        return outcome;
+      }
+
       mgr.recordListingFailure(unit.portal);
       let errorCategory = "Unknown";
       const msg = err.message.toLowerCase();
-      if (msg.includes("timeout")) errorCategory = "Timeout";
+      if (msg.includes("timeout") || msg.includes("etimedout")) errorCategory = "Timeout";
       else if (msg.includes("navigat")) errorCategory = "Navigation";
       else if (msg.includes("selector")) errorCategory = "Selector";
-      else if (msg.includes("blocked")) errorCategory = "Blocked";
+      else if (msg.includes("blocked") || msg.includes("rate limit") || msg.includes("auth_expired") || msg.includes("429") || msg.includes("406")) errorCategory = "Blocked";
       
       if (errorCategory === "Blocked") {
         mgr.updatePortalHealth(unit.portal, { status: "error", details: "Blocked by anti-bot", score: 0 });
@@ -623,13 +700,43 @@ async function processUnit(
       log(`listCards failed for ${unit.id} [${errorCategory}]: ${err.message}`, "error");
       outcome.status = "failed";
       outcome.warnings.push(`listCards failed: ${err.message}`);
+
+      let unitAcqOutcome: "ANTI_BOT" | "TIMEOUT" | "TRANSPORT_ERROR" = "TRANSPORT_ERROR";
+      if (errorCategory === "Blocked" || msg.includes("406") || msg.includes("429") || msg.includes("cloudflare")) {
+        unitAcqOutcome = "ANTI_BOT";
+      } else if (errorCategory === "Timeout") {
+        unitAcqOutcome = "TIMEOUT";
+      }
+
+      try {
+        QueryMetricsStore.record({
+          runId: mgr.runId,
+          portal: unit.portal,
+          query: unit.keyword,
+          page: unit.page,
+          cardsSeen: 0,
+          cardsParsed: 0,
+          canonicalDuplicates: 0,
+          ledgerKnown: 0,
+          hardFiltered: 0,
+          identityFailed: 0,
+          novelAccepted: 0,
+          novelAcquired: 0,
+          noveltyRate: 1.0, // Excluded from novelty degradation
+          elapsedMs: Date.now() - unitStartTime,
+          timestamp: new Date().toISOString(),
+          outcome: unitAcqOutcome,
+          hasTransportError: true,
+        });
+      } catch {}
+
       return outcome;
     }
 
     outcome.listingCount = cards.length;
 
-    if (cards.length === 0) {
-      outcome.status = "skipped_empty";
+    if (mgr.isCancellationRequested()) {
+      outcome.status = "aborted";
       return outcome;
     }
 
@@ -652,12 +759,12 @@ async function processUnit(
       mgr.recordActivity(`Reading JD: ${feedCard.title} (${feedCard.company})`);
 
       try {
-        // 1. Cheap Pre-Filter
+        // 1. Cheap Pre-Filter (Allow missing company for LinkedIn pre-detail extraction)
         const preQual = passesHardFilter({
           title: feedCard.title,
           company: feedCard.company,
           location: feedCard.location || "",
-        });
+        }, { allowMissingCompany: unit.portal === "LinkedIn" });
 
         if (!preQual.pass) {
           mgr.updateCard(cardUnitId, { status: "skipped_empty", error: preQual.reason });
@@ -669,7 +776,7 @@ async function processUnit(
           portal: unit.portal,
           url: feedCard.detailUrl,
           title: feedCard.title,
-          companyName: feedCard.company,
+          companyName: feedCard.company || "Confidential / Unknown",
           rawJobId: feedCard.cardHash
         });
 
@@ -717,6 +824,7 @@ async function processUnit(
           let acquisitionRoute: import("./scraper/types").AcquisitionRoute = "DISCOVERY_RICH";
           let enrichmentStatus: import("./scraper/types").EnrichmentStatus = "NOT_APPLICABLE";
           let fallbackRoute: string | undefined = undefined;
+          const acquisitionAttempts: AcquisitionAttempt[] = [];
 
           if (unit.portal === "Naukri") {
             // Naukri Multi-Tier Acquisition Architecture:
@@ -732,36 +840,39 @@ async function processUnit(
                 fetchDurationMs: 0,
                 httpStatus: 200,
               };
+              acquisitionAttempts.push({
+                method: "DISCOVERY_RICH",
+                url: feedCard.detailUrl,
+                timestamp: new Date().toISOString(),
+                httpStatus: 200,
+                outcome: "SUCCESS",
+                qualityTier: "VALID",
+                extractionMethod: "FALLBACK_CARD",
+                details: `Direct rich discovery payload (${feedCard.rawText.length} chars)`
+              });
             } 
             // Tier 2: External ATS Enrichment via applyRedirectUrl (< 500 chars)
             else if (feedCard.applyRedirectUrl) {
               log(`[Naukri] Attempting ATS enrichment via ${feedCard.applyRedirectUrl}`);
-              const atsRes = await fastFetchDetail(
+              const atsRes: import("./scraper/utils/http-fetch").HttpFetchResult = await fastFetchDetail(
                 feedCard.applyRedirectUrl,
-                "h1, header, main, body",
-                "#content, .content, main, article, [class*='description'], [class*='jobDescription'], [id*='jobDescription'], body"
-              ).catch((err: any) => ({
+                undefined,
+                undefined,
+                { "Referer": "https://www.naukri.com/" },
+                feedCard.title,
+                feedCard.company
+              ).catch((err: any): import("./scraper/utils/http-fetch").HttpFetchResult => ({
                 fetched: false,
                 fetchError: err.message,
                 fetchDurationMs: 0,
                 httpStatus: undefined,
+                outcome: "TRANSPORT_ERROR" as AcquisitionOutcome,
                 rawHtml: "",
                 rawText: ""
               }));
 
-              // ResponseValidator check on external ATS content (HTTP 200 alone never constitutes success)
-              const valAts = atsRes.fetched && atsRes.rawText ? ResponseValidator.validate({
-                html: atsRes.rawHtml || "",
-                url: feedCard.applyRedirectUrl,
-                sourcePortal: "ExternalATS",
-                httpStatus: atsRes.httpStatus || 200,
-                extractedTitle: feedCard.title,
-                extractedCompany: feedCard.company,
-                extractedDescription: atsRes.rawText
-              }) : { isValid: false, quality: "SPARSE" as const };
-
-              if (atsRes.fetched && valAts.isValid) {
-                log(`[Naukri] ATS enrichment successful (${atsRes.rawText?.length} chars, quality=${valAts.quality}) for ${feedCard.title} @ ${feedCard.company}`);
+              if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText) {
+                log(`[Naukri] ATS enrichment successful (${atsRes.rawText.length} chars, quality=${atsRes.qualityTier || 'VALID'}, method=${atsRes.extractionMethod}) for ${feedCard.title} @ ${feedCard.company}`);
                 acquisitionRoute = "ATS_ENRICHED";
                 enrichmentStatus = "ENRICHED_SUCCESS";
                 detail = {
@@ -771,10 +882,30 @@ async function processUnit(
                   fetchDurationMs: atsRes.fetchDurationMs,
                   httpStatus: atsRes.httpStatus || 200,
                 };
+                acquisitionAttempts.push({
+                  method: "ATS_HTTP",
+                  url: feedCard.applyRedirectUrl,
+                  timestamp: new Date().toISOString(),
+                  httpStatus: atsRes.httpStatus || 200,
+                  outcome: "SUCCESS",
+                  qualityTier: atsRes.qualityTier || "VALID",
+                  extractionMethod: atsRes.extractionMethod,
+                  details: `Extracted ${atsRes.rawText.length} chars via ${atsRes.extractionMethod}`
+                });
               } else {
-                log(`[Naukri] ATS enrichment failed/sparse (${atsRes.fetchError || valAts.quality}); evaluating discovery fallback`);
+                log(`[Naukri] ATS enrichment rejected/failed (${atsRes.fetchError || atsRes.outcome}); preserving attempt and evaluating discovery fallback`);
                 enrichmentStatus = "ENRICHED_FAILED";
                 fallbackRoute = "ORIGINAL_DISCOVERY_PAYLOAD";
+                acquisitionAttempts.push({
+                  method: "ATS_HTTP",
+                  url: feedCard.applyRedirectUrl,
+                  timestamp: new Date().toISOString(),
+                  httpStatus: atsRes.httpStatus,
+                  outcome: atsRes.outcome || "EXTRACTION_FAILURE",
+                  qualityTier: atsRes.qualityTier || "NON_JOB",
+                  extractionMethod: atsRes.extractionMethod,
+                  details: atsRes.fetchError || `Rejected by quality gate (${atsRes.qualityResult?.reasons?.join("; ") || "unsubstantive"})`
+                });
 
                 // Minimum candidate threshold: 200 chars for substantive evaluation
                 if (feedCard.rawText && feedCard.rawText.length >= 200) {
@@ -786,6 +917,16 @@ async function processUnit(
                     fetchDurationMs: 0,
                     httpStatus: 200,
                   };
+                  acquisitionAttempts.push({
+                    method: "DISCOVERY_RICH",
+                    url: feedCard.detailUrl,
+                    timestamp: new Date().toISOString(),
+                    httpStatus: 200,
+                    outcome: "SUCCESS",
+                    qualityTier: feedCard.rawText.length >= 500 ? "VALID" : "SPARSE",
+                    extractionMethod: "FALLBACK_CARD",
+                    details: `Fallback retained discovery card text (${feedCard.rawText.length} chars)`
+                  });
                 } else {
                   detail = {
                     fetched: false,
@@ -811,6 +952,16 @@ async function processUnit(
                   fetchDurationMs: 0,
                   httpStatus: 200,
                 };
+                acquisitionAttempts.push({
+                  method: "DISCOVERY_QUICKAPPLY",
+                  url: feedCard.detailUrl,
+                  timestamp: new Date().toISOString(),
+                  httpStatus: 200,
+                  outcome: "SUCCESS",
+                  qualityTier: "SPARSE",
+                  extractionMethod: "FALLBACK_CARD",
+                  details: `In-portal quick-apply specification (${feedCard.rawText.length} chars)`
+                });
               } else {
                 detail = {
                   fetched: false,
@@ -833,6 +984,16 @@ async function processUnit(
                 fetchDurationMs: 0,
                 httpStatus: 200,
               };
+              acquisitionAttempts.push({
+                method: "DISCOVERY_RICH",
+                url: feedCard.detailUrl,
+                timestamp: new Date().toISOString(),
+                httpStatus: 200,
+                outcome: "SUCCESS",
+                qualityTier: "VALID",
+                extractionMethod: "FALLBACK_CARD",
+                details: `Direct rich discovery payload (${feedCard.rawText.length} chars)`
+              });
             } else {
               mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId });
               const pmDetail = activePageManagers.get(unit.portal);
@@ -850,6 +1011,18 @@ async function processUnit(
                 recordTelemetry: (event: any) => mgr.recordTelemetry(event),
               }, feedCard.detailUrl);
               mgr.journal.append({ type: "detail_extraction_finished", cardId: cardUnitId, durationMs: detail.fetchDurationMs });
+              if (detail.fetched) {
+                acquisitionAttempts.push({
+                  method: "PORTAL_DETAIL",
+                  url: feedCard.detailUrl,
+                  timestamp: new Date().toISOString(),
+                  httpStatus: detail.httpStatus || 200,
+                  outcome: "SUCCESS",
+                  qualityTier: (detail.rawText?.length || 0) >= 500 ? "VALID" : "SPARSE",
+                  extractionMethod: "TARGETED_DOM",
+                  details: `Extracted ${detail.rawText?.length || 0} chars via detail handler`
+                });
+              }
             }
           }
           
@@ -882,7 +1055,8 @@ async function processUnit(
             // Ensure sparse/un-enriched captures enter Canonical Ingestion pipeline
             // Acquisition failure is not opportunity invalidity:
             // Opportunity enters canonical pipeline with MINIMAL / RECOVERY_PENDING state
-            if (feedCard.title && feedCard.company) {
+            const sparseCompany = (detail.extractedCompany || feedCard.company || "").trim() || "Confidential / Unknown";
+            if (feedCard.title && sparseCompany) {
               try {
                 const canonicalIngest = new CanonicalIngestionService();
                 await canonicalIngest.ingestOpportunity({
@@ -890,10 +1064,10 @@ async function processUnit(
                   sourceJobId: feedCard.cardHash,
                   canonicalUrl: feedCard.detailUrl,
                   jobTitle: feedCard.title,
-                  companyName: feedCard.company,
+                  companyName: sparseCompany,
                   location: feedCard.location || "",
                   employmentType: (detail as any)?.employmentType || null,
-                  rawContent: detail.rawText || `${feedCard.title} at ${feedCard.company}`,
+                  rawContent: detail.rawText || `${feedCard.title} at ${sparseCompany}`,
                   postedAt: feedCard.postedAt,
                   postedPrecision: (feedCard as any)?.postedPrecision || null
                 });
@@ -908,8 +1082,36 @@ async function processUnit(
 
           HealthManager.recordSuccess(unit.portal);
 
+          // Post-Detail Company Resolution & Lineage Enforcement
+          const rawCompany = (detail.extractedCompany || feedCard.company || "").trim();
+          const isConfidentialOrMissing = !rawCompany || /^(confidential|unknown|undisclosed|stealth|private)\b/i.test(rawCompany);
+
+          let effectiveCompany: string;
+          let companyId: string;
+
+          if (isConfidentialOrMissing) {
+            effectiveCompany = rawCompany || "Confidential Employer";
+            // Scoped surrogate company ID per opportunity to maintain entity lineage isolation
+            companyId = `confidential:${unit.portal.toLowerCase()}:${feedCard.cardHash || ledgerItem.sourceJobId || ledgerItem.id}`;
+          } else {
+            effectiveCompany = rawCompany;
+            companyId = effectiveCompany.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+          }
+
+          feedCard.company = effectiveCompany;
+
+          // Re-derive canonical identity with resolved company
+          const resolvedIdentity = resolveCanonicalIdentity({
+            portal: unit.portal,
+            url: feedCard.detailUrl,
+            title: feedCard.title,
+            companyName: effectiveCompany,
+            rawJobId: feedCard.cardHash
+          });
+
           detailedCard = {
             ...feedCard,
+            company: effectiveCompany,
             snapshotSchemaVersion: SNAPSHOT_SCHEMA_VERSION,
             scraperVersion: SCRAPER_VERSION,
             acquisitionRoute,
@@ -917,6 +1119,7 @@ async function processUnit(
             fallbackRoute,
             applyRedirectUrl: feedCard.applyRedirectUrl,
             detail,
+            acquisitionAttempts: acquisitionAttempts.length > 0 ? acquisitionAttempts : undefined,
             telemetry: { cardExtractMs: 0, detailExtractMs: detail.fetchDurationMs || 0, totalMs: detail.fetchDurationMs || 0 },
           };
           
@@ -932,10 +1135,9 @@ async function processUnit(
             lastAcquisitionMethod: acquisitionRoute
           });
 
-          const companyId = feedCard.company.toLowerCase().replace(/[^a-z0-9]/g, "-");
           await repos.companies.registerCompany({
             id: companyId,
-            name: feedCard.company,
+            name: effectiveCompany,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             provenance: {
@@ -946,11 +1148,11 @@ async function processUnit(
           });
 
           await repos.opportunities.mergeOpportunity({
-            id: identity.canonicalJobId,
+            id: resolvedIdentity.canonicalJobId,
             companyId,
             canonicalTitle: feedCard.title,
             location: feedCard.location,
-            fingerprint: identity.canonicalJobId,
+            fingerprint: resolvedIdentity.canonicalJobId,
             lifecycle: "Verified",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -1029,7 +1231,18 @@ async function processUnit(
           company: cleanCompany
         } as import("./scraper/types").DetailedCard;
 
-        enrichmentQueue.enqueue(
+        const payloadKey = `snapshots/${filteredCard.cardHash}.json`;
+        try {
+          const { getBlobStore } = await import("../src/lib/storage/blob-store");
+          await getBlobStore().put(payloadKey, JSON.stringify(detailedCard), "application/json");
+        } catch (e: any) {
+          log(`Failed to write blob ${payloadKey}: ${e.message}`, "warn");
+          mgr.updateCard(cardUnitId, { status: "failed", error: `Acquisition artifact rejected: ${e.message}` });
+          mgr.journal.append({ type: "card_failed", cardId: cardUnitId, error: `Acquisition artifact rejected: ${e.message}` });
+          return null;
+        }
+
+        await enrichmentQueue.enqueue(
           cardUnitId,
           filteredCard.cardHash,
           snapshotPath,
@@ -1047,7 +1260,8 @@ async function processUnit(
             searchQuery: unit.keyword
           },
           10, // business_priority
-          0   // execution_priority
+          0,   // execution_priority
+          payloadKey
         );
         
         mgr.updateCard(cardUnitId, { status: "done" });
@@ -1196,6 +1410,22 @@ async function processUnit(
         timestamp: new Date().toISOString()
       });
 
+      let unitAcqOutcome: AcquisitionOutcome = "SUCCESS";
+      const unitWarning = outcome.warnings.join(" ");
+      if (outcome.status === "aborted" || mgr.isCancellationRequested()) {
+        unitAcqOutcome = "TRANSPORT_ERROR"; // Excluded from novelty degradation
+      } else if (outcome.status === "failed" || outcome.status === "skipped_gated") {
+        if (unitWarning.includes("406") || unitWarning.includes("429") || unitWarning.includes("Cloudflare") || unitWarning.includes("blocked") || unitWarning.includes("Anti-bot") || unitWarning.includes("Circuit breaker")) {
+          unitAcqOutcome = "ANTI_BOT";
+        } else if (unitWarning.includes("timeout") || unitWarning.includes("ETIMEDOUT")) {
+          unitAcqOutcome = "TIMEOUT";
+        } else {
+          unitAcqOutcome = "TRANSPORT_ERROR";
+        }
+      } else if (cards.length === 0) {
+        unitAcqOutcome = "SUCCESS_EMPTY";
+      }
+
       QueryMetricsStore.record({
         runId: mgr.runId,
         portal: unit.portal,
@@ -1209,9 +1439,11 @@ async function processUnit(
         identityFailed,
         novelAccepted,
         novelAcquired,
-        noveltyRate: cardsParsed > 0 ? (novelAccepted / cardsParsed) : 0,
+        noveltyRate: cardsParsed > 0 ? (novelAccepted / cardsParsed) : (unitAcqOutcome === "SUCCESS_EMPTY" ? 0 : 1.0),
         elapsedMs: runtimeMs,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        outcome: unitAcqOutcome,
+        hasTransportError: unitAcqOutcome !== "SUCCESS" && unitAcqOutcome !== "SUCCESS_EMPTY"
       });
     } catch (err: any) {
       log(`Telemetry failed for ${unit.id}: ${err.stack || err.message}`, "warn");
@@ -1236,11 +1468,17 @@ async function processUnit(
 
     log(`\n=== PAGE SUMMARY ===\nPortal: ${unit.portal}\nKeyword: ${unit.keyword}\nPage: ${unit.page}\n\nCards Seen ............ ${cards.length}\nCards Parsed .......... ${cardsParsed}\n  ├── Canonical Duplicates ... ${canonicalDuplicates}\n  ├── Ledger Known ........... ${ledgerKnown}\n  ├── Hard Filtered .......... ${hardFiltered}\n  ├── Identity Failures ...... ${identityFailed}\n  ├── Validation Failures .... ${validationFailed}\n  └── Novel Accepted ......... ${novelAccepted} (Acquired: ${novelAcquired})\n\nNovelty Rate .......... ${((novelAccepted / Math.max(1, cardsParsed)) * 100).toFixed(1)}%\nDecision .............. ${decision}\nReason ................ ${reason}\n====================\n`, "info");
     
-    outcome.status = "completed";
+    if (outcome.status !== "aborted") {
+      outcome.status = cards.length === 0 ? "skipped_empty" : "completed";
+    }
   } catch (err: any) {
-    outcome.status = "failed";
-    outcome.warnings.push(`Exception: ${err.message}`);
-    log(`processUnit exception for ${unit.id}: ${err.stack || err.message}`, "error");
+    if (mgr.isCancellationRequested() || err?.message?.includes("Target page, context or browser has been closed") || err?.message?.includes("browser has been closed")) {
+      outcome.status = "aborted";
+    } else {
+      outcome.status = "failed";
+      outcome.warnings.push(`Exception: ${err.message}`);
+      log(`processUnit exception for ${unit.id}: ${err.stack || err.message}`, "error");
+    }
   } finally {
     let terminalStatus: string = outcome.status;
     if (terminalStatus === "completed") terminalStatus = "done";

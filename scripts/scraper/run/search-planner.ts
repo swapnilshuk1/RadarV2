@@ -3,6 +3,13 @@
 import fs from "fs";
 import type { CareerIntent } from "./career-intent";
 
+export class InsufficientSearchCriteriaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InsufficientSearchCriteriaError";
+  }
+}
+
 export interface SearchPlan {
   version: string;
   generatedAt: string;
@@ -23,10 +30,10 @@ export interface SearchPlan {
 export class SearchPlanner {
 
   /**
-   * Dynamic Search Planner: Synthesizes portal queries based on Career Intent,
-   * user target titles, preferred locations, and lexicon fallbacks.
-   * Backward Compatible: If lexicon or taxonomy files are missing, generates
-   * dynamic queries directly from user target titles and locations.
+   * Dynamic Search Planner: Synthesizes portal queries strictly from Career Intent
+   * and matching ontology mappings.
+   * Invariant: Every emitted query must trace directly to declared candidate criteria
+   * or an explicit ontology mapping matching those criteria. Global dumping is eliminated.
    */
   public static plan(
     intent: CareerIntent,
@@ -37,29 +44,207 @@ export class SearchPlanner {
     const searchHypotheses: SearchPlan["searchHypotheses"] = [];
     const seenQueries = new Set<string>();
 
-    // 1. Dynamic Primary Queries from User Target Titles & Preferred Locations
+    const targetTitles = intent.targetTitles || [];
+    const functions = intent.functions || [];
+    const operatingModels = intent.operatingModels || [];
+    const ownership = intent.ownership || [];
+    const targetLevels = intent.targetLevel || [];
+
+    // 1. Dynamic Primary Queries from User Target Titles
     const primaryQueries: string[] = [];
-    for (const title of intent.targetTitles) {
-      if (!seenQueries.has(title)) {
-        seenQueries.add(title);
-        primaryQueries.push(title);
+    for (const title of targetTitles) {
+      const trimmed = title.trim();
+      if (trimmed && !seenQueries.has(trimmed.toLowerCase())) {
+        seenQueries.add(trimmed.toLowerCase());
+        primaryQueries.push(trimmed);
         rankedQueries.push({
-          query: title,
+          query: trimmed,
           score: 95,
           dimension: "targetRoles",
-          concept: title,
+          concept: trimmed,
         });
       }
-
     }
 
-    searchHypotheses.push({
-      name: "Dynamic Executive Target Titles & Locations",
-      description: "High-priority portal search queries dynamically compiled from user profile career intent.",
-      queries: primaryQueries,
-    });
+    if (primaryQueries.length > 0) {
+      searchHypotheses.push({
+        name: "Dynamic Executive Target Titles",
+        description: "High-priority portal search queries dynamically compiled from user profile career intent.",
+        queries: primaryQueries,
+      });
+    }
 
-    // 2. Lexicon Fallback Enrichment
+    // Helper: Extract functional tokens excluding generic seniority tokens
+    const SENIORITY_TOKENS = new Set([
+      "chief", "c-level", "cxo", "vp", "vice", "president", "svp", "evp",
+      "director", "head", "lead", "officer", "manager", "global", "executive", "senior"
+    ]);
+
+    const STOP_WORDS = new Set([
+      "of", "and", "the", "in", "for", "to", "a", "an", "&"
+    ]);
+
+    const extractFunctionalTokens = (text: string): Set<string> => {
+      const tokens = new Set<string>();
+      const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/);
+      for (const w of words) {
+        if (w.length > 2 && !SENIORITY_TOKENS.has(w) && !STOP_WORDS.has(w)) {
+          tokens.add(w);
+        }
+      }
+      return tokens;
+    };
+
+    const extractSeniorityTokens = (text: string): Set<string> => {
+      const tokens = new Set<string>();
+      const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/);
+      for (const w of words) {
+        if (SENIORITY_TOKENS.has(w)) {
+          tokens.add(w);
+        }
+      }
+      return tokens;
+    };
+
+    const candidateFunctionalTokens = new Set<string>();
+    functions.forEach((f) => extractFunctionalTokens(f).forEach((t) => candidateFunctionalTokens.add(t)));
+    targetTitles.forEach((t) => extractFunctionalTokens(t).forEach((t) => candidateFunctionalTokens.add(t)));
+
+    const candidateSeniorityTokens = new Set<string>();
+    targetLevels.forEach((l) => extractSeniorityTokens(l).forEach((t) => candidateSeniorityTokens.add(t)));
+    targetTitles.forEach((t) => extractSeniorityTokens(t).forEach((t) => candidateSeniorityTokens.add(t)));
+
+    const candidateDomainTerms = new Set<string>();
+    operatingModels.forEach((m) => candidateDomainTerms.add(m.toLowerCase().trim()));
+    ownership.forEach((o) => candidateDomainTerms.add(o.toLowerCase().trim()));
+    functions.forEach((f) => candidateDomainTerms.add(f.toLowerCase().trim()));
+    targetTitles.forEach((t) => candidateDomainTerms.add(t.toLowerCase().trim()));
+
+    const matchesDimensionConcept = (dimensionKey: string, conceptName: string, phrases: string[]): boolean => {
+      const allConceptPhrases = [conceptName, ...phrases].map((p) => p.toLowerCase());
+
+      // 1. Exact full matches:
+      for (const t of targetTitles) {
+        const lowerT = t.toLowerCase().trim();
+        if (allConceptPhrases.includes(lowerT)) {
+          const tFuncTokens = extractFunctionalTokens(lowerT);
+          if (tFuncTokens.size > 0 || candidateFunctionalTokens.size === 0) {
+            return true;
+          }
+        }
+      }
+
+      for (const domainTerm of candidateDomainTerms) {
+        if (!domainTerm) continue;
+        const lowerD = domainTerm.toLowerCase().trim();
+        if (allConceptPhrases.includes(lowerD)) {
+          const dFuncTokens = extractFunctionalTokens(lowerD);
+          if (dFuncTokens.size > 0 || candidateFunctionalTokens.size === 0) {
+            return true;
+          }
+        }
+      }
+
+      // 2. Substring matching: ONLY valid if there is genuine functional token overlap
+      for (const t of targetTitles) {
+        const lowerT = t.toLowerCase().trim();
+        const tFuncTokens = extractFunctionalTokens(lowerT);
+        if (tFuncTokens.size === 0) continue; // Pure seniority words (e.g. "VP", "Director", "Chief") cannot substring match functional concepts
+
+        for (const p of allConceptPhrases) {
+          if (lowerT.includes(p) || p.includes(lowerT)) {
+            const pFuncTokens = extractFunctionalTokens(p);
+            let hasOverlap = false;
+            for (const tok of tFuncTokens) {
+              if (pFuncTokens.has(tok)) {
+                hasOverlap = true;
+                break;
+              }
+            }
+            if (hasOverlap) return true;
+          }
+        }
+      }
+
+      for (const domainTerm of candidateDomainTerms) {
+        if (!domainTerm) continue;
+        const lowerD = domainTerm.toLowerCase().trim();
+        const dFuncTokens = extractFunctionalTokens(lowerD);
+        if (dFuncTokens.size === 0) continue; // Non-functional or generic terms (e.g. "global", "lead") cannot substring match
+
+        for (const p of allConceptPhrases) {
+          if (lowerD.length > 3 && (p.includes(lowerD) || lowerD.includes(p))) {
+            const pFuncTokens = extractFunctionalTokens(p);
+            let hasOverlap = false;
+            for (const tok of dFuncTokens) {
+              if (pFuncTokens.has(tok)) {
+                hasOverlap = true;
+                break;
+              }
+            }
+            if (hasOverlap) return true;
+          }
+        }
+      }
+
+      // 3. Target Roles dimension: Must match FUNCTION + SENIORITY conjunction
+      if (dimensionKey === "targetRoles") {
+        const conceptFuncTokens = extractFunctionalTokens(conceptName);
+        phrases.forEach((p) => extractFunctionalTokens(p).forEach((t) => conceptFuncTokens.add(t)));
+
+        let functionMatches = false;
+        if (candidateFunctionalTokens.size === 0) {
+          functionMatches = false;
+        } else {
+          for (const tok of conceptFuncTokens) {
+            if (candidateFunctionalTokens.has(tok)) {
+              functionMatches = true;
+              break;
+            }
+          }
+        }
+
+        if (!functionMatches) return false;
+
+        if (candidateSeniorityTokens.size > 0) {
+          const conceptSeniorityTokens = extractSeniorityTokens(conceptName);
+          phrases.forEach((p) => extractSeniorityTokens(p).forEach((t) => conceptSeniorityTokens.add(t)));
+
+          let seniorityMatches = false;
+          for (const s of conceptSeniorityTokens) {
+            if (candidateSeniorityTokens.has(s)) {
+              seniorityMatches = true;
+              break;
+            }
+          }
+          return seniorityMatches;
+        }
+
+        return true;
+      }
+
+      // 4. Functional expertise: Must match candidate functional tokens
+      if (dimensionKey === "functionalExpertise") {
+        const conceptFuncTokens = extractFunctionalTokens(conceptName);
+        phrases.forEach((p) => extractFunctionalTokens(p).forEach((t) => conceptFuncTokens.add(t)));
+
+        for (const tok of conceptFuncTokens) {
+          if (candidateFunctionalTokens.has(tok)) return true;
+        }
+        return false;
+      }
+
+      // 5. Other dimensions (leadershipModel, platformOwnership, strategicMandate):
+      // Token overlap only against functional tokens / domain terms, NEVER generic seniority tokens
+      const conceptFuncTokens = extractFunctionalTokens(conceptName);
+      for (const tok of conceptFuncTokens) {
+        if (candidateFunctionalTokens.has(tok)) return true;
+      }
+
+      return false;
+    };
+
+    // 2. Criteria-Scoped Lexicon Enrichment
     if (fs.existsSync(lexiconPath)) {
       try {
         const lexicon = JSON.parse(fs.readFileSync(lexiconPath, "utf-8"));
@@ -68,16 +253,21 @@ export class SearchPlanner {
           const dimensionQueries: string[] = [];
 
           for (const [conceptName, portalPhrases] of Object.entries(conceptMap)) {
-            for (const phrase of portalPhrases || []) {
-              if (!seenQueries.has(phrase)) {
-                seenQueries.add(phrase);
-                rankedQueries.push({
-                  query: phrase,
-                  score: 70,
-                  dimension: dimensionKey,
-                  concept: conceptName,
-                });
-                dimensionQueries.push(phrase);
+            const phrases = portalPhrases || [];
+            // Strictly check if concept matches candidate intent
+            if (matchesDimensionConcept(dimensionKey, conceptName, phrases)) {
+              for (const phrase of phrases) {
+                const lowerPhrase = phrase.toLowerCase();
+                if (!seenQueries.has(lowerPhrase)) {
+                  seenQueries.add(lowerPhrase);
+                  rankedQueries.push({
+                    query: phrase,
+                    score: 70,
+                    dimension: dimensionKey,
+                    concept: conceptName,
+                  });
+                  dimensionQueries.push(phrase);
+                }
               }
             }
           }
@@ -85,18 +275,25 @@ export class SearchPlanner {
           if (dimensionQueries.length > 0) {
             searchHypotheses.push({
               name: `Lexicon ${dimensionKey}`,
-              description: `Lexicon queries for ${dimensionKey}`,
+              description: `Lexicon queries matching candidate criteria for ${dimensionKey}`,
               queries: dimensionQueries,
             });
           }
         }
       } catch (err) {
-        console.warn("[SearchPlanner] Lexicon parse fallback triggered:", err);
+        console.warn("[SearchPlanner] Lexicon parse warning:", err);
       }
     }
 
     // Sort all queries by score descending
     rankedQueries.sort((a, b) => b.score - a.score);
+
+    // Fail-fast if no queries could be generated from criteria
+    if (rankedQueries.length === 0) {
+      throw new InsufficientSearchCriteriaError(
+        "[SearchPlanner] No valid search queries could be compiled from candidate intent. Please specify target roles, titles, or functional domains."
+      );
+    }
 
     return {
       version: "2.0.0",
@@ -107,3 +304,4 @@ export class SearchPlanner {
     };
   }
 }
+

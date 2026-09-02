@@ -10,7 +10,6 @@
  * - Demonstrates Before vs After Controlled Semantic Integration
  */
 
-import Database from "better-sqlite3";
 import fs, { existsSync } from "node:fs";
 import path from "node:path";
 import { CandidateProjectionBuilderImpl } from "../src/lib/intelligence/builders/CandidateProjectionBuilder";
@@ -33,33 +32,6 @@ async function runBenchmark() {
   console.log(`[DB SAFETY] Operating strictly offline on local benchmark corpora.\n`);
 
   const opportunities: any[] = [];
-
-  // 1. Try loading from .radar/queue.db (strictly readonly)
-  const queueDbPath = "./.radar/queue.db";
-  if (existsSync(queueDbPath)) {
-    try {
-      const db = new Database(queueDbPath, { readonly: true });
-      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as any[];
-      const tableName = tables.some(t => t.name === "jobs") ? "jobs" : (tables.some(t => t.name === "opportunities") ? "opportunities" : null);
-      if (tableName) {
-        const rows = db.prepare(`SELECT * FROM ${tableName} LIMIT 100`).all() as any[];
-        console.log(`[DATA] Loaded ${rows.length} opportunities from ${queueDbPath} table '${tableName}' ({ readonly: true })`);
-        for (const r of rows) {
-          opportunities.push({
-            id: r.id || r.job_id || r.jobHash,
-            role: r.role || r.canonical_title || r.title || "Executive Role",
-            company: r.company || r.company_name || "Enterprise Corp",
-            location: r.location || "Gurugram, Haryana",
-            description: r.description || r.raw_text || r.normalized_text || "",
-            dimensions: []
-          });
-        }
-      }
-      db.close();
-    } catch (e: any) {
-      console.log(`[DATA] Note on ${queueDbPath}: ${e.message}`);
-    }
-  }
 
   // 2. Load from benchmark dataset
   const datasetPath = "./src/data/benchmark/dataset-v1.json";

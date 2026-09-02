@@ -158,7 +158,15 @@ export const indeedHandler: PortalHandler = {
         }
       }
     } catch (err: any) {
+      const isCancelledOrClosed = ctx.isCancelled?.() || page?.isClosed?.() ||
+        err?.message?.includes("Target page, context or browser has been closed") ||
+        err?.message?.includes("browser has been closed");
+      if (isCancelledOrClosed) {
+        ctx.logger(`Indeed listCards cancelled cleanly during run shutdown.`);
+        return [];
+      }
       ctx.logger(`Indeed listCards failed: ${err.message}`);
+      throw err;
     }
     return cardsOut;
   },
@@ -248,18 +256,28 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       }
 
       const trimmedText = rawText.trim();
-      if (trimmedText.length < 200) {
-        ctx.logger?.(`[Indeed] Rejecting sparse description (${trimmedText.length} chars) for ${url}`);
+      if (trimmedText.length === 0) {
+        ctx.logger?.(`[Indeed] Empty job description for ${url}`);
         return {
           fetched: false,
-          fetchError: `Sparse job description rejected (${trimmedText.length} < 200 chars)`,
+          fetchError: `Empty job description`,
           rawHtml: "",
           rawText: "",
           fetchDurationMs: Date.now() - t0,
         };
       }
 
-      return { fetched: true, rawHtml, rawText: trimmedText, fetchDurationMs: Date.now() - t0 };
+      if (trimmedText.length < 200) {
+        ctx.logger?.(`[Indeed] Preserving sparse description (${trimmedText.length} chars, quality=SPARSE) for ${url}`);
+      }
+
+      return {
+        fetched: true,
+        rawHtml,
+        rawText: trimmedText,
+        fetchDurationMs: Date.now() - t0,
+        quality: trimmedText.length < 200 ? ("SPARSE" as const) : ("VALID" as const),
+      };
     } catch (err: any) {
       return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
     }

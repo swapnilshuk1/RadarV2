@@ -332,6 +332,14 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
   transitionTo(state: RunManifest["status"]): void {
     const oldState = this.manifest.status;
     if (oldState === state) return;
+
+    if (oldState === "stopping" || oldState === "aborted" || oldState === "stopped") {
+      if (state === "running" || state === "initializing" || state === "waiting_for_confirmation" || state === "enriching") {
+        console.warn(`[Manager] Rejecting transition from terminal state '${oldState}' back to '${state}'.`);
+        return;
+      }
+    }
+
     const validTransitions: Record<RunManifest["status"], RunManifest["status"][]> = {
       queued: ["queued", "initializing", "running", "failed", "aborted", "stopping", "stopped"],
       initializing: ["initializing", "waiting_for_confirmation", "running", "failed", "aborted", "stopping", "stopped"],

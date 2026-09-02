@@ -12,7 +12,8 @@ export const naukriHandler: PortalHandler = {
   detailStrategy: "auto",
   buildSearchUrl(kw, page) {
     const slug = kw.toLowerCase().replace(/\s+/g, "-");
-    return `https://www.naukri.com/${slug}-jobs-in-india-${page}?k=${encodeURIComponent(kw)}`;
+    const pageSuffix = page > 1 ? `-${page}` : "";
+    return `https://www.naukri.com/${slug}-jobs-in-india${pageSuffix}?k=${encodeURIComponent(kw)}&pageNo=${page}`;
   },
   async ensureSession(ctx) {
     const page = ctx.activePage;
@@ -48,6 +49,11 @@ export const naukriHandler: PortalHandler = {
     const maxCards = CONFIG.getMaxCardsPerPage("Naukri");
     const seenHrefs = new Set<string>();
 
+    if (ctx.isCancelled?.() || page?.isClosed?.()) {
+      ctx.logger(`Naukri listCards cancelled before start for "${ctx.keyword}" (Page ${ctx.page})`);
+      return [];
+    }
+
     const interceptedJobs: any[] = [];
     const onResponse = async (response: any) => {
       try {
@@ -55,6 +61,17 @@ export const naukriHandler: PortalHandler = {
         if (url.includes("jobapi") && (url.includes("/search") || url.includes("v3") || url.includes("v4") || url.includes("search?"))) {
           const contentType = response.headers()["content-type"] || "";
           if (contentType.includes("application/json")) {
+            // Enforce pagination identity matching: response pageNo must match ctx.page
+            try {
+              const urlObj = new URL(url);
+              const pageParam = urlObj.searchParams.get("pageNo");
+              const resPage = pageParam ? Number(pageParam) : 1;
+              if (resPage !== ctx.page) {
+                ctx.logger(`[API Intercept] Ignored mismatched JobAPI response (received Page ${resPage}, expected Page ${ctx.page})`);
+                return;
+              }
+            } catch {}
+
             const json = await response.json().catch(() => null);
             if (json && Array.isArray(json.jobDetails)) {
               interceptedJobs.push(...json.jobDetails);
@@ -67,11 +84,19 @@ export const naukriHandler: PortalHandler = {
     page.on("response", onResponse);
 
     try {
+      if (ctx.isCancelled?.() || page?.isClosed?.()) {
+        return [];
+      }
+
       const startGoto = Date.now();
       await page.goto(ctx.searchUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
       ctx.logger(`Goto completed in ${Date.now() - startGoto}ms`);
       ctx.logger(`Post-nav URL: ${page.url()}`);
       
+      if (ctx.isCancelled?.() || page?.isClosed?.()) {
+        return [];
+      }
+
       const title = (await page.title().catch(() => "")) || "";
       ctx.logger(`Page title: "${title}"`);
       const isExplicitBlock = title.includes("Just a moment") || title.includes("Access Denied") || title.includes("Attention Required");
@@ -84,35 +109,10 @@ export const naukriHandler: PortalHandler = {
       // Give network API up to 3.5 seconds to deliver responses if not yet arrived
       const deadline = Date.now() + 3500;
       while (interceptedJobs.length === 0 && Date.now() < deadline) {
-        await sleep(300);
-      }
-
-      // If network listener missed it, try direct evaluate fetch from page session
-      if (interceptedJobs.length === 0) {
-        ctx.logger(`[API Fetch] Attempting in-page evaluate fetch for "${ctx.keyword}"`);
-        const slug = ctx.keyword.toLowerCase().replace(/\s+/g, "-");
-        const directApiJobs = await page.evaluate(async ({ kw, slug, pageNo }: { kw: string; slug: string; pageNo: number }) => {
-          try {
-            const apiUrl = `https://www.naukri.com/jobapi/v3/search?noOfResults=20&urlType=search_by_keyword&searchType=adv&keyword=${encodeURIComponent(kw)}&pageNo=${pageNo}&k=${encodeURIComponent(kw)}&seoKey=${slug}-jobs-in-india&src=directSearch&latLong=`;
-            const res = await fetch(apiUrl, {
-              headers: {
-                "appid": "109",
-                "systemid": "NWEB",
-                "clientid": "d3skt0p",
-                "accept": "application/json"
-              }
-            });
-            if (!res.ok) return [];
-            const data = await res.json();
-            return data?.jobDetails || [];
-          } catch {
-            return [];
-          }
-        }, { kw: ctx.keyword, slug, pageNo: ctx.page }).catch(() => []);
-
-        if (directApiJobs && directApiJobs.length > 0) {
-          interceptedJobs.push(...directApiJobs);
+        if (ctx.isCancelled?.() || page?.isClosed?.()) {
+          return [];
         }
+        await sleep(200);
       }
 
       // Helper to parse a single Naukri job object into a FeedCard
@@ -182,72 +182,23 @@ export const naukriHandler: PortalHandler = {
         }
       };
 
-      // If we got jobs from the initial API response (Page 1), parse and hydrate subsequent pages (1-4)
+      // If we got jobs from the API response for this unit's page, parse into cards
       if (interceptedJobs.length > 0) {
-        ctx.logger(`[API Intercept] Discovered ${interceptedJobs.length} structured jobs from Naukri jobapi (Page 1)`);
+        ctx.logger(`[API Intercept] Discovered ${interceptedJobs.length} structured jobs from Naukri jobapi (Page ${ctx.page})`);
         
         for (const job of interceptedJobs) {
           if (cardsOut.length >= maxCards) break;
           const card = parseNaukriJob(job);
           if (card) cardsOut.push(card);
         }
-
-        // Multi-page In-Page API Hydration (Pages 2 to 4 up to maxCards)
-        await sleep(1000);
-        const slug = ctx.keyword.toLowerCase().replace(/\s+/g, "-");
-        const maxPages = Math.min(4, Math.ceil(maxCards / 20));
-
-        for (let pageNo = 2; pageNo <= maxPages && cardsOut.length < maxCards; pageNo++) {
-          ctx.logger(`[API Hydration] Fetching page ${pageNo}/${maxPages} for "${ctx.keyword}"`);
-          const evalRes = await page.evaluate(async ({ kw, slug, pageNo }: { kw: string; slug: string; pageNo: number }) => {
-            try {
-              const apiUrl = `https://www.naukri.com/jobapi/v3/search?noOfResults=20&urlType=search_by_keyword&searchType=adv&keyword=${encodeURIComponent(kw)}&pageNo=${pageNo}&k=${encodeURIComponent(kw)}&seoKey=${slug}-jobs-in-india-${pageNo}&src=directSearch&latLong=`;
-              const fetchOptions = {
-                credentials: "include" as RequestCredentials,
-                headers: {
-                  "appid": "109",
-                  "systemid": "NWEB",
-                  "clientid": "d3skt0p",
-                  "gid": "LOCATION,GEO_LOCATION,GL_EXP,EDUCATION,FA_SUBFA,FA_CHILD,CO_EXP,IND,KEY_EXPERIENCE,COMPANY_TYPE,SKILL_EXPERIENCE,N_PREF_LOC,AFFINITY",
-                  "accept": "application/json",
-                  "accept-language": "en-US,en;q=0.9"
-                }
-              };
-              let res = await fetch(apiUrl, fetchOptions);
-              if (res.status === 406) {
-                await new Promise(r => setTimeout(r, 800));
-                res = await fetch(apiUrl, fetchOptions);
-              }
-              if (!res.ok) {
-                return { jobs: [], status: res.status, error: res.statusText };
-              }
-              const data = await res.json().catch((e: any) => ({ error: e.message }));
-              return { jobs: data?.jobDetails || [], status: res.status, noOfJobs: data?.noOfJobs };
-            } catch (err: any) {
-              return { jobs: [], status: 0, error: err.message };
-            }
-          }, { kw: ctx.keyword, slug, pageNo }).catch((err: any) => ({ jobs: [], status: 0, error: err.message }));
-
-          const nextPageJobs = evalRes?.jobs || [];
-          if (!nextPageJobs || nextPageJobs.length === 0) {
-            ctx.logger(`[API Hydration] Page ${pageNo} returned 0 jobs (status: ${evalRes?.status}, error: ${evalRes?.error || 'none'}); ending pagination.`);
-            break;
-          }
-
-          ctx.logger(`[API Hydration] Discovered ${nextPageJobs.length} structured jobs from Naukri jobapi (Page ${pageNo})`);
-          for (const job of nextPageJobs) {
-            if (cardsOut.length >= maxCards) break;
-            const card = parseNaukriJob(job);
-            if (card) cardsOut.push(card);
-          }
-
-          // Anti-bot pacing between page fetches
-          await sleep(600);
-        }
       }
 
       // If API yielded 0 cards, fall back to DOM selector extraction
       if (cardsOut.length === 0) {
+        if (ctx.isCancelled?.() || page?.isClosed?.()) {
+          return [];
+        }
+
         ctx.logger(`[DOM Fallback] API yielded 0 cards; falling back to DOM scraping`);
         const CARD_SELECTORS = [
           "div.cust-job-tuple",
@@ -261,10 +212,15 @@ export const naukriHandler: PortalHandler = {
 
         const startWait = Date.now();
         await page.waitForSelector(CARD_SELECTORS, { timeout: CONFIG.cardWaitTimeoutMs }).catch(async (e: any) => {
+          if (ctx.isCancelled?.() || page?.isClosed?.()) return;
           ctx.logger(`Selector timeout after ${Date.now() - startWait}ms`);
           const { dumpFailureArtifacts } = await import("../utils/failure-dump");
           await dumpFailureArtifacts(ctx.runId, ctx.portal, page, e.message);
         });
+
+        if (ctx.isCancelled?.() || page?.isClosed?.()) {
+          return [];
+        }
 
         const hydration = await hydrateVirtualizedList(
           page,
@@ -289,10 +245,15 @@ export const naukriHandler: PortalHandler = {
 
         ctx.logger(`[Naukri Hydration Summary] Discovered ${hydration.finalCount} total DOM cards`);
 
+        if (ctx.isCancelled?.() || page?.isClosed?.()) {
+          return [];
+        }
+
         const cards = await page.locator(CARD_SELECTORS).all();
 
         for (const card of cards) {
           if (cardsOut.length >= maxCards) break;
+          if (ctx.isCancelled?.() || page?.isClosed?.()) break;
           try {
             const titleEl = card.locator("a.title, [class*='title'] a, a[class*='title'], [class*='row1'] a").first();
             const title = ((await titleEl.textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
@@ -343,9 +304,17 @@ export const naukriHandler: PortalHandler = {
         }
       }
     } catch (err: any) {
+      const isCancelledOrClosed = ctx.isCancelled?.() || page?.isClosed?.() ||
+        err?.message?.includes("Target page, context or browser has been closed") ||
+        err?.message?.includes("browser has been closed");
+      if (isCancelledOrClosed) {
+        ctx.logger(`Naukri listCards cancelled cleanly during run shutdown.`);
+        return [];
+      }
       ctx.logger(`Naukri listCards failed: ${err.message}`);
+      throw err;
     } finally {
-      page.off("response", onResponse);
+      page?.off?.("response", onResponse);
     }
     return cardsOut;
   },
@@ -473,7 +442,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
                   const clone = cheerio.load(elements.first().html() || "");
                   clone('br, p, div, li, h1, h2, h3, h4, h5, h6').append('\n');
                   const txt = clone.text().replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
-                  if (txt.length >= 150) {
+                  if (txt.length >= 50) {
                       jdHtml = elements.first().html();
                       ctx.logger(`[${ctx.portal}] Found JD via selector fallback: ${sel} (${txt.length} chars)`);
                       break;
@@ -491,7 +460,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
                    const textContent = nodes[i].textContent;
                    if (textContent && textContent.trim().toLowerCase() === 'job description') {
                        let parent = nodes[i].parentElement;
-                       if (parent && parent.innerText.length > 200) {
+                       if (parent && parent.innerText.length > 50) {
                            return parent.innerHTML;
                        }
                    }
@@ -542,12 +511,12 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         // Fallback to main or body
         const mainLoc = targetPage.locator("main, article, [role='main']").first();
         const mainTxt = ((await mainLoc.textContent({ timeout: 1000 }).catch(() => "")) || "").replace(/\s+/g, " ").trim();
-        if (mainTxt.length >= 200) {
+        if (mainTxt.length >= 50) {
           rawText = mainTxt;
           rawHtml = (await mainLoc.innerHTML().catch(() => "")) || "";
         } else {
           const bodyTxt = ((await targetPage.locator("body").textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-          if (bodyTxt.length >= 200) {
+          if (bodyTxt.length >= 50) {
             rawText = bodyTxt;
             rawHtml = (await targetPage.locator("body").innerHTML().catch(() => "")) || "";
           }
@@ -555,18 +524,29 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       }
 
       const trimmedText = rawText.trim();
-      if (trimmedText.length < 200) {
-        ctx.logger(`[${ctx.portal}] Rejecting sparse description (${trimmedText.length} chars) for ${url}`);
+      if (trimmedText.length === 0) {
+        ctx.logger(`[${ctx.portal}] Empty job description for ${url}`);
         return {
           fetched: false,
-          fetchError: `Sparse job description rejected (${trimmedText.length} < 200 chars)`,
+          fetchError: "Empty job description",
           rawHtml: "",
           rawText: "",
           fetchDurationMs: Date.now() - t0,
         };
       }
 
-      return { fetched: true, rawHtml, rawText: trimmedText, fetchDurationMs: Date.now() - t0 };
+      const isSparse = trimmedText.length < 200;
+      if (isSparse) {
+        ctx.logger(`[${ctx.portal}] Preserving sparse description (${trimmedText.length} chars, quality=SPARSE) for ${url}`);
+      }
+
+      return {
+        fetched: true,
+        rawHtml,
+        rawText: trimmedText,
+        fetchDurationMs: Date.now() - t0,
+        quality: isSparse ? ("SPARSE" as const) : ("VALID" as const),
+      };
     } catch (err: any) {
       return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
     }

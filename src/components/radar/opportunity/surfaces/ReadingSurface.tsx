@@ -9,7 +9,7 @@ import { Strategy } from "../reading/Strategy";
 import { Appendix } from "../reading/Appendix";
 import { ExecutiveActionButton } from "@/components/radar/actions";
 import { Button } from "@/components/ui/button";
-import { applyUrlFor, type DecisionVerb } from "@/data/opportunity-fixtures";
+import { applicationActionFor, type DecisionVerb } from "@/data/opportunity-fixtures";
 import { useSectionPreferences } from "@/lib/section-preferences-store";
 
 import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
@@ -94,6 +94,7 @@ export function ReadingSurface({
 }: ReadingSurfaceProps) {
   const revealRef = useScrollReveal();
   const readTime = estimateReadTime(brief);
+  const applicationAction = applicationActionFor(o);
 
   /* Keyboard shortcuts: P = Pursue, C = Consider, X = Pass, ← = Prev, → = Next */
   const handleKeyboard = useCallback(
@@ -273,14 +274,14 @@ export function ReadingSurface({
 
         {/* Right: Next Brief + Apply */}
         <div className="flex items-center gap-2 min-w-[70px] justify-end">
-          {o.applyUrl ? (
+          {applicationAction ? (
             <a
-              href={applyUrlFor(o)}
+              href={applicationAction.url}
               target="_blank"
               rel="noopener noreferrer"
               className="dock-btn bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-xs"
             >
-              Apply →
+              {applicationAction.label} →
             </a>
           ) : neighbors?.next ? (
             <Link
@@ -298,4 +299,3 @@ export function ReadingSurface({
     </div>
   );
 }
-

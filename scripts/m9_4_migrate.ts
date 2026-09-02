@@ -34,10 +34,12 @@ async function runMigration() {
       opportunity_id,
       json_extract(content, '$.jobHash') as job_hash,
       json_extract(content, '$.url') as url,
+      json_extract(content, '$.applyUrl') as apply_url,
       json_extract(content, '$.title') as title,
       json_extract(content, '$.company') as company,
       json_extract(content, '$.location') as location,
       json_extract(content, '$.source') as source,
+      json_extract(content, '$.scrapedFrom') as scraped_from,
       json_extract(content, '$.normalizedText') as normalized_text,
       json_extract(content, '$.raw_content') as raw_content,
       json_extract(content, '$.description') as description,
@@ -62,7 +64,7 @@ async function runMigration() {
       const doc = docMap.get(opp.id);
       if (doc && doc.job_hash) {
         sourceJobId = doc.job_hash;
-        source = doc.source || (doc.url?.includes("naukri") ? "Naukri" : doc.url?.includes("linkedin") ? "LinkedIn" : "Indeed");
+        source = doc.scraped_from || doc.source || (doc.apply_url?.includes("naukri") || doc.url?.includes("naukri") ? "Naukri" : doc.apply_url?.includes("linkedin") || doc.url?.includes("linkedin") ? "LinkedIn" : "Indeed");
       }
     } else if (opp.id.startsWith("opp_")) {
       sourceJobId = opp.id.replace(/^opp_/, "");
@@ -88,7 +90,7 @@ async function runMigration() {
         legacyId: opp.id,
         sourcePortal: canonicalSource === "Legacy" ? "Indeed" : canonicalSource,
         sourceJobId,
-        canonicalUrl: doc?.url || `https://radar.internal/jobs/${source}/${sourceJobId}`,
+        canonicalUrl: doc?.apply_url || doc?.url || "",
         jobTitle: doc?.title || opp.canonical_title,
         companyName: doc?.company || opp.company_name || null,
         location: doc?.location || opp.location || null,

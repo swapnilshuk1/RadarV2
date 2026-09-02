@@ -20,8 +20,8 @@ function createFixture(overrides: Partial<Opportunity> = {}): Opportunity {
       relativeDifferentiator: "P&L Scale vs Operating Velocity",
     },
     dimensions: [
-      { key: "functionalScope", label: "GTM Leadership", jdEvidence: { status: "Explicit" } },
-      { key: "mandate", label: "Commercial Transformation", jdEvidence: { status: "Explicit" } },
+      { key: "functionalScope", label: "GTM Leadership", jdEvidence: { status: "Explicit", value: "GTM Leadership", evidence: [{ quote: "GTM Leadership", source: "snippet" }] } },
+      { key: "mandate", label: "Commercial Transformation", jdEvidence: { status: "Explicit", value: "Commercial Transformation", evidence: [{ quote: "Commercial Transformation", source: "snippet" }] } },
     ],
     ...overrides,
   } as Opportunity;
