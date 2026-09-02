@@ -1,7 +1,0 @@
-{
-  "timestamp": "2026-08-29T03:06:32.029Z",
-  "staleStateDetected": true,
-  "staleComponent": "TanStack Router route loader data (metrics) in unrefreshed browser session",
-  "resolution": "A standard browser refresh or route revalidation re-executes getShortlistMetricsFn(), updating totalShortlisted from 487 to 720 and rendering 233 unreviewed shortlisted items.",
-  "localStorageMutations": 0
-}

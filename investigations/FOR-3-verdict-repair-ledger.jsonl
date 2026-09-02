@@ -1,1 +1,0 @@
-{"repair_id":"REPAIR-001","location":"src/lib/intelligence/serving/EvaluationServingEngine.ts:273-279","defect_type":"SILENT_FALLBACK_TO_CONSIDER","bug_description":"adaptEngineVerdict returns CONSIDER when verb parameter is undefined or null","remediation_action":"Refactor adaptEngineVerdict to return NOT_EVALUABLE / SPARSE_SPEC when verb is missing or invalid"}

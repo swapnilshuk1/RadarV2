@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-08-29T02:37:23.867Z",
-  "phase": "FOR-4D1",
-  "rootCauseIdentified": "TanStack Router redirect signals caught by ErrorComponent in __root.tsx without re-throwing.",
-  "fixApplied": "Added `if (isRedirect(error)) throw error;` in ErrorComponent.",
-  "rootErrorFixed": true,
-  "repeatedRefetchLoop": false,
-  "loadPerformanceMs": 480
-}
