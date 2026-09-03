@@ -104,7 +104,15 @@ export function validateJobDocument(input: JobDocumentValidationInput): Validati
     invalid(input, { transportState, extractionState, failureClass, retryable, text, wordCount: words.length, boilerplateRatio, scriptRatio });
 
   if (input.httpStatus === 404) return failure("FAILED", "NOT_ATTEMPTED", "REMOVED_404", false);
+  // A non-success HTTP response is acquisition evidence, never a job document.
+  // In particular, access-denied and verification pages often contain enough
+  // text to otherwise look like a genuinely sparse specification.
+  if (input.httpStatus === 401) return failure("FAILED", "NOT_ATTEMPTED", "LOGIN_REQUIRED", false);
+  if (input.httpStatus === 403) return failure("FAILED", "NOT_ATTEMPTED", "BOT_CHALLENGE_BLOCK", false);
   if (input.httpStatus === 429) return failure("FAILED", "NOT_ATTEMPTED", "RATE_LIMIT_429", true);
+  if (input.httpStatus !== undefined && input.httpStatus >= 500) {
+    return failure("FAILED", "NOT_ATTEMPTED", "HTTP_SERVER_ERROR", true);
+  }
   if ((input.httpStatus !== undefined && input.httpStatus >= 300 && input.httpStatus < 400) || ((input.finalUrl && input.finalUrl !== input.url) && !text)) return failure("REDIRECTED", "NOT_ATTEMPTED", "UNRESOLVED_REDIRECT", true);
   if (isPdf) return failure("SUCCEEDED", "PENDING", "UNEXTRACTED_PDF", true);
   if ((html.toLowerCase().includes("cloudflare") && (html.toLowerCase().includes("attention required") || html.toLowerCase().includes("cf-challenge"))) || /verify you are human|captcha-delivery/i.test(html)) return failure("FAILED", "NOT_ATTEMPTED", "BOT_CHALLENGE_BLOCK", false);

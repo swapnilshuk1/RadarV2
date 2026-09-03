@@ -1119,50 +1119,18 @@ async function processUnit(
             });
             mgr.updateCard(cardUnitId, { status: "failed", error: `Validation failed: ${failureClass}` });
 
-            // Ensure sparse/un-enriched captures enter Canonical Ingestion pipeline
-            // Acquisition failure is not opportunity invalidity:
-            // Opportunity enters canonical pipeline with MINIMAL / RECOVERY_PENDING state
-            const sparseCompany = (detail.extractedCompany || feedCard.company || "").trim() || "Confidential / Unknown";
-            if (feedCard.title && sparseCompany) {
-              try {
-                const canonicalIngest = new CanonicalIngestionService();
-                const ingestRes = await canonicalIngest.ingestOpportunity({
-                  sourcePortal: unit.portal,
-                  sourceJobId: identity.sourceJobId,
-                  canonicalUrl: feedCard.detailUrl,
-                  jobTitle: feedCard.title,
-                  companyName: sparseCompany,
-                  location: feedCard.location || "",
-                  employmentType: (detail as any)?.employmentType || null,
-                  rawContent: detail.rawText || `${feedCard.title} at ${sparseCompany}`,
-                  contentOrigin: detail.rawText ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
-                  httpStatus: detail.httpStatus,
-                  postedAt: feedCard.postedAt,
-                  postedPrecision: (feedCard as any)?.postedPrecision || null
-                }, lineageScope);
-                await recordLineage(
-                  ledgerItem.id,
-                  identity.sourceJobId,
-                  feedCard.detailUrl,
-                  valResult,
-                  ingestRes,
-                  failureClass,
-                );
-                mgr.recordTelemetry("canonicalIngestSuccess");
-              } catch (sparseErr: any) {
-                log(`[M10_CANONICAL_SPARSE_WARN] Sparse acquisition error for ${feedCard.cardHash}: ${sparseErr.message}`, "warn");
-                if (lineageScope) {
-                  await recordLineage(
-                    ledgerItem.id,
-                    identity.sourceJobId,
-                    feedCard.detailUrl,
-                    valResult,
-                    undefined,
-                    failureClass,
-                  );
-                  throw sparseErr;
-                }
-              }
+            // Failed acquisition remains in the ledger and lineage as evidence,
+            // but may never create a canonical market record.  A title/card or
+            // an error page is not a recoverable substitute for a validated JD.
+            if (lineageScope) {
+              await recordLineage(
+                ledgerItem.id,
+                identity.sourceJobId,
+                feedCard.detailUrl,
+                valResult,
+                undefined,
+                failureClass,
+              );
             }
 
             return null;

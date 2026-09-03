@@ -94,6 +94,17 @@ export class InvalidCanonicalUrlError extends Error {
   }
 }
 
+/**
+ * A canonical opportunity may only represent a captured job document, or a
+ * PDF payload that is explicitly pending extraction.  Failed transport and
+ * non-job responses remain acquisition-lineage evidence only.
+ */
+export class UnusableAcquisitionDocumentError extends Error {
+  constructor(sourcePortal: string, sourceJobId: string, failureClass: string | null) {
+    super(`Cannot canonically ingest unusable document ${sourcePortal}:${sourceJobId} (${failureClass || "unknown"}).`);
+  }
+}
+
 export class CanonicalIngestionService {
   private db: DatabaseAdapter;
 
@@ -133,6 +144,9 @@ export class CanonicalIngestionService {
       provenance: "BLOB",
     });
     const document = documentValidation.document;
+    if (document.usabilityState === "UNUSABLE" && document.failureClass !== "UNEXTRACTED_PDF") {
+      throw new UnusableAcquisitionDocumentError(source, sourceJobId, document.failureClass);
+    }
     // Eligibility consumes the normalized projection when the acquisition is a
     // substantive validated document. It never derives rules from query text.
     const jobProjection = document.usabilityState === "SUBSTANTIVE"

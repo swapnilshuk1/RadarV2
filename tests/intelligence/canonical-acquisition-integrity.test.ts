@@ -393,7 +393,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
   });
 
   describe("CanonicalIngestionService - Orthogonal States & Recovery Ingestion", () => {
-    it("enqueues minimal captures into recovery_queue during ingestion", async () => {
+    it("keeps a discovery-card fallback out of canonical ingestion and recovery_queue", async () => {
       const sqliteDb = new Database(":memory:");
       sqliteDb.exec(`
         CREATE TABLE tenants (id TEXT PRIMARY KEY, name TEXT);
@@ -426,7 +426,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
 
       const adapter = new TestSqliteAdapter(sqliteDb);
       const service = new CanonicalIngestionService(adapter);
-      const res = await service.ingestOpportunity({
+      await expect(service.ingestOpportunity({
         sourcePortal: "Indeed",
         sourceJobId: "job_short_123",
         canonicalUrl: "https://in.indeed.com/viewjob?jk=job_short_123",
@@ -434,29 +434,15 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
         companyName: "Acme",
         location: "Remote",
         rawContent: "Short summary only 35 chars",
-      });
+        contentOrigin: "DISCOVERY_CARD_FALLBACK",
+      })).rejects.toThrow("Cannot canonically ingest unusable document");
 
-      expect(res.isNewOpportunity).toBe(true);
-
-      const version = await adapter.one<any>(
-        "SELECT acquisition_status, acquisition_quality, failure_class, lifecycle_state FROM opportunity_versions WHERE id = ?",
-        [res.opportunityVersion]
-      );
-      expect(version.acquisition_status).toBe("RECOVERY_PENDING");
-      expect(version.acquisition_quality).toBe("MINIMAL");
-      expect(version.failure_class).toBe("PARTIAL_CONTENT");
-      expect(version.lifecycle_state).toBe("ACTIVE");
-
-      const recoveryItem = await adapter.one<any>(
-        "SELECT * FROM recovery_queue WHERE opportunity_version_id = ?",
-        [res.opportunityVersion]
-      );
-      expect(recoveryItem).not.toBeNull();
-      expect(recoveryItem.status).toBe("PENDING");
-      expect(recoveryItem.failure_class).toBe("PARTIAL_CONTENT");
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM canonical_opportunities").get()).toEqual({ count: 0 });
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM opportunity_versions").get()).toEqual({ count: 0 });
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM recovery_queue").get()).toEqual({ count: 0 });
     });
 
-    it("enforces recovery_queue idempotency when same failed version is ingested repeatedly", async () => {
+    it("remains idempotently non-admitting when the same failed capture is retried", async () => {
       const sqliteDb = new Database(":memory:");
       sqliteDb.exec(`
         CREATE TABLE tenants (id TEXT PRIMARY KEY, name TEXT);
@@ -503,33 +489,14 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
         rawContent: "Too short 25 chars",
       };
 
-      // Ingest first time
-      const res1 = await service.ingestOpportunity(payload);
-      expect(res1.isNewOpportunity).toBe(true);
+      await expect(service.ingestOpportunity({ ...payload, contentOrigin: "DISCOVERY_CARD_FALLBACK" }))
+        .rejects.toThrow("Cannot canonically ingest unusable document");
+      await expect(service.ingestOpportunity({ ...payload, contentOrigin: "DISCOVERY_CARD_FALLBACK" }))
+        .rejects.toThrow("Cannot canonically ingest unusable document");
 
-      // Ingest second time with exact same defective version
-      const res2 = await service.ingestOpportunity(payload);
-      expect(res2.isNewOpportunity).toBe(false);
-
-      const activeQueueItems = await adapter.many<any>(
-        "SELECT * FROM recovery_queue WHERE opportunity_version_id = ? AND status IN ('PENDING', 'PROCESSING')",
-        [res1.opportunityVersion]
-      );
-      expect(activeQueueItems.length).toBe(1);
-
-      // Transition to RECOVERED
-      await adapter.execute(
-        "UPDATE recovery_queue SET status = 'RECOVERED', completed_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [activeQueueItems[0].id]
-      );
-
-      // Verify that after recovery completes, the partial unique index permits a future queue item if a new defective version arises
-      const queueCountAfterRecovery = await adapter.many<any>(
-        "SELECT * FROM recovery_queue WHERE opportunity_version_id = ?",
-        [res1.opportunityVersion]
-      );
-      expect(queueCountAfterRecovery.length).toBe(1);
-      expect(queueCountAfterRecovery[0].status).toBe("RECOVERED");
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM canonical_opportunities").get()).toEqual({ count: 0 });
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM opportunity_versions").get()).toEqual({ count: 0 });
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM recovery_queue").get()).toEqual({ count: 0 });
     });
   });
 

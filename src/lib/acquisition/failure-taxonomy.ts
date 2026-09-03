@@ -9,6 +9,7 @@ export type FailureCategory = "TRANSPORT" | "ACCESS" | "CONTENT" | "IDENTITY" | 
 export type FailureClass =
   // TRANSPORT (Retryable with exponential backoff)
   | "HTTP_TIMEOUT"
+  | "HTTP_SERVER_ERROR"
   | "NAVIGATION_TIMEOUT"
   | "DNS_ERROR"
   | "CONNECTION_ERROR"
@@ -52,6 +53,7 @@ export class FailurePolicyEngine {
     switch (failureClass) {
       // TRANSPORT
       case "HTTP_TIMEOUT":
+      case "HTTP_SERVER_ERROR":
       case "NAVIGATION_TIMEOUT":
       case "CONNECTION_ERROR":
       case "DNS_ERROR":

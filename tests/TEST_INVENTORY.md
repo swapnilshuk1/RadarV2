@@ -202,7 +202,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/active-context-resolution.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 10 |
 | `tests/intelligence/architecture-contracts.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 10 | 38 |
 | `tests/intelligence/candidate-projection.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 23 |
-| `tests/intelligence/canonical-acquisition-integrity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 21 | 65 |
+| `tests/intelligence/canonical-acquisition-integrity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 22 | 63 |
 | `tests/intelligence/canonical-identity.test.ts` | Identity & Candidate Projection | **KEEP** | Operator only (`RADAR_RUN_LIVE_IDENTITY_TESTS=true`) | 7 | 27 |
 | `tests/intelligence/canonical-ingestion-fk-regression.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 3 | 22 |
 | `tests/intelligence/capability-precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 11 |
@@ -329,7 +329,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/scraper/scrape-progress.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 20 |
 | `tests/scraper/scraper-control.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 11 |
 | `tests/scraper/scraper-smoke.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 3 | 8 |
-| `tests/scraper/validator.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 3 | 7 |
+| `tests/scraper/validator.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 9 |
 | `tests/scraper/ats-content-sanitization.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 3 | 12 |
 | `tests/scraper/ats-jsonld-extraction.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 3 | 12 |
 | `tests/scraper/ats-content-quality.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 10 |
