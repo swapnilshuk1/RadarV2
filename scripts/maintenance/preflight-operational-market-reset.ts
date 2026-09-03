@@ -31,7 +31,7 @@ async function main(): Promise<void> {
       `SELECT attention_decision, COUNT(*) AS count FROM search_plan_candidates
        WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ? GROUP BY attention_decision`,
       [scope.tenantId, scope.personId, active.planId]),
-    db.one<{ count: number }>(`SELECT COUNT(*) AS count FROM materialized_evaluations WHERE tenant_id = ? AND person_id = ? AND context_fingerprint = ?`, [scope.tenantId, scope.personId, active.contextFingerprint]),
+    db.one<{ count: number }>(`SELECT COUNT(*) AS count FROM materialized_evaluations WHERE tenant_id = ? AND person_id = ? AND evaluation_context_fingerprint = ?`, [scope.tenantId, scope.personId, active.contextFingerprint]),
     db.many<{ id: string; projection_json: string | null; updated_at: string | null }>(`SELECT id, projection_json, updated_at FROM career_profiles WHERE person_id = ? ORDER BY id`, [scope.personId]),
     db.many<{ id: string; timeline: string; skills: string; claims: string | null }>(`SELECT id, timeline, skills, claims FROM candidate_projection WHERE person_id = ? ORDER BY id`, [scope.personId]),
     db.many<{ id: string; status: string }>(`SELECT id, status FROM scrape_runs WHERE tenant_id = ? AND person_id = ? AND status NOT IN ('completed', 'failed', 'aborted')`, [scope.tenantId, scope.personId]),
