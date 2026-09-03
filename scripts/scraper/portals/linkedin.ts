@@ -60,9 +60,22 @@ export async function checkLinkedInSessionState(ctx: PortalContext): Promise<Lin
 export const linkedinHandler: PortalHandler = {
   name: "LinkedIn",
   detailStrategy: "auto",
-  buildSearchUrl(kw, page) {
+  buildSearchUrl(request, legacyPage = 1) {
+    const input = typeof request === "string" ? { query: request, page: legacyPage } : { ...request };
+    const kw = input.query;
+    const page = input.page;
     const start = (page - 1) * 25;
-    return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(kw)}&location=India&geoId=${LINKEDIN_GEO_INDIA}&start=${start}`;
+    const params = new URLSearchParams({
+      keywords: kw,
+      location: input.location || "India",
+      geoId: LINKEDIN_GEO_INDIA,
+      start: String(start),
+    });
+    if (input.postedWithinDays !== undefined) {
+      params.set("f_TPR", `r${input.postedWithinDays * 24 * 60 * 60}`);
+    }
+    if (input.sort === "date") params.set("sortBy", "DD");
+    return `https://www.linkedin.com/jobs/search/?${params.toString()}`;
   },
   async ensureSession(ctx) {
     try {
@@ -133,7 +146,7 @@ export const linkedinHandler: PortalHandler = {
         return [];
       }
 
-      const targetMaxCards = CONFIG.getMaxCardsPerPage("LinkedIn");
+      const targetMaxCards = ctx.maxCardsPerPage ?? CONFIG.getMaxCardsPerPage("LinkedIn");
       const cardSelector = [
         "div.job-card-container",
         "li.jobs-search-results__list-item",
@@ -321,5 +334,3 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     await page.close().catch(() => {});
   }
 }
-
-

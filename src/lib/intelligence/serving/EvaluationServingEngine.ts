@@ -325,7 +325,7 @@ export function adaptLegacyEvaluation(
     headspaceReason: headspaceOutcome.reason,
     vetoed: Boolean(recObj.vetoed ?? legacyOpp.engineRecommendation?.vetoed ?? presentedOpportunity.engineRecommendation?.vetoed),
     vetoReason: recObj.vetoReason || legacyOpp.engineRecommendation?.vetoReason || presentedOpportunity.engineRecommendation?.vetoReason || null,
-    qualityScore: recObj.qualityScore ?? legacyOpp.engineRecommendation?.qualityScore ?? presentedOpportunity.engineRecommendation?.qualityScore ?? presentedOpportunity.recommendationResult?.score ?? null,
+    qualityScore: recObj.qualityScore ?? legacyOpp.score ?? legacyOpp.engineRecommendation?.qualityScore ?? presentedOpportunity.engineRecommendation?.qualityScore ?? presentedOpportunity.recommendationResult?.score ?? null,
     parsingConfidence: recObj.parsingConfidence ?? legacyOpp.engineRecommendation?.parsingConfidence ?? 0.8,
     evaluatedAt: recObj.evaluatedAt || legacyOpp.engineRecommendation?.evaluatedAt || new Date().toISOString(),
     legacyStatus: "LEGACY_NON_CANONICAL",
@@ -338,6 +338,8 @@ export function adaptLegacyEvaluation(
     ? presentedOpportunity.dimensions
     : Array.isArray(legacyOpp.dimensions)
     ? legacyOpp.dimensions
+    : Array.isArray(legacyOpp.jobProjection?.dimensions)
+    ? legacyOpp.jobProjection.dimensions
     : [];
 
   const cleanDimensions: DimensionResult[] = rawDimensions.map((d: Record<string, unknown>): DimensionResult => {
@@ -394,7 +396,7 @@ export function adaptLegacyEvaluation(
   // Precedence: authoritative oppCtx identity/url/location -> presentedOpportunity -> top-level legacy fields.
   // DO NOT copy legacy recommendation prose, primaryDriver, primaryRisk, hiringRisk, whyNow, positioning, primaryProof into served DTO!
   return {
-    evaluationState: "LEGACY",
+    evaluationState: legacyOpp.evaluationState === "EVALUATED" ? "EVALUATED" : "LEGACY",
     jobHash: oppCtx.jobHash || presentedOpportunity.jobHash || legacyOpp.jobHash || "",
     role: oppCtx.role || oppCtx.title || presentedOpportunity.role || legacyOpp.role || "Executive Opportunity",
     company: (oppCtx.company && oppCtx.company !== "Unknown" && oppCtx.company !== "Unknown Company")
@@ -429,7 +431,7 @@ export function adaptLegacyEvaluation(
     alternativePath: undefined,
     recommendationResult: undefined,
     esi: undefined,
-    diligenceStatus: undefined,
+    diligenceStatus: legacyOpp.diligenceStatus,
     recommendationArchetype: undefined,
     recommendationArchetypeTagline: undefined,
     mandateArchetype: undefined,
@@ -443,7 +445,9 @@ export function adaptLegacyEvaluation(
     userDecision,
     effectiveDecision,
     reviewWorkflowState,
-    displayScore: undefined,
+    displayScore: typeof servedEngineRec.qualityScore === "number" && isFinite(servedEngineRec.qualityScore)
+      ? `${Math.round(servedEngineRec.qualityScore)}%`
+      : undefined,
     uiBadge: undefined,
   };
 }

@@ -24,7 +24,8 @@ import { indeedHandler } from "./scraper/portals/indeed";
 import { naukriHandler } from "./scraper/portals/naukri";
 import { closeAllPortalContexts, getPortalContext } from "./scraper/portals/base";
 import { PageManager } from "./scraper/run/page-manager";
-import type { FeedCard, PortalHandler, PortalName, WorkUnit, AcquisitionAttempt, AcquisitionOutcome } from "./scraper/types";
+import type { FeedCard, PortalHandler, PortalName, WorkUnit, AcquisitionAttempt, AcquisitionOutcome, AcquisitionVariant } from "./scraper/types";
+import { compileCoverageVariants, createFreshnessVariant } from "./scraper/run/acquisition-variants";
 
 import { sanitizeCompanyName } from "./scraper/utils/sanitize";
 import { normalizeUrl } from "./scraper/utils/url";
@@ -41,12 +42,13 @@ import { getRepositories } from "../src/data/sqlite/provider";
 import { CredentialBroker } from "../src/lib/security/CredentialBroker";
 import { establishPortalAuthSession, type PortalAuthSession } from "../src/lib/security/PortalAuthSession";
 import type { AuthContext } from "../src/lib/security/auth";
-import { CanonicalIngestionService } from "../src/lib/acquisition/CanonicalIngestionService";
+import { CanonicalIngestionService, type CanonicalIngestionResult } from "../src/lib/acquisition/CanonicalIngestionService";
 
 
 
 import {
   readSnapshotIfFresh,
+  bindEvaluationEvidence,
   writeSnapshot,
   writeLiveScraped,
 } from "./scraper/persist/writer";
@@ -136,11 +138,13 @@ export interface RunOptions {
   keywords?: string[];
   portals?: PortalName[];
   maxPages?: number;
+  maxCardsPerPage?: number;
   resume?: boolean;
   autoConfirm?: boolean;
   authContext?: AuthContext;
   searchPlanId?: string;
   resolvedPlan?: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan;
+  variants?: AcquisitionVariant[];
 }
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
@@ -150,6 +154,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   let keywords = opts.keywords;
   let portals = opts.portals ?? DEFAULT_PORTALS;
   let maxPages = opts.maxPages ?? CONFIG.maxPages;
+  const maxCardsPerPage = opts.maxCardsPerPage ?? CONFIG.maxCardsPerPage;
 
   // Command-line override support for agile, diverse crawl runs
   const keywordsArg = process.argv.find(arg => arg.startsWith('--keywords=') || arg.startsWith('--keyword='));
@@ -212,12 +217,14 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   }
   
   const resolvedKeywords = keywords;
+  const resolvedVariants = opts.variants || (resolvedPlan ? compileCoverageVariants(resolvedPlan, portals) : undefined);
 
   const mgr = new RunController();
   const { resumed } = mgr.init({
     keywords: resolvedKeywords, portals, maxPages,
-    maxCardsPerPage: CONFIG.maxCardsPerPage,
+    maxCardsPerPage,
     resume: freshRun ? false : (opts.resume !== false),
+    variants: resolvedVariants,
   });
   
   activeRunControllers.set(mgr.runId, mgr);
@@ -361,7 +368,11 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
         if (sessionStatus === "ready") {
           // Navigate to search page so user can visually verify
-          const searchUrl = handler.buildSearchUrl(units[0].keyword, units[0].page);
+          const searchUrl = handler.buildSearchUrl({
+            ...(units[0].variant || {}),
+            query: units[0].keyword,
+            page: units[0].page,
+          });
           try {
             mgr.updatePortalHealth(portal, { status: "navigating", details: "Loading search page..." });
             await searchPage.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
@@ -445,16 +456,36 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           }
 
           // Adaptive Novelty Scheduler: Skip query page if historical novelty rate is < 5% on this portal (after page 1)
-          if (unit.page > 1) {
+          if (unit.page > 1 && !unit.variant?.postedWithinDays) {
             const avgNovelty = QueryMetricsStore.getAverageNoveltyRate(unit.portal, unit.keyword);
             if (avgNovelty < 0.05) {
+              if (!unit.variant?.postedWithinDays) {
+                mgr.enqueueVariant(createFreshnessVariant({
+                  ...(unit.variant || {}),
+                  portal: unit.portal,
+                  definitionId: unit.definitionId,
+                  query: unit.keyword,
+                }, 7));
+              }
               plog(`Adaptive Scheduler: Pruning page ${unit.page} for "${unit.keyword}" on ${unit.portal} (historical novelty ${(avgNovelty * 100).toFixed(1)}%)`, "info");
               mgr.updateUnit(unit.id, { status: "skipped_pruned", error: "Pruned by adaptive novelty scheduler (<5% historical novelty)" });
               continue;
             }
           }
 
-          const outcome = await processUnit(mgr, handler, unit, browserContext, activePage, seenCardKeys, seenUrls, seenCanonicalIds, plog);
+          const outcome = await processUnit(
+            mgr,
+            handler,
+            unit,
+            browserContext,
+            activePage,
+            seenCardKeys,
+            seenUrls,
+            seenCanonicalIds,
+            plog,
+            maxCardsPerPage,
+            runScope ? { tenantId: runScope.tenantId, personId: runScope.personId } : undefined,
+          );
           if (outcome) {
             portalIngested += outcome.opportunities;
             portalFacts += outcome.factsCreated;
@@ -619,7 +650,9 @@ async function processUnit(
   seenCardKeys: Set<string>,
   seenUrls: Set<string>,
   seenCanonicalIds: Set<string>,
-  log: ReturnType<typeof makeLogger>
+  log: ReturnType<typeof makeLogger>,
+  maxCardsPerPage: number,
+  lineageScope?: { tenantId: string; personId: string },
 ): Promise<ProcessOutcome> {
   const outcome: ProcessOutcome = {
     status: "failed",
@@ -650,14 +683,18 @@ async function processUnit(
   mgr.updateUnit(unit.id, { status: "running", startedAt: new Date().toISOString(), attempts: unit.attempts + 1 });
   mgr.recordActivity(`Searching ${unit.portal}: "${unit.keyword}" (Page ${unit.page})...`);
   try {
-    const searchUrl = handler.buildSearchUrl(unit.keyword, unit.page);
+    const searchUrl = handler.buildSearchUrl({
+      ...(unit.variant || {}),
+      query: unit.keyword,
+      page: unit.page,
+    });
     let cards: FeedCard[] = [];
     const pm = activePageManagers.get(unit.portal);
     
     try {
       cards = await handler.listCards({
         runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
-        searchUrl, browserContext,
+        searchUrl, browserContext, variant: unit.variant, maxCardsPerPage,
         searchPage: pm?.getPage("search") || activePage,
         detailPage: pm?.getPage("detail"),
         searchMutex: pm?.getMutex("search"),
@@ -758,6 +795,37 @@ async function processUnit(
       mgr.updateCard(cardUnitId, { status: "running", attempts: cardUnit.attempts + 1 });
       mgr.recordActivity(`Reading JD: ${feedCard.title} (${feedCard.company})`);
 
+      const recordLineage = async (
+        ledgerId: string,
+        sourceJobId: string,
+        sourceUrl: string,
+        validation: ReturnType<typeof ResponseValidator.validate>,
+        canonical?: CanonicalIngestionResult,
+        failureClass?: string,
+      ): Promise<void> => {
+        // Unauthenticated local runs have no durable scrape_run scope. They are
+        // intentionally outside the validation cohort; authenticated runs must
+        // retain durable source-to-canonical provenance.
+        if (!lineageScope) return;
+        await repos.acquisition.recordIngestionLineage({
+          scrapeRunId: mgr.runId,
+          tenantId: lineageScope.tenantId,
+          personId: lineageScope.personId,
+          acquisitionLedgerId: ledgerId,
+          cardId: cardUnitId,
+          ingestionAttempt: cardUnit.attempts,
+          sourcePortal: unit.portal,
+          sourceJobId,
+          sourceUrl,
+          captureState: validation.document.transportState,
+          documentState: validation.document.usabilityState,
+          contentHash: canonical?.contentHash,
+          canonicalJobId: canonical?.canonicalJobId,
+          opportunityVersion: canonical?.opportunityVersion,
+          failureClass: failureClass || validation.failureClass,
+        });
+      };
+
       try {
         // 1. Cheap Pre-Filter (Allow missing company for LinkedIn pre-detail extraction)
         const preQual = passesHardFilter({
@@ -776,8 +844,7 @@ async function processUnit(
           portal: unit.portal,
           url: feedCard.detailUrl,
           title: feedCard.title,
-          companyName: feedCard.company || "Confidential / Unknown",
-          rawJobId: feedCard.cardHash
+          companyName: feedCard.company || "Confidential / Unknown"
         });
 
         // Pre-Detail Duplicate Detection:
@@ -1059,21 +1126,42 @@ async function processUnit(
             if (feedCard.title && sparseCompany) {
               try {
                 const canonicalIngest = new CanonicalIngestionService();
-                await canonicalIngest.ingestOpportunity({
+                const ingestRes = await canonicalIngest.ingestOpportunity({
                   sourcePortal: unit.portal,
-                  sourceJobId: feedCard.cardHash,
+                  sourceJobId: identity.sourceJobId,
                   canonicalUrl: feedCard.detailUrl,
                   jobTitle: feedCard.title,
                   companyName: sparseCompany,
                   location: feedCard.location || "",
                   employmentType: (detail as any)?.employmentType || null,
                   rawContent: detail.rawText || `${feedCard.title} at ${sparseCompany}`,
+                  contentOrigin: detail.rawText ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
+                  httpStatus: detail.httpStatus,
                   postedAt: feedCard.postedAt,
                   postedPrecision: (feedCard as any)?.postedPrecision || null
-                });
+                }, lineageScope);
+                await recordLineage(
+                  ledgerItem.id,
+                  identity.sourceJobId,
+                  feedCard.detailUrl,
+                  valResult,
+                  ingestRes,
+                  failureClass,
+                );
                 mgr.recordTelemetry("canonicalIngestSuccess");
               } catch (sparseErr: any) {
                 log(`[M10_CANONICAL_SPARSE_WARN] Sparse acquisition error for ${feedCard.cardHash}: ${sparseErr.message}`, "warn");
+                if (lineageScope) {
+                  await recordLineage(
+                    ledgerItem.id,
+                    identity.sourceJobId,
+                    feedCard.detailUrl,
+                    valResult,
+                    undefined,
+                    failureClass,
+                  );
+                  throw sparseErr;
+                }
               }
             }
 
@@ -1105,8 +1193,7 @@ async function processUnit(
             portal: unit.portal,
             url: feedCard.detailUrl,
             title: feedCard.title,
-            companyName: effectiveCompany,
-            rawJobId: feedCard.cardHash
+            companyName: effectiveCompany
           });
 
           detailedCard = {
@@ -1120,6 +1207,7 @@ async function processUnit(
             applyRedirectUrl: feedCard.applyRedirectUrl,
             detail,
             acquisitionAttempts: acquisitionAttempts.length > 0 ? acquisitionAttempts : undefined,
+            evaluationEvidence: { state: "PENDING" },
             telemetry: { cardExtractMs: 0, detailExtractMs: detail.fetchDurationMs || 0, totalMs: detail.fetchDurationMs || 0 },
           };
           
@@ -1168,15 +1256,31 @@ async function processUnit(
             const canonicalIngest = new CanonicalIngestionService();
             const ingestRes = await canonicalIngest.ingestOpportunity({
               sourcePortal: unit.portal,
-              sourceJobId: feedCard.cardHash,
+              sourceJobId: resolvedIdentity.sourceJobId,
               canonicalUrl: feedCard.detailUrl,
               jobTitle: feedCard.title,
               companyName: feedCard.company,
               location: feedCard.location || "",
               employmentType: (detail as any)?.employmentType || null,
               rawContent: detail.rawText || "",
+              httpStatus: detail.httpStatus,
               postedAt: feedCard.postedAt,
               postedPrecision: (feedCard as any)?.postedPrecision || null
+            }, lineageScope);
+            detailedCard = bindEvaluationEvidence(detailedCard, {
+              canonicalJobId: ingestRes.canonicalJobId,
+              opportunityVersion: ingestRes.opportunityVersion,
+              contentHash: ingestRes.contentHash,
+              sourcePayloadKey: ingestRes.sourcePayloadKey,
+              sourceMediaType: ingestRes.sourceMediaType,
+            });
+            writeSnapshot(detailedCard);
+            mgr.journal.append({
+              type: "snapshot_evidence_bound",
+              cardId: cardUnitId,
+              canonicalJobId: ingestRes.canonicalJobId,
+              opportunityVersion: ingestRes.opportunityVersion,
+              contentHash: ingestRes.contentHash,
             });
             mgr.recordTelemetry("canonicalIngestSuccess");
             if (ingestRes.isNewOpportunity) {
@@ -1195,9 +1299,27 @@ async function processUnit(
             if (ingestRes.jobsEnqueued > 0) {
               mgr.recordTelemetry("evaluationJobsEnqueued", ingestRes.jobsEnqueued);
             }
+            await recordLineage(
+              ledgerItem.id,
+              resolvedIdentity.sourceJobId,
+              feedCard.detailUrl,
+              valResult,
+              ingestRes,
+            );
           } catch (err: any) {
             log(`[M10_CANONICAL_INGEST_WARN] Canonical acquisition error for ${feedCard.cardHash}: ${err.message}`, "warn");
             mgr.recordTelemetry("canonicalIngestFailure");
+            if (lineageScope) {
+              await recordLineage(
+                ledgerItem.id,
+                resolvedIdentity.sourceJobId,
+                feedCard.detailUrl,
+                valResult,
+                undefined,
+                err?.name || "CANONICAL_INGEST_FAILURE",
+              );
+              throw err;
+            }
           }
 
         } else {
@@ -1352,21 +1474,39 @@ async function processUnit(
       const maxConsecutiveLowYield = 2; // stop after this many consecutive low-yield pages
       
       const currentLowYield = newJobs < minNewJobsPerPage;
-      let streak = lowYieldTracking.get(unit.definitionId) || 0;
+      // Each acquisition surface has its own yield curve. A freshness pass
+      // must not inherit the coverage lane's low-yield streak.
+      const yieldKey = unit.variant?.id || unit.definitionId;
+      let streak = lowYieldTracking.get(yieldKey) || 0;
       
       if (currentLowYield) {
         streak += 1;
-        lowYieldTracking.set(unit.definitionId, streak);
+        lowYieldTracking.set(yieldKey, streak);
       } else {
-        lowYieldTracking.set(unit.definitionId, 0); // reset streak
+        lowYieldTracking.set(yieldKey, 0); // reset streak
       }
 
       if (streak >= maxConsecutiveLowYield && unit.page >= 1) {
-        decision = "STOP";
-        reason = "ConsecutiveLowYield";
-        log(`Early stopping triggered for ${unit.definitionId} after ${streak} consecutive low-yield pages`, "warn");
+        const currentFreshness = unit.variant?.postedWithinDays;
+        const nextFreshness = currentFreshness === undefined ? 7 : currentFreshness === 7 ? 1 : undefined;
+        if (nextFreshness !== undefined) {
+          mgr.enqueueVariant(createFreshnessVariant({
+            ...(unit.variant || {}),
+            portal: unit.portal,
+            definitionId: unit.definitionId,
+            query: unit.keyword,
+          }, nextFreshness));
+          reason = `ConsecutiveLowYield:EnqueuedFreshness${nextFreshness}d`;
+          log(`Low yield on ${unit.definitionId}; enqueued ${nextFreshness}-day freshness variant after ${streak} pages`, "info");
+        } else {
+          decision = "STOP";
+          reason = "ConsecutiveLowYield";
+          log(`Early stopping triggered for ${unit.definitionId} after ${streak} consecutive low-yield pages`, "warn");
+        }
+        const currentSurfaceKey = unit.variant?.id || unit.definitionId;
         mgr.manifest.units.forEach(u => {
-          if (u.definitionId === unit.definitionId && u.status === "pending" && u.page > unit.page) {
+          const candidateSurfaceKey = u.variant?.id || u.definitionId;
+          if (candidateSurfaceKey === currentSurfaceKey && u.status === "pending" && u.page > unit.page) {
             mgr.updateUnit(u.id, { status: "skipped_pruned", error: "Pruned by low discovery stopping rule" });
           }
         });

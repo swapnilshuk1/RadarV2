@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "phase0-specimen-manifest/v1",
+  "immutableAtCheckpoint": "C1",
+  "specimens": [
+    {
+      "fixtureId": "cvent-rich-empty-capabilities",
+      "file": "specimens/cvent-rich-empty-capabilities.json",
+      "fileSha256": "89edfa138c95ac1f44405526c604998800c675ed148496b8c9d16a80d6da17ec",
+      "capturedBodySha256": "94fcf853d955111cb4d0abd27a369b223b8f142afd7bf258a651f738e879f5eb"
+    },
+    {
+      "fixtureId": "wpp-client-services-false-negative",
+      "file": "specimens/wpp-client-services-false-negative.json",
+      "fileSha256": "f9b5bfd288b1f73da949629f9fc951f27eb03eba4af388ea175976d02ed094ac",
+      "capturedBodySha256": "df3df1d8d167a8749e80ca0c86a5fc98e8c737255a739120e0a24b4fc9326423"
+    },
+    {
+      "fixtureId": "weber-client-experience-false-negative",
+      "file": "specimens/weber-client-experience-false-negative.json",
+      "fileSha256": "89d62f349efee03bedc16fdd887a4164c14d9ef0b31ed62355e601a2388f18b8",
+      "capturedBodySha256": "bb913135bdca0fe5c618e593544941e0201c53a5d30495dd0b3ebc135b0ca891"
+    },
+    {
+      "fixtureId": "msm-compound-chief-title-false-negative",
+      "file": "specimens/msm-compound-chief-title-false-negative.json",
+      "fileSha256": "cd7655c143e610cc57aecd5884ddef21840934f57d60bc6c79c0f863d9abc075",
+      "capturedBodySha256": "7bbbcd834515e8e8b935d27ccdee30a24e4cbbb2da9d2a5cbbcf4f7787b22693"
+    },
+    {
+      "fixtureId": "acumont-technical-hard-exclusion",
+      "file": "specimens/acumont-technical-hard-exclusion.json",
+      "fileSha256": "878fc35f463ba169194b279a6427dff898a0be8e72b3b4c1549bec4329abd833",
+      "capturedBodySha256": "00fef7586b6c77295abb08baf445f3e424ade006879c8da08a0683523543de99"
+    },
+    {
+      "fixtureId": "fillezy-pdf-byte-stream",
+      "file": "specimens/fillezy-pdf-byte-stream.json",
+      "fileSha256": "ae1c7a169f62c2b0a997e3db4e816d5da1617a67b6f154033a966c4782ac1101",
+      "capturedBodySha256": "a4f882cf78433aa589aa63f8cd0a52d47b52466868b47fa262dc94796147a4db"
+    },
+    {
+      "fixtureId": "ats-temporary-redirect-notice",
+      "file": "specimens/ats-temporary-redirect-notice.json",
+      "fileSha256": "33372f700505c478660c09bcfc317389295f35f23b1ac424d2a3456de88a9991",
+      "capturedBodySha256": "f54b9fc983937a5e585fabfb44308d20c8e86d5ea6adcfe7ca16ad306d68bd24"
+    },
+    {
+      "fixtureId": "chanakaya-unrelated-careers-page",
+      "file": "specimens/chanakaya-unrelated-careers-page.json",
+      "fileSha256": "4ee0a19e0038e8a5268ede594b90678e2d0edfb05ab57e6fb21317ac56d60116",
+      "capturedBodySha256": "e658bbb0ba8e89d14432437c1f9ad2cecd6c780e123f43caeae9a19a5ee91dfc"
+    },
+    {
+      "fixtureId": "genuine-sparse-board-advisor",
+      "file": "specimens/genuine-sparse-board-advisor.json",
+      "fileSha256": "07fd673c4a843fb265c91a951fdcf62017a021dfc6472913b33faf25b56debc6",
+      "capturedBodySha256": "9ccd8a08f3779a67a6dcebdd913f2c5b52a052ad3819342cee4f8a212ad5c902"
+    }
+  ]
+}

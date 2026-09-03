@@ -42,6 +42,146 @@ export interface ActivatedSearchPlan {
 export class SqliteEvaluationContextStore {
   constructor(private db: DatabaseAdapter) {}
 
+  /** Creates an inactive immutable plan/context lineage for pre-activation backfill. */
+  async prepareSearchPlan(
+    scope: AuthorizedPersonScope,
+    input: SearchPlanActivationInput
+  ): Promise<ActivatedSearchPlan> {
+    const now = new Date().toISOString();
+    const planId = `sp_${crypto.randomUUID()}`;
+    const snapshotHash = computeSearchPlanSnapshotHash(input.criteria);
+    const snapshotId = `sps_${crypto.randomUUID()}`;
+    const contextFingerprint = computeEvaluationContextFingerprint({
+      tenantId: scope.tenantId,
+      personId: scope.personId,
+      searchPlanSnapshotId: snapshotId,
+      ontologyVersion: input.ontologyVersion,
+      ontologyFingerprint: input.ontologyFingerprint,
+      policyVersion: input.policyVersion,
+      profileVersion: input.profileVersion,
+    });
+    const criteriaJson = JSON.stringify(input.criteria);
+
+    await this.db.transaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO search_plans (id, tenant_id, person_id, title, status, criteria_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'paused', ?, ?, ?)`,
+        [planId, scope.tenantId, scope.personId, input.title, criteriaJson, now, now]
+      );
+      await tx.execute(
+        `INSERT INTO search_plan_snapshots (id, search_plan_id, tenant_id, person_id, snapshot_hash, payload_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [snapshotId, planId, scope.tenantId, scope.personId, snapshotHash, criteriaJson, now]
+      );
+      await tx.execute(
+        `INSERT INTO evaluation_contexts (
+           context_fingerprint, tenant_id, person_id, search_plan_snapshot_id,
+           ontology_version, ontology_fingerprint, policy_version, profile_version, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          contextFingerprint,
+          scope.tenantId,
+          scope.personId,
+          snapshotId,
+          input.ontologyVersion,
+          input.ontologyFingerprint,
+          input.policyVersion,
+          input.profileVersion,
+          now,
+        ]
+      );
+      await tx.execute(
+        `INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+         SELECT ec.context_fingerprint, ec.tenant_id, ec.person_id, sps.search_plan_id
+         FROM evaluation_contexts ec
+         JOIN search_plan_snapshots sps ON sps.id = ec.search_plan_snapshot_id
+         WHERE ec.context_fingerprint = ? AND ec.tenant_id = ? AND ec.person_id = ? AND sps.search_plan_id = ?`,
+        [contextFingerprint, scope.tenantId, scope.personId, planId]
+      );
+    });
+
+    return {
+      plan: {
+        id: planId,
+        tenantId: scope.tenantId,
+        personId: scope.personId,
+        title: input.title,
+        status: "paused",
+        criteria: input.criteria,
+        createdAt: now,
+        updatedAt: now,
+      },
+      snapshot: {
+        id: snapshotId,
+        searchPlanId: planId,
+        tenantId: scope.tenantId,
+        personId: scope.personId,
+        snapshotHash,
+        payload: input.criteria,
+        createdAt: now,
+      },
+      context: {
+        contextFingerprint,
+        tenantId: scope.tenantId,
+        personId: scope.personId,
+        searchPlanSnapshotId: snapshotId,
+        ontologyVersion: input.ontologyVersion,
+        ontologyFingerprint: input.ontologyFingerprint,
+        policyVersion: input.policyVersion,
+        profileVersion: input.profileVersion,
+        createdAt: now,
+      },
+    };
+  }
+
+  /** Activates a prepared lineage only after its caller has completed backfill. */
+  async activatePreparedSearchPlan(
+    scope: AuthorizedPersonScope,
+    planId: string,
+    contextFingerprint: string,
+    activatedBy: string
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const prepared = await tx.one<{ id: string }>(
+        `SELECT sp.id
+         FROM search_plans sp
+         JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id
+         JOIN evaluation_contexts ec ON ec.search_plan_snapshot_id = sps.id
+         WHERE sp.id = ? AND sp.tenant_id = ? AND sp.person_id = ?
+           AND sp.status = 'paused' AND ec.context_fingerprint = ?`,
+        [planId, scope.tenantId, scope.personId, contextFingerprint]
+      );
+      if (!prepared) {
+        throw new Error(`Prepared search plan '${planId}' is missing or no longer paused.`);
+      }
+
+      await tx.execute(
+        `INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT (tenant_id, person_id, search_plan_id)
+         DO UPDATE SET context_fingerprint = excluded.context_fingerprint,
+                       activated_at = CURRENT_TIMESTAMP,
+                       activated_by = excluded.activated_by`,
+        [scope.tenantId, scope.personId, planId, contextFingerprint, activatedBy]
+      );
+      await tx.execute(
+        `DELETE FROM active_evaluation_contexts
+         WHERE tenant_id = ? AND person_id = ? AND search_plan_id <> ?`,
+        [scope.tenantId, scope.personId, planId]
+      );
+      await tx.execute(
+        `UPDATE search_plans SET status = 'active', updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND tenant_id = ? AND person_id = ?`,
+        [planId, scope.tenantId, scope.personId]
+      );
+      await tx.execute(
+        `UPDATE search_plans SET status = 'archived', updated_at = CURRENT_TIMESTAMP
+         WHERE tenant_id = ? AND person_id = ? AND status = 'active' AND id <> ?`,
+        [scope.tenantId, scope.personId, planId]
+      );
+    });
+  }
+
   /**
    * Replaces the active search plan for one authorized person as one durable
    * transaction.  A reader can therefore observe either the prior active

@@ -11,6 +11,7 @@ import { ProjectionPipeline } from "./pipeline/ProjectionPipeline";
 import { EvaluationCoordinator } from "./EvaluationCoordinator";
 import { requireAuthUser } from "../auth/guard";
 import type { CareerIntentRecord } from "../../data/sqlite/repositories/SqliteDocumentStore";
+import { activateSearchPlanForIntent } from "./search-plan-activation";
 
 /**
  * Fire-and-forget document upload transport adapter.
@@ -111,6 +112,14 @@ export const saveIntentFn = createServerFn({ method: "POST" })
     };
 
     await repos.documents.saveCareerIntent(intentRecord);
+
+    // Saving the versioned intent must also replace the active scraper plan.
+    // Otherwise the UI reports success while scraping continues to resolve a
+    // legacy plan with empty targetRoles/functions.
+    await activateSearchPlanForIntent({
+      ...intentRecord,
+      activatedBy: "career-intent-save",
+    });
 
     // Refresh evaluations via EvaluationCoordinator
     await EvaluationCoordinator.notify({ event: "INTENT_UPDATED", personId: user.id });

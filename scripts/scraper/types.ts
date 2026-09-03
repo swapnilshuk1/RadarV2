@@ -8,6 +8,32 @@ import type { PortalAuthSession } from "../../src/lib/security/PortalAuthSession
 
 export type PortalName = "LinkedIn" | "Indeed" | "Naukri";
 
+export type AcquisitionChannel = "search" | "recommended";
+
+/**
+ * A concrete portal execution surface compiled from persisted search intent.
+ * Freshness and portal-specific filters belong here, rather than in the
+ * canonical SearchDefinition, because they describe how a search is executed.
+ */
+export interface AcquisitionVariant {
+  id?: string;
+  definitionId?: string;
+  familyId?: string;
+  portal?: PortalName;
+  query: string;
+  requestedTerms?: string[];
+  location?: string;
+  radiusKm?: number;
+  industry?: string;
+  department?: string;
+  isRemote?: boolean;
+  postedWithinDays?: 1 | 7 | 14 | 30;
+  sort?: "relevance" | "date";
+  channel?: AcquisitionChannel;
+}
+
+export type PortalSearchRequest = AcquisitionVariant & { page: number };
+
 export type UnitStatus =
   | "pending"
   | "running"
@@ -46,6 +72,7 @@ export interface WorkUnit {
   executionPlanId?: string;  // from ExecutionPlan.json, or adhoc ID
   definitionId?: string;     // attach definition ID for stopping rules
   familyId?: string;         // attach family ID for downstream association
+  variant?: AcquisitionVariant;
   cardIds: string[];         // list of card work-unit ids discovered on this page
   decisionRecord?: UnitDecisionRecord;
 }
@@ -207,6 +234,19 @@ export interface DetailedCard extends FeedCard {
     extractedCompany?: string;
   };
   acquisitionAttempts?: AcquisitionAttempt[];
+  /**
+   * Bound after canonical ingestion. This lets a run artifact identify the
+   * exact immutable document version evaluated downstream without embedding
+   * that document in the journal or duplicating BlobStore payloads.
+   */
+  evaluationEvidence?: {
+    state: "PENDING" | "BOUND" | "UNAVAILABLE";
+    canonicalJobId?: string;
+    opportunityVersion?: string;
+    contentHash?: string;
+    sourcePayloadKey?: string | null;
+    sourceMediaType?: string | null;
+  };
   telemetry: {
     cardExtractMs: number;
     detailExtractMs: number;
@@ -310,6 +350,9 @@ export interface PortalContext {
   keyword: string;
   page: number;
   searchUrl: string;
+  variant?: AcquisitionVariant;
+  /** Per-run discovery cap. Overrides portal defaults for controlled cohorts. */
+  maxCardsPerPage?: number;
   browserContext: any;   // playwright BrowserContext
   searchPage?: any;      // persistent Playwright Page dedicated to search
   detailPage?: any;      // persistent Playwright Page dedicated to details
@@ -328,7 +371,7 @@ export interface PortalContext {
 export interface PortalHandler {
   name: PortalName;
   detailStrategy: "http" | "browser" | "auto";
-  buildSearchUrl(keyword: string, page: number): string;
+  buildSearchUrl(request: PortalSearchRequest | string, page?: number): string;
   ensureSession(ctx: PortalContext): Promise<"ready" | "gated" | "error">;
   listCards(ctx: PortalContext): Promise<FeedCard[]>;
   fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCard["detail"]>;

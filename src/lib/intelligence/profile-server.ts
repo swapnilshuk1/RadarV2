@@ -9,6 +9,7 @@ import { invalidateCandidateDossierCache } from "./cip";
 import { invalidateEngineCache } from "./engine";
 import { getRepositories } from "../../data/sqlite/provider";
 import { validateSessionToken, SESSION_COOKIE_NAME } from "../auth/session";
+import { activateSearchPlanForIntent } from "./search-plan-activation";
 import { 
   type CandidateState, 
   type ExtractedFact, 
@@ -30,41 +31,6 @@ function getNodePath() {
 function getNodeChildProcess() {
   if (typeof window !== "undefined") return null;
   return { execSync };
-}
-
-interface EvaluationVersionManifest {
-  policyVersion: string;
-  ontologyVersion: string;
-  ontologyHash: string;
-}
-
-/**
- * Evaluation contexts must carry the calibrated policy/ontology identity that
- * was actually selected for this deployment. Missing or malformed identity is
- * a deployment error, not a reason to silently create an untraceable context.
- */
-function loadEvaluationVersionManifest(): EvaluationVersionManifest {
-  const nodeFs = getNodeFs();
-  const nodePath = getNodePath();
-  if (!nodeFs || !nodePath) {
-    throw new Error("Career intent activation requires a server filesystem.");
-  }
-
-  const manifestPath = nodePath.join(process.cwd(), "config", "calibration_manifest.json");
-  const parsed = JSON.parse(nodeFs.readFileSync(manifestPath, "utf-8")) as Partial<EvaluationVersionManifest>;
-  if (
-    typeof parsed.policyVersion !== "string" || !parsed.policyVersion ||
-    typeof parsed.ontologyVersion !== "string" || !parsed.ontologyVersion ||
-    typeof parsed.ontologyHash !== "string" || !parsed.ontologyHash
-  ) {
-    throw new Error("Calibration manifest is missing the required policy or ontology identity.");
-  }
-
-  return {
-    policyVersion: parsed.policyVersion,
-    ontologyVersion: parsed.ontologyVersion,
-    ontologyHash: parsed.ontologyHash,
-  };
 }
 
 // ─── UTILITY: ADC TOKEN & GEMINI HELPER ──────────────────────────────────────
@@ -386,55 +352,16 @@ export const updateIntentSessionFn = createServerFn({ method: "POST" })
     // DYNAMIC RE-PLANNING: the replacement plan, immutable snapshot, context,
     // lineage binding, pointer and prior-plan archival commit together.
     console.log("[profile-server] Triggering atomic Search Re-Planning for Turso Cloud...");
-    const nodePath = getNodePath();
-    if (!nodePath) {
-      throw new Error("Career intent activation requires a server filesystem.");
-    }
-    const taxonomyPath = nodePath.join(process.cwd(), "config", "ontologies", "taxonomy.json");
-    const lexiconPath = nodePath.join(process.cwd(), "config", "ontologies", "lexicon.json");
-    
     const targetTitles = (currentState.intent.targetRoles || []).map((r: any) => r?.title || String(r));
     const preferredLocations = currentState.intent.locations || [];
     const industries = currentState.intent.industries || [];
     const profileFunctions = currentState.intent.functions || [];
-
-    const targetLevels = new Set<string>();
-    targetTitles.forEach((title: string) => {
-      const lower = title.toLowerCase();
-      if (lower.includes("cmo") || lower.includes("chief") || lower.includes("cco")) targetLevels.add("Chief");
-      if (lower.includes("vp") || lower.includes("vice president")) targetLevels.add("VP");
-      if (lower.includes("director")) targetLevels.add("Director");
-      if (lower.includes("svp") || lower.includes("senior vice president")) targetLevels.add("SVP");
-      if (lower.includes("head") || lower.includes("lead")) targetLevels.add("Head");
-    });
-    if (targetLevels.size === 0) {
-      targetLevels.add("VP").add("Head").add("Chief");
-    }
-
-    const intent = {
-      targetLevel: Array.from(targetLevels),
-      functions: profileFunctions.length > 0 ? profileFunctions : ["Marketing", "Growth"],
-      operatingModels: ["B2B", "Enterprise", "Scale-up"],
-      ownership: ["P&L", "Commercial"],
+    const { activation, searchPlan } = await activateSearchPlanForIntent({
+      personId: user.userId,
+      targetTitles,
+      preferredLocations,
       industries,
-      exclusions: [] as string[],
-      targetTitles: targetTitles.length > 0 ? targetTitles : ["Chief Marketing Officer", "VP Marketing", "Head of Growth"],
-      preferredLocations: preferredLocations.length > 0 ? preferredLocations : ["Gurugram", "Bengaluru", "Remote India"],
-    };
-
-    const { SearchPlanner } = await import("../../../scripts/scraper/run/search-planner");
-    const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
-    const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.userId);
-    const versionManifest = loadEvaluationVersionManifest();
-
-    const activation = await repos.evaluationContexts.replaceActiveSearchPlan(scope, {
-      title: "Executive Career Search Plan",
-      criteria: searchPlan as any,
-      ontologyVersion: versionManifest.ontologyVersion,
-      ontologyFingerprint: versionManifest.ontologyHash,
-      policyVersion: versionManifest.policyVersion,
-      profileVersion: currentState.updatedAt,
+      functions: profileFunctions,
       activatedBy: "intent-update",
     });
 

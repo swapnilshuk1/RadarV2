@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "phase0-diagnostic-specimen/v1",
+  "fixtureId": "chanakaya-unrelated-careers-page",
+  "provenance": {
+    "kind": "production_derived_offline",
+    "sourceArtifact": ".radar/artifacts/blobs/snapshots/b410ee4ebd28c2b9.json",
+    "sanitization": [
+      "Raw portal HTML and tracking parameters were removed.",
+      "The full captured text is preserved without applicant or session data."
+    ],
+    "capturedBodySha256": "e658bbb0ba8e89d14432437c1f9ad2cecd6c780e123f43caeae9a19a5ee91dfc"
+  },
+  "source": {
+    "portal": "Naukri",
+    "title": "Assistant Vice President - Projects",
+    "company": "The Chanakaya",
+    "location": "Gurugram",
+    "canonicalSourceUrl": "https://www.naukri.com/job-listings-assistant-vice-president-projects-dlf-hospitality-gurugram-20-to-25-years-100726509884"
+  },
+  "document": {
+    "httpStatus": 200,
+    "contentType": "text/html; charset=utf-8",
+    "capturedText": ".Seeking a role where your skills can shine?SearchAre you the talent we’ve been seeking? The future is full of possibilities, and we’d love to stay in touch. Fill out this form to start the conversation.Submit Your Information Insights from Our TraineesStories of skill and learningStep behind the scenes with our trainees and see how hands-on learning and mentorship cultivate the skills, confidence, and insight needed to craft exceptional guest experiences.Learning, Belonging, Progress | Talha’s JourneyTalha Naseem joined us as an intern through Muskaan PAEPID, Delhi, a well-established non-profit organisation supporting individuals with intellectual disabilities. During his six-month training at The Magnolias, under the guidance of Somnath Roy, who leads Laundry Operations, he demonstrated a strong eagerness to learn, a positive attitude, and a consistent commitment to his role. The experience helped him develop essential professional skills, alongside a clear understanding of discipline, teamwork, and workplace responsibility. The encouraging team environment played a key role in Talha’s growth. He recalls with pride the day he transitioned from intern to employee, marking an important milestone in his journey. As Somnath notes, \"Talha is always willing to go the extra mile and readily supports the team whenever required.\"Inside the Kitchen | A Trainee’s Perspective\"Training at MKT at The Chanakya was an exceptional introduction to professional hospitality. Over nearly three months, while initially focusing on the Japanese Kitchen, I gained hands-on experience across the full Pan Asian kitchen, including Thai, Dim Sum, and Chinese Wok preparations. Under the mentorship of Chef Tenzing, Chef Manoj, and Chef Ganesh, I honed technical culinary skills and gained a strong understanding of operational excellence, teamwork, and the precision required in a high-standard kitchen. Participating in ingredient checks and live service also showed how precision, professionalism, and communication directly enhance the guest experience,\" says K Mercy Maring.Crafting Connections | Inside Event OperationsRaina Deewan completed her internship with the Event Sales Division of our Lifestyle Clubs from 15 December 2025 to 30 January 2026, gaining a considered introduction to the commercial and relational aspects of event-led hospitality. Her experience encompassed event planning, client engagement, interdepartmental coordination, and the preparation of proposals and contractual documentation, alongside the refinement of professional communication skills. Under the guidance of Anamica Peter, whose constructive feedback and practical insights were instrumental, Raina developed a strong appreciation for strategic thinking, operational clarity, and the discretion required to deliver seamless, client-focused event experiences.",
+    "originalCapturedLength": 2852,
+    "isExcerpt": false
+  }
+}

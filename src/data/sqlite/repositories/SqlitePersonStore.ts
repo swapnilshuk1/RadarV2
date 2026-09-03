@@ -2,6 +2,7 @@ import type { DatabaseAdapter } from "../../database/adapter";
 import type { PersonStore } from "../../../domain/repositories";
 import type { Person, ResumeVersion } from "../../../domain/entities";
 import { type CandidateProjection, validateCandidateProjection, DEFAULT_CANDIDATE_PROJECTION } from "../../../lib/domain/candidate_projection";
+import { versionCandidateProjection } from "./profile-projection-version";
 
 export class SqlitePersonStore implements PersonStore {
   constructor(private db: DatabaseAdapter) {}
@@ -84,14 +85,15 @@ export class SqlitePersonStore implements PersonStore {
     }
 
     const profileId = `profile-${personId}`; // Enforce single active profile per user for now
-    const projectionJson = JSON.stringify(projection);
+    const persistedProjection = versionCandidateProjection(projection);
+    const projectionJson = JSON.stringify(persistedProjection);
     const now = new Date().toISOString();
     
     // Extract queryable scalar columns from projection
-    const currentTitle = "Executive"; // No longer in projection, stored in identity
-    const yearsExperience = projection.yearsOfExperience || 0;
-    const archetype = projection.executiveThemes?.[0] || "";
-    const preferredWorkModel = projection.preferredWorkModel || "ANY";
+    const currentTitle = persistedProjection.attainedTitle?.trim() || "Unknown";
+    const yearsExperience = persistedProjection.yearsOfExperience || 0;
+    const archetype = persistedProjection.archetype?.trim() || "Unknown";
+    const preferredWorkModel = persistedProjection.preferredWorkModel || "ANY";
 
     await this.db.execute(
       `

@@ -1,5 +1,9 @@
 import type { DatabaseAdapter } from "../../database/adapter";
-import type { AcquisitionStore, AcquisitionLedgerItem } from "../../../domain/repositories";
+import type {
+  AcquisitionStore,
+  AcquisitionLedgerItem,
+  AcquisitionIngestionLineage,
+} from "../../../domain/repositories";
 import type { Document } from "../../../domain/entities";
 
 export class SqliteAcquisitionStore implements AcquisitionStore {
@@ -295,6 +299,103 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
     return result.rowsAffected;
   }
 
+  async recordIngestionLineage(
+    item: Omit<AcquisitionIngestionLineage, "id" | "createdAt">
+  ): Promise<AcquisitionIngestionLineage> {
+    return this.db.transaction(async (tx) => {
+      const runScope = await tx.one<{ id: string }>(
+        `SELECT id FROM scrape_runs
+         WHERE id = ? AND tenant_id = ? AND person_id = ?`,
+        [item.scrapeRunId, item.tenantId, item.personId]
+      );
+      if (!runScope) {
+        throw new Error(
+          `[SqliteAcquisitionStore] scrape run ${item.scrapeRunId} does not belong to the supplied tenant/person scope.`
+        );
+      }
+
+      const lineageId = `ing_lineage_${crypto.randomUUID()}`;
+      await tx.execute(
+        `INSERT INTO acquisition_ingestion_lineage (
+           id, scrape_run_id, tenant_id, person_id, acquisition_ledger_id,
+           card_id, ingestion_attempt, source_portal, source_job_id, source_url,
+           capture_state, document_state, content_hash, canonical_job_id,
+           opportunity_version, failure_class
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(scrape_run_id, card_id, ingestion_attempt) DO NOTHING`,
+        [
+          lineageId,
+          item.scrapeRunId,
+          item.tenantId,
+          item.personId,
+          item.acquisitionLedgerId,
+          item.cardId,
+          item.ingestionAttempt,
+          item.sourcePortal,
+          item.sourceJobId,
+          item.sourceUrl,
+          item.captureState,
+          item.documentState,
+          item.contentHash ?? null,
+          item.canonicalJobId ?? null,
+          item.opportunityVersion ?? null,
+          item.failureClass ?? null,
+        ]
+      );
+
+      const row = await tx.one<any>(
+        `SELECT * FROM acquisition_ingestion_lineage
+         WHERE scrape_run_id = ? AND card_id = ? AND ingestion_attempt = ?`,
+        [item.scrapeRunId, item.cardId, item.ingestionAttempt]
+      );
+      if (!row) {
+        throw new Error("[SqliteAcquisitionStore] ingestion lineage insert was not readable after write.");
+      }
+      const existing = this.mapIngestionLineageRow(row);
+      if (!this.matchesIngestionLineage(item, existing)) {
+        throw new Error(
+          `[SqliteAcquisitionStore] conflicting provenance for ${item.scrapeRunId}/${item.cardId} attempt ${item.ingestionAttempt}.`
+        );
+      }
+      return existing;
+    });
+  }
+
+  async listIngestionLineageForRun(
+    tenantId: string,
+    personId: string,
+    scrapeRunId: string
+  ): Promise<AcquisitionIngestionLineage[]> {
+    const rows = await this.db.many<any>(
+      `SELECT * FROM acquisition_ingestion_lineage
+       WHERE tenant_id = ? AND person_id = ? AND scrape_run_id = ?
+       ORDER BY created_at ASC, ingestion_attempt ASC`,
+      [tenantId, personId, scrapeRunId]
+    );
+    return rows.map((row) => this.mapIngestionLineageRow(row));
+  }
+
+  private matchesIngestionLineage(
+    expected: Omit<AcquisitionIngestionLineage, "id" | "createdAt">,
+    actual: AcquisitionIngestionLineage
+  ): boolean {
+    return expected.scrapeRunId === actual.scrapeRunId
+      && expected.tenantId === actual.tenantId
+      && expected.personId === actual.personId
+      && expected.acquisitionLedgerId === actual.acquisitionLedgerId
+      && expected.cardId === actual.cardId
+      && expected.ingestionAttempt === actual.ingestionAttempt
+      && expected.sourcePortal === actual.sourcePortal
+      && expected.sourceJobId === actual.sourceJobId
+      && expected.sourceUrl === actual.sourceUrl
+      && expected.captureState === actual.captureState
+      && expected.documentState === actual.documentState
+      && (expected.contentHash ?? undefined) === actual.contentHash
+      && (expected.canonicalJobId ?? undefined) === actual.canonicalJobId
+      && (expected.opportunityVersion ?? undefined) === actual.opportunityVersion
+      && (expected.failureClass ?? undefined) === actual.failureClass;
+  }
+
   private mapLedgerRow(row: any): AcquisitionLedgerItem {
     return {
       id: row.id,
@@ -323,5 +424,26 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
       updatedAt: row.updated_at
     };
   }
-}
 
+  private mapIngestionLineageRow(row: any): AcquisitionIngestionLineage {
+    return {
+      id: row.id,
+      scrapeRunId: row.scrape_run_id,
+      tenantId: row.tenant_id,
+      personId: row.person_id,
+      acquisitionLedgerId: row.acquisition_ledger_id,
+      cardId: row.card_id,
+      ingestionAttempt: row.ingestion_attempt,
+      sourcePortal: row.source_portal,
+      sourceJobId: row.source_job_id,
+      sourceUrl: row.source_url,
+      captureState: row.capture_state,
+      documentState: row.document_state,
+      contentHash: row.content_hash ?? undefined,
+      canonicalJobId: row.canonical_job_id ?? undefined,
+      opportunityVersion: row.opportunity_version ?? undefined,
+      failureClass: row.failure_class ?? undefined,
+      createdAt: row.created_at,
+    };
+  }
+}

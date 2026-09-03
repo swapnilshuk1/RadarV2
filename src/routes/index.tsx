@@ -4,7 +4,7 @@ import { type Opportunity, type DecisionVerb, type ServedOpportunity, isEvaluate
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
 import { getOpportunitiesFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
-import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn } from "../lib/intelligence/scrape-server";
+import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn, getScrapePlanPreviewFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
 import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
 import { JobProjectionBuilder } from "../lib/intelligence/builders/JobProjectionBuilder";
@@ -57,20 +57,22 @@ export const Route = createFileRoute("/")({
   }),
   staleTime: 0,
   loader: async () => {
-    const [opportunitiesList, metrics] = await Promise.all([
+    const [opportunitiesList, metrics, searchPlanPreview] = await Promise.all([
       getOpportunitiesFn(),
       getShortlistMetricsFn(),
+      getScrapePlanPreviewFn(),
     ]);
     return {
       opportunitiesList,
       metrics,
+      searchPlanPreview,
     };
   },
   component: Shortlist,
 });
 
 function Shortlist() {
-  const { opportunitiesList, metrics } = Route.useLoaderData();
+  const { opportunitiesList, metrics, searchPlanPreview } = Route.useLoaderData();
   const { decisions, decide: recordDecision } = useDecisions();
   const { progress, markArrivalSeen } = useOnboarding();
   const [open, setOpen] = useState<string | null>(null);
@@ -519,6 +521,63 @@ function Shortlist() {
             </div>
           </div>
         </section>
+
+        <details className="memo-card mb-space-6" data-testid="active-search-plan">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-space-3">
+            <span>
+              <span className="label-mono text-muted-foreground">Active search execution</span>
+              <span className="mt-1 block font-serif text-xl text-foreground">View the exact next-search plan</span>
+            </span>
+            {searchPlanPreview.status === "ready" ? (
+              <span className="memo-badge bg-signal text-signal-foreground">
+                {searchPlanPreview.postedWithinDays ? `${searchPlanPreview.postedWithinDays} days` : "No date limit"}
+                {searchPlanPreview.location ? ` · ${searchPlanPreview.location}` : ""}
+              </span>
+            ) : (
+              <span className="memo-badge bg-caution text-caution-foreground">Unavailable</span>
+            )}
+          </summary>
+
+          {searchPlanPreview.status === "ready" ? (
+            <>
+              <dl className="mt-space-3 grid gap-space-2 border-t border-border pt-space-3 sm:grid-cols-4">
+                <div>
+                  <dt className="label-mono text-muted-foreground">Freshness</dt>
+                  <dd className="mt-1 text-sm font-medium text-foreground">
+                    {searchPlanPreview.postedWithinDays ? `Last ${searchPlanPreview.postedWithinDays} days` : "No date limiter"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="label-mono text-muted-foreground">Location</dt>
+                  <dd className="mt-1 text-sm font-medium text-foreground">{searchPlanPreview.location || "No location limiter"}</dd>
+                </div>
+                <div>
+                  <dt className="label-mono text-muted-foreground">Ordering</dt>
+                  <dd className="mt-1 text-sm font-medium text-foreground">{searchPlanPreview.sort === "date" ? "Most recent first" : "Portal relevance"}</dd>
+                </div>
+                <div>
+                  <dt className="label-mono text-muted-foreground">Portals</dt>
+                  <dd className="mt-1 text-sm font-medium text-foreground">{searchPlanPreview.portals.join(" · ")}</dd>
+                </div>
+              </dl>
+
+              <div className="mt-space-3 border-t border-border pt-space-3">
+                <p className="label-mono text-muted-foreground">
+                  {searchPlanPreview.keywords.length} compiled keywords · {searchPlanPreview.executionSurfaceCount} initial portal surfaces
+                </p>
+                <ul className="mt-space-2 grid max-h-40 grid-cols-1 gap-space-1 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3" aria-label="Compiled search keywords">
+                  {searchPlanPreview.keywords.map((keyword) => (
+                    <li key={keyword} className="text-sm text-foreground">{keyword}</li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          ) : (
+            <p className="mt-space-3 border-t border-border pt-space-3 text-sm text-caution">
+              Active plan unavailable: {searchPlanPreview.error}
+            </p>
+          )}
+        </details>
       </main>
 
       {/* ────────────────────────────────────────────────────────────────────────

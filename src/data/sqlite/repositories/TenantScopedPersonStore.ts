@@ -4,6 +4,7 @@ import type { Person, ResumeVersion } from "../../../domain/entities";
 import { type CandidateProjection, validateCandidateProjection, DEFAULT_CANDIDATE_PROJECTION } from "../../../lib/domain/candidate_projection";
 import type { AuthorizedPersonScope } from "../../../lib/security/auth";
 import { TenantIsolationError } from "../../../lib/security/auth";
+import { versionCandidateProjection } from "./profile-projection-version";
 
 export class TenantScopedPersonStore implements PersonStore {
   constructor(
@@ -104,13 +105,14 @@ export class TenantScopedPersonStore implements PersonStore {
     }
 
     const profileId = `profile-${personId}`; // Enforce single active profile per user for now
-    const projectionJson = JSON.stringify(projection);
+    const persistedProjection = versionCandidateProjection(projection);
+    const projectionJson = JSON.stringify(persistedProjection);
     const now = new Date().toISOString();
     
-    const currentTitle = "Executive";
-    const yearsExperience = projection.yearsOfExperience || 0;
-    const archetype = projection.executiveThemes?.[0] || "";
-    const preferredWorkModel = projection.preferredWorkModel || "ANY";
+    const currentTitle = persistedProjection.attainedTitle?.trim() || "Unknown";
+    const yearsExperience = persistedProjection.yearsOfExperience || 0;
+    const archetype = persistedProjection.archetype?.trim() || "Unknown";
+    const preferredWorkModel = persistedProjection.preferredWorkModel || "ANY";
 
     // Because career_profiles doesn't have tenant_id natively, we ensure 
     // it's only linked to the scoped personId, which we validated belongs to the tenant.

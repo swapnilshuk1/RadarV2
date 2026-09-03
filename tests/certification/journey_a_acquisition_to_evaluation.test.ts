@@ -90,6 +90,9 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         failure_class TEXT,
         lifecycle_state TEXT,
         evidence_state TEXT,
+        source_payload_key TEXT,
+        source_media_type TEXT,
+        document_extraction_state TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(canonical_job_id, content_hash)
       );
@@ -101,6 +104,10 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         canonical_job_id TEXT NOT NULL,
         opportunity_version TEXT NOT NULL,
         attention_decision TEXT NOT NULL,
+        eligibility TEXT,
+        eligibility_reason_codes_json TEXT,
+        location_policy TEXT,
+        location_evidence TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version)
       );
@@ -209,8 +216,11 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
       canonical_job_id: string;
       opportunity_version: string;
       attention_decision: string;
+      eligibility: string | null;
+      eligibility_reason_codes_json: string | null;
     }>(
-      `SELECT canonical_job_id, opportunity_version, attention_decision
+      `SELECT canonical_job_id, opportunity_version, attention_decision,
+              eligibility, eligibility_reason_codes_json
        FROM search_plan_candidates
        WHERE canonical_job_id = ?`,
       [ingestResult.canonicalJobId]
@@ -219,6 +229,9 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
     expect(candidate).toBeDefined();
     expect(candidate?.opportunity_version).toBe(ingestResult.opportunityVersion);
     expect(candidate?.attention_decision).toBe("CANDIDATE");
+    expect(candidate?.eligibility).toBe("ELIGIBLE");
+    expect(JSON.parse(candidate?.eligibility_reason_codes_json || "[]"))
+      .toContain("ROLE_FAMILY_MATCH");
 
     // 3. Idempotent Ingestion Check (Re-ingestion with same content must not corrupt FK)
     const secondIngest = await ingestionService.ingestOpportunity(rawJobPayload);

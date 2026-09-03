@@ -65,6 +65,30 @@ class TestSqliteAdapter implements DatabaseAdapter {
   }
 }
 
+/** Simulates a Turso queue statement failing after the canonical write path. */
+class EvaluationQueueFailureAdapter implements DatabaseAdapter {
+  constructor(private readonly inner: DatabaseAdapter) {}
+
+  one<T>(sql: string, params?: QueryParams): Promise<T | null> {
+    return this.inner.one<T>(sql, params);
+  }
+
+  many<T>(sql: string, params?: QueryParams): Promise<T[]> {
+    return this.inner.many<T>(sql, params);
+  }
+
+  async execute(sql: string, params?: QueryParams) {
+    if (sql.includes("INSERT INTO evaluation_jobs")) {
+      throw new Error("SERVER_ERROR: transient queue write failure");
+    }
+    return this.inner.execute(sql, params);
+  }
+
+  transaction<T>(fn: (tx: DatabaseAdapter) => Promise<T>): Promise<T> {
+    return this.inner.transaction((tx) => fn(new EvaluationQueueFailureAdapter(tx)));
+  }
+}
+
 describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () => {
   let sqliteDb: Database.Database;
   let adapter: TestSqliteAdapter;
@@ -128,6 +152,7 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
       "027_materialized_evaluations_nullable_decision.sql",
       "028_active_evaluation_context_pointers.sql",
       "029_materialized_evaluations_vetoed.sql",
+      "033_opportunity_version_source_payload.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -186,6 +211,14 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
         ontology_version, ontology_fingerprint, policy_version, profile_version, created_at
       ) VALUES (?, ?, ?, ?, '2.1.0', 'ont_fp_m10', 'v4_strict', 'prof_v1_m10', CURRENT_TIMESTAMP)
     `).run(contextFingerprintA, TENANT_A, PERSON_A, "sps_m10_a");
+    sqliteDb.prepare(`
+      INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+      VALUES (?, ?, ?, ?)
+    `).run(contextFingerprintA, TENANT_A, PERSON_A, PLAN_A);
+    sqliteDb.prepare(`
+      INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+      VALUES (?, ?, ?, ?, 'test')
+    `).run(TENANT_A, PERSON_A, PLAN_A, contextFingerprintA);
 
     const candidateProjectionA = {
       operatingLevel: { value: "STRATEGIC", confidence: 0.95, evidenceIds: ["ev_1"] },
@@ -275,6 +308,27 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
     expect(jobRow).not.toBeNull();
     expect(jobRow.status).toBe("pending");
     expect(jobRow.evaluation_context_fingerprint).toBe(contextFingerprintA);
+  });
+
+  test("M10.1a: queue failure cannot roll back canonical ingestion or surface TRANSACTION_CLOSED", async () => {
+    const failingQueueAdapter = new EvaluationQueueFailureAdapter(adapter);
+    const ingestionService = new CanonicalIngestionService(failingQueueAdapter);
+
+    const res = await ingestionService.ingestOpportunity({
+      sourcePortal: "LinkedIn",
+      sourceJobId: "li-job-queue-outage-9002",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/9002",
+      jobTitle: "VP of Engineering & AI Platforms",
+      companyName: "Queue Outage Corp",
+      location: "Bengaluru, India",
+      employmentType: "Full-time",
+      rawContent: "Queue Outage Corp is hiring a VP of Engineering & AI Platforms in Bengaluru to lead a distributed team.",
+    });
+
+    expect(res.candidatesProjected).toBe(1);
+    expect(res.jobsEnqueued).toBe(0);
+    expect(await adapter.one(`SELECT id FROM canonical_opportunities WHERE id = ?`, [res.canonicalJobId])).not.toBeNull();
+    expect(await adapter.one(`SELECT canonical_job_id FROM search_plan_candidates WHERE canonical_job_id = ?`, [res.canonicalJobId])).not.toBeNull();
   });
 
   test("M10.1: Idempotency on repeated ingest - Zero duplicate opportunities, versions, candidates, or jobs", async () => {
@@ -417,7 +471,7 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
   // M10.2 — EVALUATION WORKER EXECUTION, CONCURRENCY & RELIABILITY PROOFS
   // ===========================================================================
 
-  test("M10.2: EvaluationWorker claims job, locks lease, executes fit evaluation, and writes materialized read model", async () => {
+  test("M10.2: EvaluationWorker claims job, locks lease, and materializes an unavailable result without fabricating a recommendation", async () => {
     const ingestionService = new CanonicalIngestionService(adapter);
     const ingestRes = await ingestionService.ingestOpportunity({
       sourcePortal: "LinkedIn",
@@ -470,9 +524,10 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
     expect(matRow).not.toBeNull();
     expect(matRow.tenant_id).toBe(TENANT_A);
     expect(matRow.person_id).toBe(PERSON_A);
-    expect(["PURSUE", "CONSIDER", "PASS"]).toContain(matRow.decision);
-    expect(matRow.quality_score).toBeGreaterThan(0);
-    expect(matRow.evaluation_json).toContain("recommendation");
+    expect(matRow.evaluation_state).toBe("SPARSE_SPEC");
+    expect(matRow.decision).toBeNull();
+    expect(matRow.quality_score).toBeNull();
+    expect(matRow.evaluation_json).toContain("v4.3-unavailable");
   });
 
   test("M10.2: Retry and Dead-Letter state machine handles transient worker errors and bounds max attempts", async () => {
@@ -579,8 +634,9 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
     expect(servedOpp.company).toBe("Enterprise Tier 1");
     expect(servedOpp.location).toBe("Bengaluru");
     expect(servedOpp.postedRelative).toBeDefined();
-    expect(["PURSUE", "CONSIDER", "PASS", "SPARSE_SPEC"]).toContain(servedOpp.decision);
-    expect(servedOpp.effectiveDecision).toBeDefined();
+    expect((servedOpp as any).evaluationState).toBe("SPARSE_SPEC");
+    expect(servedOpp.engineRecommendation).toBeUndefined();
+    expect(servedOpp.effectiveDecision).toBeUndefined();
 
     // 3. User records explicit PASS decision
     sqliteDb.prepare(`

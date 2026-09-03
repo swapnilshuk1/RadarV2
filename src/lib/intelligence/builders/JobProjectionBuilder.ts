@@ -5,8 +5,11 @@ import { DecisionAuthorityClassifier } from "../classifiers/DecisionAuthorityCla
 import { CommercialScopeClassifier } from "../classifiers/CommercialScopeClassifier";
 import { SemanticResolutionEngine } from "../semantic/SemanticResolutionEngine";
 import type { CanonicalSemanticEvidence } from "../semantic/types";
+import type { ValidatedJobDocument } from "../../domain/canonical_acquisition";
 
 export class JobProjectionBuilder {
+
+  public static readonly PROJECTION_VERSION = "job-projection/v1-grounded-document";
 
   private static regexCache = new Map<string, RegExp>();
   private static projectionCache = new Map<string, JobProjection>();
@@ -158,6 +161,46 @@ export class JobProjectionBuilder {
     return projection;
   }
 
+  /**
+   * Authoritative projection entry point for canonical acquisition. A failed,
+   * redirected, binary, or genuinely sparse document cannot be silently
+   * upgraded into a rich job projection.
+   */
+  public static buildFromValidatedDocument(document: ValidatedJobDocument): JobProjection {
+    if (document.usabilityState !== "SUBSTANTIVE" || !document.extractedText) {
+      throw new Error(`Cannot project non-substantive job document (${document.usabilityState}:${document.failureClass || "none"}).`);
+    }
+    const projection = this.buildUncached({
+      jobHash: `${document.source}:${document.sourceJobId || document.canonicalUrl}`,
+      role: document.title || "",
+      company: document.company || "",
+      location: document.location || "",
+      rawDescription: document.extractedText,
+    });
+    const sourceText = `${document.title || ""}\n${document.extractedText}`;
+    const dimensions = (projection.dimensions || []).map((dimension) => {
+      const value = dimension.jdEvidence.value;
+      const supported = Boolean(value && value !== "UNKNOWN" && new RegExp(`\\b${String(value).replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\b`, "i").test(sourceText));
+      return supported
+        ? dimension
+        : { ...dimension, jdEvidence: { status: "Missing" as const } };
+    });
+    return {
+      ...projection,
+      dimensions,
+      projectionVersion: this.PROJECTION_VERSION,
+      projectionFingerprint: this.fingerprint(document),
+      originalOpportunity: { ...projection.originalOpportunity, validatedDocument: document },
+    };
+  }
+
+  private static fingerprint(document: ValidatedJobDocument): string {
+    const source = `${this.PROJECTION_VERSION}|${document.source}|${document.canonicalUrl}|${document.extractedText || ""}`;
+    let hash = 2166136261;
+    for (let index = 0; index < source.length; index++) hash = Math.imul(hash ^ source.charCodeAt(index), 16777619);
+    return `jp_${(hash >>> 0).toString(16)}`;
+  }
+
   private static buildUncached(opportunity: any): JobProjection {
     this.actualBuildCount++;
     const title = opportunity.role || opportunity.canonicalTitle || opportunity.title || "";
@@ -271,22 +314,21 @@ export class JobProjectionBuilder {
       });
     }
 
+    const compositional = SemanticResolutionEngine.extractCompositional(fullContext);
     if (capabilitiesMap.size === 0) {
-      const descLower = fullText;
-      const keyDomainTerms = [
-        "CRM Governance", "Performance Marketing", "GTM Strategy", "Revenue Operations",
-        "Customer Intelligence", "Digital Transformation", "D2C Growth", "Enterprise Sales",
-        "Pipeline Governance", "Site Strategy", "Investment Analytics", "Solutions Architecture"
-      ];
-      keyDomainTerms.forEach(term => {
-        if (descLower.includes(term.toLowerCase())) {
-          capabilitiesMap.set(term.toLowerCase(), {
-            name: term,
-            source: "inferred",
-            confidence: 0.80
-          });
-        }
-      });
+      for (const evidence of compositional.evidenceList) {
+        if (evidence.entityType !== "CAPABILITY" || evidence.negated || evidence.evidenceRelationship === "NON_SATISFYING") continue;
+        capabilitiesMap.set(evidence.canonicalConcept, {
+          name: evidence.canonicalConcept,
+          canonicalConcept: evidence.canonicalConcept,
+          source: evidence.evidenceRelationship === "DIRECT_EQUIVALENT" ? "explicit" : "inferred",
+          state: evidence.evidenceRelationship === "DIRECT_EQUIVALENT" ? "EXPLICIT" : "INFERRED",
+          evidenceRelationship: evidence.evidenceRelationship,
+          sourceQuote: evidence.sourcePhrase,
+          evidence: [evidence.sourcePhrase],
+          confidence: evidence.confidence,
+        });
+      }
     }
 
     const capabilities = Array.from(capabilitiesMap.values());
@@ -356,7 +398,6 @@ export class JobProjectionBuilder {
     });
 
     // Phase 5C.2: Canonical Semantic Evidence Extraction
-    const compositional = SemanticResolutionEngine.extractCompositional(fullContext);
     const semanticEvidence: CanonicalSemanticEvidence[] = [...compositional.evidenceList];
     for (const cap of capabilities) {
       const res = SemanticResolutionEngine.resolveCapability(cap.name, undefined, fullContext);
@@ -399,7 +440,16 @@ export class JobProjectionBuilder {
       capabilityExtractionStatus,
       dimensions,
       originalOpportunity: { ...opportunity, dimensions },
-      semanticEvidence
+      semanticEvidence,
+      projectionVersion: this.PROJECTION_VERSION,
+      projectionFingerprint: this.fingerprint({
+        source: String(opportunity.source || "legacy"), canonicalUrl: String(opportunity.url || opportunity.jobHash || ""), finalUrl: String(opportunity.url || opportunity.jobHash || ""),
+        contentType: null, transportState: "SUCCEEDED", extractionState: "EXTRACTED", usabilityState: "SUBSTANTIVE",
+        acquisitionQuality: "COMPLETE", title, company: resolvedCompany, location: opportunity.location || null,
+        titleAgreement: "UNKNOWN", companyAgreement: "UNKNOWN", substantiveWordCount: fullText.split(/\s+/).filter(Boolean).length,
+        substantiveCharacterCount: fullText.length, boilerplateRatio: 0, scriptRatio: 0, failureClass: null,
+        retryable: false, extractedText: fullText, provenance: "BLOB"
+      })
     };
   }
 }

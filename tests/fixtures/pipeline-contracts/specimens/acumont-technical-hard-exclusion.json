@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "phase0-diagnostic-specimen/v1",
+  "fixtureId": "acumont-technical-hard-exclusion",
+  "provenance": {
+    "kind": "production_derived_offline",
+    "sourceArtifact": ".radar/artifacts/blobs/snapshots/3bbe223276f6bd4b.json",
+    "sanitization": [
+      "Raw portal HTML and tracking parameters were removed.",
+      "The full captured text is preserved without applicant or session data."
+    ],
+    "capturedBodySha256": "00fef7586b6c77295abb08baf445f3e424ade006879c8da08a0683523543de99"
+  },
+  "source": {
+    "portal": "Naukri",
+    "title": "Vice President-Technology",
+    "company": "Acumont Solutions",
+    "location": "Hybrid - Gurugram, Chennai",
+    "canonicalSourceUrl": "https://www.naukri.com/job-listings-vice-president-technology-acumont-solutions-gurugram-chennai-20-to-30-years-040826012743"
+  },
+  "document": {
+    "httpStatus": 200,
+    "contentType": "text/html; charset=utf-8",
+    "capturedText": "Vice President-Technology Acumont Solutions Hybrid - Gurugram, Chennai Experience: 20-30 Yrs Salary: Not disclosed Skills: AI Transformation, IT Operations, Infrastructure, Security, Digital Transformation, IT Strategy, Vice, Engineering head Educational Qualification (Mandatory) - B.E./B.Tech from IIT/NIT/NIIT or any Engineering Graduate with a PG degree from IIM. This is a strategic leadership position with end-to-end ownership of the India Technology organization, leading a team of 1000+ technology professionals across Engineering, IT Operations, and Security . As a key member of the Global Technology Leadership Team, you will drive technology execution, operational excellence, AI-led transformation, and organizational growth while partnering closely with global business and technology leaders. Key Responsibilities: Lead and scale a large India-based technology organization (1000+ professionals). Drive engineering excellence, delivery predictability, operational stability, and execution rigor. Own technology operations across Engineering, IT Operations, Infrastructure, and Security . Lead enterprise-wide AI/GenAI adoption across engineering, SDLC, IT operations, and delivery . Partner with global product, engineering, operations, and security leaders to execute strategic initiatives. Drive governance, compliance, incident management, resiliency, and operational maturity. Build strong leadership teams, talent strategy, succession planning, and a high-performance culture. Must-Have Skills: 20+ years of technology leadership experience. Proven experience leading large engineering organizations with 1000+ technology professionals. Strong background in Software Engineering, SDLC, IT Operations, and Technology Delivery. Demonstrated experience driving AI/GenAI transformation with measurable business impact. Good understanding of LLMs, AI/ML platforms, automation, and Responsible AI practices. Experience working in global, matrixed organizations with executive stakeholders. Strong leadership, stakeholder management, communication, and decision-making skills. Stable career progression is mandatory .",
+    "originalCapturedLength": 2131,
+    "isExcerpt": false
+  }
+}

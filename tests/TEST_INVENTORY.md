@@ -44,6 +44,8 @@ RADAR v2 Test Architecture
 | :--- | :--- | :---: |
 | `tests/intelligence/canonical-ingestion-fk-regression.test.ts` | Resolves existing `opportunity_versions.id` on conflict; zero orphan foreign keys. | **Stage 3** |
 | `tests/intelligence/canonical-acquisition-integrity.test.ts` | Multi-portal acquisition payload validation, SHA-256 content hashing, and version lineage. | **Stage 3** |
+| `tests/acquisition/ingestion-lineage.test.ts` | Durable source-card/run to exact canonical job/version lineage, retry idempotency, and tenant/run scope isolation. | **Stage 3** |
+| `tests/acquisition/scoped-ingestion.test.ts` | A shared canonical opportunity is projected only into the authenticated tenant/person's active plan. | Full Suite |
 | `tests/intelligence/canonical-identity.test.ts` | Opt-in live canonical-account audit; never part of deterministic certification. | Operator only |
 | `tests/persistence/queue-crash-restart.test.ts` | Turso operational queue crash recovery, idempotency, concurrent lease exclusion, and zero filesystem state. | **Stage 3** |
 | `tests/persistence/scrape-run-state-machine.test.ts` | Atomic active run race, cross-tenant/person concurrency, terminal immutability, restart durability. | **Stage 3** |
@@ -160,14 +162,17 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (179 Total Files)
+## 3. Complete Test File Registry (183 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
 | File Path | Domain | Disposition | Stage | Tests | Assertions |
 | :--- | :--- | :---: | :---: | :---: | :---: |
 | `tests/acquisition/historical-recovery-lineage.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 10 | 60 |
-| `tests/acquisition/portal-acquisition-reality.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 7 | 28 |
+| `tests/acquisition/ingestion-lineage.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 3 | 12 |
+| `tests/acquisition/scoped-ingestion.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 1 | 5 |
+| `tests/acquisition/portal-acquisition-reality.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 10 | 41 |
+| `tests/acquisition/source-payload-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 14 |
 | `tests/archive/p0/invariant-shortlist.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 3 | 8 |
 | `tests/archive/p0/invariant-trace-identity.test.ts` | Identity & Candidate Projection | **ARCHIVE** | Archived | 7 | 11 |
 | `tests/archive/p1/p1a-authoritative-source.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 6 | 19 |
@@ -212,9 +217,9 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/for4k_bug03_bug04.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 5 | 25 |
 | `tests/intelligence/identity.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 14 | 70 |
 | `tests/intelligence/job-projection-cache.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 29 |
-| `tests/intelligence/m10-continuous-pipeline.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 12 | 114 |
+| `tests/intelligence/m10-continuous-pipeline.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 13 | 118 |
 | `tests/intelligence/m42-identity-versioning.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 8 | 16 |
-| `tests/intelligence/m43-attention-gate.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 12 | 20 |
+| `tests/intelligence/m43-attention-gate.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 16 | 29 |
 | `tests/intelligence/m44-dual-write.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 20 |
 | `tests/intelligence/m45-reconciliation.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 13 |
 | `tests/intelligence/m52-enqueuer.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 30 |
@@ -319,6 +324,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/scraper/m56-operational-consolidation.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 18 |
 | `tests/scraper/scraper-correctness-contract.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 9 | 27 |
 | `tests/scraper/scraper-acquisition-contract.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 13 | 36 |
+| `tests/scraper/acquisition-variant-contract.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 15 |
 | `tests/scraper/naukri-state.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 10 |
 | `tests/scraper/scrape-progress.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 20 |
 | `tests/scraper/scraper-control.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 11 |
@@ -329,7 +335,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/scraper/ats-content-quality.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 10 |
 | `tests/scraper/scheduler-transport-safety.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 5 |
 | `tests/scraper/scheduler-exhaustion-contract.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 7 | 15 |
-| `tests/scraper/naukri-pagination-browser-context.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 3 | 6 |
+| `tests/scraper/naukri-pagination-browser-context.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 10 |
 | `tests/scraper/fintech-marketing-head-replay.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 8 |
 | `tests/scraper/naukri-cancellation-no-legacy-fetch.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 15 |
 | `tests/security/deploy-attack-surface-removed.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 3 | 10 |

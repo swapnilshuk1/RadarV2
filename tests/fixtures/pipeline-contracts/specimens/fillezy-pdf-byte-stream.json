@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "phase0-diagnostic-specimen/v1",
+  "fixtureId": "fillezy-pdf-byte-stream",
+  "provenance": {
+    "kind": "production_derived_offline",
+    "sourceArtifact": ".radar/artifacts/blobs/snapshots/a0ac1487d8568bcc.json",
+    "sanitization": [
+      "Raw portal HTML and tracking parameters were removed.",
+      "The binary body is represented by magic bytes, original length, and SHA-256 rather than embedding the full binary stream."
+    ],
+    "capturedBodySha256": "a4f882cf78433aa589aa63f8cd0a52d47b52466868b47fa262dc94796147a4db"
+  },
+  "source": {
+    "portal": "Naukri",
+    "title": "Vice President Sales",
+    "company": "Fillezy Packaging Solution",
+    "location": "Gurugram, Ludhiana, Mumbai, Raigad, Chennai, Jamalpur, Manesar",
+    "canonicalSourceUrl": "https://www.naukri.com/job-listings-vice-president-sales-fillezy-packaging-solution-ludhiana-mumbai-raigad-chennai-jamalpur-gurugram-manesar-15-to-20-years-301224501654"
+  },
+  "document": {
+    "httpStatus": 200,
+    "contentType": "application/pdf",
+    "capturedText": "%PDF-1.3\n% sanitized binary excerpt\n3 0 obj << /Filter /FlateDecode /Length 7113 >> stream",
+    "originalCapturedLength": 371552,
+    "isExcerpt": true
+  }
+}

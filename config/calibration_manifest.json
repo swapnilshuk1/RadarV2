@@ -1,6 +1,6 @@
 {
-  "policyVersion": "1.1.0",
-  "policyId": "policy-v1.1-candidate",
+  "policyVersion": "1.1.1",
+  "policyId": "policy-v1.1.1-ncr-geography",
   "ontologyVersion": "1.1.0",
   "ontologyHash": "9dd1c3d2382d6df9b6d85949d2822a9e5256e2975fe5fe3f0ff36b2512f45ec0",
   "corpusHash": "eca0890ea165f1e8477ffda83eb07ca7f369f688849b253be6fa40f4e4fa4ec7",

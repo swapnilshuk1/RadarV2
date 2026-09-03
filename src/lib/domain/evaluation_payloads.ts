@@ -27,6 +27,8 @@ export interface CanonicalEvaluatedPayloadV4_3 extends EvaluationProvenanceV4_3 
   readonly decision: "PURSUE" | "CONSIDER" | "PASS";
   readonly score: number;
   readonly diligenceStatus: "READY" | "INSUFFICIENT" | "STALE" | "FAILED" | "UNKNOWN";
+  /** Exact intrinsic projection used by the scoring run; never a presentation DTO. */
+  readonly jobProjection: unknown;
 }
 
 export interface CanonicalUnavailablePayloadV4_3 extends EvaluationProvenanceV4_3 {
@@ -59,7 +61,8 @@ export function isCanonicalIntrinsicEvaluationV4_3(payload: unknown): payload is
     typeof p.policyVersion !== "string" ||
     typeof p.ontologyVersion !== "string" ||
     typeof p.ontologyFingerprint !== "string" ||
-    typeof p.profileVersion !== "string"
+    typeof p.profileVersion !== "string" ||
+    !p.jobProjection || typeof p.jobProjection !== "object"
   ) {
     return false;
   }
@@ -68,7 +71,7 @@ export function isCanonicalIntrinsicEvaluationV4_3(payload: unknown): payload is
     return false;
   }
 
-  if (typeof p.score !== "number" || isNaN(p.score)) {
+  if (typeof p.score !== "number" || !isFinite(p.score) || isNaN(p.score) || p.score < 0 || p.score > 100) {
     return false;
   }
 

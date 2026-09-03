@@ -8,7 +8,7 @@ import {
   EXTRACTOR_VERSION,
   RECOMMENDATION_SCHEMA_VERSION,
 } from "../versions";
-import type { RunManifest, WorkUnit, CardUnit, PortalName, UnitStatus } from "../types";
+import type { RunManifest, WorkUnit, CardUnit, PortalName, UnitStatus, AcquisitionVariant } from "../types";
 import { writeJsonAtomic, readJsonSafe } from "../utils/fs-atomic";
 import { Journal } from "./journal";
 
@@ -21,6 +21,7 @@ export interface RunControllerOptions {
   maxPages: number;
   maxCardsPerPage: number;
   resume: boolean;
+  variants?: AcquisitionVariant[];
 }
 
 export class RunController {
@@ -68,7 +69,10 @@ export class RunController {
 
     const units: WorkUnit[] = [];
     
-    if (plan && plan.workUnits) {
+    // An explicit caller-supplied variant set is authoritative. In particular,
+    // a controlled validation cohort must never be expanded by a stale local
+    // ExecutionPlan artifact.
+    if (!opts.variants?.length && plan && plan.workUnits) {
       console.log(`Loading ${plan.workUnits.length} units from ExecutionPlan.json...`);
       for (const u of plan.workUnits) {
         units.push({
@@ -81,16 +85,21 @@ export class RunController {
           cardIds: [],
           executionPlanId: plan.id || "unknown-plan",
           definitionId: u.definitionId,
-          familyId: u.familyId
+          familyId: u.familyId,
+          variant: u.variant
         });
       }
     } else {
+      const variants: AcquisitionVariant[] = opts.variants && opts.variants.length > 0
+        ? opts.variants
+        : opts.keywords.map((query) => ({ query, channel: "search" as const }));
       for (const portal of opts.portals) {
-        for (const kw of opts.keywords) {
-          const adhocId = `adhoc:${portal}:${kw.replace(/\s+/g, '-').toLowerCase()}`;
+        for (const variant of variants.filter((v) => !v.portal || v.portal === portal)) {
+          const kw = variant.query;
+          const adhocId = `adhoc:${portal}:${kw.replace(/\s+/g, '-').toLowerCase()}:${variant.location || "global"}`;
           for (let p = 1; p <= opts.maxPages; p++) {
             units.push({
-              id: `${portal}:${kw}:${p}`,
+              id: `${portal}:${kw}:${variant.location || "global"}:${p}`,
               portal,
               keyword: kw,
               page: p,
@@ -98,8 +107,9 @@ export class RunController {
               attempts: 0,
               cardIds: [],
               executionPlanId: `plan:${adhocId}`,
-              definitionId: `def:${adhocId}`,
-              familyId: `fam:${adhocId}`
+              definitionId: variant.definitionId || `def:${adhocId}`,
+              familyId: variant.familyId || `fam:${adhocId}`,
+              variant: { ...variant, query: kw }
             });
           }
         }
@@ -180,6 +190,41 @@ export class RunController {
 
   pendingUnits(): WorkUnit[] {
     return this.manifest.units.filter((u) => u.status === "pending");
+  }
+
+  /** Add a bounded adaptive acquisition surface to the current run. */
+  enqueueVariant(variant: AcquisitionVariant, maxPages = this.manifest.maxPages): WorkUnit[] {
+    const variantKey = variant.id || `${variant.portal || "all"}:${variant.query}:${variant.location || "global"}:${variant.postedWithinDays || "all"}`;
+    const existing = this.manifest.units.filter((u) => {
+      const key = u.variant?.id || `${u.portal}:${u.keyword}:${u.variant?.location || "global"}:${u.variant?.postedWithinDays || "all"}`;
+      return key === variantKey;
+    });
+    if (existing.length > 0) return existing;
+
+    const portals = variant.portal ? [variant.portal] : this.manifest.portals;
+    const added: WorkUnit[] = [];
+    for (const portal of portals) {
+      for (let page = 1; page <= maxPages; page++) {
+        const id = `adaptive:${variantKey}:${portal}:${page}`;
+        const unit: WorkUnit = {
+          id,
+          portal,
+          keyword: variant.query,
+          page,
+          status: "pending",
+          attempts: 0,
+          cardIds: [],
+          executionPlanId: `adaptive:${variantKey}`,
+          definitionId: variant.definitionId || `adaptive:${variantKey}`,
+          familyId: `adaptive:${variantKey}`,
+          variant: { ...variant, portal },
+        };
+        this.manifest.units.push(unit);
+        added.push(unit);
+      }
+    }
+    if (added.length > 0) this.persistManifest();
+    return added;
   }
 
   updateUnit(unitId: string, patch: Partial<WorkUnit>): void {

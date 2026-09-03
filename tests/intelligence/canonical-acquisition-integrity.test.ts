@@ -169,11 +169,14 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           search_plan_snapshot_id TEXT,
           context_fingerprint TEXT,
           policy_version TEXT,
+          ontology_version TEXT,
+          ontology_fingerprint TEXT,
+          profile_version TEXT,
           context_payload TEXT,
           created_at DATETIME
         );
-        INSERT INTO evaluation_contexts (id, tenant_id, person_id, search_plan_snapshot_id, context_fingerprint, policy_version, context_payload, created_at)
-        VALUES ('ec1', 't1', 'p1', 'sps1', 'fp1', 'v4.1', '{}', CURRENT_TIMESTAMP);
+        INSERT INTO evaluation_contexts (id, tenant_id, person_id, search_plan_snapshot_id, context_fingerprint, policy_version, ontology_version, ontology_fingerprint, profile_version, context_payload, created_at)
+        VALUES ('ec1', 't1', 'p1', 'sps1', 'fp1', 'v4.1', 'ont-v1', 'ont-fp', 'prof-v1', '{}', CURRENT_TIMESTAMP);
 
         CREATE TABLE search_plan_snapshots (
           id TEXT PRIMARY KEY,
@@ -405,6 +408,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           id TEXT PRIMARY KEY, canonical_job_id TEXT, content_hash TEXT, job_title TEXT, company_name TEXT,
           location TEXT, employment_type TEXT, posted_at TEXT, posted_precision TEXT, raw_content TEXT,
           acquisition_status TEXT, acquisition_quality TEXT, failure_class TEXT, lifecycle_state TEXT, evidence_state TEXT,
+          source_payload_key TEXT, source_media_type TEXT, document_extraction_state TEXT,
           created_at DATETIME, UNIQUE(canonical_job_id, content_hash)
         );
         CREATE TABLE search_plan_candidates (
@@ -467,6 +471,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           id TEXT PRIMARY KEY, canonical_job_id TEXT, content_hash TEXT, job_title TEXT, company_name TEXT,
           location TEXT, employment_type TEXT, posted_at TEXT, posted_precision TEXT, raw_content TEXT,
           acquisition_status TEXT, acquisition_quality TEXT, failure_class TEXT, lifecycle_state TEXT, evidence_state TEXT,
+          source_payload_key TEXT, source_media_type TEXT, document_extraction_state TEXT,
           created_at DATETIME, UNIQUE(canonical_job_id, content_hash)
         );
         CREATE TABLE search_plan_candidates (
@@ -589,6 +594,28 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
       };
       expect(() => validateEvaluationConsistency(invalidPending)).toThrow(
         /relational decision must be null when evaluationState is 'ACQUISITION_PENDING'/
+      );
+    });
+
+    it("validates NOT_EVALUABLE requires null decision and null score", () => {
+      const validNotEvaluable: MaterializedEvaluation = {
+        id: "mat_not_evaluable",
+        tenantId: "t1",
+        personId: "p1",
+        canonicalJobId: "job_ne",
+        opportunityVersion: "v1",
+        evaluationContextFingerprint: "fp1",
+        evaluationState: "NOT_EVALUABLE",
+        decision: null,
+        qualityScore: null,
+        rationale: "No intrinsic fit artifact",
+        evidenceIds: [],
+        evaluationJson: JSON.stringify({ evaluationState: "NOT_EVALUABLE", reasonCode: "NOT_EVALUABLE" }),
+        materializedAt: new Date().toISOString(),
+      };
+      expect(() => validateEvaluationConsistency(validNotEvaluable)).not.toThrow();
+      expect(() => validateEvaluationConsistency({ ...validNotEvaluable, decision: "PASS" })).toThrow(
+        /relational decision must be null when evaluationState is 'NOT_EVALUABLE'/
       );
     });
 

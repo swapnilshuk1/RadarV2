@@ -90,6 +90,45 @@ if (typeof globalThis !== "undefined") {
 
 let activeScrapeRunLock: { runId: string; startedAt: number } | null = null;
 
+/**
+ * Read-only execution preview for the shortlist. It deliberately resolves and
+ * compiles the same active plan as triggerScrapeFn so the interface cannot
+ * display a reconstructed or stale interpretation of the next search.
+ */
+export const getScrapePlanPreviewFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const user = await requireAuthUser();
+    try {
+      const { resolveScraperAuthContext } = await import("../security/scope-resolver");
+      const { scope, activeContext } = await resolveScraperAuthContext(user.id);
+      const { ScraperPlanResolver } = await import("./ScraperPlanResolver");
+      const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, activeContext);
+      const { compileCoverageVariants } = await import("../../../scripts/scraper/run/acquisition-variants");
+      const variants = compileCoverageVariants(resolvedPlan, ["LinkedIn", "Naukri", "Indeed"]);
+
+      const firstVariant = variants[0];
+      return {
+        status: "ready" as const,
+        searchPlanId: resolvedPlan.searchPlanId,
+        snapshotId: resolvedPlan.snapshotId ?? null,
+        title: resolvedPlan.title,
+        keywords: resolvedPlan.queries,
+        portals: ["LinkedIn", "Naukri", "Indeed"] as const,
+        location: firstVariant?.location ?? null,
+        postedWithinDays: firstVariant?.postedWithinDays ?? null,
+        sort: firstVariant?.sort ?? null,
+        executionSurfaceCount: variants.length,
+      };
+    } catch (error: unknown) {
+      // A broken active plan must be observable from the interface, but it must
+      // not make the shortlist unavailable. triggerScrapeFn remains fail-closed.
+      return {
+        status: "unavailable" as const,
+        error: error instanceof Error ? error.message : "Unable to resolve the active search plan.",
+      };
+    }
+  });
+
 export function getActiveScrapeLock(): { runId: string; startedAt: number } | null {
   if (!activeScrapeRunLock) return null;
   const state = getActiveScrapeState();

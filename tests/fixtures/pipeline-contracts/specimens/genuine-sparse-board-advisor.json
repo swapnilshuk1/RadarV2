@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "phase0-diagnostic-specimen/v1",
+  "fixtureId": "genuine-sparse-board-advisor",
+  "provenance": {
+    "kind": "sanitized_reconstruction",
+    "sourceArtifact": "Existing offline genuinely-sparse specimen from historical-recovery-lineage.test.ts.",
+    "sanitization": [
+      "No production identifier or personal data is present."
+    ],
+    "capturedBodySha256": "9ccd8a08f3779a67a6dcebdd913f2c5b52a052ad3819342cee4f8a212ad5c902"
+  },
+  "source": {
+    "portal": "Indeed",
+    "title": "Independent Board Advisor",
+    "company": "Series B Fintech",
+    "location": "Remote India",
+    "canonicalSourceUrl": "https://example.com/sparse-job"
+  },
+  "document": {
+    "httpStatus": 200,
+    "contentType": "text/html; charset=utf-8",
+    "capturedText": "Independent Board Advisor. Advisory role for Series B fintech startup. Two hours per month.",
+    "originalCapturedLength": 91,
+    "isExcerpt": false
+  }
+}

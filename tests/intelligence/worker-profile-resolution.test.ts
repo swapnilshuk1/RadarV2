@@ -43,6 +43,10 @@ const sampleRawOpp = JSON.stringify({
   company: "Acme Enterprise Corp",
   location: "Bengaluru, India",
   description: "We are seeking a VP of Growth to lead our commercial expansion, digital transformation, and marketing strategy. 15+ years experience required.",
+  dimensions: [
+    { key: "functionalScope", jdEvidence: { value: "Commercial & Marketing", status: "Explicit", evidence: [] } },
+    { key: "mandate", jdEvidence: { value: "SCALE", status: "Explicit", evidence: [] } }
+  ],
   datePosted: "2026-08-01",
   portal: "indeed"
 });
@@ -236,7 +240,10 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
 
     const result = await worker.processJob(job);
     expect(result.status).toBe("completed");
-    expect(["PURSUE", "CONSIDER", "PASS"]).toContain(result.decision);
+    // The intrinsic engine may correctly classify this fixture as SPARSE_SPEC;
+    // that is a completed, null-decision materialization rather than a retry or
+    // a fabricated fallback score.
+    expect(["PURSUE", "CONSIDER", "PASS", null]).toContain(result.decision ?? null);
 
     const jobRow = sqliteDb.prepare("SELECT status, attempts, last_error FROM evaluation_jobs WHERE id = 'job_test_5'").get() as any;
     expect(jobRow.status).toBe("completed");

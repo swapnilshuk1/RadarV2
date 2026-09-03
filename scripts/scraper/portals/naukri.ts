@@ -10,10 +10,19 @@ import { normalizePostingDate } from "../utils/date";
 export const naukriHandler: PortalHandler = {
   name: "Naukri",
   detailStrategy: "auto",
-  buildSearchUrl(kw, page) {
+  buildSearchUrl(request, legacyPage = 1) {
+    const input = typeof request === "string" ? { query: request, page: legacyPage } : { ...request };
+    const kw = input.query;
+    const page = input.page;
     const slug = kw.toLowerCase().replace(/\s+/g, "-");
     const pageSuffix = page > 1 ? `-${page}` : "";
-    return `https://www.naukri.com/${slug}-jobs-in-india${pageSuffix}?k=${encodeURIComponent(kw)}&pageNo=${page}`;
+    const params = new URLSearchParams({ k: kw, pageNo: String(page) });
+    if (input.location) params.set("l", input.location);
+    if (input.postedWithinDays !== undefined) params.set("jobAge", String(input.postedWithinDays));
+    if (input.sort === "date") params.set("sort", "r");
+    if (input.industry) params.set("industry", input.industry);
+    if (input.department) params.set("functionalArea", input.department);
+    return `https://www.naukri.com/${slug}-jobs-in-india${pageSuffix}?${params.toString()}`;
   },
   async ensureSession(ctx) {
     const page = ctx.activePage;
@@ -46,7 +55,7 @@ export const naukriHandler: PortalHandler = {
   async listCards(ctx) {
     const page = ctx.activePage;
     const cardsOut: FeedCard[] = [];
-    const maxCards = CONFIG.getMaxCardsPerPage("Naukri");
+    const maxCards = ctx.maxCardsPerPage ?? CONFIG.getMaxCardsPerPage("Naukri");
     const seenHrefs = new Set<string>();
 
     if (ctx.isCancelled?.() || page?.isClosed?.()) {
@@ -182,10 +191,48 @@ export const naukriHandler: PortalHandler = {
         }
       };
 
+      const CARD_SELECTORS = [
+        "div.cust-job-tuple",
+        "div[data-job-id]",
+        "article.jobTuple",
+        "div.srp-jobtuple-wrapper",
+        "div[class*='jobTuple']",
+        "div[class*='srp-jobtuple-wrapper']",
+        "[class*='styles_jcard']",
+      ].join(", ");
+
       // If we got jobs from the API response for this unit's page, parse into cards
       if (interceptedJobs.length > 0) {
         ctx.logger(`[API Intercept] Discovered ${interceptedJobs.length} structured jobs from Naukri jobapi (Page ${ctx.page})`);
         
+        for (const job of interceptedJobs) {
+          if (cardsOut.length >= maxCards) break;
+          const card = parseNaukriJob(job);
+          if (card) cardsOut.push(card);
+        }
+      }
+
+      // A non-empty API response is only the first page of a lazy result
+      // stream. Continue hydrating and then parse any additional responses.
+      if (interceptedJobs.length > 0 && cardsOut.length < maxCards && !ctx.isCancelled?.() && !page?.isClosed?.()) {
+        const hydration = await hydrateVirtualizedList(
+          page,
+          {
+            cardSelector: CARD_SELECTORS,
+            containerSelectors: ["#listContainer", ".list", ".srp-jobtuple-wrapper", ".search-result-container", "main"],
+            targetCards: maxCards,
+            maxPasses: 10,
+            consecutiveStableLimit: 3,
+            minPassDelayMs: 1200,
+            maxPassDelayMs: 2500,
+            isCancelled: ctx.isCancelled,
+          },
+          ctx.logger
+        );
+        ctx.logger(`[Naukri Hydration Summary] API + lazy stream discovered ${hydration.finalCount} DOM cards and ${interceptedJobs.length} API jobs`);
+
+        // Responses captured during scrolling were appended after the first
+        // parse; parse them now while the canonical URL set still deduplicates.
         for (const job of interceptedJobs) {
           if (cardsOut.length >= maxCards) break;
           const card = parseNaukriJob(job);
@@ -200,16 +247,6 @@ export const naukriHandler: PortalHandler = {
         }
 
         ctx.logger(`[DOM Fallback] API yielded 0 cards; falling back to DOM scraping`);
-        const CARD_SELECTORS = [
-          "div.cust-job-tuple",
-          "div[data-job-id]",
-          "article.jobTuple",
-          "div.srp-jobtuple-wrapper",
-          "div[class*='jobTuple']",
-          "div[class*='srp-jobtuple-wrapper']",
-          "[class*='styles_jcard']",
-        ].join(", ");
-
         const startWait = Date.now();
         await page.waitForSelector(CARD_SELECTORS, { timeout: CONFIG.cardWaitTimeoutMs }).catch(async (e: any) => {
           if (ctx.isCancelled?.() || page?.isClosed?.()) return;

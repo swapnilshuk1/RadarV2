@@ -9,9 +9,20 @@ import { normalizePostingDate } from "../utils/date";
 export const indeedHandler: PortalHandler = {
   name: "Indeed",
   detailStrategy: "browser",
-  buildSearchUrl(kw, page) {
+  buildSearchUrl(request, legacyPage = 1) {
+    const input = typeof request === "string" ? { query: request, page: legacyPage } : { ...request };
+    const kw = input.query;
+    const page = input.page;
     const start = (page - 1) * 10;
-    return `https://in.indeed.com/jobs?q=${encodeURIComponent(kw)}&l=India&start=${start}`;
+    const params = new URLSearchParams({
+      q: kw,
+      l: input.location || "India",
+      start: String(start),
+    });
+    if (input.radiusKm !== undefined) params.set("radius", String(input.radiusKm));
+    if (input.postedWithinDays !== undefined) params.set("fromage", String(input.postedWithinDays));
+    if (input.sort === "date") params.set("sort", "date");
+    return `https://in.indeed.com/jobs?${params.toString()}`;
   },
   async ensureSession(ctx) {
     const page = ctx.activePage;
@@ -74,7 +85,7 @@ export const indeedHandler: PortalHandler = {
         if (matched) usedSelector = FALLBACK_CARD_SELECTORS;
       }
 
-      const maxCards = CONFIG.getMaxCardsPerPage("Indeed");
+      const maxCards = ctx.maxCardsPerPage ?? CONFIG.getMaxCardsPerPage("Indeed");
       const cardElements = await page.locator(usedSelector).all();
       
       for (const card of cardElements) {

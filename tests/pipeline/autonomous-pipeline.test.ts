@@ -101,6 +101,7 @@ describe("RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJ
       "027_materialized_evaluations_nullable_decision.sql",
       "028_active_evaluation_context_pointers.sql",
       "029_materialized_evaluations_vetoed.sql",
+      "033_opportunity_version_source_payload.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -151,6 +152,14 @@ describe("RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJ
         ontology_version, ontology_fingerprint, policy_version, profile_version, created_at
       ) VALUES (?, ?, ?, ?, '2.1.0', 'ont_fp_auto', 'v4_strict', 'prof_v1_auto', CURRENT_TIMESTAMP)
     `).run(contextFingerprint, TENANT_ID, PERSON_ID, snapshotId);
+    sqliteDb.prepare(`
+      INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+      VALUES (?, ?, ?, ?)
+    `).run(contextFingerprint, TENANT_ID, PERSON_ID, PLAN_ID);
+    sqliteDb.prepare(`
+      INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+      VALUES (?, ?, ?, ?, 'test')
+    `).run(TENANT_ID, PERSON_ID, PLAN_ID, contextFingerprint);
 
     // Seed authoritative candidate projection in career_profiles
     sqliteDb.prepare(`
@@ -161,7 +170,7 @@ describe("RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJ
     `).run("cp_auto_1", PERSON_ID, JSON.stringify(candidateProjection), "VP of Engineering & AI", 18, "Engineering Leader", "HYBRID");
   });
 
-  test("INV-AUTO-PROJECTION: Acquisition -> Canonical -> Candidates -> Evaluation Worker -> Serving", async () => {
+  test("INV-AUTO-PROJECTION: acquisition -> canonical -> candidate -> truthful unavailable materialization -> serving", async () => {
     const ingestion = new CanonicalIngestionService(adapter);
     const worker = new EvaluationWorker("test_worker_auto", { adapter });
     const servingStore = new SqliteCanonicalServingStore(adapter);
@@ -211,9 +220,9 @@ describe("RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJ
       [ingestRes.canonicalJobId, TENANT_ID]
     );
     expect(matEval).not.toBeNull();
-    expect(matEval?.evaluation_state).toBe("EVALUATED");
-    expect(["PURSUE", "CONSIDER", "PASS"]).toContain(matEval?.decision);
-    expect(matEval?.quality_score).toBeGreaterThan(0);
+    expect(matEval?.evaluation_state).toBe("NOT_EVALUABLE");
+    expect(matEval?.decision).toBeNull();
+    expect(matEval?.quality_score).toBeNull();
 
     // 5. Query Canonical Serving Store for the active person scope
     const feed = await servingStore.listOpportunities({ tenantId: TENANT_ID, personId: PERSON_ID });
@@ -221,8 +230,9 @@ describe("RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJ
     expect(feed[0].jobHash).toBe(rawPayload.sourceJobId);
     expect(feed[0].role).toBe("VP of Engineering & AI Systems");
     expect(feed[0].company).toBe("Acme Cognitive Systems");
-    expect(["PURSUE", "CONSIDER", "PASS", "SPARSE_SPEC"]).toContain(feed[0].engineRecommendation?.engineVerdict);
-    expect(feed[0].effectiveDecision).toBeDefined();
+    expect(feed[0].evaluationState).toBe("NOT_EVALUABLE");
+    expect(feed[0].engineRecommendation).toBeUndefined();
+    expect(feed[0].effectiveDecision).toBeUndefined();
   });
 
   test("Idempotency: Repeated identical ingestion produces 0 duplicate records", async () => {
@@ -271,7 +281,7 @@ describe("RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJ
     expect(matCount?.cnt).toBe(1);
   });
 
-  test("Sparse-capture resilience: Un-enriched card enters recovery queue & materialized read model", async () => {
+  test("Sparse-capture resilience: an un-enriched discovery card enters recovery without evaluation", async () => {
     const ingestion = new CanonicalIngestionService(adapter);
     const worker = new EvaluationWorker("test_worker_auto_sparse", { adapter });
 
@@ -286,12 +296,13 @@ describe("RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJ
       postedAt: null,
       postedPrecision: "UNKNOWN" as const,
       rawContent: "VP of Engineering at Stealth Startup", // Sparse text (<200 chars)
+      contentOrigin: "DISCOVERY_CARD_FALLBACK" as const,
     };
 
     const sparseRes = await ingestion.ingestOpportunity(sparsePayload);
     expect(sparseRes.isNewOpportunity).toBe(true);
-    expect(sparseRes.candidatesProjected).toBe(1);
-    expect(sparseRes.jobsEnqueued).toBe(1);
+    expect(sparseRes.candidatesProjected).toBe(0);
+    expect(sparseRes.jobsEnqueued).toBe(0);
 
     // Verify recovery queue entry
     const recoveryItem = await adapter.one<{ id: string; status: string }>(
@@ -301,20 +312,18 @@ describe("RADAR v2 — Autonomous Acquisition-to-Serving Pipeline (INV-AUTO-PROJ
     expect(recoveryItem).not.toBeNull();
     expect(recoveryItem?.status).toBe("PENDING");
 
-    // Drain Queue
+    // A failed acquisition must not be evaluated or materialized as a score.
     const drainResult = await worker.drainQueue();
-    expect(drainResult.processed).toBe(1);
-    expect(drainResult.completed).toBe(1);
+    expect(drainResult.processed).toBe(0);
+    expect(drainResult.completed).toBe(0);
 
-    // Verify Materialized Evaluation is marked as ACQUISITION_PENDING
+    // No scrape-card-specific evaluation universe is created while recovery is pending.
     const matEval = await adapter.one<{ evaluation_state: string; decision: string | null }>(
       `SELECT evaluation_state, decision 
        FROM materialized_evaluations 
        WHERE canonical_job_id = ? AND tenant_id = ?`,
       [sparseRes.canonicalJobId, TENANT_ID]
     );
-    expect(matEval).not.toBeNull();
-    expect(matEval?.evaluation_state).toBe("ACQUISITION_PENDING");
-    expect(matEval?.decision).toBeNull();
+    expect(matEval).toBeNull();
   });
 });

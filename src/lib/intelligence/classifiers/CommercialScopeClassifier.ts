@@ -14,8 +14,11 @@ export class CommercialScopeClassifier {
     const evidenceIds: string[] = [];
 
     // Heuristics for Commercial Scope
+    // A bare P&L mention does not establish enterprise-wide ownership. It is
+    // common in agency and portfolio roles, so require an explicit enterprise
+    // boundary before classifying commercial scope as ENTERPRISE.
     const enterpriseKeywords = [
-      "p&l", "profit and loss", "enterprise budget", "capital allocation", "annual budget",
+      "enterprise budget", "capital allocation", "annual budget",
       "revenue outcomes", "corporate finance", "full p&l"
     ];
 
@@ -33,7 +36,9 @@ export class CommercialScopeClassifier {
     ];
 
     const matchesEnterprise = enterpriseKeywords.filter(kw => hasWord(textLower, kw));
-    if (matchesEnterprise.length >= 1) {
+    const hasEnterprisePnl = /\b(?:enterprise|company|corporate|global|full)(?:[- ]wide)?\s+(?:p&l|profit\s+and\s+loss)\b/i.test(textLower);
+    if (matchesEnterprise.length >= 1 || hasEnterprisePnl) {
+      if (hasEnterprisePnl) matchesEnterprise.push("enterprise_p&l");
       matchesEnterprise.forEach(m => evidenceIds.push(`cs_ent_${m.replace(/\s+/g, "_")}`));
       return { value: "ENTERPRISE", evidenceIds, confidence: 0.9 };
     }

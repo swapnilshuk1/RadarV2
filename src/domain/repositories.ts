@@ -82,6 +82,31 @@ export interface AcquisitionLedgerItem {
   updatedAt: string;
 }
 
+/**
+ * Append-only provenance for one source-card ingestion attempt. It links the
+ * portal's durable identity to the exact canonical job/version returned by the
+ * canonical ingestion transaction. It is not a serving or evaluation record.
+ */
+export interface AcquisitionIngestionLineage {
+  id: string;
+  scrapeRunId: string;
+  tenantId: string;
+  personId: string;
+  acquisitionLedgerId: string;
+  cardId: string;
+  ingestionAttempt: number;
+  sourcePortal: string;
+  sourceJobId: string;
+  sourceUrl: string;
+  captureState: string;
+  documentState: string;
+  contentHash?: string;
+  canonicalJobId?: string;
+  opportunityVersion?: string;
+  failureClass?: string;
+  createdAt: string;
+}
+
 export interface AcquisitionStore {
   recordDocument(document: Document): Promise<void>;
   logDiscovery(discovery: {
@@ -98,6 +123,14 @@ export interface AcquisitionStore {
   claimQueuedJobs(workerId: string, limit?: number, leaseMs?: number): Promise<AcquisitionLedgerItem[]>;
   updateJobState(id: string, updates: Partial<AcquisitionLedgerItem>): Promise<void>;
   reclaimExpiredLeases(): Promise<number>;
+  recordIngestionLineage(
+    item: Omit<AcquisitionIngestionLineage, "id" | "createdAt">
+  ): Promise<AcquisitionIngestionLineage>;
+  listIngestionLineageForRun(
+    tenantId: string,
+    personId: string,
+    scrapeRunId: string
+  ): Promise<AcquisitionIngestionLineage[]>;
 }
 
 export interface KnowledgeStore {

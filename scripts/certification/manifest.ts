@@ -6,7 +6,7 @@
  * this manifest rather than maintaining independent lists.
  */
 
-export const EXPECTED_CERTIFICATION_FILE_COUNT = 38;
+export const EXPECTED_CERTIFICATION_FILE_COUNT = 40;
 
 export const certificationManifest = [
   {
@@ -31,6 +31,7 @@ export const certificationManifest = [
     files: [
       "tests/intelligence/canonical-ingestion-fk-regression.test.ts",
       "tests/intelligence/canonical-acquisition-integrity.test.ts",
+      "tests/acquisition/ingestion-lineage.test.ts",
       "tests/intelligence/semantic-evidence-integrity-regression.test.ts",
       "tests/intelligence/metrics-portal-breakdown.test.ts",
       "tests/persistence/queue-crash-restart.test.ts",
@@ -38,6 +39,7 @@ export const certificationManifest = [
       "tests/persistence/cross-instance-payload-retrieval.test.ts",
       "tests/persistence/distributed-lease-contention.test.ts",
       "tests/persistence/blob-store-connectivity.test.ts",
+      "tests/scraper/acquisition-variant-contract.test.ts",
     ],
   },
   {

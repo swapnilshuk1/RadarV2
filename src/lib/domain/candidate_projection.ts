@@ -3,7 +3,25 @@
 import { ClassifierResult, OperatingLevel, CandidateSeniorityLevel, WorkNature, DecisionAuthority, CommercialScope } from "./semantic";
 import type { CanonicalSemanticEvidence } from "../intelligence/semantic/types";
 
+export interface CandidateEvidenceReference {
+  id: string;
+  quote: string;
+  sourceSpan?: string;
+  relation: "ATTAINED_TITLE" | "SUPPORTS_INFERENCE";
+}
+
+export interface InferredCandidateCapability {
+  name: string;
+  confidence: number;
+  evidenceIds: string[];
+  supportingEvidence: CandidateEvidenceReference[];
+}
+
 export interface CandidateProjection {
+  /** Source-grounded attained identity; search targets are kept separately. */
+  attainedTitle?: string;
+  attainedSeniority?: CandidateSeniorityLevel;
+  attainedTitleEvidence?: CandidateEvidenceReference[];
   operatingLevel: ClassifierResult<OperatingLevel>;
   // P0-E: Candidate seniority level - distinct from operating level
   candidateSeniorityLevel?: ClassifierResult<CandidateSeniorityLevel>;
@@ -12,9 +30,14 @@ export interface CandidateProjection {
   commercialScope: ClassifierResult<CommercialScope>;
   yearsOfExperience: number;
   coreCapabilities: string[];
+  demonstratedCapabilities?: string[];
+  inferredCapabilities?: InferredCandidateCapability[];
   preferredLocations: string[];
   preferredWorkModel: "HYBRID" | "REMOTE" | "ON_SITE" | "ANY";
   executiveThemes: string[];
+  archetype?: string;
+  targetTrajectory?: string[];
+  profileVersion?: string;
   attentionWindow?: number;
   headspaceCapacityPerMonth?: number;
   // Phase 5C.2: Additive Canonical Semantic Evidence
@@ -54,7 +77,7 @@ export function validateCandidateProjection(projection: unknown): ProjectionVali
   if (!p.preferredWorkModel || typeof p.preferredWorkModel !== "string") {
     missingFields.push("preferredWorkModel");
   }
-  if (!Array.isArray(p.executiveThemes) || p.executiveThemes.length === 0) {
+  if (!Array.isArray(p.executiveThemes)) {
     missingFields.push("executiveThemes");
   }
   if (typeof p.yearsOfExperience !== "number") {

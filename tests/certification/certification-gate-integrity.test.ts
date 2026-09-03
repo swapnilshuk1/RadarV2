@@ -50,6 +50,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
 
   it("2. asserts the reviewed certification manifest contains exactly the required files once", () => {
     const expectedFiles = [
+      "tests/acquisition/ingestion-lineage.test.ts",
       "tests/certification/certification-gate-integrity.test.ts",
       "tests/certification/journey_a_acquisition_to_evaluation.test.ts",
       "tests/certification/journey_b_semantic_grounding_to_policy.test.ts",
@@ -80,6 +81,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "tests/serving/sql_feed_parity.test.ts",
       "tests/serving/sql_metrics_aggregation.test.ts",
       "tests/persistence/deployment-determinism.test.ts",
+      "tests/scraper/acquisition-variant-contract.test.ts",
       "tests/editorial/career-value-integrity.test.ts",
       "tests/editorial/explanation-composition.test.ts",
       "tests/editorial/explanation-contract.test.ts",
@@ -91,7 +93,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
     ];
 
     expect(certificationManifest).toHaveLength(5);
-    expect(EXPECTED_CERTIFICATION_FILE_COUNT).toBe(38);
+    expect(EXPECTED_CERTIFICATION_FILE_COUNT).toBe(40);
     expect(certificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
     expect(uniqueCertificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
     expect([...certificationTestFiles].sort()).toEqual([...expectedFiles].sort());

@@ -59,6 +59,7 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
       "027_materialized_evaluations_nullable_decision.sql",
       "028_active_evaluation_context_pointers.sql",
       "029_materialized_evaluations_vetoed.sql",
+      "033_opportunity_version_source_payload.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -84,6 +85,11 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
 
       INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES 
         ('ctx_fp_1', '${tenantId}', '${personId}', 'sps_1', 'v2', 'ofp_1', 'v4.3', 'prof_1');
+
+      INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+        VALUES ('ctx_fp_1', '${tenantId}', '${personId}', 'sp_1');
+      INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+        VALUES ('${tenantId}', '${personId}', 'sp_1', 'ctx_fp_1', 'test');
     `);
   });
 
@@ -172,7 +178,7 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
     expect(jobsCount?.count).toBe(0);
   });
 
-  it("3. End-to-end loop: Worker processes queue -> Materialized Evaluation -> Canonical Executive Serving", async () => {
+  it("3. End-to-end loop: a synthetic non-JD is materialized as unavailable and remains servable", async () => {
     const payload = {
       sourcePortal: "linkedin",
       sourceJobId: "job_vp_303",
@@ -222,7 +228,9 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
     expect(matEval).toBeDefined();
     expect(matEval.tenant_id).toBe(tenantId);
     expect(matEval.person_id).toBe(personId);
-    expect(matEval.quality_score).toBeGreaterThan(0);
+    expect(matEval.evaluation_state).toBe("SPARSE_SPEC");
+    expect(matEval.decision).toBeNull();
+    expect(matEval.quality_score).toBeNull();
 
     // 5. Query Canonical Serving Store — opportunity must be immediately retrievable!
     const opportunities = await servingStore.listOpportunities(scope);
@@ -230,7 +238,7 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
     expect(opportunities[0].jobHash).toBe("job_vp_303");
     expect(opportunities[0].role).toBe("VP Engineering");
     expect(opportunities[0].company).toBe("HyperScale Tech");
-    expect(opportunities[0].effectiveDecision).toBeDefined();
+    expect(opportunities[0].effectiveDecision).toBeUndefined();
     expect(opportunities[0].userDecision).toBeNull();
   });
 

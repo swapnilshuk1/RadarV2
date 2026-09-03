@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "phase0-human-audit-labels/v1",
+  "nonAuthoritativeForMachineDecisions": true,
+  "cases": [
+    {
+      "fixtureId": "cvent-rich-empty-capabilities",
+      "label": "strong",
+      "rationale": "Senior-most India marketing leadership, Martech, AI transformation, demand generation, global matrix leadership, and operational excellence align strongly; SaaS/EventTech depth and 100-200+ team scale require diligence."
+    },
+    {
+      "fixtureId": "wpp-client-services-false-negative",
+      "label": "strong",
+      "rationale": "Digital mandates, integrated media, performance, commerce, analytics, client growth, profitability, and agency leadership are directly relevant."
+    },
+    {
+      "fixtureId": "weber-client-experience-false-negative",
+      "label": "strong",
+      "rationale": "Integrated communications, digital experience, analytics, AI, client growth, profitability, capability building, and team leadership align strongly."
+    },
+    {
+      "fixtureId": "msm-compound-chief-title-false-negative",
+      "label": "strong",
+      "rationale": "Founder partnership, enterprise transformation, AI adoption, operating-model redesign, governance, and global scaling align; IPO/M&A depth requires diligence."
+    },
+    {
+      "fixtureId": "acumont-technical-hard-exclusion",
+      "label": "weak",
+      "rationale": "The role owns a 1,000+ person technology organization and requires deep engineering, infrastructure, security, and IT operating history not established by the candidate evidence."
+    },
+    {
+      "fixtureId": "fillezy-pdf-byte-stream",
+      "label": "not_assessable",
+      "rationale": "The captured body is an embedded PDF byte stream rather than readable job-description text."
+    },
+    {
+      "fixtureId": "ats-temporary-redirect-notice",
+      "label": "not_assessable",
+      "rationale": "A redirect notice contains no advertised-job evidence and must be followed or retried before projection."
+    },
+    {
+      "fixtureId": "chanakaya-unrelated-careers-page",
+      "label": "not_assessable",
+      "rationale": "The capture contains a generic careers form and trainee stories, not evidence for the advertised AVP Projects role."
+    },
+    {
+      "fixtureId": "genuine-sparse-board-advisor",
+      "label": "not_assessable",
+      "rationale": "The posting is a genuine, self-contained vacancy but is too sparse to determine mandate and suitability without guessing."
+    }
+  ]
+}

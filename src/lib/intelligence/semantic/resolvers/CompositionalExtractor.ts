@@ -136,6 +136,9 @@ export class CompositionalExtractor {
 
     for (const [kw, concept] of Object.entries(domainKws)) {
       if (new RegExp(`\\b${kw}\\b`, "i").test(raw)) {
+        // Negation and ownership are clause-local. A disclaimer elsewhere in a
+        // long JD must not negate every capability in the document.
+        const capabilityNegation = NegationDetector.analyze(raw, kw);
         evidenceList.push({
           canonicalConcept: concept,
           entityType: "CAPABILITY",
@@ -145,9 +148,9 @@ export class CompositionalExtractor {
           confidence: 0.95,
           sourcePhrase: kw,
           context: raw,
-          negated: negation.negated,
+          negated: capabilityNegation.negated,
           temporalState: temporal.temporalState,
-          evidenceStrength: negation.evidenceStrength,
+          evidenceStrength: capabilityNegation.evidenceStrength,
         });
       }
     }

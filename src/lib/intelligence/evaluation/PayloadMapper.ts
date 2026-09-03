@@ -1,10 +1,13 @@
-import { computeEvaluationIdentity } from "../../domain/evaluation_fingerprint";
+import { computeEvaluationIdentity, validateEvaluationConsistency } from "../../domain/evaluation_fingerprint";
 import type { 
   CanonicalEvaluatedPayloadV4_3, 
   CanonicalUnavailablePayloadV4_3,
-  UnavailableReasonCode 
+  UnavailableReasonCode,
+  PersistedEvaluationPayloadV4_3
 } from "../../domain/evaluation_payloads";
 import type { EvaluationContext } from "../../domain/evaluation_context";
+import type { MaterializedEvaluation } from "../../domain/evaluation_context";
+import { isCanonicalIntrinsicEvaluationV4_3, isCanonicalUnavailablePayload } from "../../domain/evaluation_payloads";
 import type { EvaluationArtifact } from "../engine";
 
 export class ContractViolationError extends Error {
@@ -12,6 +15,27 @@ export class ContractViolationError extends Error {
     super(`[ContractViolation] ${message}`);
     this.name = "ContractViolationError";
   }
+}
+
+/**
+ * A policy verb alone is not evidence that an evaluation artifact is complete.
+ * The worker and context rematerializer share this boundary so a null/invalid
+ * score can never be persisted as a recommendation decision.
+ */
+export function resolveArtifactEvaluationState(artifact: EvaluationArtifact): "EVALUATED" | "SPARSE_SPEC" | "NOT_EVALUABLE" {
+  const verb = artifact.record?.verb;
+  if (verb === "SPARSE_SPEC") return "SPARSE_SPEC";
+  const score = artifact.record?.qualityScore;
+  if (
+    (verb !== "PURSUE" && verb !== "CONSIDER" && verb !== "PASS") ||
+    typeof score !== "number" ||
+    !Number.isFinite(score) ||
+    score < 0 ||
+    score > 100
+  ) {
+    return "NOT_EVALUABLE";
+  }
+  return "EVALUATED";
 }
 
 function assertValidString(value: string | undefined | null, fieldName: string): asserts value is string {
@@ -68,6 +92,9 @@ export function buildCanonicalEvaluatedPayload(
   }
 
   const inputIdentity = computeEvaluationIdentity(canonicalJobId, opportunityVersion, context.contextFingerprint);
+  if (!artifact.jobProjection || typeof artifact.jobProjection !== "object") {
+    throw new ContractViolationError("Evaluated payload requires the exact intrinsic jobProjection used during scoring");
+  }
 
   return {
     schemaVersion: "v4.3-intrinsic",
@@ -87,8 +114,46 @@ export function buildCanonicalEvaluatedPayload(
     evaluationState: "EVALUATED",
     decision: decision,
     score: score,
-    diligenceStatus: diligence as "READY" | "INSUFFICIENT" | "STALE" | "FAILED" | "UNKNOWN"
+    diligenceStatus: diligence as "READY" | "INSUFFICIENT" | "STALE" | "FAILED" | "UNKNOWN",
+    jobProjection: artifact.jobProjection
   };
+}
+
+/**
+ * Single authoritative translation from a validated canonical payload to the
+ * relational materialized-evaluation read model. Both worker and backfill use
+ * this path so state, decision, score, identity, and serialized evidence cannot
+ * drift between callers.
+ */
+export function materializeCanonicalPayload(
+  payload: PersistedEvaluationPayloadV4_3
+): MaterializedEvaluation {
+  const isEvaluated = isCanonicalIntrinsicEvaluationV4_3(payload);
+  const isUnavailable = isCanonicalUnavailablePayload(payload);
+  if (!isEvaluated && !isUnavailable) {
+    throw new ContractViolationError("Cannot materialize an invalid canonical evaluation payload");
+  }
+
+  const evaluation: MaterializedEvaluation = {
+    id: payload.evaluationInputHash,
+    tenantId: payload.tenantId,
+    personId: payload.personId,
+    canonicalJobId: payload.canonicalJobId,
+    opportunityVersion: payload.opportunityVersion,
+    evaluationContextFingerprint: payload.contextFingerprint,
+    evaluationState: payload.evaluationState,
+    decision: isEvaluated ? payload.decision : null,
+    qualityScore: isEvaluated ? payload.score : null,
+    rationale: isEvaluated
+      ? JSON.stringify({ diligenceStatus: payload.diligenceStatus })
+      : JSON.stringify({ reasonCode: payload.reasonCode, missingFields: payload.missingFields || [] }),
+    evidenceIds: [],
+    evaluationJson: JSON.stringify(payload),
+    materializedAt: payload.evaluatedAt,
+  };
+
+  validateEvaluationConsistency(evaluation);
+  return evaluation;
 }
 
 export function buildCanonicalUnavailablePayload(

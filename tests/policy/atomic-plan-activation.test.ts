@@ -4,6 +4,8 @@ import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
+import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
+import { materializeExistingCanonicalPool } from "../../src/lib/intelligence/context-materialization";
 
 const scope = { tenantId: "tenant_A", personId: "person_A", roles: [] };
 const criteria = {
@@ -115,5 +117,81 @@ describe("Atomic career-intent plan activation", () => {
     expect(snapshots?.count).toBe(1);
     expect(contexts?.count).toBe(1);
     expect(pointers?.count).toBe(0);
+  });
+
+  it("keeps the prior serving plan active while a prepared context is backfilled", async () => {
+    const prepared = await store.prepareSearchPlan(scope, activationInput("profile-prepared"));
+    const before = await db.one<{ status: string }>(`SELECT status FROM search_plans WHERE id = 'plan_A'`);
+    const preparedStatus = await db.one<{ status: string }>(`SELECT status FROM search_plans WHERE id = ?`, [prepared.plan.id]);
+
+    expect(before?.status).toBe("active");
+    expect(preparedStatus?.status).toBe("paused");
+
+    await store.activatePreparedSearchPlan(
+      scope,
+      prepared.plan.id,
+      prepared.context.contextFingerprint,
+      "intent-update"
+    );
+
+    const active = await db.one<{ status: string }>(`SELECT status FROM search_plans WHERE id = ?`, [prepared.plan.id]);
+    const archived = await db.one<{ status: string }>(`SELECT status FROM search_plans WHERE id = 'plan_A'`);
+    expect(active?.status).toBe("active");
+    expect(archived?.status).toBe("archived");
+  });
+
+  it("backfills the existing canonical pool into the prepared context idempotently", async () => {
+    const ingestion = new CanonicalIngestionService(db);
+    const first = await ingestion.ingestOpportunity({
+      sourcePortal: "LinkedIn",
+      sourceJobId: "context-backfill-job",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/context-backfill-job",
+      jobTitle: "VP Growth",
+      companyName: "Acme",
+      location: "Bengaluru",
+      rawContent: "Executive VP Growth role leading commercial growth and a cross-functional team.",
+    });
+    const second = await ingestion.ingestOpportunity({
+      sourcePortal: "Naukri",
+      sourceJobId: "context-backfill-job-2",
+      canonicalUrl: "https://www.naukri.com/job-listings/context-backfill-job-2",
+      jobTitle: "VP Growth",
+      companyName: "Beta",
+      location: "Bengaluru",
+      rawContent: "Executive VP Growth role owning a regional P&L and commercial team.",
+    });
+    const prepared = await store.prepareSearchPlan(scope, activationInput("profile-backfill"));
+    const firstBackfill = await materializeExistingCanonicalPool(scope, prepared, db);
+    const secondBackfill = await materializeExistingCanonicalPool(scope, prepared, db);
+
+    expect(firstBackfill.examined).toBeGreaterThanOrEqual(2);
+    expect(firstBackfill.candidates).toBeGreaterThanOrEqual(2);
+    expect(firstBackfill.materialized).toBeGreaterThanOrEqual(2);
+    expect(secondBackfill.materialized).toBe(firstBackfill.materialized);
+    const candidateCount = await db.one<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM search_plan_candidates WHERE search_plan_id = ? AND canonical_job_id = ?`,
+      [prepared.plan.id, first.canonicalJobId]
+    );
+    const candidateAudit = await db.one<{ eligibility: string; reason_codes: string }>(
+      `SELECT eligibility, eligibility_reason_codes_json AS reason_codes
+       FROM search_plan_candidates
+       WHERE search_plan_id = ? AND canonical_job_id = ?`,
+      [prepared.plan.id, first.canonicalJobId]
+    );
+    const evaluationCount = await db.one<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM materialized_evaluations WHERE evaluation_context_fingerprint = ? AND canonical_job_id = ?`,
+      [prepared.context.contextFingerprint, first.canonicalJobId]
+    );
+    expect(candidateCount?.count).toBe(1);
+    expect(candidateAudit).toEqual({
+      eligibility: "ELIGIBLE",
+      reason_codes: JSON.stringify(["ROLE_FAMILY_MATCH"]),
+    });
+    expect(evaluationCount?.count).toBe(1);
+    const secondPoolCount = await db.one<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM canonical_opportunities WHERE id = ?`,
+      [second.canonicalJobId]
+    );
+    expect(secondPoolCount?.count).toBe(1);
   });
 });

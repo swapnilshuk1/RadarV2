@@ -8,9 +8,12 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import Database from "better-sqlite3";
 import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
 import { ResponseValidator } from "@/lib/acquisition/validator";
+import { validateJobDocument } from "@/lib/acquisition/validator";
+import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
 import { CanonicalIngestionService } from "@/lib/acquisition/CanonicalIngestionService";
 import { SqliteCanonicalServingStore } from "@/data/sqlite/repositories/SqliteCanonicalServingStore";
 import { SqliteMaterializedEvaluationStore } from "@/data/sqlite/repositories/SqliteMaterializedEvaluationStore";
@@ -146,6 +149,57 @@ function setupFullCanonicalSchema(db: Database.Database) {
 }
 
 describe("Adversarial Portal Acquisition & Certification Suite (RADAR V4 Phase 2)", () => {
+  describe("0. Validated Job Document boundary (Phase 3)", () => {
+    function specimen(id: string) {
+      return JSON.parse(readFileSync(`tests/fixtures/pipeline-contracts/specimens/${id}.json`, "utf8"));
+    }
+
+    function validateSpecimen(id: string) {
+      const value = specimen(id);
+      return validateJobDocument({
+        extractedText: value.document.capturedText,
+        url: value.source.canonicalSourceUrl,
+        sourcePortal: value.source.portal,
+        httpStatus: value.document.httpStatus,
+        contentType: value.document.contentType,
+        extractedTitle: value.source.title,
+        extractedCompany: value.source.company,
+        extractedLocation: value.source.location,
+        provenance: "BLOB",
+      });
+    }
+
+    it("keeps Cvent's substantive document projectable with ontology-grounded evidence", () => {
+      const document = validateSpecimen("cvent-rich-empty-capabilities").document;
+      expect(document.usabilityState).toBe("SUBSTANTIVE");
+      const projection = JobProjectionBuilder.buildFromValidatedDocument(document);
+      expect(projection.projectionVersion).toBe(JobProjectionBuilder.PROJECTION_VERSION);
+      expect(projection.projectionFingerprint).toMatch(/^jp_/);
+      expect(projection.capabilities.map((capability) => capability.canonicalConcept || capability.name)).toEqual(
+        expect.arrayContaining(["MARKETING_STRATEGY", "SAAS_BUSINESS_MODEL", "B2B_COMMERCIAL"]),
+      );
+      expect(projection.capabilities.every((capability) => Boolean(capability.sourceQuote))).toBe(true);
+    });
+
+    it("does not turn PDF bytes, redirect pages, or unrelated careers pages into projections", () => {
+      const pdf = validateSpecimen("fillezy-pdf-byte-stream").document;
+      const redirect = validateSpecimen("ats-temporary-redirect-notice").document;
+      const wrongPage = validateSpecimen("chanakaya-unrelated-careers-page").document;
+      expect(pdf).toMatchObject({ extractionState: "PENDING", usabilityState: "UNUSABLE", failureClass: "UNEXTRACTED_PDF", extractedText: null });
+      expect(redirect).toMatchObject({ transportState: "REDIRECTED", usabilityState: "UNUSABLE", failureClass: "UNRESOLVED_REDIRECT" });
+      expect(wrongPage).toMatchObject({ usabilityState: "UNUSABLE", failureClass: "WRONG_PAGE" });
+      for (const document of [pdf, redirect, wrongPage]) {
+        expect(() => JobProjectionBuilder.buildFromValidatedDocument(document)).toThrow(/Cannot project non-substantive job document/);
+      }
+    });
+
+    it("preserves a genuine sparse vacancy without pretending it is extraction corruption", () => {
+      const document = validateSpecimen("genuine-sparse-board-advisor").document;
+      expect(document).toMatchObject({ usabilityState: "GENUINELY_SPARSE", acquisitionQuality: "MINIMAL", extractedText: expect.any(String) });
+      expect(() => JobProjectionBuilder.buildFromValidatedDocument(document)).toThrow(/GENUINELY_SPARSE/);
+    });
+  });
+
   describe("1. Indeed Acquisition Reality & External ATS Contract", () => {
     it("certifies internal Indeed DOM extraction with #jobDescriptionText", () => {
       const mockHtml = `

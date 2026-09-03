@@ -23,6 +23,11 @@ export interface ProjectedCapability {
   confidence: number;
   tier?: CapabilityTaxonomyTier;
   evidence?: string[];
+  /** Canonical semantic concept, provenance, and epistemic state for auditability. */
+  canonicalConcept?: string;
+  sourceQuote?: string;
+  evidenceRelationship?: "DIRECT_EQUIVALENT" | "STRONG_SUPPORT" | "PARTIAL_SUPPORT" | "CONTEXTUAL_SUPPORT";
+  state?: "EXPLICIT" | "INFERRED" | "UNKNOWN";
 }
 
 export interface ExecutiveIdentity {
@@ -121,4 +126,6 @@ export interface JobProjection {
   dimensions?: readonly GroundedOpportunityDimension[];
   // Phase 5C.2: Additive Canonical Semantic Evidence
   semanticEvidence?: readonly CanonicalSemanticEvidence[];
+  projectionVersion?: string;
+  projectionFingerprint?: string;
 }

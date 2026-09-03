@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, ContractViolationError } from "../../src/lib/intelligence/evaluation/PayloadMapper";
+import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, ContractViolationError, materializeCanonicalPayload } from "../../src/lib/intelligence/evaluation/PayloadMapper";
 import type { EvaluationContext } from "../../src/lib/domain/evaluation_context";
 import type { Presented } from "../../src/lib/intelligence/present";
 import type { EvaluationArtifact } from "../../src/lib/intelligence/engine";
@@ -59,6 +59,7 @@ describe("PayloadMapper", () => {
     expect(payload.evaluationContractVersion).toBe("v4.3");
     expect(payload.decision).toBe("PURSUE");
     expect(payload.score).toBe(92.5);
+    expect(payload.jobProjection).toBe(mockArtifact.jobProjection);
     
     const expectedIdentity = computeEvaluationIdentity("canonical-job-xyz", "opp-ver-1", mockContext.contextFingerprint);
     expect(payload.evaluationInputHash).toBe(expectedIdentity.idempotencyKey); 
@@ -66,6 +67,27 @@ describe("PayloadMapper", () => {
     expect(isCanonicalIntrinsicEvaluationV4_3(payload)).toBe(true);
     expect((payload as any).presented).toBeUndefined();
     expect((payload as any).dimensions).toBeUndefined();
+  });
+
+  test("translates evaluated and unavailable canonical payloads losslessly", () => {
+    const evaluated = buildCanonicalEvaluatedPayload(
+      mockArtifact, mockContext, "canonical-job-xyz", "opp-ver-1", "2026-08-28T00:00:00Z"
+    );
+    const evaluatedRow = materializeCanonicalPayload(evaluated);
+    expect(evaluatedRow.id).toBe(evaluated.evaluationInputHash);
+    expect(evaluatedRow.evaluationState).toBe("EVALUATED");
+    expect(evaluatedRow.decision).toBe("PURSUE");
+    expect(evaluatedRow.qualityScore).toBe(92.5);
+    expect(JSON.parse(evaluatedRow.evaluationJson).jobProjection).toEqual(mockArtifact.jobProjection);
+
+    const unavailable = buildCanonicalUnavailablePayload(
+      "hash-002", "NOT_EVALUABLE", mockContext, "canonical-job-xyz", "opp-ver-1", "2026-08-28T00:00:00Z"
+    );
+    const unavailableRow = materializeCanonicalPayload(unavailable);
+    expect(unavailableRow.evaluationState).toBe("NOT_EVALUABLE");
+    expect(unavailableRow.decision).toBeNull();
+    expect(unavailableRow.qualityScore).toBeNull();
+    expect(JSON.parse(unavailableRow.evaluationJson).reasonCode).toBe("NOT_EVALUABLE");
   });
   
   test("maps each unavailable state accurately", () => {
