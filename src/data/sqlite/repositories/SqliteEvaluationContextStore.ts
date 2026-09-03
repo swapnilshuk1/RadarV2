@@ -39,6 +39,22 @@ export interface ActivatedSearchPlan {
   context: EvaluationContext;
 }
 
+/** Immutable preflight evidence supplied by the operational-reset runner. */
+export interface OperationalMarketResetInput {
+  resetEventId: string;
+  previousSearchPlanId: string;
+  previousContextFingerprint: string;
+  successorSearchPlanId: string;
+  successorContextFingerprint: string;
+  preResetManifestJson: string;
+  preResetManifestSha256: string;
+  candidateProfileHash: string;
+  candidateProjectionHash: string;
+  locationPolicy: string;
+  releaseCommit: string;
+  activatedBy: string;
+}
+
 export class SqliteEvaluationContextStore {
   constructor(private db: DatabaseAdapter) {}
 
@@ -179,6 +195,64 @@ export class SqliteEvaluationContextStore {
          WHERE tenant_id = ? AND person_id = ? AND status = 'active' AND id <> ?`,
         [scope.tenantId, scope.personId, planId]
       );
+    });
+  }
+
+  /**
+   * Records and activates an operational market-corpus reset as one database
+   * transaction. The successor must already be paused and intentionally empty.
+   * Historic market records are not touched by this operation.
+   */
+  async activateOperationalMarketReset(
+    scope: AuthorizedPersonScope,
+    input: OperationalMarketResetInput,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const prior = await tx.one<{ search_plan_id: string; context_fingerprint: string }>(
+        `SELECT search_plan_id, context_fingerprint FROM active_evaluation_contexts
+         WHERE tenant_id = ? AND person_id = ?`,
+        [scope.tenantId, scope.personId],
+      );
+      if (!prior || prior.search_plan_id !== input.previousSearchPlanId || prior.context_fingerprint !== input.previousContextFingerprint) {
+        throw new Error("Operational reset preflight is stale: active context no longer matches its manifest.");
+      }
+      const prepared = await tx.one<{ id: string }>(
+        `SELECT sp.id FROM search_plans sp JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id
+         JOIN evaluation_contexts ec ON ec.search_plan_snapshot_id = sps.id
+         WHERE sp.id = ? AND sp.tenant_id = ? AND sp.person_id = ? AND sp.status = 'paused'
+           AND ec.context_fingerprint = ?`,
+        [input.successorSearchPlanId, scope.tenantId, scope.personId, input.successorContextFingerprint],
+      );
+      if (!prepared) throw new Error("Operational reset successor is missing or no longer paused.");
+      const candidates = await tx.one<{ count: number }>(
+        `SELECT COUNT(*) AS count FROM search_plan_candidates WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?`,
+        [scope.tenantId, scope.personId, input.successorSearchPlanId],
+      );
+      if ((candidates?.count ?? 0) !== 0) throw new Error("Operational reset successor is not empty.");
+
+      await tx.execute(
+        `INSERT INTO market_corpus_reset_events (
+           id, tenant_id, person_id, previous_search_plan_id, previous_context_fingerprint,
+           successor_search_plan_id, successor_context_fingerprint, pre_reset_manifest_json,
+           pre_reset_manifest_sha256, candidate_profile_hash, candidate_projection_hash,
+           location_policy, release_commit, status, activated_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVATED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        [input.resetEventId, scope.tenantId, scope.personId, input.previousSearchPlanId,
+          input.previousContextFingerprint, input.successorSearchPlanId, input.successorContextFingerprint,
+          input.preResetManifestJson, input.preResetManifestSha256, input.candidateProfileHash,
+          input.candidateProjectionHash, input.locationPolicy, input.releaseCommit],
+      );
+      await tx.execute(
+        `INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+         VALUES (?, ?, ?, ?, ?)`,
+        [scope.tenantId, scope.personId, input.successorSearchPlanId, input.successorContextFingerprint, input.activatedBy],
+      );
+      await tx.execute(`DELETE FROM active_evaluation_contexts WHERE tenant_id = ? AND person_id = ? AND search_plan_id <> ?`,
+        [scope.tenantId, scope.personId, input.successorSearchPlanId]);
+      await tx.execute(`UPDATE search_plans SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND person_id = ?`,
+        [input.successorSearchPlanId, scope.tenantId, scope.personId]);
+      await tx.execute(`UPDATE search_plans SET status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND person_id = ? AND status = 'active' AND id <> ?`,
+        [scope.tenantId, scope.personId, input.successorSearchPlanId]);
     });
   }
 
