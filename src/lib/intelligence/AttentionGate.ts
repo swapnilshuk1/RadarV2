@@ -31,9 +31,17 @@ const isRemoteCompatible = (value: string, projection?: JobProjection) =>
 
 /** Explicit JD requirements outrank broad lexical role-family matches. */
 function hasExplicitJuniorExperienceRequirement(text: string): boolean {
-  const range = text.match(/\b(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\s*years?\s+(?:of\s+)?experience\b/i);
-  if (range) return Number(range[2]) <= 7;
-  const maximum = text.match(/\b(?:up\s+to|maximum\s+of)\s*(\d{1,2})\s*years?\s+(?:of\s+)?experience\b/i);
+  const ranges = [
+    // "1–3 years of sales experience" and equivalent role-qualified wording.
+    /\b(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\s*(?:years?|yrs?)\s+(?:of\s+)?(?:(?:[a-z&/-]+\s+){0,4})experience\b/i,
+    // "Experience: 2–3 Years" is a common portal/JD field layout.
+    /(?:\bexperience|(?<=month)experience)(?:\s+(?:required|range))?\s*:?\s*(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\s*(?:years?|yrs?)(?:\b|(?=key\b|responsibilities\b|location\b|salary\b|required\b))/i,
+  ];
+  for (const range of ranges) {
+    const match = text.match(range);
+    if (match && Number(match[2]) <= 7) return true;
+  }
+  const maximum = text.match(/\b(?:up\s+to|maximum\s+of)\s*(\d{1,2})\s*(?:years?|yrs?)\s+(?:of\s+)?(?:(?:[a-z&/-]+\s+){0,4})experience\b/i);
   return Boolean(maximum && Number(maximum[1]) <= 7);
 }
 

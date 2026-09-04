@@ -114,7 +114,9 @@ async function main(): Promise<void> {
     profileVersion: currentContext.profileVersion,
     activatedBy: "g3-ncr-serving-policy",
   });
-  const coverage = await materializeExistingCanonicalPool(scope, prepared, db);
+  const coverage = await materializeExistingCanonicalPool(scope, prepared, {
+    sourceSearchPlanId: active.planId,
+  }, db);
   if (coverage.candidates > 0 && coverage.materialized < coverage.candidates) {
     throw new Error(
       `NCR context remains paused: evaluation coverage is incomplete (${coverage.materialized}/${coverage.candidates}).`,

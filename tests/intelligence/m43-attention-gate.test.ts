@@ -174,6 +174,18 @@ describe("Phase M4.3: Attention Gate", () => {
       expect(res.reasonCodes).toContain("SENIORITY_CONTRADICTION");
     });
 
+    test.each([
+      "Sales executive role requiring 1–3 years of sales experience in e-commerce logistics.",
+      "Position: Marketing Executive. Salary: 30000/monthExperience: 2–3 YearsKey Responsibilities: develop business.",
+    ])("explicit junior experience wording '%s' rejects a lexical family match", (rawContent) => {
+      const res = evaluateAttentionGate(
+        { ...baseVersion, jobTitle: "Marketing Executive", rawContent },
+        { ...baseCriteria, targetRoles: ["Marketing"], targetSeniority: ["VP"] },
+      );
+      expect(res).toMatchObject({ decision: "NOT_CANDIDATE", eligibility: "INELIGIBLE" });
+      expect(res.reasonCodes).toContain("SENIORITY_CONTRADICTION");
+    });
+
     test("6. Employment-type mismatch -> NOT_CANDIDATE", () => {
       const res = evaluateAttentionGate(baseVersion, { ...baseCriteria, targetEmploymentTypes: ["Contract", "Part-time"] });
       expect(res.decision).toBe("NOT_CANDIDATE");

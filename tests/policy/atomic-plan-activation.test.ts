@@ -161,8 +161,12 @@ describe("Atomic career-intent plan activation", () => {
       rawContent: "Executive VP Growth role owning a regional P&L and commercial team.",
     });
     const prepared = await store.prepareSearchPlan(scope, activationInput("profile-backfill"));
-    const firstBackfill = await materializeExistingCanonicalPool(scope, prepared, db);
-    const secondBackfill = await materializeExistingCanonicalPool(scope, prepared, db);
+    const firstBackfill = await materializeExistingCanonicalPool(scope, prepared, {
+      sourceSearchPlanId: "plan_A",
+    }, db);
+    const secondBackfill = await materializeExistingCanonicalPool(scope, prepared, {
+      sourceSearchPlanId: "plan_A",
+    }, db);
 
     expect(firstBackfill.examined).toBeGreaterThanOrEqual(2);
     expect(firstBackfill.candidates).toBeGreaterThanOrEqual(2);
@@ -193,5 +197,60 @@ describe("Atomic career-intent plan activation", () => {
       [second.canonicalJobId]
     );
     expect(secondPoolCount?.count).toBe(1);
+  });
+
+  it("materializes only the explicit source plan when the same scope has multiple plans", async () => {
+    const ingestion = new CanonicalIngestionService(db);
+    const sourceA = await ingestion.ingestOpportunity({
+      sourcePortal: "LinkedIn",
+      sourceJobId: "source-plan-a",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/source-plan-a",
+      jobTitle: "VP Growth",
+      companyName: "Plan A Co",
+      location: "Bengaluru",
+      rawContent: "Executive VP Growth role leading commercial growth and a cross-functional team.",
+    });
+    await db.execute(
+      `INSERT INTO search_plans (id, tenant_id, person_id, status, title, criteria_json)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      ["plan_same_scope_B", scope.tenantId, scope.personId, "archived", "Plan B", JSON.stringify(criteria)],
+    );
+    const sourceB = await ingestion.ingestOpportunity({
+      sourcePortal: "Naukri",
+      sourceJobId: "source-plan-b",
+      canonicalUrl: "https://www.naukri.com/job-listings/source-plan-b",
+      jobTitle: "VP Growth",
+      companyName: "Plan B Co",
+      location: "Bengaluru",
+      rawContent: "Executive VP Growth role owning a regional P&L and commercial team.",
+    });
+    // Ingestion projects into the fixture's active plan. Move this record to
+    // the second plan so the two source cohorts are genuinely disjoint.
+    await db.execute(
+      `DELETE FROM search_plan_candidates
+       WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ? AND canonical_job_id = ? AND opportunity_version = ?`,
+      [scope.tenantId, scope.personId, "plan_A", sourceB.canonicalJobId, sourceB.opportunityVersion],
+    );
+    await db.execute(
+      `INSERT INTO search_plan_candidates (
+         tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
+         attention_decision, eligibility, eligibility_reason_codes_json
+       ) VALUES (?, ?, ?, ?, ?, 'CANDIDATE', 'ELIGIBLE', '[]')`,
+      [scope.tenantId, scope.personId, "plan_same_scope_B", sourceB.canonicalJobId, sourceB.opportunityVersion],
+    );
+    const prepared = await store.prepareSearchPlan(scope, activationInput("profile-source-boundary"));
+
+    const result = await materializeExistingCanonicalPool(scope, prepared, {
+      sourceSearchPlanId: "plan_A",
+    }, db);
+
+    expect(result.examined).toBe(1);
+    const materialized = await db.many<{ canonical_job_id: string }>(
+      `SELECT canonical_job_id FROM search_plan_candidates
+       WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?`,
+      [scope.tenantId, scope.personId, prepared.plan.id],
+    );
+    expect(materialized).toEqual([{ canonical_job_id: sourceA.canonicalJobId }]);
+    expect(materialized.map((row) => row.canonical_job_id)).not.toContain(sourceB.canonicalJobId);
   });
 });

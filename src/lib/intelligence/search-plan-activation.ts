@@ -96,6 +96,7 @@ export async function activateSearchPlanForIntent(
   const scope = input.scope || (await resolveServingScope(input.personId)).scope;
   const versions = loadEvaluationVersionManifest();
   const repos = getRepositories();
+  const predecessor = await repos.evaluationContexts.getActiveSearchPlanWithSnapshot(scope);
   const activationInput = {
     title: "Executive Career Search Plan",
     criteria,
@@ -108,7 +109,9 @@ export async function activateSearchPlanForIntent(
   // Keep the old context active while the new immutable lineage is prepared
   // and backfilled. A failed backfill therefore cannot blank the shortlist.
   const activation = await repos.evaluationContexts.prepareSearchPlan(scope, activationInput);
-  const coverage = await materializeExistingCanonicalPool(scope, activation);
+  const coverage = await materializeExistingCanonicalPool(scope, activation, {
+    sourceSearchPlanId: predecessor.planId,
+  });
   if (coverage.candidates > 0 && coverage.materialized < coverage.candidates) {
     throw new Error(
       `Search-plan activation was not committed: evaluation coverage is incomplete (${coverage.materialized}/${coverage.candidates} eligible canonical opportunities).`

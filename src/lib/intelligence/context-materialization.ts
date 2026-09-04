@@ -17,16 +17,40 @@ export interface ContextMaterializationResult {
 }
 
 /**
- * Re-evaluates the existing canonical pool for a prepared context. The source
- * pool is discovered from historical tenant/person candidate projections; no
- * scrape/run identifier participates in identity or serving.
+ * The immutable lineage that supplies records for a prepared context.
+ *
+ * Tenant/person scope authorizes the operation; it must never implicitly
+ * select the source market population.  A plan id is the durable identity of
+ * the candidate-association cohort being re-evaluated.
+ */
+export interface MaterializationSourceBoundary {
+  sourceSearchPlanId: string;
+}
+
+/**
+ * Re-evaluates one explicit canonical candidate cohort for a prepared context.
+ * The source plan may be archived, but it must belong to the authorized scope.
+ * A scrape/run identifier never participates in serving identity.
  */
 export async function materializeExistingCanonicalPool(
   scope: AuthorizedPersonScope,
   prepared: ActivatedSearchPlan,
+  source: MaterializationSourceBoundary,
   adapter?: DatabaseAdapter
 ): Promise<ContextMaterializationResult> {
+  if (!source.sourceSearchPlanId) {
+    throw new Error("[ContextMaterialization] An explicit source search plan is required.");
+  }
   const db = adapter || getDatabaseAdapter();
+  const sourcePlan = await db.one<{ id: string }>(
+    `SELECT id FROM search_plans WHERE id = ? AND tenant_id = ? AND person_id = ?`,
+    [source.sourceSearchPlanId, scope.tenantId, scope.personId]
+  );
+  if (!sourcePlan) {
+    throw new Error(
+      `[ContextMaterialization] Source search plan '${source.sourceSearchPlanId}' is not owned by the authorized scope.`
+    );
+  }
   const rows = await db.many<any>(
     `SELECT DISTINCT spc.canonical_job_id, spc.opportunity_version,
             ov.id, ov.job_title, ov.company_name, ov.location, ov.employment_type,
@@ -35,8 +59,12 @@ export async function materializeExistingCanonicalPool(
      FROM search_plan_candidates spc
      JOIN opportunity_versions ov
        ON ov.canonical_job_id = spc.canonical_job_id AND ov.id = spc.opportunity_version
-     WHERE spc.tenant_id = ? AND spc.person_id = ?`,
-    [scope.tenantId, scope.personId]
+     JOIN search_plans source_plan
+       ON source_plan.id = spc.search_plan_id
+      AND source_plan.tenant_id = spc.tenant_id
+      AND source_plan.person_id = spc.person_id
+     WHERE spc.tenant_id = ? AND spc.person_id = ? AND spc.search_plan_id = ?`,
+    [scope.tenantId, scope.personId, source.sourceSearchPlanId]
   );
   const projection = (await new TenantScopedPersonStore(db, scope).getLatestProjection(scope.personId)) || DEFAULT_CANDIDATE_PROJECTION;
   const candidateRows: Array<[unknown, ...unknown[]]> = [];
