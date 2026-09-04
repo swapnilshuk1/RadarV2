@@ -10,7 +10,16 @@ import type { StorageProvider } from "../../src/domain/repositories";
 // Mock the LLM extraction step so we don't hit OpenAI, but still produce a valid dimension set.
 vi.mock("../../scripts/scraper/extract/extractor", () => ({
   extract: vi.fn().mockResolvedValue({
-    dimensions: [{ key: "test_dimension", value: "test_value", provenance: "explicit" }],
+    dimensions: [
+      {
+        key: "core_role",
+        jdEvidence: {
+          value: "VP Engineering",
+          status: "Present",
+          evidence: [{ quote: "We are seeking a VP Engineering to lead our systems team." }]
+        }
+      }
+    ],
     missing: [],
     telemetry: { deterministicMs: 10, llmMs: 0, llmCalled: false }
   })
@@ -206,12 +215,43 @@ describe("Phase 6: Acquisition Evidence Reliability & Payload Resolution", () =>
     const { enrichJobsForRun } = await import("../../scripts/enrich");
     await enrichJobsForRun("run-regression", { queue, repos });
 
-    const docs = await db.many<any>("SELECT * FROM documents WHERE source_id = ?", ["LinkedIn"]);
-    expect(docs.length).toBe(1);
-    
-    // Opportunities table should be checked here (the enrichment worker updates/inserts opportunities).
+    // Assert 1: Exactly one canonical opportunity for the source identity
     const opps = await db.many<any>("SELECT * FROM opportunities WHERE fingerprint = ?", ["hash-retry"]);
     expect(opps.length).toBe(1);
+    expect(opps[0].canonical_title).toBe("VP Retry");
+
+    // Assert 2: Exactly one persisted document linked to that canonical opportunity
+    const docs = await db.many<any>("SELECT * FROM documents WHERE source_id = ?", ["LinkedIn"]);
+    expect(docs.length).toBe(1);
+    expect(docs[0].opportunity_id).toBe(opps[0].id);
+    expect(docs[0].lifecycle).toBe("Parsed");
+
+    // Assert 3: Successful document/evidence lineage is established with grounded facts
+    const evidence = await db.many<any>("SELECT * FROM evidence WHERE document_id = ?", [docs[0].id]);
+    expect(evidence.length).toBe(1);
+    expect(evidence[0].text).toContain("VP Engineering");
+
+    const facts = await db.many<any>("SELECT * FROM facts WHERE opportunity_id = ?", [opps[0].id]);
+    expect(facts.length).toBe(1);
+
+    // Assert 4: Attempt history reflects failure followed by recovery attempt
+    const lineage = await db.many<any>(
+      "SELECT ingestion_attempt, document_state FROM acquisition_ingestion_lineage WHERE card_id = ? ORDER BY ingestion_attempt ASC",
+      ["card-retry"]
+    );
+    expect(lineage.length).toBe(2);
+    expect(lineage[0]).toEqual({ ingestion_attempt: 1, document_state: "FAILED" });
+    expect(lineage[1]).toEqual({ ingestion_attempt: 2, document_state: "PENDING" });
+
+    // Assert 5: A subsequent re-enrichment or re-enqueue run does NOT duplicate opportunity or documents
+    await queue.enqueue("card-retry", "hash-retry", "payloads/valid-retry.json", "ext_v2", provenance, 10, 5, "payloads/valid-retry.json");
+    await enrichJobsForRun("run-regression", { queue, repos });
+
+    const oppsPostRetry = await db.many<any>("SELECT * FROM opportunities WHERE fingerprint = ?", ["hash-retry"]);
+    expect(oppsPostRetry.length).toBe(1);
+
+    const docsPostRetry = await db.many<any>("SELECT * FROM documents WHERE opportunity_id = ?", [opps[0].id]);
+    expect(docsPostRetry.length).toBe(1);
   });
 
   it("4. guards cross-host backend safety", () => {
