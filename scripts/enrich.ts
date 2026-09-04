@@ -21,7 +21,7 @@ let lastLlmCallTime = 0;
 let backoffMultiplierMs = 0;
 
 async function rateLimitedExtract(card: DetailedCard) {
-  const minIntervalMs = 2500 + backoffMultiplierMs; // Baseline 2.5s + dynamic backoff
+  const minIntervalMs = (process.env.NODE_ENV === "test" || process.env.VITEST) ? 0 : 2500 + backoffMultiplierMs; // Baseline 2.5s + dynamic backoff (0 in test)
   const now = Date.now();
   const elapsed = now - lastLlmCallTime;
   if (elapsed < minIntervalMs) {

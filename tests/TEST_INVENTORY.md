@@ -54,6 +54,7 @@ RADAR v2 Test Architecture
 | `tests/persistence/blob-store-connectivity.test.ts` | Multi-backend BlobStore connectivity, S3 REST protocol, 404/error handling, and synthetic probe healthCheck. | **Stage 3** |
 | `tests/scraper/scraper-correctness-contract.test.ts` | Authoritative active-plan resolution, zero fallback/zero units for authenticated runs, and Indeed sparse detail preservation. | Full Suite |
 | `tests/scraper/scraper-acquisition-contract.test.ts` | LinkedIn fast hydration & exit, universal sparse preservation (LinkedIn/Naukri), and failure transparency without fake empty results. | Full Suite |
+| `tests/acquisition/golden-recovery-lineage-cohort.test.ts` | Authoritative golden production lineage cohort from run-1788527028264; verifies canonicalJobId !== cardHash hand-off across 17 recovered records, admission lineage precedence, zero o_... forks, and alias resolution. | Full Suite |
 
 ---
 
@@ -162,12 +163,13 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (183 Total Files)
+## 3. Complete Test File Registry (184 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
 | File Path | Domain | Disposition | Stage | Tests | Assertions |
 | :--- | :--- | :---: | :---: | :---: | :---: |
+| `tests/acquisition/golden-recovery-lineage-cohort.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 23 |
 | `tests/acquisition/historical-recovery-lineage.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 10 | 60 |
 | `tests/acquisition/ingestion-lineage.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 3 | 12 |
 | `tests/acquisition/scoped-ingestion.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 1 | 5 |
