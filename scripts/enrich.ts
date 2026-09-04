@@ -107,11 +107,11 @@ async function processJob(
     // 1. Persisted admitted lineage/ledger query
     try {
       const lineageRow = await activeDb.one<{ canonical_job_id?: string }>(
-        `SELECT COALESCE(ail.canonical_job_id, al.canonical_job_id) AS canonical_job_id
+        `SELECT COALESCE(al.canonical_job_id, ail.canonical_job_id) AS canonical_job_id
          FROM acquisition_ingestion_lineage ail
          LEFT JOIN acquisition_ledger al ON al.id = ail.acquisition_ledger_id
-         WHERE (ail.card_id = ? OR ail.card_id LIKE '%' || ?)
-           AND COALESCE(ail.canonical_job_id, al.canonical_job_id) IS NOT NULL
+         WHERE (ail.card_id = ? OR ail.card_id = ?)
+           AND COALESCE(al.canonical_job_id, ail.canonical_job_id) IS NOT NULL
          ORDER BY ail.ingestion_attempt DESC LIMIT 1`,
         [job.id, job.job_hash]
       );
