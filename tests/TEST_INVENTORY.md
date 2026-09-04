@@ -19,7 +19,7 @@ All future coding agents and engineers modifying or adding tests MUST adhere to 
 
 ## 2. Canonical Test Domains & Authoritative Suites
 
-RADAR v2 test architecture is organized into **11 Canonical Domains**:
+RADAR v2 test architecture is organized into **11 Canonical Domains** with a mandatory Gate 0 safety overlay:
 
 ```
 RADAR v2 Test Architecture
@@ -64,6 +64,7 @@ RADAR v2 Test Architecture
 | :--- | :--- | :---: |
 | `tests/intelligence/identity.test.ts` | Executive seniority categorization (`C_SUITE`, `VP`), role matching, and theme extraction. | Full Suite |
 | `tests/intelligence/worker-profile-resolution.test.ts` | EvaluationWorker resolves candidate profile strictly from tenant/person scope without static fallbacks. | Full Suite |
+| `tests/security/scraper-auth-permission-non-escalation.test.ts` | Scraper authorization preserves membership grants and never manufactures scraper or credential capabilities. | **Gate 0 Safety** |
 
 ---
 
@@ -243,8 +244,9 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/schema-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 2 |
 | `tests/intelligence/semantic-evidence-integrity-regression.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 6 | 31 |
 | `tests/intelligence/serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 13 |
-| `tests/intelligence/serving_verdict_integrity.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 11 | 20 |
-| `tests/intelligence/worker-profile-resolution.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 7 | 24 |
+| `tests/intelligence/serving_verdict_integrity.test.ts` | Evaluation & Policy | **KEEP** | Gate 0 Safety | 11 | 20 |
+| `tests/intelligence/worker-profile-resolution.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 7 | 24 |
+| `tests/security/scraper-auth-permission-non-escalation.test.ts` | Security & Tenant Isolation | **KEEP** | Gate 0 Safety | 1 | 8 |
 | `tests/intelligence/invariant-assertions.test.ts` | Evaluation & Policy | **KEEP** | Stage 3 | 3 | 5 |
 | `tests/ontology/tenant-ontology-compiler.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 10 | 55 |
 | `tests/persistence/active_pointer_precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 3 |
@@ -277,7 +279,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/policy/dossier-decision-state.test.ts` | Decision Persistence | **KEEP** | Full Suite | 13 | 38 |
 | `tests/policy/eligibility-gates.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 14 |
 | `tests/policy/filter-integrity.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 26 |
-| `tests/policy/headspace-serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 44 |
+| `tests/policy/headspace-serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Gate 0 Safety | 6 | 44 |
 | `tests/policy/indeed-filter.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 15 |
 | `tests/policy/metric-integrity.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 12 | 26 |
 | `tests/policy/opportunity-control-plane.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 13 | 50 |

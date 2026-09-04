@@ -6,7 +6,7 @@
  * this manifest rather than maintaining independent lists.
  */
 
-export const EXPECTED_CERTIFICATION_FILE_COUNT = 40;
+export const EXPECTED_CERTIFICATION_FILE_COUNT = 47;
 
 export const certificationManifest = [
   {
@@ -87,6 +87,21 @@ export const certificationManifest = [
       "tests/editorial/verdict-coverage.test.ts",
       "tests/editorial/evidence-sufficiency-contract.test.ts",
       "tests/intelligence/invariant-assertions.test.ts",
+    ],
+  },
+  {
+    id: "gate-0-safety",
+    name: "Gate 0 Safety Invariants",
+    description:
+      "Fail-closed profile resolution, non-escalating permissions, canonical verdicts, reproducibility, and durable worker recovery",
+    files: [
+      "tests/intelligence/worker-profile-resolution.test.ts",
+      "tests/security/scraper-auth-permission-non-escalation.test.ts",
+      "tests/intelligence/serving_verdict_integrity.test.ts",
+      "tests/policy/headspace-serving-contract.test.ts",
+      "tests/intelligence/m9_4_1-evaluation-determinism.test.ts",
+      "tests/intelligence/m53-worker.test.ts",
+      "tests/security/evaluation-context-isolation.test.ts",
     ],
   },
 ] as const;
