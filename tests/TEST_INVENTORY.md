@@ -338,6 +338,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/scraper/naukri-pagination-browser-context.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 10 |
 | `tests/scraper/fintech-marketing-head-replay.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 8 |
 | `tests/scraper/naukri-cancellation-no-legacy-fetch.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 15 |
+| `tests/scraper/enrichment-payload-resolution.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 20 |
 | `tests/security/deploy-attack-surface-removed.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 3 | 10 |
 | `tests/security/evaluation-context-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 5 | 18 |
 | `tests/security/m62-credential-vault.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 13 | 50 |

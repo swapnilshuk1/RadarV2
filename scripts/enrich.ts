@@ -43,7 +43,11 @@ async function rateLimitedExtract(card: DetailedCard) {
   }
 }
 
-async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist/queue").EnrichmentJob): Promise<{llmMs: number; busyMs: number; dimensions?: any}> {
+async function processJob(
+  queue: EnrichmentQueue, 
+  job: import("./scraper/persist/queue").EnrichmentJob,
+  deps?: { repos?: import("../src/domain/repositories").StorageProvider }
+): Promise<{llmMs: number; busyMs: number; dimensions?: any}> {
   await queue.markRunning(job.id);
   const tStart = Date.now();
   let llmMs = 0;
@@ -93,7 +97,7 @@ async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist
     
     // 2. Ingest into SQLite
     const exStr = JSON.stringify(extraction);
-    const report = await ingestIntoSqlite(detailedCard, exStr, EXTRACTOR_VERSION, true);
+    const report = await ingestIntoSqlite(detailedCard, exStr, EXTRACTOR_VERSION, true, deps?.repos);
     
     if (report.warnings.length > 0) {
       log(`Ingestion warnings for ${job.id}: ${report.warnings.join(", ")}`, "warn");
@@ -394,8 +398,14 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
 }
 
 // Expose a run-scoped enricher that can be triggered programmatically inline.
-export async function enrichJobsForRun(runId: string) {
-  const queue = new EnrichmentQueue();
+export async function enrichJobsForRun(
+  runId: string,
+  deps?: {
+    queue?: EnrichmentQueue;
+    repos?: import("../src/domain/repositories").StorageProvider;
+  }
+) {
+  const queue = deps?.queue ?? new EnrichmentQueue();
   log(`[Enrich] Starting inline enrichment worker for run ${runId}`);
 
   // Exponential backoff for empty intervals or wait-retries
@@ -445,7 +455,7 @@ export async function enrichJobsForRun(runId: string) {
     emptyBackoffMs = 250;
 
     log(`[Enrich] Processing ${jobs.length} jobs concurrently...`);
-    await Promise.all(jobs.map(job => processJob(queue, job)));
+    await Promise.all(jobs.map(job => processJob(queue, job, deps)));
   }
 }
 
