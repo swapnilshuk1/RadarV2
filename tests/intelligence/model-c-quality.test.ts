@@ -332,4 +332,53 @@ describe("Model C Quality Architecture Tests", () => {
     expect(res.qualityScore).toBe(baseline.qualityScore);
     expect(res.triggeredRuleIds).toContain("POL-D-CONSIDER-SPECIALIST-DOMAIN-GAP");
   });
+
+  it("caps PURSUE only when an explicit material requirement is unsupported", () => {
+    const requirement = {
+      capability: "Merchandising / Category Inventory Operations", tier: "EXECUTION_CAPABILITY" as const,
+      required: true, materiality: "CORE" as const, evidenceIds: ["capreq_merchandising"],
+      sourceQuotes: ["Strong hands-on experience in merchandising and inventory is required."],
+    };
+    const baseline = DecisionPolicyEngine.evaluate(dummyIdentity, dummyCapability, dummyOpportunity, dummyCareer, dummyLifestyle,
+      "Commercial & Marketing Leadership", "Commercial & Marketing Leadership", sampleJD, true, undefined, undefined, 85, [requirement]);
+    const unsupported = DecisionPolicyEngine.evaluate(dummyIdentity,
+      { ...dummyCapability, missingCapabilities: ["Merchandising / Category Inventory Operations [EXECUTION_CAPABILITY]"] },
+      dummyOpportunity, dummyCareer, dummyLifestyle, "Commercial & Marketing Leadership", "Commercial & Marketing Leadership", sampleJD,
+      true, undefined, undefined, 85, [requirement]);
+
+    expect(baseline.verdict).toBe("PURSUE");
+    expect(unsupported.verdict).toBe("CONSIDER");
+    expect(unsupported.qualityScore).toBe(baseline.qualityScore);
+    expect(unsupported.triggeredRuleIds).toContain("POL-D-CONSIDER-REQUIRED-CAPABILITY-GAP");
+  });
+
+  it("does not cap PURSUE for a responsibility-only capability", () => {
+    const responsibility = {
+      capability: "Merchandising / Category Inventory Operations", tier: "EXECUTION_CAPABILITY" as const,
+      required: false, materiality: "SUPPORTING" as const, evidenceIds: [],
+      sourceQuotes: ["Lead merchandising and inventory operations."],
+    };
+    const result = DecisionPolicyEngine.evaluate(dummyIdentity,
+      { ...dummyCapability, missingCapabilities: ["Merchandising / Category Inventory Operations [EXECUTION_CAPABILITY]"] },
+      dummyOpportunity, dummyCareer, dummyLifestyle, "Commercial & Marketing Leadership", "Commercial & Marketing Leadership", sampleJD,
+      true, undefined, undefined, 85, [responsibility]);
+
+    expect(result.verdict).toBe("PURSUE");
+    expect(result.triggeredRuleIds).not.toContain("POL-D-CONSIDER-REQUIRED-CAPABILITY-GAP");
+  });
+
+  it("does not treat ambiguous candidate evidence as grounded support for a required capability", () => {
+    const requirement = {
+      capability: "D2C Operating Leadership", tier: "DOMAIN_FAMILIARITY" as const,
+      required: true, materiality: "CORE" as const, evidenceIds: ["capreq_d2c"],
+      sourceQuotes: ["Demonstrated experience in D2C operating leadership is required."],
+    };
+    const result = DecisionPolicyEngine.evaluate(dummyIdentity,
+      { ...dummyCapability, missingCapabilities: ["D2C Operating Leadership [DOMAIN_FAMILIARITY]"] },
+      dummyOpportunity, dummyCareer, dummyLifestyle, "Commercial & Marketing Leadership", "Commercial & Marketing Leadership", sampleJD,
+      true, undefined, undefined, 85, [requirement]);
+
+    expect(result.verdict).toBe("CONSIDER");
+    expect(result.triggeredRuleIds).toContain("POL-D-CONSIDER-REQUIRED-CAPABILITY-GAP");
+  });
 });

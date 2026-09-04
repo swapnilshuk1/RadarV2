@@ -1,5 +1,5 @@
 import { IdentityAssessment, CapabilityAssessment, OpportunityAssessment, CareerAssessment, LifestyleAssessment, DecisionVerdict, EvaluationStatus, Recommendation } from "../../domain/semantic";
-import type { GroundedOpportunityDimension } from "../../domain/job_projection";
+import type { CapabilityRequirement, GroundedOpportunityDimension } from "../../domain/job_projection";
 import decisionPolicy from "@/data/ontology/decision_policy.json";
 import { IdentityDistanceCalculator } from "../utils/IdentityDistanceCalculator";
 import { EvidenceGate } from "../gates/EvidenceGate";
@@ -73,7 +73,8 @@ export class DecisionPolicyEngine {
     hasStructuredEvidence: boolean = false,
     evidenceGrounding?: Record<string, string>,
     dimensions?: readonly GroundedOpportunityDimension[] | readonly { key: string; jdEvidence?: { value?: string } }[],
-    shortlistingPotentialScore?: number // P3-A: Pre-calculated authoritative SP
+    shortlistingPotentialScore?: number, // P3-A: Pre-calculated authoritative SP
+    capabilityRequirements?: readonly CapabilityRequirement[],
   ): DecisionPolicyResult {
     const triggeredRuleIds: string[] = [];
     
@@ -504,13 +505,49 @@ export class DecisionPolicyEngine {
       /\[DOMAIN_FAMILIARITY\]/.test(capabilityName) &&
       /(distressed debt|arc operations|insolvency|asset reconstruction|merchandising|category inventory)/i.test(capabilityName),
     );
+    const normalizeCapability = (value: string) => value
+      .toLowerCase()
+      .replace(/\s*\[[^\]]+\]/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+    const missingRequiredCapability = capabilityRequirements?.find((requirement) => {
+      if (!requirement.required || requirement.materiality !== "CORE") return false;
+      const requiredName = normalizeCapability(requirement.capability);
+      return capability.missingCapabilities.some((missing) => normalizeCapability(missing) === requiredName);
+    });
 
     // A source-grounded specialist-domain requirement is not a hard admission
     // veto. It does, however, prohibit an unqualified PURSUE recommendation
     // where the candidate evidence does not establish that operating domain.
     const specialistDomainConstraint = Boolean(missingSpecialistDomain);
+    const requiredCapabilityConstraint = Boolean(missingRequiredCapability);
 
     if (effectiveScore >= POLICY_THRESHOLDS.PURSUE && identityScore >= t.identityPursueCutoff) {
+      if (requiredCapabilityConstraint) {
+        return {
+          verdict: "CONSIDER",
+          evaluationStatus,
+          recommendation: "CONSIDER",
+          qualityScore,
+          rawScore,
+          priorityScore,
+          opportunityScoreSource,
+          opportunityScoreConfidence,
+          vetoed: false,
+          vetoReason: null,
+          claimPermissions,
+          structuralConviction: false,
+          uiLabel: "Consider",
+          confidences,
+          tailoringEffort: "HIGH",
+          trajectoryUpside,
+          relativeDifferentiator: "Senior functional overlap is present, but an explicit material qualification requirement is not established by candidate evidence.",
+          triggeredRuleIds: ["POL-D-CONSIDER-REQUIRED-CAPABILITY-GAP", "R-PURSUE-INTERACTIVE-SCORE"],
+          pipeline: [...pipeline, { stage: "RequiredCapabilityEvidence", status: "DOWNSCALED", score: qualityScore, reason: `No candidate evidence establishes required capability: ${missingRequiredCapability!.capability}.` }],
+          decisionDrivers,
+          decisionRisks: [...decisionRisks, { factor: "Required Capability Gap", impact: "negative", strength: "high", evidence: `Missing source-grounded requirement: ${missingRequiredCapability!.capability}` }],
+        };
+      }
       if (specialistDomainConstraint) {
         return {
           verdict: "CONSIDER",

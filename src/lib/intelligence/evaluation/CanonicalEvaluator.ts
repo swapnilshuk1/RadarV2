@@ -56,7 +56,9 @@ export class CanonicalEvaluator {
       jdText,
       hasStructured,
       undefined,
-      groundedDimensions
+      groundedDimensions,
+      undefined,
+      jobProjection.capabilityRequirements,
     );
 
     const record = {

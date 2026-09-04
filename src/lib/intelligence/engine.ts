@@ -353,7 +353,8 @@ export function runEngine(
       hasStructuredEvidence || groundedDimensions.length > 0,
       undefined, // evidenceGrounding - not used
       groundedDimensions, // typed GroundedOpportunityDimension[]
-      shortlistingPotentialScore // P3-A: Pass authoritative SP
+      shortlistingPotentialScore, // P3-A: Pass authoritative SP
+      jobProjV4.capabilityRequirements,
     );
 
     const verb0 = policyResult.verdict;

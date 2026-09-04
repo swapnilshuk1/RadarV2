@@ -30,6 +30,21 @@ export interface ProjectedCapability {
   state?: "EXPLICIT" | "INFERRED" | "UNKNOWN";
 }
 
+/**
+ * A source-grounded qualification requirement for a capability. This is
+ * deliberately separate from a responsibility: only explicit candidate
+ * qualification language can set `required`.
+ */
+export interface CapabilityRequirement {
+  capability: string;
+  tier: CapabilityTaxonomyTier;
+  required: boolean;
+  materiality: "CORE" | "SUPPORTING";
+  /** Stable references to the source phrases retained below. */
+  evidenceIds: string[];
+  sourceQuotes: string[];
+}
+
 export interface ExecutiveIdentity {
   value: string;
   confidence: number;
@@ -110,6 +125,8 @@ export interface JobProjection {
   
   // Normalized capabilities
   capabilities: ProjectedCapability[];
+  /** Explicit job-side qualification requirements; never inferred from duties alone. */
+  capabilityRequirements?: CapabilityRequirement[];
   
   // Theme dimensions
   executiveFunction: string[];

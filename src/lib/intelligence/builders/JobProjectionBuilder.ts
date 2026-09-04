@@ -1,4 +1,4 @@
-import { JobProjection, GroundedOpportunityDimension, ExecutiveIdentity, OperatingContext, TrueExecutiveMandate, CapabilityTaxonomyTier, OrganizationalIntent, ExecutiveMission } from "../../domain/job_projection";
+import { JobProjection, GroundedOpportunityDimension, ExecutiveIdentity, OperatingContext, TrueExecutiveMandate, CapabilityTaxonomyTier, OrganizationalIntent, ExecutiveMission, type CapabilityRequirement, type ProjectedCapability } from "../../domain/job_projection";
 import { OperatingLevelClassifier } from "../classifiers/OperatingLevelClassifier";
 import { WorkNatureClassifier } from "../classifiers/WorkNatureClassifier";
 import { DecisionAuthorityClassifier } from "../classifiers/DecisionAuthorityClassifier";
@@ -150,6 +150,52 @@ export class JobProjectionBuilder {
     return "EXECUTION_CAPABILITY";
   }
 
+  /**
+   * Requirements belong to the qualification side of a JD, not its execution
+   * responsibilities. A responsibility-only mention must never create a
+   * decision ceiling.
+   */
+  private static extractCapabilityRequirements(
+    sourceText: string,
+    capabilities: readonly ProjectedCapability[],
+  ): CapabilityRequirement[] {
+    const requirementMarker = /\b(?:must have|required|strong\s+(?:hands[-\s]?on\s+)?(?:experience|understanding|expertise)|demonstrated experience|proven (?:experience|track record)|deep expertise)\b/i;
+    const ignoredTokens = new Set(["operations", "management", "capability", "leadership", "commercial", "business"]);
+    const clauses = sourceText
+      .split(/(?<=[.!?])|[\r\n]+/)
+      .map((clause) => clause.trim())
+      .filter(Boolean);
+
+    const stableEvidenceId = (capability: string, quote: string) => {
+      const input = `${capability}|${quote}`.toLowerCase();
+      let hash = 2166136261;
+      for (let index = 0; index < input.length; index++) hash = Math.imul(hash ^ input.charCodeAt(index), 16777619);
+      return `capreq_${(hash >>> 0).toString(16)}`;
+    };
+
+    return capabilities.flatMap((capability) => {
+      const signals = capability.name
+        .toLowerCase()
+        .split(/[^a-z0-9+#]+/)
+        .filter((token) => token.length >= 4 && !ignoredTokens.has(token));
+      if (signals.length === 0) return [];
+
+      const supportingClauses = clauses.filter((clause) =>
+        requirementMarker.test(clause) && signals.some((signal) => new RegExp(`\\b${signal.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\b`, "i").test(clause)),
+      );
+      if (supportingClauses.length === 0) return [];
+
+      return [{
+        capability: capability.name,
+        tier: capability.tier || this.assignCapabilityTier(capability.name),
+        required: true,
+        materiality: "CORE" as const,
+        evidenceIds: supportingClauses.map((quote) => stableEvidenceId(capability.name, quote)),
+        sourceQuotes: supportingClauses,
+      }];
+    });
+  }
+
   public static build(opportunity: any): JobProjection {
     const cacheKey = opportunity?.jobHash || opportunity?.id;
     if (cacheKey && this.projectionCache.has(cacheKey)) {
@@ -207,7 +253,8 @@ export class JobProjectionBuilder {
   private static buildUncached(opportunity: any): JobProjection {
     this.actualBuildCount++;
     const title = opportunity.role || opportunity.canonicalTitle || opportunity.title || "";
-    let fullText = (opportunity.description || opportunity.normalizedText || opportunity.rawText || opportunity.rawDescription || "").toLowerCase();
+    const sourceText = opportunity.description || opportunity.normalizedText || opportunity.rawText || opportunity.rawDescription || "";
+    let fullText = String(sourceText).toLowerCase();
     const fullContext = (title + "\n" + fullText);
     const titleLower = title.toLowerCase();
 
@@ -416,6 +463,7 @@ export class JobProjectionBuilder {
     capabilities.forEach((c) => {
       c.tier = this.assignCapabilityTier(c.name);
     });
+    const capabilityRequirements = this.extractCapabilityRequirements(String(sourceText), capabilities);
 
     // Phase 5C.2: Canonical Semantic Evidence Extraction
     const semanticEvidence: CanonicalSemanticEvidence[] = [...compositional.evidenceList];
@@ -451,6 +499,7 @@ export class JobProjectionBuilder {
       decisionAuthority,
       commercialScope,
       capabilities,
+      capabilityRequirements,
       executiveFunction: Array.from(executiveFunction),
       businessObjectives: Array.from(businessObjectives),
       executionStyle: Array.from(executionStyle),

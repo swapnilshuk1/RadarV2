@@ -107,6 +107,40 @@ describe("Semantic Evidence Integrity & Boundary Invariants", () => {
       expect(projection.commercialScope.evidenceIds).toEqual(["cs_none"]);
     });
 
+    it("records explicit qualification requirements but not responsibility-only capabilities", () => {
+      const requiredProjection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "required-capability-projection-regression",
+        role: "Business Head",
+        rawDescription: `
+          Own the end-to-end P&L and lead product sourcing, merchandising,
+          inventory, and supply-chain operations.
+          Ideal Candidate Profile: Strong hands-on experience in D2C and
+          e-commerce is required. Strong understanding of product sourcing,
+          merchandising, inventory, and commercial management is required.
+        `,
+      });
+      const merchandisingRequirement = requiredProjection.capabilityRequirements?.find(
+        (requirement) => requirement.capability === "Merchandising / Category Inventory Operations",
+      );
+
+      expect(merchandisingRequirement).toMatchObject({ required: true, materiality: "CORE" });
+      expect(merchandisingRequirement?.evidenceIds).toHaveLength(1);
+      expect(merchandisingRequirement?.sourceQuotes[0]).toContain("merchandising");
+
+      const responsibilityOnlyProjection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "responsibility-only-capability-regression",
+        role: "Business Head",
+        rawDescription: `
+          Own the end-to-end P&L and lead product sourcing, merchandising,
+          inventory, and supply-chain operations. Partner with category teams
+          to improve availability and delivery.
+        `,
+      });
+      expect(responsibilityOnlyProjection.capabilityRequirements).toEqual([]);
+    });
+
     it("satisfies EvidenceRichnessCalculator as SUFFICIENT", () => {
       const projection = JobProjectionBuilder.build(richOpportunity);
       const richness = EvidenceRichnessCalculator.calculate({ dimensions: projection.dimensions });
