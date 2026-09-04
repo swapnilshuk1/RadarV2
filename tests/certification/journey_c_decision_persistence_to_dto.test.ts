@@ -101,6 +101,7 @@ describe("Journey C: Decision Persistence → Feed DTO Parity", () => {
         canonical_job_id TEXT NOT NULL,
         opportunity_version TEXT NOT NULL,
         evaluation_context_fingerprint TEXT NOT NULL,
+        evaluation_fingerprint TEXT,
         evaluation_state TEXT NOT NULL,
         decision TEXT,
         quality_score REAL,
@@ -152,11 +153,11 @@ describe("Journey C: Decision Persistence → Feed DTO Parity", () => {
     await adapter.execute(
       `INSERT INTO materialized_evaluations (
         id, tenant_id, person_id, canonical_job_id, opportunity_version,
-        evaluation_context_fingerprint, evaluation_state, decision, quality_score,
+        evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
         confidence, vetoed, policy_version, evaluated_at, materialized_at, updated_at
       ) VALUES (
         'me_1', 'tenant_alpha', 'person_user1', 'job_target_1', 'ver_target_1',
-        'ec_1', 'COMPLETE', 'PURSUE', 85.0, 0.9, 0, 'v4.1',
+        'ec_1', 'eval_target_1', 'COMPLETE', 'PURSUE', 85.0, 0.9, 0, 'v4.1',
         '2026-08-31T00:00:00.000Z', '2026-08-31T00:00:00.000Z', '2026-08-31T00:00:00.000Z'
       )`
     );

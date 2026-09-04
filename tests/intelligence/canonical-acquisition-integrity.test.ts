@@ -293,6 +293,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           canonical_job_id TEXT NOT NULL,
           opportunity_version TEXT NOT NULL,
           evaluation_context_fingerprint TEXT NOT NULL,
+          evaluation_fingerprint TEXT,
           evaluation_state TEXT NOT NULL DEFAULT 'UNKNOWN',
           decision TEXT,
           quality_score REAL,
@@ -651,12 +652,13 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
         canonicalJobId: "job_4",
         opportunityVersion: "v4",
         evaluationContextFingerprint: "fp1",
+        evaluationFingerprint: "eval_mat_eval",
         evaluationState: "EVALUATED",
         decision: "PURSUE",
         qualityScore: 92,
         rationale: "High match",
         evidenceIds: ["ev1"],
-        evaluationJson: JSON.stringify({ decision: "PURSUE", qualityScore: 92 }),
+        evaluationJson: JSON.stringify({ evaluationInputHash: "eval_mat_eval", decision: "PURSUE", qualityScore: 92 }),
         materializedAt: new Date().toISOString(),
       };
       expect(() => validateEvaluationConsistency(validEvaluated)).not.toThrow();
@@ -798,13 +800,14 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           canonicalJobId: "job_x",
           opportunityVersion: "ver_x",
           evaluationContextFingerprint: "fp_x",
+          evaluationFingerprint: row.decision ? `eval_${row.evaluationState}` : null,
           evaluationState: row.evaluationState as any,
           decision: row.decision as any,
           qualityScore: row.qualityScore,
           rationale: "Matrix verification",
           evidenceIds: [],
           evaluationJson: JSON.stringify(
-            row.decision ? { decision: row.decision, qualityScore: row.qualityScore } : { bypassed: true }
+            row.decision ? { evaluationInputHash: `eval_${row.evaluationState}`, decision: row.decision, qualityScore: row.qualityScore } : { bypassed: true }
           ),
           materializedAt: new Date().toISOString(),
         };

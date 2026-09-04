@@ -93,9 +93,9 @@ describe("Headspace Serving Contract Regression Suite", () => {
       };
 
       await db.execute(`INSERT OR IGNORE INTO materialized_evaluations 
-        (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, rationale, evidence_ids, evaluation_json, materialized_at) 
-        VALUES (?, ?, ?, ?, ?, ?, 'EVALUATED', 'PURSUE', ?, 'Exceptional mandate match.', '[]', ?, CURRENT_TIMESTAMP)`, 
-        [`mat_${job.jobHash}`, job.jobHash, `v_${job.jobHash}`, tenantId, userId, `ctx_${userId}`, job.score, JSON.stringify(evalPayload)]);
+        (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, rationale, evidence_ids, evaluation_json, materialized_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'EVALUATED', 'PURSUE', ?, 'Exceptional mandate match.', '[]', ?, CURRENT_TIMESTAMP)`,
+        [`mat_${job.jobHash}`, job.jobHash, `v_${job.jobHash}`, tenantId, userId, `ctx_${userId}`, `fp_${job.jobHash}`, job.score, JSON.stringify(evalPayload)]);
 
       await repos.evaluations.saveEvaluation({
         personId: userId,
