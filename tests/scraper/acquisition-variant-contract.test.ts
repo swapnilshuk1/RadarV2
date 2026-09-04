@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { indeedHandler } from "../../scripts/scraper/portals/indeed";
-import { linkedinHandler } from "../../scripts/scraper/portals/linkedin";
+import { linkedinHandler, resolveLinkedInGeoId } from "../../scripts/scraper/portals/linkedin";
 import { naukriHandler } from "../../scripts/scraper/portals/naukri";
 import { compileCoverageVariants, createFreshnessVariant } from "../../scripts/scraper/run/acquisition-variants";
 import { compileG2ControlledCohort, G2_CONTROLLED_COHORT } from "../../scripts/scraper/run/g2-controlled-cohort";
 import { compileG3ReadinessRevalidation, G3_READINESS_REVALIDATION } from "../../scripts/scraper/run/g3-readiness-revalidation";
+import { compileNcrDiscoveryReachCohort, NCR_DISCOVERY_REACH_COHORT } from "../../scripts/scraper/run/ncr-discovery-reach-cohort";
 import type { ResolvedScraperPlan } from "../../src/lib/intelligence/ScraperPlanResolver";
 
 const plan = {
@@ -106,5 +107,29 @@ describe("acquisition variant contracts", () => {
     expect(G3_READINESS_REVALIDATION.portals).toEqual(["LinkedIn", "Indeed"]);
     expect(new Set(variants.map((variant) => variant.portal))).toEqual(new Set(["LinkedIn", "Indeed"]));
     expect(variants.every((variant) => variant.postedWithinDays === 7 && variant.sort === "date" && variant.location === "Gurugram")).toBe(true);
+  });
+
+  it("holds the NCR reach cohort to a single query across every NCR city and portal", () => {
+    const variants = compileNcrDiscoveryReachCohort();
+    expect(variants).toHaveLength(15);
+    expect(NCR_DISCOVERY_REACH_COHORT.maxPages).toBe(1);
+    expect(NCR_DISCOVERY_REACH_COHORT.maxCardsPerUnit).toBe(5);
+    expect(new Set(variants.map((variant) => variant.query))).toEqual(new Set(["VP Growth"]));
+    expect(new Set(variants.map((variant) => variant.location))).toEqual(new Set(NCR_DISCOVERY_REACH_COHORT.locations));
+    expect(new Set(variants.map((variant) => variant.portal))).toEqual(new Set(NCR_DISCOVERY_REACH_COHORT.portals));
+    expect(variants.every((variant) => variant.postedWithinDays === 7 && variant.sort === "date")).toBe(true);
+  });
+
+  it("uses verified city-specific LinkedIn geo IDs for the NCR reach cohort", () => {
+    const linkedinVariants = compileNcrDiscoveryReachCohort().filter((variant) => variant.portal === "LinkedIn");
+    const geoIds = linkedinVariants.map((variant) => {
+      const url = new URL(linkedinHandler.buildSearchUrl({ ...variant, page: 1 }));
+      expect(url.searchParams.get("location")).toBe(variant.location);
+      expect(url.searchParams.get("geoId")).toBe(resolveLinkedInGeoId(variant.location));
+      return url.searchParams.get("geoId");
+    });
+
+    expect(new Set(geoIds).size).toBe(NCR_DISCOVERY_REACH_COHORT.locations.length);
+    expect(geoIds).not.toContain("102713980");
   });
 });
