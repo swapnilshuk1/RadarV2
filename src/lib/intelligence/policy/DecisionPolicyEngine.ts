@@ -500,8 +500,42 @@ export class DecisionPolicyEngine {
 
     const isEasyTrap = spHigh && frictionLow && careerValueLow;
     const effectiveScore = qualityScore ?? 0;
+    const missingSpecialistDomain = capability.missingCapabilities.find((capabilityName) =>
+      /\[DOMAIN_FAMILIARITY\]/.test(capabilityName) &&
+      /(distressed debt|arc operations|insolvency|asset reconstruction|merchandising|category inventory)/i.test(capabilityName),
+    );
+
+    // A source-grounded specialist-domain requirement is not a hard admission
+    // veto. It does, however, prohibit an unqualified PURSUE recommendation
+    // where the candidate evidence does not establish that operating domain.
+    const specialistDomainConstraint = Boolean(missingSpecialistDomain);
 
     if (effectiveScore >= POLICY_THRESHOLDS.PURSUE && identityScore >= t.identityPursueCutoff) {
+      if (specialistDomainConstraint) {
+        return {
+          verdict: "CONSIDER",
+          evaluationStatus,
+          recommendation: "CONSIDER",
+          qualityScore,
+          rawScore,
+          priorityScore,
+          opportunityScoreSource,
+          opportunityScoreConfidence,
+          vetoed: false,
+          vetoReason: null,
+          claimPermissions,
+          structuralConviction: false,
+          uiLabel: "Consider",
+          confidences,
+          tailoringEffort: "HIGH",
+          trajectoryUpside,
+          relativeDifferentiator: "Senior functional overlap is present, but a specialist operating-domain requirement needs validation before pursuit.",
+          triggeredRuleIds: ["POL-D-CONSIDER-SPECIALIST-DOMAIN-GAP", "R-PURSUE-INTERACTIVE-SCORE"],
+          pipeline: [...pipeline, { stage: "SpecialistDomainEvidence", status: "DOWNSCALED", score: qualityScore, reason: `No candidate evidence establishes ${missingSpecialistDomain}.` }],
+          decisionDrivers,
+          decisionRisks: [...decisionRisks, { factor: "Specialist Domain Gap", impact: "negative", strength: "high", evidence: `Missing source-grounded domain: ${missingSpecialistDomain}` }],
+        };
+      }
       if (isEasyTrap) {
         return {
           verdict: "CONSIDER",

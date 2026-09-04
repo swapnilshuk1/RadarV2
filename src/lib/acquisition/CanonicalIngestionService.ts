@@ -45,6 +45,8 @@ export interface IngestOpportunityPayload {
   sourceJobId: string;
   canonicalUrl: string;
   jobTitle: string;
+  /** Title read from the captured detail page, if the extractor could establish one. */
+  documentTitle?: string | null;
   companyName: string | null;
   location: string | null;
   employmentType?: string | null;
@@ -138,6 +140,8 @@ export class CanonicalIngestionService {
       httpStatus: payload.httpStatus,
       contentType: payload.contentType,
       extractedTitle: title,
+      documentTitle: payload.documentTitle || undefined,
+      expectedTitle: title,
       extractedCompany: companyName || undefined,
       extractedLocation: location || undefined,
       contentOrigin: payload.contentOrigin,

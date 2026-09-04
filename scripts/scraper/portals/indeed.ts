@@ -267,6 +267,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       }
 
       const trimmedText = rawText.trim();
+      const titleText = ((await page.locator("h1.jobsearch-JobInfoHeader-title, .jobsearch-JobInfoHeader-title-container h1, h1").first().textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+      const extractedTitle = titleText.length > 0 ? titleText : undefined;
       if (trimmedText.length === 0) {
         ctx.logger?.(`[Indeed] Empty job description for ${url}`);
         return {
@@ -275,6 +277,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           rawHtml: "",
           rawText: "",
           fetchDurationMs: Date.now() - t0,
+          extractedTitle,
         };
       }
 
@@ -288,6 +291,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         rawText: trimmedText,
         fetchDurationMs: Date.now() - t0,
         quality: trimmedText.length < 200 ? ("SPARSE" as const) : ("VALID" as const),
+        extractedTitle,
       };
     } catch (err: any) {
       return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };

@@ -186,6 +186,15 @@ describe("Phase M4.3: Attention Gate", () => {
       expect(res.reasonCodes).toContain("SENIORITY_CONTRADICTION");
     });
 
+    test("an explicit 4–10 year range contradicts a Chief/VP executive target", () => {
+      const res = evaluateAttentionGate(
+        { ...baseVersion, jobTitle: "Chief of Staff", rawContent: "We require 4–10 years of strategy, consulting, or operations experience." },
+        { ...baseCriteria, targetRoles: ["Chief Marketing Officer"], targetSeniority: ["Chief", "VP"] },
+      );
+      expect(res).toMatchObject({ decision: "NOT_CANDIDATE", eligibility: "INELIGIBLE" });
+      expect(res.reasonCodes).toContain("SENIORITY_CONTRADICTION");
+    });
+
     test("6. Employment-type mismatch -> NOT_CANDIDATE", () => {
       const res = evaluateAttentionGate(baseVersion, { ...baseCriteria, targetEmploymentTypes: ["Contract", "Part-time"] });
       expect(res.decision).toBe("NOT_CANDIDATE");
@@ -222,6 +231,17 @@ describe("Phase M4.3: Attention Gate", () => {
       expect(res.eligibility).toBe("INELIGIBLE");
       expect(res.reasonCodes).toContain("FUNCTION_CONTRADICTION");
     });
+
+    test.each(["Principal Engineer, Java, VP", "Principal AI Engineer, Director"])(
+      "explicit technical title %s remains a function contradiction despite executive seniority", (jobTitle) => {
+        const res = evaluateAttentionGate(
+          { ...baseVersion, jobTitle },
+          { ...baseCriteria, eligibilitySpec: { version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: ["Chief Marketing Officer"], functions: ["Marketing", "Growth"], seniorityRange: ["Chief", "VP"], locations: [], industries: [], adjacentFamilies: [], excludedCompanies: [] } },
+        );
+        expect(res).toMatchObject({ decision: "NOT_CANDIDATE", eligibility: "INELIGIBLE" });
+        expect(res.reasonCodes).toContain("FUNCTION_CONTRADICTION");
+      },
+    );
 
     test("10. Gate is purely synchronous & invokes zero LLM/extraction/policy operations", () => {
       const startTime = performance.now();

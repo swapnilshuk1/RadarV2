@@ -32,6 +32,7 @@ export type FailureClass =
   // IDENTITY (Quarantine)
   | "MISSING_JOB_ID"
   | "AMBIGUOUS_IDENTITY"
+  | "LISTING_DOCUMENT_IDENTITY_MISMATCH"
   
   // LIFECYCLE (Terminal)
   | "EXPIRED"
@@ -113,6 +114,7 @@ export class FailurePolicyEngine {
       // IDENTITY
       case "MISSING_JOB_ID":
       case "AMBIGUOUS_IDENTITY":
+      case "LISTING_DOCUMENT_IDENTITY_MISMATCH":
         return {
           category: "IDENTITY",
           failureClass,

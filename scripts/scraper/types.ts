@@ -231,6 +231,8 @@ export interface DetailedCard extends FeedCard {
     fetchDurationMs?: number;
     httpStatus?: number;
     quality?: "VALID" | "SPARSE" | "EMPTY" | "ERROR";
+    /** Title read from the detail page; distinct from the discovery-card title. */
+    extractedTitle?: string;
     extractedCompany?: string;
   };
   acquisitionAttempts?: AcquisitionAttempt[];

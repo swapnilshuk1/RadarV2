@@ -270,6 +270,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       
       return {
         ...httpRes,
+        extractedTitle: httpRes.extractedTitle,
         extractedCompany: httpRes.extractedCompany,
       };
     }
@@ -299,6 +300,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     ).first();
     const companyText = ((await companyLocator.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
     const extractedCompany = companyText.length > 0 ? companyText : undefined;
+    const titleText = ((await page.locator("h1.top-card-layout__title, h1.topcard__title, .job-details-jobs-unified-top-card__job-title, h1").first().textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+    const extractedTitle = titleText.length > 0 ? titleText : undefined;
 
     const trimmedText = rawText.trim();
     if (trimmedText.length === 0) {
@@ -310,6 +313,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         rawText: "",
         fetchDurationMs: Date.now() - t0,
         httpStatus: effectiveStatus,
+        extractedTitle,
         extractedCompany,
       };
     }
@@ -326,6 +330,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       fetchDurationMs: Date.now() - t0,
       httpStatus: effectiveStatus,
       quality: isSparse ? ("SPARSE" as const) : ("VALID" as const),
+      extractedTitle,
       extractedCompany,
     };
   } catch (err: any) {

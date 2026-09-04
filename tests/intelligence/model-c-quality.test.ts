@@ -298,4 +298,38 @@ describe("Model C Quality Architecture Tests", () => {
     expect(res.verdict).toBe("CONSIDER");
     expect(res.triggeredRuleIds).toContain("R-CONSIDER-CAREER-VALUE-PROTECTION");
   });
+
+  it("source-grounded specialist-domain gap constrains PURSUE to CONSIDER without changing the score", () => {
+    const baseline = DecisionPolicyEngine.evaluate(
+      dummyIdentity,
+      dummyCapability,
+      dummyOpportunity,
+      dummyCareer,
+      dummyLifestyle,
+      "Commercial & Marketing Leadership",
+      "Commercial & Marketing Leadership",
+      "Lead distressed debt acquisition, NPA portfolios, SARFAESI and ARC business development.",
+      true,
+      undefined,
+      undefined,
+      85,
+    );
+    const res = DecisionPolicyEngine.evaluate(
+      dummyIdentity,
+      { ...dummyCapability, missingCapabilities: ["Distressed Debt / ARC Operations [DOMAIN_FAMILIARITY]"] },
+      dummyOpportunity,
+      dummyCareer,
+      dummyLifestyle,
+      "Commercial & Marketing Leadership",
+      "Commercial & Marketing Leadership",
+      "Lead distressed debt acquisition, NPA portfolios, SARFAESI and ARC business development.",
+      true,
+      undefined,
+      undefined,
+      85,
+    );
+    expect(res.verdict).toBe("CONSIDER");
+    expect(res.qualityScore).toBe(baseline.qualityScore);
+    expect(res.triggeredRuleIds).toContain("POL-D-CONSIDER-SPECIALIST-DOMAIN-GAP");
+  });
 });

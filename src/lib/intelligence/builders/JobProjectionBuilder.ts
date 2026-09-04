@@ -139,7 +139,7 @@ export class JobProjectionBuilder {
     if (techKeywords.some(t => nameLower.includes(t))) {
       return "TECHNOLOGY_STACK";
     }
-    const domainKeywords = ["b2b", "d2c", "retail", "beauty", "fintech", "5g", "broadband", "mobility", "automotive", "fmcg"];
+    const domainKeywords = ["b2b", "d2c", "retail", "beauty", "fintech", "5g", "broadband", "mobility", "automotive", "fmcg", "distressed debt", "arc operations", "insolvency", "asset reconstruction"];
     if (domainKeywords.some(d => nameLower.includes(d))) {
       return "DOMAIN_FAMILIARITY";
     }
@@ -318,6 +318,23 @@ export class JobProjectionBuilder {
     }
 
     const compositional = SemanticResolutionEngine.extractCompositional(fullContext);
+    // Preserve explicit specialist operating domains. They remain a job-side
+    // requirement; they do not imply that a generally strong executive has
+    // demonstrated that specialist domain.
+    const specialistDomains = [
+      { name: "Distressed Debt / ARC Operations", pattern: /\b(?:distressed debt|non-performing assets?|\bnpa\b|asset reconstruction compan(?:y|ies)|\barc\b|sarfaesi|insolvency and bankruptcy code|\bibc\b)\b/i },
+      { name: "Merchandising / Category Inventory Operations", pattern: /\b(?:merchandising|category management|inventory planning|product sourcing)\b/i },
+    ];
+    for (const domain of specialistDomains) {
+      if (domain.pattern.test(fullContext)) {
+        capabilitiesMap.set(domain.name.toLowerCase(), {
+          name: domain.name,
+          tier: "DOMAIN_FAMILIARITY",
+          source: "explicit",
+          confidence: 0.90,
+        });
+      }
+    }
     if (capabilitiesMap.size === 0) {
       for (const evidence of compositional.evidenceList) {
         if (evidence.entityType !== "CAPABILITY" || evidence.negated || evidence.evidenceRelationship === "NON_SATISFYING") continue;

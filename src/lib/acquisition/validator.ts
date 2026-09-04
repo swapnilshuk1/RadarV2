@@ -21,6 +21,8 @@ export interface JobDocumentValidationInput {
   httpStatus?: number;
   contentType?: string | null;
   extractedTitle?: string;
+  /** Title extracted from the captured detail document, distinct from the listing title. */
+  documentTitle?: string;
   extractedCompany?: string;
   extractedLocation?: string;
   expectedTitle?: string;
@@ -56,9 +58,18 @@ const SCRIPT_PATTERNS = [
 
 function agreement(expected?: string, actual?: string): "MATCHED" | "MISMATCHED" | "UNKNOWN" {
   if (!expected || !actual) return "UNKNOWN";
-  const clean = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const clean = (value: string) => value.toLowerCase()
+    .replace(/\bvice president\b/g, "vp")
+    .replace(/[^a-z0-9]+/g, " ").trim();
+  const ignored = new Set(["a", "an", "and", "of", "the", "role", "job", "senior", "junior", "lead", "director", "vp", "vice", "president", "principal", "engineer", "engineering"]);
   const a = clean(expected), b = clean(actual);
-  return a === b || a.includes(b) || b.includes(a) ? "MATCHED" : "MISMATCHED";
+  if (a === b || a.includes(b) || b.includes(a)) return "MATCHED";
+  const left = new Set(a.split(" ").filter((token) => token.length > 1 && !ignored.has(token)));
+  const right = new Set(b.split(" ").filter((token) => token.length > 1 && !ignored.has(token)));
+  if (left.size === 0 || right.size === 0) return "UNKNOWN";
+  const shared = [...left].filter((token) => right.has(token)).length;
+  // A title conflict must be evidenced, not inferred from formatting variation.
+  return shared > 0 ? "MATCHED" : "MISMATCHED";
 }
 
 function invalid(input: JobDocumentValidationInput, detail: {
@@ -67,7 +78,7 @@ function invalid(input: JobDocumentValidationInput, detail: {
   wordCount?: number; boilerplateRatio?: number; scriptRatio?: number; quality?: AcquisitionQuality;
 }): ValidationResult {
   const text = detail.text || "";
-  const title = input.extractedTitle?.trim() || null;
+  const title = (input.documentTitle || input.extractedTitle)?.trim() || null;
   const company = input.extractedCompany?.trim() || null;
   const document: ValidatedJobDocument = {
     source: input.sourcePortal, sourceJobId: input.sourceJobId, canonicalUrl: input.url,
@@ -75,7 +86,7 @@ function invalid(input: JobDocumentValidationInput, detail: {
     transportState: detail.transportState, extractionState: detail.extractionState,
     usabilityState: "UNUSABLE", acquisitionQuality: detail.quality || "INVALID", title, company,
     location: input.extractedLocation?.trim() || null,
-    titleAgreement: agreement(input.expectedTitle, title || undefined),
+    titleAgreement: agreement(input.expectedTitle, input.documentTitle),
     companyAgreement: agreement(input.expectedCompany, company || undefined),
     substantiveWordCount: detail.wordCount || 0, substantiveCharacterCount: text.length,
     boilerplateRatio: detail.boilerplateRatio || 0, scriptRatio: detail.scriptRatio || 0,
@@ -123,6 +134,12 @@ export function validateJobDocument(input: JobDocumentValidationInput): Validati
     transportState: "SUCCEEDED", extractionState: "FAILED", failureClass: "PARTIAL_CONTENT", retryable: true,
     text, wordCount: words.length, boilerplateRatio, scriptRatio, quality: "MINIMAL",
   });
+
+  const titleAgreement = agreement(input.expectedTitle, input.documentTitle);
+  if (titleAgreement === "MISMATCHED") return invalid(input, {
+    transportState: "SUCCEEDED", extractionState: "FAILED", failureClass: "LISTING_DOCUMENT_IDENTITY_MISMATCH", retryable: true,
+    text, wordCount: words.length, boilerplateRatio, scriptRatio,
+  });
   // A portal card/snippet is not a sparse job document. It is incomplete
   // acquisition and must be recovered rather than evaluated as a real JD.
   if (/\b(search card|snippet|preview|short summary|too short)\b/i.test(text)) return invalid(input, {
@@ -132,7 +149,7 @@ export function validateJobDocument(input: JobDocumentValidationInput): Validati
 
   const quality: AcquisitionQuality = text.length >= 500 ? "COMPLETE" : text.length >= 200 ? "PARTIAL" : "MINIMAL";
   const usabilityState: DocumentUsabilityState = quality === "MINIMAL" ? "GENUINELY_SPARSE" : "SUBSTANTIVE";
-  const title = input.extractedTitle?.trim() || null;
+  const title = (input.documentTitle || input.extractedTitle)?.trim() || null;
   const company = input.extractedCompany?.trim() || null;
   const confidence: ValidationConfidence = quality === "COMPLETE" && title && company ? "HIGH" : quality === "MINIMAL" ? "LOW" : "MEDIUM";
   const document: ValidatedJobDocument = {
@@ -140,7 +157,7 @@ export function validateJobDocument(input: JobDocumentValidationInput): Validati
     finalUrl: input.finalUrl || input.url, contentType: input.contentType || null,
     transportState: "SUCCEEDED", extractionState: "EXTRACTED", usabilityState, acquisitionQuality: quality,
     title, company, location: input.extractedLocation?.trim() || null,
-    titleAgreement: agreement(input.expectedTitle, title || undefined), companyAgreement: agreement(input.expectedCompany, company || undefined),
+    titleAgreement, companyAgreement: agreement(input.expectedCompany, company || undefined),
     substantiveWordCount: words.length, substantiveCharacterCount: text.length, boilerplateRatio, scriptRatio,
     failureClass: quality === "MINIMAL" ? "PARTIAL_CONTENT" : null, retryable: quality === "MINIMAL",
     extractedText: text, provenance: input.provenance || "HTTP",
@@ -154,11 +171,11 @@ export function validateJobDocument(input: JobDocumentValidationInput): Validati
 export class ResponseValidator {
   static validate(payload: {
     html: string; url: string; sourcePortal: string; httpStatus?: number; contentType?: string | null; finalUrl?: string;
-    extractedTitle?: string; extractedCompany?: string; extractedDescription?: string; extractedLocation?: string;
+    extractedTitle?: string; documentTitle?: string; extractedCompany?: string; extractedDescription?: string; extractedLocation?: string;
   }): ValidationResult {
     return validateJobDocument({ html: payload.html, extractedText: payload.extractedDescription, url: payload.url,
       finalUrl: payload.finalUrl, sourcePortal: payload.sourcePortal, httpStatus: payload.httpStatus,
-      contentType: payload.contentType, extractedTitle: payload.extractedTitle, extractedCompany: payload.extractedCompany,
+      contentType: payload.contentType, extractedTitle: payload.extractedTitle, documentTitle: payload.documentTitle, expectedTitle: payload.extractedTitle, extractedCompany: payload.extractedCompany,
       extractedLocation: payload.extractedLocation });
   }
 }

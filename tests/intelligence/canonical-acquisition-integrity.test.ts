@@ -113,6 +113,36 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
       expect(res.quality).toBe("INVALID");
       expect(res.failureClass).toBe("REMOVED_404");
     });
+
+    it("rejects a substantive detail document whose extracted title conflicts with the listing", () => {
+      const res = ResponseValidator.validate({
+        html: "<div>job detail</div>",
+        url: "https://example.com/job/identity-conflict",
+        sourcePortal: "Indeed",
+        extractedTitle: "Principal AI Engineer, Director",
+        documentTitle: "Principal Engineer, Java, VP",
+        extractedCompany: "NatWest",
+        extractedDescription: "Java Spring Boot microservices Kubernetes architecture delivery ownership ".repeat(18),
+      });
+
+      expect(res.isValid).toBe(false);
+      expect(res.failureClass).toBe("LISTING_DOCUMENT_IDENTITY_MISMATCH");
+      expect(res.document.titleAgreement).toBe("MISMATCHED");
+    });
+
+    it("keeps an absent document title as UNKNOWN rather than inventing a mismatch", () => {
+      const res = ResponseValidator.validate({
+        html: "<div>job detail</div>",
+        url: "https://example.com/job/no-document-title",
+        sourcePortal: "Indeed",
+        extractedTitle: "VP Growth",
+        extractedCompany: "Acme",
+        extractedDescription: "Own commercial growth, revenue operations, client strategy and executive leadership. ".repeat(12),
+      });
+
+      expect(res.isValid).toBe(true);
+      expect(res.document.titleAgreement).toBe("UNKNOWN");
+    });
   });
 
   describe("Category Taxonomy - Anti-Heuristic Verification", () => {

@@ -30,19 +30,35 @@ const isRemoteCompatible = (value: string, projection?: JobProjection) =>
   projection?.workModel === "REMOTE" || projection?.workModel === "HYBRID" || REMOTE_TOKENS.some((token) => normalize(value).includes(token));
 
 /** Explicit JD requirements outrank broad lexical role-family matches. */
-function hasExplicitJuniorExperienceRequirement(text: string): boolean {
+function explicitExperienceRange(text: string): { min: number; max: number } | null {
   const ranges = [
     // "1–3 years of sales experience" and equivalent role-qualified wording.
-    /\b(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\s*(?:years?|yrs?)\s+(?:of\s+)?(?:(?:[a-z&/-]+\s+){0,4})experience\b/i,
+    /\b(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\s*(?:years?|yrs?)\b(?:[^.]{0,70}?)\bexperience\b/i,
     // "Experience: 2–3 Years" is a common portal/JD field layout.
     /(?:\bexperience|(?<=month)experience)(?:\s+(?:required|range))?\s*:?\s*(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\s*(?:years?|yrs?)(?:\b|(?=key\b|responsibilities\b|location\b|salary\b|required\b))/i,
   ];
   for (const range of ranges) {
     const match = text.match(range);
-    if (match && Number(match[2]) <= 7) return true;
+    if (match) return { min: Number(match[1]), max: Number(match[2]) };
   }
   const maximum = text.match(/\b(?:up\s+to|maximum\s+of)\s*(\d{1,2})\s*(?:years?|yrs?)\s+(?:of\s+)?(?:(?:[a-z&/-]+\s+){0,4})experience\b/i);
-  return Boolean(maximum && Number(maximum[1]) <= 7);
+  return maximum ? { min: 0, max: Number(maximum[1]) } : null;
+}
+
+/**
+ * The immutable EligibilitySpec expresses the target executive range. These
+ * are policy floors for the target level, not a mutable read of a profile at
+ * evaluation time. A JD whose explicit maximum is below the target floor is
+ * a contradiction even when its title happens to contain an executive word.
+ */
+function minimumTargetExperienceYears(seniorityRange: readonly string[]): number | null {
+  const text = seniorityRange.join(" ").toLowerCase();
+  if (/chief|c-suite|c suite/.test(text)) return 15;
+  if (/\bevp\b|executive vice president|\bsvp\b|senior vice president/.test(text)) return 14;
+  if (/\bvp\b|vice president/.test(text)) return 12;
+  if (/director/.test(text)) return 9;
+  if (/head|lead/.test(text)) return 8;
+  return null;
 }
 
 function resolveLocationPolicy(
@@ -94,11 +110,13 @@ export function evaluateAttentionGate(version: OpportunityVersion, criteria: Sea
   const junior = hasAny(title, ["intern", "assistant", "associate", "manager", "analyst", "engineer", "developer"]);
   const executive = hasAny(title, ["chief", "vice president", "vp", "director", "head", "svp", "evp"]);
   if (spec.seniorityRange.length && junior && !executive) return reject("SENIORITY_CONTRADICTION", `Title '${title}' is materially below the configured executive range.`);
-  if (spec.seniorityRange.length && hasExplicitJuniorExperienceRequirement(version.rawContent || "")) {
-    return reject("SENIORITY_CONTRADICTION", "The job description explicitly requires experience below the configured executive range.");
+  const requiredExperience = minimumTargetExperienceYears(spec.seniorityRange);
+  const jobExperience = explicitExperienceRange(version.rawContent || "");
+  if (requiredExperience !== null && jobExperience && jobExperience.max < requiredExperience) {
+    return reject("SENIORITY_CONTRADICTION", `The job description explicitly caps experience at ${jobExperience.max} years, below the configured ${requiredExperience}+ year executive range.`);
   }
   const wantedCommercial = hasAny([...spec.functions, ...spec.roleFamilies].join(" "), ["marketing", "growth", "commercial", "revenue", "sales"]);
-  const explicitTechnical = hasAny(title, ["technology", "engineering", "software", "finance", "human resources", "hr", "audit", "civil", "insurance"]);
+  const explicitTechnical = hasAny(title, ["technology", "engineering", "engineer", "software", "java", "microservices", "devops", "architecture", "ai engineer", "finance", "human resources", "hr", "audit", "civil", "insurance"]);
   if (wantedCommercial && explicitTechnical && !hasAny(title, ["digital transformation", "strategy", "client experience", "client services"])) return reject("FUNCTION_CONTRADICTION", `Title '${title}' states an explicitly incompatible function.`);
   if (includesConcept(roleText, spec.roleFamilies) || includesConcept(roleText, spec.functions)) {
     matchedConcepts.push(...[...spec.roleFamilies, ...spec.functions].filter((concept) => includesConcept(roleText, [concept])));

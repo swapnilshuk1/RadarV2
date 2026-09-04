@@ -1100,6 +1100,7 @@ async function processUnit(
             sourcePortal: unit.portal,
             httpStatus: detail.httpStatus,
             extractedTitle: feedCard.title,
+            documentTitle: detail.extractedTitle,
             extractedCompany: feedCard.company,
             extractedDescription: detail.rawText
           });
@@ -1227,6 +1228,7 @@ async function processUnit(
               sourceJobId: resolvedIdentity.sourceJobId,
               canonicalUrl: feedCard.detailUrl,
               jobTitle: feedCard.title,
+              documentTitle: detail.extractedTitle,
               companyName: feedCard.company,
               location: feedCard.location || "",
               employmentType: (detail as any)?.employmentType || null,
