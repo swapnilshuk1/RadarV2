@@ -1171,6 +1171,7 @@ async function processUnit(
 
           detailedCard = {
             ...feedCard,
+            canonicalJobId: resolvedIdentity.canonicalJobId,
             company: effectiveCompany,
             snapshotSchemaVersion: SNAPSHOT_SCHEMA_VERSION,
             scraperVersion: SCRAPER_VERSION,

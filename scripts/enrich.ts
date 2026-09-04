@@ -7,6 +7,7 @@ import { writeExtraction, readExtractionIfFresh, writeLiveScraped, collectRecord
 import { invalidateEngineCache } from "../src/lib/intelligence/engine";
 import { EXTRACTOR_VERSION } from "./scraper/versions";
 import type { DetailedCard } from "./scraper/types";
+import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
 import { makeLogger } from "./scraper/utils/logger";
 import { CONFIG } from "./scraper/config";
 
@@ -95,9 +96,68 @@ async function processJob(
       writeExtraction(filteredCardHash(detailedCard), extraction);
     }
     
+    // Resolve authoritative canonical identity following strict precedence:
+    // 1. Persisted admitted canonical identity from acquisition lineage / ledger
+    // 2. Explicit card.canonicalJobId on the payload
+    // 3. Deterministic resolver for genuinely unbound/new enrichment
+    // 4. cardHash-derived o_... ONLY when no canonical identity exists
+    let resolvedCanonicalId: string | undefined;
+    const activeDb = queue.getDatabaseAdapter();
+
+    // 1. Persisted admitted lineage/ledger query
+    try {
+      const lineageRow = await activeDb.one<{ canonical_job_id?: string }>(
+        `SELECT COALESCE(ail.canonical_job_id, al.canonical_job_id) AS canonical_job_id
+         FROM acquisition_ingestion_lineage ail
+         LEFT JOIN acquisition_ledger al ON al.id = ail.acquisition_ledger_id
+         WHERE (ail.card_id = ? OR ail.card_id LIKE '%' || ?)
+           AND COALESCE(ail.canonical_job_id, al.canonical_job_id) IS NOT NULL
+         ORDER BY ail.ingestion_attempt DESC LIMIT 1`,
+        [job.id, job.job_hash]
+      );
+      if (lineageRow?.canonical_job_id) {
+        resolvedCanonicalId = lineageRow.canonical_job_id;
+      }
+    } catch {
+      // Table may not exist in minimal environments
+    }
+
+    if (!resolvedCanonicalId) {
+      try {
+        const ledgerRow = await activeDb.one<{ canonical_job_id?: string }>(
+          `SELECT canonical_job_id FROM acquisition_ledger 
+           WHERE (id = ? OR canonical_job_id = ? OR source_job_id = ?) 
+             AND canonical_job_id IS NOT NULL
+           LIMIT 1`,
+          [job.id, detailedCard.canonicalJobId ?? "", (detailedCard as any).id ?? (detailedCard as any).jobId ?? ""]
+        );
+        if (ledgerRow?.canonical_job_id) {
+          resolvedCanonicalId = ledgerRow.canonical_job_id;
+        }
+      } catch {}
+    }
+
+    // 2. Explicit card.canonicalJobId on the payload
+    if (!resolvedCanonicalId && detailedCard.canonicalJobId) {
+      resolvedCanonicalId = detailedCard.canonicalJobId;
+    }
+
+    // 3. Deterministic resolver for genuinely unbound/new enrichment
+    if (!resolvedCanonicalId && detailedCard.portal && detailedCard.detailUrl) {
+      const resolved = resolveCanonicalIdentity({
+        portal: detailedCard.portal,
+        url: detailedCard.detailUrl,
+        title: detailedCard.title,
+        companyName: detailedCard.company
+      });
+      if (resolved?.canonicalJobId) {
+        resolvedCanonicalId = resolved.canonicalJobId;
+      }
+    }
+
     // 2. Ingest into SQLite
     const exStr = JSON.stringify(extraction);
-    const report = await ingestIntoSqlite(detailedCard, exStr, EXTRACTOR_VERSION, true, deps?.repos);
+    const report = await ingestIntoSqlite(detailedCard, exStr, EXTRACTOR_VERSION, true, deps?.repos, resolvedCanonicalId);
     
     if (report.warnings.length > 0) {
       log(`Ingestion warnings for ${job.id}: ${report.warnings.join(", ")}`, "warn");

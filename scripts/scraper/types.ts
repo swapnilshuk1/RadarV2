@@ -218,6 +218,7 @@ export interface FeedCard {
 
 // DetailedCard replaces JobSnapshot as the payload post-acquisition
 export interface DetailedCard extends FeedCard {
+  canonicalJobId?: string;
   snapshotSchemaVersion: string;
   scraperVersion: string;
   acquisitionRoute?: AcquisitionRoute;

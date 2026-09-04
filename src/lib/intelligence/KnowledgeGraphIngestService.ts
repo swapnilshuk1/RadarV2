@@ -8,7 +8,7 @@ export class KnowledgeGraphIngestService {
    * Persists a validated Knowledge Graph into the canonical SQLite stores.
    * Handles idempotency, duplicate detection, and lifecycle supersession.
    */
-  public async ingest(graph: KnowledgeGraph, initialReport: KnowledgeGraphBuildReport): Promise<KnowledgeGraphBuildReport> {
+  public async ingest(graph: KnowledgeGraph, initialReport: KnowledgeGraphBuildReport, resolvedCanonicalId?: string): Promise<KnowledgeGraphBuildReport> {
     const report = { ...initialReport };
 
     // 1. Source
@@ -29,14 +29,38 @@ export class KnowledgeGraphIngestService {
     }
 
     // 3. Opportunity
-    const existingOps = await this.repos.opportunities.findOpportunities({ companyId: graph.company.id });
-    const existingOp = existingOps.find(o => o.fingerprint === graph.opportunity.fingerprint);
-    if (existingOp) {
+    if (resolvedCanonicalId) {
+      // FAIL-CLOSED INVARIANT:
+      // When an authoritative canonical ID was explicitly supplied from acquisition admission,
+      // it MUST already exist in the opportunities table. If it does not exist, fail closed
+      // immediately. It MUST NEVER silently create an o_... opportunity.
+      const existingOp = await this.repos.opportunities.getOpportunity(resolvedCanonicalId);
+      if (!existingOp) {
+        throw new Error(`Canonical opportunity ${resolvedCanonicalId} was explicitly supplied but does not exist in repository`);
+      }
+
       report.opportunitiesCreated = 0;
       graph.opportunity.id = existingOp.id;
-      // Inherit the lifecycle if it was already verified
+      graph.opportunity.companyId = existingOp.companyId;
+      // Lifecycle rule:
+      // Verified -> Verified (never demoted)
+      // Archived / Discovered -> Normalized
       if (existingOp.lifecycle === "Verified") {
         graph.opportunity.lifecycle = "Verified";
+      } else {
+        graph.opportunity.lifecycle = "Normalized";
+      }
+    } else {
+      // Legacy unbounded fallback: match by company + fingerprint
+      const existingOps = await this.repos.opportunities.findOpportunities({ companyId: graph.company.id });
+      const existingOp = existingOps.find(o => o.fingerprint === graph.opportunity.fingerprint);
+      if (existingOp) {
+        report.opportunitiesCreated = 0;
+        graph.opportunity.id = existingOp.id;
+        // Inherit the lifecycle if it was already verified
+        if (existingOp.lifecycle === "Verified") {
+          graph.opportunity.lifecycle = "Verified";
+        }
       }
     }
     await this.repos.opportunities.mergeOpportunity(graph.opportunity);

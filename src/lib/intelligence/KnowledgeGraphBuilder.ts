@@ -37,7 +37,8 @@ export class KnowledgeGraphBuilder {
     card: DetailedCard, 
     extraction: ExtractionResult,
     runId: string,
-    extractorVersion: string
+    extractorVersion: string,
+    resolvedCanonicalId?: string
   ): { graph: KnowledgeGraph, report: KnowledgeGraphBuildReport } {
     
     const warnings: string[] = [];
@@ -75,14 +76,17 @@ export class KnowledgeGraphBuilder {
       provenance
     };
 
-    // 3. Opportunity (Identity: Company + Canonical Title + Employment Type + Location + Fingerprint)
+    // 3. Opportunity (Identity: Admitted Canonical ID or Deterministic Hash fallback)
     const canonicalTitle = card.title || "Unknown Role";
     const employmentType = "Full-Time"; // Default for now
     const location = card.location || "Unknown";
-    // For identity, we use the scraper's stable fingerprint hash
-    const fingerprint = card.cardHash; 
-    
-    const opportunityId = "o_" + this.deterministicHash(`${companyId}:${canonicalTitle}:${employmentType}:${location}:${fingerprint}`);
+    // Mode A (Authoritative Canonical Identity Supplied):
+    // Bind opportunity directly to the admitted canonical identity so that enrichment
+    // updates the admitted opportunity in place, without creating duplicate o_... records.
+    // Mode B (Unbounded / Legacy Standalone):
+    // Fall back to cardHash and deterministic o_... hash for standalone test compatibility.
+    const fingerprint = resolvedCanonicalId || card.cardHash; 
+    const opportunityId = resolvedCanonicalId || ("o_" + this.deterministicHash(`${companyId}:${canonicalTitle}:${employmentType}:${location}:${fingerprint}`));
 
     const opportunity: Opportunity = {
       id: opportunityId,
