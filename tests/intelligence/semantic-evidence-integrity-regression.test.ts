@@ -74,6 +74,39 @@ describe("Semantic Evidence Integrity & Boundary Invariants", () => {
       expect(operatingLevelDim?.importance).toBe("Core");
     });
 
+    it("grounds explicit end-to-end business P&L ownership as commercial scope", () => {
+      const projection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "futureleap-commercial-scope-regression",
+        role: "Business Head",
+        rawDescription: `
+          Own the end-to-end P&L, revenue, profitability, margins, and overall
+          business performance. Lead the D2C business, category strategy,
+          sourcing, merchandising, inventory, supply chain, and operations.
+        `,
+      });
+
+      expect(projection.commercialScope.value).toBe("ENTERPRISE");
+      expect(projection.commercialScope.evidenceIds).toContain("cs_ent_direct_business_commercial_ownership");
+      expect(projection.dimensions?.find((dimension) => dimension.key === "commercialScope")?.jdEvidence.value).toBe("ENTERPRISE");
+    });
+
+    it("does not convert generic commercial objectives into P&L authority", () => {
+      const projection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "generic-commercial-language-regression",
+        role: "Marketing Lead",
+        rawDescription: `
+          Partner with sales to improve revenue outcomes and profitability.
+          Support margin improvement through campaign optimization and report
+          commercial metrics to the business head.
+        `,
+      });
+
+      expect(projection.commercialScope.value).toBe("NONE");
+      expect(projection.commercialScope.evidenceIds).toEqual(["cs_none"]);
+    });
+
     it("satisfies EvidenceRichnessCalculator as SUFFICIENT", () => {
       const projection = JobProjectionBuilder.build(richOpportunity);
       const richness = EvidenceRichnessCalculator.calculate({ dimensions: projection.dimensions });

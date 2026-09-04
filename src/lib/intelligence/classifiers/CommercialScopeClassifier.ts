@@ -19,7 +19,7 @@ export class CommercialScopeClassifier {
     // boundary before classifying commercial scope as ENTERPRISE.
     const enterpriseKeywords = [
       "enterprise budget", "capital allocation", "annual budget",
-      "revenue outcomes", "corporate finance", "full p&l"
+      "corporate finance", "full p&l"
     ];
 
     const portfolioKeywords = [
@@ -37,10 +37,25 @@ export class CommercialScopeClassifier {
 
     const matchesEnterprise = enterpriseKeywords.filter(kw => hasWord(textLower, kw));
     const hasEnterprisePnl = /\b(?:enterprise|company|corporate|global|full)(?:[- ]wide)?\s+(?:p&l|profit\s+and\s+loss)\b/i.test(textLower);
-    if (matchesEnterprise.length >= 1 || hasEnterprisePnl) {
+    // Direct ownership of the end-to-end business P&L is substantive scope
+    // evidence even when the JD does not use the exact phrase "enterprise
+    // P&L". Keep this distinct from generic revenue or margin language: the
+    // latter can describe an objective without granting commercial authority.
+    const hasDirectPnlOwnership = /\b(?:own(?:s|ed|ership)?(?:\s+of)?|accountable\s+for|responsib(?:le|ility)\s+for|lead(?:s|ing)?)\s+(?:the\s+)?(?:(?:end[- ]to[- ]end|full|overall)\s+)?(?:p\s*&\s*l|profit\s+and\s+loss)\b/i.test(textLower);
+    const hasDirectCommercialOwnership = /\b(?:own(?:s|ed|ership)?(?:\s+of)?|accountable\s+for|responsib(?:le|ility)\s+for)\s+(?:the\s+)?(?:revenue|profitability|margins?|gross\s+margin)\b/i.test(textLower);
+    const hasBusinessBoundary = /\b(?:end[- ]to[- ]end|overall\s+business|business\s+performance|entire\s+business|company(?:[- ]wide)?|enterprise(?:[- ]wide)?|revenue\s*,?\s*profitability\s*,?\s*(?:margins?|margin))\b/i.test(textLower);
+    if (matchesEnterprise.length >= 1 || hasEnterprisePnl || ((hasDirectPnlOwnership || hasDirectCommercialOwnership) && hasBusinessBoundary)) {
       if (hasEnterprisePnl) matchesEnterprise.push("enterprise_p&l");
+      if ((hasDirectPnlOwnership || hasDirectCommercialOwnership) && hasBusinessBoundary) matchesEnterprise.push("direct_business_commercial_ownership");
       matchesEnterprise.forEach(m => evidenceIds.push(`cs_ent_${m.replace(/\s+/g, "_")}`));
       return { value: "ENTERPRISE", evidenceIds, confidence: 0.9 };
+    }
+
+    // A direct P&L owner has a material commercial remit even where the
+    // document does not establish that it spans the whole company. Portfolio
+    // scope is truthful and deliberately weaker than enterprise scope.
+    if (hasDirectPnlOwnership || hasDirectCommercialOwnership) {
+      return { value: "PORTFOLIO", evidenceIds: ["cs_port_direct_commercial_ownership"], confidence: 0.85 };
     }
 
     const matchesPortfolio = portfolioKeywords.filter(kw => hasWord(textLower, kw));
