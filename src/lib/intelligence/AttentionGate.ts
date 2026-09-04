@@ -29,6 +29,14 @@ const isNcr = (value: string) => NCR_TOKENS.some((token) => normalize(value).inc
 const isRemoteCompatible = (value: string, projection?: JobProjection) =>
   projection?.workModel === "REMOTE" || projection?.workModel === "HYBRID" || REMOTE_TOKENS.some((token) => normalize(value).includes(token));
 
+/** Explicit JD requirements outrank broad lexical role-family matches. */
+function hasExplicitJuniorExperienceRequirement(text: string): boolean {
+  const range = text.match(/\b(\d{1,2})\s*(?:-|–|to)\s*(\d{1,2})\s*years?\s+(?:of\s+)?experience\b/i);
+  if (range) return Number(range[2]) <= 7;
+  const maximum = text.match(/\b(?:up\s+to|maximum\s+of)\s*(\d{1,2})\s*years?\s+(?:of\s+)?experience\b/i);
+  return Boolean(maximum && Number(maximum[1]) <= 7);
+}
+
 function resolveLocationPolicy(
   version: OpportunityVersion,
   projection: JobProjection | undefined,
@@ -78,6 +86,9 @@ export function evaluateAttentionGate(version: OpportunityVersion, criteria: Sea
   const junior = hasAny(title, ["intern", "assistant", "associate", "manager", "analyst", "engineer", "developer"]);
   const executive = hasAny(title, ["chief", "vice president", "vp", "director", "head", "svp", "evp"]);
   if (spec.seniorityRange.length && junior && !executive) return reject("SENIORITY_CONTRADICTION", `Title '${title}' is materially below the configured executive range.`);
+  if (spec.seniorityRange.length && hasExplicitJuniorExperienceRequirement(version.rawContent || "")) {
+    return reject("SENIORITY_CONTRADICTION", "The job description explicitly requires experience below the configured executive range.");
+  }
   const wantedCommercial = hasAny([...spec.functions, ...spec.roleFamilies].join(" "), ["marketing", "growth", "commercial", "revenue", "sales"]);
   const explicitTechnical = hasAny(title, ["technology", "engineering", "software", "finance", "human resources", "hr", "audit", "civil", "insurance"]);
   if (wantedCommercial && explicitTechnical && !hasAny(title, ["digital transformation", "strategy", "client experience", "client services"])) return reject("FUNCTION_CONTRADICTION", `Title '${title}' states an explicitly incompatible function.`);

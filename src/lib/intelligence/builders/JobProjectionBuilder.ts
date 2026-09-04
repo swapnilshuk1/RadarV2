@@ -86,7 +86,10 @@ export class JobProjectionBuilder {
     if (this.testKeyword(text, "founder") || this.testKeyword(text, "first hire") || this.testKeyword(text, "professionalize") || this.testKeyword(text, "early stage")) {
       return "PROFESSIONALIZE_FOUNDER_COMPANY";
     }
-    if (this.testKeyword(text, "acquisition") || this.testKeyword(text, "merger") || this.testKeyword(text, "post-merger") || this.testKeyword(text, "m&a")) {
+    // Buying assets, sourcing debt, or raising capital is not evidence that
+    // the role owns post-merger integration. Require explicit integration or
+    // synergy language before emitting that factual organizational intent.
+    if (this.testKeyword(text, "post-merger") || this.testKeyword(text, "acquisition integration") || this.testKeyword(text, "m&a integration") || this.testKeyword(text, "synergy")) {
       return "INTEGRATE_ACQUISITION";
     }
     if (this.testKeyword(text, "international") || this.testKeyword(text, "asean") || this.testKeyword(text, "global expansion") || this.testKeyword(text, "new markets")) {

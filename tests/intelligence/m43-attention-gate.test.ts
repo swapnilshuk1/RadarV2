@@ -165,6 +165,15 @@ describe("Phase M4.3: Attention Gate", () => {
       expect(res.decision).toBe("NOT_CANDIDATE");
     });
 
+    test("5d. Explicit junior experience requirement rejects a lexical family match before evaluation", () => {
+      const res = evaluateAttentionGate(
+        { ...baseVersion, jobTitle: "B2B Growth & Onboarding Executive", rawContent: "Sales executive role requiring 1–3 years of experience in logistics sales." },
+        { ...baseCriteria, targetRoles: ["Growth"], targetSeniority: ["VP"] },
+      );
+      expect(res).toMatchObject({ decision: "NOT_CANDIDATE", eligibility: "INELIGIBLE" });
+      expect(res.reasonCodes).toContain("SENIORITY_CONTRADICTION");
+    });
+
     test("6. Employment-type mismatch -> NOT_CANDIDATE", () => {
       const res = evaluateAttentionGate(baseVersion, { ...baseCriteria, targetEmploymentTypes: ["Contract", "Part-time"] });
       expect(res.decision).toBe("NOT_CANDIDATE");
