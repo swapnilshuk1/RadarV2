@@ -14,29 +14,18 @@
  */
 
 import { getDatabaseAdapter, type DatabaseAdapter } from "../../data/database";
-import { TenantIsolationError, type AuthorizedPersonScope } from "./auth";
+import { PERMISSIONS, TenantIsolationError, type AuthorizedPersonScope } from "./auth";
 import type { Permission } from "./auth";
 export type { AuthorizedPersonScope } from "./auth";
 
-const KNOWN_PERMISSIONS = [
-  "read:evaluation",
-  "write:evaluation",
-  "manage:search_plan",
-  "run:scraper",
-  "manage:credentials",
-  "read:credentials",
-  "read:person",
-  "write:person",
-] as const satisfies readonly Permission[];
-
-const ADMIN_PERMISSIONS: Permission[] = [...KNOWN_PERMISSIONS];
+const ADMIN_PERMISSIONS: Permission[] = [...PERMISSIONS];
 
 function parseStoredPermissions(serialized: string | null | undefined): Permission[] {
   try {
     const parsed: unknown = JSON.parse(serialized || "[]");
     if (!Array.isArray(parsed)) return [];
     return [...new Set(parsed.filter((permission): permission is Permission =>
-      typeof permission === "string" && (KNOWN_PERMISSIONS as readonly string[]).includes(permission)
+      typeof permission === "string" && (PERMISSIONS as readonly string[]).includes(permission)
     ))];
   } catch {
     return [];

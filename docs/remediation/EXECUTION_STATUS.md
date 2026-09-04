@@ -10,9 +10,19 @@ Baseline:
 - Current branch head — repaired Gate 0b test fixtures so evaluated-output assertions establish candidate, opportunity, and referential prerequisites.
 
 ## Current
-- remediation ID: Gate 1 / Remediation 2 — authorization capability non-escalation
-- branch: `remediation/01-auth-permission-non-escalation`
-- reproduction status: confirmed and repaired. The non-admin resolver branch constructed `effectivePermissions` with unconditional `run:scraper` and `read:credentials`; it now preserves normalized stored grants. `manage:search_plan` remains an explicit scrape-entry policy only, not a capability grant.
+- remediation ID: Gate 1 / Remediation 3 — identity and authority hardening
+- branch: `remediation/02-identity-authority-hardening`
+- candidate authority: confirmed and repaired. Worker and context materialization now produce `NOT_EVALUABLE` with no advisory score or verdict when the authoritative candidate projection is absent.
+- evidence ownership: confirmed and repaired. Text-hash reuse is permitted only for the same person; identical content never transfers a candidate-owned evidence graph.
+- OAuth scope: confirmed and repaired. The callback provisions person, user, active membership, tenant scope, and OAuth link transactionally before session creation.
+- sensitive endpoints: run events resolve canonical run ownership before reading artifacts; process-local `live-scraped.json` is no longer served; corpus regeneration and status are admin-only.
+
+## Storage architecture verification
+- Large payload backend: BlobStore. Acquisition writes `snapshots/<cardHash>.json` before enqueueing enrichment; workers retrieve it by `payload_key`.
+- Queue metadata backend: Turso `enrichment_jobs`, containing `payload_key`, snapshot reference, lifecycle, and provenance metadata—not aggregate snapshots or raw browser HTML.
+- Canonical readable JD backend: `opportunity_versions.raw_content`, which stores extracted/readable opportunity text or normalized structured source used for evaluation; PDF/raw source material uses `source_payload_key` in BlobStore.
+- live-scraped.json status: LEGACY FILE RETAINED BUT NO PRODUCTION READERS. It is not a serving or evaluation input.
+- Artifact retention/cleanup: successful enrichment deletes the staged payload after canonical persistence; terminal artifacts are also eligible for bounded retention cleanup only when no active job shares the key.
 
 ## Blocked / Requires Decision
 - This terminal integration does not retain final output/exit status for nested `npm run certify` or `npm run build` child processes. An external run is required to distinguish an application hang from the runner defect.

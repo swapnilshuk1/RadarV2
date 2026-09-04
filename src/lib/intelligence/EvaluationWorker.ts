@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import { AuthContext, authorizePersonScope, type AuthorizedPersonScope } from "@/lib/security/auth";
 import { runEngineSingleIntrinsic } from "./engine";
-import { validateCandidateProjection, DEFAULT_CANDIDATE_PROJECTION } from "../domain/candidate_projection";
+import { validateCandidateProjection } from "../domain/candidate_projection";
 import { TenantScopedPersonStore } from "@/data/sqlite/repositories/TenantScopedPersonStore";
 import { validateEvaluationConsistency } from "@/lib/domain/evaluation_fingerprint";
 import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
@@ -306,7 +306,53 @@ export class EvaluationWorker {
       };
       const personStore = new TenantScopedPersonStore(this.db, scope);
       const rawProjection = await personStore.getLatestProjection(job.personId);
-      const projection = rawProjection || DEFAULT_CANDIDATE_PROJECTION;
+      if (!rawProjection) {
+        // A missing profile is a domain state, not permission to evaluate a
+        // synthetic executive. Persist an explicitly non-advisory result.
+        const unavailable = buildCanonicalUnavailablePayload(
+          oppSource.jobHash || job.canonicalJobId,
+          "NOT_EVALUABLE",
+          context,
+          job.canonicalJobId,
+          job.opportunityVersion,
+          new Date().toISOString(),
+        );
+        const materialized = materializeCanonicalPayload(unavailable);
+        validateEvaluationConsistency(materialized);
+        return await this.db.transaction<WorkerProcessingResult>(async (tx) => {
+          const leaseCheck = await tx.one<{ id: string }>(
+            `SELECT id FROM evaluation_jobs WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
+            [job.id, this.workerId, job.leaseToken]
+          );
+          if (!leaseCheck) return { status: "stale_lease_lost", jobId: job.id, error: "Lease token was lost or replaced before completion" };
+
+          await tx.execute(
+            `INSERT INTO materialized_evaluations (
+               id, tenant_id, person_id, canonical_job_id, opportunity_version,
+               evaluation_context_fingerprint, evaluation_state, decision, quality_score,
+               rationale, evidence_ids, evaluation_json, vetoed, materialized_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP)
+             ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+             DO UPDATE SET evaluation_state = EXCLUDED.evaluation_state,
+                           decision = EXCLUDED.decision, quality_score = EXCLUDED.quality_score,
+                           rationale = EXCLUDED.rationale, evidence_ids = EXCLUDED.evidence_ids,
+                           evaluation_json = EXCLUDED.evaluation_json, vetoed = EXCLUDED.vetoed,
+                           materialized_at = CURRENT_TIMESTAMP`,
+            [materialized.id, materialized.tenantId, materialized.personId,
+             materialized.canonicalJobId, materialized.opportunityVersion,
+             materialized.evaluationContextFingerprint, materialized.evaluationState,
+             materialized.rationale, JSON.stringify(materialized.evidenceIds), materialized.evaluationJson]
+          );
+          const complete = await tx.execute(
+            `UPDATE evaluation_jobs SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
+            [job.id, this.workerId, job.leaseToken]
+          );
+          if (complete.rowsAffected === 0) return { status: "stale_lease_lost", jobId: job.id, error: "Lease token was lost or replaced during completion" };
+          return { status: "completed", jobId: job.id };
+        });
+      }
+      const projection = rawProjection;
 
       // 2. CandidateProjection integrity verification
       const validation = validateCandidateProjection(projection);

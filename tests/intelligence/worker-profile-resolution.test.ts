@@ -278,4 +278,18 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
 
     staticProfileSpy.mockRestore();
   });
+
+  test("TEST 8: missing authoritative projection materializes NOT_EVALUABLE without a score or verdict", async () => {
+    sqliteDb.exec("DELETE FROM career_profiles WHERE person_id = 'user_alpha'");
+    const job = seedEvaluationContextAndJob("job_missing_profile", "{}", "user_alpha", "tenant_alpha", "plan_alpha");
+
+    const result = await worker.processJob(job);
+    expect(result.status).toBe("completed");
+    expect(result.decision).toBeUndefined();
+
+    const materialized = sqliteDb.prepare(
+      "SELECT evaluation_state, decision, quality_score FROM materialized_evaluations WHERE tenant_id = 'tenant_alpha' AND person_id = 'user_alpha' AND evaluation_context_fingerprint = 'ctx_fp_job_missing_profile'"
+    ).get() as any;
+    expect(materialized).toMatchObject({ evaluation_state: "NOT_EVALUABLE", decision: null, quality_score: null });
+  });
 });

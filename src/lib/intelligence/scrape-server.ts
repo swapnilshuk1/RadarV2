@@ -7,18 +7,13 @@ import { getRepositories } from "../../data/sqlite/provider";
 
 let rebuildTimeout: NodeJS.Timeout | null = null;
 
-// Debounced 10-second function to rebuild SQLite read models and write live-scraped.json
+// Debounced notification after canonical ingestion; legacy JSON is not rebuilt.
 export function triggerDebouncedRebuild() {
   if (rebuildTimeout) {
     clearTimeout(rebuildTimeout);
   }
   rebuildTimeout = setTimeout(async () => {
     try {
-      const { collectRecords, writeLiveScraped } = await import("../../../scripts/scraper/persist/writer");
-      const records = collectRecords();
-      writeLiveScraped(records);
-      invalidateLiveScrapedCache();
-
       // Notify EvaluationCoordinator that corpus has expanded
       const { EvaluationCoordinator } = await import("./EvaluationCoordinator");
       await EvaluationCoordinator.notify({ event: "CORPUS_UPDATED" });
@@ -48,15 +43,7 @@ if (typeof globalThis !== "undefined") {
             console.log(`[Daemon] Recovered ${recovered} expired leases.`);
           }
           
-          // 2. Rebuild the live-scraped.json cache if out of sync
-          const jsonPath = path.join(process.cwd(), "src", "data", "live-scraped.json");
-          if (!fs.existsSync(jsonPath)) {
-            console.log("[Daemon] live-scraped.json missing. Building on boot...");
-            const { collectRecords, writeLiveScraped } = await import("../../../scripts/scraper/persist/writer");
-            writeLiveScraped(collectRecords());
-          }
-
-          // 3. A global raw-enrichment worker can lease jobs created by a
+          // 2. A global raw-enrichment worker can lease jobs created by a
           // different host. Do not let a serving host consume locally stored
           // scraper artifacts: only a shared object store makes that safe.
           const { supportsCrossHostEnrichment } = await import("../storage/blob-store");
@@ -209,8 +196,15 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
 export const getRunEventsFn = createServerFn({ method: "GET" })
   .validator((d: { runId: string; afterIndex: number }) => d)
   .handler(async ({ data }) => {
-    await requireAuthUser();
+    const user = await requireAuthUser();
     const { runId, afterIndex } = data;
+    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { scope } = await resolveServingScope(user.id);
+    const scopedRun = await getRepositories().scrapeRuns.getRun(scope, runId);
+    if (!scopedRun) {
+      const { TenantIsolationError } = await import("../security/auth");
+      throw new TenantIsolationError(`Scrape run '${runId}' not found or unauthorized for current tenant/person.`);
+    }
     const { Journal } = await import("../../../scripts/scraper/run/journal");
     
     const runDir = path.join(ARTIFACTS_DIR, "runs", runId);
@@ -378,8 +372,10 @@ export async function abortScrapeState(runId: string, force = false) {
 
 export const getActiveScrapeFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    await requireAuthUser();
-    return getActiveScrapeState();
+    const user = await requireAuthUser();
+    const { resolveServingScope } = await import("../security/scope-resolver");
+    const { scope } = await resolveServingScope(user.id);
+    return getRepositories().scrapeRuns.getLatestRun(scope);
   });
 
 export const getLatestRunFn = createServerFn({ method: "GET" })
@@ -509,54 +505,13 @@ export const abortScrapeFn = createServerFn({ method: "POST" })
     return result;
   });
 
-let liveScrapedCache: { data: any[]; timestamp: number } | null = null;
-
-export function invalidateLiveScrapedCache() {
-  liveScrapedCache = null;
-}
-
 export const getLiveScrapedFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    await requireAuthUser();
-    const now = Date.now();
-    if (liveScrapedCache && (now - liveScrapedCache.timestamp < 30_000)) {
-      return liveScrapedCache.data;
-    }
-
-    try {
-      const { collectRecords } = await import("../../../scripts/scraper/persist/writer");
-      const diskRecords = collectRecords();
-      
-      const p = path.join(process.cwd(), "src", "data", "live-scraped.json");
-      let diskJsonRecords: any[] = [];
-      if (fs.existsSync(p)) {
-        try {
-          diskJsonRecords = JSON.parse(fs.readFileSync(p, "utf-8"));
-        } catch {}
-      }
-
-      const recordMap = new Map<string, any>();
-      for (const r of diskJsonRecords) {
-        if (r && (r.jobHash || r.id)) recordMap.set(r.jobHash || r.id, r);
-      }
-      for (const r of diskRecords as any[]) {
-        if (r && (r.jobHash || r.id)) recordMap.set(r.jobHash || r.id, r);
-      }
-
-      const merged = Array.from(recordMap.values());
-      const result = merged.length > 0 ? merged : diskJsonRecords;
-      
-      liveScrapedCache = { data: result, timestamp: now };
-      return result;
-    } catch {
-      const p = path.join(process.cwd(), "src", "data", "live-scraped.json");
-      if (!fs.existsSync(p)) return [];
-      try {
-        return JSON.parse(fs.readFileSync(p, "utf-8"));
-      } catch {
-        return [];
-      }
-    }
+    const user = await requireAuthUser();
+    await import("../security/scope-resolver").then(({ resolveServingScope }) => resolveServingScope(user.id));
+    // Process-local scrape artifacts have no canonical person/tenant ownership.
+    // They are deliberately no longer a production serving authority.
+    return [];
   });
 
 export interface CorpusJobState {
@@ -588,7 +543,7 @@ function getCorpusJob(): CorpusJobState {
 
 export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
   .handler(async () => {
-    await requireAuthUser();
+    await requireAuthUser({ requireAdmin: true });
     try {
       const job = getCorpusJob();
       if (job.status === "running") {
@@ -648,13 +603,13 @@ export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
 
 export const getCorpusRegenerationStatusFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    await requireAuthUser();
+    await requireAuthUser({ requireAdmin: true });
     return getCorpusJob();
   });
 
 export const getCorpusHealthFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    await requireAuthUser();
+    await requireAuthUser({ requireAdmin: true });
     try {
       const { calculateCorpusHealth } = await import("../../../scripts/corpus/health");
       return calculateCorpusHealth();

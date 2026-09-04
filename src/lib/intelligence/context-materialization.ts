@@ -5,7 +5,6 @@ import type { ActivatedSearchPlan } from "../../data/sqlite/repositories/SqliteE
 import { TenantScopedPersonStore } from "../../data/sqlite/repositories/TenantScopedPersonStore";
 import { evaluateAttentionGate } from "./AttentionGate";
 import { runEngineSingleIntrinsic } from "./engine";
-import { DEFAULT_CANDIDATE_PROJECTION } from "../domain/candidate_projection";
 import { validateEvaluationConsistency } from "../domain/evaluation_fingerprint";
 import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
 import type { MaterializedEvaluation } from "../domain/evaluation_context";
@@ -66,7 +65,7 @@ export async function materializeExistingCanonicalPool(
      WHERE spc.tenant_id = ? AND spc.person_id = ? AND spc.search_plan_id = ?`,
     [scope.tenantId, scope.personId, source.sourceSearchPlanId]
   );
-  const projection = (await new TenantScopedPersonStore(db, scope).getLatestProjection(scope.personId)) || DEFAULT_CANDIDATE_PROJECTION;
+  const projection = await new TenantScopedPersonStore(db, scope).getLatestProjection(scope.personId);
   const candidateRows: Array<[unknown, ...unknown[]]> = [];
   const evaluations: MaterializedEvaluation[] = [];
   let eligibleCandidates = 0;
@@ -120,6 +119,19 @@ export async function materializeExistingCanonicalPool(
     // so backfill evaluates scraped records whose source hash differs from the
     // canonical opportunity key.
     source.jobHash ||= row.canonical_job_id;
+    if (!projection) {
+      const evaluation = materializeCanonicalPayload(buildCanonicalUnavailablePayload(
+        source.jobHash,
+        "NOT_EVALUABLE",
+        prepared.context,
+        row.canonical_job_id,
+        row.opportunity_version,
+        new Date().toISOString(),
+      ));
+      validateEvaluationConsistency(evaluation);
+      evaluations.push(evaluation);
+      continue;
+    }
     const artifact = runEngineSingleIntrinsic(source.jobHash, projection, 0, [source]);
     if (!artifact) {
       throw new Error(`[ContextMaterialization] Intrinsic evaluation artifact missing for ${row.canonical_job_id}`);

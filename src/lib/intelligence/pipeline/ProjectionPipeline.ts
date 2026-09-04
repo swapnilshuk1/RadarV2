@@ -41,6 +41,20 @@ export interface PipelineExecutionInput {
   fileBuffer?: Buffer;
 }
 
+export function reuseEvidenceGraphForOwner(
+  existingGraph: EvidenceGraph | undefined,
+  personId: string,
+  documentId: string,
+): EvidenceGraph | undefined {
+  if (!existingGraph || existingGraph.personId !== personId) return undefined;
+  return {
+    ...existingGraph,
+    id: `ev-graph-${documentId}-dedup`,
+    personId,
+    provenance: { ...existingGraph.provenance, documentId },
+  };
+}
+
 export class ProjectionPipeline {
   private repos = getRepositories();
   private extractor = new EvidenceExtractionService();
@@ -104,19 +118,14 @@ export class ProjectionPipeline {
       if (currentStage === "EVIDENCE_EXTRACTED") {
         await this.repos.documents.updateDocumentStage(documentId, "EVIDENCE_EXTRACTED", "PROCESSING");
 
-        // Check if an EvidenceGraph with identical text_hash already exists
+        // Content can be reused only inside the same candidate identity. A hash
+        // proves identical text, never shared ownership or provenance.
         if (textHash) {
           const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(textHash);
-          if (existingGraph) {
+          const reusableGraph = reuseEvidenceGraphForOwner(existingGraph, personId, documentId);
+          if (reusableGraph) {
             console.log(`[ProjectionPipeline] Instant deduplication match for textHash ${textHash.slice(0, 8)}...!`);
-            evidenceGraph = {
-              ...existingGraph,
-              id: `ev-graph-${documentId}-dedup`,
-              provenance: {
-                ...existingGraph.provenance,
-                documentId
-              }
-            };
+            evidenceGraph = reusableGraph;
             isDeduplicated = true;
           }
         }
