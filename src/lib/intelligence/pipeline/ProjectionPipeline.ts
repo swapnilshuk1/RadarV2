@@ -121,7 +121,7 @@ export class ProjectionPipeline {
         // Content can be reused only inside the same candidate identity. A hash
         // proves identical text, never shared ownership or provenance.
         if (textHash) {
-          const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(textHash);
+          const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(textHash, personId);
           const reusableGraph = reuseEvidenceGraphForOwner(existingGraph, personId, documentId);
           if (reusableGraph) {
             console.log(`[ProjectionPipeline] Instant deduplication match for textHash ${textHash.slice(0, 8)}...!`);

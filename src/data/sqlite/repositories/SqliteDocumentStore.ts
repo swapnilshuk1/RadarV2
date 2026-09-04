@@ -183,16 +183,16 @@ export class SqliteDocumentStore {
     return { rawText: row.raw_text, textHash: row.text_hash };
   }
 
-  async findExistingEvidenceGraphByTextHash(textHash: string): Promise<EvidenceGraph | undefined> {
+  async findExistingEvidenceGraphByTextHash(textHash: string, personId: string): Promise<EvidenceGraph | undefined> {
     const row = await this.db.one<any>(
       `
       SELECT eg.graph_json 
       FROM document_contents dc
       JOIN evidence_graphs eg ON dc.document_id = eg.document_id
-      WHERE dc.text_hash = ?
+      WHERE dc.text_hash = ? AND eg.person_id = ?
       ORDER BY eg.created_at DESC LIMIT 1
       `,
-      [textHash]
+      [textHash, personId]
     );
     if (!row || !row.graph_json) return undefined;
     try {

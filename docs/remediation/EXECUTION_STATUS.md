@@ -21,7 +21,7 @@ Baseline:
 - Large payload backend: BlobStore. Acquisition writes `snapshots/<cardHash>.json` before enqueueing enrichment; workers retrieve it by `payload_key`.
 - Queue metadata backend: Turso `enrichment_jobs`, containing `payload_key`, snapshot reference, lifecycle, and provenance metadata—not aggregate snapshots or raw browser HTML.
 - Canonical readable JD backend: `opportunity_versions.raw_content`, which stores extracted/readable opportunity text or normalized structured source used for evaluation; PDF/raw source material uses `source_payload_key` in BlobStore.
-- live-scraped.json status: LEGACY FILE RETAINED BUT NO PRODUCTION READERS. It is not a serving or evaluation input.
+- live-scraped.json status: DEBUG/OPERATOR EXPORT ONLY. It is not a production serving or evaluation input; BlobStore staging remains authoritative for acquisition payloads.
 - Artifact retention/cleanup: successful enrichment deletes the staged payload after canonical persistence; terminal artifacts are also eligible for bounded retention cleanup only when no active job shares the key.
 
 ## Blocked / Requires Decision

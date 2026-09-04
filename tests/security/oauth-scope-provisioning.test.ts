@@ -32,6 +32,23 @@ describe("OAuth scope provisioning", () => {
     expect(raw.prepare("SELECT COUNT(*) AS n FROM memberships").get()).toMatchObject({ n: 1 });
   });
 
+  test("verified existing email links safely without duplicate person or user rows", async () => {
+    await db.execute("INSERT INTO people (id, email, tenant_id) VALUES ('existing', 'new@example.test', 'tenant_active')");
+    await db.execute("INSERT INTO users (id, email) VALUES ('existing', 'new@example.test')");
+    const result = await provisionOAuthScope(db, identity, () => "unused");
+    expect(result.personId).toBe("existing");
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM people").get()).toMatchObject({ n: 1 });
+    expect(raw.prepare("SELECT user_id FROM oauth_accounts").get()).toMatchObject({ user_id: "existing" });
+  });
+
+  test("unverified email rejects before changing any identity or authorization rows", async () => {
+    await expect(provisionOAuthScope(db, { ...identity, emailVerified: false }, () => "person_new"))
+      .rejects.toThrow("Verified provider email");
+    for (const table of ["people", "users", "memberships", "oauth_accounts"]) {
+      expect(raw.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get()).toMatchObject({ n: 0 });
+    }
+  });
+
   test("ambiguous active tenancy fails before identity rows are created", async () => {
     await db.execute("INSERT INTO tenants (id, status) VALUES ('tenant_second', 'active')");
     await expect(provisionOAuthScope(db, identity, () => "person_new")).rejects.toThrow("exactly one active tenant");

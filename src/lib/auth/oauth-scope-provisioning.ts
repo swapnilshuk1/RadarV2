@@ -13,6 +13,9 @@ export interface ProvisionedOAuthScope { readonly personId: string; readonly ten
 
 /** Creates the whole person/user/membership/OAuth scope before a session exists. */
 export async function provisionOAuthScope(db: DatabaseAdapter, identity: OAuthIdentity, createId: () => string): Promise<ProvisionedOAuthScope> {
+  if (!identity.emailVerified) {
+    throw new Error("[Auth] Verified provider email is required for OAuth identity provisioning.");
+  }
   return db.transaction(async (tx) => {
     const tenants = await tx.many<{ id: string }>("SELECT id FROM tenants WHERE status = 'active' ORDER BY created_at ASC LIMIT 2");
     if (tenants.length !== 1) throw new Error("[Auth] OAuth provisioning requires exactly one active tenant.");

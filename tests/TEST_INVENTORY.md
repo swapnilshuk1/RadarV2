@@ -64,6 +64,7 @@ RADAR v2 Test Architecture
 | :--- | :--- | :---: |
 | `tests/intelligence/identity.test.ts` | Executive seniority categorization (`C_SUITE`, `VP`), role matching, and theme extraction. | Full Suite |
 | `tests/intelligence/worker-profile-resolution.test.ts` | EvaluationWorker resolves candidate profile strictly from tenant/person scope without static fallbacks. | Full Suite |
+| `tests/security/evidence-dedup-repository-scope.test.ts` | Content-hash evidence reuse is scoped to the owning candidate at the repository boundary. | **Gate 0 Safety** |
 | `tests/security/scraper-auth-permission-non-escalation.test.ts` | Scraper authorization preserves membership grants and never manufactures scraper or credential capabilities. | **Gate 0 Safety** |
 
 ---
@@ -129,6 +130,9 @@ RADAR v2 Test Architecture
 | `tests/security/deploy-attack-surface-removed.test.ts` | Zero app-layer deployment endpoints, firewall flushing, or SSH mutations. | **Stage 4** |
 | `tests/security/scrape-tenant-identity.test.ts` | Authenticated scraper identity, DB membership RBAC, zero default_tenant fallback. | **Stage 4** |
 | `tests/security/scrape-run-ownership.test.ts` | Multi-tenant scrape run ownership, negative matrix isolation, cross-tenant abort/progress protection. | **Stage 4** |
+| `tests/security/oauth-scope-provisioning.test.ts` | Verified Google identity provisions one resolvable person, tenant, membership, and OAuth scope atomically. | **Stage 4** |
+| `tests/security/oauth-callback-url.test.ts` | Non-local Google OAuth callback configuration requires an explicit HTTPS redirect URI. | **Stage 4** |
+| `tests/security/evidence-ownership-deduplication.test.ts` | Defensive evidence graph reuse never transfers ownership across candidates. | **Stage 4** |
 | `tests/ontology/tenant-ontology-compiler.test.ts` | Tenant-customized ontology definitions compile and validate within tenant sandboxes. | **Stage 4** |
 | `tests/security/m62-credential-vault.test.ts` | AES-256 envelope encryption and key rotation for portal scraper credentials. | Full Suite |
 
@@ -345,6 +349,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/scraper/enrichment-payload-resolution.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 20 |
 | `tests/security/deploy-attack-surface-removed.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 3 | 10 |
 | `tests/security/evaluation-context-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 5 | 18 |
+| `tests/security/evidence-dedup-repository-scope.test.ts` | Security & Tenant Isolation | **KEEP** | Gate 0 Safety | 1 | 2 |
+| `tests/security/evidence-ownership-deduplication.test.ts` | Security & Tenant Isolation | **KEEP** | Gate 0 Safety | 2 | 3 |
 | `tests/security/m62-credential-vault.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 13 | 50 |
 | `tests/security/m63-credential-broker.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 14 | 92 |
 | `tests/security/m64-scraper-credential-injection.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 31 | 93 |
@@ -353,6 +359,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/security/scope-resolver-equivalence.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 13 | 39 |
 | `tests/security/scrape-tenant-identity.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 7 | 25 |
 | `tests/security/scrape-run-ownership.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 4 | 18 |
+| `tests/security/oauth-scope-provisioning.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 5 | 12 |
+| `tests/security/oauth-callback-url.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 2 | 4 |
 | `tests/security/tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 16 | 43 |
 | `tests/semantic/controlled_integration.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 11 | 33 |
 | `tests/semantic/extraction-sanitation.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 14 |

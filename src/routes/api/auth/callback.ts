@@ -8,6 +8,7 @@ import { generateSessionToken, createSession, SESSION_COOKIE_NAME } from "../../
 import { fetchGoogleUserInfo } from "../../../lib/auth/google";
 import { verifySignedOAuthState } from "../../../lib/auth/oauth-state";
 import { provisionOAuthScope } from "../../../lib/auth/oauth-scope-provisioning";
+import { resolveGoogleCallbackUrl } from "../../../lib/auth/oauth-callback-url";
 
 function ulid(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
@@ -27,10 +28,7 @@ const handleCallbackFn = createServerFn({ method: "GET" }).handler(async () => {
   }
 
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "localhost:3000";
-  const proto = request.headers.get("x-forwarded-proto") || "http";
-  const redirectUri = host.includes("localhost") || host.includes("127.0.0.1")
-    ? `${proto}://${host}/api/auth/callback`
-    : (process.env.GOOGLE_REDIRECT_URI || `${proto}://${host}/api/auth/callback`);
+  const redirectUri = resolveGoogleCallbackUrl(host, process.env.GOOGLE_REDIRECT_URI);
   const google = new Google(process.env.GOOGLE_CLIENT_ID!, process.env.GOOGLE_CLIENT_SECRET!, redirectUri);
   const tokens = await google.validateAuthorizationCode(code, codeVerifier);
   const googleUser = await fetchGoogleUserInfo(tokens.accessToken);
@@ -43,7 +41,7 @@ const handleCallbackFn = createServerFn({ method: "GET" }).handler(async () => {
   const session = await createSession(token, provisioned.personId);
   setCookie("google_oauth_state", "", { maxAge: 0, path: "/" });
   setCookie("google_code_verifier", "", { maxAge: 0, path: "/" });
-  setCookie(SESSION_COOKIE_NAME, token, { httpOnly: true, sameSite: "lax", path: "/", expires: session.expiresAt, secure: proto === "https" });
+  setCookie(SESSION_COOKIE_NAME, token, { httpOnly: true, sameSite: "lax", path: "/", expires: session.expiresAt, secure: !host.startsWith("localhost") && !host.startsWith("127.0.0.1") });
   return { isNewUser: provisioned.isNewUser };
 });
 
