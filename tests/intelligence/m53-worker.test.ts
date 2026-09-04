@@ -6,6 +6,7 @@ import { DatabaseAdapter, QueryParams } from "@/data/database/DatabaseAdapter";
 import { EvaluationWorker } from "@/lib/intelligence/EvaluationWorker";
 import { enqueueEvaluationJobsForPlan } from "@/lib/intelligence/enqueueEvaluationJobs";
 import type { AuthContext } from "@/lib/security/auth";
+import type { CandidateProjection } from "@/lib/domain/candidate_projection";
 
 class TestSqliteAdapter implements DatabaseAdapter {
   constructor(public db: Database.Database) {}
@@ -55,6 +56,22 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
     preferences: { locations: ["Bengaluru"] }
   });
 
+  const authoritativeProjection: CandidateProjection = {
+    attainedTitle: "VP Product & Growth",
+    profileVersion: "prof_1",
+    operatingLevel: { value: "STRATEGIC", confidence: 0.95, evidenceIds: ["candidate-operating-level"] },
+    workNature: { value: "STRATEGIC_WORK", confidence: 0.95, evidenceIds: ["candidate-work-nature"] },
+    decisionAuthority: { value: "ENTERPRISE", confidence: 0.95, evidenceIds: ["candidate-decision-authority"] },
+    commercialScope: { value: "ENTERPRISE", confidence: 0.95, evidenceIds: ["candidate-commercial-scope"] },
+    yearsOfExperience: 18,
+    coreCapabilities: ["COMMERCIAL_GROWTH", "GLOBAL_GTM", "PRODUCT_LEADERSHIP"],
+    preferredLocations: ["Bengaluru", "Remote"],
+    preferredWorkModel: "HYBRID",
+    executiveThemes: ["commercial_growth", "product_scale"],
+    attentionWindow: 6,
+    headspaceCapacityPerMonth: 4,
+  };
+
   beforeEach(async () => {
     sqliteDb = new Database(":memory:");
     sqliteDb.pragma("foreign_keys = ON");
@@ -63,6 +80,19 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
 
     sqliteDb.exec("INSERT INTO tenants (id, status) VALUES ('tenant_A', 'active'), ('tenant_B', 'active')");
     sqliteDb.exec("INSERT INTO people (id, email, tenant_id) VALUES ('person_A', 'execA@test.com', 'tenant_A'), ('person_B', 'execB@test.com', 'tenant_B')");
+    sqliteDb.prepare(`
+      INSERT INTO career_profiles (
+        id, person_id, timeline, skills, projection_json, projection_generated_at,
+        current_title, years_experience, archetype, preferred_work_model, created_at, updated_at
+      ) VALUES (?, 'person_A', '[]', '[]', ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).run(
+      "profile-person_A",
+      JSON.stringify(authoritativeProjection),
+      authoritativeProjection.attainedTitle,
+      authoritativeProjection.yearsOfExperience,
+      "Growth Executive",
+      authoritativeProjection.preferredWorkModel,
+    );
     sqliteDb.exec(`INSERT INTO search_plans (id, tenant_id, person_id, status, title, criteria_json) VALUES 
       ('plan_A', 'tenant_A', 'person_A', 'active', 'Plan A', '{"targetRoles":["VP"]}')
     `);
@@ -76,7 +106,7 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
       ('job_1', 'linkedin', '101', 'https://job.1')
     `);
     sqliteDb.exec(`INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, raw_content, acquisition_status, lifecycle_state) VALUES 
-      ('ver_1a', 'job_1', 'chash_1a', 'VP Product', 'Acme', '{"jobHash":"job_1","role":"VP Product","company":"Acme","rawDescription":"Executive product role"}', 'ACQUIRED', 'ACTIVE')
+      ('ver_1a', 'job_1', 'chash_1a', 'VP Product', 'Acme', '{"jobHash":"job_1","role":"VP Product","company":"Acme","location":"Bengaluru","rawDescription":"Lead enterprise product growth, global go-to-market strategy, commercial expansion, executive stakeholder alignment, and a 40-person product organization. Own measurable growth outcomes and product-led revenue strategy."}', 'ACQUIRED', 'ACTIVE')
     `);
     sqliteDb.exec(`INSERT INTO search_plan_candidates (search_plan_id, tenant_id, person_id, canonical_job_id, opportunity_version, attention_decision) VALUES 
       ('plan_A', 'tenant_A', 'person_A', 'job_1', 'ver_1a', 'CANDIDATE')

@@ -234,7 +234,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/m9_3-decisions-store-client.test.ts` | Decision Persistence | **KEEP** | Full Suite | 3 | 10 |
 | `tests/intelligence/m9_3-server-boundary.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 6 |
 | `tests/intelligence/m9_3-sync-decisions-reconciliation.test.ts` | Decision Persistence | **KEEP** | Full Suite | 5 | 23 |
-| `tests/intelligence/m9_4_1-evaluation-determinism.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 27 |
+| `tests/intelligence/m9_4_1-evaluation-determinism.test.ts` | Evaluation & Policy | **KEEP** | Gate 0 Safety | 3 | 31 |
 | `tests/intelligence/m9_4_1-multi-tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 4 | 8 |
 | `tests/intelligence/metrics-portal-breakdown.test.ts` | Metrics & Aggregation | **KEEP** | Stage 3 | 2 | 9 |
 | `tests/intelligence/model-c-quality.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 14 | 24 |

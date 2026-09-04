@@ -14,6 +14,7 @@ describe("Headspace Serving Contract Regression Suite", () => {
     const db = getDatabaseAdapter();
 
     await db.execute(`INSERT OR IGNORE INTO tenants (id, status) VALUES (?, 'active')`, [tenantId]);
+    await db.execute(`INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)`, [userId, `${userId}@example.com`]);
     await db.execute(`INSERT OR IGNORE INTO people (id, email, name, role, onboarded, email_verified, tenant_id) VALUES (?, ?, 'Test', 'user', 1, 1, ?)`, [userId, `${userId}@example.com`, tenantId]);
     await db.execute(`INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status) VALUES (?, ?, 'owner', '["read:opportunity","write:opportunity"]', 'active')`, [userId, tenantId]);
     await db.execute(`INSERT OR IGNORE INTO search_plans (id, tenant_id, person_id, title, status, criteria_json) VALUES (?, ?, ?, 'Plan', 'active', '{}')`, [`sp_${userId}`, tenantId, userId]);
@@ -30,10 +31,12 @@ describe("Headspace Serving Contract Regression Suite", () => {
       ...baseProj,
       attentionWindow: 5,
     });
+    await db.execute(`INSERT OR IGNORE INTO companies (id, name) VALUES (?, 'Headspace Fixture Co')`, [`company_${userId}`]);
 
     // 2. Seed 6 active pursuits to saturate headspace (activePursuits = 6 >= attentionWindow = 6)
     for (let i = 1; i <= 6; i++) {
       const activeJob = `j-active-${i}`;
+      await db.execute(`INSERT OR IGNORE INTO opportunities (id, company_id, canonical_title, fingerprint, lifecycle) VALUES (?, ?, 'Director', ?, 'ACTIVE')`, [activeJob, `company_${userId}`, activeJob]);
       await db.execute(`INSERT OR IGNORE INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES (?, 'test', ?, 'http')`, [activeJob, activeJob]);
       await db.execute(`INSERT OR IGNORE INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content, acquisition_status, lifecycle_state) VALUES (?, ?, 'ch1', 'Dir', 'raw', 'ACQUIRED', 'ACTIVE')`, [`v_${activeJob}`, activeJob]);
       await db.execute(`INSERT OR IGNORE INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, ?, 'CANDIDATE')`, [tenantId, userId, `sp_${userId}`, activeJob, `v_${activeJob}`]);
@@ -51,6 +54,7 @@ describe("Headspace Serving Contract Regression Suite", () => {
     ];
 
     for (const job of jobs) {
+      await db.execute(`INSERT OR IGNORE INTO opportunities (id, company_id, canonical_title, fingerprint, lifecycle) VALUES (?, ?, 'VP Growth', ?, 'ACTIVE')`, [job.jobHash, `company_${userId}`, job.jobHash]);
       await db.execute(`INSERT OR IGNORE INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES (?, 'test', ?, 'http')`, [job.jobHash, job.jobHash]);
       await db.execute(`INSERT OR IGNORE INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content, acquisition_status, lifecycle_state) VALUES (?, ?, 'ch1', 'Dir', 'raw', 'ACQUIRED', 'ACTIVE')`, [`v_${job.jobHash}`, job.jobHash]);
       await db.execute(`INSERT OR IGNORE INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, ?, 'CANDIDATE')`, [tenantId, userId, `sp_${userId}`, job.jobHash, `v_${job.jobHash}`]);
