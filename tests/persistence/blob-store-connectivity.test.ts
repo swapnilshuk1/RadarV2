@@ -9,6 +9,7 @@ import {
   getBlobStore,
   resolveDeploymentMode,
   setBlobStore,
+  supportsCrossHostEnrichment,
 } from "../../src/lib/storage/blob-store";
 import fs from "fs";
 import path from "path";
@@ -22,6 +23,15 @@ describe("Phase 4C: BlobStore Connectivity & Backend Protocol Verification", () 
       artifactBackend: "local_filesystem",
       artifactLimits: { maxBytes: 512 * 1024 * 1024, maxFiles: 5_000, retentionHours: 7 * 24 },
     });
+  });
+
+  it("0b. allows a global raw-enrichment worker only with a shared payload backend", () => {
+    expect(supportsCrossHostEnrichment({ RADAR_DEPLOYMENT_MODE: "single_host" } as NodeJS.ProcessEnv)).toBe(false);
+    expect(supportsCrossHostEnrichment({
+      RADAR_DEPLOYMENT_MODE: "distributed",
+      BLOB_STORAGE_ENDPOINT: "https://storage.example.test",
+      BLOB_STORAGE_BUCKET: "radar-payloads",
+    } as NodeJS.ProcessEnv)).toBe(true);
   });
 
   it("1. MemoryBlobStore roundtrip & health check", async () => {

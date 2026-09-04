@@ -346,6 +346,16 @@ export function describeBlobStoreConfiguration(env: NodeJS.ProcessEnv = process.
   };
 }
 
+/**
+ * A global raw-enrichment worker may lease jobs produced by another process.
+ * That is safe only when the payload backend is shared between hosts. A local
+ * filesystem store is deliberately process-host-local, even though Turso's
+ * queue is durable and globally visible.
+ */
+export function supportsCrossHostEnrichment(env: NodeJS.ProcessEnv = process.env): boolean {
+  return describeBlobStoreConfiguration(env).artifactBackend === "s3_compatible";
+}
+
 let _globalBlobStore: BlobStore | null = null;
 
 export function getBlobStore(options?: { enforceDistributed?: boolean }): BlobStore {

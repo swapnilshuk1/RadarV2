@@ -532,8 +532,12 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         log(`[Scrape] Automatically starting inline AI enrichment for run ${mgr.runId}...`);
         const { enrichJobsForRun } = await import("./enrich");
         await enrichJobsForRun(mgr.runId);
+        const enrichmentStats = await enrichmentQueue.getRunStats(mgr.runId);
+        if (enrichmentStats.failed > 0) {
+          throw new Error(`Enrichment failed for ${enrichmentStats.failed}/${enrichmentStats.total} jobs; run cannot be completed.`);
+        }
       } catch (enrichErr: any) {
-        log(`[Scrape] Enrichment phase failed: ${enrichErr.message}`, "error");
+        throw new Error(`[Scrape] Enrichment phase failed: ${enrichErr.message}`);
       }
 
       // Rebuild JSON models

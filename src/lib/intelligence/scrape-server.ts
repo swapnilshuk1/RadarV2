@@ -56,12 +56,19 @@ if (typeof globalThis !== "undefined") {
             writeLiveScraped(collectRecords());
           }
 
-          // 3. Start background queue drain loop
-          const { enrichGlobalQueue } = await import("../../../scripts/enrich");
-          void enrichGlobalQueue(triggerDebouncedRebuild).catch(err => {
-            console.error("[Daemon] Queue loop error:", err);
-            g.__RADAR_DAEMON__.started = false; // allow restart
-          });
+          // 3. A global raw-enrichment worker can lease jobs created by a
+          // different host. Do not let a serving host consume locally stored
+          // scraper artifacts: only a shared object store makes that safe.
+          const { supportsCrossHostEnrichment } = await import("../storage/blob-store");
+          if (supportsCrossHostEnrichment()) {
+            const { enrichGlobalQueue } = await import("../../../scripts/enrich");
+            void enrichGlobalQueue(triggerDebouncedRebuild).catch(err => {
+              console.error("[Daemon] Queue loop error:", err);
+              g.__RADAR_DAEMON__.started = false; // allow restart
+            });
+          } else {
+            console.warn("[Daemon] Global raw enrichment disabled: local BlobStore payloads may only be consumed by their acquisition host.");
+          }
 
           // 4. Start background Evaluation Daemon singleton for evaluation_jobs
           const { EvaluationDaemon } = await import("./EvaluationDaemon");
