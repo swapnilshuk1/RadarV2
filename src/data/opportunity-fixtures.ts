@@ -142,6 +142,8 @@ export type EvaluatedOpportunity = {
   reviewWorkflowState?: import("@/domain/decision_v4").ReviewWorkflowState;
   /** Canonical fingerprint freshness, independent of the legacy workflow label. */
   reviewState?: import("@/domain/decision_v4").CanonicalReviewState;
+  evaluationContextFingerprint?: string | null;
+  evaluationFingerprint?: string | null;
   displayScore?: string;
   uiBadge?: { label: string; variant: "signal" | "caution" | "pass" | "muted" };
 };
@@ -553,6 +555,7 @@ export type UnavailableOpportunity = {
   userDecision?: import("../domain/decision_v4").UserDecisionStateV4 | null;
   effectiveDecision?: import("../domain/decision_v4").EffectiveDecision;
   reviewState?: import("../domain/decision_v4").CanonicalReviewState;
+  evaluationContextFingerprint?: string | null;
   evaluationFingerprint?: string | null;
 };
 
@@ -569,6 +572,7 @@ export type UnmaterializedOpportunity = {
   userDecision?: import("../domain/decision_v4").UserDecisionStateV4 | null;
   effectiveDecision?: import("../domain/decision_v4").EffectiveDecision;
   reviewState?: import("../domain/decision_v4").CanonicalReviewState;
+  evaluationContextFingerprint?: string | null;
   evaluationFingerprint?: string | null;
 };
 

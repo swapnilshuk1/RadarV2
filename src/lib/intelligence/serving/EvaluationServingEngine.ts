@@ -20,6 +20,7 @@ import {
   type ReviewWorkflowState,
   type EngineVerdict,
 } from "../../../domain/decision_v4";
+import { resolveCanonicalServingReadModel } from "./CanonicalServingReadModel";
 import type { Opportunity, DimensionResult, DimensionKey, EvidenceBucket } from "../../../data/opportunity-fixtures";
 import { isMeaningfulEvidenceQuote } from "@/domain/evidence";
 
@@ -182,9 +183,26 @@ export function serveEvaluation(
     opportunityScoreSource: cached.opportunityScoreSource,
   };
 
-  // 5. Apply current user decision combinator
-  const effectiveDecision = computeEffectiveDecision(servedEngineRec, userDecision);
-  const reviewWorkflowState = computeReviewWorkflowState(servedEngineRec, userDecision);
+  // Serving and dossier use the same resolver. This pure presentation helper
+  // knows the exact artifact fingerprint but intentionally has no context-row
+  // identity to substitute for it.
+  const canonicalDecision = resolveCanonicalServingReadModel({
+    evaluationState: "EVALUATED",
+    engineVerdict: verb0,
+    userDecision: userDecision?.userAction || null,
+    evaluationContextFingerprint: null,
+    evaluationFingerprint: cached.evaluationInputHash,
+    reviewedFingerprint: userDecision?.reviewedFingerprint || null,
+    qualityScore: cached.intrinsicQualityScore,
+  });
+  const effectiveDecision = canonicalDecision.effectiveDecision;
+  const reviewWorkflowState = canonicalDecision.reviewState === "CURRENT"
+    ? "REVIEWED_CURRENT"
+    : canonicalDecision.reviewState === "STALE"
+      ? "REVIEWED_STALE"
+      : canonicalDecision.reviewState === "UNKNOWN"
+        ? "REVIEWED_UNKNOWN"
+        : "UNREVIEWED";
 
   // 6. Use persisted narrative without a capacity-based recommendation prefix.
   const finalRecommendation = cached.baseNarrative.baseRecommendationProse;

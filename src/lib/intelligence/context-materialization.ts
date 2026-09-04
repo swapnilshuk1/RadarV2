@@ -150,6 +150,9 @@ export async function materializeExistingCanonicalPool(
           new Date().toISOString()
         );
     const evaluation: MaterializedEvaluation = materializeCanonicalPayload(canonicalPayload);
+    evaluation.evaluationFingerprint = evaluationState === "EVALUATED"
+      ? canonicalPayload.evaluationInputHash
+      : null;
     validateEvaluationConsistency(evaluation);
     evaluations.push(evaluation);
   }
@@ -176,7 +179,7 @@ export async function materializeExistingCanonicalPool(
 
   for (let offset = 0; offset < evaluations.length; offset += 50) {
     const chunk = evaluations.slice(offset, offset + 50);
-    const placeholders = chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(",");
+    const placeholders = chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(",");
     const params = chunk.flatMap((evaluation) => [
       evaluation.id,
       evaluation.tenantId,
@@ -184,6 +187,7 @@ export async function materializeExistingCanonicalPool(
       evaluation.canonicalJobId,
       evaluation.opportunityVersion,
       evaluation.evaluationContextFingerprint,
+      evaluation.evaluationFingerprint ?? null,
       evaluation.evaluationState,
       evaluation.decision,
       evaluation.qualityScore,
@@ -196,11 +200,12 @@ export async function materializeExistingCanonicalPool(
     await db.execute(
       `INSERT INTO materialized_evaluations (
          id, tenant_id, person_id, canonical_job_id, opportunity_version,
-         evaluation_context_fingerprint, evaluation_state, decision, quality_score,
+         evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
          rationale, evidence_ids, evaluation_json, vetoed, materialized_at
        ) VALUES ${placeholders}
        ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
        DO UPDATE SET evaluation_state = excluded.evaluation_state,
+                     evaluation_fingerprint = excluded.evaluation_fingerprint,
                      decision = excluded.decision,
                      quality_score = excluded.quality_score,
                      rationale = excluded.rationale,

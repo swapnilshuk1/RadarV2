@@ -343,7 +343,8 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
          me.rationale as rationale,
          me.evidence_ids as evidence_ids,
          me.evaluation_json as evaluation_json,
-         me.evaluation_context_fingerprint as evaluation_fingerprint,
+         me.evaluation_context_fingerprint as evaluation_context_fingerprint,
+         me.evaluation_fingerprint as evaluation_fingerprint,
          me.materialized_at as materialized_at,
          d.action as user_action,
          d.reviewed_fingerprint as reviewed_fingerprint,
@@ -516,7 +517,9 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
         postedPrecision: r.posted_precision,
       };
 
-      if (!isCanonicalIntrinsicEvaluation(rawParsed)) {
+      if (!isCanonicalIntrinsicEvaluation(rawParsed)
+        || typeof rawParsed.evaluationInputHash !== "string"
+        || rawParsed.evaluationInputHash !== r.evaluation_fingerprint) {
         opportunities.push({
           evaluationState: "INVALID",
           jobHash: String(r.source_job_id),
@@ -537,6 +540,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
         evaluationState: "EVALUATED",
         engineVerdict: r.engine_decision,
         userDecision: userState?.userAction || null,
+        evaluationContextFingerprint: r.evaluation_context_fingerprint || null,
         evaluationFingerprint: r.evaluation_fingerprint || null,
         reviewedFingerprint: r.reviewed_fingerprint || null,
         qualityScore: r.quality_score,
@@ -618,7 +622,8 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
          me.rationale as rationale,
          me.evidence_ids as evidence_ids,
          me.evaluation_json as evaluation_json,
-         me.evaluation_context_fingerprint as evaluation_fingerprint,
+         me.evaluation_context_fingerprint as evaluation_context_fingerprint,
+         me.evaluation_fingerprint as evaluation_fingerprint,
          me.materialized_at as materialized_at,
          d.action as user_action,
          d.reviewed_fingerprint as reviewed_fingerprint,
@@ -714,7 +719,9 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
       postedPrecision: row.posted_precision,
     };
 
-    if (!isCanonicalIntrinsicEvaluation(rawParsed)) {
+    if (!isCanonicalIntrinsicEvaluation(rawParsed)
+      || typeof rawParsed.evaluationInputHash !== "string"
+      || rawParsed.evaluationInputHash !== row.evaluation_fingerprint) {
       return {
         evaluationState: "INVALID",
         jobHash: String(row.source_job_id),
@@ -734,6 +741,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
       evaluationState: "EVALUATED",
       engineVerdict: row.engine_decision,
       userDecision: userState?.userAction || null,
+      evaluationContextFingerprint: row.evaluation_context_fingerprint || null,
       evaluationFingerprint: row.evaluation_fingerprint || null,
       reviewedFingerprint: row.reviewed_fingerprint || null,
       qualityScore: row.quality_score,

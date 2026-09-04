@@ -227,12 +227,13 @@ export class EvaluationWorker {
           await tx.execute(
             `INSERT INTO materialized_evaluations (
                id, tenant_id, person_id, canonical_job_id, opportunity_version,
-               evaluation_context_fingerprint, evaluation_state, decision, quality_score,
+               evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
                rationale, evidence_ids, evaluation_json, vetoed, materialized_at
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP)
+             ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP)
              ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
              DO UPDATE SET
                evaluation_state = EXCLUDED.evaluation_state,
+               evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
                decision = EXCLUDED.decision,
                quality_score = EXCLUDED.quality_score,
                rationale = EXCLUDED.rationale,
@@ -329,11 +330,12 @@ export class EvaluationWorker {
           await tx.execute(
             `INSERT INTO materialized_evaluations (
                id, tenant_id, person_id, canonical_job_id, opportunity_version,
-               evaluation_context_fingerprint, evaluation_state, decision, quality_score,
+               evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
                rationale, evidence_ids, evaluation_json, vetoed, materialized_at
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP)
+             ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP)
              ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
              DO UPDATE SET evaluation_state = EXCLUDED.evaluation_state,
+                           evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
                            decision = EXCLUDED.decision, quality_score = EXCLUDED.quality_score,
                            rationale = EXCLUDED.rationale, evidence_ids = EXCLUDED.evidence_ids,
                            evaluation_json = EXCLUDED.evaluation_json, vetoed = EXCLUDED.vetoed,
@@ -393,6 +395,9 @@ export class EvaluationWorker {
             new Date().toISOString()
           );
       const materialized = materializeCanonicalPayload(canonicalPayload);
+      materialized.evaluationFingerprint = evaluationState === "EVALUATED"
+        ? canonicalPayload.evaluationInputHash
+        : null;
       validateEvaluationConsistency(materialized);
       const isVetoed = Boolean(artifact.record?.vetoed ?? false);
       const vetoedScalar = isVetoed ? 1 : 0;
@@ -413,12 +418,13 @@ export class EvaluationWorker {
         await tx.execute(
           `INSERT INTO materialized_evaluations (
              id, tenant_id, person_id, canonical_job_id, opportunity_version,
-             evaluation_context_fingerprint, evaluation_state, decision, quality_score,
+             evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
              rationale, evidence_ids, evaluation_json, vetoed, materialized_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
            ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
            DO UPDATE SET
              evaluation_state = EXCLUDED.evaluation_state,
+             evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
              decision = EXCLUDED.decision,
              quality_score = EXCLUDED.quality_score,
              rationale = EXCLUDED.rationale,
@@ -433,6 +439,7 @@ export class EvaluationWorker {
             job.canonicalJobId,
             job.opportunityVersion,
             job.evaluationContextFingerprint,
+            materialized.evaluationFingerprint,
             materialized.evaluationState,
             materialized.decision,
             materialized.qualityScore,

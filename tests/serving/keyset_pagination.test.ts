@@ -75,12 +75,13 @@ describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
     );
     if (params.verdict !== null || params.score !== null) {
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
-         VALUES (?, ?, ?, 'tenant_A', 'person_A', 'fingerprint_A', ?, ?, ?, ?, '{}')`,
+        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
+         VALUES (?, ?, ?, 'tenant_A', 'person_A', 'fingerprint_A', ?, ?, ?, ?, ?, '{}')`,
         [
           `me_${params.jobId}`,
           params.jobId,
           `ov_${params.jobId}`,
+          `eval_${params.jobId}`,
           params.evalState || "COMPLETE",
           params.verdict,
           params.score,

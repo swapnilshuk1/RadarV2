@@ -46,6 +46,8 @@ export interface FeedSummary {
   readonly evaluationState: "COMPLETE" | "SPARSE_SPEC" | "NOT_EVALUABLE" | "PROFILE_REQUIRED" | "INVALID" | "UNMATERIALIZED";
   readonly engineVerdict?: EngineVerdict | null;
   readonly qualityScore?: number | null;
+  /** Context identity is retained separately from the exact reviewed artifact. */
+  readonly evaluationContextFingerprint: string | null;
   /** Persisted materialized evaluation provenance; never synthesized at read time. */
   readonly evaluationFingerprint: string | null;
   readonly vetoed: boolean;

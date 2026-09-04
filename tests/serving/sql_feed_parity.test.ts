@@ -69,8 +69,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
          VALUES ('tenant_A', 'person_A', 'plan_A', 'job_v1', 'ov_v1', 'CANDIDATE')`
       );
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
-         VALUES ('me_v1', 'job_v1', 'ov_v1', 'tenant_A', 'person_A', 'fingerprint_A', 'COMPLETE', 'CONSIDER', 72, 1, '{}')`
+        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
+         VALUES ('me_v1', 'job_v1', 'ov_v1', 'tenant_A', 'person_A', 'fingerprint_A', 'eval_v1', 'COMPLETE', 'CONSIDER', 72, 1, '{}')`
       );
       await db.execute(
         `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, updated_at)
@@ -102,8 +102,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
          VALUES ('tenant_A', 'person_A', 'plan_A', 'job_v2', 'ov_v2', 'CANDIDATE')`
       );
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
-         VALUES ('me_v2', 'job_v2', 'ov_v2', 'tenant_A', 'person_A', 'fingerprint_A', 'COMPLETE', 'CONSIDER', 78, 0, '{}')`
+        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
+         VALUES ('me_v2', 'job_v2', 'ov_v2', 'tenant_A', 'person_A', 'fingerprint_A', 'eval_v2', 'COMPLETE', 'CONSIDER', 78, 0, '{}')`
       );
       await db.execute(
         `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, updated_at)
@@ -133,8 +133,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
          VALUES ('tenant_A', 'person_A', 'plan_A', 'job_v3', 'ov_v3', 'CANDIDATE')`
       );
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
-         VALUES ('me_v3', 'job_v3', 'ov_v3', 'tenant_A', 'person_A', 'fingerprint_A', 'COMPLETE', 'PASS', 45, 0, '{}')`
+        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
+         VALUES ('me_v3', 'job_v3', 'ov_v3', 'tenant_A', 'person_A', 'fingerprint_A', 'eval_v3', 'COMPLETE', 'PASS', 45, 0, '{}')`
       );
       await db.execute(
         `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, updated_at)
@@ -163,8 +163,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
          VALUES ('tenant_A', 'person_A', 'plan_A', 'job_v4', 'ov_v4', 'CANDIDATE')`
       );
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
-         VALUES ('me_v4', 'job_v4', 'ov_v4', 'tenant_A', 'person_A', 'fingerprint_A', 'COMPLETE', 'PASS', 55, 1, '{}')`
+        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
+         VALUES ('me_v4', 'job_v4', 'ov_v4', 'tenant_A', 'person_A', 'fingerprint_A', 'eval_v4', 'COMPLETE', 'PASS', 55, 1, '{}')`
       );
       await db.execute(
         `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, updated_at)
@@ -193,8 +193,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
          VALUES ('tenant_A', 'person_A', 'plan_A', 'job_v5', 'ov_v5', 'CANDIDATE')`
       );
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
-         VALUES ('me_v5', 'job_v5', 'ov_v5', 'tenant_A', 'person_A', 'fingerprint_A', 'COMPLETE', 'CONSIDER', 68, 0, '{}')`
+        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
+         VALUES ('me_v5', 'job_v5', 'ov_v5', 'tenant_A', 'person_A', 'fingerprint_A', 'eval_v5', 'COMPLETE', 'CONSIDER', 68, 0, '{}')`
       );
       await db.execute(
         `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, updated_at)

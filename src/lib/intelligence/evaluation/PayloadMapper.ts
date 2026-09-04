@@ -141,6 +141,7 @@ export function materializeCanonicalPayload(
     canonicalJobId: payload.canonicalJobId,
     opportunityVersion: payload.opportunityVersion,
     evaluationContextFingerprint: payload.contextFingerprint,
+    evaluationFingerprint: isEvaluated ? payload.evaluationInputHash : null,
     evaluationState: payload.evaluationState,
     decision: isEvaluated ? payload.decision : null,
     qualityScore: isEvaluated ? payload.score : null,

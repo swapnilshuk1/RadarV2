@@ -16,6 +16,8 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
@@ -56,6 +58,9 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
     vetoed?: number;
     evaluationState?: string;
     userAction?: string;
+    contextFingerprint?: string;
+    evaluationFingerprint?: string | null;
+    reviewedFingerprint?: string | null;
     customEvalJson?: string;
   }) {
     const oppId = `opp_${params.id}`;
@@ -83,7 +88,7 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
       schemaVersion: "v4.2-intrinsic",
       jobHash: params.id,
       personId: "person_A",
-      evaluationInputHash: "fingerprint_A",
+      evaluationInputHash: params.evaluationFingerprint === undefined ? "eval_A" : params.evaluationFingerprint,
       policyVersion: "test",
       ontologyVersion: "test",
       evaluatedAt: "2026-01-01T00:00:00.000Z",
@@ -105,12 +110,14 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
 
     if (params.evaluationState !== "UNMATERIALIZED") {
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, decision, quality_score, evaluation_state, vetoed, evaluation_json)
-         VALUES (?, 'tenant_A', 'person_A', ?, ?, 'fingerprint_A', ?, ?, ?, ?, ?)`,
+        `INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, evaluation_fingerprint, decision, quality_score, evaluation_state, vetoed, evaluation_json)
+         VALUES (?, 'tenant_A', 'person_A', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           `eval_${params.id}`,
           oppId,
           verId,
+          params.contextFingerprint ?? "fingerprint_A",
+          params.evaluationFingerprint === undefined ? "eval_A" : params.evaluationFingerprint,
           params.engineVerdict,
           params.score,
           params.evaluationState || "COMPLETE",
@@ -122,14 +129,24 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
 
     if (params.userAction && params.userAction !== "NONE") {
       await db.execute(
-        `INSERT INTO canonical_decisions (tenant_id, person_id, canonical_job_id, action)
-         VALUES ('tenant_A', 'person_A', ?, ?)`,
-        [oppId, params.userAction]
+        `INSERT INTO canonical_decisions (tenant_id, person_id, canonical_job_id, action, reviewed_fingerprint)
+         VALUES ('tenant_A', 'person_A', ?, ?, ?)`,
+        [oppId, params.userAction, params.reviewedFingerprint ?? null]
       );
     }
   }
 
   describe("1. Point Lookup (getDossier)", () => {
+    it("keeps the legacy evaluation adapter outside production canonical serving reachability", () => {
+      for (const file of [
+        "src/data/sqlite/repositories/SqliteOpportunityQueries.ts",
+        "src/data/sqlite/repositories/SqliteCanonicalServingStore.ts",
+      ]) {
+        const source = fs.readFileSync(path.resolve(process.cwd(), file), "utf8");
+        expect(source).not.toContain("adaptLegacyEvaluation");
+      }
+    });
+
     it("retrieves full evaluated opportunity with exact payload and effectiveDecision", async () => {
       await seedItem({ id: "job_1", title: "VP Digital Transformation", engineVerdict: "PURSUE", score: 95, userAction: "PURSUE" });
 
@@ -231,16 +248,74 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
         engineVerdict: "CONSIDER",
         effectiveDecision: "PURSUE",
         qualityScore: 81,
-        evaluationFingerprint: "fingerprint_A",
+        evaluationFingerprint: "eval_A",
         reviewedFingerprint: "fingerprint_v1",
         reviewState: "STALE",
       });
       expect(dossier.engineRecommendation?.engineVerdict).toBe("CONSIDER");
       expect(dossier.effectiveDecision).toBe("PURSUE");
       expect(dossier.engineRecommendation?.qualityScore).toBe(81);
-      expect(dossier.engineRecommendation?.evaluationFingerprint).toBe("fingerprint_A");
+      expect(dossier.engineRecommendation?.evaluationFingerprint).toBe("eval_A");
       expect(dossier.userDecision?.reviewedFingerprint).toBe("fingerprint_v1");
       expect(dossier.reviewState).toBe("STALE");
+    });
+
+    it("anchors review freshness to the evaluation artifact, never the evaluation context", async () => {
+      await db.execute(
+        `INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version)
+         VALUES ('ctx_A', 'tenant_A', 'person_A', 'sps_A', 'v1', 'hash_ontology', 'v1', 'v2')`,
+      );
+      await db.execute(
+        `INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+         VALUES ('ctx_A', 'tenant_A', 'person_A', 'plan_A')`,
+      );
+      await db.execute(
+        `UPDATE active_evaluation_contexts SET context_fingerprint = 'ctx_A'
+         WHERE tenant_id = 'tenant_A' AND person_id = 'person_A' AND search_plan_id = 'plan_A'`,
+      );
+      await seedItem({
+        id: "job_provenance",
+        title: "VP Provenance",
+        engineVerdict: "PURSUE",
+        score: 94,
+        userAction: "PURSUE",
+        contextFingerprint: "ctx_A",
+        evaluationFingerprint: "eval_A",
+        reviewedFingerprint: "eval_A",
+      });
+
+      const scopeForContext = { tenantId: "tenant_A", personId: "person_A" };
+      let feed = await queries.getFeedRaw(scopeForContext, { searchPlanId: "plan_A", contextFingerprint: "ctx_A" });
+      let feedItem = feed.find((item) => item.jobHash === "job_provenance");
+      let dossier = await queries.getDossier({ ...scope, activeEvaluationContextId: "ctx_A" }, "job_provenance") as EvaluatedOpportunity & { reviewState?: string; evaluationContextFingerprint?: string };
+      expect(feedItem).toMatchObject({ evaluationContextFingerprint: "ctx_A", evaluationFingerprint: "eval_A", reviewState: "CURRENT" });
+      expect(dossier.engineRecommendation?.evaluationFingerprint).toBe("eval_A");
+      expect(dossier.evaluationContextFingerprint).toBe("ctx_A");
+      expect(dossier.reviewState).toBe("CURRENT");
+
+      await db.execute("UPDATE canonical_decisions SET reviewed_fingerprint = 'ctx_A' WHERE canonical_job_id = 'opp_job_provenance'");
+      feed = await queries.getFeedRaw(scopeForContext, { searchPlanId: "plan_A", contextFingerprint: "ctx_A" });
+      feedItem = feed.find((item) => item.jobHash === "job_provenance");
+      dossier = await queries.getDossier({ ...scope, activeEvaluationContextId: "ctx_A" }, "job_provenance") as EvaluatedOpportunity & { reviewState?: string };
+      expect(feedItem?.reviewState).toBe("STALE");
+      expect(dossier.reviewState).toBe("STALE");
+      expect(dossier.effectiveDecision).toBe("PURSUE");
+    });
+
+    it("serves structurally incomplete evaluated rows as INVALID without recommendation facts", async () => {
+      await seedItem({ id: "bad_verdict", title: "VP Bad Verdict", engineVerdict: "SPARSE_SPEC", score: 80 });
+      await seedItem({ id: "bad_score", title: "VP Bad Score", engineVerdict: "PURSUE", score: Number.NaN });
+      await seedItem({ id: "missing_fp", title: "VP Missing Fingerprint", engineVerdict: "PURSUE", score: 80, evaluationFingerprint: null, userAction: "PURSUE" });
+
+      for (const jobHash of ["bad_verdict", "bad_score", "missing_fp"]) {
+        const dossier = await queries.getDossier(scope, jobHash);
+        expect(dossier?.evaluationState).toBe("INVALID");
+        expect((dossier as any)?.engineRecommendation).toBeUndefined();
+        expect((dossier as any)?.displayScore).toBeUndefined();
+      }
+      const missingFingerprint = await queries.getDossier(scope, "missing_fp") as any;
+      expect(missingFingerprint.effectiveDecision).toBe("PURSUE");
+      expect(missingFingerprint.reviewState).toBe("UNKNOWN");
     });
 
     it("returns null for non-existent or cross-tenant jobHash", async () => {

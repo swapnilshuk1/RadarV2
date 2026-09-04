@@ -104,6 +104,8 @@ export interface MaterializedEvaluation {
   canonicalJobId: string;
   opportunityVersion: string;
   evaluationContextFingerprint: string;
+  /** Exact canonical intrinsic evaluationInputHash; never substituted from context. */
+  evaluationFingerprint?: string | null;
   evaluationState: EvaluationState;
   decision: EvaluationDecision | null;
   qualityScore: number | null;

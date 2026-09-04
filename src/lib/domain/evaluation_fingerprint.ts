@@ -143,6 +143,15 @@ export function validateEvaluationConsistency(evaluation: MaterializedEvaluation
         `MaterializedEvaluation invariant violation: relational qualityScore must be a valid number when evaluationState is 'EVALUATED', received '${evaluation.qualityScore}'`
       );
     }
+    const evaluationFingerprint = parsed.evaluationInputHash;
+    if (typeof evaluationFingerprint !== "string" || evaluationFingerprint.trim().length === 0) {
+      throw new Error("MaterializedEvaluation invariant violation: EVALUATED payload must contain evaluationInputHash");
+    }
+    if (evaluation.evaluationFingerprint !== undefined && evaluation.evaluationFingerprint !== evaluationFingerprint) {
+      throw new Error(
+        `MaterializedEvaluation column mismatch: evaluationFingerprint '${evaluation.evaluationFingerprint}' does not match JSON evaluationInputHash '${evaluationFingerprint}'`
+      );
+    }
 
     // Validate decision consistency against payload
     const jsonDecision = parsed.decision || parsed.effective_decision || parsed.engine_verdict;
