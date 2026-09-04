@@ -30,8 +30,6 @@ export class CanonicalEvaluator {
   public static evaluateOpportunity(
     raw: RawScrapedOpportunity,
     candidate: CandidateProjection,
-    activePursuits: number = 0,
-    headspaceCapacity?: number
   ): CanonicalEvaluationOutput {
     const jobProjection = JobProjectionBuilder.build(raw);
 
@@ -77,14 +75,12 @@ export class CanonicalEvaluator {
         priority: decisionResult.verdict === "PURSUE" ? 1 : decisionResult.verdict === "CONSIDER" ? 2 : 0,
         factors: { careerValue: 0, shortlistingPotential: 0, pursuitFriction: 0 },
         verb0: decisionResult.verdict,
-        finalVerb: decisionResult.verdict,
         confidence: capabilityResult.matchingConfidence || 0.8,
         stability: "High",
         candidateProjectionHash: "v4",
         opportunityContentHash: raw.jobHash,
         pipeline: [],
         evidenceMapping: [],
-        headspace: { finalVerb: decisionResult.verdict, downgraded: false },
         missing: [],
         timestamp: new Date().toISOString()
       },
@@ -101,11 +97,9 @@ export class CanonicalEvaluator {
   public static evaluateBatch(
     opportunities: RawScrapedOpportunity[],
     candidate: CandidateProjection,
-    activePursuits: number = 0,
-    headspaceCapacity?: number
   ): CanonicalEvaluationOutput[] {
     return opportunities.map(opp =>
-      this.evaluateOpportunity(opp, candidate, activePursuits, headspaceCapacity)
+      this.evaluateOpportunity(opp, candidate)
     );
   }
 }

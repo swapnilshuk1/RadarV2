@@ -242,6 +242,8 @@ function Shortlist() {
   };
 
   const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
+    // UNKNOWN is presentation of absent evaluation, never an action to persist.
+    if (verb === "UNKNOWN") return;
     const openTime = openedTimes[jobHash];
     const duration = openTime ? Date.now() - openTime : 0;
     logTelemetry(jobHash, verb, duration);
@@ -652,7 +654,17 @@ export function resolveShortlistCardBadgeState(o: Opportunity): ShortlistCardBad
     };
   }
 
-  const engineVerdict = o.engineRecommendation?.engineVerdict || o.decision || "PURSUE";
+  if ((o as any).evaluationState === "INVALID" || (o as any).evaluationState === "NOT_EVALUABLE" || (o as any).evaluationState === "PROFILE_REQUIRED" || (o as any).evaluationState === "UNMATERIALIZED") {
+    return {
+      primaryLabel: (o as any).evaluationState === "INVALID" ? "evaluation invalid" : "not evaluated",
+      badgeClass: "badge-sparse text-amber-600 bg-amber-500/10 border border-amber-500/20",
+      isStale: false,
+      staleLabel: null,
+      previousAction: null,
+    };
+  }
+
+  const engineVerdict = o.engineRecommendation?.engineVerdict || o.decision || "UNKNOWN";
   
   const primaryLabel = engineVerdict.toLowerCase();
   
@@ -661,7 +673,7 @@ export function resolveShortlistCardBadgeState(o: Opportunity): ShortlistCardBad
         ? "badge-consider" 
         : engineVerdict === "PASS" 
           ? "badge-pass" 
-          : "badge-pursue";
+        : engineVerdict === "PURSUE" ? "badge-pursue" : "badge-sparse";
           
   const isStale = o.reviewWorkflowState === "REVIEWED_STALE" || o.reviewWorkflowState === "REVIEWED_UNKNOWN";
   
@@ -702,7 +714,12 @@ function MinimalStateCard({ o }: { o: ServedOpportunity }) {
         break;
       case "ACQUISITION_FAILED":
       case "NOT_EVALUABLE":
+      case "PROFILE_REQUIRED":
         label = "Cannot Evaluate";
+        badgeClass = "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20";
+        break;
+      case "INVALID":
+        label = "Evaluation Invalid";
         badgeClass = "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20";
         break;
       case "EXPIRED":

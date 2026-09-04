@@ -80,17 +80,27 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
     );
 
     const evalJson = params.customEvalJson || JSON.stringify({
-      schema_version: "v4.1",
-      engineVerdict: params.engineVerdict || "PASS",
-      qualityScore: params.score,
-      fit_score: params.score,
+      schemaVersion: "v4.2-intrinsic",
+      jobHash: params.id,
+      personId: "person_A",
+      evaluationInputHash: "fingerprint_A",
+      policyVersion: "test",
+      ontologyVersion: "test",
+      evaluatedAt: "2026-01-01T00:00:00.000Z",
+      intrinsicVerdict: params.engineVerdict,
+      intrinsicQualityScore: params.score,
+      parsingConfidence: 1,
       vetoed: params.vetoed === 1,
-      recommendation: {
-        verdict: params.engineVerdict || "PASS",
-        confidence: 0.9,
-        rationale: "Strategic fit rationale text.",
-        vetoed: params.vetoed === 1,
-      },
+      vetoReason: null,
+      triggeredRuleIds: [],
+      decisionRisks: [],
+      decisionDrivers: [],
+      evaluationStatus: "COMPLETE",
+      dimensions: [],
+      esi: 0,
+      diligenceStatus: "UNKNOWN",
+      baseNarrative: { baseRecommendationProse: "Persisted test narrative." },
+      auditTrace: { verb0: params.engineVerdict, careerValue: 0, shortlistingPotential: 0, pursuitFriction: 0, rawScore: params.score, evidenceMappingCount: 0 },
     });
 
     if (params.evaluationState !== "UNMATERIALIZED") {
@@ -127,15 +137,15 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
       expect(dossier).not.toBeNull();
       expect(dossier?.jobHash).toBe("job_1");
       expect(dossier?.role).toBe("VP Digital Transformation");
-      expect(dossier?.evaluationState).toBe("LEGACY");
+      expect(dossier?.evaluationState).toBe("EVALUATED");
 
       const evaluated = dossier as EvaluatedOpportunity;
-      expect(evaluated.effectiveDecision).toBe("USER_CONFIRMED");
+      expect(evaluated.effectiveDecision).toBe("PURSUE");
       expect(evaluated.userDecision?.userAction).toBe("PURSUE");
       expect(evaluated.engineRecommendation?.qualityScore).toBe(95);
     });
 
-    it("hydrates nested dimensions from legacy Presented envelope and does not stream raw text to DTO", async () => {
+    it("rejects a legacy Presented envelope rather than manufacturing canonical evaluation facts", async () => {
       const presentedEnvelope = JSON.stringify({
         opportunity: {
           jobHash: "titan_growth_job",
@@ -178,18 +188,59 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
       const dossier = await queries.getDossier(scope, "titan_growth_job");
       expect(dossier).not.toBeNull();
       expect(dossier?.jobHash).toBe("titan_growth_job");
-      expect(dossier?.dimensions).toHaveLength(1);
-      expect(dossier?.dimensions[0].key).toBe("mandate");
-      expect(dossier?.dimensions[0].jdEvidence.status).toBe("Explicit");
-      expect(dossier?.dimensions[0].jdEvidence.value).toBe("Lead full-funnel digital marketing across watch brands");
+      expect(dossier?.evaluationState).toBe("INVALID");
+      expect((dossier as any)?.reasonCode).toBe("NON_CANONICAL_EVALUATION");
+    });
 
-      // Verify no raw text blobs leaked onto the served DTO
-      const anyDossier = dossier as any;
-      expect(anyDossier.raw_content).toBeUndefined();
-      expect(anyDossier.rawText).toBeUndefined();
-      expect(anyDossier.rawDescription).toBeUndefined();
-      expect(anyDossier.normalizedText).toBeUndefined();
-      expect(anyDossier.description).toBeUndefined();
+    it("keeps NOT_EVALUABLE, INVALID, and UNMATERIALIZED distinct without an advisory score or verdict", async () => {
+      await seedItem({ id: "job_not_evaluable", title: "VP Operations", engineVerdict: null, score: 0, evaluationState: "NOT_EVALUABLE" });
+      await seedItem({ id: "job_unmaterialized", title: "VP Finance", engineVerdict: null, score: 0, evaluationState: "UNMATERIALIZED" });
+      await seedItem({
+        id: "job_invalid", title: "VP Legal", engineVerdict: "PURSUE", score: 90,
+        customEvalJson: JSON.stringify({ schemaVersion: "unsupported" }),
+      });
+
+      const [notEvaluable, unmaterialized, invalid] = await Promise.all([
+        queries.getDossier(scope, "job_not_evaluable"),
+        queries.getDossier(scope, "job_unmaterialized"),
+        queries.getDossier(scope, "job_invalid"),
+      ]);
+      expect(notEvaluable?.evaluationState).toBe("NOT_EVALUABLE");
+      expect(unmaterialized?.evaluationState).toBe("UNMATERIALIZED");
+      expect(invalid?.evaluationState).toBe("INVALID");
+      for (const opportunity of [notEvaluable, unmaterialized, invalid]) {
+        expect((opportunity as any)?.engineRecommendation).toBeUndefined();
+        expect((opportunity as any)?.displayScore).toBeUndefined();
+      }
+    });
+
+    it("keeps an explicit user decision while exposing stale reviewed-fingerprint provenance identically in feed and dossier", async () => {
+      await seedItem({ id: "job_stale", title: "VP Strategy", engineVerdict: "CONSIDER", score: 81, userAction: "PURSUE" });
+      await db.execute(
+        `UPDATE canonical_decisions SET reviewed_fingerprint = 'fingerprint_v1' WHERE tenant_id = 'tenant_A' AND person_id = 'person_A' AND canonical_job_id = 'opp_job_stale'`
+      );
+
+      const feed = await queries.getFeedRaw(
+        { tenantId: "tenant_A", personId: "person_A" },
+        { searchPlanId: "plan_A", contextFingerprint: "fingerprint_A" },
+      );
+      const feedItem = feed.find((item) => item.jobHash === "job_stale");
+      const dossier = await queries.getDossier(scope, "job_stale") as EvaluatedOpportunity & { reviewState?: string };
+
+      expect(feedItem).toMatchObject({
+        engineVerdict: "CONSIDER",
+        effectiveDecision: "PURSUE",
+        qualityScore: 81,
+        evaluationFingerprint: "fingerprint_A",
+        reviewedFingerprint: "fingerprint_v1",
+        reviewState: "STALE",
+      });
+      expect(dossier.engineRecommendation?.engineVerdict).toBe("CONSIDER");
+      expect(dossier.effectiveDecision).toBe("PURSUE");
+      expect(dossier.engineRecommendation?.qualityScore).toBe(81);
+      expect(dossier.engineRecommendation?.evaluationFingerprint).toBe("fingerprint_A");
+      expect(dossier.userDecision?.reviewedFingerprint).toBe("fingerprint_v1");
+      expect(dossier.reviewState).toBe("STALE");
     });
 
     it("returns null for non-existent or cross-tenant jobHash", async () => {
@@ -199,6 +250,19 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
   });
 
   describe("2. Navigation Context (getNavigation)", () => {
+    it("paginates two PURSUE evaluations without changing either engine verdict", async () => {
+      await seedItem({ id: "page_a", title: "VP Alpha", engineVerdict: "PURSUE", score: 99 });
+      await seedItem({ id: "page_b", title: "VP Bravo", engineVerdict: "PURSUE", score: 98 });
+
+      const first = await queries.getFeed(scope, undefined, undefined, 1);
+      const second = await queries.getFeed(scope, first.nextCursor || undefined, undefined, 1);
+      const paged = [...first.items, ...second.items].filter((item) => item.jobHash === "page_a" || item.jobHash === "page_b");
+
+      expect(paged).toHaveLength(2);
+      expect(paged.map((item) => item.engineVerdict)).toEqual(["PURSUE", "PURSUE"]);
+      expect(paged.map((item) => item.effectiveDecision)).toEqual(["PURSUE", "PURSUE"]);
+    });
+
     it("computes deterministic prev/next navigation across canonical sequence", async () => {
       // Seed 3 items in deterministic order:
       // Item 1: Tier 0 (PURSUE+PURSUE), Score 95

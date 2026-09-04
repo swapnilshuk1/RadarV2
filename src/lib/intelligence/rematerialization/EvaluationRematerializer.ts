@@ -424,16 +424,16 @@ export class EvaluationRematerializer {
             throw new Error("INTRINSIC_VERDICT_MISMATCH: Materialized intrinsicVerdict is not unconstrained verb0");
           }
 
-          // Serving context independence check
+          // Serving must be presentation-context independent.
           serveEvaluation(
             canonicalPayload,
-            { personId: row.person_id, attentionWindow: 6, activePursuits: 0 },
+            { personId: row.person_id },
             canonicalPayload,
             null
           );
           serveEvaluation(
             canonicalPayload,
-            { personId: row.person_id, attentionWindow: 6, activePursuits: 6 },
+            { personId: row.person_id },
             canonicalPayload,
             null
           );

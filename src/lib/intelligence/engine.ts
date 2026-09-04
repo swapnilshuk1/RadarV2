@@ -12,8 +12,6 @@ import decisionPolicy from "@/data/ontology/decision_policy.json";
 import { CandidateIntelligencePipeline } from "./cip";
 import { JobIntelligencePipeline } from "./jip";
 import { present, type Presented } from "./present";
-import { buildHeadspace } from "./candidate";
-import { applyHeadspaceFilter } from "./headspace-filter";
 import type { RecommendationRecord } from "./record";
 import type { CandidateProjection } from "../domain/candidate_projection";
 import { computeEvidenceGroundingMap, EvidenceGroundingState } from "@/domain/evidence";
@@ -274,7 +272,6 @@ export function runEngine(
         decisionRisks: [{ factor: "Insufficient Evidence", impact: "negative", strength: "high", evidence: "Specification contains fewer than 25 words." }],
         confidences: { parsing: 0.3, matching: 0.3, recommendation: 0.3 },
         stability: "Low",
-        headspace: { finalVerb: "SPARSE_SPEC", downgraded: false, reason: undefined },
         comparison: { higherThan: [], lowerThan: [], differentiators: [], tradeOffs: [] },
         explanation: {
           reason: "insufficient-evidence-for-evaluation",
@@ -286,7 +283,6 @@ export function runEngine(
           priority: 0,
           factors: { careerValue: 0, shortlistingPotential: 0, pursuitFriction: 1.0 },
           verb0: "SPARSE_SPEC",
-          finalVerb: "SPARSE_SPEC",
           confidence: 0.3,
           stability: "Low",
           candidateProjectionHash: candHash,
@@ -294,7 +290,6 @@ export function runEngine(
           // P0-C: Pipeline contains ONLY EvidenceGate
           pipeline: [{ stage: "EvidenceGate", status: "SPARSE_SPEC", score: null, reason: "Needs More Signal: < 25 words in job specification." }],
           evidenceMapping: [],
-          headspace: { finalVerb: "SPARSE_SPEC", downgraded: false, reason: undefined },
           missing: ["evidence"],
           timestamp: new Date().toISOString()
         } as unknown as RecommendationRecord["trace"],
@@ -358,11 +353,6 @@ export function runEngine(
     );
 
     const verb0 = policyResult.verdict;
-    const candAttentionWindow = (candProjObj.attentionWindow as number | undefined) ?? (candProjObj.headspaceCapacityPerMonth as number | undefined);
-    const headspaceState = buildHeadspace(activePursuits, candAttentionWindow);
-    const headspaceOutcome = applyHeadspaceFilter(verb0, headspaceState);
-    const finalVerb = headspaceOutcome.finalVerb;
-
     // Use Continuous Priority Score directly from DecisionPolicyEngine
     const finalScore = policyResult.priorityScore;
 
@@ -379,8 +369,8 @@ export function runEngine(
     const record: RecommendationRecord = {
       jobHash: raw.jobHash,
       engineVersion: ENGINE_VERSION,
-      recommendationVersion: `${ENGINE_VERSION}:${raw.jobHash}:${finalVerb}`,
-      verb: finalVerb,
+      recommendationVersion: `${ENGINE_VERSION}:${raw.jobHash}:${verb0}`,
+      verb: verb0,
       qualityScore: finalScore !== null ? finalScore : null,
       rawScore: policyResult.rawScore,
       priority: finalScore !== null ? finalScore : null,
@@ -407,7 +397,6 @@ export function runEngine(
       opportunityScoreSource: policyResult.opportunityScoreSource,
       confidences: policyResult.confidences,
       stability: "High",
-      headspace: headspaceOutcome,
       comparison: {
         higherThan: [],
         lowerThan: [],
@@ -431,7 +420,6 @@ export function runEngine(
         },
         shortlistingPotentialCalculation: shortlistingPotentialCalc,
         verb0,
-        finalVerb,
         confidence: policyResult.confidences.recommendation,
         stability: "High",
         candidateProjectionHash: candHash,
@@ -439,7 +427,6 @@ export function runEngine(
         pipeline: policyResult.pipeline,
         evidenceMapping: capability.matches || [],
         careerValueBreakdown,
-        headspace: headspaceOutcome,
         missing: rawGaps.map((g) => (g.key as string) || ""),
         timestamp: new Date().toISOString()
       } as unknown as RecommendationRecord["trace"],

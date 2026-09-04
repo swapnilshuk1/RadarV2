@@ -100,9 +100,7 @@ export function present(
 
   // Close the loop with explainability: feed the dynamic human-focused narrative 
   // as the primary advisory recommendation, while keeping the structural explanation in the result view model
-  const finalRecommendation = record.headspace.downgraded && narrative.headspaceLine
-    ? `${narrative.headspaceLine} ${narrative.recommendation}`
-    : narrative.recommendation;
+  const finalRecommendation = narrative.recommendation;
 
   const cleanDimensions = Array.isArray(source.dimensions)
     ? source.dimensions.map((d: Record<string, unknown>): DimensionResult => {

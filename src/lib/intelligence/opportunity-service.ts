@@ -132,8 +132,14 @@ export class OpportunityService {
    */
   static async listDecidedForUser(userId: string, requestedTenantId?: string): Promise<Opportunity[]> {
     const scope = await resolveScope(userId, requestedTenantId);
-    const repos = getRepositories();
-    return repos.canonicalServing.listDecidedOpportunities(scope);
+    const queries = this.getServingQueries();
+    const feed = await queries.getFeed(scope, undefined, { decisionFilter: "decided" }, 50);
+    const opportunities = await Promise.all(
+      feed.items.map((item) => queries.getDossier(scope, item.jobHash)),
+    );
+    return opportunities.filter(
+      (opportunity): opportunity is Opportunity => opportunity !== null && "decision" in opportunity,
+    );
   }
 
   /**
@@ -153,71 +159,16 @@ export class OpportunityService {
       50
     );
 
-    return feed.items.map((f) => {
-      if (f.evaluationState === "SPARSE_SPEC" || f.evaluationState === "UNMATERIALIZED") {
-        return {
-          evaluationState: f.evaluationState,
-          jobHash: f.jobHash,
-          role: f.role,
-          company: f.company,
-          location: f.location,
-          postedRelative: "recently",
-          scrapedFrom: f.scrapedFrom,
-          applyUrl: f.applyUrl || undefined,
-          reasonCode: f.evaluationState,
-          userDecision: f.userAction ? {
-            personId: scope.personId,
-            jobHash: f.jobHash,
-            userAction: f.userAction,
-            reviewedFingerprint: null,
-            updatedAt: null,
-          } : null,
-        } as any;
-      }
-
-      return {
-        evaluationState: "COMPLETE",
-        jobHash: f.jobHash,
-        role: f.role,
-        company: f.company,
-        location: f.location,
-        postedRelative: "recently",
-        scrapedFrom: f.scrapedFrom,
-        applyUrl: f.applyUrl || undefined,
-        decision: f.engineVerdict || "PURSUE",
-        effectiveDecision: f.effectiveDecision,
-        reviewWorkflowState: f.reviewWorkflowState,
-        populationTier: f.populationTier,
-        engineRecommendation: {
-          jobHash: f.jobHash,
-          legacyStatus: "CANONICAL",
-          verb0: f.engineVerdict || "PURSUE",
-          engineVerdict: f.engineVerdict || "PURSUE",
-          headspaceVerdict: f.engineVerdict || "PURSUE",
-          headspaceDowngraded: false,
-          parsingConfidence: 0.95,
-          qualityScore: f.qualityScore ?? null,
-          evaluatedAt: new Date().toISOString(),
-          evaluationFingerprint: "v4.1",
-        },
-        recommendationResult: {
-          score: f.qualityScore ?? null,
-          vetoed: f.vetoed,
-        },
-        userDecision: f.userAction ? {
-          personId: scope.personId,
-          jobHash: f.jobHash,
-          userAction: f.userAction,
-          reviewedFingerprint: null,
-          updatedAt: null,
-        } : null,
-        recommendation: "",
-        hiringRisk: "Unknown",
-        dimensions: [],
-        positioning: [],
-        headspace: [],
-      } as any;
-    });
+    // This legacy-shaped method remains for callers that still need full
+    // opportunity DTOs.  It must hydrate each item from the same canonical
+    // dossier projection rather than inventing scores, fingerprints, or a
+    // default verdict from the lean feed row.
+    const opportunities = await Promise.all(
+      feed.items.map((item) => queries.getDossier(scope, item.jobHash)),
+    );
+    return opportunities.filter(
+      (opportunity): opportunity is import("../../data/opportunity-fixtures").ServedOpportunity => opportunity !== null,
+    );
   }
 
   /**

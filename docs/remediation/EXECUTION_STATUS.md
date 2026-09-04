@@ -10,6 +10,14 @@ Baseline:
 - Current branch head — repaired Gate 0b test fixtures so evaluated-output assertions establish candidate, opportunity, and referential prerequisites.
 
 ## Current
+- remediation ID: Gate 2 — canonical serving truth (in progress; uncommitted)
+- branch: `remediation/03-canonical-serving-truth`
+- decision model: persisted engine verdict and explicit user action are separate; serving resolves `effectiveDecision = userDecision ?? engineVerdict`. Pagination/page size is presentation-only and cannot change either fact.
+- evaluation validity: `NOT_EVALUABLE`/`PROFILE_REQUIRED`, `INVALID`, and `UNMATERIALIZED` remain distinct canonical states. Unsupported or malformed stored evaluation payloads are `INVALID`, never silently reclassified as a valid inability to evaluate.
+- review provenance: `reviewedFingerprint` is retained and produces `UNREVIEWED`, `CURRENT`, `STALE`, or `UNKNOWN` from fingerprint equality without erasing a stale explicit user decision.
+- compatibility retirement: feed and dossier do not adapt non-canonical persisted evaluation payloads into advisory output; invalid derived artifacts require rematerialization.
+- performance follow-up: `OpportunityService.listForUser()` now performs canonical dossier hydration after its lean feed query (one feed query plus one dossier query per returned item). This is an intentional semantic-safety N+1 during Gate 2 and should be replaced by a bounded batch canonical-dossier projection in a later serving-performance unit; it is not hidden by synthetic feed DTOs.
+- validation: focused serving/decision/inventory suites pass (13 files, 98 tests); standalone typecheck passes. External certification recorded all 7 stages passing, including the SSR build, in 226.79s. The local terminal launcher still loses its aggregate child-process output after Stage 1.
 - remediation ID: Gate 1 / Remediation 3 — identity and authority hardening
 - branch: `remediation/02-identity-authority-hardening`
 - candidate authority: confirmed and repaired. Worker and context materialization now produce `NOT_EVALUABLE` with no advisory score or verdict when the authoritative candidate projection is absent.

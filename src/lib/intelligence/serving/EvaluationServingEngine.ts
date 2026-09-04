@@ -5,7 +5,8 @@
  * 
  * Invariant Boundary:
  * Layer 1 (Intrinsic Evaluation): Materialized in candidate_evaluations (immutable truth: verb0, intrinsic quality score, audit trace).
- * Layer 2 (Contextual Serving): Computed dynamically at read time (headspace saturation, active pursuits, attention window, explicit user decisions).
+ * Layer 2 (Contextual Serving): transforms persisted evaluation into display
+ * fields without changing recommendation semantics.
  *
  * This engine is 100% pure: zero database access, zero side effects, zero engine re-executions, zero cache mutations.
  */
@@ -19,8 +20,6 @@ import {
   type ReviewWorkflowState,
   type EngineVerdict,
 } from "../../../domain/decision_v4";
-import { buildHeadspace } from "../candidate";
-import { applyHeadspaceFilter } from "../headspace-filter";
 import type { Opportunity, DimensionResult, DimensionKey, EvidenceBucket } from "../../../data/opportunity-fixtures";
 import { isMeaningfulEvidenceQuote } from "@/domain/evidence";
 
@@ -91,11 +90,12 @@ export interface CanonicalIntrinsicEvaluationPayload {
   };
 }
 
-export interface CandidateServingContext {
+export interface ServingPresentationContext {
   readonly personId: string;
-  readonly attentionWindow: number;
-  readonly activePursuits: number;
 }
+
+/** @deprecated Test-only compatibility alias. Serving no longer receives capacity semantics. */
+export type CandidateServingContext = ServingPresentationContext & Record<string, unknown>;
 
 export type OpportunityServingContext = {
   jobHash?: string;
@@ -147,7 +147,7 @@ export function isCanonicalIntrinsicEvaluation(
  */
 export function serveEvaluation(
   cached: CanonicalIntrinsicEvaluationPayload,
-  candCtx: CandidateServingContext,
+  _presentationContext: ServingPresentationContext,
   oppCtx: OpportunityServingContext,
   userDecision: UserDecisionStateV4 | null
 ): Opportunity {
@@ -160,22 +160,13 @@ export function serveEvaluation(
   // 1. Read intrinsic verdict (verb0)
   const verb0 = cached.intrinsicVerdict;
 
-  // 2. Build current headspace from dynamic candidate context
-  const headspace = buildHeadspace(candCtx.activePursuits, candCtx.attentionWindow);
-
-  // 3. Apply headspace filter dynamically
-  const headspaceOutcome = applyHeadspaceFilter(verb0, headspace);
-  const finalVerb = headspaceOutcome.finalVerb as EngineVerdict;
-
-  // 4. Construct current served EngineRecommendation (Intrinsic Verdict + Headspace Advisory)
+  // 2. Headspace is pagination/display capacity, not recommendation policy.
+  // Preserve the immutable engine verdict without a contextual downgrade.
   const servedEngineRec: EngineRecommendationV4 & { evaluationTimeFinalVerb?: EngineVerdict } = {
     jobHash: cached.jobHash,
     evaluationFingerprint: cached.evaluationInputHash,
     engineVerdict: verb0,
     verb0,
-    headspaceVerdict: finalVerb,
-    headspaceDowngraded: headspaceOutcome.downgraded,
-    headspaceReason: headspaceOutcome.reason,
     evaluationTimeFinalVerb: cached.auditTrace?.evaluationTimeFinalVerb,
     vetoed: cached.vetoed,
     vetoReason: cached.vetoReason,
@@ -195,10 +186,8 @@ export function serveEvaluation(
   const effectiveDecision = computeEffectiveDecision(servedEngineRec, userDecision);
   const reviewWorkflowState = computeReviewWorkflowState(servedEngineRec, userDecision);
 
-  // 6. Dynamic narrative synthesis (Contextual Advisory without mutating cached base narrative)
-  const finalRecommendation = headspaceOutcome.downgraded && headspaceOutcome.reason
-    ? `${headspaceOutcome.reason} ${cached.baseNarrative.baseRecommendationProse}`
-    : cached.baseNarrative.baseRecommendationProse;
+  // 6. Use persisted narrative without a capacity-based recommendation prefix.
+  const finalRecommendation = cached.baseNarrative.baseRecommendationProse;
 
   // 7. Presentation fields
   const displayScore = cached.intrinsicQualityScore !== null ? `${Math.round(cached.intrinsicQualityScore)}%` : "—";
@@ -208,6 +197,8 @@ export function serveEvaluation(
       ? { label: "Recommended", variant: "signal" as const }
       : verb0 === "CONSIDER"
         ? { label: "Consider", variant: "caution" as const }
+        : verb0 === "UNKNOWN"
+          ? { label: "Not evaluated", variant: "muted" as const }
         : { label: "Pass", variant: "muted" as const };
 
   const cleanDimensions: DimensionResult[] = Array.isArray(cached.dimensions)
@@ -286,7 +277,8 @@ function adaptEngineVerdict(verb: unknown): EngineVerdict {
 
 /**
  * Compatibility Adapter: Serves legacy / non-canonical evaluation rows.
- * Tags the evaluation as LEGACY_NON_CANONICAL and dynamically applies current headspace without inventing false verb0 truth.
+ * Historical compatibility helper. Canonical production serving does not call
+ * this adapter; unsupported persisted rows are surfaced as INVALID instead.
  */
 export function adaptLegacyEvaluation(
   legacyOpp: any,
@@ -305,13 +297,6 @@ export function adaptLegacyEvaluation(
     || legacyOpp.verdict;
   const recordedVerdict = adaptEngineVerdict(rawVerb);
 
-  // Build current headspace
-  const headspace = buildHeadspace(candCtx.activePursuits, candCtx.attentionWindow);
-
-  // Apply headspace filter to recorded verdict
-  const headspaceOutcome = applyHeadspaceFilter(recordedVerdict, headspace);
-  const finalVerb = headspaceOutcome.finalVerb as EngineVerdict;
-
   const servedEngineRec: EngineRecommendationV4 & { legacyStatus: "LEGACY_NON_CANONICAL" } = {
     ...(legacyOpp.engineRecommendation || {}),
     ...(presentedOpportunity.engineRecommendation || {}),
@@ -320,9 +305,6 @@ export function adaptLegacyEvaluation(
     evaluationFingerprint: recObj.evaluationFingerprint || legacyOpp.engineRecommendation?.evaluationFingerprint || "legacy_v4.1",
     engineVerdict: recordedVerdict,
     verb0: recordedVerdict,
-    headspaceVerdict: finalVerb,
-    headspaceDowngraded: headspaceOutcome.downgraded,
-    headspaceReason: headspaceOutcome.reason,
     vetoed: Boolean(recObj.vetoed ?? legacyOpp.engineRecommendation?.vetoed ?? presentedOpportunity.engineRecommendation?.vetoed),
     vetoReason: recObj.vetoReason || legacyOpp.engineRecommendation?.vetoReason || presentedOpportunity.engineRecommendation?.vetoReason || null,
     qualityScore: recObj.qualityScore ?? legacyOpp.score ?? legacyOpp.engineRecommendation?.qualityScore ?? presentedOpportunity.engineRecommendation?.qualityScore ?? presentedOpportunity.recommendationResult?.score ?? null,

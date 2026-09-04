@@ -36,9 +36,8 @@ import type {
 import { isEvaluated } from "../../../data/opportunity-fixtures";
 import {
   serveEvaluation,
-  adaptLegacyEvaluation,
   isCanonicalIntrinsicEvaluation,
-  type CandidateServingContext,
+  type ServingPresentationContext,
 } from "../../../lib/intelligence/serving/EvaluationServingEngine";
 import {
   computeEffectiveDecision,
@@ -46,7 +45,7 @@ import {
   type EffectiveDecision,
   type UserDecisionStateV4,
 } from "../../../domain/decision_v4";
-import { resolveEffectiveDecision } from "../../../lib/intelligence/decision-resolver";
+import { resolveCanonicalServingReadModel } from "../../../lib/intelligence/serving/CanonicalServingReadModel";
 import { classifyOpportunityCategories, resolveCanonicalCategoryId } from "../../../lib/domain/category_taxonomy";
 import type { CanonicalOpportunityMetrics } from "../../../lib/intelligence/metric-integrity";
 import { SqliteOpportunityQueries } from "./SqliteOpportunityQueries";
@@ -344,8 +343,10 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
          me.rationale as rationale,
          me.evidence_ids as evidence_ids,
          me.evaluation_json as evaluation_json,
+         me.evaluation_context_fingerprint as evaluation_fingerprint,
          me.materialized_at as materialized_at,
          d.action as user_action,
+         d.reviewed_fingerprint as reviewed_fingerprint,
          d.reason as user_reason,
          d.updated_at as user_decision_updated_at
        FROM search_plan_candidates spc
@@ -367,14 +368,8 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
       [context.contextFingerprint, scope.tenantId, scope.personId, context.searchPlanId]
     );
 
-    const activePursuits = options?.activePursuits !== undefined
-      ? options.activePursuits
-      : rows.filter((r) => r.user_action === "PURSUE").length;
-
-    const candCtx: CandidateServingContext = {
+    const presentationContext: ServingPresentationContext = {
       personId: scope.personId,
-      attentionWindow: 6,
-      activePursuits,
     };
 
     const targetCategory = options?.categoryId && options.categoryId !== "all" 
@@ -499,7 +494,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
         personId: scope.personId,
         jobHash: r.source_job_id,
         userAction: toUserAction(r.user_action),
-        reviewedFingerprint: null,
+        reviewedFingerprint: r.reviewed_fingerprint,
         updatedAt: r.user_decision_updated_at,
       } : null;
 
@@ -521,22 +516,40 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
         postedPrecision: r.posted_precision,
       };
 
-      let opp: EvaluatedOpportunity;
-      if (isCanonicalIntrinsicEvaluation(rawParsed)) {
-        opp = serveEvaluation(rawParsed, candCtx, oppSource, userState) as EvaluatedOpportunity;
-      } else {
-        opp = adaptLegacyEvaluation(rawParsed, candCtx, oppSource, userState) as EvaluatedOpportunity;
+      if (!isCanonicalIntrinsicEvaluation(rawParsed)) {
+        opportunities.push({
+          evaluationState: "INVALID",
+          jobHash: String(r.source_job_id),
+          role: r.job_title || "Unknown Role",
+          company: r.company_name || "Unknown Company",
+          location: r.location || "Unknown",
+          postedRelative: "recently",
+          scrapedFrom: safeScrapeSource,
+          applyUrl: r.apply_url || undefined,
+          reasonCode: "NON_CANONICAL_EVALUATION",
+          userDecision: userState,
+        });
+        continue;
       }
 
-      const canonicalEffectiveDecision = resolveEffectiveDecision({
-        attentionDecision: toAttentionDecision(r.attention_decision),
-        engineVerdict: toEngineVerdict(opp.engineRecommendation?.engineVerdict || r.engine_decision),
-        vetoed: opp.engineRecommendation?.vetoed,
-        qualityScore: opp.engineRecommendation?.qualityScore,
-        userAction: toUserAction(userState?.userAction || "NONE"),
+      const opp = serveEvaluation(rawParsed, presentationContext, oppSource, userState) as EvaluatedOpportunity;
+      const readModel = resolveCanonicalServingReadModel({
+        evaluationState: "EVALUATED",
+        engineVerdict: r.engine_decision,
+        userDecision: userState?.userAction || null,
+        evaluationFingerprint: r.evaluation_fingerprint || null,
+        reviewedFingerprint: r.reviewed_fingerprint || null,
+        qualityScore: r.quality_score,
       });
-
-      opp.effectiveDecision = canonicalEffectiveDecision;
+      opp.effectiveDecision = readModel.effectiveDecision;
+      if (opp.engineRecommendation) {
+        opp.engineRecommendation = {
+          ...opp.engineRecommendation,
+          engineVerdict: readModel.engineVerdict,
+          evaluationFingerprint: readModel.evaluationFingerprint || opp.engineRecommendation.evaluationFingerprint,
+          qualityScore: readModel.qualityScore,
+        };
+      }
       if (r.evaluation_state === "SPARSE_SPEC") {
         (opp as any).evaluationState = "SPARSE_SPEC";
       }
@@ -605,8 +618,10 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
          me.rationale as rationale,
          me.evidence_ids as evidence_ids,
          me.evaluation_json as evaluation_json,
+         me.evaluation_context_fingerprint as evaluation_fingerprint,
          me.materialized_at as materialized_at,
          d.action as user_action,
+         d.reviewed_fingerprint as reviewed_fingerprint,
          d.reason as user_reason,
          d.updated_at as user_decision_updated_at
        FROM search_plan_candidates spc
@@ -680,23 +695,12 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
       personId: scope.personId,
       jobHash: row.source_job_id,
       userAction: toUserAction(row.user_action),
-      reviewedFingerprint: null,
+      reviewedFingerprint: row.reviewed_fingerprint,
       updatedAt: row.user_decision_updated_at,
     } : null;
 
-    let activePursuits = options?.activePursuits;
-    if (activePursuits === undefined) {
-      const activePursuitRow = await this.db.one<{ cnt: number }>(
-        `SELECT COUNT(*) as cnt FROM canonical_decisions WHERE tenant_id = ? AND person_id = ? AND action = 'PURSUE'`,
-        [scope.tenantId, scope.personId]
-      );
-      activePursuits = Number(activePursuitRow?.cnt || 0);
-    }
-
-    const candCtx: CandidateServingContext = {
+    const presentationContext: ServingPresentationContext = {
       personId: scope.personId,
-      attentionWindow: 6,
-      activePursuits,
     };
 
     const oppSource = {
@@ -710,20 +714,39 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
       postedPrecision: row.posted_precision,
     };
 
-    let opp: EvaluatedOpportunity;
-    if (isCanonicalIntrinsicEvaluation(rawParsed)) {
-      opp = serveEvaluation(rawParsed, candCtx, oppSource, userState) as EvaluatedOpportunity;
-    } else {
-      opp = adaptLegacyEvaluation(rawParsed, candCtx, oppSource, userState) as EvaluatedOpportunity;
+    if (!isCanonicalIntrinsicEvaluation(rawParsed)) {
+      return {
+        evaluationState: "INVALID",
+        jobHash: String(row.source_job_id),
+        role: row.job_title || "Unknown Role",
+        company: row.company_name || "Unknown Company",
+        location: row.location || "Unknown",
+        postedRelative: "recently",
+        scrapedFrom: toScrapeSource(row.source),
+        applyUrl: row.apply_url || undefined,
+        reasonCode: "NON_CANONICAL_EVALUATION",
+        userDecision: userState,
+      } as UnavailableOpportunity;
     }
 
-    opp.effectiveDecision = resolveEffectiveDecision({
-      attentionDecision: toAttentionDecision(row.attention_decision),
-      engineVerdict: toEngineVerdict(opp.engineRecommendation?.engineVerdict || row.engine_decision),
-      vetoed: opp.engineRecommendation?.vetoed,
-      qualityScore: opp.engineRecommendation?.qualityScore,
-      userAction: userState?.userAction || "NONE",
+    const opp = serveEvaluation(rawParsed, presentationContext, oppSource, userState) as EvaluatedOpportunity;
+    const readModel = resolveCanonicalServingReadModel({
+      evaluationState: "EVALUATED",
+      engineVerdict: row.engine_decision,
+      userDecision: userState?.userAction || null,
+      evaluationFingerprint: row.evaluation_fingerprint || null,
+      reviewedFingerprint: row.reviewed_fingerprint || null,
+      qualityScore: row.quality_score,
     });
+    opp.effectiveDecision = readModel.effectiveDecision;
+    if (opp.engineRecommendation) {
+      opp.engineRecommendation = {
+        ...opp.engineRecommendation,
+        engineVerdict: readModel.engineVerdict,
+        evaluationFingerprint: readModel.evaluationFingerprint || opp.engineRecommendation.evaluationFingerprint,
+        qualityScore: readModel.qualityScore,
+      };
+    }
 
     return opp;
   }

@@ -17,18 +17,7 @@ import path from "node:path";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
-import { resolveEffectiveDecision } from "../../src/lib/intelligence/decision-resolver";
-
-const POPULATION_TIER_ORDER: Record<string, number> = {
-  ENGINE_PURSUIT: 0,
-  USER_CONFIRMED: 0,
-  PREFERENCE_OVERRIDE: 1,
-  VETO_OVERRIDE: 2,
-  ENGINE_CONSIDER: 3,
-  NOT_EVALUABLE: 4,
-  USER_PASSED: 5,
-  ENGINE_PASS: 5,
-};
+import { resolveServingDecision } from "../../src/domain/decision_v4";
 
 describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
   let sqliteDb: Database.Database;
@@ -62,8 +51,12 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
     });
   });
 
-  describe("2. Synthetic Veto Edge-Case Parity Suite", () => {
-    it("Case V1: userAction=PURSUE, engineVerdict=CONSIDER, vetoed=1 -> VETO_OVERRIDE (Tier 2)", async () => {
+  describe("2. Canonical engine/user decision parity", () => {
+    it("preserves UNKNOWN when neither the engine nor the user supplies a decision", () => {
+      expect(resolveServingDecision("UNKNOWN", null)).toBe("UNKNOWN");
+    });
+
+    it("user promotes CONSIDER without mutating engine verdict", async () => {
       // Seed candidate with CONSIDER and vetoed=1
       await db.execute(
         `INSERT INTO canonical_opportunities (id, source_job_id, source, company_name, canonical_url) VALUES ('job_v1', 'j-v1', 'LinkedIn', 'Veto Corp', 'https://apply/v1')`
@@ -91,21 +84,13 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
 
       const v1 = items.find((i) => i.jobHash === "j-v1");
       expect(v1).toBeDefined();
-      expect(v1?.effectiveDecision).toBe("VETO_OVERRIDE");
-      expect(v1?.populationTier).toBe(2);
-
-      // Cross-verify with TypeScript resolver
-      const tsDecision = resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "CONSIDER",
-        vetoed: true,
-        userAction: "PURSUE",
-      });
-      expect(tsDecision).toBe("VETO_OVERRIDE");
-      expect(POPULATION_TIER_ORDER[tsDecision]).toBe(2);
+      expect(v1?.engineVerdict).toBe("CONSIDER");
+      expect(v1?.userAction).toBe("PURSUE");
+      expect(v1?.effectiveDecision).toBe("PURSUE");
+      expect(resolveServingDecision("CONSIDER", "PURSUE")).toBe("PURSUE");
     });
 
-    it("Case V2: userAction=PURSUE, engineVerdict=CONSIDER, vetoed=0 -> PREFERENCE_OVERRIDE (Tier 1)", async () => {
+    it("user promotion is independent of legacy veto/ranking fields", async () => {
       await db.execute(
         `INSERT INTO canonical_opportunities (id, source_job_id, source, company_name, canonical_url) VALUES ('job_v2', 'j-v2', 'LinkedIn', 'Growth Corp', 'https://apply/v2')`
       );
@@ -132,17 +117,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
 
       const v2 = items.find((i) => i.jobHash === "j-v2");
       expect(v2).toBeDefined();
-      expect(v2?.effectiveDecision).toBe("PREFERENCE_OVERRIDE");
-      expect(v2?.populationTier).toBe(1);
-
-      const tsDecision = resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "CONSIDER",
-        vetoed: false,
-        userAction: "PURSUE",
-      });
-      expect(tsDecision).toBe("PREFERENCE_OVERRIDE");
-      expect(POPULATION_TIER_ORDER[tsDecision]).toBe(1);
+      expect(v2?.engineVerdict).toBe("CONSIDER");
+      expect(v2?.effectiveDecision).toBe("PURSUE");
     });
 
     it("Case V3: userAction=PURSUE, engineVerdict=PASS, vetoed=0 -> VETO_OVERRIDE (Tier 2)", async () => {
@@ -171,8 +147,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
       );
 
       const v3 = items.find((i) => i.jobHash === "j-v3");
-      expect(v3?.effectiveDecision).toBe("VETO_OVERRIDE");
-      expect(v3?.populationTier).toBe(2);
+      expect(v3?.engineVerdict).toBe("PASS");
+      expect(v3?.effectiveDecision).toBe("PURSUE");
     });
 
     it("Case V4: userAction=CONSIDER, engineVerdict=PASS -> PREFERENCE_OVERRIDE (Tier 1)", async () => {
@@ -201,8 +177,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
       );
 
       const v4 = items.find((i) => i.jobHash === "j-v4");
-      expect(v4?.effectiveDecision).toBe("PREFERENCE_OVERRIDE");
-      expect(v4?.populationTier).toBe(1);
+      expect(v4?.engineVerdict).toBe("PASS");
+      expect(v4?.effectiveDecision).toBe("CONSIDER");
     });
 
     it("Case V5: userAction=CONSIDER, engineVerdict=CONSIDER -> ENGINE_CONSIDER (Tier 3)", async () => {
@@ -231,8 +207,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
       );
 
       const v5 = items.find((i) => i.jobHash === "j-v5");
-      expect(v5?.effectiveDecision).toBe("ENGINE_CONSIDER");
-      expect(v5?.populationTier).toBe(3);
+      expect(v5?.engineVerdict).toBe("CONSIDER");
+      expect(v5?.effectiveDecision).toBe("CONSIDER");
     });
   });
 });

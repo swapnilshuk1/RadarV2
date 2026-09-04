@@ -9,9 +9,35 @@
  * 3. REVIEW WORKFLOW STATE (Whether the user has reviewed the CURRENT evaluation)
  */
 
-export type EngineVerdict = "PURSUE" | "CONSIDER" | "PASS" | "SPARSE_SPEC";
+export type EngineVerdict = "PURSUE" | "CONSIDER" | "PASS" | "UNKNOWN" | "SPARSE_SPEC";
 
 export type UserAction = "PURSUE" | "CONSIDER" | "PASS" | "NONE";
+
+/** Canonical serving truth: engine evaluation and user action stay separate. */
+export type CanonicalServingVerdict = "PURSUE" | "CONSIDER" | "PASS" | "UNKNOWN";
+export type CanonicalReviewState = "UNREVIEWED" | "CURRENT" | "STALE" | "UNKNOWN";
+
+export function toCanonicalServingVerdict(value: unknown): CanonicalServingVerdict {
+  if (value === "PURSUE" || value === "CONSIDER" || value === "PASS") return value;
+  return "UNKNOWN";
+}
+
+export function resolveServingDecision(
+  engineVerdict: CanonicalServingVerdict,
+  userAction: UserAction | null | undefined,
+): CanonicalServingVerdict {
+  return userAction && userAction !== "NONE" ? userAction : engineVerdict;
+}
+
+export function resolveServingReviewState(
+  evaluationFingerprint: string | null | undefined,
+  userAction: UserAction | null | undefined,
+  reviewedFingerprint: string | null | undefined,
+): CanonicalReviewState {
+  if (!userAction || userAction === "NONE") return "UNREVIEWED";
+  if (!evaluationFingerprint || !reviewedFingerprint) return "UNKNOWN";
+  return evaluationFingerprint === reviewedFingerprint ? "CURRENT" : "STALE";
+}
 
 export type ReviewWorkflowState =
   | "UNREVIEWED"
@@ -19,7 +45,7 @@ export type ReviewWorkflowState =
   | "REVIEWED_STALE"
   | "REVIEWED_UNKNOWN";
 
-export type EffectiveDecision =
+export type LegacyEffectiveDecision =
   | "ENGINE_PURSUIT"       // Engine PURSUE, User NONE
   | "USER_CONFIRMED"       // Engine PURSUE, User PURSUE
   | "PREFERENCE_OVERRIDE"  // Engine CONSIDER, User PURSUE
@@ -28,6 +54,9 @@ export type EffectiveDecision =
   | "ENGINE_PASS"          // Engine PASS, User NONE
   | "ENGINE_CONSIDER"      // Engine CONSIDER, User NONE
   | "NOT_EVALUABLE";       // Engine SPARSE_SPEC / Insufficient signals
+
+/** Current serving contract. Legacy categories remain only for ranking compatibility. */
+export type EffectiveDecision = CanonicalServingVerdict | LegacyEffectiveDecision;
 
 export interface DecisionDriver {
   readonly factor: string;
@@ -41,9 +70,6 @@ export interface EngineRecommendationV4 {
   readonly evaluationFingerprint: string;
   readonly engineVerdict: EngineVerdict;
   readonly verb0?: EngineVerdict;
-  readonly headspaceVerdict?: EngineVerdict;
-  readonly headspaceDowngraded?: boolean;
-  readonly headspaceReason?: string;
   readonly vetoed: boolean;
   readonly vetoReason: string | null;
   readonly qualityScore: number | null; // Model C authoritative continuous quality score (0..100 or null)

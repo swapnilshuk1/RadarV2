@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { DecisionPolicyEngine } from "../../src/lib/intelligence/policy/DecisionPolicyEngine";
-import { buildHeadspace } from "../../src/lib/intelligence/candidate";
-import { applyHeadspaceFilter } from "../../src/lib/intelligence/headspace-filter";
 import { runEngine, injectFixtureRecords, clearFixtureRecords } from "../../src/lib/intelligence/engine";
 import { CandidateProjectionBuilderImpl } from "../../src/lib/intelligence/builders/CandidateProjectionBuilder";
 import { candidateProfile } from "../../src/data/candidate-profile";
@@ -82,10 +80,7 @@ describe("Attention Window Capacity Invariance & Trace Flow", () => {
       88 // Authoritative Shortlisting Potential
     );
 
-    const headspace = buildHeadspace(activePursuits, capacityOverride);
-    const headspaceOutcome = applyHeadspaceFilter(policyResult.verdict as any, headspace);
-
-    return { policyResult, headspace, headspaceOutcome };
+    return { policyResult };
   };
 
   it("Varies capacity (2, 6, 10) with fixed active pursuits (4) and proves policy invariance", () => {
@@ -112,31 +107,17 @@ describe("Attention Window Capacity Invariance & Trace Flow", () => {
     expect(runCap6.policyResult.triggeredRuleIds).toEqual(runCap10.policyResult.triggeredRuleIds);
   });
 
-  it("Demonstrates asymmetric headspace downgrade when capacity is saturated vs unsaturated", () => {
+  it("treats capacity as presentation-only and never modifies the policy verdict", () => {
     const runCap2 = evaluateForCapacity(2, 4);   // 4 active >= 2 cap -> Saturated
     const runCap6 = evaluateForCapacity(6, 4);   // 4 active < 6 cap -> Unsaturated
     const runCap10 = evaluateForCapacity(10, 4); // 4 active < 10 cap -> Unsaturated
 
-    // Capacity 2 is saturated (4 >= 2) -> downgraded to CONSIDER
-    expect(runCap2.headspace.capacityPerMonth).toBe(2);
-    expect(runCap2.headspace.saturated).toBe(true);
-    expect(runCap2.headspaceOutcome.downgraded).toBe(true);
-    expect(runCap2.headspaceOutcome.finalVerb).toBe("CONSIDER");
-
-    // Capacity 6 is unsaturated (4 < 6) -> retains PURSUE
-    expect(runCap6.headspace.capacityPerMonth).toBe(6);
-    expect(runCap6.headspace.saturated).toBe(false);
-    expect(runCap6.headspaceOutcome.downgraded).toBe(false);
-    expect(runCap6.headspaceOutcome.finalVerb).toBe("PURSUE");
-
-    // Capacity 10 is unsaturated (4 < 10) -> retains PURSUE
-    expect(runCap10.headspace.capacityPerMonth).toBe(10);
-    expect(runCap10.headspace.saturated).toBe(false);
-    expect(runCap10.headspaceOutcome.downgraded).toBe(false);
-    expect(runCap10.headspaceOutcome.finalVerb).toBe("PURSUE");
+    expect(runCap2.policyResult.verdict).toBe("PURSUE");
+    expect(runCap6.policyResult.verdict).toBe("PURSUE");
+    expect(runCap10.policyResult.verdict).toBe("PURSUE");
   });
 
-  it("Proves RecommendationRecord trace.verb0, trace.finalVerb, and trace.headspace reflect policy -> headspace transition", () => {
+  it("proves runEngine preserves the policy verdict regardless of active pursuit count", () => {
     const builder = new CandidateProjectionBuilderImpl();
     const projection = builder.fromProfile({
       ...candidateProfile,
@@ -164,16 +145,7 @@ describe("Attention Window Capacity Invariance & Trace Flow", () => {
     const record = result.records[0];
 
     expect(record).toBeDefined();
-    // Intrinsic policy verb before headspace was PURSUE
     expect(record.trace.verb0).toBe("PURSUE");
-
-    // Downstream verb reflects final saturated headspace
-    expect(record.verb).toBe("CONSIDER");
-    expect(record.headspace.downgraded).toBe(true);
-    expect(record.headspace.finalVerb).toBe("CONSIDER");
-    expect(record.trace.finalVerb).toBe("CONSIDER");
-    expect(record.trace.headspace.downgraded).toBe(true);
-    expect(record.trace.headspace.finalVerb).toBe("CONSIDER");
-    expect(record.trace.headspace.reason).toContain("at capacity");
+    expect(record.verb).toBe("PURSUE");
   });
 });

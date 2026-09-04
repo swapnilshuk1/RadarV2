@@ -9,7 +9,6 @@ import { playbookNarrative, type EditorialNarrative } from "./editorial";
 export type Narrative = EditorialNarrative & Readonly<{
   confidenceLine: string;
   stabilityLine: string;
-  headspaceLine: string | null;
   comparativeNote: string | null;
   missingEvidenceLine: string | null;
 }>;
@@ -33,10 +32,6 @@ export function format(
         ? "Stability: medium — one or two missing signals could shift this."
         : "Stability: low — the verb is sensitive to new evidence.";
 
-  const headspaceLine = record.headspace.downgraded
-    ? record.headspace.reason ?? null
-    : null;
-
   const comparativeNote =
     record.comparison.higherThan.length && record.comparison.lowerThan.length
       ? `Ranks above ${record.comparison.higherThan.length} and below ${record.comparison.lowerThan.length} in the current queue.`
@@ -54,7 +49,6 @@ export function format(
     ...editorial,
     confidenceLine,
     stabilityLine,
-    headspaceLine,
     comparativeNote,
     missingEvidenceLine,
   };

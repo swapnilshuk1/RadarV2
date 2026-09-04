@@ -32,7 +32,10 @@ import type {
   EffectiveDecision,
   ReviewWorkflowState,
   UserDecisionStateV4,
+  CanonicalServingVerdict,
+  CanonicalReviewState,
 } from "../../../domain/decision_v4";
+import { resolveCanonicalServingReadModel, type CanonicalEvaluationState } from "../../../lib/intelligence/serving/CanonicalServingReadModel";
 export type AttentionDecision = "CANDIDATE" | "NOT_CANDIDATE";
 import type {
   Opportunity,
@@ -44,9 +47,8 @@ import type {
 } from "../../../data/opportunity-fixtures";
 import {
   serveEvaluation,
-  adaptLegacyEvaluation,
   isCanonicalIntrinsicEvaluation,
-  type CandidateServingContext,
+  type ServingPresentationContext,
 } from "../../../lib/intelligence/serving/EvaluationServingEngine";
 import { resolveEffectiveDecision } from "../../../lib/intelligence/decision-resolver";
 import { classifyOpportunityCategories, type CategoryId } from "../../../lib/domain/category_taxonomy";
@@ -61,6 +63,8 @@ function toUnavailableState(val: unknown): UnavailableOpportunity["evaluationSta
   if (
     val === "SPARSE_SPEC" ||
     val === "NOT_EVALUABLE" ||
+    val === "PROFILE_REQUIRED" ||
+    val === "INVALID" ||
     val === "ACQUISITION_PENDING" ||
     val === "ACQUISITION_FAILED" ||
     val === "EXPIRED"
@@ -82,7 +86,7 @@ function toAttentionDecision(val: unknown): AttentionDecision {
 
 function toEngineVerdict(val: unknown): EngineVerdict {
   if (val === "PURSUE" || val === "CONSIDER" || val === "PASS") return val;
-  return "PASS";
+  return "SPARSE_SPEC";
 }
 
 export interface RawFeedRow {
@@ -94,16 +98,16 @@ export interface RawFeedRow {
   posted_at: string | null;
   posted_precision: string | null;
   apply_url: string | null;
-  evaluation_state: "COMPLETE" | "SPARSE_SPEC" | "UNMATERIALIZED";
+  evaluation_state: "COMPLETE" | "SPARSE_SPEC" | "NOT_EVALUABLE" | "PROFILE_REQUIRED" | "INVALID" | "UNMATERIALIZED";
   engine_verdict: string | null;
   quality_score: number | null;
+  evaluation_fingerprint: string | null;
   vetoed: number;
   user_action: string;
+  reviewed_fingerprint: string | null;
   user_decision_updated_at: string | null;
   materialized_at: string | null;
-  effective_decision: string;
   population_tier: number;
-  review_workflow_state: string;
 }
 
 export class SqliteOpportunityQueries implements OpportunityQueries {
@@ -132,38 +136,18 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          ov.posted_precision AS posted_precision,
          co.canonical_url AS apply_url,
          CASE 
-           WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 'SPARSE_SPEC'
+           WHEN me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'INVALID') THEN me.evaluation_state
            WHEN me.id IS NOT NULL THEN 'COMPLETE'
            ELSE 'UNMATERIALIZED'
          END AS evaluation_state,
          me.decision AS engine_verdict,
          me.quality_score AS quality_score,
+         me.evaluation_context_fingerprint AS evaluation_fingerprint,
          COALESCE(me.vetoed, 0) AS vetoed,
          COALESCE(d.action, 'NONE') AS user_action,
+         d.reviewed_fingerprint AS reviewed_fingerprint,
          d.updated_at AS user_decision_updated_at,
          me.materialized_at AS materialized_at,
-
-         -- Authoritative Effective Decision
-         CASE 
-           WHEN d.action = 'PASS' THEN 'USER_PASSED'
-           WHEN d.action = 'PURSUE' THEN
-             CASE 
-               WHEN me.decision = 'PASS' OR me.vetoed = 1 THEN 'VETO_OVERRIDE'
-               WHEN me.decision = 'PURSUE' THEN 'USER_CONFIRMED'
-               WHEN me.decision = 'CONSIDER' THEN 'PREFERENCE_OVERRIDE'
-               ELSE 'USER_CONFIRMED'
-             END
-           WHEN d.action = 'CONSIDER' THEN
-             CASE 
-               WHEN me.decision = 'CONSIDER' THEN 'ENGINE_CONSIDER'
-               ELSE 'PREFERENCE_OVERRIDE'
-             END
-           WHEN spc.attention_decision = 'NOT_CANDIDATE' THEN 'NOT_EVALUABLE'
-           WHEN me.decision IS NULL OR me.evaluation_state = 'SPARSE_SPEC' OR me.decision = 'SPARSE_SPEC' THEN 'NOT_EVALUABLE'
-           WHEN me.decision = 'PURSUE' THEN 'ENGINE_PURSUIT'
-           WHEN me.decision = 'CONSIDER' THEN 'ENGINE_CONSIDER'
-           ELSE 'ENGINE_PASS'
-         END AS effective_decision,
 
          -- Authoritative Population Tier
          CASE 
@@ -185,15 +169,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            WHEN me.decision = 'PURSUE' THEN 0
            WHEN me.decision = 'CONSIDER' THEN 3
            ELSE 5
-         END AS population_tier,
-
-         -- Review Workflow State
-         CASE 
-           WHEN d.action IS NULL OR d.action = 'NONE' THEN 'UNREVIEWED'
-           WHEN d.updated_at IS NULL OR me.materialized_at IS NULL THEN 'REVIEWED_UNKNOWN'
-           WHEN d.updated_at >= me.materialized_at THEN 'REVIEWED_CURRENT'
-           ELSE 'REVIEWED_STALE'
-         END AS review_workflow_state
+         END AS population_tier
 
        FROM search_plan_candidates spc
        JOIN canonical_opportunities co 
@@ -322,38 +298,18 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            ov.posted_precision AS posted_precision,
            co.canonical_url AS apply_url,
            CASE 
-             WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 'SPARSE_SPEC'
+             WHEN me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'INVALID') THEN me.evaluation_state
              WHEN me.id IS NOT NULL THEN 'COMPLETE'
              ELSE 'UNMATERIALIZED'
            END AS evaluation_state,
            me.decision AS engine_verdict,
            me.quality_score AS quality_score,
+           me.evaluation_context_fingerprint AS evaluation_fingerprint,
            COALESCE(me.vetoed, 0) AS vetoed,
            COALESCE(d.action, 'NONE') AS user_action,
+           d.reviewed_fingerprint AS reviewed_fingerprint,
            d.updated_at AS user_decision_updated_at,
            me.materialized_at AS materialized_at,
-
-           -- Authoritative Effective Decision
-           CASE 
-             WHEN d.action = 'PASS' THEN 'USER_PASSED'
-             WHEN d.action = 'PURSUE' THEN
-               CASE 
-                 WHEN me.decision = 'PASS' OR me.vetoed = 1 THEN 'VETO_OVERRIDE'
-                 WHEN me.decision = 'PURSUE' THEN 'USER_CONFIRMED'
-                 WHEN me.decision = 'CONSIDER' THEN 'PREFERENCE_OVERRIDE'
-                 ELSE 'USER_CONFIRMED'
-               END
-             WHEN d.action = 'CONSIDER' THEN
-               CASE 
-                 WHEN me.decision = 'CONSIDER' THEN 'ENGINE_CONSIDER'
-                 ELSE 'PREFERENCE_OVERRIDE'
-               END
-             WHEN spc.attention_decision = 'NOT_CANDIDATE' THEN 'NOT_EVALUABLE'
-             WHEN me.decision IS NULL OR me.evaluation_state = 'SPARSE_SPEC' OR me.decision = 'SPARSE_SPEC' THEN 'NOT_EVALUABLE'
-             WHEN me.decision = 'PURSUE' THEN 'ENGINE_PURSUIT'
-             WHEN me.decision = 'CONSIDER' THEN 'ENGINE_CONSIDER'
-             ELSE 'ENGINE_PASS'
-           END AS effective_decision,
 
            -- Authoritative Population Tier
            CASE 
@@ -375,15 +331,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
              WHEN me.decision = 'PURSUE' THEN 0
              WHEN me.decision = 'CONSIDER' THEN 3
              ELSE 5
-           END AS population_tier,
-
-           -- Review Workflow State
-           CASE 
-             WHEN d.action IS NULL OR d.action = 'NONE' THEN 'UNREVIEWED'
-             WHEN d.updated_at IS NULL OR me.materialized_at IS NULL THEN 'REVIEWED_UNKNOWN'
-             WHEN d.updated_at >= me.materialized_at THEN 'REVIEWED_CURRENT'
-             ELSE 'REVIEWED_STALE'
-           END AS review_workflow_state
+           END AS population_tier
 
          FROM search_plan_candidates spc
          JOIN canonical_opportunities co 
@@ -419,13 +367,13 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          evaluation_state,
          engine_verdict,
          quality_score,
+         evaluation_fingerprint,
          vetoed,
          user_action,
+         reviewed_fingerprint,
          user_decision_updated_at,
          materialized_at,
-         effective_decision,
-         population_tier,
-         review_workflow_state
+         population_tier
        FROM feed_candidates
        ${filterSql}
        ORDER BY 
@@ -465,6 +413,15 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
   }
 
   private mapFeedRow(r: RawFeedRow): FeedSummary {
+    const userAction = r.user_action === "NONE" ? null : toUserAction(r.user_action);
+    const readModel = resolveCanonicalServingReadModel({
+      evaluationState: r.evaluation_state === "COMPLETE" ? "EVALUATED" : r.evaluation_state as CanonicalEvaluationState,
+      engineVerdict: r.engine_verdict,
+      userDecision: userAction,
+      evaluationFingerprint: r.evaluation_fingerprint,
+      reviewedFingerprint: r.reviewed_fingerprint,
+      qualityScore: r.quality_score,
+    });
     const cats = classifyOpportunityCategories({
       role: r.role,
       evaluationStatus: r.evaluation_state === "SPARSE_SPEC" ? "SPARSE_SPEC" : "COMPLETE",
@@ -483,13 +440,16 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       postedPrecision: r.posted_precision,
       applyUrl: r.apply_url,
       evaluationState: r.evaluation_state,
-      engineVerdict: (r.engine_verdict as EngineVerdict) || null,
-      qualityScore: r.quality_score,
+      engineVerdict: readModel.engineVerdict === "UNKNOWN" ? null : readModel.engineVerdict,
+      qualityScore: readModel.qualityScore,
+      evaluationFingerprint: readModel.evaluationFingerprint,
       vetoed: Boolean(r.vetoed),
-      userAction: (r.user_action === "NONE" ? null : (r.user_action as UserAction)),
-      effectiveDecision: r.effective_decision as EffectiveDecision,
+      userAction,
+      reviewedFingerprint: readModel.reviewedFingerprint,
+      effectiveDecision: readModel.effectiveDecision,
+      reviewState: readModel.reviewState,
       populationTier: r.population_tier,
-      reviewWorkflowState: r.review_workflow_state as ReviewWorkflowState,
+      reviewWorkflowState: readModel.reviewState === "CURRENT" ? "REVIEWED_CURRENT" : readModel.reviewState === "STALE" ? "REVIEWED_STALE" : readModel.reviewState === "UNKNOWN" ? "REVIEWED_UNKNOWN" : "UNREVIEWED",
       categoryIds: cats,
     };
   }
@@ -840,8 +800,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       rationale: string | null;
       evidence_ids: string | null;
       evaluation_json: string | null;
+      evaluation_fingerprint: string | null;
       materialized_at: string | null;
       user_action: string | null;
+      reviewed_fingerprint: string | null;
       user_reason: string | null;
       user_decision_updated_at: string | null;
     }>(
@@ -865,8 +827,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          me.rationale AS rationale,
          me.evidence_ids AS evidence_ids,
          me.evaluation_json AS evaluation_json,
+         me.evaluation_context_fingerprint AS evaluation_fingerprint,
          me.materialized_at AS materialized_at,
          d.action AS user_action,
+         d.reviewed_fingerprint AS reviewed_fingerprint,
          d.reason AS user_reason,
          d.updated_at AS user_decision_updated_at
        FROM search_plan_candidates spc
@@ -903,6 +867,15 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
 
     const unavailState = toUnavailableState(row.evaluation_state);
     if (unavailState !== null) {
+      const userDecision = row.user_action ? toUserAction(row.user_action) : null;
+      const readModel = resolveCanonicalServingReadModel({
+        evaluationState: unavailState as CanonicalEvaluationState,
+        engineVerdict: null,
+        userDecision,
+        evaluationFingerprint: row.evaluation_fingerprint,
+        reviewedFingerprint: row.reviewed_fingerprint,
+        qualityScore: null,
+      });
       return {
         evaluationState: unavailState,
         jobHash: String(row.source_job_id),
@@ -913,10 +886,29 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         scrapedFrom: toScrapeSource(row.source),
         applyUrl: row.apply_url || undefined,
         reasonCode: unavailState,
+        evaluationFingerprint: readModel.evaluationFingerprint,
+        userDecision: userDecision ? {
+          personId: scope.personId,
+          jobHash: row.source_job_id,
+          userAction: userDecision,
+          reviewedFingerprint: readModel.reviewedFingerprint,
+          updatedAt: row.user_decision_updated_at,
+        } : null,
+        effectiveDecision: readModel.effectiveDecision,
+        reviewState: readModel.reviewState,
       } as UnavailableOpportunity;
     }
 
     if (!row.evaluation_json) {
+      const userDecision = row.user_action ? toUserAction(row.user_action) : null;
+      const readModel = resolveCanonicalServingReadModel({
+        evaluationState: "UNMATERIALIZED",
+        engineVerdict: null,
+        userDecision,
+        evaluationFingerprint: null,
+        reviewedFingerprint: row.reviewed_fingerprint,
+        qualityScore: null,
+      });
       return {
         evaluationState: "UNMATERIALIZED",
         jobHash: String(row.source_job_id),
@@ -927,6 +919,16 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         scrapedFrom: toScrapeSource(row.source),
         applyUrl: row.apply_url || undefined,
         contextFingerprint: activeContext.contextFingerprint,
+        evaluationFingerprint: readModel.evaluationFingerprint,
+        userDecision: userDecision ? {
+          personId: scope.personId,
+          jobHash: row.source_job_id,
+          userAction: userDecision,
+          reviewedFingerprint: readModel.reviewedFingerprint,
+          updatedAt: row.user_decision_updated_at,
+        } : null,
+        effectiveDecision: readModel.effectiveDecision,
+        reviewState: readModel.reviewState,
       } as UnmaterializedOpportunity;
     }
 
@@ -934,8 +936,17 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     try {
       rawParsed = JSON.parse(row.evaluation_json);
     } catch {
+      const userDecision = row.user_action ? toUserAction(row.user_action) : null;
+      const readModel = resolveCanonicalServingReadModel({
+        evaluationState: "INVALID",
+        engineVerdict: null,
+        userDecision,
+        evaluationFingerprint: row.evaluation_fingerprint,
+        reviewedFingerprint: row.reviewed_fingerprint,
+        qualityScore: null,
+      });
       return {
-        evaluationState: "UNMATERIALIZED",
+        evaluationState: "INVALID",
         jobHash: String(row.source_job_id),
         role: row.job_title || "Unknown Role",
         company: row.company_name || "Unknown Company",
@@ -943,8 +954,18 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         postedRelative: "recently",
         scrapedFrom: toScrapeSource(row.source),
         applyUrl: row.apply_url || undefined,
-        contextFingerprint: activeContext.contextFingerprint,
-      } as UnmaterializedOpportunity;
+        reasonCode: "MALFORMED_EVALUATION",
+        evaluationFingerprint: readModel.evaluationFingerprint,
+        userDecision: userDecision ? {
+          personId: scope.personId,
+          jobHash: row.source_job_id,
+          userAction: userDecision,
+          reviewedFingerprint: readModel.reviewedFingerprint,
+          updatedAt: row.user_decision_updated_at,
+        } : null,
+        effectiveDecision: readModel.effectiveDecision,
+        reviewState: readModel.reviewState,
+      } as UnavailableOpportunity;
     }
 
     const userState: UserDecisionStateV4 | null = row.user_action
@@ -952,21 +973,13 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
           personId: scope.personId,
           jobHash: row.source_job_id,
           userAction: toUserAction(row.user_action),
-          reviewedFingerprint: null,
+          reviewedFingerprint: row.reviewed_fingerprint,
           updatedAt: row.user_decision_updated_at,
         }
       : null;
 
-    const activePursuitRow = await this.db.one<{ cnt: number }>(
-      `SELECT COUNT(*) as cnt FROM canonical_decisions WHERE tenant_id = ? AND person_id = ? AND action = 'PURSUE'`,
-      [scope.tenantId, scope.personId]
-    );
-    const activePursuits = Number(activePursuitRow?.cnt || 0);
-
-    const candCtx: CandidateServingContext = {
+    const presentationContext: ServingPresentationContext = {
       personId: scope.personId,
-      attentionWindow: 6,
-      activePursuits,
     };
 
     const oppSource = {
@@ -980,20 +993,55 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       postedPrecision: row.posted_precision || undefined,
     };
 
-    let opp: EvaluatedOpportunity;
-    if (isCanonicalIntrinsicEvaluation(rawParsed)) {
-      opp = serveEvaluation(rawParsed, candCtx, oppSource, userState) as EvaluatedOpportunity;
-    } else {
-      opp = adaptLegacyEvaluation(rawParsed, candCtx, oppSource, userState) as EvaluatedOpportunity;
+    // Pre-production derived rows that do not carry the canonical intrinsic
+    // payload are deliberately not adapted into plausible recommendations.
+    if (!isCanonicalIntrinsicEvaluation(rawParsed)) {
+      const readModel = resolveCanonicalServingReadModel({
+        evaluationState: "INVALID",
+        engineVerdict: null,
+        userDecision: userState?.userAction || null,
+        evaluationFingerprint: row.evaluation_fingerprint,
+        reviewedFingerprint: row.reviewed_fingerprint,
+        qualityScore: null,
+      });
+      return {
+        evaluationState: "INVALID",
+        jobHash: String(row.source_job_id),
+        role: row.job_title || "Unknown Role",
+        company: row.company_name || "Unknown Company",
+        location: row.location || "Unknown",
+        postedRelative: "recently",
+        scrapedFrom: toScrapeSource(row.source),
+        applyUrl: row.apply_url || undefined,
+        reasonCode: "NON_CANONICAL_EVALUATION",
+        userDecision: userState,
+        evaluationFingerprint: readModel.evaluationFingerprint,
+        effectiveDecision: readModel.effectiveDecision,
+        reviewState: readModel.reviewState,
+      } as UnavailableOpportunity;
     }
 
-    opp.effectiveDecision = resolveEffectiveDecision({
-      attentionDecision: toAttentionDecision(row.attention_decision),
-      engineVerdict: toEngineVerdict(opp.engineRecommendation?.engineVerdict || row.engine_decision),
-      vetoed: opp.engineRecommendation?.vetoed,
-      qualityScore: opp.engineRecommendation?.qualityScore,
-      userAction: userState?.userAction || "NONE",
+    const opp = serveEvaluation(rawParsed, presentationContext, oppSource, userState) as EvaluatedOpportunity;
+    const readModel = resolveCanonicalServingReadModel({
+      evaluationState: "EVALUATED",
+      engineVerdict: row.engine_decision,
+      userDecision: userState?.userAction || null,
+      evaluationFingerprint: row.evaluation_fingerprint,
+      reviewedFingerprint: row.reviewed_fingerprint,
+      qualityScore: row.quality_score,
     });
+    // Persisted materialized columns, not JSON compatibility aliases, are the
+    // authoritative recommendation/provenance values exposed by dossier.
+    if (opp.engineRecommendation) {
+      opp.engineRecommendation = {
+        ...opp.engineRecommendation,
+        engineVerdict: readModel.engineVerdict,
+        evaluationFingerprint: row.evaluation_fingerprint || opp.engineRecommendation.evaluationFingerprint,
+        qualityScore: row.quality_score,
+      };
+    }
+    opp.effectiveDecision = readModel.effectiveDecision as EffectiveDecision;
+    (opp as EvaluatedOpportunity & { reviewState: CanonicalReviewState }).reviewState = readModel.reviewState;
 
     return opp;
   }

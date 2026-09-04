@@ -21,6 +21,8 @@ import type {
   UserAction,
   EffectiveDecision,
   ReviewWorkflowState,
+  CanonicalServingVerdict,
+  CanonicalReviewState,
 } from "../../domain/decision_v4";
 import type { CategoryId } from "../domain/category_taxonomy";
 import type { CanonicalOpportunityMetrics } from "./metric-integrity";
@@ -41,14 +43,20 @@ export interface FeedSummary {
   readonly postedAt?: string | null;
   readonly postedPrecision?: string | null;
   readonly applyUrl?: string | null;
-  readonly evaluationState: "COMPLETE" | "SPARSE_SPEC" | "UNMATERIALIZED";
+  readonly evaluationState: "COMPLETE" | "SPARSE_SPEC" | "NOT_EVALUABLE" | "PROFILE_REQUIRED" | "INVALID" | "UNMATERIALIZED";
   readonly engineVerdict?: EngineVerdict | null;
   readonly qualityScore?: number | null;
+  /** Persisted materialized evaluation provenance; never synthesized at read time. */
+  readonly evaluationFingerprint: string | null;
   readonly vetoed: boolean;
   readonly userAction?: UserAction | null;
-  readonly effectiveDecision: EffectiveDecision;
-  readonly populationTier: number;
+  readonly reviewedFingerprint: string | null;
+  /** Canonical user-facing decision: user action when explicit, otherwise engine verdict. */
+  readonly effectiveDecision: CanonicalServingVerdict;
+  readonly reviewState: CanonicalReviewState;
+  /** @deprecated compatibility label for older UI consumers. */
   readonly reviewWorkflowState: ReviewWorkflowState;
+  readonly populationTier: number;
   readonly categoryIds: CategoryId[];
 }
 

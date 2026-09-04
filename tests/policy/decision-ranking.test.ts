@@ -432,13 +432,14 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
     ];
 
     for (const item of items) {
+      const versionId = `v1_${item.jobHash}`;
       await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES (?, 'test', ?, 'http')`, [item.jobHash, item.jobHash]);
-      await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content) VALUES ('v1', ?, 'ch1', 'Dir', 'raw')`, [item.jobHash]);
-      await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, 'v1', 'CANDIDATE')`, [tenantId, userId, `sp_${userId}`, item.jobHash]);
+      await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content, lifecycle_state) VALUES (?, ?, 'ch1', 'Dir', 'raw', 'ACTIVE')`, [versionId, item.jobHash]);
+      await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, ?, 'CANDIDATE')`, [tenantId, userId, `sp_${userId}`, item.jobHash, versionId]);
       await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO materialized_evaluations 
         (canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, rationale, evidence_ids, evaluation_json) 
-        VALUES (?, 'v1', ?, ?, ?, 'EVALUATED', ?, ?, 'rationale', '[]', ?)`, 
-        [item.jobHash, tenantId, userId, `ctx_${userId}`, item.engineVerdict, item.vetoed ? null : item.engineQualityScore, JSON.stringify({
+        VALUES (?, ?, ?, ?, ?, 'EVALUATED', ?, ?, 'rationale', '[]', ?)`,
+        [item.jobHash, versionId, tenantId, userId, `ctx_${userId}`, item.engineVerdict, item.vetoed ? null : item.engineQualityScore, JSON.stringify({
           schemaVersion: "v4.2-intrinsic",
           jobHash: item.jobHash,
           personId: userId,
@@ -618,4 +619,3 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
     expect(postReviewHashes).toEqual(["j-unreviewed", "j-reviewed-stale"]);
   });
 });
-

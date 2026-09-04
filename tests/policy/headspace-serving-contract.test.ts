@@ -110,7 +110,7 @@ describe("Headspace Serving Contract Regression Suite", () => {
     }
   });
 
-  test("A. j-099437e80b44: Intrinsic PURSUE (79%) served as PURSUE with saturated Headspace advisory", async () => {
+  test("A. headspace does not downgrade a persisted PURSUE verdict", async () => {
     const opp = await OpportunityService.getForUser(userId, "j-099437e80b44");
 
     expect(opp).toBeDefined();
@@ -121,19 +121,16 @@ describe("Headspace Serving Contract Regression Suite", () => {
     expect(opp!.engineRecommendation?.engineVerdict).toBe("PURSUE");
     expect(opp!.engineRecommendation?.verb0).toBe("PURSUE");
     expect(opp!.decision).toBe("PURSUE");
-    expect(opp!.effectiveDecision).toBe("ENGINE_PURSUIT");
-
-    // 2. Headspace advisory metadata must be present
-    expect(opp!.engineRecommendation?.headspaceVerdict).toBe("CONSIDER");
-    expect(opp!.engineRecommendation?.headspaceDowngraded).toBe(true);
-    expect(opp!.engineRecommendation?.headspaceReason).toContain("You are at capacity");
+    expect(opp!.effectiveDecision).toBe("PURSUE");
+    expect(opp!.engineRecommendation?.headspaceVerdict).toBeUndefined();
+    expect(opp!.engineRecommendation?.headspaceDowngraded).toBeUndefined();
 
     // 3. Presentation badge must reflect intrinsic PURSUE
     expect(opp!.uiBadge.label).toBe("Recommended");
     expect(opp!.uiBadge.variant).toBe("signal");
   });
 
-  test("B. j-9d2006e16aba: Intrinsic PURSUE (76%) served as PURSUE with saturated Headspace advisory", async () => {
+  test("B. pagination capacity does not alter a second PURSUE verdict", async () => {
     const opp = await OpportunityService.getForUser(userId, "j-9d2006e16aba");
 
     expect(opp).toBeDefined();
@@ -144,12 +141,9 @@ describe("Headspace Serving Contract Regression Suite", () => {
     expect(opp!.engineRecommendation?.engineVerdict).toBe("PURSUE");
     expect(opp!.engineRecommendation?.verb0).toBe("PURSUE");
     expect(opp!.decision).toBe("PURSUE");
-    expect(opp!.effectiveDecision).toBe("ENGINE_PURSUIT");
-
-    // 2. Headspace advisory metadata must be present
-    expect(opp!.engineRecommendation?.headspaceVerdict).toBe("CONSIDER");
-    expect(opp!.engineRecommendation?.headspaceDowngraded).toBe(true);
-    expect(opp!.engineRecommendation?.headspaceReason).toContain("You are at capacity");
+    expect(opp!.effectiveDecision).toBe("PURSUE");
+    expect(opp!.engineRecommendation?.headspaceVerdict).toBeUndefined();
+    expect(opp!.engineRecommendation?.headspaceDowngraded).toBeUndefined();
 
     // 3. Presentation badge must reflect intrinsic PURSUE
     expect(opp!.uiBadge.label).toBe("Recommended");
@@ -200,8 +194,8 @@ describe("Headspace Serving Contract Regression Suite", () => {
 
     expect(servedSaturated.engineRecommendation?.engineVerdict).toBe("CONSIDER");
     expect(servedSaturated.engineRecommendation?.verb0).toBe("CONSIDER");
-    expect(servedSaturated.engineRecommendation?.headspaceVerdict).toBe("CONSIDER");
-    expect(servedSaturated.engineRecommendation?.headspaceDowngraded).toBe(false);
+    expect(servedSaturated.engineRecommendation?.headspaceVerdict).toBeUndefined();
+    expect(servedSaturated.engineRecommendation?.headspaceDowngraded).toBeUndefined();
     expect(servedSaturated.uiBadge.label).toBe("Consider");
     expect(servedSaturated.uiBadge.variant).toBe("caution");
   });
@@ -250,8 +244,8 @@ describe("Headspace Serving Contract Regression Suite", () => {
 
     expect(servedUnsaturated.engineRecommendation?.engineVerdict).toBe("PURSUE");
     expect(servedUnsaturated.engineRecommendation?.verb0).toBe("PURSUE");
-    expect(servedUnsaturated.engineRecommendation?.headspaceVerdict).toBe("PURSUE");
-    expect(servedUnsaturated.engineRecommendation?.headspaceDowngraded).toBe(false);
+    expect(servedUnsaturated.engineRecommendation?.headspaceVerdict).toBeUndefined();
+    expect(servedUnsaturated.engineRecommendation?.headspaceDowngraded).toBeUndefined();
     expect(servedUnsaturated.uiBadge.label).toBe("Recommended");
     expect(servedUnsaturated.uiBadge.variant).toBe("signal");
   });
@@ -277,9 +271,9 @@ describe("Headspace Serving Contract Regression Suite", () => {
 
     expect(adapted.engineRecommendation?.engineVerdict).toBe("PURSUE");
     expect(adapted.engineRecommendation?.verb0).toBe("PURSUE");
-    expect(adapted.engineRecommendation?.headspaceVerdict).toBe("CONSIDER");
-    expect(adapted.engineRecommendation?.headspaceDowngraded).toBe(true);
-    expect(adapted.engineRecommendation?.headspaceReason).toContain("You are at capacity");
+    expect(adapted.engineRecommendation?.headspaceVerdict).toBeUndefined();
+    expect(adapted.engineRecommendation?.headspaceDowngraded).toBeUndefined();
+    expect(adapted.engineRecommendation?.headspaceReason).toBeUndefined();
   });
 
   test("F. Invariance Verification: DB records and queue eligibility are unchanged", async () => {
