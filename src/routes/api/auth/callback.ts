@@ -8,7 +8,7 @@ import { generateSessionToken, createSession, SESSION_COOKIE_NAME } from "../../
 import { fetchGoogleUserInfo } from "../../../lib/auth/google";
 import { verifySignedOAuthState } from "../../../lib/auth/oauth-state";
 import { provisionOAuthScope } from "../../../lib/auth/oauth-scope-provisioning";
-import { resolveGoogleCallbackUrl } from "../../../lib/auth/oauth-callback-url";
+import { resolveGoogleCallbackUrl, shouldUseSecureOAuthCookie } from "../../../lib/auth/oauth-callback-url";
 
 function ulid(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
@@ -41,7 +41,7 @@ const handleCallbackFn = createServerFn({ method: "GET" }).handler(async () => {
   const session = await createSession(token, provisioned.personId);
   setCookie("google_oauth_state", "", { maxAge: 0, path: "/" });
   setCookie("google_code_verifier", "", { maxAge: 0, path: "/" });
-  setCookie(SESSION_COOKIE_NAME, token, { httpOnly: true, sameSite: "lax", path: "/", expires: session.expiresAt, secure: !host.startsWith("localhost") && !host.startsWith("127.0.0.1") });
+  setCookie(SESSION_COOKIE_NAME, token, { httpOnly: true, sameSite: "lax", path: "/", expires: session.expiresAt, secure: shouldUseSecureOAuthCookie(host) });
   return { isNewUser: provisioned.isNewUser };
 });
 
