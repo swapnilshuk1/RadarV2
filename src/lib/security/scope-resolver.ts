@@ -15,7 +15,33 @@
 
 import { getDatabaseAdapter, type DatabaseAdapter } from "../../data/database";
 import { TenantIsolationError, type AuthorizedPersonScope } from "./auth";
+import type { Permission } from "./auth";
 export type { AuthorizedPersonScope } from "./auth";
+
+const KNOWN_PERMISSIONS = [
+  "read:evaluation",
+  "write:evaluation",
+  "manage:search_plan",
+  "run:scraper",
+  "manage:credentials",
+  "read:credentials",
+  "read:person",
+  "write:person",
+] as const satisfies readonly Permission[];
+
+const ADMIN_PERMISSIONS: Permission[] = [...KNOWN_PERMISSIONS];
+
+function parseStoredPermissions(serialized: string | null | undefined): Permission[] {
+  try {
+    const parsed: unknown = JSON.parse(serialized || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return [...new Set(parsed.filter((permission): permission is Permission =>
+      typeof permission === "string" && (KNOWN_PERMISSIONS as readonly string[]).includes(permission)
+    ))];
+  } catch {
+    return [];
+  }
+}
 
 export interface ActiveServingContext {
   readonly searchPlanId: string;
@@ -257,37 +283,20 @@ export async function resolveScraperAuthContext(
     throw new TenantIsolationError(`User ${userId} has no active membership in tenant ${tenantId}.`);
   }
 
-  let permissions: import("./auth").Permission[] = [];
-  try {
-    permissions = JSON.parse(membership.permissions || "[]");
-  } catch {
-    permissions = [];
-  }
+  const permissions = parseStoredPermissions(membership.permissions);
 
   const isAdmin = membership.role === "admin";
+  // Starting a scrape is an explicit workflow policy: search-plan managers can
+  // start a run, but this policy never turns their grant into run:scraper or
+  // credential-read authority. Downstream credential access remains separately
+  // protected by CredentialBroker.
   const canRunScraper = isAdmin || permissions.includes("run:scraper") || permissions.includes("manage:search_plan");
 
   if (!canRunScraper) {
     throw new TenantIsolationError(`User ${userId} lacks 'run:scraper' or 'manage:search_plan' permission in tenant ${tenantId}.`);
   }
 
-  const effectivePermissions: import("./auth").Permission[] = isAdmin
-    ? [
-        "run:scraper",
-        "manage:search_plan",
-        "manage:credentials",
-        "read:credentials",
-        "read:evaluation",
-        "write:evaluation",
-        "read:person",
-        "write:person",
-      ]
-    : [
-        "run:scraper",
-        "read:credentials",
-        ...(permissions.includes("manage:credentials") ? (["manage:credentials"] as const) : []),
-        ...(permissions.includes("manage:search_plan") ? (["manage:search_plan"] as const) : []),
-      ];
+  const effectivePermissions: Permission[] = isAdmin ? ADMIN_PERMISSIONS : permissions;
 
   const authContext: import("./auth").AuthContext = {
     userId,
@@ -305,4 +314,3 @@ export async function resolveScraperAuthContext(
     },
   };
 }
-

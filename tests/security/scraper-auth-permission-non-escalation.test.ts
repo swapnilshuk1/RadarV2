@@ -32,7 +32,20 @@ describe("Scraper authorization permission non-escalation", () => {
       { id: "scraper", role: "member", grants: ["run:scraper"], expected: ["run:scraper"] },
       { id: "read", role: "member", grants: ["read:credentials"], denied: true },
       { id: "plan-and-scraper", role: "member", grants: ["manage:search_plan", "run:scraper"], expected: ["manage:search_plan", "run:scraper"] },
-      { id: "admin", role: "admin", grants: [], expected: ["run:scraper", "read:credentials"] },
+      { id: "scraper-and-read", role: "member", grants: ["run:scraper", "read:credentials"], expected: ["run:scraper", "read:credentials"] },
+      {
+        id: "all-member-grants",
+        role: "member",
+        grants: ["run:scraper", "manage:search_plan", "manage:credentials", "read:credentials", "read:evaluation", "write:evaluation", "read:person", "write:person"],
+        expected: ["run:scraper", "manage:search_plan", "manage:credentials", "read:credentials", "read:evaluation", "write:evaluation", "read:person", "write:person"],
+      },
+      { id: "owner", role: "owner", grants: ["run:scraper", "manage:search_plan"], expected: ["run:scraper", "manage:search_plan"] },
+      {
+        id: "admin",
+        role: "admin",
+        grants: [],
+        expected: ["run:scraper", "manage:search_plan", "manage:credentials", "read:credentials", "read:evaluation", "write:evaluation", "read:person", "write:person"],
+      },
     ] as const;
 
     for (const testCase of cases) {
@@ -44,10 +57,11 @@ describe("Scraper authorization permission non-escalation", () => {
       }
 
       const resolved = await resolveScraperAuthContext(testCase.id, "tenant_alpha", db);
-      expect(resolved.authContext.permissions).toEqual(expect.arrayContaining(testCase.expected));
+      expect([...resolved.authContext.permissions].sort()).toEqual([...testCase.expected].sort());
+      expect(resolved.membership.permissions).toEqual(testCase.grants);
 
-      if (testCase.role !== "admin") {
-        expect(resolved.authContext.permissions).toEqual(testCase.expected);
+      if (testCase.id === "plan") {
+        expect(resolved.authContext.permissions).not.toContain("run:scraper");
         expect(resolved.authContext.permissions).not.toContain("read:credentials");
       }
     }
