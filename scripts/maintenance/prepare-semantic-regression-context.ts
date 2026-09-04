@@ -9,15 +9,13 @@
  * Usage:
  *   npx tsx scripts/maintenance/prepare-semantic-regression-context.ts \
  *     --user-id <id> --tenant-id <id> --source-plan-id <id> \
- *     --expected-source-records 44 [--apply]
+ *     --expected-source-records 44 --title <unique-title> [--apply]
  */
 import crypto from "node:crypto";
 import { getDatabaseAdapter } from "../../src/data/database";
 import { getRepositories } from "../../src/data/sqlite/provider";
 import { materializeExistingCanonicalPool } from "../../src/lib/intelligence/context-materialization";
 import { resolveScraperAuthContext } from "../../src/lib/security/scope-resolver";
-
-const TITLE = "Controlled semantic regression — 5be10d2";
 
 function argument(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -51,10 +49,11 @@ async function main(): Promise<void> {
   const userId = argument("--user-id");
   const requestedTenantId = argument("--tenant-id");
   const sourcePlanId = argument("--source-plan-id");
+  const title = argument("--title")?.trim();
   const expectedSourceRecords = positiveInteger(argument("--expected-source-records"), "--expected-source-records");
   const apply = process.argv.includes("--apply");
-  if (!userId || !sourcePlanId) {
-    throw new Error("Usage requires --user-id and --source-plan-id.");
+  if (!userId || !sourcePlanId || !title) {
+    throw new Error("Usage requires --user-id, --source-plan-id, and a unique --title.");
   }
 
   const db = getDatabaseAdapter();
@@ -91,7 +90,7 @@ async function main(): Promise<void> {
     db.many<{ id: string; status: string }>(
       `SELECT id, status FROM search_plans
        WHERE tenant_id = ? AND person_id = ? AND title = ?`,
-      [scope.tenantId, scope.personId, TITLE],
+      [scope.tenantId, scope.personId, title],
     ),
   ]);
   const actualSourceRecords = Number(sourceCount?.count || 0);
@@ -102,7 +101,7 @@ async function main(): Promise<void> {
     throw new Error("Preparation requires quiescent scraper and evaluation work.");
   }
   if (existing.length) {
-    throw new Error(`A prior '${TITLE}' context exists (${existing.map((row) => `${row.id}:${row.status}`).join(", ")}); refusing to reuse or overwrite it.`);
+    throw new Error(`A prior '${title}' context exists (${existing.map((row) => `${row.id}:${row.status}`).join(", ")}); refusing to reuse or overwrite it.`);
   }
 
   const preflight = {
@@ -111,7 +110,7 @@ async function main(): Promise<void> {
     source: { searchPlanId: sourcePlanId, associations: actualSourceRecords },
     active: { searchPlanId: active.planId, contextFingerprint: active.contextFingerprint, locationPolicy: "NCR" },
     candidateState: beforeHashes,
-    successor: { title: TITLE, status: "paused", activation: "prohibited-by-this-command" },
+    successor: { title, status: "paused", activation: "prohibited-by-this-command" },
   };
   if (!apply) {
     console.log(JSON.stringify(preflight, null, 2));
@@ -119,7 +118,7 @@ async function main(): Promise<void> {
   }
 
   const prepared = await repos.evaluationContexts.prepareSearchPlan(scope, {
-    title: TITLE,
+    title,
     criteria: structuredClone(active.criteria),
     ontologyVersion: context.ontologyVersion,
     ontologyFingerprint: context.ontologyFingerprint,
