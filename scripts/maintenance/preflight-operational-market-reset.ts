@@ -43,7 +43,7 @@ async function main(): Promise<void> {
     scope: { tenantId: scope.tenantId, personId: scope.personId },
     active: { searchPlanId: active.planId, snapshotId: active.snapshotId, contextFingerprint: active.contextFingerprint, locationPolicy: "NCR" },
     serving: { candidateCounts, materializedEvaluations: materializedCount?.count ?? 0 },
-    candidateState: { careerProfilesHash: hash(profileRows), candidateProjectionHash: hash(projectionRows) },
+    candidateState: { careerProfilesHash: hash(projectionRows), candidateProjectionHash: hash(profileRows) },
     quiescence: { activeRuns, activeEvaluationJobs: activeJobs },
     schema: { migrations },
   };
