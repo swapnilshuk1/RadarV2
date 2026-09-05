@@ -3,7 +3,7 @@
  *
  * Resumable stage-based orchestrator for parsing candidate documents into CandidateProjections.
  * Stage Lifecycle:
- * DOCUMENT_UPLOADED -> EVIDENCE_EXTRACTED -> NORMALIZED -> ONTOLOGY_RESOLVED -> PROJECTION_BUILT -> INFERENCE_COMPLETE -> EVALUATED -> COMPLETED
+ * DOCUMENT_UPLOADED -> EVIDENCE_EXTRACTED -> NORMALIZED -> ONTOLOGY_RESOLVED -> PROJECTION_BUILT -> INFERENCE_COMPLETE -> (PROFILE_READY | EVALUATED) -> COMPLETED
  */
 
 import { getRepositories } from "../../../data/sqlite/provider";
@@ -20,6 +20,7 @@ import { resolveServingScope } from "../../security/scope-resolver";
 import type { EvidenceGraph } from "../../../domain/evidence";
 
 import { parseDocumentText } from "../extraction/text-parser";
+import { resolveProjectionCompletionStage } from "./projection-completion-state";
 
 export type PipelineStage =
   | "DOCUMENT_REGISTERED"
@@ -29,6 +30,7 @@ export type PipelineStage =
   | "ONTOLOGY_RESOLVED"
   | "PROJECTION_BUILT"
   | "INFERENCE_COMPLETE"
+  | "PROFILE_READY"
   | "EVALUATED"
   | "COMPLETED";
 
@@ -67,6 +69,7 @@ export class ProjectionPipeline {
     stage: PipelineStage;
     error?: string;
     deduplicated?: boolean;
+    intentRequired?: boolean;
   }> {
     const { documentId, personId, filename, storageUri, mimeType, documentHash } = input;
     let currentStage: PipelineStage = startStage;
@@ -189,11 +192,23 @@ export class ProjectionPipeline {
         // exists, establish a new context and canonical refresh lineage now;
         // cache invalidation alone is never presented as reevaluation.
         const intent = await this.repos.documents.getLatestCareerIntent(personId);
-        if (intent) {
-          const scope = (await resolveServingScope(personId)).scope;
-          await activateSearchPlanForIntent({ ...intent, scope, activatedBy: "projection-refresh" });
+        if (!intent) {
+          // A projection is usable profile processing, not a recommendation
+          // refresh. No target intent means no canonical evaluation lineage.
+          await this.repos.documents.updateDocumentStage(documentId, "PROFILE_READY", "COMPLETED");
+          return { success: true, stage: "PROFILE_READY", deduplicated: isDeduplicated, intentRequired: true };
         }
-        currentStage = "EVALUATED";
+        const completionStage = resolveProjectionCompletionStage(true);
+        const scope = (await resolveServingScope(personId)).scope;
+        await activateSearchPlanForIntent({
+          ...intent,
+          personId,
+          preferredLocations: intent.preferredLocations || [],
+          targetTitles: intent.targetTitles || [],
+          scope,
+          activatedBy: "projection-refresh",
+        });
+        currentStage = completionStage;
       }
 
       // 8. EVALUATED

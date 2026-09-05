@@ -36,15 +36,15 @@ function ProfilePage() {
   const isIntentStage = progress.orientationSeen && progress.evidenceStatus !== "pending" && progress.intentStatus === "pending";
 
   // Intent form state
-  const [currency, setCurrency] = useState<"INR" | "USD" | "EUR" | "GBP">(
-    (intent as any)?.currency || "INR"
+  const [currency, setCurrency] = useState<"" | "INR" | "USD" | "EUR" | "GBP">(
+    (intent as any)?.currency || ""
   );
-  const [targetSalary, setTargetSalary] = useState<number>(
-    (intent as any)?.targetSalaryAmount || (intent as any)?.minSalaryUsd || 8000000
+  const [targetSalary, setTargetSalary] = useState<string>(
+    String((intent as any)?.targetSalaryAmount || (intent as any)?.minSalaryUsd || "")
   );
-  const [locations, setLocations] = useState((intent?.preferredLocations || ["Gurugram", "Remote India"]).join(", "));
-  const [targetTitles, setTargetTitles] = useState((intent?.targetTitles || ["Vice President", "CMO", "CGO"]).join(", "));
-  const [workModel, setWorkModel] = useState<"HYBRID" | "REMOTE" | "ON_SITE" | "ANY">(intent?.preferredWorkModel || "ANY");
+  const [locations, setLocations] = useState((intent?.preferredLocations || []).join(", "));
+  const [targetTitles, setTargetTitles] = useState((intent?.targetTitles || []).join(", "));
+  const [workModel, setWorkModel] = useState<"" | "HYBRID" | "REMOTE" | "ON_SITE" | "ANY">(intent?.preferredWorkModel || "");
   const [isSavingIntent, setIsSavingIntent] = useState(false);
   const [intentSavedMsg, setIntentSavedMsg] = useState("");
 
@@ -166,14 +166,14 @@ function ProfilePage() {
 
       await saveIntentFn({
         data: {
-          currency,
-          targetSalaryAmount: Number(targetSalary),
+          currency: currency || undefined,
+          targetSalaryAmount: targetSalary.trim() ? Number(targetSalary) : undefined,
           // Non-USD salary remains in its source currency until an explicit
           // FX conversion record is supplied by a canonical conversion path.
-          minSalaryUsd: currency === "USD" ? Number(targetSalary) : undefined,
+          minSalaryUsd: currency === "USD" && targetSalary.trim() ? Number(targetSalary) : undefined,
           preferredLocations: locList,
           targetTitles: titleList,
-          preferredWorkModel: workModel
+          preferredWorkModel: workModel || undefined
         }
       });
 
@@ -196,6 +196,7 @@ function ProfilePage() {
     { id: "ONTOLOGY_RESOLVED", label: "Hierarchical Concept Resolution (v14.2.1)" },
     { id: "PROJECTION_BUILT", label: "Candidate Projection Assembled" },
     { id: "INFERENCE_COMPLETE", label: "Executive Level & Scope Inferred" },
+    { id: "PROFILE_READY", label: "Profile Ready — Career Intent Required" },
     { id: "EVALUATED", label: "Executive Briefs & Similarity Scores Refreshed" },
     { id: "COMPLETED", label: "Complete" }
   ];
@@ -415,10 +416,11 @@ function ProfilePage() {
                 </label>
                 <select
                   className="w-full p-2.5 text-[13px] font-mono rounded-xs border border-border/80 bg-background focus:outline-none focus:border-foreground"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value as any)}
-                >
-                  <option value="INR">INR (₹)</option>
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as any)}
+              >
+                <option value="">Not specified</option>
+                <option value="INR">INR (₹)</option>
                   <option value="USD">USD ($)</option>
                   <option value="EUR">EUR (€)</option>
                   <option value="GBP">GBP (£)</option>
@@ -432,8 +434,8 @@ function ProfilePage() {
                   type="number"
                   className="w-full p-2.5 text-[13px] font-mono rounded-xs border border-border/80 bg-background focus:outline-none focus:border-foreground"
                   placeholder={currency === "INR" ? "8000000 (80 Lakhs)" : "150000"}
-                  value={targetSalary}
-                  onChange={(e) => setTargetSalary(Number(e.target.value))}
+                value={targetSalary}
+                onChange={(e) => setTargetSalary(e.target.value)}
                 />
               </div>
             </div>
@@ -471,6 +473,7 @@ function ProfilePage() {
                 value={workModel}
                 onChange={(e) => setWorkModel(e.target.value as any)}
               >
+                <option value="">Not specified</option>
                 <option value="ANY">ANY (Flexible / All Models)</option>
                 <option value="HYBRID">HYBRID</option>
                 <option value="REMOTE">REMOTE</option>

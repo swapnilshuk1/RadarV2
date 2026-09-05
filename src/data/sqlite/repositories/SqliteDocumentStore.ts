@@ -41,7 +41,7 @@ export class SqliteDocumentStore {
   constructor(private db: DatabaseAdapter) {}
 
   async saveDocument(doc: CandidateDocumentRecord): Promise<void> {
-    await this.db.execute(
+    const result = await this.db.execute(
       `
       INSERT INTO candidate_documents (
         id, person_id, filename, storage_uri, mime_type, document_hash, status, stage, error_message, created_at, updated_at
@@ -54,6 +54,7 @@ export class SqliteDocumentStore {
         stage = excluded.stage,
         error_message = excluded.error_message,
         updated_at = excluded.updated_at
+      WHERE candidate_documents.person_id = excluded.person_id
       `,
       [
         doc.id,
@@ -69,6 +70,9 @@ export class SqliteDocumentStore {
         doc.updatedAt
       ]
     );
+    if (result.rowsAffected !== 1) {
+      throw new Error(`DOCUMENT_OWNERSHIP_COLLISION: ${doc.id} is not owned by ${doc.personId}.`);
+    }
   }
 
   async updateDocumentStage(id: string, stage: string, status: CandidateDocumentRecord["status"], errorMessage?: string): Promise<void> {
@@ -248,8 +252,8 @@ export class SqliteDocumentStore {
         intent.normalization?.effectiveAt ?? null,
         JSON.stringify(intent.preferredLocations || []),
         JSON.stringify(intent.targetTitles || []),
-        intent.preferredWorkModel || "ANY",
-        intent.travelTolerance || "MEDIUM",
+        intent.preferredWorkModel ?? null,
+        intent.travelTolerance ?? null,
         now
       ]
     );
@@ -280,8 +284,8 @@ export class SqliteDocumentStore {
       } : null,
       preferredLocations: locations,
       targetTitles: JSON.parse(row.target_titles || "[]"),
-      preferredWorkModel: row.preferred_work_model,
-      travelTolerance: row.travel_tolerance,
+      preferredWorkModel: row.preferred_work_model ?? undefined,
+      travelTolerance: row.travel_tolerance ?? undefined,
       createdAt: row.created_at
     };
   }

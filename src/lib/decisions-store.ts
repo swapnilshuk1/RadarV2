@@ -6,6 +6,7 @@ import {
   undoDecisionFn,
   clearDecisionsFn
 } from "./intelligence/decisions-server";
+import { requireDecisionAcknowledgement } from "./intelligence/decision-acknowledgement";
 
 export type DecisionRecord = { verb: DecisionVerb; at: number; reviewedFingerprint?: string | null };
 export type DecisionMap = Record<string, DecisionRecord>;
@@ -45,6 +46,7 @@ export function activePursuits(): number {
 export function useDecisions() {
   const [decisions, setDecisions] = useState<DecisionMap>({});
   const [hydrated, setHydrated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scopeRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -105,29 +107,35 @@ export function useDecisions() {
     });
   };
 
-  const undo = (jobHash: string) => {
+  const undo = async (jobHash: string) => {
+    setError(null);
+    const message = "Decision removal was not acknowledged by the server.";
+    try {
+      await requireDecisionAcknowledgement(() => undoDecisionFn({ data: { jobHash } }), message);
+    } catch (error) {
+      setError(message);
+      throw error;
+    }
     setDecisions((prev) => {
       const next = { ...prev };
       delete next[jobHash];
       writeLocal(scopeRef.current, next);
       return next;
     });
-
-    // Fire background server call to Turso/SQLite
-    undoDecisionFn({ data: { jobHash } }).catch((err) => {
-      console.error("[useDecisions] Error removing decision from server:", err);
-    });
   };
 
-  const clear = () => {
+  const clear = async () => {
+    setError(null);
+    const message = "Decision clearing was not acknowledged by the server.";
+    try {
+      await requireDecisionAcknowledgement(() => clearDecisionsFn(), message);
+    } catch (error) {
+      setError(message);
+      throw error;
+    }
     setDecisions({});
     writeLocal(scopeRef.current, {});
-
-    // Fire background server call to Turso/SQLite
-    clearDecisionsFn().catch((err) => {
-      console.error("[useDecisions] Error clearing decisions on server:", err);
-    });
   };
 
-  return { decisions, decide, undo, clear, hydrated };
+  return { decisions, decide, undo, clear, hydrated, error };
 }

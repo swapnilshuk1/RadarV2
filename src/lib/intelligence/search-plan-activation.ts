@@ -3,6 +3,7 @@ import path from "node:path";
 import { getRepositories } from "../../data/sqlite/provider";
 import { getDatabaseAdapter } from "../../data/database";
 import { TenantScopedPersonStore } from "../../data/sqlite/repositories/TenantScopedPersonStore";
+import { NoActiveEvaluationContextError } from "../../data/sqlite/repositories/SqliteEvaluationContextStore";
 import type { AuthorizedPersonScope } from "../security/auth";
 import { resolveServingScope } from "../security/scope-resolver";
 import type { SearchCriteriaPayload } from "../domain/evaluation_context";
@@ -46,25 +47,8 @@ export async function activateSearchPlanForIntent(
     scope?: AuthorizedPersonScope;
   }
 ) {
-  const effectiveFunctions = input.functions || [];
-  const effectiveTitles = input.targetTitles || [];
-  const effectiveLocations = input.preferredLocations || [];
-  if (effectiveTitles.length === 0 || effectiveLocations.length === 0) {
-    throw new Error("PROFILE_INTENT_REQUIRED: Search-plan activation requires explicitly saved target titles and locations.");
-  }
-
-  const targetLevels = new Set<string>();
-  for (const title of effectiveTitles) {
-    const lower = title.toLowerCase();
-    if (lower.includes("cmo") || lower.includes("chief") || lower.includes("cco")) targetLevels.add("Chief");
-    if (lower.includes("vp") || lower.includes("vice president")) targetLevels.add("VP");
-    if (lower.includes("director")) targetLevels.add("Director");
-    if (lower.includes("svp") || lower.includes("senior vice president")) targetLevels.add("SVP");
-    if (lower.includes("head") || lower.includes("lead")) targetLevels.add("Head");
-  }
-  if (targetLevels.size === 0) {
-    throw new Error("PROFILE_INTENT_REQUIRED: Target titles must contain an explicit recognized seniority level.");
-  }
+  const preconditions = await validateIntentActivationPreconditions(input);
+  const { effectiveFunctions, effectiveTitles, effectiveLocations, targetLevels, scope, profileVersion } = preconditions;
 
   const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
   const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
@@ -96,29 +80,29 @@ export async function activateSearchPlanForIntent(
       generatedQueries: searchPlan.rankedQueries.map((q) => q.query),
     },
   };
-  const scope = input.scope || (await resolveServingScope(input.personId)).scope;
-  const projection = await new TenantScopedPersonStore(getDatabaseAdapter(), scope).getLatestProjection(scope.personId);
-  if (!projection?.profileVersion) {
-    throw new Error("PROFILE_REQUIRED: Search-plan activation requires an authoritative candidate projection version.");
-  }
   const versions = loadEvaluationVersionManifest();
   const repos = getRepositories();
-  const predecessor = await repos.evaluationContexts.getActiveSearchPlanWithSnapshot(scope);
+  let predecessor: { planId: string } | undefined;
+  try {
+    predecessor = await repos.evaluationContexts.getActiveSearchPlanWithSnapshot(scope);
+  } catch (error) {
+    if (!(error instanceof NoActiveEvaluationContextError)) throw error;
+    // First activation deliberately has no inferred predecessor. It creates
+    // an explicit lineage without promoting historical/latest data.
+  }
   const activationInput = {
     title: "Executive Career Search Plan",
     criteria,
     ontologyVersion: versions.ontologyVersion,
     ontologyFingerprint: versions.ontologyHash,
     policyVersion: versions.policyVersion,
-    profileVersion: projection.profileVersion,
+    profileVersion,
     activatedBy: input.activatedBy || "intent-update",
   };
-  // Keep the old context active while the new immutable lineage is prepared
-  // and backfilled. A failed backfill therefore cannot blank the shortlist.
   const activation = await repos.evaluationContexts.prepareSearchPlan(scope, activationInput);
-  const coverage = await materializeExistingCanonicalPool(scope, activation, {
-    sourceSearchPlanId: predecessor.planId,
-  });
+  const coverage = predecessor
+    ? await materializeExistingCanonicalPool(scope, activation, { sourceSearchPlanId: predecessor.planId })
+    : { examined: 0, candidates: 0, materialized: 0 };
   if (coverage.candidates > 0 && coverage.materialized < coverage.candidates) {
     throw new Error(
       `Search-plan activation was not committed: evaluation coverage is incomplete (${coverage.materialized}/${coverage.candidates} eligible canonical opportunities).`
@@ -131,4 +115,50 @@ export async function activateSearchPlanForIntent(
     activationInput.activatedBy
   );
   return { activation: { ...activation, plan: { ...activation.plan, status: "active" as const } }, searchPlan, criteria, coverage };
+}
+
+/**
+ * Validates intent-to-context prerequisites without selecting an active
+ * context. It is used before an immutable intent write and by activation.
+ */
+export async function validateIntentActivationPreconditions(
+  input: CareerIntentRecord & {
+    functions?: string[];
+    industries?: string[];
+    scope?: AuthorizedPersonScope;
+  }
+): Promise<{
+  effectiveFunctions: string[];
+  effectiveTitles: string[];
+  effectiveLocations: string[];
+  targetLevels: Set<string>;
+  scope: AuthorizedPersonScope;
+  profileVersion: string;
+}> {
+  const effectiveFunctions = input.functions || [];
+  const effectiveTitles = input.targetTitles || [];
+  const effectiveLocations = input.preferredLocations || [];
+  if (effectiveTitles.length === 0 || effectiveLocations.length === 0) {
+    throw new Error("PROFILE_INTENT_REQUIRED: Search-plan activation requires explicitly saved target titles and locations.");
+  }
+
+  const targetLevels = new Set<string>();
+  for (const title of effectiveTitles) {
+    const lower = title.toLowerCase();
+    if (lower.includes("cmo") || lower.includes("chief") || lower.includes("cco")) targetLevels.add("Chief");
+    if (lower.includes("vp") || lower.includes("vice president")) targetLevels.add("VP");
+    if (lower.includes("director")) targetLevels.add("Director");
+    if (lower.includes("svp") || lower.includes("senior vice president")) targetLevels.add("SVP");
+    if (lower.includes("head") || lower.includes("lead")) targetLevels.add("Head");
+  }
+  if (targetLevels.size === 0) {
+    throw new Error("PROFILE_INTENT_REQUIRED: Target titles must contain an explicit recognized seniority level.");
+  }
+
+  const scope = input.scope || (await resolveServingScope(input.personId)).scope;
+  const projection = await new TenantScopedPersonStore(getDatabaseAdapter(), scope).getLatestProjection(scope.personId);
+  if (!projection?.profileVersion) {
+    throw new Error("PROFILE_REQUIRED: Search-plan activation requires an authoritative candidate projection version.");
+  }
+  return { effectiveFunctions, effectiveTitles, effectiveLocations, targetLevels, scope, profileVersion: projection.profileVersion };
 }

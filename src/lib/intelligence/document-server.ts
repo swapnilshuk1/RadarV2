@@ -10,13 +10,11 @@ import { getRepositories } from "../../data/sqlite/provider";
 import { EvaluationCoordinator } from "./EvaluationCoordinator";
 import { requireAuthUser } from "../auth/guard";
 import type { CareerIntentRecord } from "../../data/sqlite/repositories/SqliteDocumentStore";
-import { activateSearchPlanForIntent } from "./search-plan-activation";
+import { activateSearchPlanForIntent, validateIntentActivationPreconditions } from "./search-plan-activation";
 import crypto from "node:crypto";
 
 /**
- * Fire-and-forget document upload transport adapter.
- * Accepts document upload, saves record in Turso, returns 202-style ACCEPTED status,
- * and initiates ProjectionPipeline asynchronously for the authenticated user.
+ * Accepts a protected document and acknowledges only a durable queued job.
  */
 export const uploadDocumentFn = createServerFn({ method: "POST" })
   .validator((data: {
@@ -31,7 +29,10 @@ export const uploadDocumentFn = createServerFn({ method: "POST" })
     const repos = getRepositories();
     const payloadBytes = data.base64Buffer ? Buffer.from(data.base64Buffer, "base64") : Buffer.from(data.documentText || "", "utf8");
     const contentHash = crypto.createHash("sha256").update(payloadBytes).digest("hex");
-    const documentId = `doc-${contentHash}`;
+    // Content hashes are provenance, never protected document identity. Each
+    // upload receives its own owner-safe identity, even if another candidate
+    // has uploaded byte-identical content.
+    const documentId = `doc-${crypto.randomUUID()}`;
     // Accepted means durably queued, never merely attached to this request's
     // process lifetime. A worker/bootstrap owns subsequent processing.
     await repos.documents.saveDocument({
@@ -41,10 +42,11 @@ export const uploadDocumentFn = createServerFn({ method: "POST" })
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     });
     await repos.documents.enqueueDocumentProcessing({
-      id: `document-job-${contentHash}`,
+      id: `document-job-${crypto.randomUUID()}`,
       personId: userId,
       documentId,
-      jobHash: `document:${userId}:${contentHash}`,
+      // Retry/job identity is independent of both owner and document content.
+      jobHash: `document-job:${documentId}`,
       payloadJson: JSON.stringify({ filename: data.filename, mimeType: data.mimeType, documentText: data.documentText, base64Buffer: data.base64Buffer, documentHash: contentHash }),
     });
 
@@ -113,21 +115,38 @@ export const saveIntentFn = createServerFn({ method: "POST" })
       travelTolerance: intent.travelTolerance
     };
 
+    // Check all deterministic activation prerequisites before recording a new
+    // immutable intent version. This prevents an API error from concealing a
+    // newly persisted but unusable intent.
+    await validateIntentActivationPreconditions(intentRecord);
     await repos.documents.saveCareerIntent(intentRecord);
 
     // Saving the versioned intent must also replace the active scraper plan.
     // Otherwise the UI reports success while scraping continues to resolve a
     // legacy plan with empty targetRoles/functions.
-    await activateSearchPlanForIntent({
-      ...intentRecord,
-      activatedBy: "career-intent-save",
-    });
+    try {
+      await activateSearchPlanForIntent({
+        ...intentRecord,
+        activatedBy: "career-intent-save",
+      });
+    } catch (error: any) {
+      // The version is durable, but any non-preflight activation failure is
+      // explicitly reported as pending rather than masquerading as a failed
+      // write or a current evaluation context.
+      return {
+        success: true,
+        activationState: "PENDING_ACTIVATION" as const,
+        message: "Career intent saved; canonical activation is pending.",
+        activationError: error?.message || "Activation failed",
+      };
+    }
 
     // Refresh evaluations via EvaluationCoordinator
     await EvaluationCoordinator.notify({ event: "INTENT_UPDATED", personId: user.id });
 
     return {
       success: true,
+      activationState: "ACTIVE" as const,
       message: "Career intent saved as new version."
     };
   });

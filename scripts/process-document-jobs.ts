@@ -6,10 +6,11 @@ import { ProjectionPipeline } from "../src/lib/intelligence/pipeline/ProjectionP
 export async function processNextDocumentJob(workerId = `document-worker-${crypto.randomUUID()}`): Promise<boolean> {
   const db = getDatabaseAdapter();
   const job = await db.one<{ id: string; person_id: string; document_id: string; payload_json: string; attempts: number; max_attempts: number }>(
-    `SELECT id, person_id, document_id, payload_json, attempts, max_attempts
-     FROM candidate_document_jobs
-     WHERE status = 'pending' OR (status = 'processing' AND locked_at < datetime('now', '-300 seconds'))
-     ORDER BY created_at LIMIT 1`,
+    `SELECT j.id, j.person_id, j.document_id, j.payload_json, j.attempts, j.max_attempts
+     FROM candidate_document_jobs j
+     JOIN candidate_documents d ON d.id = j.document_id AND d.person_id = j.person_id
+     WHERE j.status = 'pending' OR (j.status = 'processing' AND j.locked_at < datetime('now', '-300 seconds'))
+     ORDER BY j.created_at LIMIT 1`,
   );
   if (!job) return false;
   const leaseToken = crypto.randomUUID();

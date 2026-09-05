@@ -41,7 +41,7 @@ export function resolveDecisionsCardScore(
 export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS" | "UNREVIEWED";
 
 function OpportunitiesPage() {
-  const { decisions, undo, clear, hydrated } = useDecisions();
+  const { decisions, undo, clear, hydrated, error: decisionError } = useDecisions();
   const { opportunitiesList: loadedOpportunities } = Route.useLoaderData();
   const rawOpportunities = loadedOpportunities as Array<Opportunity | ServedOpportunity>;
   // Phase 4: Non-evaluated variants without decisions must not contribute to counts or enter the ledger.
@@ -55,6 +55,7 @@ function OpportunitiesPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterKey, setFilterKey] = useState<FilterKey>("ALL");
+  const [writeError, setWriteError] = useState<string | null>(null);
 
   // Helper to get effective user decision verb for an opportunity
   const getUserVerb = (o: Opportunity | ServedOpportunity): DecisionVerb | null => {
@@ -132,10 +133,14 @@ function OpportunitiesPage() {
           {Object.keys(decisions).length > 0 && (
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 if (confirm("Clear all recorded decisions? This can't be undone.")) {
-                  clear();
-                  router.invalidate();
+                  try {
+                    await clear();
+                    await router.invalidate();
+                  } catch (error: any) {
+                    setWriteError(error?.message || "Could not clear decisions.");
+                  }
                 }
               }}
               className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted hover:text-ink transition-colors self-start sm:self-auto"
@@ -143,6 +148,7 @@ function OpportunitiesPage() {
               Clear decisions
             </button>
           )}
+          {(writeError || decisionError) && <p role="alert" className="mt-2 text-sm text-decision-pass">{writeError || decisionError}</p>}
         </div>
 
         {/* Search & Filter Control Surface */}
@@ -308,9 +314,13 @@ function OpportunitiesPage() {
                       {verb && (
                         <button
                           type="button"
-                          onClick={() => {
-                            undo(o.jobHash);
-                            router.invalidate();
+                          onClick={async () => {
+                            try {
+                              await undo(o.jobHash);
+                              await router.invalidate();
+                            } catch (error: any) {
+                              setWriteError(error?.message || "Could not remove this decision.");
+                            }
                           }}
                           className="rounded-sm border border-hairline px-3 py-1 label-mono text-xs text-ink-muted hover:bg-background hover:text-ink transition-colors"
                           data-testid={`undo-btn-${o.jobHash}`}
