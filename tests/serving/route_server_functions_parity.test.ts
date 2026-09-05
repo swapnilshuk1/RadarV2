@@ -11,7 +11,7 @@
  * 5. ClientOpportunityCache is a non-authoritative convenience only.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
@@ -20,6 +20,15 @@ import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
 import { ClientOpportunityCache } from "../../src/lib/opportunity-cache";
 import type { EvaluatedOpportunity } from "../../src/data/opportunity-fixtures";
+
+vi.mock("../../src/lib/security/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/lib/security/auth")>();
+  return {
+    ...actual,
+    authenticateTenantMembership: vi.fn(async () => ({ tenantId: "tenant_A" })),
+    authorizePersonScope: vi.fn(async () => ({ tenantId: "tenant_A", personId: "person_A" })),
+  };
+});
 
 describe("Phase 11 & 12: Route Server Function & Client Cache Suite", () => {
   let sqliteDb: Database.Database;
@@ -99,9 +108,48 @@ describe("Phase 11 & 12: Route Server Function & Client Cache Suite", () => {
     const shortlistRoute = fs.readFileSync(path.resolve("src/routes/index.tsx"), "utf8");
     const service = fs.readFileSync(path.resolve("src/lib/intelligence/opportunity-service.ts"), "utf8");
 
-    expect(service).toContain("shortlistQueue: true");
+    expect(service).toContain("shortlistQueue: !sparseSignalQueue");
+    expect(service).toContain('categoryId === "needs_more_signal"');
     expect(shortlistRoute).toContain("canonical server-selected review queue");
     expect(shortlistRoute).not.toContain("const shortlistedOps");
     expect(shortlistRoute).not.toContain("const filteredRemaining");
+  });
+
+  it("uses the actual listForUser service path for dynamic unreviewed sparse-signal membership", async () => {
+    const getFeed = vi.fn().mockResolvedValue({
+      items: [{ jobHash: "sparse-job", evaluationState: "SPARSE_SPEC" }],
+      nextCursor: null,
+      totalCount: 1,
+      hasMore: false,
+    });
+    const getDossier = vi.fn().mockResolvedValue({
+      jobHash: "sparse-job",
+      evaluationState: "SPARSE_SPEC",
+      userDecision: undefined,
+    });
+    const service = OpportunityService as unknown as { getServingQueries: () => unknown };
+    const original = service.getServingQueries;
+    service.getServingQueries = () => ({ getFeed, getDossier });
+    try {
+      const items = await OpportunityService.listForUser(
+        "person_A",
+        { categoryId: "needs_more_signal" },
+        "tenant_A",
+      );
+      expect(items).toHaveLength(1);
+      expect(items[0].evaluationState).toBe("SPARSE_SPEC");
+      expect(getFeed).toHaveBeenCalledWith(
+        expect.anything(),
+        undefined,
+        expect.objectContaining({
+          categoryId: "needs_more_signal",
+          decisionFilter: "unreviewed",
+          shortlistQueue: false,
+        }),
+        50,
+      );
+    } finally {
+      service.getServingQueries = original;
+    }
   });
 });

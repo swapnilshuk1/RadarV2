@@ -127,13 +127,16 @@ async function collectUnreviewedFeedItems(
   let cursor: OpaqueCursor | undefined;
 
   do {
+    const sparseSignalQueue = categoryId === "needs_more_signal";
     const feed = await queries.getFeed(
       scope,
       cursor,
       {
         categoryId: categoryId as FeedFilters["categoryId"],
         decisionFilter: "unreviewed",
-        shortlistQueue: true,
+        // `needs_more_signal` is a dynamic SPARSE_SPEC population, not an
+        // evaluated PURSUE/CONSIDER shortlist.  The server owns both paths.
+        shortlistQueue: !sparseSignalQueue,
       },
       50,
     );
@@ -210,7 +213,12 @@ export class OpportunityService {
       feedItems.map((item) => queries.getDossier(scope, item.jobHash)),
     );
     return opportunities.filter((opportunity): opportunity is import("../../data/opportunity-fixtures").ServedOpportunity => {
-      if (!opportunity || opportunity.evaluationState !== "EVALUATED") return false;
+      if (!opportunity) return false;
+      if (options?.categoryId === "needs_more_signal") {
+        return opportunity.evaluationState === "SPARSE_SPEC"
+          && (opportunity.userDecision?.userAction === undefined || opportunity.userDecision?.userAction === null || opportunity.userDecision?.userAction === "NONE");
+      }
+      if (opportunity.evaluationState !== "EVALUATED") return false;
       const verdict = opportunity.engineRecommendation?.engineVerdict;
       const userDecision = opportunity.userDecision?.userAction;
       return (verdict === "PURSUE" || verdict === "CONSIDER")

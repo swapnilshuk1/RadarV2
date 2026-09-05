@@ -169,6 +169,9 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
         unmaterialized: 1,
         profileRequired: 0,
         notEvaluable: 0,
+        acquisitionPending: 0,
+        acquisitionFailed: 0,
+        expired: 0,
         invalid: 0,
       });
       expect(metrics.integrity.status).toBe("PASS");
@@ -208,6 +211,9 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       unmaterialized: 0,
       profileRequired: 0,
       notEvaluable: 0,
+      acquisitionPending: 0,
+      acquisitionFailed: 0,
+      expired: 0,
       invalid: 0,
     });
     expect(check.status).toBe("ERROR");
@@ -232,6 +238,9 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       unmaterialized: 0,
       profileRequired: 0,
       notEvaluable: 0,
+      acquisitionPending: 0,
+      acquisitionFailed: 0,
+      expired: 0,
       invalid: 3,
     });
     expect(metrics.engineBreakdown).toEqual({ pursue: 0, consider: 0, pass: 0, sparse: 0 });
@@ -254,6 +263,22 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
     expect(metrics.userBreakdown).toEqual({ pursue: 2, consider: 1, pass: 1, total: 4 });
     expect(metrics.engineBreakdown).toMatchObject({ pursue: 0, consider: 0, pass: 1 });
     expect(metrics.effectiveBreakdown).toMatchObject({ pursue: 2, consider: 1, pass: 1, none: 2 });
+  });
+
+  it("preserves acquisition-unavailable states as known canonical population reasons", async () => {
+    await seedItem({ id: "acquisition-pending", title: "Pending", engineVerdict: null, score: null, evaluationState: "ACQUISITION_PENDING" });
+    await seedItem({ id: "acquisition-failed", title: "Failed", engineVerdict: null, score: null, evaluationState: "ACQUISITION_FAILED" });
+
+    const metrics = await queries.getMetrics(scope);
+    expect(metrics.evaluationPopulation).toMatchObject({
+      evaluated: 0,
+      acquisitionPending: 1,
+      acquisitionFailed: 1,
+      invalid: 0,
+    });
+    expect(metrics.engineBreakdown).toEqual({ pursue: 0, consider: 0, pass: 0, sparse: 0 });
+    expect(metrics.effectiveBreakdown.none).toBe(2);
+    expect(metrics.integrity.status).toBe("PASS");
   });
 
   it("selects the unreviewed shortlist at the canonical server boundary", async () => {

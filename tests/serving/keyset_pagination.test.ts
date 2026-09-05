@@ -21,6 +21,7 @@ import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { encodeCursor, decodeCursor } from "../../src/lib/intelligence/cursor";
+import { CursorValidationError } from "../../src/lib/intelligence/cursor";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 
 describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
@@ -80,7 +81,7 @@ describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
        VALUES ('tenant_A', 'person_A', 'plan_A', ?, ?, ?)`,
       [params.jobId, `ov_${params.jobId}`, params.attention || "CANDIDATE"]
     );
-    if (params.verdict !== null || params.score !== null) {
+    if (params.verdict !== null || params.score !== null || params.evalState !== undefined) {
       await db.execute(
         `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
          VALUES (?, ?, ?, 'tenant_A', 'person_A', 'fingerprint_A', ?, ?, ?, ?, ?, '{}')`,
@@ -268,6 +269,38 @@ describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
       expect(page.items.map((item) => item.jobHash)).toEqual(["sparse-content"]);
       expect(page.items[0].categoryIds).toContain("needs_more_signal");
       expect(page.items[0].categoryIds).toContain("commercial_growth");
+    });
+
+    it("rejects a cursor when category membership differs from the page that created it", async () => {
+      await seedOpportunity({ jobId: "a", hash: "A", title: "A", verdict: "PURSUE", score: 95, categoryIds: ["transformation"] });
+      await seedOpportunity({ jobId: "b", hash: "B", title: "B", verdict: "PURSUE", score: 94, categoryIds: ["commercial_growth"] });
+      await seedOpportunity({ jobId: "c", hash: "C", title: "C", verdict: "PURSUE", score: 93, categoryIds: ["transformation"] });
+      await seedOpportunity({ jobId: "d", hash: "D", title: "D", verdict: "PURSUE", score: 92, categoryIds: ["transformation"] });
+
+      const scope = { tenantId: "tenant_A", personId: "person_A" };
+      const all = await queries.getFeed(scope, undefined, undefined, 2);
+      expect(all.items.map((item) => item.jobHash)).toEqual(["A", "B"]);
+      await expect(queries.getFeed(scope, all.nextCursor!, { categoryId: "transformation" }, 2))
+        .rejects.toThrow(CursorValidationError);
+
+      const first = await queries.getFeed(scope, undefined, { categoryId: "transformation" }, 2);
+      const second = await queries.getFeed(scope, first.nextCursor!, { categoryId: "transformation" }, 2);
+      expect(first.items.map((item) => item.jobHash)).toEqual(["A", "C"]);
+      expect(second.items.map((item) => item.jobHash)).toEqual(["D"]);
+    });
+
+    it("preserves acquisition-unavailable evaluation state through feed and dossier", async () => {
+      await seedOpportunity({ jobId: "pending", hash: "pending", title: "Pending", verdict: null, score: null, evalState: "ACQUISITION_PENDING" });
+      await seedOpportunity({ jobId: "failed", hash: "failed", title: "Failed", verdict: null, score: null, evalState: "ACQUISITION_FAILED" });
+
+      const scope = { tenantId: "tenant_A", personId: "person_A" };
+      const feed = await queries.getFeed(scope, undefined, undefined, 10);
+      expect(feed.items.map((item) => [item.jobHash, item.evaluationState, item.engineVerdict])).toEqual([
+        ["failed", "ACQUISITION_FAILED", null],
+        ["pending", "ACQUISITION_PENDING", null],
+      ]);
+      expect((await queries.getDossier(scope, "pending"))?.evaluationState).toBe("ACQUISITION_PENDING");
+      expect((await queries.getDossier(scope, "failed"))?.evaluationState).toBe("ACQUISITION_FAILED");
     });
   });
 });

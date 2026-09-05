@@ -43,7 +43,7 @@ export interface FeedSummary {
   readonly postedAt?: string | null;
   readonly postedPrecision?: string | null;
   readonly applyUrl?: string | null;
-  readonly evaluationState: "COMPLETE" | "EVALUATED" | "SPARSE_SPEC" | "NOT_EVALUABLE" | "PROFILE_REQUIRED" | "INVALID" | "UNMATERIALIZED" | "UNKNOWN";
+  readonly evaluationState: "COMPLETE" | "EVALUATED" | "SPARSE_SPEC" | "NOT_EVALUABLE" | "PROFILE_REQUIRED" | "ACQUISITION_PENDING" | "ACQUISITION_FAILED" | "EXPIRED" | "INVALID" | "UNMATERIALIZED" | "UNKNOWN";
   readonly engineVerdict?: EngineVerdict | null;
   readonly qualityScore?: number | null;
   /** Context identity is retained separately from the exact reviewed artifact. */

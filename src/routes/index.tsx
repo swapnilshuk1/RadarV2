@@ -307,7 +307,9 @@ function Shortlist() {
                 {selectedCategoryId === "all"
                   ? `Sorted by Fit · ${totalShortlisted} Shortlisted`
                   : `Sorted by Fit · ${
-                      metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? (isLoadingCategory ? "..." : activeOps.length)
+                      selectedCategoryId === "needs_more_signal"
+                        ? metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? (isLoadingCategory ? "..." : activeOps.length)
+                        : metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? (isLoadingCategory ? "..." : activeOps.length)
                     } ${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}`}
               </h2>
               {selectedCategoryId === "all" && (
@@ -330,8 +332,10 @@ function Shortlist() {
                   const cnt = catMetric?.shortlisted ?? activeOps.length;
                   countLabel = ` (${cnt})`;
                 } else if (catDef.id === "needs_more_signal") {
-                  const unrev = catMetric?.shortlisted ?? activeOps.length;
-                  const tot = catMetric?.shortlisted ?? activeOps.length;
+                  // Sparse-signal membership is state-derived and is not an
+                  // evaluated shortlist count.
+                  const unrev = catMetric?.unreviewed ?? activeOps.length;
+                  const tot = catMetric?.total ?? activeOps.length;
                   countLabel = ` (${unrev} / ${tot})`;
                 } else {
                   const unrev = catMetric?.shortlisted ?? (selectedCategoryId === catDef.id ? activeOps.length : 0);
@@ -400,7 +404,7 @@ function Shortlist() {
                           ? `All ${totalShortlisted} shortlist opportunities have recorded decisions.`
                           : "No shortlist opportunities remaining to review.")
                       : selectedCategoryId === "needs_more_signal"
-                        ? "No shortlisted opportunities need more signal."
+                        ? "No opportunities need more signal."
                         : `No unreviewed opportunities match "${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}".`}
                   </li>
                 )}

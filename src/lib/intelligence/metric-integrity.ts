@@ -68,6 +68,12 @@ export interface EvaluationPopulationBreakdown {
   readonly unmaterialized: number;
   readonly profileRequired: number;
   readonly notEvaluable: number;
+  /** Acquisition is still in progress; this is neither invalid nor evaluated. */
+  readonly acquisitionPending: number;
+  /** Acquisition failed with a known reason; this is neither invalid nor evaluated. */
+  readonly acquisitionFailed: number;
+  /** Explicit expired evaluation state for an otherwise ACTIVE serving row. */
+  readonly expired: number;
   readonly invalid: number;
 }
 
@@ -81,6 +87,9 @@ export function reconcileEvaluationPopulation(
     breakdown.unmaterialized +
     breakdown.profileRequired +
     breakdown.notEvaluable +
+    breakdown.acquisitionPending +
+    breakdown.acquisitionFailed +
+    breakdown.expired +
     breakdown.invalid;
   return {
     code: "INV_CANONICAL_POPULATION_PARTITION",
@@ -193,7 +202,7 @@ export class MetricIntegrityValidator {
 
     try {
       if (metrics.tenantId && metrics.searchPlanId && metrics.evaluationContextFingerprint) {
-        const canonical = await db.one<{ total: number; evaluated: number; pursue: number; consider: number; pass: number; sparse: number; unmaterialized: number; profile_required: number; not_evaluable: number; invalid: number; user_pursue: number; user_consider: number; user_pass: number; user_total: number }>(
+        const canonical = await db.one<{ total: number; evaluated: number; pursue: number; consider: number; pass: number; sparse: number; unmaterialized: number; profile_required: number; not_evaluable: number; acquisition_pending: number; acquisition_failed: number; expired: number; invalid: number; user_pursue: number; user_consider: number; user_pass: number; user_total: number }>(
           `SELECT COUNT(*) AS total,
             COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE','EVALUATED') AND me.decision IN ('PURSUE','CONSIDER','PASS') AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS evaluated,
             COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE','EVALUATED') AND me.decision='PURSUE' AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS pursue,
@@ -203,7 +212,10 @@ export class MetricIntegrityValidator {
             COUNT(CASE WHEN me.id IS NULL THEN 1 END) AS unmaterialized,
             COUNT(CASE WHEN me.evaluation_state='PROFILE_REQUIRED' THEN 1 END) AS profile_required,
             COUNT(CASE WHEN me.evaluation_state='NOT_EVALUABLE' THEN 1 END) AS not_evaluable,
-            COUNT(CASE WHEN me.id IS NOT NULL AND NOT (me.evaluation_state='SPARSE_SPEC' OR me.evaluation_state IN ('PROFILE_REQUIRED','NOT_EVALUABLE') OR (me.evaluation_state IN ('COMPLETE','EVALUATED') AND me.decision IN ('PURSUE','CONSIDER','PASS') AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL)) THEN 1 END) AS invalid,
+            COUNT(CASE WHEN me.evaluation_state='ACQUISITION_PENDING' THEN 1 END) AS acquisition_pending,
+            COUNT(CASE WHEN me.evaluation_state='ACQUISITION_FAILED' THEN 1 END) AS acquisition_failed,
+            COUNT(CASE WHEN me.evaluation_state='EXPIRED' THEN 1 END) AS expired,
+            COUNT(CASE WHEN me.id IS NOT NULL AND NOT (me.evaluation_state='SPARSE_SPEC' OR me.evaluation_state IN ('PROFILE_REQUIRED','NOT_EVALUABLE','ACQUISITION_PENDING','ACQUISITION_FAILED','EXPIRED') OR (me.evaluation_state IN ('COMPLETE','EVALUATED') AND me.decision IN ('PURSUE','CONSIDER','PASS') AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL)) THEN 1 END) AS invalid,
             COUNT(CASE WHEN d.action='PURSUE' THEN 1 END) AS user_pursue,
             COUNT(CASE WHEN d.action='CONSIDER' THEN 1 END) AS user_consider,
             COUNT(CASE WHEN d.action='PASS' THEN 1 END) AS user_pass,
@@ -223,6 +235,9 @@ export class MetricIntegrityValidator {
           { code: "CHECK_STATE_UNMATERIALIZED", metricName: "evaluationPopulation.unmaterialized", expected: state.unmaterialized, actual: metrics.evaluationPopulation.unmaterialized, status: state.unmaterialized === metrics.evaluationPopulation.unmaterialized ? "PASS" : "ERROR", message: "Independently reconciled unmaterialized bucket." },
           { code: "CHECK_STATE_PROFILE_REQUIRED", metricName: "evaluationPopulation.profileRequired", expected: state.profile_required, actual: metrics.evaluationPopulation.profileRequired, status: state.profile_required === metrics.evaluationPopulation.profileRequired ? "PASS" : "ERROR", message: "Independently reconciled profile-required bucket." },
           { code: "CHECK_STATE_NOT_EVALUABLE", metricName: "evaluationPopulation.notEvaluable", expected: state.not_evaluable, actual: metrics.evaluationPopulation.notEvaluable, status: state.not_evaluable === metrics.evaluationPopulation.notEvaluable ? "PASS" : "ERROR", message: "Independently reconciled not-evaluable bucket." },
+          { code: "CHECK_STATE_ACQUISITION_PENDING", metricName: "evaluationPopulation.acquisitionPending", expected: state.acquisition_pending, actual: metrics.evaluationPopulation.acquisitionPending, status: state.acquisition_pending === metrics.evaluationPopulation.acquisitionPending ? "PASS" : "ERROR", message: "Independently reconciled acquisition-pending bucket." },
+          { code: "CHECK_STATE_ACQUISITION_FAILED", metricName: "evaluationPopulation.acquisitionFailed", expected: state.acquisition_failed, actual: metrics.evaluationPopulation.acquisitionFailed, status: state.acquisition_failed === metrics.evaluationPopulation.acquisitionFailed ? "PASS" : "ERROR", message: "Independently reconciled acquisition-failed bucket." },
+          { code: "CHECK_STATE_EXPIRED", metricName: "evaluationPopulation.expired", expected: state.expired, actual: metrics.evaluationPopulation.expired, status: state.expired === metrics.evaluationPopulation.expired ? "PASS" : "ERROR", message: "Independently reconciled explicit expired bucket." },
           { code: "CHECK_STATE_INVALID", metricName: "evaluationPopulation.invalid", expected: state.invalid, actual: metrics.evaluationPopulation.invalid, status: state.invalid === metrics.evaluationPopulation.invalid ? "PASS" : "ERROR", message: "Independently reconciled invalid bucket." },
           { code: "CHECK_EVALUATED_PARTITION", metricName: "evaluated", expected: state.evaluated, actual: metrics.engineBreakdown.pursue + metrics.engineBreakdown.consider + metrics.engineBreakdown.pass, status: state.evaluated === metrics.engineBreakdown.pursue + metrics.engineBreakdown.consider + metrics.engineBreakdown.pass ? "PASS" : "ERROR", message: "Evaluated population equals engine verdict partition." },
           { code: "CHECK_ENGINE_PURSUIT", metricName: "engineBreakdown.pursue", expected: state.pursue, actual: metrics.engineBreakdown.pursue, status: state.pursue === metrics.engineBreakdown.pursue ? "PASS" : "ERROR", message: "Independently reconciled engine PURSUE bucket." },

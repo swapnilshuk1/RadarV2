@@ -54,6 +54,16 @@ describe("Phase 3: Opaque Keyset Cursor Engine", () => {
       });
     });
 
+    it("round-trips a server-supplied feed filter signature without exposing filter semantics", () => {
+      const cursor = encodeCursor({
+        tier: 0,
+        score: 95,
+        jobHash: "job-filter-bound",
+        filterSignature: '{"categoryId":"all","decisionFilter":"all","shortlistQueue":false}',
+      });
+      expect(decodeCursor(cursor)?.filterSignature).toBe('{"categoryId":"all","decisionFilter":"all","shortlistQueue":false}');
+    });
+
     it("preserves score precision to 2 decimal places", () => {
       const pos: KeysetPosition = {
         tier: 1,

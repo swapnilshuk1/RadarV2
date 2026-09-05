@@ -14,6 +14,8 @@ export interface KeysetPosition {
   readonly tier: number;
   readonly score: number | null;
   readonly jobHash: string;
+  /** Membership-defining feed filters bound to this cursor by the server. */
+  readonly filterSignature?: string;
 }
 
 export type OpaqueCursor = string | null;
@@ -44,10 +46,19 @@ export function encodeCursor(position: KeysetPosition): string {
     throw new CursorValidationError(`Invalid job hash: '${position.jobHash}'. Must be a non-empty alphanumeric string.`);
   }
 
+  if (position.filterSignature !== undefined && (
+    typeof position.filterSignature !== "string" ||
+    position.filterSignature.length === 0 ||
+    position.filterSignature.length > 512
+  )) {
+    throw new CursorValidationError("Invalid filter signature.");
+  }
+
   const payload = {
     t: position.tier,
     s: position.score === null ? null : Math.round(position.score * 100) / 100,
     h: position.jobHash,
+    ...(position.filterSignature === undefined ? {} : { f: position.filterSignature }),
   };
 
   const jsonStr = JSON.stringify(payload);
@@ -100,6 +111,7 @@ export function decodeCursor(cursor: string | null | undefined): KeysetPosition 
   const tier = payload.t;
   const score = payload.s;
   const jobHash = payload.h;
+  const filterSignature = payload.f;
 
   if (typeof tier !== "number" || !Number.isInteger(tier) || tier < 0 || tier > 5) {
     throw new CursorValidationError(`Invalid cursor tier: ${tier}. Expected integer between 0 and 5.`);
@@ -113,9 +125,16 @@ export function decodeCursor(cursor: string | null | undefined): KeysetPosition 
     throw new CursorValidationError(`Invalid cursor job hash: '${jobHash}'.`);
   }
 
+  if (filterSignature !== undefined && (
+    typeof filterSignature !== "string" || filterSignature.length === 0 || filterSignature.length > 512
+  )) {
+    throw new CursorValidationError("Invalid cursor filter signature.");
+  }
+
   return {
     tier,
     score,
     jobHash,
+    ...(filterSignature === undefined ? {} : { filterSignature }),
   };
 }

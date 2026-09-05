@@ -12,6 +12,9 @@ export type CanonicalEvaluationState =
   | "SPARSE_SPEC"
   | "NOT_EVALUABLE"
   | "PROFILE_REQUIRED"
+  | "ACQUISITION_PENDING"
+  | "ACQUISITION_FAILED"
+  | "EXPIRED"
   | "INVALID"
   | "UNMATERIALIZED"
   | "UNKNOWN";
