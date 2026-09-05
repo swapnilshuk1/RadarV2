@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import os from "os";
 import fs from "fs";
 import path from "path";
 import { runMigrations, splitSqlStatements } from "../../src/data/sqlite/migrations/runner";
@@ -124,5 +125,26 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
     await runMigrations(inMemoryAdapter);
 
     expect(fs.existsSync(cwdRadarSqlite)).toBe(false);
+  });
+
+  it("6. upgrades a pre-037 schema through 037/038 before canonical serving SQL runs", async () => {
+    const migrationsDir = path.resolve(process.cwd(), "src/data/sqlite/migrations");
+    const legacyDir = fs.mkdtempSync(path.join(os.tmpdir(), "radar-pre037-"));
+    try {
+      for (const file of fs.readdirSync(migrationsDir).filter((name) => name.endsWith(".sql") && name < "037_materialized_evaluation_fingerprint.sql")) {
+        fs.copyFileSync(path.join(migrationsDir, file), path.join(legacyDir, file));
+      }
+      const adapter = getDatabaseAdapter(":memory:");
+      await runMigrations(adapter, legacyDir);
+      expect((await adapter.many<{ name: string }>("PRAGMA table_info(materialized_evaluations)")).map((column) => column.name)).not.toContain("evaluation_fingerprint");
+
+      const upgraded = await runMigrations(adapter);
+      expect(upgraded.applied).toContain("037_materialized_evaluation_fingerprint.sql");
+      expect(upgraded.applied).toContain("038_opportunity_version_category_projection.sql");
+      await expect(adapter.many(`SELECT me.evaluation_fingerprint, ov.category_ids FROM opportunity_versions ov LEFT JOIN materialized_evaluations me ON me.opportunity_version = ov.id LIMIT 1`)).resolves.toEqual([]);
+      expect((await runMigrations(adapter)).applied).toEqual([]);
+    } finally {
+      fs.rmSync(legacyDir, { recursive: true, force: true });
+    }
   });
 });

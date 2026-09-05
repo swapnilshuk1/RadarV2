@@ -55,6 +55,8 @@ export interface UserDecisionMetrics {
 export interface EvaluationPopulationBreakdown {
   readonly evaluated: number;
   readonly sparse: number;
+  /** Explicitly no effective decision; never a synonym for sparse. */
+  readonly none?: number;
   readonly unmaterialized: number;
   readonly profileRequired: number;
   readonly notEvaluable: number;
@@ -193,10 +195,10 @@ export class MetricIntegrityValidator {
             COUNT(CASE WHEN me.evaluation_state='PROFILE_REQUIRED' THEN 1 END) AS profile_required,
             COUNT(CASE WHEN me.evaluation_state='NOT_EVALUABLE' THEN 1 END) AS not_evaluable,
             COUNT(CASE WHEN me.id IS NOT NULL AND NOT (me.evaluation_state='SPARSE_SPEC' OR me.evaluation_state IN ('PROFILE_REQUIRED','NOT_EVALUABLE') OR (me.evaluation_state IN ('COMPLETE','EVALUATED') AND me.decision IN ('PURSUE','CONSIDER','PASS') AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL)) THEN 1 END) AS invalid,
-            COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND d.action='PURSUE' THEN 1 END) AS user_pursue,
-            COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND d.action='CONSIDER' THEN 1 END) AS user_consider,
-            COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND d.action='PASS' THEN 1 END) AS user_pass,
-            COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND d.action IN ('PURSUE','CONSIDER','PASS') THEN 1 END) AS user_total
+            COUNT(CASE WHEN d.action='PURSUE' THEN 1 END) AS user_pursue,
+            COUNT(CASE WHEN d.action='CONSIDER' THEN 1 END) AS user_consider,
+            COUNT(CASE WHEN d.action='PASS' THEN 1 END) AS user_pass,
+            COUNT(CASE WHEN d.action IN ('PURSUE','CONSIDER','PASS') THEN 1 END) AS user_total
            FROM search_plan_candidates spc JOIN opportunity_versions ov ON ov.id=spc.opportunity_version AND ov.canonical_job_id=spc.canonical_job_id
            LEFT JOIN materialized_evaluations me ON me.canonical_job_id=spc.canonical_job_id AND me.opportunity_version=spc.opportunity_version AND me.tenant_id=spc.tenant_id AND me.person_id=spc.person_id AND me.evaluation_context_fingerprint=?
            LEFT JOIN canonical_decisions d ON d.canonical_job_id=spc.canonical_job_id AND d.tenant_id=spc.tenant_id AND d.person_id=spc.person_id

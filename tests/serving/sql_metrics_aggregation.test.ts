@@ -196,7 +196,8 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       expect(metrics.effectiveBreakdown.pursue).toBe(4); // explicit PURSUE decisions on 1–4
       expect(metrics.effectiveBreakdown.consider).toBe(3); // explicit CONSIDER decisions on 5–7
       expect(metrics.effectiveBreakdown.pass).toBe(1); // explicit user PASS only
-      expect(metrics.effectiveBreakdown.sparse).toBe(2); // sparse and unmaterialized are never PASS
+      expect(metrics.effectiveBreakdown.sparse).toBe(0); // deprecated alias; unavailable is no longer collapsed to sparse
+      expect(metrics.effectiveBreakdown.none).toBe(2); // sparse and unmaterialized have no effective decision
     });
   });
 
@@ -236,6 +237,23 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
     expect(metrics.engineBreakdown).toEqual({ pursue: 0, consider: 0, pass: 0, sparse: 0 });
     expect(metrics.totalShortlisted).toBe(0);
     expect(metrics.integrity.status).toBe("PASS");
+  });
+
+  it("keeps user decisions and effective decisions distinct from unavailable engine state", async () => {
+    await seedItem({ id: "invalid-user", title: "Invalid", engineVerdict: "PURSUE", evaluationState: "INVALID", userAction: "PURSUE" });
+    await seedItem({ id: "profile-user", title: "Profile", engineVerdict: null, evaluationState: "PROFILE_REQUIRED", userAction: "CONSIDER" });
+    await seedItem({ id: "not-evaluable-user", title: "Not evaluable", engineVerdict: null, evaluationState: "NOT_EVALUABLE", userAction: "PASS" });
+    await seedItem({ id: "sparse-none", title: "Sparse", engineVerdict: "SPARSE_SPEC", evaluationState: "SPARSE_SPEC" });
+    await seedItem({ id: "unmaterialized-none", title: "Unmaterialized", engineVerdict: null, evaluationState: "UNMATERIALIZED" });
+    await seedItem({ id: "valid-pass-user", title: "Valid", engineVerdict: "PASS", userAction: "PURSUE" });
+
+    const metrics = await queries.getMetrics(scope);
+    expect(metrics.evaluationPopulation).toMatchObject({ invalid: 1, profileRequired: 1, notEvaluable: 1, sparse: 1, unmaterialized: 1, evaluated: 1 });
+    expect(metrics.evaluatedDecisions).toBe(1);
+    expect(metrics.allRecordedDecisions).toBe(4);
+    expect(metrics.userBreakdown).toEqual({ pursue: 2, consider: 1, pass: 1, total: 4 });
+    expect(metrics.engineBreakdown).toMatchObject({ pursue: 0, consider: 0, pass: 1 });
+    expect(metrics.effectiveBreakdown).toMatchObject({ pursue: 2, consider: 1, pass: 1, none: 2 });
   });
 
   it("rejects compensating state and engine-verdict bucket mismatches", async () => {

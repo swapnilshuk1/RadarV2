@@ -509,7 +509,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         engineBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0 },
         evaluationPopulation: { evaluated: 0, sparse: 0, unmaterialized: 0, profileRequired: 0, notEvaluable: 0, invalid: 0 },
         userBreakdown: { pursue: 0, consider: 0, pass: 0, total: 0 },
-        effectiveBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0 },
+        effectiveBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0, none: 0 },
         integrity: {
           status: "UNAVAILABLE",
           validatedAt: generatedAt,
@@ -689,7 +689,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       total: 0,
     };
 
-    const effectiveBreakdown = { pursue: 0, consider: 0, pass: 0, sparse: 0 };
+    const effectiveBreakdown = { pursue: 0, consider: 0, pass: 0, sparse: 0, none: 0 };
+    const userBreakdown = { pursue: 0, consider: 0, pass: 0, total: 0 };
+    let evaluatedDecisions = 0;
     // Deprecated compatibility field: the active-pursuit lifecycle is not a
     // defined RADAR domain yet, so no engine or user decision is counted as one.
     const activePursuits = 0;
@@ -711,11 +713,17 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       const engineVerb = r.decision === "PURSUE" || r.decision === "CONSIDER" || r.decision === "PASS"
         ? r.decision
         : null;
+      const explicitUserDecision = r.action === "PURSUE" || r.action === "CONSIDER" || r.action === "PASS"
+        ? r.action
+        : null;
+      if (explicitUserDecision) {
+        userBreakdown[explicitUserDecision.toLowerCase() as "pursue" | "consider" | "pass"]++;
+        userBreakdown.total++;
+        if (isEvaluated) evaluatedDecisions++;
+      }
 
       if (isEvaluated) {
-        const effectiveVerb = r.action === "PURSUE" || r.action === "CONSIDER" || r.action === "PASS"
-          ? r.action
-          : engineVerb!;
+        const effectiveVerb = explicitUserDecision ?? engineVerb!;
         if (effectiveVerb === "PURSUE") effectiveBreakdown.pursue++;
         else if (effectiveVerb === "CONSIDER") effectiveBreakdown.consider++;
         else effectiveBreakdown.pass++;
@@ -732,8 +740,11 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
           }
         }
       } else {
-        // Non-evaluated states remain non-actionable; they never enter PASS.
-        effectiveBreakdown.sparse++;
+        // A retained explicit decision remains effective, but never becomes an engine fact.
+        if (explicitUserDecision === "PURSUE") effectiveBreakdown.pursue++;
+        else if (explicitUserDecision === "CONSIDER") effectiveBreakdown.consider++;
+        else if (explicitUserDecision === "PASS") effectiveBreakdown.pass++;
+        else effectiveBreakdown.none++;
 
         const cats = parseCategoryIds(r.category_ids);
         if (r.evaluation_state === "SPARSE_SPEC" && !cats.includes("needs_more_signal")) cats.push("needs_more_signal");
@@ -748,10 +759,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     }
 
     const totalScreened = independentPopulation?.total || 0;
-    const evaluatedDecisions = agg?.user_total || 0;
-    const sparseDecisionsTotal = agg?.sparse_decisions_total || 0;
-    const allRecordedDecisions = evaluatedDecisions + sparseDecisionsTotal;
-    const totalDecisions = evaluatedDecisions; // Preserving backward compatibility
+    const allRecordedDecisions = userBreakdown.total;
+    const totalDecisions = allRecordedDecisions;
 
     const engineBreakdown = {
       pursue: agg?.engine_pursue || 0,
@@ -775,12 +784,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       actual: engineBreakdown.pursue + engineBreakdown.consider + engineBreakdown.pass,
       status: evaluationPopulation.evaluated === engineBreakdown.pursue + engineBreakdown.consider + engineBreakdown.pass ? "PASS" as const : "ERROR" as const,
       message: "Only valid evaluated PURSUE, CONSIDER, and PASS artifacts contribute to the engine verdict partition.",
-    };
-    const userBreakdown = {
-      pursue: agg?.user_pursue || 0,
-      consider: agg?.user_consider || 0,
-      pass: agg?.user_pass || 0,
-      total: totalDecisions,
     };
     const totalShortlisted = engineBreakdown.pursue + engineBreakdown.consider;
     const remainingToReview = Math.max(0, totalScreened - totalDecisions);
