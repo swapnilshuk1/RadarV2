@@ -42,10 +42,6 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
       `INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status)
        VALUES ('person_A', 'tenant_A', 'admin', '["*"]', 'active')`
     );
-    await db.execute(
-      `INSERT OR IGNORE INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint)
-       VALUES ('tenant_A', 'person_A', 'plan_A', 'fingerprint_A')`
-    );
     queries = new SqliteOpportunityQueries(db);
     const resolved = await resolveServingScope("person_A", "tenant_A", db);
     scope = resolved.scope;

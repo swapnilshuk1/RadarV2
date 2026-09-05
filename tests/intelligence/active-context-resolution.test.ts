@@ -80,6 +80,9 @@ describe("Active Context Resolution", () => {
       ["fingerprint_A_newest", "tenant_A", "person_A", "sps_A3", "v1", "hash_ontology", "v1", "v1", "2032-01-01 12:00:00"]
     );
 
+    await store.bindEvaluationContextScope("fingerprint_A_newest", "tenant_A", "person_A", "plan_A");
+    await store.activateContextPointer("fingerprint_A_newest", "tenant_A", "person_A", "plan_A");
+
     const context = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
     expect(context?.contextFingerprint).toBe("fingerprint_A_newest");
   });
@@ -102,21 +105,30 @@ describe("Active Context Resolution", () => {
 
     // Provide materialized evaluation for fingerprint_A_newest (the current active context)
     const payload = JSON.stringify({
-      schemaVersion: "v4.2-intrinsic",
+      schemaVersion: "v4.3-intrinsic",
+      evaluationContractVersion: "v4.3",
+      evaluationState: "EVALUATED",
+      canonicalJobId: "job_1",
+      opportunityVersion: "v1",
       jobHash: "source_job_1",
-      candidateId: "person_A",
-      intrinsicVerdict: "PURSUE",
-      baseNarrative: {
-        whyNow: "Test",
-        positioning: [],
-        primaryProof: null
-      },
-      engineRecommendation: { engineVerdict: "PURSUE", qualityScore: 100 }
+      tenantId: "tenant_A",
+      personId: "person_A",
+      evaluationInputHash: "eval_hash_1",
+      contextFingerprint: "fingerprint_A_newest",
+      policyVersion: "v1",
+      ontologyVersion: "v1",
+      ontologyFingerprint: "hash_ontology",
+      profileVersion: "v1",
+      evaluatedAt: "2026-01-01T00:00:00.000Z",
+      decision: "PURSUE",
+      score: 100,
+      diligenceStatus: "UNKNOWN",
+      jobProjection: { title: "Title" },
     });
 
     await db.execute(
-      `INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, evaluation_state, evaluation_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ["mat_1", "tenant_A", "person_A", "job_1", "v1", "fingerprint_A_newest", "EVALUATED", payload]
+      `INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, evaluation_fingerprint, decision, quality_score, evaluation_state, evaluation_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ["mat_1", "tenant_A", "person_A", "job_1", "v1", "fingerprint_A_newest", "eval_hash_1", "PURSUE", 100, "EVALUATED", payload]
     );
 
     // Call serving store

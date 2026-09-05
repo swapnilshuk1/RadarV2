@@ -32,7 +32,9 @@ describe("getActiveContext and getRematerialisationManifest", () => {
       ["fingerprint_A_2", "tenant_A", "person_A", "sps_A_2", "v1", "hash_ontology", "v1", "v1"]
     );
     
-    // Check fallback BEFORE activating pointer (should be fingerprint_A_2 because of DESC order on created_at)
+    // Explicitly activate the context this test intends to serve.
+    await store.bindEvaluationContextScope("fingerprint_A_2", "tenant_A", "person_A", "plan_A");
+    await store.activateContextPointer("fingerprint_A_2", "tenant_A", "person_A", "plan_A");
     const fbContext = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
     expect(fbContext?.contextFingerprint).toBe("fingerprint_A_2");
 

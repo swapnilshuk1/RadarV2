@@ -39,7 +39,9 @@ describe("Active Pointer Precedence", () => {
       ["context_new", "tenant_A", "person_A", "sps_new", "v1", "hash_ontology", "v1", "v1", "2030-01-01 12:00:00"]
     );
 
-    // Baseline: no pointer, should resolve to NEW_CONTEXT due to fallback
+    // Establish the explicit pointer that defines current serving authority.
+    await store.bindEvaluationContextScope("context_new", "tenant_A", "person_A", "plan_A");
+    await store.activateContextPointer("context_new", "tenant_A", "person_A", "plan_A");
     const fbContext = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
     expect(fbContext?.contextFingerprint).toBe("context_new");
 
