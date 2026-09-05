@@ -8,6 +8,8 @@ import {
 } from "../lib/intelligence/document-server";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 import { useAttentionPreference } from "../lib/attention-store";
+import { PROFILE_PIPELINE_STAGES, isIntentRequiredProfileState, resolveProfilePipelineStepState } from "../lib/intelligence/profile-pipeline-presentation";
+import { resolveIntentActivationPresentation } from "../lib/intelligence/profile-intent-presentation";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -47,6 +49,7 @@ function ProfilePage() {
   const [workModel, setWorkModel] = useState<"" | "HYBRID" | "REMOTE" | "ON_SITE" | "ANY">(intent?.preferredWorkModel || "");
   const [isSavingIntent, setIsSavingIntent] = useState(false);
   const [intentSavedMsg, setIntentSavedMsg] = useState("");
+  const [intentActivationPending, setIntentActivationPending] = useState(false);
 
   // Upload & Pipeline state
   const [pasteText, setPasteText] = useState("");
@@ -164,7 +167,7 @@ function ProfilePage() {
       const locList = locations.split(",").map(s => s.trim()).filter(Boolean);
       const titleList = targetTitles.split(",").map(s => s.trim()).filter(Boolean);
 
-      await saveIntentFn({
+      const result = await saveIntentFn({
         data: {
           currency: currency || undefined,
           targetSalaryAmount: targetSalary.trim() ? Number(targetSalary) : undefined,
@@ -176,11 +179,13 @@ function ProfilePage() {
           preferredWorkModel: workModel || undefined
         }
       });
-
-      setIntentSavedMsg("Career intent saved (new version created)!");
+      const presentation = resolveIntentActivationPresentation(result);
+      setIntentSavedMsg(presentation.message);
+      setIntentActivationPending(presentation.activationPending);
+      if (!presentation.persisted) throw new Error(presentation.message);
       markIntentSet();
       await router.invalidate();
-      navigate({ to: "/" });
+      if (presentation.navigateHome) navigate({ to: "/" });
     } catch (err: any) {
       console.error("Save intent failed:", err);
     } finally {
@@ -188,7 +193,7 @@ function ProfilePage() {
     }
   };
 
-  const stages = [
+  const stages: Array<{ id: typeof PROFILE_PIPELINE_STAGES[number]; label: string }> = [
     { id: "DOCUMENT_REGISTERED", label: "Document Registered" },
     { id: "TEXT_EXTRACTED", label: "Text Extraction & SHA-256 Hash" },
     { id: "EVIDENCE_EXTRACTED", label: "Immutable Evidence Graph Built" },
@@ -200,13 +205,6 @@ function ProfilePage() {
     { id: "EVALUATED", label: "Executive Briefs & Similarity Scores Refreshed" },
     { id: "COMPLETED", label: "Complete" }
   ];
-
-  const getStageIndex = (stageId: string | null) => {
-    if (!stageId) return -1;
-    return stages.findIndex(s => s.id === stageId);
-  };
-
-  const currentStageIdx = getStageIndex(pipelineStage);
 
   let headerEyebrow = "◆ EXECUTIVE ADVISORY PROFILE";
   let headerTitle = "Executive Profile & Intent";
@@ -360,9 +358,10 @@ function ProfilePage() {
                 LIVE PIPELINE EXECUTION
               </span>
               <div className="space-y-2">
-                {stages.map((st, idx) => {
-                  const isDone = currentStageIdx > idx || pipelineStatus === "COMPLETED";
-                  const isCurrent = currentStageIdx === idx && pipelineStatus !== "COMPLETED";
+                {stages.map((st) => {
+                  const stepState = resolveProfilePipelineStepState(pipelineStage, st.id);
+                  const isDone = stepState === "complete";
+                  const isCurrent = stepState === "current";
                   return (
                     <div
                       key={st.id}
@@ -380,6 +379,9 @@ function ProfilePage() {
                   );
                 })}
               </div>
+              {isIntentRequiredProfileState(pipelineStage) && (
+                <p className="mt-3 text-sm text-caution">Profile evidence is ready. Save explicit career intent before recommendation evaluation can begin.</p>
+              )}
             </div>
           )}
         </div>
@@ -527,7 +529,7 @@ function ProfilePage() {
             )}
 
             {intentSavedMsg && (
-              <p className="mono text-[11px] text-emerald-800 font-bold text-center mt-2">
+              <p className={`mono text-[11px] font-bold text-center mt-2 ${intentActivationPending ? "text-caution" : "text-emerald-800"}`}>
                 ✓ {intentSavedMsg}
               </p>
             )}

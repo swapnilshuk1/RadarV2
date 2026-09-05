@@ -3,8 +3,11 @@ import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 import { SqliteDocumentStore } from "../../src/data/sqlite/repositories/SqliteDocumentStore";
+import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { requireDecisionAcknowledgement } from "../../src/lib/intelligence/decision-acknowledgement";
 import { resolveProjectionCompletionStage } from "../../src/lib/intelligence/pipeline/projection-completion-state";
+import { resolveProfilePipelineStepState } from "../../src/lib/intelligence/profile-pipeline-presentation";
+import { resolveIntentActivationPresentation } from "../../src/lib/intelligence/profile-intent-presentation";
 
 async function createDocumentFixture() {
   const db = new SqliteAdapter(new Database(":memory:"));
@@ -36,6 +39,27 @@ describe("Gate 4 write and refresh edge contracts", () => {
       { document_id: "doc-a", person_id: "person-a", document_hash: hash, job_person_id: "person-a" },
       { document_id: "doc-b", person_id: "person-b", document_hash: hash, job_person_id: "person-b" },
     ]);
+  });
+
+  it("creates the first explicit active context without a predecessor pointer", async () => {
+    const db = new SqliteAdapter(new Database(":memory:"));
+    await runMigrations(db);
+    await db.execute("INSERT INTO tenants (id, status) VALUES ('tenant-a', 'active')");
+    await db.execute("INSERT INTO people (id, email, tenant_id) VALUES ('person-a', 'a@example.test', 'tenant-a')");
+    const store = new SqliteEvaluationContextStore(db);
+    const scope = { tenantId: "tenant-a", personId: "person-a", roles: [] };
+    expect(await db.one("SELECT 1 FROM active_evaluation_contexts WHERE tenant_id = 'tenant-a'")).toBeNull();
+
+    const prepared = await store.prepareSearchPlan(scope, {
+      title: "First plan",
+      criteria: { targetSeniority: ["VP"], targetRoles: ["VP Growth"], targetLocations: ["Bengaluru"] },
+      ontologyVersion: "v1", ontologyFingerprint: "ontology", policyVersion: "v1",
+      profileVersion: "projection-v1", activatedBy: "first-intent",
+    });
+    await store.activatePreparedSearchPlan(scope, prepared.plan.id, prepared.context.contextFingerprint, "first-intent");
+    const active = await store.getActiveSearchPlanWithSnapshot(scope);
+    expect(active.planId).toBe(prepared.plan.id);
+    expect(active.contextFingerprint).toBe(prepared.context.contextFingerprint);
   });
 
   it("uses a fresh runnable job for a same-owner byte-identical re-upload", async () => {
@@ -81,5 +105,23 @@ describe("Gate 4 write and refresh edge contracts", () => {
   it("marks a CV without intent profile-ready rather than evaluation-complete", () => {
     expect(resolveProjectionCompletionStage(false)).toBe("PROFILE_READY");
     expect(resolveProjectionCompletionStage(true)).toBe("EVALUATED");
+  });
+
+  it("does not visually complete recommendation evaluation for PROFILE_READY", () => {
+    expect(resolveProfilePipelineStepState("PROFILE_READY", "PROFILE_READY")).toBe("current");
+    expect(resolveProfilePipelineStepState("PROFILE_READY", "EVALUATED")).toBe("pending");
+    expect(resolveProfilePipelineStepState("PROFILE_READY", "COMPLETED")).toBe("pending");
+    expect(resolveProfilePipelineStepState("COMPLETED", "EVALUATED")).toBe("complete");
+  });
+
+  it("keeps persisted-but-pending activation on the profile page", () => {
+    expect(resolveIntentActivationPresentation({ success: true, activationState: "ACTIVE" })).toMatchObject({
+      persisted: true, activationPending: false, navigateHome: true,
+    });
+    expect(resolveIntentActivationPresentation({
+      success: true, activationState: "PENDING_ACTIVATION", activationError: "coverage incomplete",
+    })).toMatchObject({
+      persisted: true, activationPending: true, navigateHome: false,
+    });
   });
 });
