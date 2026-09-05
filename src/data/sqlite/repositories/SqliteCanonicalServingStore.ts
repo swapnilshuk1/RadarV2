@@ -886,7 +886,17 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
         totalDecisions: 0,
         remainingToReview: 0,
         engineBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0 },
-        evaluationPopulation: { evaluated: 0, sparse: 0, unmaterialized: 0, profileRequired: 0, notEvaluable: 0, invalid: 0 },
+        evaluationPopulation: {
+          evaluated: 0,
+          sparse: 0,
+          unmaterialized: 0,
+          profileRequired: 0,
+          notEvaluable: 0,
+          acquisitionPending: 0,
+          acquisitionFailed: 0,
+          expired: 0,
+          invalid: 0,
+        },
         userBreakdown: { pursue: 0, consider: 0, pass: 0, total: 0 },
         effectiveBreakdown: { pursue: 0, consider: 0, pass: 0, none: 0, sparse: 0 },
         integrity: {
@@ -1040,6 +1050,12 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
         unmaterialized: 0,
         profileRequired: 0,
         notEvaluable: 0,
+        // This legacy store has no acquisition-unavailable aggregation path.
+        // Keep its compatibility projection structurally complete without
+        // making it a second authoritative metrics implementation.
+        acquisitionPending: 0,
+        acquisitionFailed: 0,
+        expired: 0,
         invalid: 0,
       },
       discoveryMetrics: {
