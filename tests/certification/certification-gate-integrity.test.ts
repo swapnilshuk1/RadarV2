@@ -34,12 +34,12 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
 
     const expectedStageKeywords = [
       { name: "TypeScript", cmd: "tsconfig.verify.json" },
+      { name: "Production SSR Bundle Build", cmd: "npm run build" },
       { name: "Four Boundary Journeys", cmd: "vitest.certification.config.ts" },
       { name: "Ingestion & Lineage", cmd: "Unified Vitest certification manifest" },
       { name: "Multi-Tenant & Scope Security", cmd: "Unified Vitest certification manifest" },
       { name: "Serving Store & Keyset", cmd: "Unified Vitest certification manifest" },
       { name: "Editorial Governance", cmd: "Unified Vitest certification manifest" },
-      { name: "Production SSR Bundle Build", cmd: "npm run build" },
     ];
 
     expectedStageKeywords.forEach((expected, index) => {

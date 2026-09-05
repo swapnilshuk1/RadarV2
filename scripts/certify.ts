@@ -30,39 +30,39 @@ export const STAGES: Stage[] = [
     description: "Strict compile-time type agreement across domain and UI layers",
   },
   {
-    name: "Stage 2: Four Boundary Journeys (A, B, C, D)",
+    name: "Stage 2: Production SSR Bundle Build",
+    command: "npm run build",
+    description: "Nitro server and Vite client bundling required by deployment invariants",
+  },
+  {
+    name: "Stage 3: Four Boundary Journeys (A, B, C, D)",
     command: "npx vitest run --config vitest.certification.config.ts",
     description: "End-to-end integration across acquisition, semantic policy, decision persistence, and UI rendering",
     execution: "manifest",
   },
   {
-    name: "Stage 3: Canonical Ingestion & Lineage Contracts",
-    command: "Unified Vitest certification manifest (executed once in Stage 2)",
+    name: "Stage 4: Canonical Ingestion & Lineage Contracts",
+    command: "Unified Vitest certification manifest (executed once in Stage 3)",
     description: "FK integrity, content hashing, version lineage, and global metric aggregations",
     execution: "reported-by-manifest",
   },
   {
-    name: "Stage 4: Multi-Tenant & Scope Security Isolation",
-    command: "Unified Vitest certification manifest (executed once in Stage 2)",
+    name: "Stage 5: Multi-Tenant & Scope Security Isolation",
+    command: "Unified Vitest certification manifest (executed once in Stage 3)",
     description: "Strict tenant isolation, credential broker boundaries, and scope resolution",
     execution: "reported-by-manifest",
   },
   {
-    name: "Stage 5: Serving Store & Keyset Pagination Invariants",
-    command: "Unified Vitest certification manifest (executed once in Stage 2)",
+    name: "Stage 6: Serving Store & Keyset Pagination Invariants",
+    command: "Unified Vitest certification manifest (executed once in Stage 3)",
     description: "Feed ordering parity, opaque cursor stability, dossier navigation, and singleflight coalescing",
     execution: "reported-by-manifest",
   },
   {
-    name: "Stage 6: Editorial Governance & Verdict Contracts",
-    command: "Unified Vitest certification manifest (executed once in Stage 2)",
+    name: "Stage 7: Editorial Governance & Verdict Contracts",
+    command: "Unified Vitest certification manifest (executed once in Stage 3)",
     description: "Rule 13 executive prose compliance, score resolution, and badge mappings",
     execution: "reported-by-manifest",
-  },
-  {
-    name: "Stage 7: Production SSR Bundle Build",
-    command: "npm run build",
-    description: "Nitro server and Vite client bundling for cloud deployment",
   },
 ];
 
@@ -92,7 +92,7 @@ export function runCertification(stages: Stage[] = STAGES) {
         if (!manifestCompleted) {
           throw new Error("The unified certification manifest did not complete before logical group reporting.");
         }
-        console.log("  Verified by the single Stage 2 Vitest invocation.");
+          console.log("  Verified by the single Stage 3 Vitest invocation.");
       } else {
         const command = profile && stage.name.includes("TypeScript")
           ? `${stage.command} --extendedDiagnostics`
