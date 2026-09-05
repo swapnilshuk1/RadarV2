@@ -188,7 +188,7 @@ RADAR v2 Test Architecture
 | Authoritative Suite | Primary Invariant Protected | Certification Stage |
 | :--- | :--- | :---: |
 | \`tests/intelligence/metrics-portal-breakdown.test.ts\` | Portal metrics represent full database search plan population, not local page samples. | **Stage 3** |
-| \`tests/serving/sql_metrics_aggregation.test.ts\` | Invariant holds: \`totalScreened = LinkedIn + Naukri + Indeed + other\` and \`allRecordedDecisions = evaluatedDecisions + sparseDecisions\`. | **Stage 5** |
+| \`tests/serving/sql_metrics_aggregation.test.ts\` | Canonical population, engine/user/effective metric partitions reconcile independently; \`allRecordedDecisions = userBreakdown.total\`. | **Stage 5** |
 
 ---
 

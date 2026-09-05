@@ -256,6 +256,24 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
     expect(metrics.effectiveBreakdown).toMatchObject({ pursue: 2, consider: 1, pass: 1, none: 2 });
   });
 
+  it("selects the unreviewed shortlist at the canonical server boundary", async () => {
+    await seedItem({ id: "queue-consider", title: "Queue Consider", engineVerdict: "CONSIDER", score: 80 });
+    await seedItem({ id: "queue-pursue", title: "Queue Pursue", engineVerdict: "PURSUE", score: 95 });
+    await seedItem({ id: "queue-pass", title: "Queue Pass", engineVerdict: "PASS", score: 99 });
+    await seedItem({ id: "queue-invalid", title: "Queue Invalid", engineVerdict: "PURSUE", evaluationState: "INVALID", score: 100 });
+    await seedItem({ id: "queue-reviewed", title: "Queue Reviewed", engineVerdict: "PURSUE", userAction: "PASS", score: 90 });
+
+    const page = await queries.getFeed(scope, undefined, {
+      decisionFilter: "unreviewed",
+      shortlistQueue: true,
+    });
+
+    // Membership is determined by the canonical query, not a browser-side
+    // reclassification of a larger unreviewed population.
+    expect(page.items.map((item) => item.jobHash)).toEqual(["queue-pursue", "queue-consider"]);
+    expect(page.items.every((item) => item.engineVerdict === "PURSUE" || item.engineVerdict === "CONSIDER")).toBe(true);
+  });
+
   it("rejects compensating state and engine-verdict bucket mismatches", async () => {
     await seedItem({ id: "sparse", title: "Sparse", engineVerdict: "SPARSE_SPEC", evaluationState: "SPARSE_SPEC" });
     await seedItem({ id: "invalid", title: "Invalid", engineVerdict: "PASS", score: null });

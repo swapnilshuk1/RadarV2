@@ -78,6 +78,11 @@ export interface FeedPage {
 export interface FeedFilters {
   readonly categoryId?: CategoryId;
   readonly decisionFilter?: "all" | "unreviewed" | "decided";
+  /**
+   * Canonical unreviewed engine shortlist only. This is a server-side
+   * membership filter; presentation clients must not reconstruct it.
+   */
+  readonly shortlistQueue?: boolean;
 }
 
 /**

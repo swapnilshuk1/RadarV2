@@ -91,6 +91,7 @@ describe("Journey C: Decision Persistence → Feed DTO Parity", () => {
         failure_class TEXT,
         evidence_state TEXT,
         lifecycle_state TEXT DEFAULT 'ACTIVE',
+        category_ids TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
       CREATE TABLE search_plan_candidates (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, person_id TEXT NOT NULL, search_plan_id TEXT NOT NULL, canonical_job_id TEXT NOT NULL, opportunity_version TEXT NOT NULL, attention_decision TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);

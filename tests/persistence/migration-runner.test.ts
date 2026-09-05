@@ -2,8 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import os from "os";
 import fs from "fs";
 import path from "path";
-import { runMigrations, splitSqlStatements } from "../../src/data/sqlite/migrations/runner";
+import { getRequiredSchemaStatus, runMigrations, splitSqlStatements, verifyRequiredSchema } from "../../src/data/sqlite/migrations/runner";
 import { getDatabaseAdapter, resetDatabaseAdapter } from "../../src/data/database";
+import { setupLineageTestFixture } from "./lineage_fixture";
+import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 
 describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
   const originalRadarEnv = process.env.RADAR_ENV;
@@ -77,6 +79,7 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
     expect(versionColumns.map((column) => column.name)).toContain("category_ids");
     expect(result.applied).toContain("037_materialized_evaluation_fingerprint.sql");
     expect(result.applied).toContain("038_opportunity_version_category_projection.sql");
+    expect(result.applied).toContain("039_backfill_v4_3_evaluation_fingerprint.sql");
     await expect(inMemoryAdapter.many(
       `SELECT me.evaluation_fingerprint, ov.category_ids
        FROM opportunity_versions ov
@@ -135,13 +138,75 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
         fs.copyFileSync(path.join(migrationsDir, file), path.join(legacyDir, file));
       }
       const adapter = getDatabaseAdapter(":memory:");
-      await runMigrations(adapter, legacyDir);
+      // This constructs an actual pre-037 database as test input. Production
+      // runner invocations always verify the current required schema.
+      await runMigrations(adapter, legacyDir, { verifyRequiredSchema: false });
       expect((await adapter.many<{ name: string }>("PRAGMA table_info(materialized_evaluations)")).map((column) => column.name)).not.toContain("evaluation_fingerprint");
 
       const upgraded = await runMigrations(adapter);
       expect(upgraded.applied).toContain("037_materialized_evaluation_fingerprint.sql");
       expect(upgraded.applied).toContain("038_opportunity_version_category_projection.sql");
-      await expect(adapter.many(`SELECT me.evaluation_fingerprint, ov.category_ids FROM opportunity_versions ov LEFT JOIN materialized_evaluations me ON me.opportunity_version = ov.id LIMIT 1`)).resolves.toEqual([]);
+      expect(await getRequiredSchemaStatus(adapter)).toEqual({
+        evaluationFingerprintColumnPresent: true,
+        categoryIdsColumnPresent: true,
+      });
+
+      // Run the actual canonical feed/metrics code path after upgrade rather
+      // than merely preparing an ad-hoc SQL statement.
+      await setupLineageTestFixture(adapter);
+      await adapter.execute(`INSERT INTO users (id, email) VALUES ('person_A', 'a@a.com')`);
+      await adapter.execute(`INSERT INTO memberships (user_id, tenant_id, role, permissions, status) VALUES ('person_A', 'tenant_A', 'admin', '["*"]', 'active')`);
+      await adapter.execute(`INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id) VALUES ('fingerprint_A', 'tenant_A', 'person_A', 'plan_A')`);
+      await adapter.execute(`INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by) VALUES ('tenant_A', 'person_A', 'plan_A', 'fingerprint_A', 'person_A')`);
+      const queries = new SqliteOpportunityQueries(adapter);
+      await expect(queries.getFeed({ tenantId: "tenant_A", personId: "person_A" })).resolves.toMatchObject({ items: [] });
+      await expect(queries.getMetrics({ tenantId: "tenant_A", personId: "person_A" })).resolves.toMatchObject({ totalScreened: 0 });
+      expect((await runMigrations(adapter)).applied).toEqual([]);
+    } finally {
+      fs.rmSync(legacyDir, { recursive: true, force: true });
+    }
+  });
+
+  it("7. fails closed when the migration ledger claims 037 but its physical column is absent", async () => {
+    const adapter = getDatabaseAdapter(":memory:");
+    await adapter.execute("CREATE TABLE _migrations (id INTEGER PRIMARY KEY, migration_name TEXT UNIQUE)");
+    await adapter.execute("CREATE TABLE materialized_evaluations (id TEXT PRIMARY KEY)");
+    await adapter.execute("CREATE TABLE opportunity_versions (id TEXT PRIMARY KEY)");
+    await adapter.execute("INSERT INTO _migrations (migration_name) VALUES ('037_materialized_evaluation_fingerprint.sql')");
+    await expect(verifyRequiredSchema(adapter)).rejects.toThrow(/SCHEMA_DRIFT.*evaluation_fingerprint/i);
+  });
+
+  it("8. upgrades pre-039 canonical v4.3 artifacts by backfilling only their persisted evaluationInputHash", async () => {
+    const migrationsDir = path.resolve(process.cwd(), "src/data/sqlite/migrations");
+    const legacyDir = fs.mkdtempSync(path.join(os.tmpdir(), "radar-pre039-"));
+    try {
+      for (const file of fs.readdirSync(migrationsDir).filter((name) => name.endsWith(".sql") && name < "039_backfill_v4_3_evaluation_fingerprint.sql")) {
+        fs.copyFileSync(path.join(migrationsDir, file), path.join(legacyDir, file));
+      }
+      const adapter = getDatabaseAdapter(":memory:");
+      await runMigrations(adapter, legacyDir);
+      await adapter.execute("PRAGMA foreign_keys = OFF");
+      await adapter.execute(
+        `INSERT INTO materialized_evaluations (
+          id, tenant_id, person_id, canonical_job_id, opportunity_version,
+          evaluation_context_fingerprint, evaluation_state, decision,
+          quality_score, evaluation_json
+        ) VALUES (?, ?, ?, ?, ?, ?, 'EVALUATED', 'PURSUE', 95, ?)`,
+        [
+          "eval-v43", "tenant-v43", "person-v43", "job-v43", "version-v43", "ctx-v43",
+          JSON.stringify({
+            schemaVersion: "v4.3-intrinsic",
+            evaluationContractVersion: "v4.3",
+            evaluationInputHash: "eval-v43-exact",
+          }),
+        ],
+      );
+
+      const upgraded = await runMigrations(adapter);
+      expect(upgraded.applied).toContain("039_backfill_v4_3_evaluation_fingerprint.sql");
+      await expect(adapter.one<{ evaluation_fingerprint: string }>(
+        "SELECT evaluation_fingerprint FROM materialized_evaluations WHERE id = 'eval-v43'",
+      )).resolves.toEqual({ evaluation_fingerprint: "eval-v43-exact" });
       expect((await runMigrations(adapter)).applied).toEqual([]);
     } finally {
       fs.rmSync(legacyDir, { recursive: true, force: true });

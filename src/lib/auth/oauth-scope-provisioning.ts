@@ -9,7 +9,14 @@ export interface OAuthIdentity {
   readonly emailVerified: boolean;
 }
 
-export interface ProvisionedOAuthScope { readonly personId: string; readonly tenantId: string; readonly isNewUser: boolean; }
+export interface ProvisionedOAuthScope {
+  readonly personId: string;
+  readonly tenantId: string;
+  /** True only when this callback created a person identity. */
+  readonly isNewUser: boolean;
+  /** A distinct profile-completion concern; it never changes identity age. */
+  readonly needsOnboarding: boolean;
+}
 
 /** Creates the whole person/user/membership/OAuth scope before a session exists. */
 export async function provisionOAuthScope(db: DatabaseAdapter, identity: OAuthIdentity, createId: () => string): Promise<ProvisionedOAuthScope> {
@@ -26,7 +33,8 @@ export async function provisionOAuthScope(db: DatabaseAdapter, identity: OAuthId
       : await tx.one<{ id: string; onboarded: number }>("SELECT id, onboarded FROM people WHERE email = ?", [identity.email]);
     if (linked && !person) throw new Error("[Auth] OAuth account is linked to a missing person.");
     const personId = person?.id || createId();
-    const isNewUser = !person || person.onboarded === 0;
+    const isNewUser = !person;
+    const needsOnboarding = !person || person.onboarded === 0;
     const existingUser = await tx.one<{ id: string }>("SELECT id FROM users WHERE email = ?", [identity.email]);
     if (existingUser && existingUser.id !== personId) throw new Error("[Auth] OAuth identity has conflicting user and person records.");
     if (!person) {
@@ -37,6 +45,6 @@ export async function provisionOAuthScope(db: DatabaseAdapter, identity: OAuthId
     await tx.execute("INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)", [personId, identity.email]);
     await tx.execute(`INSERT INTO memberships (user_id, tenant_id, role, permissions, status) VALUES (?, ?, 'member', '[]', 'active') ON CONFLICT(user_id, tenant_id) DO UPDATE SET status = 'active', revoked_at = NULL`, [personId, tenantId]);
     await tx.execute("INSERT OR IGNORE INTO oauth_accounts (provider, provider_user_id, user_id) VALUES (?, ?, ?)", [identity.provider, identity.providerUserId, personId]);
-    return { personId, tenantId, isNewUser };
+    return { personId, tenantId, isNewUser, needsOnboarding };
   });
 }

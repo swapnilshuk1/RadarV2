@@ -113,6 +113,37 @@ export async function collectDecidedFeedItems(
   return feedItems;
 }
 
+/**
+ * Exhausts the unreviewed canonical population before dossier hydration. The
+ * Shortlist page is a review queue, not a browser-side interpretation of the
+ * unreviewed feed, so it must not stop at an arbitrary first page.
+ */
+async function collectUnreviewedFeedItems(
+  queries: Pick<SingleflightOpportunityQueries, "getFeed">,
+  scope: AuthorizedPersonScope,
+  categoryId?: string,
+): Promise<FeedPage["items"]> {
+  const feedItems: Array<FeedPage["items"][number]> = [];
+  let cursor: OpaqueCursor | undefined;
+
+  do {
+    const feed = await queries.getFeed(
+      scope,
+      cursor,
+      {
+        categoryId: categoryId as FeedFilters["categoryId"],
+        decisionFilter: "unreviewed",
+        shortlistQueue: true,
+      },
+      50,
+    );
+    feedItems.push(...feed.items);
+    cursor = feed.nextCursor;
+  } while (cursor);
+
+  return feedItems;
+}
+
 export class OpportunityService {
   private static getServingQueries(): SingleflightOpportunityQueries {
     const repos = getRepositories();
@@ -161,32 +192,30 @@ export class OpportunityService {
   }
 
   /**
-   * Lists candidate opportunity DTOs for a specific user via the lean keyset feed query.
+   * Lists the server-authoritative, unreviewed shortlist queue. Dossier
+   * hydration uses the canonical serving read model, so legacy/corrupt
+   * evaluated artifacts cannot become browser-defined recommendations.
    */
   static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity[]> {
     ensureWorkerDaemonStarted();
     const scope = await resolveScope(userId, requestedTenantId);
     const queries = this.getServingQueries();
-    const feed = await queries.getFeed(
-      scope,
-      undefined,
-      {
-        categoryId: options?.categoryId as any,
-        decisionFilter: "unreviewed",
-      },
-      50
-    );
+    const feedItems = await collectUnreviewedFeedItems(queries, scope, options?.categoryId);
 
     // This legacy-shaped method remains for callers that still need full
     // opportunity DTOs.  It must hydrate each item from the same canonical
     // dossier projection rather than inventing scores, fingerprints, or a
     // default verdict from the lean feed row.
     const opportunities = await Promise.all(
-      feed.items.map((item) => queries.getDossier(scope, item.jobHash)),
+      feedItems.map((item) => queries.getDossier(scope, item.jobHash)),
     );
-    return opportunities.filter(
-      (opportunity): opportunity is import("../../data/opportunity-fixtures").ServedOpportunity => opportunity !== null,
-    );
+    return opportunities.filter((opportunity): opportunity is import("../../data/opportunity-fixtures").ServedOpportunity => {
+      if (!opportunity || opportunity.evaluationState !== "EVALUATED") return false;
+      const verdict = opportunity.engineRecommendation?.engineVerdict;
+      const userDecision = opportunity.userDecision?.userAction;
+      return (verdict === "PURSUE" || verdict === "CONSIDER")
+        && (userDecision === undefined || userDecision === null || userDecision === "NONE");
+    });
   }
 
   /**

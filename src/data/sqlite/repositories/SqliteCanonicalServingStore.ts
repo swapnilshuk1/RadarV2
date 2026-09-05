@@ -888,7 +888,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
         engineBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0 },
         evaluationPopulation: { evaluated: 0, sparse: 0, unmaterialized: 0, profileRequired: 0, notEvaluable: 0, invalid: 0 },
         userBreakdown: { pursue: 0, consider: 0, pass: 0, total: 0 },
-        effectiveBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0 },
+        effectiveBreakdown: { pursue: 0, consider: 0, pass: 0, none: 0, sparse: 0 },
         integrity: {
           status: "PASS",
           validatedAt: generatedAt,
@@ -908,7 +908,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
 
     const engineBreakdown = { pursue: 0, consider: 0, pass: 0, sparse: 0 };
     const userBreakdown = { pursue: 0, consider: 0, pass: 0, total: 0 };
-    const effectiveBreakdown = { pursue: 0, consider: 0, pass: 0, sparse: 0 };
+    const effectiveBreakdown = { pursue: 0, consider: 0, pass: 0, none: 0, sparse: 0 };
 
     const categoryCounts: Record<string, { total: number; unreviewed: number; shortlisted: number }> = {
       all: { total: 0, unreviewed: 0, shortlisted: 0 },

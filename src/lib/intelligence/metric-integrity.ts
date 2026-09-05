@@ -51,12 +51,20 @@ export interface UserDecisionMetrics {
   readonly total: number;
 }
 
+/** Canonical precedence: explicit user decision, then a valid engine verdict, else none. */
+export interface EffectiveDecisionBreakdown {
+  readonly pursue: number;
+  readonly consider: number;
+  readonly pass: number;
+  readonly none: number;
+  /** @deprecated Non-actionable states are represented by `none`, never a generic sparse bucket. */
+  readonly sparse?: number;
+}
+
 /** Mutually exclusive canonical evaluation states in the authorized feed population. */
 export interface EvaluationPopulationBreakdown {
   readonly evaluated: number;
   readonly sparse: number;
-  /** Explicitly no effective decision; never a synonym for sparse. */
-  readonly none?: number;
   readonly unmaterialized: number;
   readonly profileRequired: number;
   readonly notEvaluable: number;
@@ -112,11 +120,12 @@ export interface CanonicalOpportunityMetrics {
    */
   readonly totalShortlisted: number;
 
+  /** @deprecated Alias for allRecordedDecisions; retained for existing consumers only. */
   readonly totalDecisions: number;
   /**
    * Explicit disambiguation of user decision metrics:
-   * - `evaluatedDecisions`: User decisions recorded against fully materialized/evaluated opportunities (1,498).
-   * - `allRecordedDecisions`: All user decisions across all search plan candidates including sparse/unmaterialized (1,509).
+   * - `evaluatedDecisions`: explicit user decisions whose artifact is valid EVALUATED.
+   * - `allRecordedDecisions`: every explicit user decision in the authorized population.
    */
   readonly evaluatedDecisions?: number;
   readonly allRecordedDecisions?: number;
@@ -126,7 +135,7 @@ export interface CanonicalOpportunityMetrics {
   readonly engineBreakdown: MetricBreakdown;
   readonly evaluationPopulation: EvaluationPopulationBreakdown;
   readonly userBreakdown: UserDecisionMetrics;
-  readonly effectiveBreakdown: MetricBreakdown;
+  readonly effectiveBreakdown: EffectiveDecisionBreakdown;
 
   // Canonical Stage Breakdown (Disambiguating Discovery/Shortlist vs Decisions)
   readonly discoveryMetrics?: {

@@ -19,7 +19,7 @@ describe("OAuth scope provisioning", () => {
 
   test("new OAuth identity atomically obtains a resolvable person, tenant, user, membership, and account", async () => {
     const result = await provisionOAuthScope(db, identity, () => "person_new");
-    expect(result).toMatchObject({ personId: "person_new", tenantId: "tenant_active", isNewUser: true });
+    expect(result).toMatchObject({ personId: "person_new", tenantId: "tenant_active", isNewUser: true, needsOnboarding: true });
     await expect(resolveServingScope("person_new", undefined, db)).resolves.toMatchObject({ scope: { personId: "person_new", tenantId: "tenant_active" } });
     expect(raw.prepare("SELECT user_id FROM oauth_accounts").get()).toMatchObject({ user_id: "person_new" });
   });
@@ -39,6 +39,14 @@ describe("OAuth scope provisioning", () => {
     expect(result.personId).toBe("existing");
     expect(raw.prepare("SELECT COUNT(*) AS n FROM people").get()).toMatchObject({ n: 1 });
     expect(raw.prepare("SELECT user_id FROM oauth_accounts").get()).toMatchObject({ user_id: "existing" });
+  });
+
+  test("an established but incomplete person is never classified as new", async () => {
+    await db.execute("INSERT INTO people (id, email, tenant_id, onboarded) VALUES ('existing', 'new@example.test', 'tenant_active', 0)");
+    await db.execute("INSERT INTO users (id, email) VALUES ('existing', 'new@example.test')");
+    const result = await provisionOAuthScope(db, identity, () => "unused");
+    expect(result).toMatchObject({ personId: "existing", isNewUser: false, needsOnboarding: true });
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM people").get()).toMatchObject({ n: 1 });
   });
 
   test("unverified email rejects before changing any identity or authorization rows", async () => {

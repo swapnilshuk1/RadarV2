@@ -94,4 +94,14 @@ describe("Phase 11 & 12: Route Server Function & Client Cache Suite", () => {
     expect(decisionsRoute).not.toContain("localStorage");
     expect(decisionsRoute).not.toContain("syncDecisionsFn");
   });
+
+  it("keeps shortlist membership on the canonical server path", () => {
+    const shortlistRoute = fs.readFileSync(path.resolve("src/routes/index.tsx"), "utf8");
+    const service = fs.readFileSync(path.resolve("src/lib/intelligence/opportunity-service.ts"), "utf8");
+
+    expect(service).toContain("shortlistQueue: true");
+    expect(shortlistRoute).toContain("canonical server-selected review queue");
+    expect(shortlistRoute).not.toContain("const shortlistedOps");
+    expect(shortlistRoute).not.toContain("const filteredRemaining");
+  });
 });

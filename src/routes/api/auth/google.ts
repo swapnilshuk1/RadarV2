@@ -6,40 +6,13 @@
  * Stores PKCE state + verifier in a short-lived cookie.
  */
 
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { getRequest, setCookie } from "@tanstack/react-start/server";
-import { generateState, generateCodeVerifier, Google } from "arctic";
-import { createSignedOAuthState } from "../../../lib/auth/oauth-state";
-import { resolveGoogleCallbackUrl } from "../../../lib/auth/oauth-callback-url";
-
-const initiateGoogleAuthFn = createServerFn({ method: "GET" }).handler(async () => {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const request = getRequest();
-  const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "localhost:3000";
-  const redirectUri = resolveGoogleCallbackUrl(host, process.env.GOOGLE_REDIRECT_URI);
-
-  if (!clientId || !clientSecret) {
-    console.warn("[Auth] GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET not configured.");
-    return "/login?error=missing_google_credentials";
-  }
-
-  const google = new Google(clientId, clientSecret, redirectUri);
-  const rawState = generateState();
-  const codeVerifier = generateCodeVerifier();
-  const compositeState = createSignedOAuthState(rawState, codeVerifier);
-
-  const url = await google.createAuthorizationURL(compositeState, codeVerifier, {
-    scopes: ["openid", "email", "profile"],
-  });
-
-  return url.toString();
-});
+import { createFileRoute } from "@tanstack/react-router";
+import { handleGoogleOAuthInitiation } from "../../../lib/auth/oauth-http-routes";
 
 export const Route = createFileRoute("/api/auth/google")({
-  loader: async () => {
-    const url = await initiateGoogleAuthFn();
-    throw redirect({ href: url });
+  server: {
+    handlers: {
+      GET: ({ request }) => handleGoogleOAuthInitiation(request),
+    },
   },
 });

@@ -1,4 +1,5 @@
-import { getDatabaseAdapter } from "../src/data/database";
+import { getDatabaseAdapter, getDatabaseTargetIdentity } from "../src/data/database";
+import { assertNoConfiguredTursoTenantMutation } from "../src/lib/maintenance/active-tenant-pollution-repair";
 import { EvaluationWorker } from "../src/lib/intelligence/EvaluationWorker";
 import { TenantScopedPersonStore } from "../src/data/sqlite/repositories/TenantScopedPersonStore";
 import { TenantIsolationError } from "../src/lib/security/auth";
@@ -6,6 +7,7 @@ import type { CandidateProjection } from "../src/lib/domain/candidate_projection
 import { computeEvaluationContextFingerprint } from "../src/lib/domain/evaluation_fingerprint";
 
 async function runLiveCrossTenantVerification() {
+  assertNoConfiguredTursoTenantMutation(getDatabaseTargetIdentity());
   const db = getDatabaseAdapter();
   const now = Date.now();
   console.log("=== RADAR TURSO LIVE CROSS-TENANT & MULTI-JOB VERIFICATION ===");

@@ -16,8 +16,6 @@ import { useScrapeProgress } from "../components/radar/ScrapeProgressProvider";
 import { useAttentionPreference } from "../lib/attention-store";
 import {
   CANONICAL_CATEGORIES,
-  classifyOpportunityCategories,
-  resolveCanonicalCategoryId,
   type CategoryId,
 } from "../lib/domain/category_taxonomy";
 
@@ -37,14 +35,6 @@ export function getTimeAwareGreeting(userName?: string): string {
 }
 
 const VISIBLE_LIMIT = 10;
-
-function getCategoryTags(o: Opportunity): string[] {
-  const cats = classifyOpportunityCategories(o);
-  return cats.map((catId) => {
-    const def = CANONICAL_CATEGORIES.find((c) => c.id === catId);
-    return def ? def.label : catId;
-  });
-}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -73,7 +63,7 @@ export const Route = createFileRoute("/")({
 
 function Shortlist() {
   const { opportunitiesList, metrics, searchPlanPreview } = Route.useLoaderData();
-  const { decisions, decide: recordDecision } = useDecisions();
+  const { decide: recordDecision } = useDecisions();
   const { progress, markArrivalSeen } = useOnboarding();
   const [open, setOpen] = useState<string | null>(null);
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
@@ -141,67 +131,9 @@ function Shortlist() {
 
   const totalActivePursuits = metrics?.activePursuits ?? 0;
   const totalShortlisted = metrics?.totalShortlisted ?? 0;
-  const totalSparse = metrics?.engineBreakdown?.sparse ?? 0;
-  const totalDecisionsCount = metrics?.totalDecisions ?? Object.keys(decisions).length;
+  const totalDecisionsCount = metrics?.totalDecisions ?? 0;
   const totalScreenedCount = (metrics?.totalScreened ?? 0) + extraScraped;
   const integrity = metrics?.integrity;
-
-  const remaining = useMemo(
-    () =>
-      activeOps.filter((o: ServedOpportunity) => {
-        if (!isEvaluated(o)) return true; // We don't filter out unavailable states; they show up.
-        
-        const clientRec = decisions[o.jobHash];
-        const userVerb = clientRec?.verb || o.userDecision?.userAction;
-
-        // Explicit user decisions (PURSUE, CONSIDER, PASS) belong on decided surfaces (/decisions)
-        // and should not be treated as unresolved Shortlist items even if evaluation fingerprints are stale.
-        if (userVerb === "PURSUE" || userVerb === "CONSIDER" || userVerb === "PASS") {
-          return false;
-        }
-
-        const currentFingerprint = o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion;
-        if (clientRec && clientRec.reviewedFingerprint && clientRec.reviewedFingerprint === currentFingerprint) {
-          return false;
-        }
-
-        if (o.reviewWorkflowState === "UNREVIEWED") {
-          if (clientRec && !clientRec.reviewedFingerprint) return false;
-          return true;
-        }
-
-        if (o.reviewWorkflowState === "REVIEWED_STALE") {
-          if (clientRec && clientRec.reviewedFingerprint === currentFingerprint) return false;
-          return true;
-        }
-
-        if (o.reviewWorkflowState === "REVIEWED_UNKNOWN") {
-          if (clientRec && clientRec.reviewedFingerprint === currentFingerprint) return false;
-          const userAction = o.userDecision?.userAction && o.userDecision.userAction !== "NONE" ? o.userDecision.userAction : undefined;
-          const action = userAction || o.engineRecommendation?.engineVerdict;
-          return action === "PURSUE" || action === "CONSIDER";
-        }
-
-        return false;
-      }),
-    [activeOps, decisions]
-  );
-
-  const shortlistedOps = useMemo(
-    () => remaining.filter((o) => {
-       if (isEvaluated(o)) {
-          return o.engineRecommendation?.engineVerdict === "PURSUE" || o.engineRecommendation?.engineVerdict === "CONSIDER";
-       }
-       if (isUnavailable(o) && o.evaluationState === "SPARSE_SPEC") return false;
-       return false; // Exclude UNMATERIALIZED/backlog items from executive shortlist feed
-    }),
-    [remaining]
-  );
-
-  const sparseOps = useMemo(
-    () => remaining.filter((o) => isUnavailable(o) && o.evaluationState === "SPARSE_SPEC"),
-    [remaining]
-  );
 
   const { attentionWindow } = useAttentionPreference();
   const [cursorIndex, setCursorIndex] = useState(0);
@@ -211,22 +143,13 @@ function Shortlist() {
     setGreeting(getTimeAwareGreeting("Swapnil"));
   }, []);
 
-  const filteredRemaining = useMemo(() => {
-    if (selectedCategoryId === "needs_more_signal") {
-      return sparseOps;
-    }
-    return shortlistedOps;
-  }, [selectedCategoryId, shortlistedOps, sparseOps]);
-
-  // Ranked Attention Queue with mid-window replenishment:
-  // Shows up to `attentionWindow` items starting from `cursorIndex`.
-  // When an item receives a decision, it leaves filteredRemaining, and the queue automatically
-  // replenishes at the bottom from the next untouched opportunity in the authoritative sequence.
+  // `activeOps` is the canonical server-selected review queue. The browser only
+  // paginates its presentation; it never reinterprets verdicts or review state.
   const visible = useMemo(() => {
-    return filteredRemaining.slice(cursorIndex, cursorIndex + attentionWindow);
-  }, [filteredRemaining, cursorIndex, attentionWindow]);
+    return activeOps.slice(cursorIndex, cursorIndex + attentionWindow);
+  }, [activeOps, cursorIndex, attentionWindow]);
 
-  const hasNext = cursorIndex + attentionWindow < filteredRemaining.length;
+  const hasNext = cursorIndex + attentionWindow < activeOps.length;
   const hasPrev = cursorIndex > 0;
 
   const handleNext = () => {
@@ -249,6 +172,7 @@ function Shortlist() {
     logTelemetry(jobHash, verb, duration);
 
     recordDecision(jobHash, verb, reviewedFingerprint);
+    void router.invalidate();
     setOpen((cur) => (cur === jobHash ? null : cur));
 
     setOpenedTimes((prev) => {
@@ -383,14 +307,14 @@ function Shortlist() {
                 {selectedCategoryId === "all"
                   ? `Sorted by Fit · ${totalShortlisted} Shortlisted`
                   : `Sorted by Fit · ${
-                      metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? (isLoadingCategory ? "..." : filteredRemaining.length)
+                      metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? (isLoadingCategory ? "..." : activeOps.length)
                     } ${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}`}
               </h2>
               {selectedCategoryId === "all" && (
                 <span className="label-mono text-[11px] text-muted-foreground">
                   {metrics?.discoveryMetrics?.actionableReviewQueue !== undefined
                     ? `${metrics.discoveryMetrics.actionableReviewQueue} remaining to review`
-                    : `${shortlistedOps.length} on page`}
+                    : `${activeOps.length} on page`}
                 </span>
               )}
             </div>
@@ -403,14 +327,14 @@ function Shortlist() {
 
                 let countLabel = "";
                 if (catDef.id === "all") {
-                  const cnt = catMetric?.unreviewed ?? remaining.length;
+                  const cnt = catMetric?.shortlisted ?? activeOps.length;
                   countLabel = ` (${cnt})`;
                 } else if (catDef.id === "needs_more_signal") {
-                  const unrev = catMetric?.unreviewed ?? sparseOps.length;
-                  const tot = catMetric?.total ?? totalSparse;
+                  const unrev = catMetric?.shortlisted ?? activeOps.length;
+                  const tot = catMetric?.shortlisted ?? activeOps.length;
                   countLabel = ` (${unrev} / ${tot})`;
                 } else {
-                  const unrev = catMetric?.unreviewed ?? (selectedCategoryId === catDef.id ? filteredRemaining.length : 0);
+                  const unrev = catMetric?.shortlisted ?? (selectedCategoryId === catDef.id ? activeOps.length : 0);
                   countLabel = ` (${unrev})`;
                 }
 
@@ -472,13 +396,11 @@ function Shortlist() {
                 {visible.length === 0 && (
                   <li className="glass-card rounded-xl py-16 text-center font-display text-xl text-muted-foreground list-none">
                     {selectedCategoryId === "all" 
-                      ? (totalShortlisted > 0 && shortlistedOps.length === 0
+                      ? (totalShortlisted > 0 && activeOps.length === 0
                           ? `All ${totalShortlisted} shortlist opportunities have recorded decisions.`
                           : "No shortlist opportunities remaining to review.")
                       : selectedCategoryId === "needs_more_signal"
-                        ? (totalSparse > 0 && sparseOps.length === 0
-                            ? `All ${totalSparse} sparse opportunities have recorded decisions.`
-                            : "No opportunities need more signal.")
+                        ? "No shortlisted opportunities need more signal."
                         : `No unreviewed opportunities match "${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}".`}
                   </li>
                 )}
@@ -511,13 +433,13 @@ function Shortlist() {
               </div>
 
               {/* Escape hatch: Introduce "Other matched opportunities →" after guided sequence begins extending beyond initial presentation window */}
-              {(cursorIndex > 0 || filteredRemaining.length > attentionWindow) && (
+              {(cursorIndex > 0 || activeOps.length > attentionWindow) && (
                 <Link
                   to="/decisions"
                   className="inline-flex items-center text-[11.5px] font-mono text-muted-foreground hover:text-foreground transition-colors"
                   data-testid="escape-hatch-link"
                 >
-                  Other matched opportunities ({filteredRemaining.length}) →
+                  Other matched opportunities ({activeOps.length}) →
                 </Link>
               )}
             </div>
@@ -619,7 +541,7 @@ function Shortlist() {
           Indeed <strong>{(metrics?.portalMetrics?.Indeed ?? sourceCounts.Indeed).toLocaleString()}</strong>
         </span>
         <span className="dock-text text-emerald-600 dark:text-emerald-400 font-bold">
-          → {selectedCategoryId === "all" ? (metrics?.discoveryMetrics?.actionableReviewQueue ?? shortlistedOps.length) : (metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? filteredRemaining.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.total ?? filteredRemaining.length)} to review
+          → {selectedCategoryId === "all" ? (metrics?.discoveryMetrics?.actionableReviewQueue ?? activeOps.length) : (metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? activeOps.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? activeOps.length)} to review
         </span>
       </div>
     </div>

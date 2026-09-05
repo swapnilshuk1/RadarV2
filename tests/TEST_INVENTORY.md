@@ -119,7 +119,7 @@ RADAR v2 Test Architecture
 | Authoritative Suite | Primary Invariant Protected | Certification Stage |
 | :--- | :--- | :---: |
 | `tests/intelligence/metrics-portal-breakdown.test.ts` | Portal metrics represent full database search plan population, not local page samples. | **Stage 3** |
-| `tests/serving/sql_metrics_aggregation.test.ts` | Invariant holds: `totalScreened = LinkedIn + Naukri + Indeed + other` and `allRecordedDecisions = evaluatedDecisions + sparseDecisions`. | **Stage 5** |
+| `tests/serving/sql_metrics_aggregation.test.ts` | Canonical population, engine/user/effective metric partitions reconcile independently; `allRecordedDecisions = userBreakdown.total`. | **Stage 5** |
 
 ---
 
@@ -133,6 +133,8 @@ RADAR v2 Test Architecture
 | `tests/security/scrape-run-ownership.test.ts` | Multi-tenant scrape run ownership, negative matrix isolation, cross-tenant abort/progress protection. | **Stage 4** |
 | `tests/security/oauth-scope-provisioning.test.ts` | Verified Google identity provisions one resolvable person, tenant, membership, and OAuth scope atomically. | **Stage 4** |
 | `tests/security/oauth-callback-url.test.ts` | Non-local Google OAuth callback configuration requires an explicit HTTPS redirect URI. | **Stage 4** |
+| `tests/security/oauth-http-routes.test.ts` | OAuth initiation and callback are raw HTTP GET handlers with signed state, PKCE, verified identity, and session boundaries. | **Stage 4** |
+| `tests/security/active-tenant-pollution-repair.test.ts` | Tenant-pollution maintenance repair is exact-ID-only, transactional, read-only by default, and cannot mutate protected identity state. | Full Suite |
 | `tests/security/evidence-ownership-deduplication.test.ts` | Defensive evidence graph reuse never transfers ownership across candidates. | **Stage 4** |
 | `tests/ontology/tenant-ontology-compiler.test.ts` | Tenant-customized ontology definitions compile and validate within tenant sandboxes. | **Stage 4** |
 | `tests/security/m62-credential-vault.test.ts` | AES-256 envelope encryption and key rotation for portal scraper credentials. | Full Suite |
@@ -362,6 +364,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/security/scrape-run-ownership.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 4 | 18 |
 | `tests/security/oauth-scope-provisioning.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 5 | 12 |
 | `tests/security/oauth-callback-url.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 2 | 4 |
+| `tests/security/oauth-http-routes.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 6 | 16 |
+| `tests/security/active-tenant-pollution-repair.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 4 | 16 |
 | `tests/security/tenant-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 16 | 43 |
 | `tests/semantic/controlled_integration.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 11 | 33 |
 | `tests/semantic/extraction-sanitation.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 6 | 14 |

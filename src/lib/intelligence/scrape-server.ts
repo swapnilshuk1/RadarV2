@@ -634,7 +634,7 @@ export const getPipelineStatsFn = createServerFn({ method: "GET" })
       return {
         ...stats,
         discovered: metrics.totalScreened,
-        filtered: metrics.effectiveBreakdown.pass + metrics.effectiveBreakdown.sparse,
+        filtered: metrics.effectiveBreakdown.pass + metrics.effectiveBreakdown.none,
         shortlisted: metrics.effectiveBreakdown.pursue + metrics.effectiveBreakdown.consider,
         totalDecisions: metrics.totalDecisions,
         activePursuits: metrics.activePursuits,

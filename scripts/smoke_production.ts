@@ -53,8 +53,8 @@ async function runProductionSmoke() {
     const metrics = await queryStore.getMetrics({ personId: userId, tenantId: person?.tenant_id || "default" });
     console.log(`  ✔ Total Screened: ${metrics.totalScreened.toLocaleString()}`);
     console.log(`  ✔ Active Pursuits: ${metrics.activePursuits}`);
-    console.log(`  ✔ Evaluated Decisions: ${metrics.evaluatedDecisions ?? metrics.totalDecisions} (decisions on evaluated/materialized opportunities)`);
-    console.log(`  ✔ All Recorded Decisions: ${metrics.allRecordedDecisions ?? (metrics.totalDecisions + (metrics.decisionMetrics?.sparseDecisions?.total || 0))} (including ${metrics.decisionMetrics?.sparseDecisions?.total ?? 0} sparse/unmaterialized decisions)`);
+    console.log(`  ✔ Evaluated Decisions: ${metrics.evaluatedDecisions ?? 0} (explicit decisions on valid evaluated artifacts)`);
+    console.log(`  ✔ All Recorded Decisions: ${metrics.allRecordedDecisions ?? metrics.totalDecisions} (every explicit decision in the authorized population)`);
     console.log(`  ✔ Actionable Queue: ${metrics.discoveryMetrics.actionableReviewQueue}`);
     console.log(`  ✔ Portal Distribution: LinkedIn ${metrics.portalMetrics?.LinkedIn ?? 0} | Naukri ${metrics.portalMetrics?.Naukri ?? 0} | Indeed ${metrics.portalMetrics?.Indeed ?? 0}`);
 
@@ -74,17 +74,16 @@ async function runProductionSmoke() {
       console.log(`  ✔ Invariant holds: Portal sum (${portalSum}) matches total candidates (${metrics.totalScreened}).`);
     }
 
-    // Assert Invariant: All recorded decisions = evaluated decisions + sparse decisions
-    const evaluatedDecisions = metrics.evaluatedDecisions ?? metrics.totalDecisions;
-    const sparseDecisions = metrics.decisionMetrics?.sparseDecisions?.total ?? 0;
-    const allRecordedDecisions = metrics.allRecordedDecisions ?? (evaluatedDecisions + sparseDecisions);
+    // `totalDecisions` is the deprecated all-recorded alias. Non-evaluated
+    // decision states are intentionally not collapsed into sparse.
+    const allRecordedDecisions = metrics.allRecordedDecisions ?? metrics.totalDecisions;
 
-    if (allRecordedDecisions !== evaluatedDecisions + sparseDecisions) {
+    if (allRecordedDecisions !== metrics.userBreakdown.total) {
       throw new Error(
-        `Decision metrics discrepancy: allRecordedDecisions (${allRecordedDecisions}) !== evaluatedDecisions (${evaluatedDecisions}) + sparseDecisions (${sparseDecisions})`
+        `Decision metrics discrepancy: allRecordedDecisions (${allRecordedDecisions}) !== userBreakdown.total (${metrics.userBreakdown.total})`
       );
     }
-    console.log(`  ✔ Invariant holds: All recorded decisions (${allRecordedDecisions}) = evaluated (${evaluatedDecisions}) + sparse (${sparseDecisions}).`);
+    console.log(`  ✔ Invariant holds: All recorded decisions (${allRecordedDecisions}) match userBreakdown.total.`);
 
     // 5. Scraper Identity Provenance & RBAC Isolation Verification
     console.log("\n▶ [5/5] Auditing Scraper Identity Provenance & Tenant Isolation...");

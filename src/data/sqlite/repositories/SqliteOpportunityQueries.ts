@@ -274,6 +274,16 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     } else if (filters?.decisionFilter === "decided") {
       whereConditions.push(`user_action != 'NONE'`);
     }
+    if (filters?.shortlistQueue) {
+      // The shortlist is a canonical server selection: an unreviewed,
+      // structurally valid evaluated engine PURSUE/CONSIDER artifact. It is
+      // deliberately not reconstructed in browser state from a wider feed.
+      whereConditions.push(`evaluation_state = 'COMPLETE'`);
+      whereConditions.push(`engine_verdict IN ('PURSUE', 'CONSIDER')`);
+      whereConditions.push(`quality_score IS NOT NULL`);
+      whereConditions.push(`evaluation_fingerprint IS NOT NULL`);
+      whereConditions.push(`user_action = 'NONE'`);
+    }
     if (filters?.categoryId === "needs_more_signal") {
       whereConditions.push(`evaluation_state = 'SPARSE_SPEC'`);
     } else if (filters?.categoryId && filters.categoryId !== "all") {
@@ -509,7 +519,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         engineBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0 },
         evaluationPopulation: { evaluated: 0, sparse: 0, unmaterialized: 0, profileRequired: 0, notEvaluable: 0, invalid: 0 },
         userBreakdown: { pursue: 0, consider: 0, pass: 0, total: 0 },
-        effectiveBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0, none: 0 },
+        effectiveBreakdown: { pursue: 0, consider: 0, pass: 0, none: 0, sparse: 0 },
         integrity: {
           status: "UNAVAILABLE",
           validatedAt: generatedAt,
@@ -583,7 +593,14 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          COUNT(CASE WHEN (me.id IS NULL OR me.evaluation_state = 'SPARSE_SPEC') AND d.action = 'PURSUE' THEN 1 END) AS sparse_decisions_pursue,
          COUNT(CASE WHEN (me.id IS NULL OR me.evaluation_state = 'SPARSE_SPEC') AND d.action = 'CONSIDER' THEN 1 END) AS sparse_decisions_consider,
          COUNT(CASE WHEN (me.id IS NULL OR me.evaluation_state = 'SPARSE_SPEC') AND d.action = 'PASS' THEN 1 END) AS sparse_decisions_pass,
-         COUNT(CASE WHEN (d.action IS NULL OR d.action = 'NONE') AND me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND me.decision IN ('PURSUE', 'CONSIDER') THEN 1 END) AS actionable_review_queue
+         COUNT(CASE
+           WHEN (d.action IS NULL OR d.action = 'NONE')
+            AND me.evaluation_state IN ('COMPLETE', 'EVALUATED')
+            AND me.decision IN ('PURSUE', 'CONSIDER')
+            AND me.quality_score IS NOT NULL
+            AND me.evaluation_fingerprint IS NOT NULL
+           THEN 1
+         END) AS actionable_review_queue
        FROM search_plan_candidates spc
        JOIN canonical_opportunities co 
          ON spc.canonical_job_id = co.id
@@ -689,7 +706,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       total: 0,
     };
 
-    const effectiveBreakdown = { pursue: 0, consider: 0, pass: 0, sparse: 0, none: 0 };
+    // `sparse` is a deprecated compatibility alias and intentionally remains zero.
+    // Non-actionable rows without an explicit user decision are counted as `none`.
+    const effectiveBreakdown = { pursue: 0, consider: 0, pass: 0, none: 0, sparse: 0 };
     const userBreakdown = { pursue: 0, consider: 0, pass: 0, total: 0 };
     let evaluatedDecisions = 0;
     // Deprecated compatibility field: the active-pursuit lifecycle is not a

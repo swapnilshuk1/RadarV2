@@ -85,6 +85,7 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         posted_at TEXT,
         posted_precision TEXT,
         raw_content TEXT,
+        category_ids TEXT,
         acquisition_status TEXT,
         acquisition_quality TEXT,
         failure_class TEXT,
@@ -157,6 +158,7 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         canonical_job_id TEXT NOT NULL,
         opportunity_version TEXT NOT NULL,
         evaluation_context_fingerprint TEXT NOT NULL,
+        evaluation_fingerprint TEXT,
         evaluation_state TEXT NOT NULL,
         decision TEXT,
         quality_score REAL,
@@ -267,8 +269,8 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
     await adapter.execute(
       `INSERT INTO materialized_evaluations (
         id, tenant_id, person_id, canonical_job_id, opportunity_version,
-        evaluation_context_fingerprint, evaluation_state, decision, quality_score, confidence, vetoed, policy_version, evaluated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, confidence, vetoed, policy_version, evaluated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
       [
         `me_${ingestResult.canonicalJobId}`,
         "tenant_prod",
@@ -276,6 +278,7 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         ingestResult.canonicalJobId,
         ingestResult.opportunityVersion,
         "ctx_test_hash",
+        "eval_test_hash",
         "COMPLETE",
         evalOutput.record.verb,
         evalOutput.record.qualityScore,
