@@ -23,6 +23,7 @@ import {
 import { resolveCanonicalServingReadModel } from "./CanonicalServingReadModel";
 import type { Opportunity, DimensionResult, DimensionKey, EvidenceBucket } from "../../../data/opportunity-fixtures";
 import { isMeaningfulEvidenceQuote } from "@/domain/evidence";
+import type { CanonicalEvaluatedPayloadV4_3 } from "@/lib/domain/evaluation_payloads";
 
 export interface CanonicalIntrinsicEvaluationPayload {
   readonly schemaVersion: "v4.2-intrinsic";
@@ -141,6 +142,69 @@ export function isCanonicalIntrinsicEvaluation(
     typeof c.baseNarrative === "object" &&
     c.baseNarrative !== null
   );
+}
+
+/**
+ * Serves the sole persisted evaluated-artifact contract written by
+ * EvaluationWorker. Presentation fields below are neutral formatting of the
+ * canonical artifact and opportunity metadata; no legacy evaluation facts are
+ * reconstructed here.
+ */
+export function serveCanonicalEvaluatedPayload(
+  payload: CanonicalEvaluatedPayloadV4_3,
+  oppCtx: OpportunityServingContext,
+  userDecision: UserDecisionStateV4 | null,
+  vetoed: boolean,
+): Opportunity {
+  const readModel = resolveCanonicalServingReadModel({
+    evaluationState: "EVALUATED",
+    engineVerdict: payload.decision,
+    userDecision: userDecision?.userAction || null,
+    evaluationContextFingerprint: payload.contextFingerprint,
+    evaluationFingerprint: payload.evaluationInputHash,
+    reviewedFingerprint: userDecision?.reviewedFingerprint || null,
+    qualityScore: payload.score,
+  });
+  const engineRecommendation: EngineRecommendationV4 = {
+    jobHash: payload.jobHash,
+    evaluationFingerprint: payload.evaluationInputHash,
+    engineVerdict: payload.decision,
+    verb0: payload.decision,
+    vetoed,
+    // v4.3 does not persist a veto reason. Do not manufacture one merely to
+    // satisfy the older presentation shape.
+    vetoReason: undefined,
+    qualityScore: payload.score,
+    parsingConfidence: undefined,
+    evaluatedAt: payload.evaluatedAt,
+  };
+  return {
+    evaluationState: "EVALUATED",
+    jobHash: payload.jobHash,
+    role: oppCtx.role || oppCtx.title || "Executive Opportunity",
+    company: oppCtx.company || "Company not available",
+    location: oppCtx.location || "Remote",
+    scrapedFrom: oppCtx.scrapedFrom === "Naukri" || oppCtx.scrapedFrom === "Indeed" ? oppCtx.scrapedFrom : "LinkedIn",
+    applyUrl: oppCtx.applyUrl || undefined,
+    postedRelative: formatPostedRelative(oppCtx.postedAt),
+    decision: payload.decision,
+    recommendation: "",
+    primaryConcern: null,
+    positioning: [],
+    headspace: [],
+    dimensions: [],
+    hiringRisk: "Unknown",
+    diligenceStatus: payload.diligenceStatus,
+    engineRecommendation,
+    userDecision,
+    effectiveDecision: readModel.effectiveDecision,
+    reviewWorkflowState: readModel.reviewState === "CURRENT" ? "REVIEWED_CURRENT" : readModel.reviewState === "STALE" ? "REVIEWED_STALE" : readModel.reviewState === "UNKNOWN" ? "REVIEWED_UNKNOWN" : "UNREVIEWED",
+    reviewState: readModel.reviewState,
+    evaluationContextFingerprint: payload.contextFingerprint,
+    evaluationFingerprint: payload.evaluationInputHash,
+    displayScore: `${Math.round(payload.score)}%`,
+    uiBadge: payload.decision === "PURSUE" ? { label: "Recommended", variant: "signal" } : payload.decision === "CONSIDER" ? { label: "Consider", variant: "caution" } : { label: "Pass", variant: "muted" },
+  };
 }
 
 /**

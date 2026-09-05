@@ -40,10 +40,17 @@ describe("Headspace Serving Contract Regression Suite", () => {
       await db.execute(`INSERT OR IGNORE INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES (?, 'test', ?, 'http')`, [activeJob, activeJob]);
       await db.execute(`INSERT OR IGNORE INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content, acquisition_status, lifecycle_state) VALUES (?, ?, 'ch1', 'Dir', 'raw', 'ACQUIRED', 'ACTIVE')`, [`v_${activeJob}`, activeJob]);
       await db.execute(`INSERT OR IGNORE INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, ?, 'CANDIDATE')`, [tenantId, userId, `sp_${userId}`, activeJob, `v_${activeJob}`]);
-      await db.execute(`INSERT OR IGNORE INTO materialized_evaluations 
-        (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, rationale, evidence_ids, evaluation_json, materialized_at) 
-        VALUES (?, ?, ?, ?, ?, ?, 'EVALUATED', 'PURSUE', 80, 'rationale', '[]', ?, CURRENT_TIMESTAMP)`, 
-        [`mat_${activeJob}`, activeJob, `v_${activeJob}`, tenantId, userId, `ctx_${userId}`, JSON.stringify({ schemaVersion: 'v4.2-intrinsic', jobHash: activeJob, intrinsicVerdict: 'PURSUE', intrinsicQualityScore: 80, baseNarrative: { baseRecommendationProse: 'test' } })]);
+      const evaluationFingerprint = `fp_${activeJob}`;
+      await db.execute(`INSERT OR IGNORE INTO materialized_evaluations
+        (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, rationale, evidence_ids, evaluation_json, materialized_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'EVALUATED', 'PURSUE', 80, 'rationale', '[]', ?, CURRENT_TIMESTAMP)`,
+        [`mat_${activeJob}`, activeJob, `v_${activeJob}`, tenantId, userId, `ctx_${userId}`, evaluationFingerprint, JSON.stringify({
+          schemaVersion: 'v4.3-intrinsic', evaluationContractVersion: 'v4.3', evaluationState: 'EVALUATED',
+          canonicalJobId: activeJob, opportunityVersion: `v_${activeJob}`, jobHash: activeJob,
+          tenantId, personId: userId, evaluationInputHash: evaluationFingerprint, contextFingerprint: `ctx_${userId}`,
+          policyVersion: 'v4.3', ontologyVersion: 'v4.0', ontologyFingerprint: 'ontology_test', profileVersion: 'profile_test',
+          evaluatedAt: '2026-01-01T00:00:00.000Z', decision: 'PURSUE', score: 80, diligenceStatus: 'READY', jobProjection: { title: 'Director' },
+        })]);
       await repos.decisions.recordUserDecision(userId, activeJob, "PURSUE", undefined, null, tenantId);
     }
 
@@ -60,36 +67,25 @@ describe("Headspace Serving Contract Regression Suite", () => {
       await db.execute(`INSERT OR IGNORE INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, ?, 'CANDIDATE')`, [tenantId, userId, `sp_${userId}`, job.jobHash, `v_${job.jobHash}`]);
 
       const evalPayload = {
-        schemaVersion: "v4.2-intrinsic",
+        schemaVersion: "v4.3-intrinsic",
+        evaluationContractVersion: "v4.3",
+        evaluationState: "EVALUATED",
+        canonicalJobId: job.jobHash,
+        opportunityVersion: `v_${job.jobHash}`,
         jobHash: job.jobHash,
+        tenantId,
         personId: userId,
         evaluationInputHash: `fp_${job.jobHash}`,
+        contextFingerprint: `ctx_${userId}`,
         policyVersion: "v4.3",
         ontologyVersion: "v4.0",
+        ontologyFingerprint: "ontology_test",
+        profileVersion: "profile_test",
         evaluatedAt: new Date().toISOString(),
-        intrinsicVerdict: "PURSUE",
-        intrinsicQualityScore: job.score,
-        parsingConfidence: 0.95,
-        vetoed: false,
-        vetoReason: null,
-        triggeredRuleIds: ["R-PURSUE"],
-        decisionRisks: [],
-        decisionDrivers: [],
-        evaluationStatus: "COMPLETE",
-        dimensions: [],
-        esi: 80,
-        diligenceStatus: "VERIFIED",
-        baseNarrative: {
-          baseRecommendationProse: "Exceptional mandate match.",
-        },
-        auditTrace: {
-          verb0: "PURSUE",
-          careerValue: 80,
-          shortlistingPotential: 80,
-          pursuitFriction: 20,
-          rawScore: job.score,
-          evidenceMappingCount: 5,
-        },
+        decision: "PURSUE",
+        score: job.score,
+        diligenceStatus: "READY",
+        jobProjection: { title: "Dir" },
       };
 
       await db.execute(`INSERT OR IGNORE INTO materialized_evaluations 

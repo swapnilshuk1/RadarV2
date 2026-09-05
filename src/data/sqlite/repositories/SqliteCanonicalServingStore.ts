@@ -35,10 +35,9 @@ import type {
 } from "../../../data/opportunity-fixtures";
 import { isEvaluated } from "../../../data/opportunity-fixtures";
 import {
-  serveEvaluation,
-  isCanonicalIntrinsicEvaluation,
-  type ServingPresentationContext,
+  serveCanonicalEvaluatedPayload,
 } from "../../../lib/intelligence/serving/EvaluationServingEngine";
+import { isCanonicalIntrinsicEvaluationV4_3 } from "../../../lib/domain/evaluation_payloads";
 import {
   computeEffectiveDecision,
   computeReviewWorkflowState,
@@ -345,6 +344,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
          me.evaluation_json as evaluation_json,
          me.evaluation_context_fingerprint as evaluation_context_fingerprint,
          me.evaluation_fingerprint as evaluation_fingerprint,
+         me.vetoed as vetoed,
          me.materialized_at as materialized_at,
          d.action as user_action,
          d.reviewed_fingerprint as reviewed_fingerprint,
@@ -368,10 +368,6 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
          AND spc.attention_decision = 'CANDIDATE'`,
       [context.contextFingerprint, scope.tenantId, scope.personId, context.searchPlanId]
     );
-
-    const presentationContext: ServingPresentationContext = {
-      personId: scope.personId,
-    };
 
     const targetCategory = options?.categoryId && options.categoryId !== "all" 
       ? resolveCanonicalCategoryId(options.categoryId) 
@@ -517,8 +513,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
         postedPrecision: r.posted_precision,
       };
 
-      if (!isCanonicalIntrinsicEvaluation(rawParsed)
-        || typeof rawParsed.evaluationInputHash !== "string"
+      if (!isCanonicalIntrinsicEvaluationV4_3(rawParsed)
         || rawParsed.evaluationInputHash !== r.evaluation_fingerprint) {
         opportunities.push({
           evaluationState: "INVALID",
@@ -535,7 +530,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
         continue;
       }
 
-      const opp = serveEvaluation(rawParsed, presentationContext, oppSource, userState) as EvaluatedOpportunity;
+      const opp = serveCanonicalEvaluatedPayload(rawParsed, oppSource, userState, Boolean(r.vetoed)) as EvaluatedOpportunity;
       const readModel = resolveCanonicalServingReadModel({
         evaluationState: "EVALUATED",
         engineVerdict: r.engine_decision,
@@ -624,6 +619,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
          me.evaluation_json as evaluation_json,
          me.evaluation_context_fingerprint as evaluation_context_fingerprint,
          me.evaluation_fingerprint as evaluation_fingerprint,
+         me.vetoed as vetoed,
          me.materialized_at as materialized_at,
          d.action as user_action,
          d.reviewed_fingerprint as reviewed_fingerprint,
@@ -704,10 +700,6 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
       updatedAt: row.user_decision_updated_at,
     } : null;
 
-    const presentationContext: ServingPresentationContext = {
-      personId: scope.personId,
-    };
-
     const oppSource = {
       jobHash: row.source_job_id,
       role: row.job_title || "Executive Opportunity",
@@ -719,8 +711,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
       postedPrecision: row.posted_precision,
     };
 
-    if (!isCanonicalIntrinsicEvaluation(rawParsed)
-      || typeof rawParsed.evaluationInputHash !== "string"
+    if (!isCanonicalIntrinsicEvaluationV4_3(rawParsed)
       || rawParsed.evaluationInputHash !== row.evaluation_fingerprint) {
       return {
         evaluationState: "INVALID",
@@ -736,7 +727,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
       } as UnavailableOpportunity;
     }
 
-    const opp = serveEvaluation(rawParsed, presentationContext, oppSource, userState) as EvaluatedOpportunity;
+    const opp = serveCanonicalEvaluatedPayload(rawParsed, oppSource, userState, Boolean(row.vetoed)) as EvaluatedOpportunity;
     const readModel = resolveCanonicalServingReadModel({
       evaluationState: "EVALUATED",
       engineVerdict: row.engine_decision,

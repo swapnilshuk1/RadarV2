@@ -71,9 +71,9 @@ export interface EngineRecommendationV4 {
   readonly engineVerdict: EngineVerdict;
   readonly verb0?: EngineVerdict;
   readonly vetoed: boolean;
-  readonly vetoReason: string | null;
+  readonly vetoReason?: string | null;
   readonly qualityScore: number | null; // Model C authoritative continuous quality score (0..100 or null)
-  readonly parsingConfidence: number;   // 0.0..1.0
+  readonly parsingConfidence?: number;   // 0.0..1.0 when persisted
   readonly evaluatedAt: string;
   readonly triggeredRuleIds?: string[];
   readonly decisionRisks?: DecisionDriver[];

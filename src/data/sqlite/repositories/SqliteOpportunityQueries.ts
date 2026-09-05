@@ -46,10 +46,9 @@ import type {
   ScrapeSource,
 } from "../../../data/opportunity-fixtures";
 import {
-  serveEvaluation,
-  isCanonicalIntrinsicEvaluation,
-  type ServingPresentationContext,
+  serveCanonicalEvaluatedPayload,
 } from "../../../lib/intelligence/serving/EvaluationServingEngine";
+import { isCanonicalIntrinsicEvaluationV4_3 } from "../../../lib/domain/evaluation_payloads";
 import { resolveEffectiveDecision } from "../../../lib/intelligence/decision-resolver";
 import { classifyOpportunityCategories, type CategoryId } from "../../../lib/domain/category_taxonomy";
 import { resolveServingScope, type ActiveServingContext } from "../../../lib/security/scope-resolver";
@@ -370,6 +369,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          evaluation_state,
          engine_verdict,
          quality_score,
+         evaluation_context_fingerprint,
          evaluation_fingerprint,
          vetoed,
          user_action,
@@ -807,6 +807,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       evaluation_json: string | null;
       evaluation_context_fingerprint: string | null;
       evaluation_fingerprint: string | null;
+      vetoed: number | null;
       materialized_at: string | null;
       user_action: string | null;
       reviewed_fingerprint: string | null;
@@ -835,6 +836,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          me.evaluation_json AS evaluation_json,
          me.evaluation_context_fingerprint AS evaluation_context_fingerprint,
          me.evaluation_fingerprint AS evaluation_fingerprint,
+         me.vetoed AS vetoed,
          me.materialized_at AS materialized_at,
          d.action AS user_action,
          d.reviewed_fingerprint AS reviewed_fingerprint,
@@ -988,10 +990,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         }
       : null;
 
-    const presentationContext: ServingPresentationContext = {
-      personId: scope.personId,
-    };
-
     const oppSource = {
       jobHash: row.source_job_id,
       role: row.job_title || "Executive Opportunity",
@@ -1005,8 +1003,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
 
     // Pre-production derived rows that do not carry the canonical intrinsic
     // payload are deliberately not adapted into plausible recommendations.
-    if (!isCanonicalIntrinsicEvaluation(rawParsed)
-      || typeof rawParsed.evaluationInputHash !== "string"
+    if (!isCanonicalIntrinsicEvaluationV4_3(rawParsed)
       || rawParsed.evaluationInputHash !== row.evaluation_fingerprint) {
       const readModel = resolveCanonicalServingReadModel({
         evaluationState: "INVALID",
@@ -1034,7 +1031,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       } as UnavailableOpportunity;
     }
 
-    const opp = serveEvaluation(rawParsed, presentationContext, oppSource, userState) as EvaluatedOpportunity;
+    const opp = serveCanonicalEvaluatedPayload(rawParsed, oppSource, userState, Boolean(row.vetoed)) as EvaluatedOpportunity;
     const readModel = resolveCanonicalServingReadModel({
       evaluationState: "EVALUATED",
       engineVerdict: row.engine_decision,

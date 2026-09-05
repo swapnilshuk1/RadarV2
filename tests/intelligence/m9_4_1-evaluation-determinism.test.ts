@@ -4,6 +4,8 @@ import fs from "fs";
 import path from "path";
 import { DatabaseAdapter, QueryParams } from "@/data/database/DatabaseAdapter";
 import { EvaluationWorker } from "@/lib/intelligence/EvaluationWorker";
+import { SqliteOpportunityQueries } from "@/data/sqlite/repositories/SqliteOpportunityQueries";
+import { resolveServingScope } from "@/lib/security/scope-resolver";
 import { computeEvaluationContextFingerprint } from "@/lib/domain/evaluation_fingerprint";
 import { computeCanonicalJobId } from "@/lib/domain/canonical_identity";
 import type { CandidateProfile } from "@/data/candidate-profile";
@@ -108,6 +110,8 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
     sqliteDb.prepare(`INSERT INTO people (id, tenant_id, email, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).run(
       PERSON_ID, TENANT_ID, "candidate@example.com"
     );
+    sqliteDb.prepare(`INSERT INTO users (id, email) VALUES (?, ?)`).run(PERSON_ID, "candidate@example.com");
+    sqliteDb.prepare(`INSERT INTO memberships (user_id, tenant_id, role, permissions, status) VALUES (?, ?, 'admin', '[\"*\"]', 'active')`).run(PERSON_ID, TENANT_ID);
     sqliteDb.prepare(`
       INSERT INTO career_profiles (
         id, person_id, timeline, skills, projection_json, projection_generated_at,
@@ -176,6 +180,14 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         ontology_version, ontology_fingerprint, policy_version, profile_version, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(fingerprint, TENANT_ID, PERSON_ID, snapshotId, "3.0.0", "onto_hash_001", "v4.1", "p_v1");
+    sqliteDb.prepare(`
+      INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+      VALUES (?, ?, ?, ?)
+    `).run(fingerprint, TENANT_ID, PERSON_ID, PLAN_ID);
+    sqliteDb.prepare(`
+      INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(TENANT_ID, PERSON_ID, PLAN_ID, fingerprint, PERSON_ID);
 
     const jobId = "job_det_001";
     sqliteDb.prepare(`
@@ -198,6 +210,31 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
     expect(eval1).toBeDefined();
     expect(eval1.decision).toBeDefined();
     expect(eval1.quality_score).toBeGreaterThan(0);
+
+    // Regression: the artifact emitted by the real worker must be the exact
+    // artifact accepted by both canonical serving surfaces. No test-authored
+    // evaluation JSON is involved in this proof.
+    const payload = JSON.parse(eval1.evaluation_json);
+    expect(payload.schemaVersion).toBe("v4.3-intrinsic");
+    expect(eval1.evaluation_context_fingerprint).toBe(payload.contextFingerprint);
+    expect(eval1.evaluation_fingerprint).toBe(payload.evaluationInputHash);
+    const scope = (await resolveServingScope(PERSON_ID, TENANT_ID, adapter)).scope;
+    const queries = new SqliteOpportunityQueries(adapter);
+    const feed = await queries.getFeed(scope);
+    expect(feed.items).toHaveLength(1);
+    const feedItem = feed.items[0];
+    expect(feedItem.evaluationState).toBe("EVALUATED");
+    expect(feedItem.engineVerdict).toBe(payload.decision);
+    expect(feedItem.qualityScore).toBe(payload.score);
+    expect(feedItem.evaluationContextFingerprint).toBe(payload.contextFingerprint);
+    expect(feedItem.evaluationFingerprint).toBe(payload.evaluationInputHash);
+    const dossier = await queries.getDossier(scope, feedItem.jobHash);
+    expect(dossier).toBeDefined();
+    expect(dossier!.evaluationState).toBe("EVALUATED");
+    expect(dossier!.engineRecommendation?.engineVerdict).toBe(feedItem.engineVerdict);
+    expect(dossier!.engineRecommendation?.qualityScore).toBe(feedItem.qualityScore);
+    expect(dossier!.evaluationContextFingerprint).toBe(feedItem.evaluationContextFingerprint);
+    expect(dossier!.evaluationFingerprint).toBe(feedItem.evaluationFingerprint);
 
     // Re-evaluate under another search plan with the identical context snapshot to prove determinism
     const PLAN_ID_2 = "plan_det_2";
