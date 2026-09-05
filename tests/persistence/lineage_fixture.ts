@@ -1,6 +1,5 @@
 import { DatabaseAdapter } from "../../src/data/database/adapter";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
-import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import { expect } from "vitest";
 
 export async function setupLineageTestFixture(db: DatabaseAdapter): Promise<void> {
@@ -27,12 +26,6 @@ export async function setupLineageTestFixture(db: DatabaseAdapter): Promise<void
   // People (001 + 018)
   await db.execute(`INSERT INTO people (id, email, tenant_id) VALUES (?, ?, ?)`, ["person_A", "a@a.com", "tenant_A"]);
   await db.execute(`INSERT INTO people (id, email, tenant_id) VALUES (?, ?, ?)`, ["person_B", "b@b.com", "tenant_B"]);
-  await db.execute(`INSERT INTO users (id, email) VALUES (?, ?)`, ["person_A", "a@a.com"]);
-  await db.execute(
-    `INSERT INTO memberships (user_id, tenant_id, role, permissions, status)
-     VALUES (?, ?, ?, ?, ?)`,
-    ["person_A", "tenant_A", "admin", '["*"]', "active"]
-  );
 
   // Search Plans (001 + 018 implies tenant_id)
   await db.execute(
@@ -55,7 +48,10 @@ export async function setupLineageTestFixture(db: DatabaseAdapter): Promise<void
     `INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
     ["fingerprint_A", "tenant_A", "person_A", "sps_A", "v1", "hash_ontology", "v1", "v1"]
   );
+}
 
+/** Creates explicit serving authority for the fixture's A lineage. */
+export async function activateLineageTestContext(db: DatabaseAdapter): Promise<void> {
   // Migration 028 requires an immutable scope binding before an active pointer.
   await db.execute(
     `INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
@@ -67,11 +63,4 @@ export async function setupLineageTestFixture(db: DatabaseAdapter): Promise<void
      VALUES (?, ?, ?, ?, ?)`,
     ["tenant_A", "person_A", "plan_A", "fingerprint_A", "test-fixture"]
   );
-
-  // Fail fast: serving fixtures require explicit authority, never timestamp fallback.
-  const resolved = await resolveServingScope("person_A", "tenant_A", db);
-  expect(resolved.activeContext).toEqual({
-    searchPlanId: "plan_A",
-    contextFingerprint: "fingerprint_A",
-  });
 }

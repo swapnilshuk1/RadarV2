@@ -18,7 +18,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
-import { setupLineageTestFixture } from "../persistence/lineage_fixture";
+import { activateLineageTestContext, setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { encodeCursor, decodeCursor } from "../../src/lib/intelligence/cursor";
 import { CursorValidationError } from "../../src/lib/intelligence/cursor";
@@ -38,6 +38,7 @@ describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
       `INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status)
        VALUES ('person_A', 'tenant_A', 'admin', '["*"]', 'active')`
     );
+    await activateLineageTestContext(db);
     queries = new SqliteOpportunityQueries(db);
     const resolved = await resolveServingScope("person_A", "tenant_A", db);
     expect(resolved.activeContext?.searchPlanId).toBe("plan_A");

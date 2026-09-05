@@ -14,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
-import { setupLineageTestFixture } from "../persistence/lineage_fixture";
+import { activateLineageTestContext, setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
@@ -35,9 +35,11 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       `INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status)
        VALUES ('person_A', 'tenant_A', 'admin', '["*"]', 'active')`
     );
+    await activateLineageTestContext(db);
     queries = new SqliteOpportunityQueries(db);
     const resolved = await resolveServingScope("person_A", "tenant_A", db);
     scope = resolved.scope;
+    expect(resolved.activeContext).toEqual({ searchPlanId: "plan_A", contextFingerprint: "fingerprint_A" });
   });
 
   async function seedItem(params: {
