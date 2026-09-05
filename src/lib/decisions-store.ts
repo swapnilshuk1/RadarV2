@@ -3,7 +3,6 @@ import type { DecisionVerb } from "../data/opportunity-fixtures";
 import {
   getDecisionsFn,
   saveDecisionFn,
-  syncDecisionsFn,
   undoDecisionFn,
   clearDecisionsFn
 } from "./intelligence/decisions-server";
@@ -11,23 +10,26 @@ import {
 export type DecisionRecord = { verb: DecisionVerb; at: number; reviewedFingerprint?: string | null };
 export type DecisionMap = Record<string, DecisionRecord>;
 
-const KEY = "radar.decisions.v1";
-const SYNC_FLAG = "radar.decisions.synced.v1";
+const KEY_PREFIX = "radar.decisions.cache.v2:";
 
-function readLocal(): DecisionMap {
-  if (typeof window === "undefined") return {};
+export function decisionCacheKey(scope: string): string {
+  return `${KEY_PREFIX}${encodeURIComponent(scope)}`;
+}
+
+function readLocal(scope: string | null): DecisionMap {
+  if (typeof window === "undefined" || !scope) return {};
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.localStorage.getItem(decisionCacheKey(scope));
     return raw ? (JSON.parse(raw) as DecisionMap) : {};
   } catch {
     return {};
   }
 }
 
-function writeLocal(next: DecisionMap) {
-  if (typeof window === "undefined") return;
+function writeLocal(scope: string | null, next: DecisionMap) {
+  if (typeof window === "undefined" || !scope) return;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(next));
+    window.localStorage.setItem(decisionCacheKey(scope), JSON.stringify(next));
     window.dispatchEvent(new CustomEvent("radar:decisions"));
   } catch {
     /* ignore */
@@ -35,27 +37,21 @@ function writeLocal(next: DecisionMap) {
 }
 
 export function activePursuits(): number {
-  if (typeof window === "undefined") return 0;
-  const map = readLocal();
-  return Object.values(map).filter((d) => d.verb === "PURSUE").length;
+  // This historical helper has no authenticated scope input. It must not read
+  // a cross-account cache; canonical callers obtain pursuit state from server.
+  return 0;
 }
 
 export function useDecisions() {
   const [decisions, setDecisions] = useState<DecisionMap>({});
   const [hydrated, setHydrated] = useState(false);
+  const [scope, setScope] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    const initialLocal = readLocal();
-
     async function hydrate() {
-      // 1. Initial local render for immediate UI responsiveness
-      if (isMounted) {
-        setDecisions(initialLocal);
-        setHydrated(true);
-      }
-
-      // 2. Fetch server canonical state from Turso/SQLite
+      // Canonical server state wins on every authenticated hydration. Browser
+      // cache is a scoped convenience mirror, never an import source.
       try {
         const res = await getDecisionsFn();
         if (res && res.success && res.decisions) {
@@ -68,28 +64,12 @@ export function useDecisions() {
             };
           }
 
-          // 3. Auto-sync local storage decisions to server if local has unsynced items
-          const hasUnsynced = Object.keys(initialLocal).length > 0 && Object.keys(initialLocal).some((k) => !currentServerMap[k]);
-          if (typeof window !== "undefined" && hasUnsynced) {
-            const syncRes = await syncDecisionsFn({ data: { decisions: initialLocal } });
-            if (syncRes && syncRes.success && syncRes.decisions) {
-              const reconciledMap: DecisionMap = {};
-              for (const [hash, val] of Object.entries(syncRes.decisions)) {
-                reconciledMap[hash] = {
-                  verb: val.verb as DecisionVerb,
-                  at: val.updatedAt ? new Date(val.updatedAt).getTime() : Date.now(),
-                  reviewedFingerprint: (val as any).reviewedFingerprint || null
-                };
-              }
-              currentServerMap = reconciledMap;
-              window.localStorage.setItem(SYNC_FLAG, "true");
-            }
-          }
-
-          // 4. Update client state to authoritative server decisions
+          const resolvedScope = typeof (res as any).cacheScope === "string" ? (res as any).cacheScope : null;
           if (isMounted) {
+            setScope(resolvedScope);
             setDecisions(currentServerMap);
-            writeLocal(currentServerMap);
+            writeLocal(resolvedScope, currentServerMap);
+            setHydrated(true);
           }
         }
       } catch (err) {
@@ -99,7 +79,7 @@ export function useDecisions() {
 
     hydrate();
 
-    const onChange = () => setDecisions(readLocal());
+    const onChange = () => setDecisions(readLocal(scope));
     window.addEventListener("radar:decisions", onChange);
     window.addEventListener("storage", onChange);
 
@@ -108,12 +88,12 @@ export function useDecisions() {
       window.removeEventListener("radar:decisions", onChange);
       window.removeEventListener("storage", onChange);
     };
-  }, []);
+  }, [scope]);
 
   const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
     setDecisions((prev) => {
       const next = { ...prev, [jobHash]: { verb, at: Date.now(), reviewedFingerprint: reviewedFingerprint || null } };
-      writeLocal(next);
+      writeLocal(scope, next);
       return next;
     });
 
@@ -127,7 +107,7 @@ export function useDecisions() {
     setDecisions((prev) => {
       const next = { ...prev };
       delete next[jobHash];
-      writeLocal(next);
+      writeLocal(scope, next);
       return next;
     });
 
@@ -139,7 +119,7 @@ export function useDecisions() {
 
   const clear = () => {
     setDecisions({});
-    writeLocal({});
+    writeLocal(scope, {});
 
     // Fire background server call to Turso/SQLite
     clearDecisionsFn().catch((err) => {

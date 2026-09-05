@@ -12,6 +12,8 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
@@ -74,5 +76,16 @@ describe("Phase 11 & 12: Route Server Function & Client Cache Suite", () => {
       ClientOpportunityCache.clear();
       expect(ClientOpportunityCache.getDetails("job_xyz")).toBeNull();
     });
+  });
+
+  it("keeps dossier and decisions routes on canonical persisted serving paths", () => {
+    const dossierRoute = fs.readFileSync(path.resolve("src/routes/opportunity.$jobHash.tsx"), "utf8");
+    const decisionsRoute = fs.readFileSync(path.resolve("src/routes/decisions.tsx"), "utf8");
+    for (const forbidden of ["candidateProfile", "CapabilityAssessmentEngine", "ExecutionEngine", "BriefCompositionEngine"]) {
+      expect(dossierRoute).not.toContain(forbidden);
+      expect(decisionsRoute).not.toContain(forbidden);
+    }
+    expect(decisionsRoute).toContain("getDecidedOpportunitiesFn");
+    expect(decisionsRoute).not.toContain("getOpportunitiesFn");
   });
 });

@@ -4,15 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import { applicationActionFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
 import { useDecisions, type DecisionRecord } from "../lib/decisions-store";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
-import { getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
+import { getDecidedOpportunitiesFn } from "../lib/intelligence/opportunity-server";
 import { ClientOpportunityCache } from "../lib/opportunity-cache";
 
-// Recomposition elements
-import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
-import { JobProjectionBuilder } from "../lib/intelligence/builders/JobProjectionBuilder";
-import { CandidateProjectionBuilderImpl } from "../lib/intelligence/builders/CandidateProjectionBuilder";
-import { ExecutionEngine } from "../lib/intelligence/engines/ExecutionEngine";
-import { candidateProfile } from "../data/candidate-profile";
 
 export const Route = createFileRoute("/decisions")({
   head: () => ({
@@ -25,7 +19,7 @@ export const Route = createFileRoute("/decisions")({
   staleTime: 0,
   loader: async () => {
     return {
-      opportunitiesList: await getOpportunitiesFn()
+      opportunitiesList: await getDecidedOpportunitiesFn()
     };
   },
   component: OpportunitiesPage,
@@ -76,7 +70,8 @@ export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS" | "UNREVIEWED";
 
 function OpportunitiesPage() {
   const { decisions, undo, clear, hydrated } = useDecisions();
-  const { opportunitiesList: rawOpportunities } = Route.useLoaderData();
+  const { opportunitiesList: loadedOpportunities } = Route.useLoaderData();
+  const rawOpportunities = loadedOpportunities as Array<Opportunity | ServedOpportunity>;
   // Phase 4: Non-evaluated variants without decisions must not contribute to counts or enter the ledger.
   // Explicit user decisions (including those on sparse specifications) remain preserved and represented.
   const opportunitiesList = useMemo(
@@ -89,7 +84,6 @@ function OpportunitiesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterKey, setFilterKey] = useState<FilterKey>("ALL");
   const [tracking, setTracking] = useState<TrackingMap>({});
-  const [activePrepare, setActivePrepare] = useState<Record<string, boolean>>({});
   const [activeTrack, setActiveTrack] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -110,10 +104,6 @@ function OpportunitiesPage() {
       writeTracking(next);
       return next;
     });
-  };
-
-  const togglePrepare = (jobHash: string) => {
-    setActivePrepare(prev => ({ ...prev, [jobHash]: !prev[jobHash] }));
   };
 
   const toggleTrack = (jobHash: string) => {
@@ -308,31 +298,10 @@ function OpportunitiesPage() {
               const verb = getUserVerb(o);
               const applicationAction = applicationActionFor(o);
 
-              // Recompose brief models for context
-              const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
-              const jobProj = JobProjectionBuilder.build(o);
-              const candidateProj = new CandidateProjectionBuilderImpl().fromProfile(candidateProfile);
-              const executionPkg = ExecutionEngine.validateDecision(candidateProj, jobProj);
-
               // Tracking values
               const trackData = tracking[o.jobHash] || { latestConversation: "", nextAction: "", followUpDate: "" };
 
-              // Next action context (rendered SECONDARY below identity)
-              let secondaryActionContext = trackData.nextAction;
-              if (!secondaryActionContext) {
-                if (verb === "PURSUE") {
-                  const mandate = jobProj.trueExecutiveMandate || "COMMERCIAL_EXPANSION";
-                  if (mandate === "TRANSFORMATION" || mandate === "TURNAROUND") {
-                    secondaryActionContext = "Tailor CV for Transformation alignment";
-                  } else {
-                    secondaryActionContext = "Tailor CV for Commercial Growth alignment";
-                  }
-                } else if (verb === "CONSIDER") {
-                  secondaryActionContext = "Verify reporting line altitude on screening call";
-                }
-              }
-
-              const isPrepareOpen = !!activePrepare[o.jobHash];
+              const secondaryActionContext = trackData.nextAction;
               const isTrackOpen = !!activeTrack[o.jobHash];
 
               return (
@@ -369,7 +338,7 @@ function OpportunitiesPage() {
                         )}
                         <span className="text-hairline-strong">·</span>
                         <span className="font-mono uppercase tracking-[0.14em] text-[0.62rem] text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm">
-                          {resolveDecisionsCardScore(o as any, brief)}
+                          {resolveDecisionsCardScore(o as any)}
                         </span>
                       </div>
 
@@ -424,15 +393,6 @@ function OpportunitiesPage() {
                     <div className="flex items-center gap-4 border-t border-hairline mt-5 pt-3">
                       <button
                         type="button"
-                        onClick={() => togglePrepare(o.jobHash)}
-                        className={`text-xs uppercase tracking-[0.14em] font-mono cursor-pointer transition-colors ${
-                          isPrepareOpen ? "text-ink font-semibold border-b border-ink" : "text-ink-muted hover:text-ink"
-                        }`}
-                      >
-                        Prepare
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => toggleTrack(o.jobHash)}
                         className={`text-xs uppercase tracking-[0.14em] font-mono cursor-pointer transition-colors ${
                           isTrackOpen ? "text-ink font-semibold border-b border-ink" : "text-ink-muted hover:text-ink"
@@ -453,33 +413,6 @@ function OpportunitiesPage() {
                     </div>
                   )}
 
-                  {/* Expanded Prepare Drawer */}
-                  {isPrepareOpen && (
-                    <div className="mt-4 p-4 border border-hairline bg-background/50 rounded-sm animate-reveal">
-                      <div>
-                        <p className="label-mono text-[0.6rem] text-ink-muted">Resume Positioning Anchor</p>
-                        <p className="text-base text-ink mt-1 font-serif italic leading-snug">
-                          {brief.strategy.focusTitle || `Highlight multi-market commercial GTM operations and digital governance scaling.`}
-                        </p>
-                      </div>
-
-                      <div className="mt-4 border-t border-hairline pt-3">
-                        <p className="label-mono text-[0.6rem] text-ink-muted mb-2">Questions to Validate during screening</p>
-                        <ul className="space-y-3">
-                          {executionPkg.screeningQuestions.map((q, idx) => (
-                            <li key={idx} className="text-sm">
-                              <span className="font-mono text-[0.72rem] font-semibold block text-accent-ink/90">
-                                {idx + 1}. {q.question}
-                              </span>
-                              <span className="text-[0.78rem] text-ink-muted leading-relaxed mt-0.5 block">
-                                {q.whyItMatters}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Expanded Track Drawer */}
                   {isTrackOpen && (

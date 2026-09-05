@@ -3,14 +3,6 @@ import { type DecisionVerb, type ServedOpportunity, type EvaluatedOpportunity, i
 import { getOpportunityDetailsFn } from "../lib/intelligence/opportunity-server";
 import { ClientOpportunityCache } from "../lib/opportunity-cache";
 import { useDecisions } from "../lib/decisions-store";
-import { candidateProfile } from "../data/candidate-profile";
-import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
-import { JobProjectionBuilder } from "../lib/intelligence/builders/JobProjectionBuilder";
-import { CandidateProjectionBuilderImpl } from "../lib/intelligence/builders/CandidateProjectionBuilder";
-import { CapabilityAssessmentEngine } from "../lib/intelligence/engines/CapabilityAssessmentEngine";
-import { ExecutionEngine } from "../lib/intelligence/engines/ExecutionEngine";
-import { ReadingSurface } from "@/components/radar/opportunity/surfaces/ReadingSurface";
-import { ExecutiveBriefingSurface } from "@/components/radar/opportunity/surfaces/ExecutiveBriefingSurface";
 import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
@@ -88,39 +80,40 @@ export function OpportunityBriefView() {
     router.invalidate();
   };
 
-  const brief = BriefCompositionEngine.compose(evalOpp, { bypassHistory: true });
-  const jobProj = JobProjectionBuilder.build(evalOpp);
-  
-  const candidateProj = new CandidateProjectionBuilderImpl().fromProfile(candidateProfile);
-  
-  const capEval = CapabilityAssessmentEngine.evaluate(candidateProj, jobProj);
-  const executionPkg = ExecutionEngine.validateDecision(candidateProj, jobProj);
-  const rawDimensions = evalOpp.dimensions || [];
-
-  const surfaceProps = {
-    opportunity: evalOpp,
-    brief,
-    dossierState,
-    decide,
-    neighbors,
-    currentIndex,
-    totalCount,
-    jobProj,
-    candidateProj,
-    capEval,
-    executionPkg,
-    rawDimensions,
-  };
-
   return (
-    <>
-      <div className="desktop-only">
-        <ReadingSurface {...surfaceProps} />
-      </div>
-      <div className="mobile-only">
-        <ExecutiveBriefingSurface {...surfaceProps} />
-      </div>
-    </>
+    <main className="memo-container py-10 space-y-8">
+      <header className="border-b border-border pb-6">
+        <p className="label-mono text-muted-foreground">Canonical evaluation dossier</p>
+        <h1 className="mt-2 font-serif text-4xl text-foreground">{evalOpp.role}</h1>
+        <p className="mt-2 text-muted-foreground">{evalOpp.company} · {evalOpp.location}</p>
+      </header>
+
+      <section className="memo-card space-y-3" aria-label="Canonical recommendation">
+        <p className="label-mono text-muted-foreground">Engine recommendation</p>
+        <p className="text-2xl font-serif text-foreground">{dossierState.engineVerdict ?? "Recommendation unavailable"}</p>
+        <p className="text-sm text-muted-foreground">Fit index: {evalOpp.engineRecommendation?.qualityScore ?? "Unknown"}</p>
+        <p className="text-xs font-mono text-muted-foreground">Evaluation: {dossierState.evaluationFingerprint ?? "Unknown"}</p>
+        <p className="text-xs font-mono text-muted-foreground">Review state: {evalOpp.reviewState}</p>
+      </section>
+
+      <section className="memo-card space-y-3" aria-label="Your decision">
+        <p className="label-mono text-muted-foreground">Your decision</p>
+        <p className="text-sm text-muted-foreground">{dossierState.userDecision ?? "No user decision recorded"}</p>
+        <div className="flex flex-wrap gap-2">
+          {(["PURSUE", "CONSIDER", "PASS"] as DecisionVerb[]).map((verb) => (
+            <button key={verb} type="button" onClick={() => decide(verb)} className="memo-badge border border-border text-foreground hover:bg-surface-raised">
+              {verb}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <nav className="flex justify-between text-sm">
+        {neighbors?.prev ? <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.prev }}>Previous</Link> : <span />}
+        <span className="text-muted-foreground">{currentIndex} of {totalCount}</span>
+        {neighbors?.next ? <Link to="/opportunity/$jobHash" params={{ jobHash: neighbors.next }}>Next</Link> : <span />}
+      </nav>
+    </main>
   );
 }
 
