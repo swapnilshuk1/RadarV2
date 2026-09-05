@@ -64,8 +64,8 @@ export interface AcquisitionLedgerItem {
   title: string;
   companyName: string;
   location?: string;
-  state: "DISCOVERED" | "QUEUED" | "CLAIMED" | "ACQUIRING" | "VALIDATED" | "ENRICHED" | "EVALUATED";
-  terminalState?: "DUPLICATE" | "CHALLENGE" | "PERMANENT_FAILURE" | "EXPIRED" | "DISCARDED";
+  state: "DISCOVERED" | "QUEUED" | "CLAIMED" | "ACQUIRING" | "VALIDATED" | "ENRICHED" | "EVALUATED" | "IDENTITY_UNRESOLVED";
+  terminalState?: "DUPLICATE" | "CHALLENGE" | "PERMANENT_FAILURE" | "EXPIRED" | "DISCARDED" | "UNRESOLVED_EXTERNAL_LISTING_IDENTITY";
   claimedBy?: string;
   claimedAt?: string;
   leaseExpiresAt?: string;
@@ -119,6 +119,15 @@ export interface AcquisitionStore {
   }): Promise<void>;
 
   upsertDiscoveredJob(item: Omit<AcquisitionLedgerItem, "id" | "createdAt" | "updatedAt"> & { id?: string }): Promise<AcquisitionLedgerItem>;
+  /**
+   * Rebinds a provisional discovery ledger entry to a verified external
+   * listing identity. If already observed, returns that authoritative entry
+   * and preserves the provisional discovery observation for audit.
+   */
+  rebindDiscoveredJobIdentity(
+    ledgerId: string,
+    identity: Pick<AcquisitionLedgerItem, "canonicalJobId" | "sourcePortal" | "sourceJobId" | "canonicalUrl">
+  ): Promise<AcquisitionLedgerItem>;
   getLedgerItemByCanonicalId(sourcePortal: string, canonicalJobId: string): Promise<AcquisitionLedgerItem | undefined>;
   claimQueuedJobs(workerId: string, limit?: number, leaseMs?: number): Promise<AcquisitionLedgerItem[]>;
   updateJobState(id: string, updates: Partial<AcquisitionLedgerItem>): Promise<void>;

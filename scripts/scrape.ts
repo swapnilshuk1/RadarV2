@@ -32,7 +32,7 @@ import { normalizeUrl } from "./scraper/utils/url";
 import { getDatabaseAdapter } from "../src/data/database";
 import { fastFetchDetail } from "./scraper/utils/http-fetch";
 import { EnrichmentQueue } from "./scraper/persist/queue";
-import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
+import { resolveCanonicalIdentity, resolveVerifiedIndeedListingIdentity } from "../src/lib/acquisition/canonical-identity";
 import { FailurePolicyEngine } from "../src/lib/acquisition/failure-taxonomy";
 import { ResponseValidator } from "../src/lib/acquisition/validator";
 import { passesHardFilter } from "./scraper/utils/hard-filter";
@@ -1109,6 +1109,28 @@ async function processUnit(
             extractedDescription: detail.rawText
           });
 
+          // A sponsored Indeed URL is admissible only after the browser has
+          // landed on a verified /viewjob?jk= listing. Discovery URL tokens
+          // remain audit evidence but can never become canonical identity.
+          if (unit.portal === "Indeed" && !resolveVerifiedIndeedListingIdentity(detail.finalUrl || "")) {
+            const failureClass = "UNRESOLVED_EXTERNAL_LISTING_IDENTITY";
+            await repos.acquisition.updateJobState(ledgerItem.id, {
+              state: "IDENTITY_UNRESOLVED",
+              terminalState: failureClass,
+              lastFailureClass: failureClass,
+            });
+            await recordLineage(
+              ledgerItem.id,
+              identity.sourceJobId,
+              feedCard.detailUrl,
+              valResult,
+              undefined,
+              failureClass,
+            );
+            mgr.updateCard(cardUnitId, { status: "failed", error: `Validation failed: ${failureClass}` });
+            return null;
+          }
+
           if (!valResult.isValid || !detail.fetched) {
             const failureClass = valResult.failureClass || (detail.fetchError?.includes("< 200") ? "INSUFFICIENT_CONTENT" : "UNKNOWN_FAILURE");
             // Isolate external ATS failure from Naukri portal health/circuit-breaker
@@ -1164,9 +1186,16 @@ async function processUnit(
           // Re-derive canonical identity with resolved company
           const resolvedIdentity = resolveCanonicalIdentity({
             portal: unit.portal,
-            url: feedCard.detailUrl,
+            url: detail.finalUrl || feedCard.detailUrl,
             title: feedCard.title,
             companyName: effectiveCompany
+          });
+
+          const normalizedLedger = await repos.acquisition.rebindDiscoveredJobIdentity(ledgerItem.id, {
+            canonicalJobId: resolvedIdentity.canonicalJobId,
+            sourcePortal: resolvedIdentity.sourcePortal,
+            sourceJobId: resolvedIdentity.sourceJobId,
+            canonicalUrl: resolvedIdentity.canonicalUrl,
           });
 
           detailedCard = {
@@ -1189,7 +1218,7 @@ async function processUnit(
           mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: snapshotPath });
 
           // 5. Record Validated State in Ledger & Merge Opportunity in SQLite
-          await repos.acquisition.updateJobState(ledgerItem.id, {
+          await repos.acquisition.updateJobState(normalizedLedger.id, {
             state: "VALIDATED",
             lastAcquiredAt: new Date().toISOString(),
             acquisitionQuality: valResult.quality,
@@ -1231,7 +1260,8 @@ async function processUnit(
             const ingestRes = await canonicalIngest.ingestOpportunity({
               sourcePortal: unit.portal,
               sourceJobId: resolvedIdentity.sourceJobId,
-              canonicalUrl: feedCard.detailUrl,
+              canonicalUrl: resolvedIdentity.canonicalUrl,
+              finalUrl: detail.finalUrl,
               jobTitle: feedCard.title,
               documentTitle: detail.extractedTitle,
               companyName: feedCard.company,
@@ -1275,7 +1305,7 @@ async function processUnit(
               mgr.recordTelemetry("evaluationJobsEnqueued", ingestRes.jobsEnqueued);
             }
             await recordLineage(
-              ledgerItem.id,
+              normalizedLedger.id,
               resolvedIdentity.sourceJobId,
               feedCard.detailUrl,
               valResult,
@@ -1286,7 +1316,7 @@ async function processUnit(
             mgr.recordTelemetry("canonicalIngestFailure");
             if (lineageScope) {
               await recordLineage(
-                ledgerItem.id,
+                normalizedLedger.id,
                 resolvedIdentity.sourceJobId,
                 feedCard.detailUrl,
                 valResult,

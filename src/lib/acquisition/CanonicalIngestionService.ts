@@ -39,6 +39,7 @@ import { isExternalPostingUrl } from "./external-posting-url";
 import { validateJobDocument } from "./validator";
 import { getBlobStore, type BlobStore } from "@/lib/storage/blob-store";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
+import { resolveVerifiedIndeedListingIdentity } from "./canonical-identity";
 
 export interface IngestOpportunityPayload {
   sourcePortal: string;
@@ -96,6 +97,13 @@ export class InvalidCanonicalUrlError extends Error {
   }
 }
 
+export class UnresolvedExternalListingIdentityError extends Error {
+  constructor(sourcePortal: string, sourceJobId: string, url: string) {
+    super(`Cannot canonically ingest ${sourcePortal}:${sourceJobId} without a verified external listing identity (${url}).`);
+    this.name = "UnresolvedExternalListingIdentityError";
+  }
+}
+
 /**
  * A canonical opportunity may only represent a captured job document, or a
  * PDF payload that is explicitly pending extraction.  Failed transport and
@@ -119,14 +127,22 @@ export class CanonicalIngestionService {
     scopeFilter?: IngestScopeFilter
   ): Promise<CanonicalIngestionResult> {
     const source = payload.sourcePortal.trim();
-    const sourceJobId = payload.sourceJobId.trim();
+    let sourceJobId = payload.sourceJobId.trim();
     const title = payload.jobTitle.trim();
     const companyName = payload.companyName?.trim() || null;
     const location = payload.location || null;
     const employmentType = payload.employmentType || null;
     const postedAt = payload.postedAt || null;
     const rawContent = payload.rawContent.trim();
-    const canonicalUrl = payload.canonicalUrl.trim();
+    let canonicalUrl = payload.canonicalUrl.trim();
+    if (source.toLowerCase() === "indeed") {
+      const verifiedIdentity = resolveVerifiedIndeedListingIdentity(payload.finalUrl || canonicalUrl);
+      if (!verifiedIdentity) {
+        throw new UnresolvedExternalListingIdentityError(source, sourceJobId, payload.finalUrl || canonicalUrl);
+      }
+      sourceJobId = verifiedIdentity.sourceJobId;
+      canonicalUrl = verifiedIdentity.canonicalUrl;
+    }
     if (!isExternalPostingUrl(canonicalUrl)) {
       throw new InvalidCanonicalUrlError(source, sourceJobId);
     }

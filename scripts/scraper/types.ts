@@ -231,6 +231,8 @@ export interface DetailedCard extends FeedCard {
     fetchError?: string;
     fetchDurationMs?: number;
     httpStatus?: number;
+    /** Final destination after a bounded portal navigation. */
+    finalUrl?: string;
     quality?: "VALID" | "SPARSE" | "EMPTY" | "ERROR";
     /** Title read from the detail page; distinct from the discovery-card title. */
     extractedTitle?: string;

@@ -15,7 +15,11 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
-import { CanonicalIngestionService, InvalidCanonicalUrlError } from "@/lib/acquisition/CanonicalIngestionService";
+import {
+  CanonicalIngestionService,
+  InvalidCanonicalUrlError,
+  UnresolvedExternalListingIdentityError,
+} from "@/lib/acquisition/CanonicalIngestionService";
 import { applicationActionFor } from "@/data/opportunity-fixtures";
 import { extractExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
 
@@ -161,6 +165,80 @@ describe("Canonical Ingestion Foreign Key & Idempotency Invariants", () => {
 
     await expect(ingestionService.ingestOpportunity(payload)).rejects.toBeInstanceOf(InvalidCanonicalUrlError);
     await expect(ingestionService.ingestOpportunity({ ...payload, canonicalUrl: "https://radar.internal/jobs/linkedin/missing-url-job" })).rejects.toBeInstanceOf(InvalidCanonicalUrlError);
+  });
+
+  it("normalizes an Indeed sponsored discovery URL to its verified final jk before canonical admission", async () => {
+    const rawContent = "Own executive growth strategy, commercial performance, client leadership and team delivery. ".repeat(8);
+    const sponsored = await ingestionService.ingestOpportunity({
+      sourcePortal: "Indeed",
+      sourceJobId: "pagead-token-must-not-be-canonical",
+      canonicalUrl: "https://in.indeed.com/pagead/clk?ad=opaque-token",
+      finalUrl: "https://in.indeed.com/viewjob?jk=ABC123&from=pagead",
+      jobTitle: "Operations Director",
+      companyName: "Pinkerton",
+      location: "Gurugram, Haryana",
+      rawContent,
+    });
+    const direct = await ingestionService.ingestOpportunity({
+      sourcePortal: "Indeed",
+      sourceJobId: "abc123",
+      canonicalUrl: "https://in.indeed.com/viewjob?jk=ABC123&utm_source=search",
+      jobTitle: "Operations Director",
+      companyName: "Pinkerton",
+      location: "Gurugram, Haryana",
+      rawContent,
+    });
+
+    expect(direct.canonicalJobId).toBe(sponsored.canonicalJobId);
+    expect(direct.isNewOpportunity).toBe(false);
+    expect(await adapter.one<{ source_job_id: string; canonical_url: string }>(
+      "SELECT source_job_id, canonical_url FROM canonical_opportunities WHERE id = ?",
+      [sponsored.canonicalJobId],
+    )).toEqual({
+      source_job_id: "abc123",
+      canonical_url: "https://in.indeed.com/viewjob?jk=abc123",
+    });
+    expect((await adapter.one<{ count: number }>("SELECT COUNT(*) AS count FROM canonical_opportunities WHERE source = 'Indeed'"))?.count).toBe(1);
+  });
+
+  it("does not merge distinct Indeed listings merely because their material content is identical", async () => {
+    const shared = {
+      sourcePortal: "Indeed",
+      jobTitle: "Operations Director",
+      companyName: "Pinkerton",
+      location: "Gurugram, Haryana",
+      rawContent: "Own executive growth strategy, commercial performance, client leadership and team delivery. ".repeat(8),
+    };
+    const first = await ingestionService.ingestOpportunity({
+      ...shared,
+      sourceJobId: "abc123",
+      canonicalUrl: "https://in.indeed.com/viewjob?jk=ABC123",
+    });
+    const second = await ingestionService.ingestOpportunity({
+      ...shared,
+      sourceJobId: "xyz789",
+      canonicalUrl: "https://in.indeed.com/viewjob?jk=XYZ789",
+    });
+
+    expect(first.contentHash).toBe(second.contentHash);
+    expect(first.canonicalJobId).not.toBe(second.canonicalJobId);
+    expect((await adapter.one<{ count: number }>(
+      "SELECT COUNT(*) AS count FROM canonical_opportunities WHERE source = 'Indeed'",
+    ))?.count).toBe(2);
+  });
+
+  it("rejects an Indeed sponsored URL that cannot prove a final stable listing identity", async () => {
+    await expect(ingestionService.ingestOpportunity({
+      sourcePortal: "Indeed",
+      sourceJobId: "opaque-ad-token",
+      canonicalUrl: "https://in.indeed.com/pagead/clk?ad=opaque-token",
+      finalUrl: "https://example.invalid/not-an-indeed-listing",
+      jobTitle: "Operations Director",
+      companyName: "Pinkerton",
+      location: "Gurugram, Haryana",
+      rawContent: "Own executive growth strategy, commercial performance, client leadership and team delivery. ".repeat(8),
+    })).rejects.toBeInstanceOf(UnresolvedExternalListingIdentityError);
+    expect((await adapter.one<{ count: number }>("SELECT COUNT(*) AS count FROM canonical_opportunities"))?.count).toBe(0);
   });
 
   it("labels a historical internal URL as a portal search, never as direct application", () => {

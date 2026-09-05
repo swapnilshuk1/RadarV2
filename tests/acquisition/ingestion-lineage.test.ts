@@ -143,4 +143,97 @@ describe("acquisition ingestion lineage", () => {
       tenantId: "tenant-other",
     })).rejects.toThrow("does not belong to the supplied tenant/person scope");
   });
+
+  it("preserves the sponsored discovery URL while rebinding lineage to the verified Indeed listing identity", async () => {
+    const sqlite = new Database(":memory:");
+    createSchema(sqlite);
+    const store = new SqliteAcquisitionStore(new TestAdapter(sqlite));
+    sqlite.exec(`ALTER TABLE acquisition_ledger ADD COLUMN canonical_job_id TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN source_portal TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN source_job_id TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN canonical_url TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN state TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN terminal_state TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN updated_at TEXT;`);
+    sqlite.prepare(`UPDATE acquisition_ledger
+                       SET canonical_job_id = ?, source_portal = ?, source_job_id = ?, canonical_url = ?, state = ?, updated_at = CURRENT_TIMESTAMP
+                     WHERE id = ?`)
+      .run("indeed:url_provisional", "Indeed", "provisional", "https://in.indeed.com/pagead/clk?ad=opaque", "QUEUED", "ledger-a");
+
+    const ledger = await store.rebindDiscoveredJobIdentity("ledger-a", {
+      canonicalJobId: "indeed:jk_abc123",
+      sourcePortal: "Indeed",
+      sourceJobId: "abc123",
+      canonicalUrl: "https://in.indeed.com/viewjob?jk=abc123",
+    });
+    expect(ledger.canonicalJobId).toBe("indeed:jk_abc123");
+    expect(ledger.canonicalUrl).toBe("https://in.indeed.com/viewjob?jk=abc123");
+
+    const recorded = await store.recordIngestionLineage({
+      scrapeRunId: "run-a",
+      tenantId: "tenant-a",
+      personId: "person-a",
+      acquisitionLedgerId: ledger.id,
+      cardId: "indeed:unit-1#sponsored",
+      ingestionAttempt: 1,
+      sourcePortal: "Indeed",
+      sourceJobId: "abc123",
+      sourceUrl: "https://in.indeed.com/pagead/clk?ad=opaque",
+      captureState: "CAPTURED",
+      documentState: "SUBSTANTIVE",
+      contentHash: "content-hash-a",
+      canonicalJobId: "job-a",
+      opportunityVersion: "version-a",
+    });
+    expect(recorded.sourceUrl).toBe("https://in.indeed.com/pagead/clk?ad=opaque");
+    expect(recorded.sourceJobId).toBe("abc123");
+  });
+
+  it("keeps one verified Indeed identity while retaining repeated discovery observations", async () => {
+    const sqlite = new Database(":memory:");
+    createSchema(sqlite);
+    const store = new SqliteAcquisitionStore(new TestAdapter(sqlite));
+    sqlite.exec(`ALTER TABLE acquisition_ledger ADD COLUMN canonical_job_id TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN source_portal TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN source_job_id TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN canonical_url TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN state TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN terminal_state TEXT;
+                 ALTER TABLE acquisition_ledger ADD COLUMN updated_at TEXT;`);
+    sqlite.prepare("INSERT INTO acquisition_ledger (id) VALUES ('ledger-b')").run();
+    const provision = sqlite.prepare(`UPDATE acquisition_ledger
+      SET canonical_job_id = ?, source_portal = ?, source_job_id = ?, canonical_url = ?, state = ?
+      WHERE id = ?`);
+    provision.run("indeed:url_first", "Indeed", "first", "https://in.indeed.com/pagead/clk?ad=first", "QUEUED", "ledger-a");
+    provision.run("indeed:url_repeat", "Indeed", "repeat", "https://in.indeed.com/pagead/clk?ad=repeat", "QUEUED", "ledger-b");
+
+    const identity = {
+      canonicalJobId: "indeed:jk_abc123",
+      sourcePortal: "Indeed" as const,
+      sourceJobId: "abc123",
+      canonicalUrl: "https://in.indeed.com/viewjob?jk=abc123",
+    };
+    const first = await store.rebindDiscoveredJobIdentity("ledger-a", identity);
+    const repeated = await store.rebindDiscoveredJobIdentity("ledger-b", identity);
+
+    expect(repeated.id).toBe(first.id);
+    expect(sqlite.prepare("SELECT state, terminal_state FROM acquisition_ledger WHERE id = 'ledger-b'").get())
+      .toEqual({ state: "IDENTITY_RESOLVED", terminal_state: "SUPERSEDED_BY_VERIFIED_IDENTITY" });
+
+    await store.recordIngestionLineage({
+      scrapeRunId: "run-a", tenantId: "tenant-a", personId: "person-a", acquisitionLedgerId: first.id,
+      cardId: "indeed:unit-1#first", ingestionAttempt: 1, sourcePortal: "Indeed", sourceJobId: "abc123",
+      sourceUrl: "https://in.indeed.com/pagead/clk?ad=first", captureState: "CAPTURED", documentState: "SUBSTANTIVE",
+      contentHash: "content-hash-a", canonicalJobId: "job-a", opportunityVersion: "version-a",
+    });
+    await store.recordIngestionLineage({
+      scrapeRunId: "run-a", tenantId: "tenant-a", personId: "person-a", acquisitionLedgerId: repeated.id,
+      cardId: "indeed:unit-1#repeat", ingestionAttempt: 1, sourcePortal: "Indeed", sourceJobId: "abc123",
+      sourceUrl: "https://in.indeed.com/pagead/clk?ad=repeat", captureState: "CAPTURED", documentState: "SUBSTANTIVE",
+      contentHash: "content-hash-a", canonicalJobId: "job-a", opportunityVersion: "version-a",
+    });
+
+    expect(sqlite.prepare("SELECT COUNT(*) AS count FROM acquisition_ingestion_lineage WHERE source_job_id = 'abc123'").get())
+      .toEqual({ count: 2 });
+  });
 });

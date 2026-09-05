@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { naukriHandler } from "../../scripts/scraper/portals/naukri";
 import { checkLinkedInSessionState } from "../../scripts/scraper/portals/linkedin";
-import { resolveCanonicalIdentity } from "../../src/lib/acquisition/canonical-identity";
+import {
+  resolveCanonicalIdentity,
+  resolveVerifiedIndeedListingIdentity,
+} from "../../src/lib/acquisition/canonical-identity";
 import { SearchPlanner } from "../../scripts/scraper/run/search-planner";
 
 describe("Scraper Bottleneck Fixes & Optimization Regression Tests", () => {
@@ -31,6 +34,24 @@ describe("Scraper Bottleneck Fixes & Optimization Regression Tests", () => {
     expect(identity1.canonicalUrl).toBe("https://www.naukri.com/job-listings-vp-marketing-tech-corp-delhi-123456");
     expect(identity1.canonicalUrl).toBe(identity2.canonicalUrl);
     expect(identity1.canonicalJobId).toBe(identity2.canonicalJobId);
+  });
+
+  it("P0: Indeed accepts only a verified viewjob jk as stable listing identity", () => {
+    const verified = resolveVerifiedIndeedListingIdentity("https://in.indeed.com/viewjob?jk=ABC123&utm_source=search");
+    const sponsored = resolveCanonicalIdentity({
+      portal: "Indeed",
+      url: "https://in.indeed.com/pagead/clk?ad=opaque-token",
+      title: "Operations Director",
+      companyName: "Pinkerton",
+    });
+
+    expect(verified).toMatchObject({
+      canonicalJobId: "indeed:jk_abc123",
+      sourceJobId: "abc123",
+      canonicalUrl: "https://in.indeed.com/viewjob?jk=abc123",
+    });
+    expect(sponsored.identityMethod).toBe("URL_FINGERPRINT");
+    expect(resolveVerifiedIndeedListingIdentity("https://outside.example/viewjob?jk=abc123")).toBeUndefined();
   });
 
   it("P1: LinkedIn checkLinkedInSessionState detects AUTH_MISSING when li_at cookie is absent", async () => {

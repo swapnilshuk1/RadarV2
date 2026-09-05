@@ -6,6 +6,8 @@ import { humanize, jitter, sleep } from "../utils/jitter";
 import { passesHardFilter } from "../utils/hard-filter";
 import { normalizePostingDate } from "../utils/date";
 
+const MAX_LISTING_REDIRECT_HOPS = 5;
+
 export const indeedHandler: PortalHandler = {
   name: "Indeed",
   detailStrategy: "browser",
@@ -221,12 +223,25 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
 
   const doExtract = async () => {
     try {
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
+      const navigation = await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
+      let redirectHops = 0;
+      let request = navigation?.request();
+      while (request?.redirectedFrom()) {
+        redirectHops += 1;
+        request = request.redirectedFrom();
+      }
+      if (redirectHops > MAX_LISTING_REDIRECT_HOPS) {
+        return {
+          fetched: false,
+          fetchError: `Indeed redirect chain exceeded ${MAX_LISTING_REDIRECT_HOPS} hops`,
+          fetchDurationMs: Date.now() - t0,
+          finalUrl: page.url(),
+        };
+      }
       await jitter(400, 900);
 
       // Check current page URL (might have followed an external ATS redirect from /rc/clk)
       const currentUrl = page.url();
-      const isExternalAts = !currentUrl.includes("indeed.com");
 
       const candidateSelectors = [
         "#jobDescriptionText",
@@ -290,6 +305,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         rawHtml,
         rawText: trimmedText,
         fetchDurationMs: Date.now() - t0,
+        finalUrl: currentUrl,
         quality: trimmedText.length < 200 ? ("SPARSE" as const) : ("VALID" as const),
         extractedTitle,
       };

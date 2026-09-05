@@ -43,3 +43,14 @@ Baseline:
 
 ## Deferred
 - Gate 1 remediations 1 and 3 through 5 remain deferred pending external review of this isolated authorization change.
+
+## Gate 5 — Indeed canonical identity normalization (closure candidate)
+
+- NCR bounded reach is verified for the controlled VP Growth, one-page cohort. The cohort is not authorization for expanded NCR discovery.
+- Expansion is blocked by a reviewed Indeed ingress defect: sponsored `pagead/clk` discovery URLs and direct `viewjob?jk=` URLs for the same Pinkerton listing admitted separate canonical opportunities.
+- Repair status: implemented and locally validated. Indeed canonical admission now requires a verified final `/viewjob?jk=` URL, derives identity from the stable `jk`, and fails closed with `UNRESOLVED_EXTERNAL_LISTING_IDENTITY` when that identity cannot be verified.
+- Discovery provenance is preserved: `acquisition_ingestion_lineage.source_url` retains the original discovered URL, while the acquisition ledger and canonical opportunity carry the verified direct listing URL and stable source job ID. Repeated observations may accumulate lineage but cannot create another canonical identity.
+- No content-hash merge was introduced. Identical JDs with distinct verified Indeed `jk` values remain distinct canonical opportunities.
+- No migration is required: the existing acquisition ledger and ingestion-lineage fields represent both original discovery and resolved canonical identity without overloading content fields.
+- Existing Pinkerton duplicate records are not merged, deleted, rewritten, or re-keyed by this repair. Their reconciliation remains a separately authorized operator action.
+- This gate does not change Oracle fail-closed raw-enrichment behavior, acquisition-host payload recovery, evaluation/materialization semantics, scores, decisions, or the active serving context.

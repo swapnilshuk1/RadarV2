@@ -175,6 +175,41 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
     return this.mapLedgerRow(row);
   }
 
+  async rebindDiscoveredJobIdentity(
+    ledgerId: string,
+    identity: Pick<AcquisitionLedgerItem, "canonicalJobId" | "sourcePortal" | "sourceJobId" | "canonicalUrl">
+  ): Promise<AcquisitionLedgerItem> {
+    await this.ensureTableExists();
+    return this.db.transaction(async (tx) => {
+      const current = await tx.one<any>("SELECT * FROM acquisition_ledger WHERE id = ?", [ledgerId]);
+      if (!current) throw new Error(`[SqliteAcquisitionStore] acquisition ledger ${ledgerId} was not found.`);
+
+      const existing = await tx.one<any>(
+        `SELECT * FROM acquisition_ledger WHERE source_portal = ? AND canonical_job_id = ?`,
+        [identity.sourcePortal, identity.canonicalJobId],
+      );
+      if (existing && existing.id !== ledgerId) {
+        await tx.execute(
+          `UPDATE acquisition_ledger
+              SET state = 'IDENTITY_RESOLVED', terminal_state = 'SUPERSEDED_BY_VERIFIED_IDENTITY', updated_at = ?
+            WHERE id = ?`,
+          [new Date().toISOString(), ledgerId],
+        );
+        return this.mapLedgerRow(existing);
+      }
+
+      await tx.execute(
+        `UPDATE acquisition_ledger
+            SET canonical_job_id = ?, source_portal = ?, source_job_id = ?, canonical_url = ?, updated_at = ?
+          WHERE id = ?`,
+        [identity.canonicalJobId, identity.sourcePortal, identity.sourceJobId, identity.canonicalUrl, new Date().toISOString(), ledgerId],
+      );
+      const rebound = await tx.one<any>("SELECT * FROM acquisition_ledger WHERE id = ?", [ledgerId]);
+      if (!rebound) throw new Error(`[SqliteAcquisitionStore] rebound ledger ${ledgerId} was not readable.`);
+      return this.mapLedgerRow(rebound);
+    });
+  }
+
   async claimQueuedJobs(
     workerId: string,
     limit = 10,
