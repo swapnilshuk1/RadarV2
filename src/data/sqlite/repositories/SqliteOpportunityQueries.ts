@@ -166,13 +166,15 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
 
          -- Authoritative Population Tier
          CASE 
+           WHEN spc.attention_decision = 'NOT_CANDIDATE' THEN 4
+           WHEN me.decision IS NULL OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'INVALID') OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS') OR me.quality_score IS NULL OR me.evaluation_fingerprint IS NULL THEN 4
            WHEN d.action = 'PASS' THEN 5
            WHEN d.action = 'PURSUE' THEN
              CASE 
                WHEN me.decision = 'PASS' OR me.vetoed = 1 THEN 2
                WHEN me.decision = 'PURSUE' THEN 0
                WHEN me.decision = 'CONSIDER' THEN 1
-               ELSE 0
+               ELSE 4
              END
            WHEN d.action = 'CONSIDER' THEN
              CASE 
@@ -342,13 +344,15 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            -- 1=explicit promotion/consider override, 2=vetoed promotion,
            -- 3=engine CONSIDER, 4=non-actionable/invalid, 5=PASS.
            CASE 
+             WHEN spc.attention_decision = 'NOT_CANDIDATE' THEN 4
+             WHEN me.decision IS NULL OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'INVALID') OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS') OR me.quality_score IS NULL OR me.evaluation_fingerprint IS NULL THEN 4
              WHEN d.action = 'PASS' THEN 5
              WHEN d.action = 'PURSUE' THEN
                CASE 
                  WHEN me.decision = 'PASS' OR me.vetoed = 1 THEN 2
                  WHEN me.decision = 'PURSUE' THEN 0
                  WHEN me.decision = 'CONSIDER' THEN 1
-                 ELSE 0
+               ELSE 4
                END
              WHEN d.action = 'CONSIDER' THEN
                CASE 
@@ -641,7 +645,12 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          COALESCE(ov.job_title, 'Executive Opportunity') AS role,
          COALESCE(co.source, 'Unknown') AS source,
          me.decision AS decision,
-         CASE WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 'SPARSE_SPEC' WHEN me.id IS NOT NULL THEN 'COMPLETE' ELSE 'UNMATERIALIZED' END AS evaluation_state,
+         CASE
+           WHEN me.evaluation_state IN ('SPARSE_SPEC', 'PROFILE_REQUIRED', 'NOT_EVALUABLE', 'INVALID') THEN me.evaluation_state
+           WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') THEN me.evaluation_state
+           WHEN me.id IS NOT NULL THEN 'INVALID'
+           ELSE 'UNMATERIALIZED'
+         END AS evaluation_state,
          COALESCE(me.vetoed, 0) AS vetoed,
          COALESCE(d.action, 'NONE') AS action,
          me.quality_score AS quality_score,
@@ -694,7 +703,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       else portalMetrics.other++;
 
       const isEvaluated =
-        r.evaluation_state === "COMPLETE" &&
+        (r.evaluation_state === "COMPLETE" || r.evaluation_state === "EVALUATED") &&
         (r.decision === "PURSUE" || r.decision === "CONSIDER" || r.decision === "PASS") &&
         r.quality_score !== null &&
         Boolean(r.evaluation_fingerprint);
@@ -704,38 +713,16 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         : null;
 
       if (isEvaluated) {
-        // Effective Decision Precedence for Evaluated Opportunity
-        let eff: string;
-        if (r.action === "PASS") {
-          eff = "USER_PASSED";
-        } else if (r.action === "PURSUE") {
-          if (engineVerb === "PASS" || r.vetoed === 1) eff = "VETO_OVERRIDE";
-          else if (engineVerb === "PURSUE") eff = "USER_CONFIRMED";
-          else if (engineVerb === "CONSIDER") eff = "PREFERENCE_OVERRIDE";
-          else eff = "USER_CONFIRMED";
-        } else if (r.action === "CONSIDER") {
-          if (engineVerb === "CONSIDER") eff = "ENGINE_CONSIDER";
-          else eff = "PREFERENCE_OVERRIDE";
-        } else if (engineVerb === "PURSUE") {
-          eff = "ENGINE_PURSUIT";
-        } else if (engineVerb === "CONSIDER") {
-          eff = "ENGINE_CONSIDER";
-        } else {
-          eff = "ENGINE_PASS";
-        }
-
-        if (eff === "ENGINE_PURSUIT" || eff === "USER_CONFIRMED" || eff === "VETO_OVERRIDE") {
-          effectiveBreakdown.pursue++;
-        } else if (eff === "PREFERENCE_OVERRIDE" || eff === "ENGINE_CONSIDER") {
-          effectiveBreakdown.consider++;
-        } else if (eff === "NOT_EVALUABLE") {
-          effectiveBreakdown.sparse++;
-        } else {
-          effectiveBreakdown.pass++;
-        }
+        const effectiveVerb = r.action === "PURSUE" || r.action === "CONSIDER" || r.action === "PASS"
+          ? r.action
+          : engineVerb!;
+        if (effectiveVerb === "PURSUE") effectiveBreakdown.pursue++;
+        else if (effectiveVerb === "CONSIDER") effectiveBreakdown.consider++;
+        else effectiveBreakdown.pass++;
 
         const isShortlisted = engineVerb === "PURSUE" || engineVerb === "CONSIDER";
         const cats = parseCategoryIds(r.category_ids);
+        if (r.evaluation_state === "SPARSE_SPEC" && !cats.includes("needs_more_signal")) cats.push("needs_more_signal");
 
         for (const cat of cats) {
           if (categoryCounts[cat]) {
@@ -749,6 +736,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         effectiveBreakdown.sparse++;
 
         const cats = parseCategoryIds(r.category_ids);
+        if (r.evaluation_state === "SPARSE_SPEC" && !cats.includes("needs_more_signal")) cats.push("needs_more_signal");
 
         for (const cat of cats) {
           if (categoryCounts[cat]) {
@@ -1219,9 +1207,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          SELECT 
            co.source_job_id AS job_hash,
            COALESCE(ov.job_title, 'Executive Opportunity') AS role,
-           CASE 
-             WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 'SPARSE_SPEC'
-             WHEN me.id IS NOT NULL THEN 'COMPLETE'
+           CASE
+             WHEN me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'INVALID') THEN me.evaluation_state
+             WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') THEN me.evaluation_state
+             WHEN me.id IS NOT NULL THEN 'INVALID'
              ELSE 'UNMATERIALIZED'
            END AS evaluation_state,
            me.decision AS engine_verdict,
@@ -1234,6 +1223,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          -- 1=explicit promotion/consider override, 2=vetoed promotion,
          -- 3=engine CONSIDER, 4=non-actionable/invalid, 5=PASS.
            CASE 
+             WHEN spc.attention_decision = 'NOT_CANDIDATE' THEN 4
+             WHEN me.decision IS NULL OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'INVALID') OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS') OR me.quality_score IS NULL OR me.evaluation_fingerprint IS NULL THEN 4
              WHEN d.action = 'PASS' THEN 5
              WHEN d.action = 'PURSUE' THEN
                CASE 

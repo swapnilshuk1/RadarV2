@@ -9,7 +9,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev": "vite",
+    "dev": "npm run db:migrate && vite",
     "benchmark": "npx @dotenvx/dotenvx run -- npx tsx scripts/qa-eval.ts",
     "build": "vite build",
     "build:dev": "vite build --mode development",
@@ -36,6 +36,7 @@
     "test:eqe": "npm run certify",
     "db:reset-corpus": "tsx scripts/db/reset-corpus.ts --confirm",
     "deploy": "tsx scripts/deploy.ts"
+    ,"db:migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

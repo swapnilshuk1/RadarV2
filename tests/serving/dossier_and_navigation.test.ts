@@ -376,5 +376,23 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
       const nav = await queries.getNavigation(scope, "invalid_job_hash_12345");
       expect(nav).toBeNull();
     });
+
+    it("keeps invalid artifacts with an explicit decision in the non-actionable tier across feed, raw feed, and navigation", async () => {
+      await seedItem({ id: "valid", title: "Valid", engineVerdict: "PURSUE", score: 95 });
+      await seedItem({ id: "invalid_decision", title: "Invalid", engineVerdict: "PURSUE", score: 90, evaluationState: "INVALID", userAction: "PURSUE" });
+
+      const resolved = await resolveServingScope("person_A", "tenant_A", db);
+      const raw = await queries.getFeedRaw(scope, resolved.activeContext!);
+      const feed = await queries.getFeed(scope, undefined, undefined, 10);
+      const invalidRaw = raw.find((item) => item.jobHash === "invalid_decision");
+      const invalidFeed = feed.items.find((item) => item.jobHash === "invalid_decision");
+      const navigation = await queries.getNavigation(scope, "invalid_decision");
+
+      expect(invalidRaw?.populationTier).toBe(4);
+      expect(invalidFeed?.populationTier).toBe(4);
+      expect(invalidFeed?.evaluationState).toBe("INVALID");
+      expect(invalidFeed?.effectiveDecision).toBe("PURSUE");
+      expect(navigation?.currentIndex).toBe(2);
+    });
   });
 });

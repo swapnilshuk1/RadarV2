@@ -18,7 +18,7 @@ import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
-import { reconcileEvaluationPopulation } from "../../src/lib/intelligence/metric-integrity";
+import { MetricIntegrityValidator, reconcileEvaluationPopulation } from "../../src/lib/intelligence/metric-integrity";
 
 describe("Phase 7: SQL Metrics Aggregation Suite", () => {
   let sqliteDb: Database.Database;
@@ -172,6 +172,8 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
         invalid: 0,
       });
       expect(metrics.integrity.status).toBe("PASS");
+      expect(metrics.categoryMetrics?.needs_more_signal.total).toBe(1);
+      expect(metrics.categoryMetrics?.needs_more_signal.unreviewed).toBe(1);
 
       // User Breakdown
       expect(metrics.userBreakdown.pursue).toBe(4); // 1, 2, 3, 4
@@ -182,7 +184,7 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       // rewrite the engine recommendation or engine shortlist population.
       expect(metrics.engineBreakdown.consider).toBe(3);
       expect(metrics.userBreakdown.pursue).toBe(4);
-      expect(metrics.effectiveBreakdown.pursue).toBe(3);
+      expect(metrics.effectiveBreakdown.pursue).toBe(4);
 
       // Decision Metrics Overrides
       expect(metrics.decisionMetrics?.userConfirmed).toBe(1); // item 4
@@ -191,8 +193,8 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       expect(metrics.decisionMetrics?.userPassed).toBe(1); // item 8
 
       // Effective Breakdown
-      expect(metrics.effectiveBreakdown.pursue).toBe(3); // 1 (veto), 2 (veto), 4 (confirmed) -> 3
-      expect(metrics.effectiveBreakdown.consider).toBe(4); // 3 (pref), 5 (engine_consider), 6 (pref), 7 (pref) -> 4
+      expect(metrics.effectiveBreakdown.pursue).toBe(4); // explicit PURSUE decisions on 1–4
+      expect(metrics.effectiveBreakdown.consider).toBe(3); // explicit CONSIDER decisions on 5–7
       expect(metrics.effectiveBreakdown.pass).toBe(1); // explicit user PASS only
       expect(metrics.effectiveBreakdown.sparse).toBe(2); // sparse and unmaterialized are never PASS
     });
@@ -234,5 +236,30 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
     expect(metrics.engineBreakdown).toEqual({ pursue: 0, consider: 0, pass: 0, sparse: 0 });
     expect(metrics.totalShortlisted).toBe(0);
     expect(metrics.integrity.status).toBe("PASS");
+  });
+
+  it("rejects compensating state and engine-verdict bucket mismatches", async () => {
+    await seedItem({ id: "sparse", title: "Sparse", engineVerdict: "SPARSE_SPEC", evaluationState: "SPARSE_SPEC" });
+    await seedItem({ id: "invalid", title: "Invalid", engineVerdict: "PASS", score: null });
+    await seedItem({ id: "pursue", title: "Pursue", engineVerdict: "PURSUE" });
+    await seedItem({ id: "consider", title: "Consider", engineVerdict: "CONSIDER" });
+    const metrics = await queries.getMetrics(scope);
+
+    const stateCompensation = await MetricIntegrityValidator.validate({
+      ...metrics,
+      integrity: undefined as never,
+      evaluationPopulation: { ...metrics.evaluationPopulation, sparse: 0, invalid: 2 },
+    }, db);
+    expect(stateCompensation.status).toBe("ERROR");
+    expect(stateCompensation.discrepancies.some((check) => check.code === "CHECK_STATE_SPARSE")).toBe(true);
+
+    const verdictCompensation = await MetricIntegrityValidator.validate({
+      ...metrics,
+      integrity: undefined as never,
+      engineBreakdown: { ...metrics.engineBreakdown, pursue: 2, consider: 0 },
+    }, db);
+    expect(verdictCompensation.status).toBe("ERROR");
+    expect(verdictCompensation.discrepancies.some((check) => check.code === "CHECK_ENGINE_PURSUIT")).toBe(true);
+    expect(verdictCompensation.discrepancies.some((check) => check.code === "CHECK_ENGINE_CONSIDER")).toBe(true);
   });
 });

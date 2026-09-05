@@ -69,6 +69,19 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
     expect(tableNames).toContain("decisions");
     expect(tableNames).toContain("candidate_evaluations");
     expect(tableNames).toContain("evaluation_jobs");
+
+    const evaluationColumns = await inMemoryAdapter.many<{ name: string }>("PRAGMA table_info(materialized_evaluations)");
+    const versionColumns = await inMemoryAdapter.many<{ name: string }>("PRAGMA table_info(opportunity_versions)");
+    expect(evaluationColumns.map((column) => column.name)).toContain("evaluation_fingerprint");
+    expect(versionColumns.map((column) => column.name)).toContain("category_ids");
+    expect(result.applied).toContain("037_materialized_evaluation_fingerprint.sql");
+    expect(result.applied).toContain("038_opportunity_version_category_projection.sql");
+    await expect(inMemoryAdapter.many(
+      `SELECT me.evaluation_fingerprint, ov.category_ids
+       FROM opportunity_versions ov
+       LEFT JOIN materialized_evaluations me ON me.opportunity_version = ov.id
+       LIMIT 1`,
+    )).resolves.toEqual([]);
   });
 
   it("3. Verifies migration ordering and bookkeeping", async () => {
