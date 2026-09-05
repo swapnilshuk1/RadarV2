@@ -18,6 +18,7 @@ import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
+import { reconcileEvaluationPopulation } from "../../src/lib/intelligence/metric-integrity";
 
 describe("Phase 7: SQL Metrics Aggregation Suite", () => {
   let sqliteDb: Database.Database;
@@ -50,6 +51,8 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
     vetoed?: number;
     evaluationState?: string;
     userAction?: string;
+    score?: number | null;
+    evaluationFingerprint?: string | null;
   }) {
     const oppId = `opp_${params.id}`;
     const verId = `ver_${params.id}`;
@@ -74,13 +77,15 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
 
     if (params.evaluationState !== "UNMATERIALIZED") {
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, decision, quality_score, evaluation_state, vetoed, evaluation_json)
-         VALUES (?, 'tenant_A', 'person_A', ?, ?, 'fingerprint_A', ?, 85, ?, ?, '{}')`,
+        `INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, evaluation_fingerprint, decision, quality_score, evaluation_state, vetoed, evaluation_json)
+         VALUES (?, 'tenant_A', 'person_A', ?, ?, 'fingerprint_A', ?, ?, ?, ?, ?, '{}')`,
         [
           `eval_${params.id}`,
           oppId,
           verId,
+          params.evaluationFingerprint === undefined ? `evaluation_${params.id}` : params.evaluationFingerprint,
           params.engineVerdict,
+          params.score === undefined ? 85 : params.score,
           params.evaluationState || "COMPLETE",
           params.vetoed ?? 0,
         ]
@@ -142,7 +147,7 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       // 9. NONE + SPARSE -> unreviewedSparse
       await seedItem({ id: "9", title: "Founder-led COO", engineVerdict: "SPARSE_SPEC", evaluationState: "SPARSE_SPEC", userAction: "NONE" });
 
-      // 10. NONE + UNMATERIALIZED -> unmaterialized pass
+      // 10. NONE + UNMATERIALIZED -> distinct non-evaluated state
       await seedItem({ id: "10", title: "VP Commercial", engineVerdict: null, evaluationState: "UNMATERIALIZED", userAction: "NONE" });
 
       const metrics = await queries.getMetrics(scope);
@@ -156,14 +161,28 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       // Engine Breakdown (evaluated only)
       expect(metrics.engineBreakdown.pursue).toBe(3); // 4, 6, 8
       expect(metrics.engineBreakdown.consider).toBe(3); // 2, 3, 5
-      expect(metrics.engineBreakdown.pass).toBe(4); // 1, 7 (evaluated PASS) + 9 (sparse) + 10 (unmaterialized) = 4
-      expect(metrics.engineBreakdown.sparse).toBe(0);
+      expect(metrics.engineBreakdown.pass).toBe(2); // only 1 and 7 are evaluated PASS
+      expect(metrics.engineBreakdown.sparse).toBe(1); // item 9 only
+      expect(metrics.evaluationPopulation).toEqual({
+        evaluated: 8,
+        sparse: 1,
+        unmaterialized: 1,
+        profileRequired: 0,
+        notEvaluable: 0,
+        invalid: 0,
+      });
+      expect(metrics.integrity.status).toBe("PASS");
 
       // User Breakdown
       expect(metrics.userBreakdown.pursue).toBe(4); // 1, 2, 3, 4
       expect(metrics.userBreakdown.consider).toBe(3); // 5, 6, 7
       expect(metrics.userBreakdown.pass).toBe(1); // 8
       expect(metrics.userBreakdown.total).toBe(8);
+      // A human promotion is visible in user/effective metrics but cannot
+      // rewrite the engine recommendation or engine shortlist population.
+      expect(metrics.engineBreakdown.consider).toBe(3);
+      expect(metrics.userBreakdown.pursue).toBe(4);
+      expect(metrics.effectiveBreakdown.pursue).toBe(3);
 
       // Decision Metrics Overrides
       expect(metrics.decisionMetrics?.userConfirmed).toBe(1); // item 4
@@ -174,7 +193,46 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       // Effective Breakdown
       expect(metrics.effectiveBreakdown.pursue).toBe(3); // 1 (veto), 2 (veto), 4 (confirmed) -> 3
       expect(metrics.effectiveBreakdown.consider).toBe(4); // 3 (pref), 5 (engine_consider), 6 (pref), 7 (pref) -> 4
-      expect(metrics.effectiveBreakdown.pass).toBe(3); // 8 (user_pass) + 9 (sparse) + 10 (unmat) = 3
+      expect(metrics.effectiveBreakdown.pass).toBe(1); // explicit user PASS only
+      expect(metrics.effectiveBreakdown.sparse).toBe(2); // sparse and unmaterialized are never PASS
     });
+  });
+
+  it("fails reconciliation when a canonical state bucket is deliberately omitted", () => {
+    const check = reconcileEvaluationPopulation(10, {
+      evaluated: 8,
+      sparse: 1,
+      unmaterialized: 0,
+      profileRequired: 0,
+      notEvaluable: 0,
+      invalid: 0,
+    });
+    expect(check.status).toBe("ERROR");
+    expect(check.actual).toBe(9);
+    expect(check.message).toContain("delta -1");
+  });
+
+  it("classifies corrupt evaluated artifacts as INVALID instead of PASS", async () => {
+    // The production CHECK constraint prevents this corruption; bypass it only
+    // to prove the read model remains fail-closed against damaged persistence.
+    sqliteDb.pragma("ignore_check_constraints = ON");
+    await seedItem({ id: "bad-verdict", title: "Bad Verdict", engineVerdict: "UNSUPPORTED" });
+    sqliteDb.pragma("ignore_check_constraints = OFF");
+    await seedItem({ id: "bad-score", title: "Bad Score", engineVerdict: "PASS", score: null });
+    await seedItem({ id: "bad-fingerprint", title: "Bad Fingerprint", engineVerdict: "PASS", evaluationFingerprint: null });
+
+    const metrics = await queries.getMetrics(scope);
+
+    expect(metrics.evaluationPopulation).toEqual({
+      evaluated: 0,
+      sparse: 0,
+      unmaterialized: 0,
+      profileRequired: 0,
+      notEvaluable: 0,
+      invalid: 3,
+    });
+    expect(metrics.engineBreakdown).toEqual({ pursue: 0, consider: 0, pass: 0, sparse: 0 });
+    expect(metrics.totalShortlisted).toBe(0);
+    expect(metrics.integrity.status).toBe("PASS");
   });
 });

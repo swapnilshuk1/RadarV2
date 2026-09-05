@@ -39,6 +39,7 @@ import { isExternalPostingUrl } from "./external-posting-url";
 import { validateJobDocument } from "./validator";
 import { getBlobStore, type BlobStore } from "@/lib/storage/blob-store";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
+import { classifyOpportunityCategories } from "@/lib/domain/category_taxonomy";
 
 export interface IngestOpportunityPayload {
   sourcePortal: string;
@@ -257,6 +258,10 @@ export class CanonicalIngestionService {
     let isNewOpportunity = false;
     let isNewVersion = false;
     let effectiveVersionId = versionId;
+    const categoryIds = JSON.stringify(classifyOpportunityCategories({
+      role: title,
+      description: rawContentForStorage,
+    }));
 
     await this.db.transaction(async (tx) => {
       // 3.0 Check if canonical opportunity already exists
@@ -281,10 +286,11 @@ export class CanonicalIngestionService {
         `INSERT INTO opportunity_versions (
            id, canonical_job_id, content_hash, job_title, company_name,
            location, employment_type, posted_at, posted_precision, raw_content,
+           category_ids,
            acquisition_status, acquisition_quality, failure_class, lifecycle_state, evidence_state,
            source_payload_key, source_media_type, document_extraction_state,
            created_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
          ON CONFLICT(canonical_job_id, content_hash) DO NOTHING`,
         [
           versionId,
@@ -297,6 +303,7 @@ export class CanonicalIngestionService {
           postedAt,
           payload.postedPrecision || "UNKNOWN",
           rawContentForStorage,
+          categoryIds,
           acquisitionStatus,
           acquisitionQuality,
           failureClass,

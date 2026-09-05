@@ -886,6 +886,7 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
         totalDecisions: 0,
         remainingToReview: 0,
         engineBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0 },
+        evaluationPopulation: { evaluated: 0, sparse: 0, unmaterialized: 0, profileRequired: 0, notEvaluable: 0, invalid: 0 },
         userBreakdown: { pursue: 0, consider: 0, pass: 0, total: 0 },
         effectiveBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0 },
         integrity: {
@@ -1033,6 +1034,14 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
       totalShortlisted,
       totalDecisions,
       remainingToReview,
+      evaluationPopulation: {
+        evaluated: engineBreakdown.pursue + engineBreakdown.consider + engineBreakdown.pass,
+        sparse: engineBreakdown.sparse,
+        unmaterialized: 0,
+        profileRequired: 0,
+        notEvaluable: 0,
+        invalid: 0,
+      },
       discoveryMetrics: {
         engineQualified: totalShortlisted,
         actionableReviewQueue: reviewQueueCount,

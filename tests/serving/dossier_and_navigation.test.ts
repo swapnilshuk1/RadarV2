@@ -25,6 +25,7 @@ import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/Sql
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
 import type { EvaluatedOpportunity } from "../../src/data/opportunity-fixtures";
+import { classifyOpportunityCategories } from "../../src/lib/domain/category_taxonomy";
 
 describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
   let sqliteDb: Database.Database;
@@ -76,6 +77,10 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
       `INSERT INTO opportunity_versions (id, canonical_job_id, job_title, location, content_hash, raw_content, lifecycle_state)
        VALUES (?, ?, ?, 'Remote', 'hash_test', 'Detailed Job Description Content', 'ACTIVE')`,
       [verId, oppId, params.title]
+    );
+    await db.execute(
+      `UPDATE opportunity_versions SET category_ids = ? WHERE id = ?`,
+      [JSON.stringify(classifyOpportunityCategories({ role: params.title, description: "Detailed Job Description Content" })), verId],
     );
 
     await db.execute(

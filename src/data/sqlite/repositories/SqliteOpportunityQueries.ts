@@ -24,7 +24,7 @@ import {
   type OpaqueCursor,
 } from "../../../lib/intelligence/opportunity-queries";
 import { encodeCursor, decodeCursor } from "../../../lib/intelligence/cursor";
-import type { CanonicalOpportunityMetrics } from "../../../lib/intelligence/metric-integrity";
+import { MetricIntegrityValidator, reconcileEvaluationPopulation, type CanonicalOpportunityMetrics, type EvaluationPopulationBreakdown } from "../../../lib/intelligence/metric-integrity";
 import type { ServingStopwatch } from "../../../lib/intelligence/serving/observability";
 import type {
   EngineVerdict,
@@ -55,7 +55,7 @@ import { resolveServingScope, type ActiveServingContext } from "../../../lib/sec
 
 function toScrapeSource(val: unknown): ScrapeSource {
   if (val === "LinkedIn" || val === "Naukri" || val === "Indeed") return val as ScrapeSource;
-  return "LinkedIn";
+  return "Unknown";
 }
 
 function toUnavailableState(val: unknown): UnavailableOpportunity["evaluationState"] | null {
@@ -88,6 +88,18 @@ function toEngineVerdict(val: unknown): EngineVerdict {
   return "SPARSE_SPEC";
 }
 
+function parseCategoryIds(value: string | null): CategoryId[] {
+  try {
+    const parsed = JSON.parse(value || "[]");
+    if (Array.isArray(parsed) && parsed.every((id) => typeof id === "string")) {
+      return parsed as CategoryId[];
+    }
+  } catch {
+    // A malformed rebuildable category projection is unknown, not a category claim.
+  }
+  return [];
+}
+
 export interface RawFeedRow {
   job_hash: string;
   role: string;
@@ -107,6 +119,7 @@ export interface RawFeedRow {
   reviewed_fingerprint: string | null;
   user_decision_updated_at: string | null;
   materialized_at: string | null;
+  category_ids: string | null;
   population_tier: number;
 }
 
@@ -130,8 +143,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            THEN co.company_name 
            ELSE 'Company not available' 
          END AS company,
-         COALESCE(ov.location, 'Remote') AS location,
-         COALESCE(co.source, 'LinkedIn') AS scraped_from,
+         COALESCE(ov.location, 'Unavailable') AS location,
+         COALESCE(co.source, 'Unknown') AS scraped_from,
          ov.posted_at AS posted_at,
          ov.posted_precision AS posted_precision,
          co.canonical_url AS apply_url,
@@ -149,6 +162,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          d.reviewed_fingerprint AS reviewed_fingerprint,
          d.updated_at AS user_decision_updated_at,
          me.materialized_at AS materialized_at,
+         ov.category_ids AS category_ids,
 
          -- Authoritative Population Tier
          CASE 
@@ -166,7 +180,12 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
                ELSE 1
              END
            WHEN spc.attention_decision = 'NOT_CANDIDATE' THEN 4
-           WHEN me.decision IS NULL OR me.evaluation_state = 'SPARSE_SPEC' OR me.decision = 'SPARSE_SPEC' THEN 4
+           -- Tier 4 is explicitly non-actionable: unavailable, malformed, or not evaluated.
+           WHEN me.decision IS NULL
+             OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'INVALID')
+             OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS')
+             OR me.quality_score IS NULL
+             OR me.evaluation_fingerprint IS NULL THEN 4
            WHEN me.decision = 'PURSUE' THEN 0
            WHEN me.decision = 'CONSIDER' THEN 3
            ELSE 5
@@ -253,7 +272,12 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     } else if (filters?.decisionFilter === "decided") {
       whereConditions.push(`user_action != 'NONE'`);
     }
-
+    if (filters?.categoryId === "needs_more_signal") {
+      whereConditions.push(`evaluation_state = 'SPARSE_SPEC'`);
+    } else if (filters?.categoryId && filters.categoryId !== "all") {
+      whereConditions.push(`EXISTS (SELECT 1 FROM json_each(category_ids) WHERE value = ?)`);
+      queryParams.push(filters.categoryId);
+    }
     // Keyset Continuation Predicate
     if (hasCursor) {
       if (cursorScore !== null) {
@@ -293,8 +317,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
              THEN co.company_name 
              ELSE 'Company not available' 
            END AS company,
-           COALESCE(ov.location, 'Remote') AS location,
-           COALESCE(co.source, 'LinkedIn') AS scraped_from,
+           COALESCE(ov.location, 'Unavailable') AS location,
+           COALESCE(co.source, 'Unknown') AS scraped_from,
            ov.posted_at AS posted_at,
            ov.posted_precision AS posted_precision,
            co.canonical_url AS apply_url,
@@ -312,8 +336,11 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            d.reviewed_fingerprint AS reviewed_fingerprint,
            d.updated_at AS user_decision_updated_at,
            me.materialized_at AS materialized_at,
+           ov.category_ids AS category_ids,
 
-           -- Authoritative Population Tier
+           -- Ordering only, never a verdict mapper: 0=engine/user PURSUE,
+           -- 1=explicit promotion/consider override, 2=vetoed promotion,
+           -- 3=engine CONSIDER, 4=non-actionable/invalid, 5=PASS.
            CASE 
              WHEN d.action = 'PASS' THEN 5
              WHEN d.action = 'PURSUE' THEN
@@ -329,7 +356,12 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
                  ELSE 1
                END
              WHEN spc.attention_decision = 'NOT_CANDIDATE' THEN 4
-             WHEN me.decision IS NULL OR me.evaluation_state = 'SPARSE_SPEC' OR me.decision = 'SPARSE_SPEC' THEN 4
+             -- Tier 4 is explicitly non-actionable: unavailable, malformed, or not evaluated.
+             WHEN me.decision IS NULL
+               OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'INVALID')
+               OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS')
+               OR me.quality_score IS NULL
+               OR me.evaluation_fingerprint IS NULL THEN 4
              WHEN me.decision = 'PURSUE' THEN 0
              WHEN me.decision = 'CONSIDER' THEN 3
              ELSE 5
@@ -376,6 +408,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          reviewed_fingerprint,
          user_decision_updated_at,
          materialized_at,
+         category_ids,
          population_tier
        FROM feed_candidates
        ${filterSql}
@@ -391,11 +424,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
 
     const hasMore = rows.length > pageSize;
     const pageRows = hasMore ? rows.slice(0, pageSize) : rows;
-    let items = pageRows.map((r) => this.mapFeedRow(r));
-
-    if (filters?.categoryId) {
-      items = items.filter((i) => i.categoryIds.includes(filters.categoryId!));
-    }
+    const items = pageRows.map((r) => this.mapFeedRow(r));
 
     let nextCursor: OpaqueCursor = null;
     if (hasMore && items.length > 0) {
@@ -426,13 +455,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       reviewedFingerprint: r.reviewed_fingerprint,
       qualityScore: r.quality_score,
     });
-    const cats = classifyOpportunityCategories({
-      role: r.role,
-      evaluationStatus: r.evaluation_state === "SPARSE_SPEC" ? "SPARSE_SPEC" : "COMPLETE",
-      evaluationState: readModel.evaluationState,
-      recommendation: r.engine_verdict || undefined,
-      description: r.role,
-    });
+    const persistedCategories = parseCategoryIds(r.category_ids);
+    const cats = readModel.evaluationState === "SPARSE_SPEC" && !persistedCategories.includes("needs_more_signal")
+      ? [...persistedCategories, "needs_more_signal" as CategoryId]
+      : persistedCategories;
 
     return {
       jobHash: r.job_hash,
@@ -477,14 +503,29 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         totalDecisions: 0,
         remainingToReview: 0,
         engineBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0 },
+        evaluationPopulation: { evaluated: 0, sparse: 0, unmaterialized: 0, profileRequired: 0, notEvaluable: 0, invalid: 0 },
         userBreakdown: { pursue: 0, consider: 0, pass: 0, total: 0 },
         effectiveBreakdown: { pursue: 0, consider: 0, pass: 0, sparse: 0 },
         integrity: {
-          status: "PASS",
+          status: "UNAVAILABLE",
           validatedAt: generatedAt,
-          checks: [],
-          discrepancies: [],
-          summaryMessage: "No active search plan context found for scope.",
+          checks: [{
+            code: "CANONICAL_SCOPE_UNAVAILABLE",
+            metricName: "canonicalPopulationScope",
+            expected: "active search-plan context",
+            actual: "none",
+            status: "ERROR",
+            message: "Metrics cannot be reconciled without an active canonical search-plan context.",
+          }],
+          discrepancies: [{
+            code: "CANONICAL_SCOPE_UNAVAILABLE",
+            metricName: "canonicalPopulationScope",
+            expected: "active search-plan context",
+            actual: "none",
+            status: "ERROR",
+            message: "Metrics cannot be reconciled without an active canonical search-plan context.",
+          }],
+          summaryMessage: "Metrics unavailable: no active canonical search-plan context.",
         },
       };
     }
@@ -496,6 +537,12 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       engine_consider: number;
       engine_sparse: number;
       engine_pass: number;
+      evaluated: number;
+      sparse: number;
+      unmaterialized: number;
+      profile_required: number;
+      not_evaluable: number;
+      invalid: number;
       user_pursue: number;
       user_consider: number;
       user_pass: number;
@@ -511,10 +558,16 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     }>(
       `SELECT 
          COUNT(*) AS total_screened,
-         COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND me.decision = 'PURSUE' THEN 1 END) AS engine_pursue,
-         COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND me.decision = 'CONSIDER' THEN 1 END) AS engine_consider,
-         COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND me.decision = 'SPARSE_SPEC' THEN 1 END) AS engine_sparse,
-         COUNT(CASE WHEN me.id IS NULL OR me.evaluation_state = 'SPARSE_SPEC' OR (me.decision NOT IN ('PURSUE', 'CONSIDER', 'SPARSE_SPEC')) THEN 1 END) AS engine_pass,
+         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') AND me.decision = 'PURSUE' AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pursue,
+         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') AND me.decision = 'CONSIDER' AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_consider,
+         COUNT(CASE WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 1 END) AS engine_sparse,
+         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') AND me.decision = 'PASS' AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS engine_pass,
+         COUNT(CASE WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') AND me.decision IN ('PURSUE', 'CONSIDER', 'PASS') AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL THEN 1 END) AS evaluated,
+         COUNT(CASE WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 1 END) AS sparse,
+         COUNT(CASE WHEN me.id IS NULL THEN 1 END) AS unmaterialized,
+         COUNT(CASE WHEN me.evaluation_state = 'PROFILE_REQUIRED' THEN 1 END) AS profile_required,
+         COUNT(CASE WHEN me.evaluation_state = 'NOT_EVALUABLE' THEN 1 END) AS not_evaluable,
+         COUNT(CASE WHEN me.id IS NOT NULL AND NOT (me.evaluation_state = 'SPARSE_SPEC' OR me.evaluation_state = 'PROFILE_REQUIRED' OR me.evaluation_state = 'NOT_EVALUABLE' OR (me.evaluation_state IN ('COMPLETE', 'EVALUATED') AND me.decision IN ('PURSUE', 'CONSIDER', 'PASS') AND me.quality_score IS NOT NULL AND me.evaluation_fingerprint IS NOT NULL)) THEN 1 END) AS invalid,
          COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND d.action = 'PURSUE' THEN 1 END) AS user_pursue,
          COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND d.action = 'CONSIDER' THEN 1 END) AS user_consider,
          COUNT(CASE WHEN me.id IS NOT NULL AND me.evaluation_state != 'SPARSE_SPEC' AND d.action = 'PASS' THEN 1 END) AS user_pass,
@@ -556,22 +609,44 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       ]
     );
 
+    // Independent population source: this intentionally does not reuse any
+    // aggregate bucket from the metrics query above.
+    const independentPopulation = await this.db.one<{ total: number }>(
+      `SELECT COUNT(*) AS total
+       FROM search_plan_candidates spc
+       JOIN opportunity_versions ov
+         ON ov.id = spc.opportunity_version
+        AND ov.canonical_job_id = spc.canonical_job_id
+       WHERE spc.tenant_id = ?
+         AND spc.person_id = ?
+         AND spc.search_plan_id = ?
+         AND spc.attention_decision = 'CANDIDATE'
+         AND ov.lifecycle_state = 'ACTIVE'`,
+      [scope.tenantId, scope.personId, activeContext.searchPlanId],
+    );
+
     // 2. Lean Scalar Query for Category, Portal, and Effective Decision Aggregation
     const rows = await this.db.many<{
       role: string;
       source: string;
       decision: string | null;
       evaluation_state: string;
+      quality_score: number | null;
+      evaluation_fingerprint: string | null;
       vetoed: number;
       action: string;
+      category_ids: string | null;
     }>(
       `SELECT 
          COALESCE(ov.job_title, 'Executive Opportunity') AS role,
-         COALESCE(co.source, 'LinkedIn') AS source,
+         COALESCE(co.source, 'Unknown') AS source,
          me.decision AS decision,
          CASE WHEN me.evaluation_state = 'SPARSE_SPEC' THEN 'SPARSE_SPEC' WHEN me.id IS NOT NULL THEN 'COMPLETE' ELSE 'UNMATERIALIZED' END AS evaluation_state,
          COALESCE(me.vetoed, 0) AS vetoed,
-         COALESCE(d.action, 'NONE') AS action
+         COALESCE(d.action, 'NONE') AS action,
+         me.quality_score AS quality_score,
+         me.evaluation_fingerprint AS evaluation_fingerprint,
+         ov.category_ids AS category_ids
        FROM search_plan_candidates spc
        JOIN canonical_opportunities co ON spc.canonical_job_id = co.id
        JOIN opportunity_versions ov ON co.id = ov.canonical_job_id AND spc.opportunity_version = ov.id
@@ -606,7 +681,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     };
 
     const effectiveBreakdown = { pursue: 0, consider: 0, pass: 0, sparse: 0 };
-    let activePursuits = 0;
+    // Deprecated compatibility field: the active-pursuit lifecycle is not a
+    // defined RADAR domain yet, so no engine or user decision is counted as one.
+    const activePursuits = 0;
 
     for (const r of rows) {
       portalMetrics.total++;
@@ -616,9 +693,15 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       else if (src === "Indeed") portalMetrics.Indeed++;
       else portalMetrics.other++;
 
-      const isEvaluated = r.evaluation_state === "COMPLETE";
+      const isEvaluated =
+        r.evaluation_state === "COMPLETE" &&
+        (r.decision === "PURSUE" || r.decision === "CONSIDER" || r.decision === "PASS") &&
+        r.quality_score !== null &&
+        Boolean(r.evaluation_fingerprint);
       const isReviewed = r.action !== "NONE";
-      const engineVerb = r.decision || "PASS";
+      const engineVerb = r.decision === "PURSUE" || r.decision === "CONSIDER" || r.decision === "PASS"
+        ? r.decision
+        : null;
 
       if (isEvaluated) {
         // Effective Decision Precedence for Evaluated Opportunity
@@ -643,7 +726,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
 
         if (eff === "ENGINE_PURSUIT" || eff === "USER_CONFIRMED" || eff === "VETO_OVERRIDE") {
           effectiveBreakdown.pursue++;
-          activePursuits++;
         } else if (eff === "PREFERENCE_OVERRIDE" || eff === "ENGINE_CONSIDER") {
           effectiveBreakdown.consider++;
         } else if (eff === "NOT_EVALUABLE") {
@@ -653,13 +735,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         }
 
         const isShortlisted = engineVerb === "PURSUE" || engineVerb === "CONSIDER";
-        const cats = classifyOpportunityCategories({
-          role: r.role,
-          evaluationStatus: "COMPLETE",
-          evaluationState: r.evaluation_state,
-          recommendation: r.decision || undefined,
-          description: r.role,
-        });
+        const cats = parseCategoryIds(r.category_ids);
 
         for (const cat of cats) {
           if (categoryCounts[cat]) {
@@ -669,15 +745,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
           }
         }
       } else {
-        // Non-evaluated (Unmaterialized or Sparse) treated as PASS in legacy breakdown
-        effectiveBreakdown.pass++;
+        // Non-evaluated states remain non-actionable; they never enter PASS.
+        effectiveBreakdown.sparse++;
 
-        const cats = classifyOpportunityCategories({
-          role: r.role,
-          evaluationStatus: r.evaluation_state === "SPARSE_SPEC" ? "SPARSE_SPEC" : "COMPLETE",
-          evaluationState: r.evaluation_state,
-          description: r.role,
-        });
+        const cats = parseCategoryIds(r.category_ids);
 
         for (const cat of cats) {
           if (categoryCounts[cat]) {
@@ -688,7 +759,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       }
     }
 
-    const totalScreened = agg?.total_screened || 0;
+    const totalScreened = independentPopulation?.total || 0;
     const evaluatedDecisions = agg?.user_total || 0;
     const sparseDecisionsTotal = agg?.sparse_decisions_total || 0;
     const allRecordedDecisions = evaluatedDecisions + sparseDecisionsTotal;
@@ -700,6 +771,23 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       pass: agg?.engine_pass || 0,
       sparse: agg?.engine_sparse || 0,
     };
+    const evaluationPopulation: EvaluationPopulationBreakdown = {
+      evaluated: agg?.evaluated || 0,
+      sparse: agg?.sparse || 0,
+      unmaterialized: agg?.unmaterialized || 0,
+      profileRequired: agg?.profile_required || 0,
+      notEvaluable: agg?.not_evaluable || 0,
+      invalid: agg?.invalid || 0,
+    };
+    const populationCheck = reconcileEvaluationPopulation(totalScreened, evaluationPopulation);
+    const evaluatedPartitionCheck = {
+      code: "INV_EVALUATED_VERDICT_PARTITION",
+      metricName: "evaluatedVerdicts",
+      expected: evaluationPopulation.evaluated,
+      actual: engineBreakdown.pursue + engineBreakdown.consider + engineBreakdown.pass,
+      status: evaluationPopulation.evaluated === engineBreakdown.pursue + engineBreakdown.consider + engineBreakdown.pass ? "PASS" as const : "ERROR" as const,
+      message: "Only valid evaluated PURSUE, CONSIDER, and PASS artifacts contribute to the engine verdict partition.",
+    };
     const userBreakdown = {
       pursue: agg?.user_pursue || 0,
       consider: agg?.user_consider || 0,
@@ -709,8 +797,11 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     const totalShortlisted = engineBreakdown.pursue + engineBreakdown.consider;
     const remainingToReview = Math.max(0, totalScreened - totalDecisions);
 
-    return {
+    const snapshot: Omit<CanonicalOpportunityMetrics, "integrity"> = {
       personId: scope.personId,
+      tenantId: scope.tenantId,
+      searchPlanId: activeContext.searchPlanId,
+      evaluationContextFingerprint: activeContext.contextFingerprint,
       snapshotId,
       generatedAt,
       evaluationVersion: "v4.1",
@@ -745,26 +836,15 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         },
       },
       engineBreakdown,
+      evaluationPopulation,
       userBreakdown,
       effectiveBreakdown,
       categoryMetrics: categoryCounts,
       portalMetrics,
-      integrity: {
-        status: "PASS",
-        validatedAt: generatedAt,
-        checks: [
-          {
-            code: "CHECK_CANONICAL_TOTAL",
-            metricName: "totalScreened",
-            expected: totalScreened,
-            actual: totalScreened,
-            status: "PASS",
-            message: `totalScreened (${totalScreened}) matches canonical search plan population.`,
-          },
-        ],
-        discrepancies: [],
-        summaryMessage: "Canonical metrics calculated via lean SQL projection with 100% integrity.",
-      },
+    };
+    return {
+      ...snapshot,
+      integrity: await MetricIntegrityValidator.validate(snapshot, this.db),
     };
   }
 
@@ -995,7 +1075,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       role: row.job_title || "Executive Opportunity",
       company: row.company_name || "Executive Firm",
       location: row.location || "Remote",
-      scrapedFrom: row.source || "LinkedIn",
+      scrapedFrom: toScrapeSource(row.source),
       applyUrl: row.apply_url || undefined,
       postedAt: row.posted_at || undefined,
       postedPrecision: row.posted_precision || undefined,
@@ -1119,6 +1199,12 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     } else if (filters?.decisionFilter === "decided") {
       whereConditions.push(`user_action != 'NONE'`);
     }
+    if (filters?.categoryId === "needs_more_signal") {
+      whereConditions.push(`evaluation_state = 'SPARSE_SPEC'`);
+    } else if (filters?.categoryId && filters.categoryId !== "all") {
+      whereConditions.push(`EXISTS (SELECT 1 FROM json_each(category_ids) WHERE value = ?)`);
+      queryParams.push(filters.categoryId);
+    }
 
     const filterSql = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
 
@@ -1127,6 +1213,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       role: string;
       evaluation_state: string;
       engine_verdict: string | null;
+      category_ids: string | null;
     }>(
       `WITH feed_candidates AS (
          SELECT 
@@ -1139,9 +1226,13 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
            END AS evaluation_state,
            me.decision AS engine_verdict,
            me.quality_score AS quality_score,
+           me.evaluation_fingerprint AS evaluation_fingerprint,
            COALESCE(d.action, 'NONE') AS user_action,
+           ov.category_ids AS category_ids,
 
-           -- Authoritative Population Tier
+         -- Ordering only, never a verdict mapper: 0=engine/user PURSUE,
+         -- 1=explicit promotion/consider override, 2=vetoed promotion,
+         -- 3=engine CONSIDER, 4=non-actionable/invalid, 5=PASS.
            CASE 
              WHEN d.action = 'PASS' THEN 5
              WHEN d.action = 'PURSUE' THEN
@@ -1149,7 +1240,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
                  WHEN me.decision = 'PASS' OR me.vetoed = 1 THEN 2
                  WHEN me.decision = 'PURSUE' THEN 0
                  WHEN me.decision = 'CONSIDER' THEN 1
-                 ELSE 0
+                 ELSE 4
                END
              WHEN d.action = 'CONSIDER' THEN
                CASE 
@@ -1157,7 +1248,11 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
                  ELSE 1
                END
              WHEN spc.attention_decision = 'NOT_CANDIDATE' THEN 4
-             WHEN me.decision IS NULL OR me.evaluation_state = 'SPARSE_SPEC' OR me.decision = 'SPARSE_SPEC' THEN 4
+             WHEN me.decision IS NULL
+               OR me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'INVALID')
+               OR me.decision NOT IN ('PURSUE', 'CONSIDER', 'PASS')
+               OR me.quality_score IS NULL
+               OR me.evaluation_fingerprint IS NULL THEN 4
              WHEN me.decision = 'PURSUE' THEN 0
              WHEN me.decision = 'CONSIDER' THEN 3
              ELSE 5
@@ -1188,7 +1283,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          job_hash,
          role,
          evaluation_state,
-         engine_verdict
+         engine_verdict,
+         category_ids
        FROM feed_candidates
        ${filterSql}
        ORDER BY 
@@ -1199,22 +1295,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       queryParams
     );
 
-    let items = rows;
-    if (filters?.categoryId) {
-      items = items.filter((r) => {
-        const cats = classifyOpportunityCategories({
-          role: r.role,
-          evaluationStatus: r.evaluation_state === "SPARSE_SPEC" ? "SPARSE_SPEC" : "COMPLETE",
-          evaluationState: r.evaluation_state,
-          recommendation: r.engine_verdict || undefined,
-          description: r.role,
-        });
-        return cats.includes(filters.categoryId!);
-      });
-    }
-
-    const totalCount = items.length;
-    const idx = items.findIndex((i) => i.job_hash === targetHash);
+    const totalCount = rows.length;
+    const idx = rows.findIndex((i) => i.job_hash === targetHash);
 
     if (idx === -1) {
       return null;
@@ -1223,8 +1305,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     return {
       currentIndex: idx + 1,
       totalCount: totalCount || 1,
-      prevJobHash: idx > 0 ? items[idx - 1].job_hash : undefined,
-      nextJobHash: idx < totalCount - 1 ? items[idx + 1].job_hash : undefined,
+      prevJobHash: idx > 0 ? rows[idx - 1].job_hash : undefined,
+      nextJobHash: idx < totalCount - 1 ? rows[idx + 1].job_hash : undefined,
     };
   }
 }

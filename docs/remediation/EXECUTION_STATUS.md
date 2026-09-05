@@ -10,6 +10,13 @@ Baseline:
 - Current branch head — repaired Gate 0b test fixtures so evaluated-output assertions establish candidate, opportunity, and referential prerequisites.
 
 ## Current
+- remediation ID: Gate 3 — feed and metrics truth (uncommitted)
+- branch: `remediation/04-feed-metrics-truth`
+- canonical population: active `search_plan_candidates` joined to active `opportunity_versions`, scoped by tenant, person, search plan, and current evaluation context. Its exact partition is `EVALUATED + SPARSE_SPEC + UNMATERIALIZED + PROFILE_REQUIRED + NOT_EVALUABLE + INVALID = TOTAL`; valid evaluated artifacts further partition exactly into engine `PURSUE + CONSIDER + PASS`.
+- filters and ranking: content categories and decision filters apply before keyset pagination. `needs_more_signal` is derived only from `SPARSE_SPEC`, never persisted as a content category. Tiers are ordering-only and do not map unavailable/corrupt records to PASS.
+- category projection: `opportunity_versions.category_ids` is a rebuildable JSON projection classified from canonical job title plus readable JD text at ingestion. Existing active versions must be repaired deterministically with `npx tsx scripts/backfill-opportunity-version-categories.ts`; this updates only rebuildable category IDs and leaves protected source documents, users, tenants, people, OAuth links, credentials, decisions, and evaluation artifacts untouched.
+- metrics: engine, user, and effective breakdowns remain separate. `totalShortlisted` is engine `PURSUE + CONSIDER` only. `activePursuits` remains a deprecated compatibility field set to zero because RADAR has no approved active-pursuit lifecycle. The canonical integrity validator uses independently constructed canonical-scope queries and returns `UNAVAILABLE` for incomplete scope; it never falls back to historical evaluation or decision tables.
+- validation: focused keyset, metrics, and dossier/navigation suites pass (3 files, 22 tests); TypeScript verification passes. External certification capture reports all seven stages and SSR build passing in 299.90 seconds.
 - remediation ID: Gate 2 — canonical serving truth (final closure in progress; uncommitted)
 - branch: `remediation/03-canonical-serving-truth`
 - decision model: persisted engine verdict and explicit user action are separate; serving resolves `effectiveDecision = userDecision ?? engineVerdict`. Pagination/page size is presentation-only and cannot change either fact.

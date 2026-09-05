@@ -5,7 +5,7 @@
 export type EvidenceSource = "title" | "snippet" | "location" | "llm";
 export type Status = "Explicit" | "Inferred" | "Missing";
 export type DecisionVerb = "PURSUE" | "CONSIDER" | "PASS" | "UNKNOWN" | "NOT_EVALUABLE" | "SPARSE_SPEC";
-export type ScrapeSource = "LinkedIn" | "Naukri" | "Indeed";
+export type ScrapeSource = "LinkedIn" | "Naukri" | "Indeed" | "Unknown";
 
 export type Traced<T> = {
   value: T | null;

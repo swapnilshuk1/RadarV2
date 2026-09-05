@@ -5,6 +5,7 @@
 import { DatabaseAdapter } from "@/data/database";
 import { CanonicalOpportunity, OpportunityVersion, AttentionDecision } from "@/lib/domain/canonical_acquisition";
 import crypto from "node:crypto";
+import { classifyOpportunityCategories } from "@/lib/domain/category_taxonomy";
 
 export async function recordSearchPlanCandidate(adapter: DatabaseAdapter, tenantId: string, personId: string, planId: string, opp: CanonicalOpportunity, ver: OpportunityVersion, decision: AttentionDecision): Promise<void> {
   await adapter.transaction(async (tx: DatabaseAdapter) => {
@@ -16,9 +17,12 @@ export async function recordSearchPlanCandidate(adapter: DatabaseAdapter, tenant
 
     await tx.execute(`
       INSERT OR IGNORE INTO opportunity_versions 
-      (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [ver.id, ver.canonicalJobId, ver.contentHash, ver.jobTitle, ver.companyName, ver.location, ver.employmentType, ver.rawContent]);
+      (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, category_ids)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      ver.id, ver.canonicalJobId, ver.contentHash, ver.jobTitle, ver.companyName, ver.location, ver.employmentType, ver.rawContent,
+      JSON.stringify(classifyOpportunityCategories({ role: ver.jobTitle, description: ver.rawContent })),
+    ]);
 
     await tx.execute(`
       INSERT INTO search_plan_candidates 

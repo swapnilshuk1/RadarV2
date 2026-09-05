@@ -57,6 +57,7 @@ describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
     action?: string;
     attention?: string;
     evalState?: string;
+    categoryIds?: string[];
   }) {
     await db.execute(
       `INSERT INTO canonical_opportunities (id, source_job_id, source, company_name, canonical_url)
@@ -68,6 +69,12 @@ describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
        VALUES (?, ?, ?, 'Bengaluru', 'hash_test', 'Description', 'ACTIVE')`,
       [`ov_${params.jobId}`, params.jobId, params.title]
     );
+    if (params.categoryIds) {
+      await db.execute(
+        `UPDATE opportunity_versions SET category_ids = ? WHERE id = ?`,
+        [JSON.stringify(["all", ...params.categoryIds]), `ov_${params.jobId}`],
+      );
+    }
     await db.execute(
       `INSERT INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision)
        VALUES ('tenant_A', 'person_A', 'plan_A', ?, ?, ?)`,
@@ -117,16 +124,16 @@ describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
       // 2. Tier 0, score 100, hash_b
       // 3. Tier 0, score 50,  hash_c
       // 4. Tier 0, score 0,   hash_d
-      // 5. Tier 0, score null, hash_e
-      // 6. Tier 1, score 99,  hash_f (Tier 0 wins despite score 99 being higher than 50/0)
+      // 5. Tier 1, score 99, hash_f
+      // 6. hash_e has no score, so it is non-actionable rather than a valid PURSUE.
 
       expect(page.items.map((i) => i.jobHash)).toEqual([
         "hash_a",
         "hash_b",
         "hash_c",
         "hash_d",
-        "hash_e",
         "hash_f",
+        "hash_e",
       ]);
     });
 
@@ -197,6 +204,70 @@ describe("Phase 6: Keyset Pagination & Deterministic Ordering", () => {
         "hash_00", "hash_01", "hash_02", "hash_03", "hash_04",
         "hash_05", "hash_06", "hash_07", "hash_08", "hash_09",
       ]);
+    });
+  });
+
+  describe("3. Category filter precedes keyset pagination", () => {
+    it("returns a full, stable category page without skipping qualifying rows behind other categories", async () => {
+      await seedOpportunity({ jobId: "a", hash: "A", title: "A", verdict: "PURSUE", score: 95, categoryIds: ["transformation"] });
+      await seedOpportunity({ jobId: "b", hash: "B", title: "B", verdict: "PURSUE", score: 94, categoryIds: ["commercial_growth"] });
+      await seedOpportunity({ jobId: "c", hash: "C", title: "C", verdict: "PURSUE", score: 93, categoryIds: ["transformation"] });
+      await seedOpportunity({ jobId: "d", hash: "D", title: "D", verdict: "PURSUE", score: 92, categoryIds: ["transformation"] });
+
+      const scope = { tenantId: "tenant_A", personId: "person_A" };
+      const first = await queries.getFeed(scope, undefined, { categoryId: "transformation" }, 2);
+      const second = await queries.getFeed(scope, first.nextCursor!, { categoryId: "transformation" }, 2);
+
+      expect(first.items.map((item) => item.jobHash)).toEqual(["A", "C"]);
+      expect(first.hasMore).toBe(true);
+      expect(second.items.map((item) => item.jobHash)).toEqual(["D"]);
+      expect(second.hasMore).toBe(false);
+      expect(new Set([...first.items, ...second.items].map((item) => item.jobHash)).size).toBe(3);
+    });
+
+    it("uses exact JSON category membership rather than substring matching", async () => {
+      await seedOpportunity({ jobId: "platform", hash: "platform-digital", title: "Platform", verdict: "PURSUE", score: 95, categoryIds: ["platform_digital"] });
+      await seedOpportunity({ jobId: "exact", hash: "platform", title: "Exact", verdict: "PURSUE", score: 90, categoryIds: ["platform"] });
+
+      const page = await queries.getFeed(
+        { tenantId: "tenant_A", personId: "person_A" },
+        undefined,
+        { categoryId: "platform" },
+        10,
+      );
+
+      expect(page.items.map((item) => item.jobHash)).toEqual(["platform"]);
+    });
+
+    it("derives needs_more_signal from evaluation state, not persisted content categories", async () => {
+      await seedOpportunity({
+        jobId: "sparse",
+        hash: "sparse-content",
+        title: "Commercial Role",
+        verdict: "SPARSE_SPEC",
+        score: 0,
+        evalState: "SPARSE_SPEC",
+        categoryIds: ["commercial_growth"],
+      });
+      await seedOpportunity({
+        jobId: "complete",
+        hash: "complete-content",
+        title: "Commercial Role",
+        verdict: "CONSIDER",
+        score: 85,
+        categoryIds: ["commercial_growth"],
+      });
+
+      const page = await queries.getFeed(
+        { tenantId: "tenant_A", personId: "person_A" },
+        undefined,
+        { categoryId: "needs_more_signal" },
+        10,
+      );
+
+      expect(page.items.map((item) => item.jobHash)).toEqual(["sparse-content"]);
+      expect(page.items[0].categoryIds).toContain("needs_more_signal");
+      expect(page.items[0].categoryIds).toContain("commercial_growth");
     });
   });
 });
