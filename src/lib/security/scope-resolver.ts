@@ -9,7 +9,8 @@
  * Invariants:
  * 1. Zero Authorization Weakening: Rejection conditions (inactive, revoked, missing, ambiguous, cross-tenant)
  *    produce exact semantic parity with legacy auth functions.
- * 2. Strict Precedence: Active pointer table has strict priority over chronological evaluation context fallback.
+ * 2. Active context is explicit: serving never selects a chronological "latest"
+ *    context when no active pointer exists.
  * 3. Zero Cartesian Multiplication: Subquery scalar projections prevent Cartesian row explosion across multiple plans/snapshots.
  */
 
@@ -51,8 +52,6 @@ interface RawScopeContextRow {
   target_membership_revoked_at: string | null;
   pointer_context_fingerprint: string | null;
   pointer_search_plan_id: string | null;
-  fallback_context_fingerprint: string | null;
-  fallback_search_plan_id: string | null;
 }
 
 /**
@@ -114,35 +113,11 @@ export async function resolveServingScope(
           AND sp.status = 'active'
         ORDER BY aec.activated_at DESC
         LIMIT 1
-       ) AS pointer_search_plan_id,
-
-       (SELECT ec.context_fingerprint
-        FROM search_plans sp
-        JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id AND sps.tenant_id = sp.tenant_id AND sps.person_id = sp.person_id
-        JOIN evaluation_contexts ec ON ec.search_plan_snapshot_id = sps.id AND ec.tenant_id = sp.tenant_id AND ec.person_id = sp.person_id
-        WHERE sp.person_id = u.target_user_id
-          AND sp.tenant_id = COALESCE(?, p.tenant_id, (SELECT m2.tenant_id FROM memberships m2 WHERE m2.user_id = u.target_user_id AND m2.status = 'active' AND m2.revoked_at IS NULL LIMIT 1))
-          AND sp.status = 'active'
-        ORDER BY ec.created_at DESC, ec.context_fingerprint DESC
-        LIMIT 1
-       ) AS fallback_context_fingerprint,
-
-       (SELECT sp.id
-        FROM search_plans sp
-        JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id AND sps.tenant_id = sp.tenant_id AND sps.person_id = sp.person_id
-        JOIN evaluation_contexts ec ON ec.search_plan_snapshot_id = sps.id AND ec.tenant_id = sp.tenant_id AND ec.person_id = sp.person_id
-        WHERE sp.person_id = u.target_user_id
-          AND sp.tenant_id = COALESCE(?, p.tenant_id, (SELECT m2.tenant_id FROM memberships m2 WHERE m2.user_id = u.target_user_id AND m2.status = 'active' AND m2.revoked_at IS NULL LIMIT 1))
-          AND sp.status = 'active'
-        ORDER BY ec.created_at DESC, ec.context_fingerprint DESC
-        LIMIT 1
-       ) AS fallback_search_plan_id
+       ) AS pointer_search_plan_id
 
      FROM (SELECT ? AS target_user_id) u
      LEFT JOIN people p ON p.id = u.target_user_id`,
     [
-      requestedTenantId || null,
-      requestedTenantId || null,
       requestedTenantId || null,
       requestedTenantId || null,
       requestedTenantId || null,
@@ -224,11 +199,6 @@ export async function resolveServingScope(
     activeContext = {
       searchPlanId: row.pointer_search_plan_id,
       contextFingerprint: row.pointer_context_fingerprint,
-    };
-  } else if (row.fallback_context_fingerprint && row.fallback_search_plan_id) {
-    activeContext = {
-      searchPlanId: row.fallback_search_plan_id,
-      contextFingerprint: row.fallback_context_fingerprint,
     };
   }
 

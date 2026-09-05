@@ -43,38 +43,7 @@ export interface EvaluationMetrics {
 }
 
 export class SqliteEvaluationStore {
-  private schemaInitPromise: Promise<void> | null = null;
-
   constructor(private db: DatabaseAdapter) {}
-
-  private async ensureSchema(): Promise<void> {
-    if (!this.schemaInitPromise) {
-      this.schemaInitPromise = (async () => {
-        try {
-          await this.db.execute(`
-            CREATE TABLE IF NOT EXISTS candidate_evaluations (
-              person_id              TEXT NOT NULL,
-              job_hash               TEXT NOT NULL,
-              policy_version         TEXT NOT NULL,
-              evaluation_input_hash  TEXT NOT NULL,
-              engine_verdict         TEXT NOT NULL CHECK(engine_verdict IN ('PURSUE', 'CONSIDER', 'PASS')),
-              engine_quality_score   REAL NOT NULL,
-              user_decision_override TEXT CHECK(user_decision_override IN ('PURSUE', 'CONSIDER', 'PASS')),
-              effective_decision     TEXT NOT NULL CHECK(effective_decision IN ('PURSUE', 'CONSIDER', 'PASS')),
-              quality_score          REAL NOT NULL,
-              evaluation_status      TEXT NOT NULL DEFAULT 'COMPLETE' CHECK(evaluation_status IN ('COMPLETE', 'SPARSE_SPEC', 'DEFERRED', 'FAILED')),
-              evaluation_json        TEXT NOT NULL,
-              updated_at             TEXT NOT NULL DEFAULT (datetime('now')),
-              PRIMARY KEY (person_id, job_hash)
-            );
-          `);
-        } catch (err: any) {
-          console.error("⚠️ [SqliteEvaluationStore] Schema init notice:", err?.message || err);
-        }
-      })();
-    }
-    return this.schemaInitPromise;
-  }
 
   /**
    * Computes canonical deterministic evaluation_input_hash using SHA-256 and canonical serialization.
@@ -127,7 +96,6 @@ export class SqliteEvaluationStore {
    * Upserts a candidate evaluation while strictly protecting user overrides.
    */
   async saveEvaluation(record: Omit<CandidateEvaluationRecord, "updatedAt">): Promise<void> {
-    await this.ensureSchema();
     const existing = await this.getEvaluation(record.personId, record.jobHash);
     const existingOverride = existing?.userDecisionOverride;
 
@@ -179,7 +147,6 @@ export class SqliteEvaluationStore {
     jobHash: string,
     userOverride: "PURSUE" | "CONSIDER" | "PASS" | null
   ): Promise<void> {
-    await this.ensureSchema();
     const existing = await this.getEvaluation(personId, jobHash);
     if (!existing) return;
 
@@ -203,7 +170,6 @@ export class SqliteEvaluationStore {
    * Retrieves single candidate evaluation.
    */
   async getEvaluation(personId: string, jobHash: string): Promise<CandidateEvaluationRecord | null> {
-    await this.ensureSchema();
     const row = await this.db.one<any>(
       `SELECT * FROM candidate_evaluations WHERE person_id = ? AND job_hash = ?`,
       this.sanitizeParams([personId, jobHash])
@@ -216,7 +182,6 @@ export class SqliteEvaluationStore {
    * Returns index-backed aggregate metrics across the complete candidate evaluation population.
    */
   async getEvaluationMetrics(personId: string): Promise<EvaluationMetrics> {
-    await this.ensureSchema();
     const row = await this.db.one<any>(
       `
       WITH latest_decisions AS (
@@ -259,7 +224,6 @@ export class SqliteEvaluationStore {
    * Fetches specific evaluations by job_hash list for user decision pipeline hydration.
    */
   async getEvaluationsByJobHashes(personId: string, jobHashes: string[]): Promise<CandidateEvaluationRecord[]> {
-    await this.ensureSchema();
     if (!jobHashes || jobHashes.length === 0) return [];
     const placeholders = jobHashes.map(() => "?").join(",");
     const rows = await this.db.many<any>(
@@ -280,7 +244,6 @@ export class SqliteEvaluationStore {
     personId: string,
     jobHash: string
   ): Promise<{ prevHash?: string; nextHash?: string; currentIndex: number; totalCount: number }> {
-    await this.ensureSchema();
     const rows = await this.db.many<{ job_hash: string }>(
       `SELECT job_hash FROM candidate_evaluations WHERE person_id = ? ORDER BY quality_score DESC, job_hash ASC`,
       this.sanitizeParams([personId])
@@ -303,7 +266,6 @@ export class SqliteEvaluationStore {
    * Computes authoritative population metrics for all canonical categories across the full evaluation corpus.
    */
   async getCategoryMetrics(personId: string): Promise<Record<string, { total: number; unreviewed: number; shortlisted: number }>> {
-    await this.ensureSchema();
     const rows = await this.db.many<any>(
       `
       WITH latest_decisions AS (
@@ -376,7 +338,6 @@ export class SqliteEvaluationStore {
    * Queries evaluated candidate shortlist O(k) with indexed sorting and optional category filtering.
    */
   async listEvaluationsForUser(personId: string, limit?: number, categoryId = "all"): Promise<CandidateEvaluationRecord[]> {
-    await this.ensureSchema();
     const rows = await this.db.many<any>(
       `
       SELECT * FROM candidate_evaluations

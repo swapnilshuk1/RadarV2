@@ -15,6 +15,8 @@ import { CandidateProjectionBuilderImpl } from "../builders/CandidateProjectionB
 import { OperatingLevelEngine } from "../engines/OperatingLevelEngine";
 import { OpportunityService } from "../opportunity-service";
 import { EvaluationCoordinator } from "../EvaluationCoordinator";
+import { activateSearchPlanForIntent } from "../search-plan-activation";
+import { resolveServingScope } from "../../security/scope-resolver";
 import type { EvidenceGraph } from "../../../domain/evidence";
 
 import { parseDocumentText } from "../extraction/text-parser";
@@ -183,6 +185,14 @@ export class ProjectionPipeline {
         await this.repos.documents.updateDocumentStage(documentId, "INFERENCE_COMPLETE", "PROCESSING");
         finalProjection = OperatingLevelEngine.evaluate(baseProjection, rawText);
         await this.repos.people.saveProjection(personId, finalProjection);
+        // A saved CV projection is a new immutable input. If a real intent
+        // exists, establish a new context and canonical refresh lineage now;
+        // cache invalidation alone is never presented as reevaluation.
+        const intent = await this.repos.documents.getLatestCareerIntent(personId);
+        if (intent) {
+          const scope = (await resolveServingScope(personId)).scope;
+          await activateSearchPlanForIntent({ ...intent, scope, activatedBy: "projection-refresh" });
+        }
         currentStage = "EVALUATED";
       }
 

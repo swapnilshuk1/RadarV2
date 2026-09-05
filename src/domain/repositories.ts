@@ -176,6 +176,7 @@ export interface DecisionSupportStore {
   getRecommendationRecordForOpportunity(personId: string, opportunityId: string): Promise<RecommendationRecord | undefined>;
   
   recordUserDecision(personId: string, opportunityId: string, action: string, reason?: string, reviewedFingerprint?: string | null, tenantId?: string): Promise<void>;
+  recordAuthorizedUserDecision(personId: string, tenantId: string, jobHash: string, action: "PURSUE" | "CONSIDER" | "PASS", reason?: string): Promise<{ reviewedFingerprint: string | null }>;
   getUserDecisions(personId: string, tenantId?: string): Promise<Record<string, { verb: string; updatedAt?: string; reviewedFingerprint?: string | null }>>;
   deleteUserDecision(personId: string, opportunityId: string, tenantId?: string): Promise<void>;
   clearUserDecisions(personId: string, tenantId?: string): Promise<void>;

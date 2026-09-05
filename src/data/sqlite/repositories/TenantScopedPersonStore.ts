@@ -1,7 +1,7 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { PersonStore } from "../../../domain/repositories";
 import type { Person, ResumeVersion } from "../../../domain/entities";
-import { type CandidateProjection, validateCandidateProjection, DEFAULT_CANDIDATE_PROJECTION } from "../../../lib/domain/candidate_projection";
+import { type CandidateProjection, validateCandidateProjection } from "../../../lib/domain/candidate_projection";
 import type { AuthorizedPersonScope } from "../../../lib/security/auth";
 import { TenantIsolationError } from "../../../lib/security/auth";
 import { versionCandidateProjection } from "./profile-projection-version";
@@ -104,8 +104,10 @@ export class TenantScopedPersonStore implements PersonStore {
       );
     }
 
-    const profileId = `profile-${personId}`; // Enforce single active profile per user for now
     const persistedProjection = versionCandidateProjection(projection);
+    // Do not overwrite an artifact referenced by an existing evaluation
+    // context. New content becomes a new immutable projection row.
+    const profileId = `profile-${personId}-${persistedProjection.profileVersion}`;
     const projectionJson = JSON.stringify(persistedProjection);
     const now = new Date().toISOString();
     
@@ -131,14 +133,7 @@ export class TenantScopedPersonStore implements PersonStore {
         created_at, updated_at
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        projection_json = excluded.projection_json,
-        projection_generated_at = excluded.projection_generated_at,
-        current_title = excluded.current_title,
-        years_experience = excluded.years_experience,
-        archetype = excluded.archetype,
-        preferred_work_model = excluded.preferred_work_model,
-        updated_at = excluded.updated_at
+      ON CONFLICT(id) DO NOTHING
       `,
       [
         profileId, personId, "[]", "[]", // Dummy timeline/skills for NOT NULL constraints
@@ -161,7 +156,7 @@ export class TenantScopedPersonStore implements PersonStore {
     if (!validPerson) return undefined;
 
     const row = await this.db.one<{ projection_json: string }>(
-      `SELECT projection_json FROM career_profiles WHERE person_id = ? ORDER BY created_at DESC LIMIT 1`,
+      `SELECT projection_json FROM career_profiles WHERE person_id = ? ORDER BY projection_generated_at DESC, rowid DESC LIMIT 1`,
       [personId]
     );
     if (!row || !row.projection_json) {

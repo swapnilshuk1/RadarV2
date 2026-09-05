@@ -90,6 +90,8 @@ describe("Phase 4: Consolidated Scope & Context Resolver Equivalence", () => {
   it("Case 1: Valid user + explicit valid tenant -> identical scope & context", async () => {
     // Seed active membership
     await db.execute(`INSERT INTO memberships (user_id, tenant_id, role, status, permissions) VALUES ('person_A', 'tenant_A', 'member', 'active', '[]')`);
+    await legacyStore.bindEvaluationContextScope("fingerprint_A", "tenant_A", "person_A", "plan_A");
+    await legacyStore.activateContextPointer("fingerprint_A", "tenant_A", "person_A", "plan_A");
 
     const legacy = await resolveLegacy("person_A", "tenant_A");
     const consolidated = await resolveServingScope("person_A", "tenant_A", db);
@@ -102,6 +104,8 @@ describe("Phase 4: Consolidated Scope & Context Resolver Equivalence", () => {
 
   it("Case 2: Valid user with implicit tenant on person row -> identical scope & context", async () => {
     await db.execute(`INSERT INTO memberships (user_id, tenant_id, role, status, permissions) VALUES ('person_A', 'tenant_A', 'member', 'active', '[]')`);
+    await legacyStore.bindEvaluationContextScope("fingerprint_A", "tenant_A", "person_A", "plan_A");
+    await legacyStore.activateContextPointer("fingerprint_A", "tenant_A", "person_A", "plan_A");
 
     const legacy = await resolveLegacy("person_A");
     const consolidated = await resolveServingScope("person_A", undefined, db);
@@ -268,7 +272,7 @@ describe("Phase 4: Consolidated Scope & Context Resolver Equivalence", () => {
     expect(legacy.activeContext).toBeUndefined();
   });
 
-  it("Case 11: Multiple plans/snapshots -> deterministic chronological fallback selection", async () => {
+  it("Case 11: Multiple plans/snapshots without an explicit pointer -> no serving authority", async () => {
     await db.execute(`INSERT INTO memberships (user_id, tenant_id, role, status, permissions) VALUES ('person_A', 'tenant_A', 'member', 'active', '[]')`);
 
     // Add a second newer plan and snapshot
@@ -283,8 +287,7 @@ describe("Phase 4: Consolidated Scope & Context Resolver Equivalence", () => {
     const consolidated = await resolveServingScope("person_A", "tenant_A", db);
 
     expect(consolidated.scope).toEqual(legacy.scope);
-    expect(consolidated.activeContext).toEqual(legacy.activeContext);
-    expect(consolidated.activeContext).toEqual({ searchPlanId: "plan_A_2", contextFingerprint: "fingerprint_A_2" });
+    expect(consolidated.activeContext).toBeUndefined();
   });
 
   it("Case 12: Explicit pointer takes priority over newer chronological context", async () => {

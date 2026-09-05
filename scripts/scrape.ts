@@ -524,6 +524,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         log(`CERTIFICATION FAILED: ${runningUnits.length} units are stuck in running state!`, "error");
         mgr.manifest.status = "failed";
         mgr.finalize("failed");
+        if (runScope) await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "failed", "Certification failed: units remained running.");
+        return { success: false, count: ingestedCount, runId: mgr.runId };
       }
 
       // Transition to enriching state so the UI tracks it in real-time

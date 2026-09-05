@@ -93,16 +93,15 @@ export function useDecisions() {
     };
   }, []);
 
-  const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
+  const decide = async (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
+    // A browser fingerprint is display metadata only. Canonical provenance is
+    // acknowledged by the server after it resolves the scoped current artifact.
+    const result = await saveDecisionFn({ data: { jobHash, verb, reviewedFingerprint } });
+    if (!result?.success) throw new Error("Decision persistence was not acknowledged by the server.");
     setDecisions((prev) => {
-      const next = { ...prev, [jobHash]: { verb, at: Date.now(), reviewedFingerprint: reviewedFingerprint || null } };
+      const next = { ...prev, [jobHash]: { verb, at: Date.now(), reviewedFingerprint: result.reviewedFingerprint ?? null } };
       writeLocal(scopeRef.current, next);
       return next;
-    });
-
-    // Fire background server call to Turso/SQLite
-    saveDecisionFn({ data: { jobHash, verb, reviewedFingerprint } }).catch((err) => {
-      console.error("[useDecisions] Error saving decision to server:", err);
     });
   };
 

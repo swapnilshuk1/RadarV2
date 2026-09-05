@@ -227,7 +227,7 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
     expect(matList[0].decision).toBe("CONSIDER"); // Authoritative worker UPSERT result
   });
 
-  test("9. AuthContext negative test: Mismatched tenant fails authorization", async () => {
+  test("9. AuthContext negative test: Mismatched tenant durably releases the claimed lease", async () => {
     await enqueueEvaluationJobsForPlan(authA, "person_A", "plan_A", { adapter });
     
     const worker = new EvaluationWorker("worker_1", { adapter });
@@ -237,8 +237,12 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
     claim!.tenantId = "tenant_B"; 
 
     const result = await worker.processJob(claim!);
-    expect(result.status).toBe("authorization_failed");
+    expect(result.status).toBe("retry_scheduled");
     expect(result.error).toContain("does not belong to tenant");
+    const persisted = await adapter.one<any>("SELECT status, locked_by, lease_token FROM evaluation_jobs WHERE id = ?", [claim!.id]);
+    expect(persisted.status).toBe("pending");
+    expect(persisted.locked_by).toBeNull();
+    expect(persisted.lease_token).toBeNull();
   });
 
   test("10. Profile/context lineage: Worker resolves correct snapshot payload", async () => {

@@ -378,11 +378,10 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
     const oldState = this.manifest.status;
     if (oldState === state) return;
 
-    if (oldState === "stopping" || oldState === "aborted" || oldState === "stopped") {
-      if (state === "running" || state === "initializing" || state === "waiting_for_confirmation" || state === "enriching") {
-        console.warn(`[Manager] Rejecting transition from terminal state '${oldState}' back to '${state}'.`);
-        return;
-      }
+    const terminalStates: RunManifest["status"][] = ["completed", "failed", "aborted", "stopped"];
+    if (terminalStates.includes(oldState)) {
+      console.warn(`[Manager] Rejecting transition from terminal state '${oldState}' to '${state}'.`);
+      return;
     }
 
     const validTransitions: Record<RunManifest["status"], RunManifest["status"][]> = {
@@ -393,10 +392,10 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
       enriching: ["initializing", "completing", "completed", "failed", "aborted", "stopping", "stopped"],
       stopping: ["stopping", "stopped", "aborted", "failed"],
       completing: ["completing", "completed", "failed", "aborted", "stopping", "stopped"],
-      completed: ["initializing", "running"],
-      stopped: ["initializing", "running"],
-      failed: ["initializing", "running"],
-      aborted: ["initializing", "running"]
+      completed: [],
+      stopped: [],
+      failed: [],
+      aborted: []
     };
     if (validTransitions[oldState] && !validTransitions[oldState].includes(state)) {
       console.warn(`[Manager] Unplanned transition from ${oldState} to ${state}, allowing for resilience.`);

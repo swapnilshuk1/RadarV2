@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getRepositories } from "../../data/sqlite/provider";
+import { getDatabaseAdapter } from "../../data/database";
+import { TenantScopedPersonStore } from "../../data/sqlite/repositories/TenantScopedPersonStore";
 import type { AuthorizedPersonScope } from "../security/auth";
 import { resolveServingScope } from "../security/scope-resolver";
 import type { SearchCriteriaPayload } from "../domain/evaluation_context";
@@ -44,13 +46,12 @@ export async function activateSearchPlanForIntent(
     scope?: AuthorizedPersonScope;
   }
 ) {
-  const effectiveFunctions = input.functions?.length ? input.functions : ["Marketing", "Growth"];
-  const effectiveTitles = input.targetTitles.length
-    ? input.targetTitles
-    : ["Chief Marketing Officer", "VP Marketing", "Head of Growth"];
-  const effectiveLocations = input.preferredLocations.length
-    ? input.preferredLocations
-    : ["Gurugram", "Bengaluru", "Remote India"];
+  const effectiveFunctions = input.functions || [];
+  const effectiveTitles = input.targetTitles || [];
+  const effectiveLocations = input.preferredLocations || [];
+  if (effectiveTitles.length === 0 || effectiveLocations.length === 0) {
+    throw new Error("PROFILE_INTENT_REQUIRED: Search-plan activation requires explicitly saved target titles and locations.");
+  }
 
   const targetLevels = new Set<string>();
   for (const title of effectiveTitles) {
@@ -61,7 +62,9 @@ export async function activateSearchPlanForIntent(
     if (lower.includes("svp") || lower.includes("senior vice president")) targetLevels.add("SVP");
     if (lower.includes("head") || lower.includes("lead")) targetLevels.add("Head");
   }
-  if (targetLevels.size === 0) targetLevels.add("VP").add("Head").add("Chief");
+  if (targetLevels.size === 0) {
+    throw new Error("PROFILE_INTENT_REQUIRED: Target titles must contain an explicit recognized seniority level.");
+  }
 
   const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
   const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
@@ -69,8 +72,8 @@ export async function activateSearchPlanForIntent(
   const searchPlan = SearchPlanner.plan({
     targetLevel: Array.from(targetLevels),
     functions: effectiveFunctions,
-    operatingModels: ["B2B", "Enterprise", "Scale-up"],
-    ownership: ["P&L", "Commercial"],
+    operatingModels: [],
+    ownership: [],
     industries: input.industries || [],
     exclusions: [],
     targetTitles: effectiveTitles,
@@ -88,12 +91,16 @@ export async function activateSearchPlanForIntent(
     },
     customParameters: {
       functions: effectiveFunctions,
-      operatingModels: ["B2B", "Enterprise", "Scale-up"],
-      ownership: ["P&L", "Commercial"],
+      operatingModels: [],
+      ownership: [],
       generatedQueries: searchPlan.rankedQueries.map((q) => q.query),
     },
   };
   const scope = input.scope || (await resolveServingScope(input.personId)).scope;
+  const projection = await new TenantScopedPersonStore(getDatabaseAdapter(), scope).getLatestProjection(scope.personId);
+  if (!projection?.profileVersion) {
+    throw new Error("PROFILE_REQUIRED: Search-plan activation requires an authoritative candidate projection version.");
+  }
   const versions = loadEvaluationVersionManifest();
   const repos = getRepositories();
   const predecessor = await repos.evaluationContexts.getActiveSearchPlanWithSnapshot(scope);
@@ -103,7 +110,7 @@ export async function activateSearchPlanForIntent(
     ontologyVersion: versions.ontologyVersion,
     ontologyFingerprint: versions.ontologyHash,
     policyVersion: versions.policyVersion,
-    profileVersion: input.createdAt || new Date().toISOString(),
+    profileVersion: projection.profileVersion,
     activatedBy: input.activatedBy || "intent-update",
   };
   // Keep the old context active while the new immutable lineage is prepared

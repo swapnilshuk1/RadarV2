@@ -1,9 +1,8 @@
 import crypto from "crypto";
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
-import { AuthContext, authorizePersonScope, type AuthorizedPersonScope } from "@/lib/security/auth";
+import { AuthContext, authorizePersonScope } from "@/lib/security/auth";
 import { runEngineSingleIntrinsic } from "./engine";
 import { validateCandidateProjection } from "../domain/candidate_projection";
-import { TenantScopedPersonStore } from "@/data/sqlite/repositories/TenantScopedPersonStore";
 import { validateEvaluationConsistency } from "@/lib/domain/evaluation_fingerprint";
 import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
 import type { EvaluationContext } from "@/lib/domain/evaluation_context";
@@ -122,11 +121,10 @@ export class EvaluationWorker {
       try {
         await authorizePersonScope(authContext, job.personId, this.db);
       } catch (authErr: any) {
-        return {
-          status: "authorization_failed",
-          jobId: job.id,
-          error: authErr?.message || "Authorization failed",
-        };
+        // Claimed work may never leave a lease stranded.  Treat scope failure
+        // as a normal durable worker failure so the catch block releases or
+        // dead-letters it under the job's retry policy.
+        throw new Error(`AUTHORIZATION_FAILED: ${authErr?.message || "Authorization failed"}`);
       }
 
       const versionRow = await this.db.one<{
@@ -301,12 +299,19 @@ export class EvaluationWorker {
 
       // Authoritative Candidate Profile Resolution for (job.tenantId, job.personId)
       // 1. Authoritative candidate projection resolution via TenantScopedPersonStore
-      const scope: AuthorizedPersonScope = {
-        tenantId: job.tenantId,
-        personId: job.personId,
-      };
-      const personStore = new TenantScopedPersonStore(this.db, scope);
-      const rawProjection = await personStore.getLatestProjection(job.personId);
+      // The immutable context pins the projection version. A later CV upload
+      // must not change a queued job's candidate input.
+      const pinnedProjectionRow = await this.db.one<{ projection_json: string }>(
+        `SELECT projection_json
+         FROM career_profiles
+         WHERE person_id = ?
+           AND json_extract(projection_json, '$.profileVersion') = ?
+         LIMIT 1`,
+        [job.personId, context.profileVersion],
+      );
+      const rawProjection = pinnedProjectionRow?.projection_json
+        ? JSON.parse(pinnedProjectionRow.projection_json)
+        : undefined;
       if (!rawProjection) {
         // A missing profile is a domain state, not permission to evaluate a
         // synthetic executive. Persist an explicitly non-advisory result.

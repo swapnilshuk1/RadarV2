@@ -2,7 +2,6 @@ import { getDatabaseAdapter } from "../../data/database";
 import type { DatabaseAdapter } from "../../data/database/adapter";
 import type { AuthorizedPersonScope } from "../security/auth";
 import type { ActivatedSearchPlan } from "../../data/sqlite/repositories/SqliteEvaluationContextStore";
-import { TenantScopedPersonStore } from "../../data/sqlite/repositories/TenantScopedPersonStore";
 import { evaluateAttentionGate } from "./AttentionGate";
 import { runEngineSingleIntrinsic } from "./engine";
 import { validateEvaluationConsistency } from "../domain/evaluation_fingerprint";
@@ -65,7 +64,16 @@ export async function materializeExistingCanonicalPool(
      WHERE spc.tenant_id = ? AND spc.person_id = ? AND spc.search_plan_id = ?`,
     [scope.tenantId, scope.personId, source.sourceSearchPlanId]
   );
-  const projection = await new TenantScopedPersonStore(db, scope).getLatestProjection(scope.personId);
+  const pinnedProjectionRow = await db.one<{ projection_json: string }>(
+    `SELECT projection_json FROM career_profiles
+     WHERE person_id = ?
+       AND json_extract(projection_json, '$.profileVersion') = ?
+     LIMIT 1`,
+    [scope.personId, prepared.context.profileVersion],
+  );
+  const projection = pinnedProjectionRow?.projection_json
+    ? JSON.parse(pinnedProjectionRow.projection_json)
+    : undefined;
   const candidateRows: Array<[unknown, ...unknown[]]> = [];
   const evaluations: MaterializedEvaluation[] = [];
   let eligibleCandidates = 0;

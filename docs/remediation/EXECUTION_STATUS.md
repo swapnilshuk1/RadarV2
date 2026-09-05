@@ -10,6 +10,16 @@ Baseline:
 - Current branch head — repaired Gate 0b test fixtures so evaluated-output assertions establish candidate, opportunity, and referential prerequisites.
 
 ## Current
+- remediation ID: Gate 4 — canonical write, refresh, and runtime correctness (closure candidate; external certification pending)
+- branch: `remediation/05-write-refresh-runtime-correctness`
+- decision writes: server-side writes now validate verbs, resolve the authenticated tenant/person's active canonical candidate population, and derive `reviewedFingerprint` only from the current persisted artifact. Unknown/out-of-scope jobs fail explicitly; browser provenance is ignored until server acknowledgement.
+- immutable provenance: candidate projections are content-addressed immutable `career_profiles` rows. Context activation binds the actual projection `profileVersion`, and worker/context materialization resolve the exact pinned version instead of `getLatestProjection()`.
+- refresh/intent: a projection update with saved intent establishes a new search-plan/context materialization lineage; cache invalidation is explicitly not re-evaluation. Missing intent has no fabricated canonical salary, location, title, function, seniority, model, or ownership defaults. Non-USD compensation remains unnormalized without explicit FX provenance.
+- durable runtime: document upload now persists a content-hash-addressed processing job and returns accepted only after durable enqueue. `worker:documents` is the explicit worker entry point. Serving reads no longer start `EvaluationDaemon`; startup is an explicit control-plane function. Claimed evaluation authorization failures durably release/retry rather than stranding leases.
+- acquisition/runtime schema: acquisition claims only return rows whose conditional update succeeded for the caller. Repository runtime table creation was removed from acquisition and legacy evaluation stores; migration `040_write_refresh_runtime_lineage.sql` owns durable document jobs and compensation provenance. Scraper certification failure exits failed before enrichment/completion.
+- active context authority: serving scope no longer promotes a chronological latest context when no active pointer exists.
+- validation: `npx tsc -p tsconfig.verify.json --noEmit` passes. Focused write, decision boundary, worker, scope, migration, scraper-state, and inventory suites pass (7 files, 51 tests). Production SSR build passes. The seven-stage aggregate remains externally authoritative because the Codex nested-process runner is not reliable for that command.
+- deferred to Gate 5: broad legacy-serving convergence, batch dossier hydration/performance work, worker deployment topology, and any future pursued-opportunity lifecycle remain deliberately out of this correctness gate.
 - remediation ID: Gate 3 — feed and metrics truth (uncommitted)
 - branch: `remediation/04-feed-metrics-truth`
 - canonical population: active `search_plan_candidates` joined to active `opportunity_versions`, scoped by tenant, person, search plan, and current evaluation context. Its exact partition is `EVALUATED + SPARSE_SPEC + UNMATERIALIZED + PROFILE_REQUIRED + NOT_EVALUABLE + INVALID = TOTAL`; valid evaluated artifacts further partition exactly into engine `PURSUE + CONSIDER + PASS`.

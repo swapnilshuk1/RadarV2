@@ -168,7 +168,9 @@ function ProfilePage() {
         data: {
           currency,
           targetSalaryAmount: Number(targetSalary),
-          minSalaryUsd: currency === "USD" ? Number(targetSalary) : Math.round(Number(targetSalary) / 83),
+          // Non-USD salary remains in its source currency until an explicit
+          // FX conversion record is supplied by a canonical conversion path.
+          minSalaryUsd: currency === "USD" ? Number(targetSalary) : undefined,
           preferredLocations: locList,
           targetTitles: titleList,
           preferredWorkModel: workModel

@@ -20,11 +20,20 @@ export const getDecisionsFn = createServerFn({ method: "GET" }).handler(async ()
 export const saveDecisionFn = createServerFn({ method: "POST" })
   .validator((d: { jobHash: string; verb: string; reason?: string; reviewedFingerprint?: string | null }) => d)
   .handler(async ({ data }) => {
+    if (data.verb !== "PURSUE" && data.verb !== "CONSIDER" && data.verb !== "PASS") {
+      throw new Error(`INVALID_DECISION_VERB: ${data.verb}`);
+    }
     const user = await requireAuthUser();
     const scope = await resolveScope(user.id);
     const repos = getRepositories();
-    await repos.decisions.recordUserDecision(scope.personId, data.jobHash, data.verb, data.reason, data.reviewedFingerprint, scope.tenantId);
-    return { success: true };
+    const acknowledgement = await repos.decisions.recordAuthorizedUserDecision(
+      scope.personId,
+      scope.tenantId,
+      data.jobHash,
+      data.verb,
+      data.reason,
+    );
+    return { success: true, reviewedFingerprint: acknowledgement.reviewedFingerprint };
   });
 
 export const undoDecisionFn = createServerFn({ method: "POST" })

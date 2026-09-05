@@ -7,47 +7,7 @@ import type {
 import type { Document } from "../../../domain/entities";
 
 export class SqliteAcquisitionStore implements AcquisitionStore {
-  private tableChecked = false;
-
   constructor(private db: DatabaseAdapter) {}
-
-  private async ensureTableExists(): Promise<void> {
-    if (this.tableChecked) return;
-    try {
-      await this.db.execute(`
-        CREATE TABLE IF NOT EXISTS acquisition_ledger (
-          id TEXT PRIMARY KEY,
-          canonical_job_id TEXT NOT NULL,
-          source_portal TEXT NOT NULL,
-          source_job_id TEXT NOT NULL,
-          canonical_url TEXT NOT NULL,
-          title TEXT NOT NULL,
-          company_name TEXT NOT NULL,
-          location TEXT,
-          state TEXT NOT NULL DEFAULT 'DISCOVERED',
-          terminal_state TEXT,
-          claimed_by TEXT,
-          claimed_at TEXT,
-          lease_expires_at TEXT,
-          attempt_count INTEGER DEFAULT 0,
-          last_failure_class TEXT,
-          last_acquisition_method TEXT,
-          acquisition_quality TEXT,
-          validation_confidence TEXT,
-          first_seen_at TEXT NOT NULL,
-          last_seen_at TEXT NOT NULL,
-          last_acquired_at TEXT,
-          freshness_state TEXT DEFAULT 'NEW',
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL,
-          CONSTRAINT uq_portal_canonical UNIQUE (source_portal, canonical_job_id)
-        );
-      `);
-      this.tableChecked = true;
-    } catch (err: any) {
-      console.warn("⚠️ [SqliteAcquisitionStore] ensureTableExists warning:", err.message);
-    }
-  }
 
   async recordDocument(document: Document): Promise<void> {
     await this.db.execute(
@@ -110,7 +70,6 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
   async upsertDiscoveredJob(
     item: Omit<AcquisitionLedgerItem, "id" | "createdAt" | "updatedAt"> & { id?: string }
   ): Promise<AcquisitionLedgerItem> {
-    await this.ensureTableExists();
     const now = new Date().toISOString();
     const id = item.id || `acq-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
@@ -166,7 +125,6 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
     sourcePortal: string,
     canonicalJobId: string
   ): Promise<AcquisitionLedgerItem | undefined> {
-    await this.ensureTableExists();
     const row = await this.db.one<any>(
       `SELECT * FROM acquisition_ledger WHERE source_portal = ? AND canonical_job_id = ?`,
       [sourcePortal, canonicalJobId]
@@ -180,7 +138,6 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
     limit = 10,
     leaseMs = 300000 // 5 minutes
   ): Promise<AcquisitionLedgerItem[]> {
-    await this.ensureTableExists();
     const now = new Date();
     const leaseExpiry = new Date(now.getTime() + leaseMs).toISOString();
     const nowIso = now.toISOString();
@@ -204,7 +161,7 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
     const claimedItems: AcquisitionLedgerItem[] = [];
 
     for (const row of candidateRows) {
-      await this.db.execute(
+      const claim = await this.db.execute(
         `
         UPDATE acquisition_ledger
         SET state = 'CLAIMED',
@@ -218,8 +175,9 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
         [workerId, nowIso, leaseExpiry, nowIso, row.id]
       );
 
-      const updated = await this.db.one<any>(`SELECT * FROM acquisition_ledger WHERE id = ?`, [row.id]);
-      if (updated) {
+      if (claim.rowsAffected !== 1) continue;
+      const updated = await this.db.one<any>(`SELECT * FROM acquisition_ledger WHERE id = ? AND state = 'CLAIMED' AND claimed_by = ?`, [row.id, workerId]);
+      if (updated?.claimed_by === workerId) {
         claimedItems.push(this.mapLedgerRow(updated));
       }
     }
@@ -228,7 +186,6 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
   }
 
   async updateJobState(id: string, updates: Partial<AcquisitionLedgerItem>): Promise<void> {
-    await this.ensureTableExists();
     const now = new Date().toISOString();
     const fields: string[] = ["updated_at = ?"];
     const params: any[] = [now];

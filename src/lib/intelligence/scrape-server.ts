@@ -23,8 +23,10 @@ export function triggerDebouncedRebuild() {
   }, 10000);
 }
 
-// Vite HMR-safe singleton background daemon initialization
-if (typeof globalThis !== "undefined") {
+// Worker startup is an explicit control-plane action. Importing a server
+// function module must never start enrichment or evaluation from a read path.
+export async function startRuntimeWorkers(): Promise<void> {
+  if (typeof globalThis === "undefined") return;
   const g = globalThis as any;
   if (!g.__RADAR_DAEMON__) {
     g.__RADAR_DAEMON__ = {
@@ -69,17 +71,7 @@ if (typeof globalThis !== "undefined") {
       }
     };
   }
-  
-  // Start the singleton daemon inside the server context with a 10-second delay.
-  // This defers background database checks and loops, allowing Vite to fully load
-  // and bundle the page instantly when running 'npm run dev' or loading localhost!
-  if (typeof window === "undefined" && !g.__RADAR_DAEMON__.started) {
-    setTimeout(() => {
-      g.__RADAR_DAEMON__.start().catch((e: any) => {
-        console.error("[Daemon] Deferred start failed:", e.message);
-      });
-    }, 10000); // 10 seconds deferred delay
-  }
+  await g.__RADAR_DAEMON__.start();
 }
 
 let activeScrapeRunLock: { runId: string; startedAt: number } | null = null;

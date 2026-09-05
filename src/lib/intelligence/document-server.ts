@@ -7,11 +7,11 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { getRepositories } from "../../data/sqlite/provider";
-import { ProjectionPipeline } from "./pipeline/ProjectionPipeline";
 import { EvaluationCoordinator } from "./EvaluationCoordinator";
 import { requireAuthUser } from "../auth/guard";
 import type { CareerIntentRecord } from "../../data/sqlite/repositories/SqliteDocumentStore";
 import { activateSearchPlanForIntent } from "./search-plan-activation";
+import crypto from "node:crypto";
 
 /**
  * Fire-and-forget document upload transport adapter.
@@ -28,23 +28,24 @@ export const uploadDocumentFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await requireAuthUser();
     const userId = user.id;
-    const documentId = `doc-${Date.now()}`;
-    const fileBuffer = data.base64Buffer ? Buffer.from(data.base64Buffer, "base64") : undefined;
-
-    const pipeline = new ProjectionPipeline();
-
-    // Fire-and-forget asynchronous execution
-    void pipeline.run({
-      documentId,
+    const repos = getRepositories();
+    const payloadBytes = data.base64Buffer ? Buffer.from(data.base64Buffer, "base64") : Buffer.from(data.documentText || "", "utf8");
+    const contentHash = crypto.createHash("sha256").update(payloadBytes).digest("hex");
+    const documentId = `doc-${contentHash}`;
+    // Accepted means durably queued, never merely attached to this request's
+    // process lifetime. A worker/bootstrap owns subsequent processing.
+    await repos.documents.saveDocument({
+      id: documentId, personId: userId, filename: data.filename,
+      storageUri: `turso://document_contents/${documentId}`, mimeType: data.mimeType,
+      documentHash: contentHash, status: "UPLOADED", stage: "DOCUMENT_REGISTERED",
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    });
+    await repos.documents.enqueueDocumentProcessing({
+      id: `document-job-${contentHash}`,
       personId: userId,
-      filename: data.filename,
-      storageUri: `turso://document_contents/${documentId}`,
-      mimeType: data.mimeType,
-      documentHash: `hash-${Date.now()}`,
-      documentText: data.documentText,
-      fileBuffer
-    }).catch((err) => {
-      console.error(`[document-server] Async pipeline run failed for ${documentId}:`, err);
+      documentId,
+      jobHash: `document:${userId}:${contentHash}`,
+      payloadJson: JSON.stringify({ filename: data.filename, mimeType: data.mimeType, documentText: data.documentText, base64Buffer: data.base64Buffer, documentHash: contentHash }),
     });
 
     return {
@@ -52,7 +53,7 @@ export const uploadDocumentFn = createServerFn({ method: "POST" })
       documentId,
       personId: userId,
       status: "ACCEPTED",
-      message: "Document received. Pipeline execution initiated asynchronously."
+      message: "Document received and durably queued for processing."
     };
   });
 
@@ -102,13 +103,14 @@ export const saveIntentFn = createServerFn({ method: "POST" })
 
     const intentRecord: CareerIntentRecord = {
       personId: user.id,
-      currency: intent.currency || "INR",
-      targetSalaryAmount: intent.targetSalaryAmount || intent.minSalaryUsd || 8000000,
-      minSalaryUsd: intent.minSalaryUsd || intent.targetSalaryAmount,
+      currency: intent.currency,
+      targetSalaryAmount: intent.targetSalaryAmount,
+      // A normalized USD number is canonical only with explicit FX provenance.
+      minSalaryUsd: intent.currency === "USD" ? intent.targetSalaryAmount : undefined,
       preferredLocations: intent.preferredLocations,
       targetTitles: intent.targetTitles,
-      preferredWorkModel: intent.preferredWorkModel || "ANY",
-      travelTolerance: intent.travelTolerance || "MEDIUM"
+      preferredWorkModel: intent.preferredWorkModel,
+      travelTolerance: intent.travelTolerance
     };
 
     await repos.documents.saveCareerIntent(intentRecord);
@@ -138,13 +140,5 @@ export const getLatestIntentFn = createServerFn({ method: "GET" })
     const user = await requireAuthUser();
     const repos = getRepositories();
     const intent = await repos.documents.getLatestCareerIntent(user.id);
-    return intent || {
-      personId: user.id,
-      currency: "INR",
-      targetSalaryAmount: 8000000,
-      preferredLocations: ["Gurugram", "Remote India"],
-      targetTitles: ["Vice President", "CMO", "CGO"],
-      preferredWorkModel: "ANY",
-      travelTolerance: "MEDIUM"
-    };
+    return intent || null;
   });

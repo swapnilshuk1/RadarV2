@@ -22,6 +22,14 @@ export interface CareerIntentRecord {
   currency?: "INR" | "USD" | "EUR" | "GBP";
   targetSalaryAmount?: number;
   minSalaryUsd?: number;
+  normalizedSalaryUsd?: number | null;
+  normalization?: {
+    sourceCurrency: string;
+    targetCurrency: "USD";
+    rate: number;
+    rateSource: string;
+    effectiveAt: string;
+  } | null;
   preferredLocations: string[];
   targetTitles: string[];
   preferredWorkModel?: "HYBRID" | "REMOTE" | "ON_SITE" | "ANY";
@@ -218,15 +226,26 @@ export class SqliteDocumentStore {
     await this.db.execute(
       `
       INSERT INTO career_intents (
-        id, person_id, version, min_salary_usd, preferred_locations, target_titles, preferred_work_model, travel_tolerance, created_at
+        id, person_id, version, min_salary_usd, currency, target_salary_amount,
+        normalized_salary_usd, normalization_source_currency, normalization_target_currency,
+        normalization_rate, normalization_rate_source, normalization_effective_at,
+        preferred_locations, target_titles, preferred_work_model, travel_tolerance, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         intentId,
         intent.personId,
         nextVersion,
-        intent.minSalaryUsd || null,
+        intent.minSalaryUsd ?? null,
+        intent.currency ?? null,
+        intent.targetSalaryAmount ?? null,
+        intent.normalizedSalaryUsd ?? null,
+        intent.normalization?.sourceCurrency ?? null,
+        intent.normalization?.targetCurrency ?? null,
+        intent.normalization?.rate ?? null,
+        intent.normalization?.rateSource ?? null,
+        intent.normalization?.effectiveAt ?? null,
         JSON.stringify(intent.preferredLocations || []),
         JSON.stringify(intent.targetTitles || []),
         intent.preferredWorkModel || "ANY",
@@ -244,25 +263,43 @@ export class SqliteDocumentStore {
     if (!row) return undefined;
     const locations: string[] = JSON.parse(row.preferred_locations || "[]");
     
-    // Infer currency: default to INR for India locations, otherwise USD
-    const isIndia = locations.some(l => 
-      /india|gurugram|gurgaon|bengaluru|bangalore|mumbai|delhi|noida|hyderabad/i.test(l)
-    );
-    const currency = row.currency || (isIndia ? "INR" : "USD");
-    const targetSalaryAmount = row.target_salary_amount || row.min_salary_usd || (isIndia ? 8000000 : 150000);
-
     return {
       id: row.id,
       personId: row.person_id,
       version: row.version,
-      currency,
-      targetSalaryAmount,
-      minSalaryUsd: row.min_salary_usd || undefined,
+      currency: row.currency || undefined,
+      targetSalaryAmount: row.target_salary_amount ?? undefined,
+      minSalaryUsd: row.min_salary_usd ?? undefined,
+      normalizedSalaryUsd: row.normalized_salary_usd ?? null,
+      normalization: row.normalization_rate != null ? {
+        sourceCurrency: row.normalization_source_currency,
+        targetCurrency: row.normalization_target_currency,
+        rate: row.normalization_rate,
+        rateSource: row.normalization_rate_source,
+        effectiveAt: row.normalization_effective_at,
+      } : null,
       preferredLocations: locations,
       targetTitles: JSON.parse(row.target_titles || "[]"),
       preferredWorkModel: row.preferred_work_model,
       travelTolerance: row.travel_tolerance,
       createdAt: row.created_at
     };
+  }
+
+  async enqueueDocumentProcessing(input: {
+    id: string;
+    personId: string;
+    documentId: string;
+    jobHash: string;
+    payloadJson: string;
+  }): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO candidate_document_jobs (id, person_id, document_id, job_hash, payload_json, status)
+         VALUES (?, ?, ?, ?, ?, 'pending')
+         ON CONFLICT(job_hash) DO NOTHING`,
+        [input.id, input.personId, input.documentId, input.jobHash, input.payloadJson],
+      );
+    });
   }
 }

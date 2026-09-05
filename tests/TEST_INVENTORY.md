@@ -210,6 +210,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/editorial/ui-score-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 6 | 14 |
 | `tests/editorial/verdict-coverage.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 5 | 12 |
 | `tests/intelligence/active-context-resolution.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 10 |
+| `tests/intelligence/write-refresh-runtime-correctness.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 4 |
 | `tests/intelligence/architecture-contracts.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 10 | 38 |
 | `tests/intelligence/candidate-projection.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 23 |
 | `tests/intelligence/canonical-acquisition-integrity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 22 | 63 |

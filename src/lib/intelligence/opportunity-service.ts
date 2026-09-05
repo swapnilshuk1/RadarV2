@@ -48,13 +48,6 @@ export interface OpportunityMetrics {
   };
 }
 
-function ensureWorkerDaemonStarted() {
-  if (typeof window !== "undefined" || process.env.NODE_ENV === "test") return;
-  import("./EvaluationDaemon").then(({ EvaluationDaemon }) => {
-    EvaluationDaemon.startGlobalDaemon(2000);
-  }).catch(() => {});
-}
-
 /**
  * Resolves AuthorizedPersonScope strictly through authenticated database membership and person scoping.
  * Zero implicit fallback to default tenants.
@@ -172,7 +165,6 @@ export class OpportunityService {
     pageSize?: number,
     requestedTenantId?: string
   ): Promise<FeedPage> {
-    ensureWorkerDaemonStarted();
     const scope = await resolveScope(userId, requestedTenantId);
     const queries = this.getServingQueries();
     return queries.getFeed(scope, cursor, filters, pageSize);
@@ -200,7 +192,6 @@ export class OpportunityService {
    * evaluated artifacts cannot become browser-defined recommendations.
    */
   static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity[]> {
-    ensureWorkerDaemonStarted();
     const scope = await resolveScope(userId, requestedTenantId);
     const queries = this.getServingQueries();
     const feedItems = await collectUnreviewedFeedItems(queries, scope, options?.categoryId);
