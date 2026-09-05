@@ -1,18 +1,11 @@
 import { createFileRoute, notFound, useRouter, Link } from "@tanstack/react-router";
 import { type DecisionVerb, type ServedOpportunity, type EvaluatedOpportunity, isEvaluated, isUnmaterialized, isUnavailable } from "../data/opportunity-fixtures";
 import { getOpportunityDetailsFn } from "../lib/intelligence/opportunity-server";
-import { ClientOpportunityCache } from "../lib/opportunity-cache";
 import { useDecisions } from "../lib/decisions-store";
 import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }: { params: { jobHash: string } }) => {
-    // Check client-side opportunity cache first (instant 0ms navigation on cache hit)
-    const cachedDetails = ClientOpportunityCache.getDetails(params.jobHash);
-    if (cachedDetails && cachedDetails.opportunity) {
-      return cachedDetails;
-    }
-
     const details = await getOpportunityDetailsFn({ data: params.jobHash });
     if (!details.opportunity) throw notFound();
     return {

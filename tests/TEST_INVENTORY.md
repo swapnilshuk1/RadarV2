@@ -108,6 +108,7 @@ RADAR v2 Test Architecture
 | `tests/serving/singleflight_and_observability.test.ts` | Singleflight request coalescing prevents duplicate concurrent database queries. | **Stage 5** |
 | `tests/serving/singleflight-scope-isolation.test.ts` | 10 concurrent requests coalesce to 1 underlying query; complete tenant, person, and search-plan scope isolation. | **Stage 5** |
 | `tests/serving/dossier_and_navigation.test.ts` | Dossier detail fetching and next/previous candidate navigation indices. | **Stage 5** |
+| `tests/serving/decided-population-completeness.test.ts` | Decided-opportunity retrieval exhausts keyset pages and never hides records after the first 50. | **Stage 5** |
 | `tests/serving/sql_feed_parity.test.ts` | Serving feed SQL queries match materialized evaluation and user decision states. | **Stage 5** |
 | `tests/persistence/deployment-determinism.test.ts` | OpportunityService delegates serving queries exclusively to repos.canonicalServing and DatabaseAdapter with zero filesystem fallbacks. | **Stage 5** |
 
@@ -371,6 +372,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/semantic/phase6d_production_monitoring.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 16 | 23 |
 | `tests/serving/cursor.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 24 | 31 |
 | `tests/serving/dossier_and_navigation.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 5 | 16 |
+| `tests/serving/decided-population-completeness.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 1 | 1 |
 | `tests/serving/keyset_pagination.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 3 | 20 |
 | `tests/serving/opportunity-queries-contract.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 4 | 17 |
 | `tests/serving/route_server_functions_parity.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 1 | 7 |

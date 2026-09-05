@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DecisionVerb } from "../data/opportunity-fixtures";
 import {
   getDecisionsFn,
@@ -45,7 +45,7 @@ export function activePursuits(): number {
 export function useDecisions() {
   const [decisions, setDecisions] = useState<DecisionMap>({});
   const [hydrated, setHydrated] = useState(false);
-  const [scope, setScope] = useState<string | null>(null);
+  const scopeRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -66,7 +66,7 @@ export function useDecisions() {
 
           const resolvedScope = typeof (res as any).cacheScope === "string" ? (res as any).cacheScope : null;
           if (isMounted) {
-            setScope(resolvedScope);
+            scopeRef.current = resolvedScope;
             setDecisions(currentServerMap);
             writeLocal(resolvedScope, currentServerMap);
             setHydrated(true);
@@ -79,7 +79,10 @@ export function useDecisions() {
 
     hydrate();
 
-    const onChange = () => setDecisions(readLocal(scope));
+    const onChange = () => {
+      const resolvedScope = scopeRef.current;
+      if (resolvedScope) setDecisions(readLocal(resolvedScope));
+    };
     window.addEventListener("radar:decisions", onChange);
     window.addEventListener("storage", onChange);
 
@@ -88,12 +91,12 @@ export function useDecisions() {
       window.removeEventListener("radar:decisions", onChange);
       window.removeEventListener("storage", onChange);
     };
-  }, [scope]);
+  }, []);
 
   const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
     setDecisions((prev) => {
       const next = { ...prev, [jobHash]: { verb, at: Date.now(), reviewedFingerprint: reviewedFingerprint || null } };
-      writeLocal(scope, next);
+      writeLocal(scopeRef.current, next);
       return next;
     });
 
@@ -107,7 +110,7 @@ export function useDecisions() {
     setDecisions((prev) => {
       const next = { ...prev };
       delete next[jobHash];
-      writeLocal(scope, next);
+      writeLocal(scopeRef.current, next);
       return next;
     });
 
@@ -119,7 +122,7 @@ export function useDecisions() {
 
   const clear = () => {
     setDecisions({});
-    writeLocal(scope, {});
+    writeLocal(scopeRef.current, {});
 
     // Fire background server call to Turso/SQLite
     clearDecisionsFn().catch((err) => {

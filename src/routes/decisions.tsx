@@ -1,11 +1,10 @@
 import { type ServedOpportunity, isEvaluated, isUnavailable, type EvaluatedOpportunity } from "../data/opportunity-fixtures";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { applicationActionFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
-import { useDecisions, type DecisionRecord } from "../lib/decisions-store";
+import { useDecisions } from "../lib/decisions-store";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
 import { getDecidedOpportunitiesFn } from "../lib/intelligence/opportunity-server";
-import { ClientOpportunityCache } from "../lib/opportunity-cache";
 
 
 export const Route = createFileRoute("/decisions")({
@@ -24,33 +23,6 @@ export const Route = createFileRoute("/decisions")({
   },
   component: OpportunitiesPage,
 });
-
-interface TrackingData {
-  latestConversation: string;
-  nextAction: string;
-  followUpDate: string;
-}
-
-type TrackingMap = Record<string, TrackingData>;
-
-const TRACK_KEY = "radar.opportunities.tracking.v1";
-
-function readTracking(): TrackingMap {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(TRACK_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeTracking(next: TrackingMap) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(TRACK_KEY, JSON.stringify(next));
-  } catch {}
-}
 
 export function resolveDecisionsCardScore(
   o: Opportunity,
@@ -83,32 +55,6 @@ function OpportunitiesPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterKey, setFilterKey] = useState<FilterKey>("ALL");
-  const [tracking, setTracking] = useState<TrackingMap>({});
-  const [activeTrack, setActiveTrack] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    setTracking(readTracking());
-  }, []);
-
-  useEffect(() => {
-    if (opportunitiesList) {
-      ClientOpportunityCache.setList(opportunitiesList);
-    }
-  }, [opportunitiesList]);
-
-  const updateTracking = (jobHash: string, key: keyof TrackingData, value: string) => {
-    setTracking((prev) => {
-      const current = prev[jobHash] || { latestConversation: "", nextAction: "", followUpDate: "" };
-      const updated = { ...current, [key]: value };
-      const next = { ...prev, [jobHash]: updated };
-      writeTracking(next);
-      return next;
-    });
-  };
-
-  const toggleTrack = (jobHash: string) => {
-    setActiveTrack(prev => ({ ...prev, [jobHash]: !prev[jobHash] }));
-  };
 
   // Helper to get effective user decision verb for an opportunity
   const getUserVerb = (o: Opportunity | ServedOpportunity): DecisionVerb | null => {
@@ -298,12 +244,6 @@ function OpportunitiesPage() {
               const verb = getUserVerb(o);
               const applicationAction = applicationActionFor(o);
 
-              // Tracking values
-              const trackData = tracking[o.jobHash] || { latestConversation: "", nextAction: "", followUpDate: "" };
-
-              const secondaryActionContext = trackData.nextAction;
-              const isTrackOpen = !!activeTrack[o.jobHash];
-
               return (
                 <div
                   key={o.jobHash}
@@ -342,13 +282,6 @@ function OpportunitiesPage() {
                         </span>
                       </div>
 
-                      {/* SECONDARY ACTION CONTEXT (Subdued, non-dominant) */}
-                      {secondaryActionContext && (
-                        <p className="mt-2 text-xs text-ink-muted/90 font-sans italic">
-                          <span className="font-mono not-italic uppercase tracking-wider text-[0.6rem] text-ink-muted mr-1.5">Focus:</span>
-                          {secondaryActionContext}
-                        </p>
-                      )}
                     </div>
 
                     {/* Right-aligned Decision Badge & Controls */}
@@ -388,68 +321,16 @@ function OpportunitiesPage() {
                     </div>
                   </div>
 
-                  {/* Expandable Prepare & Track triggers for decided roles */}
-                  {verb && verb !== "PASS" && (
+                  {verb === "PURSUE" && applicationAction && (
                     <div className="flex items-center gap-4 border-t border-hairline mt-5 pt-3">
-                      <button
-                        type="button"
-                        onClick={() => toggleTrack(o.jobHash)}
-                        className={`text-xs uppercase tracking-[0.14em] font-mono cursor-pointer transition-colors ${
-                          isTrackOpen ? "text-ink font-semibold border-b border-ink" : "text-ink-muted hover:text-ink"
-                        }`}
+                      <a
+                        href={applicationAction.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-auto text-xs uppercase tracking-[0.14em] font-mono text-decision-pursue hover:underline"
                       >
-                        Track
-                      </button>
-                      {verb === "PURSUE" && applicationAction && (
-                        <a
-                          href={applicationAction.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ml-auto text-xs uppercase tracking-[0.14em] font-mono text-decision-pursue hover:underline"
-                        >
-                          {applicationAction.label} ↗
-                        </a>
-                      )}
-                    </div>
-                  )}
-
-
-                  {/* Expanded Track Drawer */}
-                  {isTrackOpen && (
-                    <div className="mt-4 p-4 border border-hairline bg-background/50 rounded-sm animate-reveal">
-                      <p className="label-mono text-[0.6rem] text-ink-muted mb-3">What happened last time?</p>
-                      <div className="grid gap-4 sm:grid-cols-3">
-                        <div>
-                          <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Latest Conversation</label>
-                          <input
-                            type="text"
-                            value={trackData.latestConversation}
-                            onChange={(e) => updateTracking(o.jobHash, "latestConversation", e.target.value)}
-                            placeholder="e.g. Recruiter call scheduled"
-                            className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Next Action Override</label>
-                          <input
-                            type="text"
-                            value={trackData.nextAction}
-                            onChange={(e) => updateTracking(o.jobHash, "nextAction", e.target.value)}
-                            placeholder="e.g. Follow up on Thursday"
-                            className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Follow-up Date</label>
-                          <input
-                            type="text"
-                            value={trackData.followUpDate}
-                            onChange={(e) => updateTracking(o.jobHash, "followUpDate", e.target.value)}
-                            placeholder="e.g. 12 Aug 2026"
-                            className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
-                          />
-                        </div>
-                      </div>
+                        {applicationAction.label} ↗
+                      </a>
                     </div>
                   )}
                 </div>

@@ -16,4 +16,12 @@ describe("Decision browser-cache authority boundary", () => {
     expect(server).not.toContain("syncDecisionsFn");
     expect(store).not.toContain("radar.decisions.v1");
   });
+
+  it("hydrates canonical decisions once and ignores storage events before scope resolution", () => {
+    const store = fs.readFileSync(path.resolve("src/lib/decisions-store.ts"), "utf8");
+    expect(store).toContain("const scopeRef = useRef<string | null>(null)");
+    expect(store).toContain("const resolvedScope = scopeRef.current");
+    expect(store).toContain("if (resolvedScope) setDecisions(readLocal(resolvedScope))");
+    expect(store).not.toContain("}, [scope]);");
+  });
 });

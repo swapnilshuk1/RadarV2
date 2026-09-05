@@ -8,7 +8,7 @@
  * 2. getMetricsForUser computes exact canonical metrics.
  * 3. getFeedForUser returns deterministic keyset page with exact rank & tiers.
  * 4. getDetailsForUser returns exact evaluated opportunity and prev/next navigation.
- * 5. ClientOpportunityCache stores and retrieves single-item dossiers with 0ms overhead.
+ * 5. ClientOpportunityCache is a non-authoritative convenience only.
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -42,7 +42,7 @@ describe("Phase 11 & 12: Route Server Function & Client Cache Suite", () => {
   });
 
   describe("1. ClientOpportunityCache (Phase 12)", () => {
-    it("caches individual dossier DTOs and provides instant memory lookup", () => {
+    it("can hold individual dossier DTOs without becoming a route authority", () => {
       const mockDossier: any = {
         opportunity: {
           jobHash: "job_xyz",
@@ -85,7 +85,13 @@ describe("Phase 11 & 12: Route Server Function & Client Cache Suite", () => {
       expect(dossierRoute).not.toContain(forbidden);
       expect(decisionsRoute).not.toContain(forbidden);
     }
+    expect(dossierRoute).not.toContain("ClientOpportunityCache");
+    expect(dossierRoute).not.toContain("getDetails(");
+    expect(dossierRoute).toContain("getOpportunityDetailsFn");
     expect(decisionsRoute).toContain("getDecidedOpportunitiesFn");
     expect(decisionsRoute).not.toContain("getOpportunitiesFn");
+    expect(decisionsRoute).not.toContain("radar.opportunities.tracking.v1");
+    expect(decisionsRoute).not.toContain("localStorage");
+    expect(decisionsRoute).not.toContain("syncDecisionsFn");
   });
 });

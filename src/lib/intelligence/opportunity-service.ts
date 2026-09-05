@@ -96,6 +96,23 @@ export async function resolveScope(userId: string, requestedTenantId?: string): 
 import { SingleflightOpportunityQueries } from "./serving/singleflight";
 import type { FeedPage, FeedFilters, OpaqueCursor, NavigationContext } from "./opportunity-queries";
 
+/** Exhausts the canonical decided feed; the Decisions ledger is never a partial first page. */
+export async function collectDecidedFeedItems(
+  queries: Pick<SingleflightOpportunityQueries, "getFeed">,
+  scope: AuthorizedPersonScope,
+): Promise<FeedPage["items"]> {
+  const feedItems: Array<FeedPage["items"][number]> = [];
+  let cursor: OpaqueCursor | undefined;
+
+  do {
+    const feed = await queries.getFeed(scope, cursor, { decisionFilter: "decided" }, 50);
+    feedItems.push(...feed.items);
+    cursor = feed.nextCursor;
+  } while (cursor);
+
+  return feedItems;
+}
+
 export class OpportunityService {
   private static getServingQueries(): SingleflightOpportunityQueries {
     const repos = getRepositories();
@@ -133,9 +150,10 @@ export class OpportunityService {
   static async listDecidedForUser(userId: string, requestedTenantId?: string): Promise<Opportunity[]> {
     const scope = await resolveScope(userId, requestedTenantId);
     const queries = this.getServingQueries();
-    const feed = await queries.getFeed(scope, undefined, { decisionFilter: "decided" }, 50);
+    const feedItems = await collectDecidedFeedItems(queries, scope);
+
     const opportunities = await Promise.all(
-      feed.items.map((item) => queries.getDossier(scope, item.jobHash)),
+      feedItems.map((item) => queries.getDossier(scope, item.jobHash)),
     );
     return opportunities.filter(
       (opportunity): opportunity is Opportunity => opportunity !== null && "decision" in opportunity,
