@@ -10,6 +10,23 @@ import { resolveIndeedListingBounded } from "../../../src/lib/acquisition/indeed
 export const indeedHandler: PortalHandler = {
   name: "Indeed",
   detailStrategy: "browser",
+  async resolveListingIdentity(ctx, url) {
+    const page = ctx.detailPage || ctx.searchPage || ctx.activePage;
+    const resolution = await resolveIndeedListingBounded(url, async (hopUrl) => {
+      const response = await page.context().request.fetch(hopUrl, {
+        maxRedirects: 0,
+        timeout: CONFIG.detailTimeoutMs,
+      });
+      try {
+        return { status: response.status(), location: response.headers()["location"] };
+      } finally {
+        await response.dispose();
+      }
+    });
+    return resolution.ok
+      ? { finalUrl: resolution.identity.resolvedUrl }
+      : { finalUrl: resolution.finalUrl, identityResolutionFailure: resolution.failure };
+  },
   buildSearchUrl(request, legacyPage = 1) {
     const input = typeof request === "string" ? { query: request, page: legacyPage } : { ...request };
     const kw = input.query;
@@ -228,27 +245,17 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
 
   const doExtract = async () => {
     try {
-      const resolution = await resolveIndeedListingBounded(url, async (hopUrl) => {
-        const response = await page.context().request.fetch(hopUrl, {
-          maxRedirects: 0,
-          timeout: CONFIG.detailTimeoutMs,
-        });
-        try {
-          return { status: response.status(), location: response.headers()["location"] };
-        } finally {
-          await response.dispose();
-        }
-      });
-      if (!resolution.ok) {
+      const identity = await indeedHandler.resolveListingIdentity!(ctx, url);
+      if (identity.identityResolutionFailure) {
         return {
           fetched: false,
-          fetchError: `Indeed identity resolution failed: ${resolution.failure}`,
+          fetchError: `Indeed identity resolution failed: ${identity.identityResolutionFailure}`,
           fetchDurationMs: Date.now() - t0,
-          finalUrl: resolution.finalUrl,
-          identityResolutionFailure: resolution.failure,
+          finalUrl: identity.finalUrl,
+          identityResolutionFailure: identity.identityResolutionFailure,
         };
       }
-      await page.goto(resolution.identity.resolvedUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
+      await page.goto(identity.finalUrl!, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
       await jitter(400, 900);
 
       // Check current page URL (might have followed an external ATS redirect from /rc/clk)

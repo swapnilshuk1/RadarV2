@@ -8,7 +8,6 @@
 import { describe, it, expect } from "vitest";
 import {
   serveEvaluation,
-  adaptLegacyEvaluation,
   isCanonicalIntrinsicEvaluation,
   type CanonicalIntrinsicEvaluationPayload,
   type CandidateServingContext,
@@ -271,31 +270,6 @@ describe("RADAR V4 Phase 4B — Canonical Intrinsic Evaluation & Dynamic Serving
 
     const served = serveEvaluation(sampleCanonicalIntrinsic, candCtx, sampleOppContext, currentUserDecision);
     expect(served.reviewWorkflowState).toBe("REVIEWED_CURRENT");
-  });
-
-  // Test 11: Legacy row adaptation: tags as LEGACY_NON_CANONICAL and dynamically applies headspace
-  it("Test 11: adapts legacy evaluation rows safely with dynamic headspace and LEGACY_NON_CANONICAL tag", () => {
-    const legacyRow = {
-      jobHash: "legacy_job_001",
-      decision: "PURSUE",
-      recommendation: "Proceed with outreach to VP.",
-      engineRecommendation: {
-        engineVerdict: "PURSUE",
-        qualityScore: 88,
-      },
-    };
-
-    const candCtxSaturated: CandidateServingContext = {
-      personId: "p1",
-      attentionWindow: 6,
-      activePursuits: 6,
-    };
-
-    const served = adaptLegacyEvaluation(legacyRow, candCtxSaturated, { title: "Legacy Job" }, null);
-    expect((served.engineRecommendation as any).legacyStatus).toBe("LEGACY_NON_CANONICAL");
-    expect(served.engineRecommendation.engineVerdict).toBe("CONSIDER"); // Downgraded at read time
-    expect(served.decision).toBe("CONSIDER");
-    expect(served.recommendation).toContain("You are at capacity (6/6 active pursuits)");
   });
 
   // Test 12: Base narrative immutability: serving does NOT mutate the cached baseNarrative object

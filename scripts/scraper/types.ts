@@ -382,6 +382,11 @@ export interface PortalHandler {
   buildSearchUrl(request: PortalSearchRequest | string, page?: number): string;
   ensureSession(ctx: PortalContext): Promise<"ready" | "gated" | "error">;
   listCards(ctx: PortalContext): Promise<FeedCard[]>;
+  /** Optional identity-only resolution for portals whose discovery URL is not a canonical listing identity. */
+  resolveListingIdentity?(ctx: PortalContext, url: string): Promise<{
+    finalUrl?: string;
+    identityResolutionFailure?: string;
+  }>;
   fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCard["detail"]>;
 }
 

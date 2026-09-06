@@ -60,6 +60,41 @@ describe("authenticated canonical ingestion scope", () => {
       { tenant_id: "tenant_A", person_id: "person_A", search_plan_id: "plan_A" },
     ]);
     expect(raw.prepare("SELECT COUNT(*) AS count FROM search_plan_candidates WHERE tenant_id = 'tenant_B'").get()).toEqual({ count: 0 });
+
+    const indeedPayload = {
+      sourcePortal: "Indeed" as const,
+      sourceJobId: "provisional-sponsored-observation",
+      canonicalUrl: "https://in.indeed.com/pagead/clk?tracking=opaque",
+      finalUrl: "https://in.indeed.com/viewjob?jk=ABC123&from=pagead",
+      jobTitle: "VP Growth",
+      companyName: "Acme",
+      location: "Gurugram",
+      rawContent: "VP Growth owns commercial growth, market strategy, revenue operations, and executive team leadership.",
+    };
+    const indeedService = new CanonicalIngestionService(db);
+    await indeedService.ingestOpportunity(indeedPayload, { tenantId: "tenant_A", personId: "person_A" });
+    await indeedService.ingestOpportunity({
+      ...indeedPayload,
+      sourceJobId: "caller-value-is-not-identity",
+      canonicalUrl: "https://in.indeed.com/viewjob?jk=ABC123",
+      finalUrl: undefined,
+    }, { tenantId: "tenant_A", personId: "person_A" });
+    expect(raw.prepare("SELECT COUNT(*) AS count FROM canonical_opportunities WHERE source = 'Indeed'").get()).toEqual({ count: 1 });
+
+    await indeedService.ingestOpportunity({
+      ...indeedPayload,
+      sourceJobId: "another-provisional-value",
+      canonicalUrl: "https://in.indeed.com/viewjob?jk=XYZ789",
+      finalUrl: undefined,
+    }, { tenantId: "tenant_A", personId: "person_A" });
+    expect(raw.prepare("SELECT COUNT(*) AS count FROM canonical_opportunities WHERE source = 'Indeed'").get()).toEqual({ count: 2 });
+
+    await expect(indeedService.ingestOpportunity({
+      ...indeedPayload,
+      sourceJobId: "unverified-sponsored-observation",
+      finalUrl: undefined,
+    }, { tenantId: "tenant_A", personId: "person_A" })).rejects.toThrow("verified external listing identity");
+    expect(raw.prepare("SELECT COUNT(*) AS count FROM canonical_opportunities WHERE source = 'Indeed'").get()).toEqual({ count: 2 });
   });
 
   it("keeps an access-denied response in acquisition evidence rather than creating a canonical market record", async () => {

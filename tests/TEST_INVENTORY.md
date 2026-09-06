@@ -206,12 +206,12 @@ Every test file in the repository is mechanically tracked below:
 | `tests/certification/test-inventory-audit.test.ts` | Certification Integrity | **KEEP** | Full Suite | 11 | 20 |
 | `tests/editorial/career-value-integrity.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 15 | 42 |
 | `tests/editorial/explanation-composition.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 2 | 3 |
-| `tests/editorial/evidence-sufficiency-contract.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 3 | 12 |
+| `tests/editorial/evidence-sufficiency-contract.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 3 | 10 |
 | `tests/editorial/explanation-contract.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 20 | 55 |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 7 | 25 |
 | `tests/editorial/ui-score-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 6 | 14 |
 | `tests/editorial/verdict-coverage.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 5 | 12 |
-| `tests/intelligence/active-context-resolution.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 10 |
+| `tests/intelligence/active-context-resolution.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 10 |
 | `tests/intelligence/write-refresh-runtime-correctness.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 4 |
 | `tests/intelligence/gate4-write-refresh-edge-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 8 |
 | `tests/intelligence/architecture-contracts.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 10 | 38 |
@@ -226,7 +226,6 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/engine-intrinsic.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 10 |
 | `tests/intelligence/evaluation-events.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 8 |
 | `tests/intelligence/evidence-proof-chain.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 25 | 34 |
-| `tests/intelligence/for4d1_serving_contract.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 9 | 15 |
 | `tests/intelligence/for4d5_client_freshness.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 6 | 16 |
 | `tests/intelligence/for4k_bug03_bug04.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 5 | 25 |
 | `tests/intelligence/identity.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 14 | 70 |
@@ -250,12 +249,11 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/metrics-portal-breakdown.test.ts` | Metrics & Aggregation | **KEEP** | Stage 3 | 2 | 9 |
 | `tests/intelligence/model-c-quality.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 14 | 24 |
 | `tests/intelligence/payload-mapper.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 10 | 36 |
-| `tests/intelligence/read-routing.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 10 |
+| `tests/intelligence/read-routing.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 10 |
 | `tests/intelligence/recommendation-golden.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 11 | 46 |
 | `tests/intelligence/schema-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 2 |
 | `tests/intelligence/semantic-evidence-integrity-regression.test.ts` | Semantic Grounding | **KEEP** | Stage 3 | 6 | 31 |
 | `tests/intelligence/serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 13 |
-| `tests/intelligence/serving_verdict_integrity.test.ts` | Evaluation & Policy | **KEEP** | Gate 0 Safety | 11 | 20 |
 | `tests/intelligence/worker-profile-resolution.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 7 | 24 |
 | `tests/security/scraper-auth-permission-non-escalation.test.ts` | Security & Tenant Isolation | **KEEP** | Gate 0 Safety | 1 | 8 |
 | `tests/intelligence/invariant-assertions.test.ts` | Evaluation & Policy | **KEEP** | Stage 3 | 3 | 5 |
@@ -290,7 +288,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/policy/dossier-decision-state.test.ts` | Decision Persistence | **KEEP** | Full Suite | 13 | 38 |
 | `tests/policy/eligibility-gates.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 14 |
 | `tests/policy/filter-integrity.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 26 |
-| `tests/policy/headspace-serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Gate 0 Safety | 6 | 44 |
+| `tests/policy/headspace-serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Gate 0 Safety | 5 | 44 |
 | `tests/policy/indeed-filter.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 15 |
 | `tests/policy/metric-integrity.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 12 | 26 |
 | `tests/policy/opportunity-control-plane.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 13 | 50 |
@@ -324,7 +322,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/regression/p7c-platform-intelligence.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 22 | 39 |
 | `tests/regression/p7d-ux-provenance.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 7 | 17 |
 | `tests/regression/phase4a-contract.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 3 | 19 |
-| `tests/regression/phase4b-serving-engine.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 14 | 57 |
+| `tests/regression/phase4b-serving-engine.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 13 | 57 |
 | `tests/regression/phase4d-optimization.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 5 | 34 |
 | `tests/regression/phase4d-rematerialization.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 8 | 48 |
 | `tests/regression/phase5-serving-invariants.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 5 | 23 |

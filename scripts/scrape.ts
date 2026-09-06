@@ -1060,6 +1060,36 @@ async function processUnit(
                 fetchDurationMs: 0,
                 httpStatus: 200,
               };
+              // Rich discovery evidence may avoid a second JD extraction, but
+              // it may never bypass Indeed's stable-listing identity boundary.
+              if (unit.portal === "Indeed") {
+                const pmDetail = activePageManagers.get(unit.portal);
+                const identity = await handler.resolveListingIdentity?.({
+                  runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
+                  searchUrl, browserContext,
+                  searchPage: pmDetail?.getPage("search") || activePage,
+                  detailPage: pmDetail?.getPage("detail"),
+                  searchMutex: pmDetail?.getMutex("search"),
+                  detailMutex: pmDetail?.getMutex("detail"),
+                  pageManager: pmDetail,
+                  logger: log,
+                  isHttpDisabled: (url: string) => mgr.isHttpFastPathDisabled(unit.portal) || mgr.failedHttpUrls.has(url),
+                  recordHttpFailure: (url: string, reason: string) => mgr.recordDetailFailure(unit.portal, url, reason),
+                  recordTelemetry: (event: any) => mgr.recordTelemetry(event),
+                }, feedCard.detailUrl);
+                if (!identity || identity.identityResolutionFailure || !identity.finalUrl) {
+                  detail = {
+                    fetched: false,
+                    fetchError: `Indeed identity resolution failed: ${identity?.identityResolutionFailure || "IDENTITY_UNRESOLVED"}`,
+                    fetchDurationMs: 0,
+                    httpStatus: 200,
+                    finalUrl: identity?.finalUrl,
+                    identityResolutionFailure: identity?.identityResolutionFailure || "IDENTITY_UNRESOLVED",
+                  };
+                } else {
+                  detail.finalUrl = identity.finalUrl;
+                }
+              }
               acquisitionAttempts.push({
                 method: "DISCOVERY_RICH",
                 url: feedCard.detailUrl,

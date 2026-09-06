@@ -92,7 +92,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "tests/intelligence/invariant-assertions.test.ts",
       "tests/intelligence/worker-profile-resolution.test.ts",
       "tests/security/scraper-auth-permission-non-escalation.test.ts",
-      "tests/intelligence/serving_verdict_integrity.test.ts",
+      "tests/intelligence/m8-canonical-serving.test.ts",
       "tests/policy/headspace-serving-contract.test.ts",
       "tests/intelligence/m9_4_1-evaluation-determinism.test.ts",
       "tests/intelligence/m53-worker.test.ts",

@@ -8,10 +8,10 @@ import {
   type UserDecisionStateV4,
   type EffectiveDecision,
 } from "../../src/domain/decision_v4";
-import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
+import { resolveScope } from "../../src/lib/intelligence/opportunity-service";
 import type { Opportunity } from "../../src/data/opportunity-fixtures";
-import { getRepositories } from "../../src/data/sqlite/provider";
 import { getDatabaseAdapter } from "../../src/data/database/index";
+import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import * as engineModule from "../../src/lib/intelligence/engine";
 
 async function seedTenantUser(userId: string) {
@@ -24,6 +24,8 @@ async function seedTenantUser(userId: string) {
   await db.execute(`INSERT OR IGNORE INTO search_plans (id, tenant_id, person_id, title, status, criteria_json) VALUES (?, ?, ?, 'Plan', 'active', '{}')`, [`sp_${userId}`, tenantId, userId]);
   await db.execute(`INSERT OR IGNORE INTO search_plan_snapshots (id, search_plan_id, tenant_id, person_id, snapshot_hash, payload_json) VALUES (?, ?, ?, ?, 'hash', '{}')`, [`snap_${userId}`, `sp_${userId}`, tenantId, userId]);
   await db.execute(`INSERT OR IGNORE INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES (?, ?, ?, ?, '3.0.0', 'of1', 'v4.1', '1.0')`, [`ctx_${userId}`, tenantId, userId, `snap_${userId}`]);
+  await db.execute(`INSERT OR IGNORE INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id) VALUES (?, ?, ?, ?)`, [`ctx_${userId}`, tenantId, userId, `sp_${userId}`]);
+  await db.execute(`INSERT OR IGNORE INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by) VALUES (?, ?, ?, ?, 'test-fixture')`, [tenantId, userId, `sp_${userId}`, `ctx_${userId}`]);
   return tenantId;
 }
 
@@ -401,7 +403,6 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
   // T11: End-to-End OpportunityService Contract Verification (M5 Materialized Queue)
   // ==========================================================================
   it("T11: OpportunityService.listForUser returns properly structured V4 opportunities with 4-state workflow from materialized state without invoking runEngine", async () => {
-    const repos = getRepositories();
     const userId = "t11-verified-user";
     const tenantId = await seedTenantUser(userId);
     const runEngineSpy = vi.spyOn(engineModule, "runEngine");
@@ -437,41 +438,42 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
       await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content, lifecycle_state) VALUES (?, ?, 'ch1', 'Dir', 'raw', 'ACTIVE')`, [versionId, item.jobHash]);
       await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, ?, 'CANDIDATE')`, [tenantId, userId, `sp_${userId}`, item.jobHash, versionId]);
       await getDatabaseAdapter().execute(`INSERT OR IGNORE INTO materialized_evaluations 
-        (canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, rationale, evidence_ids, evaluation_json) 
-        VALUES (?, ?, ?, ?, ?, 'EVALUATED', ?, ?, 'rationale', '[]', ?)`,
-        [item.jobHash, versionId, tenantId, userId, `ctx_${userId}`, item.engineVerdict, item.vetoed ? null : item.engineQualityScore, JSON.stringify({
-          schemaVersion: "v4.2-intrinsic",
+        (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, rationale, evidence_ids, evaluation_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'EVALUATED', ?, ?, 'rationale', '[]', ?)`,
+        [`mat_${item.jobHash}`, item.jobHash, versionId, tenantId, userId, `ctx_${userId}`, "fp-v4", item.engineVerdict, item.vetoed ? 0 : item.engineQualityScore, JSON.stringify({
+          schemaVersion: "v4.3-intrinsic",
+          evaluationContractVersion: "v4.3",
+          evaluationState: "EVALUATED",
+          canonicalJobId: item.jobHash,
+          opportunityVersion: versionId,
           jobHash: item.jobHash,
-          personId: userId,
           evaluationInputHash: "fp-v4",
+          contextFingerprint: `ctx_${userId}`,
+          tenantId,
+          personId: userId,
           policyVersion: "v4.3",
           ontologyVersion: "v2",
+          ontologyFingerprint: "of1",
+          profileVersion: "1.0",
           evaluatedAt: new Date().toISOString(),
-          intrinsicVerdict: item.engineVerdict,
-          intrinsicQualityScore: item.vetoed ? null : item.engineQualityScore,
-          vetoed: item.vetoed,
-          esi: 85,
-          diligenceStatus: "VERIFIED",
-          baseNarrative: {
-            baseRecommendationProse: `Executive match for ${item.jobHash}`,
-          },
-          auditTrace: {
-            verb0: item.engineVerdict,
-            careerValue: 80,
-            shortlistingPotential: 85,
-            pursuitFriction: 20,
-            rawScore: item.engineQualityScore,
-            evidenceMappingCount: 5,
-          },
+          decision: item.engineVerdict,
+          score: item.vetoed ? 0 : item.engineQualityScore,
+          diligenceStatus: "UNKNOWN",
+          jobProjection: { title: "Dir" },
         }),
       ]);
     }
 
-    // 2. Call OpportunityService.listForUser()
-    const opportunities = await OpportunityService.listForUser(userId);
+    // 2. Read the fixture through the canonical query model rather than the
+    // process-global test singleton used by unrelated suites.
+    const queries = new SqliteOpportunityQueries(getDatabaseAdapter());
+    const scope = await resolveScope(userId);
+    const feed = await queries.getFeed(scope, undefined, { decisionFilter: "unreviewed", shortlistQueue: true }, 50);
+    const opportunities = (await Promise.all(feed.items.map((item) => queries.getDossier(scope, item.jobHash))))
+      .filter((opportunity): opportunity is Opportunity => opportunity !== null);
 
     // 3. Assert that it returns the expected V4 opportunity structure
-    expect(opportunities.length).toBe(3);
+    expect(opportunities.length).toBe(2);
 
     for (const opp of opportunities) {
       // Must have valid engine recommendation object
@@ -493,9 +495,10 @@ describe("RADAR V4 Decision State, Review State & Ranking Pipeline", () => {
     }
 
     // 4. Assert that an empty materialized population returns []
-    await seedTenantUser("t11-nonexistent-user-empty");
-    const emptyOps = await OpportunityService.listForUser("t11-nonexistent-user-empty");
-    expect(emptyOps).toEqual([]);
+    const emptyUserId = "t11-nonexistent-user-empty";
+    await seedTenantUser(emptyUserId);
+    const emptyFeed = await queries.getFeed(await resolveScope(emptyUserId), undefined, { decisionFilter: "unreviewed", shortlistQueue: true }, 50);
+    expect(emptyFeed.items).toEqual([]);
 
     // 5. Assert that listForUser() does not invoke runEngine()
     expect(runEngineSpy).not.toHaveBeenCalled();

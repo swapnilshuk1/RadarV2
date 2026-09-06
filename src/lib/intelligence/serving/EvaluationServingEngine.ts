@@ -16,8 +16,6 @@ import {
   computeReviewWorkflowState,
   type EngineRecommendationV4,
   type UserDecisionStateV4,
-  type EffectiveDecision,
-  type ReviewWorkflowState,
   type EngineVerdict,
 } from "../../../domain/decision_v4";
 import { resolveCanonicalServingReadModel } from "./CanonicalServingReadModel";
@@ -91,7 +89,6 @@ export interface CanonicalIntrinsicEvaluationPayload {
     readonly evidenceMappingCount: number;
   };
 }
-
 export interface ServingPresentationContext {
   readonly personId: string;
 }
@@ -342,176 +339,5 @@ export function serveEvaluation(
     reviewWorkflowState,
     displayScore,
     uiBadge,
-  };
-}
-
-/**
- * Adapts legacy DecisionVerb or unknown strings into a strict EngineVerdict.
- * Safely maps NOT_EVALUABLE -> SPARSE_SPEC to preserve the missing-context semantics.
- */
-function adaptEngineVerdict(verb: unknown): EngineVerdict {
-  if (verb === "PURSUE") return "PURSUE";
-  if (verb === "CONSIDER") return "CONSIDER";
-  if (verb === "PASS") return "PASS";
-  if (verb === "NOT_EVALUABLE" || verb === "SPARSE_SPEC") return "SPARSE_SPEC";
-  return "SPARSE_SPEC";
-}
-
-/**
- * Compatibility Adapter: Serves legacy / non-canonical evaluation rows.
- * Historical compatibility helper. Canonical production serving does not call
- * this adapter; unsupported persisted rows are surfaced as INVALID instead.
- */
-export function adaptLegacyEvaluation(
-  legacyOpp: any,
-  candCtx: CandidateServingContext,
-  oppCtx: OpportunityServingContext,
-  userDecision: UserDecisionStateV4 | null
-): Opportunity {
-  const presentedOpportunity = legacyOpp.opportunity ?? legacyOpp;
-  const recObj = legacyOpp.record || legacyOpp.engineRecommendation || presentedOpportunity.engineRecommendation || legacyOpp;
-  const rawVerb = recObj.engineVerdict
-    || recObj.verb
-    || legacyOpp.engineRecommendation?.engineVerdict
-    || presentedOpportunity.decision
-    || legacyOpp.decision
-    || legacyOpp.verb
-    || legacyOpp.verdict;
-  const recordedVerdict = adaptEngineVerdict(rawVerb);
-
-  const servedEngineRec: EngineRecommendationV4 & { legacyStatus: "LEGACY_NON_CANONICAL" } = {
-    ...(legacyOpp.engineRecommendation || {}),
-    ...(presentedOpportunity.engineRecommendation || {}),
-    ...(legacyOpp.record || {}),
-    jobHash: oppCtx.jobHash || presentedOpportunity.jobHash || legacyOpp.jobHash || "",
-    evaluationFingerprint: recObj.evaluationFingerprint || legacyOpp.engineRecommendation?.evaluationFingerprint || "legacy_v4.1",
-    engineVerdict: recordedVerdict,
-    verb0: recordedVerdict,
-    vetoed: Boolean(recObj.vetoed ?? legacyOpp.engineRecommendation?.vetoed ?? presentedOpportunity.engineRecommendation?.vetoed),
-    vetoReason: recObj.vetoReason || legacyOpp.engineRecommendation?.vetoReason || presentedOpportunity.engineRecommendation?.vetoReason || null,
-    qualityScore: recObj.qualityScore ?? legacyOpp.score ?? legacyOpp.engineRecommendation?.qualityScore ?? presentedOpportunity.engineRecommendation?.qualityScore ?? presentedOpportunity.recommendationResult?.score ?? null,
-    parsingConfidence: recObj.parsingConfidence ?? legacyOpp.engineRecommendation?.parsingConfidence ?? 0.8,
-    evaluatedAt: recObj.evaluatedAt || legacyOpp.engineRecommendation?.evaluatedAt || new Date().toISOString(),
-    legacyStatus: "LEGACY_NON_CANONICAL",
-  };
-
-  const effectiveDecision = computeEffectiveDecision(servedEngineRec, userDecision);
-  const reviewWorkflowState = computeReviewWorkflowState(servedEngineRec, userDecision);
-
-  const rawDimensions = Array.isArray(presentedOpportunity.dimensions) && presentedOpportunity.dimensions.length > 0
-    ? presentedOpportunity.dimensions
-    : Array.isArray(legacyOpp.dimensions)
-    ? legacyOpp.dimensions
-    : Array.isArray(legacyOpp.jobProjection?.dimensions)
-    ? legacyOpp.jobProjection.dimensions
-    : [];
-
-  const cleanDimensions: DimensionResult[] = rawDimensions.map((d: Record<string, unknown>): DimensionResult => {
-    const jdEv = d.jdEvidence as Record<string, unknown> | undefined;
-    const rawStatus = (jdEv?.status as import("@/data/opportunity-fixtures").Status | undefined) || "Missing";
-    const rawEvidenceArr = Array.isArray(jdEv?.evidence) ? (jdEv.evidence as unknown[]) : [];
-    const rawQuote = typeof (rawEvidenceArr[0] as Record<string, unknown> | undefined)?.quote === "string"
-      ? String((rawEvidenceArr[0] as Record<string, unknown>).quote)
-      : typeof jdEv?.quote === "string"
-      ? String(jdEv.quote)
-      : typeof d.quote === "string"
-      ? String(d.quote)
-      : "";
-    const rawValue = typeof jdEv?.value === "string" ? String(jdEv.value) : typeof d.value === "string" ? String(d.value) : "";
-
-    const hasValidQuote = isMeaningfulEvidenceQuote(rawQuote);
-    const hasValue = typeof rawValue === "string" && rawValue.trim().length > 0;
-
-    let finalStatus: import("@/data/opportunity-fixtures").Status = rawStatus;
-    if (rawStatus === "Explicit") {
-      if (!hasValidQuote) {
-        finalStatus = "Missing";
-      }
-    }
-
-    const isExplicit = finalStatus === "Explicit";
-    let finalValue = "";
-    if (isExplicit) {
-      finalValue = hasValue ? rawValue.slice(0, 140) : rawQuote.slice(0, 140);
-    } else if (finalStatus !== "Missing") {
-      finalValue = typeof rawValue === "string" ? rawValue.slice(0, 140) : "";
-    }
-    const finalEvidence: { quote: string; source: import("@/data/opportunity-fixtures").EvidenceSource }[] = isExplicit && hasValidQuote
-      ? [{ quote: rawQuote.slice(0, 140), source: "snippet" }]
-      : [];
-
-    return {
-      key: ((d.key as string) || "mandate") as DimensionKey,
-      label: (d.label as string) || (d.key as string) || "",
-      importance: ((d.importance as string) || "Core") as "Core" | "Supporting" | "Context",
-      bucket: finalStatus === "Missing" ? "Missing" : ((d.bucket as EvidenceBucket) || "Missing"),
-      jdEvidence: {
-        status: finalStatus,
-        value: finalValue,
-        evidence: finalEvidence,
-      },
-    };
-  });
-
-  const decisionAction = userDecision?.userAction && userDecision.userAction !== "NONE"
-    ? userDecision.userAction
-    : recordedVerdict;
-
-  // Precedence: authoritative oppCtx identity/url/location -> presentedOpportunity -> top-level legacy fields.
-  // DO NOT copy legacy recommendation prose, primaryDriver, primaryRisk, hiringRisk, whyNow, positioning, primaryProof into served DTO!
-  return {
-    evaluationState: legacyOpp.evaluationState === "EVALUATED" ? "EVALUATED" : "LEGACY",
-    jobHash: oppCtx.jobHash || presentedOpportunity.jobHash || legacyOpp.jobHash || "",
-    role: oppCtx.role || oppCtx.title || presentedOpportunity.role || legacyOpp.role || "Executive Opportunity",
-    company: (oppCtx.company && oppCtx.company !== "Unknown" && oppCtx.company !== "Unknown Company")
-      ? oppCtx.company
-      : (presentedOpportunity.company && presentedOpportunity.company !== "Unknown" && presentedOpportunity.company !== "Unknown Company")
-      ? presentedOpportunity.company
-      : (legacyOpp.company && legacyOpp.company !== "Unknown" && legacyOpp.company !== "Unknown Company")
-      ? legacyOpp.company
-      : (legacyOpp.record?.company && legacyOpp.record.company !== "Unknown" && legacyOpp.record.company !== "Unknown Company")
-      ? legacyOpp.record.company
-      : "Company not available",
-    location: oppCtx.location || presentedOpportunity.location || legacyOpp.location || "Remote",
-    scrapedFrom: (oppCtx.scrapedFrom === "Naukri" || oppCtx.scrapedFrom === "Indeed")
-      ? oppCtx.scrapedFrom
-      : (presentedOpportunity.scrapedFrom === "Naukri" || presentedOpportunity.scrapedFrom === "Indeed")
-      ? presentedOpportunity.scrapedFrom
-      : legacyOpp.scrapedFrom || "LinkedIn",
-    applyUrl: oppCtx.applyUrl || presentedOpportunity.applyUrl || legacyOpp.applyUrl || undefined,
-    postedRelative: oppCtx.postedAt
-      ? formatPostedRelative(oppCtx.postedAt)
-      : presentedOpportunity.postedRelative || legacyOpp.postedRelative || "Age unavailable",
-    decision: decisionAction,
-    recommendation: "",
-    whyNow: undefined,
-    primaryConcern: null,
-    positioning: [],
-    primaryProof: undefined,
-    headspace: [],
-    headspaceInvestment: undefined,
-    dimensions: cleanDimensions,
-    hiringRisk: "Unknown",
-    alternativePath: undefined,
-    recommendationResult: undefined,
-    esi: undefined,
-    diligenceStatus: legacyOpp.diligenceStatus,
-    recommendationArchetype: undefined,
-    recommendationArchetypeTagline: undefined,
-    mandateArchetype: undefined,
-    primaryDriver: undefined,
-    secondaryDriver: undefined,
-    primaryRisk: undefined,
-    tailoringEffort: undefined,
-    capabilityAlignmentText: undefined,
-    recommendedAction: undefined,
-    engineRecommendation: servedEngineRec,
-    userDecision,
-    effectiveDecision,
-    reviewWorkflowState,
-    displayScore: typeof servedEngineRec.qualityScore === "number" && isFinite(servedEngineRec.qualityScore)
-      ? `${Math.round(servedEngineRec.qualityScore)}%`
-      : undefined,
-    uiBadge: undefined,
   };
 }

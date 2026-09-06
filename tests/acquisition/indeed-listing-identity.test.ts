@@ -44,6 +44,36 @@ describe("Indeed listing identity", () => {
     expect(result).toMatchObject({ ok: false, failure: "UNSAFE_REDIRECT_DESTINATION" });
   });
 
+  it("rejects unsafe initial URLs before issuing any request", async () => {
+    let requestCount = 0;
+    const external = await resolveIndeedListingBounded("https://evil.example/pagead/clk", async () => {
+      requestCount += 1;
+      return { status: 302, location: "https://in.indeed.com/viewjob?jk=ABC123" };
+    });
+    expect(external).toMatchObject({ ok: false, failure: "UNSAFE_REDIRECT_DESTINATION" });
+    expect(requestCount).toBe(0);
+
+    const malformed = await resolveIndeedListingBounded("not a URL", async () => {
+      requestCount += 1;
+      return { status: 302, location: "https://in.indeed.com/viewjob?jk=ABC123" };
+    });
+    expect(malformed).toMatchObject({ ok: false, failure: "UNSAFE_REDIRECT_DESTINATION" });
+    expect(requestCount).toBe(0);
+  });
+
+  it("resolves a sponsored rich-discovery observation without reusing its URL as identity", async () => {
+    const discoveryUrl = "https://in.indeed.com/pagead/clk?tracking=opaque";
+    const result = await resolveIndeedListingBounded(discoveryUrl, async () => ({
+      status: 302,
+      location: "https://in.indeed.com/viewjob?jk=ABC123&from=pagead",
+    }));
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) throw new Error("expected resolved sponsored listing");
+    expect(discoveryUrl).toContain("pagead/clk");
+    expect(result.identity.resolvedUrl).toContain("viewjob?jk=ABC123");
+    expect(result.identity.sourceJobId).toBe("abc123");
+  });
+
   it("enforces the redirect hop limit rather than observing it after navigation", async () => {
     let requestCount = 0;
     const result = await resolveIndeedListingBounded("https://in.indeed.com/pagead/clk?x=1", async () => {

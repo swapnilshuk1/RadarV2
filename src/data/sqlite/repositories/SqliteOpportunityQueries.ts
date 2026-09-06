@@ -83,11 +83,6 @@ function toAttentionDecision(val: unknown): AttentionDecision {
   return "NOT_CANDIDATE";
 }
 
-function toEngineVerdict(val: unknown): EngineVerdict {
-  if (val === "PURSUE" || val === "CONSIDER" || val === "PASS") return val;
-  return "SPARSE_SPEC";
-}
-
 function parseCategoryIds(value: string | null): CategoryId[] {
   try {
     const parsed = JSON.parse(value || "[]");

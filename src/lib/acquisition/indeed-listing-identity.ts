@@ -7,6 +7,16 @@ export const MAX_INDEED_LISTING_REDIRECT_HOPS = 5;
 
 const INDEED_LISTING_ID = /^[a-z0-9_-]{4,128}$/i;
 
+function isAllowedIndeedResolutionUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    const host = url.hostname.toLowerCase();
+    return url.protocol === "https:" && (host === "indeed.com" || host.endsWith(".indeed.com"));
+  } catch {
+    return false;
+  }
+}
+
 export interface VerifiedIndeedListingIdentity {
   sourceJobId: string;
   canonicalJobId: string;
@@ -18,7 +28,7 @@ export function parseVerifiedIndeedListingUrl(rawUrl: string): VerifiedIndeedLis
   try {
     const url = new URL(rawUrl);
     const host = url.hostname.toLowerCase();
-    if (!(host === "indeed.com" || host.endsWith(".indeed.com")) || url.pathname.toLowerCase() !== "/viewjob") {
+    if (url.protocol !== "https:" || !(host === "indeed.com" || host.endsWith(".indeed.com")) || url.pathname.toLowerCase() !== "/viewjob") {
       return undefined;
     }
     const sourceJobId = (url.searchParams.get("jk") || "").trim().toLowerCase();
@@ -51,6 +61,9 @@ export async function resolveIndeedListingBounded(
 ): Promise<IndeedResolutionResult> {
   let currentUrl = initialUrl;
   for (let redirectHops = 0; redirectHops <= MAX_INDEED_LISTING_REDIRECT_HOPS; redirectHops += 1) {
+    if (!isAllowedIndeedResolutionUrl(currentUrl)) {
+      return { ok: false, failure: "UNSAFE_REDIRECT_DESTINATION", finalUrl: currentUrl, redirectHops };
+    }
     const direct = parseVerifiedIndeedListingUrl(currentUrl);
     if (direct) return { ok: true, identity: direct, redirectHops };
 
@@ -67,8 +80,7 @@ export async function resolveIndeedListingBounded(
     } catch {
       return { ok: false, failure: "UNSAFE_REDIRECT_DESTINATION", finalUrl: currentUrl, redirectHops };
     }
-    const host = new URL(nextUrl).hostname.toLowerCase();
-    if (!(host === "indeed.com" || host.endsWith(".indeed.com"))) {
+    if (!isAllowedIndeedResolutionUrl(nextUrl)) {
       return { ok: false, failure: "UNSAFE_REDIRECT_DESTINATION", finalUrl: nextUrl, redirectHops: redirectHops + 1 };
     }
     currentUrl = nextUrl;

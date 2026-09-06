@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll } from "vitest";
 import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
-import { serveEvaluation, adaptLegacyEvaluation } from "../../src/lib/intelligence/serving/EvaluationServingEngine";
+import { serveEvaluation } from "../../src/lib/intelligence/serving/EvaluationServingEngine";
 import type { CanonicalIntrinsicEvaluationPayload } from "../../src/lib/intelligence/serving/EvaluationServingEngine";
 import { getRepositories } from "../../src/data/sqlite/provider";
 import { getDatabaseAdapter } from "../../src/data/database";
@@ -246,33 +246,7 @@ describe("Headspace Serving Contract Regression Suite", () => {
     expect(servedUnsaturated.uiBadge.variant).toBe("signal");
   });
 
-  test("E. adaptLegacyEvaluation follows the exact same contract", () => {
-    const legacyOpp = {
-      jobHash: "legacy-job-01",
-      decision: "PURSUE",
-      recommendationResult: { score: 80 },
-      engineRecommendation: {
-        engineVerdict: "PURSUE",
-        qualityScore: 80,
-      },
-      recommendation: "Strong candidate match.",
-    };
-
-    const adapted = adaptLegacyEvaluation(
-      legacyOpp,
-      { personId: userId, attentionWindow: 5, activePursuits: 20 }, // Saturated
-      { jobHash: "legacy-job-01", role: "Managing Director", company: "Legacy Capital" },
-      null
-    );
-
-    expect(adapted.engineRecommendation?.engineVerdict).toBe("PURSUE");
-    expect(adapted.engineRecommendation?.verb0).toBe("PURSUE");
-    expect(adapted.engineRecommendation?.headspaceVerdict).toBeUndefined();
-    expect(adapted.engineRecommendation?.headspaceDowngraded).toBeUndefined();
-    expect(adapted.engineRecommendation?.headspaceReason).toBeUndefined();
-  });
-
-  test("F. Invariance Verification: DB records and queue eligibility are unchanged", async () => {
+  test("E. Invariance Verification: DB records and queue eligibility are unchanged", async () => {
     const repos = getRepositories();
 
     // 1. Verify candidate_evaluations table in Turso Cloud DB directly
