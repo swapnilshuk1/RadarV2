@@ -1,5 +1,5 @@
 {
-  "totalTests": 165,
+  "totalTests": 204,
   "testCategories": {
     "archive": [
       {
@@ -27,7 +27,7 @@
       {
         "relPath": "tests/archive/p1/p1a-authoritative-source.test.ts",
         "lines": 234,
-        "sizeKb": 9,
+        "sizeKb": 10,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -49,7 +49,7 @@
       {
         "relPath": "tests/archive/p1/p1d-evidence-backed-explanation.test.ts",
         "lines": 215,
-        "sizeKb": 9,
+        "sizeKb": 10,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -60,7 +60,7 @@
       {
         "relPath": "tests/archive/p1/p1f-executive-action.test.ts",
         "lines": 280,
-        "sizeKb": 11,
+        "sizeKb": 12,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -71,7 +71,7 @@
       {
         "relPath": "tests/archive/p2/p2a-principal-risk.test.ts",
         "lines": 667,
-        "sizeKb": 27,
+        "sizeKb": 28,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": true,
@@ -159,8 +159,8 @@
     "editorial": [
       {
         "relPath": "tests/editorial/career-value-integrity.test.ts",
-        "lines": 409,
-        "sizeKb": 15,
+        "lines": 410,
+        "sizeKb": 16,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": true,
@@ -169,9 +169,20 @@
         ]
       },
       {
+        "relPath": "tests/editorial/evidence-sufficiency-contract.test.ts",
+        "lines": 236,
+        "sizeKb": 10,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Editorial evidence sufficiency contract"
+        ]
+      },
+      {
         "relPath": "tests/editorial/explanation-composition.test.ts",
         "lines": 67,
-        "sizeKb": 2,
+        "sizeKb": 3,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -182,7 +193,7 @@
       {
         "relPath": "tests/editorial/explanation-contract.test.ts",
         "lines": 398,
-        "sizeKb": 15,
+        "sizeKb": 16,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -227,8 +238,8 @@
     "intelligence": [
       {
         "relPath": "tests/intelligence/active-context-resolution.test.ts",
-        "lines": 150,
-        "sizeKb": 8,
+        "lines": 70,
+        "sizeKb": 7,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -249,8 +260,8 @@
       },
       {
         "relPath": "tests/intelligence/candidate-projection.test.ts",
-        "lines": 126,
-        "sizeKb": 5,
+        "lines": 301,
+        "sizeKb": 13,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": true,
@@ -260,8 +271,8 @@
       },
       {
         "relPath": "tests/intelligence/canonical-acquisition-integrity.test.ts",
-        "lines": 839,
-        "sizeKb": 33,
+        "lines": 866,
+        "sizeKb": 35,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -278,19 +289,17 @@
       },
       {
         "relPath": "tests/intelligence/canonical-identity.test.ts",
-        "lines": 113,
-        "sizeKb": 4,
+        "lines": 119,
+        "sizeKb": 5,
         "hasTurso": true,
         "hasBetterSqlite": false,
         "hasMocks": false,
-        "describeBlocks": [
-          "Stage 2B: Canonical Identity & Candidate Projection Unification"
-        ]
+        "describeBlocks": []
       },
       {
         "relPath": "tests/intelligence/canonical-ingestion-fk-regression.test.ts",
-        "lines": 229,
-        "sizeKb": 9,
+        "lines": 272,
+        "sizeKb": 11,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -301,7 +310,7 @@
       {
         "relPath": "tests/intelligence/capability-precedence.test.ts",
         "lines": 101,
-        "sizeKb": 4,
+        "sizeKb": 5,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -366,24 +375,13 @@
       },
       {
         "relPath": "tests/intelligence/evidence-proof-chain.test.ts",
-        "lines": 302,
-        "sizeKb": 13,
+        "lines": 304,
+        "sizeKb": 14,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
         "describeBlocks": [
           "RADAR V4 — 25-Point Adversarial Candidate-Evidence Firewall Matrix (A-Y)"
-        ]
-      },
-      {
-        "relPath": "tests/intelligence/for4d1_serving_contract.test.ts",
-        "lines": 276,
-        "sizeKb": 9,
-        "hasTurso": false,
-        "hasBetterSqlite": false,
-        "hasMocks": false,
-        "describeBlocks": [
-          "FOR-4D1 Serving Contract & Shortlist Fixes"
         ]
       },
       {
@@ -398,25 +396,36 @@
         ]
       },
       {
-        "relPath": "tests/intelligence/for4k_bug03_bug04.test.ts",
-        "lines": 110,
-        "sizeKb": 5,
-        "hasTurso": true,
-        "hasBetterSqlite": false,
+        "relPath": "tests/intelligence/gate4-write-refresh-edge-contract.test.ts",
+        "lines": 128,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
         "hasMocks": false,
         "describeBlocks": [
-          "FOR-4K: BUG-03 and BUG-04 Authoritative Tests"
+          "Gate 4 write and refresh edge contracts"
         ]
       },
       {
         "relPath": "tests/intelligence/identity.test.ts",
         "lines": 274,
-        "sizeKb": 13,
+        "sizeKb": 14,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
         "describeBlocks": [
           "Candidate Truth-Preservation Architecture (Phase 8.2B Hardened)"
+        ]
+      },
+      {
+        "relPath": "tests/intelligence/invariant-assertions.test.ts",
+        "lines": 42,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Canonical invariant assertions"
         ]
       },
       {
@@ -432,9 +441,9 @@
       },
       {
         "relPath": "tests/intelligence/m10-continuous-pipeline.test.ts",
-        "lines": 853,
-        "sizeKb": 38,
-        "hasTurso": false,
+        "lines": 918,
+        "sizeKb": 42,
+        "hasTurso": true,
         "hasBetterSqlite": true,
         "hasMocks": false,
         "describeBlocks": [
@@ -457,8 +466,8 @@
       },
       {
         "relPath": "tests/intelligence/m43-attention-gate.test.ts",
-        "lines": 200,
-        "sizeKb": 9,
+        "lines": 350,
+        "sizeKb": 17,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -503,8 +512,8 @@
       },
       {
         "relPath": "tests/intelligence/m53-worker.test.ts",
-        "lines": 236,
-        "sizeKb": 11,
+        "lines": 270,
+        "sizeKb": 13,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -514,21 +523,20 @@
       },
       {
         "relPath": "tests/intelligence/m8-canonical-serving.test.ts",
-        "lines": 274,
-        "sizeKb": 13,
+        "lines": 195,
+        "sizeKb": 12,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
         "describeBlocks": [
           "Milestone M8 — Canonical Executive Serving Store & Resolution",
-          "Canonical Serving Queries",
-          "Effective Decision Precedence Truth Table"
+          "Canonical Serving Queries"
         ]
       },
       {
         "relPath": "tests/intelligence/m9-canonical-loop.test.ts",
-        "lines": 286,
-        "sizeKb": 12,
+        "lines": 301,
+        "sizeKb": 13,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -538,7 +546,7 @@
       },
       {
         "relPath": "tests/intelligence/m9_2c-posting-date.test.ts",
-        "lines": 159,
+        "lines": 157,
         "sizeKb": 7,
         "hasTurso": false,
         "hasBetterSqlite": true,
@@ -550,8 +558,8 @@
       },
       {
         "relPath": "tests/intelligence/m9_3-decision-write-path.test.ts",
-        "lines": 113,
-        "sizeKb": 5,
+        "lines": 153,
+        "sizeKb": 7,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -561,19 +569,19 @@
       },
       {
         "relPath": "tests/intelligence/m9_3-decisions-store-client.test.ts",
-        "lines": 156,
-        "sizeKb": 5,
+        "lines": 28,
+        "sizeKb": 1,
         "hasTurso": false,
         "hasBetterSqlite": false,
-        "hasMocks": true,
+        "hasMocks": false,
         "describeBlocks": [
-          "M9.3 decisions-store Client Reconciliation & Warning Loop Termination"
+          "Decision browser-cache authority boundary"
         ]
       },
       {
         "relPath": "tests/intelligence/m9_3-server-boundary.test.ts",
-        "lines": 121,
-        "sizeKb": 4,
+        "lines": 156,
+        "sizeKb": 8,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": true,
@@ -583,19 +591,19 @@
       },
       {
         "relPath": "tests/intelligence/m9_3-sync-decisions-reconciliation.test.ts",
-        "lines": 192,
-        "sizeKb": 7,
+        "lines": 18,
+        "sizeKb": 1,
         "hasTurso": false,
-        "hasBetterSqlite": true,
-        "hasMocks": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
         "describeBlocks": [
-          "M9.3 Decision Synchronization & Orphan Reconciliation"
+          "M9.3 decision cache reconciliation"
         ]
       },
       {
         "relPath": "tests/intelligence/m9_4_1-evaluation-determinism.test.ts",
-        "lines": 430,
-        "sizeKb": 20,
+        "lines": 505,
+        "sizeKb": 25,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -605,8 +613,8 @@
       },
       {
         "relPath": "tests/intelligence/m9_4_1-multi-tenant-isolation.test.ts",
-        "lines": 174,
-        "sizeKb": 7,
+        "lines": 183,
+        "sizeKb": 8,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -616,8 +624,8 @@
       },
       {
         "relPath": "tests/intelligence/metrics-portal-breakdown.test.ts",
-        "lines": 161,
-        "sizeKb": 7,
+        "lines": 170,
+        "sizeKb": 8,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -627,8 +635,8 @@
       },
       {
         "relPath": "tests/intelligence/model-c-quality.test.ts",
-        "lines": 302,
-        "sizeKb": 9,
+        "lines": 385,
+        "sizeKb": 13,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -638,8 +646,8 @@
       },
       {
         "relPath": "tests/intelligence/payload-mapper.test.ts",
-        "lines": 163,
-        "sizeKb": 8,
+        "lines": 185,
+        "sizeKb": 9,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": true,
@@ -651,7 +659,7 @@
       },
       {
         "relPath": "tests/intelligence/read-routing.test.ts",
-        "lines": 63,
+        "lines": 49,
         "sizeKb": 2,
         "hasTurso": false,
         "hasBetterSqlite": false,
@@ -684,8 +692,8 @@
       },
       {
         "relPath": "tests/intelligence/semantic-evidence-integrity-regression.test.ts",
-        "lines": 172,
-        "sizeKb": 7,
+        "lines": 239,
+        "sizeKb": 11,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -698,8 +706,8 @@
       },
       {
         "relPath": "tests/intelligence/serving-contract.test.ts",
-        "lines": 74,
-        "sizeKb": 5,
+        "lines": 78,
+        "sizeKb": 6,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -708,29 +716,40 @@
         ]
       },
       {
-        "relPath": "tests/intelligence/serving_verdict_integrity.test.ts",
-        "lines": 114,
-        "sizeKb": 5,
-        "hasTurso": false,
-        "hasBetterSqlite": false,
-        "hasMocks": false,
-        "describeBlocks": [
-          "FOR-3 — Serving Verdict Integrity Suite (No Silent Fallback to CONSIDER)"
-        ]
-      },
-      {
         "relPath": "tests/intelligence/worker-profile-resolution.test.ts",
-        "lines": 275,
-        "sizeKb": 13,
+        "lines": 296,
+        "sizeKb": 14,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": true,
         "describeBlocks": [
           "M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationWorker"
         ]
+      },
+      {
+        "relPath": "tests/intelligence/write-refresh-runtime-correctness.test.ts",
+        "lines": 57,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Gate 4 canonical write and runtime correctness"
+        ]
       }
     ],
     "acquisition": [
+      {
+        "relPath": "tests/acquisition/golden-recovery-lineage-cohort.test.ts",
+        "lines": 342,
+        "sizeKb": 16,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Domain 1: Golden Production Lineage Benchmark Cohort"
+        ]
+      },
       {
         "relPath": "tests/acquisition/historical-recovery-lineage.test.ts",
         "lines": 421,
@@ -743,21 +762,132 @@
         ]
       },
       {
+        "relPath": "tests/acquisition/indeed-listing-identity.test.ts",
+        "lines": 94,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Indeed listing identity"
+        ]
+      },
+      {
+        "relPath": "tests/acquisition/ingestion-lineage.test.ts",
+        "lines": 164,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "acquisition ingestion lineage"
+        ]
+      },
+      {
         "relPath": "tests/acquisition/portal-acquisition-reality.test.ts",
-        "lines": 452,
-        "sizeKb": 21,
+        "lines": 516,
+        "sizeKb": 25,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": true,
         "describeBlocks": [
           "Adversarial Portal Acquisition & Certification Suite (RADAR V4 Phase 2)",
+          "0. Validated Job Document boundary (Phase 3)",
           "1. Indeed Acquisition Reality & External ATS Contract",
           "2. Naukri Acquisition Reality & Multi-Container Aggregation",
           "3. UI State Contract & Zero Heuristics Invariant"
         ]
+      },
+      {
+        "relPath": "tests/acquisition/scoped-ingestion.test.ts",
+        "lines": 130,
+        "sizeKb": 10,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "authenticated canonical ingestion scope"
+        ]
+      },
+      {
+        "relPath": "tests/acquisition/source-payload-provenance.test.ts",
+        "lines": 97,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "C4a source-payload provenance migration"
+        ]
       }
     ],
     "other": [
+      {
+        "relPath": "tests/certification/certification-gate-integrity.test.ts",
+        "lines": 184,
+        "sizeKb": 9,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Certification Gate Integrity & Anti-Regression Contract"
+        ]
+      },
+      {
+        "relPath": "tests/certification/journey_a_acquisition_to_evaluation.test.ts",
+        "lines": 301,
+        "sizeKb": 12,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Journey A: Acquisition → Evaluation End-to-End Pipeline"
+        ]
+      },
+      {
+        "relPath": "tests/certification/journey_b_semantic_grounding_to_policy.test.ts",
+        "lines": 119,
+        "sizeKb": 6,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Journey B: Semantic Grounding → Policy Evaluation Boundary"
+        ]
+      },
+      {
+        "relPath": "tests/certification/journey_c_decision_persistence_to_dto.test.ts",
+        "lines": 198,
+        "sizeKb": 10,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Journey C: Decision Persistence → Feed DTO Parity"
+        ]
+      },
+      {
+        "relPath": "tests/certification/journey_d_loader_to_ui_rendering.test.ts",
+        "lines": 148,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Journey D: Loader Data → Component State & UI Rendering Parity"
+        ]
+      },
+      {
+        "relPath": "tests/certification/test-inventory-audit.test.ts",
+        "lines": 200,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Test Inventory Self-Auditing & Governance Contract"
+        ]
+      },
       {
         "relPath": "tests/ontology/tenant-ontology-compiler.test.ts",
         "lines": 339,
@@ -776,7 +906,7 @@
       },
       {
         "relPath": "tests/persistence/active_pointer_precedence.test.ts",
-        "lines": 61,
+        "lines": 63,
         "sizeKb": 3,
         "hasTurso": false,
         "hasBetterSqlite": true,
@@ -788,12 +918,34 @@
       {
         "relPath": "tests/persistence/adapter-contracts.test.ts",
         "lines": 47,
-        "sizeKb": 1,
+        "sizeKb": 2,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
         "describeBlocks": [
           "DatabaseAdapter Contract Tests"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/blob-store-connectivity.test.ts",
+        "lines": 183,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Phase 4C: BlobStore Connectivity & Backend Protocol Verification"
+        ]
+      },
+      {
+        "relPath": "tests/persistence/cross-instance-payload-retrieval.test.ts",
+        "lines": 146,
+        "sizeKb": 5,
+        "hasTurso": true,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 4B: Cross-Instance Payload Retrieval & BlobStore Invariant"
         ]
       },
       {
@@ -809,19 +961,30 @@
       },
       {
         "relPath": "tests/persistence/deployment-determinism.test.ts",
-        "lines": 141,
-        "sizeKb": 6,
+        "lines": 167,
+        "sizeKb": 8,
         "hasTurso": true,
         "hasBetterSqlite": true,
-        "hasMocks": false,
+        "hasMocks": true,
         "describeBlocks": [
           "RADAR Stage 2C — Deployment Determinism & Production Invariants"
         ]
       },
       {
+        "relPath": "tests/persistence/distributed-lease-contention.test.ts",
+        "lines": 180,
+        "sizeKb": 7,
+        "hasTurso": true,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 4C: Distributed Execution, Payload Access & Lease Contention"
+        ]
+      },
+      {
         "relPath": "tests/persistence/evaluation_context_pointers.test.ts",
-        "lines": 56,
-        "sizeKb": 2,
+        "lines": 127,
+        "sizeKb": 5,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -842,24 +1005,13 @@
       },
       {
         "relPath": "tests/persistence/evaluation_pointer_flow.test.ts",
-        "lines": 184,
+        "lines": 186,
         "sizeKb": 10,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
         "describeBlocks": [
           "getActiveContext and getRematerialisationManifest"
-        ]
-      },
-      {
-        "relPath": "tests/persistence/join-integrity.test.ts",
-        "lines": 227,
-        "sizeKb": 9,
-        "hasTurso": false,
-        "hasBetterSqlite": false,
-        "hasMocks": false,
-        "describeBlocks": [
-          "RADAR V4 — Database Join Integrity & Deduplication Suite"
         ]
       },
       {
@@ -908,8 +1060,8 @@
       },
       {
         "relPath": "tests/persistence/migration-runner.test.ts",
-        "lines": 116,
-        "sizeKb": 4,
+        "lines": 219,
+        "sizeKb": 11,
         "hasTurso": true,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -918,9 +1070,20 @@
         ]
       },
       {
+        "relPath": "tests/persistence/queue-crash-restart.test.ts",
+        "lines": 308,
+        "sizeKb": 12,
+        "hasTurso": true,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Checkpoint C: Turso Operational Queue State Plane & Crash/Restart Invariants"
+        ]
+      },
+      {
         "relPath": "tests/persistence/runtime-source-proof.test.ts",
         "lines": 223,
-        "sizeKb": 8,
+        "sizeKb": 9,
         "hasTurso": true,
         "hasBetterSqlite": true,
         "hasMocks": true,
@@ -929,9 +1092,20 @@
         ]
       },
       {
+        "relPath": "tests/persistence/scrape-run-state-machine.test.ts",
+        "lines": 196,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 4A: Scrape Run State Machine & Atomic Uniqueness Contract"
+        ]
+      },
+      {
         "relPath": "tests/persistence/sqlite-retirement.test.ts",
         "lines": 121,
-        "sizeKb": 4,
+        "sizeKb": 5,
         "hasTurso": true,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -941,8 +1115,8 @@
       },
       {
         "relPath": "tests/pipeline/autonomous-pipeline.test.ts",
-        "lines": 321,
-        "sizeKb": 14,
+        "lines": 325,
+        "sizeKb": 15,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -973,6 +1147,17 @@
         ]
       },
       {
+        "relPath": "tests/policy/atomic-plan-activation.test.ts",
+        "lines": 257,
+        "sizeKb": 12,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Atomic career-intent plan activation"
+        ]
+      },
+      {
         "relPath": "tests/policy/attention-management.test.ts",
         "lines": 202,
         "sizeKb": 8,
@@ -985,8 +1170,8 @@
       },
       {
         "relPath": "tests/policy/attention-window.test.ts",
-        "lines": 180,
-        "sizeKb": 7,
+        "lines": 152,
+        "sizeKb": 6,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -996,8 +1181,8 @@
       },
       {
         "relPath": "tests/policy/decision-ranking.test.ts",
-        "lines": 622,
-        "sizeKb": 30,
+        "lines": 625,
+        "sizeKb": 31,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": true,
@@ -1007,7 +1192,7 @@
       },
       {
         "relPath": "tests/policy/dossier-decision-state.test.ts",
-        "lines": 217,
+        "lines": 220,
         "sizeKb": 8,
         "hasTurso": false,
         "hasBetterSqlite": false,
@@ -1030,7 +1215,7 @@
       {
         "relPath": "tests/policy/filter-integrity.test.ts",
         "lines": 209,
-        "sizeKb": 9,
+        "sizeKb": 10,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -1040,7 +1225,7 @@
       },
       {
         "relPath": "tests/policy/headspace-serving-contract.test.ts",
-        "lines": 308,
+        "lines": 276,
         "sizeKb": 15,
         "hasTurso": true,
         "hasBetterSqlite": false,
@@ -1061,20 +1246,9 @@
         ]
       },
       {
-        "relPath": "tests/policy/metric-integrity.test.ts",
-        "lines": 264,
-        "sizeKb": 14,
-        "hasTurso": true,
-        "hasBetterSqlite": false,
-        "hasMocks": true,
-        "describeBlocks": [
-          "RADAR V4 Phase 7.3 Fault Corpus & Integrity Test Matrix"
-        ]
-      },
-      {
         "relPath": "tests/policy/opportunity-control-plane.test.ts",
         "lines": 277,
-        "sizeKb": 13,
+        "sizeKb": 14,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -1107,7 +1281,7 @@
       {
         "relPath": "tests/policy/pursuit-strategy.test.ts",
         "lines": 607,
-        "sizeKb": 25,
+        "sizeKb": 26,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -1324,7 +1498,7 @@
       {
         "relPath": "tests/regression/p2-p2d-engagement-quality.test.ts",
         "lines": 365,
-        "sizeKb": 12,
+        "sizeKb": 13,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": true,
@@ -1336,7 +1510,7 @@
       {
         "relPath": "tests/regression/p2-p2e-compensation-intelligence.test.ts",
         "lines": 346,
-        "sizeKb": 11,
+        "sizeKb": 12,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": true,
@@ -1360,7 +1534,7 @@
       {
         "relPath": "tests/regression/p2-p2i-generalization-check.test.ts",
         "lines": 367,
-        "sizeKb": 13,
+        "sizeKb": 14,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -1371,7 +1545,7 @@
       {
         "relPath": "tests/regression/p3-p3a-shortlisting-calculator.test.ts",
         "lines": 428,
-        "sizeKb": 15,
+        "sizeKb": 16,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -1436,7 +1610,7 @@
       },
       {
         "relPath": "tests/regression/phase4b-serving-engine.test.ts",
-        "lines": 359,
+        "lines": 333,
         "sizeKb": 16,
         "hasTurso": false,
         "hasBetterSqlite": false,
@@ -1448,7 +1622,7 @@
       {
         "relPath": "tests/regression/phase4d-optimization.test.ts",
         "lines": 368,
-        "sizeKb": 13,
+        "sizeKb": 14,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -1464,7 +1638,7 @@
       {
         "relPath": "tests/regression/phase4d-rematerialization.test.ts",
         "lines": 524,
-        "sizeKb": 17,
+        "sizeKb": 18,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -1512,17 +1686,6 @@
         ]
       },
       {
-        "relPath": "tests/regression/stage-4a-client-cache.test.ts",
-        "lines": 48,
-        "sizeKb": 1,
-        "hasTurso": false,
-        "hasBetterSqlite": false,
-        "hasMocks": true,
-        "describeBlocks": [
-          "Gate 1: Client-Side Opportunity Cache Reuse"
-        ]
-      },
-      {
         "relPath": "tests/regression/stage-4b-singleflight.test.ts",
         "lines": 50,
         "sizeKb": 2,
@@ -1546,6 +1709,50 @@
         ]
       },
       {
+        "relPath": "tests/scraper/acquisition-variant-contract.test.ts",
+        "lines": 136,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "acquisition variant contracts"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/ats-content-quality.test.ts",
+        "lines": 74,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "ATS Content-Quality & Boilerplate Gate Contract"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/ats-content-sanitization.test.ts",
+        "lines": 154,
+        "sizeKb": 6,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "ATS Content Sanitization & Script Stripping Contract"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/ats-jsonld-extraction.test.ts",
+        "lines": 109,
+        "sizeKb": 5,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "ATS JSON-LD Extraction & Validation Contract"
+        ]
+      },
+      {
         "relPath": "tests/scraper/auth-security.test.ts",
         "lines": 308,
         "sizeKb": 13,
@@ -1561,9 +1768,31 @@
         ]
       },
       {
+        "relPath": "tests/scraper/enrichment-payload-resolution.test.ts",
+        "lines": 540,
+        "sizeKb": 22,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Phase 6: Acquisition Evidence Reliability & Payload Resolution"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/fintech-marketing-head-replay.test.ts",
+        "lines": 172,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "The FinTech Marketing Head Acceptance Replay Test"
+        ]
+      },
+      {
         "relPath": "tests/scraper/journal-lifecycle.test.ts",
         "lines": 130,
-        "sizeKb": 4,
+        "sizeKb": 5,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -1594,6 +1823,28 @@
         ]
       },
       {
+        "relPath": "tests/scraper/naukri-cancellation-no-legacy-fetch.test.ts",
+        "lines": 219,
+        "sizeKb": 8,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Naukri Cancellation & Legacy Fetch Protection Contract"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/naukri-pagination-browser-context.test.ts",
+        "lines": 153,
+        "sizeKb": 7,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Naukri Browser-Context Pagination Lifecycle Contract"
+        ]
+      },
+      {
         "relPath": "tests/scraper/naukri-state.test.ts",
         "lines": 97,
         "sizeKb": 4,
@@ -1605,14 +1856,51 @@
         ]
       },
       {
+        "relPath": "tests/scraper/scheduler-exhaustion-contract.test.ts",
+        "lines": 140,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Scheduler Exhaustion vs Transport Failure Contract"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/scheduler-transport-safety.test.ts",
+        "lines": 114,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Adaptive Scheduler Transport Safety Contract"
+        ]
+      },
+      {
         "relPath": "tests/scraper/scrape-progress.test.ts",
         "lines": 142,
-        "sizeKb": 5,
+        "sizeKb": 6,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
         "describeBlocks": [
           "Scrape Progress & Persistent Control UX Contract"
+        ]
+      },
+      {
+        "relPath": "tests/scraper/scraper-acquisition-contract.test.ts",
+        "lines": 598,
+        "sizeKb": 25,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Slice B: Acquisition Efficiency & Failure Truth Contracts",
+          "1. LinkedIn Hydration Latency & Recall Invariant",
+          "2. Universal Sparse Preservation (SPARSE != INVALID)",
+          "3. Failure Transparency & Error Taxonomy",
+          "4. Historical Incident Replay Verification"
         ]
       },
       {
@@ -1627,9 +1915,25 @@
         ]
       },
       {
+        "relPath": "tests/scraper/scraper-correctness-contract.test.ts",
+        "lines": 463,
+        "sizeKb": 21,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Scraper Correctness & Invariant Contract Suite",
+          "1. Authoritative Search Plan Resolution",
+          "2. Zero Fallback & Zero Units Invariant for Authenticated Runs",
+          "3. Indeed Sparse Description Preservation (SPARSE != INVALID)",
+          "4. LinkedIn Missing-Company Pre-Detail Escalation",
+          "5. LinkedIn Clean Cancellation"
+        ]
+      },
+      {
         "relPath": "tests/scraper/scraper-smoke.test.ts",
-        "lines": 44,
-        "sizeKb": 2,
+        "lines": 83,
+        "sizeKb": 4,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -1639,8 +1943,8 @@
       },
       {
         "relPath": "tests/scraper/validator.test.ts",
-        "lines": 44,
-        "sizeKb": 2,
+        "lines": 68,
+        "sizeKb": 3,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -1649,9 +1953,31 @@
         ]
       },
       {
+        "relPath": "tests/security/active-tenant-pollution-repair.test.ts",
+        "lines": 81,
+        "sizeKb": 5,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "active tenant pollution repair"
+        ]
+      },
+      {
+        "relPath": "tests/security/deploy-attack-surface-removed.test.ts",
+        "lines": 72,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Checkpoint A: Deployment Attack Surface Removal Contract"
+        ]
+      },
+      {
         "relPath": "tests/security/evaluation-context-isolation.test.ts",
-        "lines": 222,
-        "sizeKb": 10,
+        "lines": 226,
+        "sizeKb": 11,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -1660,9 +1986,31 @@
         ]
       },
       {
+        "relPath": "tests/security/evidence-dedup-repository-scope.test.ts",
+        "lines": 29,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "evidence graph dedup repository ownership scope"
+        ]
+      },
+      {
+        "relPath": "tests/security/evidence-ownership-deduplication.test.ts",
+        "lines": 24,
+        "sizeKb": 1,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "candidate evidence deduplication ownership"
+        ]
+      },
+      {
         "relPath": "tests/security/m62-credential-vault.test.ts",
         "lines": 383,
-        "sizeKb": 15,
+        "sizeKb": 16,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -1673,7 +2021,7 @@
       {
         "relPath": "tests/security/m63-credential-broker.test.ts",
         "lines": 613,
-        "sizeKb": 25,
+        "sizeKb": 26,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": true,
@@ -1693,7 +2041,7 @@
       {
         "relPath": "tests/security/m64-scraper-credential-injection.test.ts",
         "lines": 740,
-        "sizeKb": 27,
+        "sizeKb": 28,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": true,
@@ -1713,8 +2061,8 @@
       },
       {
         "relPath": "tests/security/m8-tenant-isolation.test.ts",
-        "lines": 158,
-        "sizeKb": 8,
+        "lines": 167,
+        "sizeKb": 9,
         "hasTurso": true,
         "hasBetterSqlite": true,
         "hasMocks": true,
@@ -1723,9 +2071,42 @@
         ]
       },
       {
+        "relPath": "tests/security/oauth-callback-url.test.ts",
+        "lines": 29,
+        "sizeKb": 2,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Google OAuth callback URL policy"
+        ]
+      },
+      {
+        "relPath": "tests/security/oauth-http-routes.test.ts",
+        "lines": 111,
+        "sizeKb": 6,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "OAuth raw HTTP routes"
+        ]
+      },
+      {
+        "relPath": "tests/security/oauth-scope-provisioning.test.ts",
+        "lines": 66,
+        "sizeKb": 4,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "OAuth scope provisioning"
+        ]
+      },
+      {
         "relPath": "tests/security/phase13_cross_tenant_pentest.test.ts",
         "lines": 258,
-        "sizeKb": 13,
+        "sizeKb": 14,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -1741,13 +2122,46 @@
       },
       {
         "relPath": "tests/security/scope-resolver-equivalence.test.ts",
-        "lines": 332,
-        "sizeKb": 14,
+        "lines": 334,
+        "sizeKb": 15,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
         "describeBlocks": [
           "Phase 4: Consolidated Scope & Context Resolver Equivalence"
+        ]
+      },
+      {
+        "relPath": "tests/security/scrape-run-ownership.test.ts",
+        "lines": 157,
+        "sizeKb": 6,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Phase 4A: Scrape Run Multi-Tenant Ownership & Security Isolation"
+        ]
+      },
+      {
+        "relPath": "tests/security/scrape-tenant-identity.test.ts",
+        "lines": 118,
+        "sizeKb": 6,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Checkpoint B: Canonical Scraper Identity and Tenant Isolation Contract"
+        ]
+      },
+      {
+        "relPath": "tests/security/scraper-auth-permission-non-escalation.test.ts",
+        "lines": 70,
+        "sizeKb": 3,
+        "hasTurso": false,
+        "hasBetterSqlite": true,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Scraper authorization permission non-escalation"
         ]
       },
       {
@@ -1767,8 +2181,8 @@
       },
       {
         "relPath": "tests/semantic/controlled_integration.test.ts",
-        "lines": 215,
-        "sizeKb": 10,
+        "lines": 227,
+        "sizeKb": 11,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": true,
@@ -1805,7 +2219,7 @@
       {
         "relPath": "tests/semantic/ontology.test.ts",
         "lines": 669,
-        "sizeKb": 36,
+        "sizeKb": 37,
         "hasTurso": false,
         "hasBetterSqlite": false,
         "hasMocks": false,
@@ -1854,7 +2268,7 @@
       },
       {
         "relPath": "tests/serving/cursor.test.ts",
-        "lines": 185,
+        "lines": 195,
         "sizeKb": 7,
         "hasTurso": false,
         "hasBetterSqlite": false,
@@ -1869,9 +2283,20 @@
         ]
       },
       {
+        "relPath": "tests/serving/decided-population-completeness.test.ts",
+        "lines": 33,
+        "sizeKb": 1,
+        "hasTurso": false,
+        "hasBetterSqlite": false,
+        "hasMocks": false,
+        "describeBlocks": [
+          "Decided opportunity population completeness"
+        ]
+      },
+      {
         "relPath": "tests/serving/dossier_and_navigation.test.ts",
-        "lines": 181,
-        "sizeKb": 8,
+        "lines": 400,
+        "sizeKb": 19,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -1883,15 +2308,16 @@
       },
       {
         "relPath": "tests/serving/keyset_pagination.test.ts",
-        "lines": 202,
-        "sizeKb": 9,
+        "lines": 304,
+        "sizeKb": 14,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
         "describeBlocks": [
           "Phase 6: Keyset Pagination & Deterministic Ordering",
           "1. NULL-Score & Lexicographic Ordering Boundary Suite",
-          "2. Cursor Round-Trip Precision"
+          "2. Cursor Round-Trip Precision",
+          "3. Category filter precedes keyset pagination"
         ]
       },
       {
@@ -1907,14 +2333,24 @@
       },
       {
         "relPath": "tests/serving/route_server_functions_parity.test.ts",
-        "lines": 79,
-        "sizeKb": 3,
+        "lines": 116,
+        "sizeKb": 5,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": true,
         "describeBlocks": [
-          "Phase 11 & 12: Route Server Function & Client Cache Suite",
-          "1. ClientOpportunityCache (Phase 12)"
+          "Phase 11 & 12: Route Server Function & Client Cache Suite"
+        ]
+      },
+      {
+        "relPath": "tests/serving/singleflight-scope-isolation.test.ts",
+        "lines": 248,
+        "sizeKb": 9,
+        "hasTurso": true,
+        "hasBetterSqlite": false,
+        "hasMocks": true,
+        "describeBlocks": [
+          "Checkpoint D: Close Serving Boundary & Singleflight Invariants"
         ]
       },
       {
@@ -1930,7 +2366,7 @@
       },
       {
         "relPath": "tests/serving/sql_feed_parity.test.ts",
-        "lines": 239,
+        "lines": 215,
         "sizeKb": 12,
         "hasTurso": false,
         "hasBetterSqlite": true,
@@ -1938,13 +2374,13 @@
         "describeBlocks": [
           "Phase 5: Lean SQL Feed Projection & Parity Certification",
           "1. Architectural Source Invariants",
-          "2. Synthetic Veto Edge-Case Parity Suite"
+          "2. Canonical engine/user decision parity"
         ]
       },
       {
         "relPath": "tests/serving/sql_metrics_aggregation.test.ts",
-        "lines": 181,
-        "sizeKb": 8,
+        "lines": 325,
+        "sizeKb": 16,
         "hasTurso": false,
         "hasBetterSqlite": true,
         "hasMocks": false,
@@ -1956,12 +2392,12 @@
       }
     ]
   },
-  "totalScripts": 487,
+  "totalScripts": 508,
   "scripts": [
     {
       "relPath": "scripts/analyze-decision-coherence.ts",
       "lines": 389,
-      "sizeKb": 13
+      "sizeKb": 14
     },
     {
       "relPath": "scripts/analyze-high-sp-pass.ts",
@@ -2001,7 +2437,7 @@
     {
       "relPath": "scripts/audit-50-real-50-golden-jds.ts",
       "lines": 409,
-      "sizeKb": 20
+      "sizeKb": 21
     },
     {
       "relPath": "scripts/audit-altitude-failure-attribution.ts",
@@ -2016,17 +2452,17 @@
     {
       "relPath": "scripts/audit-candidate-truth-integrity.ts",
       "lines": 106,
-      "sizeKb": 3
+      "sizeKb": 4
     },
     {
       "relPath": "scripts/audit-decision-policy-failures.ts",
       "lines": 245,
-      "sizeKb": 13
+      "sizeKb": 14
     },
     {
       "relPath": "scripts/audit-diagnostic-chain.ts",
       "lines": 338,
-      "sizeKb": 17
+      "sizeKb": 18
     },
     {
       "relPath": "scripts/audit-editorial-authority.ts",
@@ -2057,16 +2493,6 @@
       "relPath": "scripts/audit-narrative-coherence.ts",
       "lines": 274,
       "sizeKb": 9
-    },
-    {
-      "relPath": "scripts/audit-phase73-filter-integrity.ts",
-      "lines": 69,
-      "sizeKb": 3
-    },
-    {
-      "relPath": "scripts/audit-phase73-metric-integrity.ts",
-      "lines": 128,
-      "sizeKb": 7
     },
     {
       "relPath": "scripts/audit-phase8-lineage.ts",
@@ -2136,12 +2562,17 @@
     {
       "relPath": "scripts/backfill-acquisition-integrity.ts",
       "lines": 323,
-      "sizeKb": 13
+      "sizeKb": 14
     },
     {
       "relPath": "scripts/backfill-evaluations.ts",
       "lines": 155,
       "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/backfill-opportunity-version-categories.ts",
+      "lines": 37,
+      "sizeKb": 1
     },
     {
       "relPath": "scripts/backfill_company_names.ts",
@@ -2160,8 +2591,13 @@
     },
     {
       "relPath": "scripts/benchmark-semantic-integration.ts",
-      "lines": 232,
-      "sizeKb": 11
+      "lines": 204,
+      "sizeKb": 10
+    },
+    {
+      "relPath": "scripts/benchmarks/analyze_run_manifest.ts",
+      "lines": 69,
+      "sizeKb": 2
     },
     {
       "relPath": "scripts/benchmarks/audit_all_metrics.ts",
@@ -2174,13 +2610,13 @@
       "sizeKb": 3
     },
     {
-      "relPath": "scripts/benchmarks/benchmark-serving-baseline.ts",
-      "lines": 237,
-      "sizeKb": 11
-    },
-    {
       "relPath": "scripts/benchmarks/browser_verification.ts",
       "lines": 205,
+      "sizeKb": 10
+    },
+    {
+      "relPath": "scripts/benchmarks/build_39_cohort_matrix.ts",
+      "lines": 242,
       "sizeKb": 9
     },
     {
@@ -2194,6 +2630,11 @@
       "sizeKb": 1
     },
     {
+      "relPath": "scripts/benchmarks/check_andamen.ts",
+      "lines": 31,
+      "sizeKb": 1
+    },
+    {
       "relPath": "scripts/benchmarks/check_scraped_status.ts",
       "lines": 43,
       "sizeKb": 2
@@ -2202,6 +2643,11 @@
       "relPath": "scripts/benchmarks/debug_scope_resolution.ts",
       "lines": 30,
       "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/benchmarks/deep_test_audit.ts",
+      "lines": 73,
+      "sizeKb": 3
     },
     {
       "relPath": "scripts/benchmarks/diagnose_mismatch.ts",
@@ -2214,18 +2660,48 @@
       "sizeKb": 3
     },
     {
+      "relPath": "scripts/benchmarks/find_39_opps.ts",
+      "lines": 58,
+      "sizeKb": 3
+    },
+    {
       "relPath": "scripts/benchmarks/generate-golden-dataset.ts",
-      "lines": 173,
+      "lines": 163,
       "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/benchmarks/generate_test_inventory.ts",
+      "lines": 270,
+      "sizeKb": 14
+    },
+    {
+      "relPath": "scripts/benchmarks/inspect_all_41.ts",
+      "lines": 54,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/benchmarks/inspect_all_scraped.ts",
+      "lines": 62,
+      "sizeKb": 3
     },
     {
       "relPath": "scripts/benchmarks/inspect_context_fingerprint.ts",
       "lines": 47,
-      "sizeKb": 1
+      "sizeKb": 2
     },
     {
       "relPath": "scripts/benchmarks/inspect_eval_json.ts",
       "lines": 21,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/benchmarks/inspect_items_1_to_28.ts",
+      "lines": 43,
+      "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/benchmarks/inspect_job_eval.ts",
+      "lines": 27,
       "sizeKb": 1
     },
     {
@@ -2234,9 +2710,19 @@
       "sizeKb": 1
     },
     {
+      "relPath": "scripts/benchmarks/inspect_snapshots.ts",
+      "lines": 32,
+      "sizeKb": 1
+    },
+    {
       "relPath": "scripts/benchmarks/inspect_three.ts",
       "lines": 41,
       "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/benchmarks/inventory_scanner.ts",
+      "lines": 147,
+      "sizeKb": 6
     },
     {
       "relPath": "scripts/benchmarks/profile_shortlist.ts",
@@ -2244,9 +2730,14 @@
       "sizeKb": 1
     },
     {
-      "relPath": "scripts/benchmarks/run_phase14_performance_certification.ts",
-      "lines": 262,
-      "sizeKb": 12
+      "relPath": "scripts/benchmarks/script_inventory_scanner.ts",
+      "lines": 128,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/benchmarks/summarize_inventory.ts",
+      "lines": 28,
+      "sizeKb": 1
     },
     {
       "relPath": "scripts/benchmarks/test_category_and_decisions.ts",
@@ -2269,34 +2760,14 @@
       "sizeKb": 7
     },
     {
-      "relPath": "scripts/benchmarks/test_resolver_parity.ts",
-      "lines": 171,
-      "sizeKb": 6
-    },
-    {
-      "relPath": "scripts/benchmarks/test_scope_live_comparison.ts",
-      "lines": 49,
-      "sizeKb": 2
-    },
-    {
-      "relPath": "scripts/benchmarks/test_simulated_parity.ts",
-      "lines": 181,
-      "sizeKb": 7
-    },
-    {
       "relPath": "scripts/benchmarks/trace_pipeline_lifecycle.ts",
       "lines": 246,
       "sizeKb": 10
     },
     {
-      "relPath": "scripts/benchmarks/verify_phase11_route_parity.ts",
-      "lines": 167,
-      "sizeKb": 8
-    },
-    {
-      "relPath": "scripts/benchmarks/verify_phase5_feed_parity.ts",
-      "lines": 162,
-      "sizeKb": 7
+      "relPath": "scripts/benchmarks/trace_scraper_run.ts",
+      "lines": 82,
+      "sizeKb": 4
     },
     {
       "relPath": "scripts/benchmarks/verify_phase6_live_pagination.ts",
@@ -2304,19 +2775,14 @@
       "sizeKb": 7
     },
     {
-      "relPath": "scripts/benchmarks/verify_phase7_metrics_parity.ts",
-      "lines": 133,
-      "sizeKb": 11
-    },
-    {
-      "relPath": "scripts/benchmarks/verify_phase8_dossier_parity.ts",
-      "lines": 183,
-      "sizeKb": 9
-    },
-    {
       "relPath": "scripts/benchmarks/verify_phase9_10_singleflight_and_telemetry.ts",
       "lines": 108,
       "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/certification/affected.ts",
+      "lines": 101,
+      "sizeKb": 4
     },
     {
       "relPath": "scripts/certification/build-corpus.ts",
@@ -2326,12 +2792,17 @@
     {
       "relPath": "scripts/certification/certify.ts",
       "lines": 227,
-      "sizeKb": 9
+      "sizeKb": 10
     },
     {
       "relPath": "scripts/certification/invariants.ts",
       "lines": 96,
       "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/certification/manifest.ts",
+      "lines": 112,
+      "sizeKb": 5
     },
     {
       "relPath": "scripts/certification/mutations.ts",
@@ -2341,7 +2812,7 @@
     {
       "relPath": "scripts/certify-editorial-integrity.ts",
       "lines": 121,
-      "sizeKb": 6
+      "sizeKb": 7
     },
     {
       "relPath": "scripts/certify-executive-explanation-integrity.ts",
@@ -2351,12 +2822,17 @@
     {
       "relPath": "scripts/certify-phase6a1.ts",
       "lines": 442,
-      "sizeKb": 19
+      "sizeKb": 20
     },
     {
       "relPath": "scripts/certify-pursuit-strategy-integrity.ts",
       "lines": 103,
       "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/certify.ts",
+      "lines": 136,
+      "sizeKb": 6
     },
     {
       "relPath": "scripts/check-404.ts",
@@ -2369,16 +2845,6 @@
       "sizeKb": 2
     },
     {
-      "relPath": "scripts/check-diag-pursuits-lean.ts",
-      "lines": 51,
-      "sizeKb": 2
-    },
-    {
-      "relPath": "scripts/check-diag-pursuits.ts",
-      "lines": 70,
-      "sizeKb": 3
-    },
-    {
       "relPath": "scripts/check-diag-weekday.ts",
       "lines": 56,
       "sizeKb": 2
@@ -2387,11 +2853,6 @@
       "relPath": "scripts/check-diag.ts",
       "lines": 64,
       "sizeKb": 3
-    },
-    {
-      "relPath": "scripts/check-headspace-downgrade.ts",
-      "lines": 37,
-      "sizeKb": 2
     },
     {
       "relPath": "scripts/check-job.ts",
@@ -2486,7 +2947,7 @@
     {
       "relPath": "scripts/corpus/health.ts",
       "lines": 149,
-      "sizeKb": 6
+      "sizeKb": 7
     },
     {
       "relPath": "scripts/corpus/ingest.ts",
@@ -2516,17 +2977,22 @@
     {
       "relPath": "scripts/corpus-recognition-report.ts",
       "lines": 584,
-      "sizeKb": 32
+      "sizeKb": 33
     },
     {
       "relPath": "scripts/counterfactual-stability-test.ts",
       "lines": 280,
-      "sizeKb": 12
+      "sizeKb": 13
     },
     {
       "relPath": "scripts/db/reset-corpus.ts",
       "lines": 213,
       "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/db-status.ts",
+      "lines": 28,
+      "sizeKb": 1
     },
     {
       "relPath": "scripts/debug-case-j-cc222b05ee62.ts",
@@ -2542,16 +3008,6 @@
       "relPath": "scripts/debug_all_failing.ts",
       "lines": 50,
       "sizeKb": 2
-    },
-    {
-      "relPath": "scripts/debug_metrics.ts",
-      "lines": 35,
-      "sizeKb": 1
-    },
-    {
-      "relPath": "scripts/debug_remote_opps.ts",
-      "lines": 31,
-      "sizeKb": 1
     },
     {
       "relPath": "scripts/debug_stack.ts",
@@ -2570,8 +3026,13 @@
     },
     {
       "relPath": "scripts/deploy.ts",
-      "lines": 88,
+      "lines": 89,
       "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/dev.ts",
+      "lines": 27,
+      "sizeKb": 1
     },
     {
       "relPath": "scripts/diag-golden-trace.ts",
@@ -2599,11 +3060,6 @@
       "sizeKb": 2
     },
     {
-      "relPath": "scripts/diagnose-metric-integrity.ts",
-      "lines": 71,
-      "sizeKb": 3
-    },
-    {
       "relPath": "scripts/diagnose-nona-score-verdict-conflict.ts",
       "lines": 364,
       "sizeKb": 24
@@ -2621,11 +3077,16 @@
     {
       "relPath": "scripts/diagnose-presentation-layer.ts",
       "lines": 263,
-      "sizeKb": 8
+      "sizeKb": 9
     },
     {
       "relPath": "scripts/diagnose-text-availability.ts",
       "lines": 97,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/diagnose.ts",
+      "lines": 120,
       "sizeKb": 5
     },
     {
@@ -2670,8 +3131,8 @@
     },
     {
       "relPath": "scripts/enrich.ts",
-      "lines": 461,
-      "sizeKb": 17
+      "lines": 582,
+      "sizeKb": 23
     },
     {
       "relPath": "scripts/eval/metrics.ts",
@@ -2686,12 +3147,12 @@
     {
       "relPath": "scripts/eval/run-v4-editorial-audit.ts",
       "lines": 252,
-      "sizeKb": 11
+      "sizeKb": 12
     },
     {
       "relPath": "scripts/eval/run-v4-executive-explanation-audit.ts",
       "lines": 228,
-      "sizeKb": 9
+      "sizeKb": 10
     },
     {
       "relPath": "scripts/eval/run-v4-pursuit-strategy-audit.ts",
@@ -2706,7 +3167,7 @@
     {
       "relPath": "scripts/eval/v4-simulation/contradiction-scanner.ts",
       "lines": 141,
-      "sizeKb": 5
+      "sizeKb": 6
     },
     {
       "relPath": "scripts/eval/v4-simulation/corpus-sampler.ts",
@@ -2716,7 +3177,7 @@
     {
       "relPath": "scripts/eval/v4-simulation/cv-truth-auditor.ts",
       "lines": 706,
-      "sizeKb": 25
+      "sizeKb": 26
     },
     {
       "relPath": "scripts/eval/v4-simulation/generic-language-miner.ts",
@@ -2746,7 +3207,7 @@
     {
       "relPath": "scripts/eval/v4-simulation/report-generator.ts",
       "lines": 253,
-      "sizeKb": 14
+      "sizeKb": 15
     },
     {
       "relPath": "scripts/eval/v4-simulation/runner.ts",
@@ -2761,7 +3222,7 @@
     {
       "relPath": "scripts/eval/v4-simulation/verbatim-auditor.ts",
       "lines": 284,
-      "sizeKb": 10
+      "sizeKb": 11
     },
     {
       "relPath": "scripts/eval/viewer/server.ts",
@@ -2771,7 +3232,7 @@
     {
       "relPath": "scripts/evidence-gap-attribution.ts",
       "lines": 388,
-      "sizeKb": 17
+      "sizeKb": 18
     },
     {
       "relPath": "scripts/experimental-editorial.ts",
@@ -2786,7 +3247,7 @@
     {
       "relPath": "scripts/experiments/indeed-calibration.ts",
       "lines": 186,
-      "sizeKb": 6
+      "sizeKb": 7
     },
     {
       "relPath": "scripts/experiments/indeed-supervised.ts",
@@ -2811,7 +3272,7 @@
     {
       "relPath": "scripts/experiments/inspect_naukri_detail_dom.ts",
       "lines": 38,
-      "sizeKb": 1
+      "sizeKb": 2
     },
     {
       "relPath": "scripts/experiments/inspect_naukri_partial_payloads.ts",
@@ -2916,7 +3377,7 @@
     {
       "relPath": "scripts/experiments/test_extraction_methods.ts",
       "lines": 112,
-      "sizeKb": 4
+      "sizeKb": 5
     },
     {
       "relPath": "scripts/experiments/test_indeed_redirect.ts",
@@ -2996,7 +3457,7 @@
     {
       "relPath": "scripts/forensics/for1_schema_profiles_graph.ts",
       "lines": 184,
-      "sizeKb": 6
+      "sizeKb": 7
     },
     {
       "relPath": "scripts/forensics/for2_phase11_to_14_contradictions_and_report.ts",
@@ -3021,17 +3482,7 @@
     {
       "relPath": "scripts/forensics/for2_phase4_to_10_reconciliation.ts",
       "lines": 157,
-      "sizeKb": 6
-    },
-    {
-      "relPath": "scripts/forensics/for3_phase1d_controlled_mutation.ts",
-      "lines": 567,
-      "sizeKb": 23
-    },
-    {
-      "relPath": "scripts/forensics/for3_phase1_dryrun_certification.ts",
-      "lines": 311,
-      "sizeKb": 13
+      "sizeKb": 7
     },
     {
       "relPath": "scripts/forensics/for3_step1_export_baseline.ts",
@@ -3051,7 +3502,7 @@
     {
       "relPath": "scripts/forensics/runtime-profiler.ts",
       "lines": 575,
-      "sizeKb": 21
+      "sizeKb": 22
     },
     {
       "relPath": "scripts/forensics/server-diagnostics.ts",
@@ -3076,7 +3527,7 @@
     {
       "relPath": "scripts/generate-forensic-audit-doc.ts",
       "lines": 196,
-      "sizeKb": 15
+      "sizeKb": 16
     },
     {
       "relPath": "scripts/generate-plan.ts",
@@ -3264,14 +3715,9 @@
       "sizeKb": 0
     },
     {
-      "relPath": "scripts/inspect_service.ts",
-      "lines": 67,
-      "sizeKb": 3
-    },
-    {
       "relPath": "scripts/inspect_snapshots.ts",
       "lines": 14,
-      "sizeKb": 0
+      "sizeKb": 1
     },
     {
       "relPath": "scripts/inspect_sparse_report.ts",
@@ -3334,11 +3780,6 @@
       "sizeKb": 6
     },
     {
-      "relPath": "scripts/m9_4_migrate.ts",
-      "lines": 149,
-      "sizeKb": 6
-    },
-    {
       "relPath": "scripts/m9_4_phase1_recon.ts",
       "lines": 46,
       "sizeKb": 2
@@ -3354,18 +3795,88 @@
       "sizeKb": 4
     },
     {
-      "relPath": "scripts/measure_category_coverage.ts",
-      "lines": 129,
+      "relPath": "scripts/maintenance/activate-ncr-serving-context.ts",
+      "lines": 159,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/maintenance/apply-required-acquisition-schema-migrations.ts",
+      "lines": 128,
       "sizeKb": 5
     },
     {
+      "relPath": "scripts/maintenance/attribute-g3-cross-scope-projections.ts",
+      "lines": 99,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/maintenance/audit-g3-readiness-run.ts",
+      "lines": 138,
+      "sizeKb": 7
+    },
+    {
+      "relPath": "scripts/maintenance/cleanup-g3-cross-scope-projections.ts",
+      "lines": 140,
+      "sizeKb": 6
+    },
+    {
+      "relPath": "scripts/maintenance/preflight-g2-acquisition-validation.ts",
+      "lines": 132,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/maintenance/preflight-g3-readiness-revalidation.ts",
+      "lines": 71,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/maintenance/preflight-ncr-discovery-reach.ts",
+      "lines": 93,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/maintenance/preflight-operational-market-reset.ts",
+      "lines": 54,
+      "sizeKb": 4
+    },
+    {
+      "relPath": "scripts/maintenance/prepare-operational-market-reset.ts",
+      "lines": 50,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/maintenance/prepare-semantic-regression-context.ts",
+      "lines": 181,
+      "sizeKb": 8
+    },
+    {
+      "relPath": "scripts/maintenance/repair-active-tenant-pollution.ts",
+      "lines": 65,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/maintenance/run-g2-controlled-cohort.ts",
+      "lines": 66,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/maintenance/run-g3-readiness-revalidation.ts",
+      "lines": 65,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/maintenance/run-ncr-discovery-reach.ts",
+      "lines": 58,
+      "sizeKb": 2
+    },
+    {
       "relPath": "scripts/migrate-production-tenant-fast.ts",
-      "lines": 349,
-      "sizeKb": 13
+      "lines": 354,
+      "sizeKb": 14
     },
     {
       "relPath": "scripts/migrate-production-tenant.ts",
-      "lines": 294,
+      "lines": 299,
       "sizeKb": 12
     },
     {
@@ -3374,9 +3885,14 @@
       "sizeKb": 2
     },
     {
+      "relPath": "scripts/migrate.ts",
+      "lines": 17,
+      "sizeKb": 1
+    },
+    {
       "relPath": "scripts/migrations/run_and_verify_029.ts",
       "lines": 106,
-      "sizeKb": 3
+      "sizeKb": 4
     },
     {
       "relPath": "scripts/migrations/run_and_verify_030_scalar_sync.ts",
@@ -3386,7 +3902,7 @@
     {
       "relPath": "scripts/mine-unrecognized-tech.ts",
       "lines": 724,
-      "sizeKb": 31
+      "sizeKb": 32
     },
     {
       "relPath": "scripts/monitor-phase6c.ts",
@@ -3396,7 +3912,7 @@
     {
       "relPath": "scripts/monitor-phase6d.ts",
       "lines": 629,
-      "sizeKb": 24
+      "sizeKb": 25
     },
     {
       "relPath": "scripts/mutation-causality.js",
@@ -3411,7 +3927,7 @@
     {
       "relPath": "scripts/p2-corpus-calibration.ts",
       "lines": 552,
-      "sizeKb": 23
+      "sizeKb": 24
     },
     {
       "relPath": "scripts/p2a-corpus-spot-check.ts",
@@ -3431,7 +3947,7 @@
     {
       "relPath": "scripts/p2c-validate-signals.ts",
       "lines": 320,
-      "sizeKb": 13
+      "sizeKb": 14
     },
     {
       "relPath": "scripts/p3a-corpus-comparison.ts",
@@ -3446,7 +3962,7 @@
     {
       "relPath": "scripts/p4a-complete-score-semantics.ts",
       "lines": 574,
-      "sizeKb": 25
+      "sizeKb": 26
     },
     {
       "relPath": "scripts/p4a-comprehensive-forensics.ts",
@@ -3471,12 +3987,12 @@
     {
       "relPath": "scripts/p4a61_qualitative_evaluator.ts",
       "lines": 291,
-      "sizeKb": 11
+      "sizeKb": 12
     },
     {
       "relPath": "scripts/p4a6_policy_d_coherence_audit.ts",
       "lines": 381,
-      "sizeKb": 18
+      "sizeKb": 19
     },
     {
       "relPath": "scripts/p4a6_policy_simulation.ts",
@@ -3491,7 +4007,7 @@
     {
       "relPath": "scripts/p4a_analyze_model_c.ts",
       "lines": 155,
-      "sizeKb": 7
+      "sizeKb": 8
     },
     {
       "relPath": "scripts/p4a_audit.ts",
@@ -3541,7 +4057,7 @@
     {
       "relPath": "scripts/p4b_full_corpus_dossier_audit.ts",
       "lines": 279,
-      "sizeKb": 13
+      "sizeKb": 14
     },
     {
       "relPath": "scripts/p6-live-demo-observation.ts",
@@ -3557,6 +4073,11 @@
       "relPath": "scripts/print-proj-json.ts",
       "lines": 22,
       "sizeKb": 1
+    },
+    {
+      "relPath": "scripts/process-document-jobs.ts",
+      "lines": 57,
+      "sizeKb": 3
     },
     {
       "relPath": "scripts/process_evaluations.ts",
@@ -3606,7 +4127,7 @@
     {
       "relPath": "scripts/recommend.ts",
       "lines": 341,
-      "sizeKb": 14
+      "sizeKb": 15
     },
     {
       "relPath": "scripts/reconcile-5-phases.ts",
@@ -3621,7 +4142,7 @@
     {
       "relPath": "scripts/reconcile-phase6c2.ts",
       "lines": 580,
-      "sizeKb": 23
+      "sizeKb": 24
     },
     {
       "relPath": "scripts/reconcile-production-population.ts",
@@ -3651,7 +4172,7 @@
     {
       "relPath": "scripts/reconciliation-5d2.ts",
       "lines": 324,
-      "sizeKb": 15
+      "sizeKb": 16
     },
     {
       "relPath": "scripts/refined_audit.ts",
@@ -3669,9 +4190,14 @@
       "sizeKb": 2
     },
     {
+      "relPath": "scripts/repair-canonical-apply-urls.ts",
+      "lines": 72,
+      "sizeKb": 2
+    },
+    {
       "relPath": "scripts/reprocess-corpus.ts",
       "lines": 160,
-      "sizeKb": 5
+      "sizeKb": 6
     },
     {
       "relPath": "scripts/retry_and_process_evaluations.ts",
@@ -3687,6 +4213,11 @@
       "relPath": "scripts/rollout-phase6b.ts",
       "lines": 288,
       "sizeKb": 13
+    },
+    {
+      "relPath": "scripts/run-evaluation-worker.ts",
+      "lines": 11,
+      "sizeKb": 0
     },
     {
       "relPath": "scripts/run-golden-trace-clean.ts",
@@ -3730,13 +4261,13 @@
     },
     {
       "relPath": "scripts/scrape.ts",
-      "lines": 1388,
-      "sizeKb": 58
+      "lines": 1820,
+      "sizeKb": 79
     },
     {
       "relPath": "scripts/scraper/config.ts",
       "lines": 134,
-      "sizeKb": 5
+      "sizeKb": 6
     },
     {
       "relPath": "scripts/scraper/enrich/cache.ts",
@@ -3845,43 +4376,58 @@
     },
     {
       "relPath": "scripts/scraper/persist/ingest.ts",
-      "lines": 68,
-      "sizeKb": 2
+      "lines": 72,
+      "sizeKb": 3
     },
     {
       "relPath": "scripts/scraper/persist/queue.ts",
-      "lines": 470,
+      "lines": 468,
       "sizeKb": 17
     },
     {
       "relPath": "scripts/scraper/persist/writer.ts",
-      "lines": 71,
-      "sizeKb": 2
+      "lines": 100,
+      "sizeKb": 3
     },
     {
       "relPath": "scripts/scraper/portals/base.ts",
-      "lines": 139,
+      "lines": 140,
       "sizeKb": 5
     },
     {
       "relPath": "scripts/scraper/portals/indeed.ts",
-      "lines": 273,
-      "sizeKb": 11
+      "lines": 342,
+      "sizeKb": 15
     },
     {
       "relPath": "scripts/scraper/portals/linkedin.ts",
-      "lines": 274,
-      "sizeKb": 11
+      "lines": 373,
+      "sizeKb": 15
     },
     {
       "relPath": "scripts/scraper/portals/naukri.ts",
-      "lines": 606,
+      "lines": 627,
       "sizeKb": 27
     },
     {
+      "relPath": "scripts/scraper/run/acquisition-variants.ts",
+      "lines": 63,
+      "sizeKb": 2
+    },
+    {
       "relPath": "scripts/scraper/run/career-intent.ts",
-      "lines": 100,
-      "sizeKb": 4
+      "lines": 135,
+      "sizeKb": 5
+    },
+    {
+      "relPath": "scripts/scraper/run/g2-controlled-cohort.ts",
+      "lines": 38,
+      "sizeKb": 2
+    },
+    {
+      "relPath": "scripts/scraper/run/g3-readiness-revalidation.ts",
+      "lines": 38,
+      "sizeKb": 1
     },
     {
       "relPath": "scripts/scraper/run/health-manager.ts",
@@ -3895,13 +4441,18 @@
     },
     {
       "relPath": "scripts/scraper/run/manager.ts",
-      "lines": 444,
-      "sizeKb": 16
+      "lines": 496,
+      "sizeKb": 19
     },
     {
       "relPath": "scripts/scraper/run/metrics.ts",
-      "lines": 76,
-      "sizeKb": 2
+      "lines": 89,
+      "sizeKb": 3
+    },
+    {
+      "relPath": "scripts/scraper/run/ncr-discovery-reach-cohort.ts",
+      "lines": 33,
+      "sizeKb": 1
     },
     {
       "relPath": "scripts/scraper/run/page-manager.ts",
@@ -3910,7 +4461,7 @@
     },
     {
       "relPath": "scripts/scraper/run/planner.ts",
-      "lines": 117,
+      "lines": 118,
       "sizeKb": 3
     },
     {
@@ -3920,8 +4471,8 @@
     },
     {
       "relPath": "scripts/scraper/run/search-planner.ts",
-      "lines": 110,
-      "sizeKb": 3
+      "lines": 329,
+      "sizeKb": 12
     },
     {
       "relPath": "scripts/scraper/telemetry/certify.ts",
@@ -3930,8 +4481,8 @@
     },
     {
       "relPath": "scripts/scraper/types.ts",
-      "lines": 381,
-      "sizeKb": 11
+      "lines": 480,
+      "sizeKb": 14
     },
     {
       "relPath": "scripts/scraper/utils/concurrency.ts",
@@ -3951,11 +4502,11 @@
     {
       "relPath": "scripts/scraper/utils/fs-atomic.ts",
       "lines": 50,
-      "sizeKb": 1
+      "sizeKb": 2
     },
     {
       "relPath": "scripts/scraper/utils/hard-filter.ts",
-      "lines": 71,
+      "lines": 78,
       "sizeKb": 2
     },
     {
@@ -3965,8 +4516,8 @@
     },
     {
       "relPath": "scripts/scraper/utils/http-fetch.ts",
-      "lines": 107,
-      "sizeKb": 4
+      "lines": 481,
+      "sizeKb": 15
     },
     {
       "relPath": "scripts/scraper/utils/jitter.ts",
@@ -4016,7 +4567,7 @@
     {
       "relPath": "scripts/select_diagnostic_urls.ts",
       "lines": 72,
-      "sizeKb": 3
+      "sizeKb": 4
     },
     {
       "relPath": "scripts/smoke-test-turso.ts",
@@ -4024,9 +4575,14 @@
       "sizeKb": 2
     },
     {
-      "relPath": "scripts/smoke_turso_m10.ts",
-      "lines": 237,
+      "relPath": "scripts/smoke_production.ts",
+      "lines": 196,
       "sizeKb": 11
+    },
+    {
+      "relPath": "scripts/smoke_scraper_identity.ts",
+      "lines": 117,
+      "sizeKb": 5
     },
     {
       "relPath": "scripts/sync-candidate-projection.ts",
@@ -4076,7 +4632,7 @@
     {
       "relPath": "scripts/test-ekb-compilation.ts",
       "lines": 93,
-      "sizeKb": 4
+      "sizeKb": 5
     },
     {
       "relPath": "scripts/test-enrich-validation.ts",
@@ -4111,7 +4667,7 @@
     {
       "relPath": "scripts/test-phase3-baseline.ts",
       "lines": 131,
-      "sizeKb": 5
+      "sizeKb": 6
     },
     {
       "relPath": "scripts/test-phase4-baseline.ts",
@@ -4121,7 +4677,7 @@
     {
       "relPath": "scripts/test-phase6-contradictions.ts",
       "lines": 415,
-      "sizeKb": 14
+      "sizeKb": 15
     },
     {
       "relPath": "scripts/test-projection-pipeline.ts",
@@ -4166,17 +4722,12 @@
     {
       "relPath": "scripts/test_opp_prefix.ts",
       "lines": 97,
-      "sizeKb": 3
+      "sizeKb": 4
     },
     {
       "relPath": "scripts/test_remote_metrics.ts",
       "lines": 13,
       "sizeKb": 0
-    },
-    {
-      "relPath": "scripts/test_scope_live.ts",
-      "lines": 52,
-      "sizeKb": 2
     },
     {
       "relPath": "scripts/trace-error.ts",
@@ -4196,22 +4747,12 @@
     {
       "relPath": "scripts/trace-forensics.ts",
       "lines": 144,
-      "sizeKb": 5
-    },
-    {
-      "relPath": "scripts/trace-pipeline-weekday.ts",
-      "lines": 56,
-      "sizeKb": 3
+      "sizeKb": 6
     },
     {
       "relPath": "scripts/trace-unit.ts",
       "lines": 100,
       "sizeKb": 4
-    },
-    {
-      "relPath": "scripts/trace_needs_signal.ts",
-      "lines": 104,
-      "sizeKb": 5
     },
     {
       "relPath": "scripts/validate-graph.ts",
@@ -4222,11 +4763,6 @@
       "relPath": "scripts/validate-ontology.ts",
       "lines": 258,
       "sizeKb": 12
-    },
-    {
-      "relPath": "scripts/verify-all-readpaths.ts",
-      "lines": 383,
-      "sizeKb": 16
     },
     {
       "relPath": "scripts/verify-defect-fixes.ts",
@@ -4315,7 +4851,7 @@
     },
     {
       "relPath": "scripts/verify_live_cross_tenant_turso.ts",
-      "lines": 255,
+      "lines": 257,
       "sizeKb": 11
     },
     {
@@ -4325,7 +4861,7 @@
     },
     {
       "relPath": "scripts/verify_m9_1.ts",
-      "lines": 99,
+      "lines": 101,
       "sizeKb": 4
     },
     {
@@ -4379,8 +4915,13 @@
       "sizeKb": 2
     },
     {
+      "relPath": "vitest.certification.config.ts",
+      "lines": 31,
+      "sizeKb": 1
+    },
+    {
       "relPath": "vitest.config.ts",
-      "lines": 35,
+      "lines": 36,
       "sizeKb": 1
     },
     {

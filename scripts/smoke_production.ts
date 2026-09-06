@@ -28,19 +28,25 @@ async function runProductionSmoke() {
     );
     console.log(`  ✔ Connected to database (${tableCount?.count} active tables).`);
 
-    // 2. Active Candidate & User Scope Resolution
-    console.log("▶ [2/4] Verifying Active Candidate & Scope Resolution...");
-    const person = await db.one<{ id: string; tenant_id?: string }>(
-      `SELECT id, tenant_id FROM people WHERE email LIKE '%swapnil%' OR role = 'admin' LIMIT 1`
-    );
-
-    const userId = person?.id || "person_swapnil";
-    console.log(`  ✔ Active person resolved: ${userId}`);
+    // 2. Explicit candidate, tenant, and serving-context authority
+    console.log("▶ [2/6] Verifying Active Candidate & Scope Resolution...");
+    const userId = process.env.RADAR_USER_ID;
+    const requestedTenantId = process.env.RADAR_TENANT_ID;
+    if (!userId) {
+      throw new Error("RADAR_USER_ID is required; production smoke never selects a fallback person.");
+    }
+    const resolved = await resolveServingScope(userId, requestedTenantId, db);
+    const { scope, activeContext } = resolved;
+    if (!activeContext) {
+      throw new Error(`No explicit active serving context for tenant=${scope.tenantId}, person=${scope.personId}.`);
+    }
+    console.log(`  ✔ Authorized scope: tenant=${scope.tenantId}, person=${scope.personId}.`);
+    console.log(`  ✔ Explicit active context: plan=${activeContext.searchPlanId}, fingerprint=${activeContext.contextFingerprint}.`);
 
     // 3. Shortlist Feed & Keyset Query Check
-    console.log("▶ [3/4] Testing Shortlist Feed Query Execution...");
+    console.log("▶ [3/6] Testing Shortlist Feed Query Execution...");
     const queryStore = new SqliteOpportunityQueries(db);
-    const feed = await queryStore.getFeed({ personId: userId, tenantId: person?.tenant_id || "default" }, { limit: 10 });
+    const feed = await queryStore.getFeed(scope, undefined, undefined, 10);
     console.log(`  ✔ Feed query returned ${feed.items.length} opportunities (hasMore: ${feed.hasMore}).`);
 
     if (feed.items.length > 0) {
@@ -49,13 +55,16 @@ async function runProductionSmoke() {
     }
 
     // 4. Authoritative Global Metrics Reconciliation Check
-    console.log("▶ [4/4] Verifying Global Metrics Invariant...");
-    const metrics = await queryStore.getMetrics({ personId: userId, tenantId: person?.tenant_id || "default" });
+    console.log("▶ [4/6] Verifying Global Metrics Invariant...");
+    const metrics = await queryStore.getMetrics(scope);
     console.log(`  ✔ Total Screened: ${metrics.totalScreened.toLocaleString()}`);
-    console.log(`  ✔ Active Pursuits: ${metrics.activePursuits}`);
+    console.log(`  ✔ Total Shortlisted: ${metrics.totalShortlisted}`);
+    console.log(`  ✔ Total Decisions: ${metrics.totalDecisions}`);
     console.log(`  ✔ Evaluated Decisions: ${metrics.evaluatedDecisions ?? 0} (explicit decisions on valid evaluated artifacts)`);
     console.log(`  ✔ All Recorded Decisions: ${metrics.allRecordedDecisions ?? metrics.totalDecisions} (every explicit decision in the authorized population)`);
-    console.log(`  ✔ Actionable Queue: ${metrics.discoveryMetrics.actionableReviewQueue}`);
+    console.log(`  ✔ Evaluation Population: ${JSON.stringify(metrics.evaluationPopulation)}`);
+    console.log(`  ✔ Actionable Queue: ${metrics.discoveryMetrics?.actionableReviewQueue ?? "unavailable"}`);
+    console.log(`  ✔ Metric Integrity: ${metrics.integrity.status}`);
     console.log(`  ✔ Portal Distribution: LinkedIn ${metrics.portalMetrics?.LinkedIn ?? 0} | Naukri ${metrics.portalMetrics?.Naukri ?? 0} | Indeed ${metrics.portalMetrics?.Indeed ?? 0}`);
 
     // Assert Invariant: Portal breakdown sums to totalScreened
@@ -85,9 +94,13 @@ async function runProductionSmoke() {
     }
     console.log(`  ✔ Invariant holds: All recorded decisions (${allRecordedDecisions}) match userBreakdown.total.`);
 
+    if (metrics.integrity.status === "ERROR" || metrics.integrity.status === "UNAVAILABLE") {
+      throw new Error(`Canonical metrics integrity is ${metrics.integrity.status} for an authorized active context.`);
+    }
+
     // 5. Scraper Identity Provenance & RBAC Isolation Verification
-    console.log("\n▶ [5/5] Auditing Scraper Identity Provenance & Tenant Isolation...");
-    const scraperResolution = await resolveScraperAuthContext(userId, undefined, db);
+    console.log("\n▶ [5/6] Auditing Scraper Identity Provenance & Tenant Isolation...");
+    const scraperResolution = await resolveScraperAuthContext(userId, scope.tenantId, db);
     console.log(`  ✔ Authenticated User -> Scraper Identity: userId="${scraperResolution.authContext.userId}", tenantId="${scraperResolution.authContext.tenantId}"`);
     console.log(`  ✔ Verified Membership Role: "${scraperResolution.membership.role}" (run:scraper authorized)`);
     console.log(`  ✔ Turso Active Search Plan: "${scraperResolution.activeContext?.searchPlanId || "none"}"`);

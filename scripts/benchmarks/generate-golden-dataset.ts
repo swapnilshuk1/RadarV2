@@ -1,7 +1,6 @@
 import { getDatabaseAdapter } from "../../src/data/database/index";
-import { resolveScope } from "../../src/lib/intelligence/opportunity-service";
+import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import { getRepositories } from "../../src/data/sqlite/provider";
-import { classifyOpportunityCategories } from "../../src/lib/domain/category_taxonomy";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -12,16 +11,16 @@ export interface GoldenOpportunityRecord {
   company: string;
   location: string;
   scrapedFrom: string;
-  postedAt: string | null;
-  applyUrl: string | null;
+  postedAt?: string | null;
+  applyUrl?: string | null;
   evaluationState: string;
-  engineVerdict: string | null;
-  qualityScore: number | null;
+  engineVerdict?: string | null;
+  qualityScore?: number | null;
   vetoed: boolean;
-  userAction: string;
+  userAction?: string | null;
   effectiveDecision: string;
   populationTier: number;
-  categoryAssignments: string[];
+  categoryIds: string[];
   rankingPosition: number;
 }
 
@@ -43,25 +42,20 @@ export interface GoldenDatasetManifest {
   records: GoldenOpportunityRecord[];
 }
 
-export async function generateGoldenDataset(targetUserId?: string): Promise<GoldenDatasetManifest> {
+export async function generateGoldenDataset(
+  targetUserId = process.env.RADAR_USER_ID,
+  requestedTenantId = process.env.RADAR_TENANT_ID,
+): Promise<GoldenDatasetManifest> {
   const db = getDatabaseAdapter();
   const repos = getRepositories();
 
-  // Dynamic discovery of canonical user if not explicitly passed
-  let userId = targetUserId || process.env.RADAR_USER_ID;
-  if (!userId) {
-    const defaultUser = await db.one<{ id: string }>(
-      `SELECT id FROM people WHERE email_verified = 1 ORDER BY created_at ASC LIMIT 1`
-    );
-    if (!defaultUser) {
-      throw new Error("No verified user found in database to establish canonical scope.");
-    }
-    userId = defaultUser.id;
+  if (!targetUserId) {
+    throw new Error("RADAR_USER_ID (or an explicit targetUserId) is required to establish the authorized serving scope.");
   }
 
-  console.log(`[GoldenDataset] Resolving scope for canonical user: ${userId}`);
-  const scope = await resolveScope(userId);
-  const activeContext = await repos.canonicalServing.getActiveContext(scope);
+  console.log(`[GoldenDataset] Resolving authorized scope for user: ${targetUserId}`);
+  const resolved = await resolveServingScope(targetUserId, requestedTenantId, db);
+  const { scope, activeContext } = resolved;
 
   if (!activeContext) {
     throw new Error(`No active context found for scope: tenant=${scope.tenantId}, person=${scope.personId}`);
@@ -72,7 +66,14 @@ export async function generateGoldenDataset(targetUserId?: string): Promise<Gold
   console.log(`[GoldenDataset] Materializing authoritative oracle via the canonical serving query model...`);
 
   const t0 = Date.now();
-  const opportunities = await repos.canonicalServing.listOpportunities(scope);
+  type FeedItem = Awaited<ReturnType<typeof repos.canonicalServing.getFeed>>["items"][number];
+  const opportunities: FeedItem[] = [];
+  let cursor: string | null = null;
+  do {
+    const page = await repos.canonicalServing.getFeed(scope, cursor, undefined, 100);
+    opportunities.push(...page.items);
+    cursor = page.nextCursor;
+  } while (cursor !== null);
   const elapsedSec = ((Date.now() - t0) / 1000).toFixed(2);
   console.log(`[GoldenDataset] Materialized ${opportunities.length} opportunities in ${elapsedSec}s`);
 
@@ -82,26 +83,15 @@ export async function generateGoldenDataset(targetUserId?: string): Promise<Gold
   const populationTiers: Record<number, number> = {};
   const categories: Record<string, number> = {};
 
-  const POPULATION_TIER_MAP: Record<string, number> = {
-    ENGINE_PURSUIT: 0,
-    USER_CONFIRMED: 0,
-    PREFERENCE_OVERRIDE: 1,
-    VETO_OVERRIDE: 2,
-    ENGINE_CONSIDER: 3,
-    NOT_EVALUABLE: 4,
-    USER_PASSED: 5,
-    ENGINE_PASS: 5,
-  };
-
   for (let i = 0; i < opportunities.length; i++) {
-    const opp = opportunities[i] as any;
-    const eff = opp.effectiveDecision || "NONE";
-    const tier = opp.populationTier ?? POPULATION_TIER_MAP[eff] ?? 5;
-    const verdict = opp.engineRecommendation?.engineVerdict || null;
-    const score = opp.engineRecommendation?.qualityScore ?? opp.recommendationResult?.score ?? null;
-    const isVetoed = Boolean(opp.engineRecommendation?.vetoed);
-    const uAction = opp.userDecision?.userAction || "NONE";
-    const cats = classifyOpportunityCategories(opp);
+    const opp = opportunities[i];
+    const eff = opp.effectiveDecision;
+    const tier = opp.populationTier;
+    const verdict = opp.engineVerdict;
+    const score = opp.qualityScore;
+    const isVetoed = opp.vetoed;
+    const uAction = opp.userAction;
+    const cats = opp.categoryIds;
 
     engineVerdicts[verdict || "UNMATERIALIZED"] = (engineVerdicts[verdict || "UNMATERIALIZED"] || 0) + 1;
     effectiveDecisions[eff] = (effectiveDecisions[eff] || 0) + 1;
@@ -112,20 +102,20 @@ export async function generateGoldenDataset(targetUserId?: string): Promise<Gold
 
     records.push({
       jobHash: opp.jobHash,
-      role: opp.role || "Executive Opportunity",
-      company: opp.company || "Company not available",
-      location: opp.location || "Unknown",
-      scrapedFrom: opp.scrapedFrom || "LinkedIn",
-      postedAt: opp.postedAt || null,
-      applyUrl: opp.applyUrl || null,
-      evaluationState: opp.evaluationState || "UNKNOWN",
+      role: opp.role,
+      company: opp.company,
+      location: opp.location,
+      scrapedFrom: opp.scrapedFrom,
+      postedAt: opp.postedAt,
+      applyUrl: opp.applyUrl,
+      evaluationState: opp.evaluationState,
       engineVerdict: verdict,
       qualityScore: score,
       vetoed: isVetoed,
       userAction: uAction,
       effectiveDecision: eff,
       populationTier: tier,
-      categoryAssignments: cats,
+      categoryIds: cats,
       rankingPosition: i,
     });
   }
@@ -141,7 +131,7 @@ export async function generateGoldenDataset(targetUserId?: string): Promise<Gold
     userId: scope.personId,
     tenantId: scope.tenantId,
     datasetTimestamp: new Date().toISOString(),
-    sourceImplementationVersion: "v4.1-canonical-serving-oracle",
+    sourceImplementationVersion: "v4.3-canonical-serving-oracle",
     totalCount: records.length,
     sha256OrderFingerprint: orderHash,
     distributions: {
@@ -168,5 +158,5 @@ export async function generateGoldenDataset(targetUserId?: string): Promise<Gold
 }
 
 if (process.argv[1]?.includes("generate-golden-dataset")) {
-  generateGoldenDataset().catch(console.error);
+  generateGoldenDataset(process.argv[2], process.argv[3]).catch(console.error);
 }

@@ -55,17 +55,19 @@ async function runDiagnostics() {
 
     // 2. Active Candidate & Scope
     console.log("▶ [2/5] Scope Resolution & Active Context...");
-    const person = await db.one<{ id: string; tenant_id?: string }>(
-      `SELECT id, tenant_id FROM people WHERE email LIKE '%swapnil%' OR role = 'admin' LIMIT 1`
-    );
-    const userId = person?.id || "ms6i7e3y-4x0chy5fy";
-    const tenantId = person?.tenant_id || "default";
-
-    const scopeRes = await resolveServingScope(userId, tenantId, db);
-    console.log(`  ✔ Person ID: ${userId}`);
-    console.log(`  ✔ Tenant ID: ${tenantId}`);
-    console.log(`  ✔ Context Fingerprint: ${scopeRes.activeContext?.context_fingerprint ?? "N/A"}`);
-    console.log(`  ✔ Search Plan ID: ${scopeRes.activeContext?.search_plan_id ?? "N/A"}`);
+    const userId = process.env.RADAR_USER_ID;
+    const requestedTenantId = process.env.RADAR_TENANT_ID;
+    if (!userId) {
+      throw new Error("RADAR_USER_ID is required; diagnostics never selects a fallback person.");
+    }
+    const scopeRes = await resolveServingScope(userId, requestedTenantId, db);
+    if (!scopeRes.activeContext) {
+      throw new Error(`No explicit active serving context for tenant=${scopeRes.scope.tenantId}, person=${scopeRes.scope.personId}.`);
+    }
+    console.log(`  ✔ Person ID: ${scopeRes.scope.personId}`);
+    console.log(`  ✔ Tenant ID: ${scopeRes.scope.tenantId}`);
+    console.log(`  ✔ Context Fingerprint: ${scopeRes.activeContext.contextFingerprint}`);
+    console.log(`  ✔ Search Plan ID: ${scopeRes.activeContext.searchPlanId}`);
 
     // 3. Lineage & Orphan FK Audit
     console.log("▶ [3/5] Candidate & Ingestion Lineage Audit...");
@@ -85,19 +87,19 @@ async function runDiagnostics() {
     // 4. Metrics & Decision Disambiguation
     console.log("▶ [4/5] Authoritative Metrics & Decision Reconciliation...");
     const queryStore = new SqliteOpportunityQueries(db);
-    const metrics = await queryStore.getMetrics({ personId: userId, tenantId });
+    const metrics = await queryStore.getMetrics(scopeRes.scope);
 
     console.log(`  ✔ Total Screened: ${metrics.totalScreened.toLocaleString()}`);
-    console.log(`  ✔ Active Pursuits: ${metrics.activePursuits}`);
+    console.log(`  ✔ Total Shortlisted: ${metrics.totalShortlisted}`);
     console.log(`  ✔ Evaluated Decisions: ${metrics.evaluatedDecisions ?? metrics.totalDecisions}`);
     console.log(`  ✔ All Recorded Decisions: ${metrics.allRecordedDecisions ?? metrics.totalDecisions}`);
     console.log(`  ✔ Sparse Decisions: ${metrics.decisionMetrics?.sparseDecisions?.total ?? 0}`);
-    console.log(`  ✔ Actionable Review Queue: ${metrics.discoveryMetrics.actionableReviewQueue}`);
+    console.log(`  ✔ Actionable Review Queue: ${metrics.discoveryMetrics?.actionableReviewQueue ?? "unavailable"}`);
     console.log(`  ✔ Portals: LinkedIn ${metrics.portalMetrics?.LinkedIn ?? 0} | Naukri ${metrics.portalMetrics?.Naukri ?? 0} | Indeed ${metrics.portalMetrics?.Indeed ?? 0}`);
 
     // 5. Serving Query Execution
     console.log("▶ [5/5] Keyset Serving & Feed Parity...");
-    const feed = await queryStore.getFeed({ personId: userId, tenantId }, { limit: 5 });
+    const feed = await queryStore.getFeed(scopeRes.scope, undefined, undefined, 5);
     console.log(`  ✔ Feed items retrieved: ${feed.items.length} (hasMore: ${feed.hasMore})`);
     if (feed.items.length > 0) {
       console.log(`    Sample: "${feed.items[0].role}" at ${feed.items[0].company} [${feed.items[0].engineVerdict}]`);
