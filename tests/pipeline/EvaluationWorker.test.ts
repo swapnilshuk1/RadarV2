@@ -5,10 +5,14 @@ import { computeEvaluationIdentity } from "../../src/lib/domain/evaluation_finge
 import { isCanonicalIntrinsicEvaluationV4_3, isCanonicalUnavailablePayload } from "../../src/lib/domain/evaluation_payloads";
 import type { EvaluationContext } from "../../src/lib/domain/evaluation_context";
 import { runEngineSingle, runEngineSingleIntrinsic } from "../../src/lib/intelligence/engine";
+import { buildCanonicalDossierPresentation } from "../../src/lib/intelligence/dossier/CanonicalDossierBuilder";
 
 vi.mock("../../src/lib/intelligence/engine", () => ({
   runEngineSingleIntrinsic: vi.fn(),
   runEngineSingle: vi.fn()
+}));
+vi.mock("../../src/lib/intelligence/dossier/CanonicalDossierBuilder", () => ({
+  buildCanonicalDossierPresentation: vi.fn(),
 }));
 
 const mockLeaseToken = "lease-token-123";
@@ -41,6 +45,12 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
       })
     };
     worker = new EvaluationWorker(workerId, { adapter: db as unknown as DatabaseAdapter });
+    vi.mocked(buildCanonicalDossierPresentation).mockReturnValue({
+      schemaVersion: "dossier-v1",
+      generatedAt: "2026-08-28T00:00:00Z",
+      evaluationInputHash: mockIdentity.idempotencyKey,
+      brief: {}, jobProjection: {}, executionPackage: {}, rawDimensions: [], focusTopic: null, whyRoleExists: null,
+    } as any);
   });
 
   afterEach(() => {
@@ -97,18 +107,25 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
       };
     });
     
-    // Projection query (personStore.getLatestProjection internally calls db.one)
-    db.one.mockImplementationOnce(async () => null);
+    // Snapshot followed by projection pinned by the immutable context.
+    db.one.mockImplementationOnce(async () => ({ payload_json: "{}" }));
+    db.one.mockImplementationOnce(async () => ({ projection_json: JSON.stringify({
+      profileVersion: mockContext.profileVersion,
+      operatingLevel: { value: "STRATEGIC" }, workNature: { value: "STRATEGIC_WORK" },
+      decisionAuthority: { value: "ENTERPRISE" }, commercialScope: { value: "ENTERPRISE" },
+      yearsOfExperience: 20, coreCapabilities: ["COMMERCIAL_GROWTH"],
+      preferredLocations: ["Gurugram"], preferredWorkModel: "HYBRID", executiveThemes: ["growth"],
+    }) }));
 
     // Mock engine
-    vi.mocked(runEngineSingle).mockReturnValueOnce({
+    vi.mocked(runEngineSingleIntrinsic).mockReturnValueOnce({
       record: {
         verb: "PURSUE",
-        priority: 85,
+        qualityScore: 85,
         diligenceStatus: "READY"
       },
-      opportunity: { jobHash: "job-1" },
-      sourceIdentity: { jobHash: "job-1" }
+      opportunity: { jobHash: "job-1", role: "CEO", company: "Test", location: "Remote", dimensions: [] },
+      jobProjection: {}
     } as any);
 
     // Lease check inside transaction
@@ -121,22 +138,24 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
     expect(result.status).toBe("completed");
     expect(result.decision).toBe("PURSUE");
     
-    expect(runEngineSingle).toHaveBeenCalledTimes(1);
+    expect(runEngineSingleIntrinsic).toHaveBeenCalledTimes(1);
 
     // Verify INSERT INTO materialized_evaluations
     const insertCall = db.execute.mock.calls.find((call: any[]) => String(call[0]).includes("INSERT INTO materialized_evaluations"));
     expect(insertCall).toBeDefined();
 
     const params = insertCall[1];
-    expect(String(params[0])).toMatch(/^mat_/);
+    expect(params[0]).toBe(mockIdentity.idempotencyKey);
     expect(params[1]).toBe("t-1");
     expect(params[2]).toBe("p-1");
     expect(params[3]).toBe("job-1");
     expect(params[4]).toBe("v1");
     expect(params[5]).toBe(mockContext.contextFingerprint);
-    expect(params[6]).toBe("EVALUATED"); // relational evaluation_state
-    expect(params[7]).toBe("PURSUE"); // relational decision
-    expect(params[8]).toBe(85); // relational quality_score
+    expect(params[6]).toBe(mockIdentity.idempotencyKey); // evaluation fingerprint
+    expect(params[7]).toBe("EVALUATED"); // relational evaluation_state
+    expect(params[8]).toBe("PURSUE"); // relational decision
+    expect(params[9]).toBe(85); // relational quality_score
+    expect(JSON.parse(params[12]).dossierPresentation.schemaVersion).toBe("dossier-v1");
   });
 
   it("persists a canonical unavailable payload for EXPIRED job", async () => {
@@ -198,18 +217,18 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
     expect(insertCall).toBeDefined();
 
     const params = insertCall[1];
-    expect(String(params[0])).toMatch(/^mat_/);
+    expect(params[0]).toBe(mockIdentity.idempotencyKey);
     expect(params[1]).toBe("t-1");
     expect(params[2]).toBe("p-1");
     expect(params[3]).toBe("job-1");
     expect(params[4]).toBe("v1");
     expect(params[5]).toBe(mockContext.contextFingerprint);
-    expect(params[6]).toBe("EXPIRED"); // relational evaluation_state
+    expect(params[6]).toBe("EXPIRED"); // relational evaluation_state for unavailable insert shape
 
     // Verify JSON payload
     const jsonPayload = JSON.parse(params[9]);
     expect(jsonPayload.evaluationState).toBe("EXPIRED");
-    expect(jsonPayload.bypassed).toBe(true);
+    expect(jsonPayload.reasonCode).toBe("EXPIRED");
   });
   
   it("rejects gracefully when context is missing, without partial persistence", async () => {
@@ -252,7 +271,7 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
     
     // Worker catches Error and schedules retry
     expect(result.status).toBe("retry_scheduled");
-    expect(result.error).toContain("Missing evaluation context snapshot for fingerprint: missing-ctx");
+    expect(result.error).toContain("Missing evaluation context for fingerprint: missing-ctx");
     
     // Ensure no persistence was attempted
     const insertCall = db.execute.mock.calls.find((call: any[]) => String(call[0]).includes("INSERT INTO materialized_evaluations"));

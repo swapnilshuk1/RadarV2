@@ -146,6 +146,8 @@ export type EvaluatedOpportunity = {
   evaluationFingerprint?: string | null;
   displayScore?: string;
   uiBadge?: { label: string; variant: "signal" | "caution" | "pass" | "muted" };
+  /** Optional evaluation-time presentation only; canonical scalars remain authoritative. */
+  dossierPresentation?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV1;
 };
 
 export interface ApplicationAction {

@@ -29,6 +29,8 @@ export interface CanonicalEvaluatedPayloadV4_3 extends EvaluationProvenanceV4_3 
   readonly diligenceStatus: "READY" | "INSUFFICIENT" | "STALE" | "FAILED" | "UNKNOWN";
   /** Exact intrinsic projection used by the scoring run; never a presentation DTO. */
   readonly jobProjection: unknown;
+  /** Optional additive presentation artifact; never a source of decision truth. */
+  readonly dossierPresentation?: import("./dossier_presentation").CanonicalDossierPresentationV1;
 }
 
 export interface CanonicalUnavailablePayloadV4_3 extends EvaluationProvenanceV4_3 {

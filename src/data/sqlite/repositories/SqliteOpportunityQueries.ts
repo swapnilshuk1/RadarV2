@@ -50,6 +50,7 @@ import {
   formatPostedRelative,
 } from "../../../lib/intelligence/serving/EvaluationServingEngine";
 import { isCanonicalIntrinsicEvaluationV4_3 } from "../../../lib/domain/evaluation_payloads";
+import { isCanonicalDossierPresentationV1 } from "../../../lib/domain/dossier_presentation";
 import { classifyOpportunityCategories, type CategoryId } from "../../../lib/domain/category_taxonomy";
 import { resolveServingScope, type ActiveServingContext } from "../../../lib/security/scope-resolver";
 
@@ -1127,6 +1128,12 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     }
 
     const opp = serveCanonicalEvaluatedPayload(rawParsed, oppSource, userState, Boolean(row.vetoed)) as EvaluatedOpportunity;
+    // Presentation is additive only. A malformed presentation is deliberately
+    // omitted without allowing it to corrupt canonical evaluation truth.
+    if (isCanonicalDossierPresentationV1(rawParsed.dossierPresentation)
+      && rawParsed.dossierPresentation.evaluationInputHash === rawParsed.evaluationInputHash) {
+      opp.dossierPresentation = rawParsed.dossierPresentation;
+    }
     const readModel = resolveCanonicalServingReadModel({
       evaluationState: "EVALUATED",
       engineVerdict: row.engine_decision,

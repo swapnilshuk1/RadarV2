@@ -5,6 +5,7 @@ import { runEngineSingleIntrinsic } from "./engine";
 import { validateCandidateProjection } from "../domain/candidate_projection";
 import { validateEvaluationConsistency } from "@/lib/domain/evaluation_fingerprint";
 import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
+import { buildCanonicalDossierPresentation } from "./dossier/CanonicalDossierBuilder";
 import type { EvaluationContext } from "@/lib/domain/evaluation_context";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
 
@@ -389,15 +390,29 @@ export class EvaluationWorker {
       const evaluationState = isGenuinelySparse
         ? "SPARSE_SPEC"
         : resolveArtifactEvaluationState(artifact);
+      const evaluatedAt = new Date().toISOString();
       const canonicalPayload = evaluationState === "EVALUATED"
-        ? buildCanonicalEvaluatedPayload(artifact, context, job.canonicalJobId, job.opportunityVersion, new Date().toISOString())
+        ? (() => {
+            const intrinsic = buildCanonicalEvaluatedPayload(
+              artifact, context, job.canonicalJobId, job.opportunityVersion, evaluatedAt,
+            );
+            return {
+              ...intrinsic,
+              dossierPresentation: buildCanonicalDossierPresentation(
+                artifact,
+                projection,
+                intrinsic.evaluationInputHash,
+                evaluatedAt,
+              ),
+            };
+          })()
         : buildCanonicalUnavailablePayload(
             oppSource.jobHash || job.canonicalJobId,
             evaluationState,
             context,
             job.canonicalJobId,
             job.opportunityVersion,
-            new Date().toISOString()
+            evaluatedAt
           );
       const materialized = materializeCanonicalPayload(canonicalPayload);
       materialized.evaluationFingerprint = evaluationState === "EVALUATED"

@@ -133,14 +133,14 @@ export function Summary({
             </p>
           </div>
 
-          <div className="py-3 border-y border-border/40">
+          {brief.directives?.observation && <div className="py-3 border-y border-border/40">
             <div className="border-l-2 border-primary pl-4 py-0.5 space-y-1">
               <span className="label-mono text-[9px] uppercase tracking-wider text-primary font-semibold">Partner Observation</span>
               <p className="text-base italic font-serif leading-relaxed text-foreground font-normal">
-                “The title is less important than the operating latitude. If the commercial mandate proves genuine, this role is materially stronger than its title suggests.”
+                “{brief.directives.observation}”
               </p>
             </div>
-          </div>
+          </div>}
         </div>
       </section>
     </>

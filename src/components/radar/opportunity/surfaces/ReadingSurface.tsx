@@ -25,6 +25,9 @@ interface ReadingSurfaceProps {
   jobProj: any;
   executionPkg: any;
   rawDimensions: any[];
+  generatedAt: string;
+  focusTopic: string | null;
+  whyRoleExists: string | null;
 }
 
 /** Scroll-triggered reveal hook: observes children and adds .animate-reveal on viewport entry */
@@ -91,6 +94,9 @@ export function ReadingSurface({
   jobProj,
   executionPkg,
   rawDimensions,
+  generatedAt,
+  focusTopic,
+  whyRoleExists,
 }: ReadingSurfaceProps) {
   const revealRef = useScrollReveal();
   const readTime = estimateReadTime(brief);
@@ -136,7 +142,7 @@ export function ReadingSurface({
         dossierState={dossierState}
         currentIndex={currentIndex}
         totalCount={totalCount}
-        jobProj={jobProj}
+        focusTopic={focusTopic}
         readTime={readTime}
       />
 
@@ -163,7 +169,7 @@ export function ReadingSurface({
                 {getSectionState("context") === "open" ? "Collapse ▲" : "Expand ▼"}
               </button>
             </div>
-            {getSectionState("context") === "open" && <Context o={o} brief={brief} jobProj={jobProj} />}
+            {getSectionState("context") === "open" && <Context brief={brief} whyRoleExists={whyRoleExists} />}
           </div>
 
           {/* Section II: Mandate */}
@@ -196,7 +202,7 @@ export function ReadingSurface({
                 {getSectionState("opinion") === "open" ? "Collapse ▲" : "Expand ▼"}
               </button>
             </div>
-            {getSectionState("opinion") === "open" && <Opinion brief={brief} engineVerdict={dossierState.engineVerdict} />}
+            {getSectionState("opinion") === "open" && <Opinion brief={brief} engineVerdict={dossierState.engineVerdict} generatedAt={generatedAt} />}
           </div>
 
           {/* Section V: Strategy */}

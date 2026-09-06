@@ -29,7 +29,7 @@ export function Evidence({ brief }: EvidenceProps) {
         <div className="pt-2">
           <p className="text-muted-foreground text-xs leading-relaxed italic">
             <span className="font-medium text-foreground/80 not-italic mr-1">Note:</span>
-            {brief.whyNotStronger || "Verify remaining evidence gaps during initial screening call."}
+            {brief.whyNotStronger || "No additional limitation was materialized for this evaluation."}
           </p>
         </div>
         

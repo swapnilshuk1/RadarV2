@@ -11,10 +11,10 @@ export function BeforeProceed({ executionPkg }: BeforeProceedProps) {
       <div className="memo-callout border-l-2 border-caution bg-surface-raised p-4 space-y-2">
         <p className="label-mono text-caution font-semibold text-[10px] tracking-wider">Before You Proceed</p>
         <p className="font-display text-lg leading-relaxed text-foreground font-normal">
-          {primaryQuestion?.question || "Does this role carry genuine commercial budget authority?"}
+          {primaryQuestion?.question || "No screening question was materialized for this evaluation."}
         </p>
         <p className="text-xs text-muted-foreground leading-relaxed font-mono">
-          <span className="text-primary font-semibold">Why it matters:</span> {primaryQuestion?.whyItMatters || "This single answer is most likely to change today's recommendation."}
+          {primaryQuestion?.whyItMatters && <><span className="text-primary font-semibold">Why it matters:</span> {primaryQuestion.whyItMatters}</>}
         </p>
       </div>
 

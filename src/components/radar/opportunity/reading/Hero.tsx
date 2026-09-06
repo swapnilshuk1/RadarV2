@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { getFocusTopic } from "@/routes/opportunity.$jobHash";
 
 import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
 
@@ -9,7 +8,7 @@ interface HeroProps {
   dossierState: DossierDecisionState;
   currentIndex: number;
   totalCount: number;
-  jobProj: any;
+  focusTopic: string | null;
   readTime?: string;
 }
 
@@ -19,11 +18,9 @@ export function Hero({
   dossierState,
   currentIndex,
   totalCount,
-  jobProj,
+  focusTopic,
   readTime,
 }: HeroProps) {
-  const focusTopic = getFocusTopic(o, jobProj);
-
   return (
     <header className="border-b border-border bg-background">
       <div className="memo-container py-8 sm:py-9">
@@ -90,7 +87,7 @@ export function Hero({
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               {/* Freshness Badge */}
               <span className="label-mono text-xs px-2 py-0.5 rounded bg-surface-raised border border-border text-muted-foreground font-medium">
-                {o.postedRelative ? `${o.postedRelative} · ${o.scrapedFrom || 'Workday'}` : `Scraped ${o.scrapedAt ? 'recently' : 'via ' + (o.scrapedFrom || 'Portal')}`}
+                {o.postedRelative || "Posting time not established"}{o.scrapedFrom ? ` · ${o.scrapedFrom}` : ""}
               </span>
 
               {/* Compensation Badge */}
@@ -121,7 +118,7 @@ export function Hero({
             )}
 
             <h1 className="font-display text-3xl sm:text-4xl leading-[1.18] tracking-tight text-foreground font-normal">
-              {o.role} mandate at {o.company} focused on {focusTopic}
+              {o.role} mandate at {o.company}{focusTopic ? ` focused on ${focusTopic}` : ""}
             </h1>
 
             {/* Structured Metadata Strip */}

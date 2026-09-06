@@ -495,7 +495,7 @@ export function runEngineSingle(
 
 export type EvaluationArtifact = {
   record: any;
-  opportunity?: any;
+  opportunity?: Opportunity;
   jobProjection?: any;
   recommendation?: any;
 };
@@ -517,6 +517,7 @@ export function runEngineSingleIntrinsic(
 
   return {
     record: presented.record,
+    opportunity: presented.opportunity,
     jobProjection: jobProj,
     recommendation: (presented as any).recommendationResult,
   };

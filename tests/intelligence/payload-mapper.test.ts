@@ -5,6 +5,7 @@ import type { Presented } from "../../src/lib/intelligence/present";
 import type { EvaluationArtifact } from "../../src/lib/intelligence/engine";
 import { computeEvaluationIdentity } from "../../src/lib/domain/evaluation_fingerprint";
 import { isCanonicalIntrinsicEvaluationV4_3, isCanonicalUnavailablePayload } from "../../src/lib/domain/evaluation_payloads";
+import { isCanonicalDossierPresentationV1 } from "../../src/lib/domain/dossier_presentation";
 
 // Phase 2B Strict Contract Signature Verification
 // This static test proves that a UI 'Presented' DTO cannot ever be assigned to or mapped from
@@ -158,6 +159,25 @@ describe("PayloadMapper", () => {
   });
 
   describe("Runtime Schema Guards", () => {
+    test("treats dossier presentation as optional and validates it independently", () => {
+      const valid = {
+        schemaVersion: "dossier-v1",
+        generatedAt: "2026-08-28T00:00:00Z",
+        evaluationInputHash: "eval-1",
+        brief: {},
+        jobProjection: {},
+        executionPackage: {},
+        rawDimensions: [],
+        focusTopic: null,
+        whyRoleExists: null,
+      };
+      expect(isCanonicalDossierPresentationV1(valid)).toBe(true);
+      expect(isCanonicalDossierPresentationV1({ ...valid, evaluationInputHash: "" })).toBe(false);
+
+      const payload = buildCanonicalEvaluatedPayload(mockArtifact, mockContext, "canonical-job-xyz", "opp-ver-1", "2026-08-28T00:00:00Z");
+      expect(isCanonicalIntrinsicEvaluationV4_3({ ...payload, dossierPresentation: { schemaVersion: "dossier-v1" } })).toBe(true);
+    });
+
     test("rejects malformed evaluated payloads", () => {
       const valid = buildCanonicalEvaluatedPayload(mockArtifact, mockContext, "canonical-job-xyz", "opp-ver-1", "2026-08-28T00:00:00Z");
       expect(isCanonicalIntrinsicEvaluationV4_3(valid)).toBe(true);

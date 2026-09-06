@@ -166,6 +166,89 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
       expect(evaluated.engineRecommendation?.qualityScore).toBe(95);
     });
 
+    it("serves only a valid dossier presentation while canonical columns retain verdict and score authority", async () => {
+      const conflictingPresentation = {
+        schemaVersion: "dossier-v1",
+        generatedAt: "2026-01-01T00:00:00.000Z",
+        evaluationInputHash: "eval_A",
+        // These deliberately conflicting fields are not part of the dossier
+        // contract and must never override materialized evaluation truth.
+        decision: "PASS",
+        score: 1,
+        brief: {},
+        jobProjection: {},
+        executionPackage: {},
+        rawDimensions: [],
+        focusTopic: null,
+        whyRoleExists: null,
+      };
+      const evaluated = {
+        schemaVersion: "v4.3-intrinsic",
+        evaluationContractVersion: "v4.3",
+        evaluationState: "EVALUATED",
+        canonicalJobId: "opp_job_presentation",
+        opportunityVersion: "ver_job_presentation",
+        jobHash: "job_presentation",
+        tenantId: "tenant_A",
+        personId: "person_A",
+        evaluationInputHash: "eval_A",
+        contextFingerprint: "fingerprint_A",
+        policyVersion: "test",
+        ontologyVersion: "test",
+        ontologyFingerprint: "test-ontology",
+        profileVersion: "test-profile",
+        evaluatedAt: "2026-01-01T00:00:00.000Z",
+        decision: "PURSUE",
+        score: 95,
+        diligenceStatus: "UNKNOWN",
+        jobProjection: {},
+        dossierPresentation: conflictingPresentation,
+      };
+      await seedItem({
+        id: "job_presentation",
+        title: "VP Growth",
+        engineVerdict: "PURSUE",
+        score: 95,
+        customEvalJson: JSON.stringify(evaluated),
+      });
+
+      const dossier = await queries.getDossier(scope, "job_presentation") as EvaluatedOpportunity;
+      expect(dossier.engineRecommendation?.engineVerdict).toBe("PURSUE");
+      expect(dossier.engineRecommendation?.qualityScore).toBe(95);
+      expect(dossier.dossierPresentation?.schemaVersion).toBe("dossier-v1");
+      expect(dossier.dossierPresentation?.evaluationInputHash).toBe("eval_A");
+    });
+
+    it("keeps a v4.3 evaluation canonical when an optional dossier presentation is malformed", async () => {
+      const valid = {
+        schemaVersion: "v4.3-intrinsic",
+        evaluationContractVersion: "v4.3",
+        evaluationState: "EVALUATED",
+        canonicalJobId: "opp_job_bad_presentation",
+        opportunityVersion: "ver_job_bad_presentation",
+        jobHash: "job_bad_presentation",
+        tenantId: "tenant_A",
+        personId: "person_A",
+        evaluationInputHash: "eval_A",
+        contextFingerprint: "fingerprint_A",
+        policyVersion: "test",
+        ontologyVersion: "test",
+        ontologyFingerprint: "test-ontology",
+        profileVersion: "test-profile",
+        evaluatedAt: "2026-01-01T00:00:00.000Z",
+        decision: "CONSIDER",
+        score: 70,
+        diligenceStatus: "UNKNOWN",
+        jobProjection: {},
+        dossierPresentation: { schemaVersion: "dossier-v1" },
+      };
+      await seedItem({ id: "job_bad_presentation", title: "VP Growth", engineVerdict: "CONSIDER", score: 70, customEvalJson: JSON.stringify(valid) });
+      const dossier = await queries.getDossier(scope, "job_bad_presentation") as EvaluatedOpportunity;
+      expect(dossier.evaluationState).toBe("EVALUATED");
+      expect(dossier.dossierPresentation).toBeUndefined();
+      expect(dossier.engineRecommendation?.engineVerdict).toBe("CONSIDER");
+    });
+
     it("rejects a legacy Presented envelope rather than manufacturing canonical evaluation facts", async () => {
       const presentedEnvelope = JSON.stringify({
         opportunity: {
@@ -395,5 +478,37 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
       expect(invalidFeed?.effectiveDecision).toBe("PURSUE");
       expect(navigation?.currentIndex).toBe(2);
     });
+  });
+});
+
+describe("Shortlist canonical dossier presentation contract", () => {
+  const routeSource = fs.readFileSync(path.resolve(process.cwd(), "src/routes/index.tsx"), "utf8");
+  const inlineBriefSource = fs.readFileSync(path.resolve(process.cwd(), "src/components/radar/InlineBrief.tsx"), "utf8");
+
+  it("keeps initial feed loading lean and point-loads only an expanded dossier", () => {
+    const loaderSource = routeSource.slice(routeSource.indexOf("loader: async"), routeSource.indexOf("component:"));
+    expect(loaderSource).toContain("getOpportunitiesFn");
+    expect(loaderSource).not.toContain("getOpportunityDetailsFn");
+    expect(routeSource).toContain("const [dossierByJobHash");
+    expect(routeSource).toContain("getOpportunityDetailsFn({ data: jobHash })");
+    expect(routeSource).toContain("onExpand(o.jobHash)");
+  });
+
+  it("does not recompute advisory facts in shortlist presentation paths", () => {
+    for (const forbidden of ["BriefCompositionEngine", "JobProjectionBuilder", "PreviewCompositionEngine", "inferExecutiveMandateArchetype"]) {
+      expect(`${routeSource}\n${inlineBriefSource}`).not.toContain(forbidden);
+    }
+    for (const syntheticFallback of ["Closest match to your operating mandate", "Direct P&L ownership aligned", "Standard organizational alignment review", "Confidential Executive Compensation"]) {
+      expect(`${routeSource}\n${inlineBriefSource}`).not.toContain(syntheticFallback);
+    }
+  });
+
+  it("renders optional persisted dossier material without allowing it to override canonical decision truth", () => {
+    expect(inlineBriefSource).toContain("dossier?.dossierPresentation");
+    expect(inlineBriefSource).toContain("Detailed briefing not materialized for this evaluation.");
+    expect(inlineBriefSource).toContain("o.engineRecommendation?.engineVerdict");
+    expect(inlineBriefSource).toContain("o.engineRecommendation?.qualityScore");
+    expect(inlineBriefSource).toContain("o.effectiveDecision");
+    expect(inlineBriefSource).toContain("o.userDecision?.userAction");
   });
 });

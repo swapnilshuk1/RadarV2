@@ -20,18 +20,14 @@ export function Mandate({ o, jobProj, executionPkg }: MandateProps) {
           </p>
         )}
         
-        <div>
-          <p className="text-sm text-foreground font-normal mb-2.5">Within 18–24 months leadership will likely expect you to:</p>
+        {jobProj.executiveMission?.successConditions?.length > 0 && <div>
+          <p className="text-sm text-foreground font-normal mb-2.5">Published success conditions:</p>
           <ul className="space-y-2 border-l-2 border-border pl-4">
-            {(jobProj.executiveMission?.successConditions || [
-              `Deliver 24-month revenue & P&L targets under commercial growth mandate`,
-              `Establish operational governance and cross-functional leadership alignment at ${o.company}`,
-              `Build scalable GTM & customer retention infrastructure`
-            ]).map((cond: string, i: number) => (
+            {jobProj.executiveMission.successConditions.map((cond: string, i: number) => (
               <li key={i} className="text-sm text-muted-foreground font-normal">• {cond}</li>
             ))}
           </ul>
-        </div>
+        </div>}
 
         <div className="space-y-2 pt-2">
           <p className="text-sm font-medium text-foreground">Operating conditions to verify</p>
@@ -39,7 +35,7 @@ export function Mandate({ o, jobProj, executionPkg }: MandateProps) {
             This advisory evaluation assumes the following parameters. Verify them during your first screening:
           </p>
           <ul className="space-y-1.5 pt-1">
-            {executionPkg.recommendationConditions.map((cond: string, i: number) => (
+            {(executionPkg.recommendationConditions || []).map((cond: string, i: number) => (
               <li key={i} className="text-xs text-muted-foreground font-normal flex items-start gap-1.5">
                 <span className="text-muted-foreground">•</span>
                 <span>{cond}</span>
@@ -51,7 +47,7 @@ export function Mandate({ o, jobProj, executionPkg }: MandateProps) {
         <div className="space-y-3 pt-2">
           <p className="text-sm font-medium text-foreground">Critical screening questions</p>
           <div className="space-y-3">
-            {executionPkg.screeningQuestions.map((sq: any, i: number) => (
+            {(executionPkg.screeningQuestions || []).map((sq: any, i: number) => (
               <div key={i} className="space-y-0.5">
                 <p className="text-sm text-foreground font-normal">{i + 1}. {sq.question}</p>
                 <p className="text-xs text-muted-foreground leading-relaxed pl-4">

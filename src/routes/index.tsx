@@ -1,16 +1,13 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type Opportunity, type DecisionVerb, type ServedOpportunity, isEvaluated, isUnavailable, isUnmaterialized } from "../data/opportunity-fixtures";
+import { type DecisionVerb, type EvaluatedOpportunity, type ServedOpportunity, isEvaluated, isUnavailable, isUnmaterialized } from "../data/opportunity-fixtures";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
-import { getOpportunitiesFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
+import { getOpportunitiesFn, getOpportunityDetailsFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
 import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn, getScrapePlanPreviewFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
-import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
-import { JobProjectionBuilder } from "../lib/intelligence/builders/JobProjectionBuilder";
 import { logTelemetry } from "../lib/telemetry";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
-import { inferExecutiveMandateArchetype } from "../lib/intelligence/editorial";
 
 import { useScrapeProgress } from "../components/radar/ScrapeProgressProvider";
 import { useAttentionPreference } from "../lib/attention-store";
@@ -69,6 +66,7 @@ function Shortlist() {
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
   const [selectedCategoryId, setSelectedCategoryId] = useState<CategoryId>("all");
   const [categoryOps, setCategoryOps] = useState<ServedOpportunity[] | null>(null);
+  const [dossierByJobHash, setDossierByJobHash] = useState<Record<string, ServedOpportunity | null | undefined>>({});
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
   const categoryCacheRef = useRef<Map<string, ServedOpportunity[]>>(new Map());
 
@@ -110,6 +108,14 @@ function Shortlist() {
   }, [selectedCategoryId]);
 
   const activeOps = categoryOps ?? opportunitiesList;
+
+  const loadDossier = (jobHash: string) => {
+    if (dossierByJobHash[jobHash] !== undefined) return;
+    setDossierByJobHash((current) => ({ ...current, [jobHash]: null }));
+    getOpportunityDetailsFn({ data: jobHash })
+      .then((details) => setDossierByJobHash((current) => ({ ...current, [jobHash]: details.opportunity ?? null })))
+      .catch(() => setDossierByJobHash((current) => ({ ...current, [jobHash]: null })));
+  };
 
   const showArrivalBanner = !progress.arrivalSeen;
   const isBothSkipped = progress.evidenceStatus === "skipped" && progress.intentStatus === "skipped";
@@ -390,6 +396,8 @@ function Shortlist() {
                       setOpen={setOpen}
                       decide={decide}
                       showArrivalBanner={showArrivalBanner}
+                      dossier={dossierByJobHash[o.jobHash]}
+                      onExpand={loadDossier}
                     />
                   ) : (
                     <MinimalStateCard key={o.jobHash} o={o} />
@@ -552,10 +560,9 @@ function Shortlist() {
 }
 
 export function resolveShortlistCardScore(
-  o: Opportunity,
-  brief?: { qualityScore?: number | null }
+  o: EvaluatedOpportunity,
 ): { rawScore: number | null | undefined; scoreDisplay: string | number } {
-  const rawScore = brief?.qualityScore ?? o.engineRecommendation?.qualityScore ?? o.recommendationResult?.score;
+  const rawScore = o.engineRecommendation?.qualityScore;
   const scoreDisplay = rawScore === null || rawScore === undefined ? "—" : rawScore;
   return { rawScore, scoreDisplay };
 }
@@ -568,7 +575,7 @@ export interface ShortlistCardBadgeState {
   previousAction: string | null;
 }
 
-export function resolveShortlistCardBadgeState(o: Opportunity): ShortlistCardBadgeState {
+export function resolveShortlistCardBadgeState(o: EvaluatedOpportunity): ShortlistCardBadgeState {
   if ((o as any).evaluationState === "SPARSE_SPEC" || o.engineRecommendation?.engineVerdict === "SPARSE_SPEC") {
     return {
       primaryLabel: "needs more signal",
@@ -686,8 +693,10 @@ function ShortlistCardRow({
   setOpen,
   decide,
   showArrivalBanner,
+  dossier,
+  onExpand,
 }: {
-  o: Opportunity;
+  o: EvaluatedOpportunity;
   idx: number;
   isOpen: boolean;
   openedTimes: Record<string, number>;
@@ -695,11 +704,18 @@ function ShortlistCardRow({
   setOpen: React.Dispatch<React.SetStateAction<string | null>>;
   decide: (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => void;
   showArrivalBanner: boolean;
+  dossier: ServedOpportunity | null | undefined;
+  onExpand: (jobHash: string) => void;
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
-  const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
-  const { rawScore, scoreDisplay } = resolveShortlistCardScore(o, brief);
+  const { rawScore, scoreDisplay } = resolveShortlistCardScore(o);
   const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
+  const evaluatedDossier = dossier && isEvaluated(dossier) ? dossier : undefined;
+  const dossierBrief = evaluatedDossier?.dossierPresentation?.brief as {
+    memory?: { retentionSentence?: string };
+    frictionPreview?: string;
+    topUnknownPreview?: string;
+  } | undefined;
 
   useEffect(() => {
     if (isOpen && rowRef.current) {
@@ -749,6 +765,7 @@ function ShortlistCardRow({
           } else {
             setOpenedTimes((prev) => ({ ...prev, [o.jobHash]: Date.now() }));
             logTelemetry(o.jobHash, "EXPAND", 0);
+            onExpand(o.jobHash);
             setOpen(o.jobHash);
           }
         }}
@@ -775,23 +792,21 @@ function ShortlistCardRow({
                 Previously {previousAction}
               </span>
             )}
-            <span className="label-mono hidden rounded-full bg-muted/80 px-2.5 py-0.5 text-[0.62rem] text-muted-foreground sm:inline font-medium">
-              {o.mandateArchetype && o.mandateArchetype !== "Growth Marketing" ? o.mandateArchetype : inferExecutiveMandateArchetype(o.role, (o as any).rawText || (o as any).description)}
-            </span>
+            {o.mandateArchetype && <span className="label-mono hidden rounded-full bg-muted/80 px-2.5 py-0.5 text-[0.62rem] text-muted-foreground sm:inline font-medium">{o.mandateArchetype}</span>}
           </span>
 
           <span className="label-mono mt-2 block truncate text-muted-foreground font-medium text-[0.72rem]">
-            {o.company} · {o.location} ({(o as any).workModel || "On-site"}) · {o.scrapedFrom}
+            {o.company} · {o.location}{(o as { workModel?: string }).workModel ? ` (${(o as { workModel?: string }).workModel})` : ""} · {o.scrapedFrom}
           </span>
 
-          <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
-            {brief.memory.retentionSentence || o.whyNow}
-          </span>
+          {dossierBrief?.memory?.retentionSentence && <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
+            {dossierBrief.memory.retentionSentence}
+          </span>}
 
-          {(brief.frictionPreview || brief.topUnknownPreview) && (
+          {(dossierBrief?.frictionPreview || dossierBrief?.topUnknownPreview) && (
             <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[0.68rem] text-amber-700 dark:text-amber-300 border border-amber-500/20 font-mono">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-              Needs verification: {brief.frictionPreview || brief.topUnknownPreview}
+              Needs verification: {dossierBrief?.frictionPreview || dossierBrief?.topUnknownPreview}
             </span>
           )}
         </span>
@@ -816,11 +831,12 @@ function ShortlistCardRow({
           {isOpen && (
             <InlineBrief
               opportunity={o}
+              dossier={evaluatedDossier}
               onDecide={(verb) =>
                 decide(
                   o.jobHash,
                   verb,
-                  o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion
+                  o.engineRecommendation?.evaluationFingerprint
                 )
               }
             />

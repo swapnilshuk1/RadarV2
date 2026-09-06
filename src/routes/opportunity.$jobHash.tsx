@@ -3,6 +3,8 @@ import { type DecisionVerb, type ServedOpportunity, type EvaluatedOpportunity, i
 import { getOpportunityDetailsFn } from "../lib/intelligence/opportunity-server";
 import { useDecisions } from "../lib/decisions-store";
 import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
+import { ReadingSurface } from "@/components/radar/opportunity/surfaces/ReadingSurface";
+import { ExecutiveBriefingSurface } from "@/components/radar/opportunity/surfaces/ExecutiveBriefingSurface";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }: { params: { jobHash: string } }) => {
@@ -73,6 +75,45 @@ export function OpportunityBriefView() {
     router.invalidate();
   };
 
+  const presentation = evalOpp.dossierPresentation;
+  if (presentation) {
+    return (
+      <>
+        <div className="hidden lg:block">
+          <ReadingSurface
+            opportunity={evalOpp}
+            brief={presentation.brief}
+            dossierState={dossierState}
+            decide={decide}
+            neighbors={neighbors}
+            currentIndex={currentIndex}
+            totalCount={totalCount}
+            jobProj={presentation.jobProjection}
+            executionPkg={presentation.executionPackage}
+            rawDimensions={[...presentation.rawDimensions]}
+            generatedAt={presentation.generatedAt}
+            focusTopic={presentation.focusTopic}
+            whyRoleExists={presentation.whyRoleExists}
+          />
+        </div>
+        <div className="lg:hidden">
+          <ExecutiveBriefingSurface
+            opportunity={evalOpp}
+            brief={presentation.brief}
+            dossierState={dossierState}
+            decide={decide}
+            neighbors={neighbors}
+            currentIndex={currentIndex}
+            totalCount={totalCount}
+            jobProj={presentation.jobProjection}
+            executionPkg={presentation.executionPackage}
+            whyRoleExists={presentation.whyRoleExists}
+          />
+        </div>
+      </>
+    );
+  }
+
   return (
     <main className="memo-container py-10 space-y-8">
       <header className="border-b border-border pb-6">
@@ -87,6 +128,7 @@ export function OpportunityBriefView() {
         <p className="text-sm text-muted-foreground">Fit index: {evalOpp.engineRecommendation?.qualityScore ?? "Unknown"}</p>
         <p className="text-xs font-mono text-muted-foreground">Evaluation: {dossierState.evaluationFingerprint ?? "Unknown"}</p>
         <p className="text-xs font-mono text-muted-foreground">Review state: {evalOpp.reviewState}</p>
+        <p className="text-sm text-muted-foreground">Detailed dossier not materialized for this evaluation.</p>
       </section>
 
       <section className="memo-card space-y-3" aria-label="Your decision">
@@ -108,35 +150,4 @@ export function OpportunityBriefView() {
       </nav>
     </main>
   );
-}
-
-export function getFocusTopic(o: EvaluatedOpportunity, jobProj: any): string {
-  if (jobProj?.trueExecutiveMandate) {
-    const mandateMap: Record<string, string> = {
-      COMMERCIAL_EXPANSION: "commercial growth & market expansion",
-      TRANSFORMATION: "digital & operational transformation",
-      TURNAROUND: "operational restructuring & revenue repair",
-      GOVERNANCE: "pipeline & platform governance",
-      SCALE_UP: "scaling GTM infrastructure",
-    };
-    if (mandateMap[jobProj.trueExecutiveMandate]) {
-      return mandateMap[jobProj.trueExecutiveMandate];
-    }
-  }
-
-  if (o?.mandateArchetype && typeof o.mandateArchetype === "string" && o.mandateArchetype.length < 40) {
-    return o.mandateArchetype.toLowerCase();
-  }
-
-  const coreCap = jobProj?.capabilities?.find((c: any) => c.importance === "Core" || c.confidence > 0.7);
-  if (coreCap && coreCap.name && coreCap.name.length < 40) {
-    return coreCap.name.toLowerCase();
-  }
-
-  const optAny = o as any;
-  if (optAny?.domain && typeof optAny.domain === "string" && optAny.domain.length < 40) {
-    return `${optAny.domain.toLowerCase()} expansion`;
-  }
-
-  return "commercial growth and market expansion";
 }

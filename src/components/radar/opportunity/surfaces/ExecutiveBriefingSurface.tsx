@@ -17,6 +17,7 @@ interface ExecutiveBriefingSurfaceProps {
   totalCount: number;
   jobProj: any;
   executionPkg: any;
+  whyRoleExists: string | null;
 }
 
 export function getBriefProvenanceLabel(brief: {
@@ -39,6 +40,7 @@ export function ExecutiveBriefingSurface({
   totalCount,
   jobProj,
   executionPkg,
+  whyRoleExists,
 }: ExecutiveBriefingSurfaceProps) {
   const provenanceLabel = getBriefProvenanceLabel(brief);
   const applicationAction = applicationActionFor(o);
@@ -57,10 +59,9 @@ export function ExecutiveBriefingSurface({
         <div className="mx-auto max-w-[1180px] px-5 space-y-8">
           <BeforeProceed executionPkg={executionPkg} />
           <EvidenceDrawer
-            o={o}
             brief={brief}
-            jobProj={jobProj}
             executionPkg={executionPkg}
+            whyRoleExists={whyRoleExists}
           />
 
           {/* STRATEGY WORKSPACE ON MOBILE */}
@@ -69,7 +70,7 @@ export function ExecutiveBriefingSurface({
               Present your experience effectively
             </h2>
             <p className="text-xs text-muted-foreground border-l border-caution pl-2.5 leading-relaxed font-normal">
-              {brief.directives?.positioning || "Tailor your narrative to emphasize executive scale and operational governance."}
+              {brief.directives?.positioning || "Positioning guidance was not materialized for this evaluation."}
             </p>
             <StrategyWorkspace executionPkg={executionPkg} layout="mobile" />
           </div>
