@@ -11,6 +11,7 @@ import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 
 import { useScrapeProgress } from "../components/radar/ScrapeProgressProvider";
 import { useAttentionPreference } from "../lib/attention-store";
+import { hasMatchingEvaluationFingerprint } from "../lib/intelligence/dossier/cache-identity";
 import {
   CANONICAL_CATEGORIES,
   type CategoryId,
@@ -60,6 +61,16 @@ export const Route = createFileRoute("/")({
 
 export function dossierCacheKey(opportunity: EvaluatedOpportunity): string {
   return `${opportunity.jobHash}:${opportunity.engineRecommendation?.evaluationFingerprint ?? "unknown"}`;
+}
+
+export function isCurrentDossierResponse(
+  requested: EvaluatedOpportunity,
+  response: ServedOpportunity | null | undefined,
+): response is EvaluatedOpportunity {
+  return Boolean(response && isEvaluated(response) && hasMatchingEvaluationFingerprint(
+    requested.engineRecommendation?.evaluationFingerprint,
+    response.engineRecommendation?.evaluationFingerprint,
+  ));
 }
 
 function Shortlist() {
@@ -118,7 +129,13 @@ function Shortlist() {
     if (dossierByJobHash[cacheKey] !== undefined) return;
     setDossierByJobHash((current) => ({ ...current, [cacheKey]: null }));
     getOpportunityDetailsFn({ data: opportunity.jobHash })
-      .then((details) => setDossierByJobHash((current) => ({ ...current, [cacheKey]: details.opportunity ?? null })))
+      .then((details) => setDossierByJobHash((current) => {
+        if (!isCurrentDossierResponse(opportunity, details.opportunity)) {
+          const { [cacheKey]: _discarded, ...withoutMismatchedResponse } = current;
+          return withoutMismatchedResponse;
+        }
+        return { ...current, [cacheKey]: details.opportunity };
+      }))
       .catch(() => setDossierByJobHash((current) => ({ ...current, [cacheKey]: null })));
   };
 

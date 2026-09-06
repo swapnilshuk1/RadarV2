@@ -24,16 +24,39 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 const isStringArray = (value: unknown): value is readonly string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
 
+const hasOptionalStrings = (value: Record<string, unknown>, keys: readonly string[]) =>
+  keys.every((key) => value[key] === undefined || typeof value[key] === "string");
+
+const hasRenderSafeObjectArray = (value: unknown, required: readonly string[] = [], optional: readonly string[] = []) =>
+  Array.isArray(value) && value.every((item) => isObject(item)
+    && required.every((key) => typeof item[key] === "string")
+    && hasOptionalStrings(item, optional));
+
 function hasRenderSafeBrief(value: unknown): value is DossierJsonObject {
   if (!isObject(value) || !isObject(value.oneMinuteTLDR) || !isObject(value.strategicUpside) || !Array.isArray(value.proofPoints)) return false;
   if (!isStringArray(value.oneMinuteTLDR.whyPursue) || !isStringArray(value.oneMinuteTLDR.watchFor) || !isStringArray(value.strategicUpside.points)) return false;
   const sections = value.structuredSections;
-  return isObject(sections) && ["context", "mandate", "synthesis", "evidence", "strategy"].every((key) => isObject(sections[key]));
+  if (!isObject(sections) || !["context", "mandate", "synthesis", "evidence", "strategy"].every((key) => isObject(sections[key]) && hasOptionalStrings(sections[key], ["thesis", "transition", "body"]))) return false;
+  if (!hasRenderSafeObjectArray(value.proofPoints, [], ["category", "headline", "dimension", "detail"])) return false;
+  if (!hasOptionalStrings(value.oneMinuteTLDR, ["bottomLine"])) return false;
+  for (const key of ["pursuitStrategy", "explanation", "executiveThesis", "directives", "verdictGuidance"] as const) {
+    if (value[key] !== undefined && (!isObject(value[key]) || !hasOptionalStrings(value[key], ["bottomLine", "executiveLabel", "immediateNextAction", "pursuitMode", "stopCondition", "careerValueSignal", "primaryReason", "actionNotice", "observation", "positioning"]))) return false;
+  }
+  return true;
 }
 
 function hasRenderSafeExecutionPackage(value: unknown): value is DossierJsonObject {
   if (!isObject(value) || !isStringArray(value.recommendationConditions) || !Array.isArray(value.screeningQuestions) || !Array.isArray(value.resumeGaps)) return false;
-  return isObject(value.linkedInStrategy) && isObject(value.interviewPrep);
+  if (!hasRenderSafeObjectArray(value.screeningQuestions, ["question", "whyItMatters"])) return false;
+  if (!hasRenderSafeObjectArray(value.resumeGaps, [], ["category", "suggestionType", "currentNarrative", "suggestedRevision", "coachingGuidance"]) || !value.resumeGaps.every((gap) => isObject(gap) && (gap.candidateEvidenceQuotes === undefined || isStringArray(gap.candidateEvidenceQuotes)))) return false;
+  return isObject(value.linkedInStrategy)
+    && hasOptionalStrings(value.linkedInStrategy, ["recommendedHeadline", "executiveAboutFraming"])
+    && typeof value.linkedInStrategy.recommendedHeadline === "string"
+    && typeof value.linkedInStrategy.executiveAboutFraming === "string"
+    && isObject(value.interviewPrep)
+    && typeof value.interviewPrep.openingHook === "string"
+    && typeof value.interviewPrep.keyThemeToEmphasize === "string"
+    && typeof value.interviewPrep.panelQuestion === "string";
 }
 
 /** Render-safe presentation validation. Core v4.3 truth remains valid without it. */
@@ -46,7 +69,7 @@ export function isCanonicalDossierPresentationV1(value: unknown): value is Canon
     && hasRenderSafeBrief(value.brief)
     && isObject(value.jobProjection)
     && hasRenderSafeExecutionPackage(value.executionPackage)
-    && Array.isArray(value.rawDimensions)
+    && hasRenderSafeObjectArray(value.rawDimensions, [], ["label"])
     && (value.focusTopic === null || typeof value.focusTopic === "string")
     && (value.whyRoleExists === null || typeof value.whyRoleExists === "string");
 }

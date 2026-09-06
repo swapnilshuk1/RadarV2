@@ -3,9 +3,10 @@ import { unwrapEvidenceValue } from "@/lib/intelligence/editorial/SemanticNatura
 interface AppendixProps {
   brief: any;
   rawDimensions: any[];
+  evaluatedAt?: string;
 }
 
-export function Appendix({ brief, rawDimensions }: AppendixProps) {
+export function Appendix({ brief, rawDimensions, evaluatedAt }: AppendixProps) {
   const formatValue = (val: any) => {
     if (!val) return "Not specified in JD";
     const unwrapped = unwrapEvidenceValue(val);
@@ -41,7 +42,7 @@ export function Appendix({ brief, rawDimensions }: AppendixProps) {
               <div className="space-y-4">
                 <p className="text-foreground font-semibold uppercase tracking-wider border-b border-border pb-2">Engine Diagnostics</p>
                 <ul className="space-y-3 leading-relaxed text-xs">
-                  <li><strong className="text-foreground font-medium">Evaluation time:</strong> {brief.generatedAt || "Not recorded"}</li>
+                  <li><strong className="text-foreground font-medium">Evaluation time:</strong> {evaluatedAt || "Not recorded"}</li>
                 </ul>
               </div>
 

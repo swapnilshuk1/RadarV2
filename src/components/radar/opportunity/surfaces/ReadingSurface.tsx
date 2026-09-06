@@ -26,6 +26,7 @@ interface ReadingSurfaceProps {
   executionPkg: any;
   rawDimensions: any[];
   generatedAt: string;
+  evaluatedAt?: string;
   focusTopic: string | null;
   whyRoleExists: string | null;
 }
@@ -95,6 +96,7 @@ export function ReadingSurface({
   executionPkg,
   rawDimensions,
   generatedAt,
+  evaluatedAt,
   focusTopic,
   whyRoleExists,
 }: ReadingSurfaceProps) {
@@ -218,7 +220,7 @@ export function ReadingSurface({
         </div>
       </section>
 
-      <Appendix brief={brief} rawDimensions={rawDimensions} />
+      <Appendix brief={brief} rawDimensions={rawDimensions} evaluatedAt={evaluatedAt} />
 
       {/* FLOATING ACTION DOCK (APPLE/LINEAR STYLE) */}
       <div className="floating-dock justify-between gap-4 pointer-events-auto">

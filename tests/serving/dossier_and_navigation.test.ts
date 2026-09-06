@@ -183,7 +183,7 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
           qualityScore: 1,
         },
         jobProjection: {},
-        executionPackage: { recommendationConditions: [], screeningQuestions: [], resumeGaps: [], linkedInStrategy: {}, interviewPrep: {} },
+        executionPackage: { recommendationConditions: [], screeningQuestions: [], resumeGaps: [], linkedInStrategy: { recommendedHeadline: "Headline", executiveAboutFraming: "About" }, interviewPrep: { openingHook: "Hook", keyThemeToEmphasize: "Theme", panelQuestion: "Question" } },
         rawDimensions: [],
         focusTopic: null,
         whyRoleExists: null,
