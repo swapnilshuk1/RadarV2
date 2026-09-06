@@ -1,18 +1,18 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import Database from "better-sqlite3";
-import { SqliteCanonicalServingStore } from "../../src/data/sqlite/repositories/SqliteCanonicalServingStore";
+import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { setupLineageTestFixture } from "./lineage_fixture";
 
 describe("getActiveContext and getRematerialisationManifest", () => {
   let db: any;
-  let store: SqliteCanonicalServingStore;
+  let store: SqliteEvaluationContextStore;
 
   beforeAll(async () => {
     const rawDb = new Database(":memory:");
     db = new SqliteAdapter(rawDb);
     await setupLineageTestFixture(db);
-    store = new SqliteCanonicalServingStore(db);
+    store = new SqliteEvaluationContextStore(db);
   });
 
   it("fails closed when no explicit pointer exists", async () => {

@@ -1,12 +1,12 @@
 ﻿import { describe, it, expect, beforeAll } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import Database from "better-sqlite3";
-import { SqliteCanonicalServingStore } from "../../src/data/sqlite/repositories/SqliteCanonicalServingStore";
+import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { setupLineageTestFixture } from "./lineage_fixture";
 
 describe("Active Pointer Precedence", () => {
   let db: any;
-  let store: SqliteCanonicalServingStore;
+  let store: SqliteEvaluationContextStore;
 
   beforeAll(async () => {
     const rawDb = new Database(":memory:");
@@ -15,7 +15,7 @@ describe("Active Pointer Precedence", () => {
     // Initialize schema using standard fixture
     await setupLineageTestFixture(db);
     
-    store = new SqliteCanonicalServingStore(db);
+    store = new SqliteEvaluationContextStore(db);
   });
 
   it("serves only an explicit pointer and never falls back to context chronology", async () => {

@@ -124,6 +124,62 @@ export class SqliteEvaluationContextStore {
     return pointer ? { searchPlanId: pointer.search_plan_id, contextFingerprint: pointer.context_fingerprint } : undefined;
   }
 
+  /**
+   * Computes pre-activation coverage for one explicit immutable plan/context
+   * lineage. This is control-plane evidence, not a serving query.
+   */
+  async getRematerialisationManifest(
+    contextFingerprint: string,
+    tenantId: string,
+    personId: string,
+    searchPlanId: string,
+  ): Promise<{ totalActiveOpportunities: number; materializedCount: number; coveragePercentage: number; isReady: boolean }> {
+    const totalRow = await this.db.one<{ count: number }>(
+      `SELECT COUNT(DISTINCT spc.canonical_job_id) AS count
+       FROM search_plan_candidates spc
+       JOIN canonical_opportunities co ON co.id = spc.canonical_job_id
+       JOIN opportunity_versions ov ON ov.id = spc.opportunity_version
+         AND ov.canonical_job_id = co.id
+       WHERE spc.search_plan_id = ?
+         AND spc.tenant_id = ?
+         AND spc.person_id = ?
+         AND spc.attention_decision = 'CANDIDATE'
+         AND ov.lifecycle_state = 'ACTIVE'`,
+      [searchPlanId, tenantId, personId],
+    );
+    const totalActiveOpportunities = totalRow?.count ?? 0;
+
+    const materializedRow = await this.db.one<{ count: number }>(
+      `SELECT COUNT(DISTINCT me.canonical_job_id) AS count
+       FROM materialized_evaluations me
+       JOIN search_plan_candidates spc ON spc.canonical_job_id = me.canonical_job_id
+         AND spc.opportunity_version = me.opportunity_version
+       JOIN canonical_opportunities co ON co.id = spc.canonical_job_id
+       JOIN opportunity_versions ov ON ov.id = spc.opportunity_version
+         AND ov.canonical_job_id = co.id
+       WHERE me.evaluation_context_fingerprint = ?
+         AND me.tenant_id = ?
+         AND me.person_id = ?
+         AND spc.search_plan_id = ?
+         AND spc.tenant_id = ?
+         AND spc.person_id = ?
+         AND spc.attention_decision = 'CANDIDATE'
+         AND ov.lifecycle_state = 'ACTIVE'`,
+      [contextFingerprint, tenantId, personId, searchPlanId, tenantId, personId],
+    );
+    const materializedCount = materializedRow?.count ?? 0;
+    const coveragePercentage = totalActiveOpportunities === 0
+      ? 100
+      : Math.round((materializedCount / totalActiveOpportunities) * 100);
+
+    return {
+      totalActiveOpportunities,
+      materializedCount,
+      coveragePercentage,
+      isReady: coveragePercentage === 100,
+    };
+  }
+
   /** Creates an inactive immutable plan/context lineage for pre-activation backfill. */
   async prepareSearchPlan(
     scope: AuthorizedPersonScope,

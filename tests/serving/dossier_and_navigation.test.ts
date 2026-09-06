@@ -139,13 +139,15 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
 
   describe("1. Point Lookup (getDossier)", () => {
     it("keeps the legacy evaluation adapter outside production canonical serving reachability", () => {
-      for (const file of [
-        "src/data/sqlite/repositories/SqliteOpportunityQueries.ts",
+      const querySource = fs.readFileSync(
+        path.resolve(process.cwd(), "src/data/sqlite/repositories/SqliteOpportunityQueries.ts"),
+        "utf8",
+      );
+      expect(querySource).not.toContain("adaptLegacyEvaluation");
+      expect(fs.existsSync(path.resolve(
+        process.cwd(),
         "src/data/sqlite/repositories/SqliteCanonicalServingStore.ts",
-      ]) {
-        const source = fs.readFileSync(path.resolve(process.cwd(), file), "utf8");
-        expect(source).not.toContain("adaptLegacyEvaluation");
-      }
+      ))).toBe(false);
     });
 
     it("retrieves full evaluated opportunity with exact payload and effectiveDecision", async () => {
