@@ -94,7 +94,7 @@ export function Summary({
               {brief.pursuitStrategy?.executiveLabel || "Strategy Focus"}
             </span>
             <span>
-              {brief.pursuitStrategy?.immediateNextAction || brief.explanation?.primaryReason || brief.verdictGuidance.actionNotice}
+              {brief.pursuitStrategy?.immediateNextAction || brief.explanation?.primaryReason || brief.verdictGuidance?.actionNotice}
             </span>
           </div>
 

@@ -192,6 +192,12 @@ describe("PayloadMapper", () => {
       expect(isCanonicalDossierPresentationV1({ ...valid, executionPackage: { ...valid.executionPackage, resumeGaps: [null] } })).toBe(false);
       expect(isCanonicalDossierPresentationV1({ ...valid, executionPackage: { ...valid.executionPackage, linkedInStrategy: {} } })).toBe(false);
       expect(isCanonicalDossierPresentationV1({ ...valid, rawDimensions: [null] })).toBe(false);
+      expect(isCanonicalDossierPresentationV1({ ...valid, brief: { ...valid.brief, pursuitStrategy: {} } })).toBe(false);
+      expect(isCanonicalDossierPresentationV1({ ...valid, brief: { ...valid.brief, verdictGuidance: { actionNotice: {} } } })).toBe(false);
+      expect(isCanonicalDossierPresentationV1({ ...valid, jobProjection: { executiveMission: { successConditions: "not-an-array" } } })).toBe(false);
+      expect(isCanonicalDossierPresentationV1({ ...valid, rawDimensions: [{ jdEvidence: { confidence: {} } }] })).toBe(false);
+      expect(isCanonicalDossierPresentationV1({ ...valid, brief: { ...valid.brief, evidenceQuality: {} } })).toBe(false);
+      expect(isCanonicalDossierPresentationV1({ ...valid, brief: { ...valid.brief, memory: { retentionSentence: {} } } })).toBe(false);
     });
 
     test("accepts a lazy dossier response only for the current evaluation fingerprint", () => {

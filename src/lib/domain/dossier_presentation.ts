@@ -38,9 +38,16 @@ function hasRenderSafeBrief(value: unknown): value is DossierJsonObject {
   const sections = value.structuredSections;
   if (!isObject(sections) || !["context", "mandate", "synthesis", "evidence", "strategy"].every((key) => isObject(sections[key]) && hasOptionalStrings(sections[key], ["thesis", "transition", "body"]))) return false;
   if (!hasRenderSafeObjectArray(value.proofPoints, [], ["category", "headline", "dimension", "detail"])) return false;
+  if (!hasOptionalStrings(value, ["headline", "fitLabel", "evidenceQuality", "executiveOpinion", "whyNotStronger", "frictionPreview", "topUnknownPreview", "whyItWorks", "watchFor"])) return false;
   if (!hasOptionalStrings(value.oneMinuteTLDR, ["bottomLine"])) return false;
-  for (const key of ["pursuitStrategy", "explanation", "executiveThesis", "directives", "verdictGuidance"] as const) {
-    if (value[key] !== undefined && (!isObject(value[key]) || !hasOptionalStrings(value[key], ["bottomLine", "executiveLabel", "immediateNextAction", "pursuitMode", "stopCondition", "careerValueSignal", "primaryReason", "actionNotice", "observation", "positioning"]))) return false;
+  if (value.memory !== undefined && (!isObject(value.memory) || !hasOptionalStrings(value.memory, ["retentionSentence"]))) return false;
+  if (value.pursuitStrategy !== undefined && (!isObject(value.pursuitStrategy)
+    || typeof value.pursuitStrategy.pursuitMode !== "string"
+    || !hasOptionalStrings(value.pursuitStrategy, ["bottomLine", "executiveLabel", "immediateNextAction", "stopCondition"]))) return false;
+  if (value.executiveThesis !== undefined && (!isObject(value.executiveThesis)
+    || !hasOptionalStrings(value.executiveThesis, ["headline", "primaryReason", "careerValueSignal"]))) return false;
+  for (const key of ["explanation", "directives", "verdictGuidance"] as const) {
+    if (value[key] !== undefined && (!isObject(value[key]) || !hasOptionalStrings(value[key], ["bottomLine", "careerValueSignal", "primaryReason", "actionNotice", "observation", "positioning"]))) return false;
   }
   return true;
 }
@@ -68,8 +75,12 @@ export function isCanonicalDossierPresentationV1(value: unknown): value is Canon
     && (value.evaluatedAt === undefined || (typeof value.evaluatedAt === "string" && !Number.isNaN(Date.parse(value.evaluatedAt))))
     && hasRenderSafeBrief(value.brief)
     && isObject(value.jobProjection)
+    && (value.jobProjection.executiveMission === undefined || (isObject(value.jobProjection.executiveMission)
+      && (value.jobProjection.executiveMission.successConditions === undefined || isStringArray(value.jobProjection.executiveMission.successConditions))))
     && hasRenderSafeExecutionPackage(value.executionPackage)
     && hasRenderSafeObjectArray(value.rawDimensions, [], ["label"])
+    && value.rawDimensions.every((dimension) => isObject(dimension)
+      && (dimension.jdEvidence === undefined || (isObject(dimension.jdEvidence) && hasOptionalStrings(dimension.jdEvidence, ["confidence"]))))
     && (value.focusTopic === null || typeof value.focusTopic === "string")
     && (value.whyRoleExists === null || typeof value.whyRoleExists === "string");
 }
