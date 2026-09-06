@@ -68,3 +68,11 @@ Baseline:
 
 ## Deferred
 - Gate 1 remediations 1 and 3 through 5 remain deferred pending external review of this isolated authorization change.
+
+## Gate 5 — convergence and Indeed identity closure (candidate)
+- Gate 4 merged base: `0e86c0760a14e8598a1756e4283498b83798fb64`; Gate 5 branch: `remediation/06-convergence-identity-closure`.
+- Indeed identity: sponsored/discovery ingress preserves its original URL, resolves through a bounded five-hop source-safe chain, and only admits a verified `/viewjob?jk=` identity. The stable `jk` is the canonical external identity; identical document content alone never merges distinct listings. Direct verified rich-listing ingestion remains supported without a browser final URL.
+- provenance: migration `041_indeed_resolution_provenance.sql` adds nullable `acquisition_ingestion_lineage.resolved_url`; no historical records were rewritten. Existing Pinkerton duplicates were not merged, deleted, re-keyed, re-scored, or re-materialized.
+- serving convergence: `StorageProvider.canonicalServing` now routes to `SqliteOpportunityQueries`; public feed/dossier decisions expose canonical engine verdict, explicit user action, effective decision, and review state rather than legacy ranking labels. Missing facts remain `UNKNOWN` rather than invented role/company/location/source/recency facts.
+- decision convergence: server-authorized population/provenance validation remains the sole mutation authority; the compatibility method delegates to it and cannot accept caller-provided provenance.
+- retired client/cache and active-pursuit compatibility paths were removed from serving presentation. NCR expansion remains blocked pending Gate 5 certification; no expansion scrape ran.

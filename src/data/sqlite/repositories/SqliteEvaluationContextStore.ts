@@ -58,6 +58,72 @@ export interface OperationalMarketResetInput {
 export class SqliteEvaluationContextStore {
   constructor(private db: DatabaseAdapter) {}
 
+  /**
+   * Binds a context to an authorized immutable plan lineage. This is control
+   * plane state, deliberately separate from the serving read model.
+   */
+  async bindEvaluationContextScope(
+    contextFingerprint: string,
+    tenantId: string,
+    personId: string,
+    searchPlanId: string,
+  ): Promise<boolean> {
+    const result = await this.db.execute(
+      `INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+       SELECT ec.context_fingerprint, ec.tenant_id, ec.person_id, sps.search_plan_id
+       FROM evaluation_contexts ec
+       JOIN search_plan_snapshots sps ON sps.id = ec.search_plan_snapshot_id
+       WHERE ec.context_fingerprint = ? AND ec.tenant_id = ? AND ec.person_id = ? AND sps.search_plan_id = ?
+       ON CONFLICT DO NOTHING`,
+      [contextFingerprint, tenantId, personId, searchPlanId],
+    );
+    return result.rowsAffected > 0;
+  }
+
+  /** Activates only a previously bound context; callers cannot select a latest-context fallback. */
+  async activateContextPointer(
+    contextFingerprint: string,
+    tenantId: string,
+    personId: string,
+    searchPlanId: string,
+  ): Promise<boolean> {
+    try {
+      const bound = await this.db.one<{ context_fingerprint: string }>(
+        `SELECT context_fingerprint FROM evaluation_context_scopes
+         WHERE context_fingerprint = ? AND tenant_id = ? AND person_id = ? AND search_plan_id = ?`,
+        [contextFingerprint, tenantId, personId, searchPlanId],
+      );
+      if (!bound) return false;
+      await this.db.execute(
+        `INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+         VALUES (?, ?, ?, ?, 'system')
+         ON CONFLICT (tenant_id, person_id, search_plan_id)
+         DO UPDATE SET context_fingerprint = excluded.context_fingerprint,
+                       activated_at = CURRENT_TIMESTAMP,
+                       activated_by = excluded.activated_by`,
+        [tenantId, personId, searchPlanId, contextFingerprint],
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Returns only a current explicit pointer. Absence is an authorization/state error, never a chronology query. */
+  async getActiveContext(scope: AuthorizedPersonScope): Promise<{ searchPlanId: string; contextFingerprint: string } | undefined> {
+    const pointer = await this.db.one<{ search_plan_id: string; context_fingerprint: string }>(
+      `SELECT aec.search_plan_id, aec.context_fingerprint
+       FROM active_evaluation_contexts aec
+       JOIN search_plans sp ON sp.id = aec.search_plan_id
+         AND sp.tenant_id = aec.tenant_id AND sp.person_id = aec.person_id
+       WHERE aec.tenant_id = ? AND aec.person_id = ? AND sp.status = 'active'
+       ORDER BY aec.activated_at DESC
+       LIMIT 1`,
+      [scope.tenantId, scope.personId],
+    );
+    return pointer ? { searchPlanId: pointer.search_plan_id, contextFingerprint: pointer.context_fingerprint } : undefined;
+  }
+
   /** Creates an inactive immutable plan/context lineage for pre-activation backfill. */
   async prepareSearchPlan(
     scope: AuthorizedPersonScope,

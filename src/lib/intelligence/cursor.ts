@@ -3,7 +3,8 @@
  *
  * RADAR v2 — Opaque Keyset Cursor Engine (ADR-SERVING-001).
  *
- * Encapsulates the keyset pagination state behind an opaque, versioned, tamper-resistant token.
+ * Encapsulates keyset pagination state behind an opaque, versioned token.
+ * It is validated for shape and membership, not cryptographically signed.
  * Clients never inspect or construct keyset internals directly.
  *
  * Wire Format: `v1:<base64url-encoded-json>`

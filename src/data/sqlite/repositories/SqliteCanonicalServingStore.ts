@@ -75,7 +75,7 @@ const POPULATION_TIER_ORDER: Record<string, number> = {
 
 function toScrapeSource(val: unknown): ScrapeSource {
   if (val === "LinkedIn" || val === "Naukri" || val === "Indeed") return val as ScrapeSource;
-  return "LinkedIn";
+  return "Unknown";
 }
 
 function toUnavailableState(val: unknown): UnavailableOpportunity["evaluationState"] | null {
@@ -281,31 +281,9 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
       };
     }
 
-    // 2. Fallback to legacy chronological resolution
-    const row = await this.db.one<{ search_plan_id: string; context_fingerprint: string }>(
-      `SELECT sp.id as search_plan_id, ec.context_fingerprint
-       FROM search_plans sp
-       JOIN search_plan_snapshots sps 
-         ON sps.search_plan_id = sp.id 
-        AND sps.tenant_id = sp.tenant_id 
-        AND sps.person_id = sp.person_id
-       JOIN evaluation_contexts ec 
-         ON ec.search_plan_snapshot_id = sps.id 
-        AND ec.tenant_id = sp.tenant_id 
-        AND ec.person_id = sp.person_id
-       WHERE sp.tenant_id = ? 
-         AND sp.person_id = ? 
-         AND sp.status = 'active'
-       ORDER BY ec.created_at DESC, ec.context_fingerprint DESC 
-       LIMIT 1`,
-      [scope.tenantId, scope.personId]
-    );
-
-    if (!row) return undefined;
-    return {
-      searchPlanId: row.search_plan_id,
-      contextFingerprint: row.context_fingerprint,
-    };
+    // A missing explicit pointer is intentionally not recoverable by ordering
+    // evaluation contexts chronologically. Serving must fail closed instead.
+    return undefined;
   }
 
   /**
@@ -879,9 +857,8 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
         personId: scope.personId,
         snapshotId,
         generatedAt,
-        evaluationVersion: "v4.1",
+        evaluationVersion: "v4.3",
         totalScreened: 0,
-        activePursuits: 0,
         totalShortlisted: 0,
         totalDecisions: 0,
         remainingToReview: 0,
@@ -912,7 +889,6 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
     const opps = await this.listOpportunities(scope);
 
     let totalScreened = opps.length;
-    let activePursuits = 0;
     let totalShortlisted = 0;
     let totalDecisions = 0;
 
@@ -972,7 +948,6 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
 
         if (eff === "ENGINE_PURSUIT" || eff === "USER_CONFIRMED" || eff === "VETO_OVERRIDE") {
           effectiveBreakdown.pursue++;
-          activePursuits++;
         } else if (eff === "PREFERENCE_OVERRIDE" || eff === "ENGINE_CONSIDER") {
           effectiveBreakdown.consider++;
         } else if (eff === "NOT_EVALUABLE") {
@@ -1038,9 +1013,8 @@ export class SqliteCanonicalServingStore implements OpportunityQueries {
       personId: scope.personId,
       snapshotId,
       generatedAt,
-      evaluationVersion: "v4.1",
+      evaluationVersion: "v4.3",
       totalScreened,
-      activePursuits,
       totalShortlisted,
       totalDecisions,
       remainingToReview,

@@ -47,9 +47,9 @@ import type {
 } from "../../../data/opportunity-fixtures";
 import {
   serveCanonicalEvaluatedPayload,
+  formatPostedRelative,
 } from "../../../lib/intelligence/serving/EvaluationServingEngine";
 import { isCanonicalIntrinsicEvaluationV4_3 } from "../../../lib/domain/evaluation_payloads";
-import { resolveEffectiveDecision } from "../../../lib/intelligence/decision-resolver";
 import { classifyOpportunityCategories, type CategoryId } from "../../../lib/domain/category_taxonomy";
 import { resolveServingScope, type ActiveServingContext } from "../../../lib/security/scope-resolver";
 
@@ -80,7 +80,7 @@ function toUserAction(val: unknown): UserAction {
 
 function toAttentionDecision(val: unknown): AttentionDecision {
   if (val === "CANDIDATE" || val === "NOT_CANDIDATE") return val;
-  return "CANDIDATE";
+  return "NOT_CANDIDATE";
 }
 
 function toEngineVerdict(val: unknown): EngineVerdict {
@@ -146,14 +146,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     const rows = await this.db.many<RawFeedRow>(
       `SELECT 
          co.source_job_id AS job_hash,
-         COALESCE(ov.job_title, 'Executive Opportunity') AS role,
-         CASE 
-           WHEN co.company_name IS NOT NULL AND co.company_name NOT IN ('Unknown', 'Unknown Company') 
-           THEN co.company_name 
-           ELSE 'Company not available' 
-         END AS company,
-         COALESCE(ov.location, 'Unavailable') AS location,
-         COALESCE(co.source, 'Unknown') AS scraped_from,
+         COALESCE(NULLIF(TRIM(ov.job_title), ''), 'UNKNOWN') AS role,
+         COALESCE(NULLIF(TRIM(co.company_name), ''), 'UNKNOWN') AS company,
+         COALESCE(NULLIF(TRIM(ov.location), ''), 'UNKNOWN') AS location,
+         COALESCE(NULLIF(TRIM(co.source), ''), 'UNKNOWN') AS scraped_from,
          ov.posted_at AS posted_at,
          ov.posted_precision AS posted_precision,
          co.canonical_url AS apply_url,
@@ -336,14 +332,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       `WITH feed_candidates AS (
          SELECT 
            co.source_job_id AS job_hash,
-           COALESCE(ov.job_title, 'Executive Opportunity') AS role,
-           CASE 
-             WHEN co.company_name IS NOT NULL AND co.company_name NOT IN ('Unknown', 'Unknown Company') 
-             THEN co.company_name 
-             ELSE 'Company not available' 
-           END AS company,
-           COALESCE(ov.location, 'Unavailable') AS location,
-           COALESCE(co.source, 'Unknown') AS scraped_from,
+           COALESCE(NULLIF(TRIM(ov.job_title), ''), 'UNKNOWN') AS role,
+           COALESCE(NULLIF(TRIM(co.company_name), ''), 'UNKNOWN') AS company,
+           COALESCE(NULLIF(TRIM(ov.location), ''), 'UNKNOWN') AS location,
+           COALESCE(NULLIF(TRIM(co.source), ''), 'UNKNOWN') AS scraped_from,
            ov.posted_at AS posted_at,
            ov.posted_precision AS posted_precision,
            co.canonical_url AS apply_url,
@@ -524,9 +516,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         personId: scope.personId,
         snapshotId,
         generatedAt,
-        evaluationVersion: "v4.1",
+        evaluationVersion: "v4.3",
         totalScreened: 0,
-        activePursuits: 0,
         totalShortlisted: 0,
         totalDecisions: 0,
         remainingToReview: 0,
@@ -679,8 +670,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       category_ids: string | null;
     }>(
       `SELECT 
-         COALESCE(ov.job_title, 'Executive Opportunity') AS role,
-         COALESCE(co.source, 'Unknown') AS source,
+         COALESCE(NULLIF(TRIM(ov.job_title), ''), 'UNKNOWN') AS role,
+         COALESCE(NULLIF(TRIM(co.source), ''), 'UNKNOWN') AS source,
          me.decision AS decision,
          CASE
            WHEN me.evaluation_state IN ('SPARSE_SPEC', 'PROFILE_REQUIRED', 'NOT_EVALUABLE', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') THEN me.evaluation_state
@@ -731,9 +722,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     const effectiveBreakdown = { pursue: 0, consider: 0, pass: 0, none: 0, sparse: 0 };
     const userBreakdown = { pursue: 0, consider: 0, pass: 0, total: 0 };
     let evaluatedDecisions = 0;
-    // Deprecated compatibility field: the active-pursuit lifecycle is not a
-    // defined RADAR domain yet, so no engine or user decision is counted as one.
-    const activePursuits = 0;
 
     for (const r of rows) {
       portalMetrics.total++;
@@ -837,9 +825,8 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       evaluationContextFingerprint: activeContext.contextFingerprint,
       snapshotId,
       generatedAt,
-      evaluationVersion: "v4.1",
+      evaluationVersion: "v4.3",
       totalScreened,
-      activePursuits,
       totalShortlisted,
       totalDecisions,
       evaluatedDecisions,
@@ -1002,10 +989,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       return {
         evaluationState: unavailState,
         jobHash: String(row.source_job_id),
-        role: row.job_title || "Unknown Role",
-        company: row.company_name || "Unknown Company",
-        location: row.location || "Unknown",
-        postedRelative: "recently",
+        role: row.job_title || "UNKNOWN",
+        company: row.company_name || "UNKNOWN",
+        location: row.location || "UNKNOWN",
+        postedRelative: formatPostedRelative(row.posted_at || undefined),
         scrapedFrom: toScrapeSource(row.source),
         applyUrl: row.apply_url || undefined,
         reasonCode: unavailState,
@@ -1036,10 +1023,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       return {
         evaluationState: "UNMATERIALIZED",
         jobHash: String(row.source_job_id),
-        role: row.job_title || "Unknown Role",
-        company: row.company_name || "Unknown Company",
-        location: row.location || "Unknown",
-        postedRelative: "recently",
+        role: row.job_title || "UNKNOWN",
+        company: row.company_name || "UNKNOWN",
+        location: row.location || "UNKNOWN",
+        postedRelative: formatPostedRelative(row.posted_at || undefined),
         scrapedFrom: toScrapeSource(row.source),
         applyUrl: row.apply_url || undefined,
         contextFingerprint: activeContext.contextFingerprint,
@@ -1073,10 +1060,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       return {
         evaluationState: "INVALID",
         jobHash: String(row.source_job_id),
-        role: row.job_title || "Unknown Role",
-        company: row.company_name || "Unknown Company",
-        location: row.location || "Unknown",
-        postedRelative: "recently",
+        role: row.job_title || "UNKNOWN",
+        company: row.company_name || "UNKNOWN",
+        location: row.location || "UNKNOWN",
+        postedRelative: formatPostedRelative(row.posted_at || undefined),
         scrapedFrom: toScrapeSource(row.source),
         applyUrl: row.apply_url || undefined,
         reasonCode: "MALFORMED_EVALUATION",
@@ -1105,9 +1092,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
 
     const oppSource = {
       jobHash: row.source_job_id,
-      role: row.job_title || "Executive Opportunity",
-      company: row.company_name || "Executive Firm",
-      location: row.location || "Remote",
+      role: row.job_title || "UNKNOWN",
+      company: row.company_name || "UNKNOWN",
+      location: row.location || "UNKNOWN",
       scrapedFrom: toScrapeSource(row.source),
       applyUrl: row.apply_url || undefined,
       postedAt: row.posted_at || undefined,
@@ -1130,10 +1117,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       return {
         evaluationState: "INVALID",
         jobHash: String(row.source_job_id),
-        role: row.job_title || "Unknown Role",
-        company: row.company_name || "Unknown Company",
-        location: row.location || "Unknown",
-        postedRelative: "recently",
+        role: row.job_title || "UNKNOWN",
+        company: row.company_name || "UNKNOWN",
+        location: row.location || "UNKNOWN",
+        postedRelative: formatPostedRelative(row.posted_at || undefined),
         scrapedFrom: toScrapeSource(row.source),
         applyUrl: row.apply_url || undefined,
         reasonCode: "NON_CANONICAL_EVALUATION",
@@ -1158,10 +1145,10 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       return {
         evaluationState: "INVALID",
         jobHash: String(row.source_job_id),
-        role: row.job_title || "Unknown Role",
-        company: row.company_name || "Unknown Company",
-        location: row.location || "Unknown",
-        postedRelative: "recently",
+        role: row.job_title || "UNKNOWN",
+        company: row.company_name || "UNKNOWN",
+        location: row.location || "UNKNOWN",
+        postedRelative: formatPostedRelative(row.posted_at || undefined),
         scrapedFrom: toScrapeSource(row.source),
         applyUrl: row.apply_url || undefined,
         reasonCode: "INVALID_EVALUATED_ROW",
@@ -1259,7 +1246,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       `WITH feed_candidates AS (
          SELECT 
            co.source_job_id AS job_hash,
-           COALESCE(ov.job_title, 'Executive Opportunity') AS role,
+           COALESCE(NULLIF(TRIM(ov.job_title), ''), 'UNKNOWN') AS role,
            CASE
              WHEN me.evaluation_state IN ('SPARSE_SPEC', 'NOT_EVALUABLE', 'PROFILE_REQUIRED', 'ACQUISITION_PENDING', 'ACQUISITION_FAILED', 'EXPIRED', 'INVALID') THEN me.evaluation_state
              WHEN me.evaluation_state IN ('COMPLETE', 'EVALUATED') THEN me.evaluation_state

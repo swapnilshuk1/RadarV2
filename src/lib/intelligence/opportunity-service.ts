@@ -29,24 +29,7 @@ import {
   type AuthorizedPersonScope,
 } from "../security/auth";
 
-export type ServiceOptions = {
-  activePursuits?: number;
-  categoryId?: string;
-};
-
-export interface OpportunityMetrics {
-  totalScreened: number;
-  activePursuits: number;
-  totalShortlisted: number;
-  totalDecisions: number;
-  remainingToReview: number;
-  breakdown: {
-    pursue: number;
-    consider: number;
-    pass: number;
-    sparse: number;
-  };
-}
+export type ServiceOptions = { categoryId?: string };
 
 /**
  * Resolves AuthorizedPersonScope strictly through authenticated database membership and person scoping.

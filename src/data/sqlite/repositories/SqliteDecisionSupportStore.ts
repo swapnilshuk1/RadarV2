@@ -1,64 +1,19 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { DecisionSupportStore } from "../../../domain/repositories";
-import type { RecommendationRun, OpportunityAssessment, RecommendationRecord } from "../../../domain/entities";
 
 export class SqliteDecisionSupportStore implements DecisionSupportStore {
   constructor(private db: DatabaseAdapter) {}
-
-  async recordRecommendationRun(run: RecommendationRun): Promise<void> {
-    throw new Error("Method not implemented.");
-  }
-  
-  async getRecommendationRun(id: string): Promise<RecommendationRun | undefined> {
-    throw new Error("Method not implemented.");
-  }
-  
-  async recordOpportunityAssessment(assessment: OpportunityAssessment): Promise<void> {
-    throw new Error("Method not implemented.");
-  }
-  
-  async getOpportunityAssessment(id: string): Promise<OpportunityAssessment | undefined> {
-    throw new Error("Method not implemented.");
-  }
-  
-  async recordRecommendationRecord(record: RecommendationRecord): Promise<void> {
-    throw new Error("Method not implemented.");
-  }
-  
-  async latestRecommendationRecords(personId: string, limit: number): Promise<RecommendationRecord[]> {
-    throw new Error("Method not implemented.");
-  }
-  
-  async getRecommendationRecordForOpportunity(personId: string, opportunityId: string): Promise<RecommendationRecord | undefined> {
-    throw new Error("Method not implemented.");
-  }
 
   async recordUserDecision(personId: string, opportunityId: string, action: string, reason?: string, reviewedFingerprint?: string | null, tenantId?: string): Promise<void> {
     if (!tenantId) {
       throw new Error("tenantId is strictly required for canonical decisions");
     }
-    
-    // Resolve canonical_job_id from opportunityId (which is source_job_id/jobHash)
-    const canonical = await this.db.one<{ id: string }>(
-      `SELECT id FROM canonical_opportunities WHERE source_job_id = ?`,
-      [opportunityId]
-    );
-    
-    if (!canonical) throw new Error(`UNKNOWN_OPPORTUNITY: ${opportunityId} is not a canonical opportunity.`);
-    
-    const canonicalJobId = canonical.id;
-    const id = `${tenantId}_${personId}_${canonicalJobId}`;
-    
-    await this.db.execute(
-      `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, reason, reviewed_fingerprint, updated_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-       ON CONFLICT(tenant_id, person_id, canonical_job_id) DO UPDATE SET
-         action = EXCLUDED.action,
-         reason = EXCLUDED.reason,
-         reviewed_fingerprint = EXCLUDED.reviewed_fingerprint,
-         updated_at = CURRENT_TIMESTAMP`,
-      [id, tenantId, personId, canonicalJobId, action, reason || null, reviewedFingerprint || null]
-    );
+    if (action !== "PURSUE" && action !== "CONSIDER" && action !== "PASS") {
+      throw new Error(`INVALID_DECISION_ACTION: ${action}`);
+    }
+    // Compatibility callers are not allowed to supply provenance. The
+    // canonical server-authorized population check derives it below.
+    await this.recordAuthorizedUserDecision(personId, tenantId, opportunityId, action, reason);
   }
 
   /**

@@ -129,7 +129,6 @@ function Shortlist() {
     return counts;
   }, [activeOps]);
 
-  const totalActivePursuits = metrics?.activePursuits ?? 0;
   const totalShortlisted = metrics?.totalShortlisted ?? 0;
   const totalDecisionsCount = metrics?.totalDecisions ?? 0;
   const totalScreenedCount = (metrics?.totalScreened ?? 0) + extraScraped;
@@ -232,9 +231,9 @@ function Shortlist() {
           <dl className="flex items-center gap-6 overflow-x-auto sm:gap-8">
             <div className="border-r border-border/40 pr-6 sm:pr-8">
               <dd className="font-display text-4xl sm:text-5xl text-emerald-600 dark:text-emerald-400 tabular-nums font-normal">
-                {String(totalActivePursuits).padStart(2, "0")}
+                {String(totalShortlisted).padStart(2, "0")}
               </dd>
-              <dt className="label-mono mt-1 text-[0.68rem] text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">Active Pursuits</dt>
+              <dt className="label-mono mt-1 text-[0.68rem] text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">Shortlisted</dt>
             </div>
 
             <div className="border-r border-border/40 pr-6 sm:pr-8">

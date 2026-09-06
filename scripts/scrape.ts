@@ -33,6 +33,7 @@ import { getDatabaseAdapter } from "../src/data/database";
 import { fastFetchDetail } from "./scraper/utils/http-fetch";
 import { EnrichmentQueue } from "./scraper/persist/queue";
 import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
+import { parseVerifiedIndeedListingUrl } from "../src/lib/acquisition/indeed-listing-identity";
 import { FailurePolicyEngine } from "../src/lib/acquisition/failure-taxonomy";
 import { ResponseValidator } from "../src/lib/acquisition/validator";
 import { passesHardFilter } from "./scraper/utils/hard-filter";
@@ -808,6 +809,7 @@ async function processUnit(
         validation: ReturnType<typeof ResponseValidator.validate>,
         canonical?: CanonicalIngestionResult,
         failureClass?: string,
+        resolvedUrl?: string,
       ): Promise<void> => {
         // Unauthenticated local runs have no durable scrape_run scope. They are
         // intentionally outside the validation cohort; authenticated runs must
@@ -823,6 +825,7 @@ async function processUnit(
           sourcePortal: unit.portal,
           sourceJobId,
           sourceUrl,
+          resolvedUrl,
           captureState: validation.document.transportState,
           documentState: validation.document.usabilityState,
           contentHash: canonical?.contentHash,
@@ -1112,14 +1115,22 @@ async function processUnit(
           });
 
           if (!valResult.isValid || !detail.fetched) {
-            const failureClass = valResult.failureClass || (detail.fetchError?.includes("< 200") ? "INSUFFICIENT_CONTENT" : "UNKNOWN_FAILURE");
+            const failureClass = detail.identityResolutionFailure || valResult.failureClass || (detail.fetchError?.includes("< 200") ? "INSUFFICIENT_CONTENT" : "UNKNOWN_FAILURE");
             // Isolate external ATS failure from Naukri portal health/circuit-breaker
             if (unit.portal !== "Naukri") {
               HealthManager.recordFailure(unit.portal, failureClass);
             }
             await repos.acquisition.updateJobState(ledgerItem.id, {
-              state: "ACQUIRING",
-              terminalState: failureClass === "REMOVED_404" ? "PERMANENT_FAILURE" : undefined,
+              state: detail.identityResolutionFailure ? "IDENTITY_UNRESOLVED" : "ACQUIRING",
+              terminalState: failureClass === "REMOVED_404"
+                ? "PERMANENT_FAILURE"
+                : failureClass === "REDIRECT_HOP_LIMIT"
+                  ? "REDIRECT_HOP_LIMIT"
+                  : failureClass === "UNSAFE_REDIRECT_DESTINATION"
+                    ? "UNSAFE_REDIRECT_DESTINATION"
+                    : detail.identityResolutionFailure
+                      ? "UNRESOLVED_EXTERNAL_LISTING_IDENTITY"
+                      : undefined,
               lastFailureClass: failureClass,
               acquisitionQuality: valResult.quality,
               validationConfidence: valResult.confidence
@@ -1133,10 +1144,11 @@ async function processUnit(
               await recordLineage(
                 ledgerItem.id,
                 identity.sourceJobId,
-                feedCard.detailUrl,
+                feedCard.discoveryUrl || feedCard.detailUrl,
                 valResult,
                 undefined,
                 failureClass,
+                detail.finalUrl,
               );
             }
 
@@ -1164,11 +1176,42 @@ async function processUnit(
           feedCard.company = effectiveCompany;
 
           // Re-derive canonical identity with resolved company
+          const identityUrl = unit.portal === "Indeed" ? (detail.finalUrl || feedCard.detailUrl) : feedCard.detailUrl;
+          const verifiedIndeedIdentity = unit.portal === "Indeed" ? parseVerifiedIndeedListingUrl(identityUrl) : undefined;
+          if (unit.portal === "Indeed" && !verifiedIndeedIdentity) {
+            await repos.acquisition.updateJobState(ledgerItem.id, {
+              state: "IDENTITY_UNRESOLVED",
+              terminalState: "UNRESOLVED_EXTERNAL_LISTING_IDENTITY",
+              lastFailureClass: "IDENTITY_UNRESOLVED",
+            });
+            await recordLineage(
+              ledgerItem.id,
+              identity.sourceJobId,
+              feedCard.discoveryUrl || feedCard.detailUrl,
+              valResult,
+              undefined,
+              "IDENTITY_UNRESOLVED",
+              detail.finalUrl,
+            );
+            mgr.updateCard(cardUnitId, { status: "failed", error: "Indeed listing identity could not be verified" });
+            return null;
+          }
+
           const resolvedIdentity = resolveCanonicalIdentity({
             portal: unit.portal,
-            url: feedCard.detailUrl,
+            url: identityUrl,
             title: feedCard.title,
             companyName: effectiveCompany
+          });
+          // A sponsored observation can have entered the ledger under a
+          // provisional URL identity. Canonical admission is rebased only
+          // after a stable portal identity has been verified. The original
+          // ledger row remains the lineage anchor for this observation.
+          const admissionLedgerItem = await repos.acquisition.rebindDiscoveredJobIdentity(ledgerItem.id, {
+            canonicalJobId: resolvedIdentity.canonicalJobId,
+            sourcePortal: resolvedIdentity.sourcePortal,
+            sourceJobId: resolvedIdentity.sourceJobId,
+            canonicalUrl: resolvedIdentity.canonicalUrl,
           });
 
           detailedCard = {
@@ -1191,7 +1234,7 @@ async function processUnit(
           mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: snapshotPath });
 
           // 5. Record Validated State in Ledger & Merge Opportunity in SQLite
-          await repos.acquisition.updateJobState(ledgerItem.id, {
+          await repos.acquisition.updateJobState(admissionLedgerItem.id, {
             state: "VALIDATED",
             lastAcquiredAt: new Date().toISOString(),
             acquisitionQuality: valResult.quality,
@@ -1233,7 +1276,8 @@ async function processUnit(
             const ingestRes = await canonicalIngest.ingestOpportunity({
               sourcePortal: unit.portal,
               sourceJobId: resolvedIdentity.sourceJobId,
-              canonicalUrl: feedCard.detailUrl,
+              canonicalUrl: resolvedIdentity.canonicalUrl,
+              finalUrl: detail.finalUrl || (unit.portal === "Indeed" ? identityUrl : undefined),
               jobTitle: feedCard.title,
               documentTitle: detail.extractedTitle,
               companyName: feedCard.company,
@@ -1279,9 +1323,11 @@ async function processUnit(
             await recordLineage(
               ledgerItem.id,
               resolvedIdentity.sourceJobId,
-              feedCard.detailUrl,
+              feedCard.discoveryUrl || feedCard.detailUrl,
               valResult,
               ingestRes,
+              undefined,
+              detail.finalUrl,
             );
           } catch (err: any) {
             log(`[M10_CANONICAL_INGEST_WARN] Canonical acquisition error for ${feedCard.cardHash}: ${err.message}`, "warn");
@@ -1290,10 +1336,11 @@ async function processUnit(
               await recordLineage(
                 ledgerItem.id,
                 resolvedIdentity.sourceJobId,
-                feedCard.detailUrl,
+                feedCard.discoveryUrl || feedCard.detailUrl,
                 valResult,
                 undefined,
                 err?.name || "CANONICAL_INGEST_FAILURE",
+                detail.finalUrl,
               );
               throw err;
             }

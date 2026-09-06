@@ -48,6 +48,7 @@ function createSchema(db: Database.Database): void {
     );
   `);
   db.exec(readFileSync("src/data/sqlite/migrations/034_acquisition_ingestion_lineage.sql", "utf8"));
+  db.exec(readFileSync("src/data/sqlite/migrations/041_indeed_resolution_provenance.sql", "utf8"));
   db.prepare("INSERT INTO tenants (id) VALUES ('tenant-a')").run();
   db.prepare("INSERT INTO people (id, tenant_id) VALUES ('person-a', 'tenant-a')").run();
   db.prepare("INSERT INTO scrape_runs (id, tenant_id, person_id) VALUES ('run-a', 'tenant-a', 'person-a')").run();
@@ -71,6 +72,7 @@ describe("acquisition ingestion lineage", () => {
       sourcePortal: "LinkedIn",
       sourceJobId: "linkedin-job-1",
       sourceUrl: "https://www.linkedin.com/jobs/view/1",
+      resolvedUrl: "https://www.linkedin.com/jobs/view/1",
       captureState: "SUCCEEDED",
       documentState: "SUBSTANTIVE",
       contentHash: "content-hash-a",
@@ -86,6 +88,21 @@ describe("acquisition ingestion lineage", () => {
       .resolves.toMatchObject([{ ...event, id: first.id }]);
     expect(sqlite.prepare("SELECT COUNT(*) AS count FROM acquisition_ingestion_lineage").get())
       .toEqual({ count: 1 });
+  });
+
+  it("preserves the discovery URL and exact resolved listing URL as separate provenance", async () => {
+    const sqlite = new Database(":memory:");
+    createSchema(sqlite);
+    const store = new SqliteAcquisitionStore(new TestAdapter(sqlite));
+    const lineage = await store.recordIngestionLineage({
+      scrapeRunId: "run-a", tenantId: "tenant-a", personId: "person-a", acquisitionLedgerId: "ledger-a",
+      cardId: "indeed:unit-1#card-sponsored", ingestionAttempt: 1, sourcePortal: "Indeed", sourceJobId: "abc123",
+      sourceUrl: "https://in.indeed.com/pagead/clk?tracking=opaque",
+      resolvedUrl: "https://in.indeed.com/viewjob?jk=ABC123&source=pagead",
+      captureState: "SUCCEEDED", documentState: "SUBSTANTIVE", contentHash: "hash-abc123", canonicalJobId: "job-a", opportunityVersion: "version-a",
+    });
+    expect(lineage.sourceUrl).toContain("pagead/clk");
+    expect(lineage.resolvedUrl).toContain("viewjob?jk=ABC123");
   });
 
   it("retains a failed acquisition attempt without inventing canonical identity", async () => {

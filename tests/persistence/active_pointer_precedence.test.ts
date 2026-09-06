@@ -18,7 +18,7 @@ describe("Active Pointer Precedence", () => {
     store = new SqliteCanonicalServingStore(db);
   });
 
-  it("proves active pointer > legacy timestamp ordering", async () => {
+  it("serves only an explicit pointer and never falls back to context chronology", async () => {
     // 1. Create OLD_CONTEXT (older chronologically, but newer than fixture so it takes precedence over fixture)
     await db.execute(
       `INSERT INTO search_plan_snapshots (id, tenant_id, person_id, search_plan_id, snapshot_hash, payload_json) VALUES (?, ?, ?, ?, ?, ?)`, 
@@ -53,10 +53,10 @@ describe("Active Pointer Precedence", () => {
     const activeContext = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
     expect(activeContext?.contextFingerprint).toBe("context_old");
 
-    // 5. Deactivate pointer and verify legacy chronological fallback behaves as intended
+    // 5. Removing the pointer must not reactivate a context by timestamp.
     await db.execute(`DELETE FROM active_evaluation_contexts WHERE tenant_id = 'tenant_A' AND person_id = 'person_A' AND search_plan_id = 'plan_A'`);
     
-    const fallbackContext = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
-    expect(fallbackContext?.contextFingerprint).toBe("context_new");
+    const absentContext = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
+    expect(absentContext).toBeUndefined();
   });
 });

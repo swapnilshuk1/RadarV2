@@ -8,7 +8,7 @@
  * 2. getMetricsForUser computes exact canonical metrics.
  * 3. getFeedForUser returns deterministic keyset page with exact rank & tiers.
  * 4. getDetailsForUser returns exact evaluated opportunity and prev/next navigation.
- * 5. ClientOpportunityCache is a non-authoritative convenience only.
+ * 5. Browser routes do not retain a competing client-side serving authority.
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -18,8 +18,6 @@ import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
-import { ClientOpportunityCache } from "../../src/lib/opportunity-cache";
-import type { EvaluatedOpportunity } from "../../src/data/opportunity-fixtures";
 
 vi.mock("../../src/lib/security/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../src/lib/security/auth")>();
@@ -47,44 +45,6 @@ describe("Phase 11 & 12: Route Server Function & Client Cache Suite", () => {
       `INSERT OR IGNORE INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint)
        VALUES ('tenant_A', 'person_A', 'plan_A', 'fingerprint_A')`
     );
-    ClientOpportunityCache.clear();
-  });
-
-  describe("1. ClientOpportunityCache (Phase 12)", () => {
-    it("can hold individual dossier DTOs without becoming a route authority", () => {
-      const mockDossier: any = {
-        opportunity: {
-          jobHash: "job_xyz",
-          role: "Chief Executive Officer",
-          company: "Acme Group",
-          location: "Remote",
-          evaluationState: "EVALUATED",
-        },
-        currentIndex: 1,
-        totalCount: 10,
-        neighbors: {
-          prev: undefined,
-          next: "job_abc",
-        },
-      };
-
-      // Initially null
-      expect(ClientOpportunityCache.getDetails("job_xyz")).toBeNull();
-
-      // Cache and retrieve
-      ClientOpportunityCache.setDetails("job_xyz", mockDossier);
-      const cached = ClientOpportunityCache.getDetails("job_xyz");
-
-      expect(cached).not.toBeNull();
-      expect(cached?.opportunity.jobHash).toBe("job_xyz");
-      expect(cached?.currentIndex).toBe(1);
-      expect(cached?.totalCount).toBe(10);
-      expect(cached?.neighbors.next).toBe("job_abc");
-
-      // Clear
-      ClientOpportunityCache.clear();
-      expect(ClientOpportunityCache.getDetails("job_xyz")).toBeNull();
-    });
   });
 
   it("keeps dossier and decisions routes on canonical persisted serving paths", () => {

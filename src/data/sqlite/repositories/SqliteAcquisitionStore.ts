@@ -133,6 +133,51 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
     return this.mapLedgerRow(row);
   }
 
+  async rebindDiscoveredJobIdentity(
+    ledgerId: string,
+    identity: Pick<AcquisitionLedgerItem, "canonicalJobId" | "sourcePortal" | "sourceJobId" | "canonicalUrl">
+  ): Promise<AcquisitionLedgerItem> {
+    return this.db.transaction(async (tx) => {
+      const current = await tx.one<any>(`SELECT * FROM acquisition_ledger WHERE id = ?`, [ledgerId]);
+      if (!current) throw new Error(`[SqliteAcquisitionStore] acquisition ledger ${ledgerId} was not found.`);
+
+      const existing = await tx.one<any>(
+        `SELECT * FROM acquisition_ledger WHERE source_portal = ? AND canonical_job_id = ?`,
+        [identity.sourcePortal, identity.canonicalJobId]
+      );
+      const now = new Date().toISOString();
+      if (existing && existing.id !== ledgerId) {
+        await tx.execute(
+          `UPDATE acquisition_ledger
+             SET state = 'IDENTITY_RESOLVED',
+                 terminal_state = 'SUPERSEDED_BY_VERIFIED_IDENTITY',
+                 last_failure_class = NULL,
+                 updated_at = ?
+           WHERE id = ?`,
+          [now, ledgerId]
+        );
+        await tx.execute(
+          `UPDATE acquisition_ledger
+             SET last_seen_at = ?, updated_at = ?
+           WHERE id = ?`,
+          [now, now, existing.id]
+        );
+        return this.mapLedgerRow(existing);
+      }
+
+      await tx.execute(
+        `UPDATE acquisition_ledger
+           SET canonical_job_id = ?, source_portal = ?, source_job_id = ?, canonical_url = ?,
+               state = 'IDENTITY_RESOLVED', terminal_state = NULL, updated_at = ?
+         WHERE id = ?`,
+        [identity.canonicalJobId, identity.sourcePortal, identity.sourceJobId, identity.canonicalUrl, now, ledgerId]
+      );
+      const rebound = await tx.one<any>(`SELECT * FROM acquisition_ledger WHERE id = ?`, [ledgerId]);
+      if (!rebound) throw new Error(`[SqliteAcquisitionStore] acquisition ledger ${ledgerId} was not readable after identity rebind.`);
+      return this.mapLedgerRow(rebound);
+    });
+  }
+
   async claimQueuedJobs(
     workerId: string,
     limit = 10,
@@ -275,10 +320,10 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
       await tx.execute(
         `INSERT INTO acquisition_ingestion_lineage (
            id, scrape_run_id, tenant_id, person_id, acquisition_ledger_id,
-           card_id, ingestion_attempt, source_portal, source_job_id, source_url,
+           card_id, ingestion_attempt, source_portal, source_job_id, source_url, resolved_url,
            capture_state, document_state, content_hash, canonical_job_id,
            opportunity_version, failure_class
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(scrape_run_id, card_id, ingestion_attempt) DO NOTHING`,
         [
           lineageId,
@@ -291,6 +336,7 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
           item.sourcePortal,
           item.sourceJobId,
           item.sourceUrl,
+          item.resolvedUrl ?? null,
           item.captureState,
           item.documentState,
           item.contentHash ?? null,
@@ -345,6 +391,7 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
       && expected.sourcePortal === actual.sourcePortal
       && expected.sourceJobId === actual.sourceJobId
       && expected.sourceUrl === actual.sourceUrl
+      && (expected.resolvedUrl ?? undefined) === actual.resolvedUrl
       && expected.captureState === actual.captureState
       && expected.documentState === actual.documentState
       && (expected.contentHash ?? undefined) === actual.contentHash
@@ -394,6 +441,7 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
       sourcePortal: row.source_portal,
       sourceJobId: row.source_job_id,
       sourceUrl: row.source_url,
+      resolvedUrl: row.resolved_url ?? undefined,
       captureState: row.capture_state,
       documentState: row.document_state,
       contentHash: row.content_hash ?? undefined,

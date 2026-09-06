@@ -117,13 +117,6 @@ export interface CanonicalOpportunityMetrics {
   readonly totalScreened: number;
 
   /**
-   * @deprecated Cross-stage metric summing unreviewed engine pursuits and user decisions.
-   * For user decisions, inspect `decisionMetrics.userPursueTotal` (472).
-   * For active review queue, inspect `discoveryMetrics.actionableReviewQueue` (82).
-   */
-  readonly activePursuits: number;
-
-  /**
    * Total opportunities shortlisted/qualified by RADAR's recommendation engine (389 Pursue + 256 Consider = 645).
    * Strictly decoupled from user decision overrides (does NOT include VETO_OVERRIDE).
    */

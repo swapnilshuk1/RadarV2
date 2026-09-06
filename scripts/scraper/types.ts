@@ -200,6 +200,8 @@ export interface FeedCard {
   portal: PortalName;
   keyword: string;
   searchUrl: string;
+  /** Exact href observed on the discovery card; never replaced by a resolved listing URL. */
+  discoveryUrl?: string;
   detailUrl: string;
   discoveredAt: string;
   title: string;
@@ -235,6 +237,9 @@ export interface DetailedCard extends FeedCard {
     /** Title read from the detail page; distinct from the discovery-card title. */
     extractedTitle?: string;
     extractedCompany?: string;
+    /** Exact destination observed by the portal detail request, when one occurred. */
+    finalUrl?: string;
+    identityResolutionFailure?: string;
   };
   acquisitionAttempts?: AcquisitionAttempt[];
   /**

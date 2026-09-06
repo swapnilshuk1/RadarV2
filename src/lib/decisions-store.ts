@@ -37,12 +37,6 @@ function writeLocal(scope: string | null, next: DecisionMap) {
   }
 }
 
-export function activePursuits(): number {
-  // This historical helper has no authenticated scope input. It must not read
-  // a cross-account cache; canonical callers obtain pursuit state from server.
-  return 0;
-}
-
 export function useDecisions() {
   const [decisions, setDecisions] = useState<DecisionMap>({});
   const [hydrated, setHydrated] = useState(false);

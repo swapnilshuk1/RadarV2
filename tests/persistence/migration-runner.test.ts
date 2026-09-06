@@ -75,11 +75,14 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
 
     const evaluationColumns = await inMemoryAdapter.many<{ name: string }>("PRAGMA table_info(materialized_evaluations)");
     const versionColumns = await inMemoryAdapter.many<{ name: string }>("PRAGMA table_info(opportunity_versions)");
+    const lineageColumns = await inMemoryAdapter.many<{ name: string }>("PRAGMA table_info(acquisition_ingestion_lineage)");
     expect(evaluationColumns.map((column) => column.name)).toContain("evaluation_fingerprint");
     expect(versionColumns.map((column) => column.name)).toContain("category_ids");
+    expect(lineageColumns.map((column) => column.name)).toContain("resolved_url");
     expect(result.applied).toContain("037_materialized_evaluation_fingerprint.sql");
     expect(result.applied).toContain("038_opportunity_version_category_projection.sql");
     expect(result.applied).toContain("039_backfill_v4_3_evaluation_fingerprint.sql");
+    expect(result.applied).toContain("041_indeed_resolution_provenance.sql");
     await expect(inMemoryAdapter.many(
       `SELECT me.evaluation_fingerprint, ov.category_ids
        FROM opportunity_versions ov

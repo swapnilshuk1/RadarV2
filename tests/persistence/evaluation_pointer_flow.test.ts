@@ -15,12 +15,12 @@ describe("getActiveContext and getRematerialisationManifest", () => {
     store = new SqliteCanonicalServingStore(db);
   });
 
-  it("returns historical fallback context when no pointer exists", async () => {
+  it("fails closed when no explicit pointer exists", async () => {
     const context = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
-    expect(context?.contextFingerprint).toBe("fingerprint_A");
+    expect(context).toBeUndefined();
   });
 
-  it("returns active pointer context when explicit pointer is activated (precedence over fallback)", async () => {
+  it("returns only the context selected by the explicit pointer", async () => {
     // create a new snapshot and context
     await db.execute(
       `INSERT INTO search_plan_snapshots (id, tenant_id, person_id, search_plan_id, snapshot_hash, payload_json) VALUES (?, ?, ?, ?, ?, ?)`, 
@@ -91,7 +91,7 @@ describe("getActiveContext and getRematerialisationManifest", () => {
     expect(manifest.isReady).toBe(true);
   });
 
-  it("provides deterministic legacy fallback during context collision", async () => {
+  it("does not choose a context during a chronological collision without a pointer", async () => {
     // Create two contexts with identical created_at
     const collisionTime = "2026-01-01 12:00:00";
     await db.execute(
@@ -111,18 +111,18 @@ describe("getActiveContext and getRematerialisationManifest", () => {
       ["fingerprint_coll_2", "tenant_A", "person_A", "sps_coll_2", "v1", "hash_ontology", "v1", "v1", collisionTime]
     );
     
-    // With created_at collision, fingerprint_coll_2 DESC beats fingerprint_coll_1 DESC.
+    // A created_at collision must never become an implicit selection policy.
     const futureTime = "2029-01-01 12:00:00";
     await db.execute(
       `UPDATE evaluation_contexts SET created_at = ? WHERE context_fingerprint IN ('fingerprint_coll_1', 'fingerprint_coll_2')`,
       [futureTime]
     );
 
-    // Deactivate explicit pointers by deleting them so we can test fallback
+    // Deactivate explicit pointers; serving must now fail closed.
     await db.execute(`DELETE FROM active_evaluation_contexts`);
 
     const context = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
-    expect(context?.contextFingerprint).toBe("fingerprint_coll_2");
+    expect(context).toBeUndefined();
   });
 
   it("leaves active pointer unchanged on invalid activation attempt", async () => {

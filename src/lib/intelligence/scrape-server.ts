@@ -629,7 +629,6 @@ export const getPipelineStatsFn = createServerFn({ method: "GET" })
         filtered: metrics.effectiveBreakdown.pass + metrics.effectiveBreakdown.none,
         shortlisted: metrics.effectiveBreakdown.pursue + metrics.effectiveBreakdown.consider,
         totalDecisions: metrics.totalDecisions,
-        activePursuits: metrics.activePursuits,
       };
     } catch (err: any) {
       console.error("[Server] getPipelineStatsFn failed:", err.message);

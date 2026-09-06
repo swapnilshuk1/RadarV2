@@ -5,6 +5,7 @@ import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
 import { passesHardFilter } from "../utils/hard-filter";
 import { normalizePostingDate } from "../utils/date";
+import { resolveIndeedListingBounded } from "../../../src/lib/acquisition/indeed-listing-identity";
 
 export const indeedHandler: PortalHandler = {
   name: "Indeed",
@@ -115,7 +116,12 @@ export const indeedHandler: PortalHandler = {
           let detailUrl = "";
           let applyRedirectUrl: string | undefined = undefined;
 
-          if (jk) {
+          const discoveryUrl = rawHref ? new URL(rawHref, "https://in.indeed.com").toString() : undefined;
+          if (discoveryUrl && /\/(?:pagead|rc)\/clk/i.test(new URL(discoveryUrl).pathname)) {
+            // Sponsored links are observations, not identities. Their
+            // destination is resolved under the bounded detail contract.
+            detailUrl = discoveryUrl;
+          } else if (jk) {
             detailUrl = `https://in.indeed.com/viewjob?jk=${jk}`;
             applyRedirectUrl = `https://in.indeed.com/rc/clk?jk=${jk}`;
           } else if (rawHref) {
@@ -152,6 +158,7 @@ export const indeedHandler: PortalHandler = {
             portal: "Indeed",
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,
+            discoveryUrl: discoveryUrl || detailUrl,
             detailUrl,
             applyRedirectUrl,
             discoveredAt,
@@ -221,7 +228,27 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
 
   const doExtract = async () => {
     try {
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
+      const resolution = await resolveIndeedListingBounded(url, async (hopUrl) => {
+        const response = await page.context().request.fetch(hopUrl, {
+          maxRedirects: 0,
+          timeout: CONFIG.detailTimeoutMs,
+        });
+        try {
+          return { status: response.status(), location: response.headers()["location"] };
+        } finally {
+          await response.dispose();
+        }
+      });
+      if (!resolution.ok) {
+        return {
+          fetched: false,
+          fetchError: `Indeed identity resolution failed: ${resolution.failure}`,
+          fetchDurationMs: Date.now() - t0,
+          finalUrl: resolution.finalUrl,
+          identityResolutionFailure: resolution.failure,
+        };
+      }
+      await page.goto(resolution.identity.resolvedUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
       await jitter(400, 900);
 
       // Check current page URL (might have followed an external ATS redirect from /rc/clk)
@@ -278,6 +305,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           rawText: "",
           fetchDurationMs: Date.now() - t0,
           extractedTitle,
+          finalUrl: currentUrl,
         };
       }
 
@@ -292,6 +320,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         fetchDurationMs: Date.now() - t0,
         quality: trimmedText.length < 200 ? ("SPARSE" as const) : ("VALID" as const),
         extractedTitle,
+        finalUrl: currentUrl,
       };
     } catch (err: any) {
       return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
