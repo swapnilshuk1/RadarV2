@@ -26,9 +26,8 @@ export const Route = createFileRoute("/decisions")({
 
 export function resolveDecisionsCardScore(
   o: Opportunity,
-  brief?: { qualityScore?: number | null }
 ): string {
-  const score = brief?.qualityScore ?? o.engineRecommendation?.qualityScore ?? o.recommendationResult?.score;
+  const score = o.engineRecommendation?.qualityScore;
   if (score !== null && score !== undefined) {
     return `Fit Index ${score}%`;
   }
