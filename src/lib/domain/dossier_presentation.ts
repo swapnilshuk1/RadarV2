@@ -5,6 +5,8 @@ export type DossierJsonObject = { readonly [key: string]: DossierJsonValue };
 /** Presentation material persisted with an evaluated artifact, never decision authority. */
 export interface CanonicalDossierPresentationV1 {
   readonly schemaVersion: "dossier-v1";
+  /** Historical evaluation time; distinct from dossier materialization time. */
+  readonly evaluatedAt?: string;
   readonly generatedAt: string;
   readonly evaluationInputHash: string;
   readonly brief: DossierJsonObject;
@@ -19,14 +21,31 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
 /** Invalid presentation is omitted at serving time; it never invalidates v4.3 truth. */
+const isStringArray = (value: unknown): value is readonly string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === "string");
+
+function hasRenderSafeBrief(value: unknown): value is DossierJsonObject {
+  if (!isObject(value) || !isObject(value.oneMinuteTLDR) || !isObject(value.strategicUpside) || !Array.isArray(value.proofPoints)) return false;
+  if (!isStringArray(value.oneMinuteTLDR.whyPursue) || !isStringArray(value.oneMinuteTLDR.watchFor) || !isStringArray(value.strategicUpside.points)) return false;
+  const sections = value.structuredSections;
+  return isObject(sections) && ["context", "mandate", "synthesis", "evidence", "strategy"].every((key) => isObject(sections[key]));
+}
+
+function hasRenderSafeExecutionPackage(value: unknown): value is DossierJsonObject {
+  if (!isObject(value) || !isStringArray(value.recommendationConditions) || !Array.isArray(value.screeningQuestions) || !Array.isArray(value.resumeGaps)) return false;
+  return isObject(value.linkedInStrategy) && isObject(value.interviewPrep);
+}
+
+/** Render-safe presentation validation. Core v4.3 truth remains valid without it. */
 export function isCanonicalDossierPresentationV1(value: unknown): value is CanonicalDossierPresentationV1 {
   if (!isObject(value)) return false;
   return value.schemaVersion === "dossier-v1"
     && typeof value.generatedAt === "string" && !Number.isNaN(Date.parse(value.generatedAt))
     && typeof value.evaluationInputHash === "string" && value.evaluationInputHash.trim().length > 0
-    && isObject(value.brief)
+    && (value.evaluatedAt === undefined || (typeof value.evaluatedAt === "string" && !Number.isNaN(Date.parse(value.evaluatedAt))))
+    && hasRenderSafeBrief(value.brief)
     && isObject(value.jobProjection)
-    && isObject(value.executionPackage)
+    && hasRenderSafeExecutionPackage(value.executionPackage)
     && Array.isArray(value.rawDimensions)
     && (value.focusTopic === null || typeof value.focusTopic === "string")
     && (value.whyRoleExists === null || typeof value.whyRoleExists === "string");

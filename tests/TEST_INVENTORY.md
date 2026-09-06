@@ -373,7 +373,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/semantic/phase6c_production_observability.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 13 | 18 |
 | `tests/semantic/phase6d_production_monitoring.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 16 | 23 |
 | `tests/serving/cursor.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 24 | 31 |
-| `tests/serving/dossier_and_navigation.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 5 | 19 |
+| `tests/serving/dossier_and_navigation.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 5 | 22 |
 | `tests/serving/decided-population-completeness.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 1 | 1 |
 | `tests/serving/keyset_pagination.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 3 | 20 |
 | `tests/serving/opportunity-queries-contract.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 4 | 17 |

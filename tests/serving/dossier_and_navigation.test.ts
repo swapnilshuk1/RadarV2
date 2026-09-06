@@ -175,9 +175,15 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
         // contract and must never override materialized evaluation truth.
         decision: "PASS",
         score: 1,
-        brief: {},
+        brief: {
+          structuredSections: { context: {}, mandate: {}, synthesis: {}, evidence: {}, strategy: {} },
+          oneMinuteTLDR: { whyPursue: [], watchFor: [] },
+          strategicUpside: { points: [] },
+          proofPoints: [],
+          qualityScore: 1,
+        },
         jobProjection: {},
-        executionPackage: {},
+        executionPackage: { recommendationConditions: [], screeningQuestions: [], resumeGaps: [], linkedInStrategy: {}, interviewPrep: {} },
         rawDimensions: [],
         focusTopic: null,
         whyRoleExists: null,
@@ -217,6 +223,19 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
       expect(dossier.engineRecommendation?.qualityScore).toBe(95);
       expect(dossier.dossierPresentation?.schemaVersion).toBe("dossier-v1");
       expect(dossier.dossierPresentation?.evaluationInputHash).toBe("eval_A");
+    });
+
+    it("does not attach a top-level-valid but render-unsafe dossier presentation", async () => {
+      const valid = {
+        schemaVersion: "v4.3-intrinsic", evaluationContractVersion: "v4.3", evaluationState: "EVALUATED",
+        canonicalJobId: "opp_empty_presentation", opportunityVersion: "ver_empty_presentation", jobHash: "empty_presentation",
+        tenantId: "tenant_A", personId: "person_A", evaluationInputHash: "eval_A", contextFingerprint: "fingerprint_A",
+        policyVersion: "test", ontologyVersion: "test", ontologyFingerprint: "test-ontology", profileVersion: "test-profile",
+        evaluatedAt: "2026-01-01T00:00:00.000Z", decision: "PURSUE", score: 95, diligenceStatus: "UNKNOWN", jobProjection: {},
+        dossierPresentation: { schemaVersion: "dossier-v1", generatedAt: "2026-01-01T00:00:00.000Z", evaluationInputHash: "eval_A", brief: {}, jobProjection: {}, executionPackage: {}, rawDimensions: [], focusTopic: null, whyRoleExists: null },
+      };
+      await seedItem({ id: "empty_presentation", title: "VP Growth", engineVerdict: "PURSUE", score: 95, customEvalJson: JSON.stringify(valid) });
+      expect((await queries.getDossier(scope, "empty_presentation") as EvaluatedOpportunity).dossierPresentation).toBeUndefined();
     });
 
     it("keeps a v4.3 evaluation canonical when an optional dossier presentation is malformed", async () => {
@@ -490,8 +509,8 @@ describe("Shortlist canonical dossier presentation contract", () => {
     expect(loaderSource).toContain("getOpportunitiesFn");
     expect(loaderSource).not.toContain("getOpportunityDetailsFn");
     expect(routeSource).toContain("const [dossierByJobHash");
-    expect(routeSource).toContain("getOpportunityDetailsFn({ data: jobHash })");
-    expect(routeSource).toContain("onExpand(o.jobHash)");
+    expect(routeSource).toContain("getOpportunityDetailsFn({ data: opportunity.jobHash })");
+    expect(routeSource).toContain("onExpand(o)");
   });
 
   it("does not recompute advisory facts in shortlist presentation paths", () => {
@@ -510,5 +529,35 @@ describe("Shortlist canonical dossier presentation contract", () => {
     expect(inlineBriefSource).toContain("o.engineRecommendation?.qualityScore");
     expect(inlineBriefSource).toContain("o.effectiveDecision");
     expect(inlineBriefSource).toContain("o.userDecision?.userAction");
+  });
+
+  it("binds a cached dossier to the current canonical evaluation fingerprint", () => {
+    expect(routeSource).toContain("dossierCacheKey(opportunity)");
+    expect(routeSource).toContain("engineRecommendation?.evaluationFingerprint");
+    expect(routeSource).toContain("dossierByJobHash[dossierCacheKey(o)]");
+  });
+
+  it("keeps restored score display authoritative and supplies every rich surface from dossier-v1", () => {
+    const hero = fs.readFileSync(path.resolve(process.cwd(), "src/components/radar/opportunity/reading/Hero.tsx"), "utf8");
+    const summary = fs.readFileSync(path.resolve(process.cwd(), "src/components/radar/opportunity/briefing/Summary.tsx"), "utf8");
+    const route = fs.readFileSync(path.resolve(process.cwd(), "src/routes/opportunity.$jobHash.tsx"), "utf8");
+    expect(hero).toContain("o.engineRecommendation?.qualityScore");
+    expect(summary).toContain("o.engineRecommendation?.qualityScore");
+    expect(`${hero}\n${summary}`).not.toContain("brief.qualityScore ?? o.engineRecommendation");
+    expect(route).toContain("<ReadingSurface");
+    expect(route).toContain("<ExecutiveBriefingSurface");
+    expect(route).toContain("presentation.brief");
+    expect(route).toContain("presentation.executionPackage");
+  });
+
+  it("keeps dossier rematerialization dry-run and provenance guarded", () => {
+    const script = fs.readFileSync(path.resolve(process.cwd(), "scripts/rematerialize-dossiers.ts"), "utf8");
+    expect(script).toContain('process.argv.includes("--apply")');
+    expect(script).toContain("persisted.dossierPresentation.evaluationInputHash === persisted.evaluationInputHash");
+    expect(script).toContain("reconstructed.decision !== row.decision");
+    expect(script).toContain("reconstructed.score !== row.quality_score");
+    expect(script).toContain("reconstructed.evaluationInputHash !== row.evaluation_fingerprint");
+    expect(script).toContain("evaluation_json = ?");
+    expect(script).toContain("write.rowsAffected === 1");
   });
 });

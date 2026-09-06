@@ -58,6 +58,10 @@ export const Route = createFileRoute("/")({
   component: Shortlist,
 });
 
+export function dossierCacheKey(opportunity: EvaluatedOpportunity): string {
+  return `${opportunity.jobHash}:${opportunity.engineRecommendation?.evaluationFingerprint ?? "unknown"}`;
+}
+
 function Shortlist() {
   const { opportunitiesList, metrics, searchPlanPreview } = Route.useLoaderData();
   const { decide: recordDecision } = useDecisions();
@@ -109,12 +113,13 @@ function Shortlist() {
 
   const activeOps = categoryOps ?? opportunitiesList;
 
-  const loadDossier = (jobHash: string) => {
-    if (dossierByJobHash[jobHash] !== undefined) return;
-    setDossierByJobHash((current) => ({ ...current, [jobHash]: null }));
-    getOpportunityDetailsFn({ data: jobHash })
-      .then((details) => setDossierByJobHash((current) => ({ ...current, [jobHash]: details.opportunity ?? null })))
-      .catch(() => setDossierByJobHash((current) => ({ ...current, [jobHash]: null })));
+  const loadDossier = (opportunity: EvaluatedOpportunity) => {
+    const cacheKey = dossierCacheKey(opportunity);
+    if (dossierByJobHash[cacheKey] !== undefined) return;
+    setDossierByJobHash((current) => ({ ...current, [cacheKey]: null }));
+    getOpportunityDetailsFn({ data: opportunity.jobHash })
+      .then((details) => setDossierByJobHash((current) => ({ ...current, [cacheKey]: details.opportunity ?? null })))
+      .catch(() => setDossierByJobHash((current) => ({ ...current, [cacheKey]: null })));
   };
 
   const showArrivalBanner = !progress.arrivalSeen;
@@ -396,7 +401,7 @@ function Shortlist() {
                       setOpen={setOpen}
                       decide={decide}
                       showArrivalBanner={showArrivalBanner}
-                      dossier={dossierByJobHash[o.jobHash]}
+                      dossier={dossierByJobHash[dossierCacheKey(o)]}
                       onExpand={loadDossier}
                     />
                   ) : (
@@ -705,7 +710,7 @@ function ShortlistCardRow({
   decide: (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => void;
   showArrivalBanner: boolean;
   dossier: ServedOpportunity | null | undefined;
-  onExpand: (jobHash: string) => void;
+  onExpand: (opportunity: EvaluatedOpportunity) => void;
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
   const { rawScore, scoreDisplay } = resolveShortlistCardScore(o);
@@ -765,7 +770,7 @@ function ShortlistCardRow({
           } else {
             setOpenedTimes((prev) => ({ ...prev, [o.jobHash]: Date.now() }));
             logTelemetry(o.jobHash, "EXPAND", 0);
-            onExpand(o.jobHash);
+            onExpand(o);
             setOpen(o.jobHash);
           }
         }}

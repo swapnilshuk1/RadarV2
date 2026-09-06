@@ -72,7 +72,7 @@ export function Hero({
               )}
 
               <span className="label-mono text-xs font-semibold px-2 py-1 rounded bg-surface-raised border border-border text-foreground">
-                RADAR SCORE: {(brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore) != null ? `${brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore}/100` : "N/A"}
+                RADAR SCORE: {o.engineRecommendation?.qualityScore != null ? `${o.engineRecommendation.qualityScore}/100` : "N/A"}
               </span>
 
               {/* Canonical Career-Value Signal Badge */}
@@ -148,7 +148,7 @@ export function Hero({
             <div className="border-t border-border pt-4 space-y-2">
               <p className="label-mono text-xs text-primary font-normal uppercase tracking-wider">Executive Advisory Thesis</p>
               <p className="font-serif text-xl sm:text-2xl italic leading-relaxed text-foreground font-normal">
-                “{brief.executiveThesis?.primaryReason || brief.executiveOpinion || "Evaluating strategic executive alignment..."}”
+                “{brief.executiveThesis?.primaryReason || brief.executiveOpinion || "Not recorded"}”
               </p>
             </div>
           </div>

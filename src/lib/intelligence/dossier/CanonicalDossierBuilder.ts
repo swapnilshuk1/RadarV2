@@ -22,6 +22,7 @@ export function buildCanonicalDossierPresentation(
   candidateProjection: CandidateProjection,
   evaluationInputHash: string,
   generatedAt: string,
+  evaluatedAt?: string,
 ): CanonicalDossierPresentationV1 {
   if (!artifact.opportunity || !artifact.jobProjection) {
     throw new Error("Cannot build dossier without evaluated opportunity and job projection");
@@ -30,6 +31,7 @@ export function buildCanonicalDossierPresentation(
   return {
     schemaVersion: "dossier-v1",
     generatedAt,
+    ...(evaluatedAt ? { evaluatedAt } : {}),
     evaluationInputHash,
     brief: asDossierJsonObject(BriefCompositionEngine.compose(artifact.opportunity, { bypassHistory: true })),
     jobProjection: asDossierJsonObject(artifact.jobProjection),

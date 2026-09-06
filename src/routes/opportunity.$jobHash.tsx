@@ -91,7 +91,7 @@ export function OpportunityBriefView() {
             jobProj={presentation.jobProjection}
             executionPkg={presentation.executionPackage}
             rawDimensions={[...presentation.rawDimensions]}
-            generatedAt={presentation.generatedAt}
+            generatedAt={presentation.evaluatedAt ?? presentation.generatedAt}
             focusTopic={presentation.focusTopic}
             whyRoleExists={presentation.whyRoleExists}
           />

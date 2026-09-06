@@ -1,10 +1,10 @@
 interface MandateProps {
-  o: any;
+  brief: any;
   jobProj: any;
   executionPkg: any;
 }
 
-export function Mandate({ o, jobProj, executionPkg }: MandateProps) {
+export function Mandate({ brief, jobProj, executionPkg }: MandateProps) {
   return (
     <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
       <div className="lg:sticky lg:top-14 lg:self-start">
@@ -14,9 +14,9 @@ export function Mandate({ o, jobProj, executionPkg }: MandateProps) {
         </h2>
       </div>
       <div className="space-y-6">
-        {o.brief?.structuredSections?.mandate?.thesis && (
+        {brief?.structuredSections?.mandate?.thesis && (
           <p className="font-medium text-foreground text-sm leading-relaxed">
-            {o.brief.structuredSections.mandate.thesis}
+            {brief.structuredSections.mandate.thesis}
           </p>
         )}
         
@@ -58,10 +58,10 @@ export function Mandate({ o, jobProj, executionPkg }: MandateProps) {
           </div>
         </div>
 
-        {o.brief?.structuredSections?.mandate?.transition && (
+        {brief?.structuredSections?.mandate?.transition && (
           <div className="pt-4 border-t border-border">
             <p className="text-xs text-muted-foreground italic font-serif">
-              {o.brief.structuredSections.mandate.transition}
+              {brief.structuredSections.mandate.transition}
             </p>
           </div>
         )}

@@ -403,6 +403,7 @@ export class EvaluationWorker {
                 projection,
                 intrinsic.evaluationInputHash,
                 evaluatedAt,
+                evaluatedAt,
               ),
             };
           })()

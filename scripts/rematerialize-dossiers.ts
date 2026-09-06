@@ -53,8 +53,9 @@ async function main() {
   }>(`SELECT me.id, me.canonical_job_id, me.opportunity_version, me.evaluation_fingerprint, me.decision, me.quality_score,
              me.evaluation_json, ov.raw_content
       FROM materialized_evaluations me
-      JOIN search_plan_candidates spc ON spc.canonical_job_id = me.canonical_job_id AND spc.opportunity_version = me.opportunity_version
-      JOIN opportunity_versions ov ON ov.id = me.opportunity_version
+      JOIN search_plan_candidates spc ON spc.tenant_id = me.tenant_id AND spc.person_id = me.person_id
+        AND spc.canonical_job_id = me.canonical_job_id AND spc.opportunity_version = me.opportunity_version
+      JOIN opportunity_versions ov ON ov.id = me.opportunity_version AND ov.canonical_job_id = me.canonical_job_id
       WHERE me.tenant_id = ? AND me.person_id = ? AND me.evaluation_context_fingerprint = ?
         AND spc.search_plan_id = ? AND me.evaluation_state = 'EVALUATED'`,
     [context.tenantId, context.personId, context.contextFingerprint, active.searchPlanId],
@@ -65,7 +66,8 @@ async function main() {
     let persisted: unknown;
     try { persisted = JSON.parse(row.evaluation_json); } catch { skipped++; continue; }
     if (!isCanonicalIntrinsicEvaluationV4_3(persisted)) { skipped++; continue; }
-    if (isCanonicalDossierPresentationV1(persisted.dossierPresentation)) continue;
+    if (isCanonicalDossierPresentationV1(persisted.dossierPresentation)
+      && persisted.dossierPresentation.evaluationInputHash === persisted.evaluationInputHash) continue;
     let source: OpportunitySource;
     try { source = JSON.parse(row.raw_content) as OpportunitySource; } catch { skipped++; continue; }
     source.jobHash ||= persisted.jobHash;
@@ -78,15 +80,17 @@ async function main() {
     }
     eligible++;
     if (apply) {
-      const dossierPresentation = buildCanonicalDossierPresentation(artifact, candidateProjection, persisted.evaluationInputHash, persisted.evaluatedAt);
-      await db.execute(
+      const dossierPresentation = buildCanonicalDossierPresentation(
+        artifact, candidateProjection, persisted.evaluationInputHash, new Date().toISOString(), persisted.evaluatedAt,
+      );
+      const write = await db.execute(
         `UPDATE materialized_evaluations SET evaluation_json = ?
          WHERE id = ? AND tenant_id = ? AND person_id = ? AND evaluation_fingerprint = ?
-           AND decision = ? AND quality_score = ? AND evaluation_state = 'EVALUATED'`,
+           AND decision = ? AND quality_score = ? AND evaluation_state = 'EVALUATED' AND evaluation_json = ?`,
         [JSON.stringify({ ...persisted, dossierPresentation }), row.id, context.tenantId, context.personId,
-          row.evaluation_fingerprint, row.decision, row.quality_score],
+          row.evaluation_fingerprint, row.decision, row.quality_score, row.evaluation_json],
       );
-      updated++;
+      if (write.rowsAffected === 1) updated++;
     }
   }
   console.log(JSON.stringify({ mode: apply ? "apply" : "dry-run", activeContext: active, examined: rows.length, eligible, updated, skipped }, null, 2));
