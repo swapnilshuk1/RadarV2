@@ -32,6 +32,15 @@ const hasRenderSafeObjectArray = (value: unknown, required: readonly string[] = 
     && required.every((key) => typeof item[key] === "string")
     && hasOptionalStrings(item, optional));
 
+function hasRenderSafeRawDimensions(value: unknown): value is readonly DossierJsonObject[] {
+  return Array.isArray(value) && value.every((dimension: unknown) =>
+    isObject(dimension)
+    && hasOptionalStrings(dimension, ["label"])
+    && (dimension.jdEvidence === undefined
+      || (isObject(dimension.jdEvidence) && hasOptionalStrings(dimension.jdEvidence, ["confidence"]))),
+  );
+}
+
 function hasRenderSafeBrief(value: unknown): value is DossierJsonObject {
   if (!isObject(value) || !isObject(value.oneMinuteTLDR) || !isObject(value.strategicUpside) || !Array.isArray(value.proofPoints)) return false;
   if (!isStringArray(value.oneMinuteTLDR.whyPursue) || !isStringArray(value.oneMinuteTLDR.watchFor) || !isStringArray(value.strategicUpside.points)) return false;
@@ -78,9 +87,7 @@ export function isCanonicalDossierPresentationV1(value: unknown): value is Canon
     && (value.jobProjection.executiveMission === undefined || (isObject(value.jobProjection.executiveMission)
       && (value.jobProjection.executiveMission.successConditions === undefined || isStringArray(value.jobProjection.executiveMission.successConditions))))
     && hasRenderSafeExecutionPackage(value.executionPackage)
-    && hasRenderSafeObjectArray(value.rawDimensions, [], ["label"])
-    && value.rawDimensions.every((dimension) => isObject(dimension)
-      && (dimension.jdEvidence === undefined || (isObject(dimension.jdEvidence) && hasOptionalStrings(dimension.jdEvidence, ["confidence"]))))
+    && hasRenderSafeRawDimensions(value.rawDimensions)
     && (value.focusTopic === null || typeof value.focusTopic === "string")
     && (value.whyRoleExists === null || typeof value.whyRoleExists === "string");
 }
