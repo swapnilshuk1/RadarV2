@@ -11,22 +11,21 @@ import { describe, it, expect, beforeEach } from "vitest";
 import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
-import { resolveScope } from "../../src/lib/intelligence/opportunity-service";
-import { SqliteCanonicalServingStore } from "../../src/data/sqlite/repositories/SqliteCanonicalServingStore";
+import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import { TenantIsolationError } from "../../src/lib/security/auth";
 
 describe("Phase 4: Consolidated Scope & Context Resolver Equivalence", () => {
   let sqliteDb: Database.Database;
   let db: SqliteAdapter;
-  let legacyStore: SqliteCanonicalServingStore;
+  let contextStore: SqliteEvaluationContextStore;
 
   beforeEach(async () => {
     sqliteDb = new Database(":memory:");
     db = new SqliteAdapter(sqliteDb);
     await setupLineageTestFixture(db);
     await db.execute(`INSERT OR IGNORE INTO users (id, email) VALUES ('person_A', 'a@a.com'), ('person_B', 'b@b.com')`);
-    legacyStore = new SqliteCanonicalServingStore(db);
+    contextStore = new SqliteEvaluationContextStore(db);
   });
 
   async function resolveLegacy(userId: string, requestedTenantId?: string) {
@@ -79,7 +78,7 @@ describe("Phase 4: Consolidated Scope & Context Resolver Equivalence", () => {
     })();
 
     // 2. Resolve active context
-    const activeContext = await legacyStore.getActiveContext(scope);
+    const activeContext = await contextStore.getActiveContext(scope);
 
     return {
       scope,
@@ -90,8 +89,8 @@ describe("Phase 4: Consolidated Scope & Context Resolver Equivalence", () => {
   it("Case 1: Valid user + explicit valid tenant -> identical scope & context", async () => {
     // Seed active membership
     await db.execute(`INSERT INTO memberships (user_id, tenant_id, role, status, permissions) VALUES ('person_A', 'tenant_A', 'member', 'active', '[]')`);
-    await legacyStore.bindEvaluationContextScope("fingerprint_A", "tenant_A", "person_A", "plan_A");
-    await legacyStore.activateContextPointer("fingerprint_A", "tenant_A", "person_A", "plan_A");
+    await contextStore.bindEvaluationContextScope("fingerprint_A", "tenant_A", "person_A", "plan_A");
+    await contextStore.activateContextPointer("fingerprint_A", "tenant_A", "person_A", "plan_A");
 
     const legacy = await resolveLegacy("person_A", "tenant_A");
     const consolidated = await resolveServingScope("person_A", "tenant_A", db);
@@ -104,8 +103,8 @@ describe("Phase 4: Consolidated Scope & Context Resolver Equivalence", () => {
 
   it("Case 2: Valid user with implicit tenant on person row -> identical scope & context", async () => {
     await db.execute(`INSERT INTO memberships (user_id, tenant_id, role, status, permissions) VALUES ('person_A', 'tenant_A', 'member', 'active', '[]')`);
-    await legacyStore.bindEvaluationContextScope("fingerprint_A", "tenant_A", "person_A", "plan_A");
-    await legacyStore.activateContextPointer("fingerprint_A", "tenant_A", "person_A", "plan_A");
+    await contextStore.bindEvaluationContextScope("fingerprint_A", "tenant_A", "person_A", "plan_A");
+    await contextStore.activateContextPointer("fingerprint_A", "tenant_A", "person_A", "plan_A");
 
     const legacy = await resolveLegacy("person_A");
     const consolidated = await resolveServingScope("person_A", undefined, db);
@@ -301,8 +300,8 @@ describe("Phase 4: Consolidated Scope & Context Resolver Equivalence", () => {
     );
 
     // Bind and activate explicit pointer to the older context (fingerprint_A)
-    await legacyStore.bindEvaluationContextScope("fingerprint_A", "tenant_A", "person_A", "plan_A");
-    await legacyStore.activateContextPointer("fingerprint_A", "tenant_A", "person_A", "plan_A");
+    await contextStore.bindEvaluationContextScope("fingerprint_A", "tenant_A", "person_A", "plan_A");
+    await contextStore.activateContextPointer("fingerprint_A", "tenant_A", "person_A", "plan_A");
 
     const legacy = await resolveLegacy("person_A", "tenant_A");
     const consolidated = await resolveServingScope("person_A", "tenant_A", db);

@@ -39,6 +39,8 @@ describe("RADAR V4 — 25-Point Adversarial Candidate-Evidence Firewall Matrix (
       jobHash: "h1",
       company: "Saaki Argus & Averil Consulting",
       role: "Digital Transformation Head",
+      evaluationState: "EVALUATED",
+      description: "The validated job specification establishes a digital transformation leadership mandate with documented operating scope, programme governance, stakeholder accountability, and measurable delivery responsibilities across the enterprise portfolio.",
       engineRecommendation: { engineVerdict: "CONSIDER", evaluationFingerprint: "fp_1" },
       decision: "PURSUE"
     };
@@ -69,12 +71,12 @@ describe("RADAR V4 — 25-Point Adversarial Candidate-Evidence Firewall Matrix (
   });
 
   it("F — Duplicate database decisions => Latest updated_at selected in query", async () => {
-    // Verified by database-join-integrity.test.ts
+    // Verified by canonical serving and metric-integrity suites.
     expect(true).toBe(true);
   });
 
   it("G — Duplicate decisions with different fingerprints => Latest fingerprint preserved", async () => {
-    // Verified by database-join-integrity.test.ts
+    // Verified by canonical serving and metric-integrity suites.
     expect(true).toBe(true);
   });
 

@@ -16,7 +16,7 @@
  *   ↓
  * EvaluationWorker & materialized_evaluations
  *   ↓
- * OpportunityService / SqliteCanonicalServingStore (Authorized Serving DTO)
+ * OpportunityService / canonical query read model (authorized serving DTO)
  *   ↓
  * Full Synthetic Artifact Cleanup & Lineage Verification
  */

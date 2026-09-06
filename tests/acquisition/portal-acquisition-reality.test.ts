@@ -15,7 +15,7 @@ import { ResponseValidator } from "@/lib/acquisition/validator";
 import { validateJobDocument } from "@/lib/acquisition/validator";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
 import { CanonicalIngestionService } from "@/lib/acquisition/CanonicalIngestionService";
-import { SqliteCanonicalServingStore } from "@/data/sqlite/repositories/SqliteCanonicalServingStore";
+import { SqliteOpportunityQueries } from "@/data/sqlite/repositories/SqliteOpportunityQueries";
 import { SqliteMaterializedEvaluationStore } from "@/data/sqlite/repositories/SqliteMaterializedEvaluationStore";
 import { extract } from "../../scripts/scraper/extract/extractor";
 import type { DetailedCard } from "../../scripts/scraper/types";
@@ -55,6 +55,11 @@ function setupFullCanonicalSchema(db: Database.Database) {
     CREATE TABLE people (id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, name TEXT);
     INSERT INTO people (id, tenant_id, email, name) VALUES ('p_exec', 't_exec', 'leader@radar.io', 'Executive Leader');
 
+    CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT);
+    INSERT INTO users (id, email) VALUES ('p_exec', 'leader@radar.io');
+    CREATE TABLE memberships (user_id TEXT, tenant_id TEXT, role TEXT, status TEXT, permissions TEXT, revoked_at DATETIME);
+    INSERT INTO memberships (user_id, tenant_id, role, status, permissions) VALUES ('p_exec', 't_exec', 'member', 'active', '[]');
+
     CREATE TABLE search_plans (id TEXT PRIMARY KEY, tenant_id TEXT, person_id TEXT, status TEXT, criteria_json TEXT);
     INSERT INTO search_plans (id, tenant_id, person_id, status, criteria_json)
     VALUES ('sp_exec', 't_exec', 'p_exec', 'active', '{"targetSeniority":["VP","CXO"],"targetRoles":["VP of Engineering"],"targetLocations":["Remote","Bengaluru"]}');
@@ -89,7 +94,7 @@ function setupFullCanonicalSchema(db: Database.Database) {
       company_name TEXT, location TEXT, employment_type TEXT, posted_at TEXT,
       posted_precision TEXT, raw_content TEXT, acquisition_status TEXT,
       acquisition_quality TEXT, failure_class TEXT, lifecycle_state TEXT,
-      evidence_state TEXT, created_at DATETIME,
+      evidence_state TEXT, category_ids TEXT, created_at DATETIME,
       UNIQUE(canonical_job_id, content_hash)
     );
 
@@ -104,7 +109,7 @@ function setupFullCanonicalSchema(db: Database.Database) {
       canonical_job_id TEXT NOT NULL, opportunity_version TEXT NOT NULL,
       evaluation_context_fingerprint TEXT NOT NULL, evaluation_state TEXT NOT NULL DEFAULT 'EVALUATED',
       decision TEXT, quality_score REAL, rationale TEXT, evidence_ids TEXT,
-      evaluation_json TEXT NOT NULL, vetoed INTEGER NOT NULL DEFAULT 0, materialized_at DATETIME NOT NULL,
+      evaluation_json TEXT NOT NULL, evaluation_fingerprint TEXT, vetoed INTEGER NOT NULL DEFAULT 0, materialized_at DATETIME NOT NULL,
       UNIQUE(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
     );
 
@@ -145,6 +150,10 @@ function setupFullCanonicalSchema(db: Database.Database) {
       FOREIGN KEY (context_fingerprint, tenant_id, person_id, search_plan_id) 
           REFERENCES evaluation_context_scopes(context_fingerprint, tenant_id, person_id, search_plan_id)
     );
+    INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+    VALUES ('fp_exec_v4', 't_exec', 'p_exec', 'sp_exec');
+    INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+    VALUES ('t_exec', 'p_exec', 'sp_exec', 'fp_exec_v4', 'test');
   `);
 }
 
@@ -375,7 +384,7 @@ describe("Adversarial Portal Acquisition & Certification Suite (RADAR V4 Phase 2
       const sqliteDb = new Database(":memory:");
       setupFullCanonicalSchema(sqliteDb);
       const adapter = new TestSqliteAdapter(sqliteDb);
-      const servingStore = new SqliteCanonicalServingStore(adapter);
+      const opportunityQueries = new SqliteOpportunityQueries(adapter);
       const evalStore = new SqliteMaterializedEvaluationStore(adapter);
 
       const scope = { tenantId: "t_exec", personId: "p_exec" };
@@ -402,6 +411,7 @@ describe("Adversarial Portal Acquisition & Certification Suite (RADAR V4 Phase 2
       const evalPayload = {
         role: "Chief Technology Officer",
         company: "Alpha Corp",
+        evaluationInputHash: "fp_eval_1",
         engineRecommendation: { engineVerdict: "PURSUE", qualityScore: 94 },
       };
 
@@ -486,19 +496,19 @@ describe("Adversarial Portal Acquisition & Certification Suite (RADAR V4 Phase 2
       });
 
       // 1. Fetch metrics
-      const metrics = await servingStore.getOpportunityMetrics(scope);
+      const metrics = await opportunityQueries.getMetrics(scope);
       expect(metrics.totalScreened).toBe(3);
       expect(metrics.categoryMetrics.needs_more_signal.total).toBe(2);
 
       // 2. Query category list
-      const sparseOpps = await servingStore.listOpportunities(scope, { categoryId: "needs_more_signal" });
+      const sparseOpps = (await opportunityQueries.getFeed(scope, undefined, { categoryId: "needs_more_signal" }, 24)).items;
       expect(sparseOpps.length).toBe(2);
       expect(metrics.categoryMetrics.needs_more_signal.total).toBe(sparseOpps.length);
 
       // 3. Verify every item has evaluationState = SPARSE_SPEC, decision = null, and score = null
       for (const opp of sparseOpps) {
         expect((opp as any).evaluationState).toBe("SPARSE_SPEC");
-        expect(opp.engineRecommendation?.qualityScore ?? null).toBeNull();
+        expect(opp.qualityScore ?? null).toBeNull();
       }
     });
   });

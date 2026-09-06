@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import Database from "better-sqlite3";
-import { SqliteCanonicalServingStore } from "../../src/data/sqlite/repositories/SqliteCanonicalServingStore";
 import {
   SqliteEvaluationContextStore,
   EvaluationContextConflictError,
@@ -12,7 +11,6 @@ import { setupLineageTestFixture } from "./lineage_fixture";
 
 describe("Evaluation Context Pointers Integrity", () => {
   let db: any;
-  let store: SqliteCanonicalServingStore;
   let evalContextStore: SqliteEvaluationContextStore;
 
   beforeAll(async () => {
@@ -21,12 +19,11 @@ describe("Evaluation Context Pointers Integrity", () => {
     
     await setupLineageTestFixture(db);
 
-    store = new SqliteCanonicalServingStore(db);
     evalContextStore = new SqliteEvaluationContextStore(db);
   });
 
   it("prevents false bindings missing actual lineage", async () => {
-    const success = await store.bindEvaluationContextScope("fake_fingerprint", "tenant_A", "person_A", "plan_A");
+    const success = await evalContextStore.bindEvaluationContextScope("fake_fingerprint", "tenant_A", "person_A", "plan_A");
     expect(success).toBe(false);
 
     const count = await db.one<{ count: number }>(`SELECT COUNT(*) as count FROM evaluation_context_scopes WHERE context_fingerprint = 'fake_fingerprint'`);
@@ -34,7 +31,7 @@ describe("Evaluation Context Pointers Integrity", () => {
   });
 
   it("allows correct scope bindings", async () => {
-    const success = await store.bindEvaluationContextScope("fingerprint_A", "tenant_A", "person_A", "plan_A");
+    const success = await evalContextStore.bindEvaluationContextScope("fingerprint_A", "tenant_A", "person_A", "plan_A");
     expect(success).toBe(true);
 
     const count = await db.one<{ count: number }>(`SELECT COUNT(*) as count FROM evaluation_context_scopes WHERE context_fingerprint = 'fingerprint_A'`);

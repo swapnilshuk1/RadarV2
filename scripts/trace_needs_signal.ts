@@ -13,7 +13,7 @@ async function main() {
   // How many opps matched needs_more_signal in classifyOpportunityCategories during getOpportunityMetrics?
   const matchedInMetrics: any[] = [];
   for (const opp of allOpps) {
-    // Exact call from SqliteCanonicalServingStore.ts line 489
+    // Historical call location in the retired serving implementation.
     const cats = classifyOpportunityCategories({
       role: opp.role,
       evaluationStatus: (opp as any).evaluationStatus,

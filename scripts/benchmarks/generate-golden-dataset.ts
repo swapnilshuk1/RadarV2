@@ -69,7 +69,7 @@ export async function generateGoldenDataset(targetUserId?: string): Promise<Gold
 
   console.log(`[GoldenDataset] Active Search Plan: ${activeContext.searchPlanId}`);
   console.log(`[GoldenDataset] Context Fingerprint: ${activeContext.contextFingerprint}`);
-  console.log(`[GoldenDataset] Materializing authoritative oracle via OpportunityService / CanonicalServingStore...`);
+  console.log(`[GoldenDataset] Materializing authoritative oracle via the canonical serving query model...`);
 
   const t0 = Date.now();
   const opportunities = await repos.canonicalServing.listOpportunities(scope);

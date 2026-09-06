@@ -11,7 +11,7 @@
  *   5. EvaluationWorker Claiming & Lease Concurrency Control
  *   6. Deterministic runEngineSingle Evaluation & materialized_evaluations Persistence
  *   7. Queue Retries & Dead-Letter State Machine
- *   8. SqliteCanonicalServingStore & OpportunityService Executive Serving
+ *   8. SqliteOpportunityQueries & OpportunityService Executive Serving
  *   9. Multi-Tenant Boundary Isolation & Historical Immutability
  */
 
@@ -22,7 +22,7 @@ import path from "path";
 import { DatabaseAdapter, QueryParams } from "@/data/database/DatabaseAdapter";
 import { CanonicalIngestionService } from "@/lib/acquisition/CanonicalIngestionService";
 import { EvaluationWorker } from "@/lib/intelligence/EvaluationWorker";
-import { SqliteCanonicalServingStore } from "@/data/sqlite/repositories/SqliteCanonicalServingStore";
+import { SqliteOpportunityQueries } from "@/data/sqlite/repositories/SqliteOpportunityQueries";
 import { computeEvaluationContextFingerprint } from "@/lib/domain/evaluation_fingerprint";
 import { computeCanonicalJobId } from "@/lib/domain/canonical_identity";
 import { computeContentHash, computeOpportunityVersionId } from "@/lib/domain/canonical_acquisition";
@@ -153,6 +153,9 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
       "028_active_evaluation_context_pointers.sql",
       "029_materialized_evaluations_vetoed.sql",
       "033_opportunity_version_source_payload.sql",
+      "035_search_plan_candidate_eligibility_audit.sql",
+      "037_materialized_evaluation_fingerprint.sql",
+      "038_opportunity_version_category_projection.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -165,14 +168,18 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
     // Setup Tenant A & User/Person A
     sqliteDb.prepare(`INSERT INTO tenants (id, status, created_at, updated_at) VALUES (?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).run(TENANT_A);
     sqliteDb.prepare(`INSERT INTO users (id, email, created_at) VALUES (?, 'alex@example.com', CURRENT_TIMESTAMP)`).run(USER_A);
+    sqliteDb.prepare(`INSERT INTO users (id, email, created_at) VALUES (?, 'alex-person@example.com', CURRENT_TIMESTAMP)`).run(PERSON_A);
     sqliteDb.prepare(`INSERT INTO people (id, tenant_id, email, created_at, updated_at) VALUES (?, ?, 'alex@example.com', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).run(PERSON_A, TENANT_A);
     sqliteDb.prepare(`INSERT INTO memberships (user_id, tenant_id, role, permissions, status, created_at) VALUES (?, ?, 'owner', '["read:opportunity","write:opportunity"]', 'active', CURRENT_TIMESTAMP)`).run(USER_A, TENANT_A);
+    sqliteDb.prepare(`INSERT INTO memberships (user_id, tenant_id, role, permissions, status, created_at) VALUES (?, ?, 'owner', '["read:opportunity","write:opportunity"]', 'active', CURRENT_TIMESTAMP)`).run(PERSON_A, TENANT_A);
 
     // Setup Tenant B & User/Person B (for isolation verification)
     sqliteDb.prepare(`INSERT INTO tenants (id, status, created_at, updated_at) VALUES (?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).run(TENANT_B);
     sqliteDb.prepare(`INSERT INTO users (id, email, created_at) VALUES (?, 'other@example.com', CURRENT_TIMESTAMP)`).run(USER_B);
+    sqliteDb.prepare(`INSERT INTO users (id, email, created_at) VALUES (?, 'other-person@example.com', CURRENT_TIMESTAMP)`).run(PERSON_B);
     sqliteDb.prepare(`INSERT INTO people (id, tenant_id, email, created_at, updated_at) VALUES (?, ?, 'other@example.com', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).run(PERSON_B, TENANT_B);
     sqliteDb.prepare(`INSERT INTO memberships (user_id, tenant_id, role, permissions, status, created_at) VALUES (?, ?, 'owner', '["read:opportunity","write:opportunity"]', 'active', CURRENT_TIMESTAMP)`).run(USER_B, TENANT_B);
+    sqliteDb.prepare(`INSERT INTO memberships (user_id, tenant_id, role, permissions, status, created_at) VALUES (?, ?, 'owner', '["read:opportunity","write:opportunity"]', 'active', CURRENT_TIMESTAMP)`).run(PERSON_B, TENANT_B);
 
     // Search Plan A for Executive Engineering/AI roles in Bengaluru/Remote
     const criteriaA = {
@@ -377,7 +384,8 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
     const basePayload = {
       sourcePortal: "Indeed",
       sourceJobId: "ind-job-head-eng-555",
-      canonicalUrl: "https://indeed.com/viewjob?jk=555",
+      canonicalUrl: "https://indeed.com/viewjob?jk=abc123456",
+      finalUrl: "https://indeed.com/viewjob?jk=abc123456",
       jobTitle: "Head of Engineering",
       companyName: "RapidGrowth Inc",
       location: "Bengaluru",
@@ -506,7 +514,8 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
     // Worker 1 processes the claimed job
     const processRes = await worker1.processJob(claimedJob!);
     expect(processRes.status).toBe("completed");
-    expect(processRes.decision).toBeDefined();
+    // The worker deliberately omits a recommendation from unavailable work.
+    expect(processRes.decision).toBeUndefined();
 
     // Check evaluation_jobs status
     const finishedJob = await adapter.one<any>(
@@ -524,7 +533,7 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
     expect(matRow).not.toBeNull();
     expect(matRow.tenant_id).toBe(TENANT_A);
     expect(matRow.person_id).toBe(PERSON_A);
-    expect(matRow.evaluation_state).toBe("SPARSE_SPEC");
+    expect(matRow.evaluation_state).toBe("NOT_EVALUABLE");
     expect(matRow.decision).toBeNull();
     expect(matRow.quality_score).toBeNull();
     expect(matRow.evaluation_json).toContain("v4.3-unavailable");
@@ -616,8 +625,8 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
     const processResult = await worker.pollAndProcessNext();
     expect(processResult?.status).toBe("completed");
 
-    // 2. Query Serving Store for Tenant A / Person A Scope
-    const servingStore = new SqliteCanonicalServingStore(adapter);
+    // 2. Query the canonical serving read model for Tenant A / Person A Scope.
+    const opportunityQueries = new SqliteOpportunityQueries(adapter);
     const scopeA: AuthorizedPersonScope = {
       userId: USER_A,
       tenantId: TENANT_A,
@@ -625,7 +634,7 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
       permissions: ["read:opportunity", "write:opportunity"]
     };
 
-    const opps = await servingStore.listOpportunities(scopeA);
+    const opps = (await opportunityQueries.getFeed(scopeA, undefined, undefined, 24)).items;
     expect(opps.length).toBe(1);
 
     const servedOpp = opps[0];
@@ -633,10 +642,10 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
     expect(servedOpp.role).toBe("VP of Engineering & AI Platforms");
     expect(servedOpp.company).toBe("Enterprise Tier 1");
     expect(servedOpp.location).toBe("Bengaluru");
-    expect(servedOpp.postedRelative).toBeDefined();
-    expect((servedOpp as any).evaluationState).toBe("SPARSE_SPEC");
-    expect(servedOpp.engineRecommendation).toBeUndefined();
-    expect(servedOpp.effectiveDecision).toBeUndefined();
+    expect(servedOpp.postedAt).toBeDefined();
+    expect((servedOpp as any).evaluationState).toBe("NOT_EVALUABLE");
+    expect(servedOpp.engineVerdict).toBeNull();
+    expect(servedOpp.effectiveDecision).toBe("UNKNOWN");
 
     // 3. User records explicit PASS decision
     sqliteDb.prepare(`
@@ -646,10 +655,10 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
     `).run(PERSON_A, TENANT_A, ingestRes.canonicalJobId);
 
     // 4. Re-query Serving Store: User decision MUST take precedence in effectiveDecision
-    const updatedOpps = await servingStore.listOpportunities(scopeA);
+    const updatedOpps = (await opportunityQueries.getFeed(scopeA, undefined, undefined, 24)).items;
     expect(updatedOpps.length).toBe(1);
-    expect(updatedOpps[0].userDecision?.userAction).toBe("PASS");
-    expect(updatedOpps[0].effectiveDecision).toBe("USER_PASSED");
+    expect(updatedOpps[0].userAction).toBe("PASS");
+    expect(updatedOpps[0].effectiveDecision).toBe("PASS");
 
     // 5. Tenant Isolation Verification: Person B in Tenant B MUST NOT see Tenant A opportunities
     const scopeB: AuthorizedPersonScope = {
@@ -658,7 +667,7 @@ describe("RADAR v2 — Milestone M10 Continuous Canonical Pipeline Suite", () =>
       personId: PERSON_B,
       permissions: ["read:opportunity", "write:opportunity"]
     };
-    const oppsB = await servingStore.listOpportunities(scopeB);
+    const oppsB = (await opportunityQueries.getFeed(scopeB, undefined, undefined, 24)).items;
     expect(oppsB.length).toBe(0); // Tenant isolation strictly verified
   });
 

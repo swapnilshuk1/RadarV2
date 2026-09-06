@@ -121,17 +121,6 @@
     "reason": "Editorial narrative truth consistency for career value statements"
   },
   {
-    "sourceFile": "tests/database-join-integrity.test.ts",
-    "testCount": 5,
-    "status": "PASS",
-    "durationMs": 6285,
-    "domain": "persistence",
-    "contractStatus": "CURRENT_V4",
-    "disposition": "ACTIVE",
-    "targetPath": "tests/persistence/join-integrity.test.ts",
-    "reason": "SQL join integrity between opportunities, companies, and evaluations"
-  },
-  {
     "sourceFile": "tests/database-safety-lockdown.test.ts",
     "testCount": 7,
     "status": "PASS",
@@ -273,17 +262,6 @@
     "disposition": "ACTIVE",
     "targetPath": "tests/intelligence/job-projection-cache.test.ts",
     "reason": "JobProjection caching and memory bounds"
-  },
-  {
-    "sourceFile": "tests/metric-integrity.test.ts",
-    "testCount": 12,
-    "status": "PASS",
-    "durationMs": 20775,
-    "domain": "policy",
-    "contractStatus": "CURRENT_V4",
-    "disposition": "ACTIVE",
-    "targetPath": "tests/policy/metric-integrity.test.ts",
-    "reason": "Mathematical metric calculations (fit score, confidence, effort)"
   },
   {
     "sourceFile": "tests/migration-runner.test.ts",
@@ -922,17 +900,6 @@
     "disposition": "ARCHIVE",
     "targetPath": "tests/archive/stage-3g-cache-isolation.test.ts",
     "reason": "Superseded test"
-  },
-  {
-    "sourceFile": "tests/stage-4a-client-cache.test.ts",
-    "testCount": 3,
-    "status": "PASS",
-    "durationMs": 2797,
-    "domain": "regression",
-    "contractStatus": "HISTORICAL_REGRESSION",
-    "disposition": "REGRESSION",
-    "targetPath": "tests/regression/stage-4a-client-cache.test.ts",
-    "reason": "Verified passing historical regression protecting cache, readpath, and serving invariants"
   },
   {
     "sourceFile": "tests/stage-4b-singleflight.test.ts",

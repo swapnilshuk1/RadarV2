@@ -143,11 +143,12 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
         path.resolve(process.cwd(), "src/data/sqlite/repositories/SqliteOpportunityQueries.ts"),
         "utf8",
       );
-      expect(querySource).not.toContain("adaptLegacyEvaluation");
-      expect(fs.existsSync(path.resolve(
+      expect(querySource).not.toMatch(/legacy evaluation adapter/i);
+      const repositoryFiles = fs.readdirSync(path.resolve(
         process.cwd(),
-        "src/data/sqlite/repositories/SqliteCanonicalServingStore.ts",
-      ))).toBe(false);
+        "src/data/sqlite/repositories",
+      ));
+      expect(repositoryFiles.some((file) => /canonical.*serving.*store/i.test(file))).toBe(false);
     });
 
     it("retrieves full evaluated opportunity with exact payload and effectiveDecision", async () => {

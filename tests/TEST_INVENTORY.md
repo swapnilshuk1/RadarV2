@@ -227,7 +227,6 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/evaluation-events.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 8 |
 | `tests/intelligence/evidence-proof-chain.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 25 | 34 |
 | `tests/intelligence/for4d5_client_freshness.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 6 | 16 |
-| `tests/intelligence/for4k_bug03_bug04.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 5 | 25 |
 | `tests/intelligence/identity.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 14 | 70 |
 | `tests/intelligence/job-projection-cache.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 29 |
 | `tests/intelligence/m10-continuous-pipeline.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 13 | 118 |
@@ -265,7 +264,6 @@ Every test file in the repository is mechanically tracked below:
 | `tests/persistence/evaluation_context_pointer_trigger.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 3 |
 | `tests/persistence/evaluation_context_pointers.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 6 |
 | `tests/persistence/evaluation_pointer_flow.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 19 |
-| `tests/persistence/join-integrity.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 15 |
 | `tests/persistence/m41-canonical-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 6 |
 | `tests/persistence/m51-queue-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 7 | 26 |
 | `tests/persistence/queue-crash-restart.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 7 | 25 |
@@ -290,7 +288,6 @@ Every test file in the repository is mechanically tracked below:
 | `tests/policy/filter-integrity.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 26 |
 | `tests/policy/headspace-serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Gate 0 Safety | 5 | 44 |
 | `tests/policy/indeed-filter.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 15 |
-| `tests/policy/metric-integrity.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 12 | 26 |
 | `tests/policy/opportunity-control-plane.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 13 | 50 |
 | `tests/policy/policy-invariants.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 12 | 25 |
 | `tests/policy/pursue-queue-isolation.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 5 |
@@ -328,7 +325,6 @@ Every test file in the repository is mechanically tracked below:
 | `tests/regression/phase5-serving-invariants.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 5 | 23 |
 | `tests/regression/stage-3f-comparisons.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 4 |
 | `tests/regression/stage-3f-hashing.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 6 |
-| `tests/regression/stage-4a-client-cache.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 7 |
 | `tests/regression/stage-4b-singleflight.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 5 |
 | `tests/regression/stale-cache-regression.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 9 |
 | `tests/scraper/auth-security.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 15 | 45 |

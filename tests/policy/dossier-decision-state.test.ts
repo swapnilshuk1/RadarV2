@@ -9,6 +9,9 @@ describe("RADAR V4 — Dossier Decision-State & Editorial Integrity", () => {
     role: "VP Engineering",
     company: "Acme Corp",
     decision: "CONSIDER",
+    evaluationState: "EVALUATED",
+    qualityScore: 70,
+    description: "This evaluated executive mandate owns commercial strategy, operating governance, and accountable delivery across a documented portfolio. The source specification establishes the role's scope, leadership accountabilities, decision rights, and evidence-based expectations in sufficient detail for an editorial brief.",
     archetype: "TECHNOLOGY_LEADERSHIP",
   };
 

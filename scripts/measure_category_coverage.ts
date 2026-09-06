@@ -24,7 +24,7 @@ async function measureCategoryCoverage() {
   console.log(`Loaded ${rows.length} rows for category measurement`);
 
   // We test two oracles:
-  // Oracle 1: What SqliteCanonicalServingStore ACTUALLY executes at lines 426-440:
+  // Historical oracle: the retired serving implementation's category logic.
   // oppPartial = { role: r.job_title, evaluationState: r.evaluation_state, recommendation: r.engine_decision, description: r.job_title }
   //
   // Oracle 2: Full classification with parsed evaluation_json (if any mandate/intent were present)
