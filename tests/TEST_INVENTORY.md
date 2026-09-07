@@ -149,6 +149,7 @@ RADAR v2 Test Architecture
 | :--- | :--- | :---: |
 | `tests/editorial/explanation-contract.test.ts` | Rule 13 compliance: evidence-grounded executive prose without unsupported claims. | **Stage 6** |
 | `tests/editorial/ui-score-resolution.test.ts` | Executive score resolution (e.g. `83` vs `—`) strictly decoupled from visual decoration. | **Stage 6** |
+| `tests/editorial/dossier-rematerialization-support.test.ts` | Stale dossier comparison ignores only materialization time; refresh apply requires an explicit scope and preserves historical-source reconstruction. | **Stage 6** |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Shortlist badge state resolution (`pursue`, `consider`, `needs more signal`). | **Stage 6** |
 
 ---
@@ -173,7 +174,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (184 Total Files)
+## 3. Complete Test File Registry (185 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -208,6 +209,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/editorial/career-value-integrity.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 15 | 42 |
 | `tests/editorial/explanation-composition.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 2 | 3 |
 | `tests/editorial/evidence-sufficiency-contract.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 3 | 10 |
+| `tests/editorial/dossier-rematerialization-support.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 4 | 12 |
 | `tests/editorial/explanation-contract.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 20 | 55 |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 7 | 25 |
 | `tests/editorial/ui-score-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 6 | 14 |

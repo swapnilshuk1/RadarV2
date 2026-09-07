@@ -229,6 +229,44 @@ npx tsc --noEmit
 npm run build
 ```
 
+### Windows/Codex Certification Runner Limitation
+
+On this laptop, the aggregate Vitest command used by certification can terminate
+silently when launched from the Codex command runner: it may print only `RUN
+v...`, or may report several passing files before ending with queued files still
+unexecuted. If no `FAIL <file> > <test>` assertion is printed, the last `✓` test
+line is not the failure; it merely marks the last completed test before the
+aggregate process ended. This is an execution-host limitation, not evidence
+that the changed code passed or failed certification.
+
+When that signature occurs, agents must not repeatedly rerun the wrapper from
+Codex, alter the manifest, reduce workers, or interpret the partial output as
+a test failure. Ask the user to run the authoritative wrapper externally from
+this repository directory:
+
+```powershell
+Set-Location "C:\Users\swapn\Downloads\Radar V2"
+npm run certify
+```
+
+The external wrapper has completed successfully on this laptop; a final
+`CERTIFICATION PASS` covers all seven stages. If the external wrapper is also
+unavailable, the diagnostic fallback is to execute its three verification
+operations directly:
+
+```powershell
+npx tsc -p tsconfig.verify.json --noEmit
+npm run build
+npx vitest run --config vitest.certification.config.ts
+```
+
+The Vitest command is the unified Stage-3 manifest: a zero exit with its full
+48-file/366-test result verifies the logical contracts reported as Stages 3–7.
+The user should share the TypeScript result, build result, Vitest file/test
+counts, duration, and exit codes. Record an external `CERTIFICATION PASS` as
+the release-gate result; otherwise record only the direct-manifest result and
+do not deploy based on a silent Codex-runner exit.
+
 ---
 
 ## 13. Executive Advisory Design Constitution & Component Invariants
