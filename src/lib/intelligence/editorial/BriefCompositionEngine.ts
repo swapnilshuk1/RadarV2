@@ -679,15 +679,15 @@ export class BriefCompositionEngine {
         bottomLine: explanation.bottomLine,
       },
       qualitativeReasoning: [
-        ...(capabilityNames.length > 0 ? [{ layer: "Capability assessment", ratingLabel: "Strong Alignment" as const, becausePoints: capabilityNames, evidenceSnippet: capabilityAssessment }] : []),
+        ...(capabilityNames.length > 0 ? [{ layer: "Capability assessment", ratingLabel: "Requires Verification" as const, becausePoints: capabilityNames, evidenceSnippet: capabilityAssessment }] : []),
         ...(mandateEvidence.length > 0 ? [{ layer: "Published mandate", ratingLabel: "Requires Verification" as const, becausePoints: mandateEvidence, evidenceSnippet: mandateEvidence[0] }] : []),
       ],
       qualitativeReasoningChain: [
-        ...(capabilityNames.length > 0 ? [{ layer: "Capability assessment", ratingLabel: "Strong Alignment" as const, becausePoints: capabilityNames, evidenceSnippet: capabilityAssessment }] : []),
+        ...(capabilityNames.length > 0 ? [{ layer: "Capability assessment", ratingLabel: "Requires Verification" as const, becausePoints: capabilityNames, evidenceSnippet: capabilityAssessment }] : []),
         ...(mandateEvidence.length > 0 ? [{ layer: "Published mandate", ratingLabel: "Requires Verification" as const, becausePoints: mandateEvidence, evidenceSnippet: mandateEvidence[0] }] : []),
       ],
       strategicUpside: { headline: "RADAR career assessment", points: inventory.hasCareerAssessment ? [careerAssessment] : [] },
-      decisionSensitivity: { becomesPursueIf: unknowns.map((unknown) => unknown.question), becomesPassIf: [] },
+      decisionSensitivity: { becomesPursueIf: [], becomesPassIf: [] },
       rankedUnknowns: unknowns,
       deliverablesWork: explicitProofs,
       deliverablesValue: [],

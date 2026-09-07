@@ -82,8 +82,11 @@ describe("Editorial evidence sufficiency contract", () => {
     expect(brief.structuredSections.mandate.thesis).toContain("Lead influencer marketing strategy");
     expect(brief.proofPoints.map((point) => point.detail)).toContain("Lead influencer marketing strategy");
     expect(brief.qualitativeReasoning.some((row) => row.layer === "Capability assessment")).toBe(true);
+    expect(brief.qualitativeReasoning.find((row) => row.layer === "Capability assessment")?.ratingLabel).toBe("Requires Verification");
     expect(brief.rankedUnknowns.map((unknown) => unknown.label)).toContain("Reporting line");
     expect(brief.rankedUnknowns.map((unknown) => unknown.label)).toContain("Commercial ownership");
+    expect(brief.decisionSensitivity.becomesPursueIf).toEqual([]);
+    expect(brief.decisionSensitivity.becomesPassIf).toEqual([]);
     expect(brief.structuredSections.mandate.thesis).not.toMatch(/CEO|board|P&L/i);
   });
 
