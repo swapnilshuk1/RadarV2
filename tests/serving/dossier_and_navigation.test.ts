@@ -552,14 +552,13 @@ describe("Shortlist canonical dossier presentation contract", () => {
 
   it("keeps dossier rematerialization dry-run and provenance guarded", () => {
     const script = fs.readFileSync(path.resolve(process.cwd(), "scripts/rematerialize-dossiers.ts"), "utf8");
+    const support = fs.readFileSync(path.resolve(process.cwd(), "src/lib/intelligence/dossier/rematerialization-support.ts"), "utf8");
     expect(script).toContain("parseDossierRematerializationOptions(process.argv.slice(2))");
     expect(script).toContain("persisted.evaluationInputHash !== row.evaluation_fingerprint");
     expect(script).toContain("validHashBound && !options.refreshStale");
-    expect(script).toContain("reconstructed.decision !== row.decision");
-    expect(script).toContain("reconstructed.score !== row.quality_score");
-    expect(script).toContain("reconstructed.evaluationInputHash !== row.evaluation_fingerprint");
-    expect(script).toContain("evaluation_json = ?");
-    expect(script).toContain("write.rowsAffected === 1");
-    expect(script).toContain("decision IS ? AND quality_score IS ?");
+    expect(script).toContain("hasCanonicalReconstructionParity");
+    expect(support).toContain("SET evaluation_json = ?");
+    expect(support).toContain("write.rowsAffected === 1");
+    expect(support).toContain("decision IS ? AND quality_score IS ?");
   });
 });

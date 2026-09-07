@@ -18,7 +18,10 @@ import {
   parseDossierRematerializationOptions,
   presentationsAreSemanticallyEqual,
   reconstructHistoricalOpportunitySource,
-  selectsCanonicalJob,
+  hasCanonicalReconstructionParity,
+  isRefreshEligible,
+  isSelectedForRematerialization,
+  attemptDossierPresentationWrite,
 } from "@/lib/intelligence/dossier/rematerialization-support";
 
 const userId = process.env.RADAR_USER_ID;
@@ -108,7 +111,11 @@ async function main() {
     if (!artifact) { unsafe++; continue; }
     const reconstructed = buildCanonicalEvaluatedPayload(artifact, context, row.canonical_job_id, row.opportunity_version, persisted.evaluatedAt);
     // Never rewrite an evaluation if reconstruction would alter canonical truth.
-    if (reconstructed.decision !== row.decision || reconstructed.score !== row.quality_score || reconstructed.evaluationInputHash !== row.evaluation_fingerprint) {
+    if (!hasCanonicalReconstructionParity(persisted.evaluationInputHash, {
+      decision: row.decision,
+      qualityScore: row.quality_score,
+      evaluationFingerprint: row.evaluation_fingerprint,
+    }, reconstructed)) {
       canonicalMismatch++; continue;
     }
     const dossierPresentation = buildCanonicalDossierPresentation(
@@ -121,23 +128,25 @@ async function main() {
     if (classification === "STALE") stale++;
     else missingOrInvalidReconstructable++;
 
-    // Stale rows require an explicit selector only for an apply. Dry-runs remain
-    // useful for seeing the complete stale population without granting write scope.
-    const selectedForWrite = classification !== "STALE"
-      || !options.apply
-      || selectsCanonicalJob(options.selector, row.canonical_job_id);
-    if (!selectedForWrite) continue;
-    eligible++;
+    if (!isRefreshEligible(classification)) continue;
+    // A stale-refresh apply selector scopes every write-capable classification.
+    // Dry-runs still classify the complete population without granting writes.
+    if (!isSelectedForRematerialization(options, row.canonical_job_id)) continue;
     if (options.apply) {
-      const write = await db.execute(
-        `UPDATE materialized_evaluations SET evaluation_json = ?
-         WHERE id = ? AND tenant_id = ? AND person_id = ? AND evaluation_fingerprint = ?
-           AND decision IS ? AND quality_score IS ? AND evaluation_state = 'EVALUATED' AND evaluation_json = ?`,
-        [JSON.stringify({ ...persisted, dossierPresentation }), row.id, context.tenantId, context.personId,
-          row.evaluation_fingerprint, row.decision, row.quality_score, row.evaluation_json],
-      );
-      if (write.rowsAffected === 1) updated++;
-      else casMiss++;
+      const result = await attemptDossierPresentationWrite(options, classification, db, context, {
+        id: row.id,
+        canonicalJobId: row.canonical_job_id,
+        opportunityVersion: row.opportunity_version,
+        evaluationFingerprint: row.evaluation_fingerprint,
+        decision: row.decision,
+        qualityScore: row.quality_score,
+        evaluationJson: row.evaluation_json,
+      }, dossierPresentation);
+      if (result.eligible) eligible++;
+      updated += result.updated;
+      casMiss += result.casMiss;
+    } else {
+      eligible++;
     }
   }
   console.log(JSON.stringify({
