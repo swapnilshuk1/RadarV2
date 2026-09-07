@@ -47,6 +47,8 @@ groq.env
 # RADAR local data
 .scraper-artifacts/
 .scraper-cache/
+# Ephemeral scraper output; canonical live state is persisted outside Git
+src/data/live-scraped.json
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
