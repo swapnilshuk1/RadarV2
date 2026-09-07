@@ -9,7 +9,7 @@ import { EditorialPatternSelector } from "./EditorialPatternSelector";
 import { NarrativeComposer } from "./NarrativeComposer";
 import { SemanticNaturalLanguageResolver, unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
 import { ExecutiveKnowledgeNormalizationPipeline } from "../ekb/ExecutiveKnowledgeNormalizationPipeline";
-import { AdvisoryConstitution } from "./AdvisoryConstitution";
+import { AdvisoryConstitution, type SectionEvidenceInventory } from "./AdvisoryConstitution";
 
 export interface BriefSectionMeta {
   id: string;
@@ -135,8 +135,23 @@ export class BriefCompositionEngine {
     // Authoritative Projection Layer
     const editorialContext = EditorialContextBuilder.build(opportunity);
     const sufficiency = AdvisoryConstitution.validateDataSufficiency(opportunity);
+    const inventory = AdvisoryConstitution.inspectSectionEvidence(opportunity);
+    const explicitlySparse = (opportunity as { evaluationState?: string; decision?: string }).evaluationState === "SPARSE_SPEC"
+      || (opportunity as { evaluationState?: string; decision?: string }).decision === "SPARSE_SPEC";
+    if (explicitlySparse) {
+      return this.composeEvidenceLimitedBrief(opportunity, editorialContext, sufficiency.message || "The published role specification is sparse and requires verification.");
+    }
     if (!sufficiency.isSufficient) {
+      if (sufficiency.state === "SPARSE_SPEC" && inventory.hasUsableInformation) {
+        return this.composePartialEvidenceBrief(opportunity, editorialContext, inventory);
+      }
       return this.composeEvidenceLimitedBrief(opportunity, editorialContext, sufficiency.message || "The available evidence is insufficient for an executive recommendation.");
+    }
+    // The legacy rich composer is not safe for a record whose only job signal
+    // is a handful of extracted facts. Preserve those facts in the partial
+    // composer instead of allowing role-pattern defaults to fill the gaps.
+    if (!inventory.hasSourceText && inventory.hasUsableInformation) {
+      return this.composePartialEvidenceBrief(opportunity, editorialContext, inventory);
     }
 
     const executiveThesis = ExecutiveThesisBuilder.build(editorialContext, opportunity);
@@ -536,6 +551,161 @@ export class BriefCompositionEngine {
     return {
       focusTitle: "Scope Verification Required",
       heroAnchor: `Validate functional reporting line and budget authority at ${opportunity.company}`,
+    };
+  }
+
+  /**
+   * Composition for an evaluated or partially evidenced record that does not
+   * qualify for the legacy rich composer. This path intentionally never uses
+   * role-pattern defaults: every populated section comes from an explicit JD
+   * quote or an already-recorded canonical assessment.
+   */
+  private static composePartialEvidenceBrief(
+    opportunity: Opportunity,
+    editorialContext: EditorialContext,
+    inventory: SectionEvidenceInventory,
+  ): BriefModel {
+    const role = opportunity.role || "This role";
+    const company = opportunity.company || "the company";
+    const verdict = editorialContext.engineVerdict;
+    const decision: BriefMemory["decision"] = verdict === "PURSUE" || verdict === "CONSIDER" || verdict === "PASS" ? verdict : null;
+    const capabilityNames = editorialContext.capability?.matchedCapabilities.filter(Boolean).slice(0, 3) || [];
+    const capabilityAssessment = capabilityNames.length > 0
+      ? `RADAR capability assessment identifies alignment in ${capabilityNames.join(", ")}.`
+      : "No recorded capability assessment is available for this section.";
+    const careerAssessment = editorialContext.careerValue.relativeDifferentiator
+      ? `RADAR career assessment: ${editorialContext.careerValue.relativeDifferentiator}`
+      : inventory.hasCareerAssessment
+      ? "RADAR recorded a career assessment signal for this opportunity."
+      : "No specific career-upside conclusion is recorded.";
+    const headline = verdict ? `RADAR ${verdict} assessment: ${role} at ${company}` : `RADAR assessment: ${role} at ${company}`;
+    const primaryReason = verdict
+      ? `RADAR's recorded ${verdict} assessment is available; role facts below are limited to published evidence.`
+      : "Published evidence is available, but no canonical decision assessment is recorded.";
+    const explanation: ExecutiveDecisionExplanation = {
+      verdict,
+      headline,
+      bottomLine: primaryReason,
+      primaryReason,
+      supportingReasons: capabilityNames.length > 0 ? [capabilityAssessment] : [],
+      careerValueSignal: editorialContext.careerValue.trajectoryUpside ? String(editorialContext.careerValue.trajectoryUpside) : null,
+      tradeoff: editorialContext.careerValue.relativeDifferentiator || null,
+      evidenceStrength: inventory.hasExplicitEvidence ? "LIMITED" : "INSUFFICIENT",
+      keyUncertainty: "Some published role facts remain unconfirmed.",
+      recommendedAction: verdict === "PASS" ? "PASS" : "INVESTIGATE",
+      ruleIds: editorialContext.careerValue.triggeredRuleIds,
+      provenance: [
+        ...(verdict ? [{ source: "DECISION_POLICY" as const, ruleIds: editorialContext.careerValue.triggeredRuleIds, signal: "CANONICAL_ENGINE_VERDICT" }] : []),
+        ...(capabilityNames.length > 0 ? [{ source: "CAPABILITY_ASSESSMENT" as const, signal: capabilityNames.join(", ") }] : []),
+        ...(inventory.hasExplicitEvidence ? [{ source: "JOB_REQUIREMENT" as const, signal: "EXPLICIT_JD_EVIDENCE" }] : []),
+      ],
+    };
+    const executiveThesis: ExecutiveThesis = {
+      verdict,
+      headline,
+      careerValueSignal: explanation.careerValueSignal,
+      primaryReason,
+      tradeoff: explanation.tradeoff,
+      relativeDifferentiator: editorialContext.careerValue.relativeDifferentiator,
+      ruleIds: explanation.ruleIds,
+      explanation,
+    };
+    const pursuitStrategy = PursuitStrategyResolver.resolve(explanation, editorialContext);
+    const explicitProofs = inventory.sourceGroundedQuotes.slice(0, 3);
+    const candidateProofs = (opportunity.dimensions || [])
+      .flatMap((dimension) => dimension.candidateProof ? [dimension.candidateProof] : [])
+      .slice(0, 2);
+    const proofPoints: ProofPointItem[] = [
+      ...explicitProofs.map((quote) => ({ category: "Direct Evidence" as const, headline: "Published role evidence", detail: quote })),
+      ...candidateProofs.map((proof) => ({ category: "Transferable Experience" as const, headline: proof.headline, detail: proof.detail })),
+    ];
+    const unknowns: RankedUnknown[] = [];
+    if (inventory.reportingLineQuotes.length === 0) {
+      unknowns.push({ rank: "CRITICAL", label: "Reporting line", question: "What reporting line is assigned to this role?" });
+    }
+    if (inventory.commercialAccountabilityQuotes.length === 0) {
+      unknowns.push({ rank: "IMPORTANT", label: "Commercial ownership", question: "What commercial, budget, or P&L accountability is assigned to this role?" });
+    }
+    if (inventory.decisionRightsQuotes.length === 0) {
+      unknowns.push({ rank: "IMPORTANT", label: "Decision rights", question: "Which decisions and approvals sit with this role?" });
+    }
+    const mandateEvidence = [...inventory.mandateQuotes, ...inventory.functionalScopeQuotes];
+    const partial = this.composeEvidenceLimitedBrief(
+      opportunity,
+      editorialContext,
+      "Some published role facts are not established; the sections below retain only recorded evidence and RADAR assessments.",
+    );
+    const qualityScore = opportunity.engineRecommendation?.vetoed
+      ? null
+      : opportunity.engineRecommendation?.qualityScore ?? (editorialContext.rawScore != null ? Math.round(editorialContext.rawScore) : null);
+    const qualitativeRecommendation: BriefModel["qualitativeRecommendation"] = verdict === "PURSUE"
+      ? "Strong Pursue Recommendation"
+      : verdict === "CONSIDER"
+      ? "Conditional Consideration"
+      : verdict === "PASS"
+      ? "Strategic Pass"
+      : "Pending Assessment";
+
+    return {
+      ...partial,
+      executiveThesis,
+      explanation,
+      pursuitStrategy,
+      executiveOpinion: primaryReason,
+      memory: {
+        headline,
+        retentionSentence: `Partial evidence dossier for ${role} at ${company}.`,
+        primaryOpportunity: capabilityNames.length > 0 ? capabilityAssessment : "Review the published mandate before investing further effort.",
+        primaryRisk: unknowns[0]?.question || "Published role facts remain partial.",
+        recommendedAction: explanation.recommendedAction,
+        decision,
+        tradeoff: careerAssessment,
+        first90Days: "Not assessed from the available published evidence.",
+        whyNow: `The role is listed at ${company}; RADAR's assessment and published evidence are shown separately.`,
+      },
+      structuredSections: {
+        context: { thesis: primaryReason },
+        mandate: { thesis: mandateEvidence.length > 0 ? `Published mandate: ${mandateEvidence.join(" ")}` : "Published mandate not established." },
+        synthesis: { thesis: careerAssessment },
+        evidence: { thesis: proofPoints.length > 0 ? "Published and candidate evidence is recorded below." : capabilityAssessment },
+        strategy: { thesis: pursuitStrategy.immediateNextAction },
+      },
+      oneMinuteTLDR: {
+        whyPursue: [
+          ...(mandateEvidence.length > 0 ? [mandateEvidence[0]] : []),
+          ...(capabilityNames.length > 0 ? [capabilityAssessment] : []),
+        ],
+        watchFor: unknowns.map((unknown) => unknown.question),
+        bottomLine: explanation.bottomLine,
+      },
+      qualitativeReasoning: [
+        ...(capabilityNames.length > 0 ? [{ layer: "Capability assessment", ratingLabel: "Strong Alignment" as const, becausePoints: capabilityNames, evidenceSnippet: capabilityAssessment }] : []),
+        ...(mandateEvidence.length > 0 ? [{ layer: "Published mandate", ratingLabel: "Requires Verification" as const, becausePoints: mandateEvidence, evidenceSnippet: mandateEvidence[0] }] : []),
+      ],
+      qualitativeReasoningChain: [
+        ...(capabilityNames.length > 0 ? [{ layer: "Capability assessment", ratingLabel: "Strong Alignment" as const, becausePoints: capabilityNames, evidenceSnippet: capabilityAssessment }] : []),
+        ...(mandateEvidence.length > 0 ? [{ layer: "Published mandate", ratingLabel: "Requires Verification" as const, becausePoints: mandateEvidence, evidenceSnippet: mandateEvidence[0] }] : []),
+      ],
+      strategicUpside: { headline: "RADAR career assessment", points: inventory.hasCareerAssessment ? [careerAssessment] : [] },
+      decisionSensitivity: { becomesPursueIf: unknowns.map((unknown) => unknown.question), becomesPassIf: [] },
+      rankedUnknowns: unknowns,
+      deliverablesWork: explicitProofs,
+      deliverablesValue: [],
+      deliverablesProvenance: explicitProofs.map(() => "Observed in JD"),
+      deliverables: { workRequired: explicitProofs, businessValue: [], provenance: explicitProofs.map(() => "Observed in JD") },
+      proofPoints,
+      fitProofs: candidateProofs.map((proof) => proof.detail),
+      certaintyLevel: inventory.hasExplicitEvidence && inventory.hasCanonicalEvaluation ? "MEDIUM" : "LOW",
+      certaintyGuidance: "Partial dossier: claims are limited to published evidence and recorded RADAR assessments.",
+      evidenceQuality: editorialContext.evidence?.evidenceQuality || "Inferred Evidence",
+      qualitativeRecommendation,
+      qualityScore,
+      whyNotStronger: unknowns.length > 0 ? `Verification required: ${unknowns.map((unknown) => unknown.label.toLowerCase()).join(", ")}.` : undefined,
+      topUnknownPreview: unknowns[0] ? `Unknown: ${unknowns[0].label}` : undefined,
+      strategy: { focusTitle: "Evidence-led verification", heroAnchor: pursuitStrategy.immediateNextAction },
+      narrative: { intent: "Use published evidence and the recorded RADAR assessment; verify remaining role facts." },
+      verdictGuidance: { actionNotice: explanation.recommendedAction, tradeoffStatement: careerAssessment, pauseTrigger: unknowns[0]?.question || "No additional role fact is required." },
+      directives: { action: pursuitStrategy.immediateNextAction },
     };
   }
 
