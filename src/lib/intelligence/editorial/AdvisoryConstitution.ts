@@ -193,7 +193,10 @@ export class AdvisoryConstitution {
 
     const hasEvaluation = Boolean(input.engineRecommendation || input.recommendationResult);
 
-    if (text.length >= 200 || (hasEvaluation && hasMandateBearingEvidence)) {
+    // Document length is transport metadata, not semantic evidence. A long JD
+    // must not unlock the legacy rich composer unless a mandate-bearing fact is
+    // explicitly grounded in the evaluated record.
+    if (hasEvaluation && hasMandateBearingEvidence) {
       return { state: "EVALUATED", isSufficient: true };
     }
 

@@ -1,12 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Opportunity } from "@/data/opportunity-fixtures";
 import { AdvisoryConstitution } from "@/lib/intelligence/editorial/AdvisoryConstitution";
 import { BriefCompositionEngine } from "@/lib/intelligence/editorial/BriefCompositionEngine";
 import { EditorialContextBuilder } from "@/lib/intelligence/editorial/EditorialContext";
 import { EditorialEngine } from "@/lib/intelligence/editorial/EditorialEngine";
 import { PreviewCompositionEngine } from "@/lib/intelligence/editorial/PreviewCompositionEngine";
-import { EditorialPatternSelector } from "@/lib/intelligence/editorial/EditorialPatternSelector";
 import { getBriefProvenanceLabel } from "@/components/radar/opportunity/surfaces/ExecutiveBriefingSurface";
+import { buildCanonicalDossierPresentation } from "@/lib/intelligence/dossier/CanonicalDossierBuilder";
+import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
+import { DEFAULT_CANDIDATE_PROJECTION } from "@/lib/domain/candidate_projection";
 
 function sparseOpportunity(overrides: Partial<Opportunity> = {}): Opportunity {
   return {
@@ -153,6 +155,58 @@ describe("Editorial evidence sufficiency contract", () => {
     expect(brief.explanation.verdict).toBe("PURSUE");
   });
 
+  it("keeps a long but employer-thin evaluated dossier evidence-bound", () => {
+    const description = [
+      "Social Beat is seeking a Director of Influencer Marketing.",
+      "Monitor and analyze influencer performance and achieve storefront metrics.",
+      "Build creator partnerships and coordinate published campaign activity.",
+      "The posting does not state a reporting line, P&L ownership, hiring budget, board relationship, or decision rights.",
+    ].join(" ").repeat(2);
+    const opportunity = sparseOpportunity({
+      jobHash: "social-beat-employer-thin",
+      role: "Director of Influencer Marketing",
+      company: "Social Beat",
+      location: "Gurugram",
+      description,
+      rawDescription: description,
+      dimensions: [{
+        key: "functionalScope",
+        label: "Functional Scope",
+        importance: "Core",
+        bucket: "Matched",
+        jdEvidence: {
+          status: "Explicit",
+          value: "Monitor influencer performance",
+          evidence: [{ quote: "Monitor and analyze influencer performance and achieve storefront metrics.", source: "JD" }],
+        },
+      }] as Opportunity["dimensions"],
+      engineRecommendation: {
+        engineVerdict: "PURSUE",
+        qualityScore: 72,
+        triggeredRuleIds: [],
+      } as any,
+    });
+    const dossier = buildCanonicalDossierPresentation(
+      { opportunity, jobProjection: JobProjectionBuilder.build(opportunity) } as any,
+      DEFAULT_CANDIDATE_PROJECTION,
+      "evaluation-hash",
+      "2026-09-08T00:00:00.000Z",
+      "2026-09-07T00:00:00.000Z",
+    );
+    const rendered = JSON.stringify(dossier);
+
+    expect(dossier.brief.memory.decision).toBe("PURSUE");
+    expect(dossier.brief.qualityScore).toBe(72);
+    expect(dossier.brief.rankedUnknowns.map((unknown: { label: string }) => unknown.label)).toContain("Reporting line");
+    expect(dossier.brief.rankedUnknowns.map((unknown: { label: string }) => unknown.label)).toContain("Commercial ownership");
+    expect(dossier.brief.decisionSensitivity).toEqual({ becomesPursueIf: [], becomesPassIf: [] });
+    expect(dossier.brief.executiveThesis).toBeDefined();
+    expect(dossier.jobProjection).toBeDefined();
+    expect(dossier.executionPackage).toBeDefined();
+    expect(dossier.rawDimensions).toHaveLength(1);
+    expect(rendered).not.toMatch(/Enterprise P&L|headcount hiring budget|25 FTE|board-level commercial reporting|founder-led|Direct P&L responsibility/i);
+  });
+
   it("uses the same safe posture for direct editorial engine and context composition", () => {
     const opportunity = sparseOpportunity();
     const output = EditorialEngine.process(opportunity);
@@ -176,23 +230,16 @@ describe("Editorial evidence sufficiency contract", () => {
     expect(preview.headline).toContain("Assessment pending");
   });
 
-  it("keeps an evaluated preview error fallback neutral rather than reading legacy editorial fields", () => {
+  it("keeps a long evaluated preview evidence-limited without grounded mandate evidence", () => {
     const opportunity = sparseOpportunity({
       description: "A".repeat(220),
       recommendation: "Unsafe historical recommendation",
       primaryDriver: "Unsafe P&L claim",
       primaryRisk: "Unsafe board claim",
     });
-    const selector = vi.spyOn(EditorialPatternSelector, "select").mockImplementation(() => {
-      throw new Error("forced preview failure");
-    });
-    try {
-      const preview = PreviewCompositionEngine.compose(opportunity);
-      expect(`${preview.headline} ${preview.narrative} ${preview.whyItWorks} ${preview.watchFor}`).not.toMatch(/unsafe|P&L claim|board claim/i);
-      expect(preview.narrative).toContain("Editorial composition is unavailable");
-    } finally {
-      selector.mockRestore();
-    }
+    const preview = PreviewCompositionEngine.compose(opportunity);
+    expect(`${preview.headline} ${preview.narrative} ${preview.whyItWorks} ${preview.watchFor}`).not.toMatch(/unsafe|P&L claim|board claim/i);
+    expect(preview.narrative).toContain("does not provide enough evidence");
   });
 
   it("derives executive provenance labels from the actual evidence state", () => {

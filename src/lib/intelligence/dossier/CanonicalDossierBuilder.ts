@@ -33,7 +33,10 @@ export function buildCanonicalDossierPresentation(
     generatedAt,
     ...(evaluatedAt ? { evaluatedAt } : {}),
     evaluationInputHash,
-    brief: asDossierJsonObject(BriefCompositionEngine.compose(artifact.opportunity, { bypassHistory: true })),
+    brief: asDossierJsonObject(BriefCompositionEngine.compose(artifact.opportunity, {
+      bypassHistory: true,
+      canonicalEvidenceBound: true,
+    })),
     jobProjection: asDossierJsonObject(artifact.jobProjection),
     executionPackage: asDossierJsonObject(ExecutionEngine.validateDecision(candidateProjection, artifact.jobProjection)),
     rawDimensions: asDossierJsonArray(Array.isArray(artifact.opportunity.dimensions) ? artifact.opportunity.dimensions : []),

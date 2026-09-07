@@ -82,7 +82,6 @@ export class ExecutionEvidenceGate {
   ): GateAuditResult {
     const targetCompany = (job.company || "Target Company").trim();
     const jobHash = job.jobHash || "job_unknown";
-    const mandate = job.trueExecutiveMandate || "COMMERCIAL_EXPANSION";
 
     const rejectedRecords: RejectedArtifactRecord[] = [];
     let generatedUnsafeCount = 0;
@@ -132,7 +131,7 @@ export class ExecutionEvidenceGate {
           currentNarrative: rewrite.currentNarrative,
           targetRoleRequirement: rewrite.targetRoleRequirement,
           suggestionType: "EVIDENCE_GAP_COACHING",
-          coachingGuidance: `Evidence Gap Advisory: The target role requires direct ${mandate.toLowerCase()} ownership. Your profile substantiates transferable leadership across verified portfolios (${evidenceGraph.getVerifiedEmployersList().join(", ")}), but does not establish verified experience at ${targetCompany}. Frame your proven scale accurately rather than asserting unverified past tenure.`,
+          coachingGuidance: `Evidence Gap Advisory: Published employer-side requirements should be verified before tailoring. Your profile substantiates transferable leadership across verified portfolios (${evidenceGraph.getVerifiedEmployersList().join(", ")}); frame that evidence accurately rather than asserting unverified target-role ownership.`,
           candidateEvidenceIds: [],
           candidateEvidenceQuotes: [],
           jdRequirementIds: rewrite.jdRequirementIds || [],

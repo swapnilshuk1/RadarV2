@@ -125,7 +125,7 @@ export interface BriefModel {
 }
 
 export class BriefCompositionEngine {
-  public static compose(opportunity: Opportunity, options?: { brevityPolicy?: { maxUnknowns?: number; maxEvidence?: number; maxDeliverables?: number }; bypassHistory?: boolean }): BriefModel {
+  public static compose(opportunity: Opportunity, options?: { brevityPolicy?: { maxUnknowns?: number; maxEvidence?: number; maxDeliverables?: number }; bypassHistory?: boolean; canonicalEvidenceBound?: boolean }): BriefModel {
     const policy = options?.brevityPolicy || {
       maxUnknowns: 3,
       maxEvidence: 3,
@@ -146,6 +146,12 @@ export class BriefCompositionEngine {
         return this.composePartialEvidenceBrief(opportunity, editorialContext, inventory);
       }
       return this.composeEvidenceLimitedBrief(opportunity, editorialContext, sufficiency.message || "The available evidence is insufficient for an executive recommendation.");
+    }
+    // A canonical dossier is durable product truth. Even where enough evidence
+    // exists to classify the record, it must use section-level composition so
+    // absent employer facts cannot be supplied by legacy role patterns.
+    if (options?.canonicalEvidenceBound && inventory.hasUsableInformation) {
+      return this.composePartialEvidenceBrief(opportunity, editorialContext, inventory);
     }
     // The legacy rich composer is not safe for a record whose only job signal
     // is a handful of extracted facts. Preserve those facts in the partial

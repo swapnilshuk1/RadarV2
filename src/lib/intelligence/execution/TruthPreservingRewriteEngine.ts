@@ -51,8 +51,6 @@ export class TruthPreservingRewriteEngine {
     job: JobProjection
   ): ExecutionPackage {
     const company = job.company || "Target Company";
-    const role = job.role || "Executive Role";
-    const mandate = job.trueExecutiveMandate || "COMMERCIAL_EXPANSION";
     const verifiedEmployers = evidenceGraph.getVerifiedEmployersList();
     const authoritativeTitle = evidenceGraph.getAuthoritativeCurrentTitle();
     const verifiedAlumniPrefix = verifiedEmployers.length > 0
@@ -75,12 +73,12 @@ export class TruthPreservingRewriteEngine {
       const rewrite: TruthPreservingRewrite = {
         category: "Platform & Pipeline Governance",
         currentNarrative: "Managed growth marketing and platform operations across core channels.",
-        targetRoleRequirement: `Multi-market CRM and pipeline architecture governance for ${role}.`,
+        targetRoleRequirement: this.employerRequirement(job, "CRM/CDP", /\b(?:crm|salesforce|cdp|pipeline)\b/i),
         suggestionType: "TRUTH_PRESERVING_REWRITE",
         suggestedRevision: `Led legacy-to-Salesforce Marketing Cloud and CDP migration across 13 international markets within 12 months, establishing unified pipeline governance and lifecycle architecture across APAC and Middle East regions.`,
         candidateEvidenceIds: [topCrm.id],
         candidateEvidenceQuotes: [topCrm.verbatimQuote],
-        jdRequirementIds: ["jd_crm_mandate"],
+        jdRequirementIds: this.requirementIds(job, /\b(?:crm|salesforce|cdp|pipeline)\b/i),
         targetEmployerLeak: false,
         unverifiedMetrics: [],
         fabricationRisk: "ZERO"
@@ -90,12 +88,12 @@ export class TruthPreservingRewriteEngine {
       const coaching: EvidenceGapCoaching = {
         category: "Platform & Pipeline Governance",
         currentNarrative: "Managed growth marketing and platform operations across core channels.",
-        targetRoleRequirement: `Multi-market CRM and pipeline architecture governance for ${role}.`,
+        targetRoleRequirement: this.employerRequirement(job, "CRM/CDP", /\b(?:crm|salesforce|cdp|pipeline)\b/i),
         suggestionType: "EVIDENCE_GAP_COACHING",
-        coachingGuidance: `Evidence Gap Advisory: The role requires direct enterprise CRM/CDP platform leadership. Your evidence base does not establish global Salesforce/CDP migration proof. Highlight your verified performance operations and prepare to address platform architecture boundaries.`,
+        coachingGuidance: "Evidence Gap Advisory: Published CRM/CDP requirements are not established. Highlight verified performance operations and use screening to clarify platform expectations.",
         candidateEvidenceIds: [],
         candidateEvidenceQuotes: [],
-        jdRequirementIds: ["jd_crm_mandate"],
+        jdRequirementIds: this.requirementIds(job, /\b(?:crm|salesforce|cdp|pipeline)\b/i),
         targetEmployerLeak: false,
         unverifiedMetrics: [],
         fabricationRisk: "ZERO"
@@ -111,12 +109,12 @@ export class TruthPreservingRewriteEngine {
       const rewrite: TruthPreservingRewrite = {
         category: "Commercial Scope & Portfolio Scale",
         currentNarrative: "Responsible for commercial growth and marketing campaign budgets.",
-        targetRoleRequirement: `Direct P&L responsibility and commercial revenue growth mandate for ${company}.`,
+        targetRoleRequirement: this.employerRequirement(job, "commercial/P&L", /\b(?:p\s*&\s*l|profit\s*(?:and|&)\s*loss|budget|revenue accountability)\b/i),
         suggestionType: "TRUTH_PRESERVING_REWRITE",
         suggestedRevision: `Managed an $8M commercial portfolio (Ford) and secured a ₹36 Cr multi-year enterprise transformation retainer (BMW), scaling digital revenue contribution from 3% to 32%.`,
         candidateEvidenceIds: [topComm.id],
         candidateEvidenceQuotes: [topComm.verbatimQuote],
-        jdRequirementIds: ["jd_commercial_pl_mandate"],
+        jdRequirementIds: this.requirementIds(job, /\b(?:p\s*&\s*l|profit\s*(?:and|&)\s*loss|budget|revenue accountability)\b/i),
         targetEmployerLeak: false,
         unverifiedMetrics: [],
         fabricationRisk: "ZERO"
@@ -126,12 +124,12 @@ export class TruthPreservingRewriteEngine {
       const coaching: EvidenceGapCoaching = {
         category: "Commercial Scope & P&L Ownership",
         currentNarrative: "Responsible for commercial growth and marketing campaign budgets.",
-        targetRoleRequirement: `Direct enterprise P&L ownership for ${company}.`,
+        targetRoleRequirement: this.employerRequirement(job, "commercial/P&L", /\b(?:p\s*&\s*l|profit\s*(?:and|&)\s*loss|budget|revenue accountability)\b/i),
         suggestionType: "EVIDENCE_GAP_COACHING",
-        coachingGuidance: `Evidence Gap Advisory: The target role requires direct corporate P&L ownership. Your verified profile establishes an $8M commercial agency fee book rather than in-house corporate P&L ownership. Position the transferable commercial portfolio scale you can substantiate and do not claim unverified corporate P&L ownership.`,
+        coachingGuidance: "Evidence Gap Advisory: Published commercial or P&L accountability is not established. Position only transferable commercial experience you can substantiate and ask how accountability is assigned.",
         candidateEvidenceIds: [],
         candidateEvidenceQuotes: [],
-        jdRequirementIds: ["jd_commercial_pl_mandate"],
+        jdRequirementIds: this.requirementIds(job, /\b(?:p\s*&\s*l|profit\s*(?:and|&)\s*loss|budget|revenue accountability)\b/i),
         targetEmployerLeak: false,
         unverifiedMetrics: [],
         fabricationRisk: "ZERO"
@@ -146,12 +144,12 @@ export class TruthPreservingRewriteEngine {
       const rewrite: TruthPreservingRewrite = {
         category: "Executive Mandate Alignment",
         currentNarrative: "Led growth initiatives and team execution.",
-        targetRoleRequirement: `Executive leadership for ${mandate.toLowerCase()} roadmap.`,
+        targetRoleRequirement: this.employerRequirement(job, "executive mandate", /\b(?:mandate|transform(?:ation)?|turnaround|governance|growth|scale)\b/i),
         suggestionType: "TRUTH_PRESERVING_REWRITE",
         suggestedRevision: `Built and scaled a 40-member Performance Marketing Center of Excellence (CoE), driving enterprise transformation programs across automotive and consumer portfolios.`,
         candidateEvidenceIds: [topTransf.id],
         candidateEvidenceQuotes: [topTransf.verbatimQuote],
-        jdRequirementIds: ["jd_exec_mandate"],
+        jdRequirementIds: this.requirementIds(job, /\b(?:mandate|transform(?:ation)?|turnaround|governance|growth|scale)\b/i),
         targetEmployerLeak: false,
         unverifiedMetrics: [],
         fabricationRisk: "ZERO"
@@ -161,12 +159,12 @@ export class TruthPreservingRewriteEngine {
       const coaching: EvidenceGapCoaching = {
         category: "Executive Mandate Alignment",
         currentNarrative: "Led growth initiatives and team execution.",
-        targetRoleRequirement: `Executive leadership for ${mandate.toLowerCase()} roadmap.`,
+        targetRoleRequirement: this.employerRequirement(job, "executive mandate", /\b(?:mandate|transform(?:ation)?|turnaround|governance|growth|scale)\b/i),
         suggestionType: "EVIDENCE_GAP_COACHING",
-        coachingGuidance: `Evidence Gap Advisory: The role requires proven ${mandate.toLowerCase()} turnaround precedent. Your evidence base substantiates functional performance marketing. Frame your cross-functional agility and prepare to explain your strategic approach for ${company}.`,
+        coachingGuidance: `Evidence Gap Advisory: Published executive mandate details are limited. Frame your verified cross-functional experience and use screening to establish the outcomes expected at ${company}.`,
         candidateEvidenceIds: [],
         candidateEvidenceQuotes: [],
-        jdRequirementIds: ["jd_exec_mandate"],
+        jdRequirementIds: this.requirementIds(job, /\b(?:mandate|transform(?:ation)?|turnaround|governance|growth|scale)\b/i),
         targetEmployerLeak: false,
         unverifiedMetrics: [],
         fabricationRisk: "ZERO"
@@ -194,7 +192,7 @@ export class TruthPreservingRewriteEngine {
     const interviewPrep: SafeInterviewStrategy = {
       openingHook: `"Over the past two decades, my focus has been on building scalable commercial systems and Centers of Excellence that bridge strategic intent with predictable operational execution across enterprise portfolios."`,
       keyThemeToEmphasize: `Emphasize your verified track record leading 13-market CRM transformations, scaling 40-person capability centers, and managing $8M commercial portfolios, while clarifying operating boundaries for ${company}.`,
-      panelQuestion: `"In your view, what is the single biggest operational bottleneck currently standing between ${company} and its 24-month ${mandate.toLowerCase()} targets?"`,
+      panelQuestion: `"Which operating outcome should this role own first, and what evidence will define success?"`,
       prepDistinction: {
         candidateProofPoint: `Verified commercial and transformation leadership across ${verifiedEmployers.join(", ")}.`,
         targetRoleBoundaryToClarify: `Clarify specific reporting line, budget control, and P&L governance expectations at ${company}.`
@@ -224,36 +222,59 @@ export class TruthPreservingRewriteEngine {
   }
 
   private static extractConditions(job: JobProjection): string[] {
-    const conditions: string[] = [];
-    const mandate = job.trueExecutiveMandate || "COMMERCIAL_EXPANSION";
-
-    if (mandate === "TURNAROUND" || mandate === "TRANSFORMATION") {
-      conditions.push("Executive authority to overhaul operating model and team structure");
-      conditions.push("Dedicated transformation and technology budget control");
-    } else if (mandate === "GOVERNANCE") {
-      conditions.push("Direct reporting line and visibility into C-suite or Board review");
-      conditions.push("Cross-functional policy and pipeline compliance enforcement authority");
-    } else {
-      conditions.push("Enterprise P&L responsibility and commercial revenue growth mandate");
-      conditions.push("Sufficient headcount hiring budget to support 24-month expansion targets");
-    }
-
-    conditions.push("Direct alignment between role scope and candidate executive altitude");
-    return conditions;
+    return this.explicitEmployerQuotes(job).slice(0, 3)
+      .map((quote) => `Published role evidence: ${quote}`);
   }
 
   private static extractScreeningQuestions(job: JobProjection): ScreeningQuestionItem[] {
     const company = job.company || "the company";
-    const mandate = job.trueExecutiveMandate || "COMMERCIAL_EXPANSION";
-    return [
-      {
-        question: `What is the primary reporting line and P&L mandate for this executive role at ${company}?`,
-        whyItMatters: `Distinguishes genuine enterprise authority from functional advisory execution.`
-      },
-      {
-        question: `What explicit success metrics determine the first 12-month performance review for ${mandate.toLowerCase()}?`,
-        whyItMatters: `Validates strategic alignment before committing executive bandwidth.`
+    const questions: ScreeningQuestionItem[] = [];
+    if (!this.hasEmployerEvidence(job, /\b(?:report(?:s|ing)?\s+to|manager|supervisor)\b/i)) {
+      questions.push({ question: `What is the primary reporting line for this role at ${company}?`, whyItMatters: "Clarifies where accountability and escalation sit." });
+    }
+    if (!this.hasEmployerEvidence(job, /\b(?:p\s*&\s*l|profit\s*(?:and|&)\s*loss|budget|commercial accountability)\b/i)) {
+      questions.push({ question: "What commercial, budget, or P&L accountability is assigned to this role?", whyItMatters: "Clarifies whether commercial accountability is part of the published mandate." });
+    }
+    if (!this.hasEmployerEvidence(job, /\b(?:authority|approve|decision rights|accountable)\b/i)) {
+      questions.push({ question: "Which decisions and approvals sit with this role?", whyItMatters: "Clarifies the authority required to deliver the stated work." });
+    }
+    return questions;
+  }
+
+  private static explicitEmployerQuotes(job: JobProjection): string[] {
+    const quotes = new Set<string>();
+    for (const dimension of job.dimensions || []) {
+      if (dimension.jdEvidence?.status !== "Explicit") continue;
+      for (const evidence of dimension.jdEvidence.evidence || []) {
+        const quote = evidence.quote?.trim();
+        if (quote) quotes.add(quote);
       }
-    ];
+    }
+    for (const requirement of job.capabilityRequirements || []) {
+      for (const quote of requirement.sourceQuotes || []) {
+        if (quote?.trim()) quotes.add(quote.trim());
+      }
+    }
+    return [...quotes];
+  }
+
+  private static hasEmployerEvidence(job: JobProjection, pattern: RegExp): boolean {
+    if (pattern.test(this.explicitEmployerQuotes(job).join("\n"))) return true;
+    if (pattern.test("p&l") && job.operatingContext?.pnlResponsibility === true) return true;
+    if (pattern.test("budget") && job.operatingContext?.budgetOwnership === true) return true;
+    return false;
+  }
+
+  private static employerRequirement(job: JobProjection, label: string, pattern: RegExp): string {
+    const quote = this.explicitEmployerQuotes(job).find((value) => pattern.test(value));
+    return quote
+      ? `Published role evidence: ${quote}`
+      : `Published ${label} requirement is not established; verify during screening.`;
+  }
+
+  private static requirementIds(job: JobProjection, pattern: RegExp): string[] {
+    return this.explicitEmployerQuotes(job).some((quote) => pattern.test(quote))
+      ? ["jd_explicit_requirement"]
+      : [];
   }
 }
