@@ -43,15 +43,111 @@ describe("Editorial evidence sufficiency contract", () => {
     expect(context.pnlProvenance).toBe("UNKNOWN");
   });
 
-  it("renders an evidence-limited brief for sparse evaluated input", () => {
+  it("renders a partial-evidence brief for sparse evaluated input with a canonical assessment", () => {
     const opportunity = sparseOpportunity();
     const brief = BriefCompositionEngine.compose(opportunity);
 
-    expect(brief.memory.decision).toBeNull();
+    expect(brief.memory.decision).toBe("PURSUE");
     expect(brief.certaintyLevel).toBe("LOW");
-    expect(brief.executiveOpinion).toContain("not provide enough evidence");
+    expect(brief.executiveOpinion).toContain("recorded PURSUE assessment");
     expect(brief.fitProofs).toEqual([]);
     expect(brief.executiveOpinion).not.toMatch(/P&L|multi-million|shortlisting probability|board-level/i);
+  });
+
+  it("preserves mandate, candidate assessment, and proof points when reporting and P&L are missing", () => {
+    const opportunity = sparseOpportunity({
+      dimensions: [{
+        key: "functionalScope",
+        label: "Functional Scope",
+        importance: "Core",
+        bucket: "Matched",
+        jdEvidence: {
+          status: "Explicit",
+          value: "Lead influencer marketing strategy",
+          evidence: [{ quote: "Lead influencer marketing strategy", source: "snippet" }],
+        },
+        candidateProof: { headline: "Relevant leadership record", detail: "Recorded candidate evidence." },
+      }] as Opportunity["dimensions"],
+      engineRecommendation: {
+        engineVerdict: "PURSUE",
+        qualityScore: 72,
+        triggeredRuleIds: [],
+        capabilityFit: { matchedCapabilities: ["Influencer strategy"], missingCapabilities: [] },
+      } as any,
+    });
+
+    const brief = BriefCompositionEngine.compose(opportunity);
+
+    expect(brief.memory.decision).toBe("PURSUE");
+    expect(brief.structuredSections.mandate.thesis).toContain("Lead influencer marketing strategy");
+    expect(brief.proofPoints.map((point) => point.detail)).toContain("Lead influencer marketing strategy");
+    expect(brief.qualitativeReasoning.some((row) => row.layer === "Capability assessment")).toBe(true);
+    expect(brief.rankedUnknowns.map((unknown) => unknown.label)).toContain("Reporting line");
+    expect(brief.rankedUnknowns.map((unknown) => unknown.label)).toContain("Commercial ownership");
+    expect(brief.structuredSections.mandate.thesis).not.toMatch(/CEO|board|P&L/i);
+  });
+
+  it("keeps a missing commercial-accountability signal local to the P&L question", () => {
+    const brief = BriefCompositionEngine.compose(sparseOpportunity({
+      dimensions: [{
+        key: "mandate",
+        label: "Mandate",
+        importance: "Core",
+        bucket: "Matched",
+        jdEvidence: {
+          status: "Explicit",
+          value: "Build creator partnerships",
+          evidence: [{ quote: "Build creator partnerships", source: "snippet" }],
+        },
+      }] as Opportunity["dimensions"],
+    }));
+
+    expect(brief.structuredSections.mandate.thesis).toContain("Build creator partnerships");
+    expect(brief.rankedUnknowns.map((unknown) => unknown.label)).toContain("Commercial ownership");
+    expect(JSON.stringify(brief)).not.toMatch(/full country-level commercial ownership|strongest P&L acceleration|board-level commercial reporting/i);
+  });
+
+  it("keeps explicit SPARSE_SPEC on the evidence-limited path", () => {
+    const brief = BriefCompositionEngine.compose(sparseOpportunity({
+      evaluationState: "SPARSE_SPEC" as any,
+      dimensions: [{
+        key: "mandate",
+        label: "Mandate",
+        importance: "Core",
+        bucket: "Matched",
+        jdEvidence: { status: "Explicit", value: "Lead growth", evidence: [{ quote: "Lead growth", source: "snippet" }] },
+      }] as Opportunity["dimensions"],
+    }));
+
+    expect(brief.memory.decision).toBeNull();
+    expect(brief.certaintyLevel).toBe("LOW");
+    expect(brief.structuredSections.mandate.thesis).toContain("not established");
+  });
+
+  it("retains invalid identity and zero evidence as evidence-limited", () => {
+    const invalid = BriefCompositionEngine.compose(sparseOpportunity({ role: "", company: "" }));
+    const zeroEvidence = BriefCompositionEngine.compose(sparseOpportunity({ engineRecommendation: undefined }));
+
+    expect(invalid.memory.decision).toBeNull();
+    expect(zeroEvidence.memory.decision).toBeNull();
+    expect(invalid.certaintyLevel).toBe("LOW");
+    expect(zeroEvidence.certaintyLevel).toBe("LOW");
+  });
+
+  it("does not make legacy fabricated defaults reachable through the partial path", () => {
+    const brief = BriefCompositionEngine.compose(sparseOpportunity({
+      dimensions: [{
+        key: "functionalScope",
+        label: "Functional Scope",
+        importance: "Core",
+        bucket: "Matched",
+        jdEvidence: { status: "Explicit", value: "Lead audience strategy", evidence: [{ quote: "Lead audience strategy", source: "snippet" }] },
+      }] as Opportunity["dimensions"],
+    }));
+
+    expect(JSON.stringify(brief)).not.toMatch(/full country-level commercial ownership|strongest P&L acceleration|board-level commercial reporting|25 FTEs|founder-led|Growth Architecture|Commercial Transformation|Executive Governance/i);
+    expect(brief.qualityScore).toBe(91);
+    expect(brief.explanation.verdict).toBe("PURSUE");
   });
 
   it("uses the same safe posture for direct editorial engine and context composition", () => {

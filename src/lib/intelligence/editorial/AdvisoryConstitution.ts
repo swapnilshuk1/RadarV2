@@ -17,6 +17,26 @@ export interface EditorialSufficiency {
   readonly message?: string;
 }
 
+/**
+ * A composition-only view of evidence already carried by an evaluated
+ * opportunity. It does not create authority or infer missing role facts.
+ */
+export interface SectionEvidenceInventory {
+  readonly hasIdentity: boolean;
+  readonly hasSourceText: boolean;
+  readonly hasCanonicalEvaluation: boolean;
+  readonly hasExplicitEvidence: boolean;
+  readonly mandateQuotes: readonly string[];
+  readonly functionalScopeQuotes: readonly string[];
+  readonly reportingLineQuotes: readonly string[];
+  readonly commercialAccountabilityQuotes: readonly string[];
+  readonly decisionRightsQuotes: readonly string[];
+  readonly sourceGroundedQuotes: readonly string[];
+  readonly hasCapabilityAssessment: boolean;
+  readonly hasCareerAssessment: boolean;
+  readonly hasUsableInformation: boolean;
+}
+
 type EditorialInput = {
   role?: unknown;
   canonicalTitle?: unknown;
@@ -53,6 +73,17 @@ function asText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function meaningfulQuotes(record: Record<string, unknown> | null): string[] {
+  const evidence = asRecord(record?.jdEvidence);
+  if (evidence?.status !== "Explicit") return [];
+  const quotes = Array.isArray(evidence.evidence)
+    ? evidence.evidence.map((item) => asText(asRecord(item)?.quote)).filter(isMeaningfulEvidenceQuote)
+    : [];
+  const singleQuote = asText(evidence.quote);
+  if (isMeaningfulEvidenceQuote(singleQuote) && !quotes.includes(singleQuote)) quotes.push(singleQuote);
+  return quotes;
+}
+
 export class AdvisoryConstitution {
   
   public static readonly PRINCIPLES = {
@@ -64,6 +95,54 @@ export class AdvisoryConstitution {
     LOW_INFO_PRODUCES_HUMBLE_OUTPUTS: "When job data is sparse or truncated, outputs must state data limitations cleanly rather than guessing.",
     OPTIMIZE_DECISION_QUALITY_OVER_ENGAGEMENT: "Measure product success by decision quality (Viewed ➔ Pursued ➔ Interviewed ➔ Offered), not Daily Active Users."
   };
+
+  /**
+   * Separates evidence availability by section so a missing reporting line, for
+   * example, cannot erase an explicit mandate or recorded capability assessment.
+   */
+  public static inspectSectionEvidence(opportunity: unknown): SectionEvidenceInventory {
+    const input = asRecord(opportunity) as EditorialInput | null;
+    const dimensions = Array.isArray(input?.dimensions) ? input.dimensions : [];
+    const quotesFor = (key: string): string[] => dimensions
+      .filter((dimension) => asText(asRecord(dimension)?.key) === key)
+      .flatMap((dimension) => meaningfulQuotes(asRecord(dimension)));
+    const sourceGroundedQuotes = dimensions.flatMap((dimension) => meaningfulQuotes(asRecord(dimension)));
+    const mandateQuotes = quotesFor("mandate");
+    const functionalScopeQuotes = quotesFor("functionalScope");
+    const reportingLineQuotes = quotesFor("reportingLine");
+    const commercialAccountabilityQuotes = quotesFor("commercialAccountability");
+    const decisionRightsQuotes = [...mandateQuotes, ...functionalScopeQuotes]
+      .filter((quote) => /decision|authority|accountable|approve/i.test(quote));
+    const recommendation = asRecord(input?.engineRecommendation) || asRecord(input?.recommendationResult);
+    const capabilityFit = asRecord(recommendation?.capabilityFit);
+    const careerAssessment = asText(recommendation?.relativeDifferentiator)
+      || asText(recommendation?.trajectoryUpside)
+      || asText(recommendation?.careerValueProtection);
+    const sourceText = asText(input?.description) || asText(input?.normalizedText) || asText(input?.rawText) || asText(input?.rawDescription);
+    const hasExplicitEvidence = sourceGroundedQuotes.length > 0;
+    const hasCanonicalEvaluation = Boolean(recommendation);
+
+    return {
+      hasIdentity: Boolean(asText(input?.role) || asText(input?.canonicalTitle))
+        && Boolean(asText(input?.company) || asText(input?.companyName)),
+      hasSourceText: sourceText.length > 0,
+      hasCanonicalEvaluation,
+      hasExplicitEvidence,
+      mandateQuotes,
+      functionalScopeQuotes,
+      reportingLineQuotes,
+      commercialAccountabilityQuotes,
+      decisionRightsQuotes,
+      sourceGroundedQuotes,
+      hasCapabilityAssessment: Boolean(capabilityFit && (
+        Array.isArray(capabilityFit.matchedCapabilities)
+        || Array.isArray(capabilityFit.missingCapabilities)
+        || typeof capabilityFit.overallFit === "number"
+      )),
+      hasCareerAssessment: Boolean(careerAssessment),
+      hasUsableInformation: hasCanonicalEvaluation || hasExplicitEvidence || sourceText.length > 0,
+    };
+  }
 
   /**
    * Enforces INV-DATA-SUFFICIENCY: Prohibits high-confidence editorial synthesis on low-evidence inputs.
