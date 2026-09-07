@@ -141,6 +141,32 @@ describe("Atomic career-intent plan activation", () => {
   });
 
   it("backfills the existing canonical pool into the prepared context idempotently", async () => {
+    await db.execute(
+      `INSERT INTO career_profiles (
+         id, person_id, timeline, skills, projection_json, projection_generated_at,
+         current_title, years_experience, archetype, preferred_work_model, created_at, updated_at
+       ) VALUES (?, ?, '[]', '[]', ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [
+        "profile-backfill",
+        scope.personId,
+        JSON.stringify({
+          profileVersion: "profile-backfill",
+          operatingLevel: { value: "STRATEGIC", confidence: 1, evidenceIds: [] },
+          workNature: { value: "STRATEGIC_WORK", confidence: 1, evidenceIds: [] },
+          decisionAuthority: { value: "ENTERPRISE", confidence: 1, evidenceIds: [] },
+          commercialScope: { value: "ENTERPRISE", confidence: 1, evidenceIds: [] },
+          yearsOfExperience: 20,
+          coreCapabilities: ["COMMERCIAL_GROWTH"],
+          preferredLocations: ["Bengaluru"],
+          preferredWorkModel: "ANY",
+          executiveThemes: ["growth"],
+        }),
+        "VP Growth",
+        20,
+        "Growth Executive",
+        "ANY",
+      ],
+    );
     const ingestion = new CanonicalIngestionService(db);
     const first = await ingestion.ingestOpportunity({
       sourcePortal: "LinkedIn",
@@ -149,7 +175,7 @@ describe("Atomic career-intent plan activation", () => {
       jobTitle: "VP Growth",
       companyName: "Acme",
       location: "Bengaluru",
-      rawContent: "Executive VP Growth role leading commercial growth and a cross-functional team.",
+      rawContent: "Executive VP Growth role leading commercial growth, enterprise demand generation, revenue strategy, and a cross-functional leadership team. Own the regional P&L, define the annual growth plan, partner with product and sales executives, set measurable acquisition and retention targets, build operating cadence for funnel performance, and present strategic outcomes to the executive committee. The role requires proven commercial leadership, executive stakeholder management, scalable go-to-market execution, and accountability for sustainable revenue growth across complex customer segments.",
     });
     const second = await ingestion.ingestOpportunity({
       sourcePortal: "Naukri",
@@ -192,6 +218,15 @@ describe("Atomic career-intent plan activation", () => {
       reason_codes: JSON.stringify(["ROLE_FAMILY_MATCH"]),
     });
     expect(evaluationCount?.count).toBe(1);
+    const evaluationPayload = await db.one<{ evaluation_json: string }>(
+      `SELECT evaluation_json FROM materialized_evaluations
+       WHERE evaluation_context_fingerprint = ? AND canonical_job_id = ?`,
+      [prepared.context.contextFingerprint, first.canonicalJobId],
+    );
+    const parsedPayload = JSON.parse(evaluationPayload!.evaluation_json) as { dossierPresentation?: { schemaVersion?: string; evaluationInputHash?: string } };
+    expect((parsedPayload as { evaluationState?: string }).evaluationState).toBe("EVALUATED");
+    expect(parsedPayload.dossierPresentation?.schemaVersion).toBe("dossier-v1");
+    expect(parsedPayload.dossierPresentation?.evaluationInputHash).toBeDefined();
     const secondPoolCount = await db.one<{ count: number }>(
       `SELECT COUNT(*) AS count FROM canonical_opportunities WHERE id = ?`,
       [second.canonicalJobId]

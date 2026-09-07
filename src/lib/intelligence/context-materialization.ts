@@ -6,6 +6,7 @@ import { evaluateAttentionGate } from "./AttentionGate";
 import { runEngineSingleIntrinsic } from "./engine";
 import { validateEvaluationConsistency } from "../domain/evaluation_fingerprint";
 import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
+import { buildCanonicalDossierPresentation } from "./dossier/CanonicalDossierBuilder";
 import type { MaterializedEvaluation } from "../domain/evaluation_context";
 import { resolveExactCandidateProjectionForScope } from "../../data/sqlite/repositories/profile-projection-version";
 
@@ -143,15 +144,34 @@ export async function materializeExistingCanonicalPool(
     const evaluationState = (artifact.record?.verb === "SPARSE_SPEC" || row.evidence_state === "GENUINELY_SPARSE")
       ? "SPARSE_SPEC"
       : resolveArtifactEvaluationState(artifact);
+    const evaluatedAt = new Date().toISOString();
     const canonicalPayload = evaluationState === "EVALUATED"
-      ? buildCanonicalEvaluatedPayload(artifact, prepared.context, row.canonical_job_id, row.opportunity_version, new Date().toISOString())
+      ? (() => {
+          const intrinsic = buildCanonicalEvaluatedPayload(
+            artifact,
+            prepared.context,
+            row.canonical_job_id,
+            row.opportunity_version,
+            evaluatedAt,
+          );
+          return {
+            ...intrinsic,
+            dossierPresentation: buildCanonicalDossierPresentation(
+              artifact,
+              projection,
+              intrinsic.evaluationInputHash,
+              evaluatedAt,
+              evaluatedAt,
+            ),
+          };
+        })()
       : buildCanonicalUnavailablePayload(
           source.jobHash,
           evaluationState,
           prepared.context,
           row.canonical_job_id,
           row.opportunity_version,
-          new Date().toISOString()
+          evaluatedAt,
         );
     const evaluation: MaterializedEvaluation = materializeCanonicalPayload(canonicalPayload);
     evaluation.evaluationFingerprint = evaluationState === "EVALUATED"
