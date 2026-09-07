@@ -1,12 +1,15 @@
-import { JobProjection, GroundedOpportunityDimension, ExecutiveIdentity, OperatingContext, TrueExecutiveMandate, CapabilityTaxonomyTier, OrganizationalIntent, ExecutiveMission } from "../../domain/job_projection";
+import { JobProjection, GroundedOpportunityDimension, ExecutiveIdentity, OperatingContext, TrueExecutiveMandate, CapabilityTaxonomyTier, OrganizationalIntent, ExecutiveMission, type CapabilityRequirement, type ProjectedCapability } from "../../domain/job_projection";
 import { OperatingLevelClassifier } from "../classifiers/OperatingLevelClassifier";
 import { WorkNatureClassifier } from "../classifiers/WorkNatureClassifier";
 import { DecisionAuthorityClassifier } from "../classifiers/DecisionAuthorityClassifier";
 import { CommercialScopeClassifier } from "../classifiers/CommercialScopeClassifier";
 import { SemanticResolutionEngine } from "../semantic/SemanticResolutionEngine";
 import type { CanonicalSemanticEvidence } from "../semantic/types";
+import type { ValidatedJobDocument } from "../../domain/canonical_acquisition";
 
 export class JobProjectionBuilder {
+
+  public static readonly PROJECTION_VERSION = "job-projection/v1-grounded-document";
 
   private static regexCache = new Map<string, RegExp>();
   private static projectionCache = new Map<string, JobProjection>();
@@ -83,7 +86,10 @@ export class JobProjectionBuilder {
     if (this.testKeyword(text, "founder") || this.testKeyword(text, "first hire") || this.testKeyword(text, "professionalize") || this.testKeyword(text, "early stage")) {
       return "PROFESSIONALIZE_FOUNDER_COMPANY";
     }
-    if (this.testKeyword(text, "acquisition") || this.testKeyword(text, "merger") || this.testKeyword(text, "post-merger") || this.testKeyword(text, "m&a")) {
+    // Buying assets, sourcing debt, or raising capital is not evidence that
+    // the role owns post-merger integration. Require explicit integration or
+    // synergy language before emitting that factual organizational intent.
+    if (this.testKeyword(text, "post-merger") || this.testKeyword(text, "acquisition integration") || this.testKeyword(text, "m&a integration") || this.testKeyword(text, "synergy")) {
       return "INTEGRATE_ACQUISITION";
     }
     if (this.testKeyword(text, "international") || this.testKeyword(text, "asean") || this.testKeyword(text, "global expansion") || this.testKeyword(text, "new markets")) {
@@ -102,7 +108,8 @@ export class JobProjectionBuilder {
     role: string,
     company: string,
     mandate: TrueExecutiveMandate,
-    intent: OrganizationalIntent
+    intent: OrganizationalIntent,
+    sourceText: string,
   ): ExecutiveMission {
     const intentLabels: Record<OrganizationalIntent, string> = {
       REPLACE_FAILED_LEADER: `Stabilize execution and replace leadership deficit at ${company}`,
@@ -119,12 +126,21 @@ export class JobProjectionBuilder {
     return {
       intent,
       statement: intentLabels[intent] || `Lead strategic ${mandate.toLowerCase()} mission at ${company}`,
-      successConditions: [
-        `Deliver 24-month revenue & P&L targets under ${mandate} mandate`,
-        `Establish operational governance and cross-functional leadership alignment at ${company}`,
-        `Build scalable GTM & customer retention infrastructure`
-      ]
+      // A mission may be inferred for classification, but success conditions
+      // are published facts. Do not turn a generic mandate into invented P&L,
+      // governance, or GTM commitments.
+      successConditions: this.extractPublishedSuccessConditions(sourceText),
     };
+  }
+
+  private static extractPublishedSuccessConditions(sourceText: string): string[] {
+    return sourceText
+      .split(/(?<=[.!?])\s+|[\r\n]+/)
+      .map((sentence) => sentence.replace(/\s+/g, " ").trim())
+      .filter((sentence) => sentence.length >= 24 && sentence.length <= 500)
+      .filter((sentence) => /\b(deliver|achieve|own|accountable|responsible|target|objective|kpi|metric|revenue|p\s*&\s*l|profitability|margin)\b/i.test(sentence))
+      .filter((sentence, index, all) => all.indexOf(sentence) === index)
+      .slice(0, 3);
   }
 
   private static assignCapabilityTier(capName: string): CapabilityTaxonomyTier {
@@ -133,7 +149,7 @@ export class JobProjectionBuilder {
     if (techKeywords.some(t => nameLower.includes(t))) {
       return "TECHNOLOGY_STACK";
     }
-    const domainKeywords = ["b2b", "d2c", "retail", "beauty", "fintech", "5g", "broadband", "mobility", "automotive", "fmcg"];
+    const domainKeywords = ["b2b", "d2c", "retail", "beauty", "fintech", "5g", "broadband", "mobility", "automotive", "fmcg", "distressed debt", "arc operations", "insolvency", "asset reconstruction"];
     if (domainKeywords.some(d => nameLower.includes(d))) {
       return "DOMAIN_FAMILIARITY";
     }
@@ -142,6 +158,52 @@ export class JobProjectionBuilder {
       return "CORE_MANDATE";
     }
     return "EXECUTION_CAPABILITY";
+  }
+
+  /**
+   * Requirements belong to the qualification side of a JD, not its execution
+   * responsibilities. A responsibility-only mention must never create a
+   * decision ceiling.
+   */
+  private static extractCapabilityRequirements(
+    sourceText: string,
+    capabilities: readonly ProjectedCapability[],
+  ): CapabilityRequirement[] {
+    const requirementMarker = /\b(?:must have|required|strong\s+(?:hands[-\s]?on\s+)?(?:experience|understanding|expertise)|demonstrated experience|proven (?:experience|track record)|deep expertise)\b/i;
+    const ignoredTokens = new Set(["operations", "management", "capability", "leadership", "commercial", "business"]);
+    const clauses = sourceText
+      .split(/(?<=[.!?])|[\r\n]+/)
+      .map((clause) => clause.trim())
+      .filter(Boolean);
+
+    const stableEvidenceId = (capability: string, quote: string) => {
+      const input = `${capability}|${quote}`.toLowerCase();
+      let hash = 2166136261;
+      for (let index = 0; index < input.length; index++) hash = Math.imul(hash ^ input.charCodeAt(index), 16777619);
+      return `capreq_${(hash >>> 0).toString(16)}`;
+    };
+
+    return capabilities.flatMap((capability) => {
+      const signals = capability.name
+        .toLowerCase()
+        .split(/[^a-z0-9+#]+/)
+        .filter((token) => token.length >= 4 && !ignoredTokens.has(token));
+      if (signals.length === 0) return [];
+
+      const supportingClauses = clauses.filter((clause) =>
+        requirementMarker.test(clause) && signals.some((signal) => new RegExp(`\\b${signal.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\b`, "i").test(clause)),
+      );
+      if (supportingClauses.length === 0) return [];
+
+      return [{
+        capability: capability.name,
+        tier: capability.tier || this.assignCapabilityTier(capability.name),
+        required: true,
+        materiality: "CORE" as const,
+        evidenceIds: supportingClauses.map((quote) => stableEvidenceId(capability.name, quote)),
+        sourceQuotes: supportingClauses,
+      }];
+    });
   }
 
   public static build(opportunity: any): JobProjection {
@@ -158,17 +220,58 @@ export class JobProjectionBuilder {
     return projection;
   }
 
+  /**
+   * Authoritative projection entry point for canonical acquisition. A failed,
+   * redirected, binary, or genuinely sparse document cannot be silently
+   * upgraded into a rich job projection.
+   */
+  public static buildFromValidatedDocument(document: ValidatedJobDocument): JobProjection {
+    if (document.usabilityState !== "SUBSTANTIVE" || !document.extractedText) {
+      throw new Error(`Cannot project non-substantive job document (${document.usabilityState}:${document.failureClass || "none"}).`);
+    }
+    const projection = this.buildUncached({
+      jobHash: `${document.source}:${document.sourceJobId || document.canonicalUrl}`,
+      role: document.title || "",
+      company: document.company || "",
+      location: document.location || "",
+      rawDescription: document.extractedText,
+    });
+    const sourceText = `${document.title || ""}\n${document.extractedText}`;
+    const dimensions = (projection.dimensions || []).map((dimension) => {
+      const value = dimension.jdEvidence.value;
+      const supported = Boolean(value && value !== "UNKNOWN" && new RegExp(`\\b${String(value).replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}\\b`, "i").test(sourceText));
+      return supported
+        ? dimension
+        : { ...dimension, jdEvidence: { status: "Missing" as const } };
+    });
+    return {
+      ...projection,
+      dimensions,
+      projectionVersion: this.PROJECTION_VERSION,
+      projectionFingerprint: this.fingerprint(document),
+      originalOpportunity: { ...projection.originalOpportunity, validatedDocument: document },
+    };
+  }
+
+  private static fingerprint(document: ValidatedJobDocument): string {
+    const source = `${this.PROJECTION_VERSION}|${document.source}|${document.canonicalUrl}|${document.extractedText || ""}`;
+    let hash = 2166136261;
+    for (let index = 0; index < source.length; index++) hash = Math.imul(hash ^ source.charCodeAt(index), 16777619);
+    return `jp_${(hash >>> 0).toString(16)}`;
+  }
+
   private static buildUncached(opportunity: any): JobProjection {
     this.actualBuildCount++;
     const title = opportunity.role || opportunity.canonicalTitle || opportunity.title || "";
-    let fullText = (opportunity.description || opportunity.normalizedText || opportunity.rawText || opportunity.rawDescription || "").toLowerCase();
+    const sourceText = opportunity.description || opportunity.normalizedText || opportunity.rawText || opportunity.rawDescription || "";
+    let fullText = String(sourceText).toLowerCase();
     const fullContext = (title + "\n" + fullText);
     const titleLower = title.toLowerCase();
 
     const resolvedCompany = this.resolveEmployerName(opportunity.company || "", fullText);
     const trueExecutiveMandate = this.inferTrueExecutiveMandate(fullText, title);
     const organizationalIntent = this.inferOrganizationalIntent(fullText, title);
-    const executiveMission = this.buildExecutiveMission(title, resolvedCompany, trueExecutiveMandate, organizationalIntent);
+    const executiveMission = this.buildExecutiveMission(title, resolvedCompany, trueExecutiveMandate, organizationalIntent, String(sourceText));
 
     // 1. Executive Identity Classification (Positive Domain Validation)
     const isExecutiveTechLeader = /(head of|director|vp|vice president|cto|cio|chief)/i.test(titleLower);
@@ -271,22 +374,38 @@ export class JobProjectionBuilder {
       });
     }
 
+    const compositional = SemanticResolutionEngine.extractCompositional(fullContext);
+    // Preserve explicit specialist operating domains. They remain a job-side
+    // requirement; they do not imply that a generally strong executive has
+    // demonstrated that specialist domain.
+    const specialistDomains = [
+      { name: "Distressed Debt / ARC Operations", pattern: /\b(?:distressed debt|non-performing assets?|\bnpa\b|asset reconstruction compan(?:y|ies)|\barc\b|sarfaesi|insolvency and bankruptcy code|\bibc\b)\b/i },
+      { name: "Merchandising / Category Inventory Operations", pattern: /\b(?:merchandising|category management|inventory planning|product sourcing)\b/i },
+    ];
+    for (const domain of specialistDomains) {
+      if (domain.pattern.test(fullContext)) {
+        capabilitiesMap.set(domain.name.toLowerCase(), {
+          name: domain.name,
+          tier: "DOMAIN_FAMILIARITY",
+          source: "explicit",
+          confidence: 0.90,
+        });
+      }
+    }
     if (capabilitiesMap.size === 0) {
-      const descLower = fullText;
-      const keyDomainTerms = [
-        "CRM Governance", "Performance Marketing", "GTM Strategy", "Revenue Operations",
-        "Customer Intelligence", "Digital Transformation", "D2C Growth", "Enterprise Sales",
-        "Pipeline Governance", "Site Strategy", "Investment Analytics", "Solutions Architecture"
-      ];
-      keyDomainTerms.forEach(term => {
-        if (descLower.includes(term.toLowerCase())) {
-          capabilitiesMap.set(term.toLowerCase(), {
-            name: term,
-            source: "inferred",
-            confidence: 0.80
-          });
-        }
-      });
+      for (const evidence of compositional.evidenceList) {
+        if (evidence.entityType !== "CAPABILITY" || evidence.negated || evidence.evidenceRelationship === "NON_SATISFYING") continue;
+        capabilitiesMap.set(evidence.canonicalConcept, {
+          name: evidence.canonicalConcept,
+          canonicalConcept: evidence.canonicalConcept,
+          source: evidence.evidenceRelationship === "DIRECT_EQUIVALENT" ? "explicit" : "inferred",
+          state: evidence.evidenceRelationship === "DIRECT_EQUIVALENT" ? "EXPLICIT" : "INFERRED",
+          evidenceRelationship: evidence.evidenceRelationship,
+          sourceQuote: evidence.sourcePhrase,
+          evidence: [evidence.sourcePhrase],
+          confidence: evidence.confidence,
+        });
+      }
     }
 
     const capabilities = Array.from(capabilitiesMap.values());
@@ -354,9 +473,9 @@ export class JobProjectionBuilder {
     capabilities.forEach((c) => {
       c.tier = this.assignCapabilityTier(c.name);
     });
+    const capabilityRequirements = this.extractCapabilityRequirements(String(sourceText), capabilities);
 
     // Phase 5C.2: Canonical Semantic Evidence Extraction
-    const compositional = SemanticResolutionEngine.extractCompositional(fullContext);
     const semanticEvidence: CanonicalSemanticEvidence[] = [...compositional.evidenceList];
     for (const cap of capabilities) {
       const res = SemanticResolutionEngine.resolveCapability(cap.name, undefined, fullContext);
@@ -390,6 +509,7 @@ export class JobProjectionBuilder {
       decisionAuthority,
       commercialScope,
       capabilities,
+      capabilityRequirements,
       executiveFunction: Array.from(executiveFunction),
       businessObjectives: Array.from(businessObjectives),
       executionStyle: Array.from(executionStyle),
@@ -399,7 +519,16 @@ export class JobProjectionBuilder {
       capabilityExtractionStatus,
       dimensions,
       originalOpportunity: { ...opportunity, dimensions },
-      semanticEvidence
+      semanticEvidence,
+      projectionVersion: this.PROJECTION_VERSION,
+      projectionFingerprint: this.fingerprint({
+        source: String(opportunity.source || "legacy"), canonicalUrl: String(opportunity.url || opportunity.jobHash || ""), finalUrl: String(opportunity.url || opportunity.jobHash || ""),
+        contentType: null, transportState: "SUCCEEDED", extractionState: "EXTRACTED", usabilityState: "SUBSTANTIVE",
+        acquisitionQuality: "COMPLETE", title, company: resolvedCompany, location: opportunity.location || null,
+        titleAgreement: "UNKNOWN", companyAgreement: "UNKNOWN", substantiveWordCount: fullText.split(/\s+/).filter(Boolean).length,
+        substantiveCharacterCount: fullText.length, boilerplateRatio: 0, scriptRatio: 0, failureClass: null,
+        retryable: false, extractedText: fullText, provenance: "BLOB"
+      })
     };
   }
 }

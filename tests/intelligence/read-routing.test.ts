@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   isCanonicalIntrinsicEvaluation,
   serveEvaluation,
-  adaptLegacyEvaluation,
   CanonicalIntrinsicEvaluationPayload,
 } from "../../src/lib/intelligence/serving/EvaluationServingEngine";
 
@@ -32,19 +31,6 @@ describe("EvaluationServingEngine Read Routing", () => {
     const opp = serveEvaluation(payload, dummyCandCtx, dummyOppCtx, null);
     expect(opp.engineRecommendation.engineVerdict).toBe("CONSIDER");
     expect(opp.engineRecommendation.qualityScore).toBe(85);
-  });
-
-  it("identifies non-canonical payload and adapts via legacy serving pipeline", () => {
-    const payload = {
-      jobHash: "job_123",
-      decision: "PASS",
-      recommendation: "Legacy test recommendation",
-    };
-
-    expect(isCanonicalIntrinsicEvaluation(payload)).toBe(false);
-    const opp = adaptLegacyEvaluation(payload as any, dummyCandCtx, dummyOppCtx, null);
-    expect(opp.engineRecommendation.engineVerdict).toBe("PASS");
-    expect(opp.evaluationState).toBe("LEGACY");
   });
 
   it("rejects unknown or invalid structures from isCanonicalIntrinsicEvaluation", () => {

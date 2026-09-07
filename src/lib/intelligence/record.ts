@@ -10,7 +10,6 @@ import type { Stability } from "./stability";
 import type { ComparativeAnalysis } from "./comparative";
 import type { ExplanationObject } from "./explain";
 import type { DecisionTrace } from "./trace";
-import type { HeadspaceOutcome } from "./headspace-filter";
 import type { DecisionDriver, PipelineStage } from "./policy/DecisionPolicyEngine";
 import type { EvidenceMatch, CareerValueBreakdown } from "../domain/semantic";
 
@@ -68,7 +67,6 @@ export type RecommendationRecord = Readonly<{
     recommendation: number;
   };
   stability: Stability;
-  headspace: HeadspaceOutcome;
   comparison: ComparativeAnalysis;
   explanation: ExplanationObject;
   trace: DecisionTrace & {

@@ -4,8 +4,8 @@
 
 export type EvidenceSource = "title" | "snippet" | "location" | "llm";
 export type Status = "Explicit" | "Inferred" | "Missing";
-export type DecisionVerb = "PURSUE" | "CONSIDER" | "PASS" | "NOT_EVALUABLE" | "SPARSE_SPEC";
-export type ScrapeSource = "LinkedIn" | "Naukri" | "Indeed";
+export type DecisionVerb = "PURSUE" | "CONSIDER" | "PASS" | "UNKNOWN" | "NOT_EVALUABLE" | "SPARSE_SPEC";
+export type ScrapeSource = "LinkedIn" | "Naukri" | "Indeed" | "Unknown";
 
 export type Traced<T> = {
   value: T | null;
@@ -140,8 +140,14 @@ export type EvaluatedOpportunity = {
   userDecision?: import("@/domain/decision_v4").UserDecisionStateV4 | null;
   effectiveDecision?: import("@/domain/decision_v4").EffectiveDecision;
   reviewWorkflowState?: import("@/domain/decision_v4").ReviewWorkflowState;
+  /** Canonical fingerprint freshness, independent of the legacy workflow label. */
+  reviewState?: import("@/domain/decision_v4").CanonicalReviewState;
+  evaluationContextFingerprint?: string | null;
+  evaluationFingerprint?: string | null;
   displayScore?: string;
   uiBadge?: { label: string; variant: "signal" | "caution" | "pass" | "muted" };
+  /** Optional evaluation-time presentation only; canonical scalars remain authoritative. */
+  dossierPresentation?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV1;
 };
 
 export interface ApplicationAction {
@@ -539,7 +545,7 @@ for (const opp of rawOpportunities) {
 
 
 export type UnavailableOpportunity = {
-  evaluationState: "SPARSE_SPEC" | "NOT_EVALUABLE" | "ACQUISITION_PENDING" | "ACQUISITION_FAILED" | "EXPIRED";
+  evaluationState: "SPARSE_SPEC" | "NOT_EVALUABLE" | "PROFILE_REQUIRED" | "INVALID" | "ACQUISITION_PENDING" | "ACQUISITION_FAILED" | "EXPIRED";
   jobHash: string;
   role: string;
   company: string;
@@ -550,6 +556,9 @@ export type UnavailableOpportunity = {
   reasonCode?: string;
   userDecision?: import("../domain/decision_v4").UserDecisionStateV4 | null;
   effectiveDecision?: import("../domain/decision_v4").EffectiveDecision;
+  reviewState?: import("../domain/decision_v4").CanonicalReviewState;
+  evaluationContextFingerprint?: string | null;
+  evaluationFingerprint?: string | null;
 };
 
 export type UnmaterializedOpportunity = {
@@ -564,6 +573,9 @@ export type UnmaterializedOpportunity = {
   contextFingerprint: string;
   userDecision?: import("../domain/decision_v4").UserDecisionStateV4 | null;
   effectiveDecision?: import("../domain/decision_v4").EffectiveDecision;
+  reviewState?: import("../domain/decision_v4").CanonicalReviewState;
+  evaluationContextFingerprint?: string | null;
+  evaluationFingerprint?: string | null;
 };
 
 export type ServedOpportunity = EvaluatedOpportunity | UnavailableOpportunity | UnmaterializedOpportunity;
@@ -573,7 +585,7 @@ export function isEvaluated(opp: ServedOpportunity): opp is EvaluatedOpportunity
 }
 
 export function isUnavailable(opp: ServedOpportunity): opp is UnavailableOpportunity {
-  return opp.evaluationState === "SPARSE_SPEC" || opp.evaluationState === "NOT_EVALUABLE" || opp.evaluationState === "ACQUISITION_PENDING" || opp.evaluationState === "ACQUISITION_FAILED" || opp.evaluationState === "EXPIRED";
+  return opp.evaluationState === "SPARSE_SPEC" || opp.evaluationState === "NOT_EVALUABLE" || opp.evaluationState === "PROFILE_REQUIRED" || opp.evaluationState === "INVALID" || opp.evaluationState === "ACQUISITION_PENDING" || opp.evaluationState === "ACQUISITION_FAILED" || opp.evaluationState === "EXPIRED";
 }
 
 export function isUnmaterialized(opp: ServedOpportunity): opp is UnmaterializedOpportunity {

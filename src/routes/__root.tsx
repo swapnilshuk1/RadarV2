@@ -14,7 +14,6 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { getSessionUserFn } from "../lib/auth/server";
 import { candidateSignature } from "../lib/personalization";
-import { candidateProfile } from "../data/candidate-profile";
 import { OnboardingProvider, useOnboarding } from "../components/onboarding/OnboardingProvider";
 
 import appCss from "../styles.css?url";
@@ -203,7 +202,7 @@ function GlobalHeader() {
     }
   };
 
-  const name = sessionName || candidateProfile.identity.name;
+  const name = sessionName || "Executive";
   const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "SS";
 
   const isSelected = (path: string) => {

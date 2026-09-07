@@ -88,7 +88,7 @@ export class ExecutionEngine {
     candidate: CandidateProjection,
     job: JobProjection
   ): ExecutionPackage {
-    const result = TruthPreservingRewriteEngine.generateExecutionPackage(this.defaultEvidenceGraph, job);
+    const result = TruthPreservingRewriteEngine.generateExecutionPackage(new CandidateEvidenceGraph(candidate), job);
     return result.package;
   }
 }

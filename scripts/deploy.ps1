@@ -42,7 +42,7 @@ git push origin main
 
 # 3. Remote Server Pull & PM2 Restart
 Write-Host "`n[4/4] Deploying to Oracle Cloud Server via SSH..." -ForegroundColor Yellow
-$remoteCmd = "cd $REMOTE_DIR && git fetch origin main && git reset --hard origin/main && npm install && npm run build && pm2 restart radar-v2 && pm2 status"
+$remoteCmd = "cd $REMOTE_DIR && git fetch origin main && git reset --hard origin/main && npm install && npm run db:migrate && npm run build && pm2 restart radar-v2 && pm2 status"
 
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" $REMOTE_HOST "$remoteCmd"
 

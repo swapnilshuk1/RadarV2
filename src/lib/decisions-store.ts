@@ -1,61 +1,53 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DecisionVerb } from "../data/opportunity-fixtures";
 import {
   getDecisionsFn,
   saveDecisionFn,
-  syncDecisionsFn,
   undoDecisionFn,
   clearDecisionsFn
 } from "./intelligence/decisions-server";
+import { requireDecisionAcknowledgement } from "./intelligence/decision-acknowledgement";
 
 export type DecisionRecord = { verb: DecisionVerb; at: number; reviewedFingerprint?: string | null };
 export type DecisionMap = Record<string, DecisionRecord>;
 
-const KEY = "radar.decisions.v1";
-const SYNC_FLAG = "radar.decisions.synced.v1";
+const KEY_PREFIX = "radar.decisions.cache.v2:";
 
-function readLocal(): DecisionMap {
-  if (typeof window === "undefined") return {};
+export function decisionCacheKey(scope: string): string {
+  return `${KEY_PREFIX}${encodeURIComponent(scope)}`;
+}
+
+function readLocal(scope: string | null): DecisionMap {
+  if (typeof window === "undefined" || !scope) return {};
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.localStorage.getItem(decisionCacheKey(scope));
     return raw ? (JSON.parse(raw) as DecisionMap) : {};
   } catch {
     return {};
   }
 }
 
-function writeLocal(next: DecisionMap) {
-  if (typeof window === "undefined") return;
+function writeLocal(scope: string | null, next: DecisionMap) {
+  if (typeof window === "undefined" || !scope) return;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(next));
+    window.localStorage.setItem(decisionCacheKey(scope), JSON.stringify(next));
     window.dispatchEvent(new CustomEvent("radar:decisions"));
   } catch {
     /* ignore */
   }
 }
 
-export function activePursuits(): number {
-  if (typeof window === "undefined") return 0;
-  const map = readLocal();
-  return Object.values(map).filter((d) => d.verb === "PURSUE").length;
-}
-
 export function useDecisions() {
   const [decisions, setDecisions] = useState<DecisionMap>({});
   const [hydrated, setHydrated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const scopeRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    const initialLocal = readLocal();
-
     async function hydrate() {
-      // 1. Initial local render for immediate UI responsiveness
-      if (isMounted) {
-        setDecisions(initialLocal);
-        setHydrated(true);
-      }
-
-      // 2. Fetch server canonical state from Turso/SQLite
+      // Canonical server state wins on every authenticated hydration. Browser
+      // cache is a scoped convenience mirror, never an import source.
       try {
         const res = await getDecisionsFn();
         if (res && res.success && res.decisions) {
@@ -68,28 +60,12 @@ export function useDecisions() {
             };
           }
 
-          // 3. Auto-sync local storage decisions to server if local has unsynced items
-          const hasUnsynced = Object.keys(initialLocal).length > 0 && Object.keys(initialLocal).some((k) => !currentServerMap[k]);
-          if (typeof window !== "undefined" && hasUnsynced) {
-            const syncRes = await syncDecisionsFn({ data: { decisions: initialLocal } });
-            if (syncRes && syncRes.success && syncRes.decisions) {
-              const reconciledMap: DecisionMap = {};
-              for (const [hash, val] of Object.entries(syncRes.decisions)) {
-                reconciledMap[hash] = {
-                  verb: val.verb as DecisionVerb,
-                  at: val.updatedAt ? new Date(val.updatedAt).getTime() : Date.now(),
-                  reviewedFingerprint: (val as any).reviewedFingerprint || null
-                };
-              }
-              currentServerMap = reconciledMap;
-              window.localStorage.setItem(SYNC_FLAG, "true");
-            }
-          }
-
-          // 4. Update client state to authoritative server decisions
+          const resolvedScope = typeof (res as any).cacheScope === "string" ? (res as any).cacheScope : null;
           if (isMounted) {
+            scopeRef.current = resolvedScope;
             setDecisions(currentServerMap);
-            writeLocal(currentServerMap);
+            writeLocal(resolvedScope, currentServerMap);
+            setHydrated(true);
           }
         }
       } catch (err) {
@@ -99,7 +75,10 @@ export function useDecisions() {
 
     hydrate();
 
-    const onChange = () => setDecisions(readLocal());
+    const onChange = () => {
+      const resolvedScope = scopeRef.current;
+      if (resolvedScope) setDecisions(readLocal(resolvedScope));
+    };
     window.addEventListener("radar:decisions", onChange);
     window.addEventListener("storage", onChange);
 
@@ -110,42 +89,47 @@ export function useDecisions() {
     };
   }, []);
 
-  const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
+  const decide = async (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
+    // A browser fingerprint is display metadata only. Canonical provenance is
+    // acknowledged by the server after it resolves the scoped current artifact.
+    const result = await saveDecisionFn({ data: { jobHash, verb, reviewedFingerprint } });
+    if (!result?.success) throw new Error("Decision persistence was not acknowledged by the server.");
     setDecisions((prev) => {
-      const next = { ...prev, [jobHash]: { verb, at: Date.now(), reviewedFingerprint: reviewedFingerprint || null } };
-      writeLocal(next);
+      const next = { ...prev, [jobHash]: { verb, at: Date.now(), reviewedFingerprint: result.reviewedFingerprint ?? null } };
+      writeLocal(scopeRef.current, next);
       return next;
-    });
-
-    // Fire background server call to Turso/SQLite
-    saveDecisionFn({ data: { jobHash, verb, reviewedFingerprint } }).catch((err) => {
-      console.error("[useDecisions] Error saving decision to server:", err);
     });
   };
 
-  const undo = (jobHash: string) => {
+  const undo = async (jobHash: string) => {
+    setError(null);
+    const message = "Decision removal was not acknowledged by the server.";
+    try {
+      await requireDecisionAcknowledgement(() => undoDecisionFn({ data: { jobHash } }), message);
+    } catch (error) {
+      setError(message);
+      throw error;
+    }
     setDecisions((prev) => {
       const next = { ...prev };
       delete next[jobHash];
-      writeLocal(next);
+      writeLocal(scopeRef.current, next);
       return next;
     });
-
-    // Fire background server call to Turso/SQLite
-    undoDecisionFn({ data: { jobHash } }).catch((err) => {
-      console.error("[useDecisions] Error removing decision from server:", err);
-    });
   };
 
-  const clear = () => {
+  const clear = async () => {
+    setError(null);
+    const message = "Decision clearing was not acknowledged by the server.";
+    try {
+      await requireDecisionAcknowledgement(() => clearDecisionsFn(), message);
+    } catch (error) {
+      setError(message);
+      throw error;
+    }
     setDecisions({});
-    writeLocal({});
-
-    // Fire background server call to Turso/SQLite
-    clearDecisionsFn().catch((err) => {
-      console.error("[useDecisions] Error clearing decisions on server:", err);
-    });
+    writeLocal(scopeRef.current, {});
   };
 
-  return { decisions, decide, undo, clear, hydrated };
+  return { decisions, decide, undo, clear, hydrated, error };
 }

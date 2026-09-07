@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "phase0-diagnostic-specimen/v1",
+  "fixtureId": "ats-temporary-redirect-notice",
+  "provenance": {
+    "kind": "sanitized_reconstruction",
+    "sourceArtifact": "Sanitized reconstruction of the audited temporary Oracle HCM redirect; production identifiers were not present in approved offline artifacts.",
+    "sanitization": [
+      "No production identifier or personal data is present."
+    ],
+    "capturedBodySha256": "f54b9fc983937a5e585fabfb44308d20c8e86d5ea6adcfe7ca16ad306d68bd24"
+  },
+  "source": {
+    "portal": "Naukri",
+    "title": "Assistant Vice President - CCRP Validation",
+    "company": "SBI Card",
+    "location": "Gurugram",
+    "canonicalSourceUrl": "https://in.indeed.com/rc/clk?jk=phase0-sanitized-redirect"
+  },
+  "document": {
+    "httpStatus": 302,
+    "contentType": "text/html; charset=utf-8",
+    "capturedText": "Temporary Redirect. The advertised job has moved to an external Oracle HCM destination.",
+    "originalCapturedLength": 87,
+    "isExcerpt": false
+  }
+}

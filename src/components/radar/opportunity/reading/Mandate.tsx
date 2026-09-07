@@ -1,10 +1,10 @@
 interface MandateProps {
-  o: any;
+  brief: any;
   jobProj: any;
   executionPkg: any;
 }
 
-export function Mandate({ o, jobProj, executionPkg }: MandateProps) {
+export function Mandate({ brief, jobProj, executionPkg }: MandateProps) {
   return (
     <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
       <div className="lg:sticky lg:top-14 lg:self-start">
@@ -14,24 +14,20 @@ export function Mandate({ o, jobProj, executionPkg }: MandateProps) {
         </h2>
       </div>
       <div className="space-y-6">
-        {o.brief?.structuredSections?.mandate?.thesis && (
+        {brief?.structuredSections?.mandate?.thesis && (
           <p className="font-medium text-foreground text-sm leading-relaxed">
-            {o.brief.structuredSections.mandate.thesis}
+            {brief.structuredSections.mandate.thesis}
           </p>
         )}
         
-        <div>
-          <p className="text-sm text-foreground font-normal mb-2.5">Within 18–24 months leadership will likely expect you to:</p>
+        {jobProj.executiveMission?.successConditions?.length > 0 && <div>
+          <p className="text-sm text-foreground font-normal mb-2.5">Published success conditions:</p>
           <ul className="space-y-2 border-l-2 border-border pl-4">
-            {(jobProj.executiveMission?.successConditions || [
-              `Deliver 24-month revenue & P&L targets under commercial growth mandate`,
-              `Establish operational governance and cross-functional leadership alignment at ${o.company}`,
-              `Build scalable GTM & customer retention infrastructure`
-            ]).map((cond: string, i: number) => (
+            {jobProj.executiveMission.successConditions.map((cond: string, i: number) => (
               <li key={i} className="text-sm text-muted-foreground font-normal">• {cond}</li>
             ))}
           </ul>
-        </div>
+        </div>}
 
         <div className="space-y-2 pt-2">
           <p className="text-sm font-medium text-foreground">Operating conditions to verify</p>
@@ -39,7 +35,7 @@ export function Mandate({ o, jobProj, executionPkg }: MandateProps) {
             This advisory evaluation assumes the following parameters. Verify them during your first screening:
           </p>
           <ul className="space-y-1.5 pt-1">
-            {executionPkg.recommendationConditions.map((cond: string, i: number) => (
+            {(executionPkg.recommendationConditions || []).map((cond: string, i: number) => (
               <li key={i} className="text-xs text-muted-foreground font-normal flex items-start gap-1.5">
                 <span className="text-muted-foreground">•</span>
                 <span>{cond}</span>
@@ -51,7 +47,7 @@ export function Mandate({ o, jobProj, executionPkg }: MandateProps) {
         <div className="space-y-3 pt-2">
           <p className="text-sm font-medium text-foreground">Critical screening questions</p>
           <div className="space-y-3">
-            {executionPkg.screeningQuestions.map((sq: any, i: number) => (
+            {(executionPkg.screeningQuestions || []).map((sq: any, i: number) => (
               <div key={i} className="space-y-0.5">
                 <p className="text-sm text-foreground font-normal">{i + 1}. {sq.question}</p>
                 <p className="text-xs text-muted-foreground leading-relaxed pl-4">
@@ -62,10 +58,10 @@ export function Mandate({ o, jobProj, executionPkg }: MandateProps) {
           </div>
         </div>
 
-        {o.brief?.structuredSections?.mandate?.transition && (
+        {brief?.structuredSections?.mandate?.transition && (
           <div className="pt-4 border-t border-border">
             <p className="text-xs text-muted-foreground italic font-serif">
-              {o.brief.structuredSections.mandate.transition}
+              {brief.structuredSections.mandate.transition}
             </p>
           </div>
         )}

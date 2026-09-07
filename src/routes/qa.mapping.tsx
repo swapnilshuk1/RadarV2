@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { type DimensionResult, type Opportunity, isEvaluated } from "../data/opportunity-fixtures";
 import { getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
-import { candidateProfile } from "../data/candidate-profile";
 
 export const Route = createFileRoute("/qa/mapping")({
   head: () => ({

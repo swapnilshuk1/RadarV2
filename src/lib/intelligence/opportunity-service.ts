@@ -29,31 +29,7 @@ import {
   type AuthorizedPersonScope,
 } from "../security/auth";
 
-export type ServiceOptions = {
-  activePursuits?: number;
-  categoryId?: string;
-};
-
-export interface OpportunityMetrics {
-  totalScreened: number;
-  activePursuits: number;
-  totalShortlisted: number;
-  totalDecisions: number;
-  remainingToReview: number;
-  breakdown: {
-    pursue: number;
-    consider: number;
-    pass: number;
-    sparse: number;
-  };
-}
-
-function ensureWorkerDaemonStarted() {
-  if (typeof window !== "undefined" || process.env.NODE_ENV === "test") return;
-  import("./EvaluationDaemon").then(({ EvaluationDaemon }) => {
-    EvaluationDaemon.startGlobalDaemon(2000);
-  }).catch(() => {});
-}
+export type ServiceOptions = { categoryId?: string };
 
 /**
  * Resolves AuthorizedPersonScope strictly through authenticated database membership and person scoping.
@@ -96,6 +72,57 @@ export async function resolveScope(userId: string, requestedTenantId?: string): 
 import { SingleflightOpportunityQueries } from "./serving/singleflight";
 import type { FeedPage, FeedFilters, OpaqueCursor, NavigationContext } from "./opportunity-queries";
 
+/** Exhausts the canonical decided feed; the Decisions ledger is never a partial first page. */
+export async function collectDecidedFeedItems(
+  queries: Pick<SingleflightOpportunityQueries, "getFeed">,
+  scope: AuthorizedPersonScope,
+): Promise<FeedPage["items"]> {
+  const feedItems: Array<FeedPage["items"][number]> = [];
+  let cursor: OpaqueCursor | undefined;
+
+  do {
+    const feed = await queries.getFeed(scope, cursor, { decisionFilter: "decided" }, 50);
+    feedItems.push(...feed.items);
+    cursor = feed.nextCursor;
+  } while (cursor);
+
+  return feedItems;
+}
+
+/**
+ * Exhausts the unreviewed canonical population before dossier hydration. The
+ * Shortlist page is a review queue, not a browser-side interpretation of the
+ * unreviewed feed, so it must not stop at an arbitrary first page.
+ */
+async function collectUnreviewedFeedItems(
+  queries: Pick<SingleflightOpportunityQueries, "getFeed">,
+  scope: AuthorizedPersonScope,
+  categoryId?: string,
+): Promise<FeedPage["items"]> {
+  const feedItems: Array<FeedPage["items"][number]> = [];
+  let cursor: OpaqueCursor | undefined;
+
+  do {
+    const sparseSignalQueue = categoryId === "needs_more_signal";
+    const feed = await queries.getFeed(
+      scope,
+      cursor,
+      {
+        categoryId: categoryId as FeedFilters["categoryId"],
+        decisionFilter: "unreviewed",
+        // `needs_more_signal` is a dynamic SPARSE_SPEC population, not an
+        // evaluated PURSUE/CONSIDER shortlist.  The server owns both paths.
+        shortlistQueue: !sparseSignalQueue,
+      },
+      50,
+    );
+    feedItems.push(...feed.items);
+    cursor = feed.nextCursor;
+  } while (cursor);
+
+  return feedItems;
+}
+
 export class OpportunityService {
   private static getServingQueries(): SingleflightOpportunityQueries {
     const repos = getRepositories();
@@ -121,7 +148,6 @@ export class OpportunityService {
     pageSize?: number,
     requestedTenantId?: string
   ): Promise<FeedPage> {
-    ensureWorkerDaemonStarted();
     const scope = await resolveScope(userId, requestedTenantId);
     const queries = this.getServingQueries();
     return queries.getFeed(scope, cursor, filters, pageSize);
@@ -132,91 +158,45 @@ export class OpportunityService {
    */
   static async listDecidedForUser(userId: string, requestedTenantId?: string): Promise<Opportunity[]> {
     const scope = await resolveScope(userId, requestedTenantId);
-    const repos = getRepositories();
-    return repos.canonicalServing.listDecidedOpportunities(scope);
+    const queries = this.getServingQueries();
+    const feedItems = await collectDecidedFeedItems(queries, scope);
+
+    const opportunities = await Promise.all(
+      feedItems.map((item) => queries.getDossier(scope, item.jobHash)),
+    );
+    return opportunities.filter(
+      (opportunity): opportunity is Opportunity => opportunity !== null && "decision" in opportunity,
+    );
   }
 
   /**
-   * Lists candidate opportunity DTOs for a specific user via the lean keyset feed query.
+   * Lists the server-authoritative, unreviewed shortlist queue. Dossier
+   * hydration uses the canonical serving read model, so legacy/corrupt
+   * evaluated artifacts cannot become browser-defined recommendations.
    */
   static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity[]> {
-    ensureWorkerDaemonStarted();
     const scope = await resolveScope(userId, requestedTenantId);
     const queries = this.getServingQueries();
-    const feed = await queries.getFeed(
-      scope,
-      undefined,
-      {
-        categoryId: options?.categoryId as any,
-        decisionFilter: "unreviewed",
-      },
-      50
+    const feedItems = await collectUnreviewedFeedItems(queries, scope, options?.categoryId);
+
+    // This legacy-shaped method remains for callers that still need full
+    // opportunity DTOs.  It must hydrate each item from the same canonical
+    // dossier projection rather than inventing scores, fingerprints, or a
+    // default verdict from the lean feed row.
+    const opportunities = await Promise.all(
+      feedItems.map((item) => queries.getDossier(scope, item.jobHash)),
     );
-
-    return feed.items.map((f) => {
-      if (f.evaluationState === "SPARSE_SPEC" || f.evaluationState === "UNMATERIALIZED") {
-        return {
-          evaluationState: f.evaluationState,
-          jobHash: f.jobHash,
-          role: f.role,
-          company: f.company,
-          location: f.location,
-          postedRelative: "recently",
-          scrapedFrom: f.scrapedFrom,
-          applyUrl: f.applyUrl || undefined,
-          reasonCode: f.evaluationState,
-          userDecision: f.userAction ? {
-            personId: scope.personId,
-            jobHash: f.jobHash,
-            userAction: f.userAction,
-            reviewedFingerprint: null,
-            updatedAt: null,
-          } : null,
-        } as any;
+    return opportunities.filter((opportunity): opportunity is import("../../data/opportunity-fixtures").ServedOpportunity => {
+      if (!opportunity) return false;
+      if (options?.categoryId === "needs_more_signal") {
+        return opportunity.evaluationState === "SPARSE_SPEC"
+          && (opportunity.userDecision?.userAction === undefined || opportunity.userDecision?.userAction === null || opportunity.userDecision?.userAction === "NONE");
       }
-
-      return {
-        evaluationState: "COMPLETE",
-        jobHash: f.jobHash,
-        role: f.role,
-        company: f.company,
-        location: f.location,
-        postedRelative: "recently",
-        scrapedFrom: f.scrapedFrom,
-        applyUrl: f.applyUrl || undefined,
-        decision: f.engineVerdict || "PURSUE",
-        effectiveDecision: f.effectiveDecision,
-        reviewWorkflowState: f.reviewWorkflowState,
-        populationTier: f.populationTier,
-        engineRecommendation: {
-          jobHash: f.jobHash,
-          legacyStatus: "CANONICAL",
-          verb0: f.engineVerdict || "PURSUE",
-          engineVerdict: f.engineVerdict || "PURSUE",
-          headspaceVerdict: f.engineVerdict || "PURSUE",
-          headspaceDowngraded: false,
-          parsingConfidence: 0.95,
-          qualityScore: f.qualityScore ?? null,
-          evaluatedAt: new Date().toISOString(),
-          evaluationFingerprint: "v4.1",
-        },
-        recommendationResult: {
-          score: f.qualityScore ?? null,
-          vetoed: f.vetoed,
-        },
-        userDecision: f.userAction ? {
-          personId: scope.personId,
-          jobHash: f.jobHash,
-          userAction: f.userAction,
-          reviewedFingerprint: null,
-          updatedAt: null,
-        } : null,
-        recommendation: "",
-        hiringRisk: "Unknown",
-        dimensions: [],
-        positioning: [],
-        headspace: [],
-      } as any;
+      if (opportunity.evaluationState !== "EVALUATED") return false;
+      const verdict = opportunity.engineRecommendation?.engineVerdict;
+      const userDecision = opportunity.userDecision?.userAction;
+      return (verdict === "PURSUE" || verdict === "CONSIDER")
+        && (userDecision === undefined || userDecision === null || userDecision === "NONE");
     });
   }
 

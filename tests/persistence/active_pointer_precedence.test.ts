@@ -1,12 +1,12 @@
 ﻿import { describe, it, expect, beforeAll } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import Database from "better-sqlite3";
-import { SqliteCanonicalServingStore } from "../../src/data/sqlite/repositories/SqliteCanonicalServingStore";
+import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { setupLineageTestFixture } from "./lineage_fixture";
 
 describe("Active Pointer Precedence", () => {
   let db: any;
-  let store: SqliteCanonicalServingStore;
+  let store: SqliteEvaluationContextStore;
 
   beforeAll(async () => {
     const rawDb = new Database(":memory:");
@@ -15,10 +15,10 @@ describe("Active Pointer Precedence", () => {
     // Initialize schema using standard fixture
     await setupLineageTestFixture(db);
     
-    store = new SqliteCanonicalServingStore(db);
+    store = new SqliteEvaluationContextStore(db);
   });
 
-  it("proves active pointer > legacy timestamp ordering", async () => {
+  it("serves only an explicit pointer and never falls back to context chronology", async () => {
     // 1. Create OLD_CONTEXT (older chronologically, but newer than fixture so it takes precedence over fixture)
     await db.execute(
       `INSERT INTO search_plan_snapshots (id, tenant_id, person_id, search_plan_id, snapshot_hash, payload_json) VALUES (?, ?, ?, ?, ?, ?)`, 
@@ -39,7 +39,9 @@ describe("Active Pointer Precedence", () => {
       ["context_new", "tenant_A", "person_A", "sps_new", "v1", "hash_ontology", "v1", "v1", "2030-01-01 12:00:00"]
     );
 
-    // Baseline: no pointer, should resolve to NEW_CONTEXT due to fallback
+    // Establish the explicit pointer that defines current serving authority.
+    await store.bindEvaluationContextScope("context_new", "tenant_A", "person_A", "plan_A");
+    await store.activateContextPointer("context_new", "tenant_A", "person_A", "plan_A");
     const fbContext = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
     expect(fbContext?.contextFingerprint).toBe("context_new");
 
@@ -51,10 +53,10 @@ describe("Active Pointer Precedence", () => {
     const activeContext = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
     expect(activeContext?.contextFingerprint).toBe("context_old");
 
-    // 5. Deactivate pointer and verify legacy chronological fallback behaves as intended
+    // 5. Removing the pointer must not reactivate a context by timestamp.
     await db.execute(`DELETE FROM active_evaluation_contexts WHERE tenant_id = 'tenant_A' AND person_id = 'person_A' AND search_plan_id = 'plan_A'`);
     
-    const fallbackContext = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
-    expect(fallbackContext?.contextFingerprint).toBe("context_new");
+    const absentContext = await store.getActiveContext({ tenantId: "tenant_A", personId: "person_A", roles: [] });
+    expect(absentContext).toBeUndefined();
   });
 });

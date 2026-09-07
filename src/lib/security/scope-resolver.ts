@@ -9,13 +9,29 @@
  * Invariants:
  * 1. Zero Authorization Weakening: Rejection conditions (inactive, revoked, missing, ambiguous, cross-tenant)
  *    produce exact semantic parity with legacy auth functions.
- * 2. Strict Precedence: Active pointer table has strict priority over chronological evaluation context fallback.
+ * 2. Active context is explicit: serving never selects a chronological "latest"
+ *    context when no active pointer exists.
  * 3. Zero Cartesian Multiplication: Subquery scalar projections prevent Cartesian row explosion across multiple plans/snapshots.
  */
 
 import { getDatabaseAdapter, type DatabaseAdapter } from "../../data/database";
-import { TenantIsolationError, type AuthorizedPersonScope } from "./auth";
+import { PERMISSIONS, TenantIsolationError, type AuthorizedPersonScope } from "./auth";
+import type { Permission } from "./auth";
 export type { AuthorizedPersonScope } from "./auth";
+
+const ADMIN_PERMISSIONS: Permission[] = [...PERMISSIONS];
+
+function parseStoredPermissions(serialized: string | null | undefined): Permission[] {
+  try {
+    const parsed: unknown = JSON.parse(serialized || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return [...new Set(parsed.filter((permission): permission is Permission =>
+      typeof permission === "string" && (PERMISSIONS as readonly string[]).includes(permission)
+    ))];
+  } catch {
+    return [];
+  }
+}
 
 export interface ActiveServingContext {
   readonly searchPlanId: string;
@@ -36,8 +52,6 @@ interface RawScopeContextRow {
   target_membership_revoked_at: string | null;
   pointer_context_fingerprint: string | null;
   pointer_search_plan_id: string | null;
-  fallback_context_fingerprint: string | null;
-  fallback_search_plan_id: string | null;
 }
 
 /**
@@ -99,35 +113,11 @@ export async function resolveServingScope(
           AND sp.status = 'active'
         ORDER BY aec.activated_at DESC
         LIMIT 1
-       ) AS pointer_search_plan_id,
-
-       (SELECT ec.context_fingerprint
-        FROM search_plans sp
-        JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id AND sps.tenant_id = sp.tenant_id AND sps.person_id = sp.person_id
-        JOIN evaluation_contexts ec ON ec.search_plan_snapshot_id = sps.id AND ec.tenant_id = sp.tenant_id AND ec.person_id = sp.person_id
-        WHERE sp.person_id = u.target_user_id
-          AND sp.tenant_id = COALESCE(?, p.tenant_id, (SELECT m2.tenant_id FROM memberships m2 WHERE m2.user_id = u.target_user_id AND m2.status = 'active' AND m2.revoked_at IS NULL LIMIT 1))
-          AND sp.status = 'active'
-        ORDER BY ec.created_at DESC, ec.context_fingerprint DESC
-        LIMIT 1
-       ) AS fallback_context_fingerprint,
-
-       (SELECT sp.id
-        FROM search_plans sp
-        JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id AND sps.tenant_id = sp.tenant_id AND sps.person_id = sp.person_id
-        JOIN evaluation_contexts ec ON ec.search_plan_snapshot_id = sps.id AND ec.tenant_id = sp.tenant_id AND ec.person_id = sp.person_id
-        WHERE sp.person_id = u.target_user_id
-          AND sp.tenant_id = COALESCE(?, p.tenant_id, (SELECT m2.tenant_id FROM memberships m2 WHERE m2.user_id = u.target_user_id AND m2.status = 'active' AND m2.revoked_at IS NULL LIMIT 1))
-          AND sp.status = 'active'
-        ORDER BY ec.created_at DESC, ec.context_fingerprint DESC
-        LIMIT 1
-       ) AS fallback_search_plan_id
+       ) AS pointer_search_plan_id
 
      FROM (SELECT ? AS target_user_id) u
      LEFT JOIN people p ON p.id = u.target_user_id`,
     [
-      requestedTenantId || null,
-      requestedTenantId || null,
       requestedTenantId || null,
       requestedTenantId || null,
       requestedTenantId || null,
@@ -210,11 +200,6 @@ export async function resolveServingScope(
       searchPlanId: row.pointer_search_plan_id,
       contextFingerprint: row.pointer_context_fingerprint,
     };
-  } else if (row.fallback_context_fingerprint && row.fallback_search_plan_id) {
-    activeContext = {
-      searchPlanId: row.fallback_search_plan_id,
-      contextFingerprint: row.fallback_context_fingerprint,
-    };
   }
 
   return {
@@ -257,37 +242,20 @@ export async function resolveScraperAuthContext(
     throw new TenantIsolationError(`User ${userId} has no active membership in tenant ${tenantId}.`);
   }
 
-  let permissions: import("./auth").Permission[] = [];
-  try {
-    permissions = JSON.parse(membership.permissions || "[]");
-  } catch {
-    permissions = [];
-  }
+  const permissions = parseStoredPermissions(membership.permissions);
 
   const isAdmin = membership.role === "admin";
+  // Starting a scrape is an explicit workflow policy: search-plan managers can
+  // start a run, but this policy never turns their grant into run:scraper or
+  // credential-read authority. Downstream credential access remains separately
+  // protected by CredentialBroker.
   const canRunScraper = isAdmin || permissions.includes("run:scraper") || permissions.includes("manage:search_plan");
 
   if (!canRunScraper) {
     throw new TenantIsolationError(`User ${userId} lacks 'run:scraper' or 'manage:search_plan' permission in tenant ${tenantId}.`);
   }
 
-  const effectivePermissions: import("./auth").Permission[] = isAdmin
-    ? [
-        "run:scraper",
-        "manage:search_plan",
-        "manage:credentials",
-        "read:credentials",
-        "read:evaluation",
-        "write:evaluation",
-        "read:person",
-        "write:person",
-      ]
-    : [
-        "run:scraper",
-        "read:credentials",
-        ...(permissions.includes("manage:credentials") ? (["manage:credentials"] as const) : []),
-        ...(permissions.includes("manage:search_plan") ? (["manage:search_plan"] as const) : []),
-      ];
+  const effectivePermissions: Permission[] = isAdmin ? ADMIN_PERMISSIONS : permissions;
 
   const authContext: import("./auth").AuthContext = {
     userId,
@@ -305,4 +273,3 @@ export async function resolveScraperAuthContext(
     },
   };
 }
-

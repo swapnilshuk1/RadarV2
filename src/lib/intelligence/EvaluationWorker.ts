@@ -1,11 +1,14 @@
 import crypto from "crypto";
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
-import { AuthContext, authorizePersonScope, type AuthorizedPersonScope } from "@/lib/security/auth";
-import { runEngineSingle } from "./engine";
-import { validateCandidateProjection, DEFAULT_CANDIDATE_PROJECTION } from "../domain/candidate_projection";
-import { TenantScopedPersonStore } from "@/data/sqlite/repositories/TenantScopedPersonStore";
-import { computeEvaluationIdentity } from "@/lib/domain/evaluation_fingerprint";
+import { AuthContext, authorizePersonScope } from "@/lib/security/auth";
+import { runEngineSingleIntrinsic } from "./engine";
+import { validateCandidateProjection } from "../domain/candidate_projection";
+import { validateEvaluationConsistency } from "@/lib/domain/evaluation_fingerprint";
+import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
+import { buildCanonicalDossierPresentation } from "./dossier/CanonicalDossierBuilder";
+import type { EvaluationContext } from "@/lib/domain/evaluation_context";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
+import { resolveExactCandidateProjectionForScope } from "@/data/sqlite/repositories/profile-projection-version";
 
 export interface WorkerOptions {
   adapter?: DatabaseAdapter;
@@ -120,11 +123,10 @@ export class EvaluationWorker {
       try {
         await authorizePersonScope(authContext, job.personId, this.db);
       } catch (authErr: any) {
-        return {
-          status: "authorization_failed",
-          jobId: job.id,
-          error: authErr?.message || "Authorization failed",
-        };
+        // Claimed work may never leave a lease stranded.  Treat scope failure
+        // as a normal durable worker failure so the catch block releases or
+        // dead-letters it under the job's retry policy.
+        throw new Error(`AUTHORIZATION_FAILED: ${authErr?.message || "Authorization failed"}`);
       }
 
       const versionRow = await this.db.one<{
@@ -157,6 +159,40 @@ export class EvaluationWorker {
       const isAcquired = versionRow.acquisition_status === "ACQUIRED";
       const isLifecycleActive = versionRow.lifecycle_state === "ACTIVE";
 
+      const ctxRow = await this.db.one<{
+        search_plan_snapshot_id: string;
+        ontology_version: string;
+        ontology_fingerprint: string;
+        policy_version: string;
+        profile_version: string;
+        created_at: string;
+      }>(
+        `SELECT ec.search_plan_snapshot_id,
+                ec.ontology_version, ec.ontology_fingerprint,
+                ec.policy_version, ec.profile_version, ec.created_at
+         FROM evaluation_contexts ec
+         WHERE ec.context_fingerprint = ?
+           AND ec.tenant_id = ?
+           AND ec.person_id = ?`,
+        [job.evaluationContextFingerprint, job.tenantId, job.personId]
+      );
+
+      if (!ctxRow) {
+        throw new Error(`[EvaluationWorker] Missing evaluation context for fingerprint: ${job.evaluationContextFingerprint}`);
+      }
+
+      const context: EvaluationContext = {
+        contextFingerprint: job.evaluationContextFingerprint,
+        tenantId: job.tenantId,
+        personId: job.personId,
+        searchPlanSnapshotId: ctxRow.search_plan_snapshot_id,
+        ontologyVersion: ctxRow.ontology_version,
+        ontologyFingerprint: ctxRow.ontology_fingerprint,
+        policyVersion: ctxRow.policy_version,
+        profileVersion: ctxRow.profile_version,
+        createdAt: ctxRow.created_at || new Date().toISOString(),
+      };
+
       // Dual Guard: Acquisition Trustworthiness + Active Lifecycle
       if (!isAcquired || !isLifecycleActive) {
         const evalState = (versionRow.lifecycle_state === "EXPIRED" || versionRow.lifecycle_state === "REMOVED_404")
@@ -165,13 +201,16 @@ export class EvaluationWorker {
           ? "ACQUISITION_FAILED"
           : "ACQUISITION_PENDING";
 
-        const evalIdentity = computeEvaluationIdentity(
+        const unavailable = buildCanonicalUnavailablePayload(
+          job.canonicalJobId,
+          evalState,
+          context,
           job.canonicalJobId,
           job.opportunityVersion,
-          job.evaluationContextFingerprint
+          new Date().toISOString()
         );
-        const matId = `mat_${crypto.randomUUID()}`;
-
+        const materialized = materializeCanonicalPayload(unavailable);
+        validateEvaluationConsistency(materialized);
         return await this.db.transaction<WorkerProcessingResult>(async (tx) => {
           const leaseCheck = await tx.one<{ id: string }>(
             `SELECT id FROM evaluation_jobs WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
@@ -188,12 +227,13 @@ export class EvaluationWorker {
           await tx.execute(
             `INSERT INTO materialized_evaluations (
                id, tenant_id, person_id, canonical_job_id, opportunity_version,
-               evaluation_context_fingerprint, evaluation_state, decision, quality_score,
+               evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
                rationale, evidence_ids, evaluation_json, vetoed, materialized_at
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP)
+             ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP)
              ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
              DO UPDATE SET
                evaluation_state = EXCLUDED.evaluation_state,
+               evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
                decision = EXCLUDED.decision,
                quality_score = EXCLUDED.quality_score,
                rationale = EXCLUDED.rationale,
@@ -202,16 +242,16 @@ export class EvaluationWorker {
                vetoed = EXCLUDED.vetoed,
                materialized_at = CURRENT_TIMESTAMP`,
             [
-              matId,
-              job.tenantId,
-              job.personId,
-              job.canonicalJobId,
-              job.opportunityVersion,
-              job.evaluationContextFingerprint,
-              evalState,
-              JSON.stringify({ status: evalState, reason: "Bypassed evaluation: capture untrusted or job inactive" }),
-              JSON.stringify([]),
-              JSON.stringify({ evaluationState: evalState, bypassed: true }),
+              materialized.id,
+              materialized.tenantId,
+              materialized.personId,
+              materialized.canonicalJobId,
+              materialized.opportunityVersion,
+              materialized.evaluationContextFingerprint,
+              materialized.evaluationState,
+              materialized.rationale,
+              JSON.stringify(materialized.evidenceIds),
+              materialized.evaluationJson,
             ]
           );
 
@@ -243,8 +283,9 @@ export class EvaluationWorker {
           rawDescription: versionRow.raw_content,
         } as unknown as OpportunitySource;
       }
+      oppSource.jobHash ||= job.canonicalJobId;
 
-      const ctxRow = await this.db.one<{ payload_json: string }>(
+      const snapshotRow = await this.db.one<{ payload_json: string }>(
         `SELECT sps.payload_json
          FROM evaluation_contexts ec
          JOIN search_plan_snapshots sps ON ec.search_plan_snapshot_id = sps.id
@@ -254,19 +295,67 @@ export class EvaluationWorker {
         [job.evaluationContextFingerprint, job.tenantId, job.personId]
       );
 
-      if (!ctxRow) {
+      if (!snapshotRow) {
         throw new Error(`[EvaluationWorker] Missing evaluation context snapshot for fingerprint: ${job.evaluationContextFingerprint}`);
       }
 
       // Authoritative Candidate Profile Resolution for (job.tenantId, job.personId)
       // 1. Authoritative candidate projection resolution via TenantScopedPersonStore
-      const scope: AuthorizedPersonScope = {
-        tenantId: job.tenantId,
-        personId: job.personId,
-      };
-      const personStore = new TenantScopedPersonStore(this.db, scope);
-      const rawProjection = await personStore.getLatestProjection(job.personId);
-      const projection = rawProjection || DEFAULT_CANDIDATE_PROJECTION;
+      // The immutable context pins the projection version. A later CV upload
+      // must not change a queued job's candidate input.
+      const rawProjection = await resolveExactCandidateProjectionForScope(
+        this.db,
+        { tenantId: job.tenantId, personId: job.personId },
+        context.profileVersion,
+      );
+      if (!rawProjection) {
+        // A missing profile is a domain state, not permission to evaluate a
+        // synthetic executive. Persist an explicitly non-advisory result.
+        const unavailable = buildCanonicalUnavailablePayload(
+          oppSource.jobHash || job.canonicalJobId,
+          "NOT_EVALUABLE",
+          context,
+          job.canonicalJobId,
+          job.opportunityVersion,
+          new Date().toISOString(),
+        );
+        const materialized = materializeCanonicalPayload(unavailable);
+        validateEvaluationConsistency(materialized);
+        return await this.db.transaction<WorkerProcessingResult>(async (tx) => {
+          const leaseCheck = await tx.one<{ id: string }>(
+            `SELECT id FROM evaluation_jobs WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
+            [job.id, this.workerId, job.leaseToken]
+          );
+          if (!leaseCheck) return { status: "stale_lease_lost", jobId: job.id, error: "Lease token was lost or replaced before completion" };
+
+          await tx.execute(
+            `INSERT INTO materialized_evaluations (
+               id, tenant_id, person_id, canonical_job_id, opportunity_version,
+               evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
+               rationale, evidence_ids, evaluation_json, vetoed, materialized_at
+             ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP)
+             ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+             DO UPDATE SET evaluation_state = EXCLUDED.evaluation_state,
+                           evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
+                           decision = EXCLUDED.decision, quality_score = EXCLUDED.quality_score,
+                           rationale = EXCLUDED.rationale, evidence_ids = EXCLUDED.evidence_ids,
+                           evaluation_json = EXCLUDED.evaluation_json, vetoed = EXCLUDED.vetoed,
+                           materialized_at = CURRENT_TIMESTAMP`,
+            [materialized.id, materialized.tenantId, materialized.personId,
+             materialized.canonicalJobId, materialized.opportunityVersion,
+             materialized.evaluationContextFingerprint, materialized.evaluationState,
+             materialized.rationale, JSON.stringify(materialized.evidenceIds), materialized.evaluationJson]
+          );
+          const complete = await tx.execute(
+            `UPDATE evaluation_jobs SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
+            [job.id, this.workerId, job.leaseToken]
+          );
+          if (complete.rowsAffected === 0) return { status: "stale_lease_lost", jobId: job.id, error: "Lease token was lost or replaced during completion" };
+          return { status: "completed", jobId: job.id };
+        });
+      }
+      const projection = rawProjection;
 
       // 2. CandidateProjection integrity verification
       const validation = validateCandidateProjection(projection);
@@ -276,27 +365,58 @@ export class EvaluationWorker {
         );
       }
 
-      const presented = runEngineSingle(
+      const artifact = runEngineSingleIntrinsic(
         oppSource.jobHash || job.canonicalJobId,
         projection,
         0,
         [oppSource]
       );
 
-      const rawVerb = presented?.record?.verb || presented?.opportunity?.decision || "CONSIDER";
+      if (!artifact) {
+        throw new Error(`[EvaluationWorker] Intrinsic evaluation artifact missing for ${job.canonicalJobId}`);
+      }
 
       const isGenuinelySparse =
-        (rawVerb === "SPARSE_SPEC" || versionRow.evidence_state === "GENUINELY_SPARSE") &&
-        isAcquired &&
-        versionRow.acquisition_quality === "COMPLETE";
+        artifact.record?.verb === "SPARSE_SPEC" ||
+        (versionRow.evidence_state === "GENUINELY_SPARSE" &&
+          isAcquired &&
+          versionRow.acquisition_quality === "COMPLETE");
 
-      const evaluationState = isGenuinelySparse ? "SPARSE_SPEC" : "EVALUATED";
-      const decision = isGenuinelySparse ? null : (rawVerb === "PURSUE" ? "PURSUE" : rawVerb === "PASS" ? "PASS" : "CONSIDER");
-      const score = isGenuinelySparse ? null : (presented?.record?.priority ?? 50);
-      const isVetoed = Boolean(presented?.record?.vetoed ?? (presented as any)?.vetoed ?? false);
+      const evaluationState = isGenuinelySparse
+        ? "SPARSE_SPEC"
+        : resolveArtifactEvaluationState(artifact);
+      const evaluatedAt = new Date().toISOString();
+      const canonicalPayload = evaluationState === "EVALUATED"
+        ? (() => {
+            const intrinsic = buildCanonicalEvaluatedPayload(
+              artifact, context, job.canonicalJobId, job.opportunityVersion, evaluatedAt,
+            );
+            return {
+              ...intrinsic,
+              dossierPresentation: buildCanonicalDossierPresentation(
+                artifact,
+                projection,
+                intrinsic.evaluationInputHash,
+                evaluatedAt,
+                evaluatedAt,
+              ),
+            };
+          })()
+        : buildCanonicalUnavailablePayload(
+            oppSource.jobHash || job.canonicalJobId,
+            evaluationState,
+            context,
+            job.canonicalJobId,
+            job.opportunityVersion,
+            evaluatedAt
+          );
+      const materialized = materializeCanonicalPayload(canonicalPayload);
+      materialized.evaluationFingerprint = evaluationState === "EVALUATED"
+        ? canonicalPayload.evaluationInputHash
+        : null;
+      validateEvaluationConsistency(materialized);
+      const isVetoed = Boolean(artifact.record?.vetoed ?? false);
       const vetoedScalar = isVetoed ? 1 : 0;
-
-      const matId = `mat_${crypto.randomUUID()}`;
 
       const workerResult = await this.db.transaction<WorkerProcessingResult>(async (tx) => {
         const leaseCheck = await tx.one<{ id: string }>(
@@ -314,12 +434,13 @@ export class EvaluationWorker {
         await tx.execute(
           `INSERT INTO materialized_evaluations (
              id, tenant_id, person_id, canonical_job_id, opportunity_version,
-             evaluation_context_fingerprint, evaluation_state, decision, quality_score,
+             evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
              rationale, evidence_ids, evaluation_json, vetoed, materialized_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
            ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
            DO UPDATE SET
              evaluation_state = EXCLUDED.evaluation_state,
+             evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
              decision = EXCLUDED.decision,
              quality_score = EXCLUDED.quality_score,
              rationale = EXCLUDED.rationale,
@@ -328,18 +449,19 @@ export class EvaluationWorker {
              vetoed = EXCLUDED.vetoed,
              materialized_at = CURRENT_TIMESTAMP`,
           [
-            matId,
+            materialized.id,
             job.tenantId,
             job.personId,
             job.canonicalJobId,
             job.opportunityVersion,
             job.evaluationContextFingerprint,
-            evaluationState,
-            decision,
-            score,
-            JSON.stringify(presented?.record?.explanation || {}),
-            JSON.stringify(presented?.record?.triggeredRuleIds || []),
-            JSON.stringify(presented || {}),
+            materialized.evaluationFingerprint,
+            materialized.evaluationState,
+            materialized.decision,
+            materialized.qualityScore,
+            materialized.rationale,
+            JSON.stringify(materialized.evidenceIds),
+            materialized.evaluationJson,
             vetoedScalar,
           ]
         );
@@ -363,7 +485,7 @@ export class EvaluationWorker {
         return {
           status: "completed",
           jobId: job.id,
-          decision: decision as any,
+          decision: materialized.decision as any,
         };
       });
 

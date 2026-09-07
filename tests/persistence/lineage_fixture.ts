@@ -49,3 +49,18 @@ export async function setupLineageTestFixture(db: DatabaseAdapter): Promise<void
     ["fingerprint_A", "tenant_A", "person_A", "sps_A", "v1", "hash_ontology", "v1", "v1"]
   );
 }
+
+/** Creates explicit serving authority for the fixture's A lineage. */
+export async function activateLineageTestContext(db: DatabaseAdapter): Promise<void> {
+  // Migration 028 requires an immutable scope binding before an active pointer.
+  await db.execute(
+    `INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+     VALUES (?, ?, ?, ?)`,
+    ["fingerprint_A", "tenant_A", "person_A", "plan_A"]
+  );
+  await db.execute(
+    `INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+     VALUES (?, ?, ?, ?, ?)`,
+    ["tenant_A", "person_A", "plan_A", "fingerprint_A", "test-fixture"]
+  );
+}

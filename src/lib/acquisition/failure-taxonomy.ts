@@ -9,6 +9,7 @@ export type FailureCategory = "TRANSPORT" | "ACCESS" | "CONTENT" | "IDENTITY" | 
 export type FailureClass =
   // TRANSPORT (Retryable with exponential backoff)
   | "HTTP_TIMEOUT"
+  | "HTTP_SERVER_ERROR"
   | "NAVIGATION_TIMEOUT"
   | "DNS_ERROR"
   | "CONNECTION_ERROR"
@@ -22,12 +23,16 @@ export type FailureClass =
   // CONTENT (Transport Fallback / Secondary Selector Retry)
   | "EMPTY_CONTENT"
   | "WRONG_PAGE_REDIRECT"
+  | "WRONG_PAGE"
+  | "UNRESOLVED_REDIRECT"
+  | "UNEXTRACTED_PDF"
   | "PARTIAL_CONTENT"
   | "INVALID_SCHEMA"
   
   // IDENTITY (Quarantine)
   | "MISSING_JOB_ID"
   | "AMBIGUOUS_IDENTITY"
+  | "LISTING_DOCUMENT_IDENTITY_MISMATCH"
   
   // LIFECYCLE (Terminal)
   | "EXPIRED"
@@ -49,6 +54,7 @@ export class FailurePolicyEngine {
     switch (failureClass) {
       // TRANSPORT
       case "HTTP_TIMEOUT":
+      case "HTTP_SERVER_ERROR":
       case "NAVIGATION_TIMEOUT":
       case "CONNECTION_ERROR":
       case "DNS_ERROR":
@@ -91,6 +97,9 @@ export class FailurePolicyEngine {
       case "EMPTY_CONTENT":
       case "PARTIAL_CONTENT":
       case "WRONG_PAGE_REDIRECT":
+      case "WRONG_PAGE":
+      case "UNRESOLVED_REDIRECT":
+      case "UNEXTRACTED_PDF":
       case "INVALID_SCHEMA":
         return {
           category: "CONTENT",
@@ -105,6 +114,7 @@ export class FailurePolicyEngine {
       // IDENTITY
       case "MISSING_JOB_ID":
       case "AMBIGUOUS_IDENTITY":
+      case "LISTING_DOCUMENT_IDENTITY_MISMATCH":
         return {
           category: "IDENTITY",
           failureClass,

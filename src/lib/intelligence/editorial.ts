@@ -762,9 +762,7 @@ export function playbookNarrative(
     const rec = selectOpening(record, source);
     return {
       ...benchmark,
-      recommendation: record.headspace.downgraded
-        ? `Saturated: ${record.headspace.reason} (High priority remains, but client capacity reached)`
-        : rec,
+      recommendation: rec,
     };
   }
   
@@ -800,9 +798,7 @@ export function playbookNarrative(
 
   return {
     ...dynamic,
-    recommendation: record.headspace.downgraded
-      ? `Saturated: ${record.headspace.reason} (High priority remains, but client capacity reached)`
-      : dynamic.recommendation,
+    recommendation: dynamic.recommendation,
     // P2-A.1: Use strategic advantage synthesis for "Why Me?"
     primaryDriver: formatStrategicAdvantage(strategicAdvantage),
     // P2-A.2: Use principal risk synthesis for authoritative risk intelligence

@@ -5,7 +5,6 @@ import Database from "better-sqlite3";
 import * as fs from "fs";
 import * as path from "path";
 import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
-import { SqliteCanonicalServingStore } from "../../src/data/sqlite/repositories/SqliteCanonicalServingStore";
 import { serveEvaluation } from "../../src/lib/intelligence/serving/EvaluationServingEngine";
 import { runMigrations } from "../../src/data/sqlite/migrations/runner";
 
@@ -13,7 +12,6 @@ describe("M9.2C Canonical Posting-Date Provenance", () => {
   let db: DatabaseAdapter;
   let sqliteDb: Database.Database;
   let ingestionService: CanonicalIngestionService;
-  let servingStore: SqliteCanonicalServingStore;
   
   const tenantId = "tenant_pd";
   const personId = "person_pd";
@@ -23,7 +21,6 @@ describe("M9.2C Canonical Posting-Date Provenance", () => {
     sqliteDb = new Database(":memory:");
     db = new SqliteAdapter(sqliteDb);
     ingestionService = new CanonicalIngestionService(db);
-    servingStore = new SqliteCanonicalServingStore(db);
 
     await runMigrations(db);
 
@@ -49,7 +46,7 @@ describe("M9.2C Canonical Posting-Date Provenance", () => {
       companyName: "Valid Corp",
       location: "Remote",
       postedAt,
-      rawContent: "{}"
+      rawContent: "Valid Corp is seeking an executive technology leader to own enterprise strategy, build cross-functional teams, lead platform modernization, and deliver measurable commercial outcomes across a global operating environment."
     }, scope);
 
     const row = await db.one<any>(`SELECT posted_at, created_at FROM opportunity_versions WHERE id = ?`, [res.opportunityVersion]);
@@ -61,11 +58,12 @@ describe("M9.2C Canonical Posting-Date Provenance", () => {
     const res = await ingestionService.ingestOpportunity({
       sourcePortal: "indeed",
       sourceJobId: "job_missing",
-      canonicalUrl: "https://indeed.com/jobs/job_missing",
+      canonicalUrl: "https://indeed.com/viewjob?jk=jobmissing",
+      finalUrl: "https://indeed.com/viewjob?jk=jobmissing",
       jobTitle: "CTO",
       companyName: "Missing Corp",
       location: "Remote",
-      rawContent: "{}" // Note: postedAt omitted
+      rawContent: "Missing Corp seeks a senior technology executive to lead the engineering organization, establish scalable operating practices, direct enterprise architecture, and deliver strategic transformation outcomes." // Note: postedAt omitted
     }, scope);
 
     const row = await db.one<any>(`SELECT posted_at, created_at FROM opportunity_versions WHERE id = ?`, [res.opportunityVersion]);

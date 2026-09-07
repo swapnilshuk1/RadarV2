@@ -4,6 +4,14 @@ import type { ExtractionResult, DetailedCard } from "../types";
 import { EXTRACTION_DIR, SNAPSHOT_DIR, LIVE_SCRAPED_JSON } from "../config";
 import { writeJsonAtomic, readJsonSafe, fileAgeHours } from "../utils/fs-atomic";
 
+export interface CanonicalEvaluationEvidenceReference {
+  canonicalJobId: string;
+  opportunityVersion: string;
+  contentHash: string;
+  sourcePayloadKey: string | null;
+  sourceMediaType: string | null;
+}
+
 // Cache paths: keep snapshots and extractions in separate content-addressed
 // stores so `live-scraped.json` is never the system of record.
 export function snapshotPath(cardHash: string): string {
@@ -24,6 +32,28 @@ export function writeSnapshot(s: DetailedCard): string {
   const p = snapshotPath(s.cardHash);
   writeJsonAtomic(p, s);
   return p;
+}
+
+/**
+ * Binds a local acquisition snapshot to the immutable canonical document that
+ * downstream projection/evaluation consumes. It does not duplicate document
+ * bytes or create a second persistence authority.
+ */
+export function bindEvaluationEvidence(
+  snapshot: DetailedCard,
+  reference: CanonicalEvaluationEvidenceReference,
+): DetailedCard {
+  return {
+    ...snapshot,
+    evaluationEvidence: {
+      state: "BOUND",
+      canonicalJobId: reference.canonicalJobId,
+      opportunityVersion: reference.opportunityVersion,
+      contentHash: reference.contentHash,
+      sourcePayloadKey: reference.sourcePayloadKey,
+      sourceMediaType: reference.sourceMediaType,
+    },
+  };
 }
 
 export function readExtractionIfFresh(cardHash: string, maxAgeHours: number, extractorVersion: string): ExtractionResult | null {
@@ -67,4 +97,3 @@ export function collectRecords(): unknown[] {
   }
   return records;
 }
-

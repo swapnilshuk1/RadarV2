@@ -35,8 +35,44 @@ export type EvaluationState =
   | 'ACQUISITION_PENDING'
   | 'ACQUISITION_FAILED'
   | 'SPARSE_SPEC'
+  | 'NOT_EVALUABLE'
   | 'EVALUATED'
   | 'EXPIRED';
+
+/**
+ * The authoritative boundary between a fetched portal response and anything
+ * allowed to enter job projection.  HTTP success alone is deliberately not a
+ * usable job document: a redirect page, portal shell, or PDF byte stream is
+ * useful acquisition evidence but must never be interpreted as a JD.
+ */
+export type DocumentTransportState = 'SUCCEEDED' | 'REDIRECTED' | 'FAILED';
+export type DocumentExtractionState = 'EXTRACTED' | 'PENDING' | 'FAILED' | 'NOT_ATTEMPTED';
+export type DocumentUsabilityState = 'SUBSTANTIVE' | 'GENUINELY_SPARSE' | 'UNUSABLE';
+
+export interface ValidatedJobDocument {
+  source: string;
+  sourceJobId?: string;
+  canonicalUrl: string;
+  finalUrl: string;
+  contentType: string | null;
+  transportState: DocumentTransportState;
+  extractionState: DocumentExtractionState;
+  usabilityState: DocumentUsabilityState;
+  acquisitionQuality: AcquisitionQuality;
+  title: string | null;
+  company: string | null;
+  location: string | null;
+  titleAgreement: 'MATCHED' | 'MISMATCHED' | 'UNKNOWN';
+  companyAgreement: 'MATCHED' | 'MISMATCHED' | 'UNKNOWN';
+  substantiveWordCount: number;
+  substantiveCharacterCount: number;
+  boilerplateRatio: number;
+  scriptRatio: number;
+  failureClass: string | null;
+  retryable: boolean;
+  extractedText: string | null;
+  provenance: 'HTTP' | 'BROWSER' | 'JSON_LD' | 'TARGETED_DOM' | 'SANITIZED_DOM' | 'BLOB';
+}
 
 export interface CanonicalOpportunity {
   id: string; // Deterministic SHA256 of Canonical Serialization
@@ -62,6 +98,9 @@ export interface OpportunityVersion {
   failureClass?: string | null;
   lifecycleState: LifecycleState;
   evidenceState: EvidenceState;
+  sourcePayloadKey?: string | null;
+  sourceMediaType?: string | null;
+  documentExtractionState?: DocumentExtractionState | null;
   createdAt: string;
 }
 
@@ -74,6 +113,10 @@ export interface SearchPlanCandidate {
   canonicalJobId: string;
   opportunityVersion: string;
   attentionDecision: AttentionDecision;
+  eligibility?: "ELIGIBLE" | "REVIEW" | "INELIGIBLE";
+  eligibilityReasonCodes?: string[];
+  locationPolicy?: string | null;
+  locationEvidence?: string | null;
   createdAt: string;
 }
 

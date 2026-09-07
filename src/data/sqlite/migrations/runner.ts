@@ -8,6 +8,46 @@ export interface MigrationResult {
   skipped: string[];
 }
 
+export interface RequiredSchemaStatus {
+  readonly evaluationFingerprintColumnPresent: boolean;
+  readonly categoryIdsColumnPresent: boolean;
+}
+
+const REQUIRED_COLUMNS = [
+  { table: "materialized_evaluations", column: "evaluation_fingerprint", statusKey: "evaluationFingerprintColumnPresent" as const, migration: "037_materialized_evaluation_fingerprint.sql" },
+  { table: "opportunity_versions", column: "category_ids", statusKey: "categoryIdsColumnPresent" as const, migration: "038_opportunity_version_category_projection.sql" },
+] as const;
+
+export async function getRequiredSchemaStatus(db: DatabaseAdapter): Promise<RequiredSchemaStatus> {
+  let evaluationFingerprintColumnPresent = false;
+  let categoryIdsColumnPresent = false;
+  for (const required of REQUIRED_COLUMNS) {
+    const columns = await db.many<{ name: string }>(`PRAGMA table_info(${required.table})`);
+    const present = columns.some((column) => column.name === required.column);
+    if (required.statusKey === "evaluationFingerprintColumnPresent") evaluationFingerprintColumnPresent = present;
+    else categoryIdsColumnPresent = present;
+  }
+  return { evaluationFingerprintColumnPresent, categoryIdsColumnPresent };
+}
+
+/** Refuse startup when the migration ledger and physical schema diverge. */
+export async function verifyRequiredSchema(db: DatabaseAdapter): Promise<RequiredSchemaStatus> {
+  const status = await getRequiredSchemaStatus(db);
+  for (const required of REQUIRED_COLUMNS) {
+    if (!status[required.statusKey]) {
+      const recorded = await db.one<{ migration_name: string }>(
+        "SELECT migration_name FROM _migrations WHERE migration_name = ?",
+        [required.migration],
+      );
+      const drift = recorded
+        ? `SCHEMA_DRIFT: migration ${required.migration} is recorded but ${required.table}.${required.column} is missing.`
+        : `SCHEMA_INCOMPATIBLE: required column ${required.table}.${required.column} is missing after migrations.`;
+      throw new Error(`[MigrationRunner] ${drift}`);
+    }
+  }
+  return status;
+}
+
 /**
  * Splits a SQL script into individual executable statements,
  * ignoring semicolons inside string literals and stripping comments.
@@ -109,7 +149,8 @@ export function splitSqlStatements(sql: string): string[] {
  */
 export async function runMigrations(
   adapter?: DatabaseAdapter,
-  migrationsDir?: string
+  migrationsDir?: string,
+  options: { verifyRequiredSchema?: boolean } = {},
 ): Promise<MigrationResult> {
   const db = adapter || getDatabaseAdapter();
 
@@ -172,6 +213,9 @@ export async function runMigrations(
     applied.push(file);
   }
 
+  if (options.verifyRequiredSchema !== false) {
+    await verifyRequiredSchema(db);
+  }
   return { applied, skipped };
 }
 

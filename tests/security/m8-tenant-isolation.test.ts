@@ -8,7 +8,7 @@ import {
   authorizePersonScope,
   TenantIsolationError,
 } from "../../src/lib/security/auth";
-import { SqliteCanonicalServingStore } from "../../src/data/sqlite/repositories/SqliteCanonicalServingStore";
+import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 
 describe("Milestone M8 — Multi-Tenant Isolation & Adversarial Security", () => {
   let sqliteDb: Database.Database;
@@ -38,6 +38,8 @@ describe("Milestone M8 — Multi-Tenant Isolation & Adversarial Security", () =>
       "027_materialized_evaluations_nullable_decision.sql",
       "028_active_evaluation_context_pointers.sql",
       "029_materialized_evaluations_vetoed.sql",
+      "037_materialized_evaluation_fingerprint.sql",
+      "038_opportunity_version_category_projection.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -53,10 +55,12 @@ describe("Milestone M8 — Multi-Tenant Isolation & Adversarial Security", () =>
 
       INSERT INTO users (id, email) VALUES 
         ('${legitimateUserId}', 'swapnil@test.com'),
+        ('${legitimatePersonId}', 'person-swapnil@test.com'),
         ('adversary_user', 'adversary@test.com');
 
       INSERT INTO memberships (user_id, tenant_id, role, permissions, status) VALUES 
         ('${legitimateUserId}', '${legitimateTenantId}', 'admin', '["read:evaluation"]', 'active'),
+        ('${legitimatePersonId}', '${legitimateTenantId}', 'admin', '["read:evaluation"]', 'active'),
         ('adversary_user', '${adversarialTenantId}', 'member', '["read:evaluation"]', 'active');
 
       INSERT INTO people (id, email, tenant_id) VALUES 
@@ -73,18 +77,23 @@ describe("Milestone M8 — Multi-Tenant Isolation & Adversarial Security", () =>
       INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES 
         ('ctx_fp_legit', '${legitimateTenantId}', '${legitimatePersonId}', 'sps_legit', 'v2', 'ofp_1', 'v4.3', 'prof_1');
 
+      INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id) VALUES
+        ('ctx_fp_legit', '${legitimateTenantId}', '${legitimatePersonId}', 'sp_legit');
+      INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by) VALUES
+        ('${legitimateTenantId}', '${legitimatePersonId}', 'sp_legit', 'ctx_fp_legit', 'test');
+
       -- Seed canonical opportunity & version
       INSERT INTO canonical_opportunities (id, source, source_job_id, canonical_url, company_name) VALUES 
         ('can_job_1', 'LinkedIn', 'job_hash_legit_1', 'https://linkedin.com/jobs/1', 'Acme Corp');
 
-      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content) VALUES 
-        ('ov_1', 'can_job_1', 'chash_1', 'VP Engineering', 'Acme Corp', 'Bengaluru', 'Full-time', 'Job Description content');
+      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, acquisition_status, acquisition_quality, lifecycle_state, evidence_state) VALUES
+        ('ov_1', 'can_job_1', 'chash_1', 'VP Engineering', 'Acme Corp', 'Bengaluru', 'Full-time', 'Job Description content', 'ACQUIRED', 'SUBSTANTIVE', 'ACTIVE', 'ACCEPTED');
 
       INSERT INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES 
         ('${legitimateTenantId}', '${legitimatePersonId}', 'sp_legit', 'can_job_1', 'ov_1', 'CANDIDATE');
 
-      INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, decision, quality_score, rationale, evidence_ids, evaluation_json) VALUES 
-        ('me_1', '${legitimateTenantId}', '${legitimatePersonId}', 'can_job_1', 'ov_1', 'ctx_fp_legit', 'PURSUE', 92.5, 'High fit', '[]', '{"jobHash":"job_hash_legit_1","role":"VP Engineering","company":"Acme Corp","location":"Bengaluru","decision":"PURSUE","intrinsicVerdict":"PURSUE","intrinsicQualityScore":92.5,"baseNarrative":{"baseRecommendationProse":"Recommended."}}');
+      INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, evaluation_state, evaluation_fingerprint, decision, quality_score, rationale, evidence_ids, evaluation_json) VALUES
+        ('me_1', '${legitimateTenantId}', '${legitimatePersonId}', 'can_job_1', 'ov_1', 'ctx_fp_legit', 'COMPLETE', 'evaluation_fp_1', 'PURSUE', 92.5, 'High fit', '[]', '{"schema":"v4.3-intrinsic","evaluationInputHash":"evaluation_fp_1","jobHash":"job_hash_legit_1","role":"VP Engineering","company":"Acme Corp","location":"Bengaluru","decision":"PURSUE","intrinsicVerdict":"PURSUE","intrinsicQualityScore":92.5,"baseNarrative":{"baseRecommendationProse":"Recommended."}}');
     `);
   });
 
@@ -115,34 +124,34 @@ describe("Milestone M8 — Multi-Tenant Isolation & Adversarial Security", () =>
   });
 
   it("should ensure canonical queries strictly isolate opportunities between tenants", async () => {
-    const store = new SqliteCanonicalServingStore(db);
+    const opportunityQueries = new SqliteOpportunityQueries(db);
 
     // 1. Legitimate scope returns active opportunities
     const legitimateScope = {
       tenantId: legitimateTenantId,
       personId: legitimatePersonId,
     };
-    const legitimateOpps = await store.listOpportunities(legitimateScope);
+    const legitimateOpps = (await opportunityQueries.getFeed(legitimateScope, undefined, undefined, 24)).items;
     expect(legitimateOpps.length).toBe(1);
     expect(legitimateOpps[0].jobHash).toBe("job_hash_legit_1");
     expect(legitimateOpps[0].role).toBe("VP Engineering");
 
-    // 2. Synthetic foreign scope returns 0 opportunities
+    // 2. A foreign person cannot establish serving authority at all. This is
+    // stronger than filtering a feed after the fact.
     const foreignScope = {
       tenantId: adversarialTenantId,
       personId: foreignPersonId,
     };
-    const foreignOpps = await store.listOpportunities(foreignScope);
-    expect(foreignOpps).toHaveLength(0);
+    await expect(opportunityQueries.getFeed(foreignScope, undefined, undefined, 24))
+      .rejects.toThrow(TenantIsolationError);
 
-    // 3. Synthetic foreign scope single get returns undefined
-    const leakAttempt = await store.getOpportunity(foreignScope, "job_hash_legit_1");
-    expect(leakAttempt).toBeUndefined();
+    // 3. The same denial applies to a direct dossier lookup.
+    await expect(opportunityQueries.getDossier(foreignScope, "job_hash_legit_1"))
+      .rejects.toThrow(TenantIsolationError);
 
-    // 4. Synthetic foreign scope metrics return 0 screened count
-    const foreignMetrics = await store.getOpportunityMetrics(foreignScope);
-    expect(foreignMetrics.totalScreened).toBe(0);
-    expect(foreignMetrics.activePursuits).toBe(0);
+    // 4. Metrics cannot become an information-disclosure side channel.
+    await expect(opportunityQueries.getMetrics(foreignScope))
+      .rejects.toThrow(TenantIsolationError);
   });
 
   it("should fail resolveScope when user has no active tenant memberships", async () => {

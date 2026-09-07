@@ -89,7 +89,7 @@ export class CapabilityAssessmentEngine {
     }
 
     // Check functional adjacency between candidate identity and job domain
-    const candidateIdentity = (candidate.executiveThemes?.join(" ") || "Commercial & Marketing Leadership").toLowerCase();
+    const candidateIdentity = (candidate.executiveThemes || []).join(" ").toLowerCase();
     const isCommercialCandidate = candidateIdentity.includes("commercial") || candidateIdentity.includes("marketing") || candidateIdentity.includes("growth");
     const isOrthogonalDomain = ["medical", "clinical", "hospital", "nuclear", "supply chain", "logistics", "procurement", "manufacturing", "site strategy"].some(d => jobLower.includes(d));
 

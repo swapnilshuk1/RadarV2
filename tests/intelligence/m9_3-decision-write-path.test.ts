@@ -27,7 +27,9 @@ describe("M9.3 Canonical Decision Write-Path", () => {
       "018_multi_tenant_foundation.sql",
       "019_evaluation_context_and_read_model.sql",
       "020_canonical_acquisition.sql",
-      "025_canonical_decisions.sql"
+      "025_canonical_decisions.sql",
+      "028_active_evaluation_context_pointers.sql",
+      "037_materialized_evaluation_fingerprint.sql"
     ];
 
     for (const file of migrationFiles) {
@@ -45,6 +47,44 @@ describe("M9.3 Canonical Decision Write-Path", () => {
       "INSERT INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES (?, ?, ?, ?), (?, ?, ?, ?)",
       ["canon_hash_1", "linkedin", "job_1", "http://linkedin.com/1",
        "canon_hash_2", "indeed", "job_2", "http://indeed.com/2"]
+    );
+
+    // Decision writes are authorized only through the explicit active context
+    // and its candidate population. The fixture must model that production
+    // boundary rather than relying on the retired direct-write shortcut.
+    for (const [tenantId, personId, planId, snapshotId, fingerprint] of [
+      [TENANT_A, PERSON_A, "plan_a", "snapshot_a", "fingerprint_a"],
+      [TENANT_B, PERSON_B, "plan_b", "snapshot_b", "fingerprint_b"],
+    ] as const) {
+      await db.execute(
+        "INSERT INTO search_plans (id, tenant_id, person_id, title, criteria_json) VALUES (?, ?, ?, ?, ?)",
+        [planId, tenantId, personId, "Decision fixture", "{}"],
+      );
+      await db.execute(
+        "INSERT INTO search_plan_snapshots (id, tenant_id, person_id, search_plan_id, snapshot_hash, payload_json) VALUES (?, ?, ?, ?, ?, ?)",
+        [snapshotId, tenantId, personId, planId, `${snapshotId}-hash`, "{}"],
+      );
+      await db.execute(
+        "INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [fingerprint, tenantId, personId, snapshotId, "v4.3", "ontology", "policy", "profile"],
+      );
+      await db.execute(
+        "INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id) VALUES (?, ?, ?, ?)",
+        [fingerprint, tenantId, personId, planId],
+      );
+      await db.execute(
+        "INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by) VALUES (?, ?, ?, ?, ?)",
+        [tenantId, personId, planId, fingerprint, "test"],
+      );
+    }
+
+    await db.execute(
+      "INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)",
+      ["version_1", "canon_hash_1", "hash_1", "Role 1", "{}", "version_2", "canon_hash_2", "hash_2", "Role 2", "{}"],
+    );
+    await db.execute(
+      "INSERT INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?)",
+      [TENANT_A, PERSON_A, "plan_a", "canon_hash_1", "version_1", "CANDIDATE", TENANT_B, PERSON_B, "plan_b", "canon_hash_1", "version_1", "CANDIDATE"],
     );
 
     decisionsStore = new SqliteDecisionSupportStore(db);

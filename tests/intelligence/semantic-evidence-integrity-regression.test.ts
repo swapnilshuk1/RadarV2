@@ -74,6 +74,97 @@ describe("Semantic Evidence Integrity & Boundary Invariants", () => {
       expect(operatingLevelDim?.importance).toBe("Core");
     });
 
+    it("grounds explicit end-to-end business P&L ownership as commercial scope", () => {
+      const projection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "futureleap-commercial-scope-regression",
+        role: "Business Head",
+        rawDescription: `
+          Own the end-to-end P&L, revenue, profitability, margins, and overall
+          business performance. Lead the D2C business, category strategy,
+          sourcing, merchandising, inventory, supply chain, and operations.
+        `,
+      });
+
+      expect(projection.commercialScope.value).toBe("ENTERPRISE");
+      expect(projection.commercialScope.evidenceIds).toContain("cs_ent_direct_business_commercial_ownership");
+      expect(projection.dimensions?.find((dimension) => dimension.key === "commercialScope")?.jdEvidence.value).toBe("ENTERPRISE");
+    });
+
+    it("does not convert generic commercial objectives into P&L authority", () => {
+      const projection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "generic-commercial-language-regression",
+        role: "Marketing Lead",
+        rawDescription: `
+          Partner with sales to improve revenue outcomes and profitability.
+          Support margin improvement through campaign optimization and report
+          commercial metrics to the business head.
+        `,
+      });
+
+      expect(projection.commercialScope.value).toBe("NONE");
+      expect(projection.commercialScope.evidenceIds).toEqual(["cs_none"]);
+    });
+
+    it("does not invent success conditions when the published document does not state them", () => {
+      const projection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "no-invented-success-conditions",
+        role: "Director of Influencer Marketing",
+        rawDescription: "Lead influencer marketing for the brand. Reporting line and commercial mandate are not published.",
+      });
+
+      expect(projection.executiveMission.successConditions).toEqual([]);
+    });
+
+    it("preserves explicit published success conditions without adding generic commitments", () => {
+      const projection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "published-success-conditions",
+        role: "Business Head",
+        rawDescription: "Own the end-to-end P&L and deliver annual revenue and margin targets for the D2C business.",
+      });
+
+      expect(projection.executiveMission.successConditions).toEqual([
+        "Own the end-to-end P&L and deliver annual revenue and margin targets for the D2C business.",
+      ]);
+    });
+
+    it("records explicit qualification requirements but not responsibility-only capabilities", () => {
+      const requiredProjection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "required-capability-projection-regression",
+        role: "Business Head",
+        rawDescription: `
+          Own the end-to-end P&L and lead product sourcing, merchandising,
+          inventory, and supply-chain operations.
+          Ideal Candidate Profile: Strong hands-on experience in D2C and
+          e-commerce is required. Strong understanding of product sourcing,
+          merchandising, inventory, and commercial management is required.
+        `,
+      });
+      const merchandisingRequirement = requiredProjection.capabilityRequirements?.find(
+        (requirement) => requirement.capability === "Merchandising / Category Inventory Operations",
+      );
+
+      expect(merchandisingRequirement).toMatchObject({ required: true, materiality: "CORE" });
+      expect(merchandisingRequirement?.evidenceIds).toHaveLength(1);
+      expect(merchandisingRequirement?.sourceQuotes[0]).toContain("merchandising");
+
+      const responsibilityOnlyProjection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "responsibility-only-capability-regression",
+        role: "Business Head",
+        rawDescription: `
+          Own the end-to-end P&L and lead product sourcing, merchandising,
+          inventory, and supply-chain operations. Partner with category teams
+          to improve availability and delivery.
+        `,
+      });
+      expect(responsibilityOnlyProjection.capabilityRequirements).toEqual([]);
+    });
+
     it("satisfies EvidenceRichnessCalculator as SUFFICIENT", () => {
       const projection = JobProjectionBuilder.build(richOpportunity);
       const richness = EvidenceRichnessCalculator.calculate({ dimensions: projection.dimensions });

@@ -6,6 +6,7 @@ import { EvaluationWorker, ClaimedJob } from "../../src/lib/intelligence/Evaluat
 import { DatabaseAdapter, QueryParams } from "../../src/data/database";
 import { type CandidateProjection } from "../../src/lib/domain/candidate_projection";
 import { TenantScopedPersonStore } from "../../src/data/sqlite/repositories/TenantScopedPersonStore";
+import { deriveCandidateProjectionVersion } from "../../src/data/sqlite/repositories/profile-projection-version";
 import * as staticProfileModule from "../../src/data/candidate-profile";
 
 class TestSqliteAdapter implements DatabaseAdapter {
@@ -43,6 +44,10 @@ const sampleRawOpp = JSON.stringify({
   company: "Acme Enterprise Corp",
   location: "Bengaluru, India",
   description: "We are seeking a VP of Growth to lead our commercial expansion, digital transformation, and marketing strategy. 15+ years experience required.",
+  dimensions: [
+    { key: "functionalScope", jdEvidence: { value: "Commercial & Marketing", status: "Explicit", evidence: [] } },
+    { key: "mandate", jdEvidence: { value: "SCALE", status: "Explicit", evidence: [] } }
+  ],
   datePosted: "2026-08-01",
   portal: "indeed"
 });
@@ -148,6 +153,8 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
     const snapId = `snap_${jobId}`;
     const ctxFp = `ctx_fp_${jobId}`;
     const snapHash = `snap_hash_${jobId}`;
+    const pinnedProjection = personId === "user_alpha" ? projectionCCO : projectionCTO;
+    const pinnedProfileVersion = deriveCandidateProjectionVersion(pinnedProjection);
     
     sqliteDb.prepare(
       `INSERT INTO search_plan_snapshots (id, search_plan_id, tenant_id, person_id, snapshot_hash, payload_json)
@@ -156,8 +163,8 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
 
     sqliteDb.prepare(
       `INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version)
-       VALUES (?, ?, ?, ?, '1.0', 'ont_fp', '1.0', 'prof_v1')`
-    ).run(ctxFp, tenantId, personId, snapId);
+       VALUES (?, ?, ?, ?, '1.0', 'ont_fp', '1.0', ?)`
+    ).run(ctxFp, tenantId, personId, snapId, pinnedProfileVersion);
 
     // Ensure candidate row exists for FK invariant
     sqliteDb.prepare(
@@ -236,7 +243,10 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
 
     const result = await worker.processJob(job);
     expect(result.status).toBe("completed");
-    expect(["PURSUE", "CONSIDER", "PASS"]).toContain(result.decision);
+    // The intrinsic engine may correctly classify this fixture as SPARSE_SPEC;
+    // that is a completed, null-decision materialization rather than a retry or
+    // a fabricated fallback score.
+    expect(["PURSUE", "CONSIDER", "PASS", null]).toContain(result.decision ?? null);
 
     const jobRow = sqliteDb.prepare("SELECT status, attempts, last_error FROM evaluation_jobs WHERE id = 'job_test_5'").get() as any;
     expect(jobRow.status).toBe("completed");
@@ -270,5 +280,19 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
     expect(staticProfileSpy).not.toHaveBeenCalled();
 
     staticProfileSpy.mockRestore();
+  });
+
+  test("TEST 8: missing authoritative projection materializes NOT_EVALUABLE without a score or verdict", async () => {
+    sqliteDb.exec("DELETE FROM career_profiles WHERE person_id = 'user_alpha'");
+    const job = seedEvaluationContextAndJob("job_missing_profile", "{}", "user_alpha", "tenant_alpha", "plan_alpha");
+
+    const result = await worker.processJob(job);
+    expect(result.status).toBe("completed");
+    expect(result.decision).toBeUndefined();
+
+    const materialized = sqliteDb.prepare(
+      "SELECT evaluation_state, decision, quality_score FROM materialized_evaluations WHERE tenant_id = 'tenant_alpha' AND person_id = 'user_alpha' AND evaluation_context_fingerprint = 'ctx_fp_job_missing_profile'"
+    ).get() as any;
+    expect(materialized).toMatchObject({ evaluation_state: "NOT_EVALUABLE", decision: null, quality_score: null });
   });
 });

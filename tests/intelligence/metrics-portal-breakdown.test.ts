@@ -74,7 +74,8 @@ describe("Metrics Portal Breakdown & Aggregation Invariants", () => {
         id TEXT PRIMARY KEY,
         canonical_job_id TEXT NOT NULL,
         job_title TEXT NOT NULL,
-        lifecycle_state TEXT DEFAULT 'ACTIVE'
+        lifecycle_state TEXT DEFAULT 'ACTIVE',
+        category_ids TEXT
       );
       CREATE TABLE search_plan_candidates (
         id TEXT PRIMARY KEY,
@@ -95,6 +96,7 @@ describe("Metrics Portal Breakdown & Aggregation Invariants", () => {
         evaluation_state TEXT NOT NULL,
         decision TEXT,
         quality_score REAL,
+        evaluation_fingerprint TEXT,
         vetoed INTEGER DEFAULT 0
       );
       CREATE TABLE canonical_decisions (
@@ -129,13 +131,20 @@ describe("Metrics Portal Breakdown & Aggregation Invariants", () => {
       const portal = portals[i];
 
       await adapter.execute(`INSERT INTO canonical_opportunities VALUES (?, ?, ?, ?, ?)`, [jobId, portal, `src_${i}`, `url_${i}`, `Company ${i}`]);
-      await adapter.execute(`INSERT INTO opportunity_versions VALUES (?, ?, 'VP Marketing', 'ACTIVE')`, [versionId, jobId]);
+      await adapter.execute(`INSERT INTO opportunity_versions VALUES (?, ?, 'VP Marketing', 'ACTIVE', '["all"]')`, [versionId, jobId]);
       await adapter.execute(`INSERT INTO search_plan_candidates VALUES (?, 'tenant_test', 'person_test', 'sp_test', ?, ?, 'CANDIDATE')`, [`spc_${i}`, jobId, versionId]);
       
       // 2 Pursue, 3 Consider, 5 Pass
       const decision = i < 2 ? "PURSUE" : i < 5 ? "CONSIDER" : "PASS";
       const evalState = i === 9 ? "SPARSE_SPEC" : "COMPLETE";
-      await adapter.execute(`INSERT INTO materialized_evaluations VALUES (?, 'tenant_test', 'person_test', ?, ?, 'ec_test', ?, ?, ?, 0)`, [`me_${i}`, jobId, versionId, evalState, decision, 80]);
+      await adapter.execute(
+        `INSERT INTO materialized_evaluations (
+          id, tenant_id, person_id, canonical_job_id, opportunity_version,
+          evaluation_context_fingerprint, evaluation_state, decision,
+          quality_score, evaluation_fingerprint, vetoed
+        ) VALUES (?, 'tenant_test', 'person_test', ?, ?, 'ec_test', ?, ?, ?, ?, 0)`,
+        [`me_${i}`, jobId, versionId, evalState, decision, 80, `eval_${i}`],
+      );
     }
   });
 

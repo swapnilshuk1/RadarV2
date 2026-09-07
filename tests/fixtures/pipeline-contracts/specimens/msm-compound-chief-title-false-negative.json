@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "phase0-diagnostic-specimen/v1",
+  "fixtureId": "msm-compound-chief-title-false-negative",
+  "provenance": {
+    "kind": "production_derived_offline",
+    "sourceArtifact": ".radar/artifacts/blobs/snapshots/af9ae4bc10c4f2b5.json",
+    "sanitization": [
+      "Raw portal HTML and tracking parameters were removed.",
+      "The full captured text is preserved without applicant or session data."
+    ],
+    "capturedBodySha256": "7bbbcd834515e8e8b935d27ccdee30a24e4cbbb2da9d2a5cbbcf4f7787b22693"
+  },
+  "source": {
+    "portal": "Indeed",
+    "title": "Chief Strategy and Transformation Officer",
+    "company": "MSM Unify",
+    "location": "Gurugram, Haryana",
+    "canonicalSourceUrl": "https://in.indeed.com/viewjob?jk=246e0463d83ac6f6"
+  },
+  "document": {
+    "httpStatus": 200,
+    "contentType": "text/html; charset=utf-8",
+    "capturedText": "Job detailsHere’s how the job details align with your profile.Job typematching preferenceFull-time&nbsp;LocationGurugram, Haryana&nbsp;Full job description Company MSM Unify Group MSM Unify Laul Global Location Global Hybrid Remote-friendly Experience 15 Years Reporting To Founder Sanjay Laul Level C-Suite Leadership Role Overview MSM Unify is building a global education and technology platform across student mobility, digital enrollments, OPM, enterprise solutions, and institutional partnerships in 50 markets. We are at a critical inflection points calling rapidly, preparing for IPO readiness, and launching new verticals. The Chief Strategy Transformation Officer CSTO will act as the strategic right hand to the Founder, driving execution, transformation, and measurable outcomes across the organization. This is not a planning role it is an execution-focused leadership position. Strategic Leadership Founders Office Act as the strategic extension of the Founder across all group companies. Drive execution of strategic priorities and growth roadmap. Lead governance cadence including Founder Office reviews. Ensure alignment with organizational goals and long-term vision. Support high-stakes decision-making through business insights and tracking. Business Transformation Organizational Alignment Lead enterprise-wide transformation initiatives. Identify inefficiencies, bottlenecks, and scaling challenges. Drive restructuring, integration, and organization redesign. Build scalable operating models for global expansion. Ensure accountability and execution discipline across teams. AI Digital Transformation Drive AI adoption and automation across functions. Identify opportunities to improve productivity and customer experience. Partner with cross-functional teams to implement initiatives. Ensure initiatives are measurable, scalable, and commercially viable. Governance Performance Management Establish and lead business review frameworks. Build KPIs, dashboards, and tracking systems. Ensure visibility, accountability, and performance management. Drive a high-performance execution culture. Strategic Initiatives Expansion Support mergers, acquisitions, partnerships, and expansion. Evaluate new business opportunities and investments. Lead due diligence and integration planning. Collaborate with global stakeholders. Cross-Functional Leadership Break silos and improve collaboration across teams. Drive alignment across departments and business units. Ensure execution speed, ownership, and measurable outcomes. Build agile and high-performance teams. 15 years of experience in strategy, transformation, consulting, or leadership roles. Proven track record of executing large-scale transformation initiatives. Strong expertise in AI, digital transformation, and operational scaling. Strong business acumen across operations, finance, and growth. Experience working with founders, CEOs, and senior leadership. Execution-driven with strong ownership mindset. Excellent communication and stakeholder management skills. Global exposure across multiple markets. Comfortable working in fast-paced, high-growth environments. &nbsp;",
+    "originalCapturedLength": 3147,
+    "isExcerpt": false
+  }
+}

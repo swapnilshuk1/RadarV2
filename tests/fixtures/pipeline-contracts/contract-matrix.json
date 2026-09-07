@@ -1,0 +1,554 @@
+{
+  "schemaVersion": "phase0-contract-matrix/v1",
+  "criteriaSource": "src/data/search-plan.json#candidateIntent",
+  "generatedFromExistingAuthorities": [
+    "src/lib/acquisition/validator.ts#ResponseValidator",
+    "src/lib/intelligence/builders/JobProjectionBuilder.ts",
+    "src/lib/intelligence/AttentionGate.ts",
+    "src/lib/intelligence/engine.ts#runEngineSingleIntrinsic"
+  ],
+  "cases": [
+    {
+      "fixtureId": "cvent-rich-empty-capabilities",
+      "baselineObserved": {
+        "acquisition": {
+          "isValid": true,
+          "quality": "COMPLETE",
+          "failureClass": null
+        },
+        "jobProjection": {
+          "capabilityExtractionStatus": "FAILED",
+          "capabilityCount": 0,
+          "capabilities": [],
+          "executiveIdentity": "Commercial & Marketing Leadership"
+        },
+        "eligibility": {
+          "decision": "CANDIDATE",
+          "reasons": []
+        },
+        "evaluation": {
+          "state": "NOT_EVALUABLE",
+          "vetoReason": "G-EVIDENCE-INTEGRITY-FAILED",
+          "diligenceStatus": "READY"
+        },
+        "decision": null,
+        "score": null
+      },
+      "contractExpected": {
+        "acquisition": {
+          "state": "VALID_JOB_DOCUMENT",
+          "quality": "COMPLETE"
+        },
+        "jobProjection": {
+          "state": "PROJECTABLE",
+          "required": "grounded capabilities from the substantive JD",
+          "forbidden": "EMPTY_CAPABILITIES"
+        },
+        "eligibility": {
+          "state": "CANDIDATE",
+          "reason": "plausible senior marketing mandate"
+        },
+        "evaluation": {
+          "state": "EVALUATION_REQUIRED_AFTER_PROJECTION_REPAIR",
+          "authority": "intrinsic_evaluation_artifact"
+        },
+        "decision": {
+          "value": null,
+          "state": "PENDING_CANONICAL_EVALUATION",
+          "allowedWhenEvaluated": [
+            "PURSUE",
+            "CONSIDER",
+            "PASS"
+          ],
+          "authority": "canonical_evaluated_artifact"
+        },
+        "score": {
+          "value": null,
+          "state": "PENDING_CANONICAL_EVALUATION",
+          "allowedWhenEvaluated": "finite number in [0,100]",
+          "authority": "canonical_evaluated_artifact"
+        }
+      }
+    },
+    {
+      "fixtureId": "wpp-client-services-false-negative",
+      "baselineObserved": {
+        "acquisition": {
+          "isValid": true,
+          "quality": "COMPLETE",
+          "failureClass": null
+        },
+        "jobProjection": {
+          "capabilityExtractionStatus": "FAILED",
+          "capabilityCount": 0,
+          "capabilities": [],
+          "executiveIdentity": "Commercial & Marketing Leadership"
+        },
+        "eligibility": {
+          "decision": "NOT_CANDIDATE",
+          "reasons": [
+            "Role mismatch: 'Vice President, Client Services, India' does not match targets.",
+            "Location mismatch: 'Gurgaon, Haryana, India (On-site)' does not match targets.",
+            "Seniority mismatch: Title 'Vice President, Client Services, India' does not contain target seniority."
+          ]
+        },
+        "evaluation": {
+          "state": "NOT_EVALUABLE",
+          "vetoReason": "G-EVIDENCE-INTEGRITY-FAILED",
+          "diligenceStatus": "READY"
+        },
+        "decision": null,
+        "score": null
+      },
+      "contractExpected": {
+        "acquisition": {
+          "state": "VALID_JOB_DOCUMENT",
+          "quality": "COMPLETE"
+        },
+        "jobProjection": {
+          "state": "PROJECTABLE",
+          "required": "grounded agency, client-growth, media, analytics, and commercial capabilities"
+        },
+        "eligibility": {
+          "state": "CANDIDATE",
+          "reason": "unknown lexical title equivalence is not demonstrated incompatibility"
+        },
+        "evaluation": {
+          "state": "EVALUATION_REQUIRED",
+          "authority": "intrinsic_evaluation_artifact"
+        },
+        "decision": {
+          "value": null,
+          "state": "PENDING_CANONICAL_EVALUATION",
+          "allowedWhenEvaluated": [
+            "PURSUE",
+            "CONSIDER",
+            "PASS"
+          ],
+          "authority": "canonical_evaluated_artifact"
+        },
+        "score": {
+          "value": null,
+          "state": "PENDING_CANONICAL_EVALUATION",
+          "allowedWhenEvaluated": "finite number in [0,100]",
+          "authority": "canonical_evaluated_artifact"
+        }
+      }
+    },
+    {
+      "fixtureId": "weber-client-experience-false-negative",
+      "baselineObserved": {
+        "acquisition": {
+          "isValid": true,
+          "quality": "COMPLETE",
+          "failureClass": null
+        },
+        "jobProjection": {
+          "capabilityExtractionStatus": "FAILED",
+          "capabilityCount": 0,
+          "capabilities": [],
+          "executiveIdentity": "Technology & Engineering Leadership"
+        },
+        "eligibility": {
+          "decision": "NOT_CANDIDATE",
+          "reasons": [
+            "Role mismatch: 'Vice President - Client Experience (Digital)' does not match targets.",
+            "Location mismatch: 'Mumbai, Maharashtra, India (Hybrid)' does not match targets.",
+            "Seniority mismatch: Title 'Vice President - Client Experience (Digital)' does not contain target seniority."
+          ]
+        },
+        "evaluation": {
+          "state": "NOT_EVALUABLE",
+          "vetoReason": "G-EVIDENCE-INTEGRITY-FAILED",
+          "diligenceStatus": "READY"
+        },
+        "decision": null,
+        "score": null
+      },
+      "contractExpected": {
+        "acquisition": {
+          "state": "VALID_JOB_DOCUMENT",
+          "quality": "COMPLETE"
+        },
+        "jobProjection": {
+          "state": "PROJECTABLE",
+          "required": "grounded digital client-experience and agency leadership capabilities"
+        },
+        "eligibility": {
+          "state": "CANDIDATE",
+          "reason": "client experience and digital leadership are plausible adjacent role families"
+        },
+        "evaluation": {
+          "state": "EVALUATION_REQUIRED",
+          "authority": "intrinsic_evaluation_artifact"
+        },
+        "decision": {
+          "value": null,
+          "state": "PENDING_CANONICAL_EVALUATION",
+          "allowedWhenEvaluated": [
+            "PURSUE",
+            "CONSIDER",
+            "PASS"
+          ],
+          "authority": "canonical_evaluated_artifact"
+        },
+        "score": {
+          "value": null,
+          "state": "PENDING_CANONICAL_EVALUATION",
+          "allowedWhenEvaluated": "finite number in [0,100]",
+          "authority": "canonical_evaluated_artifact"
+        }
+      }
+    },
+    {
+      "fixtureId": "msm-compound-chief-title-false-negative",
+      "baselineObserved": {
+        "acquisition": {
+          "isValid": true,
+          "quality": "COMPLETE",
+          "failureClass": null
+        },
+        "jobProjection": {
+          "capabilityExtractionStatus": "COMPLETE",
+          "capabilityCount": 1,
+          "capabilities": [
+            "Digital Transformation"
+          ],
+          "executiveIdentity": "Excluded Technical & Industrial Professional Domain"
+        },
+        "eligibility": {
+          "decision": "NOT_CANDIDATE",
+          "reasons": [
+            "Role mismatch: 'Chief Strategy and Transformation Officer' does not match targets."
+          ]
+        },
+        "evaluation": {
+          "state": "PASS",
+          "vetoReason": "G-EXECUTIVE-IDENTITY-MISMATCH",
+          "diligenceStatus": "READY"
+        },
+        "decision": "PASS",
+        "score": null
+      },
+      "contractExpected": {
+        "acquisition": {
+          "state": "VALID_JOB_DOCUMENT",
+          "quality": "COMPLETE"
+        },
+        "jobProjection": {
+          "state": "PROJECTABLE",
+          "required": "compound chief strategy and transformation identity without technical-domain exclusion"
+        },
+        "eligibility": {
+          "state": "CANDIDATE",
+          "reason": "compound Chief Strategy and Transformation title is plausibly relevant"
+        },
+        "evaluation": {
+          "state": "EVALUATION_REQUIRED",
+          "authority": "intrinsic_evaluation_artifact"
+        },
+        "decision": {
+          "value": null,
+          "state": "PENDING_CANONICAL_EVALUATION",
+          "allowedWhenEvaluated": [
+            "PURSUE",
+            "CONSIDER",
+            "PASS"
+          ],
+          "authority": "canonical_evaluated_artifact"
+        },
+        "score": {
+          "value": null,
+          "state": "PENDING_CANONICAL_EVALUATION",
+          "allowedWhenEvaluated": "finite number in [0,100]",
+          "authority": "canonical_evaluated_artifact"
+        }
+      }
+    },
+    {
+      "fixtureId": "acumont-technical-hard-exclusion",
+      "baselineObserved": {
+        "acquisition": {
+          "isValid": true,
+          "quality": "COMPLETE",
+          "failureClass": null
+        },
+        "jobProjection": {
+          "capabilityExtractionStatus": "COMPLETE",
+          "capabilityCount": 1,
+          "capabilities": [
+            "Digital Transformation"
+          ],
+          "executiveIdentity": "Technology & Engineering Leadership"
+        },
+        "eligibility": {
+          "decision": "NOT_CANDIDATE",
+          "reasons": [
+            "Role mismatch: 'Vice President-Technology' does not match targets.",
+            "Seniority mismatch: Title 'Vice President-Technology' does not contain target seniority."
+          ]
+        },
+        "evaluation": {
+          "state": "PASS",
+          "vetoReason": "G-EXECUTIVE-IDENTITY-MISMATCH",
+          "diligenceStatus": "READY"
+        },
+        "decision": "PASS",
+        "score": null
+      },
+      "contractExpected": {
+        "acquisition": {
+          "state": "VALID_JOB_DOCUMENT",
+          "quality": "COMPLETE"
+        },
+        "jobProjection": {
+          "state": "PROJECTABLE",
+          "required": "technology and engineering leadership identity"
+        },
+        "eligibility": {
+          "state": "NOT_CANDIDATE",
+          "reason": "demonstrated hard function mismatch"
+        },
+        "evaluation": {
+          "state": "NOT_SCHEDULED",
+          "reason": "deterministic hard exclusion"
+        },
+        "decision": {
+          "value": null,
+          "state": "UNAVAILABLE",
+          "authority": "none"
+        },
+        "score": {
+          "value": null,
+          "state": "UNAVAILABLE",
+          "authority": "none"
+        }
+      }
+    },
+    {
+      "fixtureId": "fillezy-pdf-byte-stream",
+      "baselineObserved": {
+        "acquisition": {
+          "isValid": true,
+          "quality": "COMPLETE",
+          "failureClass": null
+        },
+        "jobProjection": {
+          "capabilityExtractionStatus": "FAILED",
+          "capabilityCount": 0,
+          "capabilities": [],
+          "executiveIdentity": "Commercial & Marketing Leadership"
+        },
+        "eligibility": {
+          "decision": "NOT_CANDIDATE",
+          "reasons": [
+            "Role mismatch: 'Vice President Sales' does not match targets.",
+            "Seniority mismatch: Title 'Vice President Sales' does not contain target seniority."
+          ]
+        },
+        "evaluation": {
+          "state": "NOT_EVALUABLE",
+          "vetoReason": "G-EVIDENCE-INTEGRITY-FAILED",
+          "diligenceStatus": "READY"
+        },
+        "decision": null,
+        "score": null
+      },
+      "contractExpected": {
+        "acquisition": {
+          "state": "ACQUISITION_FAILED",
+          "failureClass": "UNEXTRACTED_PDF",
+          "retryable": true
+        },
+        "jobProjection": {
+          "state": "NOT_RUN"
+        },
+        "eligibility": {
+          "state": "NOT_RUN"
+        },
+        "evaluation": {
+          "state": "ACQUISITION_FAILED"
+        },
+        "decision": {
+          "value": null,
+          "state": "UNAVAILABLE",
+          "authority": "none"
+        },
+        "score": {
+          "value": null,
+          "state": "UNAVAILABLE",
+          "authority": "none"
+        }
+      }
+    },
+    {
+      "fixtureId": "ats-temporary-redirect-notice",
+      "baselineObserved": {
+        "acquisition": {
+          "isValid": false,
+          "quality": "MINIMAL",
+          "failureClass": "PARTIAL_CONTENT"
+        },
+        "jobProjection": {
+          "capabilityExtractionStatus": "FAILED",
+          "capabilityCount": 0,
+          "capabilities": [],
+          "executiveIdentity": "Excluded Technical & Industrial Professional Domain"
+        },
+        "eligibility": {
+          "decision": "NOT_CANDIDATE",
+          "reasons": [
+            "Role mismatch: 'Assistant Vice President - CCRP Validation' does not match targets.",
+            "Seniority mismatch: Title 'Assistant Vice President - CCRP Validation' does not contain target seniority."
+          ]
+        },
+        "evaluation": {
+          "state": "SPARSE_SPEC",
+          "vetoReason": null,
+          "diligenceStatus": "FAILED"
+        },
+        "decision": null,
+        "score": null
+      },
+      "contractExpected": {
+        "acquisition": {
+          "state": "ACQUISITION_FAILED",
+          "failureClass": "UNRESOLVED_REDIRECT",
+          "retryable": true
+        },
+        "jobProjection": {
+          "state": "NOT_RUN"
+        },
+        "eligibility": {
+          "state": "NOT_RUN"
+        },
+        "evaluation": {
+          "state": "ACQUISITION_FAILED"
+        },
+        "decision": {
+          "value": null,
+          "state": "UNAVAILABLE",
+          "authority": "none"
+        },
+        "score": {
+          "value": null,
+          "state": "UNAVAILABLE",
+          "authority": "none"
+        }
+      }
+    },
+    {
+      "fixtureId": "chanakaya-unrelated-careers-page",
+      "baselineObserved": {
+        "acquisition": {
+          "isValid": true,
+          "quality": "COMPLETE",
+          "failureClass": null
+        },
+        "jobProjection": {
+          "capabilityExtractionStatus": "FAILED",
+          "capabilityCount": 0,
+          "capabilities": [],
+          "executiveIdentity": "Excluded Technical & Industrial Professional Domain"
+        },
+        "eligibility": {
+          "decision": "NOT_CANDIDATE",
+          "reasons": [
+            "Role mismatch: 'Assistant Vice President - Projects' does not match targets.",
+            "Seniority mismatch: Title 'Assistant Vice President - Projects' does not contain target seniority."
+          ]
+        },
+        "evaluation": {
+          "state": "PASS",
+          "vetoReason": "G-EXECUTIVE-IDENTITY-MISMATCH",
+          "diligenceStatus": "READY"
+        },
+        "decision": "PASS",
+        "score": null
+      },
+      "contractExpected": {
+        "acquisition": {
+          "state": "ACQUISITION_FAILED",
+          "failureClass": "WRONG_PAGE",
+          "retryable": true
+        },
+        "jobProjection": {
+          "state": "NOT_RUN"
+        },
+        "eligibility": {
+          "state": "NOT_RUN"
+        },
+        "evaluation": {
+          "state": "ACQUISITION_FAILED"
+        },
+        "decision": {
+          "value": null,
+          "state": "UNAVAILABLE",
+          "authority": "none"
+        },
+        "score": {
+          "value": null,
+          "state": "UNAVAILABLE",
+          "authority": "none"
+        }
+      }
+    },
+    {
+      "fixtureId": "genuine-sparse-board-advisor",
+      "baselineObserved": {
+        "acquisition": {
+          "isValid": false,
+          "quality": "MINIMAL",
+          "failureClass": "PARTIAL_CONTENT"
+        },
+        "jobProjection": {
+          "capabilityExtractionStatus": "FAILED",
+          "capabilityCount": 0,
+          "capabilities": [],
+          "executiveIdentity": "Excluded Technical & Industrial Professional Domain"
+        },
+        "eligibility": {
+          "decision": "NOT_CANDIDATE",
+          "reasons": [
+            "Role mismatch: 'Independent Board Advisor' does not match targets.",
+            "Seniority mismatch: Title 'Independent Board Advisor' does not contain target seniority."
+          ]
+        },
+        "evaluation": {
+          "state": "SPARSE_SPEC",
+          "vetoReason": null,
+          "diligenceStatus": "FAILED"
+        },
+        "decision": null,
+        "score": null
+      },
+      "contractExpected": {
+        "acquisition": {
+          "state": "VALID_GENUINELY_SPARSE",
+          "quality": "MINIMAL"
+        },
+        "jobProjection": {
+          "state": "SPARSE_SPEC",
+          "required": "no fabricated capabilities"
+        },
+        "eligibility": {
+          "state": "REVIEW",
+          "reason": "insufficient evidence is not demonstrated incompatibility"
+        },
+        "evaluation": {
+          "state": "SPARSE_SPEC"
+        },
+        "decision": {
+          "value": null,
+          "state": "UNAVAILABLE",
+          "authority": "none"
+        },
+        "score": {
+          "value": null,
+          "state": "UNAVAILABLE",
+          "authority": "none"
+        }
+      }
+    }
+  ]
+}

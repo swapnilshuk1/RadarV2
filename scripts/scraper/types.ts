@@ -8,6 +8,32 @@ import type { PortalAuthSession } from "../../src/lib/security/PortalAuthSession
 
 export type PortalName = "LinkedIn" | "Indeed" | "Naukri";
 
+export type AcquisitionChannel = "search" | "recommended";
+
+/**
+ * A concrete portal execution surface compiled from persisted search intent.
+ * Freshness and portal-specific filters belong here, rather than in the
+ * canonical SearchDefinition, because they describe how a search is executed.
+ */
+export interface AcquisitionVariant {
+  id?: string;
+  definitionId?: string;
+  familyId?: string;
+  portal?: PortalName;
+  query: string;
+  requestedTerms?: string[];
+  location?: string;
+  radiusKm?: number;
+  industry?: string;
+  department?: string;
+  isRemote?: boolean;
+  postedWithinDays?: 1 | 7 | 14 | 30;
+  sort?: "relevance" | "date";
+  channel?: AcquisitionChannel;
+}
+
+export type PortalSearchRequest = AcquisitionVariant & { page: number };
+
 export type UnitStatus =
   | "pending"
   | "running"
@@ -46,6 +72,7 @@ export interface WorkUnit {
   executionPlanId?: string;  // from ExecutionPlan.json, or adhoc ID
   definitionId?: string;     // attach definition ID for stopping rules
   familyId?: string;         // attach family ID for downstream association
+  variant?: AcquisitionVariant;
   cardIds: string[];         // list of card work-unit ids discovered on this page
   decisionRecord?: UnitDecisionRecord;
 }
@@ -173,6 +200,8 @@ export interface FeedCard {
   portal: PortalName;
   keyword: string;
   searchUrl: string;
+  /** Exact href observed on the discovery card; never replaced by a resolved listing URL. */
+  discoveryUrl?: string;
   detailUrl: string;
   discoveredAt: string;
   title: string;
@@ -191,6 +220,7 @@ export interface FeedCard {
 
 // DetailedCard replaces JobSnapshot as the payload post-acquisition
 export interface DetailedCard extends FeedCard {
+  canonicalJobId?: string;
   snapshotSchemaVersion: string;
   scraperVersion: string;
   acquisitionRoute?: AcquisitionRoute;
@@ -204,9 +234,27 @@ export interface DetailedCard extends FeedCard {
     fetchDurationMs?: number;
     httpStatus?: number;
     quality?: "VALID" | "SPARSE" | "EMPTY" | "ERROR";
+    /** Title read from the detail page; distinct from the discovery-card title. */
+    extractedTitle?: string;
     extractedCompany?: string;
+    /** Exact destination observed by the portal detail request, when one occurred. */
+    finalUrl?: string;
+    identityResolutionFailure?: string;
   };
   acquisitionAttempts?: AcquisitionAttempt[];
+  /**
+   * Bound after canonical ingestion. This lets a run artifact identify the
+   * exact immutable document version evaluated downstream without embedding
+   * that document in the journal or duplicating BlobStore payloads.
+   */
+  evaluationEvidence?: {
+    state: "PENDING" | "BOUND" | "UNAVAILABLE";
+    canonicalJobId?: string;
+    opportunityVersion?: string;
+    contentHash?: string;
+    sourcePayloadKey?: string | null;
+    sourceMediaType?: string | null;
+  };
   telemetry: {
     cardExtractMs: number;
     detailExtractMs: number;
@@ -310,6 +358,9 @@ export interface PortalContext {
   keyword: string;
   page: number;
   searchUrl: string;
+  variant?: AcquisitionVariant;
+  /** Per-run discovery cap. Overrides portal defaults for controlled cohorts. */
+  maxCardsPerPage?: number;
   browserContext: any;   // playwright BrowserContext
   searchPage?: any;      // persistent Playwright Page dedicated to search
   detailPage?: any;      // persistent Playwright Page dedicated to details
@@ -328,9 +379,14 @@ export interface PortalContext {
 export interface PortalHandler {
   name: PortalName;
   detailStrategy: "http" | "browser" | "auto";
-  buildSearchUrl(keyword: string, page: number): string;
+  buildSearchUrl(request: PortalSearchRequest | string, page?: number): string;
   ensureSession(ctx: PortalContext): Promise<"ready" | "gated" | "error">;
   listCards(ctx: PortalContext): Promise<FeedCard[]>;
+  /** Optional identity-only resolution for portals whose discovery URL is not a canonical listing identity. */
+  resolveListingIdentity?(ctx: PortalContext, url: string): Promise<{
+    finalUrl?: string;
+    identityResolutionFailure?: string;
+  }>;
   fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCard["detail"]>;
 }
 

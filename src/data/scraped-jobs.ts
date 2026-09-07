@@ -37,7 +37,7 @@ export function getScrapedJobs(): ScrapedJob[] {
 
 export function getScraperCounts() {
   const list = getScrapedJobs();
-  const bySource: Record<ScrapeSource, number> = { LinkedIn: 0, Naukri: 0, Indeed: 0 };
+  const bySource: Record<ScrapeSource, number> = { LinkedIn: 0, Naukri: 0, Indeed: 0, Unknown: 0 };
   for (const j of list) bySource[j.source] += 1;
   return {
     total: list.length,

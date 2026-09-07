@@ -33,6 +33,7 @@ export interface WorkUnit {
   estimatedBrowserSeconds: number;
   estimatedLLMTokens: number;
   expectedYield: number;
+  variant?: import("../types").AcquisitionVariant;
 }
 
 export interface ExecutionPlan {

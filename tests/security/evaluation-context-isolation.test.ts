@@ -39,7 +39,8 @@ describe("Phase M3: Evaluation Context & Read Model Isolation", () => {
       "020_canonical_acquisition.sql",
       "026_canonical_acquisition_integrity.sql",
       "027_materialized_evaluations_nullable_decision.sql",
-      "029_materialized_evaluations_vetoed.sql"
+      "029_materialized_evaluations_vetoed.sql",
+      "037_materialized_evaluation_fingerprint.sql"
     ];
     
     for (const file of migrationFiles) {
@@ -118,11 +119,12 @@ describe("Phase M3: Evaluation Context & Read Model Isolation", () => {
       canonicalJobId: "job1",
       opportunityVersion: "v1",
       evaluationContextFingerprint: context.contextFingerprint,
+      evaluationFingerprint: "eval_context_1",
       decision: "PURSUE" as const,
       qualityScore: 90,
       rationale: "Good fit",
       evidenceIds: [],
-      evaluationJson: JSON.stringify({ decision: "PURSUE", qualityScore: 90 }),
+      evaluationJson: JSON.stringify({ evaluationInputHash: "eval_context_1", decision: "PURSUE", qualityScore: 90 }),
       materializedAt: new Date().toISOString()
     };
     
@@ -142,7 +144,7 @@ describe("Phase M3: Evaluation Context & Read Model Isolation", () => {
 
     expect(context2.contextFingerprint).not.toBe(context.contextFingerprint);
     
-    const evalPayload2 = { ...evalPayload, evaluationContextFingerprint: context2.contextFingerprint, decision: "PASS" as const, evaluationJson: JSON.stringify({ decision: "PASS", qualityScore: 90 }) };
+    const evalPayload2 = { ...evalPayload, evaluationContextFingerprint: context2.contextFingerprint, evaluationFingerprint: "eval_context_2", decision: "PASS" as const, evaluationJson: JSON.stringify({ evaluationInputHash: "eval_context_2", decision: "PASS", qualityScore: 90 }) };
     await evalStore.materializeEvaluation(authTenantA, evalPayload2);
 
     // Read both
@@ -162,8 +164,9 @@ describe("Phase M3: Evaluation Context & Read Model Isolation", () => {
     const badPayload = {
       id: "", tenantId: authTenantA.tenantId, personId: authTenantA.personId, canonicalJobId: "job1", opportunityVersion: "v1",
       evaluationContextFingerprint: context.contextFingerprint,
+      evaluationFingerprint: "eval_bad",
       decision: "PURSUE" as const, qualityScore: 90, rationale: "Good fit", evidenceIds: [],
-      evaluationJson: JSON.stringify({ decision: "PASS", qualityScore: 90 }), // Mismatch!
+      evaluationJson: JSON.stringify({ evaluationInputHash: "eval_bad", decision: "PASS", qualityScore: 90 }), // Mismatch!
       materializedAt: new Date().toISOString()
     };
 
@@ -190,11 +193,12 @@ describe("Phase M3: Evaluation Context & Read Model Isolation", () => {
       canonicalJobId: "job1",
       opportunityVersion: "v1",
       evaluationContextFingerprint: context.contextFingerprint,
+      evaluationFingerprint: "eval_freshness",
       decision: "PURSUE" as const,
       qualityScore: 90,
       rationale: "Good fit",
       evidenceIds: [],
-      evaluationJson: JSON.stringify({ decision: "PURSUE", qualityScore: 90 }),
+      evaluationJson: JSON.stringify({ evaluationInputHash: "eval_freshness", decision: "PURSUE", qualityScore: 90 }),
       materializedAt: new Date().toISOString()
     };
 

@@ -34,12 +34,12 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
 
     const expectedStageKeywords = [
       { name: "TypeScript", cmd: "tsconfig.verify.json" },
+      { name: "Production SSR Bundle Build", cmd: "npm run build" },
       { name: "Four Boundary Journeys", cmd: "vitest.certification.config.ts" },
       { name: "Ingestion & Lineage", cmd: "Unified Vitest certification manifest" },
       { name: "Multi-Tenant & Scope Security", cmd: "Unified Vitest certification manifest" },
       { name: "Serving Store & Keyset", cmd: "Unified Vitest certification manifest" },
       { name: "Editorial Governance", cmd: "Unified Vitest certification manifest" },
-      { name: "Production SSR Bundle Build", cmd: "npm run build" },
     ];
 
     expectedStageKeywords.forEach((expected, index) => {
@@ -50,6 +50,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
 
   it("2. asserts the reviewed certification manifest contains exactly the required files once", () => {
     const expectedFiles = [
+      "tests/acquisition/ingestion-lineage.test.ts",
       "tests/certification/certification-gate-integrity.test.ts",
       "tests/certification/journey_a_acquisition_to_evaluation.test.ts",
       "tests/certification/journey_b_semantic_grounding_to_policy.test.ts",
@@ -80,6 +81,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "tests/serving/sql_feed_parity.test.ts",
       "tests/serving/sql_metrics_aggregation.test.ts",
       "tests/persistence/deployment-determinism.test.ts",
+      "tests/scraper/acquisition-variant-contract.test.ts",
       "tests/editorial/career-value-integrity.test.ts",
       "tests/editorial/explanation-composition.test.ts",
       "tests/editorial/explanation-contract.test.ts",
@@ -88,10 +90,18 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "tests/editorial/verdict-coverage.test.ts",
       "tests/editorial/evidence-sufficiency-contract.test.ts",
       "tests/intelligence/invariant-assertions.test.ts",
+      "tests/intelligence/profile-projection-version-compat.test.ts",
+      "tests/intelligence/worker-profile-resolution.test.ts",
+      "tests/security/scraper-auth-permission-non-escalation.test.ts",
+      "tests/intelligence/m8-canonical-serving.test.ts",
+      "tests/policy/headspace-serving-contract.test.ts",
+      "tests/intelligence/m9_4_1-evaluation-determinism.test.ts",
+      "tests/intelligence/m53-worker.test.ts",
+      "tests/security/evaluation-context-isolation.test.ts",
     ];
 
-    expect(certificationManifest).toHaveLength(5);
-    expect(EXPECTED_CERTIFICATION_FILE_COUNT).toBe(38);
+    expect(certificationManifest).toHaveLength(6);
+    expect(EXPECTED_CERTIFICATION_FILE_COUNT).toBe(48);
     expect(certificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
     expect(uniqueCertificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
     expect([...certificationTestFiles].sort()).toEqual([...expectedFiles].sort());

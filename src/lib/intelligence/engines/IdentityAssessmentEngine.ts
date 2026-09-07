@@ -17,7 +17,7 @@ export class IdentityAssessmentEngine {
   ): IdentityAssessment {
     const candidateIdentityStr = context 
       ? context.primaryIdentityStr 
-      : (candidate.executiveThemes?.length ? candidate.executiveThemes[0] : "Commercial & Marketing Leadership");
+      : (candidate.executiveThemes?.length ? candidate.executiveThemes[0] : "UNKNOWN");
 
     const jobIdentityStr = job.executiveIdentity?.value || "Commercial & Marketing Leadership";
     const jobText = (job.role || "") + " " + (job.originalOpportunity?.description || "");

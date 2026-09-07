@@ -14,10 +14,11 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
-import { setupLineageTestFixture } from "../persistence/lineage_fixture";
+import { activateLineageTestContext, setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
 import type { AuthorizedPersonScope } from "../../src/lib/security/auth";
+import { MetricIntegrityValidator, reconcileEvaluationPopulation } from "../../src/lib/intelligence/metric-integrity";
 
 describe("Phase 7: SQL Metrics Aggregation Suite", () => {
   let sqliteDb: Database.Database;
@@ -34,13 +35,11 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       `INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status)
        VALUES ('person_A', 'tenant_A', 'admin', '["*"]', 'active')`
     );
-    await db.execute(
-      `INSERT OR IGNORE INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint)
-       VALUES ('tenant_A', 'person_A', 'plan_A', 'fingerprint_A')`
-    );
+    await activateLineageTestContext(db);
     queries = new SqliteOpportunityQueries(db);
     const resolved = await resolveServingScope("person_A", "tenant_A", db);
     scope = resolved.scope;
+    expect(resolved.activeContext).toEqual({ searchPlanId: "plan_A", contextFingerprint: "fingerprint_A" });
   });
 
   async function seedItem(params: {
@@ -50,6 +49,8 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
     vetoed?: number;
     evaluationState?: string;
     userAction?: string;
+    score?: number | null;
+    evaluationFingerprint?: string | null;
   }) {
     const oppId = `opp_${params.id}`;
     const verId = `ver_${params.id}`;
@@ -74,13 +75,15 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
 
     if (params.evaluationState !== "UNMATERIALIZED") {
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, decision, quality_score, evaluation_state, vetoed, evaluation_json)
-         VALUES (?, 'tenant_A', 'person_A', ?, ?, 'fingerprint_A', ?, 85, ?, ?, '{}')`,
+        `INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, evaluation_fingerprint, decision, quality_score, evaluation_state, vetoed, evaluation_json)
+         VALUES (?, 'tenant_A', 'person_A', ?, ?, 'fingerprint_A', ?, ?, ?, ?, ?, '{}')`,
         [
           `eval_${params.id}`,
           oppId,
           verId,
+          params.evaluationFingerprint === undefined ? `evaluation_${params.id}` : params.evaluationFingerprint,
           params.engineVerdict,
+          params.score === undefined ? 85 : params.score,
           params.evaluationState || "COMPLETE",
           params.vetoed ?? 0,
         ]
@@ -142,7 +145,7 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       // 9. NONE + SPARSE -> unreviewedSparse
       await seedItem({ id: "9", title: "Founder-led COO", engineVerdict: "SPARSE_SPEC", evaluationState: "SPARSE_SPEC", userAction: "NONE" });
 
-      // 10. NONE + UNMATERIALIZED -> unmaterialized pass
+      // 10. NONE + UNMATERIALIZED -> distinct non-evaluated state
       await seedItem({ id: "10", title: "VP Commercial", engineVerdict: null, evaluationState: "UNMATERIALIZED", userAction: "NONE" });
 
       const metrics = await queries.getMetrics(scope);
@@ -156,14 +159,33 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       // Engine Breakdown (evaluated only)
       expect(metrics.engineBreakdown.pursue).toBe(3); // 4, 6, 8
       expect(metrics.engineBreakdown.consider).toBe(3); // 2, 3, 5
-      expect(metrics.engineBreakdown.pass).toBe(4); // 1, 7 (evaluated PASS) + 9 (sparse) + 10 (unmaterialized) = 4
-      expect(metrics.engineBreakdown.sparse).toBe(0);
+      expect(metrics.engineBreakdown.pass).toBe(2); // only 1 and 7 are evaluated PASS
+      expect(metrics.engineBreakdown.sparse).toBe(1); // item 9 only
+      expect(metrics.evaluationPopulation).toEqual({
+        evaluated: 8,
+        sparse: 1,
+        unmaterialized: 1,
+        profileRequired: 0,
+        notEvaluable: 0,
+        acquisitionPending: 0,
+        acquisitionFailed: 0,
+        expired: 0,
+        invalid: 0,
+      });
+      expect(metrics.integrity.status).toBe("PASS");
+      expect(metrics.categoryMetrics?.needs_more_signal.total).toBe(1);
+      expect(metrics.categoryMetrics?.needs_more_signal.unreviewed).toBe(1);
 
       // User Breakdown
       expect(metrics.userBreakdown.pursue).toBe(4); // 1, 2, 3, 4
       expect(metrics.userBreakdown.consider).toBe(3); // 5, 6, 7
       expect(metrics.userBreakdown.pass).toBe(1); // 8
       expect(metrics.userBreakdown.total).toBe(8);
+      // A human promotion is visible in user/effective metrics but cannot
+      // rewrite the engine recommendation or engine shortlist population.
+      expect(metrics.engineBreakdown.consider).toBe(3);
+      expect(metrics.userBreakdown.pursue).toBe(4);
+      expect(metrics.effectiveBreakdown.pursue).toBe(4);
 
       // Decision Metrics Overrides
       expect(metrics.decisionMetrics?.userConfirmed).toBe(1); // item 4
@@ -172,9 +194,131 @@ describe("Phase 7: SQL Metrics Aggregation Suite", () => {
       expect(metrics.decisionMetrics?.userPassed).toBe(1); // item 8
 
       // Effective Breakdown
-      expect(metrics.effectiveBreakdown.pursue).toBe(3); // 1 (veto), 2 (veto), 4 (confirmed) -> 3
-      expect(metrics.effectiveBreakdown.consider).toBe(4); // 3 (pref), 5 (engine_consider), 6 (pref), 7 (pref) -> 4
-      expect(metrics.effectiveBreakdown.pass).toBe(3); // 8 (user_pass) + 9 (sparse) + 10 (unmat) = 3
+      expect(metrics.effectiveBreakdown.pursue).toBe(4); // explicit PURSUE decisions on 1–4
+      expect(metrics.effectiveBreakdown.consider).toBe(3); // explicit CONSIDER decisions on 5–7
+      expect(metrics.effectiveBreakdown.pass).toBe(1); // explicit user PASS only
+      expect(metrics.effectiveBreakdown.sparse).toBe(0); // deprecated alias; unavailable is no longer collapsed to sparse
+      expect(metrics.effectiveBreakdown.none).toBe(2); // sparse and unmaterialized have no effective decision
     });
+  });
+
+  it("fails reconciliation when a canonical state bucket is deliberately omitted", () => {
+    const check = reconcileEvaluationPopulation(10, {
+      evaluated: 8,
+      sparse: 1,
+      unmaterialized: 0,
+      profileRequired: 0,
+      notEvaluable: 0,
+      acquisitionPending: 0,
+      acquisitionFailed: 0,
+      expired: 0,
+      invalid: 0,
+    });
+    expect(check.status).toBe("ERROR");
+    expect(check.actual).toBe(9);
+    expect(check.message).toContain("delta -1");
+  });
+
+  it("classifies corrupt evaluated artifacts as INVALID instead of PASS", async () => {
+    // The production CHECK constraint prevents this corruption; bypass it only
+    // to prove the read model remains fail-closed against damaged persistence.
+    sqliteDb.pragma("ignore_check_constraints = ON");
+    await seedItem({ id: "bad-verdict", title: "Bad Verdict", engineVerdict: "UNSUPPORTED" });
+    sqliteDb.pragma("ignore_check_constraints = OFF");
+    await seedItem({ id: "bad-score", title: "Bad Score", engineVerdict: "PASS", score: null });
+    await seedItem({ id: "bad-fingerprint", title: "Bad Fingerprint", engineVerdict: "PASS", evaluationFingerprint: null });
+
+    const metrics = await queries.getMetrics(scope);
+
+    expect(metrics.evaluationPopulation).toEqual({
+      evaluated: 0,
+      sparse: 0,
+      unmaterialized: 0,
+      profileRequired: 0,
+      notEvaluable: 0,
+      acquisitionPending: 0,
+      acquisitionFailed: 0,
+      expired: 0,
+      invalid: 3,
+    });
+    expect(metrics.engineBreakdown).toEqual({ pursue: 0, consider: 0, pass: 0, sparse: 0 });
+    expect(metrics.totalShortlisted).toBe(0);
+    expect(metrics.integrity.status).toBe("PASS");
+  });
+
+  it("keeps user decisions and effective decisions distinct from unavailable engine state", async () => {
+    await seedItem({ id: "invalid-user", title: "Invalid", engineVerdict: "PURSUE", evaluationState: "INVALID", userAction: "PURSUE" });
+    await seedItem({ id: "profile-user", title: "Profile", engineVerdict: null, evaluationState: "PROFILE_REQUIRED", userAction: "CONSIDER" });
+    await seedItem({ id: "not-evaluable-user", title: "Not evaluable", engineVerdict: null, evaluationState: "NOT_EVALUABLE", userAction: "PASS" });
+    await seedItem({ id: "sparse-none", title: "Sparse", engineVerdict: "SPARSE_SPEC", evaluationState: "SPARSE_SPEC" });
+    await seedItem({ id: "unmaterialized-none", title: "Unmaterialized", engineVerdict: null, evaluationState: "UNMATERIALIZED" });
+    await seedItem({ id: "valid-pass-user", title: "Valid", engineVerdict: "PASS", userAction: "PURSUE" });
+
+    const metrics = await queries.getMetrics(scope);
+    expect(metrics.evaluationPopulation).toMatchObject({ invalid: 1, profileRequired: 1, notEvaluable: 1, sparse: 1, unmaterialized: 1, evaluated: 1 });
+    expect(metrics.evaluatedDecisions).toBe(1);
+    expect(metrics.allRecordedDecisions).toBe(4);
+    expect(metrics.userBreakdown).toEqual({ pursue: 2, consider: 1, pass: 1, total: 4 });
+    expect(metrics.engineBreakdown).toMatchObject({ pursue: 0, consider: 0, pass: 1 });
+    expect(metrics.effectiveBreakdown).toMatchObject({ pursue: 2, consider: 1, pass: 1, none: 2 });
+  });
+
+  it("preserves acquisition-unavailable states as known canonical population reasons", async () => {
+    await seedItem({ id: "acquisition-pending", title: "Pending", engineVerdict: null, score: null, evaluationState: "ACQUISITION_PENDING" });
+    await seedItem({ id: "acquisition-failed", title: "Failed", engineVerdict: null, score: null, evaluationState: "ACQUISITION_FAILED" });
+
+    const metrics = await queries.getMetrics(scope);
+    expect(metrics.evaluationPopulation).toMatchObject({
+      evaluated: 0,
+      acquisitionPending: 1,
+      acquisitionFailed: 1,
+      invalid: 0,
+    });
+    expect(metrics.engineBreakdown).toEqual({ pursue: 0, consider: 0, pass: 0, sparse: 0 });
+    expect(metrics.effectiveBreakdown.none).toBe(2);
+    expect(metrics.integrity.status).toBe("PASS");
+  });
+
+  it("selects the unreviewed shortlist at the canonical server boundary", async () => {
+    await seedItem({ id: "queue-consider", title: "Queue Consider", engineVerdict: "CONSIDER", score: 80 });
+    await seedItem({ id: "queue-pursue", title: "Queue Pursue", engineVerdict: "PURSUE", score: 95 });
+    await seedItem({ id: "queue-pass", title: "Queue Pass", engineVerdict: "PASS", score: 99 });
+    await seedItem({ id: "queue-invalid", title: "Queue Invalid", engineVerdict: "PURSUE", evaluationState: "INVALID", score: 100 });
+    await seedItem({ id: "queue-reviewed", title: "Queue Reviewed", engineVerdict: "PURSUE", userAction: "PASS", score: 90 });
+
+    const page = await queries.getFeed(scope, undefined, {
+      decisionFilter: "unreviewed",
+      shortlistQueue: true,
+    });
+
+    // Membership is determined by the canonical query, not a browser-side
+    // reclassification of a larger unreviewed population.
+    expect(page.items.map((item) => item.jobHash)).toEqual(["queue-pursue", "queue-consider"]);
+    expect(page.items.every((item) => item.engineVerdict === "PURSUE" || item.engineVerdict === "CONSIDER")).toBe(true);
+  });
+
+  it("rejects compensating state and engine-verdict bucket mismatches", async () => {
+    await seedItem({ id: "sparse", title: "Sparse", engineVerdict: "SPARSE_SPEC", evaluationState: "SPARSE_SPEC" });
+    await seedItem({ id: "invalid", title: "Invalid", engineVerdict: "PASS", score: null });
+    await seedItem({ id: "pursue", title: "Pursue", engineVerdict: "PURSUE" });
+    await seedItem({ id: "consider", title: "Consider", engineVerdict: "CONSIDER" });
+    const metrics = await queries.getMetrics(scope);
+
+    const stateCompensation = await MetricIntegrityValidator.validate({
+      ...metrics,
+      integrity: undefined as never,
+      evaluationPopulation: { ...metrics.evaluationPopulation, sparse: 0, invalid: 2 },
+    }, db);
+    expect(stateCompensation.status).toBe("ERROR");
+    expect(stateCompensation.discrepancies.some((check) => check.code === "CHECK_STATE_SPARSE")).toBe(true);
+
+    const verdictCompensation = await MetricIntegrityValidator.validate({
+      ...metrics,
+      integrity: undefined as never,
+      engineBreakdown: { ...metrics.engineBreakdown, pursue: 2, consider: 0 },
+    }, db);
+    expect(verdictCompensation.status).toBe("ERROR");
+    expect(verdictCompensation.discrepancies.some((check) => check.code === "CHECK_ENGINE_PURSUIT")).toBe(true);
+    expect(verdictCompensation.discrepancies.some((check) => check.code === "CHECK_ENGINE_CONSIDER")).toBe(true);
   });
 });

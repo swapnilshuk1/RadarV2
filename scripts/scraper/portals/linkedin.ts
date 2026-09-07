@@ -10,6 +10,35 @@ import * as cheerio from "cheerio";
 
 const LINKEDIN_GEO_INDIA = "102713980";
 
+/**
+ * LinkedIn's search endpoint gives `geoId` precedence over the display
+ * `location`. Never pair a city label with the India-wide geo ID: that makes
+ * the emitted URL look city-scoped while actually searching the country.
+ *
+ * These NCR identifiers were resolved against LinkedIn's own public search
+ * response using fully-qualified Indian place names on 04 Sep 2026. Keep the
+ * mapping deliberately small and explicit; an unknown explicit location is
+ * left to LinkedIn's native location resolver rather than silently widened.
+ */
+export const LINKEDIN_GEO_BY_LOCATION: Readonly<Record<string, string>> = {
+  "gurugram": "106442238",
+  "gurgaon": "106442238",
+  "delhi": "106187582",
+  "noida": "104869687",
+  "faridabad": "100839447",
+  "ghaziabad": "100497616",
+};
+
+function normalizeLinkedInLocation(location: string): string {
+  return location.trim().toLowerCase().replace(/,.*$/, "");
+}
+
+/** Returns a verified portal identifier when one is known for this location. */
+export function resolveLinkedInGeoId(location?: string): string | undefined {
+  if (!location?.trim()) return LINKEDIN_GEO_INDIA;
+  return LINKEDIN_GEO_BY_LOCATION[normalizeLinkedInLocation(location)];
+}
+
 export type LinkedInSessionState =
   | "AUTHENTICATED"
   | "AUTH_MISSING"
@@ -60,9 +89,24 @@ export async function checkLinkedInSessionState(ctx: PortalContext): Promise<Lin
 export const linkedinHandler: PortalHandler = {
   name: "LinkedIn",
   detailStrategy: "auto",
-  buildSearchUrl(kw, page) {
+  buildSearchUrl(request, legacyPage = 1) {
+    const input = typeof request === "string" ? { query: request, page: legacyPage } : { ...request };
+    const kw = input.query;
+    const page = input.page;
     const start = (page - 1) * 25;
-    return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(kw)}&location=India&geoId=${LINKEDIN_GEO_INDIA}&start=${start}`;
+    const location = input.location?.trim() || "India";
+    const params = new URLSearchParams({
+      keywords: kw,
+      location,
+      start: String(start),
+    });
+    const geoId = resolveLinkedInGeoId(input.location);
+    if (geoId) params.set("geoId", geoId);
+    if (input.postedWithinDays !== undefined) {
+      params.set("f_TPR", `r${input.postedWithinDays * 24 * 60 * 60}`);
+    }
+    if (input.sort === "date") params.set("sortBy", "DD");
+    return `https://www.linkedin.com/jobs/search/?${params.toString()}`;
   },
   async ensureSession(ctx) {
     try {
@@ -133,7 +177,7 @@ export const linkedinHandler: PortalHandler = {
         return [];
       }
 
-      const targetMaxCards = CONFIG.getMaxCardsPerPage("LinkedIn");
+      const targetMaxCards = ctx.maxCardsPerPage ?? CONFIG.getMaxCardsPerPage("LinkedIn");
       const cardSelector = [
         "div.job-card-container",
         "li.jobs-search-results__list-item",
@@ -257,6 +301,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       
       return {
         ...httpRes,
+        extractedTitle: httpRes.extractedTitle,
         extractedCompany: httpRes.extractedCompany,
       };
     }
@@ -286,6 +331,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     ).first();
     const companyText = ((await companyLocator.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
     const extractedCompany = companyText.length > 0 ? companyText : undefined;
+    const titleText = ((await page.locator("h1.top-card-layout__title, h1.topcard__title, .job-details-jobs-unified-top-card__job-title, h1").first().textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+    const extractedTitle = titleText.length > 0 ? titleText : undefined;
 
     const trimmedText = rawText.trim();
     if (trimmedText.length === 0) {
@@ -297,6 +344,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         rawText: "",
         fetchDurationMs: Date.now() - t0,
         httpStatus: effectiveStatus,
+        extractedTitle,
         extractedCompany,
       };
     }
@@ -313,6 +361,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       fetchDurationMs: Date.now() - t0,
       httpStatus: effectiveStatus,
       quality: isSparse ? ("SPARSE" as const) : ("VALID" as const),
+      extractedTitle,
       extractedCompany,
     };
   } catch (err: any) {
@@ -321,5 +370,3 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     await page.close().catch(() => {});
   }
 }
-
-

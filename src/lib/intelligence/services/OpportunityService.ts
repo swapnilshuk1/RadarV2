@@ -25,30 +25,4 @@ export class OpportunityService {
     );
   }
 
-  /**
-   * Generates the "Explain" trace for an opportunity.
-   */
-  public async explainOpportunity(opportunityId: string, personId: string): Promise<any> {
-    // 1. Fetch Recommendation Record
-    const record = await this.repos.decisions.getRecommendationRecordForOpportunity(personId, opportunityId);
-    if (!record) return null;
-
-    // 2. Fetch Claims
-    const allClaims = await this.repos.reasoning.findClaimsForOpportunity(opportunityId);
-
-    // Provide a richly nested view for the UI Graph Visualization
-    const enrichedClaims = allClaims.map(claim => {
-      return {
-        ...claim,
-        _debug: { inferences: claim.inferenceIds }
-      };
-    });
-
-    return {
-      opportunityId,
-      personId,
-      record,
-      claims: enrichedClaims
-    };
-  }
 }

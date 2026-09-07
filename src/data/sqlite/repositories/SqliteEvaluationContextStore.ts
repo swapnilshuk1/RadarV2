@@ -39,8 +39,344 @@ export interface ActivatedSearchPlan {
   context: EvaluationContext;
 }
 
+/** Immutable preflight evidence supplied by the operational-reset runner. */
+export interface OperationalMarketResetInput {
+  resetEventId: string;
+  previousSearchPlanId: string;
+  previousContextFingerprint: string;
+  successorSearchPlanId: string;
+  successorContextFingerprint: string;
+  preResetManifestJson: string;
+  preResetManifestSha256: string;
+  candidateProfileHash: string;
+  candidateProjectionHash: string;
+  locationPolicy: string;
+  releaseCommit: string;
+  activatedBy: string;
+}
+
 export class SqliteEvaluationContextStore {
   constructor(private db: DatabaseAdapter) {}
+
+  /**
+   * Binds a context to an authorized immutable plan lineage. This is control
+   * plane state, deliberately separate from the serving read model.
+   */
+  async bindEvaluationContextScope(
+    contextFingerprint: string,
+    tenantId: string,
+    personId: string,
+    searchPlanId: string,
+  ): Promise<boolean> {
+    const result = await this.db.execute(
+      `INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+       SELECT ec.context_fingerprint, ec.tenant_id, ec.person_id, sps.search_plan_id
+       FROM evaluation_contexts ec
+       JOIN search_plan_snapshots sps ON sps.id = ec.search_plan_snapshot_id
+       WHERE ec.context_fingerprint = ? AND ec.tenant_id = ? AND ec.person_id = ? AND sps.search_plan_id = ?
+       ON CONFLICT DO NOTHING`,
+      [contextFingerprint, tenantId, personId, searchPlanId],
+    );
+    return result.rowsAffected > 0;
+  }
+
+  /** Activates only a previously bound context; callers cannot select a latest-context fallback. */
+  async activateContextPointer(
+    contextFingerprint: string,
+    tenantId: string,
+    personId: string,
+    searchPlanId: string,
+  ): Promise<boolean> {
+    try {
+      const bound = await this.db.one<{ context_fingerprint: string }>(
+        `SELECT context_fingerprint FROM evaluation_context_scopes
+         WHERE context_fingerprint = ? AND tenant_id = ? AND person_id = ? AND search_plan_id = ?`,
+        [contextFingerprint, tenantId, personId, searchPlanId],
+      );
+      if (!bound) return false;
+      await this.db.execute(
+        `INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+         VALUES (?, ?, ?, ?, 'system')
+         ON CONFLICT (tenant_id, person_id, search_plan_id)
+         DO UPDATE SET context_fingerprint = excluded.context_fingerprint,
+                       activated_at = CURRENT_TIMESTAMP,
+                       activated_by = excluded.activated_by`,
+        [tenantId, personId, searchPlanId, contextFingerprint],
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Returns only a current explicit pointer. Absence is an authorization/state error, never a chronology query. */
+  async getActiveContext(scope: AuthorizedPersonScope): Promise<{ searchPlanId: string; contextFingerprint: string } | undefined> {
+    const pointer = await this.db.one<{ search_plan_id: string; context_fingerprint: string }>(
+      `SELECT aec.search_plan_id, aec.context_fingerprint
+       FROM active_evaluation_contexts aec
+       JOIN search_plans sp ON sp.id = aec.search_plan_id
+         AND sp.tenant_id = aec.tenant_id AND sp.person_id = aec.person_id
+       WHERE aec.tenant_id = ? AND aec.person_id = ? AND sp.status = 'active'
+       ORDER BY aec.activated_at DESC
+       LIMIT 1`,
+      [scope.tenantId, scope.personId],
+    );
+    return pointer ? { searchPlanId: pointer.search_plan_id, contextFingerprint: pointer.context_fingerprint } : undefined;
+  }
+
+  /**
+   * Computes pre-activation coverage for one explicit immutable plan/context
+   * lineage. This is control-plane evidence, not a serving query.
+   */
+  async getRematerialisationManifest(
+    contextFingerprint: string,
+    tenantId: string,
+    personId: string,
+    searchPlanId: string,
+  ): Promise<{ totalActiveOpportunities: number; materializedCount: number; coveragePercentage: number; isReady: boolean }> {
+    const totalRow = await this.db.one<{ count: number }>(
+      `SELECT COUNT(DISTINCT spc.canonical_job_id) AS count
+       FROM search_plan_candidates spc
+       JOIN canonical_opportunities co ON co.id = spc.canonical_job_id
+       JOIN opportunity_versions ov ON ov.id = spc.opportunity_version
+         AND ov.canonical_job_id = co.id
+       WHERE spc.search_plan_id = ?
+         AND spc.tenant_id = ?
+         AND spc.person_id = ?
+         AND spc.attention_decision = 'CANDIDATE'
+         AND ov.lifecycle_state = 'ACTIVE'`,
+      [searchPlanId, tenantId, personId],
+    );
+    const totalActiveOpportunities = totalRow?.count ?? 0;
+
+    const materializedRow = await this.db.one<{ count: number }>(
+      `SELECT COUNT(DISTINCT me.canonical_job_id) AS count
+       FROM materialized_evaluations me
+       JOIN search_plan_candidates spc ON spc.canonical_job_id = me.canonical_job_id
+         AND spc.opportunity_version = me.opportunity_version
+       JOIN canonical_opportunities co ON co.id = spc.canonical_job_id
+       JOIN opportunity_versions ov ON ov.id = spc.opportunity_version
+         AND ov.canonical_job_id = co.id
+       WHERE me.evaluation_context_fingerprint = ?
+         AND me.tenant_id = ?
+         AND me.person_id = ?
+         AND spc.search_plan_id = ?
+         AND spc.tenant_id = ?
+         AND spc.person_id = ?
+         AND spc.attention_decision = 'CANDIDATE'
+         AND ov.lifecycle_state = 'ACTIVE'`,
+      [contextFingerprint, tenantId, personId, searchPlanId, tenantId, personId],
+    );
+    const materializedCount = materializedRow?.count ?? 0;
+    const coveragePercentage = totalActiveOpportunities === 0
+      ? 100
+      : Math.round((materializedCount / totalActiveOpportunities) * 100);
+
+    return {
+      totalActiveOpportunities,
+      materializedCount,
+      coveragePercentage,
+      isReady: coveragePercentage === 100,
+    };
+  }
+
+  /** Creates an inactive immutable plan/context lineage for pre-activation backfill. */
+  async prepareSearchPlan(
+    scope: AuthorizedPersonScope,
+    input: SearchPlanActivationInput
+  ): Promise<ActivatedSearchPlan> {
+    const now = new Date().toISOString();
+    const planId = `sp_${crypto.randomUUID()}`;
+    const snapshotHash = computeSearchPlanSnapshotHash(input.criteria);
+    const snapshotId = `sps_${crypto.randomUUID()}`;
+    const contextFingerprint = computeEvaluationContextFingerprint({
+      tenantId: scope.tenantId,
+      personId: scope.personId,
+      searchPlanSnapshotId: snapshotId,
+      ontologyVersion: input.ontologyVersion,
+      ontologyFingerprint: input.ontologyFingerprint,
+      policyVersion: input.policyVersion,
+      profileVersion: input.profileVersion,
+    });
+    const criteriaJson = JSON.stringify(input.criteria);
+
+    await this.db.transaction(async (tx) => {
+      await tx.execute(
+        `INSERT INTO search_plans (id, tenant_id, person_id, title, status, criteria_json, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'paused', ?, ?, ?)`,
+        [planId, scope.tenantId, scope.personId, input.title, criteriaJson, now, now]
+      );
+      await tx.execute(
+        `INSERT INTO search_plan_snapshots (id, search_plan_id, tenant_id, person_id, snapshot_hash, payload_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [snapshotId, planId, scope.tenantId, scope.personId, snapshotHash, criteriaJson, now]
+      );
+      await tx.execute(
+        `INSERT INTO evaluation_contexts (
+           context_fingerprint, tenant_id, person_id, search_plan_snapshot_id,
+           ontology_version, ontology_fingerprint, policy_version, profile_version, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          contextFingerprint,
+          scope.tenantId,
+          scope.personId,
+          snapshotId,
+          input.ontologyVersion,
+          input.ontologyFingerprint,
+          input.policyVersion,
+          input.profileVersion,
+          now,
+        ]
+      );
+      await tx.execute(
+        `INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+         SELECT ec.context_fingerprint, ec.tenant_id, ec.person_id, sps.search_plan_id
+         FROM evaluation_contexts ec
+         JOIN search_plan_snapshots sps ON sps.id = ec.search_plan_snapshot_id
+         WHERE ec.context_fingerprint = ? AND ec.tenant_id = ? AND ec.person_id = ? AND sps.search_plan_id = ?`,
+        [contextFingerprint, scope.tenantId, scope.personId, planId]
+      );
+    });
+
+    return {
+      plan: {
+        id: planId,
+        tenantId: scope.tenantId,
+        personId: scope.personId,
+        title: input.title,
+        status: "paused",
+        criteria: input.criteria,
+        createdAt: now,
+        updatedAt: now,
+      },
+      snapshot: {
+        id: snapshotId,
+        searchPlanId: planId,
+        tenantId: scope.tenantId,
+        personId: scope.personId,
+        snapshotHash,
+        payload: input.criteria,
+        createdAt: now,
+      },
+      context: {
+        contextFingerprint,
+        tenantId: scope.tenantId,
+        personId: scope.personId,
+        searchPlanSnapshotId: snapshotId,
+        ontologyVersion: input.ontologyVersion,
+        ontologyFingerprint: input.ontologyFingerprint,
+        policyVersion: input.policyVersion,
+        profileVersion: input.profileVersion,
+        createdAt: now,
+      },
+    };
+  }
+
+  /** Activates a prepared lineage only after its caller has completed backfill. */
+  async activatePreparedSearchPlan(
+    scope: AuthorizedPersonScope,
+    planId: string,
+    contextFingerprint: string,
+    activatedBy: string
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const prepared = await tx.one<{ id: string }>(
+        `SELECT sp.id
+         FROM search_plans sp
+         JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id
+         JOIN evaluation_contexts ec ON ec.search_plan_snapshot_id = sps.id
+         WHERE sp.id = ? AND sp.tenant_id = ? AND sp.person_id = ?
+           AND sp.status = 'paused' AND ec.context_fingerprint = ?`,
+        [planId, scope.tenantId, scope.personId, contextFingerprint]
+      );
+      if (!prepared) {
+        throw new Error(`Prepared search plan '${planId}' is missing or no longer paused.`);
+      }
+
+      await tx.execute(
+        `INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT (tenant_id, person_id, search_plan_id)
+         DO UPDATE SET context_fingerprint = excluded.context_fingerprint,
+                       activated_at = CURRENT_TIMESTAMP,
+                       activated_by = excluded.activated_by`,
+        [scope.tenantId, scope.personId, planId, contextFingerprint, activatedBy]
+      );
+      await tx.execute(
+        `DELETE FROM active_evaluation_contexts
+         WHERE tenant_id = ? AND person_id = ? AND search_plan_id <> ?`,
+        [scope.tenantId, scope.personId, planId]
+      );
+      await tx.execute(
+        `UPDATE search_plans SET status = 'active', updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND tenant_id = ? AND person_id = ?`,
+        [planId, scope.tenantId, scope.personId]
+      );
+      await tx.execute(
+        `UPDATE search_plans SET status = 'archived', updated_at = CURRENT_TIMESTAMP
+         WHERE tenant_id = ? AND person_id = ? AND status = 'active' AND id <> ?`,
+        [scope.tenantId, scope.personId, planId]
+      );
+    });
+  }
+
+  /**
+   * Records and activates an operational market-corpus reset as one database
+   * transaction. The successor must already be paused and intentionally empty.
+   * Historic market records are not touched by this operation.
+   */
+  async activateOperationalMarketReset(
+    scope: AuthorizedPersonScope,
+    input: OperationalMarketResetInput,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const prior = await tx.one<{ search_plan_id: string; context_fingerprint: string }>(
+        `SELECT search_plan_id, context_fingerprint FROM active_evaluation_contexts
+         WHERE tenant_id = ? AND person_id = ?`,
+        [scope.tenantId, scope.personId],
+      );
+      if (!prior || prior.search_plan_id !== input.previousSearchPlanId || prior.context_fingerprint !== input.previousContextFingerprint) {
+        throw new Error("Operational reset preflight is stale: active context no longer matches its manifest.");
+      }
+      const prepared = await tx.one<{ id: string }>(
+        `SELECT sp.id FROM search_plans sp JOIN search_plan_snapshots sps ON sps.search_plan_id = sp.id
+         JOIN evaluation_contexts ec ON ec.search_plan_snapshot_id = sps.id
+         WHERE sp.id = ? AND sp.tenant_id = ? AND sp.person_id = ? AND sp.status = 'paused'
+           AND ec.context_fingerprint = ?`,
+        [input.successorSearchPlanId, scope.tenantId, scope.personId, input.successorContextFingerprint],
+      );
+      if (!prepared) throw new Error("Operational reset successor is missing or no longer paused.");
+      const candidates = await tx.one<{ count: number }>(
+        `SELECT COUNT(*) AS count FROM search_plan_candidates WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?`,
+        [scope.tenantId, scope.personId, input.successorSearchPlanId],
+      );
+      if ((candidates?.count ?? 0) !== 0) throw new Error("Operational reset successor is not empty.");
+
+      await tx.execute(
+        `INSERT INTO market_corpus_reset_events (
+           id, tenant_id, person_id, previous_search_plan_id, previous_context_fingerprint,
+           successor_search_plan_id, successor_context_fingerprint, pre_reset_manifest_json,
+           pre_reset_manifest_sha256, candidate_profile_hash, candidate_projection_hash,
+           location_policy, release_commit, status, activated_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVATED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        [input.resetEventId, scope.tenantId, scope.personId, input.previousSearchPlanId,
+          input.previousContextFingerprint, input.successorSearchPlanId, input.successorContextFingerprint,
+          input.preResetManifestJson, input.preResetManifestSha256, input.candidateProfileHash,
+          input.candidateProjectionHash, input.locationPolicy, input.releaseCommit],
+      );
+      await tx.execute(
+        `INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+         VALUES (?, ?, ?, ?, ?)`,
+        [scope.tenantId, scope.personId, input.successorSearchPlanId, input.successorContextFingerprint, input.activatedBy],
+      );
+      await tx.execute(`DELETE FROM active_evaluation_contexts WHERE tenant_id = ? AND person_id = ? AND search_plan_id <> ?`,
+        [scope.tenantId, scope.personId, input.successorSearchPlanId]);
+      await tx.execute(`UPDATE search_plans SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ? AND person_id = ?`,
+        [input.successorSearchPlanId, scope.tenantId, scope.personId]);
+      await tx.execute(`UPDATE search_plans SET status = 'archived', updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND person_id = ? AND status = 'active' AND id <> ?`,
+        [scope.tenantId, scope.personId, input.successorSearchPlanId]);
+    });
+  }
 
   /**
    * Replaces the active search plan for one authorized person as one durable

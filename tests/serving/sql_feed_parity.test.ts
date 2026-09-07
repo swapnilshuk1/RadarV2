@@ -17,18 +17,7 @@ import path from "node:path";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
-import { resolveEffectiveDecision } from "../../src/lib/intelligence/decision-resolver";
-
-const POPULATION_TIER_ORDER: Record<string, number> = {
-  ENGINE_PURSUIT: 0,
-  USER_CONFIRMED: 0,
-  PREFERENCE_OVERRIDE: 1,
-  VETO_OVERRIDE: 2,
-  ENGINE_CONSIDER: 3,
-  NOT_EVALUABLE: 4,
-  USER_PASSED: 5,
-  ENGINE_PASS: 5,
-};
+import { resolveServingDecision } from "../../src/domain/decision_v4";
 
 describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
   let sqliteDb: Database.Database;
@@ -62,8 +51,12 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
     });
   });
 
-  describe("2. Synthetic Veto Edge-Case Parity Suite", () => {
-    it("Case V1: userAction=PURSUE, engineVerdict=CONSIDER, vetoed=1 -> VETO_OVERRIDE (Tier 2)", async () => {
+  describe("2. Canonical engine/user decision parity", () => {
+    it("preserves UNKNOWN when neither the engine nor the user supplies a decision", () => {
+      expect(resolveServingDecision("UNKNOWN", null)).toBe("UNKNOWN");
+    });
+
+    it("user promotes CONSIDER without mutating engine verdict", async () => {
       // Seed candidate with CONSIDER and vetoed=1
       await db.execute(
         `INSERT INTO canonical_opportunities (id, source_job_id, source, company_name, canonical_url) VALUES ('job_v1', 'j-v1', 'LinkedIn', 'Veto Corp', 'https://apply/v1')`
@@ -76,8 +69,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
          VALUES ('tenant_A', 'person_A', 'plan_A', 'job_v1', 'ov_v1', 'CANDIDATE')`
       );
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
-         VALUES ('me_v1', 'job_v1', 'ov_v1', 'tenant_A', 'person_A', 'fingerprint_A', 'COMPLETE', 'CONSIDER', 72, 1, '{}')`
+        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
+         VALUES ('me_v1', 'job_v1', 'ov_v1', 'tenant_A', 'person_A', 'fingerprint_A', 'eval_v1', 'COMPLETE', 'CONSIDER', 72, 1, '{}')`
       );
       await db.execute(
         `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, updated_at)
@@ -91,21 +84,13 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
 
       const v1 = items.find((i) => i.jobHash === "j-v1");
       expect(v1).toBeDefined();
-      expect(v1?.effectiveDecision).toBe("VETO_OVERRIDE");
-      expect(v1?.populationTier).toBe(2);
-
-      // Cross-verify with TypeScript resolver
-      const tsDecision = resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "CONSIDER",
-        vetoed: true,
-        userAction: "PURSUE",
-      });
-      expect(tsDecision).toBe("VETO_OVERRIDE");
-      expect(POPULATION_TIER_ORDER[tsDecision]).toBe(2);
+      expect(v1?.engineVerdict).toBe("CONSIDER");
+      expect(v1?.userAction).toBe("PURSUE");
+      expect(v1?.effectiveDecision).toBe("PURSUE");
+      expect(resolveServingDecision("CONSIDER", "PURSUE")).toBe("PURSUE");
     });
 
-    it("Case V2: userAction=PURSUE, engineVerdict=CONSIDER, vetoed=0 -> PREFERENCE_OVERRIDE (Tier 1)", async () => {
+    it("user promotion is independent of legacy veto/ranking fields", async () => {
       await db.execute(
         `INSERT INTO canonical_opportunities (id, source_job_id, source, company_name, canonical_url) VALUES ('job_v2', 'j-v2', 'LinkedIn', 'Growth Corp', 'https://apply/v2')`
       );
@@ -117,8 +102,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
          VALUES ('tenant_A', 'person_A', 'plan_A', 'job_v2', 'ov_v2', 'CANDIDATE')`
       );
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
-         VALUES ('me_v2', 'job_v2', 'ov_v2', 'tenant_A', 'person_A', 'fingerprint_A', 'COMPLETE', 'CONSIDER', 78, 0, '{}')`
+        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
+         VALUES ('me_v2', 'job_v2', 'ov_v2', 'tenant_A', 'person_A', 'fingerprint_A', 'eval_v2', 'COMPLETE', 'CONSIDER', 78, 0, '{}')`
       );
       await db.execute(
         `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, updated_at)
@@ -132,17 +117,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
 
       const v2 = items.find((i) => i.jobHash === "j-v2");
       expect(v2).toBeDefined();
-      expect(v2?.effectiveDecision).toBe("PREFERENCE_OVERRIDE");
-      expect(v2?.populationTier).toBe(1);
-
-      const tsDecision = resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "CONSIDER",
-        vetoed: false,
-        userAction: "PURSUE",
-      });
-      expect(tsDecision).toBe("PREFERENCE_OVERRIDE");
-      expect(POPULATION_TIER_ORDER[tsDecision]).toBe(1);
+      expect(v2?.engineVerdict).toBe("CONSIDER");
+      expect(v2?.effectiveDecision).toBe("PURSUE");
     });
 
     it("Case V3: userAction=PURSUE, engineVerdict=PASS, vetoed=0 -> VETO_OVERRIDE (Tier 2)", async () => {
@@ -157,8 +133,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
          VALUES ('tenant_A', 'person_A', 'plan_A', 'job_v3', 'ov_v3', 'CANDIDATE')`
       );
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
-         VALUES ('me_v3', 'job_v3', 'ov_v3', 'tenant_A', 'person_A', 'fingerprint_A', 'COMPLETE', 'PASS', 45, 0, '{}')`
+        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
+         VALUES ('me_v3', 'job_v3', 'ov_v3', 'tenant_A', 'person_A', 'fingerprint_A', 'eval_v3', 'COMPLETE', 'PASS', 45, 0, '{}')`
       );
       await db.execute(
         `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, updated_at)
@@ -171,8 +147,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
       );
 
       const v3 = items.find((i) => i.jobHash === "j-v3");
-      expect(v3?.effectiveDecision).toBe("VETO_OVERRIDE");
-      expect(v3?.populationTier).toBe(2);
+      expect(v3?.engineVerdict).toBe("PASS");
+      expect(v3?.effectiveDecision).toBe("PURSUE");
     });
 
     it("Case V4: userAction=CONSIDER, engineVerdict=PASS -> PREFERENCE_OVERRIDE (Tier 1)", async () => {
@@ -187,8 +163,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
          VALUES ('tenant_A', 'person_A', 'plan_A', 'job_v4', 'ov_v4', 'CANDIDATE')`
       );
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
-         VALUES ('me_v4', 'job_v4', 'ov_v4', 'tenant_A', 'person_A', 'fingerprint_A', 'COMPLETE', 'PASS', 55, 1, '{}')`
+        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
+         VALUES ('me_v4', 'job_v4', 'ov_v4', 'tenant_A', 'person_A', 'fingerprint_A', 'eval_v4', 'COMPLETE', 'PASS', 55, 1, '{}')`
       );
       await db.execute(
         `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, updated_at)
@@ -201,8 +177,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
       );
 
       const v4 = items.find((i) => i.jobHash === "j-v4");
-      expect(v4?.effectiveDecision).toBe("PREFERENCE_OVERRIDE");
-      expect(v4?.populationTier).toBe(1);
+      expect(v4?.engineVerdict).toBe("PASS");
+      expect(v4?.effectiveDecision).toBe("CONSIDER");
     });
 
     it("Case V5: userAction=CONSIDER, engineVerdict=CONSIDER -> ENGINE_CONSIDER (Tier 3)", async () => {
@@ -217,8 +193,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
          VALUES ('tenant_A', 'person_A', 'plan_A', 'job_v5', 'ov_v5', 'CANDIDATE')`
       );
       await db.execute(
-        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
-         VALUES ('me_v5', 'job_v5', 'ov_v5', 'tenant_A', 'person_A', 'fingerprint_A', 'COMPLETE', 'CONSIDER', 68, 0, '{}')`
+        `INSERT INTO materialized_evaluations (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, vetoed, evaluation_json)
+         VALUES ('me_v5', 'job_v5', 'ov_v5', 'tenant_A', 'person_A', 'fingerprint_A', 'eval_v5', 'COMPLETE', 'CONSIDER', 68, 0, '{}')`
       );
       await db.execute(
         `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, updated_at)
@@ -231,8 +207,8 @@ describe("Phase 5: Lean SQL Feed Projection & Parity Certification", () => {
       );
 
       const v5 = items.find((i) => i.jobHash === "j-v5");
-      expect(v5?.effectiveDecision).toBe("ENGINE_CONSIDER");
-      expect(v5?.populationTier).toBe(3);
+      expect(v5?.engineVerdict).toBe("CONSIDER");
+      expect(v5?.effectiveDecision).toBe("CONSIDER");
     });
   });
 });

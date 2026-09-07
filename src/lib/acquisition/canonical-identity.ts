@@ -10,6 +10,7 @@
  */
 
 import crypto from "crypto";
+import { parseVerifiedIndeedListingUrl } from "./indeed-listing-identity";
 
 export type IdentityMethod = "STABLE_JOB_ID" | "URL_FINGERPRINT" | "CONTENT_HASH";
 export type IdentityConfidence = "HIGH" | "MEDIUM" | "LOW";
@@ -22,6 +23,8 @@ export interface CanonicalIdentity {
   identityMethod: IdentityMethod;
   identityConfidence: IdentityConfidence;
 }
+
+export { parseVerifiedIndeedListingUrl as resolveVerifiedIndeedListingIdentity } from "./indeed-listing-identity";
 
 /**
  * Strips tracking parameters from job posting URLs.
@@ -70,8 +73,22 @@ export function resolveCanonicalIdentity(input: {
   const portal = input.portal.trim();
   const cleanUrl = stripTrackingParams(input.url || "");
 
+  if (portal.toLowerCase() === "indeed") {
+    const verified = parseVerifiedIndeedListingUrl(input.url);
+    if (verified) {
+      return {
+        canonicalJobId: verified.canonicalJobId,
+        sourcePortal: "Indeed",
+        sourceJobId: verified.sourceJobId,
+        canonicalUrl: verified.canonicalUrl,
+        identityMethod: "STABLE_JOB_ID",
+        identityConfidence: "HIGH",
+      };
+    }
+  }
+
   // 1. Check for explicit rawJobId from portal card dataset
-  if (input.rawJobId && input.rawJobId.trim().length > 3) {
+  if (portal.toLowerCase() !== "indeed" && input.rawJobId && input.rawJobId.trim().length > 3) {
     const cleanId = input.rawJobId.trim().replace(/^jk_/, "");
     return {
       canonicalJobId: `${portal.toLowerCase()}:${cleanId}`,
@@ -94,22 +111,6 @@ export function resolveCanonicalIdentity(input: {
         sourcePortal: "LinkedIn",
         sourceJobId: jobId,
         canonicalUrl: `https://www.linkedin.com/jobs/view/${jobId}`,
-        identityMethod: "STABLE_JOB_ID",
-        identityConfidence: "HIGH"
-      };
-    }
-  }
-
-  if (portal.toLowerCase() === "indeed") {
-    // Matches ?jk=829c871daddf233a or /viewjob?jk=829c871daddf233a
-    const jkMatch = cleanUrl.match(/[?&]jk=([a-f0-9]+)/i) || cleanUrl.match(/\/rc\/clk\?jk=([a-f0-9]+)/i);
-    if (jkMatch && jkMatch[1]) {
-      const jobId = jkMatch[1];
-      return {
-        canonicalJobId: `indeed:jk_${jobId}`,
-        sourcePortal: "Indeed",
-        sourceJobId: jobId,
-        canonicalUrl: `https://in.indeed.com/viewjob?jk=${jobId}`,
         identityMethod: "STABLE_JOB_ID",
         identityConfidence: "HIGH"
       };

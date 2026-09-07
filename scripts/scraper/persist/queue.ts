@@ -41,6 +41,10 @@ export class EnrichmentQueue {
     this.db = adapter || getDatabaseAdapter();
   }
 
+  public getDatabaseAdapter(): DatabaseAdapter {
+    return this.db;
+  }
+
   public async enqueue(
     id: string,
     jobHash: string,

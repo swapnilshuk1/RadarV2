@@ -85,11 +85,15 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         posted_at TEXT,
         posted_precision TEXT,
         raw_content TEXT,
+        category_ids TEXT,
         acquisition_status TEXT,
         acquisition_quality TEXT,
         failure_class TEXT,
         lifecycle_state TEXT,
         evidence_state TEXT,
+        source_payload_key TEXT,
+        source_media_type TEXT,
+        document_extraction_state TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(canonical_job_id, content_hash)
       );
@@ -101,6 +105,10 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         canonical_job_id TEXT NOT NULL,
         opportunity_version TEXT NOT NULL,
         attention_decision TEXT NOT NULL,
+        eligibility TEXT,
+        eligibility_reason_codes_json TEXT,
+        location_policy TEXT,
+        location_evidence TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version)
       );
@@ -150,6 +158,7 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         canonical_job_id TEXT NOT NULL,
         opportunity_version TEXT NOT NULL,
         evaluation_context_fingerprint TEXT NOT NULL,
+        evaluation_fingerprint TEXT,
         evaluation_state TEXT NOT NULL,
         decision TEXT,
         quality_score REAL,
@@ -209,8 +218,11 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
       canonical_job_id: string;
       opportunity_version: string;
       attention_decision: string;
+      eligibility: string | null;
+      eligibility_reason_codes_json: string | null;
     }>(
-      `SELECT canonical_job_id, opportunity_version, attention_decision
+      `SELECT canonical_job_id, opportunity_version, attention_decision,
+              eligibility, eligibility_reason_codes_json
        FROM search_plan_candidates
        WHERE canonical_job_id = ?`,
       [ingestResult.canonicalJobId]
@@ -219,6 +231,9 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
     expect(candidate).toBeDefined();
     expect(candidate?.opportunity_version).toBe(ingestResult.opportunityVersion);
     expect(candidate?.attention_decision).toBe("CANDIDATE");
+    expect(candidate?.eligibility).toBe("ELIGIBLE");
+    expect(JSON.parse(candidate?.eligibility_reason_codes_json || "[]"))
+      .toContain("ROLE_FAMILY_MATCH");
 
     // 3. Idempotent Ingestion Check (Re-ingestion with same content must not corrupt FK)
     const secondIngest = await ingestionService.ingestOpportunity(rawJobPayload);
@@ -254,8 +269,8 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
     await adapter.execute(
       `INSERT INTO materialized_evaluations (
         id, tenant_id, person_id, canonical_job_id, opportunity_version,
-        evaluation_context_fingerprint, evaluation_state, decision, quality_score, confidence, vetoed, policy_version, evaluated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, confidence, vetoed, policy_version, evaluated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
       [
         `me_${ingestResult.canonicalJobId}`,
         "tenant_prod",
@@ -263,6 +278,7 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         ingestResult.canonicalJobId,
         ingestResult.opportunityVersion,
         "ctx_test_hash",
+        "eval_test_hash",
         "COMPLETE",
         evalOutput.record.verb,
         evalOutput.record.qualityScore,

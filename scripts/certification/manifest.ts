@@ -6,7 +6,7 @@
  * this manifest rather than maintaining independent lists.
  */
 
-export const EXPECTED_CERTIFICATION_FILE_COUNT = 38;
+export const EXPECTED_CERTIFICATION_FILE_COUNT = 48;
 
 export const certificationManifest = [
   {
@@ -31,6 +31,7 @@ export const certificationManifest = [
     files: [
       "tests/intelligence/canonical-ingestion-fk-regression.test.ts",
       "tests/intelligence/canonical-acquisition-integrity.test.ts",
+      "tests/acquisition/ingestion-lineage.test.ts",
       "tests/intelligence/semantic-evidence-integrity-regression.test.ts",
       "tests/intelligence/metrics-portal-breakdown.test.ts",
       "tests/persistence/queue-crash-restart.test.ts",
@@ -38,6 +39,7 @@ export const certificationManifest = [
       "tests/persistence/cross-instance-payload-retrieval.test.ts",
       "tests/persistence/distributed-lease-contention.test.ts",
       "tests/persistence/blob-store-connectivity.test.ts",
+      "tests/scraper/acquisition-variant-contract.test.ts",
     ],
   },
   {
@@ -85,6 +87,22 @@ export const certificationManifest = [
       "tests/editorial/verdict-coverage.test.ts",
       "tests/editorial/evidence-sufficiency-contract.test.ts",
       "tests/intelligence/invariant-assertions.test.ts",
+    ],
+  },
+  {
+    id: "gate-0-safety",
+    name: "Gate 0 Safety Invariants",
+    description:
+      "Fail-closed profile resolution, non-escalating permissions, canonical verdicts, reproducibility, and durable worker recovery",
+    files: [
+      "tests/intelligence/worker-profile-resolution.test.ts",
+      "tests/intelligence/profile-projection-version-compat.test.ts",
+      "tests/security/scraper-auth-permission-non-escalation.test.ts",
+      "tests/intelligence/m8-canonical-serving.test.ts",
+      "tests/policy/headspace-serving-contract.test.ts",
+      "tests/intelligence/m9_4_1-evaluation-determinism.test.ts",
+      "tests/intelligence/m53-worker.test.ts",
+      "tests/security/evaluation-context-isolation.test.ts",
     ],
   },
 ] as const;

@@ -3,13 +3,12 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
-import { SqliteCanonicalServingStore } from "../../src/data/sqlite/repositories/SqliteCanonicalServingStore";
-import { resolveEffectiveDecision } from "../../src/lib/intelligence/decision-resolver";
+import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
 
 describe("Milestone M8 — Canonical Executive Serving Store & Resolution", () => {
   let sqliteDb: Database.Database;
   let db: SqliteAdapter;
-  let store: SqliteCanonicalServingStore;
+  let store: SqliteOpportunityQueries;
 
   const tenantId = "tenant_default";
   const personId = "person_swapnil";
@@ -18,7 +17,7 @@ describe("Milestone M8 — Canonical Executive Serving Store & Resolution", () =
   beforeEach(() => {
     sqliteDb = new Database(":memory:");
     db = new SqliteAdapter(sqliteDb);
-    store = new SqliteCanonicalServingStore(db);
+    store = new SqliteOpportunityQueries(db);
 
     const migrationFiles = [
       "001_initial_schema.sql",
@@ -36,6 +35,8 @@ describe("Milestone M8 — Canonical Executive Serving Store & Resolution", () =
       "027_materialized_evaluations_nullable_decision.sql",
       "028_active_evaluation_context_pointers.sql",
       "029_materialized_evaluations_vetoed.sql",
+      "037_materialized_evaluation_fingerprint.sql",
+      "038_opportunity_version_category_projection.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -46,6 +47,9 @@ describe("Milestone M8 — Canonical Executive Serving Store & Resolution", () =
     // Seed tenants, people, search_plans, evaluation_contexts
     sqliteDb.exec(`
       INSERT INTO tenants (id, status) VALUES ('${tenantId}', 'active');
+      INSERT INTO users (id, email) VALUES ('${personId}', 'swapnil@test.com');
+      INSERT INTO memberships (user_id, tenant_id, role, permissions, status) VALUES
+        ('${personId}', '${tenantId}', 'admin', '["*"]', 'active');
       INSERT INTO people (id, email, tenant_id) VALUES ('${personId}', 'swapnil@test.com', '${tenantId}');
 
       INSERT INTO search_plans (id, tenant_id, person_id, title, criteria_json, status) VALUES 
@@ -56,6 +60,12 @@ describe("Milestone M8 — Canonical Executive Serving Store & Resolution", () =
 
       INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES 
         ('ctx_fp_1', '${tenantId}', '${personId}', 'sps_1', 'v2', 'ofp_1', 'v4.3', 'prof_1');
+
+      -- Serving authority is explicit; chronology must not choose this context.
+      INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id) VALUES
+        ('ctx_fp_1', '${tenantId}', '${personId}', 'sp_1');
+      INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by) VALUES
+        ('${tenantId}', '${personId}', 'sp_1', 'ctx_fp_1', 'test');
 
       INSERT INTO companies (id, name) VALUES ('comp_1', 'Beta Ltd');
       INSERT INTO opportunities (id, company_id, canonical_title, fingerprint, lifecycle) VALUES 
@@ -69,10 +79,10 @@ describe("Milestone M8 — Canonical Executive Serving Store & Resolution", () =
         ('can_2', 'LinkedIn', 'hash_2', 'https://linkedin.com/jobs/2', 'Beta Ltd'),
         ('can_3', 'LinkedIn', 'hash_3', 'https://linkedin.com/jobs/3', 'Gamma Inc');
 
-      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, posted_at, posted_precision) VALUES 
-        ('ov_1', 'can_1', 'chash_1', 'VP Engineering', 'Acme Corp', 'Bengaluru', 'Full-time', 'VP Eng Role Description', '2026-08-01T00:00:00.000Z', 'EXACT'),
-        ('ov_2', 'can_2', 'chash_2', 'CTO', 'Beta Ltd', 'Remote', 'Full-time', 'CTO Role Description', NULL, 'UNKNOWN'),
-        ('ov_3', 'can_3', 'chash_3', 'Chief Product Officer', 'Gamma Inc', 'Mumbai', 'Full-time', 'CPO Role Description', NULL, 'UNKNOWN');
+      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, posted_at, posted_precision, lifecycle_state, category_ids) VALUES
+        ('ov_1', 'can_1', 'chash_1', 'VP Engineering', 'Acme Corp', 'Bengaluru', 'Full-time', 'VP Eng Role Description', '2026-08-01T00:00:00.000Z', 'EXACT', 'ACTIVE', '[]'),
+        ('ov_2', 'can_2', 'chash_2', 'CTO', 'Beta Ltd', 'Remote', 'Full-time', 'CTO Role Description', NULL, 'UNKNOWN', 'ACTIVE', '[]'),
+        ('ov_3', 'can_3', 'chash_3', 'Chief Product Officer', 'Gamma Inc', 'Mumbai', 'Full-time', 'CPO Role Description', NULL, 'UNKNOWN', 'ACTIVE', '[]');
 
       -- Search plan candidates
       INSERT INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES 
@@ -81,50 +91,55 @@ describe("Milestone M8 — Canonical Executive Serving Store & Resolution", () =
         ('${tenantId}', '${personId}', 'sp_1', 'can_3', 'ov_3', 'CANDIDATE');
 
       -- Materialized evaluations (can_1: PURSUE 95, can_2: CONSIDER 80, can_3: PASS 40)
-      INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, decision, quality_score, rationale, evidence_ids, evaluation_json) VALUES 
-        ('me_1', '${tenantId}', '${personId}', 'can_1', 'ov_1', 'ctx_fp_1', 'PURSUE', 95.0, 'Strong fit', '[]', '{"jobHash":"hash_1","role":"VP Engineering","company":"Acme Corp","location":"Bengaluru","decision":"PURSUE","intrinsicVerdict":"PURSUE","intrinsicQualityScore":95.0,"baseNarrative":{"baseRecommendationProse":"Strong alignment."}}'),
-        ('me_2', '${tenantId}', '${personId}', 'can_2', 'ov_2', 'ctx_fp_1', 'CONSIDER', 80.0, 'Moderate fit', '[]', '{"jobHash":"hash_2","role":"CTO","company":"Beta Ltd","location":"Remote","decision":"CONSIDER","intrinsicVerdict":"CONSIDER","intrinsicQualityScore":80.0,"baseNarrative":{"baseRecommendationProse":"Moderate alignment."}}'),
-        ('me_3', '${tenantId}', '${personId}', 'can_3', 'ov_3', 'ctx_fp_1', 'PASS', 40.0, 'Low fit', '[]', '{"jobHash":"hash_3","role":"Chief Product Officer","company":"Gamma Inc","location":"Mumbai","decision":"PASS","intrinsicVerdict":"PASS","intrinsicQualityScore":40.0,"baseNarrative":{"baseRecommendationProse":"Pass."}}');
+      INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, evaluation_state, decision, quality_score, evaluation_fingerprint, rationale, evidence_ids, evaluation_json) VALUES
+        ('me_1', '${tenantId}', '${personId}', 'can_1', 'ov_1', 'ctx_fp_1', 'COMPLETE', 'PURSUE', 95.0, 'fp_1', 'Strong fit', '[]', '{"schemaVersion":"v4.3-intrinsic","evaluationContractVersion":"v4.3","evaluationState":"EVALUATED","evaluationInputHash":"fp_1","canonicalJobId":"can_1","opportunityVersion":"ov_1","jobHash":"hash_1","evaluatedAt":"2026-08-01T00:00:00.000Z","contextFingerprint":"ctx_fp_1","tenantId":"${tenantId}","personId":"${personId}","policyVersion":"v4.3","ontologyVersion":"v2","ontologyFingerprint":"ofp_1","profileVersion":"prof_1","decision":"PURSUE","score":95,"diligenceStatus":"READY","jobProjection":{}}'),
+        ('me_2', '${tenantId}', '${personId}', 'can_2', 'ov_2', 'ctx_fp_1', 'COMPLETE', 'CONSIDER', 80.0, 'fp_2', 'Moderate fit', '[]', '{"schemaVersion":"v4.3-intrinsic","evaluationContractVersion":"v4.3","evaluationState":"EVALUATED","evaluationInputHash":"fp_2","canonicalJobId":"can_2","opportunityVersion":"ov_2","jobHash":"hash_2","evaluatedAt":"2026-08-01T00:00:00.000Z","contextFingerprint":"ctx_fp_1","tenantId":"${tenantId}","personId":"${personId}","policyVersion":"v4.3","ontologyVersion":"v2","ontologyFingerprint":"ofp_1","profileVersion":"prof_1","decision":"CONSIDER","score":80,"diligenceStatus":"READY","jobProjection":{}}'),
+        ('me_3', '${tenantId}', '${personId}', 'can_3', 'ov_3', 'ctx_fp_1', 'COMPLETE', 'PASS', 40.0, 'fp_3', 'Low fit', '[]', '{"schemaVersion":"v4.3-intrinsic","evaluationContractVersion":"v4.3","evaluationState":"EVALUATED","evaluationInputHash":"fp_3","canonicalJobId":"can_3","opportunityVersion":"ov_3","jobHash":"hash_3","evaluatedAt":"2026-08-01T00:00:00.000Z","contextFingerprint":"ctx_fp_1","tenantId":"${tenantId}","personId":"${personId}","policyVersion":"v4.3","ontologyVersion":"v2","ontologyFingerprint":"ofp_1","profileVersion":"prof_1","decision":"PASS","score":40,"diligenceStatus":"READY","jobProjection":{}}');
 
       -- Decision recorded for can_2 (User PURSUE override)
-      INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, reason) VALUES 
-        ('dec_1', '${tenantId}', '${personId}', 'can_2', 'PURSUE', 'Great role');
+      INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, reason, reviewed_fingerprint) VALUES
+        ('dec_1', '${tenantId}', '${personId}', 'can_2', 'PURSUE', 'Great role', 'fp_2');
     `);
   });
 
   describe("Canonical Serving Queries", () => {
     it("should list candidate opportunities sorted by tier order and score", async () => {
-      const opps = await store.listOpportunities(scope);
+      const opps = (await store.getFeed(scope, undefined, {}, 50)).items;
 
       expect(opps).toHaveLength(3);
-      // can_1 (ENGINE_PURSUIT - Tier 1)
+      // Public serving exposes a canonical verdict, not a legacy ranking label.
       expect(opps[0].jobHash).toBe("hash_1");
-      expect(opps[0].effectiveDecision).toBe("ENGINE_PURSUIT");
+      expect(opps[0].engineVerdict).toBe("PURSUE");
+      expect(opps[0].userAction).toBeNull();
+      expect(opps[0].effectiveDecision).toBe("PURSUE");
 
-      // can_2 (PREFERENCE_OVERRIDE: User PURSUE + Engine CONSIDER - Tier 2)
+      // A user action changes only effectiveDecision; the engine verdict remains factual.
       expect(opps[1].jobHash).toBe("hash_2");
-      expect(opps[1].effectiveDecision).toBe("PREFERENCE_OVERRIDE");
-      expect(opps[1].userDecision?.userAction).toBe("PURSUE");
+      expect(opps[1].engineVerdict).toBe("CONSIDER");
+      expect(opps[1].userAction).toBe("PURSUE");
+      expect(opps[1].effectiveDecision).toBe("PURSUE");
+      expect(opps[1].reviewState).toBe("CURRENT");
 
-      // can_3 (ENGINE_PASS - Tier 5)
+      // can_3 has no user decision, so effectiveDecision is the engine PASS.
       expect(opps[2].jobHash).toBe("hash_3");
-      expect(opps[2].effectiveDecision).toBe("ENGINE_PASS");
+      expect(opps[2].engineVerdict).toBe("PASS");
+      expect(opps[2].effectiveDecision).toBe("PASS");
     });
 
     it("should retrieve a single opportunity DTO by hash with exact populated metadata", async () => {
-      const opp = await store.getOpportunity(scope, "hash_1");
+      const opp = await store.getDossier(scope, "hash_1");
       expect(opp).toBeDefined();
       expect(opp?.jobHash).toBe("hash_1");
       expect(opp?.role).toBe("VP Engineering");
       expect(opp?.company).toBe("Acme Corp");
       expect(opp?.location).toBe("Bengaluru");
-      expect(opp?.effectiveDecision).toBe("ENGINE_PURSUIT");
+      expect(opp?.effectiveDecision).toBe("PURSUE");
       expect(opp?.applyUrl).toBe("https://linkedin.com/jobs/1");
       expect(opp?.postedRelative).toContain("Posted");
     });
 
     it("should compute authoritative opportunity metrics", async () => {
-      const metrics = await store.getOpportunityMetrics(scope);
+      const metrics = await store.getMetrics(scope);
 
       expect(metrics).toBeDefined();
       expect(metrics.personId).toBe(personId);
@@ -138,29 +153,20 @@ describe("Milestone M8 — Canonical Executive Serving Store & Resolution", () =
     });
 
     it("should list decided opportunities for user correctly", async () => {
-      const decided = await store.listDecidedOpportunities(scope);
+      const decided = (await store.getFeed(scope, undefined, { decisionFilter: "decided" }, 50)).items;
 
       expect(decided).toHaveLength(1);
       expect(decided[0].jobHash).toBe("hash_2");
-      expect(decided[0].userDecision?.userAction).toBe("PURSUE");
+      expect(decided[0].userAction).toBe("PURSUE");
     });
 
-    it("should navigate adjacent opportunities deterministically", async () => {
-      const adj1 = await store.getAdjacentOpportunities(scope, "hash_1");
-      expect(adj1.currentIndex).toBe(1);
-      expect(adj1.totalCount).toBe(3);
-      expect(adj1.prev).toBeUndefined();
-      expect(adj1.next?.jobHash).toBe("hash_2");
+    it("keeps the canonical feed ordering deterministic", async () => {
+      const first = await store.getFeed(scope, undefined, {}, 2);
+      expect(first.items.map((item) => item.jobHash)).toEqual(["hash_1", "hash_2"]);
+      expect(first.nextCursor).toBeTruthy();
 
-      const adj2 = await store.getAdjacentOpportunities(scope, "hash_2");
-      expect(adj2.currentIndex).toBe(2);
-      expect(adj2.prev?.jobHash).toBe("hash_1");
-      expect(adj2.next?.jobHash).toBe("hash_3");
-
-      const adj3 = await store.getAdjacentOpportunities(scope, "hash_3");
-      expect(adj3.currentIndex).toBe(3);
-      expect(adj3.prev?.jobHash).toBe("hash_2");
-      expect(adj3.next).toBeUndefined();
+      const second = await store.getFeed(scope, first.nextCursor!, {}, 2);
+      expect(second.items.map((item) => item.jobHash)).toEqual(["hash_3"]);
     });
 
     it("should deterministically deduplicate decisions when multiple ID representations exist", async () => {
@@ -169,105 +175,20 @@ describe("Milestone M8 — Canonical Executive Serving Store & Resolution", () =
         INSERT OR IGNORE INTO opportunities (id, company_id, canonical_title, fingerprint, lifecycle) VALUES 
           ('can_1', 'comp_1', 'VP Engineering', 'fp_can1', 'ACTIVE');
 
-        INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, reason, updated_at) VALUES 
-          ('dec_can1_new', '${tenantId}', '${personId}', 'can_1', 'PURSUE', 'Newer decision', '2026-01-02T00:00:00Z');
+        INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, reason, reviewed_fingerprint, updated_at) VALUES
+          ('dec_can1_new', '${tenantId}', '${personId}', 'can_1', 'PURSUE', 'Newer decision', 'fp_1', '2026-01-02T00:00:00Z');
       `);
 
-      const opps = await store.listOpportunities(scope);
+      const opps = (await store.getFeed(scope, undefined, {}, 50)).items;
       // Row count must remain exactly 3 (no Cartesian explosion)
       expect(opps).toHaveLength(3);
 
       // can_1 must pick the latest decision ('PURSUE' from 2026-01-02)
       const can1 = opps.find((o) => o.jobHash === "hash_1");
       expect(can1).toBeDefined();
-      expect(can1?.userDecision?.userAction).toBe("PURSUE");
-      expect(can1?.userDecision?.updatedAt).toBe("2026-01-02T00:00:00Z");
-      expect(can1?.effectiveDecision).toBe("USER_CONFIRMED");
+      expect(can1?.userAction).toBe("PURSUE");
+      expect(can1?.effectiveDecision).toBe("PURSUE");
     });
   });
 
-  describe("Effective Decision Precedence Truth Table", () => {
-    it("should adhere strictly to the canonical effective decision truth table precedence", () => {
-      // 1. User PASS always results in USER_PASSED
-      expect(resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "PURSUE",
-        userAction: "PASS",
-      })).toBe("USER_PASSED");
-
-      // 2. User PURSUE + Engine PURSUE -> USER_CONFIRMED
-      expect(resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "PURSUE",
-        userAction: "PURSUE",
-      })).toBe("USER_CONFIRMED");
-
-      // 3. User PURSUE + Engine CONSIDER -> PREFERENCE_OVERRIDE
-      expect(resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "CONSIDER",
-        userAction: "PURSUE",
-      })).toBe("PREFERENCE_OVERRIDE");
-
-      // 4. User PURSUE + Engine PASS/Veto -> VETO_OVERRIDE
-      expect(resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "PASS",
-        userAction: "PURSUE",
-      })).toBe("VETO_OVERRIDE");
-
-      expect(resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "PURSUE",
-        vetoed: true,
-        userAction: "PURSUE",
-      })).toBe("VETO_OVERRIDE");
-
-      // 5. User CONSIDER + Engine CONSIDER -> ENGINE_CONSIDER
-      expect(resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "CONSIDER",
-        userAction: "CONSIDER",
-      })).toBe("ENGINE_CONSIDER");
-
-      // 6. User CONSIDER + Engine PASS/PURSUE -> PREFERENCE_OVERRIDE
-      expect(resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "PASS",
-        userAction: "CONSIDER",
-      })).toBe("PREFERENCE_OVERRIDE");
-
-      // 7. NOT_CANDIDATE with no user action -> NOT_EVALUABLE
-      expect(resolveEffectiveDecision({
-        attentionDecision: "NOT_CANDIDATE",
-        engineVerdict: "PURSUE",
-        userAction: "NONE",
-      })).toBe("NOT_EVALUABLE");
-
-      // 8. No user action + Engine verdicts
-      expect(resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "PURSUE",
-        userAction: "NONE",
-      })).toBe("ENGINE_PURSUIT");
-
-      expect(resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "CONSIDER",
-        userAction: "NONE",
-      })).toBe("ENGINE_CONSIDER");
-
-      expect(resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "PASS",
-        userAction: "NONE",
-      })).toBe("ENGINE_PASS");
-
-      expect(resolveEffectiveDecision({
-        attentionDecision: "CANDIDATE",
-        engineVerdict: "SPARSE_SPEC",
-        userAction: "NONE",
-      })).toBe("NOT_EVALUABLE");
-    });
-  });
 });

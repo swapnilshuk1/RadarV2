@@ -67,6 +67,7 @@ async function deploy() {
     `git fetch origin main`,
     `git reset --hard origin/main`,
     `npm install`,
+    `npm run db:migrate`,
     `npm run build`,
     `pm2 restart radar-v2`,
     `pm2 status`

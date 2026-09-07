@@ -5,6 +5,7 @@ import type {
   ContentQualityResult,
   ContentQualityTier
 } from "../types";
+import { validateJobDocument } from "../../../src/lib/acquisition/validator";
 
 // Global keep-alive agent to reuse TLS handshakes across concurrent detail requests.
 const agent = new Agent({
@@ -60,71 +61,30 @@ export function evaluateContentQuality(
   title?: string,
   company?: string
 ): ContentQualityResult {
-  const clean = (text || "").trim();
-  const characterCount = clean.length;
-  const words = clean.split(/\s+/).filter(Boolean);
-  const wordCount = words.length;
-  const reasons: string[] = [];
-  const boilerplateDetected: string[] = [];
-
-  // 1. Script & code pollution detection
-  let codeMatches = 0;
-  for (const pat of CODE_OR_SCRIPT_PATTERNS) {
-    if (pat.test(clean)) {
-      codeMatches++;
-      boilerplateDetected.push(`CodePattern: ${pat.source}`);
-    }
-  }
-
-  // Check code syntax symbols ratio: { } ; = ( ) < >
-  const codeChars = (clean.match(/[{};=()<>]/g) || []).length;
-  const codeRatio = characterCount > 0 ? codeChars / characterCount : 0;
-
-  if (codeMatches > 0 || codeRatio > 0.12) {
-    reasons.push(`Executable code or tracking script detected (codeRatio=${(codeRatio * 100).toFixed(1)}%, codePatterns=${codeMatches})`);
-  }
-
-  // 2. Non-job boilerplate patterns
-  for (const pat of NON_JOB_BOILERPLATE_PATTERNS) {
-    if (pat.test(clean)) {
-      boilerplateDetected.push(`Boilerplate: ${pat.source}`);
-      reasons.push(`Known non-job boilerplate detected: ${pat.source}`);
-    }
-  }
-
-  // 3. Check presence of job indicators
-  const hasJobTitle = title ? clean.toLowerCase().includes(title.toLowerCase()) : false;
+  const validation = validateJobDocument({
+    extractedText: text,
+    url: "about:blank",
+    sourcePortal: "HTTP_FETCH",
+    extractedTitle: title,
+    extractedCompany: company,
+    expectedTitle: title,
+    expectedCompany: company,
+    provenance: "SANITIZED_DOM",
+  });
+  const document = validation.document;
+  const clean = document.extractedText || text || "";
   const hasResponsibilities = /responsibilities|requirements|qualifications|about the role|what you will do|impact|who you are/i.test(clean);
-  const hasJobDescription = hasResponsibilities || wordCount >= 80;
-
-  // 4. Determine Tier
-  let tier: ContentQualityTier = "VALID";
-  let confidence = 0.9;
-
-  if (codeMatches > 0 || boilerplateDetected.length > 0 || (codeRatio > 0.12 && wordCount < 150)) {
-    tier = "NON_JOB";
-    confidence = 0.95;
-    reasons.push("Classified as NON_JOB due to script pollution or boilerplate dominance");
-  } else if (wordCount < 60 || characterCount < 400) {
-    tier = "SPARSE";
-    confidence = 0.7;
-    reasons.push(`Classified as SPARSE (wordCount=${wordCount}, characterCount=${characterCount})`);
-  } else {
-    tier = "VALID";
-    confidence = 0.9;
-    reasons.push(`Substantive job content validated (${wordCount} words, ${characterCount} chars)`);
-  }
-
+  const isSparse = document.usabilityState === "GENUINELY_SPARSE" || document.substantiveWordCount < 60 || document.substantiveCharacterCount < 400;
   return {
-    tier,
-    confidence,
-    wordCount,
-    characterCount,
-    codeRatio,
-    hasJobTitle,
-    hasJobDescription,
-    boilerplateDetected: boilerplateDetected.length > 0 ? boilerplateDetected : undefined,
-    reasons
+    tier: document.usabilityState === "UNUSABLE" ? "NON_JOB" : isSparse ? "SPARSE" : "VALID",
+    confidence: validation.confidence === "HIGH" ? 0.9 : validation.confidence === "MEDIUM" ? 0.8 : validation.confidence === "LOW" ? 0.7 : 0.95,
+    wordCount: document.substantiveWordCount,
+    characterCount: document.substantiveCharacterCount,
+    codeRatio: document.scriptRatio,
+    hasJobTitle: document.titleAgreement === "MATCHED" || (!!title && clean.toLowerCase().includes(title.toLowerCase())),
+    hasJobDescription: hasResponsibilities || document.substantiveWordCount >= 80,
+    boilerplateDetected: document.failureClass === "WRONG_PAGE" ? [document.failureClass] : undefined,
+    reasons: document.failureClass ? [`Canonical document validator: ${document.failureClass}`] : [isSparse ? "Canonical document validator: SPARSE" : `Canonical document validator: ${document.acquisitionQuality}`],
   };
 }
 
@@ -518,4 +478,3 @@ export async function fastFetchDetail(
     outcome: "TRANSPORT_ERROR"
   };
 }
-

@@ -2,6 +2,7 @@
 
 import fs from "fs";
 import type { CareerIntent } from "./career-intent";
+import type { EligibilitySpec } from "../../../src/lib/domain/evaluation_context";
 
 export class InsufficientSearchCriteriaError extends Error {
   constructor(message: string) {
@@ -25,6 +26,7 @@ export interface SearchPlan {
     dimension: string;
     concept: string;
   }>;
+  eligibilitySpec: EligibilitySpec;
 }
 
 export class SearchPlanner {
@@ -295,13 +297,32 @@ export class SearchPlanner {
       );
     }
 
+    const roleFamilies = Array.from(new Set([...targetTitles, ...functions].map((value) => value.trim()).filter(Boolean)));
+    const functionTokens = Array.from(new Set(functions.map((value) => value.trim()).filter(Boolean)));
+    const adjacentFamilies = Array.from(new Set([
+      ...functionTokens.flatMap((value) => {
+        const normalized = value.toLowerCase();
+        if (/(marketing|growth|commercial)/.test(normalized)) return ["Client Services", "Client Experience", "Strategy", "Transformation", "Digital"];
+        return [];
+      }),
+    ]));
     return {
       version: "2.0.0",
       generatedAt: new Date().toISOString(),
       candidateIntent: intent,
       searchHypotheses,
       rankedQueries,
+      eligibilitySpec: {
+        version: "eligibility-spec/v1",
+        ontologyVersion: "taxonomy-lexicon/v1",
+        roleFamilies,
+        functions: functionTokens,
+        seniorityRange: Array.from(new Set(targetLevels)),
+        locations: Array.from(new Set(intent.preferredLocations || [])),
+        industries: Array.from(new Set(intent.industries || [])),
+        adjacentFamilies,
+        excludedCompanies: Array.from(new Set(intent.exclusions || [])),
+      },
     };
   }
 }
-

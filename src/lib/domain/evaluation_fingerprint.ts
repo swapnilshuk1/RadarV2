@@ -106,6 +106,7 @@ export function validateEvaluationConsistency(evaluation: MaterializedEvaluation
     state === "ACQUISITION_PENDING" ||
     state === "ACQUISITION_FAILED" ||
     state === "EXPIRED" ||
+    state === "NOT_EVALUABLE" ||
     state === "UNKNOWN"
   ) {
     if (evaluation.decision !== null && evaluation.decision !== undefined) {
@@ -133,10 +134,22 @@ export function validateEvaluationConsistency(evaluation: MaterializedEvaluation
       evaluation.qualityScore === null ||
       evaluation.qualityScore === undefined ||
       typeof evaluation.qualityScore !== "number" ||
-      isNaN(evaluation.qualityScore)
+      !isFinite(evaluation.qualityScore) ||
+      isNaN(evaluation.qualityScore) ||
+      evaluation.qualityScore < 0 ||
+      evaluation.qualityScore > 100
     ) {
       throw new Error(
         `MaterializedEvaluation invariant violation: relational qualityScore must be a valid number when evaluationState is 'EVALUATED', received '${evaluation.qualityScore}'`
+      );
+    }
+    const evaluationFingerprint = parsed.evaluationInputHash;
+    if (typeof evaluationFingerprint !== "string" || evaluationFingerprint.trim().length === 0) {
+      throw new Error("MaterializedEvaluation invariant violation: EVALUATED payload must contain evaluationInputHash");
+    }
+    if (evaluation.evaluationFingerprint !== undefined && evaluation.evaluationFingerprint !== evaluationFingerprint) {
+      throw new Error(
+        `MaterializedEvaluation column mismatch: evaluationFingerprint '${evaluation.evaluationFingerprint}' does not match JSON evaluationInputHash '${evaluationFingerprint}'`
       );
     }
 
@@ -149,7 +162,7 @@ export function validateEvaluationConsistency(evaluation: MaterializedEvaluation
     }
 
     // Validate quality score consistency against payload
-    const jsonScore = parsed.qualityScore ?? parsed.quality_score ?? parsed.engine_quality_score;
+    const jsonScore = parsed.score ?? parsed.qualityScore ?? parsed.quality_score ?? parsed.engine_quality_score;
     if (jsonScore !== undefined && jsonScore !== null) {
       if (Math.abs(Number(jsonScore) - Number(evaluation.qualityScore)) > 0.001) {
         throw new Error(

@@ -49,10 +49,10 @@ export function buildCandidateEvaluationContext(
 
   const primaryIdentityStr = themes.length
     ? themes[0]
-    : "Commercial & Marketing Leadership";
+    : "UNKNOWN";
 
   const normalizedThemesLower = themes.map((t) => t.toLowerCase());
-  const candidateIdentityLower = (themes.join(" ") || "Commercial & Marketing Leadership").toLowerCase();
+  const candidateIdentityLower = themes.join(" ").toLowerCase();
 
   const proofPool = (projection.coreCapabilities || [])
     .map((c: any) => (typeof c === "string" ? c : c?.value || ""))

@@ -24,7 +24,8 @@ import { indeedHandler } from "./scraper/portals/indeed";
 import { naukriHandler } from "./scraper/portals/naukri";
 import { closeAllPortalContexts, getPortalContext } from "./scraper/portals/base";
 import { PageManager } from "./scraper/run/page-manager";
-import type { FeedCard, PortalHandler, PortalName, WorkUnit, AcquisitionAttempt, AcquisitionOutcome } from "./scraper/types";
+import type { FeedCard, PortalHandler, PortalName, WorkUnit, AcquisitionAttempt, AcquisitionOutcome, AcquisitionVariant } from "./scraper/types";
+import { compileCoverageVariants, createFreshnessVariant } from "./scraper/run/acquisition-variants";
 
 import { sanitizeCompanyName } from "./scraper/utils/sanitize";
 import { normalizeUrl } from "./scraper/utils/url";
@@ -32,6 +33,7 @@ import { getDatabaseAdapter } from "../src/data/database";
 import { fastFetchDetail } from "./scraper/utils/http-fetch";
 import { EnrichmentQueue } from "./scraper/persist/queue";
 import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
+import { parseVerifiedIndeedListingUrl } from "../src/lib/acquisition/indeed-listing-identity";
 import { FailurePolicyEngine } from "../src/lib/acquisition/failure-taxonomy";
 import { ResponseValidator } from "../src/lib/acquisition/validator";
 import { passesHardFilter } from "./scraper/utils/hard-filter";
@@ -41,12 +43,13 @@ import { getRepositories } from "../src/data/sqlite/provider";
 import { CredentialBroker } from "../src/lib/security/CredentialBroker";
 import { establishPortalAuthSession, type PortalAuthSession } from "../src/lib/security/PortalAuthSession";
 import type { AuthContext } from "../src/lib/security/auth";
-import { CanonicalIngestionService } from "../src/lib/acquisition/CanonicalIngestionService";
+import { CanonicalIngestionService, type CanonicalIngestionResult } from "../src/lib/acquisition/CanonicalIngestionService";
 
 
 
 import {
   readSnapshotIfFresh,
+  bindEvaluationEvidence,
   writeSnapshot,
   writeLiveScraped,
 } from "./scraper/persist/writer";
@@ -136,11 +139,13 @@ export interface RunOptions {
   keywords?: string[];
   portals?: PortalName[];
   maxPages?: number;
+  maxCardsPerPage?: number;
   resume?: boolean;
   autoConfirm?: boolean;
   authContext?: AuthContext;
   searchPlanId?: string;
   resolvedPlan?: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan;
+  variants?: AcquisitionVariant[];
 }
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
@@ -150,6 +155,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   let keywords = opts.keywords;
   let portals = opts.portals ?? DEFAULT_PORTALS;
   let maxPages = opts.maxPages ?? CONFIG.maxPages;
+  const maxCardsPerPage = opts.maxCardsPerPage ?? CONFIG.maxCardsPerPage;
 
   // Command-line override support for agile, diverse crawl runs
   const keywordsArg = process.argv.find(arg => arg.startsWith('--keywords=') || arg.startsWith('--keyword='));
@@ -212,12 +218,14 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   }
   
   const resolvedKeywords = keywords;
+  const resolvedVariants = opts.variants || (resolvedPlan ? compileCoverageVariants(resolvedPlan, portals) : undefined);
 
   const mgr = new RunController();
   const { resumed } = mgr.init({
     keywords: resolvedKeywords, portals, maxPages,
-    maxCardsPerPage: CONFIG.maxCardsPerPage,
+    maxCardsPerPage,
     resume: freshRun ? false : (opts.resume !== false),
+    variants: resolvedVariants,
   });
   
   activeRunControllers.set(mgr.runId, mgr);
@@ -361,7 +369,11 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
         if (sessionStatus === "ready") {
           // Navigate to search page so user can visually verify
-          const searchUrl = handler.buildSearchUrl(units[0].keyword, units[0].page);
+          const searchUrl = handler.buildSearchUrl({
+            ...(units[0].variant || {}),
+            query: units[0].keyword,
+            page: units[0].page,
+          });
           try {
             mgr.updatePortalHealth(portal, { status: "navigating", details: "Loading search page..." });
             await searchPage.goto(searchUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
@@ -445,16 +457,36 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           }
 
           // Adaptive Novelty Scheduler: Skip query page if historical novelty rate is < 5% on this portal (after page 1)
-          if (unit.page > 1) {
+          if (unit.page > 1 && !unit.variant?.postedWithinDays) {
             const avgNovelty = QueryMetricsStore.getAverageNoveltyRate(unit.portal, unit.keyword);
             if (avgNovelty < 0.05) {
+              if (!unit.variant?.postedWithinDays) {
+                mgr.enqueueVariant(createFreshnessVariant({
+                  ...(unit.variant || {}),
+                  portal: unit.portal,
+                  definitionId: unit.definitionId,
+                  query: unit.keyword,
+                }, 7));
+              }
               plog(`Adaptive Scheduler: Pruning page ${unit.page} for "${unit.keyword}" on ${unit.portal} (historical novelty ${(avgNovelty * 100).toFixed(1)}%)`, "info");
               mgr.updateUnit(unit.id, { status: "skipped_pruned", error: "Pruned by adaptive novelty scheduler (<5% historical novelty)" });
               continue;
             }
           }
 
-          const outcome = await processUnit(mgr, handler, unit, browserContext, activePage, seenCardKeys, seenUrls, seenCanonicalIds, plog);
+          const outcome = await processUnit(
+            mgr,
+            handler,
+            unit,
+            browserContext,
+            activePage,
+            seenCardKeys,
+            seenUrls,
+            seenCanonicalIds,
+            plog,
+            maxCardsPerPage,
+            runScope ? { tenantId: runScope.tenantId, personId: runScope.personId } : undefined,
+          );
           if (outcome) {
             portalIngested += outcome.opportunities;
             portalFacts += outcome.factsCreated;
@@ -493,6 +525,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         log(`CERTIFICATION FAILED: ${runningUnits.length} units are stuck in running state!`, "error");
         mgr.manifest.status = "failed";
         mgr.finalize("failed");
+        if (runScope) await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "failed", "Certification failed: units remained running.");
+        return { success: false, count: ingestedCount, runId: mgr.runId };
       }
 
       // Transition to enriching state so the UI tracks it in real-time
@@ -501,8 +535,12 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         log(`[Scrape] Automatically starting inline AI enrichment for run ${mgr.runId}...`);
         const { enrichJobsForRun } = await import("./enrich");
         await enrichJobsForRun(mgr.runId);
+        const enrichmentStats = await enrichmentQueue.getRunStats(mgr.runId);
+        if (enrichmentStats.failed > 0) {
+          throw new Error(`Enrichment failed for ${enrichmentStats.failed}/${enrichmentStats.total} jobs; run cannot be completed.`);
+        }
       } catch (enrichErr: any) {
-        log(`[Scrape] Enrichment phase failed: ${enrichErr.message}`, "error");
+        throw new Error(`[Scrape] Enrichment phase failed: ${enrichErr.message}`);
       }
 
       // Rebuild JSON models
@@ -619,7 +657,9 @@ async function processUnit(
   seenCardKeys: Set<string>,
   seenUrls: Set<string>,
   seenCanonicalIds: Set<string>,
-  log: ReturnType<typeof makeLogger>
+  log: ReturnType<typeof makeLogger>,
+  maxCardsPerPage: number,
+  lineageScope?: { tenantId: string; personId: string },
 ): Promise<ProcessOutcome> {
   const outcome: ProcessOutcome = {
     status: "failed",
@@ -650,14 +690,18 @@ async function processUnit(
   mgr.updateUnit(unit.id, { status: "running", startedAt: new Date().toISOString(), attempts: unit.attempts + 1 });
   mgr.recordActivity(`Searching ${unit.portal}: "${unit.keyword}" (Page ${unit.page})...`);
   try {
-    const searchUrl = handler.buildSearchUrl(unit.keyword, unit.page);
+    const searchUrl = handler.buildSearchUrl({
+      ...(unit.variant || {}),
+      query: unit.keyword,
+      page: unit.page,
+    });
     let cards: FeedCard[] = [];
     const pm = activePageManagers.get(unit.portal);
     
     try {
       cards = await handler.listCards({
         runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
-        searchUrl, browserContext,
+        searchUrl, browserContext, variant: unit.variant, maxCardsPerPage,
         searchPage: pm?.getPage("search") || activePage,
         detailPage: pm?.getPage("detail"),
         searchMutex: pm?.getMutex("search"),
@@ -758,6 +802,39 @@ async function processUnit(
       mgr.updateCard(cardUnitId, { status: "running", attempts: cardUnit.attempts + 1 });
       mgr.recordActivity(`Reading JD: ${feedCard.title} (${feedCard.company})`);
 
+      const recordLineage = async (
+        ledgerId: string,
+        sourceJobId: string,
+        sourceUrl: string,
+        validation: ReturnType<typeof ResponseValidator.validate>,
+        canonical?: CanonicalIngestionResult,
+        failureClass?: string,
+        resolvedUrl?: string,
+      ): Promise<void> => {
+        // Unauthenticated local runs have no durable scrape_run scope. They are
+        // intentionally outside the validation cohort; authenticated runs must
+        // retain durable source-to-canonical provenance.
+        if (!lineageScope) return;
+        await repos.acquisition.recordIngestionLineage({
+          scrapeRunId: mgr.runId,
+          tenantId: lineageScope.tenantId,
+          personId: lineageScope.personId,
+          acquisitionLedgerId: ledgerId,
+          cardId: cardUnitId,
+          ingestionAttempt: cardUnit.attempts,
+          sourcePortal: unit.portal,
+          sourceJobId,
+          sourceUrl,
+          resolvedUrl,
+          captureState: validation.document.transportState,
+          documentState: validation.document.usabilityState,
+          contentHash: canonical?.contentHash,
+          canonicalJobId: canonical?.canonicalJobId,
+          opportunityVersion: canonical?.opportunityVersion,
+          failureClass: failureClass || validation.failureClass,
+        });
+      };
+
       try {
         // 1. Cheap Pre-Filter (Allow missing company for LinkedIn pre-detail extraction)
         const preQual = passesHardFilter({
@@ -776,8 +853,7 @@ async function processUnit(
           portal: unit.portal,
           url: feedCard.detailUrl,
           title: feedCard.title,
-          companyName: feedCard.company || "Confidential / Unknown",
-          rawJobId: feedCard.cardHash
+          companyName: feedCard.company || "Confidential / Unknown"
         });
 
         // Pre-Detail Duplicate Detection:
@@ -984,6 +1060,36 @@ async function processUnit(
                 fetchDurationMs: 0,
                 httpStatus: 200,
               };
+              // Rich discovery evidence may avoid a second JD extraction, but
+              // it may never bypass Indeed's stable-listing identity boundary.
+              if (unit.portal === "Indeed") {
+                const pmDetail = activePageManagers.get(unit.portal);
+                const identity = await handler.resolveListingIdentity?.({
+                  runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
+                  searchUrl, browserContext,
+                  searchPage: pmDetail?.getPage("search") || activePage,
+                  detailPage: pmDetail?.getPage("detail"),
+                  searchMutex: pmDetail?.getMutex("search"),
+                  detailMutex: pmDetail?.getMutex("detail"),
+                  pageManager: pmDetail,
+                  logger: log,
+                  isHttpDisabled: (url: string) => mgr.isHttpFastPathDisabled(unit.portal) || mgr.failedHttpUrls.has(url),
+                  recordHttpFailure: (url: string, reason: string) => mgr.recordDetailFailure(unit.portal, url, reason),
+                  recordTelemetry: (event: any) => mgr.recordTelemetry(event),
+                }, feedCard.detailUrl);
+                if (!identity || identity.identityResolutionFailure || !identity.finalUrl) {
+                  detail = {
+                    fetched: false,
+                    fetchError: `Indeed identity resolution failed: ${identity?.identityResolutionFailure || "IDENTITY_UNRESOLVED"}`,
+                    fetchDurationMs: 0,
+                    httpStatus: 200,
+                    finalUrl: identity?.finalUrl,
+                    identityResolutionFailure: identity?.identityResolutionFailure || "IDENTITY_UNRESOLVED",
+                  };
+                } else {
+                  detail.finalUrl = identity.finalUrl;
+                }
+              }
               acquisitionAttempts.push({
                 method: "DISCOVERY_RICH",
                 url: feedCard.detailUrl,
@@ -1033,48 +1139,47 @@ async function processUnit(
             sourcePortal: unit.portal,
             httpStatus: detail.httpStatus,
             extractedTitle: feedCard.title,
+            documentTitle: detail.extractedTitle,
             extractedCompany: feedCard.company,
             extractedDescription: detail.rawText
           });
 
           if (!valResult.isValid || !detail.fetched) {
-            const failureClass = valResult.failureClass || (detail.fetchError?.includes("< 200") ? "INSUFFICIENT_CONTENT" : "UNKNOWN_FAILURE");
+            const failureClass = detail.identityResolutionFailure || valResult.failureClass || (detail.fetchError?.includes("< 200") ? "INSUFFICIENT_CONTENT" : "UNKNOWN_FAILURE");
             // Isolate external ATS failure from Naukri portal health/circuit-breaker
             if (unit.portal !== "Naukri") {
               HealthManager.recordFailure(unit.portal, failureClass);
             }
             await repos.acquisition.updateJobState(ledgerItem.id, {
-              state: "ACQUIRING",
-              terminalState: failureClass === "REMOVED_404" ? "PERMANENT_FAILURE" : undefined,
+              state: detail.identityResolutionFailure ? "IDENTITY_UNRESOLVED" : "ACQUIRING",
+              terminalState: failureClass === "REMOVED_404"
+                ? "PERMANENT_FAILURE"
+                : failureClass === "REDIRECT_HOP_LIMIT"
+                  ? "REDIRECT_HOP_LIMIT"
+                  : failureClass === "UNSAFE_REDIRECT_DESTINATION"
+                    ? "UNSAFE_REDIRECT_DESTINATION"
+                    : detail.identityResolutionFailure
+                      ? "UNRESOLVED_EXTERNAL_LISTING_IDENTITY"
+                      : undefined,
               lastFailureClass: failureClass,
               acquisitionQuality: valResult.quality,
               validationConfidence: valResult.confidence
             });
             mgr.updateCard(cardUnitId, { status: "failed", error: `Validation failed: ${failureClass}` });
 
-            // Ensure sparse/un-enriched captures enter Canonical Ingestion pipeline
-            // Acquisition failure is not opportunity invalidity:
-            // Opportunity enters canonical pipeline with MINIMAL / RECOVERY_PENDING state
-            const sparseCompany = (detail.extractedCompany || feedCard.company || "").trim() || "Confidential / Unknown";
-            if (feedCard.title && sparseCompany) {
-              try {
-                const canonicalIngest = new CanonicalIngestionService();
-                await canonicalIngest.ingestOpportunity({
-                  sourcePortal: unit.portal,
-                  sourceJobId: feedCard.cardHash,
-                  canonicalUrl: feedCard.detailUrl,
-                  jobTitle: feedCard.title,
-                  companyName: sparseCompany,
-                  location: feedCard.location || "",
-                  employmentType: (detail as any)?.employmentType || null,
-                  rawContent: detail.rawText || `${feedCard.title} at ${sparseCompany}`,
-                  postedAt: feedCard.postedAt,
-                  postedPrecision: (feedCard as any)?.postedPrecision || null
-                });
-                mgr.recordTelemetry("canonicalIngestSuccess");
-              } catch (sparseErr: any) {
-                log(`[M10_CANONICAL_SPARSE_WARN] Sparse acquisition error for ${feedCard.cardHash}: ${sparseErr.message}`, "warn");
-              }
+            // Failed acquisition remains in the ledger and lineage as evidence,
+            // but may never create a canonical market record.  A title/card or
+            // an error page is not a recoverable substitute for a validated JD.
+            if (lineageScope) {
+              await recordLineage(
+                ledgerItem.id,
+                identity.sourceJobId,
+                feedCard.discoveryUrl || feedCard.detailUrl,
+                valResult,
+                undefined,
+                failureClass,
+                detail.finalUrl,
+              );
             }
 
             return null;
@@ -1101,16 +1206,47 @@ async function processUnit(
           feedCard.company = effectiveCompany;
 
           // Re-derive canonical identity with resolved company
+          const identityUrl = unit.portal === "Indeed" ? (detail.finalUrl || feedCard.detailUrl) : feedCard.detailUrl;
+          const verifiedIndeedIdentity = unit.portal === "Indeed" ? parseVerifiedIndeedListingUrl(identityUrl) : undefined;
+          if (unit.portal === "Indeed" && !verifiedIndeedIdentity) {
+            await repos.acquisition.updateJobState(ledgerItem.id, {
+              state: "IDENTITY_UNRESOLVED",
+              terminalState: "UNRESOLVED_EXTERNAL_LISTING_IDENTITY",
+              lastFailureClass: "IDENTITY_UNRESOLVED",
+            });
+            await recordLineage(
+              ledgerItem.id,
+              identity.sourceJobId,
+              feedCard.discoveryUrl || feedCard.detailUrl,
+              valResult,
+              undefined,
+              "IDENTITY_UNRESOLVED",
+              detail.finalUrl,
+            );
+            mgr.updateCard(cardUnitId, { status: "failed", error: "Indeed listing identity could not be verified" });
+            return null;
+          }
+
           const resolvedIdentity = resolveCanonicalIdentity({
             portal: unit.portal,
-            url: feedCard.detailUrl,
+            url: identityUrl,
             title: feedCard.title,
-            companyName: effectiveCompany,
-            rawJobId: feedCard.cardHash
+            companyName: effectiveCompany
+          });
+          // A sponsored observation can have entered the ledger under a
+          // provisional URL identity. Canonical admission is rebased only
+          // after a stable portal identity has been verified. The original
+          // ledger row remains the lineage anchor for this observation.
+          const admissionLedgerItem = await repos.acquisition.rebindDiscoveredJobIdentity(ledgerItem.id, {
+            canonicalJobId: resolvedIdentity.canonicalJobId,
+            sourcePortal: resolvedIdentity.sourcePortal,
+            sourceJobId: resolvedIdentity.sourceJobId,
+            canonicalUrl: resolvedIdentity.canonicalUrl,
           });
 
           detailedCard = {
             ...feedCard,
+            canonicalJobId: resolvedIdentity.canonicalJobId,
             company: effectiveCompany,
             snapshotSchemaVersion: SNAPSHOT_SCHEMA_VERSION,
             scraperVersion: SCRAPER_VERSION,
@@ -1120,6 +1256,7 @@ async function processUnit(
             applyRedirectUrl: feedCard.applyRedirectUrl,
             detail,
             acquisitionAttempts: acquisitionAttempts.length > 0 ? acquisitionAttempts : undefined,
+            evaluationEvidence: { state: "PENDING" },
             telemetry: { cardExtractMs: 0, detailExtractMs: detail.fetchDurationMs || 0, totalMs: detail.fetchDurationMs || 0 },
           };
           
@@ -1127,7 +1264,7 @@ async function processUnit(
           mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: snapshotPath });
 
           // 5. Record Validated State in Ledger & Merge Opportunity in SQLite
-          await repos.acquisition.updateJobState(ledgerItem.id, {
+          await repos.acquisition.updateJobState(admissionLedgerItem.id, {
             state: "VALIDATED",
             lastAcquiredAt: new Date().toISOString(),
             acquisitionQuality: valResult.quality,
@@ -1168,15 +1305,33 @@ async function processUnit(
             const canonicalIngest = new CanonicalIngestionService();
             const ingestRes = await canonicalIngest.ingestOpportunity({
               sourcePortal: unit.portal,
-              sourceJobId: feedCard.cardHash,
-              canonicalUrl: feedCard.detailUrl,
+              sourceJobId: resolvedIdentity.sourceJobId,
+              canonicalUrl: resolvedIdentity.canonicalUrl,
+              finalUrl: detail.finalUrl || (unit.portal === "Indeed" ? identityUrl : undefined),
               jobTitle: feedCard.title,
+              documentTitle: detail.extractedTitle,
               companyName: feedCard.company,
               location: feedCard.location || "",
               employmentType: (detail as any)?.employmentType || null,
               rawContent: detail.rawText || "",
+              httpStatus: detail.httpStatus,
               postedAt: feedCard.postedAt,
               postedPrecision: (feedCard as any)?.postedPrecision || null
+            }, lineageScope);
+            detailedCard = bindEvaluationEvidence(detailedCard, {
+              canonicalJobId: ingestRes.canonicalJobId,
+              opportunityVersion: ingestRes.opportunityVersion,
+              contentHash: ingestRes.contentHash,
+              sourcePayloadKey: ingestRes.sourcePayloadKey,
+              sourceMediaType: ingestRes.sourceMediaType,
+            });
+            writeSnapshot(detailedCard);
+            mgr.journal.append({
+              type: "snapshot_evidence_bound",
+              cardId: cardUnitId,
+              canonicalJobId: ingestRes.canonicalJobId,
+              opportunityVersion: ingestRes.opportunityVersion,
+              contentHash: ingestRes.contentHash,
             });
             mgr.recordTelemetry("canonicalIngestSuccess");
             if (ingestRes.isNewOpportunity) {
@@ -1195,9 +1350,30 @@ async function processUnit(
             if (ingestRes.jobsEnqueued > 0) {
               mgr.recordTelemetry("evaluationJobsEnqueued", ingestRes.jobsEnqueued);
             }
+            await recordLineage(
+              ledgerItem.id,
+              resolvedIdentity.sourceJobId,
+              feedCard.discoveryUrl || feedCard.detailUrl,
+              valResult,
+              ingestRes,
+              undefined,
+              detail.finalUrl,
+            );
           } catch (err: any) {
             log(`[M10_CANONICAL_INGEST_WARN] Canonical acquisition error for ${feedCard.cardHash}: ${err.message}`, "warn");
             mgr.recordTelemetry("canonicalIngestFailure");
+            if (lineageScope) {
+              await recordLineage(
+                ledgerItem.id,
+                resolvedIdentity.sourceJobId,
+                feedCard.discoveryUrl || feedCard.detailUrl,
+                valResult,
+                undefined,
+                err?.name || "CANONICAL_INGEST_FAILURE",
+                detail.finalUrl,
+              );
+              throw err;
+            }
           }
 
         } else {
@@ -1352,21 +1528,39 @@ async function processUnit(
       const maxConsecutiveLowYield = 2; // stop after this many consecutive low-yield pages
       
       const currentLowYield = newJobs < minNewJobsPerPage;
-      let streak = lowYieldTracking.get(unit.definitionId) || 0;
+      // Each acquisition surface has its own yield curve. A freshness pass
+      // must not inherit the coverage lane's low-yield streak.
+      const yieldKey = unit.variant?.id || unit.definitionId;
+      let streak = lowYieldTracking.get(yieldKey) || 0;
       
       if (currentLowYield) {
         streak += 1;
-        lowYieldTracking.set(unit.definitionId, streak);
+        lowYieldTracking.set(yieldKey, streak);
       } else {
-        lowYieldTracking.set(unit.definitionId, 0); // reset streak
+        lowYieldTracking.set(yieldKey, 0); // reset streak
       }
 
       if (streak >= maxConsecutiveLowYield && unit.page >= 1) {
-        decision = "STOP";
-        reason = "ConsecutiveLowYield";
-        log(`Early stopping triggered for ${unit.definitionId} after ${streak} consecutive low-yield pages`, "warn");
+        const currentFreshness = unit.variant?.postedWithinDays;
+        const nextFreshness = currentFreshness === undefined ? 7 : currentFreshness === 7 ? 1 : undefined;
+        if (nextFreshness !== undefined) {
+          mgr.enqueueVariant(createFreshnessVariant({
+            ...(unit.variant || {}),
+            portal: unit.portal,
+            definitionId: unit.definitionId,
+            query: unit.keyword,
+          }, nextFreshness));
+          reason = `ConsecutiveLowYield:EnqueuedFreshness${nextFreshness}d`;
+          log(`Low yield on ${unit.definitionId}; enqueued ${nextFreshness}-day freshness variant after ${streak} pages`, "info");
+        } else {
+          decision = "STOP";
+          reason = "ConsecutiveLowYield";
+          log(`Early stopping triggered for ${unit.definitionId} after ${streak} consecutive low-yield pages`, "warn");
+        }
+        const currentSurfaceKey = unit.variant?.id || unit.definitionId;
         mgr.manifest.units.forEach(u => {
-          if (u.definitionId === unit.definitionId && u.status === "pending" && u.page > unit.page) {
+          const candidateSurfaceKey = u.variant?.id || u.definitionId;
+          if (candidateSurfaceKey === currentSurfaceKey && u.status === "pending" && u.page > unit.page) {
             mgr.updateUnit(u.id, { status: "skipped_pruned", error: "Pruned by low discovery stopping rule" });
           }
         });

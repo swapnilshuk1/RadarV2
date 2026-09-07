@@ -28,10 +28,10 @@ describe("Journey D: Loader Data → Component State & UI Rendering Parity", () 
     totalScreened: 3007,
     activePursuits: 453,
     totalShortlisted: 647,
-    totalDecisions: 1498,
+    totalDecisions: 1509,
     evaluatedDecisions: 1498,
     allRecordedDecisions: 1509,
-    remainingToReview: 1509,
+    remainingToReview: 1498,
     portalMetrics: {
       LinkedIn: 1953,
       Naukri: 834,
@@ -45,16 +45,16 @@ describe("Journey D: Loader Data → Component State & UI Rendering Parity", () 
       unreviewedSparse: 996,
     },
     decisionMetrics: {
-      totalDecided: 1498,
+      totalDecided: 1509,
       evaluatedDecisions: 1498,
       allRecordedDecisions: 1509,
       userConfirmed: 308,
       preferenceOverride: 46,
       vetoOverride: 122,
-      userPassed: 889,
+      userPassed: 900,
       userPursueTotal: 472,
       userConsiderTotal: 137,
-      userPassTotal: 889,
+      userPassTotal: 900,
       sparseDecisions: {
         total: 11,
         pursue: 2,
@@ -63,7 +63,7 @@ describe("Journey D: Loader Data → Component State & UI Rendering Parity", () 
       },
     },
     engineBreakdown: { pursue: 390, consider: 257, pass: 2360, sparse: 0 },
-    userBreakdown: { pursue: 472, consider: 137, pass: 889, total: 1498 },
+    userBreakdown: { pursue: 472, consider: 137, pass: 900, total: 1509 },
     effectiveBreakdown: { pursue: 453, consider: 240, pass: 2314, sparse: 0 },
     integrity: {
       status: "PASS",
@@ -137,12 +137,11 @@ describe("Journey D: Loader Data → Component State & UI Rendering Parity", () 
     expect(mockMetrics.allRecordedDecisions).toBe(1509);
     expect(mockMetrics.decisionMetrics?.sparseDecisions?.total).toBe(11);
 
-    // Invariant: allRecordedDecisions strictly equals evaluatedDecisions + sparseDecisions.total
-    expect(mockMetrics.allRecordedDecisions).toBe(
-      mockMetrics.evaluatedDecisions! + mockMetrics.decisionMetrics!.sparseDecisions!.total
-    );
+    // Sparse is only a subset of non-evaluated decisions. All recorded
+    // decisions are reconciled directly with the explicit user-decision set.
+    expect(mockMetrics.allRecordedDecisions).toBe(mockMetrics.userBreakdown.total);
 
-    // Invariant: totalDecisions defaults to evaluatedDecisions for backward compatibility
-    expect(mockMetrics.totalDecisions).toBe(mockMetrics.evaluatedDecisions);
+    // `totalDecisions` is the deprecated alias of allRecordedDecisions.
+    expect(mockMetrics.totalDecisions).toBe(mockMetrics.allRecordedDecisions);
   });
 });

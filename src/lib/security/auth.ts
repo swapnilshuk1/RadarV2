@@ -1,14 +1,18 @@
 import { DatabaseAdapter } from "../../data/database";
 
-export type Permission =
-  | 'read:evaluation'
-  | 'write:evaluation'
-  | 'manage:search_plan'
-  | 'run:scraper'
-  | 'manage:credentials'
-  | 'read:credentials'
-  | 'read:person'
-  | 'write:person';
+/** The sole registry for permissions accepted from persisted membership grants. */
+export const PERMISSIONS = [
+  "read:evaluation",
+  "write:evaluation",
+  "manage:search_plan",
+  "run:scraper",
+  "manage:credentials",
+  "read:credentials",
+  "read:person",
+  "write:person",
+] as const;
+
+export type Permission = typeof PERMISSIONS[number];
 
 // 1. Authentication context establishes who is calling
 export interface AuthContext {

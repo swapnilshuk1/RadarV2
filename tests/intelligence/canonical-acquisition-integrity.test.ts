@@ -113,6 +113,36 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
       expect(res.quality).toBe("INVALID");
       expect(res.failureClass).toBe("REMOVED_404");
     });
+
+    it("rejects a substantive detail document whose extracted title conflicts with the listing", () => {
+      const res = ResponseValidator.validate({
+        html: "<div>job detail</div>",
+        url: "https://example.com/job/identity-conflict",
+        sourcePortal: "Indeed",
+        extractedTitle: "Principal AI Engineer, Director",
+        documentTitle: "Principal Engineer, Java, VP",
+        extractedCompany: "NatWest",
+        extractedDescription: "Java Spring Boot microservices Kubernetes architecture delivery ownership ".repeat(18),
+      });
+
+      expect(res.isValid).toBe(false);
+      expect(res.failureClass).toBe("LISTING_DOCUMENT_IDENTITY_MISMATCH");
+      expect(res.document.titleAgreement).toBe("MISMATCHED");
+    });
+
+    it("keeps an absent document title as UNKNOWN rather than inventing a mismatch", () => {
+      const res = ResponseValidator.validate({
+        html: "<div>job detail</div>",
+        url: "https://example.com/job/no-document-title",
+        sourcePortal: "Indeed",
+        extractedTitle: "VP Growth",
+        extractedCompany: "Acme",
+        extractedDescription: "Own commercial growth, revenue operations, client strategy and executive leadership. ".repeat(12),
+      });
+
+      expect(res.isValid).toBe(true);
+      expect(res.document.titleAgreement).toBe("UNKNOWN");
+    });
   });
 
   describe("Category Taxonomy - Anti-Heuristic Verification", () => {
@@ -169,11 +199,14 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           search_plan_snapshot_id TEXT,
           context_fingerprint TEXT,
           policy_version TEXT,
+          ontology_version TEXT,
+          ontology_fingerprint TEXT,
+          profile_version TEXT,
           context_payload TEXT,
           created_at DATETIME
         );
-        INSERT INTO evaluation_contexts (id, tenant_id, person_id, search_plan_snapshot_id, context_fingerprint, policy_version, context_payload, created_at)
-        VALUES ('ec1', 't1', 'p1', 'sps1', 'fp1', 'v4.1', '{}', CURRENT_TIMESTAMP);
+        INSERT INTO evaluation_contexts (id, tenant_id, person_id, search_plan_snapshot_id, context_fingerprint, policy_version, ontology_version, ontology_fingerprint, profile_version, context_payload, created_at)
+        VALUES ('ec1', 't1', 'p1', 'sps1', 'fp1', 'v4.1', 'ont-v1', 'ont-fp', 'prof-v1', '{}', CURRENT_TIMESTAMP);
 
         CREATE TABLE search_plan_snapshots (
           id TEXT PRIMARY KEY,
@@ -260,6 +293,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           canonical_job_id TEXT NOT NULL,
           opportunity_version TEXT NOT NULL,
           evaluation_context_fingerprint TEXT NOT NULL,
+          evaluation_fingerprint TEXT,
           evaluation_state TEXT NOT NULL DEFAULT 'UNKNOWN',
           decision TEXT,
           quality_score REAL,
@@ -390,7 +424,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
   });
 
   describe("CanonicalIngestionService - Orthogonal States & Recovery Ingestion", () => {
-    it("enqueues minimal captures into recovery_queue during ingestion", async () => {
+    it("keeps a discovery-card fallback out of canonical ingestion and recovery_queue", async () => {
       const sqliteDb = new Database(":memory:");
       sqliteDb.exec(`
         CREATE TABLE tenants (id TEXT PRIMARY KEY, name TEXT);
@@ -405,6 +439,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           id TEXT PRIMARY KEY, canonical_job_id TEXT, content_hash TEXT, job_title TEXT, company_name TEXT,
           location TEXT, employment_type TEXT, posted_at TEXT, posted_precision TEXT, raw_content TEXT,
           acquisition_status TEXT, acquisition_quality TEXT, failure_class TEXT, lifecycle_state TEXT, evidence_state TEXT,
+          source_payload_key TEXT, source_media_type TEXT, document_extraction_state TEXT,
           created_at DATETIME, UNIQUE(canonical_job_id, content_hash)
         );
         CREATE TABLE search_plan_candidates (
@@ -422,7 +457,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
 
       const adapter = new TestSqliteAdapter(sqliteDb);
       const service = new CanonicalIngestionService(adapter);
-      const res = await service.ingestOpportunity({
+      await expect(service.ingestOpportunity({
         sourcePortal: "Indeed",
         sourceJobId: "job_short_123",
         canonicalUrl: "https://in.indeed.com/viewjob?jk=job_short_123",
@@ -430,29 +465,15 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
         companyName: "Acme",
         location: "Remote",
         rawContent: "Short summary only 35 chars",
-      });
+        contentOrigin: "DISCOVERY_CARD_FALLBACK",
+      })).rejects.toThrow("Cannot canonically ingest unusable document");
 
-      expect(res.isNewOpportunity).toBe(true);
-
-      const version = await adapter.one<any>(
-        "SELECT acquisition_status, acquisition_quality, failure_class, lifecycle_state FROM opportunity_versions WHERE id = ?",
-        [res.opportunityVersion]
-      );
-      expect(version.acquisition_status).toBe("RECOVERY_PENDING");
-      expect(version.acquisition_quality).toBe("MINIMAL");
-      expect(version.failure_class).toBe("PARTIAL_CONTENT");
-      expect(version.lifecycle_state).toBe("ACTIVE");
-
-      const recoveryItem = await adapter.one<any>(
-        "SELECT * FROM recovery_queue WHERE opportunity_version_id = ?",
-        [res.opportunityVersion]
-      );
-      expect(recoveryItem).not.toBeNull();
-      expect(recoveryItem.status).toBe("PENDING");
-      expect(recoveryItem.failure_class).toBe("PARTIAL_CONTENT");
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM canonical_opportunities").get()).toEqual({ count: 0 });
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM opportunity_versions").get()).toEqual({ count: 0 });
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM recovery_queue").get()).toEqual({ count: 0 });
     });
 
-    it("enforces recovery_queue idempotency when same failed version is ingested repeatedly", async () => {
+    it("remains idempotently non-admitting when the same failed capture is retried", async () => {
       const sqliteDb = new Database(":memory:");
       sqliteDb.exec(`
         CREATE TABLE tenants (id TEXT PRIMARY KEY, name TEXT);
@@ -467,6 +488,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           id TEXT PRIMARY KEY, canonical_job_id TEXT, content_hash TEXT, job_title TEXT, company_name TEXT,
           location TEXT, employment_type TEXT, posted_at TEXT, posted_precision TEXT, raw_content TEXT,
           acquisition_status TEXT, acquisition_quality TEXT, failure_class TEXT, lifecycle_state TEXT, evidence_state TEXT,
+          source_payload_key TEXT, source_media_type TEXT, document_extraction_state TEXT,
           created_at DATETIME, UNIQUE(canonical_job_id, content_hash)
         );
         CREATE TABLE search_plan_candidates (
@@ -498,33 +520,14 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
         rawContent: "Too short 25 chars",
       };
 
-      // Ingest first time
-      const res1 = await service.ingestOpportunity(payload);
-      expect(res1.isNewOpportunity).toBe(true);
+      await expect(service.ingestOpportunity({ ...payload, contentOrigin: "DISCOVERY_CARD_FALLBACK" }))
+        .rejects.toThrow("Cannot canonically ingest unusable document");
+      await expect(service.ingestOpportunity({ ...payload, contentOrigin: "DISCOVERY_CARD_FALLBACK" }))
+        .rejects.toThrow("Cannot canonically ingest unusable document");
 
-      // Ingest second time with exact same defective version
-      const res2 = await service.ingestOpportunity(payload);
-      expect(res2.isNewOpportunity).toBe(false);
-
-      const activeQueueItems = await adapter.many<any>(
-        "SELECT * FROM recovery_queue WHERE opportunity_version_id = ? AND status IN ('PENDING', 'PROCESSING')",
-        [res1.opportunityVersion]
-      );
-      expect(activeQueueItems.length).toBe(1);
-
-      // Transition to RECOVERED
-      await adapter.execute(
-        "UPDATE recovery_queue SET status = 'RECOVERED', completed_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [activeQueueItems[0].id]
-      );
-
-      // Verify that after recovery completes, the partial unique index permits a future queue item if a new defective version arises
-      const queueCountAfterRecovery = await adapter.many<any>(
-        "SELECT * FROM recovery_queue WHERE opportunity_version_id = ?",
-        [res1.opportunityVersion]
-      );
-      expect(queueCountAfterRecovery.length).toBe(1);
-      expect(queueCountAfterRecovery[0].status).toBe("RECOVERED");
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM canonical_opportunities").get()).toEqual({ count: 0 });
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM opportunity_versions").get()).toEqual({ count: 0 });
+      expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM recovery_queue").get()).toEqual({ count: 0 });
     });
   });
 
@@ -592,6 +595,28 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
       );
     });
 
+    it("validates NOT_EVALUABLE requires null decision and null score", () => {
+      const validNotEvaluable: MaterializedEvaluation = {
+        id: "mat_not_evaluable",
+        tenantId: "t1",
+        personId: "p1",
+        canonicalJobId: "job_ne",
+        opportunityVersion: "v1",
+        evaluationContextFingerprint: "fp1",
+        evaluationState: "NOT_EVALUABLE",
+        decision: null,
+        qualityScore: null,
+        rationale: "No intrinsic fit artifact",
+        evidenceIds: [],
+        evaluationJson: JSON.stringify({ evaluationState: "NOT_EVALUABLE", reasonCode: "NOT_EVALUABLE" }),
+        materializedAt: new Date().toISOString(),
+      };
+      expect(() => validateEvaluationConsistency(validNotEvaluable)).not.toThrow();
+      expect(() => validateEvaluationConsistency({ ...validNotEvaluable, decision: "PASS" })).toThrow(
+        /relational decision must be null when evaluationState is 'NOT_EVALUABLE'/
+      );
+    });
+
     it("validates EXPIRED requires null decision and null score", () => {
       const validExpired: MaterializedEvaluation = {
         id: "mat_expired",
@@ -627,12 +652,13 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
         canonicalJobId: "job_4",
         opportunityVersion: "v4",
         evaluationContextFingerprint: "fp1",
+        evaluationFingerprint: "eval_mat_eval",
         evaluationState: "EVALUATED",
         decision: "PURSUE",
         qualityScore: 92,
         rationale: "High match",
         evidenceIds: ["ev1"],
-        evaluationJson: JSON.stringify({ decision: "PURSUE", qualityScore: 92 }),
+        evaluationJson: JSON.stringify({ evaluationInputHash: "eval_mat_eval", decision: "PURSUE", qualityScore: 92 }),
         materializedAt: new Date().toISOString(),
       };
       expect(() => validateEvaluationConsistency(validEvaluated)).not.toThrow();
@@ -774,13 +800,14 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           canonicalJobId: "job_x",
           opportunityVersion: "ver_x",
           evaluationContextFingerprint: "fp_x",
+          evaluationFingerprint: row.decision ? `eval_${row.evaluationState}` : null,
           evaluationState: row.evaluationState as any,
           decision: row.decision as any,
           qualityScore: row.qualityScore,
           rationale: "Matrix verification",
           evidenceIds: [],
           evaluationJson: JSON.stringify(
-            row.decision ? { decision: row.decision, qualityScore: row.qualityScore } : { bypassed: true }
+            row.decision ? { evaluationInputHash: `eval_${row.evaluationState}`, decision: row.decision, qualityScore: row.qualityScore } : { bypassed: true }
           ),
           materializedAt: new Date().toISOString(),
         };

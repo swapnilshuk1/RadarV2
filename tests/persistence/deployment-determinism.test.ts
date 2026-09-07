@@ -76,29 +76,36 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
   it("6. Deployment archive contains only required deterministic files", () => {
     const cwd = process.cwd();
     const tarArchive = path.join(cwd, "radar-deploy.tar.gz");
-    
-    // Ensure tar archive exists or create it
-    if (!fs.existsSync(tarArchive)) {
+
+    // The certification runner builds first.  Never let a stale archive from
+    // another SHA stand in for this run's production bundle.
+    expect(fs.existsSync(path.join(cwd, ".output")), "Certification build output (.output/) is required before archive validation.").toBe(true);
+    fs.rmSync(tarArchive, { force: true });
+
+    try {
       const gitBash = "C:\\Program Files\\Git\\bin\\bash.exe";
       if (fs.existsSync(gitBash)) {
         execSync(`"${gitBash}" -c "tar --exclude='node_modules' --exclude='.git' --exclude='.env*' --exclude='*.sqlite*' --exclude='*.jsonl' --exclude='*.log' --exclude='live-scraped.json' -czf radar-deploy.tar.gz .output/ package.json package-lock.json src/data/ontology/"`, { cwd });
       } else {
         execSync("tar --exclude='node_modules' --exclude='.git' --exclude='.env*' --exclude='*.sqlite*' --exclude='*.jsonl' --exclude='*.log' --exclude='live-scraped.json' -czf radar-deploy.tar.gz .output package.json package-lock.json src/data/ontology", { cwd });
       }
+
+      expect(fs.existsSync(tarArchive), "Fresh deployment archive was not created.").toBe(true);
+      const listOutput = execSync("tar -tf radar-deploy.tar.gz", { cwd, encoding: "utf8" });
+      const files = listOutput.split("\n").map(f => f.trim()).filter(Boolean);
+
+      // Required files present
+      expect(files.some(f => f.includes(".output"))).toBe(true);
+      expect(files.some(f => f.includes("package.json"))).toBe(true);
+      expect(files.some(f => f.includes("src/data/ontology"))).toBe(true);
+
+      // Forbidden files absent
+      expect(files.some(f => f.includes("radar.sqlite"))).toBe(false);
+      expect(files.some(f => f.includes("live-scraped.json"))).toBe(false);
+      expect(files.some(f => f.includes(".env"))).toBe(false);
+    } finally {
+      fs.rmSync(tarArchive, { force: true });
     }
-
-    const listOutput = execSync("tar -tf radar-deploy.tar.gz", { cwd, encoding: "utf8" });
-    const files = listOutput.split("\n").map(f => f.trim()).filter(Boolean);
-
-    // Required files present
-    expect(files.some(f => f.includes(".output"))).toBe(true);
-    expect(files.some(f => f.includes("package.json"))).toBe(true);
-    expect(files.some(f => f.includes("src/data/ontology"))).toBe(true);
-
-    // Forbidden files absent
-    expect(files.some(f => f.includes("radar.sqlite"))).toBe(false);
-    expect(files.some(f => f.includes("live-scraped.json"))).toBe(false);
-    expect(files.some(f => f.includes(".env"))).toBe(false);
   });
 
   it("7. engine.ts contains zero direct reads from filesystem data artifacts", () => {

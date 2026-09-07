@@ -23,6 +23,26 @@ export interface ProjectedCapability {
   confidence: number;
   tier?: CapabilityTaxonomyTier;
   evidence?: string[];
+  /** Canonical semantic concept, provenance, and epistemic state for auditability. */
+  canonicalConcept?: string;
+  sourceQuote?: string;
+  evidenceRelationship?: "DIRECT_EQUIVALENT" | "STRONG_SUPPORT" | "PARTIAL_SUPPORT" | "CONTEXTUAL_SUPPORT";
+  state?: "EXPLICIT" | "INFERRED" | "UNKNOWN";
+}
+
+/**
+ * A source-grounded qualification requirement for a capability. This is
+ * deliberately separate from a responsibility: only explicit candidate
+ * qualification language can set `required`.
+ */
+export interface CapabilityRequirement {
+  capability: string;
+  tier: CapabilityTaxonomyTier;
+  required: boolean;
+  materiality: "CORE" | "SUPPORTING";
+  /** Stable references to the source phrases retained below. */
+  evidenceIds: string[];
+  sourceQuotes: string[];
 }
 
 export interface ExecutiveIdentity {
@@ -105,6 +125,8 @@ export interface JobProjection {
   
   // Normalized capabilities
   capabilities: ProjectedCapability[];
+  /** Explicit job-side qualification requirements; never inferred from duties alone. */
+  capabilityRequirements?: CapabilityRequirement[];
   
   // Theme dimensions
   executiveFunction: string[];
@@ -121,4 +143,6 @@ export interface JobProjection {
   dimensions?: readonly GroundedOpportunityDimension[];
   // Phase 5C.2: Additive Canonical Semantic Evidence
   semanticEvidence?: readonly CanonicalSemanticEvidence[];
+  projectionVersion?: string;
+  projectionFingerprint?: string;
 }

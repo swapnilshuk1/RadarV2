@@ -5,13 +5,42 @@ import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
 import { passesHardFilter } from "../utils/hard-filter";
 import { normalizePostingDate } from "../utils/date";
+import { resolveIndeedListingBounded } from "../../../src/lib/acquisition/indeed-listing-identity";
 
 export const indeedHandler: PortalHandler = {
   name: "Indeed",
   detailStrategy: "browser",
-  buildSearchUrl(kw, page) {
+  async resolveListingIdentity(ctx, url) {
+    const page = ctx.detailPage || ctx.searchPage || ctx.activePage;
+    const resolution = await resolveIndeedListingBounded(url, async (hopUrl) => {
+      const response = await page.context().request.fetch(hopUrl, {
+        maxRedirects: 0,
+        timeout: CONFIG.detailTimeoutMs,
+      });
+      try {
+        return { status: response.status(), location: response.headers()["location"] };
+      } finally {
+        await response.dispose();
+      }
+    });
+    return resolution.ok
+      ? { finalUrl: resolution.identity.resolvedUrl }
+      : { finalUrl: resolution.finalUrl, identityResolutionFailure: resolution.failure };
+  },
+  buildSearchUrl(request, legacyPage = 1) {
+    const input = typeof request === "string" ? { query: request, page: legacyPage } : { ...request };
+    const kw = input.query;
+    const page = input.page;
     const start = (page - 1) * 10;
-    return `https://in.indeed.com/jobs?q=${encodeURIComponent(kw)}&l=India&start=${start}`;
+    const params = new URLSearchParams({
+      q: kw,
+      l: input.location || "India",
+      start: String(start),
+    });
+    if (input.radiusKm !== undefined) params.set("radius", String(input.radiusKm));
+    if (input.postedWithinDays !== undefined) params.set("fromage", String(input.postedWithinDays));
+    if (input.sort === "date") params.set("sort", "date");
+    return `https://in.indeed.com/jobs?${params.toString()}`;
   },
   async ensureSession(ctx) {
     const page = ctx.activePage;
@@ -74,7 +103,7 @@ export const indeedHandler: PortalHandler = {
         if (matched) usedSelector = FALLBACK_CARD_SELECTORS;
       }
 
-      const maxCards = CONFIG.getMaxCardsPerPage("Indeed");
+      const maxCards = ctx.maxCardsPerPage ?? CONFIG.getMaxCardsPerPage("Indeed");
       const cardElements = await page.locator(usedSelector).all();
       
       for (const card of cardElements) {
@@ -104,7 +133,12 @@ export const indeedHandler: PortalHandler = {
           let detailUrl = "";
           let applyRedirectUrl: string | undefined = undefined;
 
-          if (jk) {
+          const discoveryUrl = rawHref ? new URL(rawHref, "https://in.indeed.com").toString() : undefined;
+          if (discoveryUrl && /\/(?:pagead|rc)\/clk/i.test(new URL(discoveryUrl).pathname)) {
+            // Sponsored links are observations, not identities. Their
+            // destination is resolved under the bounded detail contract.
+            detailUrl = discoveryUrl;
+          } else if (jk) {
             detailUrl = `https://in.indeed.com/viewjob?jk=${jk}`;
             applyRedirectUrl = `https://in.indeed.com/rc/clk?jk=${jk}`;
           } else if (rawHref) {
@@ -141,6 +175,7 @@ export const indeedHandler: PortalHandler = {
             portal: "Indeed",
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,
+            discoveryUrl: discoveryUrl || detailUrl,
             detailUrl,
             applyRedirectUrl,
             discoveredAt,
@@ -210,7 +245,17 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
 
   const doExtract = async () => {
     try {
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
+      const identity = await indeedHandler.resolveListingIdentity!(ctx, url);
+      if (identity.identityResolutionFailure) {
+        return {
+          fetched: false,
+          fetchError: `Indeed identity resolution failed: ${identity.identityResolutionFailure}`,
+          fetchDurationMs: Date.now() - t0,
+          finalUrl: identity.finalUrl,
+          identityResolutionFailure: identity.identityResolutionFailure,
+        };
+      }
+      await page.goto(identity.finalUrl!, { waitUntil: "domcontentloaded", timeout: CONFIG.detailTimeoutMs });
       await jitter(400, 900);
 
       // Check current page URL (might have followed an external ATS redirect from /rc/clk)
@@ -256,6 +301,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       }
 
       const trimmedText = rawText.trim();
+      const titleText = ((await page.locator("h1.jobsearch-JobInfoHeader-title, .jobsearch-JobInfoHeader-title-container h1, h1").first().textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+      const extractedTitle = titleText.length > 0 ? titleText : undefined;
       if (trimmedText.length === 0) {
         ctx.logger?.(`[Indeed] Empty job description for ${url}`);
         return {
@@ -264,6 +311,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           rawHtml: "",
           rawText: "",
           fetchDurationMs: Date.now() - t0,
+          extractedTitle,
+          finalUrl: currentUrl,
         };
       }
 
@@ -277,6 +326,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         rawText: trimmedText,
         fetchDurationMs: Date.now() - t0,
         quality: trimmedText.length < 200 ? ("SPARSE" as const) : ("VALID" as const),
+        extractedTitle,
+        finalUrl: currentUrl,
       };
     } catch (err: any) {
       return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
