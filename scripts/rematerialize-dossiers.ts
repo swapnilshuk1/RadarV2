@@ -12,6 +12,7 @@ import { isCanonicalIntrinsicEvaluationV4_3 } from "@/lib/domain/evaluation_payl
 import { isCanonicalDossierPresentationV1 } from "@/lib/domain/dossier_presentation";
 import type { EvaluationContext } from "@/lib/domain/evaluation_context";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
+import { resolveExactCandidateProjectionForScope } from "@/data/sqlite/repositories/profile-projection-version";
 
 const userId = process.env.RADAR_USER_ID;
 const tenantId = process.env.RADAR_TENANT_ID;
@@ -40,12 +41,14 @@ async function main() {
     ontologyFingerprint: contextRow.ontology_fingerprint, policyVersion: contextRow.policy_version,
     profileVersion: contextRow.profile_version, createdAt: contextRow.created_at,
   };
-  const profile = await db.one<{ projection_json: string }>(
-    `SELECT projection_json FROM career_profiles WHERE person_id = ? AND json_extract(projection_json, '$.profileVersion') = ? LIMIT 1`,
-    [context.personId, context.profileVersion],
+  const candidateProjection = await resolveExactCandidateProjectionForScope(
+    db,
+    resolved.scope,
+    context.profileVersion,
   );
-  if (!profile) throw new Error("Pinned candidate projection is missing; refusing rematerialization.");
-  const candidateProjection = JSON.parse(profile.projection_json);
+  if (!candidateProjection) {
+    throw new Error("Pinned candidate projection is missing or ambiguous; refusing rematerialization.");
+  }
 
   const rows = await db.many<{
     id: string; canonical_job_id: string; opportunity_version: string; evaluation_fingerprint: string;

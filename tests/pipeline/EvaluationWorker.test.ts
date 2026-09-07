@@ -39,6 +39,7 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
   beforeEach(() => {
     db = {
       one: vi.fn(),
+      many: vi.fn(),
       execute: vi.fn(),
       transaction: vi.fn(async (cb) => {
         return await cb(db);
@@ -107,15 +108,18 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
       };
     });
     
-    // Snapshot followed by projection pinned by the immutable context.
+    // Snapshot followed by explicit scoped ownership and an exactly pinned projection.
     db.one.mockImplementationOnce(async () => ({ payload_json: "{}" }));
-    db.one.mockImplementationOnce(async () => ({ projection_json: JSON.stringify({
+    db.one.mockImplementationOnce(async () => ({ id: "p-1" }));
+    db.many.mockResolvedValueOnce([{ projection_json: JSON.stringify({
       profileVersion: mockContext.profileVersion,
-      operatingLevel: { value: "STRATEGIC" }, workNature: { value: "STRATEGIC_WORK" },
-      decisionAuthority: { value: "ENTERPRISE" }, commercialScope: { value: "ENTERPRISE" },
+      operatingLevel: { value: "STRATEGIC", confidence: 1, evidenceIds: [] },
+      workNature: { value: "STRATEGIC_WORK", confidence: 1, evidenceIds: [] },
+      decisionAuthority: { value: "ENTERPRISE", confidence: 1, evidenceIds: [] },
+      commercialScope: { value: "ENTERPRISE", confidence: 1, evidenceIds: [] },
       yearsOfExperience: 20, coreCapabilities: ["COMMERCIAL_GROWTH"],
       preferredLocations: ["Gurugram"], preferredWorkModel: "HYBRID", executiveThemes: ["growth"],
-    }) }));
+    }) }]);
 
     // Mock engine
     vi.mocked(runEngineSingleIntrinsic).mockReturnValueOnce({

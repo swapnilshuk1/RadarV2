@@ -139,7 +139,7 @@ export class SqlitePersonStore implements PersonStore {
         );
         return undefined;
       }
-      return parsed;
+      return versionCandidateProjection(parsed);
     } catch (e) {
       console.error("[SqlitePersonStore] Failed to parse projection_json:", personId);
       return undefined;

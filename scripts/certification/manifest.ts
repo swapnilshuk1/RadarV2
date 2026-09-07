@@ -6,7 +6,7 @@
  * this manifest rather than maintaining independent lists.
  */
 
-export const EXPECTED_CERTIFICATION_FILE_COUNT = 47;
+export const EXPECTED_CERTIFICATION_FILE_COUNT = 48;
 
 export const certificationManifest = [
   {
@@ -96,6 +96,7 @@ export const certificationManifest = [
       "Fail-closed profile resolution, non-escalating permissions, canonical verdicts, reproducibility, and durable worker recovery",
     files: [
       "tests/intelligence/worker-profile-resolution.test.ts",
+      "tests/intelligence/profile-projection-version-compat.test.ts",
       "tests/security/scraper-auth-permission-non-escalation.test.ts",
       "tests/intelligence/m8-canonical-serving.test.ts",
       "tests/policy/headspace-serving-contract.test.ts",

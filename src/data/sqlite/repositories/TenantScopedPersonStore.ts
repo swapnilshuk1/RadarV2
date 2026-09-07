@@ -172,7 +172,7 @@ export class TenantScopedPersonStore implements PersonStore {
         );
         return undefined;
       }
-      return parsed;
+      return versionCandidateProjection(parsed);
     } catch (e) {
       console.error("[TenantScopedPersonStore] Failed to parse projection_json:", personId);
       return undefined;

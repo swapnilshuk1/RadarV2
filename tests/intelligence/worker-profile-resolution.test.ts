@@ -6,6 +6,7 @@ import { EvaluationWorker, ClaimedJob } from "../../src/lib/intelligence/Evaluat
 import { DatabaseAdapter, QueryParams } from "../../src/data/database";
 import { type CandidateProjection } from "../../src/lib/domain/candidate_projection";
 import { TenantScopedPersonStore } from "../../src/data/sqlite/repositories/TenantScopedPersonStore";
+import { deriveCandidateProjectionVersion } from "../../src/data/sqlite/repositories/profile-projection-version";
 import * as staticProfileModule from "../../src/data/candidate-profile";
 
 class TestSqliteAdapter implements DatabaseAdapter {
@@ -152,6 +153,8 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
     const snapId = `snap_${jobId}`;
     const ctxFp = `ctx_fp_${jobId}`;
     const snapHash = `snap_hash_${jobId}`;
+    const pinnedProjection = personId === "user_alpha" ? projectionCCO : projectionCTO;
+    const pinnedProfileVersion = deriveCandidateProjectionVersion(pinnedProjection);
     
     sqliteDb.prepare(
       `INSERT INTO search_plan_snapshots (id, search_plan_id, tenant_id, person_id, snapshot_hash, payload_json)
@@ -160,8 +163,8 @@ describe("M10 Phase 2: Authoritative Candidate Profile Resolution in EvaluationW
 
     sqliteDb.prepare(
       `INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version)
-       VALUES (?, ?, ?, ?, '1.0', 'ont_fp', '1.0', 'prof_v1')`
-    ).run(ctxFp, tenantId, personId, snapId);
+       VALUES (?, ?, ?, ?, '1.0', 'ont_fp', '1.0', ?)`
+    ).run(ctxFp, tenantId, personId, snapId, pinnedProfileVersion);
 
     // Ensure candidate row exists for FK invariant
     sqliteDb.prepare(

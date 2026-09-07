@@ -2,8 +2,10 @@
   "name": "tanstack_start_ts",
   "private": true,
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.12.0",
+    "npm": "10.9.8"
   },
+  "packageManager": "npm@10.9.8",
   "sideEffects": false,
   "type": "module",
   "scripts": {

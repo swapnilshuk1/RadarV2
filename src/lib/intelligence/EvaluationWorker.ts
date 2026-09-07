@@ -8,6 +8,7 @@ import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, mater
 import { buildCanonicalDossierPresentation } from "./dossier/CanonicalDossierBuilder";
 import type { EvaluationContext } from "@/lib/domain/evaluation_context";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
+import { resolveExactCandidateProjectionForScope } from "@/data/sqlite/repositories/profile-projection-version";
 
 export interface WorkerOptions {
   adapter?: DatabaseAdapter;
@@ -302,17 +303,11 @@ export class EvaluationWorker {
       // 1. Authoritative candidate projection resolution via TenantScopedPersonStore
       // The immutable context pins the projection version. A later CV upload
       // must not change a queued job's candidate input.
-      const pinnedProjectionRow = await this.db.one<{ projection_json: string }>(
-        `SELECT projection_json
-         FROM career_profiles
-         WHERE person_id = ?
-           AND json_extract(projection_json, '$.profileVersion') = ?
-         LIMIT 1`,
-        [job.personId, context.profileVersion],
+      const rawProjection = await resolveExactCandidateProjectionForScope(
+        this.db,
+        { tenantId: job.tenantId, personId: job.personId },
+        context.profileVersion,
       );
-      const rawProjection = pinnedProjectionRow?.projection_json
-        ? JSON.parse(pinnedProjectionRow.projection_json)
-        : undefined;
       if (!rawProjection) {
         // A missing profile is a domain state, not permission to evaluate a
         // synthetic executive. Persist an explicitly non-advisory result.

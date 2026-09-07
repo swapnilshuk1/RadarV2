@@ -7,6 +7,7 @@ import { runEngineSingleIntrinsic } from "./engine";
 import { validateEvaluationConsistency } from "../domain/evaluation_fingerprint";
 import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
 import type { MaterializedEvaluation } from "../domain/evaluation_context";
+import { resolveExactCandidateProjectionForScope } from "../../data/sqlite/repositories/profile-projection-version";
 
 export interface ContextMaterializationResult {
   examined: number;
@@ -64,16 +65,11 @@ export async function materializeExistingCanonicalPool(
      WHERE spc.tenant_id = ? AND spc.person_id = ? AND spc.search_plan_id = ?`,
     [scope.tenantId, scope.personId, source.sourceSearchPlanId]
   );
-  const pinnedProjectionRow = await db.one<{ projection_json: string }>(
-    `SELECT projection_json FROM career_profiles
-     WHERE person_id = ?
-       AND json_extract(projection_json, '$.profileVersion') = ?
-     LIMIT 1`,
-    [scope.personId, prepared.context.profileVersion],
+  const projection = await resolveExactCandidateProjectionForScope(
+    db,
+    scope,
+    prepared.context.profileVersion,
   );
-  const projection = pinnedProjectionRow?.projection_json
-    ? JSON.parse(pinnedProjectionRow.projection_json)
-    : undefined;
   const candidateRows: Array<[unknown, ...unknown[]]> = [];
   const evaluations: MaterializedEvaluation[] = [];
   let eligibleCandidates = 0;
