@@ -48,9 +48,11 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
     }));
     const item = result.package.resumeGaps.find((gap) => gap.category === "Platform & Pipeline Governance");
 
+    expect(item).toBeDefined();
     expect(item?.targetRoleRequirement).toBe(quote);
     expect(item?.jdRequirementIds).toEqual(["source-crm"]);
     expect(item?.jdRequirementIds).not.toContain("jd_crm_mandate");
+    expect(result.package.resumeGaps.map((gap) => gap.category)).not.toContain("Executive Mandate Alignment");
   });
 
   it("uses explicit commercial and mandate dimensions only when present", () => {

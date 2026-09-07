@@ -142,7 +142,7 @@ export class TruthPreservingRewriteEngine {
     }
 
     // Category C: Executive Mandate Alignment
-    const mandateRequirement = this.explicitJobRequirement(job, /.+/, ["mandate"]);
+    const mandateRequirement = this.explicitMandateRequirement(job);
     const transfClaims = evidenceGraph.findClaimsMatchingKeywords(["transformation", "coe", "gcc", "scaling"]);
     if (mandateRequirement && transfClaims.length > 0) {
       const topTransf = transfClaims[0];
@@ -280,6 +280,16 @@ export class TruthPreservingRewriteEngine {
       if (dimension.jdEvidence.status !== "Explicit" || (dimensionKeys.length > 0 && !dimensionKeys.includes(dimension.key))) continue;
       const quote = [dimension.jdEvidence.value, ...(dimension.jdEvidence.evidence || []).map((evidence) => evidence.quote)]
         .find((value): value is string => typeof value === "string" && value.trim().length > 0 && pattern.test(value));
+      if (quote) return { text: quote.trim(), evidenceIds: [] };
+    }
+    return null;
+  }
+
+  private static explicitMandateRequirement(job: JobProjection): { text: string; evidenceIds: string[] } | null {
+    for (const dimension of job.dimensions || []) {
+      if (dimension.key !== "mandate" || dimension.jdEvidence.status !== "Explicit") continue;
+      const quote = [dimension.jdEvidence.value, ...(dimension.jdEvidence.evidence || []).map((evidence) => evidence.quote)]
+        .find((value): value is string => typeof value === "string" && value.trim().length > 0);
       if (quote) return { text: quote.trim(), evidenceIds: [] };
     }
     return null;
