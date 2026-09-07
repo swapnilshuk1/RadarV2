@@ -24,8 +24,13 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 const isStringArray = (value: unknown): value is readonly string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
 
+/**
+ * Editorial sources deliberately express unavailable optional facts as null.
+ * React renders null safely; accepting it here preserves that neutral state
+ * without allowing an object or collection to reach a string-rendering path.
+ */
 const hasOptionalStrings = (value: Record<string, unknown>, keys: readonly string[]) =>
-  keys.every((key) => value[key] === undefined || typeof value[key] === "string");
+  keys.every((key) => value[key] === undefined || value[key] === null || typeof value[key] === "string");
 
 const hasRenderSafeObjectArray = (value: unknown, required: readonly string[] = [], optional: readonly string[] = []) =>
   Array.isArray(value) && value.every((item) => isObject(item)

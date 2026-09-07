@@ -173,6 +173,14 @@ describe("PayloadMapper", () => {
         whyRoleExists: null,
       };
       expect(isCanonicalDossierPresentationV1(valid)).toBe(true);
+      expect(isCanonicalDossierPresentationV1({
+        ...valid,
+        brief: {
+          ...valid.brief,
+          executiveThesis: { headline: "Assessment pending", primaryReason: "Not established", careerValueSignal: null },
+          explanation: { bottomLine: "Not established", primaryReason: "Not established", careerValueSignal: null },
+        },
+      })).toBe(true);
       expect(isCanonicalDossierPresentationV1({ ...valid, evaluationInputHash: "" })).toBe(false);
 
       const payload = buildCanonicalEvaluatedPayload(mockArtifact, mockContext, "canonical-job-xyz", "opp-ver-1", "2026-08-28T00:00:00Z");
