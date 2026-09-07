@@ -626,6 +626,11 @@ export class BriefCompositionEngine {
       explanation,
     };
     const pursuitStrategy = PursuitStrategyResolver.resolve(explanation, editorialContext);
+    const resolvedRecommendedAction = recordedRecommendedAction ?? pursuitStrategy.immediateNextAction;
+    const resolvedPursuitStrategy: PursuitStrategy = {
+      ...pursuitStrategy,
+      immediateNextAction: resolvedRecommendedAction,
+    };
     const explicitProofs = inventory.sourceGroundedQuotes.slice(0, 3);
     const recordedPrimaryProof = opportunity.primaryProof
       && this.recordedText(opportunity.primaryProof.headline)
@@ -674,14 +679,14 @@ export class BriefCompositionEngine {
       ...partial,
       executiveThesis,
       explanation,
-      pursuitStrategy,
+      pursuitStrategy: resolvedPursuitStrategy,
       executiveOpinion: primaryReason,
       memory: {
         headline,
         retentionSentence: recordedPrimaryDriver ?? `${role} at ${company}; published role evidence remains partial.`,
         primaryOpportunity: recordedPrimaryDriver ?? (capabilityNames.length > 0 ? capabilityAssessment : "Verify the published mandate before investing further effort."),
         primaryRisk: recordedPrimaryRisk ?? unknowns[0]?.question ?? "Published role facts remain partial.",
-        recommendedAction: recordedRecommendedAction ?? explanation.recommendedAction,
+        recommendedAction: resolvedRecommendedAction,
         decision,
         tradeoff: careerAssessment,
         first90Days: "Not assessed from the available published evidence.",
@@ -692,7 +697,7 @@ export class BriefCompositionEngine {
         mandate: { thesis: mandateEvidence.length > 0 ? `Published mandate: ${mandateEvidence.join(" ")}` : "Published mandate not established." },
         synthesis: { thesis: careerAssessment },
         evidence: { thesis: proofPoints.length > 0 ? "Published and recorded candidate evidence is listed below." : "No source-grounded proof point is recorded." },
-        strategy: { thesis: recordedRecommendedAction ?? pursuitStrategy.immediateNextAction },
+        strategy: { thesis: resolvedRecommendedAction },
       },
       oneMinuteTLDR: {
         whyPursue: this.uniqueTexts([recordedPrimaryDriver, mandateEvidence[0], capabilityNames.length > 0 ? capabilityAssessment : null]),
@@ -725,10 +730,10 @@ export class BriefCompositionEngine {
       qualityScore,
       whyNotStronger: unknowns.length > 0 ? `Verification required: ${unknowns.map((unknown) => unknown.label.toLowerCase()).join(", ")}.` : undefined,
       topUnknownPreview: unknowns[0] ? `Unknown: ${unknowns[0].label}` : undefined,
-      strategy: { focusTitle: "Evidence-led verification", heroAnchor: pursuitStrategy.immediateNextAction },
+      strategy: { focusTitle: "Evidence-led verification", heroAnchor: resolvedRecommendedAction },
       narrative: { intent: "Use published evidence and the recorded RADAR assessment; verify remaining role facts." },
-      verdictGuidance: { actionNotice: explanation.recommendedAction, tradeoffStatement: careerAssessment, pauseTrigger: unknowns[0]?.question || "No additional role fact is required." },
-      directives: { action: pursuitStrategy.immediateNextAction },
+      verdictGuidance: { actionNotice: resolvedRecommendedAction, tradeoffStatement: careerAssessment, pauseTrigger: unknowns[0]?.question || "No additional role fact is required." },
+      directives: { action: resolvedRecommendedAction },
     };
   }
 

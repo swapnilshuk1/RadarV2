@@ -42,7 +42,24 @@ describe("recommended action editorial wiring", () => {
     expect(presented.opportunity.recommendedAction).not.toBe("PURSUE");
     expect(presented.opportunity.recommendedAction).toMatch(/Proceed|Request|screening/i);
     expect(presented.opportunity.hiringRisk).not.toBe(presented.opportunity.recommendedAction);
-    expect(brief.memory.recommendedAction).toBe(presented.opportunity.recommendedAction);
-    expect(brief.structuredSections.strategy.thesis).toBe(presented.opportunity.recommendedAction);
+    const action = presented.opportunity.recommendedAction;
+    expect(action).toBeTruthy();
+    expect(brief.memory.recommendedAction).toBe(action);
+    expect(brief.structuredSections.strategy.thesis).toBe(action);
+    expect(brief.pursuitStrategy.immediateNextAction).toBe(action);
+    expect(brief.strategy.heroAnchor).toBe(action);
+    expect(brief.verdictGuidance.actionNotice).toBe(action);
+    expect(brief.directives?.action).toBe(action);
+
+    const actionFields = JSON.stringify({
+      memory: brief.memory.recommendedAction,
+      section: brief.structuredSections.strategy.thesis,
+      pursuit: brief.pursuitStrategy.immediateNextAction,
+      hero: brief.strategy.heroAnchor,
+      notice: brief.verdictGuidance.actionNotice,
+      directive: brief.directives?.action,
+    });
+    expect(actionFields).not.toContain("Some published role facts remain unconfirmed");
+    expect(actionFields).not.toContain("INVESTIGATE");
   });
 });
