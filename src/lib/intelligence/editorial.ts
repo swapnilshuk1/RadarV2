@@ -61,6 +61,7 @@ export type EditorialNarrative = {
   primaryDriver?: string;
   secondaryDriver?: string;
   primaryRisk?: string;
+  recommendedAction?: string;
   tailoringEffort?: "LOW" | "MODERATE" | "HIGH";
   capabilityAlignmentText?: string;
   whyNow?: string;
@@ -812,8 +813,9 @@ export function playbookNarrative(
           { action: "High preparation required", benefit: effort.statement.slice(0, 100), effort: "High" }
         ]
       : dynamic.headspace,
-    // P2-A.5: Use action synthesis for recommended action
-    hiringRisk: formatAction(recommendedAction),
+    // P2-A.5: Preserve synthesized action and risk in their own fields.
+    recommendedAction: formatAction(recommendedAction),
+    hiringRisk: formatPrincipalRisk(principalRisk),
     // P2-B: Include capability importance in capabilityAlignmentText
     capabilityAlignmentText: formatCapabilityImportance(capabilityImportance) || dynamic.capabilityAlignmentText,
     // P2-C.2: Include shortlisting potential (as alternativePath for now)

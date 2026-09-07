@@ -218,7 +218,7 @@ export function present(
             ? { label: "Consider", variant: "caution" as const }
             : { label: "Pass", variant: "muted" as const },
       // P1-F: Generate executive-facing recommended action based on decision + tailoring effort
-      recommendedAction: (narrative as any).recommendedAction || record.verb,
+      recommendedAction: narrative.recommendedAction || record.verb,
     },
     record,
     narrative,
