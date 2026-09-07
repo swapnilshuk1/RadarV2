@@ -108,7 +108,8 @@ export class JobProjectionBuilder {
     role: string,
     company: string,
     mandate: TrueExecutiveMandate,
-    intent: OrganizationalIntent
+    intent: OrganizationalIntent,
+    sourceText: string,
   ): ExecutiveMission {
     const intentLabels: Record<OrganizationalIntent, string> = {
       REPLACE_FAILED_LEADER: `Stabilize execution and replace leadership deficit at ${company}`,
@@ -125,12 +126,21 @@ export class JobProjectionBuilder {
     return {
       intent,
       statement: intentLabels[intent] || `Lead strategic ${mandate.toLowerCase()} mission at ${company}`,
-      successConditions: [
-        `Deliver 24-month revenue & P&L targets under ${mandate} mandate`,
-        `Establish operational governance and cross-functional leadership alignment at ${company}`,
-        `Build scalable GTM & customer retention infrastructure`
-      ]
+      // A mission may be inferred for classification, but success conditions
+      // are published facts. Do not turn a generic mandate into invented P&L,
+      // governance, or GTM commitments.
+      successConditions: this.extractPublishedSuccessConditions(sourceText),
     };
+  }
+
+  private static extractPublishedSuccessConditions(sourceText: string): string[] {
+    return sourceText
+      .split(/(?<=[.!?])\s+|[\r\n]+/)
+      .map((sentence) => sentence.replace(/\s+/g, " ").trim())
+      .filter((sentence) => sentence.length >= 24 && sentence.length <= 500)
+      .filter((sentence) => /\b(deliver|achieve|own|accountable|responsible|target|objective|kpi|metric|revenue|p\s*&\s*l|profitability|margin)\b/i.test(sentence))
+      .filter((sentence, index, all) => all.indexOf(sentence) === index)
+      .slice(0, 3);
   }
 
   private static assignCapabilityTier(capName: string): CapabilityTaxonomyTier {
@@ -261,7 +271,7 @@ export class JobProjectionBuilder {
     const resolvedCompany = this.resolveEmployerName(opportunity.company || "", fullText);
     const trueExecutiveMandate = this.inferTrueExecutiveMandate(fullText, title);
     const organizationalIntent = this.inferOrganizationalIntent(fullText, title);
-    const executiveMission = this.buildExecutiveMission(title, resolvedCompany, trueExecutiveMandate, organizationalIntent);
+    const executiveMission = this.buildExecutiveMission(title, resolvedCompany, trueExecutiveMandate, organizationalIntent, String(sourceText));
 
     // 1. Executive Identity Classification (Positive Domain Validation)
     const isExecutiveTechLeader = /(head of|director|vp|vice president|cto|cio|chief)/i.test(titleLower);

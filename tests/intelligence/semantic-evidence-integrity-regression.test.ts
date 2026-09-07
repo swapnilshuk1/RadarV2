@@ -107,6 +107,30 @@ describe("Semantic Evidence Integrity & Boundary Invariants", () => {
       expect(projection.commercialScope.evidenceIds).toEqual(["cs_none"]);
     });
 
+    it("does not invent success conditions when the published document does not state them", () => {
+      const projection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "no-invented-success-conditions",
+        role: "Director of Influencer Marketing",
+        rawDescription: "Lead influencer marketing for the brand. Reporting line and commercial mandate are not published.",
+      });
+
+      expect(projection.executiveMission.successConditions).toEqual([]);
+    });
+
+    it("preserves explicit published success conditions without adding generic commitments", () => {
+      const projection = JobProjectionBuilder.build({
+        ...richOpportunity,
+        jobHash: "published-success-conditions",
+        role: "Business Head",
+        rawDescription: "Own the end-to-end P&L and deliver annual revenue and margin targets for the D2C business.",
+      });
+
+      expect(projection.executiveMission.successConditions).toEqual([
+        "Own the end-to-end P&L and deliver annual revenue and margin targets for the D2C business.",
+      ]);
+    });
+
     it("records explicit qualification requirements but not responsibility-only capabilities", () => {
       const requiredProjection = JobProjectionBuilder.build({
         ...richOpportunity,
