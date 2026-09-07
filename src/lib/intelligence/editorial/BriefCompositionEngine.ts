@@ -584,16 +584,25 @@ export class BriefCompositionEngine {
       : inventory.hasCareerAssessment
       ? "RADAR recorded a career assessment signal for this opportunity."
       : "No specific career-upside conclusion is recorded.";
+    const recordedPrimaryDriver = this.recordedText(opportunity.primaryDriver);
+    const recordedPrimaryRisk = this.recordedText(opportunity.primaryRisk);
+    const recordedWhyNow = this.recordedText(opportunity.whyNow);
+    const recordedRecommendedAction = this.recordedText(opportunity.recommendedAction);
+    const mandateEvidence = [...inventory.mandateQuotes, ...inventory.functionalScopeQuotes];
     const headline = verdict ? `RADAR ${verdict} assessment: ${role} at ${company}` : `RADAR assessment: ${role} at ${company}`;
-    const primaryReason = verdict
-      ? `RADAR's recorded ${verdict} assessment is available; role facts below are limited to published evidence.`
-      : "Published evidence is available, but no canonical decision assessment is recorded.";
+    const primaryReason = recordedPrimaryDriver
+      ?? mandateEvidence[0]
+      ?? (capabilityNames.length > 0 ? capabilityAssessment : null)
+      ?? "Published evidence is partial; verify the role mandate before investing further effort.";
     const explanation: ExecutiveDecisionExplanation = {
       verdict,
       headline,
       bottomLine: primaryReason,
       primaryReason,
-      supportingReasons: capabilityNames.length > 0 ? [capabilityAssessment] : [],
+      supportingReasons: [
+        ...(capabilityNames.length > 0 ? [capabilityAssessment] : []),
+        ...(recordedPrimaryRisk ? [`Key recorded risk: ${recordedPrimaryRisk}`] : []),
+      ],
       careerValueSignal: editorialContext.careerValue.trajectoryUpside ? String(editorialContext.careerValue.trajectoryUpside) : null,
       tradeoff: editorialContext.careerValue.relativeDifferentiator || null,
       evidenceStrength: inventory.hasExplicitEvidence ? "LIMITED" : "INSUFFICIENT",
@@ -618,13 +627,23 @@ export class BriefCompositionEngine {
     };
     const pursuitStrategy = PursuitStrategyResolver.resolve(explanation, editorialContext);
     const explicitProofs = inventory.sourceGroundedQuotes.slice(0, 3);
+    const recordedPrimaryProof = opportunity.primaryProof
+      && this.recordedText(opportunity.primaryProof.headline)
+      && this.recordedText(opportunity.primaryProof.detail)
+      ? {
+          category: "Transferable Experience" as const,
+          headline: opportunity.primaryProof.headline.trim(),
+          detail: opportunity.primaryProof.detail.trim(),
+        }
+      : null;
     const candidateProofs = (opportunity.dimensions || [])
       .flatMap((dimension) => dimension.candidateProof ? [dimension.candidateProof] : [])
       .slice(0, 2);
-    const proofPoints: ProofPointItem[] = [
+    const proofPoints = [
+      ...(recordedPrimaryProof ? [recordedPrimaryProof] : []),
       ...explicitProofs.map((quote) => ({ category: "Direct Evidence" as const, headline: "Published role evidence", detail: quote })),
       ...candidateProofs.map((proof) => ({ category: "Transferable Experience" as const, headline: proof.headline, detail: proof.detail })),
-    ];
+    ].filter((point, index, points) => points.findIndex((candidate) => candidate.headline === point.headline && candidate.detail === point.detail) === index).slice(0, 4);
     const unknowns: RankedUnknown[] = [];
     if (inventory.reportingLineQuotes.length === 0) {
       unknowns.push({ rank: "CRITICAL", label: "Reporting line", question: "What reporting line is assigned to this role?" });
@@ -635,7 +654,6 @@ export class BriefCompositionEngine {
     if (inventory.decisionRightsQuotes.length === 0) {
       unknowns.push({ rank: "IMPORTANT", label: "Decision rights", question: "Which decisions and approvals sit with this role?" });
     }
-    const mandateEvidence = [...inventory.mandateQuotes, ...inventory.functionalScopeQuotes];
     const partial = this.composeEvidenceLimitedBrief(
       opportunity,
       editorialContext,
@@ -660,35 +678,34 @@ export class BriefCompositionEngine {
       executiveOpinion: primaryReason,
       memory: {
         headline,
-        retentionSentence: `Partial evidence dossier for ${role} at ${company}.`,
-        primaryOpportunity: capabilityNames.length > 0 ? capabilityAssessment : "Review the published mandate before investing further effort.",
-        primaryRisk: unknowns[0]?.question || "Published role facts remain partial.",
-        recommendedAction: explanation.recommendedAction,
+        retentionSentence: recordedPrimaryDriver ?? `${role} at ${company}; published role evidence remains partial.`,
+        primaryOpportunity: recordedPrimaryDriver ?? (capabilityNames.length > 0 ? capabilityAssessment : "Verify the published mandate before investing further effort."),
+        primaryRisk: recordedPrimaryRisk ?? unknowns[0]?.question ?? "Published role facts remain partial.",
+        recommendedAction: recordedRecommendedAction ?? explanation.recommendedAction,
         decision,
         tradeoff: careerAssessment,
         first90Days: "Not assessed from the available published evidence.",
-        whyNow: `The role is listed at ${company}; RADAR's assessment and published evidence are shown separately.`,
+        whyNow: recordedWhyNow ?? `The role is listed at ${company}; RADAR's assessment and published evidence are shown separately.`,
       },
       structuredSections: {
         context: { thesis: primaryReason },
         mandate: { thesis: mandateEvidence.length > 0 ? `Published mandate: ${mandateEvidence.join(" ")}` : "Published mandate not established." },
         synthesis: { thesis: careerAssessment },
-        evidence: { thesis: proofPoints.length > 0 ? "Published and candidate evidence is recorded below." : capabilityAssessment },
-        strategy: { thesis: pursuitStrategy.immediateNextAction },
+        evidence: { thesis: proofPoints.length > 0 ? "Published and recorded candidate evidence is listed below." : "No source-grounded proof point is recorded." },
+        strategy: { thesis: recordedRecommendedAction ?? pursuitStrategy.immediateNextAction },
       },
       oneMinuteTLDR: {
-        whyPursue: [
-          ...(mandateEvidence.length > 0 ? [mandateEvidence[0]] : []),
-          ...(capabilityNames.length > 0 ? [capabilityAssessment] : []),
-        ],
-        watchFor: unknowns.map((unknown) => unknown.question),
-        bottomLine: explanation.bottomLine,
+        whyPursue: this.uniqueTexts([recordedPrimaryDriver, mandateEvidence[0], capabilityNames.length > 0 ? capabilityAssessment : null]),
+        watchFor: this.uniqueTexts([recordedPrimaryRisk, ...unknowns.map((unknown) => unknown.question)]),
+        bottomLine: primaryReason,
       },
       qualitativeReasoning: [
+        ...(recordedPrimaryDriver ? [{ layer: "Recorded RADAR assessment", ratingLabel: "Requires Verification" as const, becausePoints: [recordedPrimaryDriver], evidenceSnippet: recordedPrimaryDriver }] : []),
         ...(capabilityNames.length > 0 ? [{ layer: "Capability assessment", ratingLabel: "Requires Verification" as const, becausePoints: capabilityNames, evidenceSnippet: capabilityAssessment }] : []),
         ...(mandateEvidence.length > 0 ? [{ layer: "Published mandate", ratingLabel: "Requires Verification" as const, becausePoints: mandateEvidence, evidenceSnippet: mandateEvidence[0] }] : []),
       ],
       qualitativeReasoningChain: [
+        ...(recordedPrimaryDriver ? [{ layer: "Recorded RADAR assessment", ratingLabel: "Requires Verification" as const, becausePoints: [recordedPrimaryDriver], evidenceSnippet: recordedPrimaryDriver }] : []),
         ...(capabilityNames.length > 0 ? [{ layer: "Capability assessment", ratingLabel: "Requires Verification" as const, becausePoints: capabilityNames, evidenceSnippet: capabilityAssessment }] : []),
         ...(mandateEvidence.length > 0 ? [{ layer: "Published mandate", ratingLabel: "Requires Verification" as const, becausePoints: mandateEvidence, evidenceSnippet: mandateEvidence[0] }] : []),
       ],
@@ -713,6 +730,16 @@ export class BriefCompositionEngine {
       verdictGuidance: { actionNotice: explanation.recommendedAction, tradeoffStatement: careerAssessment, pauseTrigger: unknowns[0]?.question || "No additional role fact is required." },
       directives: { action: pursuitStrategy.immediateNextAction },
     };
+  }
+
+  private static recordedText(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    const text = value.trim();
+    return text.length > 0 ? text : null;
+  }
+
+  private static uniqueTexts(values: Array<string | null | undefined>): string[] {
+    return [...new Set(values.filter((value): value is string => typeof value === "string" && value.trim().length > 0).map((value) => value.trim()))];
   }
 
   /**

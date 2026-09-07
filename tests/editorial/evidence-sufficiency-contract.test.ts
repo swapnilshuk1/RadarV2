@@ -51,7 +51,7 @@ describe("Editorial evidence sufficiency contract", () => {
 
     expect(brief.memory.decision).toBe("PURSUE");
     expect(brief.certaintyLevel).toBe("LOW");
-    expect(brief.executiveOpinion).toContain("recorded PURSUE assessment");
+    expect(brief.executiveOpinion).toContain("Published evidence is partial");
     expect(brief.fitProofs).toEqual([]);
     expect(brief.executiveOpinion).not.toMatch(/P&L|multi-million|shortlisting probability|board-level/i);
   });
@@ -153,6 +153,34 @@ describe("Editorial evidence sufficiency contract", () => {
     expect(JSON.stringify(brief)).not.toMatch(/full country-level commercial ownership|strongest P&L acceleration|board-level commercial reporting|25 FTEs|founder-led|Growth Architecture|Commercial Transformation|Executive Governance/i);
     expect(brief.qualityScore).toBe(91);
     expect(brief.explanation.verdict).toBe("PURSUE");
+  });
+
+  it("uses recorded driver, risk, and proof rather than generic partial-assessment prose", () => {
+    const driver = "Recorded driver: creator-market strategy aligns with the current search plan.";
+    const risk = "Recorded risk: published decision rights remain unresolved.";
+    const brief = BriefCompositionEngine.compose(sparseOpportunity({
+      primaryDriver: driver,
+      primaryRisk: risk,
+      primaryProof: { headline: "Recorded candidate proof", detail: "Distinctive recorded proof detail." },
+      dimensions: [{
+        key: "functionalScope",
+        label: "Functional Scope",
+        importance: "Core",
+        bucket: "Matched",
+        jdEvidence: { status: "Explicit", value: "Lead influencer strategy", evidence: [{ quote: "Lead influencer strategy", source: "snippet" }] },
+      }] as Opportunity["dimensions"],
+      engineRecommendation: { engineVerdict: "PURSUE", qualityScore: 72, triggeredRuleIds: [] } as any,
+    }));
+
+    expect(brief.memory.decision).toBe("PURSUE");
+    expect(brief.qualityScore).toBe(72);
+    expect(brief.executiveOpinion).toBe(driver);
+    expect(brief.structuredSections.context.thesis).toBe(driver);
+    expect(brief.oneMinuteTLDR.whyPursue).toContain(driver);
+    expect(brief.memory.primaryRisk).toBe(risk);
+    expect(brief.oneMinuteTLDR.watchFor).toContain(risk);
+    expect(brief.proofPoints).toContainEqual(expect.objectContaining({ headline: "Recorded candidate proof", detail: "Distinctive recorded proof detail." }));
+    expect(JSON.stringify(brief)).not.toContain("RADAR's recorded PURSUE assessment is available; role facts below are limited to published evidence.");
   });
 
   it("keeps a long but employer-thin evaluated dossier evidence-bound", () => {
