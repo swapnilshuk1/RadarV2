@@ -5,7 +5,7 @@ import fs from "fs";
 /**
  * RADAR v2 Production Deployment Pipeline
  * 
- * Target: Oracle Cloud VM (130.210.41.232 / http://130.210.41.232.sslip.io/)
+ * Target: Oracle Cloud VM (161.118.175.246 / http://161.118.175.246.sslip.io/)
  * SSH Key: C:\Users\swapn\.ssh\oracle_official.key
  * User: ubuntu
  * Directory: /home/ubuntu/radar-local-v2
@@ -13,7 +13,7 @@ import fs from "fs";
  */
 
 const SSH_KEY = path.resolve(process.env.USERPROFILE || process.env.HOME || "", ".ssh", "oracle_official.key");
-const REMOTE_HOST = "ubuntu@130.210.41.232";
+const REMOTE_HOST = "ubuntu@161.118.175.246";
 const REMOTE_DIR = "/home/ubuntu/radar-local-v2";
 
 function run(cmd: string, cwd = process.cwd()) {
@@ -28,7 +28,7 @@ async function deploy() {
   console.log(`Target Host  : ${REMOTE_HOST}`);
   console.log(`SSH Key      : ${SSH_KEY}`);
   console.log(`Remote Path  : ${REMOTE_DIR}`);
-  console.log(`Live Service : http://130.210.41.232.sslip.io/`);
+  console.log(`Live Service : http://161.118.175.246.sslip.io/`);
   console.log("────────────────────────────────────────────────────────────\n");
 
   if (!fs.existsSync(SSH_KEY)) {
@@ -78,7 +78,7 @@ async function deploy() {
 
   console.log("\n============================================================");
   console.log("      DEPLOYMENT COMPLETE — SERVER RUNNING SUCCESSFULLY     ");
-  console.log("      Live URL: http://130.210.41.232.sslip.io/             ");
+  console.log("      Live URL: http://161.118.175.246.sslip.io/             ");
   console.log("============================================================\n");
 }
 

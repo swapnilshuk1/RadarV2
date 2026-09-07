@@ -8,8 +8,8 @@ async function triggerRemoteDeploy() {
 
   page.on('console', msg => console.log('SERVER/PAGE LOG:', msg.text()));
 
-  console.log('Navigating to http://130.210.41.232.sslip.io/login...');
-  await page.goto('http://130.210.41.232.sslip.io/login', { waitUntil: 'networkidle' });
+  console.log('Navigating to http://161.118.175.246.sslip.io/login...');
+  await page.goto('http://161.118.175.246.sslip.io/login', { waitUntil: 'networkidle' });
 
   await page.evaluate(() => {
     sessionStorage.setItem('radar_session', JSON.stringify({
@@ -20,8 +20,8 @@ async function triggerRemoteDeploy() {
     document.cookie = "radar_session=swapnil-shukla-dev; path=/";
   });
 
-  console.log('Navigating to http://130.210.41.232.sslip.io/profile...');
-  await page.goto('http://130.210.41.232.sslip.io/profile', { waitUntil: 'networkidle' });
+  console.log('Navigating to http://161.118.175.246.sslip.io/profile...');
+  await page.goto('http://161.118.175.246.sslip.io/profile', { waitUntil: 'networkidle' });
 
   console.log('Looking for SYNC & REBUILD button...');
   const syncBtn = page.locator('button:has-text("SYNC & REBUILD")');

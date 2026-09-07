@@ -14,7 +14,7 @@ async function auditShortlistAndDossier() {
 
   // 1. Set authenticated session state in sessionStorage before navigation
   console.log('--- Setting session state for authenticated audit ---');
-  await page.goto('http://130.210.41.232.sslip.io/login', { waitUntil: 'networkidle' });
+  await page.goto('http://161.118.175.246.sslip.io/login', { waitUntil: 'networkidle' });
   
   await page.evaluate(() => {
     const sessionData = {
@@ -29,7 +29,7 @@ async function auditShortlistAndDossier() {
 
   // 2. Audit Shortlist Page (Desktop)
   console.log('Navigating Desktop to Shortlist Page (/) ...');
-  await page.goto('http://130.210.41.232.sslip.io/', { waitUntil: 'networkidle' });
+  await page.goto('http://161.118.175.246.sslip.io/', { waitUntil: 'networkidle' });
   await page.waitForTimeout(2000);
 
   const desktopShortlistPath = path.join(artifactDir, 'art_director_shortlist_desktop.png');
@@ -44,7 +44,7 @@ async function auditShortlistAndDossier() {
     hasTouch: true,
   });
   const mobilePage = await mobileContext.newPage();
-  await mobilePage.goto('http://130.210.41.232.sslip.io/login', { waitUntil: 'networkidle' });
+  await mobilePage.goto('http://161.118.175.246.sslip.io/login', { waitUntil: 'networkidle' });
   await mobilePage.evaluate(() => {
     sessionStorage.setItem('radar_session', JSON.stringify({
       userId: 'swapnil-shukla-dev',
@@ -54,7 +54,7 @@ async function auditShortlistAndDossier() {
   });
 
   console.log('Navigating Mobile to Shortlist Page (/) ...');
-  await mobilePage.goto('http://130.210.41.232.sslip.io/', { waitUntil: 'networkidle' });
+  await mobilePage.goto('http://161.118.175.246.sslip.io/', { waitUntil: 'networkidle' });
   await mobilePage.waitForTimeout(2000);
 
   const mobileShortlistPath = path.join(artifactDir, 'art_director_shortlist_mobile.png');
@@ -67,7 +67,7 @@ async function auditShortlistAndDossier() {
   if (await firstCardLink.isVisible()) {
     const href = await firstCardLink.getAttribute('href');
     console.log(`Opening Dossier link: ${href}`);
-    await page.goto(`http://130.210.41.232.sslip.io${href}`, { waitUntil: 'networkidle' });
+    await page.goto(`http://161.118.175.246.sslip.io${href}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(2000);
 
     const desktopDossierPath = path.join(artifactDir, 'art_director_dossier_desktop.png');
@@ -75,7 +75,7 @@ async function auditShortlistAndDossier() {
     console.log(`Saved Desktop Dossier screenshot: ${desktopDossierPath}`);
 
     // Mobile Dossier
-    await mobilePage.goto(`http://130.210.41.232.sslip.io${href}`, { waitUntil: 'networkidle' });
+    await mobilePage.goto(`http://161.118.175.246.sslip.io${href}`, { waitUntil: 'networkidle' });
     await mobilePage.waitForTimeout(2000);
     const mobileDossierPath = path.join(artifactDir, 'art_director_dossier_mobile.png');
     await mobilePage.screenshot({ path: mobileDossierPath, fullPage: true });

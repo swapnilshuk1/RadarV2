@@ -307,14 +307,14 @@ Page (e.g. Executive Dossier, Shortlist Queue)
 Whenever deploying or pushing RADAR v2 to the live Oracle Cloud Server, AI agents MUST follow this exact, deterministic procedure without searching or guessing credentials:
 
 ### Target Infrastructure & Credentials:
-- **Server IP**: `130.210.41.232` (or hostname `130.210.41.232.sslip.io`)
+- **Server IP**: `161.118.175.246` (or hostname `161.118.175.246.sslip.io`)
 - **SSH User**: `ubuntu`
 - **SSH Private Key Location**: `C:\Users\swapn\.ssh\oracle_official.key` (or `~/.ssh/oracle_official.key`)
 - **SSH Config Alias**: `oracle-radar` (defined in `~/.ssh/config`)
 - **Remote Directory**: `/home/ubuntu/radar-local-v2`
 - **Process Manager**: `pm2` (Process Name: `radar-v2`)
 - **Git Remote**: `origin` -> `https://github.com/swapnilshuk1/RadarV2.git` (Branch: `main`)
-- **Live URL**: `http://130.210.41.232.sslip.io/`
+- **Live URL**: `http://161.118.175.246.sslip.io/`
 
 ### Automated 1-Command Deployment:
 ```bash
@@ -330,7 +330,7 @@ npm run deploy
 npx tsx scripts/deploy.ts "Your commit message"
 
 # Direct SSH command:
-ssh -o StrictHostKeyChecking=no -i "C:\Users\swapn\.ssh\oracle_official.key" ubuntu@130.210.41.232 "cd /home/ubuntu/radar-local-v2 && git fetch origin main && git reset --hard origin/main && npm install && npm run build && pm2 restart radar-v2 && pm2 status"
+ssh -o StrictHostKeyChecking=no -i "C:\Users\swapn\.ssh\oracle_official.key" ubuntu@161.118.175.246 "cd /home/ubuntu/radar-local-v2 && git fetch origin main && git reset --hard origin/main && npm install && npm run build && pm2 restart radar-v2 && pm2 status"
 ```
 
 

@@ -38,6 +38,7 @@ bunfig.toml
 # Environment / secrets — never commit API keys or private certificates
 .env
 .env.*
+RADAR_NEW_SYSTEM_TRANSFER_2026-09-07/
 *.env
 *.key
 *.pem

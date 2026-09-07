@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $SSH_KEY = "$env:USERPROFILE\.ssh\oracle_official.key"
-$REMOTE_HOST = "ubuntu@130.210.41.232"
+$REMOTE_HOST = "ubuntu@161.118.175.246"
 $REMOTE_DIR = "/home/ubuntu/radar-local-v2"
 
 Write-Host "============================================================" -ForegroundColor Cyan
@@ -15,7 +15,7 @@ Write-Host "============================================================" -Foreg
 Write-Host "Target Host  : $REMOTE_HOST"
 Write-Host "SSH Key      : $SSH_KEY"
 Write-Host "Remote Path  : $REMOTE_DIR"
-Write-Host "Live Service : http://130.210.41.232.sslip.io/"
+Write-Host "Live Service : http://161.118.175.246.sslip.io/"
 Write-Host "────────────────────────────────────────────────────────────`n"
 
 if (!(Test-Path $SSH_KEY)) {
@@ -48,5 +48,5 @@ ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" $REMOTE_HOST "$remoteCmd"
 
 Write-Host "`n============================================================" -ForegroundColor Green
 Write-Host "      DEPLOYMENT COMPLETE — SERVER RUNNING SUCCESSFULLY     " -ForegroundColor Green
-Write-Host "      Live URL: http://130.210.41.232.sslip.io/             " -ForegroundColor Green
+Write-Host "      Live URL: http://161.118.175.246.sslip.io/             " -ForegroundColor Green
 Write-Host "============================================================`n" -ForegroundColor Green

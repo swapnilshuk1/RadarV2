@@ -3,7 +3,7 @@
 set -e
 
 SSH_KEY="${HOME}/.ssh/oracle_official.key"
-REMOTE_HOST="ubuntu@130.210.41.232"
+REMOTE_HOST="ubuntu@161.118.175.246"
 REMOTE_DIR="/home/ubuntu/radar-local-v2"
 COMMIT_MSG="${1:-Deploy update: $(date '+%Y-%m-%d %H:%M:%S')}"
 
@@ -13,7 +13,7 @@ echo "============================================================"
 echo "Target Host  : ${REMOTE_HOST}"
 echo "SSH Key      : ${SSH_KEY}"
 echo "Remote Path  : ${REMOTE_DIR}"
-echo "Live Service : http://130.210.41.232.sslip.io/"
+echo "Live Service : http://161.118.175.246.sslip.io/"
 echo "────────────────────────────────────────────────────────────"
 
 if [ ! -f "${SSH_KEY}" ]; then

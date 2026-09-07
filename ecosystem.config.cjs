@@ -31,7 +31,7 @@ module.exports = {
       script: '.output/server/index.mjs',
       cwd: '/home/ubuntu/radar-local-v2',
       env: {
-        PORT: 80,
+        PORT: 3000,
         NODE_ENV: 'production',
         ...envVars
       }
