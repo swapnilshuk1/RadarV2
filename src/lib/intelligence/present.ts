@@ -136,6 +136,16 @@ export function present(
         const finalEvidence: { quote: string; source: import("@/data/opportunity-fixtures").EvidenceSource }[] = isExplicit && hasValidQuote
           ? [{ quote: rawQuote.slice(0, 140), source: "snippet" }]
           : [];
+        const candidateProof = d.candidateProof as { headline?: unknown; detail?: unknown } | undefined;
+        const preservedCandidateProof = typeof candidateProof?.headline === "string"
+          && candidateProof.headline.trim().length > 0
+          && typeof candidateProof.detail === "string"
+          && candidateProof.detail.trim().length > 0
+          ? {
+              headline: candidateProof.headline.trim(),
+              detail: candidateProof.detail.trim(),
+            }
+          : undefined;
 
         return {
           key: ((d.key as string) || "mandate") as DimensionKey,
@@ -147,6 +157,7 @@ export function present(
             value: finalValue,
             evidence: finalEvidence,
           },
+          ...(preservedCandidateProof ? { candidateProof: preservedCandidateProof } : {}),
         };
       })
     : [];

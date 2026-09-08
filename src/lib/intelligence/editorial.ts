@@ -783,6 +783,9 @@ export function playbookNarrative(
 
   // P2-A.5: Action Intelligence - "What should I do next?"
   const recommendedAction = synthesizeAction(record, source, strategicAdvantage, principalRisk, careerValue, effort);
+  const recordedCandidateProof = strategicAdvantage.evidence.find((evidence) =>
+    typeof evidence === "string" && evidence.trim().length > 0,
+  );
 
   // P2-B: Capability Importance - "Which requirements matter most?"
   const capabilityImportance = synthesizeCapabilityImportance(record, source);
@@ -816,6 +819,12 @@ export function playbookNarrative(
     // P2-A.5: Preserve synthesized action and risk in their own fields.
     recommendedAction: formatAction(recommendedAction),
     hiringRisk: formatPrincipalRisk(principalRisk),
+    primaryProof: recordedCandidateProof
+      ? {
+          headline: "Recorded candidate evidence",
+          detail: recordedCandidateProof,
+        }
+      : dynamic.primaryProof,
     // P2-B: Include capability importance in capabilityAlignmentText
     capabilityAlignmentText: formatCapabilityImportance(capabilityImportance) || dynamic.capabilityAlignmentText,
     // P2-C.2: Include shortlisting potential (as alternativePath for now)

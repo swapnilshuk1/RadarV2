@@ -18,6 +18,7 @@ describe("recommended action editorial wiring", () => {
         importance: "Context",
         bucket: "Matched",
         jdEvidence: { status: "Explicit", value: "Gurugram", evidence: [{ quote: "Gurugram", source: "snippet" }] },
+        candidateProof: { headline: "Recorded leadership evidence", detail: "Recorded candidate evidence from the source dimension." },
       }],
     } as OpportunitySource;
     const record = {
@@ -38,7 +39,16 @@ describe("recommended action editorial wiring", () => {
       stability: "High",
       comparison: { higherThan: [], lowerThan: [] },
       explanation: { missingEvidence: ["reporting line"], contradictionFlags: [] },
-      trace: { pipeline: [], evidenceMapping: [], careerValueBreakdown: {} },
+      trace: {
+        pipeline: [],
+        evidenceMapping: [{
+          jobCapability: "Influencer marketing strategy",
+          candidateCapability: "Verified creator-partnership and influencer strategy experience.",
+          confidence: 0.9,
+          reason: "Matched against recorded candidate evidence.",
+        }],
+        careerValueBreakdown: {},
+      },
       headspace: { finalVerb: "PURSUE", downgraded: false },
     } as unknown as RecommendationRecord;
 
@@ -48,6 +58,14 @@ describe("recommended action editorial wiring", () => {
     expect(presented.opportunity.recommendedAction).not.toBe("PURSUE");
     expect(presented.opportunity.recommendedAction).toMatch(/Proceed|Request|screening/i);
     expect(presented.opportunity.hiringRisk).not.toBe(presented.opportunity.recommendedAction);
+    expect(presented.opportunity.primaryProof).toEqual({
+      headline: "Recorded candidate evidence",
+      detail: "Verified creator-partnership and influencer strategy experience.",
+    });
+    expect(presented.opportunity.dimensions[0].candidateProof).toEqual({
+      headline: "Recorded leadership evidence",
+      detail: "Recorded candidate evidence from the source dimension.",
+    });
     const action = presented.opportunity.recommendedAction;
     expect(action).toBeTruthy();
     expect(brief.memory.recommendedAction).toBe(action);
@@ -56,6 +74,10 @@ describe("recommended action editorial wiring", () => {
     expect(brief.strategy.heroAnchor).toBe(action);
     expect(brief.verdictGuidance.actionNotice).toBe(action);
     expect(brief.directives?.action).toBe(action);
+    expect(brief.proofPoints).toContainEqual(expect.objectContaining({
+      headline: "Recorded candidate evidence",
+      detail: "Verified creator-partnership and influencer strategy experience.",
+    }));
     expect(brief.explanation.keyUncertainty).toBeNull();
     expect(brief.pursuitStrategy.engineVerdict).toBe("PURSUE");
     expect(brief.pursuitStrategy.executiveLabel).toBe("Proceed with focused outreach");
@@ -116,9 +138,12 @@ describe("recommended action editorial wiring", () => {
       headspace: { finalVerb: "PURSUE", downgraded: false },
     } as unknown as RecommendationRecord;
 
-    const brief = BriefCompositionEngine.compose(present(source, record).opportunity);
+    const presented = present(source, record);
+    const brief = BriefCompositionEngine.compose(presented.opportunity);
 
     expect(brief.explanation.evidenceStrength).toBe("INSUFFICIENT");
+    expect(presented.opportunity.primaryProof).toBeUndefined();
+    expect(brief.proofPoints).toEqual([]);
     expect(brief.pursuitStrategy.engineVerdict).toBe("PURSUE");
     expect(brief.pursuitStrategy.executiveLabel).toBe("Proceed with focused outreach");
     expect(brief.pursuitStrategy.pursuitMode).toBe("CLARIFY_SCOPE");
