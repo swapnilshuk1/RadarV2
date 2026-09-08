@@ -38,7 +38,10 @@ export function buildCanonicalDossierPresentation(
       canonicalEvidenceBound: true,
     })),
     jobProjection: asDossierJsonObject(artifact.jobProjection),
-    executionPackage: asDossierJsonObject(ExecutionEngine.validateDecision(candidateProjection, artifact.jobProjection)),
+    executionPackage: asDossierJsonObject(ExecutionEngine.validateDecision(candidateProjection, {
+      ...artifact.jobProjection,
+      dimensions: artifact.opportunity.dimensions as any,
+    })),
     rawDimensions: asDossierJsonArray(Array.isArray(artifact.opportunity.dimensions) ? artifact.opportunity.dimensions : []),
     focusTopic: topic,
     whyRoleExists: topic

@@ -5,6 +5,7 @@ import { CapabilityEngine, type JobSlice } from "../capability/CapabilityEngine"
 import { CapabilityOntology } from "../ontology/CapabilityOntology";
 import { SemanticNaturalLanguageResolver } from "./editorial/SemanticNaturalLanguageResolver";
 import { isMeaningfulEvidenceQuote } from "@/domain/evidence";
+import { sanitizePublishedEmployerDimensions } from "./editorial/PublishedEmployerEvidence";
 
 export type Presented = {
   opportunity: Opportunity;
@@ -161,6 +162,7 @@ export function present(
         };
       })
     : [];
+  const publishedDimensions = sanitizePublishedEmployerDimensions(cleanDimensions);
   return {
     opportunity: {
       jobHash: source.jobHash,
@@ -171,7 +173,7 @@ export function present(
       scrapedFrom: source.scrapedFrom || "LinkedIn",
       applyUrl: source.applyUrl,
       evaluationState: (source.evaluationState ?? "EVALUATED") as "EVALUATED" | "LEGACY",
-      dimensions: cleanDimensions,
+      dimensions: publishedDimensions,
       decision: record.verb,
       recommendation: finalRecommendation,
       whyNow: narrative.whyNow,

@@ -494,8 +494,7 @@ export class JobProjectionBuilder {
       decisionAuthority.value,
       workModel,
       executiveIdentity.value,
-      opportunity.dimensions,
-      String(sourceText),
+      opportunity.dimensions
     );
 
     return {
@@ -540,85 +539,24 @@ export class JobProjectionBuilder {
  */
 export function buildGroundedDimensions(
   title: string,
-  _location: string,
+  location: string,
   operatingLevel: string,
-  _trueExecutiveMandate: string,
-  _commercialScope: string,
-  _decisionAuthority: string,
-  _workModel: string,
-  _executiveIdentityValue: string,
-  existingDimensions?: readonly GroundedOpportunityDimension[],
-  sourceText = "",
+  trueExecutiveMandate: string,
+  commercialScope: string,
+  decisionAuthority: string,
+  workModel: string,
+  executiveIdentityValue: string,
+  existingDimensions?: readonly GroundedOpportunityDimension[]
 ): GroundedOpportunityDimension[] {
-  const sourceClauses = sourceText
-    .split(/(?<=[.!?])|[\r\n]+/)
-    .map((clause) => clause.trim())
-    .filter(Boolean);
-  const normalizedSource = sourceText.replace(/\s+/g, " ").trim().toLowerCase();
-  const sourceQuote = (pattern: RegExp): string | null =>
-    sourceClauses.find((clause) => pattern.test(clause)) || null;
-  const evidencePatterns: Record<string, RegExp> = {
-    mandate: /\b(?:mandate|charter)\b/i,
-    commercialScope: /\b(?:own(?:s|ership)?\s+(?:the\s+)?(?:end-to-end\s+)?(?:p\s*&\s*l|profit\s+and\s+loss)|(?:p\s*&\s*l|profit\s+and\s+loss)\s+responsibilit(?:y|ies)|accountable\s+for\s+(?:revenue|profitability)|budget\s+ownership|commercial\s+accountability)\b/i,
-    commercialAccountability: /\b(?:own(?:s|ership)?\s+(?:the\s+)?(?:end-to-end\s+)?(?:p\s*&\s*l|profit\s+and\s+loss)|(?:p\s*&\s*l|profit\s+and\s+loss)\s+responsibilit(?:y|ies)|accountable\s+for\s+(?:revenue|profitability)|budget\s+ownership|commercial\s+accountability)\b/i,
-    decisionAuthority: /\b(?:decision[- ]making|decision rights?|approval authority|approve|accountable for|governance)\b/i,
-    workModel: /\b(?:remote|hybrid|on[- ]?site|in[- ]?office|office\s+(?:days?|attendance)|work\s+from\s+(?:home|office))\b/i,
-  };
-  const isSourceGrounded = (value: unknown, pattern: RegExp): value is string => {
-    if (typeof value !== "string" || value.trim().length === 0) return false;
-    const normalizedValue = value.replace(/\s+/g, " ").trim().toLowerCase();
-    return normalizedSource.includes(normalizedValue) && pattern.test(value);
-  };
-  const missingDimension = (dimension: GroundedOpportunityDimension): GroundedOpportunityDimension => ({
-    ...dimension,
-    bucket: "Missing",
-    jdEvidence: { status: "Missing", value: "", evidence: [] },
-  });
-  const groundedExistingDimensions = Array.isArray(existingDimensions)
-    ? existingDimensions.map((dimension) => {
-      const pattern = evidencePatterns[dimension.key];
-      if (!pattern || dimension.jdEvidence.status !== "Explicit") return dimension;
-      const evidence = [
-        dimension.jdEvidence.value,
-        ...(dimension.jdEvidence.evidence || []).map((entry: { quote?: string }) => entry.quote),
-      ];
-      return evidence.some((value) => isSourceGrounded(value, pattern))
-        ? dimension
-        : missingDimension(dimension);
-    })
-    : [];
-  if (groundedExistingDimensions.length > 0) {
-    return groundedExistingDimensions;
+  if (Array.isArray(existingDimensions) && existingDimensions.length > 0) {
+    return [...existingDimensions];
   }
-  const explicitDimension = (
-    key: string,
-    label: string,
-    importance: "Core" | "Supporting",
-    quote: string | null,
-  ): GroundedOpportunityDimension => quote
-    ? {
-      key,
-      label,
-      importance,
-      bucket: "Matched",
-      jdEvidence: { status: "Explicit", value: quote, evidence: [{ quote, provenance: "extractor" }] },
-    }
-    : { key, label, importance, bucket: "Missing", jdEvidence: { status: "Missing", value: "", evidence: [] } };
-
   return [
     { key: "operatingLevel", label: "Operating Level", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: operatingLevel, evidence: [{ quote: title, provenance: "extractor" }] } },
-    // Classifier values remain available on JobProjection for internal policy
-    // scoring, but a title is not employer evidence for mandate, commercial
-    // scope, or decision authority. Only source-grounded extracted dimensions
-    // above may carry Explicit status for dossier-facing use.
-    explicitDimension("mandate", "Mandate", "Core", sourceQuote(evidencePatterns.mandate)),
-    explicitDimension("commercialScope", "Commercial Scope", "Core", sourceQuote(evidencePatterns.commercialScope)),
-    explicitDimension("decisionAuthority", "Decision Authority", "Core", sourceQuote(evidencePatterns.decisionAuthority)),
-    explicitDimension("workModel", "Work Model", "Supporting", sourceQuote(evidencePatterns.workModel)),
-    // The role title is source-grounded functional-scope evidence. The
-    // classifier's executive identity label is not: e.g. "Commercial &
-    // Marketing Leadership" must not be promoted into an explicit commercial
-    // requirement when the source only says "Director of Influencer Marketing".
-    { key: "functionalScope", label: "Functional Scope", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: title, evidence: [{ quote: title, provenance: "extractor" }] } },
+    { key: "mandate", label: "Mandate", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: trueExecutiveMandate, evidence: [{ quote: title, provenance: "extractor" }] } },
+    { key: "commercialScope", label: "Commercial Scope", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: commercialScope, evidence: [{ quote: title, provenance: "extractor" }] } },
+    { key: "decisionAuthority", label: "Decision Authority", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: decisionAuthority, evidence: [{ quote: title, provenance: "extractor" }] } },
+    { key: "workModel", label: "Work Model", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: workModel, evidence: [{ quote: location || workModel, provenance: "extractor" }] } },
+    { key: "functionalScope", label: "Functional Scope", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: executiveIdentityValue, evidence: [{ quote: title, provenance: "extractor" }] } },
   ];
 }

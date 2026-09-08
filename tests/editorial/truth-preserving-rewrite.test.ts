@@ -4,6 +4,47 @@ import { CandidateEvidenceGraph } from "@/lib/intelligence/execution/CandidateEv
 import { TruthPreservingRewriteEngine } from "@/lib/intelligence/execution/TruthPreservingRewriteEngine";
 import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
 import type { JobProjection } from "@/domain/job_projection";
+import { present } from "@/lib/intelligence/present";
+import type { OpportunitySource } from "@/data/opportunity-fixtures";
+import type { RecommendationRecord } from "@/lib/intelligence/record";
+
+const baseRecord: RecommendationRecord = {
+  jobHash: "test-job",
+  engineVersion: "4.3",
+  recommendationVersion: "test",
+  verb: "PURSUE",
+  qualityScore: 72,
+  rawScore: 72,
+  priority: 72,
+  vetoed: false,
+  claimPermissions: { allowedClaims: [], explicitUnknowns: [], explicitRisks: [] },
+  confidence: 0.8,
+  decisionSummary: { careerValue: 1, shortlistingPotential: 1, pursuitFriction: 1 },
+  decisionDrivers: [],
+  decisionRisks: [],
+  confidences: { parsing: 0.8, matching: 0.8, recommendation: 0.8 },
+  stability: "High",
+  comparison: { higherThan: [], lowerThan: [] },
+  explanation: { missingEvidence: [], contradictionFlags: [] },
+  trace: { pipeline: [], evidenceMapping: [], careerValueBreakdown: {} },
+  headspace: { finalVerb: "PURSUE", downgraded: false },
+} as unknown as RecommendationRecord;
+
+function presentJob(projection: JobProjection, rawDescription = ""): JobProjection {
+  const source: OpportunitySource = {
+    jobHash: projection.jobHash,
+    role: projection.role,
+    company: projection.company,
+    location: projection.location,
+    rawDescription,
+    dimensions: projection.dimensions as any,
+  };
+  const presented = present(source, { ...baseRecord, jobHash: source.jobHash });
+  return {
+    ...projection,
+    dimensions: presented.opportunity.dimensions as any,
+  };
+}
 
 function job(overrides: Partial<JobProjection> = {}): JobProjection {
   return {
@@ -43,20 +84,22 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
   });
 
   it("keeps Social Beat inferred mandate, commercial scope, and authority out of employer evidence", () => {
+    const rawDescription = `
+      Develop and execute influencer marketing strategies across key client accounts.
+      Build creator partnerships, monitor and analyze influencer performance, and achieve storefront metrics.
+      Strong planning skills and the ability to translate marketing strategy into campaign execution are required.
+    `;
     const socialBeat = JobProjectionBuilder.build({
       jobHash: "social-beat-no-commercial-mandate",
       role: "Director of Influencer Marketing",
       company: "Social Beat",
       location: "Gurugram",
-      rawDescription: `
-        Develop and execute influencer marketing strategies across key client accounts.
-        Build creator partnerships, monitor and analyze influencer performance, and achieve storefront metrics.
-        Strong planning skills and the ability to translate marketing strategy into campaign execution are required.
-      `,
+      rawDescription,
       dimensions: [],
     } as any);
-    const dimensions = new Map((socialBeat.dimensions || []).map((dimension) => [dimension.key, dimension]));
-    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, socialBeat);
+    const presented = presentJob(socialBeat, rawDescription);
+    const dimensions = new Map((presented.dimensions || []).map((dimension) => [dimension.key, dimension]));
+    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, presented);
     const categories = result.package.resumeGaps.map((item) => item.category);
 
     expect(dimensions.get("mandate")?.jdEvidence.status).toBe("Missing");
@@ -76,23 +119,25 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
   });
 
   it("does not promote generic commercial objectives or capability requirements into ownership evidence", () => {
+    const rawDescription = `
+      Drive revenue outcomes, profitability, margin improvement, and commercial metrics.
+      Strong commercial acumen and budget planning experience required.
+    `;
     const projection = JobProjectionBuilder.build({
       jobHash: "generic-commercial-objectives-no-ownership",
       role: "Director of Influencer Marketing",
       company: "Social Beat",
       location: "Gurugram",
-      rawDescription: `
-        Drive revenue outcomes, profitability, margin improvement, and commercial metrics.
-        Strong commercial acumen and budget planning experience required.
-      `,
+      rawDescription,
       dimensions: [],
     } as any);
-    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, projection);
+    const presented = presentJob(projection, rawDescription);
+    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, presented);
     const categories = result.package.resumeGaps.map((gap) => gap.category);
 
     expect(projection.commercialScope.value).toBeDefined();
-    expect(projection.dimensions?.find((dimension) => dimension.key === "commercialScope")?.jdEvidence.status).toBe("Missing");
-    expect(projection.dimensions?.find((dimension) => dimension.key === "commercialAccountability")?.jdEvidence.status ?? "Missing").toBe("Missing");
+    expect(presented.dimensions?.find((dimension) => dimension.key === "commercialScope")?.jdEvidence.status).toBe("Missing");
+    expect(presented.dimensions?.find((dimension) => dimension.key === "commercialAccountability")?.jdEvidence.status ?? "Missing").toBe("Missing");
     expect(categories).not.toContain("Commercial Scope & P&L Ownership");
     expect(categories).not.toContain("Commercial Scope & Portfolio Scale");
   });
@@ -105,32 +150,47 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
       company: "Social Beat",
       location: "Gurugram",
       rawDescription: commercialQuote,
-      dimensions: [],
+      dimensions: [
+        {
+          key: "commercialScope",
+          label: "Commercial Scope",
+          importance: "Core",
+          bucket: "Matched",
+          jdEvidence: {
+            status: "Explicit",
+            value: commercialQuote,
+            evidence: [{ quote: commercialQuote, source: "snippet" }],
+          },
+        },
+      ],
     } as any);
-    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, projection);
+    const presented = presentJob(projection, commercialQuote);
+    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, presented);
     const commercial = result.package.resumeGaps.find((gap) => gap.category.includes("Commercial Scope"));
 
-    expect(projection.dimensions?.find((dimension) => dimension.key === "commercialScope")?.jdEvidence.status).toBe("Explicit");
+    expect(presented.dimensions?.find((dimension) => dimension.key === "commercialScope")?.jdEvidence.status).toBe("Explicit");
     expect(commercial?.targetRoleRequirement).toBe(commercialQuote);
   });
 
   it("does not promote generic influencer responsibilities into an executive mandate", () => {
+    const rawDescription = `
+      Lead influencer marketing strategy across client accounts.
+      Drive creator performance and campaign outcomes.
+      Responsible for campaign execution and performance analysis.
+    `;
     const projection = JobProjectionBuilder.build({
       jobHash: "generic-influencer-responsibilities-no-mandate",
       role: "Director of Influencer Marketing",
       company: "Social Beat",
       location: "Gurugram",
-      rawDescription: `
-        Lead influencer marketing strategy across client accounts.
-        Drive creator performance and campaign outcomes.
-        Responsible for campaign execution and performance analysis.
-      `,
+      rawDescription,
       dimensions: [],
     } as any);
-    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, projection);
+    const presented = presentJob(projection, rawDescription);
+    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, presented);
 
     expect(projection.trueExecutiveMandate).toBeDefined();
-    expect(projection.dimensions?.find((dimension) => dimension.key === "mandate")?.jdEvidence.status).toBe("Missing");
+    expect(presented.dimensions?.find((dimension) => dimension.key === "mandate")?.jdEvidence.status).toBe("Missing");
     expect(result.package.resumeGaps.map((gap) => gap.category)).not.toContain("Executive Mandate Alignment");
   });
 
@@ -142,12 +202,25 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
       company: "Social Beat",
       location: "Gurugram",
       rawDescription: mandateQuote,
-      dimensions: [],
+      dimensions: [
+        {
+          key: "mandate",
+          label: "Mandate",
+          importance: "Core",
+          bucket: "Matched",
+          jdEvidence: {
+            status: "Explicit",
+            value: mandateQuote,
+            evidence: [{ quote: mandateQuote, source: "snippet" }],
+          },
+        },
+      ],
     } as any);
-    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, projection);
+    const presented = presentJob(projection, mandateQuote);
+    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, presented);
     const mandate = result.package.resumeGaps.find((gap) => gap.category === "Executive Mandate Alignment");
 
-    expect(projection.dimensions?.find((dimension) => dimension.key === "mandate")?.jdEvidence.status).toBe("Explicit");
+    expect(presented.dimensions?.find((dimension) => dimension.key === "mandate")?.jdEvidence.status).toBe("Explicit");
     expect(mandate?.targetRoleRequirement).toBe(mandateQuote);
   });
 
@@ -165,9 +238,10 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
         { key: "workModel", label: "Work Model", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: "HYBRID", evidence: [{ quote: "Gurugram" }] } },
       ],
     } as any);
+    const presented = presentJob(projection);
 
     for (const key of ["mandate", "commercialScope", "decisionAuthority", "workModel"]) {
-      expect(projection.dimensions?.find((dimension) => dimension.key === key)?.jdEvidence.status).toBe("Missing");
+      expect(presented.dimensions?.find((dimension) => dimension.key === key)?.jdEvidence.status).toBe("Missing");
     }
   });
 
