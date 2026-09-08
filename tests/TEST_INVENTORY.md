@@ -209,6 +209,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/editorial/career-value-integrity.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 15 | 42 |
 | `tests/editorial/explanation-composition.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 2 | 3 |
 | `tests/editorial/evidence-sufficiency-contract.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 3 | 10 |
+| `tests/editorial/recommended-action-wiring.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 1 | 1 |
+| `tests/editorial/truth-preserving-rewrite.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 5 | 13 |
 | `tests/editorial/dossier-rematerialization-support.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 4 | 12 |
 | `tests/editorial/explanation-contract.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 20 | 55 |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 7 | 25 |

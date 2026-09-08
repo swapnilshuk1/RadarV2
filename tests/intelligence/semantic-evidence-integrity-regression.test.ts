@@ -88,7 +88,8 @@ describe("Semantic Evidence Integrity & Boundary Invariants", () => {
 
       expect(projection.commercialScope.value).toBe("ENTERPRISE");
       expect(projection.commercialScope.evidenceIds).toContain("cs_ent_direct_business_commercial_ownership");
-      expect(projection.dimensions?.find((dimension) => dimension.key === "commercialScope")?.jdEvidence.value).toBe("ENTERPRISE");
+      expect(projection.dimensions?.find((dimension) => dimension.key === "commercialScope")?.jdEvidence.value)
+        .toContain("Own the end-to-end P&L");
     });
 
     it("does not convert generic commercial objectives into P&L authority", () => {
@@ -252,9 +253,12 @@ describe("Semantic Evidence Integrity & Boundary Invariants", () => {
       expect(dims[0].key).toBe("operatingLevel");
       expect(dims[0].jdEvidence.value).toBe("VP");
       expect(dims[1].key).toBe("mandate");
-      expect(dims[1].jdEvidence.value).toBe("SCALE");
+      expect(dims[1].jdEvidence.status).toBe("Missing");
+      expect(dims[2].jdEvidence.status).toBe("Missing");
+      expect(dims[3].jdEvidence.status).toBe("Missing");
 
-      // Verify richness directly on manufactured dimensions
+      // Other grounded dimensions still determine richness. Classifier-only
+      // mandate, commercial scope, and authority do not become evidence.
       const richness = EvidenceRichnessCalculator.calculate({ dimensions: dims });
       expect(richness.sufficiency).toBe("SUFFICIENT");
     });

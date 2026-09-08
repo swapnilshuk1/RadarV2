@@ -494,7 +494,8 @@ export class JobProjectionBuilder {
       decisionAuthority.value,
       workModel,
       executiveIdentity.value,
-      opportunity.dimensions
+      opportunity.dimensions,
+      String(sourceText),
     );
 
     return {
@@ -541,22 +542,52 @@ export function buildGroundedDimensions(
   title: string,
   location: string,
   operatingLevel: string,
-  trueExecutiveMandate: string,
-  commercialScope: string,
-  decisionAuthority: string,
+  _trueExecutiveMandate: string,
+  _commercialScope: string,
+  _decisionAuthority: string,
   workModel: string,
-  executiveIdentityValue: string,
-  existingDimensions?: readonly GroundedOpportunityDimension[]
+  _executiveIdentityValue: string,
+  existingDimensions?: readonly GroundedOpportunityDimension[],
+  sourceText = "",
 ): GroundedOpportunityDimension[] {
   if (Array.isArray(existingDimensions) && existingDimensions.length > 0) {
     return [...existingDimensions];
   }
+  const sourceClauses = sourceText
+    .split(/(?<=[.!?])|[\r\n]+/)
+    .map((clause) => clause.trim())
+    .filter(Boolean);
+  const sourceQuote = (pattern: RegExp): string | null =>
+    sourceClauses.find((clause) => pattern.test(clause)) || null;
+  const explicitDimension = (
+    key: string,
+    label: string,
+    importance: "Core" | "Supporting",
+    quote: string | null,
+  ): GroundedOpportunityDimension => quote
+    ? {
+      key,
+      label,
+      importance,
+      bucket: "Matched",
+      jdEvidence: { status: "Explicit", value: quote, evidence: [{ quote, provenance: "extractor" }] },
+    }
+    : { key, label, importance, bucket: "Missing", jdEvidence: { status: "Missing", value: "", evidence: [] } };
+
   return [
     { key: "operatingLevel", label: "Operating Level", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: operatingLevel, evidence: [{ quote: title, provenance: "extractor" }] } },
-    { key: "mandate", label: "Mandate", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: trueExecutiveMandate, evidence: [{ quote: title, provenance: "extractor" }] } },
-    { key: "commercialScope", label: "Commercial Scope", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: commercialScope, evidence: [{ quote: title, provenance: "extractor" }] } },
-    { key: "decisionAuthority", label: "Decision Authority", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: decisionAuthority, evidence: [{ quote: title, provenance: "extractor" }] } },
+    // Classifier values remain available on JobProjection for internal policy
+    // scoring, but a title is not employer evidence for mandate, commercial
+    // scope, or decision authority. Only source-grounded extracted dimensions
+    // above may carry Explicit status for dossier-facing use.
+    explicitDimension("mandate", "Mandate", "Core", sourceQuote(/\b(?:mandate|responsible for|accountable for|own(?:ership)? of|drive|lead)\b/i)),
+    explicitDimension("commercialScope", "Commercial Scope", "Core", sourceQuote(/\b(?:p\s*&\s*l|profit\s+and\s+loss|revenue|profitability|margin|budget|commercial accountability)\b/i)),
+    explicitDimension("decisionAuthority", "Decision Authority", "Core", sourceQuote(/\b(?:decision[- ]making|decision rights?|approval authority|approve|accountable for|governance)\b/i)),
     { key: "workModel", label: "Work Model", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: workModel, evidence: [{ quote: location || workModel, provenance: "extractor" }] } },
-    { key: "functionalScope", label: "Functional Scope", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: executiveIdentityValue, evidence: [{ quote: title, provenance: "extractor" }] } },
+    // The role title is source-grounded functional-scope evidence. The
+    // classifier's executive identity label is not: e.g. "Commercial &
+    // Marketing Leadership" must not be promoted into an explicit commercial
+    // requirement when the source only says "Director of Influencer Marketing".
+    { key: "functionalScope", label: "Functional Scope", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: title, evidence: [{ quote: title, provenance: "extractor" }] } },
   ];
 }

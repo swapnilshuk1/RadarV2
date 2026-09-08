@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import candidateProfileData from "@/data/candidate-profile.json";
 import { CandidateEvidenceGraph } from "@/lib/intelligence/execution/CandidateEvidenceGraph";
 import { TruthPreservingRewriteEngine } from "@/lib/intelligence/execution/TruthPreservingRewriteEngine";
+import { JobProjectionBuilder } from "@/lib/intelligence/builders/JobProjectionBuilder";
 import type { JobProjection } from "@/domain/job_projection";
 
 function job(overrides: Partial<JobProjection> = {}): JobProjection {
@@ -39,6 +40,28 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
     expect(categories).not.toContain("Commercial Scope & Portfolio Scale");
     expect(categories).not.toContain("Executive Mandate Alignment");
     expect(result.package.recommendationConditions).toEqual([]);
+  });
+
+  it("keeps Social Beat inferred mandate, commercial scope, and authority out of employer evidence", () => {
+    const socialBeat = JobProjectionBuilder.build({
+      jobHash: "social-beat-no-commercial-mandate",
+      role: "Director of Influencer Marketing",
+      company: "Social Beat",
+      location: "Gurugram",
+      description: "Monitor influencer performance, build creator partnerships, and coordinate campaign activity.",
+      rawDescription: "Monitor influencer performance, build creator partnerships, and coordinate campaign activity.",
+      dimensions: [],
+    } as any);
+    const dimensions = new Map((socialBeat.dimensions || []).map((dimension) => [dimension.key, dimension]));
+    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, socialBeat);
+    const categories = result.package.resumeGaps.map((item) => item.category);
+
+    expect(dimensions.get("mandate")?.jdEvidence.status).toBe("Missing");
+    expect(dimensions.get("commercialScope")?.jdEvidence.status).toBe("Missing");
+    expect(dimensions.get("decisionAuthority")?.jdEvidence.status).toBe("Missing");
+    expect(categories).not.toContain("Commercial Scope & P&L Ownership");
+    expect(categories).not.toContain("Commercial Scope & Portfolio Scale");
+    expect(categories).not.toContain("Executive Mandate Alignment");
   });
 
   it("uses explicit employer CRM evidence and never synthetic requirement IDs", () => {
