@@ -159,9 +159,9 @@ export class PursuitStrategyResolver {
     // (Outranks ordinary PURSUE/CONSIDER tailoring recommendations)
     // -------------------------------------------------------------
     const isSparseSpec =
-      explanation.evidenceStrength === "INSUFFICIENT" ||
       explanation.primaryReason.includes("Sparse specification") ||
-      ruleIds.includes("SPARSE_SPECIFICATION");
+      ruleIds.includes("SPARSE_SPECIFICATION") ||
+      (verdict !== "PURSUE" && explanation.evidenceStrength === "INSUFFICIENT");
 
     if (isSparseSpec) {
       const actions: PursuitAction[] = [

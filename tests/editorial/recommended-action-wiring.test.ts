@@ -83,4 +83,50 @@ describe("recommended action editorial wiring", () => {
     expect(visibleStrategy).not.toContain("INVESTIGATE");
     expect(visibleStrategy).not.toContain("Investigate before investing");
   });
+
+  it("keeps a canonical pursue verdict in clarify-scope mode when no JD dimension is explicit", () => {
+    const source = {
+      jobHash: "action-wiring-insufficient-evidence",
+      role: "Director of Influencer Marketing",
+      company: "Social Beat",
+      location: "Gurugram",
+      scrapedFrom: "LinkedIn",
+      rawDescription: "Develop influencer marketing strategies, build creator partnerships, and analyse campaign performance.",
+      dimensions: [],
+    } as OpportunitySource;
+    const record = {
+      jobHash: source.jobHash,
+      engineVersion: "4.3",
+      recommendationVersion: "test",
+      verb: "PURSUE",
+      qualityScore: 72,
+      rawScore: 72,
+      priority: 72,
+      vetoed: false,
+      claimPermissions: { allowedClaims: [], explicitUnknowns: [], explicitRisks: [] },
+      confidence: 0.8,
+      decisionSummary: { careerValue: 1, shortlistingPotential: 1, pursuitFriction: 1 },
+      decisionDrivers: [],
+      decisionRisks: [],
+      confidences: { parsing: 0.8, matching: 0.8, recommendation: 0.8 },
+      stability: "High",
+      comparison: { higherThan: [], lowerThan: [] },
+      explanation: { missingEvidence: ["reporting line"], contradictionFlags: [] },
+      trace: { pipeline: [], evidenceMapping: [], careerValueBreakdown: {} },
+      headspace: { finalVerb: "PURSUE", downgraded: false },
+    } as unknown as RecommendationRecord;
+
+    const brief = BriefCompositionEngine.compose(present(source, record).opportunity);
+
+    expect(brief.explanation.evidenceStrength).toBe("INSUFFICIENT");
+    expect(brief.pursuitStrategy.engineVerdict).toBe("PURSUE");
+    expect(brief.pursuitStrategy.executiveLabel).toBe("Proceed with focused outreach");
+    expect(brief.pursuitStrategy.pursuitMode).toBe("CLARIFY_SCOPE");
+    expect(brief.pursuitStrategy.ruleId).toBe("PURSUE_CLARIFY_LIMITED_EVIDENCE");
+    expect(JSON.stringify({
+      label: brief.pursuitStrategy.executiveLabel,
+      mode: brief.pursuitStrategy.pursuitMode,
+      action: brief.pursuitStrategy.immediateNextAction,
+    })).not.toMatch(/INVESTIGATE_THEN_DECIDE|Investigate before investing/);
+  });
 });
