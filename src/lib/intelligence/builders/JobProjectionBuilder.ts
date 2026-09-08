@@ -559,8 +559,8 @@ export function buildGroundedDimensions(
     sourceClauses.find((clause) => pattern.test(clause)) || null;
   const evidencePatterns: Record<string, RegExp> = {
     mandate: /\b(?:mandate|charter)\b/i,
-    commercialScope: /\b(?:p\s*&\s*l|profit\s+and\s+loss|revenue|profitability|margin|budget|commercial accountability)\b/i,
-    commercialAccountability: /\b(?:p\s*&\s*l|profit\s+and\s+loss|revenue|profitability|margin|budget|commercial accountability)\b/i,
+    commercialScope: /\b(?:own(?:s|ership)?\s+(?:the\s+)?(?:end-to-end\s+)?(?:p\s*&\s*l|profit\s+and\s+loss)|(?:p\s*&\s*l|profit\s+and\s+loss)\s+responsibilit(?:y|ies)|accountable\s+for\s+(?:revenue|profitability)|budget\s+ownership|commercial\s+accountability)\b/i,
+    commercialAccountability: /\b(?:own(?:s|ership)?\s+(?:the\s+)?(?:end-to-end\s+)?(?:p\s*&\s*l|profit\s+and\s+loss)|(?:p\s*&\s*l|profit\s+and\s+loss)\s+responsibilit(?:y|ies)|accountable\s+for\s+(?:revenue|profitability)|budget\s+ownership|commercial\s+accountability)\b/i,
     decisionAuthority: /\b(?:decision[- ]making|decision rights?|approval authority|approve|accountable for|governance)\b/i,
     workModel: /\b(?:remote|hybrid|on[- ]?site|in[- ]?office|office\s+(?:days?|attendance)|work\s+from\s+(?:home|office))\b/i,
   };

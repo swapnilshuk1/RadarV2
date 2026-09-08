@@ -75,6 +75,45 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
     expect(JSON.stringify(result.package.recommendationConditions)).not.toContain("Strong planning skills");
   });
 
+  it("does not promote generic commercial objectives or capability requirements into ownership evidence", () => {
+    const projection = JobProjectionBuilder.build({
+      jobHash: "generic-commercial-objectives-no-ownership",
+      role: "Director of Influencer Marketing",
+      company: "Social Beat",
+      location: "Gurugram",
+      rawDescription: `
+        Drive revenue outcomes, profitability, margin improvement, and commercial metrics.
+        Strong commercial acumen and budget planning experience required.
+      `,
+      dimensions: [],
+    } as any);
+    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, projection);
+    const categories = result.package.resumeGaps.map((gap) => gap.category);
+
+    expect(projection.commercialScope.value).toBeDefined();
+    expect(projection.dimensions?.find((dimension) => dimension.key === "commercialScope")?.jdEvidence.status).toBe("Missing");
+    expect(projection.dimensions?.find((dimension) => dimension.key === "commercialAccountability")?.jdEvidence.status ?? "Missing").toBe("Missing");
+    expect(categories).not.toContain("Commercial Scope & P&L Ownership");
+    expect(categories).not.toContain("Commercial Scope & Portfolio Scale");
+  });
+
+  it("uses published end-to-end P&L ownership for commercial coaching", () => {
+    const commercialQuote = "Own the end-to-end P&L for influencer growth across priority markets.";
+    const projection = JobProjectionBuilder.build({
+      jobHash: "published-commercial-ownership",
+      role: "Director of Influencer Marketing",
+      company: "Social Beat",
+      location: "Gurugram",
+      rawDescription: commercialQuote,
+      dimensions: [],
+    } as any);
+    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, projection);
+    const commercial = result.package.resumeGaps.find((gap) => gap.category.includes("Commercial Scope"));
+
+    expect(projection.dimensions?.find((dimension) => dimension.key === "commercialScope")?.jdEvidence.status).toBe("Explicit");
+    expect(commercial?.targetRoleRequirement).toBe(commercialQuote);
+  });
+
   it("does not promote generic influencer responsibilities into an executive mandate", () => {
     const projection = JobProjectionBuilder.build({
       jobHash: "generic-influencer-responsibilities-no-mandate",

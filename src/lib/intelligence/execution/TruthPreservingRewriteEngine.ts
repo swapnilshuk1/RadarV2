@@ -105,7 +105,7 @@ export class TruthPreservingRewriteEngine {
     }
 
     // Category B: Commercial Scope & P&L Ownership
-    const commercialRequirement = this.explicitJobRequirement(job, /\b(p&l|revenue|commercial|budget|margin|arr|quota|portfolio|fee[- ]?book)\b/i, ["commercialAccountability", "mandate", "functionalScope"]);
+    const commercialRequirement = this.explicitCommercialRequirement(job);
     const commercialClaims = evidenceGraph.findClaimsMatchingKeywords(["fee book", "retainer", "commercial", "$8M", "₹36 Cr"]);
     if (commercialRequirement && commercialClaims.length > 0) {
       const topComm = commercialClaims[0];
@@ -282,6 +282,19 @@ export class TruthPreservingRewriteEngine {
   private static explicitMandateRequirement(job: JobProjection): { text: string; evidenceIds: string[] } | null {
     for (const dimension of job.dimensions || []) {
       if (dimension.key !== "mandate" || dimension.jdEvidence.status !== "Explicit") continue;
+      const quote = [dimension.jdEvidence.value, ...(dimension.jdEvidence.evidence || []).map((evidence) => evidence.quote)]
+        .find((value): value is string => typeof value === "string" && value.trim().length > 0);
+      if (quote) return { text: quote.trim(), evidenceIds: [] };
+    }
+    return null;
+  }
+
+  private static explicitCommercialRequirement(job: JobProjection): { text: string; evidenceIds: string[] } | null {
+    for (const dimension of job.dimensions || []) {
+      if (![
+        "commercialScope",
+        "commercialAccountability",
+      ].includes(dimension.key) || dimension.jdEvidence.status !== "Explicit") continue;
       const quote = [dimension.jdEvidence.value, ...(dimension.jdEvidence.evidence || []).map((evidence) => evidence.quote)]
         .find((value): value is string => typeof value === "string" && value.trim().length > 0);
       if (quote) return { text: quote.trim(), evidenceIds: [] };
