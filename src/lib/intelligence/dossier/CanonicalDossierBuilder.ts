@@ -2,6 +2,7 @@ import type { CandidateProjection } from "@/lib/domain/candidate_projection";
 import { asDossierJsonArray, asDossierJsonObject, type CanonicalDossierPresentationV1 } from "@/lib/domain/dossier_presentation";
 import type { EvaluationArtifact } from "@/lib/intelligence/engine";
 import { BriefCompositionEngine } from "@/lib/intelligence/editorial/BriefCompositionEngine";
+import { buildEditorialIntelligenceContract } from "@/lib/intelligence/editorial/EditorialIntelligenceContractBuilder";
 import { AdvisoryConstitution } from "@/lib/intelligence/editorial/AdvisoryConstitution";
 import { ExecutionEngine } from "@/lib/intelligence/engines/ExecutionEngine";
 
@@ -28,14 +29,18 @@ export function buildCanonicalDossierPresentation(
     throw new Error("Cannot build dossier without evaluated opportunity and job projection");
   }
   const topic = focusTopic(artifact);
+  const editorialIntelligence = buildEditorialIntelligenceContract(artifact, candidateProjection);
   return {
     schemaVersion: "dossier-v1",
+    editorialVersion: "grounded-editorial-v1",
+    editorialIntelligence: asDossierJsonObject(editorialIntelligence),
     generatedAt,
     ...(evaluatedAt ? { evaluatedAt } : {}),
     evaluationInputHash,
     brief: asDossierJsonObject(BriefCompositionEngine.compose(artifact.opportunity, {
       bypassHistory: true,
       canonicalEvidenceBound: true,
+      editorialIntelligence,
     })),
     jobProjection: asDossierJsonObject(artifact.jobProjection),
     executionPackage: asDossierJsonObject(ExecutionEngine.validateDecision(candidateProjection, {

@@ -163,6 +163,8 @@ describe("PayloadMapper", () => {
     test("treats dossier presentation as optional and validates it independently", () => {
       const valid = {
         schemaVersion: "dossier-v1",
+        editorialVersion: "grounded-editorial-v1",
+        editorialIntelligence: { version: "editorial-intelligence-v1" },
         generatedAt: "2026-08-28T00:00:00Z",
         evaluationInputHash: "eval-1",
         brief: { structuredSections: { context: {}, mandate: {}, synthesis: {}, evidence: {}, strategy: {} }, oneMinuteTLDR: { whyPursue: [], watchFor: [] }, strategicUpside: { points: [] }, proofPoints: [] },
@@ -189,7 +191,7 @@ describe("PayloadMapper", () => {
 
     test("rejects malformed nested presentation collections while accepting a render-safe dossier", () => {
       const valid = {
-        schemaVersion: "dossier-v1", generatedAt: "2026-08-28T00:00:00Z", evaluationInputHash: "eval-1",
+        schemaVersion: "dossier-v1", editorialVersion: "grounded-editorial-v1", editorialIntelligence: { version: "editorial-intelligence-v1" }, generatedAt: "2026-08-28T00:00:00Z", evaluationInputHash: "eval-1",
         brief: { structuredSections: { context: {}, mandate: {}, synthesis: {}, evidence: {}, strategy: {} }, oneMinuteTLDR: { whyPursue: [], watchFor: [] }, strategicUpside: { points: [] }, proofPoints: [] },
         jobProjection: {}, executionPackage: { recommendationConditions: [], screeningQuestions: [], resumeGaps: [], linkedInStrategy: { recommendedHeadline: "Headline", executiveAboutFraming: "About" }, interviewPrep: { openingHook: "Hook", keyThemeToEmphasize: "Theme", panelQuestion: "Question" } },
         rawDimensions: [], focusTopic: null, whyRoleExists: null,

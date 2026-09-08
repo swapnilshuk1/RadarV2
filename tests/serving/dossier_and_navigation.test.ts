@@ -169,6 +169,8 @@ describe("Phase 8: Dossier Point Lookup & Navigation Suite", () => {
     it("serves only a valid dossier presentation while canonical columns retain verdict and score authority", async () => {
       const conflictingPresentation = {
         schemaVersion: "dossier-v1",
+        editorialVersion: "grounded-editorial-v1",
+        editorialIntelligence: { version: "editorial-intelligence-v1" },
         generatedAt: "2026-01-01T00:00:00.000Z",
         evaluationInputHash: "eval_A",
         // These deliberately conflicting fields are not part of the dossier

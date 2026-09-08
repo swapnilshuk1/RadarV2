@@ -13,6 +13,7 @@ import { AdvisoryConstitution, type SectionEvidenceInventory } from "./AdvisoryC
 import {
   substantiveCandidateEvidence,
 } from "./CandidateProofPolicy";
+import type { EditorialIntelligenceContract } from "./EditorialIntelligenceContract";
 
 export interface BriefSectionMeta {
   id: string;
@@ -60,7 +61,7 @@ export interface RankedUnknown {
 }
 
 export interface ProofPointItem {
-  category: "Direct Evidence" | "Transferable Experience" | "Structural Risk";
+  category: "Direct Evidence" | "Transferable Experience" | "Structural Risk" | "Candidate precedent";
   headline: string;
   detail: string;
 }
@@ -128,7 +129,7 @@ export interface BriefModel {
 }
 
 export class BriefCompositionEngine {
-  public static compose(opportunity: Opportunity, options?: { brevityPolicy?: { maxUnknowns?: number; maxEvidence?: number; maxDeliverables?: number }; bypassHistory?: boolean; canonicalEvidenceBound?: boolean }): BriefModel {
+  public static compose(opportunity: Opportunity, options?: { brevityPolicy?: { maxUnknowns?: number; maxEvidence?: number; maxDeliverables?: number }; bypassHistory?: boolean; canonicalEvidenceBound?: boolean; editorialIntelligence?: EditorialIntelligenceContract }): BriefModel {
     const policy = options?.brevityPolicy || {
       maxUnknowns: 3,
       maxEvidence: 3,
@@ -168,6 +169,7 @@ export class BriefCompositionEngine {
         editorialContext,
         inventory,
         policy,
+        options.editorialIntelligence,
       );
     }
 
@@ -1035,37 +1037,39 @@ export class BriefCompositionEngine {
       maxEvidence?: number;
       maxDeliverables?: number;
     },
+    editorialIntelligence?: EditorialIntelligenceContract,
   ): BriefModel {
     const role = opportunity.role || "This role";
     const company = opportunity.company || "the company";
 
-    const verdict =
+    const verdict = editorialIntelligence?.verdict
+      ?? (
       editorialContext.engineVerdict === "PURSUE"
       || editorialContext.engineVerdict === "CONSIDER"
       || editorialContext.engineVerdict === "PASS"
         ? editorialContext.engineVerdict
-        : null;
+        : null);
 
     const decision: BriefMemory["decision"] = verdict;
 
-    const recordedDriver =
-      this.recordedText(opportunity.primaryDriver);
+    const recordedDriver = editorialIntelligence?.careerCase
+      ?? this.recordedText(opportunity.primaryDriver);
 
-    const recordedRisk =
-      this.recordedText(opportunity.primaryRisk)
+    const recordedRisk = editorialIntelligence?.principalRisk
+      ?? this.recordedText(opportunity.primaryRisk)
       ?? this.recordedText(opportunity.hiringRisk);
 
-    const recordedWhyNow =
-      this.recordedText(opportunity.whyNow);
+    const recordedWhyNow = editorialIntelligence?.whyNow
+      ?? this.recordedText(opportunity.whyNow);
 
-    const recordedAction =
-      this.recordedText(opportunity.recommendedAction);
+    const recordedAction = editorialIntelligence?.recommendedAction
+      ?? this.recordedText(opportunity.recommendedAction);
 
-    const recordedPositioning =
-      this.recordedText(opportunity.positioning);
+    const recordedPositioning = editorialIntelligence?.positioningAngles[0]
+      ?? this.recordedText(opportunity.positioning);
 
-    const careerDifferentiator =
-      this.recordedText(
+    const careerDifferentiator = editorialIntelligence?.careerTradeoff
+      ?? this.recordedText(
         editorialContext.careerValue.relativeDifferentiator,
       );
 
@@ -1074,18 +1078,20 @@ export class BriefCompositionEngine {
         ? String(editorialContext.careerValue.trajectoryUpside)
         : null;
 
-    const capabilityNames =
-      editorialContext.capability?.matchedCapabilities
+    const capabilityNames = editorialIntelligence?.capabilityMatches
+      ?? (editorialContext.capability?.matchedCapabilities
         ?.filter(Boolean)
         .slice(0, 3)
-      || [];
+      || []);
 
     const capabilityAssessment =
       capabilityNames.length > 0
         ? `RADAR sees the strongest capability overlap in ${capabilityNames.join(", ")}.`
         : null;
 
-    const roleEvidence = this.uniqueTexts([
+    const roleEvidence = editorialIntelligence
+      ? editorialIntelligence.publishedRoleOutcomes.map((outcome) => outcome.statement)
+      : this.uniqueTexts([
       ...inventory.mandateQuotes,
       ...inventory.functionalScopeQuotes,
       ...inventory.sourceGroundedQuotes,
@@ -1097,8 +1103,13 @@ export class BriefCompositionEngine {
     const primaryRoleEvidence =
       roleEvidence[0] ?? null;
 
-    const candidateProofs =
-      this.substantiveOpportunityProofs(opportunity)
+    const candidateProofs = editorialIntelligence
+      ? editorialIntelligence.candidatePrecedents.map((precedent) => ({
+          category: "Candidate precedent" as const,
+          headline: `Candidate precedent: ${precedent.capability}`,
+          detail: precedent.statement,
+        }))
+      : this.substantiveOpportunityProofs(opportunity)
         .slice(0, policy.maxEvidence ?? 3);
 
     const primaryCandidateProof =
@@ -1121,10 +1132,9 @@ export class BriefCompositionEngine {
         ? capabilityAssessment
         : `RADAR has a canonical ${verdict || "evaluated"} assessment for ${role} at ${company}, but the published role detail remains limited.`;
 
-    const formalMandate =
-      inventory.mandateQuotes[0]
-        ? this.clipEvidence(inventory.mandateQuotes[0])
-        : null;
+    const formalMandate = editorialIntelligence
+      ? editorialIntelligence.publishedRoleOutcomes.find((outcome) => outcome.dimensionKey === "mandate")?.statement ?? null
+      : (inventory.mandateQuotes[0] ? this.clipEvidence(inventory.mandateQuotes[0]) : null);
 
     const successThesis =
       formalMandate
@@ -1138,14 +1148,21 @@ export class BriefCompositionEngine {
         ? roleEvidence.map((quote) => `• ${quote}`).join("\n")
         : undefined;
 
-    const unknowns =
-      this.buildGroundedUnknowns(
+    const unknowns = (
+      editorialIntelligence
+        ? editorialIntelligence.decisionHinges.map((hinge) => ({
+            rank: "IMPORTANT" as const,
+            label: hinge.topic,
+            question: hinge.question,
+          }))
+        : this.buildGroundedUnknowns(
         opportunity,
         inventory,
         recordedRisk,
         primaryRoleEvidence,
         verdict,
-      ).slice(0, policy.maxUnknowns ?? 3);
+      )
+    ).slice(0, policy.maxUnknowns ?? 3);
 
     const riskStatement =
       recordedRisk
@@ -1590,7 +1607,9 @@ export class BriefCompositionEngine {
       qualitativeRecommendation,
 
       qualityScore:
-        opportunity.engineRecommendation?.vetoed
+        editorialIntelligence
+          ? editorialIntelligence.qualityScore
+          : opportunity.engineRecommendation?.vetoed
           ? null
           : (
               opportunity.engineRecommendation?.qualityScore

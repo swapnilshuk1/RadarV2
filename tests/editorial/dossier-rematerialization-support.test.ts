@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CanonicalDossierPresentationV1 } from "../../src/lib/domain/dossier_presentation";
+import { isCanonicalDossierPresentationV1, type CanonicalDossierPresentationV1 } from "../../src/lib/domain/dossier_presentation";
 import {
   parseDossierRematerializationOptions,
   presentationsAreSemanticallyEqual,
@@ -12,6 +12,8 @@ import {
 function presentation(overrides: Partial<CanonicalDossierPresentationV1> = {}): CanonicalDossierPresentationV1 {
   return {
     schemaVersion: "dossier-v1",
+    editorialVersion: "grounded-editorial-v1",
+    editorialIntelligence: { version: "editorial-intelligence-v1" },
     generatedAt: "2026-09-01T00:00:00.000Z",
     evaluatedAt: "2026-08-31T00:00:00.000Z",
     evaluationInputHash: "input-1",
@@ -55,6 +57,13 @@ describe("dossier rematerialization operator safety", () => {
       presentation(),
       presentation({ brief: { headline: "Current partial assessment" } }),
     )).toBe(false);
+  });
+
+  it("treats a pre-grounded-editorial dossier as invalid for rematerialization", () => {
+    const legacy = { ...presentation() } as Record<string, unknown>;
+    delete legacy.editorialVersion;
+    delete legacy.editorialIntelligence;
+    expect(isCanonicalDossierPresentationV1(legacy)).toBe(false);
   });
 
   it("reconstructs a historical plain-text JD with the EvaluationWorker-compatible source shape", () => {

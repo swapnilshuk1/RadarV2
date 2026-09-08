@@ -153,6 +153,7 @@ RADAR v2 Test Architecture
 | `tests/editorial/dossier-rematerialization-support.test.ts` | Stale dossier comparison ignores only materialization time; refresh apply requires an explicit scope and preserves historical-source reconstruction. | **Stage 6** |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Shortlist badge state resolution (`pursue`, `consider`, `needs more signal`). | **Stage 6** |
 | `tests/editorial/recommended-action-wiring.test.ts` | Carries the synthesized recommended action through narrative, presentation, and persisted briefing strategy without contradictory generic investigation framing. | **Stage 6** |
+| `tests/editorial/editorial-intelligence-contract.test.ts` | Preserves grounded candidate and published-role intelligence through the canonical dossier boundary. | **Stage 6** |
 | `tests/editorial/canonical-presentation-boundary.test.ts` | Separation of canonical evaluation from published presentation dimensions. | **Stage 6** |
 | `tests/editorial/grounded-editorial-restoration.test.ts` | Multi-fixture editorial restoration ensuring rich, diverse, evidence-grounded dossiers without boilerplate or unsupported claims. | **Stage 6** |
 
@@ -214,6 +215,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/editorial/explanation-composition.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 2 | 3 |
 | `tests/editorial/evidence-sufficiency-contract.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 3 | 10 |
 | `tests/editorial/recommended-action-wiring.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 1 | 1 |
+| `tests/editorial/editorial-intelligence-contract.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 2 | 2 |
 | `tests/editorial/canonical-presentation-boundary.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 5 | 16 |
 | `tests/editorial/grounded-editorial-restoration.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 6 | 15 |
 | `tests/editorial/truth-preserving-rewrite.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 5 | 13 |
