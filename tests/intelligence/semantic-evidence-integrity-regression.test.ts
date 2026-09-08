@@ -257,10 +257,10 @@ describe("Semantic Evidence Integrity & Boundary Invariants", () => {
       expect(dims[2].jdEvidence.status).toBe("Missing");
       expect(dims[3].jdEvidence.status).toBe("Missing");
 
-      // Other grounded dimensions still determine richness. Classifier-only
-      // mandate, commercial scope, and authority do not become evidence.
+      // Classifier-only mandate, commercial scope, authority, and work model
+      // do not manufacture dossier evidence or a sufficient specification.
       const richness = EvidenceRichnessCalculator.calculate({ dimensions: dims });
-      expect(richness.sufficiency).toBe("SUFFICIENT");
+      expect(richness.sufficiency).toBe("INSUFFICIENT");
     });
   });
 });

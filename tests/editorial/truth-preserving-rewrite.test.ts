@@ -59,9 +59,33 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
     expect(dimensions.get("mandate")?.jdEvidence.status).toBe("Missing");
     expect(dimensions.get("commercialScope")?.jdEvidence.status).toBe("Missing");
     expect(dimensions.get("decisionAuthority")?.jdEvidence.status).toBe("Missing");
+    expect(dimensions.get("workModel")?.jdEvidence.status).toBe("Missing");
+    expect(socialBeat.trueExecutiveMandate).toBeDefined();
+    expect(socialBeat.commercialScope.value).toBeDefined();
+    expect(socialBeat.decisionAuthority.value).toBeDefined();
     expect(categories).not.toContain("Commercial Scope & P&L Ownership");
     expect(categories).not.toContain("Commercial Scope & Portfolio Scale");
     expect(categories).not.toContain("Executive Mandate Alignment");
+  });
+
+  it("fails closed when inherited Social Beat dimensions only cite classifier metadata", () => {
+    const projection = JobProjectionBuilder.build({
+      jobHash: "social-beat-inherited-classifier-dimensions",
+      role: "Director of Influencer Marketing",
+      company: "Social Beat",
+      location: "Gurugram",
+      description: "Monitor influencer performance, build creator partnerships, and coordinate campaign activity.",
+      dimensions: [
+        { key: "mandate", label: "Mandate", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: "ACCELERATE_GROWTH", evidence: [{ quote: "Director of Influencer Marketing" }] } },
+        { key: "commercialScope", label: "Commercial Scope", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: "PORTFOLIO", evidence: [{ quote: "Director of Influencer Marketing" }] } },
+        { key: "decisionAuthority", label: "Decision Authority", importance: "Core", bucket: "Matched", jdEvidence: { status: "Explicit", value: "FUNCTION", evidence: [{ quote: "Director of Influencer Marketing" }] } },
+        { key: "workModel", label: "Work Model", importance: "Supporting", bucket: "Matched", jdEvidence: { status: "Explicit", value: "HYBRID", evidence: [{ quote: "Gurugram" }] } },
+      ],
+    } as any);
+
+    for (const key of ["mandate", "commercialScope", "decisionAuthority", "workModel"]) {
+      expect(projection.dimensions?.find((dimension) => dimension.key === key)?.jdEvidence.status).toBe("Missing");
+    }
   });
 
   it("uses explicit employer CRM evidence and never synthetic requirement IDs", () => {
