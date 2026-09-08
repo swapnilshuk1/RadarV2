@@ -12,7 +12,13 @@ describe("recommended action editorial wiring", () => {
       company: "Social Beat",
       location: "Gurugram",
       scrapedFrom: "LinkedIn",
-      dimensions: [],
+      dimensions: [{
+        key: "geography",
+        label: "Location",
+        importance: "Context",
+        bucket: "Matched",
+        jdEvidence: { status: "Explicit", value: "Gurugram", evidence: [{ quote: "Gurugram", source: "snippet" }] },
+      }],
     } as OpportunitySource;
     const record = {
       jobHash: source.jobHash,
@@ -50,6 +56,14 @@ describe("recommended action editorial wiring", () => {
     expect(brief.strategy.heroAnchor).toBe(action);
     expect(brief.verdictGuidance.actionNotice).toBe(action);
     expect(brief.directives?.action).toBe(action);
+    expect(brief.explanation.keyUncertainty).toBeNull();
+    expect(brief.pursuitStrategy.engineVerdict).toBe("PURSUE");
+    expect(brief.pursuitStrategy.executiveLabel).toBe("Proceed with focused outreach");
+    expect(brief.pursuitStrategy.pursuitMode).toBe("CLARIFY_SCOPE");
+    expect(brief.pursuitStrategy.effortLevel).toBe("LIGHT");
+    expect(brief.pursuitStrategy.ruleId).toBe("PURSUE_CLARIFY_LIMITED_EVIDENCE");
+    expect(brief.pursuitStrategy.immediateNextAction).toBe(action);
+    expect(brief.rankedUnknowns.some((unknown) => unknown.label === "Reporting line")).toBe(true);
 
     const actionFields = JSON.stringify({
       memory: brief.memory.recommendedAction,
@@ -61,5 +75,12 @@ describe("recommended action editorial wiring", () => {
     });
     expect(actionFields).not.toContain("Some published role facts remain unconfirmed");
     expect(actionFields).not.toContain("INVESTIGATE");
+    const visibleStrategy = JSON.stringify({
+      label: brief.pursuitStrategy.executiveLabel,
+      mode: brief.pursuitStrategy.pursuitMode,
+      action: brief.pursuitStrategy.immediateNextAction,
+    });
+    expect(visibleStrategy).not.toContain("INVESTIGATE");
+    expect(visibleStrategy).not.toContain("Investigate before investing");
   });
 });

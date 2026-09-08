@@ -606,7 +606,7 @@ export class BriefCompositionEngine {
       careerValueSignal: editorialContext.careerValue.trajectoryUpside ? String(editorialContext.careerValue.trajectoryUpside) : null,
       tradeoff: editorialContext.careerValue.relativeDifferentiator || null,
       evidenceStrength: inventory.hasExplicitEvidence ? "LIMITED" : "INSUFFICIENT",
-      keyUncertainty: "Some published role facts remain unconfirmed.",
+      keyUncertainty: null,
       recommendedAction: verdict === "PASS" ? "PASS" : "INVESTIGATE",
       ruleIds: editorialContext.careerValue.triggeredRuleIds,
       provenance: [
