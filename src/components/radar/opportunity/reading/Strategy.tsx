@@ -41,7 +41,7 @@ export function Strategy({ brief, executionPkg }: StrategyProps) {
         )}
 
         <div className="pt-2">
-          <StrategyWorkspace executionPkg={executionPkg} layout="desktop" />
+          <StrategyWorkspace executionPkg={executionPkg} brief={brief} layout="desktop" />
         </div>
       </div>
     </div>

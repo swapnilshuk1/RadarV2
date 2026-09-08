@@ -1052,26 +1052,30 @@ export class BriefCompositionEngine {
 
     const decision: BriefMemory["decision"] = verdict;
 
-    const recordedDriver = editorialIntelligence?.careerCase
-      ?? this.recordedText(opportunity.primaryDriver);
+    const recordedDriver = editorialIntelligence
+      ? editorialIntelligence.careerCase
+      : this.recordedText(opportunity.primaryDriver);
 
-    const recordedRisk = editorialIntelligence?.principalRisk
-      ?? this.recordedText(opportunity.primaryRisk)
-      ?? this.recordedText(opportunity.hiringRisk);
+    const recordedRisk = editorialIntelligence
+      ? editorialIntelligence.principalRisk
+      : (this.recordedText(opportunity.primaryRisk)
+        ?? this.recordedText(opportunity.hiringRisk));
 
-    const recordedWhyNow = editorialIntelligence?.whyNow
-      ?? this.recordedText(opportunity.whyNow);
+    const recordedWhyNow = editorialIntelligence
+      ? editorialIntelligence.whyNow
+      : this.recordedText(opportunity.whyNow);
 
-    const recordedAction = editorialIntelligence?.recommendedAction
-      ?? this.recordedText(opportunity.recommendedAction);
+    const recordedAction = editorialIntelligence
+      ? editorialIntelligence.recommendedAction
+      : this.recordedText(opportunity.recommendedAction);
 
-    const recordedPositioning = editorialIntelligence?.positioningAngles[0]
-      ?? this.recordedText(opportunity.positioning);
+    const recordedPositioning = editorialIntelligence
+      ? editorialIntelligence.positioningAngles[0] ?? null
+      : this.recordedText(opportunity.positioning);
 
-    const careerDifferentiator = editorialIntelligence?.careerTradeoff
-      ?? this.recordedText(
-        editorialContext.careerValue.relativeDifferentiator,
-      );
+    const careerDifferentiator = editorialIntelligence
+      ? editorialIntelligence.careerTradeoff
+      : this.recordedText(editorialContext.careerValue.relativeDifferentiator);
 
     const trajectoryUpside =
       editorialContext.careerValue.trajectoryUpside

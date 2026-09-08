@@ -57,7 +57,7 @@ export function ExecutiveBriefingSurface({
 
       <section className="py-8 space-y-8">
         <div className="mx-auto max-w-[1180px] px-5 space-y-8">
-          <BeforeProceed executionPkg={executionPkg} />
+          <BeforeProceed brief={brief} />
           <EvidenceDrawer
             brief={brief}
             executionPkg={executionPkg}
@@ -72,7 +72,7 @@ export function ExecutiveBriefingSurface({
             <p className="text-xs text-muted-foreground border-l border-caution pl-2.5 leading-relaxed font-normal">
               {brief.directives?.positioning || "Not recorded"}
             </p>
-            <StrategyWorkspace executionPkg={executionPkg} layout="mobile" />
+            <StrategyWorkspace executionPkg={executionPkg} brief={brief} layout="mobile" />
           </div>
 
           {/* APPENDIX FOOTER - Keep standard static details in collapsed drawer */}

@@ -182,7 +182,7 @@ export function ReadingSurface({
                 {getSectionState("mandate") === "open" ? "Collapse ▲" : "Expand ▼"}
               </button>
             </div>
-            {getSectionState("mandate") === "open" && <Mandate brief={brief} jobProj={jobProj} executionPkg={executionPkg} />}
+            {getSectionState("mandate") === "open" && <Mandate brief={brief} />}
           </div>
 
           {/* Section III: Evidence */}
