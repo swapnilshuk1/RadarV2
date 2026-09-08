@@ -75,6 +75,43 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
     expect(JSON.stringify(result.package.recommendationConditions)).not.toContain("Strong planning skills");
   });
 
+  it("does not promote generic influencer responsibilities into an executive mandate", () => {
+    const projection = JobProjectionBuilder.build({
+      jobHash: "generic-influencer-responsibilities-no-mandate",
+      role: "Director of Influencer Marketing",
+      company: "Social Beat",
+      location: "Gurugram",
+      rawDescription: `
+        Lead influencer marketing strategy across client accounts.
+        Drive creator performance and campaign outcomes.
+        Responsible for campaign execution and performance analysis.
+      `,
+      dimensions: [],
+    } as any);
+    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, projection);
+
+    expect(projection.trueExecutiveMandate).toBeDefined();
+    expect(projection.dimensions?.find((dimension) => dimension.key === "mandate")?.jdEvidence.status).toBe("Missing");
+    expect(result.package.resumeGaps.map((gap) => gap.category)).not.toContain("Executive Mandate Alignment");
+  });
+
+  it("uses published mandate language for executive mandate coaching", () => {
+    const mandateQuote = "The mandate is to lead influencer growth across priority markets.";
+    const projection = JobProjectionBuilder.build({
+      jobHash: "published-influencer-mandate",
+      role: "Director of Influencer Marketing",
+      company: "Social Beat",
+      location: "Gurugram",
+      rawDescription: mandateQuote,
+      dimensions: [],
+    } as any);
+    const result = TruthPreservingRewriteEngine.generateExecutionPackage(graph, projection);
+    const mandate = result.package.resumeGaps.find((gap) => gap.category === "Executive Mandate Alignment");
+
+    expect(projection.dimensions?.find((dimension) => dimension.key === "mandate")?.jdEvidence.status).toBe("Explicit");
+    expect(mandate?.targetRoleRequirement).toBe(mandateQuote);
+  });
+
   it("fails closed when inherited Social Beat dimensions only cite classifier metadata", () => {
     const projection = JobProjectionBuilder.build({
       jobHash: "social-beat-inherited-classifier-dimensions",

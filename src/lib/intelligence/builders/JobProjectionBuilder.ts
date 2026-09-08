@@ -558,7 +558,7 @@ export function buildGroundedDimensions(
   const sourceQuote = (pattern: RegExp): string | null =>
     sourceClauses.find((clause) => pattern.test(clause)) || null;
   const evidencePatterns: Record<string, RegExp> = {
-    mandate: /\b(?:mandate|responsible for|accountable for|own(?:ership)? of|drive|lead)\b/i,
+    mandate: /\b(?:mandate|charter)\b/i,
     commercialScope: /\b(?:p\s*&\s*l|profit\s+and\s+loss|revenue|profitability|margin|budget|commercial accountability)\b/i,
     commercialAccountability: /\b(?:p\s*&\s*l|profit\s+and\s+loss|revenue|profitability|margin|budget|commercial accountability)\b/i,
     decisionAuthority: /\b(?:decision[- ]making|decision rights?|approval authority|approve|accountable for|governance)\b/i,
