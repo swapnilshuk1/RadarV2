@@ -161,7 +161,7 @@ describe("Editorial evidence sufficiency contract", () => {
     const brief = BriefCompositionEngine.compose(sparseOpportunity({
       primaryDriver: driver,
       primaryRisk: risk,
-      primaryProof: { headline: "Recorded candidate proof", detail: "Distinctive recorded proof detail." },
+      primaryProof: { headline: "Recorded candidate proof", detail: "Distinctive recorded candidate proof detail." },
       dimensions: [{
         key: "functionalScope",
         label: "Functional Scope",
@@ -179,7 +179,7 @@ describe("Editorial evidence sufficiency contract", () => {
     expect(brief.oneMinuteTLDR.whyPursue).toContain(driver);
     expect(brief.memory.primaryRisk).toBe(risk);
     expect(brief.oneMinuteTLDR.watchFor).toContain(risk);
-    expect(brief.proofPoints).toContainEqual(expect.objectContaining({ headline: "Recorded candidate proof", detail: "Distinctive recorded proof detail." }));
+    expect(brief.proofPoints).toContainEqual(expect.objectContaining({ headline: "Recorded candidate proof", detail: "Distinctive recorded candidate proof detail." }));
     expect(JSON.stringify(brief)).not.toContain("RADAR's recorded PURSUE assessment is available; role facts below are limited to published evidence.");
   });
 
