@@ -151,6 +151,7 @@ RADAR v2 Test Architecture
 | `tests/editorial/ui-score-resolution.test.ts` | Executive score resolution (e.g. `83` vs `—`) strictly decoupled from visual decoration. | **Stage 6** |
 | `tests/editorial/dossier-rematerialization-support.test.ts` | Stale dossier comparison ignores only materialization time; refresh apply requires an explicit scope and preserves historical-source reconstruction. | **Stage 6** |
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Shortlist badge state resolution (`pursue`, `consider`, `needs more signal`). | **Stage 6** |
+| `tests/editorial/recommended-action-wiring.test.ts` | Carries the synthesized recommended action through narrative, presentation, and persisted briefing strategy without contradictory generic investigation framing. | **Stage 6** |
 
 ---
 

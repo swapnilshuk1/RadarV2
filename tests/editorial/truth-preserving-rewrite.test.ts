@@ -48,8 +48,11 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
       role: "Director of Influencer Marketing",
       company: "Social Beat",
       location: "Gurugram",
-      description: "Monitor influencer performance, build creator partnerships, and coordinate campaign activity.",
-      rawDescription: "Monitor influencer performance, build creator partnerships, and coordinate campaign activity.",
+      rawDescription: `
+        Develop and execute influencer marketing strategies across key client accounts.
+        Build creator partnerships, monitor and analyze influencer performance, and achieve storefront metrics.
+        Strong planning skills and the ability to translate marketing strategy into campaign execution are required.
+      `,
       dimensions: [],
     } as any);
     const dimensions = new Map((socialBeat.dimensions || []).map((dimension) => [dimension.key, dimension]));
@@ -66,6 +69,10 @@ describe("TruthPreservingRewriteEngine employer relevance", () => {
     expect(categories).not.toContain("Commercial Scope & P&L Ownership");
     expect(categories).not.toContain("Commercial Scope & Portfolio Scale");
     expect(categories).not.toContain("Executive Mandate Alignment");
+    expect(result.package.recommendationConditions).toEqual([]);
+    expect(JSON.stringify(result.package.recommendationConditions)).not.toContain("UNKNOWN");
+    expect(JSON.stringify(result.package.recommendationConditions)).not.toContain("Gurugram");
+    expect(JSON.stringify(result.package.recommendationConditions)).not.toContain("Strong planning skills");
   });
 
   it("fails closed when inherited Social Beat dimensions only cite classifier metadata", () => {

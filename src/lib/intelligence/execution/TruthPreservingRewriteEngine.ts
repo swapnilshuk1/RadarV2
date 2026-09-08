@@ -236,12 +236,6 @@ export class TruthPreservingRewriteEngine {
         if (evidence.quote?.trim()) quotes.add(evidence.quote.trim());
       }
     }
-    for (const requirement of job.capabilityRequirements || []) {
-      if (!requirement.required) continue;
-      for (const quote of requirement.sourceQuotes || []) {
-        if (quote.trim()) quotes.add(quote.trim());
-      }
-    }
     return [...quotes].slice(0, 3).map((quote) => `Published role evidence: ${quote}`);
   }
 
