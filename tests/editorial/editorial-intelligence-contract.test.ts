@@ -130,7 +130,6 @@ describe("EditorialIntelligenceContractBuilder", () => {
     expect(contract.verdict).toBe("PURSUE");
     expect(contract.qualityScore).toBe(72);
     expect(contract.candidatePrecedents).toEqual(expect.arrayContaining([
-      expect.objectContaining({ capability: "Marketing Strategy", evidenceIds: ["candidate-1"] }),
       expect.objectContaining({ capability: "Creator partnerships", evidenceIds: ["semantic-candidate-1"] }),
     ]));
     expect(contract.publishedRoleOutcomes).toEqual(expect.arrayContaining([expect.objectContaining({ statement: "Build creator partnerships and analyze campaign performance." })]));
@@ -286,7 +285,7 @@ describe("EditorialIntelligenceContractBuilder", () => {
       ],
       semanticEvidence: [],
     });
-    const socialContract = buildEditorialIntelligenceContract(artifact([], [{
+    const socialContract = buildEditorialIntelligenceContract(artifactWithRoleEvidence("Lead creator and influencer partnership programmes across regional consumer accounts.", [{
       jobCapability: "Influencer Marketing Strategy",
       candidateCapability: "Influencer Marketing Strategy",
       confidence: 1,
@@ -371,9 +370,7 @@ describe("EditorialIntelligenceContractBuilder", () => {
       withOutcome("Lead influencer and creator partnerships across client campaigns. Build scalable influencer campaign strategies across brand portfolios."),
       projection,
     );
-    expect(influencer.candidatePrecedents.map((precedent) => precedent.statement)).toEqual([
-      "Led creator and influencer partnership programmes across regional consumer brands.",
-    ]);
+    expect(influencer.candidatePrecedents).toEqual([]);
 
     const performance = buildEditorialIntelligenceContract(
       withOutcome("Own performance marketing optimisation, acquisition efficiency and paid media outcomes."),
@@ -387,14 +384,98 @@ describe("EditorialIntelligenceContractBuilder", () => {
       withOutcome("Lead CRM, lifecycle automation and customer data platform transformation."),
       projection,
     );
-    expect(crm.candidatePrecedents.map((precedent) => precedent.statement)).toEqual([
-      "Led a Salesforce CRM and customer-data-platform migration across multiple regional businesses.",
-    ]);
+    expect(crm.candidatePrecedents).toEqual([]);
 
     const retail = buildEditorialIntelligenceContract(
       withOutcome("Lead retail merchandising, category planning and inventory operations."),
       projection,
     );
     expect(retail.candidatePrecedents).toEqual([]);
+  });
+
+  it("does not let one strong mapped capability family authorize another precedent family", () => {
+    const projection = makeCandidateProjection({
+      inferredCapabilities: [
+        {
+          name: "CRM Transformation", confidence: 0.92, evidenceIds: ["crm-1"],
+          supportingEvidence: [{ id: "crm-1", relation: "SUPPORTS_INFERENCE", quote: "Led a Salesforce CRM and customer-data-platform transformation across regional businesses." }],
+        },
+        {
+          name: "Operations Leadership", confidence: 0.91, evidenceIds: ["ops-1"],
+          supportingEvidence: [{ id: "ops-1", relation: "SUPPORTS_INFERENCE", quote: "Directed vendor operations and service delivery across complex regional programmes." }],
+        },
+      ],
+      semanticEvidence: [],
+    });
+    const contract = buildEditorialIntelligenceContract(
+      artifactWithRoleEvidence(
+        "Lead CRM transformation and lifecycle platform development. Manage vendor operations and service-delivery escalations.",
+        [{
+          jobCapability: "CRM Transformation",
+          candidateCapability: "CRM Transformation",
+          confidence: 0.92,
+          reason: "Direct Explicit Evidence Match",
+        }],
+      ),
+      projection,
+    );
+    expect(contract.candidatePrecedents.map((precedent) => precedent.statement)).toContain(
+      "Led a Salesforce CRM and customer-data-platform transformation across regional businesses.",
+    );
+    expect(contract.candidatePrecedents.some((precedent) => /vendor operations|service delivery/i.test(precedent.statement))).toBe(false);
+  });
+
+  it("uses capability route keys rather than incidental achievement words for relevance", () => {
+    const broadMapping: EvidenceMatch[] = [{
+      jobCapability: "MARKETING_STRATEGY",
+      candidateCapability: "marketing",
+      confidence: 0.88,
+      reason: "Strong Semantic Equivalent",
+    }];
+    const performanceProjection = makeCandidateProjection({
+      inferredCapabilities: [{
+        name: "Performance Marketing",
+        confidence: 0.92,
+        evidenceIds: ["perf-1"],
+        supportingEvidence: [{
+          id: "perf-1",
+          relation: "SUPPORTS_INFERENCE",
+          quote: "Recruited and scaled a 40-member cross-functional Performance Marketing Center of Excellence across regional accounts.",
+        }],
+      }],
+      semanticEvidence: [],
+    });
+    const genericFunctional = buildEditorialIntelligenceContract(
+      artifactWithRoleEvidence("Lead a cross-functional team and coordinate agency relationships across the business.", broadMapping),
+      performanceProjection,
+    );
+    expect(genericFunctional.candidatePrecedents).toEqual([]);
+
+    const performanceRole = buildEditorialIntelligenceContract(
+      artifactWithRoleEvidence("Monitor and optimize performance marketing outcomes across paid acquisition programs.", broadMapping),
+      performanceProjection,
+    );
+    expect(performanceRole.candidatePrecedents.map((precedent) => precedent.statement)).toContain(
+      "Recruited and scaled a 40-member cross-functional Performance Marketing Center of Excellence across regional accounts.",
+    );
+
+    const crmProjection = makeCandidateProjection({
+      inferredCapabilities: [{
+        name: "CRM Transformation",
+        confidence: 0.92,
+        evidenceIds: ["crm-1"],
+        supportingEvidence: [{
+          id: "crm-1",
+          relation: "SUPPORTS_INFERENCE",
+          quote: "Led a Salesforce CRM transformation across multiple regional businesses and cross-functional teams.",
+        }],
+      }],
+      semanticEvidence: [],
+    });
+    const merchandising = buildEditorialIntelligenceContract(
+      artifactWithRoleEvidence("Lead cross-functional merchandising and inventory planning.", broadMapping),
+      crmProjection,
+    );
+    expect(merchandising.candidatePrecedents).toEqual([]);
   });
 });

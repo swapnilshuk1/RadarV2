@@ -237,10 +237,18 @@ function roleEvidenceRelevance(
   roleEvidence: readonly string[],
 ): number {
   let best = 0;
-  const candidateTexts = [precedent.capability, precedent.statement, ...precedent.routeKeys];
-  for (const candidateText of candidateTexts) {
+  /*
+   * Relevance is established only by the semantic/capability routing
+   * identity. The achievement statement is display evidence after that
+   * decision; incidental achievement words must never route it.
+   */
+  const candidateRouteKeys = unique(
+    precedent.routeKeys.map(normalized).filter(Boolean),
+    (key) => key,
+  );
+  for (const routeKey of candidateRouteKeys) {
     for (const evidenceText of roleEvidence) {
-      best = Math.max(best, specificEvidenceSimilarity(candidateText, evidenceText));
+      best = Math.max(best, specificEvidenceSimilarity(routeKey, evidenceText));
     }
   }
   return best;
@@ -259,12 +267,24 @@ function precedentMappingScore(
   }
   const routeStrength = Math.max(bestCandidateRoute, bestJobRoute * 0.85);
   /*
-   * The canonical mapping is a strong non-synthetic permission gate.
-   * A broad mapping such as MARKETING_STRATEGY -> marketing need not
-   * text-match a specific creator, CRM, or performance precedent: the
-   * source-grounded role-evidence gate decides that relevance below.
+   * The canonical evidenceMapping is a PER-PRECEDENT permission gate.
+   *
+   * A strong mapping existing somewhere on the role is not enough.
+   * This specific candidate precedent must belong to the mapped
+   * capability family.
+   *
+   * Broad family mappings still work:
+   *
+   *   MARKETING_STRATEGY -> marketing
+   *   Performance Marketing -> marketing
+   *
+   * because routeSimilarity() handles phrase containment.
+   *
+   * But an unrelated CRM mapping must never authorize an operations
+   * precedent merely because the JD also contains operations evidence.
    */
-  return (routeStrength >= 0.6 ? routeStrength * 100 : 0)
+  if (routeStrength < 0.6) return 0;
+  return routeStrength * 100
     + mapping.confidence * 20
     + projectedCapabilityTierWeight(artifact, mapping.jobCapability)
     + precedent.confidence * 10;
