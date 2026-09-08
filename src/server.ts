@@ -3,6 +3,8 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
+import { handleGoogleOAuthCallback, handleGoogleOAuthInitiation } from "./lib/auth/oauth-http-routes";
+
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
@@ -47,6 +49,14 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
+
+    // Direct HTTP route dispatch for OAuth lifecycle
+    if (url.pathname === "/api/auth/google") {
+      return handleGoogleOAuthInitiation(request);
+    }
+    if (url.pathname === "/api/auth/callback") {
+      return handleGoogleOAuthCallback(request);
+    }
 
     // Invariant: Privileged webhooks are completely eliminated from the runtime.
     if (url.pathname.startsWith("/api/webhooks")) {

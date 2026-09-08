@@ -669,22 +669,10 @@ export class BriefCompositionEngine {
       immediateNextAction: resolvedRecommendedAction,
     };
     const explicitProofs = inventory.sourceGroundedQuotes.slice(0, 3);
-    const recordedPrimaryProof = opportunity.primaryProof
-      && this.recordedText(opportunity.primaryProof.headline)
-      && this.recordedText(opportunity.primaryProof.detail)
-      ? {
-          category: "Transferable Experience" as const,
-          headline: opportunity.primaryProof.headline.trim(),
-          detail: opportunity.primaryProof.detail.trim(),
-        }
-      : null;
-    const candidateProofs = (opportunity.dimensions || [])
-      .flatMap((dimension) => dimension.candidateProof ? [dimension.candidateProof] : [])
-      .slice(0, 2);
+    const substantiveProofs = BriefCompositionEngine.substantiveOpportunityProofs(opportunity);
     const proofPoints = [
-      ...(recordedPrimaryProof ? [recordedPrimaryProof] : []),
       ...explicitProofs.map((quote) => ({ category: "Direct Evidence" as const, headline: "Published role evidence", detail: quote })),
-      ...candidateProofs.map((proof) => ({ category: "Transferable Experience" as const, headline: proof.headline, detail: proof.detail })),
+      ...substantiveProofs,
     ].filter((point, index, points) => points.findIndex((candidate) => candidate.headline === point.headline && candidate.detail === point.detail) === index).slice(0, 4);
     const unknowns: RankedUnknown[] = [];
     if (inventory.reportingLineQuotes.length === 0) {
@@ -759,7 +747,7 @@ export class BriefCompositionEngine {
       deliverablesProvenance: explicitProofs.map(() => "Observed in JD"),
       deliverables: { workRequired: explicitProofs, businessValue: [], provenance: explicitProofs.map(() => "Observed in JD") },
       proofPoints,
-      fitProofs: candidateProofs.map((proof) => proof.detail),
+      fitProofs: substantiveProofs.map((proof) => proof.detail),
       certaintyLevel: inventory.hasExplicitEvidence && inventory.hasCanonicalEvaluation ? "MEDIUM" : "LOW",
       certaintyGuidance: "Partial dossier: claims are limited to published evidence and recorded RADAR assessments.",
       evidenceQuality: editorialContext.evidence?.evidenceQuality || "Inferred Evidence",

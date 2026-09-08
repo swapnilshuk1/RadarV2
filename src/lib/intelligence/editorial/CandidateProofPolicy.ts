@@ -21,7 +21,7 @@ export function substantiveCandidateEvidence(
 
   // A proof point is a candidate experience statement, not a taxonomy label.
   if (text.length < 28) return null;
-  if (tokens.length < 5) return null;
+  if (tokens.length < 4) return null;
   if (KNOWN_LABEL_ONLY.test(text)) return null;
 
   // Reject known classifier/taxonomy composites when they are not expressed

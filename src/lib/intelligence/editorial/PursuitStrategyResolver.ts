@@ -196,7 +196,7 @@ export class PursuitStrategyResolver {
       };
     }
 
-    if (explanation.keyUncertainty != null) {
+    if (verdict !== "PURSUE" && explanation.keyUncertainty != null) {
       const actions: PursuitAction[] = [
         {
           type: "INVESTIGATE_ROLE",

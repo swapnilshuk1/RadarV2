@@ -80,6 +80,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "tests/serving/singleflight-scope-isolation.test.ts",
       "tests/serving/sql_feed_parity.test.ts",
       "tests/serving/sql_metrics_aggregation.test.ts",
+      "tests/serving/active-context-dossier-boundary.test.ts",
       "tests/persistence/deployment-determinism.test.ts",
       "tests/scraper/acquisition-variant-contract.test.ts",
       "tests/editorial/career-value-integrity.test.ts",
@@ -101,7 +102,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
     ];
 
     expect(certificationManifest).toHaveLength(6);
-    expect(EXPECTED_CERTIFICATION_FILE_COUNT).toBe(48);
+    expect(EXPECTED_CERTIFICATION_FILE_COUNT).toBe(49);
     expect(certificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
     expect(uniqueCertificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
     expect([...certificationTestFiles].sort()).toEqual([...expectedFiles].sort());

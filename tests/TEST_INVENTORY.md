@@ -112,6 +112,7 @@ RADAR v2 Test Architecture
 | `tests/serving/dossier_and_navigation.test.ts` | Dossier detail fetching and next/previous candidate navigation indices. | **Stage 5** |
 | `tests/serving/decided-population-completeness.test.ts` | Decided-opportunity retrieval exhausts keyset pages and never hides records after the first 50. | **Stage 5** |
 | `tests/serving/sql_feed_parity.test.ts` | Serving feed SQL queries match materialized evaluation and user decision states. | **Stage 5** |
+| `tests/serving/active-context-dossier-boundary.test.ts` | Authoritative active context binding, archived evaluation isolation, candidate identity ordering, and candidate proof grounding. | **Stage 5** |
 | `tests/persistence/deployment-determinism.test.ts` | OpportunityService delegates serving queries exclusively to repos.canonicalServing and DatabaseAdapter with zero filesystem fallbacks. | **Stage 5** |
 
 ---
@@ -177,7 +178,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (186 Total Files)
+## 3. Complete Test File Registry (187 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -392,6 +393,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/serving/singleflight_and_observability.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 4 | 21 |
 | `tests/serving/singleflight-scope-isolation.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 7 | 25 |
 | `tests/serving/sql_feed_parity.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 6 | 22 |
+| `tests/serving/active-context-dossier-boundary.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 6 | 22 |
 | `tests/serving/sql_metrics_aggregation.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 2 | 24 |
 
 ---
