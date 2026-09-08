@@ -8,7 +8,7 @@ const COMMERCIAL_PATTERN =
 const DECISION_AUTHORITY_PATTERN =
   /\b(?:final\s+decision|ultimate\s+sign-off|approve|budget\s+approval|executive\s+sign-off|autonomous\s+decision|hiring\s+authority)\b/i;
 const WORK_MODEL_PATTERN =
-  /\b(?:remote|hybrid|on-site|onsite|in-office|office-based)\b/i;
+  /\b(?:remote|hybrid|on[- ]?site|office[- ]?based|in\s+(?:the\s+)?office|work\s+from\s+(?:home|office)|(?:one|two|three|four|five|\d+)\s+days?\s+(?:a|per)\s+week\s+(?:in|at)\s+(?:the\s+)?office|office\s+(?:attendance|days?))\b/i;
 
 const CLASSIFIER_METADATA_VALUES = new Set([
   "HYBRID",
@@ -91,9 +91,9 @@ export function sanitizePublishedEmployerDimensions(
 
     return {
       ...dimension,
-      bucket: "Unknown" as any,
+      bucket: "Missing",
       jdEvidence: {
-        status: "Missing" as any,
+        status: "Missing",
         value: "",
         evidence: [],
       },

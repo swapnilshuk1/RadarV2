@@ -10,6 +10,9 @@ import { NarrativeComposer } from "./NarrativeComposer";
 import { SemanticNaturalLanguageResolver, unwrapEvidenceValue } from "./SemanticNaturalLanguageResolver";
 import { ExecutiveKnowledgeNormalizationPipeline } from "../ekb/ExecutiveKnowledgeNormalizationPipeline";
 import { AdvisoryConstitution, type SectionEvidenceInventory } from "./AdvisoryConstitution";
+import {
+  substantiveCandidateEvidence,
+} from "./CandidateProofPolicy";
 
 export interface BriefSectionMeta {
   id: string;
@@ -136,22 +139,56 @@ export class BriefCompositionEngine {
     const editorialContext = EditorialContextBuilder.build(opportunity);
     const sufficiency = AdvisoryConstitution.validateDataSufficiency(opportunity);
     const inventory = AdvisoryConstitution.inspectSectionEvidence(opportunity);
-    const explicitlySparse = (opportunity as { evaluationState?: string; decision?: string }).evaluationState === "SPARSE_SPEC"
-      || (opportunity as { evaluationState?: string; decision?: string }).decision === "SPARSE_SPEC";
+
+    const explicitlySparse =
+      (opportunity as { evaluationState?: string; decision?: string })
+        .evaluationState === "SPARSE_SPEC"
+      || (opportunity as { evaluationState?: string; decision?: string })
+        .decision === "SPARSE_SPEC";
+
     if (explicitlySparse) {
-      return this.composeEvidenceLimitedBrief(opportunity, editorialContext, sufficiency.message || "The published role specification is sparse and requires verification.");
+      return this.composeEvidenceLimitedBrief(
+        opportunity,
+        editorialContext,
+        sufficiency.message
+          || "The published role specification is sparse and requires verification.",
+      );
     }
+
+    // IMPORTANT:
+    // A canonical EVALUATED dossier must retain RADAR's recorded intelligence.
+    // Missing formal employer facts restrict factual claims section-by-section;
+    // they do NOT turn the entire dossier into a sparse memo.
+    if (
+      options?.canonicalEvidenceBound
+      && inventory.hasCanonicalEvaluation
+    ) {
+      return this.composeGroundedCanonicalBrief(
+        opportunity,
+        editorialContext,
+        inventory,
+        policy,
+      );
+    }
+
     if (!sufficiency.isSufficient) {
-      if (sufficiency.state === "SPARSE_SPEC" && inventory.hasUsableInformation) {
-        return this.composePartialEvidenceBrief(opportunity, editorialContext, inventory);
+      if (
+        sufficiency.state === "SPARSE_SPEC"
+        && inventory.hasUsableInformation
+      ) {
+        return this.composePartialEvidenceBrief(
+          opportunity,
+          editorialContext,
+          inventory,
+        );
       }
-      return this.composeEvidenceLimitedBrief(opportunity, editorialContext, sufficiency.message || "The available evidence is insufficient for an executive recommendation.");
-    }
-    // A canonical dossier is durable product truth. Even where enough evidence
-    // exists to classify the record, it must use section-level composition so
-    // absent employer facts cannot be supplied by legacy role patterns.
-    if (options?.canonicalEvidenceBound && inventory.hasUsableInformation) {
-      return this.composePartialEvidenceBrief(opportunity, editorialContext, inventory);
+
+      return this.composeEvidenceLimitedBrief(
+        opportunity,
+        editorialContext,
+        sufficiency.message
+          || "The available evidence is insufficient for an executive recommendation.",
+      );
     }
     // The legacy rich composer is not safe for a record whose only job signal
     // is a handful of extracted facts. Preserve those facts in the partial
@@ -855,4 +892,769 @@ export class BriefCompositionEngine {
       directives: { action: "Confirm mandate, reporting line, and resources during the initial recruiter conversation." },
     };
   }
+
+  private static clipEvidence(
+    value: string | null | undefined,
+    max = 220,
+  ): string | null {
+    if (typeof value !== "string") return null;
+
+    const text = value.replace(/\s+/g, " ").trim();
+    if (!text) return null;
+
+    if (text.length <= max) return text;
+
+    const clipped = text.slice(0, max);
+    const boundary = clipped.lastIndexOf(" ");
+
+    return `${clipped.slice(0, boundary > 80 ? boundary : max).trim()}…`;
+  }
+
+  private static lowerFirst(value: string): string {
+    if (!value) return value;
+    return value.charAt(0).toLowerCase() + value.slice(1);
+  }
+
+  private static substantiveOpportunityProofs(
+    opportunity: Opportunity,
+  ): ProofPointItem[] {
+    const proofs: ProofPointItem[] = [];
+
+    const primary = opportunity.primaryProof;
+    const primaryDetail =
+      substantiveCandidateEvidence(primary?.detail);
+
+    if (
+      primary
+      && typeof primary.headline === "string"
+      && primary.headline.trim()
+      && primaryDetail
+    ) {
+      proofs.push({
+        category: "Transferable Experience",
+        headline: primary.headline.trim(),
+        detail: primaryDetail,
+      });
+    }
+
+    for (const dimension of opportunity.dimensions || []) {
+      const proof = dimension.candidateProof;
+      const detail = substantiveCandidateEvidence(proof?.detail);
+
+      if (
+        proof
+        && typeof proof.headline === "string"
+        && proof.headline.trim()
+        && detail
+      ) {
+        proofs.push({
+          category: "Transferable Experience",
+          headline: proof.headline.trim(),
+          detail,
+        });
+      }
+    }
+
+    return proofs.filter(
+      (proof, index, all) =>
+        all.findIndex(
+          (candidate) =>
+            candidate.headline === proof.headline
+            && candidate.detail === proof.detail,
+        ) === index,
+    );
+  }
+
+  private static buildGroundedUnknowns(
+    opportunity: Opportunity,
+    inventory: SectionEvidenceInventory,
+    recordedRisk: string | null,
+    primaryRoleEvidence: string | null,
+    verdict: string | null,
+  ): RankedUnknown[] {
+    if (verdict === "PASS") {
+      return [];
+    }
+
+    const context = [
+      opportunity.role,
+      recordedRisk,
+      primaryRoleEvidence,
+      opportunity.primaryDriver,
+      opportunity.positioning,
+    ]
+      .filter((value): value is string =>
+        typeof value === "string" && value.trim().length > 0,
+      )
+      .join(" ");
+
+    const unknowns: RankedUnknown[] = [];
+
+    if (inventory.reportingLineQuotes.length === 0) {
+      unknowns.push({
+        rank: "CRITICAL",
+        label: "Reporting line",
+        question:
+          `Who does the ${opportunity.role} role report to, and where does escalation authority sit?`,
+      });
+    }
+
+    if (
+      inventory.decisionRightsQuotes.length === 0
+      && /director|head|vice president|\bvp\b|business head|operations/i.test(
+        opportunity.role || "",
+      )
+    ) {
+      unknowns.push({
+        rank: "IMPORTANT",
+        label: "Decision rights",
+        question:
+          `Which decisions can the ${opportunity.role} role make independently, and which require approval?`,
+      });
+    }
+
+    const commercialRelevance =
+      /commercial|revenue|sales|p\s*&\s*l|profit|margin|budget|business head/i.test(
+        context,
+      );
+
+    if (
+      commercialRelevance
+      && inventory.commercialAccountabilityQuotes.length === 0
+    ) {
+      unknowns.push({
+        rank: "IMPORTANT",
+        label: "Commercial ownership",
+        question:
+          `What commercial outcome or budget, if any, is directly owned by the ${opportunity.role} role?`,
+      });
+    }
+
+    const max =
+      verdict === "PURSUE"
+        ? 2
+        : 3;
+
+    return unknowns.slice(0, max);
+  }
+
+  private static composeGroundedCanonicalBrief(
+    opportunity: Opportunity,
+    editorialContext: EditorialContext,
+    inventory: SectionEvidenceInventory,
+    policy: {
+      maxUnknowns?: number;
+      maxEvidence?: number;
+      maxDeliverables?: number;
+    },
+  ): BriefModel {
+    const role = opportunity.role || "This role";
+    const company = opportunity.company || "the company";
+
+    const verdict =
+      editorialContext.engineVerdict === "PURSUE"
+      || editorialContext.engineVerdict === "CONSIDER"
+      || editorialContext.engineVerdict === "PASS"
+        ? editorialContext.engineVerdict
+        : null;
+
+    const decision: BriefMemory["decision"] = verdict;
+
+    const recordedDriver =
+      this.recordedText(opportunity.primaryDriver);
+
+    const recordedRisk =
+      this.recordedText(opportunity.primaryRisk)
+      ?? this.recordedText(opportunity.hiringRisk);
+
+    const recordedWhyNow =
+      this.recordedText(opportunity.whyNow);
+
+    const recordedAction =
+      this.recordedText(opportunity.recommendedAction);
+
+    const recordedPositioning =
+      this.recordedText(opportunity.positioning);
+
+    const careerDifferentiator =
+      this.recordedText(
+        editorialContext.careerValue.relativeDifferentiator,
+      );
+
+    const trajectoryUpside =
+      editorialContext.careerValue.trajectoryUpside
+        ? String(editorialContext.careerValue.trajectoryUpside)
+        : null;
+
+    const capabilityNames =
+      editorialContext.capability?.matchedCapabilities
+        ?.filter(Boolean)
+        .slice(0, 3)
+      || [];
+
+    const capabilityAssessment =
+      capabilityNames.length > 0
+        ? `RADAR sees the strongest capability overlap in ${capabilityNames.join(", ")}.`
+        : null;
+
+    const roleEvidence = this.uniqueTexts([
+      ...inventory.mandateQuotes,
+      ...inventory.functionalScopeQuotes,
+      ...inventory.sourceGroundedQuotes,
+    ])
+      .map((quote) => this.clipEvidence(quote))
+      .filter((quote): quote is string => Boolean(quote))
+      .slice(0, policy.maxDeliverables ?? 3);
+
+    const primaryRoleEvidence =
+      roleEvidence[0] ?? null;
+
+    const candidateProofs =
+      this.substantiveOpportunityProofs(opportunity)
+        .slice(0, policy.maxEvidence ?? 3);
+
+    const primaryCandidateProof =
+      candidateProofs[0] ?? null;
+
+    const attentionThesis =
+      primaryCandidateProof && primaryRoleEvidence
+        ? `${primaryCandidateProof.detail} is the clearest transferable precedent for a ${role} brief whose published work includes ${this.lowerFirst(primaryRoleEvidence)}`
+        : recordedDriver && primaryRoleEvidence
+        ? `${recordedDriver} The published role evidence makes the opportunity more specific: ${primaryRoleEvidence}`
+        : primaryCandidateProof
+        ? `${primaryCandidateProof.detail} is the strongest recorded reason this ${role} opportunity deserves attention.`
+        : recordedDriver
+        ? recordedDriver
+        : careerDifferentiator
+        ? `The career case for ${role} at ${company} is ${this.lowerFirst(careerDifferentiator)}`
+        : primaryRoleEvidence
+        ? `The ${role} opportunity is worth examining because the published work includes ${this.lowerFirst(primaryRoleEvidence)}`
+        : capabilityAssessment
+        ? capabilityAssessment
+        : `RADAR has a canonical ${verdict || "evaluated"} assessment for ${role} at ${company}, but the published role detail remains limited.`;
+
+    const formalMandate =
+      inventory.mandateQuotes[0]
+        ? this.clipEvidence(inventory.mandateQuotes[0])
+        : null;
+
+    const successThesis =
+      formalMandate
+        ? `The published mandate is explicit: ${formalMandate}`
+        : roleEvidence.length > 0
+        ? "The published description establishes concrete work and outcomes, but it does not establish formal authority."
+        : "The role has been evaluated, but formal operating authority is not published.";
+
+    const successBody =
+      roleEvidence.length > 0
+        ? roleEvidence.map((quote) => `• ${quote}`).join("\n")
+        : undefined;
+
+    const unknowns =
+      this.buildGroundedUnknowns(
+        opportunity,
+        inventory,
+        recordedRisk,
+        primaryRoleEvidence,
+        verdict,
+      ).slice(0, policy.maxUnknowns ?? 3);
+
+    const riskStatement =
+      recordedRisk
+        ?? (
+          unknowns[0]
+            ? `The first unresolved issue is ${this.lowerFirst(
+                unknowns[0].question.replace(/\?$/, ""),
+              )}.`
+            : null
+        );
+
+    const careerAssessment =
+      careerDifferentiator
+        ? `RADAR career assessment: ${careerDifferentiator}`
+        : trajectoryUpside
+        ? `RADAR trajectory assessment: ${trajectoryUpside}`
+        : null;
+
+    const explanationPrimaryReason =
+      attentionThesis;
+
+    const explanation: ExecutiveDecisionExplanation = {
+      verdict,
+      headline: attentionThesis,
+      bottomLine:
+        verdict === "PASS"
+          ? (
+              careerAssessment
+              ?? recordedDriver
+              ?? `RADAR does not recommend allocating further search bandwidth to ${role} at ${company}.`
+            )
+          : riskStatement
+          ? `${attentionThesis} The decision hinges on ${this.lowerFirst(riskStatement)}`
+          : attentionThesis,
+      primaryReason: explanationPrimaryReason,
+      supportingReasons: this.uniqueTexts([
+        careerAssessment,
+        riskStatement,
+        primaryCandidateProof?.detail,
+      ]),
+      careerValueSignal:
+        editorialContext.careerValue.trajectoryUpside
+          ? String(editorialContext.careerValue.trajectoryUpside)
+          : null,
+      tradeoff:
+        careerDifferentiator,
+      evidenceStrength:
+        inventory.hasExplicitEvidence
+          ? "LIMITED"
+          : "INSUFFICIENT",
+      keyUncertainty:
+        verdict === "PURSUE"
+          ? null
+          : (unknowns[0]?.question ?? null),
+      recommendedAction:
+        verdict === "PASS"
+          ? "PASS"
+          : "INVESTIGATE",
+      ruleIds:
+        editorialContext.careerValue.triggeredRuleIds,
+      provenance: [
+        ...(verdict
+          ? [{
+              source: "DECISION_POLICY" as const,
+              ruleIds:
+                editorialContext.careerValue.triggeredRuleIds,
+              signal: "CANONICAL_ENGINE_VERDICT",
+            }]
+          : []),
+        ...(capabilityNames.length > 0
+          ? [{
+              source: "CAPABILITY_ASSESSMENT" as const,
+              signal: capabilityNames.join(", "),
+            }]
+          : []),
+        ...(inventory.hasExplicitEvidence
+          ? [{
+              source: "JOB_REQUIREMENT" as const,
+              signal: "EXPLICIT_JD_EVIDENCE",
+            }]
+          : []),
+      ],
+    };
+
+    const executiveThesis: ExecutiveThesis = {
+      verdict,
+      headline: attentionThesis,
+      careerValueSignal: explanation.careerValueSignal,
+      primaryReason: explanation.primaryReason,
+      tradeoff: explanation.tradeoff,
+      relativeDifferentiator:
+        editorialContext.careerValue.relativeDifferentiator,
+      ruleIds: explanation.ruleIds,
+      explanation,
+    };
+
+    const pursuitStrategy =
+      PursuitStrategyResolver.resolve(
+        explanation,
+        editorialContext,
+      );
+
+    const resolvedRecommendedAction =
+      recordedAction
+      ?? pursuitStrategy.immediateNextAction;
+
+    const resolvedPursuitStrategy: PursuitStrategy = {
+      ...pursuitStrategy,
+      immediateNextAction:
+        resolvedRecommendedAction,
+    };
+
+    const positioningAdvice =
+      recordedPositioning
+        ?? (
+          primaryCandidateProof
+            ? `Lead with ${primaryCandidateProof.headline.toLowerCase()}: ${primaryCandidateProof.detail}`
+            : capabilityNames.length > 0
+            ? `Anchor the conversation in ${capabilityNames.join(", ")}, then use the first discussion to test the unresolved scope questions.`
+            : `Use the first conversation to connect your strongest relevant operating precedent to the published ${role} work.`
+        );
+
+    const bottomLine =
+      verdict === "PURSUE"
+        ? riskStatement
+          ? `${attentionThesis} Move now, but test ${this.lowerFirst(riskStatement)}`
+          : `${attentionThesis} There is enough signal to justify focused outreach now.`
+        : verdict === "CONSIDER"
+        ? riskStatement
+          ? `${attentionThesis} The role becomes worth deeper investment only if ${this.lowerFirst(riskStatement)} resolves favorably.`
+          : `${attentionThesis} Clarify the remaining scope before committing significant interview time.`
+        : verdict === "PASS"
+        ? (
+            careerAssessment
+            ?? recordedDriver
+            ?? `The role does not justify further search bandwidth relative to stronger opportunities.`
+          )
+        : attentionThesis;
+
+    const contextBody =
+      this.uniqueTexts([
+        careerAssessment,
+        recordedWhyNow,
+        primaryRoleEvidence,
+      ])
+        .filter((value) => value !== attentionThesis)
+        .join(" ");
+
+    const proofPoints: ProofPointItem[] = [
+      ...candidateProofs,
+      ...roleEvidence
+        .slice(0, 2)
+        .map((quote) => ({
+          category: "Direct Evidence" as const,
+          headline: "Published role evidence",
+          detail: quote,
+        })),
+    ]
+      .filter(
+        (point, index, all) =>
+          all.findIndex(
+            (candidate) =>
+              candidate.headline === point.headline
+              && candidate.detail === point.detail,
+          ) === index,
+      )
+      .slice(0, 4);
+
+    const qualitativeReasoningChain: QualitativeReasoningRow[] = [
+      ...(recordedDriver
+        ? [{
+            layer: "RADAR career thesis",
+            ratingLabel:
+              verdict === "PURSUE"
+                ? "Strong Alignment" as const
+                : verdict === "CONSIDER"
+                ? "Adjacent Alignment" as const
+                : "Limited Upside" as const,
+            becausePoints: [recordedDriver],
+            evidenceSnippet: recordedDriver,
+          }]
+        : []),
+
+      ...(primaryCandidateProof
+        ? [{
+            layer: "Candidate precedent",
+            ratingLabel: "Strong Alignment" as const,
+            becausePoints: [
+              primaryCandidateProof.headline,
+            ],
+            evidenceSnippet:
+              primaryCandidateProof.detail,
+          }]
+        : []),
+
+      ...(primaryRoleEvidence
+        ? [{
+            layer: "Published role signal",
+            ratingLabel: "Requires Verification" as const,
+            becausePoints: [primaryRoleEvidence],
+            evidenceSnippet: primaryRoleEvidence,
+          }]
+        : []),
+
+      ...(riskStatement
+        ? [{
+            layer: "Decision risk",
+            ratingLabel: "Requires Verification" as const,
+            becausePoints: [riskStatement],
+            evidenceSnippet: riskStatement,
+          }]
+        : []),
+    ];
+
+    const certaintyLevel: BriefModel["certaintyLevel"] =
+      inventory.hasCanonicalEvaluation
+      && inventory.hasExplicitEvidence
+      && candidateProofs.length > 0
+        ? "HIGH"
+        : inventory.hasCanonicalEvaluation
+          && (
+            inventory.hasExplicitEvidence
+            || candidateProofs.length > 0
+          )
+        ? "MEDIUM"
+        : "LOW";
+
+    const qualitativeRecommendation:
+      BriefModel["qualitativeRecommendation"] =
+        verdict === "PURSUE"
+          ? "Strong Pursue Recommendation"
+          : verdict === "CONSIDER"
+          ? "Conditional Consideration"
+          : verdict === "PASS"
+          ? "Strategic Pass"
+          : "Pending Assessment";
+
+    return {
+      editorialContext,
+      executiveThesis,
+      explanation,
+      pursuitStrategy:
+        resolvedPursuitStrategy,
+
+      executiveOpinion:
+        riskStatement
+          ? `${attentionThesis} The first thing I would test is ${this.lowerFirst(riskStatement)}`
+          : attentionThesis,
+
+      directives: {
+        reflection:
+          careerAssessment ?? undefined,
+        action:
+          resolvedRecommendedAction,
+        observation:
+          riskStatement ?? undefined,
+        positioning:
+          positioningAdvice,
+      },
+
+      memory: {
+        headline:
+          attentionThesis,
+
+        retentionSentence:
+          careerAssessment
+            ?? capabilityAssessment
+            ?? `${role} at ${company}: ${verdict || "evaluated"} opportunity.`,
+
+        primaryOpportunity:
+          primaryRoleEvidence
+            ?? recordedDriver
+            ?? attentionThesis,
+
+        primaryRisk:
+          riskStatement
+            ?? "No material structural risk is recorded beyond normal executive due diligence.",
+
+        recommendedAction:
+          resolvedRecommendedAction,
+
+        decision,
+
+        tradeoff:
+          careerAssessment
+            ?? "Evaluate the role against current career trajectory and search bandwidth.",
+
+        first90Days:
+          "Not inferred unless published role evidence establishes it.",
+
+        whyNow:
+          recordedWhyNow
+            ?? `RADAR has evaluated the ${role} opportunity at ${company}; the decision case is summarized here.`,
+      },
+
+      structuredSections: {
+        context: {
+          thesis:
+            attentionThesis,
+          body:
+            contextBody || undefined,
+          transition:
+            riskStatement
+              ? `The next question is whether ${this.lowerFirst(riskStatement)}`
+              : undefined,
+        },
+
+        mandate: {
+          thesis:
+            successThesis,
+          body:
+            successBody,
+          transition:
+            unknowns[0]
+              ? `The remaining issue is ${this.lowerFirst(unknowns[0].question)}`
+              : undefined,
+        },
+
+        synthesis: {
+          thesis:
+            careerAssessment
+            ?? recordedDriver
+            ?? attentionThesis,
+        },
+
+        evidence: {
+          thesis:
+            candidateProofs.length > 0
+              ? "The strongest candidate precedent and relevant published role evidence are below."
+              : roleEvidence.length > 0
+              ? "Published role evidence is available, but RADAR does not have a substantive candidate precedent recorded for this requirement."
+              : "No substantive candidate precedent or published role proof is recorded.",
+        },
+
+        strategy: {
+          thesis:
+            resolvedRecommendedAction,
+          body:
+            positioningAdvice,
+        },
+      },
+
+      oneMinuteTLDR: {
+        whyPursue:
+          this.uniqueTexts([
+            attentionThesis,
+            careerAssessment,
+            primaryCandidateProof?.detail,
+          ]).slice(0, 3),
+
+        watchFor:
+          this.uniqueTexts([
+            riskStatement,
+            ...unknowns.map(
+              (unknown) => unknown.question,
+            ),
+          ]).slice(0, 3),
+
+        bottomLine,
+      },
+
+      qualitativeReasoning:
+        qualitativeReasoningChain,
+
+      qualitativeReasoningChain,
+
+      strategicUpside: {
+        headline:
+          verdict === "PASS"
+            ? "Career trade-off"
+            : "Strategic career case",
+        points:
+          this.uniqueTexts([
+            careerAssessment,
+            recordedDriver,
+            primaryCandidateProof?.detail,
+          ]).slice(0, 3),
+      },
+
+      decisionSensitivity: {
+        becomesPursueIf:
+          verdict === "CONSIDER"
+          && unknowns[0]
+            ? [
+                `The ${unknowns[0].label.toLowerCase()} question resolves in favor of materially broader scope.`,
+              ]
+            : [],
+
+        becomesPassIf:
+          recordedRisk
+            ? [
+                `The recorded risk is confirmed and materially reduces the career or operating value of the role.`,
+              ]
+            : [],
+      },
+
+      rankedUnknowns:
+        unknowns,
+
+      deliverablesWork:
+        roleEvidence,
+
+      deliverablesValue:
+        [],
+
+      deliverablesProvenance:
+        roleEvidence.map(
+          () => "Observed in JD" as const,
+        ),
+
+      deliverables: {
+        workRequired:
+          roleEvidence,
+        businessValue:
+          [],
+        provenance:
+          roleEvidence.map(
+            () => "Observed in JD" as const,
+          ),
+      },
+
+      proofPoints,
+
+      fitProofs:
+        candidateProofs.map(
+          (proof) => proof.detail,
+        ),
+
+      certaintyLevel,
+
+      certaintyGuidance:
+        certaintyLevel === "HIGH"
+          ? "Canonical evaluation, published role evidence, and substantive candidate precedent are all present."
+          : certaintyLevel === "MEDIUM"
+          ? "The recommendation is usable, but one side of the evidence chain remains incomplete."
+          : "The canonical recommendation is available, but supporting role or candidate evidence remains limited.",
+
+      evidenceQuality:
+        editorialContext.evidence?.evidenceQuality
+          || "Inferred Evidence",
+
+      qualitativeRecommendation,
+
+      qualityScore:
+        opportunity.engineRecommendation?.vetoed
+          ? null
+          : (
+              opportunity.engineRecommendation?.qualityScore
+              ?? null
+            ),
+
+      whyNotStronger:
+        riskStatement
+          ?? undefined,
+
+      frictionPreview:
+        recordedRisk
+          ?? undefined,
+
+      topUnknownPreview:
+        unknowns[0]
+          ? `${unknowns[0].label}: ${unknowns[0].question}`
+          : undefined,
+
+      strategy: {
+        focusTitle:
+          verdict === "PURSUE"
+            ? "Convert the strongest signal"
+            : verdict === "CONSIDER"
+            ? "Resolve the decision hinge"
+            : verdict === "PASS"
+            ? "Preserve search bandwidth"
+            : "Clarify the opportunity",
+
+        heroAnchor:
+          resolvedRecommendedAction,
+      },
+
+      narrative: {
+        intent:
+          positioningAdvice,
+      },
+
+      verdictGuidance: {
+        actionNotice:
+          resolvedRecommendedAction,
+
+        tradeoffStatement:
+          careerAssessment
+            ?? bottomLine,
+
+        pauseTrigger:
+          riskStatement
+            ?? unknowns[0]?.question
+            ?? "No additional pause trigger is recorded.",
+      },
+    };
+  }
+
 }

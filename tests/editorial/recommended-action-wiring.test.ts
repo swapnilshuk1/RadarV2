@@ -1,3 +1,4 @@
+import { substantiveCandidateEvidence } from "@/lib/intelligence/editorial/CandidateProofPolicy";
 import { describe, expect, it } from "vitest";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
 import type { RecommendationRecord } from "@/lib/intelligence/record";
@@ -59,7 +60,7 @@ describe("recommended action editorial wiring", () => {
     expect(presented.opportunity.recommendedAction).toMatch(/Proceed|Request|screening/i);
     expect(presented.opportunity.hiringRisk).not.toBe(presented.opportunity.recommendedAction);
     expect(presented.opportunity.primaryProof).toEqual({
-      headline: "Recorded candidate evidence",
+      headline: "Candidate precedent: Influencer marketing strategy",
       detail: "Verified creator-partnership and influencer strategy experience.",
     });
     expect(presented.opportunity.dimensions[0].candidateProof).toEqual({
@@ -75,7 +76,7 @@ describe("recommended action editorial wiring", () => {
     expect(brief.verdictGuidance.actionNotice).toBe(action);
     expect(brief.directives?.action).toBe(action);
     expect(brief.proofPoints).toContainEqual(expect.objectContaining({
-      headline: "Recorded candidate evidence",
+      headline: "Candidate precedent: Influencer marketing strategy",
       detail: "Verified creator-partnership and influencer strategy experience.",
     }));
     expect(brief.explanation.keyUncertainty).toBeNull();
@@ -154,4 +155,29 @@ describe("recommended action editorial wiring", () => {
       action: brief.pursuitStrategy.immediateNextAction,
     })).not.toMatch(/INVESTIGATE_THEN_DECIDE|Investigate before investing/);
   });
+
+  it("enforces candidate proof policy rules", () => {
+    expect(
+      substantiveCandidateEvidence("marketing"),
+    ).toBeNull();
+
+    expect(
+      substantiveCandidateEvidence("Marketing Strategy"),
+    ).toBeNull();
+
+    expect(
+      substantiveCandidateEvidence(
+        "Enterprise P&L Ownership & ENTERPRISE | Board Decision Authority",
+      ),
+    ).toBeNull();
+
+    expect(
+      substantiveCandidateEvidence(
+        "Led multi-market performance and creator-led growth programs.",
+      ),
+    ).toBe(
+      "Led multi-market performance and creator-led growth programs.",
+    );
+  });
+
 });

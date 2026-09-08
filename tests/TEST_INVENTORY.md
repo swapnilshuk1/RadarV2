@@ -153,6 +153,7 @@ RADAR v2 Test Architecture
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Shortlist badge state resolution (`pursue`, `consider`, `needs more signal`). | **Stage 6** |
 | `tests/editorial/recommended-action-wiring.test.ts` | Carries the synthesized recommended action through narrative, presentation, and persisted briefing strategy without contradictory generic investigation framing. | **Stage 6** |
 | `tests/editorial/canonical-presentation-boundary.test.ts` | Separation of canonical evaluation from published presentation dimensions. | **Stage 6** |
+| `tests/editorial/grounded-editorial-restoration.test.ts` | Multi-fixture editorial restoration ensuring rich, diverse, evidence-grounded dossiers without boilerplate or unsupported claims. | **Stage 6** |
 
 ---
 
@@ -176,7 +177,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (185 Total Files)
+## 3. Complete Test File Registry (186 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -213,6 +214,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/editorial/evidence-sufficiency-contract.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 3 | 10 |
 | `tests/editorial/recommended-action-wiring.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 1 | 1 |
 | `tests/editorial/canonical-presentation-boundary.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 5 | 16 |
+| `tests/editorial/grounded-editorial-restoration.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 6 | 15 |
 | `tests/editorial/truth-preserving-rewrite.test.ts` | Editorial / Evidence Safety | **KEEP** | Stage 6 | 5 | 13 |
 | `tests/editorial/dossier-rematerialization-support.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 4 | 12 |
 | `tests/editorial/explanation-contract.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 20 | 55 |

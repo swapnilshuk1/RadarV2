@@ -45,6 +45,10 @@ import {
   formatEngagementQuality,
   type EngagementQuality,
 } from "./editorial/EngagementTypeSynthesizer";
+import {
+  candidateProofHeadline,
+  substantiveCandidateEvidence,
+} from "./editorial/CandidateProofPolicy";
 
 export type RecommendationArchetype = 
   | "Natural Fit" 
@@ -783,11 +787,26 @@ export function playbookNarrative(
 
   // P2-A.5: Action Intelligence - "What should I do next?"
   const recommendedAction = synthesizeAction(record, source, strategicAdvantage, principalRisk, careerValue, effort);
-  const candidateEvidenceFromMapping = (record.trace?.evidenceMapping || []).find((entry) =>
-    typeof entry?.candidateCapability === "string" && entry.candidateCapability.trim().length > 0,
-  );
-  const recordedCandidateProof = candidateEvidenceFromMapping?.candidateCapability?.trim()
-    || strategicAdvantage.evidence.find((evidence) => typeof evidence === "string" && evidence.trim().length > 0)?.trim();
+  const candidateEvidenceFromMapping = (record.trace?.evidenceMapping || [])
+    .filter((entry) => entry.confidence >= 0.7)
+    .map((entry) => ({
+      jobCapability:
+        typeof entry.jobCapability === "string"
+          ? entry.jobCapability.trim()
+          : "",
+      candidateEvidence:
+        substantiveCandidateEvidence(entry.candidateCapability),
+    }))
+    .find((entry) => Boolean(entry.candidateEvidence));
+
+  const strategicCandidateEvidence = strategicAdvantage.evidence
+    .map((evidence) => substantiveCandidateEvidence(evidence))
+    .find((evidence): evidence is string => Boolean(evidence));
+
+  const recordedCandidateProof =
+    candidateEvidenceFromMapping?.candidateEvidence
+    ?? strategicCandidateEvidence
+    ?? null;
 
   // P2-B: Capability Importance - "Which requirements matter most?"
   const capabilityImportance = synthesizeCapabilityImportance(record, source);
@@ -823,7 +842,9 @@ export function playbookNarrative(
     hiringRisk: formatPrincipalRisk(principalRisk),
     primaryProof: recordedCandidateProof
       ? {
-          headline: "Recorded candidate evidence",
+          headline: candidateProofHeadline(
+            candidateEvidenceFromMapping?.jobCapability,
+          ),
           detail: recordedCandidateProof,
         }
       : undefined,

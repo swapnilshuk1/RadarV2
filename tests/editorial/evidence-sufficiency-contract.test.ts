@@ -226,7 +226,7 @@ describe("Editorial evidence sufficiency contract", () => {
     expect(dossier.brief.memory.decision).toBe("PURSUE");
     expect(dossier.brief.qualityScore).toBe(72);
     expect(dossier.brief.rankedUnknowns.map((unknown: { label: string }) => unknown.label)).toContain("Reporting line");
-    expect(dossier.brief.rankedUnknowns.map((unknown: { label: string }) => unknown.label)).toContain("Commercial ownership");
+    expect(dossier.brief.rankedUnknowns.map((unknown: { label: string }) => unknown.label)).toContain("Decision rights");
     expect(dossier.brief.decisionSensitivity).toEqual({ becomesPursueIf: [], becomesPassIf: [] });
     expect(dossier.brief.executiveThesis).toBeDefined();
     expect(dossier.jobProjection).toBeDefined();
@@ -404,6 +404,57 @@ describe("Editorial evidence sufficiency contract", () => {
     );
     expect(presented.opportunity.dimensions[0].jdEvidence.status).toBe("Missing");
     expect(presented.opportunity.dimensions[0].jdEvidence.value).toBe("");
+  });
+
+
+  it("does NOT render an evaluated canonical opportunity using composeEvidenceLimitedBrief when mandate quote is absent", () => {
+    const opportunity = sparseOpportunity({
+      role: "Director of Influencer Marketing",
+      company: "Social Beat",
+      location: "Gurugram",
+      dimensions: [{
+        key: "functionalScope",
+        label: "Functional Scope",
+        importance: "Core",
+        bucket: "Matched",
+        jdEvidence: {
+          status: "Explicit",
+          value: "Monitor influencer performance",
+          evidence: [{ quote: "Monitor and analyze influencer performance and achieve storefront metrics.", source: "JD" }],
+        },
+      }] as Opportunity["dimensions"],
+      engineRecommendation: {
+        engineVerdict: "PURSUE",
+        qualityScore: 72,
+        triggeredRuleIds: ["CAREER_STEP_UP"],
+        relativeDifferentiator: "First director-level role in influencer marketing",
+      } as any,
+    });
+
+    const brief = BriefCompositionEngine.compose(opportunity, { canonicalEvidenceBound: true });
+
+    // Assert canonical qualityScore and verdict remain intact
+    expect(brief.qualityScore).toBe(72);
+    expect(brief.memory.decision).toBe("PURSUE");
+    expect(brief.executiveThesis.verdict).toBe("PURSUE");
+
+    // Context thesis uses recorded intelligence / role evidence
+    expect(brief.structuredSections.context.thesis).toBeTruthy();
+    expect(brief.structuredSections.context.thesis).not.toMatch(/^Assessment pending:/i);
+    expect(brief.structuredSections.context.thesis).not.toMatch(/recommendation cannot be made/i);
+    expect(brief.memory.retentionSentence).not.toMatch(/recommendation cannot be made/i);
+
+    // Explicit SPARSE_SPEC still uses the evidence-limited path
+    const sparseOpp = sparseOpportunity({
+      evaluationState: "SPARSE_SPEC",
+      engineRecommendation: {
+        engineVerdict: "PURSUE",
+        qualityScore: 72,
+      } as any,
+    });
+    const sparseBrief = BriefCompositionEngine.compose(sparseOpp, { canonicalEvidenceBound: true });
+    expect(sparseBrief.memory.headline).toMatch(/^Assessment pending:/i);
+    expect(sparseBrief.structuredSections.context.thesis).toMatch(/published role specification is sparse/i);
   });
 
 });

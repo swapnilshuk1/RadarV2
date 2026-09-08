@@ -110,9 +110,23 @@ export class AdvisoryConstitution {
     const mandateQuotes = quotesFor("mandate");
     const functionalScopeQuotes = quotesFor("functionalScope");
     const reportingLineQuotes = quotesFor("reportingLine");
-    const commercialAccountabilityQuotes = quotesFor("commercialAccountability");
-    const decisionRightsQuotes = [...mandateQuotes, ...functionalScopeQuotes]
-      .filter((quote) => /decision|authority|accountable|approve/i.test(quote));
+    const commercialAccountabilityQuotes = [
+      ...new Set([
+        ...quotesFor("commercialAccountability"),
+        ...quotesFor("commercialScope"),
+      ]),
+    ];
+    const decisionRightsQuotes = [
+      ...new Set([
+        ...quotesFor("decisionAuthority"),
+        ...mandateQuotes.filter((quote) =>
+          /decision|authority|accountable|approve|sign[- ]?off/i.test(quote),
+        ),
+        ...functionalScopeQuotes.filter((quote) =>
+          /decision|authority|accountable|approve|sign[- ]?off/i.test(quote),
+        ),
+      ]),
+    ];
     const recommendation = asRecord(input?.engineRecommendation) || asRecord(input?.recommendationResult);
     const capabilityFit = asRecord(recommendation?.capabilityFit);
     const careerAssessment = asText(recommendation?.relativeDifferentiator)
