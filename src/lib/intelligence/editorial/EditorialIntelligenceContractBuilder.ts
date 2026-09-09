@@ -31,6 +31,12 @@ type JobProjectionMissionView = {
   executiveMission?: { successConditions?: readonly string[] };
 };
 
+type QualificationSignal = {
+  capability: string;
+  statement: string;
+  materiality: "CORE" | "SUPPORTING";
+};
+
 function normalized(value: unknown): string {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
 }
@@ -68,6 +74,7 @@ function textList(value: unknown): string[] {
 }
 
 const MAX_CANDIDATE_EVIDENCE_CHARS = 420;
+const MAX_QUALIFICATION_EVIDENCE_CHARS = 420;
 
 function safeCapabilityLabel(value: unknown): string {
   const text = normalized(value);
@@ -381,6 +388,39 @@ function isClassifierLikeEvidence(value: string): boolean {
   return !text || (CLASSIFIER_TOKEN_PATTERN.test(text) && !/[a-z]/.test(text));
 }
 
+function qualificationSignals(artifact: EvaluationArtifact): QualificationSignal[] {
+  const requirements = Array.isArray(artifact.jobProjection?.capabilityRequirements)
+    ? artifact.jobProjection.capabilityRequirements
+    : [];
+  const signals: QualificationSignal[] = [];
+
+  for (const requirement of requirements) {
+    if (typeof requirement !== "object" || requirement == null || requirement.required !== true) continue;
+    const capability = safeCapabilityLabel(requirement.capability);
+    if (capability === "Relevant candidate precedent") continue;
+
+    for (const quote of Array.isArray(requirement.sourceQuotes) ? requirement.sourceQuotes : []) {
+      const statement = normalized(quote);
+      if (
+        !statement
+        || statement.length > MAX_QUALIFICATION_EVIDENCE_CHARS
+        || !isMeaningfulEvidenceQuote(statement)
+        || isClassifierLikeEvidence(statement)
+      ) continue;
+      signals.push({
+        capability,
+        statement,
+        materiality: requirement.materiality === "CORE" ? "CORE" : "SUPPORTING",
+      });
+    }
+  }
+
+  return unique(
+    signals.sort((left, right) => (right.materiality === "CORE" ? 1 : 0) - (left.materiality === "CORE" ? 1 : 0)),
+    (signal) => `${signal.capability}:${signal.statement}`,
+  ).slice(0, 3);
+}
+
 function isProjectedRoleOutcome(value: string): boolean {
   const text = normalized(value);
   return Boolean(text) && isMeaningfulEvidenceQuote(text) && !isClassifierLikeEvidence(text) && ROLE_OUTCOME_SIGNAL.test(text);
@@ -449,6 +489,7 @@ function deriveFunctionalAdjacencyRisk(precedents: readonly CandidatePrecedent[]
 function decisionHinges(
   artifact: EvaluationArtifact,
   outcomes: readonly PublishedRoleOutcome[],
+  qualifications: readonly QualificationSignal[],
   principalRisk: string | null,
   careerTradeoff: string | null,
 ): DecisionHinge[] {
@@ -467,12 +508,107 @@ function decisionHinges(
   if (commercialSignals && !published.has("commercialScope") && !published.has("commercialAccountability")) {
     add("Commercial ownership", "Which commercial outcome, if any, is directly owned by the role?", "The published role signal is commercially relevant but ownership is not established.");
   }
+  const primaryQualification = qualifications[0];
+  if (primaryQualification) {
+    const requirementAlreadyEstablishedAsWork = outcomes.some(
+      (outcome) => specificEvidenceSimilarity(primaryQualification.capability, outcome.statement) > 0,
+    );
+    if (!requirementAlreadyEstablishedAsWork) {
+      add(
+        "Qualification vs mandate",
+        `How central is ${primaryQualification.capability} to the day-to-day mandate, versus being a candidate qualification?`,
+        `The published source requires "${primaryQualification.statement}", but RADAR does not have independent published evidence that this is work the role directly owns.`,
+      );
+    }
+  }
   if (principalRisk) {
     add("Principal risk", `What evidence would resolve this risk: ${principalRisk}?`, "RADAR recorded this as the material decision risk.");
   } else if (careerTradeoff) {
     add("Career tradeoff", `How does the role resolve this tradeoff: ${careerTradeoff}?`, "RADAR recorded this as the career tradeoff.");
   }
   return unique(hinges, (hinge) => hinge.topic).slice(0, 3);
+}
+
+function clippedEditorialEvidence(value: string, max = 260): string {
+  const text = normalized(value);
+  if (text.length <= max) return text;
+  const slice = text.slice(0, max);
+  const boundary = slice.lastIndexOf(" ");
+  const safe = boundary >= 160 ? slice.slice(0, boundary) : slice;
+  return `${safe.replace(/[\s,;:.-]+$/, "")}…`;
+}
+
+function buildGroundedPositioningAngles(
+  artifact: EvaluationArtifact,
+  precedents: readonly CandidatePrecedent[],
+  outcomes: readonly PublishedRoleOutcome[],
+  qualifications: readonly QualificationSignal[],
+  hinges: readonly DecisionHinge[],
+): string[] {
+  const role = normalized(artifact.opportunity?.role) || "this role";
+  const company = normalized(artifact.opportunity?.company) || "the company";
+  const precedent = precedents[0];
+  const outcome = outcomes[0];
+  const qualification = qualifications[0];
+  const hinge = hinges[0];
+  const generated: string[] = [];
+
+  if (precedent && outcome) {
+    generated.push([
+      `Lead with ${precedent.capability} as the grounded evidence bridge to the published remit:`,
+      clippedEditorialEvidence(outcome.statement),
+      hinge
+        ? `Use the first discussion to answer "${hinge.question}" before assuming the precedent transfers at the required scope.`
+        : "Keep the positioning tied to that published work rather than a generic portfolio narrative.",
+    ].join(" "));
+  } else if (outcome) {
+    generated.push([
+      "Anchor the conversation on the published remit:",
+      clippedEditorialEvidence(outcome.statement),
+      "RADAR does not have a grounded candidate precedent for that requirement, so position adjacent experience without claiming direct fit.",
+      hinge ? `Use the first discussion to answer "${hinge.question}"` : "",
+    ].filter(Boolean).join(" "));
+  } else if (precedent) {
+    generated.push([
+      `Lead with ${precedent.capability} as the grounded candidate bridge currently recorded.`,
+      `Do not imply that ${role} at ${company} owns the corresponding work until the mandate is confirmed.`,
+      hinge ? `Use the first discussion to answer "${hinge.question}"` : "",
+    ].filter(Boolean).join(" "));
+  } else if (qualification) {
+    generated.push([
+      `Treat ${qualification.capability} as a published qualification hurdle, not as proof of the operating mandate.`,
+      `The source says: "${clippedEditorialEvidence(qualification.statement)}"`,
+      "Do not claim direct operating fit from that requirement alone.",
+      hinge
+        ? `Use the first discussion to answer "${hinge.question}"`
+        : `Establish how this requirement translates into actual ownership in ${role} at ${company}.`,
+    ].filter(Boolean).join(" "));
+  } else if (hinge) {
+    generated.push([
+      "Do not lead with a generic portfolio story.",
+      `Use the first conversation to answer "${hinge.question}"`,
+      "Then position only candidate evidence that maps to the confirmed scope.",
+    ].join(" "));
+  } else {
+    generated.push(`Do not lead with a generic portfolio story. Establish the actual success conditions for ${role} at ${company} before making a direct-fit claim.`);
+  }
+
+  const groundedReferences = [
+    ...outcomes.map((item) => item.statement),
+    ...precedents.map((item) => item.capability),
+    ...qualifications.map((item) => item.capability),
+  ];
+  const legacyValues = Array.isArray(artifact.opportunity?.positioning)
+    ? artifact.opportunity!.positioning
+    : [artifact.opportunity?.positioning];
+  const groundedLegacy = legacyValues
+    .map(meaningfulPositioningText)
+    .filter((value): value is string => Boolean(value))
+    .filter((value) => groundedReferences.some(
+      (reference) => specificEvidenceSimilarity(value, reference) > 0,
+    ));
+
+  return unique([...generated, ...groundedLegacy], (angle) => angle.toLowerCase());
 }
 
 /** Builds persisted editorial material without participating in canonical evaluation truth. */
@@ -493,6 +629,7 @@ export function buildEditorialIntelligenceContract(
   );
   const outcomes = publishedRoleOutcomes(artifact);
   const precedents = candidatePrecedents(artifact, candidateProjection, outcomes);
+  const qualifications = qualificationSignals(artifact);
   const careerCase = buildGroundedCareerCase(
     artifact,
     meaningfulEditorialText(opportunity?.primaryDriver),
@@ -504,17 +641,19 @@ export function buildEditorialIntelligenceContract(
   const principalRisk = meaningfulEditorialText(opportunity?.primaryRisk)
     ?? meaningfulEditorialText(opportunity?.hiringRisk)
     ?? deriveFunctionalAdjacencyRisk(precedents, outcomes);
-  const positioningAngles = unique(
-    (Array.isArray(opportunity?.positioning) ? opportunity.positioning : [opportunity?.positioning])
-      .map(meaningfulPositioningText)
-      .filter((angle): angle is string => Boolean(angle)),
-    (angle) => angle,
-  );
   const recommendedAction = meaningfulEditorialText(opportunity?.recommendedAction);
-  const hinges = decisionHinges(artifact, outcomes, principalRisk, careerTradeoff);
+  const hinges = decisionHinges(artifact, outcomes, qualifications, principalRisk, careerTradeoff);
+  const positioningAngles = buildGroundedPositioningAngles(
+    artifact,
+    precedents,
+    outcomes,
+    qualifications,
+    hinges,
+  );
   const provenance: EditorialEvidenceRef[] = [
     ...precedents.map((precedent) => ({ kind: "CANDIDATE_FACT" as const, text: precedent.statement, sourceId: precedent.evidenceIds[0], confidence: precedent.confidence })),
     ...outcomes.map((outcome) => ({ kind: "EMPLOYER_FACT" as const, text: outcome.statement })),
+    ...qualifications.map((qualification) => ({ kind: "EMPLOYER_FACT" as const, text: qualification.statement })),
     ...[careerCase, principalRisk, careerTradeoff, whyNow, recommendedAction, ...positioningAngles]
       .filter((text): text is string => Boolean(text))
       .map((text) => ({ kind: "RADAR_INFERENCE" as const, text })),

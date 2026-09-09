@@ -478,4 +478,98 @@ describe("EditorialIntelligenceContractBuilder", () => {
     );
     expect(merchandising.candidatePrecedents).toEqual([]);
   });
+
+  it("treats a published merchandising qualification as a hinge, not role work", () => {
+    const evaluated = artifact([], []);
+    evaluated.opportunity!.role = "Business Head";
+    evaluated.opportunity!.company = "FutureLeap Search";
+    evaluated.jobProjection = {
+      capabilities: [{
+        name: "Merchandising / Category Inventory Operations",
+        source: "explicit",
+        confidence: 0.9,
+        tier: "EXECUTION_CAPABILITY",
+      }],
+      capabilityRequirements: [{
+        capability: "Merchandising / Category Inventory Operations",
+        tier: "EXECUTION_CAPABILITY",
+        required: true,
+        materiality: "CORE",
+        evidenceIds: ["future-req-1"],
+        sourceQuotes: ["Strong understanding of product, sourcing, merchandising, inventory, and commercial management."],
+      }],
+      executiveMission: { successConditions: [] },
+    };
+
+    const contract = buildEditorialIntelligenceContract(evaluated, makeCandidateProjection({
+      inferredCapabilities: [],
+      semanticEvidence: [],
+    }));
+
+    expect(contract.publishedRoleOutcomes).toEqual([]);
+    expect(contract.candidatePrecedents).toEqual([]);
+    expect(contract.decisionHinges.some((hinge) => hinge.topic === "Qualification vs mandate")).toBe(true);
+    expect(contract.positioningAngles[0]).toMatch(/qualification hurdle/i);
+    expect(contract.positioningAngles[0]).toMatch(/Merchandising|Category|Inventory/i);
+    expect(contract.positioningAngles[0]).toMatch(/not as proof of the operating mandate/i);
+  });
+
+  it("does not treat an explicit projected capability name alone as role work", () => {
+    const evaluated = artifact([], []);
+    evaluated.jobProjection = {
+      capabilities: [{
+        name: "Merchandising / Category Inventory Operations",
+        source: "explicit",
+        confidence: 0.9,
+        tier: "EXECUTION_CAPABILITY",
+      }],
+      capabilityRequirements: [],
+      executiveMission: { successConditions: [] },
+    };
+
+    expect(buildEditorialIntelligenceContract(evaluated, makeCandidateProjection({
+      inferredCapabilities: [], semanticEvidence: [],
+    })).publishedRoleOutcomes).toEqual([]);
+  });
+
+  it("uses grounded role work rather than generic legacy positioning as primary advice", () => {
+    const evaluated = artifactWithRoleEvidence(
+      "Monitor and analyze influencer performance and achieve storefront metrics.",
+      [{ jobCapability: "Performance Marketing", candidateCapability: "Performance Marketing", confidence: 0.9, reason: "Direct Explicit Evidence Match" }],
+    );
+    evaluated.opportunity!.positioning = ["Lead with experience managing large-scale commercial portfolios and broad stakeholder relationships."];
+    const projection = makeCandidateProjection({
+      inferredCapabilities: [{
+        name: "Performance Marketing", confidence: 0.92, evidenceIds: ["performance-1"],
+        supportingEvidence: [{ id: "performance-1", relation: "SUPPORTS_INFERENCE", quote: "Built and scaled performance marketing operations across consumer accounts." }],
+      }],
+      semanticEvidence: [],
+    });
+    const contract = buildEditorialIntelligenceContract(evaluated, projection);
+    expect(contract.positioningAngles[0]).toMatch(/Performance Marketing|influencer performance|storefront metrics/i);
+    expect(contract.positioningAngles[0]).not.toMatch(/large-scale commercial portfolios/i);
+  });
+
+  it("anchors positioning in published work when no candidate proof is grounded", () => {
+    const contract = buildEditorialIntelligenceContract(
+      artifactWithRoleEvidence(
+        "Manage vendor performance, corrective actions, QBRs and service-delivery escalations.",
+        [],
+      ),
+      makeCandidateProjection({ inferredCapabilities: [], semanticEvidence: [] }),
+    );
+    expect(contract.positioningAngles[0]).toMatch(/vendor|QBR|service-delivery/i);
+    expect(contract.positioningAngles[0]).toMatch(/does not have a grounded candidate precedent/i);
+  });
+
+  it("uses a decision hinge rather than generic legacy positioning when evidence is absent", () => {
+    const evaluated = artifact([], []);
+    evaluated.opportunity!.positioning = ["Lead with experience managing large-scale commercial portfolios and broad stakeholder relationships."];
+    evaluated.jobProjection = { capabilities: [], capabilityRequirements: [], executiveMission: { successConditions: [] } };
+    const contract = buildEditorialIntelligenceContract(evaluated, makeCandidateProjection({
+      inferredCapabilities: [], semanticEvidence: [],
+    }));
+    expect(contract.positioningAngles[0]).toContain("Who does the");
+    expect(contract.positioningAngles[0]).not.toMatch(/large-scale commercial portfolios/i);
+  });
 });
