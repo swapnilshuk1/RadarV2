@@ -218,26 +218,30 @@ export const linkedinHandler: PortalHandler = {
        * loop re-queried a broad list after hydration and silently discarded
        * the hydrated cards when LinkedIn recycled its virtualized DOM.
        */
-      const hydratedCards = await page.locator(cardSelector).evaluateAll(
-        (nodes: Element[], maxCards: number) => nodes.slice(0, maxCards).map((node: Element) => {
-          const text = (selector: string) =>
-            node.querySelector(selector)?.textContent?.trim() || "";
-          const titleLink = node.querySelector(
-            "a.job-card-list__title, a.job-card-container__link, a.base-card__full-link, a[href*='/jobs/view/']",
-          ) as HTMLAnchorElement | null;
-          const time = node.querySelector("time");
+      const hydratedCards = await page.evaluate(
+        ({ selector, maxCards }: { selector: string; maxCards: number }) => {
+          const nodes = Array.from(document.querySelectorAll(selector)).slice(0, maxCards);
+          return nodes.map((node) => {
+            const titleLink = node.querySelector(
+              "a.job-card-list__title, a.job-card-container__link, a.base-card__full-link, a[href*='/jobs/view/']"
+            ) as HTMLAnchorElement | null;
+            const compEl = node.querySelector(".job-card-container__primary-description, .artdeco-entity-lockup__subtitle, h4");
+            const locEl = node.querySelector(".job-card-container__metadata-item, .artdeco-entity-lockup__caption, .job-search-card__location");
+            const h3El = node.querySelector("h3");
+            const time = node.querySelector("time");
 
-          return {
-            title: titleLink?.textContent?.trim() || text("h3"),
-            company: text(".job-card-container__primary-description, .artdeco-entity-lockup__subtitle, h4"),
-            location: text(".job-card-container__metadata-item, .artdeco-entity-lockup__caption, .job-search-card__location"),
-            href: titleLink?.getAttribute("href") || "",
-            rawPosted: time?.getAttribute("datetime") || time?.textContent?.trim() || null,
-            rawHtml: node.innerHTML,
-            rawText: node.textContent?.replace(/\\s+/g, " ").trim() || "",
-          };
-        }),
-        targetMaxCards,
+            return {
+              title: (titleLink && titleLink.textContent ? titleLink.textContent.trim() : "") || (h3El && h3El.textContent ? h3El.textContent.trim() : ""),
+              company: compEl && compEl.textContent ? compEl.textContent.trim() : "",
+              location: locEl && locEl.textContent ? locEl.textContent.trim() : "",
+              href: (titleLink && titleLink.getAttribute("href")) || "",
+              rawPosted: (time && (time.getAttribute("datetime") || (time.textContent ? time.textContent.trim() : null))) || null,
+              rawHtml: node.innerHTML || "",
+              rawText: (node.textContent ? node.textContent.replace(/\s+/g, " ").trim() : "") || "",
+            };
+          });
+        },
+        { selector: cardSelector, maxCards: targetMaxCards },
       );
 
       for (const card of hydratedCards) {

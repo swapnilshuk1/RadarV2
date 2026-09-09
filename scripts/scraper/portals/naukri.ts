@@ -235,7 +235,7 @@ export const naukriHandler: PortalHandler = {
         "[class*='styles_jcard']",
       ].join(", ");
 
-      // Phase 1: Parse initial intercepted API jobs
+      // Phase 1: Parse intercepted API jobs (authoritative source of truth)
       if (interceptedJobs.length > 0) {
         ctx.logger(`[API Intercept] Discovered ${interceptedJobs.length} structured jobs from Naukri jobapi (Page ${ctx.page})`);
         for (const job of interceptedJobs) {
@@ -243,9 +243,11 @@ export const naukriHandler: PortalHandler = {
           const card = parseNaukriJob(job);
           if (card) cardsOut.push(card);
         }
+        ctx.logger(`[Naukri API Ingestion] Extracted ${cardsOut.length} cards directly from API payload`);
+        return cardsOut;
       }
 
-      // Phase 2: If quota not met, scroll/hydrate virtualized list to trigger lazy loads
+      // Fallback: If no API jobs intercepted (e.g. API blocked or SSR-only DOM rendered), scroll/hydrate virtualized list
       if (cardsOut.length < maxCards && !ctx.isCancelled?.() && !page?.isClosed?.()) {
         const hydration = await hydrateVirtualizedList(
           page,

@@ -11,6 +11,20 @@ export const indeedHandler: PortalHandler = {
   name: "Indeed",
   detailStrategy: "browser",
   async resolveListingIdentity(ctx, url) {
+    // If URL already contains a stable Indeed jk param, construct the verified viewjob URL directly
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.toLowerCase();
+      if ((host === "indeed.com" || host.endsWith(".indeed.com")) && parsed.searchParams.has("jk")) {
+        const jk = (parsed.searchParams.get("jk") || "").trim().toLowerCase();
+        if (/^[a-z0-9_-]{4,128}$/i.test(jk)) {
+          return { finalUrl: `https://in.indeed.com/viewjob?jk=${jk}` };
+        }
+      }
+    } catch {
+      // Fall through to bounded resolution
+    }
+
     const page = ctx.detailPage || ctx.searchPage || ctx.activePage;
     const resolution = await resolveIndeedListingBounded(url, async (hopUrl) => {
       const response = await page.context().request.fetch(hopUrl, {
@@ -244,13 +258,13 @@ export const indeedHandler: PortalHandler = {
           let applyRedirectUrl: string | undefined = undefined;
 
           const discoveryUrl = rawHref ? new URL(rawHref, "https://in.indeed.com").toString() : undefined;
-          if (discoveryUrl && /\/(?:pagead|rc)\/clk/i.test(new URL(discoveryUrl).pathname)) {
-            // Sponsored links are observations, not identities. Their
+          if (jk) {
+            detailUrl = `https://in.indeed.com/viewjob?jk=${jk}`;
+            applyRedirectUrl = discoveryUrl || `https://in.indeed.com/rc/clk?jk=${jk}`;
+          } else if (discoveryUrl && /\/(?:pagead|rc)\/clk/i.test(new URL(discoveryUrl).pathname)) {
+            // Sponsored links without an extracted jk are observations;
             // destination is resolved under the bounded detail contract.
             detailUrl = discoveryUrl;
-          } else if (jk) {
-            detailUrl = `https://in.indeed.com/viewjob?jk=${jk}`;
-            applyRedirectUrl = `https://in.indeed.com/rc/clk?jk=${jk}`;
           } else if (rawHref) {
             try {
               const parsed = new URL(rawHref, "https://in.indeed.com");

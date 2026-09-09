@@ -33,6 +33,7 @@ const CORPUS_TABLES = [
   "materialized_evaluations",
   "evaluation_jobs",
   "search_plan_candidates",
+  "acquisition_ingestion_lineage",
   "opportunity_versions",
   "canonical_decisions",
   "decisions",
@@ -55,6 +56,10 @@ const CORPUS_TABLES = [
   "opportunities",
   "canonical_opportunities",
   "acquisition_ledger",
+  "enrichment_events",
+  "enrichment_jobs",
+  "scrape_run_events",
+  "scrape_runs",
 ] as const;
 
 async function getTableCount(db: ReturnType<typeof getDatabaseAdapter>, tableName: string): Promise<number> {

@@ -1045,8 +1045,53 @@ async function processUnit(
             // Tier 3: In-Portal QuickApply / Headhunter Mandates (< 500 chars, no applyRedirectUrl)
             else {
               enrichmentStatus = "NOT_APPLICABLE";
-              // Minimum candidate threshold: 200 chars, subject to full ResponseValidator
-              if (feedCard.rawText && feedCard.rawText.length >= 200) {
+              const pmDetail = activePageManagers.get(unit.portal);
+              const detailCtx: import("./scraper/types").PortalContext = {
+                runId: mgr.runId,
+                portal: unit.portal,
+                keyword: unit.keyword,
+                page: unit.page,
+                searchUrl,
+                browserContext,
+                searchPage: pmDetail?.getPage("search") || activePage,
+                detailPage: pmDetail?.getPage("detail"),
+                searchMutex: pmDetail?.getMutex("search"),
+                detailMutex: pmDetail?.getMutex("detail"),
+                pageManager: pmDetail,
+                logger: log,
+                isHttpDisabled: (url: string) => mgr.isHttpFastPathDisabled(unit.portal) || mgr.failedHttpUrls.has(url),
+                recordHttpFailure: (url: string, reason: string) => mgr.recordDetailFailure(unit.portal, url, reason),
+                recordTelemetry: (event: any) => mgr.recordTelemetry(event),
+              };
+
+              log(`[Naukri] Detail description < 500 chars; invoking portal fetchDetail via Next.js state for ${feedCard.detailUrl}`);
+              mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId, url: feedCard.detailUrl });
+              const portalDetail = await handler.fetchDetail(detailCtx, feedCard.detailUrl).catch((err: any) => ({
+                fetched: false,
+                fetchError: err.message,
+                fetchDurationMs: 0,
+                httpStatus: undefined,
+                rawHtml: "",
+                rawText: ""
+              }));
+              mgr.journal.append({ type: "detail_extraction_finished", cardId: cardUnitId, durationMs: portalDetail.fetchDurationMs });
+
+              if (portalDetail.fetched && portalDetail.rawText && portalDetail.rawText.length >= 200) {
+                log(`[Naukri] Detail fetch successful (${portalDetail.rawText.length} chars) for ${feedCard.title} @ ${feedCard.company}`);
+                acquisitionRoute = "DETAIL_PAGE_BROWSER";
+                detail = portalDetail;
+                acquisitionAttempts.push({
+                  method: "PORTAL_DETAIL",
+                  url: feedCard.detailUrl,
+                  timestamp: new Date().toISOString(),
+                  httpStatus: portalDetail.httpStatus || 200,
+                  outcome: "SUCCESS",
+                  qualityTier: portalDetail.rawText.length >= 500 ? "VALID" : "SPARSE",
+                  extractionMethod: "TARGETED_DOM",
+                  details: `Extracted ${portalDetail.rawText.length} chars via Naukri detail fetch`
+                });
+              } else if (feedCard.rawText && feedCard.rawText.length >= 200) {
+                // Minimum candidate threshold: 200 chars fallback to discovery card
                 acquisitionRoute = "DISCOVERY_QUICKAPPLY_PARTIAL";
                 detail = {
                   fetched: true,
@@ -1061,18 +1106,18 @@ async function processUnit(
                   timestamp: new Date().toISOString(),
                   httpStatus: 200,
                   outcome: "SUCCESS",
-                  qualityTier: "SPARSE",
+                  qualityTier: feedCard.rawText.length >= 500 ? "VALID" : "SPARSE",
                   extractionMethod: "FALLBACK_CARD",
                   details: `In-portal quick-apply specification (${feedCard.rawText.length} chars)`
                 });
               } else {
                 detail = {
                   fetched: false,
-                  fetchError: `Insufficient description length (${feedCard.rawText?.length || 0} < 200 chars)`,
+                  fetchError: portalDetail.fetchError || `Insufficient description length (${feedCard.rawText?.length || 0} < 200 chars)`,
                   rawHtml: feedCard.rawHtml || "",
                   rawText: feedCard.rawText || "",
-                  fetchDurationMs: 0,
-                  httpStatus: 200,
+                  fetchDurationMs: portalDetail.fetchDurationMs || 0,
+                  httpStatus: portalDetail.httpStatus || 200,
                 };
               }
             }
@@ -1566,15 +1611,15 @@ async function processUnit(
       } else if (cu.status === "skipped_pruned" || cu.status === "skipped_gated") {
         cancelledOrPruned++;
       } else if (cu.status === "done") {
-        if (historicalLedgerCardIds.has(cardUnitId)) {
-          ledgerKnown++;
-        } else if (!cu.isNew) {
-          canonicalDuplicates++;
-        } else {
+        if (cu.isNew) {
           novelAccepted++;
           if (cu.snapshotPath && fs.existsSync(cu.snapshotPath)) {
             novelAcquired++;
           }
+        } else if (historicalLedgerCardIds.has(cardUnitId)) {
+          ledgerKnown++;
+        } else {
+          canonicalDuplicates++;
         }
       }
     }
@@ -1658,6 +1703,10 @@ async function processUnit(
         reason = "LowYieldWarning";
         log(`Low discovery on page ${unit.page} (${newJobs} new jobs). Streak: ${streak}/${maxConsecutiveLowYield}`, "info");
       }
+    }
+
+    if (cardsParsed > 0 && novelAccepted === 0 && reason === "DiscoveryRateAboveThreshold") {
+      reason = "NoveltyRateZero";
     }
 
     const runtimeMs = new Date().getTime() - new Date(mgr.manifest.units.find(u => u.id === unit.id)!.startedAt!).getTime();
