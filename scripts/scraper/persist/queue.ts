@@ -154,7 +154,8 @@ export class EnrichmentQueue {
       `UPDATE enrichment_jobs 
       SET status = 'COMPLETE', 
           completed_at = CURRENT_TIMESTAMP,
-          last_error = ?
+          last_error = ?,
+          failure_type = NULL
       WHERE id = ?`,
       [lastError || null, jobId]
     );
@@ -248,7 +249,7 @@ export class EnrichmentQueue {
         failure_type,
         COUNT(*) as total_failures,
         AVG(attempts) as mean_retries,
-        SUM(CASE WHEN status = 'COMPLETE' THEN 1 ELSE 0 END) as recovered,
+        SUM(CASE WHEN status IN ('COMPLETE', 'COMPLETED') THEN 1 ELSE 0 END) as recovered,
         SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) as permanent
       FROM enrichment_jobs
       WHERE failure_type IS NOT NULL
@@ -261,7 +262,7 @@ export class EnrichmentQueue {
       const completeTimeFilter = minutes ? `AND completed_at >= datetime('now', '-${minutes} minutes')` : "";
 
       const acquired = (await this.db.one<{ count: number }>(`SELECT COUNT(*) as count FROM enrichment_jobs WHERE 1=1 ${timeFilter}`)) || { count: 0 };
-      const completed = (await this.db.one<{ count: number }>(`SELECT COUNT(*) as count FROM enrichment_jobs WHERE status = 'COMPLETE' ${completeTimeFilter}`)) || { count: 0 };
+      const completed = (await this.db.one<{ count: number }>(`SELECT COUNT(*) as count FROM enrichment_jobs WHERE status IN ('COMPLETE', 'COMPLETED') ${completeTimeFilter}`)) || { count: 0 };
 
       let hours = minutes ? minutes / 60 : 1;
       if (!minutes) {

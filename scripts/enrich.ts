@@ -10,6 +10,7 @@ import type { DetailedCard } from "./scraper/types";
 import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
 import { makeLogger } from "./scraper/utils/logger";
 import { CONFIG } from "./scraper/config";
+import { getDatabaseAdapter, type DatabaseAdapter } from "../src/data/database";
 
 const log = makeLogger("enrich");
 const WORKER_ID = `worker-${process.pid}`;
@@ -44,7 +45,7 @@ async function rateLimitedExtract(card: DetailedCard) {
   }
 }
 
-async function processJob(
+export async function processJob(
   queue: EnrichmentQueue, 
   job: import("./scraper/persist/queue").EnrichmentJob,
   deps?: { repos?: import("../src/domain/repositories").StorageProvider }
@@ -74,6 +75,7 @@ async function processJob(
         const altPaths = [
           path.resolve(process.cwd(), ".radar", "artifacts", "blobs", "snapshots", basename),
           path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", basename),
+          path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`),
         ];
         for (const alt of altPaths) {
           if (fs.existsSync(alt)) {
@@ -81,6 +83,13 @@ async function processJob(
             break;
           }
         }
+      }
+    }
+
+    if (!snapStr) {
+      const directHashPath = path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`);
+      if (fs.existsSync(directHashPath)) {
+        snapStr = fs.readFileSync(directHashPath, "utf-8");
       }
     }
 
@@ -581,6 +590,134 @@ export async function enrichGlobalQueue(onJobCompleted?: () => void) {
   }
 }
 
+export async function recoverDegradedEnrichmentsForRun(
+  runId: string,
+  deps?: { repos?: import("../src/domain/repositories").StorageProvider }
+): Promise<{
+  scanned: number;
+  recovered: number;
+  skipped: number;
+  failed: number;
+}> {
+  const queue = new EnrichmentQueue();
+  const db: DatabaseAdapter = getDatabaseAdapter();
+
+  log(`[Enrich:Recovery] Starting run-scoped recovery for run: ${runId}`);
+
+  // Fetch completed jobs for this run
+  const completedJobs = await db.many<import("./scraper/persist/queue").EnrichmentJob>(
+    `SELECT * FROM enrichment_jobs WHERE run_id = ? AND (status = 'COMPLETE' OR status = 'COMPLETED') ORDER BY created_at ASC`,
+    [runId]
+  );
+
+  log(`[Enrich:Recovery] Found ${completedJobs.length} completed jobs for run ${runId}. Inspecting for degraded extractions...`);
+
+  let scanned = 0;
+  let recovered = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const job of completedJobs) {
+    scanned++;
+    try {
+      // Find snapshot
+      let snapStr: string | null = null;
+      const payloadKey = job.payload_key || (job.snapshot_path ? (job.snapshot_path.startsWith("snapshots/") ? job.snapshot_path : `snapshots/${job.job_hash}.json`) : null);
+
+      if (payloadKey) {
+        const { getBlobStore } = await import("../src/lib/storage/blob-store");
+        const blobBuf = await getBlobStore().get(payloadKey);
+        if (blobBuf) snapStr = blobBuf.toString("utf-8");
+      }
+
+      if (!snapStr && job.snapshot_path) {
+        if (fs.existsSync(job.snapshot_path)) {
+          snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
+        } else {
+          const basename = path.basename(job.snapshot_path);
+          const altPaths = [
+            path.resolve(process.cwd(), ".radar", "artifacts", "blobs", "snapshots", basename),
+            path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", basename),
+            path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`),
+          ];
+          for (const alt of altPaths) {
+            if (fs.existsSync(alt)) {
+              snapStr = fs.readFileSync(alt, "utf-8");
+              break;
+            }
+          }
+        }
+      }
+
+      if (!snapStr) {
+        const directHashPath = path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`);
+        if (fs.existsSync(directHashPath)) {
+          snapStr = fs.readFileSync(directHashPath, "utf-8");
+        }
+      }
+
+      if (!snapStr) {
+        skipped++;
+        continue;
+      }
+
+      const card = JSON.parse(snapStr) as DetailedCard;
+      const cardHash = filteredCardHash(card);
+
+      // Check if fresh extraction cache exists
+      const cachedEx = readExtractionIfFresh(cardHash, CONFIG.snapshotFreshHours, EXTRACTOR_VERSION);
+      if (!cachedEx) {
+        skipped++;
+        continue;
+      }
+
+      // Check if degraded: either updated during early outage or missing dimensions that cache has
+      const doc = await db.one<{ content: string }>(
+        `SELECT content FROM documents WHERE (opportunity_id = ? OR id = ?) AND payload_type = 'DIMENSION_EXTRACTION' LIMIT 1`,
+        [job.id, `doc_${card.canonicalJobId || cardHash}_extraction`]
+      );
+
+      let isDegraded = false;
+      if (job.completed_at && job.completed_at.includes("2026-09-09T04:51")) {
+        isDegraded = true;
+      } else if (doc?.content) {
+        try {
+          const parsedDoc = JSON.parse(doc.content);
+          const docMissingKeys = (parsedDoc.dimensions || [])
+            .filter((d: any) => d.jdEvidence?.status === "Missing")
+            .map((d: any) => d.key);
+          const cacheInferredKeys = (cachedEx.dimensions || [])
+            .filter((d: any) => d.jdEvidence?.status === "Inferred" || d.jdEvidence?.provenance === "llm")
+            .map((d: any) => d.key);
+          
+          if (docMissingKeys.some((k: string) => cacheInferredKeys.includes(k))) {
+            isDegraded = true;
+          }
+        } catch {
+          isDegraded = true;
+        }
+      } else {
+        isDegraded = true;
+      }
+
+      if (!isDegraded) {
+        skipped++;
+        continue;
+      }
+
+      log(`[Enrich:Recovery] Recovering degraded job ${job.id} using cached extraction (${cachedEx.dimensions?.length || 0} dims)...`);
+      await processJob(queue, job, deps);
+      recovered++;
+    } catch (err: any) {
+      log(`[Enrich:Recovery] Error recovering job ${job.id}: ${err.message}`, "error");
+      failed++;
+    }
+  }
+
+  log(`[Enrich:Recovery] Finished recovery for run ${runId}: Scanned ${scanned}, Recovered ${recovered}, Skipped ${skipped}, Failed ${failed}`);
+  return { scanned, recovered, skipped, failed };
+}
+
 // Run directly if called as main module
 const isMain = typeof process !== "undefined" && 
   process.argv && 
@@ -588,8 +725,22 @@ const isMain = typeof process !== "undefined" &&
   (process.argv[1].endsWith("enrich.ts") || process.argv[1].endsWith("enrich"));
 
 if (isMain) {
-  startWorker().catch(err => {
-    console.error("Worker crashed:", err);
-    process.exit(1);
-  });
+  const recoverRunIdx = process.argv.indexOf("--recover");
+  if (recoverRunIdx !== -1 && process.argv[recoverRunIdx + 1]) {
+    const targetRun = process.argv[recoverRunIdx + 1];
+    recoverDegradedEnrichmentsForRun(targetRun)
+      .then(res => {
+        console.log("Recovery finished:", res);
+        process.exit(0);
+      })
+      .catch(err => {
+        console.error("Recovery failed:", err);
+        process.exit(1);
+      });
+  } else {
+    startWorker().catch(err => {
+      console.error("Worker crashed:", err);
+      process.exit(1);
+    });
+  }
 }
