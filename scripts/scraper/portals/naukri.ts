@@ -7,12 +7,15 @@ import { hydrateVirtualizedList } from "../utils/scroll";
 import { normalizePostingDate } from "../utils/date";
 
 export interface NaukriListTelemetry {
-  apiPagesObserved: number;
+  apiPagesExpected: number[];
+  apiPagesObserved: number[];
+  apiPagesMissing: number[];
   rawApiRecords: number;
   uniqueApiJobIds: number;
   returnedCards: number;
   sourceExhausted: boolean;
   quotaSatisfied: boolean;
+  paginationGap?: boolean;
 }
 
 export interface NaukriPortalHandler extends PortalHandler {
@@ -87,6 +90,11 @@ export const naukriHandler: NaukriPortalHandler = {
     const pagesPerUnit = isExplicitSinglePage ? 1 : Math.max(1, Math.ceil(maxCards / 20));
     const minApiPage = isExplicitSinglePage ? ctx.page : (ctx.page - 1) * pagesPerUnit + 1;
     const maxApiPage = isExplicitSinglePage ? ctx.page : ctx.page * pagesPerUnit;
+    const apiPagesExpected: number[] = Array.from(
+      { length: maxApiPage - minApiPage + 1 },
+      (_, i) => minApiPage + i
+    );
+    let paginationGap = false;
 
     if (ctx.isCancelled?.() || page?.isClosed?.()) {
       ctx.logger(`Naukri listCards cancelled before start for "${ctx.keyword}" (Page ${ctx.page})`);
@@ -311,7 +319,7 @@ export const naukriHandler: NaukriPortalHandler = {
             );
             ctx.logger(`[Naukri Multi-Page] Navigating explicitly to API page ${currentApiPage}: ${pageTargetUrl}`);
             try {
-              await page.goto(pageTargetUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs }).catch(() => {});
+              await page.goto(pageTargetUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs });
               await humanize(page);
 
               // Wait up to 3000ms for network API response for currentApiPage
@@ -322,6 +330,13 @@ export const naukriHandler: NaukriPortalHandler = {
               }
             } catch (navErr: any) {
               ctx.logger(`[Naukri Multi-Page] Navigation to page ${currentApiPage} failed: ${navErr.message}`);
+              paginationGap = true;
+              break;
+            }
+
+            if (!seenApiPages.has(currentApiPage)) {
+              ctx.logger(`[Naukri Multi-Page] PAGINATION_GAP: API response for expected page ${currentApiPage} was not observed within deadline. Failing closed.`);
+              paginationGap = true;
               break;
             }
           }
@@ -416,17 +431,23 @@ export const naukriHandler: NaukriPortalHandler = {
         }
       }
 
+      const observedPagesList = Array.from(seenApiPages).sort((a, b) => a - b);
+      const missingPagesList = apiPagesExpected.filter((p) => !seenApiPages.has(p));
       const quotaSatisfied = cardsOut.length >= maxCards;
+      const isGap = paginationGap || (missingPagesList.length > 0 && !sourceExhausted && !quotaSatisfied);
       const naukriTelemetry: NaukriListTelemetry = {
-        apiPagesObserved,
+        apiPagesExpected,
+        apiPagesObserved: observedPagesList,
+        apiPagesMissing: missingPagesList,
         rawApiRecords,
         uniqueApiJobIds: uniqueApiJobIds.size,
         returnedCards: cardsOut.length,
         sourceExhausted,
         quotaSatisfied,
+        paginationGap: isGap,
       };
       naukriHandler.lastTelemetry = naukriTelemetry;
-      ctx.logger(`[Naukri Telemetry] apiPagesObserved=${apiPagesObserved} rawApiRecords=${rawApiRecords} uniqueApiJobIds=${uniqueApiJobIds.size} returnedCards=${cardsOut.length} sourceExhausted=${sourceExhausted} quotaSatisfied=${quotaSatisfied}`);
+      ctx.logger(`[Naukri Telemetry] apiPagesExpected=[${apiPagesExpected.join(",")}] apiPagesObserved=[${observedPagesList.join(",")}] apiPagesMissing=[${missingPagesList.join(",")}] rawApiRecords=${rawApiRecords} uniqueApiJobIds=${uniqueApiJobIds.size} returnedCards=${cardsOut.length} sourceExhausted=${sourceExhausted} quotaSatisfied=${quotaSatisfied} paginationGap=${isGap}`);
     } catch (err: any) {
       const isCancelledOrClosed = ctx.isCancelled?.() || page?.isClosed?.() ||
         err?.message?.includes("Target page, context or browser has been closed") ||

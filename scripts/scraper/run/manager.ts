@@ -23,6 +23,8 @@ export interface RunControllerOptions {
   maxCardsPerPage: number;
   resume: boolean;
   variants?: AcquisitionVariant[];
+  adaptiveDepth?: boolean;
+  initialPages?: number;
 }
 
 export class RunController {
@@ -36,6 +38,7 @@ export class RunController {
   // Circuit breakers (ephemeral per-run)
   listingFailures: Map<string, number> = new Map();
   failedHttpUrls: Map<string, string> = new Map();
+  seenSourceIdentitiesBySurface: Map<string, Set<string>> = new Map();
   private isFinalized: boolean = false;
 
   init(opts: RunControllerOptions): { resumed: boolean } {
@@ -93,11 +96,12 @@ export class RunController {
       const variants: AcquisitionVariant[] = opts.variants && opts.variants.length > 0
         ? opts.variants
         : opts.keywords.map((query) => ({ query, channel: "search" as const }));
+      const initialPages = opts.initialPages ?? (opts.adaptiveDepth ? 1 : opts.maxPages);
       for (const portal of opts.portals) {
         for (const variant of variants.filter((v) => !v.portal || v.portal === portal)) {
           const kw = variant.query;
           const adhocId = `adhoc:${portal}:${kw.replace(/\s+/g, '-').toLowerCase()}:${variant.location || "global"}`;
-          for (let p = 1; p <= opts.maxPages; p++) {
+          for (let p = 1; p <= initialPages; p++) {
             units.push({
               id: `${portal}:${kw}:${variant.location || "global"}:${p}`,
               portal,
@@ -233,6 +237,36 @@ export class RunController {
     }
     if (added.length > 0) this.persistManifest();
     return added;
+  }
+
+  /** Add a single adaptive page unit to the manifest if not already present. */
+  enqueueAdaptivePageUnit(variant: AcquisitionVariant & { page: number }): WorkUnit | null {
+    const portal = (variant.portal || "all") as PortalName;
+    const location = variant.location || "global";
+    const unitId = `${portal}:${variant.query}:${location}:${variant.page}`;
+
+    if (this.manifest.units.some((u) => u.id === unitId)) {
+      return null;
+    }
+
+    const adhocId = `adhoc:${portal}:${variant.query.replace(/\s+/g, '-').toLowerCase()}:${location}`;
+    const unit: WorkUnit = {
+      id: unitId,
+      portal,
+      keyword: variant.query,
+      page: variant.page,
+      status: "pending",
+      attempts: 0,
+      cardIds: [],
+      executionPlanId: variant.definitionId ? `plan:${variant.definitionId}` : `plan:${adhocId}`,
+      definitionId: variant.definitionId || `def:${adhocId}`,
+      familyId: variant.familyId || `fam:${adhocId}`,
+      variant: { ...variant, query: variant.query },
+    };
+
+    this.manifest.units.push(unit);
+    this.persistManifest();
+    return unit;
   }
 
   updateUnit(unitId: string, patch: Partial<WorkUnit>): void {

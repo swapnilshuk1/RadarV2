@@ -12,7 +12,7 @@
 
 import type { CanonicalSemanticEvidence, Directionality, EvidenceRelationship, GeographyResolutionResult, SemanticRelationship } from "../types";
 
-interface CityAliasMapping {
+export interface CityAliasMapping {
   readonly canonicalCity: string;
   readonly aliases: readonly string[];
   readonly metroCluster?: string;
@@ -20,7 +20,7 @@ interface CityAliasMapping {
   readonly country: string;
 }
 
-const CANONICAL_CITIES: readonly CityAliasMapping[] = [
+export const CANONICAL_CITIES: readonly CityAliasMapping[] = [
   {
     canonicalCity: "BENGALURU",
     aliases: ["bangalore", "bengaluru", "electronic city", "whitefield", "koramangala", "indiranagar", "marathahalli", "bellandur", "outer ring road", "hebbal"],
@@ -150,6 +150,19 @@ export class GeographyResolver {
   public static isNcrLocation(raw: string): boolean {
     const location = raw.toLowerCase();
     return NCR_LOCATION_TOKENS.some((token) => location.includes(token));
+  }
+
+  /**
+   * Retrieves canonical city definition including metro cluster and state.
+   */
+  public static getCanonicalCityMapping(raw: string): CityAliasMapping | undefined {
+    const clean = this.normalizeRawLocation(raw).toLowerCase();
+    for (const city of CANONICAL_CITIES) {
+      if (city.aliases.some((alias) => clean.includes(alias) || clean === alias)) {
+        return city;
+      }
+    }
+    return undefined;
   }
 
   /**

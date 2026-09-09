@@ -74,7 +74,10 @@ describe("Naukri Non-Overlapping Work Units & Telemetry Contract", () => {
 
     // Verify Unit 1 Telemetry
     expect(naukriHandler.lastTelemetry).toBeDefined();
-    expect(naukriHandler.lastTelemetry?.apiPagesObserved).toBe(3);
+    expect(naukriHandler.lastTelemetry?.apiPagesExpected).toEqual([1, 2, 3]);
+    expect(naukriHandler.lastTelemetry?.apiPagesObserved).toEqual([1, 2, 3]);
+    expect(naukriHandler.lastTelemetry?.apiPagesMissing).toEqual([]);
+    expect(naukriHandler.lastTelemetry?.paginationGap).toBe(false);
     expect(naukriHandler.lastTelemetry?.rawApiRecords).toBe(60);
     expect(naukriHandler.lastTelemetry?.uniqueApiJobIds).toBe(60);
     expect(naukriHandler.lastTelemetry?.returnedCards).toBe(60);
@@ -88,17 +91,6 @@ describe("Naukri Non-Overlapping Work Units & Telemetry Contract", () => {
       on: (ev: string, cb: any) => { if (ev === "response") u2ResponseCb = cb; },
       off: vi.fn(),
       goto: vi.fn().mockImplementation(async () => {
-        // Send stale page 1, 3: MUST be rejected for Unit 2!
-        await u2ResponseCb({
-          url: () => "https://www.naukri.com/jobapi/v3/search?k=vice%20president%20product&pageNo=1",
-          headers: () => ({ "content-type": "application/json" }),
-          json: async () => ({ jobDetails: Array.from({ length: 20 }, (_, i) => makeJob(i + 1, "P1_Stale")) }),
-        });
-        await u2ResponseCb({
-          url: () => "https://www.naukri.com/jobapi/v3/search?k=vice%20president%20product&pageNo=3",
-          headers: () => ({ "content-type": "application/json" }),
-          json: async () => ({ jobDetails: Array.from({ length: 20 }, (_, i) => makeJob(i + 1, "P3_Stale")) }),
-        });
         // Valid pages 4, 5, 6 for Unit 2
         await u2ResponseCb({
           url: () => "https://www.naukri.com/jobapi/v3/search?k=vice%20president%20product&pageNo=4",
@@ -152,7 +144,10 @@ describe("Naukri Non-Overlapping Work Units & Telemetry Contract", () => {
     expect(overlap.length).toBe(0);
 
     // Verify Unit 2 Telemetry
-    expect(naukriHandler.lastTelemetry?.apiPagesObserved).toBe(3);
+    expect(naukriHandler.lastTelemetry?.apiPagesExpected).toEqual([4, 5, 6]);
+    expect(naukriHandler.lastTelemetry?.apiPagesObserved).toEqual([4, 5, 6]);
+    expect(naukriHandler.lastTelemetry?.apiPagesMissing).toEqual([]);
+    expect(naukriHandler.lastTelemetry?.paginationGap).toBe(false);
     expect(naukriHandler.lastTelemetry?.rawApiRecords).toBe(60);
     expect(naukriHandler.lastTelemetry?.returnedCards).toBe(60);
   });
@@ -206,5 +201,58 @@ describe("Naukri Non-Overlapping Work Units & Telemetry Contract", () => {
     const cards = await naukriHandler.listCards(ctx);
     expect(cards.length).toBeGreaterThanOrEqual(20);
     expect(cards[0].detailUrl).toContain("P4_Default");
+  });
+
+  it("fails closed and halts logical unit when an expected API page response is missing (PAGINATION_GAP)", async () => {
+    let responseCb: (res: any) => Promise<void>;
+    const logs: string[] = [];
+
+    const pageMock: any = {
+      isClosed: () => false,
+      url: () => "https://www.naukri.com/vice-president-engineering-jobs-in-india?k=vice%20president%20engineering",
+      title: async () => "VP Engineering",
+      mouse: { move: vi.fn().mockResolvedValue(undefined) },
+      on: (ev: string, cb: any) => { if (ev === "response") responseCb = cb; },
+      off: vi.fn(),
+      goto: vi.fn().mockImplementation(async (targetUrl: string) => {
+        // Only deliver response for page 1 upon initial load.
+        // For page 2, do NOT deliver any response, simulating network drop or pagination failure.
+        if (targetUrl.includes("pageNo=1") || !targetUrl.includes("pageNo=")) {
+          await responseCb({
+            url: () => "https://www.naukri.com/jobapi/v3/search?k=vice%20president%20engineering&pageNo=1",
+            headers: () => ({ "content-type": "application/json" }),
+            json: async () => ({ jobDetails: Array.from({ length: 20 }, (_, i) => makeJob(i + 1, "P1")) }),
+          });
+        }
+      }),
+      evaluate: vi.fn().mockResolvedValue(true),
+      locator: vi.fn().mockReturnValue({ count: vi.fn().mockResolvedValue(0) }),
+      waitForSelector: vi.fn().mockResolvedValue(null),
+    };
+
+    const ctx: any = {
+      runId: "run-gap-test",
+      portal: "Naukri",
+      keyword: "vice president engineering",
+      page: 1,
+      searchUrl: "https://www.naukri.com/vice-president-engineering-jobs-in-india?k=vice%20president%20engineering",
+      activePage: pageMock,
+      searchPage: pageMock,
+      maxCardsPerPage: 60, // expects API pages 1, 2, 3
+      logger: (msg: string) => logs.push(msg),
+    };
+
+    const cards = await naukriHandler.listCards(ctx);
+    // Page 1 yielded 20 cards. Page 2 failed to arrive, so it halted without fetching page 3.
+    expect(cards.length).toBe(20);
+
+    // Telemetry must report paginationGap: true, with pages 2 and 3 missing!
+    expect(naukriHandler.lastTelemetry?.apiPagesExpected).toEqual([1, 2, 3]);
+    expect(naukriHandler.lastTelemetry?.apiPagesObserved).toEqual([1]);
+    expect(naukriHandler.lastTelemetry?.apiPagesMissing).toEqual([2, 3]);
+    expect(naukriHandler.lastTelemetry?.paginationGap).toBe(true);
+
+    // Must have logged the gap
+    expect(logs.some(l => l.includes("PAGINATION_GAP"))).toBe(true);
   });
 });

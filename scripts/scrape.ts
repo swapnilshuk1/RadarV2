@@ -25,9 +25,14 @@ import { naukriHandler } from "./scraper/portals/naukri";
 import { closeAllPortalContexts, getPortalContext } from "./scraper/portals/base";
 import { PageManager } from "./scraper/run/page-manager";
 import type { FeedCard, PortalHandler, PortalName, WorkUnit, AcquisitionAttempt, AcquisitionOutcome, AcquisitionVariant } from "./scraper/types";
-import { compileCoverageVariants, createFreshnessVariant } from "./scraper/run/acquisition-variants";
-
 import { sanitizeCompanyName } from "./scraper/utils/sanitize";
+import {
+  compileCoverageVariants,
+  compileMultiLocationCoverageVariants,
+  createFreshnessVariant,
+  createAdaptivePageVariant,
+  evaluateSourceNovelty,
+} from "./scraper/run/acquisition-variants";
 import { normalizeUrl } from "./scraper/utils/url";
 import { getDatabaseAdapter } from "../src/data/database";
 import { fastFetchDetail } from "./scraper/utils/http-fetch";
@@ -218,7 +223,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   }
   
   const resolvedKeywords = keywords;
-  const resolvedVariants = opts.variants || (resolvedPlan ? compileCoverageVariants(resolvedPlan, portals) : undefined);
+  const resolvedVariants = opts.variants || (resolvedPlan ? compileMultiLocationCoverageVariants(resolvedPlan, portals) : undefined);
 
   const mgr = new RunController();
   const { resumed } = mgr.init({
@@ -226,6 +231,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     maxCardsPerPage: maxCardsPerPage ?? CONFIG.maxCardsPerPage,
     resume: freshRun ? false : (opts.resume !== false),
     variants: resolvedVariants,
+    adaptiveDepth: true,
+    initialPages: 1,
   });
   
   activeRunControllers.set(mgr.runId, mgr);
@@ -790,6 +797,54 @@ async function processUnit(
     if (mgr.isCancellationRequested()) {
       outcome.status = "aborted";
       return outcome;
+    }
+
+    // Adaptive Depth Evaluation: evaluate live source-identity novelty
+    const surfaceKey = `${unit.portal}:${unit.keyword}:${unit.variant?.location || "global"}`;
+    let surfaceSeen = mgr.seenSourceIdentitiesBySurface.get(surfaceKey);
+    if (!surfaceSeen) {
+      surfaceSeen = new Set<string>();
+      mgr.seenSourceIdentitiesBySurface.set(surfaceKey, surfaceSeen);
+    }
+
+    const discoveredSourceIds: string[] = cards.map((c: any) => {
+      const cleanUrl = c.detailUrl ? c.detailUrl.split("?")[0].split("#")[0].toLowerCase().trim() : "";
+      return c.sourceJobId || cleanUrl || c.cardHash;
+    }).filter(Boolean);
+
+    const sourceNovelty = evaluateSourceNovelty(discoveredSourceIds, surfaceSeen, 0.25);
+
+    // Record newly discovered IDs into surface history
+    for (const id of discoveredSourceIds) {
+      surfaceSeen.add(id);
+    }
+
+    const maxBudgetPages = mgr.manifest.maxPages || 3;
+    if (sourceNovelty.shouldDeepen && unit.page < maxBudgetPages && !mgr.isCancellationRequested()) {
+      const nextPage = unit.page + 1;
+      const adaptivePageVariant = createAdaptivePageVariant(
+        unit.variant || {
+          portal: unit.portal,
+          query: unit.keyword,
+        },
+        nextPage
+      );
+      const enqueued = mgr.enqueueAdaptivePageUnit(adaptivePageVariant);
+      if (enqueued) {
+        log(`[Adaptive Depth] Source novelty is ${(sourceNovelty.noveltyRatio * 100).toFixed(1)}% (${sourceNovelty.novelCount}/${sourceNovelty.totalDiscovered} unseen source IDs). Deepening ${surfaceKey} to page ${nextPage}.`, "info");
+      }
+    } else if (!sourceNovelty.shouldDeepen && unit.page > 0) {
+      log(`[Adaptive Depth] Source novelty dropped to ${(sourceNovelty.noveltyRatio * 100).toFixed(1)}% (< 25% threshold). Halting deepening for ${surfaceKey} at page ${unit.page}.`, "info");
+      // Prune any pre-enqueued subsequent pages for this surface
+      for (const u of mgr.manifest.units) {
+        const uKey = `${u.portal}:${u.keyword}:${u.variant?.location || "global"}`;
+        if (uKey === surfaceKey && u.status === "pending" && u.page > unit.page) {
+          mgr.updateUnit(u.id, {
+            status: "skipped_pruned",
+            error: `Pruned by source-identity novelty stopping rule (${(sourceNovelty.noveltyRatio * 100).toFixed(1)}% < 25% threshold)`,
+          });
+        }
+      }
     }
 
     const cardMeta = cards.map((c) => ({ id: `${unit.id}#${c.cardHash}`, cardHash: c.cardHash }));

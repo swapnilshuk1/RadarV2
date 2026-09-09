@@ -102,15 +102,28 @@ export function resolveIndeedLocation(
  */
 export function resolveCanonicalGeography(rawLocation?: string): CanonicalGeography | null {
   if (!rawLocation?.trim()) return null;
+
+  const isRemote = /\bremote\b/i.test(rawLocation);
+  const mapping = GeographyResolver.getCanonicalCityMapping(rawLocation);
+  if (mapping) {
+    return {
+      canonicalCity: mapping.canonicalCity,
+      metroCluster: mapping.metroCluster || mapping.canonicalCity,
+      state: mapping.state,
+      country: mapping.country,
+      isRemote,
+    };
+  }
+
   const res = GeographyResolver.resolve(rawLocation);
   if (!res || !res.canonicalLocation) return null;
 
-  const isRemote = res.canonicalLocation.includes("REMOTE");
+  const isRemoteRes = res.canonicalLocation.includes("REMOTE");
   return {
     canonicalCity: res.canonicalLocation,
     metroCluster: res.canonicalLocation,
     state: "",
     country: "INDIA",
-    isRemote,
+    isRemote: isRemote || isRemoteRes,
   };
 }

@@ -43,19 +43,27 @@ describe("Gate 2: Target-Portal Depth & Coverage Expansion", () => {
     it("resolves canonical cities and metro clusters accurately", () => {
       const gurugram = resolveCanonicalGeography("Gurgaon, Haryana");
       expect(gurugram?.canonicalCity).toBe("GURUGRAM");
-      expect(gurugram?.metroCluster).toBe("GURUGRAM");
+      expect(gurugram?.metroCluster).toBe("DELHI_NCR");
+      expect(gurugram?.state).toBe("HARYANA");
+      expect(gurugram?.country).toBe("INDIA");
 
       const noida = resolveCanonicalGeography("Sector 62, Noida, Uttar Pradesh");
       expect(noida?.canonicalCity).toBe("NOIDA");
+      expect(noida?.metroCluster).toBe("DELHI_NCR");
+      expect(noida?.state).toBe("UTTAR_PRADESH");
 
       const greaterNoida = resolveCanonicalGeography("Greater Noida, UP");
       expect(greaterNoida?.canonicalCity).toBe("GREATER_NOIDA");
+      expect(greaterNoida?.metroCluster).toBe("DELHI_NCR");
 
       const whitefield = resolveCanonicalGeography("Whitefield, Bangalore");
       expect(whitefield?.canonicalCity).toBe("BENGALURU");
+      expect(whitefield?.metroCluster).toBe("BENGALURU_METRO");
+      expect(whitefield?.state).toBe("KARNATAKA");
 
       const ahmedabad = resolveCanonicalGeography("Ahmedabad, Gujarat");
       expect(ahmedabad?.canonicalCity).toBe("AHMEDABAD");
+      expect(ahmedabad?.state).toBe("GUJARAT");
 
       const remote = resolveCanonicalGeography("Remote - India");
       expect(remote?.isRemote).toBe(true);
@@ -170,16 +178,23 @@ describe("Gate 2: Target-Portal Depth & Coverage Expansion", () => {
       expect(url3).toContain("pageNo=3");
     });
 
-    it("verifies telemetry contract separates sourceExhausted from quotaSatisfied", () => {
+    it("verifies telemetry contract separates sourceExhausted from quotaSatisfied and tracks page sequences", () => {
       const telemetry = {
-        apiPagesObserved: 3,
+        apiPagesExpected: [1, 2, 3],
+        apiPagesObserved: [1, 2, 3],
+        apiPagesMissing: [],
         rawApiRecords: 60,
         uniqueApiJobIds: 60,
         returnedCards: 60,
         sourceExhausted: false,
         quotaSatisfied: true,
+        paginationGap: false,
       };
 
+      expect(telemetry.apiPagesExpected).toEqual([1, 2, 3]);
+      expect(telemetry.apiPagesObserved).toEqual([1, 2, 3]);
+      expect(telemetry.apiPagesMissing).toEqual([]);
+      expect(telemetry.paginationGap).toBe(false);
       expect(telemetry.sourceExhausted).toBe(false);
       expect(telemetry.quotaSatisfied).toBe(true);
     });
