@@ -104,7 +104,24 @@ export class HealthManager {
   }
 
   static recordFailure(portal: string, reason: string): { action: "REPLACE_PAGE" | "RESET_CONTEXT" | "PAUSE_SESSION" | "IGNORE" } {
-    const itemLevelFailures = ["EMPTY_CONTENT", "PARTIAL_CONTENT", "REMOVED_404", "UNKNOWN_FAILURE"];
+    /*
+     * These identify one listing, redirect chain, or content response. They
+     * are not evidence that the portal search page or its authenticated
+     * browser context is unhealthy. Treating identity resolution failures as
+     * browser failures let a handful of cards repeatedly gate an otherwise
+     * healthy Indeed search session.
+     */
+    const itemLevelFailures = [
+      "EMPTY_CONTENT",
+      "PARTIAL_CONTENT",
+      "REMOVED_404",
+      "UNKNOWN_FAILURE",
+      "INSUFFICIENT_CONTENT",
+      "IDENTITY_UNRESOLVED",
+      "UNRESOLVED_EXTERNAL_LISTING_IDENTITY",
+      "REDIRECT_HOP_LIMIT",
+      "UNSAFE_REDIRECT_DESTINATION",
+    ];
     if (itemLevelFailures.includes(reason)) {
       return { action: "IGNORE" };
     }

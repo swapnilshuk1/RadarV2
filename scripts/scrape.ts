@@ -486,6 +486,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             plog,
             maxCardsPerPage,
             runScope ? { tenantId: runScope.tenantId, personId: runScope.personId } : undefined,
+            resolvedPlan?.criteria,
           );
           if (outcome) {
             portalIngested += outcome.opportunities;
@@ -660,6 +661,7 @@ async function processUnit(
   log: ReturnType<typeof makeLogger>,
   maxCardsPerPage: number,
   lineageScope?: { tenantId: string; personId: string },
+  relevanceCriteria?: { targetRoles?: string[]; customParameters?: Record<string, unknown> },
 ): Promise<ProcessOutcome> {
   const outcome: ProcessOutcome = {
     status: "failed",
@@ -788,6 +790,10 @@ async function processUnit(
     mgr.addCards(unit.id, cardMeta);
 
     const repos = getRepositories();
+    /* Keep historical ledger recognition distinct from same-run duplicate
+     * suppression. A known listing still proceeds to canonical ingestion so
+     * its material source version can be reused or versioned correctly. */
+    const historicalLedgerCardIds = new Set<string>();
 
     // Cards for a single unit run in parallel with a bounded pool.
     await pool(cards, CONFIG.detailConcurrency, async (feedCard) => {
@@ -841,7 +847,19 @@ async function processUnit(
           title: feedCard.title,
           company: feedCard.company,
           location: feedCard.location || "",
-        }, { allowMissingCompany: unit.portal === "LinkedIn" });
+        }, {
+          allowMissingCompany: unit.portal === "LinkedIn",
+          targetRoles: relevanceCriteria?.targetRoles,
+          targetFunctions: Array.isArray(relevanceCriteria?.customParameters?.functions)
+            ? relevanceCriteria.customParameters.functions.filter(
+                (value): value is string => typeof value === "string",
+              )
+            : Array.isArray(relevanceCriteria?.customParameters?.function)
+              ? relevanceCriteria.customParameters.function.filter(
+                  (value): value is string => typeof value === "string",
+                )
+            : [],
+        });
 
         if (!preQual.pass) {
           mgr.updateCard(cardUnitId, { status: "skipped_empty", error: preQual.reason });
@@ -856,24 +874,24 @@ async function processUnit(
           companyName: feedCard.company || "Confidential / Unknown"
         });
 
-        // Pre-Detail Duplicate Detection:
-        // Check in-memory sets AND persisted SQLite database before expensive detail extraction.
+        // Pre-detail duplicate detection is intentionally current-run only.
+        // Historical records are handled by the ledger/canonical ingestion path.
         const isInMemoryDuplicate = seenUrls.has(identity.canonicalUrl) || seenCanonicalIds.has(identity.canonicalJobId);
-        let isPersistedDuplicate = false;
-        if (!isInMemoryDuplicate) {
-          const existingOpp = await repos.opportunities.getOpportunity(identity.canonicalJobId).catch(() => undefined);
-          if (existingOpp) isPersistedDuplicate = true;
-        }
-
-        if (isInMemoryDuplicate || isPersistedDuplicate) {
+        if (isInMemoryDuplicate) {
           mgr.recordTelemetry("duplicatePreDetail");
-          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Canonical URL (Pre-Detail)" });
+          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Canonical URL (Current Run, Pre-Detail)" });
           outcome.duplicates++;
           return null;
         }
 
         seenUrls.add(identity.canonicalUrl);
         seenCanonicalIds.add(identity.canonicalJobId);
+
+        const priorLedgerItem = await repos.acquisition.getLedgerItemByCanonicalId(
+          identity.sourcePortal,
+          identity.canonicalJobId,
+        );
+        if (priorLedgerItem) historicalLedgerCardIds.add(cardUnitId);
 
         // 3. Upsert Discovered Job into Persistent Acquisition Ledger
         const ledgerItem = await repos.acquisition.upsertDiscoveredJob({
@@ -891,8 +909,9 @@ async function processUnit(
         });
 
         const snapshotPath = path.join(SNAPSHOT_DIR, `${feedCard.cardHash}.json`);
-        const isHistoricallyNew = !fs.existsSync(snapshotPath);
+        const isHistoricallyNew = !priorLedgerItem && !fs.existsSync(snapshotPath);
         let detailedCard: import("./scraper/types").DetailedCard | null = null;
+        let canonicalIngestionResult: CanonicalIngestionResult | undefined;
         let snapshot = readSnapshotIfFresh(feedCard.cardHash, CONFIG.snapshotFreshHours);
         
         if (!snapshot) {
@@ -1147,7 +1166,10 @@ async function processUnit(
           if (!valResult.isValid || !detail.fetched) {
             const failureClass = detail.identityResolutionFailure || valResult.failureClass || (detail.fetchError?.includes("< 200") ? "INSUFFICIENT_CONTENT" : "UNKNOWN_FAILURE");
             // Isolate external ATS failure from Naukri portal health/circuit-breaker
-            if (unit.portal !== "Naukri") {
+            if (
+              unit.portal !== "Naukri"
+              && !detail.identityResolutionFailure
+            ) {
               HealthManager.recordFailure(unit.portal, failureClass);
             }
             await repos.acquisition.updateJobState(ledgerItem.id, {
@@ -1237,6 +1259,11 @@ async function processUnit(
           // provisional URL identity. Canonical admission is rebased only
           // after a stable portal identity has been verified. The original
           // ledger row remains the lineage anchor for this observation.
+          const resolvedLedgerItem = await repos.acquisition.getLedgerItemByCanonicalId(
+            resolvedIdentity.sourcePortal,
+            resolvedIdentity.canonicalJobId,
+          );
+          if (resolvedLedgerItem) historicalLedgerCardIds.add(cardUnitId);
           const admissionLedgerItem = await repos.acquisition.rebindDiscoveredJobIdentity(ledgerItem.id, {
             canonicalJobId: resolvedIdentity.canonicalJobId,
             sourcePortal: resolvedIdentity.sourcePortal,
@@ -1318,6 +1345,7 @@ async function processUnit(
               postedAt: feedCard.postedAt,
               postedPrecision: (feedCard as any)?.postedPrecision || null
             }, lineageScope);
+            canonicalIngestionResult = ingestRes;
             detailedCard = bindEvaluationEvidence(detailedCard, {
               canonicalJobId: ingestRes.canonicalJobId,
               opportunityVersion: ingestRes.opportunityVersion,
@@ -1379,7 +1407,12 @@ async function processUnit(
         } else {
           detailedCard = snapshot;
         }
-        mgr.updateCard(cardUnitId, { snapshotPath, isNew: isHistoricallyNew });
+        mgr.updateCard(cardUnitId, {
+          snapshotPath,
+          isNew: canonicalIngestionResult
+            ? canonicalIngestionResult.isNewOpportunity
+            : isHistoricallyNew,
+        });
         
         if (!detailedCard) return null;
 
@@ -1487,7 +1520,9 @@ async function processUnit(
       } else if (cu.status === "skipped_pruned" || cu.status === "skipped_gated") {
         cancelledOrPruned++;
       } else if (cu.status === "done") {
-        if (!cu.isNew) {
+        if (historicalLedgerCardIds.has(cardUnitId)) {
+          ledgerKnown++;
+        } else if (!cu.isNew) {
           canonicalDuplicates++;
         } else {
           novelAccepted++;

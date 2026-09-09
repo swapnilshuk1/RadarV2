@@ -179,11 +179,10 @@ export const linkedinHandler: PortalHandler = {
 
       const targetMaxCards = ctx.maxCardsPerPage ?? CONFIG.getMaxCardsPerPage("LinkedIn");
       const cardSelector = [
-        "div.job-card-container",
-        "li.jobs-search-results__list-item",
-        "ul.jobs-search__results-list li",
-        "div.base-search-card",
-        "[class*='jobs-search__results-list'] li",
+        "div.job-card-container:has(a[href*='/jobs/view/'])",
+        "li.jobs-search-results__list-item:has(a[href*='/jobs/view/'])",
+        "div.base-search-card:has(a[href*='/jobs/view/'])",
+        "li:has(a.base-card[href*='/jobs/view/'])",
       ].join(", ");
       const containerSelectors = [
         ".jobs-search-results-list",
@@ -212,21 +211,39 @@ export const linkedinHandler: PortalHandler = {
 
       ctx.logger(`[LinkedIn Hydration Summary] Discovered ${hydration.finalCount} total cards (initial: ${hydration.initialCount}, passes: ${hydration.passesCompleted}, stabilized: ${hydration.stabilized})`);
 
-      const cards = await page.locator(cardSelector).all();
-      const sliced = cards.slice(0, targetMaxCards);
-      for (const card of sliced) {
+      /*
+       * Hydration proves that the listing nodes exist. Snapshot their
+       * discovery fields in one browser-context operation before any detail
+       * worker can navigate or replace this page. The former per-Locator
+       * loop re-queried a broad list after hydration and silently discarded
+       * the hydrated cards when LinkedIn recycled its virtualized DOM.
+       */
+      const hydratedCards = await page.locator(cardSelector).evaluateAll(
+        (nodes: Element[], maxCards: number) => nodes.slice(0, maxCards).map((node: Element) => {
+          const text = (selector: string) =>
+            node.querySelector(selector)?.textContent?.trim() || "";
+          const titleLink = node.querySelector(
+            "a.job-card-list__title, a.job-card-container__link, a.base-card__full-link, a[href*='/jobs/view/']",
+          ) as HTMLAnchorElement | null;
+          const time = node.querySelector("time");
+
+          return {
+            title: titleLink?.textContent?.trim() || text("h3"),
+            company: text(".job-card-container__primary-description, .artdeco-entity-lockup__subtitle, h4"),
+            location: text(".job-card-container__metadata-item, .artdeco-entity-lockup__caption, .job-search-card__location"),
+            href: titleLink?.getAttribute("href") || "",
+            rawPosted: time?.getAttribute("datetime") || time?.textContent?.trim() || null,
+            rawHtml: node.innerHTML,
+            rawText: node.textContent?.replace(/\\s+/g, " ").trim() || "",
+          };
+        }),
+        targetMaxCards,
+      );
+
+      for (const card of hydratedCards) {
         if (ctx.isCancelled?.() || page?.isClosed?.()) break;
         try {
-          const titleEl = card.locator('a.job-card-list__title, a.job-card-container__link').first();
-          const title = ((await titleEl.textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const company = ((await card.locator(".job-card-container__primary-description, .artdeco-entity-lockup__subtitle").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const location = ((await card.locator(".job-card-container__metadata-item, .artdeco-entity-lockup__caption").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const href = ((await titleEl.getAttribute("href", { timeout: 1000 }).catch(() => "")) || "").trim();
-          
-          const timeEl = card.locator('time').first();
-          const rawDatetime = await timeEl.getAttribute("datetime", { timeout: 500 }).catch(() => null);
-          const rawTimeText = await timeEl.textContent({ timeout: 500 }).catch(() => null);
-          const rawPosted = rawDatetime || rawTimeText || null;
+          const { title, company, location, href, rawPosted } = card;
           
           if (!href || !title) continue;
 
@@ -241,9 +258,6 @@ export const linkedinHandler: PortalHandler = {
 
           const detailUrl = href.startsWith("http") ? href : `https://www.linkedin.com${href}`;
           const cardHash = cardHashFor("LinkedIn", detailUrl);
-          const rawHtml = await card.innerHTML().catch(() => "");
-          const rawText = ((await card.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-
           const discoveredAt = new Date().toISOString();
           const { date: postedAt, precision: postedPrecision } = normalizePostingDate(rawPosted, discoveredAt);
 
@@ -259,8 +273,8 @@ export const linkedinHandler: PortalHandler = {
             location,
             postedAt,
             postedPrecision,
-            rawHtml,
-            rawText,
+            rawHtml: card.rawHtml,
+            rawText: card.rawText,
           });
         } catch (err: any) {
           ctx.logger(`LinkedIn card parse skipped: ${err.message}`);

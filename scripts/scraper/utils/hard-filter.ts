@@ -37,6 +37,22 @@ const NON_INDIA_LOCATIONS = [
 
 export interface HardFilterOptions {
   allowMissingCompany?: boolean;
+  /** Authoritative search-plan role/function terms for discovery admission. */
+  targetRoles?: readonly string[];
+  targetFunctions?: readonly string[];
+}
+
+const ROLE_NOISE_TOKENS = new Set([
+  "chief", "officer", "head", "director", "manager", "senior", "junior",
+  "associate", "vice", "president", "lead", "role", "and", "of", "the",
+]);
+
+function intentTokens(values: readonly string[] | undefined): Set<string> {
+  return new Set(
+    (values || [])
+      .flatMap((value) => value.toLowerCase().match(/[a-z0-9]{3,}/g) || [])
+      .filter((token) => !ROLE_NOISE_TOKENS.has(token)),
+  );
 }
 
 /**
@@ -70,6 +86,24 @@ export function passesHardFilter(
           return { pass: false, reason: "Non-India location detected" };
         }
       }
+    }
+  }
+
+  /*
+   * Search queries can contain ambiguous abbreviations (for example CMO).
+   * Require an actual role/function signal from the active plan before a
+   * result reaches acquisition. This is a plan-level admission check, not a
+   * portal or profession-specific title blacklist.
+   */
+  const expected = intentTokens([
+    ...(options?.targetRoles || []),
+    ...(options?.targetFunctions || []),
+  ]);
+  if (expected.size > 0) {
+    const titleTokens = new Set(title.toLowerCase().match(/[a-z0-9]{3,}/g) || []);
+    const matchesIntent = [...expected].some((token) => titleTokens.has(token));
+    if (!matchesIntent) {
+      return { pass: false, reason: "Title does not match active search-plan role/function intent" };
     }
   }
 

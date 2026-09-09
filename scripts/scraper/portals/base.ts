@@ -38,23 +38,41 @@ function profileDirFor(portal: PortalName): string {
     }
     console.log("✓ LINKEDIN_PROFILE_DIR env var not set or invalid");
 
+    for (const legacyName of ["linkedin", "linkedin-primary"]) {
+      const legacyDir = path.join(process.cwd(), ".scraper-cache", "profiles", legacyName);
+      if (fs.existsSync(legacyDir)) {
+        console.log(`✓ Found legacy profile: ${legacyDir}`);
+        console.log(`Using profile: ${legacyDir}`);
+        return legacyDir;
+      }
+    }
+
     if (fs.existsSync(LINKEDIN_PROFILE_DIR)) {
       console.log(`✓ Found artifacts profile: ${LINKEDIN_PROFILE_DIR}`);
       console.log(`Using profile: ${LINKEDIN_PROFILE_DIR}`);
       return LINKEDIN_PROFILE_DIR;
     }
 
-    const legacyDir = path.join(process.cwd(), ".scraper-cache", "profiles", "linkedin-primary");
-    if (fs.existsSync(legacyDir)) {
-      console.log(`✓ Found legacy profile: ${legacyDir}`);
-      console.log(`Using profile: ${legacyDir}`);
-      return legacyDir;
-    }
-
     console.log("No existing LinkedIn profile found.");
     console.log(`Creating new profile: ${LINKEDIN_PROFILE_DIR}`);
     return LINKEDIN_PROFILE_DIR;
   }
+  /*
+   * The finalized scraper stored non-LinkedIn portal sessions here.  Keep
+   * that established location ahead of an empty artifacts directory so an
+   * application restart does not discard a working login.
+   */
+  const legacyDir = path.join(
+    process.cwd(),
+    ".scraper-cache",
+    "profiles",
+    portal.toLowerCase(),
+  );
+  if (fs.existsSync(legacyDir)) {
+    console.log(`[scrape:${portal}] Reusing legacy persistent profile: ${legacyDir}`);
+    return legacyDir;
+  }
+
   return path.join(PROFILES_DIR, portal.toLowerCase());
 }
 
