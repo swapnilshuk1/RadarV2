@@ -60,7 +60,6 @@ export function ExecutiveBriefingSurface({
           <BeforeProceed brief={brief} />
           <EvidenceDrawer
             brief={brief}
-            executionPkg={executionPkg}
             whyRoleExists={whyRoleExists}
           />
 

@@ -26,6 +26,13 @@ import { BriefCompositionEngine } from "../../src/lib/intelligence/editorial/Bri
 import { buildCanonicalDossierPresentation } from "../../src/lib/intelligence/dossier/CanonicalDossierBuilder";
 import { DEFAULT_CANDIDATE_PROJECTION } from "../../src/lib/domain/candidate_projection";
 import { substantiveCandidateEvidence } from "../../src/lib/intelligence/editorial/CandidateProofPolicy";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import { Mandate } from "../../src/components/radar/opportunity/reading/Mandate";
+import { Strategy } from "../../src/components/radar/opportunity/reading/Strategy";
+import { BeforeProceed } from "../../src/components/radar/opportunity/briefing/BeforeProceed";
+import { EvidenceDrawer } from "../../src/components/radar/opportunity/briefing/EvidenceDrawer";
 
 describe("Active Context Authority & Serving Boundary Regressions", () => {
   let sqliteDb: Database.Database;
@@ -438,6 +445,86 @@ describe("Active Context Authority & Serving Boundary Regressions", () => {
     expect(["CLARIFY_SCOPE", "TAILOR_THEN_APPLY", "CONVERT_NETWORK"]).toContain(strategy.pursuitMode);
   });
 
+  it("renders persisted mandate, strategy, and decision-hinge fields without execution-package editorial input", () => {
+    const brief = {
+      deliverablesWork: ["Own performance optimisation and storefront metrics."],
+      rankedUnknowns: [
+        {
+          rank: "IMPORTANT",
+          label: "Reporting line",
+          question: "Who does this role report to?",
+          reason: "Reporting structure determines executive sponsorship.",
+        },
+      ],
+      structuredSections: {
+        mandate: {
+          thesis: "Published outcomes anchor the success discussion.",
+          transition: "Clarify the remaining role details during screening.",
+        },
+        strategy: {
+          thesis: "Proceed with focused outreach.",
+          body: "Position the candidate's relevant precedent against the published outcomes.",
+        },
+      },
+    };
+    const executionPkg = {
+      resumeGaps: [],
+      linkedInStrategy: {
+        recommendedHeadline: "Headline",
+        executiveAboutFraming: "Framing",
+      },
+      interviewPrep: {
+        openingHook: "Hook",
+        keyThemeToEmphasize: "Theme",
+        panelQuestion: "Question",
+      },
+    } as any;
+
+    const mandate = renderToStaticMarkup(createElement(Mandate, { brief }));
+    expect(mandate).toContain("Own performance optimisation and storefront metrics.");
+    expect(mandate).toContain("Reporting structure determines executive sponsorship.");
+
+    const strategy = renderToStaticMarkup(
+      createElement(Strategy, { brief, executionPkg }),
+    );
+    expect(strategy).toContain("Position the candidate");
+    expect(strategy).toContain("published outcomes.");
+
+    const beforeProceed = renderToStaticMarkup(
+      createElement(BeforeProceed, { brief }),
+    );
+    expect(beforeProceed).toContain("Reporting structure determines executive sponsorship.");
+
+    // The workspace opens on Resume by default; the source-level contract
+    // verifies its screening tab uses the persisted reason once selected.
+    const workspaceSource = readFileSync(
+      new URL(
+        "../../src/components/radar/opportunity/briefing/StrategyWorkspace.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    expect(workspaceSource).toContain("q.reason || q.label");
+
+    const drawer = renderToStaticMarkup(
+      createElement(EvidenceDrawer, {
+        brief,
+        whyRoleExists: null,
+      }),
+    );
+    expect(drawer).toContain("Decision Hinges");
+    expect(drawer).toContain("Reporting structure determines executive sponsorship.");
+    expect(drawer).not.toContain("Legacy execution recommendation condition");
+    const drawerSource = readFileSync(
+      new URL(
+        "../../src/components/radar/opportunity/briefing/EvidenceDrawer.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    expect(drawerSource).not.toContain("executionPkg.recommendationConditions");
+  });
+
   it("OAuth test invariant: /api/auth/callback?error=access_denied reaches handleGoogleOAuthCallback and never returns route 404", async () => {
     const server = (await import("../../src/server")).default;
     const req = new Request("http://localhost:3000/api/auth/callback?error=access_denied", {
@@ -450,4 +537,3 @@ describe("Active Context Authority & Serving Boundary Regressions", () => {
     expect(body).toMatchObject({ error: "OAuth authentication failed" });
   });
 });
-

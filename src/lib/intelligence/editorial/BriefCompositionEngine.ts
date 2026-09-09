@@ -58,6 +58,7 @@ export interface RankedUnknown {
   rank: "CRITICAL" | "IMPORTANT" | "SECONDARY";
   label: string;
   question: string;
+  reason?: string;
 }
 
 export interface ProofPointItem {
@@ -1158,6 +1159,7 @@ export class BriefCompositionEngine {
             rank: "IMPORTANT" as const,
             label: hinge.topic,
             question: hinge.question,
+            reason: hinge.reason,
           }))
         : this.buildGroundedUnknowns(
         opportunity,

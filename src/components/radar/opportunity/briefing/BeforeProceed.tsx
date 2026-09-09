@@ -15,7 +15,14 @@ export function BeforeProceed({ brief }: BeforeProceedProps) {
           {primaryQuestion?.question || "No screening question was materialized for this evaluation."}
         </p>
         <p className="text-xs text-muted-foreground leading-relaxed font-mono">
-          {primaryQuestion?.label && <><span className="text-primary font-semibold">Why it matters:</span> {primaryQuestion.label}</>}
+          {(primaryQuestion?.reason || primaryQuestion?.label) && (
+            <>
+              <span className="text-primary font-semibold">
+                Why it matters:
+              </span>{" "}
+              {primaryQuestion.reason || primaryQuestion.label}
+            </>
+          )}
         </p>
       </div>
 
@@ -30,7 +37,10 @@ export function BeforeProceed({ brief }: BeforeProceedProps) {
               <div key={idx} className="space-y-1 text-xs">
                 <p className="font-semibold text-foreground">{q.question}</p>
                 <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  <span className="text-primary font-medium">Why it matters:</span> {q.label}
+                  <span className="text-primary font-medium">
+                    Why it matters:
+                  </span>{" "}
+                  {q.reason || q.label}
                 </p>
               </div>
             ))}
