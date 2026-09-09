@@ -217,17 +217,32 @@ export const indeedHandler: PortalHandler = {
               } catch {}
             }
             if (jsonLdJobs.length > 0) {
-              return jsonLdJobs.map((job: any) => ({
-                title: job.title || "",
-                company: job.hiringOrganization?.name || "",
-                location: typeof job.jobLocation?.address === "string" ? job.jobLocation.address : (job.jobLocation?.address?.addressLocality || ""),
-                salary: job.baseSalary?.value?.value ? String(job.baseSalary.value.value) : "",
-                rawHref: job.url || "",
-                jk: job.identifier?.value || "",
-                rawPosted: job.datePosted || "",
-                rawHtml: job.description || "",
-                rawText: job.description ? job.description.replace(/<[^>]+>/g, " ") : "",
-              }));
+              return jsonLdJobs.map((job: any) => {
+                let candidateJk = "";
+                if (typeof job.url === "string") {
+                  const m = job.url.match(/[?&]jk=([a-f0-9]{16})/i);
+                  if (m) candidateJk = m[1];
+                }
+                if (!candidateJk && job.identifier?.value) {
+                  const idName = String(job.identifier?.name || "").toLowerCase();
+                  const val = String(job.identifier.value).trim();
+                  if ((idName === "indeed" || idName === "indeed job id") && /^[a-f0-9]{16}$/i.test(val)) {
+                    candidateJk = val;
+                  }
+                }
+                return {
+                  title: job.title || "",
+                  company: job.hiringOrganization?.name || "",
+                  location: typeof job.jobLocation?.address === "string" ? job.jobLocation.address : (job.jobLocation?.address?.addressLocality || ""),
+                  salary: job.baseSalary?.value?.value ? String(job.baseSalary.value.value) : "",
+                  rawHref: job.url || "",
+                  jk: candidateJk,
+                  externalRequisitionId: job.identifier?.value ? String(job.identifier.value) : undefined,
+                  rawPosted: job.datePosted || "",
+                  rawHtml: job.description || "",
+                  rawText: job.description ? job.description.replace(/<[^>]+>/g, " ") : "",
+                };
+              });
             }
           } catch {}
           return [];
@@ -244,12 +259,16 @@ export const indeedHandler: PortalHandler = {
           const location = (item.location || "").trim();
           const salary = (item.salary || "").trim();
           const rawHref = (item.rawHref || "").trim();
-          let jk = (item.jk || "").trim();
+          let candidateJk = (item.jk || "").trim();
 
-          if (!jk && rawHref) {
-            const match = rawHref.match(/[?&]jk=([a-f0-9]+)/i);
-            if (match) jk = match[1];
+          if (!candidateJk && rawHref) {
+            const match = rawHref.match(/[?&]jk=([a-f0-9]{16})/i);
+            if (match) candidateJk = match[1];
           }
+
+          // Strict format: Indeed JKs are 16-hexadecimal character hashes. Employer requisition IDs are NOT JKs.
+          const isAuthoritativeJk = Boolean(candidateJk && /^[a-f0-9]{16}$/i.test(candidateJk));
+          const jk = isAuthoritativeJk ? candidateJk.toLowerCase() : "";
 
           if (jk && seenJks.has(jk)) continue;
           if (jk) seenJks.add(jk);

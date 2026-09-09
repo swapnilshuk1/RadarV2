@@ -14,7 +14,7 @@
 
 import { getDatabaseAdapter } from "@/data/database";
 
-const PRESERVED_TABLES = [
+export const PRESERVED_TABLES = [
   "tenants",
   "users",
   "memberships",
@@ -28,7 +28,7 @@ const PRESERVED_TABLES = [
   "_migrations",
 ] as const;
 
-const CORPUS_TABLES = [
+export const CORPUS_TABLES = [
   "recovery_queue",
   "materialized_evaluations",
   "evaluation_jobs",
@@ -62,12 +62,15 @@ const CORPUS_TABLES = [
   "scrape_runs",
 ] as const;
 
-async function getTableCount(db: ReturnType<typeof getDatabaseAdapter>, tableName: string): Promise<number> {
+export async function getTableCount(db: ReturnType<typeof getDatabaseAdapter>, tableName: string): Promise<number | null> {
   try {
     const row = await db.one<{ cnt: number }>(`SELECT COUNT(*) as cnt FROM "${tableName}"`);
     return row?.cnt ?? 0;
-  } catch {
-    return -1; // Table does not exist or inaccessible
+  } catch (err: any) {
+    if (err?.message?.includes("no such table")) {
+      return null; // Table does not exist in this schema version
+    }
+    throw new Error(`Failed to query table count for "${tableName}": ${err?.message || err}`);
   }
 }
 
@@ -103,10 +106,10 @@ To execute the reset, run:
   console.log(`             RADAR v2 CORPUS RESET PROTOCOL`);
   console.log(`============================================================\n`);
 
-  // 1. Audit Pre-Reset Counts
+  // 1. Audit Pre-Reset State...
   console.log(`[1/4] Auditing Pre-Reset State...`);
-  const preCorpusCounts: Record<string, number> = {};
-  const prePreservedCounts: Record<string, number> = {};
+  const preCorpusCounts: Record<string, number | null> = {};
+  const prePreservedCounts: Record<string, number | null> = {};
 
   for (const t of CORPUS_TABLES) {
     preCorpusCounts[t] = await getTableCount(db, t);
@@ -117,13 +120,13 @@ To execute the reset, run:
 
   console.log(`\nPreserved Configuration Rows (Pre-Reset):`);
   for (const [tbl, cnt] of Object.entries(prePreservedCounts)) {
-    if (cnt >= 0) console.log(`  - ${tbl.padEnd(28)} : ${cnt}`);
+    if (cnt !== null) console.log(`  - ${tbl.padEnd(28)} : ${cnt}`);
   }
 
   console.log(`\nCorpus & Queue Rows to Clear (Pre-Reset):`);
   let totalCorpusRows = 0;
   for (const [tbl, cnt] of Object.entries(preCorpusCounts)) {
-    if (cnt > 0) {
+    if (cnt !== null && cnt > 0) {
       console.log(`  - ${tbl.padEnd(28)} : ${cnt}`);
       totalCorpusRows += cnt;
     }
@@ -139,10 +142,11 @@ To execute the reset, run:
         console.log(`  ✓ Cleared ${table} (${res.rowsAffected} rows deleted)`);
       }
     } catch (err: any) {
-      // Table might not exist or already be empty
-      if (!err.message?.includes("no such table")) {
-        console.warn(`  ! Warning on ${table}: ${err.message}`);
+      if (err?.message?.includes("no such table")) {
+        // Table not present in this schema migration level; safe to continue
+        continue;
       }
+      throw new Error(`Failed to clear table "${table}": ${err?.message || err}`);
     }
   }
 
@@ -169,8 +173,8 @@ To execute the reset, run:
 
   // 3. Audit Post-Reset Counts
   console.log(`\n[3/4] Verifying Post-Reset Integrity...`);
-  const postCorpusCounts: Record<string, number> = {};
-  const postPreservedCounts: Record<string, number> = {};
+  const postCorpusCounts: Record<string, number | null> = {};
+  const postPreservedCounts: Record<string, number | null> = {};
 
   for (const t of CORPUS_TABLES) {
     postCorpusCounts[t] = await getTableCount(db, t);
@@ -185,33 +189,40 @@ To execute the reset, run:
   console.log(`PRESERVED CONFIGURATION TABLES:`);
   let configIntact = true;
   for (const [tbl, cnt] of Object.entries(postPreservedCounts)) {
-    if (cnt >= 0) {
-      const match = cnt === prePreservedCounts[tbl] ? "✅ INTACT" : "⚠️ CHANGED";
-      console.log(`  ${tbl.padEnd(28)} : ${cnt.toString().padStart(5)} [${match}]`);
-      if (cnt !== prePreservedCounts[tbl]) configIntact = false;
+    const preCnt = prePreservedCounts[tbl];
+    if (cnt === null) {
+      console.log(`  ${tbl.padEnd(28)} : [NOT IN SCHEMA]`);
+      continue;
     }
+    const match = cnt === preCnt ? "✅ INTACT" : "❌ CHANGED";
+    console.log(`  ${tbl.padEnd(28)} : ${cnt.toString().padStart(5)} [${match}]`);
+    if (cnt !== preCnt) configIntact = false;
   }
 
   console.log(`\nCORPUS & RUNTIME TABLES (Zero-State Required):`);
   let corpusZero = true;
   for (const [tbl, cnt] of Object.entries(postCorpusCounts)) {
-    if (cnt >= 0) {
-      const status = cnt === 0 ? "✅ ZERO" : "❌ NON-ZERO";
-      console.log(`  ${tbl.padEnd(28)} : ${cnt.toString().padStart(5)} [${status}]`);
-      if (cnt !== 0) corpusZero = false;
+    if (cnt === null) {
+      console.log(`  ${tbl.padEnd(28)} : [NOT IN SCHEMA]`);
+      continue;
     }
+    const status = cnt === 0 ? "✅ ZERO" : "❌ NON-ZERO";
+    console.log(`  ${tbl.padEnd(28)} : ${cnt.toString().padStart(5)} [${status}]`);
+    if (cnt !== 0) corpusZero = false;
   }
   console.log(`============================================================`);
 
   if (configIntact && corpusZero) {
     console.log(`\n✨ CORPUS RESET COMPLETE: Clean zero-state verified successfully.\n`);
   } else {
-    console.error(`\n⚠️ CORPUS RESET WARNING: Some tables did not meet verification invariants.\n`);
+    console.error(`\n❌ CORPUS RESET FAILED: Some tables did not meet verification invariants (configIntact=${configIntact}, corpusZero=${corpusZero}).\n`);
     process.exit(1);
   }
 }
 
-main().catch((err) => {
-  console.error("Corpus reset failed with error:", err);
-  process.exit(1);
-});
+if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+  main().catch((err) => {
+    console.error("Corpus reset failed with error:", err);
+    process.exit(1);
+  });
+}

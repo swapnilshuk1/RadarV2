@@ -931,9 +931,9 @@ async function processUnit(
 
           if (unit.portal === "Naukri") {
             // Naukri Multi-Tier Acquisition Architecture:
-            // Tier 1: Direct Rich Ingestion (>= 500 chars)
-            if (feedCard.rawText && feedCard.rawText.length >= 500 && feedCard.rawHtml && feedCard.rawHtml.length >= 500) {
-              log(`[Naukri] Using rich discovery payload (${feedCard.rawText.length} chars) for ${feedCard.title} @ ${feedCard.company}`);
+            // Tier 1: Direct Rich Ingestion (ONLY when explicitly carrying authoritative full-description provenance)
+            if (feedCard.hasAuthoritativeFullDescription === true && feedCard.rawText && feedCard.rawText.length >= 200 && feedCard.rawHtml) {
+              log(`[Naukri] Using authoritative discovery payload (${feedCard.rawText.length} chars) for ${feedCard.title} @ ${feedCard.company}`);
               acquisitionRoute = "DISCOVERY_RICH";
               enrichmentStatus = "NOT_APPLICABLE";
               detail = {
@@ -1042,7 +1042,7 @@ async function processUnit(
                 }
               }
             } 
-            // Tier 3: In-Portal QuickApply / Headhunter Mandates (< 500 chars, no applyRedirectUrl)
+            // Tier 3: Native Detail Acquisition (invoked for non-authoritative snippets, regardless of length)
             else {
               enrichmentStatus = "NOT_APPLICABLE";
               const pmDetail = activePageManagers.get(unit.portal);
@@ -1064,7 +1064,7 @@ async function processUnit(
                 recordTelemetry: (event: any) => mgr.recordTelemetry(event),
               };
 
-              log(`[Naukri] Detail description < 500 chars; invoking portal fetchDetail via Next.js state for ${feedCard.detailUrl}`);
+              log(`[Naukri] Discovery payload lacks authoritative provenance (${feedCard.rawText?.length || 0} chars, authoritative=${Boolean(feedCard.hasAuthoritativeFullDescription)}); invoking portal fetchDetail for ${feedCard.detailUrl}`);
               mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId, url: feedCard.detailUrl });
               const portalDetail = await handler.fetchDetail(detailCtx, feedCard.detailUrl).catch((err: any) => ({
                 fetched: false,
@@ -1197,7 +1197,65 @@ async function processUnit(
             }
           }
 
-          if (!usedRichDiscovery) {
+          let usedIndeedAts = false;
+          if (!usedRichDiscovery && unit.portal === "Indeed" && feedCard.applyRedirectUrl && !feedCard.applyRedirectUrl.includes("indeed.com")) {
+            log(`[Indeed] Attempting ATS enrichment via ${feedCard.applyRedirectUrl}`);
+            const atsRes: import("./scraper/utils/http-fetch").HttpFetchResult = await fastFetchDetail(
+              feedCard.applyRedirectUrl,
+              undefined,
+              undefined,
+              { "Referer": "https://in.indeed.com/" },
+              feedCard.title,
+              feedCard.company
+            ).catch((err: any): import("./scraper/utils/http-fetch").HttpFetchResult => ({
+              fetched: false,
+              fetchError: err.message,
+              fetchDurationMs: 0,
+              httpStatus: undefined,
+              outcome: "TRANSPORT_ERROR" as AcquisitionOutcome,
+              rawHtml: "",
+              rawText: ""
+            }));
+
+            if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
+              log(`[Indeed] ATS enrichment successful (${atsRes.rawText.length} chars) for ${feedCard.title} @ ${feedCard.company}`);
+              usedIndeedAts = true;
+              acquisitionRoute = "ATS_ENRICHED";
+              enrichmentStatus = "ENRICHED_SUCCESS";
+              detail = {
+                fetched: true,
+                rawHtml: atsRes.rawHtml,
+                rawText: atsRes.rawText,
+                fetchDurationMs: atsRes.fetchDurationMs,
+                httpStatus: atsRes.httpStatus || 200,
+                finalUrl: feedCard.applyRedirectUrl,
+              };
+              acquisitionAttempts.push({
+                method: "ATS_HTTP",
+                url: feedCard.applyRedirectUrl,
+                timestamp: new Date().toISOString(),
+                httpStatus: atsRes.httpStatus || 200,
+                outcome: "SUCCESS",
+                qualityTier: atsRes.qualityTier || "VALID",
+                extractionMethod: atsRes.extractionMethod,
+                details: `Extracted ${atsRes.rawText.length} chars via Indeed ATS ${atsRes.extractionMethod}`
+              });
+            } else {
+              log(`[Indeed] ATS enrichment rejected/failed; falling back to portal fetchDetail`);
+              acquisitionAttempts.push({
+                method: "ATS_HTTP",
+                url: feedCard.applyRedirectUrl,
+                timestamp: new Date().toISOString(),
+                httpStatus: atsRes.httpStatus,
+                outcome: atsRes.outcome || "EXTRACTION_FAILURE",
+                qualityTier: "NON_JOB",
+                extractionMethod: atsRes.extractionMethod,
+                details: atsRes.fetchError || "Failed Indeed ATS extraction"
+              });
+            }
+          }
+
+          if (!usedRichDiscovery && !usedIndeedAts) {
             mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId });
             const pmDetail = activePageManagers.get(unit.portal);
             detail = await handler.fetchDetail({

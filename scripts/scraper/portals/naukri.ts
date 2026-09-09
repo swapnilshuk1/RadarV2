@@ -7,16 +7,31 @@ import { passesHardFilter } from "../utils/hard-filter";
 import { hydrateVirtualizedList } from "../utils/scroll";
 import { normalizePostingDate } from "../utils/date";
 
-export const naukriHandler: PortalHandler = {
+export interface NaukriListTelemetry {
+  apiPagesObserved: number;
+  rawApiRecords: number;
+  uniqueApiJobIds: number;
+  returnedCards: number;
+  sourceExhausted: boolean;
+}
+
+export interface NaukriPortalHandler extends PortalHandler {
+  lastTelemetry?: NaukriListTelemetry;
+}
+
+export const naukriHandler: NaukriPortalHandler = {
   name: "Naukri",
   detailStrategy: "auto",
   buildSearchUrl(request, legacyPage = 1) {
     const input = typeof request === "string" ? { query: request, page: legacyPage } : { ...request };
     const kw = input.query;
-    const page = input.page;
+    const page = input.page || legacyPage || 1;
+    const maxCards = (input as any).maxCardsPerPage ?? (input as any).maxCards;
+    const pagesPerUnit = (input as any).pagesPerUnit ?? (maxCards && maxCards > 20 ? Math.max(1, Math.ceil(maxCards / 20)) : 1);
+    const apiStartPage = (page - 1) * pagesPerUnit + 1;
     const slug = kw.toLowerCase().replace(/\s+/g, "-");
-    const pageSuffix = page > 1 ? `-${page}` : "";
-    const params = new URLSearchParams({ k: kw, pageNo: String(page) });
+    const pageSuffix = apiStartPage > 1 ? `-${apiStartPage}` : "";
+    const params = new URLSearchParams({ k: kw, pageNo: String(apiStartPage) });
     if (input.location) params.set("l", input.location);
     if (input.postedWithinDays !== undefined) params.set("jobAge", String(input.postedWithinDays));
     if (input.sort === "date") params.set("sort", "r");
@@ -55,7 +70,10 @@ export const naukriHandler: PortalHandler = {
   async listCards(ctx) {
     const page = ctx.activePage;
     const cardsOut: FeedCard[] = [];
-    const maxCards = ctx.maxCardsPerPage ?? CONFIG.getMaxCardsPerPage("Naukri");
+    const maxCards = ctx.maxCardsPerPage ?? (ctx as any).maxCards ?? CONFIG.getMaxCardsPerPage("Naukri");
+    const pagesPerUnit = Math.max(1, Math.ceil(maxCards / 20));
+    const minApiPage = (ctx.page - 1) * pagesPerUnit + 1;
+    const maxApiPage = ctx.page * pagesPerUnit;
 
     if (ctx.isCancelled?.() || page?.isClosed?.()) {
       ctx.logger(`Naukri listCards cancelled before start for "${ctx.keyword}" (Page ${ctx.page})`);
@@ -66,6 +84,11 @@ export const naukriHandler: PortalHandler = {
     const seenHrefs = new Set<string>();
     const seenJobIds = new Set<string>();
     const interceptedJobs: any[] = [];
+    let apiPagesObserved = 0;
+    let rawApiRecords = 0;
+    const uniqueApiJobIds = new Set<string>();
+    let sourceExhausted = false;
+
     const onResponse = async (response: any) => {
       try {
         const url = response.url();
@@ -93,22 +116,27 @@ export const naukriHandler: PortalHandler = {
                 }
               }
 
-              // 2. Page sequence bounds: current work-unit page up to lazy page + 2
+              // 2. Strict non-overlapping work-unit mapping:
+              // Logical unit U covers API pages: [(U-1)*pagesPerUnit + 1 .. U*pagesPerUnit]
               const pageParam = urlObj.searchParams.get("pageNo");
-              const resPage = pageParam ? Number(pageParam) : ctx.page;
-              if (resPage < ctx.page) {
-                ctx.logger(`Ignored mismatched JobAPI response (received Page ${resPage}, expected Page ${ctx.page})`);
-                return;
-              }
-              if (resPage > ctx.page + 2) {
-                ctx.logger(`[API Intercept] Ignored out-of-sequence JobAPI response (received Page ${resPage}, expected Page ${ctx.page}..${ctx.page + 2})`);
+              const resPage = pageParam ? Number(pageParam) : minApiPage;
+              if (resPage < minApiPage || resPage > maxApiPage) {
+                ctx.logger(`[API Intercept] Ignored out-of-sequence JobAPI response (received Page ${resPage}, expected Pages ${minApiPage}..${maxApiPage})`);
                 return;
               }
             } catch {}
 
             const json = await response.json().catch(() => null);
             if (json && Array.isArray(json.jobDetails)) {
+              apiPagesObserved += 1;
+              rawApiRecords += json.jobDetails.length;
+              for (const job of json.jobDetails) {
+                if (job.jobId) uniqueApiJobIds.add(String(job.jobId));
+              }
               interceptedJobs.push(...json.jobDetails);
+              if (json.jobDetails.length < 20) {
+                sourceExhausted = true;
+              }
             }
           }
         }
@@ -197,7 +225,11 @@ export const naukriHandler: PortalHandler = {
             job.jobDescription ? job.jobDescription.replace(/<[^>]+>/g, " ") : ""
           ].filter(Boolean).join("\n").replace(/\s+/g, " ").trim();
 
-          const hasAuthoritativeFullDescription = Boolean(job.jobDescription && job.jobDescription.length >= 200);
+          const hasAuthoritativeFullDescription = Boolean(
+            job.hasAuthoritativeFullDescription === true ||
+            job.isDetailedJd === true ||
+            job.descriptionProvenance === "FULL_JD"
+          );
 
           return {
             cardHash,
@@ -235,7 +267,7 @@ export const naukriHandler: PortalHandler = {
         "[class*='styles_jcard']",
       ].join(", ");
 
-      // Phase 1: Parse intercepted API jobs (authoritative source of truth)
+      // Phase 1: Parse initial intercepted API jobs (authoritative source of truth)
       if (interceptedJobs.length > 0) {
         ctx.logger(`[API Intercept] Discovered ${interceptedJobs.length} structured jobs from Naukri jobapi (Page ${ctx.page})`);
         for (const job of interceptedJobs) {
@@ -243,12 +275,38 @@ export const naukriHandler: PortalHandler = {
           const card = parseNaukriJob(job);
           if (card) cardsOut.push(card);
         }
-        ctx.logger(`[Naukri API Ingestion] Extracted ${cardsOut.length} cards directly from API payload`);
-        return cardsOut;
       }
 
-      // Fallback: If no API jobs intercepted (e.g. API blocked or SSR-only DOM rendered), scroll/hydrate virtualized list
-      if (cardsOut.length < maxCards && !ctx.isCancelled?.() && !page?.isClosed?.()) {
+      // Phase 2: If below target quota and source not exhausted, scroll to accumulate scroll-based API responses
+      if (cardsOut.length < maxCards && !sourceExhausted && !ctx.isCancelled?.() && !page?.isClosed?.()) {
+        let lastApiCount = interceptedJobs.length;
+        let consecutiveUnchanged = 0;
+        for (let pass = 1; pass <= 4; pass++) {
+          if (cardsOut.length >= maxCards || ctx.isCancelled?.() || page?.isClosed?.()) break;
+          await page.evaluate(() => window.scrollBy(0, 1000)).catch(() => {});
+          await sleep(600);
+
+          if (interceptedJobs.length > lastApiCount) {
+            consecutiveUnchanged = 0;
+            const newJobs = interceptedJobs.slice(lastApiCount);
+            lastApiCount = interceptedJobs.length;
+            for (const job of newJobs) {
+              if (cardsOut.length >= maxCards) break;
+              const card = parseNaukriJob(job);
+              if (card) cardsOut.push(card);
+            }
+          } else {
+            consecutiveUnchanged++;
+            if (consecutiveUnchanged >= 2) {
+              sourceExhausted = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // Phase 3: Fallback DOM hydration only if API yielded 0 cards (e.g. API blocked or SSR-only DOM)
+      if (cardsOut.length === 0 && !ctx.isCancelled?.() && !page?.isClosed?.()) {
         const hydration = await hydrateVirtualizedList(
           page,
           {
@@ -271,68 +329,78 @@ export const naukriHandler: PortalHandler = {
           const card = parseNaukriJob(job);
           if (card) cardsOut.push(card);
         }
-      }
 
-      // Phase 3: If still below maxCards (e.g. API was sparse or SSR-only DOM rendered), extract DOM tuples
-      if (cardsOut.length < maxCards && !ctx.isCancelled?.() && !page?.isClosed?.()) {
-        const domCards = await page.locator(CARD_SELECTORS).all().catch(() => []);
-        for (const card of domCards) {
-          if (cardsOut.length >= maxCards) break;
-          if (ctx.isCancelled?.() || page?.isClosed?.()) break;
-          try {
-            const titleEl = card.locator("a.title, [class*='title'] a, a[class*='title'], [class*='row1'] a").first();
-            const title = ((await titleEl.textContent({ timeout: 500 }).catch(() => "")) || "").trim();
-            const company = ((await card.locator("a.comp-name, [class*='comp-name'], [class*='companyName'], a[class*='company'], [class*='company']").first().textContent({ timeout: 500 }).catch(() => "")) || "").trim();
-            const location = ((await card.locator(".locWdth, span.loc, [class*='loc'], [class*='location'], [class*='loc-wrap']").first().textContent({ timeout: 500 }).catch(() => "")) || "").trim();
-            const salary = ((await card.locator(".sal-wrap, span.sal, [class*='salary'], [class*='sal'], [class*='exp']").first().textContent({ timeout: 500 }).catch(() => "")) || "").trim();
-            const href = ((await titleEl.getAttribute("href", { timeout: 500 }).catch(() => "")) || "").trim();
-            if (!href || !title || !company) continue;
+        // Phase 4: Extract DOM tuples if still empty
+        if (cardsOut.length < maxCards && !ctx.isCancelled?.() && !page?.isClosed?.()) {
+          const domCards = await page.locator(CARD_SELECTORS).all().catch(() => []);
+          for (const card of domCards) {
+            if (cardsOut.length >= maxCards) break;
+            if (ctx.isCancelled?.() || page?.isClosed?.()) break;
+            try {
+              const titleEl = card.locator("a.title, [class*='title'] a, a[class*='title'], [class*='row1'] a").first();
+              const title = ((await titleEl.textContent({ timeout: 500 }).catch(() => "")) || "").trim();
+              const company = ((await card.locator("a.comp-name, [class*='comp-name'], [class*='companyName'], a[class*='company'], [class*='company']").first().textContent({ timeout: 500 }).catch(() => "")) || "").trim();
+              const location = ((await card.locator(".locWdth, span.loc, [class*='loc'], [class*='location'], [class*='loc-wrap']").first().textContent({ timeout: 500 }).catch(() => "")) || "").trim();
+              const salary = ((await card.locator(".sal-wrap, span.sal, [class*='salary'], [class*='sal'], [class*='exp']").first().textContent({ timeout: 500 }).catch(() => "")) || "").trim();
+              const href = ((await titleEl.getAttribute("href", { timeout: 500 }).catch(() => "")) || "").trim();
+              if (!href || !title || !company) continue;
 
-            const detailUrl = href.startsWith("http") ? href : `https://www.naukri.com${href.startsWith("/") ? "" : "/"}${href}`;
-            const cleanUrl = detailUrl.split("?")[0].split("#")[0].toLowerCase().trim();
-            const extractedJobId = cleanUrl.match(/-([0-9]{7,16})$/)?.[1] || "";
+              const detailUrl = href.startsWith("http") ? href : `https://www.naukri.com${href.startsWith("/") ? "" : "/"}${href}`;
+              const cleanUrl = detailUrl.split("?")[0].split("#")[0].toLowerCase().trim();
+              const extractedJobId = cleanUrl.match(/-([0-9]{7,16})$/)?.[1] || "";
 
-            if (seenHrefs.has(cleanUrl)) continue;
-            if (extractedJobId && seenJobIds.has(extractedJobId)) continue;
-            seenHrefs.add(cleanUrl);
-            if (extractedJobId) seenJobIds.add(extractedJobId);
+              if (seenHrefs.has(cleanUrl)) continue;
+              if (extractedJobId && seenJobIds.has(extractedJobId)) continue;
+              seenHrefs.add(cleanUrl);
+              if (extractedJobId) seenJobIds.add(extractedJobId);
 
-            const filterRes = passesHardFilter({ title, company, location });
-            if (!filterRes.pass) {
-              ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
-              continue;
+              const filterRes = passesHardFilter({ title, company, location });
+              if (!filterRes.pass) {
+                ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
+                continue;
+              }
+
+              const rawPosted = ((await card.locator('.job-post-day, span.stat, span.date').first().textContent({ timeout: 500 }).catch(() => "")) || "").trim();
+              const cardHash = cardHashFor("Naukri", detailUrl);
+              const rawHtml = await card.innerHTML().catch(() => "");
+              const rawText = ((await card.innerText().catch(() => "")) || "").trim();
+
+              const discoveredAt = new Date().toISOString();
+              const { date: postedAt, precision: postedPrecision } = normalizePostingDate(rawPosted, discoveredAt);
+
+              cardsOut.push({
+                cardHash,
+                portal: "Naukri",
+                keyword: ctx.keyword,
+                searchUrl: ctx.searchUrl,
+                detailUrl,
+                discoveredAt,
+                title,
+                company,
+                location,
+                salary,
+                postedAt,
+                postedPrecision,
+                rawHtml,
+                rawText,
+                hasAuthoritativeFullDescription: false,
+              });
+            } catch (err: any) {
+              ctx.logger(`Naukri DOM card parse skipped: ${err.message}`);
             }
-
-            const rawPosted = ((await card.locator('.job-post-day, span.stat, span.date').first().textContent({ timeout: 500 }).catch(() => "")) || "").trim();
-            const cardHash = cardHashFor("Naukri", detailUrl);
-            const rawHtml = await card.innerHTML().catch(() => "");
-            const rawText = ((await card.innerText().catch(() => "")) || "").trim();
-
-            const discoveredAt = new Date().toISOString();
-            const { date: postedAt, precision: postedPrecision } = normalizePostingDate(rawPosted, discoveredAt);
-
-            cardsOut.push({
-              cardHash,
-              portal: "Naukri",
-              keyword: ctx.keyword,
-              searchUrl: ctx.searchUrl,
-              detailUrl,
-              discoveredAt,
-              title,
-              company,
-              location,
-              salary,
-              postedAt,
-              postedPrecision,
-              rawHtml,
-              rawText,
-              hasAuthoritativeFullDescription: false,
-            });
-          } catch (err: any) {
-            ctx.logger(`Naukri DOM card parse skipped: ${err.message}`);
           }
         }
       }
+
+      const naukriTelemetry: NaukriListTelemetry = {
+        apiPagesObserved,
+        rawApiRecords,
+        uniqueApiJobIds: uniqueApiJobIds.size,
+        returnedCards: cardsOut.length,
+        sourceExhausted: sourceExhausted || cardsOut.length >= maxCards,
+      };
+      naukriHandler.lastTelemetry = naukriTelemetry;
+      ctx.logger(`[Naukri Telemetry] apiPagesObserved=${apiPagesObserved} rawApiRecords=${rawApiRecords} uniqueApiJobIds=${uniqueApiJobIds.size} returnedCards=${cardsOut.length} sourceExhausted=${naukriTelemetry.sourceExhausted}`);
     } catch (err: any) {
       const isCancelledOrClosed = ctx.isCancelled?.() || page?.isClosed?.() ||
         err?.message?.includes("Target page, context or browser has been closed") ||
