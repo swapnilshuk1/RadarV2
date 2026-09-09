@@ -69,4 +69,4 @@ scraper-profile-temp-*/
 # Scratch files and backups
 scratch/
 *.bak
-
+partial*.txt
