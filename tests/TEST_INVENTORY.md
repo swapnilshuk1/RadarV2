@@ -56,6 +56,10 @@ RADAR v2 Test Architecture
 | `tests/scraper/scraper-correctness-contract.test.ts` | Authoritative active-plan resolution, zero fallback/zero units for authenticated runs, and Indeed sparse detail preservation. | Full Suite |
 | `tests/scraper/scraper-acquisition-contract.test.ts` | LinkedIn fast hydration & exit, universal sparse preservation (LinkedIn/Naukri), and failure transparency without fake empty results. | Full Suite |
 | `tests/acquisition/golden-recovery-lineage-cohort.test.ts` | Authoritative golden production lineage cohort from run-1788527028264; verifies canonicalJobId !== cardHash hand-off across 17 recovered records, admission lineage precedence, zero o_... forks, and alias resolution. | Full Suite |
+| `tests/acquisition/reset-corpus-fail-closed.test.ts` | Fail-closed corpus deletion, query error handling, and exact-row invariance on preserved tables. | Full Suite |
+| `tests/scraper/indeed-jk-provenance.test.ts` | Strict 16-hex character JK validation, non-JK employer requisition isolation, and fast-fetch ATS direct resolution. | Full Suite |
+| `tests/scraper/naukri-pagination-telemetry.test.ts` | Non-overlapping work-unit pagination mapping, out-of-bounds rejection, scroll quota accumulation, and telemetry. | Full Suite |
+| `tests/scraper/naukri-provenance.test.ts` | Explicit full-JD provenance flag validation, prevention of length-based inference, and native detail fetch routing. | Full Suite |
 
 ---
 
@@ -179,7 +183,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (187 Total Files)
+## 3. Complete Test File Registry (221 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -192,6 +196,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/acquisition/scoped-ingestion.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 1 | 5 |
 | `tests/acquisition/portal-acquisition-reality.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 10 | 41 |
 | `tests/acquisition/source-payload-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 14 |
+| `tests/acquisition/reset-corpus-fail-closed.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 14 |
 | `tests/archive/p0/invariant-shortlist.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 3 | 8 |
 | `tests/archive/p0/invariant-trace-identity.test.ts` | Identity & Candidate Projection | **ARCHIVE** | Archived | 7 | 11 |
 | `tests/archive/p1/p1a-authoritative-source.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 6 | 19 |
@@ -362,6 +367,14 @@ Every test file in the repository is mechanically tracked below:
 | `tests/scraper/fintech-marketing-head-replay.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 8 |
 | `tests/scraper/naukri-cancellation-no-legacy-fetch.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 15 |
 | `tests/scraper/enrichment-payload-resolution.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 20 |
+| `tests/scraper/hard-filter-semantics.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 9 | 35 |
+| `tests/scraper/indeed-acquisition-resilience.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 9 |
+| `tests/scraper/indeed-jk-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 3 | 9 |
+| `tests/scraper/linkedin-rich-discovery-fallback.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 15 |
+| `tests/scraper/naukri-hydration-quota.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 9 |
+| `tests/scraper/naukri-pagination-telemetry.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 22 |
+| `tests/scraper/naukri-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 3 | 7 |
+| `tests/scraper/scheduler-yield-separation.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 25 |
 | `tests/security/deploy-attack-surface-removed.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 3 | 10 |
 | `tests/security/evaluation-context-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 5 | 18 |
 | `tests/security/evidence-dedup-repository-scope.test.ts` | Security & Tenant Isolation | **KEEP** | Gate 0 Safety | 1 | 2 |
