@@ -32,7 +32,7 @@ export interface AcquisitionVariant {
   channel?: AcquisitionChannel;
 }
 
-export type PortalSearchRequest = AcquisitionVariant & { page: number };
+export type PortalSearchRequest = AcquisitionVariant & { page: number; maxCardsPerPage?: number };
 
 export type UnitStatus =
   | "pending"

@@ -26,8 +26,8 @@ export const naukriHandler: NaukriPortalHandler = {
     const input = typeof request === "string" ? { query: request, page: legacyPage } : { ...request };
     const kw = input.query;
     const page = input.page || legacyPage || 1;
-    const maxCards = (input as any).maxCardsPerPage ?? (input as any).maxCards;
-    const pagesPerUnit = (input as any).pagesPerUnit ?? (maxCards && maxCards > 20 ? Math.max(1, Math.ceil(maxCards / 20)) : 1);
+    const maxCards = input.maxCardsPerPage ?? (input as any).maxCards ?? CONFIG.getMaxCardsPerPage("Naukri");
+    const pagesPerUnit = (input as any).pagesPerUnit ?? Math.max(1, Math.ceil(maxCards / 20));
     const apiStartPage = (page - 1) * pagesPerUnit + 1;
     const slug = kw.toLowerCase().replace(/\s+/g, "-");
     const pageSuffix = apiStartPage > 1 ? `-${apiStartPage}` : "";

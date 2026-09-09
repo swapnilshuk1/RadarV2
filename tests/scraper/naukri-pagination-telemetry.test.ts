@@ -156,4 +156,55 @@ describe("Naukri Non-Overlapping Work Units & Telemetry Contract", () => {
     expect(naukriHandler.lastTelemetry?.rawApiRecords).toBe(60);
     expect(naukriHandler.lastTelemetry?.returnedCards).toBe(60);
   });
+
+  it("proves production orchestrator call shape (without explicit maxCardsPerPage in request) defaults cleanly to 60-card 3-page boundaries", async () => {
+    // 1. buildSearchUrl without explicit maxCardsPerPage must default to CONFIG.getMaxCardsPerPage("Naukri") = 60
+    const url1 = naukriHandler.buildSearchUrl({ query: "VP Engineering", page: 1 });
+    const url2 = naukriHandler.buildSearchUrl({ query: "VP Engineering", page: 2 });
+    const url3 = naukriHandler.buildSearchUrl({ query: "VP Engineering", page: 3 });
+
+    expect(url1).toContain("pageNo=1");
+    expect(url2).toContain("pageNo=4");
+    expect(url2).toContain("-4?");
+    expect(url3).toContain("pageNo=7");
+    expect(url3).toContain("-7?");
+
+    // 2. listCards without explicit maxCardsPerPage must align on [4..6] for page 2
+    let responseCb: (res: any) => Promise<void>;
+    const page2Mock: any = {
+      isClosed: () => false,
+      url: () => url2,
+      title: async () => "VP Engineering",
+      mouse: { move: vi.fn().mockResolvedValue(undefined) },
+      on: (ev: string, cb: any) => { if (ev === "response") responseCb = cb; },
+      off: vi.fn(),
+      goto: vi.fn().mockImplementation(async () => {
+        // Page 4 arrives first upon navigating to url2
+        await responseCb({
+          url: () => "https://www.naukri.com/jobapi/v3/search?k=VP%20Engineering&pageNo=4",
+          headers: () => ({ "content-type": "application/json" }),
+          json: async () => ({ jobDetails: Array.from({ length: 20 }, (_, i) => makeJob(i + 1, "P4_Default")) }),
+        });
+      }),
+      evaluate: vi.fn().mockResolvedValue(true),
+      locator: vi.fn().mockReturnValue({ count: vi.fn().mockResolvedValue(0) }),
+      waitForSelector: vi.fn().mockResolvedValue(null),
+    };
+
+    const ctx: PortalContext = {
+      runId: "run-prod-shape",
+      portal: "Naukri",
+      keyword: "VP Engineering",
+      page: 2,
+      searchUrl: url2,
+      activePage: page2Mock,
+      searchPage: page2Mock,
+      // Intentionally omit maxCardsPerPage to verify default CONFIG parity
+      logger: () => {},
+    };
+
+    const cards = await naukriHandler.listCards(ctx);
+    expect(cards.length).toBeGreaterThanOrEqual(20);
+    expect(cards[0].detailUrl).toContain("P4_Default");
+  });
 });

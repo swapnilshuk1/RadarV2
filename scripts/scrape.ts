@@ -369,10 +369,12 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
         if (sessionStatus === "ready") {
           // Navigate to search page so user can visually verify
+          const targetMaxCards = maxCardsPerPage ?? CONFIG.getMaxCardsPerPage(portal);
           const searchUrl = handler.buildSearchUrl({
             ...(units[0].variant || {}),
             query: units[0].keyword,
             page: units[0].page,
+            maxCardsPerPage: targetMaxCards,
           });
           try {
             mgr.updatePortalHealth(portal, { status: "navigating", details: "Loading search page..." });
@@ -692,10 +694,12 @@ async function processUnit(
   mgr.updateUnit(unit.id, { status: "running", startedAt: new Date().toISOString(), attempts: unit.attempts + 1 });
   mgr.recordActivity(`Searching ${unit.portal}: "${unit.keyword}" (Page ${unit.page})...`);
   try {
+    const targetMaxCards = maxCardsPerPage ?? CONFIG.getMaxCardsPerPage(unit.portal);
     const searchUrl = handler.buildSearchUrl({
       ...(unit.variant || {}),
       query: unit.keyword,
       page: unit.page,
+      maxCardsPerPage: targetMaxCards,
     });
     let cards: FeedCard[] = [];
     const pm = activePageManagers.get(unit.portal);
