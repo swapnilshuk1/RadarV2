@@ -36,6 +36,7 @@ import {
 import {
   probeNaukriMultiPage,
   probeLinkedInExperienceFilter,
+  evaluateLinkedInYield,
 } from "../../scripts/canary/probe-portals-readonly";
 
 describe("Gate 2: Target-Portal Depth & Coverage Expansion", () => {
@@ -138,22 +139,56 @@ describe("Gate 2: Target-Portal Depth & Coverage Expansion", () => {
       // 4 new out of 5 discovered = 80% novelty >= 25% minNoveltyRatio -> shouldContinue: true
       const resultHigh = evaluateSourceNovelty(["job-4", "job-6", "job-7", "job-8", "job-9"], seenIds, 0.25);
       expect(resultHigh.totalDiscovered).toBe(5);
+      expect(resultHigh.uniqueSourceIdentities).toBe(5);
       expect(resultHigh.novelCount).toBe(4);
       expect(resultHigh.noveltyRatio).toBe(0.8);
       expect(resultHigh.shouldContinue).toBe(true);
 
-      // 1 new out of 10 discovered = 10% novelty < 25% minNoveltyRatio -> shouldContinue: false
+      // 10 items, 6 unique (5 seen + 1 new) -> 1/6 = ~16.7% novelty < 25% minNoveltyRatio -> shouldContinue: false
       const resultLow = evaluateSourceNovelty(["job-1", "job-2", "job-3", "job-4", "job-5", "job-1", "job-2", "job-3", "job-4", "job-99"], seenIds, 0.25);
+      expect(resultLow.totalDiscovered).toBe(10);
+      expect(resultLow.uniqueSourceIdentities).toBe(6);
       expect(resultLow.novelCount).toBe(1);
-      expect(resultLow.noveltyRatio).toBe(0.1);
+      expect(resultLow.noveltyRatio).toBeCloseTo(1 / 6, 2);
       expect(resultLow.shouldContinue).toBe(false);
 
       // 0 discovered -> shouldContinue: false
       const resultZero = evaluateSourceNovelty([], seenIds, 0.25);
       expect(resultZero.totalDiscovered).toBe(0);
+      expect(resultZero.uniqueSourceIdentities).toBe(0);
       expect(resultZero.novelCount).toBe(0);
       expect(resultZero.noveltyRatio).toBe(0);
       expect(resultZero.shouldContinue).toBe(false);
+    });
+
+    it("evaluateSourceNovelty deduplicates current page before counting to prevent collapsing identical IDs into false 100% novelty", () => {
+      const emptySeen = new Set<string>();
+
+      // Invariant: 15 identical collapsed IDs (e.g. if URLs collapsed to /viewjob) on page 1
+      // must NOT be reported as 15 unique identities or 15 novel items
+      const collapsedIds = Array(15).fill("https://in.indeed.com/viewjob");
+      const collapsedResult = evaluateSourceNovelty(collapsedIds, emptySeen, 0.25);
+      expect(collapsedResult.totalDiscovered).toBe(15);
+      expect(collapsedResult.uniqueSourceIdentities).toBe(1);
+      expect(collapsedResult.novelCount).toBe(1);
+      expect(collapsedResult.noveltyRatio).toBe(1.0); // 1 novel / 1 unique
+
+      // Conversely, 15 distinct source identities (e.g. verified 16-hex Indeed JKs)
+      const distinctIds = Array.from({ length: 15 }, (_, i) => `0123456789abcdef${i}`);
+      const distinctResult = evaluateSourceNovelty(distinctIds, emptySeen, 0.25);
+      expect(distinctResult.totalDiscovered).toBe(15);
+      expect(distinctResult.uniqueSourceIdentities).toBe(15);
+      expect(distinctResult.novelCount).toBe(15);
+      expect(distinctResult.noveltyRatio).toBe(1.0);
+
+      // On page 2: with distinct new JKs, novelty continues
+      const surfaceSeen = new Set(distinctIds);
+      const page2DistinctIds = Array.from({ length: 15 }, (_, i) => `0123456789abcdef${i + 15}`);
+      const page2Result = evaluateSourceNovelty(page2DistinctIds, surfaceSeen, 0.25);
+      expect(page2Result.uniqueSourceIdentities).toBe(15);
+      expect(page2Result.novelCount).toBe(15);
+      expect(page2Result.noveltyRatio).toBe(1.0);
+      expect(page2Result.shouldDeepen).toBe(true);
     });
   });
 
@@ -316,11 +351,36 @@ describe("Gate 2: Target-Portal Depth & Coverage Expansion", () => {
       expect(obs.notes).toContain("discrete non-overlapping pagination contract");
     });
 
-    it("probeLinkedInExperienceFilter demonstrates downstream title policy requirement", async () => {
+    it("evaluateLinkedInYield demonstrates downstream title policy requirement and detects non-executive title leakage", () => {
       // Invariant: Even if f_E=5,6 is used, downstream title policy filtering remains mandatory
+      const sampleTitles = [
+        "Vice President of Engineering",
+        "Senior Frontend Developer",
+        "Director, Global Products",
+        "Junior QA Analyst",
+      ];
+      const yieldEval = evaluateLinkedInYield(sampleTitles);
+      expect(yieldEval.total).toBe(4);
+      expect(yieldEval.executiveCount).toBe(2);
+      expect(yieldEval.nonExecutiveCount).toBe(2);
+      expect(yieldEval.yieldRatio).toBe(0.5);
+      expect(yieldEval.conclusion).toContain("downstream title/seniority policy calibration remains strictly mandatory");
+
+      // Zero titles returns UNKNOWN/FAIL, never synthesizes 0.8
+      const emptyEval = evaluateLinkedInYield([]);
+      expect(emptyEval.yieldRatio).toBe(0);
+      expect(emptyEval.conclusion).toContain("UNKNOWN/FAIL");
+    });
+
+    it("probeLinkedInExperienceFilter fails closed when zero titles are observed", async () => {
+      // Live probe without network or titles returns 0 ratio and UNKNOWN/FAIL, never synthesizes 0.8
       const obs = await probeLinkedInExperienceFilter();
-      expect(obs.filteredExecutiveYieldRatio).toBeGreaterThan(0);
-      expect(obs.conclusion).toContain("downstream title");
+      if (obs.filteredTitles.length === 0) {
+        expect(obs.filteredExecutiveYieldRatio).toBe(0);
+        expect(obs.conclusion).toContain("UNKNOWN/FAIL");
+      } else {
+        expect(obs.filteredExecutiveYieldRatio).toBeGreaterThanOrEqual(0);
+      }
     });
   });
 });

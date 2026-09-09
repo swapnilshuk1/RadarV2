@@ -808,8 +808,9 @@ async function processUnit(
     }
 
     const discoveredSourceIds: string[] = cards.map((c: any) => {
-      const cleanUrl = c.detailUrl ? c.detailUrl.split("?")[0].split("#")[0].toLowerCase().trim() : "";
-      return c.sourceJobId || cleanUrl || c.cardHash;
+      if (c.sourceJobId) return String(c.sourceJobId);
+      if (c.cardHash) return String(c.cardHash);
+      return c.detailUrl ? c.detailUrl.toLowerCase().trim() : "";
     }).filter(Boolean);
 
     const sourceNovelty = evaluateSourceNovelty(discoveredSourceIds, surfaceSeen, 0.25);
@@ -831,7 +832,7 @@ async function processUnit(
       );
       const enqueued = mgr.enqueueAdaptivePageUnit(adaptivePageVariant);
       if (enqueued) {
-        log(`[Adaptive Depth] Source novelty is ${(sourceNovelty.noveltyRatio * 100).toFixed(1)}% (${sourceNovelty.novelCount}/${sourceNovelty.totalDiscovered} unseen source IDs). Deepening ${surfaceKey} to page ${nextPage}.`, "info");
+        log(`[Adaptive Depth] Source novelty is ${(sourceNovelty.noveltyRatio * 100).toFixed(1)}% (${sourceNovelty.novelCount}/${sourceNovelty.uniqueSourceIdentities} unseen source IDs). Deepening ${surfaceKey} to page ${nextPage}.`, "info");
       }
     } else if (!sourceNovelty.shouldDeepen && unit.page > 0) {
       log(`[Adaptive Depth] Source novelty dropped to ${(sourceNovelty.noveltyRatio * 100).toFixed(1)}% (< 25% threshold). Halting deepening for ${surfaceKey} at page ${unit.page}.`, "info");

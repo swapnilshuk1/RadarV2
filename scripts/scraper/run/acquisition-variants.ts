@@ -107,7 +107,8 @@ export function evaluateSourceNovelty(
   previouslySeenJobIds: ReadonlySet<string>,
   minNoveltyRatio: number = 0.25
 ): SourceNoveltyEvaluation {
-  const total = discoveredJobIds.length;
+  const filtered = discoveredJobIds.filter(Boolean);
+  const total = filtered.length;
   if (total === 0) {
     return {
       totalDiscovered: 0,
@@ -119,19 +120,16 @@ export function evaluateSourceNovelty(
     };
   }
 
-  let novelCount = 0;
-  for (const id of discoveredJobIds) {
-    if (!previouslySeenJobIds.has(id)) {
-      novelCount++;
-    }
-  }
-
-  const noveltyRatio = novelCount / total;
+  // Deduplicate before computing novelty
+  const uniqueDiscovered = Array.from(new Set(filtered));
+  const novel = uniqueDiscovered.filter((id) => !previouslySeenJobIds.has(id));
+  const noveltyRatio = uniqueDiscovered.length > 0 ? novel.length / uniqueDiscovered.length : 0;
   const passesThreshold = noveltyRatio >= minNoveltyRatio;
+
   return {
     totalDiscovered: total,
-    uniqueSourceIdentities: novelCount,
-    novelCount,
+    uniqueSourceIdentities: uniqueDiscovered.length,
+    novelCount: novel.length,
     noveltyRatio,
     shouldDeepen: passesThreshold,
     shouldContinue: passesThreshold,

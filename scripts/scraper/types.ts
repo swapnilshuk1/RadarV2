@@ -201,6 +201,8 @@ export type EnrichmentStatus =
 
 export interface FeedCard {
   cardHash: string;
+  /** Native portal-specific unique job identifier (e.g. Indeed 16-hex JK, Naukri numeric jobId, LinkedIn listingId) */
+  sourceJobId?: string;
   portal: PortalName;
   keyword: string;
   searchUrl: string;

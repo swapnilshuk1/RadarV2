@@ -255,6 +255,7 @@ export const naukriHandler: NaukriPortalHandler = {
 
           return {
             cardHash,
+            sourceJobId: extractedJobId || undefined,
             portal: "Naukri",
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,
@@ -409,6 +410,7 @@ export const naukriHandler: NaukriPortalHandler = {
 
               cardsOut.push({
                 cardHash,
+                sourceJobId: extractedJobId || undefined,
                 portal: "Naukri",
                 keyword: ctx.keyword,
                 searchUrl: ctx.searchUrl,

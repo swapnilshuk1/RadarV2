@@ -205,7 +205,16 @@ export const linkedinHandler: PortalHandler = {
             const h3El = node.querySelector("h3");
             const time = node.querySelector("time");
 
+            const jobIdMatch = (
+              node.getAttribute("data-job-id") ||
+              node.getAttribute("data-entity-urn")?.match(/jobPosting:(\d+)/)?.[1] ||
+              (titleLink && titleLink.getAttribute("href") ? titleLink.getAttribute("href")!.match(/\/jobs\/view\/(\d+)/)?.[1] : null) ||
+              (titleLink && titleLink.getAttribute("href") ? titleLink.getAttribute("href")!.match(/[?&]currentJobId=(\d+)/)?.[1] : null) ||
+              ""
+            );
+
             return {
+              jobId: jobIdMatch ? String(jobIdMatch).trim() : "",
               title: (titleLink && titleLink.textContent ? titleLink.textContent.trim() : "") || (h3El && h3El.textContent ? h3El.textContent.trim() : ""),
               company: compEl && compEl.textContent ? compEl.textContent.trim() : "",
               location: locEl && locEl.textContent ? locEl.textContent.trim() : "",
@@ -235,8 +244,12 @@ export const linkedinHandler: PortalHandler = {
           const discoveredAt = new Date().toISOString();
           const { date: postedAt, precision: postedPrecision } = normalizePostingDate(rawPosted, discoveredAt);
 
+          const rawJobId = card.jobId || href.match(/\/jobs\/view\/(\d+)/)?.[1] || href.match(/[?&]currentJobId=(\d+)/)?.[1];
+          const sourceJobId = rawJobId ? String(rawJobId).trim() : undefined;
+
           cardsOut.push({
             cardHash,
+            sourceJobId,
             portal: "LinkedIn",
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,

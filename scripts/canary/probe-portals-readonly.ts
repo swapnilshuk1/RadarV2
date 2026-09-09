@@ -158,7 +158,9 @@ export async function probeIndeedRadius(options?: { useLiveBrowser?: boolean }):
       const finalUrl = page.url();
       const pageTitle = await page.title().catch(() => "");
       const pageContent = await page.content().catch(() => "");
-      const radiusRetained = finalUrl.includes("radius=25");
+      const isChallenge = /just a moment|access denied|attention required|challenge/i.test(pageTitle);
+      if (isChallenge) statusCode = 403;
+      const radiusRetained = !isChallenge && finalUrl.includes(`radius=${radius}`);
 
       const filterRadiusValues: string[] = [];
       try {
@@ -181,7 +183,9 @@ export async function probeIndeedRadius(options?: { useLiveBrowser?: boolean }):
         radiusRetained,
         radiusUnitObserved: radiusUnit,
         filterRadiusValuesFound: filterRadiusValues.slice(0, 5),
-        notes: `Indeed Playwright browser probe returned status ${statusCode}. Title: "${pageTitle}". Radius retained in URL: ${radiusRetained}. Observed radius unit: ${radiusUnit}. Filter options: [${filterRadiusValues.slice(0, 5).join(", ")}]`,
+        notes: isChallenge
+          ? `Indeed Playwright browser probe encountered anti-bot challenge (${pageTitle}). Radius retention UNKNOWN.`
+          : `Indeed Playwright browser probe returned status ${statusCode}. Title: "${pageTitle}". Radius retained in URL: ${radiusRetained}. Observed radius unit: ${radiusUnit}. Filter options: [${filterRadiusValues.slice(0, 5).join(", ")}]`,
       };
     } catch (err: any) {
       // Fall through to HTTP probe if browser fails
@@ -199,6 +203,17 @@ export async function probeIndeedRadius(options?: { useLiveBrowser?: boolean }):
     });
 
     const statusCode = res.statusCode;
+    if (statusCode === 403) {
+      return {
+        requestedUrl: url,
+        statusCode: 403,
+        radiusRetained: false,
+        radiusUnitObserved: "unknown",
+        filterRadiusValuesFound: [],
+        notes: "Indeed HTTP probe returned status 403 (Cloudflare/Access Denied). Radius retention UNKNOWN.",
+      };
+    }
+
     const bodyText = await res.body.text();
     const $ = cheerio.load(bodyText);
 
@@ -215,7 +230,7 @@ export async function probeIndeedRadius(options?: { useLiveBrowser?: boolean }):
     return {
       requestedUrl: url,
       statusCode,
-      radiusRetained: statusCode === 200 || statusCode === 403,
+      radiusRetained: statusCode === 200,
       radiusUnitObserved: radiusUnit,
       filterRadiusValuesFound: filterRadiusValues.slice(0, 5),
       notes: `Indeed HTTP probe returned status ${statusCode}. Observed radius unit: ${radiusUnit}. Filter values: [${filterRadiusValues.slice(0, 5).join(", ")}]`,
@@ -228,6 +243,53 @@ export async function probeIndeedRadius(options?: { useLiveBrowser?: boolean }):
       notes: `Indeed network probe encountered error: ${err.message}`,
     };
   }
+}
+
+export interface LinkedInYieldEvaluation {
+  executiveCount: number;
+  nonExecutiveCount: number;
+  total: number;
+  yieldRatio: number;
+  conclusion: string;
+}
+
+/**
+ * Evaluates executive yield ratio on a set of LinkedIn job titles.
+ * Pure deterministic evaluation without network or synthesized metrics.
+ */
+export function evaluateLinkedInYield(titles: readonly string[]): LinkedInYieldEvaluation {
+  const filtered = titles.filter(Boolean);
+  const total = filtered.length;
+  if (total === 0) {
+    return {
+      executiveCount: 0,
+      nonExecutiveCount: 0,
+      total: 0,
+      yieldRatio: 0,
+      conclusion: "UNKNOWN/FAIL: No titles observed under f_E=5,6; cannot compute executive yield ratio without observations.",
+    };
+  }
+
+  let execCount = 0;
+  let nonExecCount = 0;
+  for (const t of filtered) {
+    if (EXECUTIVE_TITLE_REGEX.test(t)) {
+      execCount++;
+    } else {
+      nonExecCount++;
+    }
+  }
+
+  const ratio = execCount / total;
+  return {
+    executiveCount: execCount,
+    nonExecutiveCount: nonExecCount,
+    total,
+    yieldRatio: Number(ratio.toFixed(2)),
+    conclusion: ratio < 1.0
+      ? `f_E=5,6 yields ${Math.round(ratio * 100)}% executive titles in sample (${execCount}/${total}); downstream title/seniority policy calibration remains strictly mandatory.`
+      : `f_E=5,6 sample yielded ${execCount}/${total} executive titles; downstream title policy calibration remains active.`,
+  };
 }
 
 /**
@@ -252,6 +314,11 @@ export async function probeLinkedInExperienceFilter(
       await page.goto(liveFilteredUrl, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(2000);
 
+      // Verify whether browser context holds an actual authenticated session cookie
+      const cookies = await ctx.cookies("https://www.linkedin.com").catch(() => []);
+      const hasLiAt = cookies.some((c) => c.name === "li_at" && Boolean(c.value));
+      const hasAuthenticatedSession = Boolean(hasLiAt || cookie);
+
       const liveTitles: string[] = [];
       try {
         const titles = await page.$$eval(".job-card-list__title, .base-search-card__title, h3", (els) =>
@@ -263,24 +330,17 @@ export async function probeLinkedInExperienceFilter(
       await page.close().catch(() => {});
 
       if (liveTitles.length > 0) {
-        let execCount = 0;
-        let nonExecCount = 0;
-        for (const t of liveTitles) {
-          if (EXECUTIVE_TITLE_REGEX.test(t)) execCount++;
-          else nonExecCount++;
-        }
-        const total = liveTitles.length;
-        const ratio = total > 0 ? execCount / total : 0;
+        const yieldEval = evaluateLinkedInYield(liveTitles);
         return {
-          hasAuthenticatedSession: true,
+          hasAuthenticatedSession,
           unfilteredUrl,
           filteredUrl: liveFilteredUrl,
           unfilteredTitles: [],
           filteredTitles: liveTitles.slice(0, 5),
-          filteredExecutiveCount: execCount,
-          filteredNonExecutiveCount: nonExecCount,
-          filteredExecutiveYieldRatio: Number(ratio.toFixed(2)),
-          conclusion: `Live LinkedIn browser probe extracted ${total} titles under f_E=5,6 (${execCount} executive, ${nonExecCount} non-exec, yield ${(ratio * 100).toFixed(0)}%). Downstream title policy calibration remains strictly mandatory.`,
+          filteredExecutiveCount: yieldEval.executiveCount,
+          filteredNonExecutiveCount: yieldEval.nonExecutiveCount,
+          filteredExecutiveYieldRatio: yieldEval.yieldRatio,
+          conclusion: `Live LinkedIn browser probe extracted ${liveTitles.length} titles under f_E=5,6 (${yieldEval.executiveCount} executive, ${yieldEval.nonExecutiveCount} non-exec, yield ${(yieldEval.yieldRatio * 100).toFixed(0)}%). Session: ${hasAuthenticatedSession ? "AUTHENTICATED" : "AUTH_NOT_PROVEN"}. Downstream title policy calibration remains strictly mandatory.`,
         };
       }
     } catch {}
@@ -315,31 +375,18 @@ export async function probeLinkedInExperienceFilter(
     fetchTitles(filteredUrl),
   ]);
 
-  let execCount = 0;
-  let nonExecCount = 0;
-  for (const t of filteredTitles) {
-    if (EXECUTIVE_TITLE_REGEX.test(t)) {
-      execCount++;
-    } else {
-      nonExecCount++;
-    }
-  }
-
-  const total = filteredTitles.length;
-  const ratio = total > 0 ? execCount / total : 0.8; // Fallback baseline for offline contract test
+  const yieldEval = evaluateLinkedInYield(filteredTitles);
 
   return {
-    hasAuthenticatedSession: !!cookie,
+    hasAuthenticatedSession: Boolean(cookie),
     unfilteredUrl,
     filteredUrl,
     unfilteredTitles: unfilteredTitles.slice(0, 5),
     filteredTitles: filteredTitles.slice(0, 5),
-    filteredExecutiveCount: execCount,
-    filteredNonExecutiveCount: nonExecCount,
-    filteredExecutiveYieldRatio: Number(ratio.toFixed(2)),
-    conclusion: ratio < 1.0
-      ? `f_E=5,6 yields ${Math.round(ratio * 100)}% executive titles in sample (${execCount}/${total}); downstream title/seniority policy calibration remains strictly mandatory.`
-      : `f_E=5,6 sample yielded ${execCount}/${total} executive titles; downstream title policy calibration remains active.`,
+    filteredExecutiveCount: yieldEval.executiveCount,
+    filteredNonExecutiveCount: yieldEval.nonExecutiveCount,
+    filteredExecutiveYieldRatio: yieldEval.yieldRatio,
+    conclusion: yieldEval.conclusion,
   };
 }
 
@@ -381,20 +428,23 @@ export async function probeNaukriLiveMultiPage(): Promise<NaukriMultiPageObserva
     const observedApiPages: number[] = [];
     const page1JobIds: string[] = [];
     const page2JobIds: string[] = [];
-    let currentPageNum = 1;
 
     page.on("response", async (res) => {
       const u = res.url();
       if (u.includes("/jobapi/") && u.includes("/search")) {
         try {
           const json: any = await res.json();
-          const pageNo = json.pageNo || (u.match(/pageNo=(\d+)/)?.[1] ? parseInt(RegExp.$1, 10) : currentPageNum);
-          if (pageNo) observedApiPages.push(pageNo);
-          if (Array.isArray(json.jobDetails)) {
-            for (const j of json.jobDetails) {
-              if (j.jobId) {
-                if (currentPageNum === 1) page1JobIds.push(String(j.jobId));
-                else page2JobIds.push(String(j.jobId));
+          const rawPageNo = json.pageNo ?? (u.match(/pageNo=(\d+)/)?.[1] ? parseInt(RegExp.$1, 10) : undefined);
+          const pageNo = typeof rawPageNo === "number" ? rawPageNo : typeof rawPageNo === "string" ? parseInt(rawPageNo, 10) : undefined;
+          if (pageNo !== undefined && !isNaN(pageNo)) {
+            observedApiPages.push(pageNo);
+            if (Array.isArray(json.jobDetails)) {
+              for (const j of json.jobDetails) {
+                if (j.jobId) {
+                  const idStr = String(j.jobId).trim();
+                  if (pageNo === 1) page1JobIds.push(idStr);
+                  else if (pageNo === 2) page2JobIds.push(idStr);
+                }
               }
             }
           }
@@ -403,29 +453,42 @@ export async function probeNaukriLiveMultiPage(): Promise<NaukriMultiPageObserva
     });
 
     // Navigate Page 1
-    currentPageNum = 1;
     await page.goto(baseResult.page1Url, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(3000);
 
     // Navigate Page 2
-    currentPageNum = 2;
     await page.goto(baseResult.page2Url, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(3000);
 
     await page.close().catch(() => {});
 
-    const uniqueObservedPages = Array.from(new Set(observedApiPages)).sort();
-    const overlap = page1JobIds.filter((id) => page2JobIds.includes(id));
-    const pagesAreDisjoint = overlap.length === 0;
+    const uniqueObservedPages = Array.from(new Set(observedApiPages)).sort((a, b) => a - b);
+    const hasBothPages = uniqueObservedPages.includes(1) && uniqueObservedPages.includes(2);
+    const p1Count = page1JobIds.length;
+    const p2Count = page2JobIds.length;
+
+    let pagesAreDisjoint: boolean | undefined = undefined;
+    let notes = baseResult.notes;
+
+    if (!hasBothPages) {
+      notes += ` FAIL: Expected API pages [1, 2] but observed [${uniqueObservedPages.join(", ")}].`;
+    } else if (p1Count === 0 || p2Count === 0) {
+      notes += ` FAIL: Insufficient job records to prove disjointness (page 1: ${p1Count} jobs, page 2: ${p2Count} jobs).`;
+    } else {
+      const p1Set = new Set(page1JobIds);
+      const overlap = page2JobIds.filter((id) => p1Set.has(id));
+      pagesAreDisjoint = overlap.length === 0;
+      notes += ` Live browser confirmed JobAPI responses for pages: [${uniqueObservedPages.join(", ")}]. Page 1 jobs: ${p1Count}, Page 2 jobs: ${p2Count}. Disjoint check: ${pagesAreDisjoint ? "PASSED (zero overlap)" : `FAILED (${overlap.length} overlapping jobs)`}.`;
+    }
 
     return {
       ...baseResult,
       liveBrowserObserved: true,
       apiPagesObserved: uniqueObservedPages,
-      apiRecordsCount: page1JobIds.length + page2JobIds.length,
+      apiRecordsCount: p1Count + p2Count,
       uniqueJobIdsCount: new Set([...page1JobIds, ...page2JobIds]).size,
       pagesAreDisjoint,
-      notes: `${baseResult.notes} Live browser confirmed JobAPI responses for pages: [${uniqueObservedPages.join(", ")}]. Disjoint check: ${pagesAreDisjoint ? "PASSED (zero overlap)" : `FAILED (${overlap.length} overlap)`}.`,
+      notes,
     };
   } catch (err: any) {
     return {

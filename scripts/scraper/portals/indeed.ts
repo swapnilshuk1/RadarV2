@@ -304,6 +304,7 @@ export const indeedHandler: PortalHandler = {
 
           cardsOut.push({
             cardHash,
+            sourceJobId: jk || undefined,
             portal: "Indeed",
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,
