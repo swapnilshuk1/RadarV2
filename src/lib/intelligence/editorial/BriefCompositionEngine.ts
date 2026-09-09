@@ -1121,12 +1121,8 @@ export class BriefCompositionEngine {
       candidateProofs[0] ?? null;
 
     const attentionThesis =
-      primaryCandidateProof && primaryRoleEvidence
-        ? `${primaryCandidateProof.detail} is the clearest transferable precedent for a ${role} brief whose published work includes ${this.lowerFirst(primaryRoleEvidence)}`
-        : recordedDriver && primaryRoleEvidence
+      recordedDriver && primaryRoleEvidence
         ? `${recordedDriver} The published role evidence makes the opportunity more specific: ${primaryRoleEvidence}`
-        : primaryCandidateProof
-        ? `${primaryCandidateProof.detail} is the strongest recorded reason this ${role} opportunity deserves attention.`
         : recordedDriver
         ? recordedDriver
         : careerDifferentiator

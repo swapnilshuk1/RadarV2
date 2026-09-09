@@ -467,13 +467,10 @@ function buildGroundedCareerCase(
   if (recorded) return recorded;
   const role = normalized(artifact.opportunity?.role) || "this role";
   const company = normalized(artifact.opportunity?.company) || "the company";
-  const precedent = precedents[0];
   const outcome = outcomes[0];
-  if (precedent && outcome) return `${precedent.capability} is the strongest recorded bridge into ${role} at ${company}. ${precedent.statement} The published remit requires ${outcome.statement.charAt(0).toLowerCase()}${outcome.statement.slice(1)}`;
+  // Candidate precedents are Section III evidence, never the career-case bridge.
   if (outcome && tradeoff) return `${tradeoff} The published remit makes the decision concrete: ${outcome.statement}`;
-  if (precedent) return `${precedent.capability} is the strongest recorded bridge into ${role} at ${company}: ${precedent.statement}`;
   if (outcome) return `The case for ${role} at ${company} rests on the published remit: ${outcome.statement}`;
-  if (capabilities.length > 0) return `${role} at ${company} is capability-adjacent to the candidate profile; the strongest assessed overlap is ${capabilities.slice(0, 2).join(" and ")}.`;
   return tradeoff ? `The career case for ${role} at ${company} is ${tradeoff.charAt(0).toLowerCase()}${tradeoff.slice(1)}` : null;
 }
 
@@ -547,31 +544,16 @@ function buildGroundedPositioningAngles(
 ): string[] {
   const role = normalized(artifact.opportunity?.role) || "this role";
   const company = normalized(artifact.opportunity?.company) || "the company";
-  const precedent = precedents[0];
   const outcome = outcomes[0];
   const qualification = qualifications[0];
   const hinge = hinges[0];
   const generated: string[] = [];
 
-  if (precedent && outcome) {
-    generated.push([
-      `Lead with ${precedent.capability} as the grounded evidence bridge to the published remit:`,
-      clippedEditorialEvidence(outcome.statement),
-      hinge
-        ? `Use the first discussion to answer "${hinge.question}" before assuming the precedent transfers at the required scope.`
-        : "Keep the positioning tied to that published work rather than a generic portfolio narrative.",
-    ].join(" "));
-  } else if (outcome) {
+  if (outcome) {
     generated.push([
       "Anchor the conversation on the published remit:",
       clippedEditorialEvidence(outcome.statement),
-      "RADAR does not have a grounded candidate precedent for that requirement, so position adjacent experience without claiming direct fit.",
-      hinge ? `Use the first discussion to answer "${hinge.question}"` : "",
-    ].filter(Boolean).join(" "));
-  } else if (precedent) {
-    generated.push([
-      `Lead with ${precedent.capability} as the grounded candidate bridge currently recorded.`,
-      `Do not imply that ${role} at ${company} owns the corresponding work until the mandate is confirmed.`,
+      "Clarify the scope and authority required to deliver it.",
       hinge ? `Use the first discussion to answer "${hinge.question}"` : "",
     ].filter(Boolean).join(" "));
   } else if (qualification) {

@@ -143,7 +143,9 @@ describe("EditorialIntelligenceContractBuilder", () => {
     evaluated.opportunity!.primaryDriver = "Quality Score 67/100 with 100% Identity similarity and 93% Capability fit.";
     const contract = buildEditorialIntelligenceContract(evaluated, candidate);
     expect(contract.careerCase).not.toContain("Quality Score");
-    expect(contract.careerCase).toContain("strongest recorded bridge");
+    expect(contract.careerCase).not.toMatch(/Identity similarity|Capability fit|score\b/i);
+    expect(contract.careerCase).toMatch(/creator partnerships/i);
+    expect(contract.careerCase).not.toMatch(/candidate precedent|bridge/i);
   });
 
   it("fails closed when semantic context is an unbounded profile corpus and never exposes ontology keys", () => {
@@ -559,7 +561,8 @@ describe("EditorialIntelligenceContractBuilder", () => {
       makeCandidateProjection({ inferredCapabilities: [], semanticEvidence: [] }),
     );
     expect(contract.positioningAngles[0]).toMatch(/vendor|QBR|service-delivery/i);
-    expect(contract.positioningAngles[0]).toMatch(/does not have a grounded candidate precedent/i);
+    expect(contract.positioningAngles[0]).toMatch(/scope|authority|report/i);
+    expect(contract.positioningAngles[0]).not.toMatch(/candidate precedent|candidate bridge|large-scale commercial portfolios/i);
   });
 
   it("uses a decision hinge rather than generic legacy positioning when evidence is absent", () => {
