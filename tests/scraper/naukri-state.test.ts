@@ -33,7 +33,7 @@ describe("P1: Naukri Portal-State Recognition & Failure Classification", () => {
   test("Test B: Captured failure fixture (Naukri TopTier SPA Shell) is NOT classified as zero-results", () => {
     const fixturePath = path.join(
       process.cwd(),
-      ".scraper-artifacts/failures/2026-08-21/run-1787338445603/naukri/1787338790350-page.html"
+      "tests/fixtures/naukri-toptier-spa-shell.html"
     );
 
     expect(fs.existsSync(fixturePath)).toBe(true);

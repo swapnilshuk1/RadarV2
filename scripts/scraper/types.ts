@@ -138,6 +138,25 @@ export interface PortalHealth {
   details: string;
 }
 
+export type RunTelemetry = {
+  httpAttempted: number;
+  httpSuccessful: number;
+  httpFallbacks: number;
+  duplicatePreDetail: number;
+  duplicatePostDetail: number;
+  llmCalls: number;
+  m4ShadowPathSuccess?: number;
+  m4ShadowPathFailure?: number;
+  canonicalIngestSuccess?: number;
+  canonicalIngestFailure?: number;
+  canonicalOpportunitiesIngested?: number;
+  canonicalOpportunitiesReused?: number;
+  newVersionsCreated?: number;
+  duplicateVersionsSuppressed?: number;
+  candidatesProjected?: number;
+  evaluationJobsEnqueued?: number;
+};
+
 export interface RunManifest {
   runId: string;
   startedAt: string;
@@ -159,24 +178,7 @@ export interface RunManifest {
   sources?: Record<string, "pending" | "searching" | "completed" | "failed">;
   portalHealth?: Record<string, PortalHealth>;
   recentActivities?: string[];
-  telemetry?: {
-    httpAttempted: number;
-    httpSuccessful: number;
-    httpFallbacks: number;
-    duplicatePreDetail: number;
-    duplicatePostDetail: number;
-    llmCalls: number;
-    m4ShadowPathSuccess?: number;
-    m4ShadowPathFailure?: number;
-    canonicalIngestSuccess?: number;
-    canonicalIngestFailure?: number;
-    canonicalOpportunitiesIngested?: number;
-    canonicalOpportunitiesReused?: number;
-    newVersionsCreated?: number;
-    duplicateVersionsSuppressed?: number;
-    candidatesProjected?: number;
-    evaluationJobsEnqueued?: number;
-  };
+  telemetry?: RunTelemetry;
   pageExecutionRecords?: PageExecutionRecord[];
   units: WorkUnit[];
   cards: CardUnit[];
@@ -216,6 +218,8 @@ export interface FeedCard {
   applyRedirectUrl?: string;
   jobApplyType?: string;
   companyApplyJob?: boolean;
+  /** Explicitly marks whether discovery payload carries authoritative full JD provenance (e.g. from API), not a search card snippet */
+  hasAuthoritativeFullDescription?: boolean;
 }
 
 // DetailedCard replaces JobSnapshot as the payload post-acquisition

@@ -164,6 +164,11 @@ describe("Naukri Cancellation & Legacy Fetch Protection Contract", () => {
         if (evt === "response") registeredListener = fn;
       },
       off: () => {},
+      locator: () => ({
+        count: async () => 0,
+        all: async () => [],
+      }),
+      evaluate: async () => 0,
       goto: async () => {
         // Simulate an in-flight Page 1 response arriving during Page 2
         if (registeredListener) {

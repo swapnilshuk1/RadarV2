@@ -492,4 +492,8 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
     this.manifest.telemetry[event] = ((this.manifest.telemetry[event] as number) || 0) + amount;
     this.persistManifest();
   }
+
+  getTelemetry(event: keyof NonNullable<RunManifest["telemetry"]>): number {
+    return (this.manifest.telemetry?.[event] as number) || 0;
+  }
 }

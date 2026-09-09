@@ -155,7 +155,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   let keywords = opts.keywords;
   let portals = opts.portals ?? DEFAULT_PORTALS;
   let maxPages = opts.maxPages ?? CONFIG.maxPages;
-  const maxCardsPerPage = opts.maxCardsPerPage ?? CONFIG.maxCardsPerPage;
+  const maxCardsPerPage = opts.maxCardsPerPage;
 
   // Command-line override support for agile, diverse crawl runs
   const keywordsArg = process.argv.find(arg => arg.startsWith('--keywords=') || arg.startsWith('--keyword='));
@@ -223,7 +223,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   const mgr = new RunController();
   const { resumed } = mgr.init({
     keywords: resolvedKeywords, portals, maxPages,
-    maxCardsPerPage,
+    maxCardsPerPage: maxCardsPerPage ?? CONFIG.maxCardsPerPage,
     resume: freshRun ? false : (opts.resume !== false),
     variants: resolvedVariants,
   });
@@ -659,7 +659,7 @@ async function processUnit(
   seenUrls: Set<string>,
   seenCanonicalIds: Set<string>,
   log: ReturnType<typeof makeLogger>,
-  maxCardsPerPage: number,
+  maxCardsPerPage?: number,
   lineageScope?: { tenantId: string; personId: string },
   relevanceCriteria?: { targetRoles?: string[]; customParameters?: Record<string, unknown> },
 ): Promise<ProcessOutcome> {
@@ -703,7 +703,8 @@ async function processUnit(
     try {
       cards = await handler.listCards({
         runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
-        searchUrl, browserContext, variant: unit.variant, maxCardsPerPage,
+        searchUrl, browserContext, variant: unit.variant,
+        maxCardsPerPage: maxCardsPerPage ?? CONFIG.getMaxCardsPerPage(unit.portal),
         searchPage: pm?.getPage("search") || activePage,
         detailPage: pm?.getPage("detail"),
         searchMutex: pm?.getMutex("search"),
@@ -794,6 +795,7 @@ async function processUnit(
      * suppression. A known listing still proceeds to canonical ingestion so
      * its material source version can be reused or versioned correctly. */
     const historicalLedgerCardIds = new Set<string>();
+    let pageCanonicalIngested = 0;
 
     // Cards for a single unit run in parallel with a bounded pool.
     await pool(cards, CONFIG.detailConcurrency, async (feedCard) => {
@@ -847,6 +849,7 @@ async function processUnit(
           title: feedCard.title,
           company: feedCard.company,
           location: feedCard.location || "",
+          query: unit.keyword,
         }, {
           allowMissingCompany: unit.portal === "LinkedIn",
           targetRoles: relevanceCriteria?.targetRoles,
@@ -862,7 +865,7 @@ async function processUnit(
         });
 
         if (!preQual.pass) {
-          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: preQual.reason });
+          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: `[HardFilter:${preQual.reasonCode}] ${preQual.reason}` });
           return null;
         }
 
@@ -915,7 +918,12 @@ async function processUnit(
         let snapshot = readSnapshotIfFresh(feedCard.cardHash, CONFIG.snapshotFreshHours);
         
         if (!snapshot) {
-          let detail: import("./scraper/types").DetailedCard["detail"];
+          let detail: import("./scraper/types").DetailedCard["detail"] = {
+            fetched: false,
+            rawHtml: "",
+            rawText: "",
+            fetchDurationMs: 0,
+          };
           let acquisitionRoute: import("./scraper/types").AcquisitionRoute = "DISCOVERY_RICH";
           let enrichmentStatus: import("./scraper/types").EnrichmentStatus = "NOT_APPLICABLE";
           let fallbackRoute: string | undefined = undefined;
@@ -1069,9 +1077,31 @@ async function processUnit(
               }
             }
           } else {
-            // Other Portals (LinkedIn, Indeed, etc.) - Preserved without modification
-            if (feedCard.rawText && feedCard.rawText.length >= 400 && feedCard.rawHtml && feedCard.rawHtml.length >= 400) {
-              log(`[${unit.portal}] Using rich discovery payload (${feedCard.rawText.length} chars) for ${feedCard.title} @ ${feedCard.company}`);
+          let usedRichDiscovery = false;
+          // Invariant (Gate 2): LinkedIn discovery cards are never authoritative full JDs,
+          // regardless of length or provisional completeness. They MUST always invoke fetchDetail().
+          // Discovery payloads may only bypass fetchDetail() if the portal explicitly provides
+          // authoritative full JD provenance (e.g. from an API source with structured full description).
+          if (
+            unit.portal !== "LinkedIn" &&
+            feedCard.hasAuthoritativeFullDescription === true &&
+            feedCard.rawText && feedCard.rawText.length >= 400 &&
+            feedCard.rawHtml && feedCard.rawHtml.length >= 400
+          ) {
+            // Check if discovery payload genuinely satisfies standalone response validation
+            const provisionalValidation = ResponseValidator.validate({
+              html: feedCard.rawText,
+              url: feedCard.applyRedirectUrl || feedCard.detailUrl,
+              sourcePortal: unit.portal,
+              httpStatus: 200,
+              extractedTitle: feedCard.title,
+              extractedCompany: feedCard.company,
+              extractedDescription: feedCard.rawText,
+            });
+
+            if (provisionalValidation.isValid && provisionalValidation.quality === "COMPLETE") {
+              usedRichDiscovery = true;
+              log(`[${unit.portal}] Using verified authoritative rich discovery payload (${feedCard.rawText.length} chars) for ${feedCard.title} @ ${feedCard.company}`);
               detail = {
                 fetched: true,
                 rawHtml: feedCard.rawHtml,
@@ -1117,38 +1147,41 @@ async function processUnit(
                 outcome: "SUCCESS",
                 qualityTier: "VALID",
                 extractionMethod: "FALLBACK_CARD",
-                details: `Direct rich discovery payload (${feedCard.rawText.length} chars)`
+                details: `Verified rich discovery payload (${feedCard.rawText.length} chars)`
               });
-            } else {
-              mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId });
-              const pmDetail = activePageManagers.get(unit.portal);
-              detail = await handler.fetchDetail({
-                runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
-                searchUrl, browserContext,
-                searchPage: pmDetail?.getPage("search") || activePage,
-                detailPage: pmDetail?.getPage("detail"),
-                searchMutex: pmDetail?.getMutex("search"),
-                detailMutex: pmDetail?.getMutex("detail"),
-                pageManager: pmDetail,
-                logger: log,
-                isHttpDisabled: (url: string) => mgr.isHttpFastPathDisabled(unit.portal) || mgr.failedHttpUrls.has(url),
-                recordHttpFailure: (url: string, reason: string) => mgr.recordDetailFailure(unit.portal, url, reason),
-                recordTelemetry: (event: any) => mgr.recordTelemetry(event),
-              }, feedCard.detailUrl);
-              mgr.journal.append({ type: "detail_extraction_finished", cardId: cardUnitId, durationMs: detail.fetchDurationMs });
-              if (detail.fetched) {
-                acquisitionAttempts.push({
-                  method: "PORTAL_DETAIL",
-                  url: feedCard.detailUrl,
-                  timestamp: new Date().toISOString(),
-                  httpStatus: detail.httpStatus || 200,
-                  outcome: "SUCCESS",
-                  qualityTier: (detail.rawText?.length || 0) >= 500 ? "VALID" : "SPARSE",
-                  extractionMethod: "TARGETED_DOM",
-                  details: `Extracted ${detail.rawText?.length || 0} chars via detail handler`
-                });
-              }
             }
+          }
+
+          if (!usedRichDiscovery) {
+            mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId });
+            const pmDetail = activePageManagers.get(unit.portal);
+            detail = await handler.fetchDetail({
+              runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
+              searchUrl, browserContext,
+              searchPage: pmDetail?.getPage("search") || activePage,
+              detailPage: pmDetail?.getPage("detail"),
+              searchMutex: pmDetail?.getMutex("search"),
+              detailMutex: pmDetail?.getMutex("detail"),
+              pageManager: pmDetail,
+              logger: log,
+              isHttpDisabled: (url: string) => mgr.isHttpFastPathDisabled(unit.portal) || mgr.failedHttpUrls.has(url),
+              recordHttpFailure: (url: string, reason: string) => mgr.recordDetailFailure(unit.portal, url, reason),
+              recordTelemetry: (event: any) => mgr.recordTelemetry(event),
+            }, feedCard.detailUrl);
+            mgr.journal.append({ type: "detail_extraction_finished", cardId: cardUnitId, durationMs: detail.fetchDurationMs });
+            if (detail.fetched) {
+              acquisitionAttempts.push({
+                method: "PORTAL_DETAIL",
+                url: feedCard.detailUrl,
+                timestamp: new Date().toISOString(),
+                httpStatus: detail.httpStatus || 200,
+                outcome: "SUCCESS",
+                qualityTier: (detail.rawText?.length || 0) >= 500 ? "VALID" : "SPARSE",
+                extractionMethod: "TARGETED_DOM",
+                details: `Extracted ${detail.rawText?.length || 0} chars via detail handler`
+              });
+            }
+          }
           }
           
           // 4. Standalone Response Validation
@@ -1363,10 +1396,13 @@ async function processUnit(
             });
             mgr.recordTelemetry("canonicalIngestSuccess");
             if (ingestRes.isNewOpportunity) {
+              pageCanonicalIngested++;
               mgr.recordTelemetry("canonicalOpportunitiesIngested");
             } else {
               mgr.recordTelemetry("canonicalOpportunitiesReused");
             }
+            const admissionOutcome = ingestRes.isNewOpportunity ? "NEW_OPPORTUNITY" : "REUSED_OPPORTUNITY";
+            log(`[IngestAdmission] unit=${unit.id} portal=${unit.portal} sourceJobId=${resolvedIdentity.sourceJobId} canonicalJobId=${ingestRes.canonicalJobId} outcome=${admissionOutcome} version=${ingestRes.isNewVersion ? "NEW_VERSION" : "REUSED_VERSION"}`, "info");
             if (ingestRes.isNewVersion) {
               mgr.recordTelemetry("newVersionsCreated");
             } else {
@@ -1485,6 +1521,13 @@ async function processUnit(
     let canonicalDuplicates = 0;
     let ledgerKnown = 0;
     let hardFiltered = 0;
+    const hardFilterBreakdown: Record<string, number> = {
+      TITLE_INTENT_MISMATCH: 0,
+      LOCATION_EXCLUSION: 0,
+      EXPERIENCE_EXCLUSION: 0,
+      SENIORITY_EXCLUSION: 0,
+      OTHER: 0,
+    };
     let identityFailed = 0;
     let validationFailed = 0;
     let novelAccepted = 0;
@@ -1509,6 +1552,9 @@ async function processUnit(
           ledgerKnown++;
         } else {
           hardFiltered++;
+          const match = errStr.match(/\[HardFilter:([A-Z_]+)\]/);
+          const reasonCode = match ? match[1] : "OTHER";
+          hardFilterBreakdown[reasonCode] = (hardFilterBreakdown[reasonCode] || 0) + 1;
         }
       } else if (cu.status === "failed") {
         const errStr = cu.error || "";
@@ -1559,10 +1605,19 @@ async function processUnit(
     let reason = "DiscoveryRateAboveThreshold";
     
     if (unit.definitionId) {
-      const minNewJobsPerPage = 2; // threshold for a page being "low yield"
+      const minSourceDiscoveryPerPage = 2; // threshold for a source page exposing too few listings
       const maxConsecutiveLowYield = 2; // stop after this many consecutive low-yield pages
       
-      const currentLowYield = newJobs < minNewJobsPerPage;
+      // Gate 4: Source discovery yield measures unique valid portal identities exposed by this source work unit
+      const uniqueSourceIdentities = new Set<string>();
+      for (const card of cards) {
+        const identity = (card.detailUrl ? card.detailUrl.split("?")[0].split("#")[0].toLowerCase().trim() : "") || card.cardHash;
+        if (identity) {
+          uniqueSourceIdentities.add(identity);
+        }
+      }
+      const sourceDiscoveryYield = uniqueSourceIdentities.size;
+      const currentLowYield = sourceDiscoveryYield < minSourceDiscoveryPerPage;
       // Each acquisition surface has its own yield curve. A freshness pass
       // must not inherit the coverage lane's low-yield streak.
       const yieldKey = unit.variant?.id || unit.definitionId;
@@ -1589,8 +1644,8 @@ async function processUnit(
           log(`Low yield on ${unit.definitionId}; enqueued ${nextFreshness}-day freshness variant after ${streak} pages`, "info");
         } else {
           decision = "STOP";
-          reason = "ConsecutiveLowYield";
-          log(`Early stopping triggered for ${unit.definitionId} after ${streak} consecutive low-yield pages`, "warn");
+          reason = "ExhaustedConsecutiveLowYield";
+          log(`Stopping ${unit.definitionId} after ${streak} consecutive low-yield pages`, "info");
         }
         const currentSurfaceKey = unit.variant?.id || unit.definitionId;
         mgr.manifest.units.forEach(u => {
@@ -1695,7 +1750,11 @@ async function processUnit(
 
     mgr.updateUnit(unit.id, { decisionRecord });
 
-    log(`\n=== PAGE SUMMARY ===\nPortal: ${unit.portal}\nKeyword: ${unit.keyword}\nPage: ${unit.page}\n\nCards Seen ............ ${cards.length}\nCards Parsed .......... ${cardsParsed}\n  ├── Canonical Duplicates ... ${canonicalDuplicates}\n  ├── Ledger Known ........... ${ledgerKnown}\n  ├── Hard Filtered .......... ${hardFiltered}\n  ├── Identity Failures ...... ${identityFailed}\n  ├── Validation Failures .... ${validationFailed}\n  └── Novel Accepted ......... ${novelAccepted} (Acquired: ${novelAcquired})\n\nNovelty Rate .......... ${((novelAccepted / Math.max(1, cardsParsed)) * 100).toFixed(1)}%\nDecision .............. ${decision}\nReason ................ ${reason}\n====================\n`, "info");
+    const hfBreakdownStr = hardFiltered > 0
+      ? ` (Intent: ${hardFilterBreakdown.TITLE_INTENT_MISMATCH || 0}, Loc: ${hardFilterBreakdown.LOCATION_EXCLUSION || 0}, Exp: ${hardFilterBreakdown.EXPERIENCE_EXCLUSION || 0}, Seniority: ${hardFilterBreakdown.SENIORITY_EXCLUSION || 0}, Other: ${hardFilterBreakdown.OTHER || 0})`
+      : "";
+
+    log(`\n=== PAGE SUMMARY ===\nPortal: ${unit.portal}\nKeyword: ${unit.keyword}\nPage: ${unit.page}\n\nCards Seen ............ ${cards.length}\nCards Parsed .......... ${cardsParsed}\n  ├── Canonical Duplicates ... ${canonicalDuplicates}\n  ├── Ledger Known ........... ${ledgerKnown}\n  ├── Hard Filtered .......... ${hardFiltered}${hfBreakdownStr}\n  ├── Identity Failures ...... ${identityFailed}\n  ├── Validation Failures .... ${validationFailed}\n  └── Novel Accepted ......... ${novelAccepted} (Acquired: ${novelAcquired})\n      └── Canonical Ingested ... ${pageCanonicalIngested} (Total Run: ${mgr.getTelemetry("canonicalOpportunitiesIngested") || 0})\n\nNovelty Rate .......... ${((novelAccepted / Math.max(1, cardsParsed)) * 100).toFixed(1)}%\nDecision .............. ${decision}\nReason ................ ${reason}\n====================\n`, "info");
     
     if (outcome.status !== "aborted") {
       outcome.status = cards.length === 0 ? "skipped_empty" : "completed";
