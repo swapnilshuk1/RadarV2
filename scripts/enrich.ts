@@ -66,8 +66,22 @@ async function processJob(
       }
     }
 
-    if (!snapStr && job.snapshot_path && fs.existsSync(job.snapshot_path)) {
-      snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
+    if (!snapStr && job.snapshot_path) {
+      if (fs.existsSync(job.snapshot_path)) {
+        snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
+      } else {
+        const basename = path.basename(job.snapshot_path);
+        const altPaths = [
+          path.resolve(process.cwd(), ".radar", "artifacts", "blobs", "snapshots", basename),
+          path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", basename),
+        ];
+        for (const alt of altPaths) {
+          if (fs.existsSync(alt)) {
+            snapStr = fs.readFileSync(alt, "utf-8");
+            break;
+          }
+        }
+      }
     }
 
     if (!snapStr) {
