@@ -3,41 +3,16 @@ import { SNAPSHOT_SCHEMA_VERSION, SCRAPER_VERSION } from "../versions";
 import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
-import { passesHardFilter } from "../utils/hard-filter";
 import { hydrateVirtualizedList } from "../utils/scroll";
 import { normalizePostingDate } from "../utils/date";
 import * as cheerio from "cheerio";
+import {
+  LINKEDIN_GEO_INDIA,
+  LINKEDIN_GEO_BY_LOCATION,
+  resolveLinkedInGeoId,
+} from "../run/acquisition-geography";
 
-const LINKEDIN_GEO_INDIA = "102713980";
-
-/**
- * LinkedIn's search endpoint gives `geoId` precedence over the display
- * `location`. Never pair a city label with the India-wide geo ID: that makes
- * the emitted URL look city-scoped while actually searching the country.
- *
- * These NCR identifiers were resolved against LinkedIn's own public search
- * response using fully-qualified Indian place names on 04 Sep 2026. Keep the
- * mapping deliberately small and explicit; an unknown explicit location is
- * left to LinkedIn's native location resolver rather than silently widened.
- */
-export const LINKEDIN_GEO_BY_LOCATION: Readonly<Record<string, string>> = {
-  "gurugram": "106442238",
-  "gurgaon": "106442238",
-  "delhi": "106187582",
-  "noida": "104869687",
-  "faridabad": "100839447",
-  "ghaziabad": "100497616",
-};
-
-function normalizeLinkedInLocation(location: string): string {
-  return location.trim().toLowerCase().replace(/,.*$/, "");
-}
-
-/** Returns a verified portal identifier when one is known for this location. */
-export function resolveLinkedInGeoId(location?: string): string | undefined {
-  if (!location?.trim()) return LINKEDIN_GEO_INDIA;
-  return LINKEDIN_GEO_BY_LOCATION[normalizeLinkedInLocation(location)];
-}
+export { LINKEDIN_GEO_INDIA, LINKEDIN_GEO_BY_LOCATION, resolveLinkedInGeoId };
 
 export type LinkedInSessionState =
   | "AUTHENTICATED"
@@ -251,11 +226,6 @@ export const linkedinHandler: PortalHandler = {
           
           if (!href || !title) continue;
 
-          const filterRes = passesHardFilter({ title, company, location }, { allowMissingCompany: true });
-          if (!filterRes.pass) {
-            ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
-            continue;
-          }
           if (!company) {
             ctx.logger(`[LinkedIn Discovery] Preserving card "${title}" without card company; deferring company resolution to detail extraction`);
           }

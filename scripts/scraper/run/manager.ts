@@ -11,6 +11,7 @@ import {
 import type { RunManifest, WorkUnit, CardUnit, PortalName, UnitStatus, AcquisitionVariant } from "../types";
 import { writeJsonAtomic, readJsonSafe } from "../utils/fs-atomic";
 import { Journal } from "./journal";
+import { HealthManager } from "./health-manager";
 
 // Where "latest" points so a resume doesn't need a runId argument.
 const LATEST_POINTER = path.join(RUNS_DIR, "latest.json");
@@ -34,7 +35,6 @@ export class RunController {
 
   // Circuit breakers (ephemeral per-run)
   listingFailures: Map<string, number> = new Map();
-  detailFailures: Map<string, number> = new Map();
   failedHttpUrls: Map<string, string> = new Map();
   private isFinalized: boolean = false;
 
@@ -188,8 +188,16 @@ export class RunController {
     return this.manifest.units.find((u) => u.status === "pending");
   }
 
+  nextPendingUnitForPortal(portal: PortalName): WorkUnit | undefined {
+    return this.manifest.units.find((u) => u.portal === portal && u.status === "pending");
+  }
+
   pendingUnits(): WorkUnit[] {
     return this.manifest.units.filter((u) => u.status === "pending");
+  }
+
+  runningUnits(): WorkUnit[] {
+    return this.manifest.units.filter((u) => u.status === "running");
   }
 
   /** Add a bounded adaptive acquisition surface to the current run. */
@@ -432,8 +440,7 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
   }
 
   recordDetailFailure(portal: PortalName, url: string, reason: string): void {
-    const fails = (this.detailFailures.get(portal) || 0) + 1;
-    this.detailFailures.set(portal, fails);
+    HealthManager.recordFastPathFailure(portal, reason);
     
     // Deterministic blockers cache immediately
     if (reason === "403" || reason === "AuthWall") {
@@ -442,11 +449,11 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
   }
 
   recordDetailSuccess(portal: PortalName): void {
-    this.detailFailures.delete(portal);
+    HealthManager.recordFastPathSuccess(portal);
   }
 
   isHttpFastPathDisabled(portal: PortalName): boolean {
-    return (this.detailFailures.get(portal) || 0) >= 10;
+    return !HealthManager.isFastPathAvailable(portal);
   }
 
   recordTelemetry(
@@ -466,7 +473,9 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
       | "newVersionsCreated"
       | "duplicateVersionsSuppressed"
       | "candidatesProjected"
-      | "evaluationJobsEnqueued",
+      | "evaluationJobsEnqueued"
+      | "heuristicDuplicateSuspect"
+      | "hardFiltered",
     amount: number = 1
   ): void {
     if (!this.manifest.telemetry) {
@@ -487,6 +496,8 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
         duplicateVersionsSuppressed: 0,
         candidatesProjected: 0,
         evaluationJobsEnqueued: 0,
+        heuristicDuplicateSuspect: 0,
+        hardFiltered: 0,
       };
     }
     this.manifest.telemetry[event] = ((this.manifest.telemetry[event] as number) || 0) + amount;

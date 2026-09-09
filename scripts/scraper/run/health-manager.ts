@@ -35,6 +35,11 @@ export class HealthManager {
   private static matrixMap: Map<string, PortalCapabilityMatrix> = new Map();
   private static sweeperTimer: NodeJS.Timeout | null = null;
 
+  static reset(): void {
+    this.matrixMap.clear();
+    this.stopLeaseSweeper();
+  }
+
   static getMatrix(portal: string): PortalCapabilityMatrix {
     if (!this.matrixMap.has(portal)) {
       this.matrixMap.set(portal, {
@@ -78,7 +83,7 @@ export class HealthManager {
     matrix.fastPathCooldownUntil = undefined;
   }
 
-  static recordFastPathFailure(portal: string, reason: string): void {
+  static recordFastPathFailure(portal: string, reason: string | number): void {
     const matrix = this.getMatrix(portal);
     matrix.fastPathFailures += 1;
     matrix.fastPathHistory.push(false);
@@ -86,16 +91,17 @@ export class HealthManager {
 
     const failuresInHistory = matrix.fastPathHistory.filter(f => !f).length;
     const failureRate = failuresInHistory / Math.max(1, matrix.fastPathHistory.length);
+    const reasonStr = String(reason ?? "");
 
     // Immediate trip on 403 or >=5 consecutive or >=70% failure rate
-    if (reason.includes("403") || matrix.fastPathFailures >= 5 || (matrix.fastPathHistory.length >= 5 && failureRate >= 0.70)) {
+    if (reasonStr.includes("403") || matrix.fastPathFailures >= 5 || (matrix.fastPathHistory.length >= 5 && failureRate >= 0.70)) {
       matrix.fastPathCircuit = "OPEN";
       matrix.detailFastPath = "DISABLED";
       matrix.fastPathCooldownUntil = Date.now() + 300000; // 5 minute circuit breaker cooldown
-      console.warn(`⚡ [HealthManager] FastPath Circuit OPEN for ${portal} (${reason}, failureRate: ${(failureRate * 100).toFixed(0)}%). FastPath DISABLED for 5m. Browser detail worker active.`);
+      console.warn(`⚡ [HealthManager] FastPath Circuit OPEN for ${portal} (${reasonStr}, failureRate: ${(failureRate * 100).toFixed(0)}%). FastPath DISABLED for 5m. Browser detail worker active.`);
     } else {
       matrix.detailFastPath = "DEGRADED";
-      console.warn(`⚠️ [HealthManager] FastPath failure #${matrix.fastPathFailures} for ${portal} (${reason}).`);
+      console.warn(`⚠️ [HealthManager] FastPath failure #${matrix.fastPathFailures} for ${portal} (${reasonStr}).`);
     }
   }
 

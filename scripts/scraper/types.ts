@@ -155,6 +155,8 @@ export type RunTelemetry = {
   duplicateVersionsSuppressed?: number;
   candidatesProjected?: number;
   evaluationJobsEnqueued?: number;
+  heuristicDuplicateSuspect?: number;
+  hardFiltered?: number;
 };
 
 export interface RunManifest {

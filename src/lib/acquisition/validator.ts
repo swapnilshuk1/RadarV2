@@ -172,10 +172,12 @@ export class ResponseValidator {
   static validate(payload: {
     html: string; url: string; sourcePortal: string; httpStatus?: number; contentType?: string | null; finalUrl?: string;
     extractedTitle?: string; documentTitle?: string; extractedCompany?: string; extractedDescription?: string; extractedLocation?: string;
+    contentOrigin?: "DETAIL_DOCUMENT" | "DISCOVERY_CARD_FALLBACK";
+    provenance?: ValidatedJobDocument["provenance"];
   }): ValidationResult {
     return validateJobDocument({ html: payload.html, extractedText: payload.extractedDescription, url: payload.url,
       finalUrl: payload.finalUrl, sourcePortal: payload.sourcePortal, httpStatus: payload.httpStatus,
       contentType: payload.contentType, extractedTitle: payload.extractedTitle, documentTitle: payload.documentTitle, expectedTitle: payload.extractedTitle, extractedCompany: payload.extractedCompany,
-      extractedLocation: payload.extractedLocation });
+      extractedLocation: payload.extractedLocation, contentOrigin: payload.contentOrigin, provenance: payload.provenance });
   }
 }

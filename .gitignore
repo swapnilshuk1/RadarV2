@@ -70,3 +70,5 @@ scraper-profile-temp-*/
 scratch/
 *.bak
 partial*.txt
+audit-reports/
+audit/

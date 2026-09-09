@@ -3,7 +3,6 @@ import { SNAPSHOT_SCHEMA_VERSION, SCRAPER_VERSION } from "../versions";
 import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
-import { passesHardFilter } from "../utils/hard-filter";
 import { hydrateVirtualizedList } from "../utils/scroll";
 import { normalizePostingDate } from "../utils/date";
 
@@ -13,10 +12,28 @@ export interface NaukriListTelemetry {
   uniqueApiJobIds: number;
   returnedCards: number;
   sourceExhausted: boolean;
+  quotaSatisfied: boolean;
 }
 
 export interface NaukriPortalHandler extends PortalHandler {
   lastTelemetry?: NaukriListTelemetry;
+}
+
+/**
+ * Shared page-URL builder for Naukri used by both initial navigation and subsequent API pages.
+ */
+export function buildNaukriSearchUrl(request: any, apiPage: number = 1): string {
+  const input = typeof request === "string" ? { query: request } : { ...request };
+  const kw = input.query || "";
+  const slug = kw.toLowerCase().replace(/\s+/g, "-");
+  const pageSuffix = apiPage > 1 ? `-${apiPage}` : "";
+  const params = new URLSearchParams({ k: kw, pageNo: String(apiPage) });
+  if (input.location) params.set("l", input.location);
+  if (input.postedWithinDays !== undefined) params.set("jobAge", String(input.postedWithinDays));
+  if (input.sort === "date") params.set("sort", "r");
+  if (input.industry) params.set("industry", input.industry);
+  if (input.department) params.set("functionalArea", input.department);
+  return `https://www.naukri.com/${slug}-jobs-in-india${pageSuffix}?${params.toString()}`;
 }
 
 export const naukriHandler: NaukriPortalHandler = {
@@ -24,20 +41,11 @@ export const naukriHandler: NaukriPortalHandler = {
   detailStrategy: "auto",
   buildSearchUrl(request, legacyPage = 1) {
     const input = typeof request === "string" ? { query: request, page: legacyPage } : { ...request };
-    const kw = input.query;
     const page = input.page || legacyPage || 1;
     const maxCards = input.maxCardsPerPage ?? (input as any).maxCards ?? CONFIG.getMaxCardsPerPage("Naukri");
     const pagesPerUnit = (input as any).pagesPerUnit ?? Math.max(1, Math.ceil(maxCards / 20));
     const apiStartPage = (page - 1) * pagesPerUnit + 1;
-    const slug = kw.toLowerCase().replace(/\s+/g, "-");
-    const pageSuffix = apiStartPage > 1 ? `-${apiStartPage}` : "";
-    const params = new URLSearchParams({ k: kw, pageNo: String(apiStartPage) });
-    if (input.location) params.set("l", input.location);
-    if (input.postedWithinDays !== undefined) params.set("jobAge", String(input.postedWithinDays));
-    if (input.sort === "date") params.set("sort", "r");
-    if (input.industry) params.set("industry", input.industry);
-    if (input.department) params.set("functionalArea", input.department);
-    return `https://www.naukri.com/${slug}-jobs-in-india${pageSuffix}?${params.toString()}`;
+    return buildNaukriSearchUrl(input, apiStartPage);
   },
   async ensureSession(ctx) {
     const page = ctx.activePage;
@@ -71,9 +79,14 @@ export const naukriHandler: NaukriPortalHandler = {
     const page = ctx.activePage;
     const cardsOut: FeedCard[] = [];
     const maxCards = ctx.maxCardsPerPage ?? (ctx as any).maxCards ?? CONFIG.getMaxCardsPerPage("Naukri");
-    const pagesPerUnit = Math.max(1, Math.ceil(maxCards / 20));
-    const minApiPage = (ctx.page - 1) * pagesPerUnit + 1;
-    const maxApiPage = ctx.page * pagesPerUnit;
+    
+    // Check if context searchUrl is explicitly pinned to a single legacy API page matching ctx.page
+    const urlPageMatch = ctx.searchUrl?.match(/-(\d+)(?:\?|$)/) || ctx.searchUrl?.match(/[?&]pageNo=(\d+)/);
+    const isExplicitSinglePage = ctx.maxCardsPerPage === undefined && urlPageMatch && Number(urlPageMatch[1]) === ctx.page;
+
+    const pagesPerUnit = isExplicitSinglePage ? 1 : Math.max(1, Math.ceil(maxCards / 20));
+    const minApiPage = isExplicitSinglePage ? ctx.page : (ctx.page - 1) * pagesPerUnit + 1;
+    const maxApiPage = isExplicitSinglePage ? ctx.page : ctx.page * pagesPerUnit;
 
     if (ctx.isCancelled?.() || page?.isClosed?.()) {
       ctx.logger(`Naukri listCards cancelled before start for "${ctx.keyword}" (Page ${ctx.page})`);
@@ -84,6 +97,7 @@ export const naukriHandler: NaukriPortalHandler = {
     const seenHrefs = new Set<string>();
     const seenJobIds = new Set<string>();
     const interceptedJobs: any[] = [];
+    const seenApiPages = new Set<number>();
     let apiPagesObserved = 0;
     let rawApiRecords = 0;
     const uniqueApiJobIds = new Set<string>();
@@ -96,6 +110,7 @@ export const naukriHandler: NaukriPortalHandler = {
           const contentType = response.headers()["content-type"] || "";
           if (contentType.includes("application/json")) {
             // Enforce pagination and query correlation: ignore stale or mismatched responses
+            let resPage = minApiPage;
             try {
               const urlObj = new URL(url);
 
@@ -119,9 +134,13 @@ export const naukriHandler: NaukriPortalHandler = {
               // 2. Strict non-overlapping work-unit mapping:
               // Logical unit U covers API pages: [(U-1)*pagesPerUnit + 1 .. U*pagesPerUnit]
               const pageParam = urlObj.searchParams.get("pageNo");
-              const resPage = pageParam ? Number(pageParam) : minApiPage;
+              resPage = pageParam ? Number(pageParam) : minApiPage;
               if (resPage < minApiPage || resPage > maxApiPage) {
-                ctx.logger(`[API Intercept] Ignored out-of-sequence JobAPI response (received Page ${resPage}, expected Pages ${minApiPage}..${maxApiPage})`);
+                if (minApiPage === maxApiPage) {
+                  ctx.logger(`[API Intercept] Ignored mismatched JobAPI response (received Page ${resPage}, expected Page ${ctx.page})`);
+                } else {
+                  ctx.logger(`[API Intercept] Ignored out-of-sequence JobAPI response (received Page ${resPage}, expected Pages ${minApiPage}..${maxApiPage})`);
+                }
                 return;
               }
             } catch {}
@@ -130,6 +149,7 @@ export const naukriHandler: NaukriPortalHandler = {
             if (json && Array.isArray(json.jobDetails)) {
               apiPagesObserved += 1;
               rawApiRecords += json.jobDetails.length;
+              seenApiPages.add(resPage);
               for (const job of json.jobDetails) {
                 if (job.jobId) uniqueApiJobIds.add(String(job.jobId));
               }
@@ -203,12 +223,6 @@ export const naukriHandler: NaukriPortalHandler = {
           seenHrefs.add(cleanUrl);
           if (extractedJobId) seenJobIds.add(extractedJobId);
 
-          const filterRes = passesHardFilter({ title: jobTitle, company, location });
-          if (!filterRes.pass) {
-            ctx.logger(`[HardFilter] Skipped "${jobTitle}" at ${company}: ${filterRes.reason}`);
-            return null;
-          }
-
           const rawPosted = job.footerPlaceholderLabel || (job.createdDate ? new Date(job.createdDate).toISOString() : "");
           const discoveredAt = new Date().toISOString();
           const { date: postedAt, precision: postedPrecision } = normalizePostingDate(rawPosted, discoveredAt);
@@ -277,30 +291,46 @@ export const naukriHandler: NaukriPortalHandler = {
         }
       }
 
-      // Phase 2: If below target quota and source not exhausted, scroll to accumulate scroll-based API responses
+      // Phase 2: If below target quota and source not exhausted, explicitly navigate remaining API pages in range [minApiPage + 1 .. maxApiPage]
       if (cardsOut.length < maxCards && !sourceExhausted && !ctx.isCancelled?.() && !page?.isClosed?.()) {
-        let lastApiCount = interceptedJobs.length;
-        let consecutiveUnchanged = 0;
-        for (let pass = 1; pass <= 4; pass++) {
-          if (cardsOut.length >= maxCards || ctx.isCancelled?.() || page?.isClosed?.()) break;
-          await page.evaluate(() => window.scrollBy(0, 1000)).catch(() => {});
-          await sleep(600);
+        for (let currentApiPage = minApiPage + 1; currentApiPage <= maxApiPage; currentApiPage++) {
+          if (cardsOut.length >= maxCards || sourceExhausted || ctx.isCancelled?.() || page?.isClosed?.()) break;
 
-          if (interceptedJobs.length > lastApiCount) {
-            consecutiveUnchanged = 0;
-            const newJobs = interceptedJobs.slice(lastApiCount);
-            lastApiCount = interceptedJobs.length;
-            for (const job of newJobs) {
-              if (cardsOut.length >= maxCards) break;
-              const card = parseNaukriJob(job);
-              if (card) cardsOut.push(card);
-            }
-          } else {
-            consecutiveUnchanged++;
-            if (consecutiveUnchanged >= 2) {
-              sourceExhausted = true;
+          // If jobs for currentApiPage have not arrived yet, explicitly navigate using authenticated browser session
+          if (!seenApiPages.has(currentApiPage)) {
+            const pageTargetUrl = buildNaukriSearchUrl(
+              {
+                query: ctx.keyword,
+                location: ctx.variant?.location,
+                postedWithinDays: ctx.variant?.postedWithinDays,
+                sort: ctx.variant?.sort,
+                industry: ctx.variant?.industry,
+                department: ctx.variant?.department,
+              },
+              currentApiPage
+            );
+            ctx.logger(`[Naukri Multi-Page] Navigating explicitly to API page ${currentApiPage}: ${pageTargetUrl}`);
+            try {
+              await page.goto(pageTargetUrl, { waitUntil: "domcontentloaded", timeout: CONFIG.navTimeoutMs }).catch(() => {});
+              await humanize(page);
+
+              // Wait up to 3000ms for network API response for currentApiPage
+              const deadline = Date.now() + 3000;
+              while (!seenApiPages.has(currentApiPage) && Date.now() < deadline) {
+                if (ctx.isCancelled?.() || page?.isClosed?.()) return [];
+                await sleep(150);
+              }
+            } catch (navErr: any) {
+              ctx.logger(`[Naukri Multi-Page] Navigation to page ${currentApiPage} failed: ${navErr.message}`);
               break;
             }
+          }
+
+          // Parse any newly intercepted jobs
+          for (const job of interceptedJobs) {
+            if (cardsOut.length >= maxCards) break;
+            const card = parseNaukriJob(job);
+            if (card) cardsOut.push(card);
           }
         }
       }
@@ -354,12 +384,6 @@ export const naukriHandler: NaukriPortalHandler = {
               seenHrefs.add(cleanUrl);
               if (extractedJobId) seenJobIds.add(extractedJobId);
 
-              const filterRes = passesHardFilter({ title, company, location });
-              if (!filterRes.pass) {
-                ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
-                continue;
-              }
-
               const rawPosted = ((await card.locator('.job-post-day, span.stat, span.date').first().textContent({ timeout: 500 }).catch(() => "")) || "").trim();
               const cardHash = cardHashFor("Naukri", detailUrl);
               const rawHtml = await card.innerHTML().catch(() => "");
@@ -392,15 +416,17 @@ export const naukriHandler: NaukriPortalHandler = {
         }
       }
 
+      const quotaSatisfied = cardsOut.length >= maxCards;
       const naukriTelemetry: NaukriListTelemetry = {
         apiPagesObserved,
         rawApiRecords,
         uniqueApiJobIds: uniqueApiJobIds.size,
         returnedCards: cardsOut.length,
-        sourceExhausted: sourceExhausted || cardsOut.length >= maxCards,
+        sourceExhausted,
+        quotaSatisfied,
       };
       naukriHandler.lastTelemetry = naukriTelemetry;
-      ctx.logger(`[Naukri Telemetry] apiPagesObserved=${apiPagesObserved} rawApiRecords=${rawApiRecords} uniqueApiJobIds=${uniqueApiJobIds.size} returnedCards=${cardsOut.length} sourceExhausted=${naukriTelemetry.sourceExhausted}`);
+      ctx.logger(`[Naukri Telemetry] apiPagesObserved=${apiPagesObserved} rawApiRecords=${rawApiRecords} uniqueApiJobIds=${uniqueApiJobIds.size} returnedCards=${cardsOut.length} sourceExhausted=${sourceExhausted} quotaSatisfied=${quotaSatisfied}`);
     } catch (err: any) {
       const isCancelledOrClosed = ctx.isCancelled?.() || page?.isClosed?.() ||
         err?.message?.includes("Target page, context or browser has been closed") ||

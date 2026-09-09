@@ -3,7 +3,6 @@ import { SNAPSHOT_SCHEMA_VERSION, SCRAPER_VERSION } from "../versions";
 import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
-import { passesHardFilter } from "../utils/hard-filter";
 import { normalizePostingDate } from "../utils/date";
 import { resolveIndeedListingBounded } from "../../../src/lib/acquisition/indeed-listing-identity";
 
@@ -295,12 +294,6 @@ export const indeedHandler: PortalHandler = {
           }
 
           if (!detailUrl || !title) continue;
-
-          const filterRes = passesHardFilter({ title, company, location });
-          if (!filterRes.pass) {
-            ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
-            continue;
-          }
 
           const cardHash = cardHashFor("Indeed", detailUrl);
           if (seenHashes.has(cardHash)) continue;

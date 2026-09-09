@@ -102,6 +102,30 @@ describe("Phase M4.3: Attention Gate", () => {
       expect(res.locationEvidence).toBe("Gurugram, Haryana, India");
     });
 
+    test("explicit NCR policy accepts a Haryana posting", () => {
+      const res = evaluateAttentionGate({ ...baseVersion, location: "Haryana" }, {
+        ...baseCriteria,
+        eligibilitySpec: {
+          version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: [], functions: [], seniorityRange: [],
+          locations: ["Gurugram"], locationPolicy: "NCR", industries: [], adjacentFamilies: [], excludedCompanies: [],
+        },
+      });
+      expect(res.decision).toBe("CANDIDATE");
+      expect(res.reasonCodes).not.toContain("LOCATION_CONTRADICTION");
+    });
+
+    test("an explicit Remote India target overrides an otherwise-NCR location policy for India-remote postings", () => {
+      const res = evaluateAttentionGate({ ...baseVersion, location: "India (Remote)" }, {
+        ...baseCriteria,
+        eligibilitySpec: {
+          version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: [], functions: [], seniorityRange: [],
+          locations: ["Gurugram", "Remote India"], locationPolicy: "NCR", industries: [], adjacentFamilies: [], excludedCompanies: [],
+        },
+      });
+      expect(res.decision).toBe("CANDIDATE");
+      expect(res.reasonCodes).not.toContain("LOCATION_CONTRADICTION");
+    });
+
     test("explicit NCR policy rejects an out-of-area hybrid posting", () => {
       const res = evaluateAttentionGate({ ...baseVersion, location: "Mumbai, Maharashtra, India (Hybrid)" }, {
         ...baseCriteria,

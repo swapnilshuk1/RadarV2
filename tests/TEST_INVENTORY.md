@@ -58,8 +58,10 @@ RADAR v2 Test Architecture
 | `tests/acquisition/golden-recovery-lineage-cohort.test.ts` | Authoritative golden production lineage cohort from run-1788527028264; verifies canonicalJobId !== cardHash hand-off across 17 recovered records, admission lineage precedence, zero o_... forks, and alias resolution. | Full Suite |
 | `tests/acquisition/reset-corpus-fail-closed.test.ts` | Fail-closed corpus deletion, query error handling, and exact-row invariance on preserved tables. | Full Suite |
 | `tests/scraper/indeed-jk-provenance.test.ts` | Strict 16-hex character JK validation, non-JK employer requisition isolation, and fast-fetch ATS direct resolution. | Full Suite |
+| `tests/acquisition/gate1-pipeline-invariants.test.ts` | Dynamic work drain, HealthManager FastPath delegation, contentOrigin enforcement, pre-admission dedupe. | Full Suite |
 | `tests/scraper/naukri-pagination-telemetry.test.ts` | Non-overlapping work-unit pagination mapping, out-of-bounds rejection, scroll quota accumulation, and telemetry. | Full Suite |
 | `tests/scraper/naukri-provenance.test.ts` | Explicit full-JD provenance flag validation, prevention of length-based inference, and native detail fetch routing. | Full Suite |
+| `tests/acquisition/gate2-target-depth.test.ts` | Canonical geography semantics, fail-narrow portal geo mapping, multi-location variant compilation, source-identity novelty evaluation, and structured SPA extraction. | Full Suite |
 
 ---
 
@@ -197,6 +199,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/acquisition/portal-acquisition-reality.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 10 | 41 |
 | `tests/acquisition/source-payload-provenance.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 14 |
 | `tests/acquisition/reset-corpus-fail-closed.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 14 |
+| `tests/acquisition/gate1-pipeline-invariants.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 9 | 18 |
+| `tests/acquisition/gate2-target-depth.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 14 | 29 |
 | `tests/archive/p0/invariant-shortlist.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 3 | 8 |
 | `tests/archive/p0/invariant-trace-identity.test.ts` | Identity & Candidate Projection | **ARCHIVE** | Archived | 7 | 11 |
 | `tests/archive/p1/p1a-authoritative-source.test.ts` | Evaluation & Policy | **ARCHIVE** | Archived | 6 | 19 |

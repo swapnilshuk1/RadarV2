@@ -286,9 +286,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   process.once("SIGINT",  () => void shutdown("SIGINT"));
   process.once("SIGTERM", () => void shutdown("SIGTERM"));
 
-  const seenCardKeys = new Set<string>();   // cross-portal dedup
-  const seenUrls = new Set<string>();       // cross-portal exact URL dedup
-  const seenCanonicalIds = new Set<string>(); // cross-portal canonical ID dedup
+  const seenUrls = new Set<string>();           // cross-portal exact URL dedup (authoritative)
+  const seenCanonicalIds = new Set<string>();   // cross-portal canonical ID dedup (authoritative)
+  const seenAtsUrls = new Set<string>();        // cross-portal ATS target URL dedup (authoritative)
+  const seenHeuristicKeys = new Set<string>();  // cross-portal heuristic telemetry only
 
   const completion = (async () => {
     try {
@@ -441,7 +442,6 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       const poolResults = await pool(portals, CONFIG.portalConcurrency, async (portal) => {
         const plog = makeLogger(`scrape:${portal}`);
         const handler = HANDLERS[portal];
-        const units = mgr.pendingUnits().filter((u) => u.portal === portal);
         const browserContext = activeContexts.get(portal);
         const activePage = activePages.get(portal);
         if (!browserContext || !activePage) return;
@@ -452,11 +452,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         let portalIngested = 0;
         let portalFacts = 0;
 
-        for (const unit of units) {
-          if (mgr.isCancellationRequested()) {
-             plog("Run cancellation requested (stopping/aborted). Halting portal unit loop.", "warn");
-             break;
-          }
+        while (!mgr.isCancellationRequested()) {
+          const unit = mgr.nextPendingUnitForPortal(portal);
+          if (!unit) break;
 
           // Adaptive Novelty Scheduler: Skip query page if historical novelty rate is < 5% on this portal (after page 1)
           if (unit.page > 1 && !unit.variant?.postedWithinDays) {
@@ -482,9 +480,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             unit,
             browserContext,
             activePage,
-            seenCardKeys,
             seenUrls,
             seenCanonicalIds,
+            seenAtsUrls,
+            seenHeuristicKeys,
             plog,
             maxCardsPerPage,
             runScope ? { tenantId: runScope.tenantId, personId: runScope.personId } : undefined,
@@ -522,13 +521,14 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
       log(`Enqueued ${ingestedCount} cards for enrichment.`);
 
-      // Certification: Ensure no units are left running
-      const runningUnits = mgr.manifest.units.filter(u => u.status === "running");
-      if (runningUnits.length > 0) {
-        log(`CERTIFICATION FAILED: ${runningUnits.length} units are stuck in running state!`, "error");
+      // Certification: Ensure no units are left running or unexecuted
+      const runningUnits = mgr.runningUnits();
+      const pendingUnits = mgr.pendingUnits();
+      if (runningUnits.length > 0 || pendingUnits.length > 0) {
+        log(`CERTIFICATION FAILED: Incomplete work units detected (${runningUnits.length} running, ${pendingUnits.length} pending)!`, "error");
         mgr.manifest.status = "failed";
         mgr.finalize("failed");
-        if (runScope) await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "failed", "Certification failed: units remained running.");
+        if (runScope) await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "failed", `Certification failed: ${runningUnits.length} units running, ${pendingUnits.length} units pending.`);
         return { success: false, count: ingestedCount, runId: mgr.runId };
       }
 
@@ -657,9 +657,10 @@ async function processUnit(
   unit: WorkUnit,
   browserContext: any,
   activePage: any,
-  seenCardKeys: Set<string>,
   seenUrls: Set<string>,
   seenCanonicalIds: Set<string>,
+  seenAtsUrls: Set<string>,
+  seenHeuristicKeys: Set<string>,
   log: ReturnType<typeof makeLogger>,
   maxCardsPerPage?: number,
   lineageScope?: { tenantId: string; personId: string },
@@ -869,6 +870,7 @@ async function processUnit(
         });
 
         if (!preQual.pass) {
+          mgr.recordTelemetry("hardFiltered");
           mgr.updateCard(cardUnitId, { status: "skipped_empty", error: `[HardFilter:${preQual.reasonCode}] ${preQual.reason}` });
           return null;
         }
@@ -1014,36 +1016,14 @@ async function processUnit(
                   details: atsRes.fetchError || `Rejected by quality gate (${atsRes.qualityResult?.reasons?.join("; ") || "unsubstantive"})`
                 });
 
-                // Minimum candidate threshold: 200 chars for substantive evaluation
-                if (feedCard.rawText && feedCard.rawText.length >= 200) {
-                  acquisitionRoute = "DISCOVERY_FALLBACK_PARTIAL";
-                  detail = {
-                    fetched: true,
-                    rawHtml: feedCard.rawHtml,
-                    rawText: feedCard.rawText,
-                    fetchDurationMs: 0,
-                    httpStatus: 200,
-                  };
-                  acquisitionAttempts.push({
-                    method: "DISCOVERY_RICH",
-                    url: feedCard.detailUrl,
-                    timestamp: new Date().toISOString(),
-                    httpStatus: 200,
-                    outcome: "SUCCESS",
-                    qualityTier: feedCard.rawText.length >= 500 ? "VALID" : "SPARSE",
-                    extractionMethod: "FALLBACK_CARD",
-                    details: `Fallback retained discovery card text (${feedCard.rawText.length} chars)`
-                  });
-                } else {
-                  detail = {
-                    fetched: false,
-                    fetchError: `Insufficient description length (${feedCard.rawText?.length || 0} < 200 chars)`,
-                    rawHtml: feedCard.rawHtml || "",
-                    rawText: feedCard.rawText || "",
-                    fetchDurationMs: 0,
-                    httpStatus: 200,
-                  };
-                }
+                detail = {
+                  fetched: false,
+                  fetchError: `ATS enrichment failed: ${atsRes.fetchError || atsRes.outcome}`,
+                  rawHtml: feedCard.rawHtml || "",
+                  rawText: feedCard.rawText || "",
+                  fetchDurationMs: 0,
+                  httpStatus: atsRes.httpStatus || 200,
+                };
               }
             } 
             // Tier 3: Native Detail Acquisition (invoked for non-authoritative snippets, regardless of length)
@@ -1094,35 +1074,25 @@ async function processUnit(
                   extractionMethod: "TARGETED_DOM",
                   details: `Extracted ${portalDetail.rawText.length} chars via Naukri detail fetch`
                 });
-              } else if (feedCard.rawText && feedCard.rawText.length >= 200) {
-                // Minimum candidate threshold: 200 chars fallback to discovery card
-                acquisitionRoute = "DISCOVERY_QUICKAPPLY_PARTIAL";
-                detail = {
-                  fetched: true,
-                  rawHtml: feedCard.rawHtml,
-                  rawText: feedCard.rawText,
-                  fetchDurationMs: 0,
-                  httpStatus: 200,
-                };
-                acquisitionAttempts.push({
-                  method: "DISCOVERY_QUICKAPPLY",
-                  url: feedCard.detailUrl,
-                  timestamp: new Date().toISOString(),
-                  httpStatus: 200,
-                  outcome: "SUCCESS",
-                  qualityTier: feedCard.rawText.length >= 500 ? "VALID" : "SPARSE",
-                  extractionMethod: "FALLBACK_CARD",
-                  details: `In-portal quick-apply specification (${feedCard.rawText.length} chars)`
-                });
               } else {
+                log(`[Naukri] Detail fetch failed for ${feedCard.title} @ ${feedCard.company}; non-authoritative discovery snippet will NOT be admitted as canonical JD`);
                 detail = {
                   fetched: false,
-                  fetchError: portalDetail.fetchError || `Insufficient description length (${feedCard.rawText?.length || 0} < 200 chars)`,
-                  rawHtml: feedCard.rawHtml || "",
-                  rawText: feedCard.rawText || "",
+                  fetchError: portalDetail.fetchError || `Insufficient detail description length (${portalDetail.rawText?.length || 0} < 200 chars)`,
+                  rawHtml: portalDetail.rawHtml || feedCard.rawHtml || "",
+                  rawText: portalDetail.rawText || feedCard.rawText || "",
                   fetchDurationMs: portalDetail.fetchDurationMs || 0,
                   httpStatus: portalDetail.httpStatus || 200,
                 };
+                acquisitionAttempts.push({
+                  method: "PORTAL_DETAIL",
+                  url: feedCard.detailUrl,
+                  timestamp: new Date().toISOString(),
+                  httpStatus: portalDetail.httpStatus || 200,
+                  outcome: "EXTRACTION_FAILURE",
+                  qualityTier: "NON_JOB",
+                  details: `Detail fetch failed: ${detail.fetchError}`
+                });
               }
             }
           } else {
@@ -1300,7 +1270,8 @@ async function processUnit(
             extractedTitle: feedCard.title,
             documentTitle: detail.extractedTitle,
             extractedCompany: feedCard.company,
-            extractedDescription: detail.rawText
+            extractedDescription: detail.rawText,
+            contentOrigin: detail.fetched ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
           });
 
           if (!valResult.isValid || !detail.fetched) {
@@ -1351,18 +1322,30 @@ async function processUnit(
 
           // Post-Detail Company Resolution & Lineage Enforcement
           const rawCompany = (detail.extractedCompany || feedCard.company || "").trim();
-          const isConfidentialOrMissing = !rawCompany || /^(confidential|unknown|undisclosed|stealth|private)\b/i.test(rawCompany);
+          const cleanCompany = sanitizeCompanyName(
+            rawCompany,
+            feedCard.title || "",
+            detail.rawText || "",
+            feedCard.detailUrl
+          );
+          const sanitizedCompany = cleanCompany || rawCompany;
+          const isConfidentialOrMissing = !sanitizedCompany || /^(confidential|unknown|undisclosed|stealth|private)\b/i.test(sanitizedCompany);
 
           let effectiveCompany: string;
           let companyId: string;
 
           if (isConfidentialOrMissing) {
-            effectiveCompany = rawCompany || "Confidential Employer";
+            effectiveCompany = sanitizedCompany || "Confidential Employer";
             // Scoped surrogate company ID per opportunity to maintain entity lineage isolation
             companyId = `confidential:${unit.portal.toLowerCase()}:${feedCard.cardHash || ledgerItem.sourceJobId || ledgerItem.id}`;
           } else {
-            effectiveCompany = rawCompany;
+            effectiveCompany = sanitizedCompany;
             companyId = effectiveCompany.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+          }
+
+          if (!feedCard.title) {
+            mgr.updateCard(cardUnitId, { status: "failed", error: "Missing job title after detail extraction" });
+            return null;
           }
 
           feedCard.company = effectiveCompany;
@@ -1395,6 +1378,53 @@ async function processUnit(
             title: feedCard.title,
             companyName: effectiveCompany
           });
+
+          // Authoritative Post-Detail Duplicate Resolution Boundary
+          // 1. Reconcile canonical JobId ownership
+          if (resolvedIdentity.canonicalJobId !== identity.canonicalJobId) {
+            seenCanonicalIds.delete(identity.canonicalJobId);
+            if (seenCanonicalIds.has(resolvedIdentity.canonicalJobId)) {
+              mgr.recordTelemetry("duplicatePostDetail");
+              mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Canonical ID (Post-Detail)" });
+              outcome.duplicates++;
+              return null;
+            }
+            seenCanonicalIds.add(resolvedIdentity.canonicalJobId);
+          }
+
+          // 2. Reconcile canonical URL ownership
+          if (resolvedIdentity.canonicalUrl !== identity.canonicalUrl) {
+            seenUrls.delete(identity.canonicalUrl);
+            if (seenUrls.has(resolvedIdentity.canonicalUrl)) {
+              mgr.recordTelemetry("duplicatePostDetail");
+              mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Canonical URL (Post-Detail)" });
+              outcome.duplicates++;
+              return null;
+            }
+            seenUrls.add(resolvedIdentity.canonicalUrl);
+          }
+
+          // 3. Reconcile external ATS redirect URL if present
+          if (feedCard.applyRedirectUrl) {
+            const cleanAtsUrl = feedCard.applyRedirectUrl.split("?")[0].split("#")[0].toLowerCase().trim();
+            if (cleanAtsUrl && seenAtsUrls.has(cleanAtsUrl)) {
+              mgr.recordTelemetry("duplicatePostDetail");
+              mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate ATS URL (Post-Detail)" });
+              outcome.duplicates++;
+              return null;
+            }
+            if (cleanAtsUrl) seenAtsUrls.add(cleanAtsUrl);
+          }
+
+          // 4. Heuristic duplicate check (Strictly telemetry only - never suppresses admission!)
+          const heuristicKey = [feedCard.title, effectiveCompany, feedCard.location]
+            .map((s) => (s || "").toLowerCase().trim()).join("|");
+          if (seenHeuristicKeys.has(heuristicKey)) {
+            mgr.recordTelemetry("heuristicDuplicateSuspect");
+          } else {
+            seenHeuristicKeys.add(heuristicKey);
+          }
+
           // A sponsored observation can have entered the ledger under a
           // provisional URL identity. Canonical admission is rebased only
           // after a stable portal identity has been verified. The original
@@ -1543,8 +1573,8 @@ async function processUnit(
                 err?.name || "CANONICAL_INGEST_FAILURE",
                 detail.finalUrl,
               );
-              throw err;
             }
+            throw new Error(`[CanonicalIngestFailed] ${err.message}`);
           }
 
         } else {
@@ -1559,31 +1589,7 @@ async function processUnit(
         
         if (!detailedCard) return null;
 
-        const key = [detailedCard.title, detailedCard.company, detailedCard.location]
-          .map((s) => (s || "").toLowerCase().trim()).join("|");
-        if (seenCardKeys.has(key)) {
-          mgr.recordTelemetry("duplicatePostDetail");
-          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Content Hash (Post-Detail)" });
-          outcome.duplicates++;
-          return null;
-        }
-        seenCardKeys.add(key);
-
-        const cleanCompany = sanitizeCompanyName(
-          detailedCard.company, detailedCard.title || "",
-          detailedCard.rawText || "", detailedCard.detailUrl
-        );
-        if (!cleanCompany || !detailedCard.title) {
-          mgr.updateCard(cardUnitId, { status: "skipped_empty" });
-          return null;
-        }
-        
-        const filteredCard = {
-          ...detailedCard,
-          company: cleanCompany
-        } as import("./scraper/types").DetailedCard;
-
-        const payloadKey = `snapshots/${filteredCard.cardHash}.json`;
+        const payloadKey = `snapshots/${detailedCard.cardHash}.json`;
         try {
           const { getBlobStore } = await import("../src/lib/storage/blob-store");
           await getBlobStore().put(payloadKey, JSON.stringify(detailedCard), "application/json");
@@ -1596,7 +1602,7 @@ async function processUnit(
 
         await enrichmentQueue.enqueue(
           cardUnitId,
-          filteredCard.cardHash,
+          detailedCard.cardHash,
           snapshotPath,
           EXTRACTOR_VERSION, // pipeline version
           {
@@ -1637,6 +1643,7 @@ async function processUnit(
     };
     let identityFailed = 0;
     let validationFailed = 0;
+    let canonicalIngestFailed = 0;
     let novelAccepted = 0;
     let novelAcquired = 0;
     let cancelledOrPruned = 0;
@@ -1665,7 +1672,9 @@ async function processUnit(
         }
       } else if (cu.status === "failed") {
         const errStr = cu.error || "";
-        if (errStr.toLowerCase().includes("identity")) {
+        if (errStr.includes("[CanonicalIngestFailed]")) {
+          canonicalIngestFailed++;
+        } else if (errStr.toLowerCase().includes("identity")) {
           identityFailed++;
         } else {
           validationFailed++;
@@ -1687,10 +1696,10 @@ async function processUnit(
     }
     
     const cardsParsed = cards.length;
-    const classified = canonicalDuplicates + ledgerKnown + hardFiltered + identityFailed + validationFailed + novelAccepted + cancelledOrPruned;
+    const classified = canonicalDuplicates + ledgerKnown + hardFiltered + identityFailed + validationFailed + canonicalIngestFailed + novelAccepted + cancelledOrPruned;
     
     if (classified !== cardsParsed) {
-      log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, Ledger=${ledgerKnown}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, ValidationFailed=${validationFailed}, NovelAccepted=${novelAccepted}, CancelledPruned=${cancelledOrPruned})`, "warn");
+      log(`[AccountingInvariantViolation] cardsParsed=${cardsParsed}, classified=${classified} (Duplicates=${canonicalDuplicates}, Ledger=${ledgerKnown}, HardFiltered=${hardFiltered}, IdentityFailed=${identityFailed}, ValidationFailed=${validationFailed}, CanonicalIngestFailed=${canonicalIngestFailed}, NovelAccepted=${novelAccepted}, CancelledPruned=${cancelledOrPruned})`, "warn");
     }
     if (novelAcquired > novelAccepted) {
       log(`[AccountingInvariantViolation] novelAcquired (${novelAcquired}) > novelAccepted (${novelAccepted})`, "warn");
@@ -1698,7 +1707,7 @@ async function processUnit(
 
     const newJobs = novelAccepted;
     const duplicates = canonicalDuplicates;
-    const rejected = ledgerKnown + hardFiltered + identityFailed + validationFailed;
+    const rejected = ledgerKnown + hardFiltered + identityFailed + validationFailed + canonicalIngestFailed;
     const opportunities = novelAccepted;
     
     outcome.detailCount = novelAcquired;
@@ -1851,7 +1860,7 @@ async function processUnit(
       cardsSeen: cards.length,
       cardsParsed: cards.length,
       duplicates: canonicalDuplicates,
-      extractionErrors: identityFailed + validationFailed,
+      extractionErrors: identityFailed + validationFailed + canonicalIngestFailed,
       qualified: null,
       recommended: null,
       newCompanies: null,
