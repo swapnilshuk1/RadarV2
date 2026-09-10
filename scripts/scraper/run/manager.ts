@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { RUNS_DIR, SNAPSHOT_DIR, SEARCH_METRICS_NDJSON } from "../config";
 import {
   MANIFEST_VERSION,
@@ -30,7 +31,18 @@ export interface OwnerLock {
   startedAt: string;
 }
 
+export interface ExclusiveLockToken {
+  lockPath: string;
+  pid: number;
+  nonce: string;
+  runId?: string;
+  profileKey?: string;
+  startedAt: string;
+  [key: string]: unknown;
+}
+
 export function isProcessAlive(pid: number): boolean {
+  if (pid <= 0) return false;
   try {
     process.kill(pid, 0);
     return true;
@@ -39,43 +51,147 @@ export function isProcessAlive(pid: number): boolean {
   }
 }
 
-export function acquireOwnerLock(runDir: string, runId: string): OwnerLock {
-  const ownerPath = path.join(runDir, ".owner");
-  const maxRetries = 3;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const fd = fs.openSync(ownerPath, "wx");
-      const lockData: OwnerLock = {
-        pid: process.pid,
-        runId,
-        startedAt: new Date().toISOString(),
-      };
-      fs.writeFileSync(fd, JSON.stringify(lockData, null, 2), "utf-8");
-      fs.closeSync(fd);
-      return lockData;
-    } catch (err: any) {
-      if (err.code === "EEXIST") {
-        let existingLock: OwnerLock | null = null;
-        try {
-          existingLock = JSON.parse(fs.readFileSync(ownerPath, "utf-8"));
-        } catch {}
-        if (existingLock?.pid) {
-          if (isProcessAlive(existingLock.pid)) {
-            throw new Error(
-              `Cannot attach to run ${runId}: owning process PID ${existingLock.pid} is still alive. Refusing concurrent ownership.`
-            );
-          }
-        }
-        // Stale owner file (PID dead or unparseable). Unlink and retry.
-        try {
-          fs.unlinkSync(ownerPath);
-        } catch {}
-        continue;
-      }
-      throw err;
-    }
+export function acquireExclusiveLock(
+  lockPath: string,
+  ownerMetadata: { runId?: string; profileKey?: string; [key: string]: unknown },
+  deps: { isProcessAlive?: (pid: number) => boolean } = {}
+): ExclusiveLockToken {
+  const checkAlive = deps.isProcessAlive || isProcessAlive;
+  const nonce = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString("hex");
+  const lockData: ExclusiveLockToken = {
+    lockPath,
+    pid: process.pid,
+    nonce,
+    runId: ownerMetadata.runId,
+    profileKey: ownerMetadata.profileKey,
+    startedAt: new Date().toISOString(),
+    ...ownerMetadata,
+  };
+
+  const reclaimPath = `${lockPath}.reclaim`;
+  const dir = path.dirname(lockPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
-  throw new Error(`Failed to acquire owner lock for run ${runId} after ${maxRetries} attempts.`);
+
+  // Fast path: try to atomically create the primary lock
+  try {
+    const fd = fs.openSync(lockPath, "wx");
+    fs.writeFileSync(fd, JSON.stringify(lockData, null, 2), "utf-8");
+    fs.closeSync(fd);
+    return lockData;
+  } catch (err: any) {
+    if (err.code !== "EEXIST") throw err;
+  }
+
+  // Lock exists: read content with retry backoff for in-progress writes
+  let existingContent: string = "";
+  let existingLock: any = null;
+  const maxReadRetries = 5;
+  for (let r = 0; r < maxReadRetries; r++) {
+    try {
+      existingContent = fs.readFileSync(lockPath, "utf-8").trim();
+      if (existingContent.length > 0) {
+        existingLock = JSON.parse(existingContent);
+        break;
+      }
+    } catch {
+      // transient read or parse failure while writing
+    }
+    // backoff 50ms
+    const end = Date.now() + 50;
+    while (Date.now() < end) {}
+  }
+
+  if (!existingLock || typeof existingLock.pid !== "number") {
+    throw new Error(
+      `EXCLUSIVE_LOCK_CORRUPTED: Lock at ${lockPath} is empty or unparseable after retries. Refusing ownership to prevent collision; manual operator inspection required.`
+    );
+  }
+
+  if (checkAlive(existingLock.pid)) {
+    throw new Error(
+      `EXCLUSIVE_LOCK_ACTIVE: Cannot acquire lock at ${lockPath}: owning process PID ${existingLock.pid} (runId: ${existingLock.runId || "unknown"}) is still alive. Refusing concurrent ownership.`
+    );
+  }
+
+  // Dead PID detected! Enter Serialized Stale Reclaim Protocol.
+  // 1. Atomically acquire the reclaim mutex
+  let reclaimFd: number;
+  try {
+    reclaimFd = fs.openSync(reclaimPath, "wx");
+  } catch (reclaimErr: any) {
+    if (reclaimErr.code === "EEXIST") {
+      throw new Error(
+        `EXCLUSIVE_LOCK_RECLAIM_IN_PROGRESS: Another process is currently reclaiming stale lock at ${lockPath}. Concurrent reclaim rejected.`
+      );
+    }
+    throw reclaimErr;
+  }
+
+  try {
+    // 2. Reread the primary lock under the reclaim mutex to verify it still belongs to the same dead PID
+    let verifiedPrimary: any = null;
+    try {
+      const currentPrimaryStr = fs.readFileSync(lockPath, "utf-8").trim();
+      verifiedPrimary = JSON.parse(currentPrimaryStr);
+    } catch {}
+
+    if (
+      !verifiedPrimary ||
+      verifiedPrimary.pid !== existingLock.pid ||
+      (existingLock.nonce && verifiedPrimary.nonce !== existingLock.nonce)
+    ) {
+      throw new Error(
+        `EXCLUSIVE_LOCK_RECLAIM_RACED: Primary lock at ${lockPath} changed during stale reclaim attempt (expected PID ${existingLock.pid}). Reclaim aborted.`
+      );
+    }
+
+    // 3. Stale owner verified. Atomically replace: unlink stale primary and write new primary lock
+    try {
+      fs.unlinkSync(lockPath);
+    } catch {}
+
+    const fd = fs.openSync(lockPath, "wx");
+    fs.writeFileSync(fd, JSON.stringify(lockData, null, 2), "utf-8");
+    fs.closeSync(fd);
+    return lockData;
+  } finally {
+    // 4. Release the reclaim mutex
+    try {
+      fs.closeSync(reclaimFd);
+    } catch {}
+    try {
+      fs.unlinkSync(reclaimPath);
+    } catch {}
+  }
+}
+
+export function releaseExclusiveLock(token: ExclusiveLockToken): void {
+  if (!token || !token.lockPath) return;
+  try {
+    if (fs.existsSync(token.lockPath)) {
+      const content = fs.readFileSync(token.lockPath, "utf-8");
+      const current = JSON.parse(content);
+      if (current.pid === token.pid && current.nonce === token.nonce) {
+        fs.unlinkSync(token.lockPath);
+      }
+    }
+  } catch {}
+}
+
+export function acquireOwnerLock(
+  runDir: string,
+  runId: string,
+  deps: { isProcessAlive?: (pid: number) => boolean } = {}
+): OwnerLock {
+  const ownerPath = path.join(runDir, ".owner");
+  const token = acquireExclusiveLock(ownerPath, { runId }, deps);
+  return {
+    pid: token.pid,
+    runId: token.runId || runId,
+    startedAt: token.startedAt,
+  };
 }
 
 export function releaseOwnerLock(runDir: string, runId?: string): void {

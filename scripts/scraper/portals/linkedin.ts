@@ -309,6 +309,16 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           extractedCompany: httpRes.extractedCompany,
         };
       }
+      if (httpRes.failureClass === "RATE_LIMIT_429" || httpRes.failureClass === "BOT_CHALLENGE_BLOCK") {
+        ctx.logger?.(`[FastPath] Terminal anti-bot barrier (${httpRes.failureClass}) for ${url} — bubbling without browser fallback`);
+        return {
+          fetched: false,
+          fetchError: httpRes.fetchError,
+          fetchDurationMs: httpRes.fetchDurationMs,
+          httpStatus: httpRes.httpStatus,
+          failureClass: httpRes.failureClass,
+        };
+      }
       const reason = httpRes.fetchError?.includes("403") ? "403" : 
                     httpRes.fetchError?.includes("timeout") ? "Timeout" : "EmptyBody";
       ctx.recordHttpFailure?.(url, reason);
@@ -326,9 +336,48 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     const httpStatus = response?.status();
     const pageTitle = await page.title().catch(() => "");
     
-    // Some 404s might return 200 with a "Not Available" title
+    // Check for challenge, login wall, or 404
+    const isBot = /verify you are human|security check|authwall|challenge|cloudflare/i.test(pageTitle);
+    const isLogin = /sign in|log in/i.test(pageTitle);
     const isSoft404 = pageTitle.toLowerCase().includes("not available") || pageTitle.toLowerCase().includes("no longer available");
     const effectiveStatus = isSoft404 ? 404 : httpStatus;
+
+    if (isBot) {
+      return {
+        fetched: false,
+        fetchError: `Bot challenge encountered: ${pageTitle}`,
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: effectiveStatus,
+        failureClass: "BOT_CHALLENGE_BLOCK",
+      };
+    }
+    if (isLogin) {
+      return {
+        fetched: false,
+        fetchError: `Login required: ${pageTitle}`,
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: effectiveStatus,
+        failureClass: "LOGIN_REQUIRED",
+      };
+    }
+    if (effectiveStatus === 404) {
+      return {
+        fetched: false,
+        fetchError: "Job no longer available (404)",
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: 404,
+        failureClass: "REMOVED_404",
+      };
+    }
+    if (effectiveStatus === 429) {
+      return {
+        fetched: false,
+        fetchError: "Rate limited (429)",
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: 429,
+        failureClass: "RATE_LIMIT_429",
+      };
+    }
 
     await jitter(600, 1400);
     await page.locator('button[aria-label*="see more" i], .show-more-less-html__button').first().click({ timeout: 1500 }).catch(() => {});
@@ -357,6 +406,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         httpStatus: effectiveStatus,
         extractedTitle,
         extractedCompany,
+        failureClass: "EMPTY_CONTENT",
       };
     }
 
@@ -376,7 +426,13 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       extractedCompany,
     };
   } catch (err: any) {
-    return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
+    const isTimeout = err.name === "TimeoutError" || /timeout/i.test(err.message);
+    return {
+      fetched: false,
+      fetchError: err.message,
+      fetchDurationMs: Date.now() - t0,
+      failureClass: isTimeout ? "NAVIGATION_TIMEOUT" : "CONNECTION_ERROR",
+    };
   } finally {
     await page.close().catch(() => {});
   }

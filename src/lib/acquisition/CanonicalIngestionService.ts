@@ -75,7 +75,7 @@ export interface IngestOpportunityPayload {
 
 export interface EnrichmentDispatchPayload {
   detailedCard?: any;
-  pipelineVersion?: string;
+  pipelineVersion: string;
   runId?: string;
   executionPlanId?: string;
   definitionId?: string;
@@ -98,17 +98,7 @@ export type IngestScope =
       tenantId: string;
       personId: string;
       searchPlanId: string;
-      runId?: string;
-    };
-
-export type IngestScopeFilter =
-  | IngestScope
-  | {
-      tenantId?: string;
-      personId?: string;
-      searchPlanId?: string;
-      runId?: string;
-      mode?: "GLOBAL_MARKET" | "SCOPED";
+      runId: string;
     };
 
 export interface CanonicalIngestionResult {
@@ -153,6 +143,8 @@ export class UnusableAcquisitionDocumentError extends Error {
   }
 }
 
+export { computeContentHash, computeCanonicalJobId, computeOpportunityVersionId } from "@/lib/domain/canonical_identity";
+
 export class AcquisitionIntegrityError extends Error {
   readonly failureKind: "INTEGRITY_FAILURE" = "INTEGRITY_FAILURE";
   constructor(message: string, public readonly cause?: unknown) {
@@ -170,19 +162,52 @@ export class CanonicalIngestionService {
 
   public async ingestOpportunity(
     payload: IngestOpportunityPayload,
-    scopeFilter?: IngestScopeFilter
+    scope: IngestScope = { mode: "GLOBAL_MARKET" }
   ): Promise<CanonicalIngestionResult> {
     // Scope Validation (Fail-closed early boundary)
-    const hasTenant = Boolean(scopeFilter && "tenantId" in scopeFilter && scopeFilter.tenantId);
-    const hasPerson = Boolean(scopeFilter && "personId" in scopeFilter && scopeFilter.personId);
-    const hasPlan = Boolean(scopeFilter && "searchPlanId" in scopeFilter && scopeFilter.searchPlanId);
-    const isExplicitGlobal = scopeFilter?.mode === "GLOBAL_MARKET";
-    const isFullyScoped = hasTenant && hasPerson && hasPlan && scopeFilter?.mode !== "GLOBAL_MARKET";
+    let effectiveScope: { mode: "GLOBAL_MARKET"; runId?: string } | { mode: "SCOPED"; tenantId: string; personId: string; searchPlanId: string; runId?: string };
 
-    if (scopeFilter && !isExplicitGlobal && !isFullyScoped) {
-      throw new AcquisitionIntegrityError(
-        `PARTIAL_SCOPE_REJECTED: Acquisition scope must be either fully qualified (tenantId, personId, searchPlanId) or explicit GLOBAL_MARKET mode. Received: tenantId=${(scopeFilter as any)?.tenantId}, personId=${(scopeFilter as any)?.personId}, searchPlanId=${(scopeFilter as any)?.searchPlanId}`
-      );
+    if (!scope || (typeof scope === "object" && Object.keys(scope).length === 0)) {
+      effectiveScope = { mode: "GLOBAL_MARKET" };
+    } else if ("mode" in scope) {
+      if (scope.mode === "GLOBAL_MARKET") {
+        if ((scope as any).tenantId || (scope as any).personId || (scope as any).searchPlanId) {
+          throw new AcquisitionIntegrityError(
+            "MALFORMED_SCOPE_REJECTED: GLOBAL_MARKET scope must not include tenantId, personId, or searchPlanId."
+          );
+        }
+        effectiveScope = scope;
+      } else if (scope.mode === "SCOPED") {
+        if (!scope.tenantId || !scope.personId || !scope.searchPlanId || !scope.runId) {
+          throw new AcquisitionIntegrityError(
+            `PARTIAL_SCOPE_REJECTED: SCOPED mode requires tenantId, personId, searchPlanId, and runId.`
+          );
+        }
+        effectiveScope = scope;
+      } else {
+        throw new AcquisitionIntegrityError(
+          `MALFORMED_SCOPE_REJECTED: Invalid scope mode '${(scope as any).mode}'.`
+        );
+      }
+    } else {
+      // Legacy scope object without explicit "mode"
+      const anyScope = scope as any;
+      if (anyScope.tenantId || anyScope.personId || anyScope.searchPlanId || anyScope.runId) {
+        if (!anyScope.tenantId || !anyScope.personId || !anyScope.searchPlanId) {
+          throw new AcquisitionIntegrityError(
+            `PARTIAL_SCOPE_REJECTED: Scope requires tenantId, personId, and searchPlanId.`
+          );
+        }
+        effectiveScope = {
+          mode: "SCOPED",
+          tenantId: anyScope.tenantId,
+          personId: anyScope.personId,
+          searchPlanId: anyScope.searchPlanId,
+          runId: anyScope.runId,
+        };
+      } else {
+        effectiveScope = { mode: "GLOBAL_MARKET" };
+      }
     }
 
     const source = payload.sourcePortal.trim();
@@ -217,7 +242,7 @@ export class CanonicalIngestionService {
       expectedTitle: title,
       extractedCompany: companyName || undefined,
       extractedLocation: location || undefined,
-      contentOrigin: payload.contentOrigin || "DETAIL_DOCUMENT",
+      contentOrigin: payload.contentOrigin,
       provenance: "BLOB",
     });
     const document = documentValidation.document;
@@ -255,11 +280,47 @@ export class CanonicalIngestionService {
     let sourcePayloadKey: string | null = null;
     let sourceMediaType: string | null = null;
 
-    if (payload.enrichmentDispatch?.detailedCard) {
-      const enrichmentPayloadKey = `acquisition/${canonicalJobId}/${versionId}/snapshot.json`;
+    const isUsableDocument = document.usabilityState !== "UNUSABLE";
+    if (isUsableDocument && payload.enrichmentDispatch) {
+      if (!payload.enrichmentDispatch?.detailedCard) {
+        throw new AcquisitionIntegrityError("MISSING_ENRICHMENT_PAYLOAD: Usable canonical opportunity requires an enrichment detailedCard.");
+      }
+      if (!payload.enrichmentDispatch?.pipelineVersion) {
+        throw new AcquisitionIntegrityError("MISSING_PIPELINE_VERSION: Usable canonical opportunity requires an explicit enrichment pipelineVersion.");
+      }
+
       const detailedCard = payload.enrichmentDispatch.detailedCard;
+      const snapshotRawContent = (detailedCard.detail?.rawText || detailedCard.card?.rawText || "").trim();
+      const snapshotTitle = (detailedCard.detail?.extractedTitle || detailedCard.title || "").trim();
+      const snapshotCompany = (detailedCard.detail?.extractedCompany || detailedCard.company || null)?.trim() || null;
+      const snapshotLocation = detailedCard.location || null;
+      const snapshotEmploymentType = detailedCard.employmentType || null;
+
+      const snapshotContentHash = computeContentHash({
+        title: snapshotTitle,
+        companyName: snapshotCompany,
+        location: snapshotLocation,
+        employmentType: snapshotEmploymentType,
+        rawContent: snapshotRawContent,
+      });
+
+      if (snapshotContentHash !== contentHash) {
+        throw new AcquisitionIntegrityError(
+          `CANONICAL_ENRICHMENT_PAYLOAD_MISMATCH: Snapshot material content hash (${snapshotContentHash}) does not match canonical document hash (${contentHash})`
+        );
+      }
+
+      // Ensure the snapshot payload is explicitly bound to the authoritative canonical material
+      if (detailedCard.detail) {
+        detailedCard.detail.rawText = rawContent;
+      }
+      detailedCard.title = title;
+      detailedCard.company = companyName;
+      detailedCard.location = location;
+      detailedCard.employmentType = employmentType;
       detailedCard.canonicalJobId = canonicalJobId;
       detailedCard.opportunityVersion = versionId;
+      const enrichmentPayloadKey = `acquisition/${canonicalJobId}/${versionId}/snapshot.json`;
       detailedCard.evaluationEvidence = {
         canonicalJobId,
         opportunityVersion: versionId,
@@ -267,13 +328,40 @@ export class CanonicalIngestionService {
         sourcePayloadKey: enrichmentPayloadKey,
         sourceMediaType: "application/json",
       };
+
       // Fail-safe sequencing: BlobStore write occurs BEFORE the DB transaction.
       // If BlobStore write fails, nothing durable is admitted in the database.
-      // Immutable payload protection: do not overwrite an existing snapshot on canonical-version reuse.
+      // Immutable payload protection: verify existing snapshot content identity; fail closed on conflict.
       const store = this.blobStore || getBlobStore();
       try {
         const exists = await store.exists(enrichmentPayloadKey);
-        if (!exists) {
+        if (exists) {
+          const existingBytes = await store.get(enrichmentPayloadKey);
+          if (!existingBytes) {
+            throw new AcquisitionIntegrityError(`Existing snapshot payload key '${enrichmentPayloadKey}' exists but returned null content`);
+          }
+          const existingStr = Buffer.from(existingBytes).toString("utf-8");
+          const existingParsed = JSON.parse(existingStr);
+          const existingRawContent = (existingParsed.detail?.rawText || existingParsed.card?.rawText || "").trim();
+          const existingTitle = (existingParsed.detail?.extractedTitle || existingParsed.title || "").trim();
+          const existingCompany = (existingParsed.detail?.extractedCompany || existingParsed.company || null)?.trim() || null;
+          const existingLocation = existingParsed.location || null;
+          const existingEmploymentType = existingParsed.employmentType || null;
+
+          const existingHash = computeContentHash({
+            title: existingTitle,
+            companyName: existingCompany,
+            location: existingLocation,
+            employmentType: existingEmploymentType,
+            rawContent: existingRawContent,
+          });
+
+          if (existingHash !== contentHash) {
+            throw new AcquisitionIntegrityError(
+              `IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT: Existing BlobStore payload at ${enrichmentPayloadKey} has hash ${existingHash}, but canonical opportunity has hash ${contentHash}`
+            );
+          }
+        } else {
           await store.put(
             enrichmentPayloadKey,
             JSON.stringify(detailedCard),
@@ -281,6 +369,7 @@ export class CanonicalIngestionService {
           );
         }
       } catch (err) {
+        if (err instanceof AcquisitionIntegrityError) throw err;
         throw new AcquisitionIntegrityError(
           `Failed to write immutable enrichment snapshot to BlobStore for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
           err
@@ -362,29 +451,22 @@ export class CanonicalIngestionService {
 
 
       try {
-        if (isExplicitGlobal) {
+        if (effectiveScope.mode === "GLOBAL_MARKET") {
           activePlans = [];
         } else {
-          let planQuery = `
-            SELECT sp.id, sp.tenant_id, sp.person_id, sp.criteria_json 
-            FROM search_plans sp
-            JOIN people p ON sp.person_id = p.id AND sp.tenant_id = p.tenant_id
-            JOIN tenants t ON sp.tenant_id = t.id
-            WHERE sp.status = 'active'
-          `;
-          const planParams: unknown[] = [];
-
-          if (isFullyScoped) {
-            planQuery += ` AND sp.tenant_id = ? AND sp.person_id = ? AND sp.id = ?`;
-            planParams.push((scopeFilter as any).tenantId, (scopeFilter as any).personId, (scopeFilter as any).searchPlanId);
-          }
-
           activePlans = await this.db.many<{
             id: string;
             tenant_id: string;
             person_id: string;
             criteria_json: string | null;
-          }>(planQuery, planParams);
+          }>(
+            `SELECT sp.id, sp.tenant_id, sp.person_id, sp.criteria_json 
+             FROM search_plans sp
+             JOIN people p ON sp.person_id = p.id AND sp.tenant_id = p.tenant_id
+             JOIN tenants t ON sp.tenant_id = t.id
+             WHERE sp.status = 'active' AND sp.tenant_id = ? AND sp.person_id = ? AND sp.id = ?`,
+            [effectiveScope.tenantId, effectiveScope.personId, effectiveScope.searchPlanId]
+          );
         }
 
         await this.db.transaction(async (tx) => {
@@ -451,15 +533,20 @@ export class CanonicalIngestionService {
 
       // 3.2.2 Derive single trusted verifiedRunId for all canonical run references
       let verifiedRunId: string | null = null;
-      if (isFullyScoped && scopeFilter && "runId" in scopeFilter && scopeFilter.runId) {
-        const runRow = await tx.one<{ id: string }>(
-          `SELECT id FROM scrape_runs
+      if (effectiveScope.mode === "SCOPED" && effectiveScope.runId) {
+        const runRow = await tx.one<{ id: string; status: string }>(
+          `SELECT id, status FROM scrape_runs
            WHERE id = ? AND tenant_id = ? AND person_id = ? AND search_plan_id = ?`,
-          [scopeFilter.runId, (scopeFilter as any).tenantId, (scopeFilter as any).personId, (scopeFilter as any).searchPlanId]
+          [effectiveScope.runId, effectiveScope.tenantId, effectiveScope.personId, effectiveScope.searchPlanId]
         );
         if (!runRow) {
           throw new AcquisitionIntegrityError(
-            `RUN_SCOPE_MISMATCH: Scrape run '${scopeFilter.runId}' does not belong to scope (${(scopeFilter as any).tenantId}, ${(scopeFilter as any).personId}, ${(scopeFilter as any).searchPlanId})`
+            `RUN_SCOPE_MISMATCH: Scrape run '${effectiveScope.runId}' does not belong to scope (${effectiveScope.tenantId}, ${effectiveScope.personId}, ${effectiveScope.searchPlanId})`
+          );
+        }
+        if (runRow.status !== "running") {
+          throw new AcquisitionIntegrityError(
+            `RUN_STATUS_INVALID: Scrape run '${effectiveScope.runId}' is in status '${runRow.status}', but canonical admission requires 'running'.`
           );
         }
         verifiedRunId = runRow.id;
@@ -470,7 +557,7 @@ export class CanonicalIngestionService {
       let enrichmentJobStatus: string | null = null;
 
       if (payload.enrichmentDispatch) {
-        const pipelineVersion = payload.enrichmentDispatch.pipelineVersion || "1.0.0";
+        const pipelineVersion = payload.enrichmentDispatch.pipelineVersion;
         const payloadKey = `acquisition/${canonicalJobId}/${effectiveVersionId}/snapshot.json`;
 
         const existingJob = await tx.one<{ id: string; status: string }>(

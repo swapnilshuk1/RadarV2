@@ -14,6 +14,8 @@ const agent = new Agent({
   connections: 50,
 });
 
+import type { FailureClass } from "../../../src/lib/acquisition/failure-taxonomy";
+
 export interface HttpFetchResult {
   fetched: boolean;
   rawHtml?: string;
@@ -27,6 +29,7 @@ export interface HttpFetchResult {
   qualityTier?: ContentQualityTier;
   extractionMethod?: "JSON_LD" | "TARGETED_DOM" | "SANITIZED_DOM" | "FALLBACK_CARD";
   qualityResult?: ContentQualityResult;
+  failureClass?: FailureClass;
 }
 
 const NON_JOB_BOILERPLATE_PATTERNS = [
@@ -471,110 +474,108 @@ export async function fastFetchDetail(
     ...(customHeaders || {})
   };
 
-  while (attempts < 3) {
-    attempts++;
-    try {
-      const { statusCode, body } = await request(url, {
-        dispatcher: agent,
-        headers,
-      });
+  try {
+    const { statusCode, body } = await request(url, {
+      dispatcher: agent,
+      headers,
+    });
 
-      if (statusCode === 429) {
-        if (attempts < 3) {
-          await new Promise((r) => setTimeout(r, (attempts * 1000) + Math.random() * 500));
-          continue;
-        }
-        return {
-          fetched: false,
-          fetchError: "HTTP 429 (Rate limited)",
-          fetchDurationMs: Date.now() - t0,
-          httpStatus: 429,
-          outcome: "ANTI_BOT"
-        };
-      }
-
-      if (statusCode === 401 || statusCode === 403) {
-        return {
-          fetched: false,
-          fetchError: `HTTP ${statusCode} (Forbidden / Auth Wall)`,
-          fetchDurationMs: Date.now() - t0,
-          httpStatus: statusCode,
-          outcome: "AUTH_ERROR"
-        };
-      }
-
-      if (statusCode >= 500) {
-        if (attempts < 3) {
-          await new Promise((r) => setTimeout(r, (attempts * 1000) + Math.random() * 500));
-          continue;
-        }
-        return {
-          fetched: false,
-          fetchError: `HTTP ${statusCode} (Server Error)`,
-          fetchDurationMs: Date.now() - t0,
-          httpStatus: statusCode,
-          outcome: "TRANSPORT_ERROR"
-        };
-      }
-
-      if (statusCode < 200 || statusCode >= 400) {
-        return {
-          fetched: false,
-          fetchError: `HTTP ${statusCode}`,
-          fetchDurationMs: Date.now() - t0,
-          httpStatus: statusCode,
-          outcome: "TRANSPORT_ERROR"
-        };
-      }
-
-      const html = await body.text();
-      const extracted = extractJobFromHtml(html, requiredSelector, textSelector, expectedTitle, expectedCompany);
-
-      if (!extracted.success) {
-        return {
-          fetched: false,
-          fetchError: extracted.error,
-          fetchDurationMs: Date.now() - t0,
-          httpStatus: statusCode,
-          outcome: extracted.outcome,
-          qualityTier: extracted.quality.tier,
-          qualityResult: extracted.quality,
-          extractionMethod: extracted.method
-        };
-      }
-
-      return {
-        fetched: true,
-        rawHtml: extracted.rawHtml,
-        rawText: extracted.rawText,
-        extractedTitle: extracted.extractedTitle,
-        extractedCompany: extracted.extractedCompany,
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: statusCode,
-        outcome: "SUCCESS",
-        qualityTier: extracted.quality.tier,
-        qualityResult: extracted.quality,
-        extractionMethod: extracted.method
-      };
-    } catch (err: any) {
-      if (attempts < 3 && err.code && (err.code === "ECONNRESET" || err.code === "ETIMEDOUT")) {
-        await new Promise((r) => setTimeout(r, (attempts * 1000) + Math.random() * 500));
-        continue;
-      }
-      const isTimeout = err.name === "TimeoutError" || err.code === "ETIMEDOUT";
+    if (statusCode === 429) {
       return {
         fetched: false,
-        fetchError: err.message,
+        fetchError: "HTTP 429 (Rate limited)",
         fetchDurationMs: Date.now() - t0,
-        outcome: isTimeout ? "TIMEOUT" : "TRANSPORT_ERROR"
+        httpStatus: 429,
+        outcome: "ANTI_BOT",
+        failureClass: "RATE_LIMIT_429",
       };
     }
-  }
 
-  return {
-    fetched: false,
-    fetchError: "Max retries exceeded",
-    fetchDurationMs: Date.now() - t0,
-    outcome: "TRANSPORT_ERROR"
-  };
+    if (statusCode === 401 || statusCode === 403) {
+      let errBody = "";
+      try { errBody = await body.text(); } catch {}
+      const isBotChallenge = /verify you are human|attention required! \| cloudflare|cf-chl|challenge-form|recaptcha|bot detection/i.test(errBody);
+      return {
+        fetched: false,
+        fetchError: `HTTP ${statusCode} (${isBotChallenge ? "Bot Challenge" : "Access Denied"})`,
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: statusCode,
+        outcome: isBotChallenge ? "ANTI_BOT" : "AUTH_ERROR",
+        failureClass: isBotChallenge ? "BOT_CHALLENGE_BLOCK" : "FASTPATH_ACCESS_DENIED",
+      };
+    }
+
+    if (statusCode === 404) {
+      return {
+        fetched: false,
+        fetchError: "HTTP 404 (Not Found)",
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: 404,
+        outcome: "EXTRACTION_FAILURE",
+        failureClass: "REMOVED_404",
+      };
+    }
+
+    if (statusCode >= 500) {
+      return {
+        fetched: false,
+        fetchError: `HTTP ${statusCode} (Server Error)`,
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: statusCode,
+        outcome: "TRANSPORT_ERROR",
+        failureClass: "HTTP_SERVER_ERROR",
+      };
+    }
+
+    if (statusCode < 200 || statusCode >= 400) {
+      return {
+        fetched: false,
+        fetchError: `HTTP ${statusCode}`,
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: statusCode,
+        outcome: "TRANSPORT_ERROR",
+        failureClass: "UNKNOWN_FAILURE",
+      };
+    }
+
+    const html = await body.text();
+    const extracted = extractJobFromHtml(html, requiredSelector, textSelector, expectedTitle, expectedCompany);
+
+    if (!extracted.success) {
+      return {
+        fetched: false,
+        fetchError: extracted.error,
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: statusCode,
+        outcome: extracted.outcome,
+        qualityTier: extracted.quality.tier,
+        qualityResult: extracted.quality,
+        extractionMethod: extracted.method,
+        failureClass: extracted.quality.tier === "SPARSE" ? "INSUFFICIENT_CONTENT" : "EMPTY_CONTENT",
+      };
+    }
+
+    return {
+      fetched: true,
+      rawHtml: extracted.rawHtml,
+      rawText: extracted.rawText,
+      extractedTitle: extracted.extractedTitle,
+      extractedCompany: extracted.extractedCompany,
+      fetchDurationMs: Date.now() - t0,
+      httpStatus: statusCode,
+      outcome: "SUCCESS",
+      qualityTier: extracted.quality.tier,
+      qualityResult: extracted.quality,
+      extractionMethod: extracted.method
+    };
+  } catch (err: any) {
+    const isTimeout = err.name === "TimeoutError" || err.code === "ETIMEDOUT";
+    return {
+      fetched: false,
+      fetchError: err.message,
+      fetchDurationMs: Date.now() - t0,
+      outcome: isTimeout ? "TIMEOUT" : "TRANSPORT_ERROR",
+      failureClass: isTimeout ? "HTTP_TIMEOUT" : "CONNECTION_ERROR",
+    };
+  }
 }

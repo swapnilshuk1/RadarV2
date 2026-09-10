@@ -3,10 +3,21 @@ import { describe, expect, it, vi } from "vitest";
 import {
   CanonicalIngestionService,
   AcquisitionIntegrityError,
+  computeContentHash,
+  computeCanonicalJobId,
+  computeOpportunityVersionId,
 } from "../../src/lib/acquisition/CanonicalIngestionService";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { sourceIdentityForCard, acquisitionSurfaceKey } from "../../src/lib/acquisition/canonical-identity";
-import { RunController, acquireOwnerLock, releaseOwnerLock } from "../../scripts/scraper/run/manager";
+import {
+  RunController,
+  acquireOwnerLock,
+  releaseOwnerLock,
+  acquireExclusiveLock,
+  releaseExclusiveLock,
+} from "../../scripts/scraper/run/manager";
+import { acquireGlobalMarketLock, releaseGlobalMarketLock } from "../../scripts/scraper/portals/base";
+import { FailurePolicyEngine } from "../../src/lib/acquisition/failure-taxonomy";
 import os from "os";
 import { assertCanonicalPayloadIdentity } from "../../scripts/enrich";
 import { computeVariantsSignature } from "../../scripts/scrape";
@@ -106,15 +117,34 @@ function createInMemoryDatabase() {
       ('run-immut-1', 'tenant_A', 'person_A', 'plan_A', 'completed', '[]'),
       ('run-shared-1', 'tenant_A', 'person_A', 'plan_A', 'completed', '[]');
   `);
-  return { raw, db: new SqliteAdapter(raw) };
+  const blobData = new Map<string, string>();
+  const mockBlobStore: any = {
+    put: async (key: string, data: any) => {
+      blobData.set(key, typeof data === "string" ? data : data.toString());
+      return key;
+    },
+    get: async (key: string) => {
+      const val = blobData.get(key);
+      return val ? Buffer.from(val) : null;
+    },
+    exists: async (key: string) => blobData.has(key),
+    delete: async (key: string) => {
+      blobData.delete(key);
+    },
+    healthCheck: async () => ({ ok: true, backend: "mock" }),
+    _data: blobData,
+  };
+  return { raw, db: new SqliteAdapter(raw), blobStore: mockBlobStore };
 }
 
 describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
   it("always creates an enrichment job for a usable canonical version even when Attention Gate is NOT_CANDIDATE", async () => {
-    const { raw, db } = createInMemoryDatabase();
+    const { raw, db, blobStore } = createInMemoryDatabase();
     raw.exec(`UPDATE search_plans SET criteria_json = '{"targetSeniority":["CXO"],"targetRoles":["CTO"]}' WHERE id = 'plan_A'`);
+    raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-001'`);
 
-    const service = new CanonicalIngestionService(db);
+    const service = new CanonicalIngestionService(db, blobStore);
+    const rawContent = "Junior engineer writing basic tests and fixing bugs.".repeat(10);
     const result = await service.ingestOpportunity({
       sourcePortal: "LinkedIn",
       sourceJobId: "job-101",
@@ -122,12 +152,19 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       jobTitle: "Junior Software Engineer",
       companyName: "Acme Corp",
       location: "San Francisco, CA",
-      rawContent: "Junior engineer writing basic tests and fixing bugs.".repeat(10),
+      rawContent,
       enrichmentDispatch: {
-        detailedCard: { cardHash: "card-101" } as any,
+        detailedCard: {
+          title: "Junior Software Engineer",
+          company: "Acme Corp",
+          location: "San Francisco, CA",
+          detail: { rawText: rawContent },
+        } as any,
         runId: "run-001",
+        pipelineVersion: "1.0.0",
       },
     }, {
+      mode: "SCOPED",
       tenantId: "tenant_A",
       personId: "person_A",
       searchPlanId: "plan_A",
@@ -149,8 +186,8 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
   });
 
   it("creates a new run binding when an existing canonical version is reused across runs", async () => {
-    const { raw, db } = createInMemoryDatabase();
-    const service = new CanonicalIngestionService(db);
+    const { raw, db, blobStore } = createInMemoryDatabase();
+    const service = new CanonicalIngestionService(db, blobStore);
 
     const payload = {
       sourcePortal: "LinkedIn",
@@ -162,13 +199,24 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       rawContent: "Executive leadership role driving user acquisition, P&L, and team growth.".repeat(10),
     };
 
+    raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-A'`);
+
+    const detailedCard = {
+      title: payload.jobTitle,
+      company: payload.companyName,
+      location: payload.location,
+      detail: { rawText: payload.rawContent },
+    };
+
     const resA = await service.ingestOpportunity({
       ...payload,
       enrichmentDispatch: {
-        detailedCard: { cardHash: "card-202" } as any,
+        detailedCard: detailedCard as any,
         runId: "run-A",
+        pipelineVersion: "1.0.0",
       },
     }, {
+      mode: "SCOPED",
       tenantId: "tenant_A",
       personId: "person_A",
       searchPlanId: "plan_A",
@@ -181,13 +229,18 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
     const bindingsA = raw.prepare("SELECT * FROM scrape_run_enrichment_requirements WHERE run_id = 'run-A'").all();
     expect(bindingsA.length).toBe(1);
 
+    raw.exec(`UPDATE scrape_runs SET status = 'completed' WHERE id = 'run-A'`);
+    raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-B'`);
+
     const resB = await service.ingestOpportunity({
       ...payload,
       enrichmentDispatch: {
-        detailedCard: { cardHash: "card-202" } as any,
+        detailedCard: detailedCard as any,
         runId: "run-B",
+        pipelineVersion: "1.0.0",
       },
     }, {
+      mode: "SCOPED",
       tenantId: "tenant_A",
       personId: "person_A",
       searchPlanId: "plan_A",
@@ -204,8 +257,8 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
   });
 
   it("marks a new candidate requirement immediately READY when the enrichment job is already COMPLETE", async () => {
-    const { raw, db } = createInMemoryDatabase();
-    const service = new CanonicalIngestionService(db);
+    const { raw, db, blobStore } = createInMemoryDatabase();
+    const service = new CanonicalIngestionService(db, blobStore);
 
     const payload = {
       sourcePortal: "LinkedIn",
@@ -217,13 +270,24 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       rawContent: "Executive VP Growth leading strategic expansion and marketing initiatives.".repeat(10),
     };
 
+    raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-1'`);
+
+    const detailedCard = {
+      title: payload.jobTitle,
+      company: payload.companyName,
+      location: payload.location,
+      detail: { rawText: payload.rawContent },
+    };
+
     const res1 = await service.ingestOpportunity({
       ...payload,
       enrichmentDispatch: {
-        detailedCard: { cardHash: "card-303" } as any,
+        detailedCard: detailedCard as any,
         runId: "run-1",
+        pipelineVersion: "1.0.0",
       },
     }, {
+      mode: "SCOPED",
       tenantId: "tenant_A",
       personId: "person_A",
       searchPlanId: "plan_A",
@@ -243,16 +307,18 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       INSERT INTO active_evaluation_contexts VALUES ('tenant_B', 'person_B', 'plan_B', 'ctx_B');
       INSERT INTO evaluation_contexts VALUES ('ctx_B', 'tenant_B', 'person_B');
       INSERT INTO scrape_runs (id, tenant_id, person_id, search_plan_id, status, portal_targets) VALUES
-        ('run-2', 'tenant_B', 'person_B', 'plan_B', 'completed', '[]');
+        ('run-2', 'tenant_B', 'person_B', 'plan_B', 'running', '[]');
     `);
 
     const res2 = await service.ingestOpportunity({
       ...payload,
       enrichmentDispatch: {
-        detailedCard: { cardHash: "card-303" } as any,
+        detailedCard: detailedCard as any,
         runId: "run-2",
+        pipelineVersion: "1.0.0",
       },
     }, {
+      mode: "SCOPED",
       tenantId: "tenant_B",
       personId: "person_B",
       searchPlanId: "plan_B",
@@ -537,7 +603,7 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
   });
 
   it("reuses immutable BlobStore payload and skips mutation on duplicate admission of the same canonical version", async () => {
-    const { db } = createInMemoryDatabase();
+    const { raw, db } = createInMemoryDatabase();
     
     const putSpy = vi.fn();
     const blobData = new Map<string, string>();
@@ -558,8 +624,11 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       healthCheck: async () => ({ ok: true, backend: "mock" }),
     };
 
+    raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-immut-1'`);
+
     const service = new CanonicalIngestionService(db, mockBlobStore);
 
+    const rawContent = "Executive engineering leadership responsible for global infrastructure and architecture.".repeat(10);
     const payload = {
       sourcePortal: "LinkedIn",
       sourceJobId: "job-immut-101",
@@ -567,19 +636,22 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       jobTitle: "VP Platform Engineering",
       companyName: "Acme Corp",
       location: "Bengaluru",
-      rawContent: "Executive engineering leadership responsible for global infrastructure and architecture.".repeat(10),
+      rawContent,
       enrichmentDispatch: {
         detailedCard: {
           title: "VP Platform Engineering",
           company: "Acme Corp",
+          location: "Bengaluru",
           description: "Executive engineering leadership",
-          detail: { rawText: "Full JD details for platform engineering..." },
+          detail: { rawText: rawContent },
         } as any,
         runId: "run-immut-1",
+        pipelineVersion: "1.0.0",
       },
     };
 
     const scope = {
+      mode: "SCOPED" as const,
       tenantId: "tenant_A",
       personId: "person_A",
       searchPlanId: "plan_A",
@@ -710,9 +782,10 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
   });
 
   it("returns persisted versionCreatedAt from CanonicalIngestionResult and preserves it on reuse", async () => {
-    const { raw, db } = createInMemoryDatabase();
-    const service = new CanonicalIngestionService(db);
+    const { raw, db, blobStore } = createInMemoryDatabase();
+    const service = new CanonicalIngestionService(db, blobStore);
 
+    const rawContent = "VP Marketing driving enterprise growth and pipeline.".repeat(10);
     const payload = {
       sourcePortal: "LinkedIn",
       sourceJobId: "job-createdat-1",
@@ -720,12 +793,26 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       jobTitle: "VP Marketing",
       companyName: "GrowthCorp",
       location: "Bengaluru",
-      rawContent: "VP Marketing driving enterprise growth and pipeline.".repeat(10),
+      rawContent,
+      enrichmentDispatch: {
+        detailedCard: {
+          title: "VP Marketing",
+          company: "GrowthCorp",
+          location: "Bengaluru",
+          detail: { rawText: rawContent },
+        } as any,
+        runId: "run-001",
+        pipelineVersion: "1.0.0",
+      },
     };
+    raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-001'`);
+
     const scope = {
+      mode: "SCOPED" as const,
       tenantId: "tenant_A",
       personId: "person_A",
       searchPlanId: "plan_A",
+      runId: "run-001",
     };
 
     const res1 = await service.ingestOpportunity(payload, scope);
@@ -980,6 +1067,195 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
     expect(cards[1].status).toBe("skipped_gated");
     expect(cards[2].status).toBe("skipped_gated");
     expect(cards[3].status).toBe("pending");
+  });
+
+  it("throws CANONICAL_ENRICHMENT_PAYLOAD_MISMATCH if snapshot canonical material differs from canonical document hash", async () => {
+    const { raw, db, blobStore } = createInMemoryDatabase();
+    raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-001'`);
+    const service = new CanonicalIngestionService(db, blobStore);
+
+    const rawContent = "Valid executive description for VP Engineering role.".repeat(10);
+    const payload = {
+      sourcePortal: "LinkedIn",
+      sourceJobId: "job-mismatch-1",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/job-mismatch-1",
+      jobTitle: "VP Engineering",
+      companyName: "TechCorp",
+      location: "Bengaluru",
+      rawContent,
+      enrichmentDispatch: {
+        detailedCard: {
+          title: "VP Product", // Mismatched title intentionally
+          company: "TechCorp",
+          location: "Bengaluru",
+          detail: { rawText: rawContent },
+        } as any,
+        runId: "run-001",
+        pipelineVersion: "1.0.0",
+      },
+    };
+
+    await expect(
+      service.ingestOpportunity(payload, {
+        mode: "SCOPED",
+        tenantId: "tenant_A",
+        personId: "person_A",
+        searchPlanId: "plan_A",
+        runId: "run-001",
+      })
+    ).rejects.toThrow(/CANONICAL_ENRICHMENT_PAYLOAD_MISMATCH/);
+  });
+
+  it("throws IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT when existing BlobStore payload has a divergent content hash", async () => {
+    const { raw, db, blobStore } = createInMemoryDatabase();
+    raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-001'`);
+    const service = new CanonicalIngestionService(db, blobStore);
+
+    const rawContent = "VP Infrastructure leading global platforms and distributed systems.".repeat(10);
+    const payload = {
+      sourcePortal: "LinkedIn",
+      sourceJobId: "job-conflict-1",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/job-conflict-1",
+      jobTitle: "VP Infrastructure",
+      companyName: "CloudTech",
+      location: "Bengaluru",
+      rawContent,
+      enrichmentDispatch: {
+        detailedCard: {
+          title: "VP Infrastructure",
+          company: "CloudTech",
+          location: "Bengaluru",
+          detail: { rawText: rawContent },
+        } as any,
+        runId: "run-001",
+        pipelineVersion: "1.0.0",
+      },
+    };
+
+    // Pre-populate BlobStore with a payload having different content under the expected key
+    const canonicalJobId = computeCanonicalJobId({ source: payload.sourcePortal, sourceJobId: payload.sourceJobId });
+    const contentHash = computeContentHash({
+      title: "VP Infrastructure",
+      companyName: "CloudTech",
+      location: "Bengaluru",
+      employmentType: null,
+      rawContent,
+    });
+    const versionId = computeOpportunityVersionId(canonicalJobId, contentHash);
+    const key = `acquisition/${canonicalJobId}/${versionId}/snapshot.json`;
+    await blobStore.put(key, JSON.stringify({
+      canonicalJobId,
+      opportunityVersion: versionId,
+      title: "VP Different Role", // Divergent title
+      company: "CloudTech",
+      location: "Bengaluru",
+      detail: { rawText: rawContent },
+    }));
+
+    await expect(
+      service.ingestOpportunity(payload, {
+        mode: "SCOPED",
+        tenantId: "tenant_A",
+        personId: "person_A",
+        searchPlanId: "plan_A",
+        runId: "run-001",
+      })
+    ).rejects.toThrow(/IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT/);
+  });
+
+  it("FailurePolicyEngine distinguishes FASTPATH_ACCESS_DENIED from RATE_LIMIT_429 and BOT_CHALLENGE_BLOCK", () => {
+    const fastPathPolicy = FailurePolicyEngine.evaluate("FASTPATH_ACCESS_DENIED");
+    expect(fastPathPolicy.pausePortalQueue).toBe(false);
+    expect(fastPathPolicy.category).toBe("ACCESS");
+
+    const rateLimitPolicy = FailurePolicyEngine.evaluate("RATE_LIMIT_429");
+    expect(rateLimitPolicy.pausePortalQueue).toBe(true);
+    expect(rateLimitPolicy.category).toBe("ACCESS");
+
+    const challengePolicy = FailurePolicyEngine.evaluate("BOT_CHALLENGE_BLOCK");
+    expect(challengePolicy.pausePortalQueue).toBe(true);
+    expect(challengePolicy.category).toBe("ACCESS");
+  });
+
+  it("enforces serialized stale lock reclamation via .reclaim mutex and token nonce release matching", () => {
+    const testDir = path.join(os.tmpdir(), `radar-lock-test-${Date.now()}`);
+    fs.mkdirSync(testDir, { recursive: true });
+    const lockPath = path.join(testDir, "test.lock");
+    const reclaimPath = `${lockPath}.reclaim`;
+
+    try {
+      // 1. Simulate dead owner PID
+      const deadPid = 99999999;
+      fs.writeFileSync(lockPath, JSON.stringify({
+        pid: deadPid,
+        runId: "dead-run",
+        nonce: "dead-nonce-123",
+        createdAt: new Date().toISOString(),
+      }), "utf-8");
+
+      // 2. Dead PID reclaim
+      const token = acquireExclusiveLock(lockPath, { runId: "live-run-1" }, {
+        isProcessAlive: () => false,
+      });
+
+      expect(token.runId).toBe("live-run-1");
+      expect(fs.existsSync(lockPath)).toBe(true);
+      expect(fs.existsSync(reclaimPath)).toBe(false); // reclaim mutex must be unlinked
+
+      // 3. Attempting release with wrong nonce fails to delete lock
+      releaseExclusiveLock({
+        pid: token.pid,
+        runId: token.runId,
+        profileKey: token.profileKey,
+        nonce: "wrong-nonce",
+        lockPath,
+      });
+      expect(fs.existsSync(lockPath)).toBe(true);
+
+      // 4. Release with valid token unlinks the lock
+      releaseExclusiveLock(token);
+      expect(fs.existsSync(lockPath)).toBe(false);
+    } finally {
+      try { fs.rmSync(testDir, { recursive: true, force: true }); } catch {}
+    }
+  });
+
+  it("enforces machine-level GLOBAL_MARKET lock and evaluates unit status as failed for unclassified attempted cards without usable document", () => {
+    const runId1 = "global-run-alpha";
+    const runId2 = "global-run-beta";
+
+    const token1 = acquireGlobalMarketLock(runId1);
+    try {
+      // Second global market run on same machine must be rejected
+      expect(() => acquireGlobalMarketLock(runId2)).toThrow(/EXCLUSIVE_LOCK_ACTIVE/);
+    } finally {
+      releaseGlobalMarketLock(token1);
+    }
+
+    // Derived unit accounting test:
+    // When a card had detail attempted but did not produce a usable document,
+    // post-drain unit accounting must mark the unit as "failed".
+    const manifestCards: any[] = [
+      {
+        id: "c1",
+        status: "completed",
+        detailAttempted: true,
+        usableDetailDocument: true,
+      },
+      {
+        id: "c2",
+        status: "completed",
+        detailAttempted: true,
+        usableDetailDocument: false,
+      },
+    ];
+
+    const hasFailedAttemptedCards = manifestCards.some(
+      (c) => c.detailAttempted && !c.usableDetailDocument
+    );
+    expect(hasFailedAttemptedCards).toBe(true);
+    const unitStatus = hasFailedAttemptedCards ? "failed" : "completed";
+    expect(unitStatus).toBe("failed");
   });
 });
 

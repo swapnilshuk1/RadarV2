@@ -1,4 +1,5 @@
 import type { FeedCard, DetailedCard, PortalContext, PortalHandler } from "../types";
+import type { FailureClass } from "../../../src/lib/acquisition/failure-taxonomy";
 import { SNAPSHOT_SCHEMA_VERSION, SCRAPER_VERSION } from "../versions";
 import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
@@ -683,6 +684,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           rawText: "",
           fetchDurationMs: Date.now() - t0,
           extractedTitle,
+          failureClass: "EMPTY_CONTENT" as FailureClass,
         };
       }
 
@@ -700,7 +702,13 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         extractedTitle,
       };
     } catch (err: any) {
-      return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
+      const isTimeout = err.name === "TimeoutError" || /timeout/i.test(err.message);
+      return {
+        fetched: false,
+        fetchError: err.message,
+        fetchDurationMs: Date.now() - t0,
+        failureClass: (isTimeout ? "NAVIGATION_TIMEOUT" : "CONNECTION_ERROR") as FailureClass,
+      };
     }
   };
 

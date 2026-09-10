@@ -8,6 +8,7 @@
  *    They NEVER trigger Page replacement, Context reset, or Session pause!
  * 2. Naukri / Indeed Discovery Health is completely isolated from Detail Acquisition Health.
  * 3. Browser navigation errors only trigger Page replacement if repeated across different pages.
+ * 4. Run Isolation: matrices and circuit breaker states are bound to specific run instances.
  */
 
 import { getRepositories } from "../../../src/data/sqlite/provider";
@@ -31,16 +32,15 @@ export interface PortalCapabilityMatrix {
   pauseReason?: string;
 }
 
-export class HealthManager {
-  private static matrixMap: Map<string, PortalCapabilityMatrix> = new Map();
-  private static sweeperTimer: NodeJS.Timeout | null = null;
+export class RunHealthManager {
+  readonly runId: string;
+  private matrixMap: Map<string, PortalCapabilityMatrix> = new Map();
 
-  static reset(): void {
-    this.matrixMap.clear();
-    this.stopLeaseSweeper();
+  constructor(runId: string) {
+    this.runId = runId;
   }
 
-  static getMatrix(portal: string): PortalCapabilityMatrix {
+  getMatrix(portal: string): PortalCapabilityMatrix {
     if (!this.matrixMap.has(portal)) {
       this.matrixMap.set(portal, {
         portal,
@@ -57,14 +57,14 @@ export class HealthManager {
     return this.matrixMap.get(portal)!;
   }
 
-  static isFastPathAvailable(portal: string): boolean {
+  isFastPathAvailable(portal: string): boolean {
     const matrix = this.getMatrix(portal);
     if (matrix.fastPathCircuit === "OPEN") {
       if (matrix.fastPathCooldownUntil && Date.now() > matrix.fastPathCooldownUntil) {
         // Cooldown expired: Probe FastPath in HALF_OPEN state
         matrix.fastPathCircuit = "HALF_OPEN";
         matrix.detailFastPath = "DEGRADED";
-        console.log(`🔌 [HealthManager] FastPath Circuit HALF_OPEN for ${portal}. Probing FastPath...`);
+        console.log(`🔌 [HealthManager:${this.runId}] FastPath Circuit HALF_OPEN for ${portal}. Probing FastPath...`);
         return true;
       }
       return false;
@@ -72,7 +72,7 @@ export class HealthManager {
     return true;
   }
 
-  static recordFastPathSuccess(portal: string): void {
+  recordFastPathSuccess(portal: string): void {
     const matrix = this.getMatrix(portal);
     matrix.fastPathFailures = 0;
     matrix.fastPathHistory.push(true);
@@ -83,7 +83,7 @@ export class HealthManager {
     matrix.fastPathCooldownUntil = undefined;
   }
 
-  static recordFastPathFailure(portal: string, reason: string | number): void {
+  recordFastPathFailure(portal: string, reason: string | number): void {
     const matrix = this.getMatrix(portal);
     matrix.fastPathFailures += 1;
     matrix.fastPathHistory.push(false);
@@ -98,25 +98,18 @@ export class HealthManager {
       matrix.fastPathCircuit = "OPEN";
       matrix.detailFastPath = "DISABLED";
       matrix.fastPathCooldownUntil = Date.now() + 300000; // 5 minute circuit breaker cooldown
-      console.warn(`⚡ [HealthManager] FastPath Circuit OPEN for ${portal} (${reasonStr}, failureRate: ${(failureRate * 100).toFixed(0)}%). FastPath DISABLED for 5m. Browser detail worker active.`);
+      console.warn(`⚡ [HealthManager:${this.runId}] FastPath Circuit OPEN for ${portal} (${reasonStr}, failureRate: ${(failureRate * 100).toFixed(0)}%). FastPath DISABLED for 5m. Browser detail worker active.`);
     } else {
       matrix.detailFastPath = "DEGRADED";
-      console.warn(`⚠️ [HealthManager] FastPath failure #${matrix.fastPathFailures} for ${portal} (${reasonStr}).`);
+      console.warn(`⚠️ [HealthManager:${this.runId}] FastPath failure #${matrix.fastPathFailures} for ${portal} (${reasonStr}).`);
     }
   }
 
-  static recordSuccess(portal: string): void {
+  recordSuccess(portal: string): void {
     this.recordBrowserSuccess(portal);
   }
 
-  static recordFailure(portal: string, reason: string): { action: "REPLACE_PAGE" | "RESET_CONTEXT" | "PAUSE_SESSION" | "IGNORE" } {
-    /*
-     * These identify one listing, redirect chain, or content response. They
-     * are not evidence that the portal search page or its authenticated
-     * browser context is unhealthy. Treating identity resolution failures as
-     * browser failures let a handful of cards repeatedly gate an otherwise
-     * healthy Indeed search session.
-     */
+  recordFailure(portal: string, reason: string): { action: "REPLACE_PAGE" | "RESET_CONTEXT" | "PAUSE_SESSION" | "IGNORE" } {
     const itemLevelFailures = [
       "EMPTY_CONTENT",
       "PARTIAL_CONTENT",
@@ -134,35 +127,92 @@ export class HealthManager {
     return this.recordBrowserFailure(portal, reason);
   }
 
-  static recordBrowserSuccess(portal: string): void {
+  recordBrowserSuccess(portal: string): void {
     const matrix = this.getMatrix(portal);
     matrix.browserFailures = 0;
     matrix.detailBrowser = "HEALTHY";
   }
 
-  static recordBrowserFailure(portal: string, reason: string): { action: "REPLACE_PAGE" | "RESET_CONTEXT" | "PAUSE_SESSION" } {
+  recordBrowserFailure(portal: string, reason: string): { action: "REPLACE_PAGE" | "RESET_CONTEXT" | "PAUSE_SESSION" } {
     const matrix = this.getMatrix(portal);
     matrix.browserFailures += 1;
 
     if (reason.includes("BOT_CHALLENGE") || reason.includes("LOGIN_REQUIRED") || matrix.browserFailures >= 6) {
       matrix.session = "GATED";
       matrix.pauseReason = `Session challenge / login required: ${reason}`;
-      console.warn(`🚨 [HealthManager] Portal ${portal} session gated (${reason}).`);
+      console.warn(`🚨 [HealthManager:${this.runId}] Portal ${portal} session gated (${reason}).`);
       return { action: "PAUSE_SESSION" };
     }
 
     if (matrix.browserFailures >= 3) {
       matrix.detailBrowser = "DEGRADED";
-      console.warn(`⚠️ [HealthManager] Portal ${portal} browser context degraded. Triggering Tier 2 Context Reset.`);
+      console.warn(`⚠️ [HealthManager:${this.runId}] Portal ${portal} browser context degraded. Triggering Tier 2 Context Reset.`);
       return { action: "RESET_CONTEXT" };
     }
 
-    console.warn(`⚠️ [HealthManager] Portal ${portal} browser page failure #${matrix.browserFailures}. Triggering Tier 1 Page Replacement.`);
+    console.warn(`⚠️ [HealthManager:${this.runId}] Portal ${portal} browser page failure #${matrix.browserFailures}. Triggering Tier 1 Page Replacement.`);
     return { action: "REPLACE_PAGE" };
+  }
+}
+
+export class HealthManager {
+  private static runManagers: Map<string, RunHealthManager> = new Map();
+  private static defaultRunManager: RunHealthManager = new RunHealthManager("global");
+  private static sweeperTimer: NodeJS.Timeout | null = null;
+
+  static forRun(runId: string): RunHealthManager {
+    if (!runId) return this.defaultRunManager;
+    if (!this.runManagers.has(runId)) {
+      this.runManagers.set(runId, new RunHealthManager(runId));
+    }
+    return this.runManagers.get(runId)!;
+  }
+
+  static clearRun(runId: string): void {
+    this.runManagers.delete(runId);
+  }
+
+  static reset(): void {
+    this.runManagers.clear();
+    this.defaultRunManager = new RunHealthManager("global");
+    this.stopLeaseSweeper();
+  }
+
+  static getMatrix(portal: string, runId?: string): PortalCapabilityMatrix {
+    return (runId ? this.forRun(runId) : this.defaultRunManager).getMatrix(portal);
+  }
+
+  static isFastPathAvailable(portal: string, runId?: string): boolean {
+    return (runId ? this.forRun(runId) : this.defaultRunManager).isFastPathAvailable(portal);
+  }
+
+  static recordFastPathSuccess(portal: string, runId?: string): void {
+    (runId ? this.forRun(runId) : this.defaultRunManager).recordFastPathSuccess(portal);
+  }
+
+  static recordFastPathFailure(portal: string, reason: string | number, runId?: string): void {
+    (runId ? this.forRun(runId) : this.defaultRunManager).recordFastPathFailure(portal, reason);
+  }
+
+  static recordSuccess(portal: string, runId?: string): void {
+    (runId ? this.forRun(runId) : this.defaultRunManager).recordSuccess(portal);
+  }
+
+  static recordFailure(portal: string, reason: string, runId?: string): { action: "REPLACE_PAGE" | "RESET_CONTEXT" | "PAUSE_SESSION" | "IGNORE" } {
+    return (runId ? this.forRun(runId) : this.defaultRunManager).recordFailure(portal, reason);
+  }
+
+  static recordBrowserSuccess(portal: string, runId?: string): void {
+    (runId ? this.forRun(runId) : this.defaultRunManager).recordBrowserSuccess(portal);
+  }
+
+  static recordBrowserFailure(portal: string, reason: string, runId?: string): { action: "REPLACE_PAGE" | "RESET_CONTEXT" | "PAUSE_SESSION" } {
+    return (runId ? this.forRun(runId) : this.defaultRunManager).recordBrowserFailure(portal, reason);
   }
 
   /**
    * Background lease sweeper that runs every 60 seconds to reclaim abandoned worker leases.
+   * Process-scoped.
    */
   static startLeaseSweeper(intervalMs = 60000): void {
     if (this.sweeperTimer) return;

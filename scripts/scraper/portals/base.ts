@@ -4,6 +4,8 @@ import { chromium as chromiumExtra } from "playwright-extra";
 import stealthPlugin from "puppeteer-extra-plugin-stealth";
 import { PROFILES_DIR, LINKEDIN_PROFILE_DIR, CONFIG } from "../config";
 import type { PortalName } from "../types";
+import crypto from "crypto";
+import { acquireExclusiveLock, releaseExclusiveLock, type ExclusiveLockToken } from "../run/manager";
 
 // Stealth plugin is essential — LinkedIn's automation detection blocks the
 // search page outright without it (per docs/scraper-quick-wins §"What not").
@@ -76,15 +78,61 @@ function profileDirFor(portal: PortalName): string {
   return path.join(PROFILES_DIR, portal.toLowerCase());
 }
 
-// One persistent context per portal so cookies/logins survive between runs.
-// Sharing a single context across portals bleeds cookies; separate profiles
-// keep LinkedIn's automation-detection cookies away from Naukri.
-const contextCache = new Map<PortalName, any>();
+export function resolveProfileDir(portal: PortalName, tenantId?: string, personId?: string): string {
+  if (tenantId && personId) {
+    const tenantHash = crypto.createHash("sha256").update(tenantId).digest("hex");
+    const personHash = crypto.createHash("sha256").update(personId).digest("hex");
+    return path.join(PROFILES_DIR, "tenants", `tenant_${tenantHash}`, `person_${personHash}`, portal.toLowerCase());
+  }
+  return profileDirFor(portal);
+}
 
-export async function getPortalContext(portal: PortalName): Promise<any> {
+export function resolveProfileKey(portal: PortalName, tenantId?: string, personId?: string): string {
+  if (tenantId && personId) {
+    const tenantHash = crypto.createHash("sha256").update(tenantId).digest("hex");
+    const personHash = crypto.createHash("sha256").update(personId).digest("hex");
+    return `tenant_${tenantHash}_person_${personHash}_portal_${portal.toLowerCase()}`;
+  }
+  return `global_portal_${portal.toLowerCase()}`;
+}
+
+const GLOBAL_MARKET_LOCK_PATH = path.join(process.cwd(), ".radar", "runs", ".global_market.lock");
+
+export function acquireGlobalMarketLock(runId: string): ExclusiveLockToken {
+  return acquireExclusiveLock(GLOBAL_MARKET_LOCK_PATH, { runId, lockType: "GLOBAL_MARKET" });
+}
+
+export function releaseGlobalMarketLock(token: ExclusiveLockToken): void {
+  releaseExclusiveLock(token);
+}
+
+export interface PortalContextOptions {
+  runId?: string;
+  tenantId?: string;
+  personId?: string;
+}
+
+// Map from `${runId}:${portal}` -> { ctx, token }
+const contextCache = new Map<string, { ctx: any; token?: ExclusiveLockToken }>();
+
+export async function getPortalContext(portal: PortalName, opts?: PortalContextOptions): Promise<any> {
   ensureStealth();
-  if (contextCache.has(portal)) return contextCache.get(portal);
-  const userDataDir = profileDirFor(portal);
+  const runKey = opts?.runId || "global";
+  const cacheKey = `${runKey}:${portal}`;
+
+  if (contextCache.has(cacheKey)) {
+    return contextCache.get(cacheKey)!.ctx;
+  }
+
+  const userDataDir = resolveProfileDir(portal, opts?.tenantId, opts?.personId);
+  fs.mkdirSync(userDataDir, { recursive: true });
+
+  const profileKey = resolveProfileKey(portal, opts?.tenantId, opts?.personId);
+  const lockToken = acquireExclusiveLock(
+    path.join(userDataDir, ".profile.lock"),
+    { runId: runKey, profileKey }
+  );
+
   const isCloudEnv = !!(
     process.env.RENDER ||
     process.env.VERCEL ||
@@ -113,6 +161,7 @@ export async function getPortalContext(portal: PortalName): Promise<any> {
       ],
     });
   } catch (err: any) {
+    releaseExclusiveLock(lockToken);
     const msg = err?.message ?? "";
     console.error(`[BrowserLaunchError] userDataDir: ${userDataDir} msg: ${msg}`);
     if (
@@ -145,13 +194,29 @@ export async function getPortalContext(portal: PortalName): Promise<any> {
     });
   } catch {}
 
-  contextCache.set(portal, ctx);
+  contextCache.set(cacheKey, { ctx, token: lockToken });
   return ctx;
 }
 
+export async function closePortalContextsForRun(runId: string): Promise<void> {
+  const prefix = `${runId}:`;
+  for (const [key, entry] of Array.from(contextCache.entries())) {
+    if (key.startsWith(prefix)) {
+      try { await entry.ctx.close(); } catch { /* already closed */ }
+      if (entry.token) {
+        releaseExclusiveLock(entry.token);
+      }
+      contextCache.delete(key);
+    }
+  }
+}
+
 export async function closeAllPortalContexts(): Promise<void> {
-  for (const ctx of contextCache.values()) {
-    try { await ctx.close(); } catch { /* already closed */ }
+  for (const entry of contextCache.values()) {
+    try { await entry.ctx.close(); } catch { /* already closed */ }
+    if (entry.token) {
+      releaseExclusiveLock(entry.token);
+    }
   }
   contextCache.clear();
 }

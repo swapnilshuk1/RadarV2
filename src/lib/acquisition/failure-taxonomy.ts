@@ -19,6 +19,7 @@ export type FailureClass =
   | "CAPTCHA_CHALLENGE"
   | "RATE_LIMIT_429"
   | "BOT_CHALLENGE_BLOCK"
+  | "FASTPATH_ACCESS_DENIED"
   
   // CONTENT (Transport Fallback / Secondary Selector Retry)
   | "EMPTY_CONTENT"
@@ -38,7 +39,10 @@ export type FailureClass =
   // LIFECYCLE (Terminal)
   | "EXPIRED"
   | "REMOVED_404"
-  | "PERMANENT_FAILURE";
+  | "PERMANENT_FAILURE"
+
+  // UNKNOWN / FALLBACK (Conservative Failure)
+  | "UNKNOWN_FAILURE";
 
 export interface RecoveryAction {
   category: FailureCategory;
@@ -94,6 +98,17 @@ export class FailurePolicyEngine {
           pausePortalQueue: true
         };
 
+      case "FASTPATH_ACCESS_DENIED":
+        return {
+          category: "ACCESS",
+          failureClass,
+          isTerminal: true,
+          shouldRetry: false,
+          backoffMs: 0,
+          resetBrowserContext: false,
+          pausePortalQueue: false
+        };
+
       // CONTENT
       case "EMPTY_CONTENT":
       case "INSUFFICIENT_CONTENT":
@@ -131,10 +146,22 @@ export class FailurePolicyEngine {
       case "REMOVED_404":
       case "EXPIRED":
       case "PERMANENT_FAILURE":
-      default:
         return {
           category: "LIFECYCLE",
           failureClass,
+          isTerminal: true,
+          shouldRetry: false,
+          backoffMs: 0,
+          resetBrowserContext: false,
+          pausePortalQueue: false
+        };
+
+      // UNKNOWN / DEFAULT (Conservative Failure)
+      case "UNKNOWN_FAILURE":
+      default:
+        return {
+          category: "TRANSPORT",
+          failureClass: "UNKNOWN_FAILURE",
           isTerminal: true,
           shouldRetry: false,
           backoffMs: 0,

@@ -90,6 +90,8 @@ export interface CardUnit {
   isNew?: boolean;
   failureClass?: FailureClass;
   failureKind?: CardFailureKind;
+  detailAttempted?: boolean;
+  usableDetailDocument?: boolean;
 }
 
 export interface PageExecutionRecord {
@@ -260,6 +262,7 @@ export interface DetailedCard extends FeedCard {
     /** Exact destination observed by the portal detail request, when one occurred. */
     finalUrl?: string;
     identityResolutionFailure?: string;
+    failureClass?: FailureClass;
   };
   acquisitionAttempts?: AcquisitionAttempt[];
   /**

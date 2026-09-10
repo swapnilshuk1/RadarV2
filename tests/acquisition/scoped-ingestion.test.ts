@@ -56,7 +56,7 @@ describe("authenticated canonical ingestion scope", () => {
         ('plan_B', 'tenant_B', 'person_B', 'active', '{"targetSeniority":["VP"],"targetRoles":["VP Growth"],"targetLocations":["Gurugram"]}');
       INSERT INTO active_evaluation_contexts VALUES ('tenant_A', 'person_A', 'plan_A', 'ctx_A'), ('tenant_B', 'person_B', 'plan_B', 'ctx_B');
       INSERT INTO evaluation_contexts VALUES ('ctx_A', 'tenant_A', 'person_A'), ('ctx_B', 'tenant_B', 'person_B');
-      INSERT INTO scrape_runs VALUES ('run_A', 'tenant_A', 'person_A', 'plan_A', 'completed', '[]', datetime('now'), datetime('now'), NULL);
+      INSERT INTO scrape_runs VALUES ('run_A', 'tenant_A', 'person_A', 'plan_A', 'running', '[]', datetime('now'), datetime('now'), NULL);
     `);
     return { raw, db: new SqliteAdapter(raw) };
   }
