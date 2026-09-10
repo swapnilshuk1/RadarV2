@@ -20,6 +20,7 @@ import { buildEditorialIntelligenceContract } from "@/lib/intelligence/editorial
 import { composeEditorialIntelligenceV2 } from "@/lib/intelligence/editorial/EditorialPropositionComposer";
 import type { CandidateProjection } from "@/lib/domain/candidate_projection";
 import type { EvaluationArtifact } from "@/lib/intelligence/engine";
+import { computeEvaluationIdentity } from "@/lib/domain/evaluation_fingerprint";
 
 class MemorySqliteAdapter implements DatabaseAdapter {
   constructor(public db: Database.Database) {}
@@ -221,12 +222,12 @@ describe("Phase 4: Opportunity Version Pinning & Presentation Architecture", () 
         identity,
         artifact: mockArtifact,
         candidateProjection: mockCandidate,
-        evaluationFingerprint: "eval-fp-999",
+        evaluationFingerprint: computeEvaluationIdentity(identity.canonicalJobId, identity.opportunityVersion, identity.evaluationContextFingerprint).idempotencyKey,
       });
 
       expect(presentation.identity.canonicalJobId).toBe("canonical-job-456");
       expect(presentation.identity.opportunityVersion).toBe("opp-ver-789");
-      expect(presentation.evaluation.fingerprint).toBe("eval-fp-999");
+      expect(presentation.evaluation.fingerprint).toBe(computeEvaluationIdentity(identity.canonicalJobId, identity.opportunityVersion, identity.evaluationContextFingerprint).idempotencyKey);
       expect(isCanonicalDossierPresentationV2(presentation)).toBe(true);
     });
 
@@ -365,16 +366,17 @@ describe("Phase 4: Opportunity Version Pinning & Presentation Architecture", () 
         identity,
         artifact: mockArtifact,
         candidateProjection: mockCandidate,
-        evaluationFingerprint: "eval-fp-completed",
+        evaluationFingerprint: computeEvaluationIdentity(identity.canonicalJobId, identity.opportunityVersion, identity.evaluationContextFingerprint).idempotencyKey,
       });
 
-      await store.savePresentation(evaluatedPres, "eval-fp-completed");
+      const completedFingerprint = computeEvaluationIdentity(identity.canonicalJobId, identity.opportunityVersion, identity.evaluationContextFingerprint).idempotencyKey;
+      await store.savePresentation(evaluatedPres, completedFingerprint);
 
       // Verify evaluated presentation is returned for the evaluation fingerprint
-      const fetchedEvaluated = await store.getPresentation(identity, "eval-fp-completed");
+      const fetchedEvaluated = await store.getPresentation(identity, completedFingerprint);
       expect(fetchedEvaluated).not.toBeNull();
       expect(fetchedEvaluated?.evaluation.state).toBe("EVALUATED");
-      expect(fetchedEvaluated?.evaluation.fingerprint).toBe("eval-fp-completed");
+      expect(fetchedEvaluated?.evaluation.fingerprint).toBe(completedFingerprint);
 
       // Stale null query MUST now return null because fingerprint is no longer null!
       const fetchedStaleNull = await store.getPresentation(identity, null);
@@ -394,14 +396,15 @@ describe("Phase 4: Opportunity Version Pinning & Presentation Architecture", () 
         identity,
         artifact: mockArtifact,
         candidateProjection: mockCandidate,
-        evaluationFingerprint: "evaluation-a",
+        evaluationFingerprint: computeEvaluationIdentity(identity.canonicalJobId, identity.opportunityVersion, identity.evaluationContextFingerprint).idempotencyKey,
       });
-      await store.savePresentation(presentation, "evaluation-a");
+      const evaluationFingerprint = computeEvaluationIdentity(identity.canonicalJobId, identity.opportunityVersion, identity.evaluationContextFingerprint).idempotencyKey;
+      await store.savePresentation(presentation, evaluationFingerprint);
 
-      expect(await store.getPresentation(identity, "evaluation-a")).not.toBeNull();
-      expect(await store.getPresentation({ ...identity, personId: "person-b" }, "evaluation-a")).toBeNull();
-      expect(await store.getPresentation({ ...identity, opportunityVersion: "version-b" }, "evaluation-a")).toBeNull();
-      expect(await store.getPresentation({ ...identity, evaluationContextFingerprint: "context-b" }, "evaluation-a")).toBeNull();
+      expect(await store.getPresentation(identity, evaluationFingerprint)).not.toBeNull();
+      expect(await store.getPresentation({ ...identity, personId: "person-b" }, evaluationFingerprint)).toBeNull();
+      expect(await store.getPresentation({ ...identity, opportunityVersion: "version-b" }, evaluationFingerprint)).toBeNull();
+      expect(await store.getPresentation({ ...identity, evaluationContextFingerprint: "context-b" }, evaluationFingerprint)).toBeNull();
       expect(await store.getPresentation(identity, "evaluation-b")).toBeNull();
     });
 
@@ -412,7 +415,8 @@ describe("Phase 4: Opportunity Version Pinning & Presentation Architecture", () 
         opportunityVersion: "version-a", evaluationContextFingerprint: "context-a",
       };
       const presentation = buildEvaluatedPresentationV2({
-        identity, artifact: mockArtifact, candidateProjection: mockCandidate, evaluationFingerprint: "evaluation-a",
+        identity, artifact: mockArtifact, candidateProjection: mockCandidate,
+        evaluationFingerprint: computeEvaluationIdentity(identity.canonicalJobId, identity.opportunityVersion, identity.evaluationContextFingerprint).idempotencyKey,
       });
       await expect(store.savePresentation(presentation, "different-fingerprint"))
         .rejects.toThrow(/must exactly match/i);
@@ -429,7 +433,7 @@ describe("Phase 4: Opportunity Version Pinning & Presentation Architecture", () 
         },
         artifact: mockArtifact,
         candidateProjection: mockCandidate,
-        evaluationFingerprint: "evaluation-a",
+        evaluationFingerprint: computeEvaluationIdentity("job-a", "version-a", "context-a").idempotencyKey,
       });
       expect(isCanonicalDossierPresentationV2({
         ...presentation,
@@ -448,7 +452,7 @@ describe("Phase 4: Opportunity Version Pinning & Presentation Architecture", () 
           record: { ...mockArtifact.record, qualityScore: Number.POSITIVE_INFINITY },
         } as EvaluationArtifact,
         candidateProjection: mockCandidate,
-        evaluationFingerprint: "evaluation-a",
+        evaluationFingerprint: computeEvaluationIdentity("job-a", "version-a", "ctx-a").idempotencyKey,
       })).toThrow(/EVALUATED artifact|finite 0–100 score/i);
     });
 

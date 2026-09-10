@@ -6,9 +6,10 @@ import {
   buildEvaluatedPresentationV2,
   buildUnavailablePresentationV2,
 } from "../src/lib/intelligence/dossier/CanonicalDossierPresentationMaterializer";
-import type { CanonicalDossierPresentationV2 } from "../src/lib/domain/dossier_presentation";
+import { isCanonicalDossierPresentationV2, type CanonicalDossierPresentationV2 } from "../src/lib/domain/dossier_presentation";
 import type { CandidateProjection } from "../src/lib/domain/candidate_projection";
-import { isCanonicalIntrinsicEvaluationV4_3, type CanonicalEvaluatedPayloadV4_3 } from "../src/lib/domain/evaluation_payloads";
+import { isCanonicalIntrinsicEvaluationV4_3, isCanonicalUnavailablePayload, type CanonicalEvaluatedPayloadV4_3 } from "../src/lib/domain/evaluation_payloads";
+import { computeEvaluationIdentity } from "../src/lib/domain/evaluation_fingerprint";
 import type { EvaluationArtifact } from "../src/lib/intelligence/engine";
 
 type MaterializationReason =
@@ -21,7 +22,11 @@ type MaterializationReason =
   | "UNTRUSTED_SOURCE"
   | "INACTIVE_VERSION"
   | "UNSUPPORTED_UNAVAILABLE_STATE"
-  | "MISSING_EVALUATION";
+  | "MISSING_EVALUATION"
+  | "INVALID_UNAVAILABLE_ARTIFACT"
+  | "UNAVAILABLE_IDENTITY_MISMATCH"
+  | "UNAVAILABLE_STATE_MISMATCH"
+  | "EVALUATED_RELATIONAL_MISMATCH";
 
 interface CohortRow {
   canonical_job_id: string;
@@ -33,6 +38,8 @@ interface CohortRow {
   evaluation_json: string | null;
   evaluation_fingerprint: string | null;
   evaluation_state: string | null;
+  decision: string | null;
+  quality_score: number | null;
   raw_content: string | null;
   job_title: string | null;
   company_name: string | null;
@@ -46,7 +53,7 @@ function parseArgs() {
   const isDryRun = args.includes("--dry-run") || !isApply;
   const runIdIdx = args.indexOf("--run-id");
   const runId = runIdIdx !== -1 && args[runIdIdx + 1] ? args[runIdIdx + 1] : "run-1788945245759";
-  return { isApply, isDryRun, runId, all: args.includes("--all") };
+  return { isApply, isDryRun, runId, all: args.includes("--all"), repairInvalidV2: args.includes("--repair-invalid-v2") };
 }
 
 function parseJsonStrict(value: string | null): unknown | null {
@@ -80,7 +87,17 @@ function evaluatedArtifactFailure(row: CohortRow, artifact: unknown): Materializ
   if (!row.evaluation_fingerprint || artifact.evaluationInputHash !== row.evaluation_fingerprint) {
     return "EVALUATION_FINGERPRINT_MISMATCH";
   }
+  if (row.evaluation_state !== "EVALUATED" || row.decision !== artifact.decision || row.quality_score !== artifact.score) return "EVALUATED_RELATIONAL_MISMATCH";
   return null;
+}
+
+function unavailableArtifactFailure(row: CohortRow, artifact: unknown): MaterializationReason | null {
+  if (!isCanonicalUnavailablePayload(artifact)) return "INVALID_UNAVAILABLE_ARTIFACT";
+  if (artifact.tenantId !== row.tenant_id || artifact.personId !== row.person_id || artifact.canonicalJobId !== row.canonical_job_id
+    || artifact.opportunityVersion !== row.opportunity_version || artifact.contextFingerprint !== row.active_context_fingerprint) return "UNAVAILABLE_IDENTITY_MISMATCH";
+  if (!isSourceOnlyState(row.evaluation_state) || artifact.evaluationState !== row.evaluation_state || artifact.reasonCode !== row.evaluation_state) return "UNAVAILABLE_STATE_MISMATCH";
+  const expected = computeEvaluationIdentity(row.canonical_job_id, row.opportunity_version, row.active_context_fingerprint).idempotencyKey;
+  return artifact.evaluationInputHash === expected ? null : "UNAVAILABLE_IDENTITY_MISMATCH";
 }
 
 /**
@@ -104,7 +121,7 @@ function presentationArtifact(payload: CanonicalEvaluatedPayloadV4_3): Evaluatio
 }
 
 async function main() {
-  const { isApply, isDryRun, runId, all } = parseArgs();
+  const { isApply, isDryRun, runId, all, repairInvalidV2 } = parseArgs();
   console.log(`[materialize-dossier-v2] Mode: ${isApply ? "APPLY" : "DRY-RUN"}`);
   console.log(`[materialize-dossier-v2] Target: ${all ? "ALL active candidate cohorts" : `Run ${runId}`}`);
   const db = getDatabaseAdapter();
@@ -124,7 +141,7 @@ async function main() {
   const selectedColumns = `
     spc.canonical_job_id, spc.tenant_id, spc.person_id, spc.search_plan_id,
     spc.opportunity_version, aec.context_fingerprint AS active_context_fingerprint,
-    me.evaluation_json, me.evaluation_fingerprint, me.evaluation_state,
+    me.evaluation_json, me.evaluation_fingerprint, me.evaluation_state, me.decision, me.quality_score,
     ov.raw_content, ov.job_title, ov.company_name, ov.lifecycle_state, ov.acquisition_status`;
   const query = all
     ? `SELECT ${selectedColumns}
@@ -148,6 +165,20 @@ async function main() {
        ORDER BY lower(ov.company_name), lower(ov.job_title), spc.tenant_id, spc.person_id, spc.search_plan_id`;
   const rows = await db.many<CohortRow>(query, all ? [] : [runId]);
   console.log(`[materialize-dossier-v2] Loaded ${rows.length} active-context cohort records.`);
+  const persisted = await db.many<{
+    tenant_id: string; person_id: string; canonical_job_id: string; opportunity_version: string;
+    evaluation_context_fingerprint: string; presentation_json: string;
+  }>(`SELECT tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, presentation_json
+      FROM materialized_dossier_presentations WHERE presentation_version = 'dossier-v2'`);
+  const presentationKey = (row: { tenant_id: string; person_id: string; canonical_job_id: string; opportunity_version: string; evaluation_context_fingerprint: string }) =>
+    [row.tenant_id, row.person_id, row.canonical_job_id, row.opportunity_version, row.evaluation_context_fingerprint].join(":");
+  const invalidPersistedKeys = new Set(persisted.flatMap((row) => {
+    const parsed = parseJsonStrict(row.presentation_json);
+    return isCanonicalDossierPresentationV2(parsed) ? [] : [presentationKey(row)];
+  }));
+  if (repairInvalidV2 && invalidPersistedKeys.size !== 56) {
+    throw new Error(`[materialize-dossier-v2] Guarded repair requires exactly 56 invalid persisted V2 rows; found ${invalidPersistedKeys.size}.`);
+  }
 
   const candidateCache = new Map<string, CandidateProjection | null>();
   const presentations: CanonicalDossierPresentationV2[] = [];
@@ -200,6 +231,11 @@ async function main() {
       continue;
     }
 
+    const unavailableFailure = unavailableArtifactFailure(row, artifact);
+    if (unavailableFailure) {
+      fail(row, unavailableFailure);
+      continue;
+    }
     if (!isSourceOnlyState(row.evaluation_state)) {
       fail(row, row.evaluation_json ? "INVALID_CANONICAL_ARTIFACT" : row.evaluation_state ? "UNSUPPORTED_UNAVAILABLE_STATE" : "MISSING_EVALUATION");
       continue;
@@ -223,6 +259,7 @@ async function main() {
     "EVALUATED_BUILDABLE", "SOURCE_ONLY_BUILDABLE", "INVALID_CANONICAL_ARTIFACT",
     "EVALUATION_IDENTITY_MISMATCH", "EVALUATION_FINGERPRINT_MISMATCH", "MISSING_PINNED_PROFILE",
     "UNTRUSTED_SOURCE", "INACTIVE_VERSION", "UNSUPPORTED_UNAVAILABLE_STATE", "MISSING_EVALUATION",
+    "INVALID_UNAVAILABLE_ARTIFACT", "UNAVAILABLE_IDENTITY_MISMATCH", "UNAVAILABLE_STATE_MISMATCH", "EVALUATED_RELATIONAL_MISMATCH",
   ] as const) console.log(`  - ${reason}: ${reasons.get(reason) ?? 0}`);
   if (failures.length > 0) {
     console.log(`[materialize-dossier-v2] Failures: ${failures.length}`);
@@ -230,18 +267,35 @@ async function main() {
       console.log(`  - ${failure.reason}: ${failure.canonicalJobId} / ${failure.opportunityVersion}`);
     }
   }
+  if (failures.length > 0) {
+    process.exitCode = 1;
+    return;
+  }
+  const repairPresentations = repairInvalidV2
+    ? presentations.filter((presentation) => invalidPersistedKeys.has(presentationKey({
+      tenant_id: presentation.identity.tenantId, person_id: presentation.identity.personId,
+      canonical_job_id: presentation.identity.canonicalJobId, opportunity_version: presentation.identity.opportunityVersion,
+      evaluation_context_fingerprint: presentation.identity.evaluationContextFingerprint,
+    })))
+    : presentations;
+  if (repairInvalidV2) {
+    if (repairPresentations.length !== 56 || repairPresentations.some((presentation) => presentation.evaluation.state !== "EVALUATED")) {
+      throw new Error(`[materialize-dossier-v2] Guarded repair set is not exactly 56 evaluated presentations.`);
+    }
+    console.log(`[materialize-dossier-v2] Guarded repair set: ${repairPresentations.length} evaluated stale V2 presentations.`);
+  }
   if (isDryRun) {
     console.log("[materialize-dossier-v2] Dry-run complete. No changes written to database.");
     return;
   }
   const batchSize = 50;
-  for (let i = 0; i < presentations.length; i += batchSize) {
-    const batch = presentations.slice(i, i + batchSize);
+  for (let i = 0; i < repairPresentations.length; i += batchSize) {
+    const batch = repairPresentations.slice(i, i + batchSize);
     await db.transaction(async (tx) => {
       const store = new SqliteDossierPresentationStore(tx);
       for (const presentation of batch) await store.savePresentation(presentation);
     });
-    console.log(`  Committed batch ${Math.floor(i / batchSize) + 1} / ${Math.ceil(presentations.length / batchSize)}`);
+    console.log(`  Committed batch ${Math.floor(i / batchSize) + 1} / ${Math.ceil(repairPresentations.length / batchSize)}`);
   }
   console.log("[materialize-dossier-v2] Successfully applied all buildable presentations.");
 }

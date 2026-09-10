@@ -9,6 +9,7 @@ import {
 } from "../editorial/EditorialIntelligenceContractBuilder";
 import { composeEditorialIntelligenceV2 } from "../editorial/EditorialPropositionComposer";
 import { resolveArtifactEvaluationState } from "../evaluation/PayloadMapper";
+import { computeEvaluationIdentity } from "../../domain/evaluation_fingerprint";
 
 export interface PresentationIdentityInput {
   readonly tenantId: string;
@@ -53,6 +54,14 @@ function buildCanonicalDossierPresentationV2(params: {
 export function buildEvaluatedPresentationV2(
   params: BuildEvaluatedPresentationV2Params,
 ): CanonicalDossierPresentationV2 {
+  const expectedFingerprint = computeEvaluationIdentity(
+    params.identity.canonicalJobId,
+    params.identity.opportunityVersion,
+    params.identity.evaluationContextFingerprint,
+  ).idempotencyKey;
+  if (params.evaluationFingerprint !== expectedFingerprint) {
+    throw new Error(`Evaluated dossier presentation fingerprint does not match canonical identity for job ${params.identity.canonicalJobId}`);
+  }
   const resolvedState = resolveArtifactEvaluationState(params.artifact);
   if (resolvedState !== "EVALUATED") {
     throw new Error(`Evaluated dossier presentation requires an EVALUATED artifact for job ${params.identity.canonicalJobId}`);

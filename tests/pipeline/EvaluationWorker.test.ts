@@ -5,14 +5,10 @@ import { computeEvaluationIdentity } from "../../src/lib/domain/evaluation_finge
 import { isCanonicalIntrinsicEvaluationV4_3, isCanonicalUnavailablePayload } from "../../src/lib/domain/evaluation_payloads";
 import type { EvaluationContext } from "../../src/lib/domain/evaluation_context";
 import { runEngineSingle, runEngineSingleIntrinsic } from "../../src/lib/intelligence/engine";
-import { buildCanonicalDossierPresentation } from "../../src/lib/intelligence/dossier/CanonicalDossierBuilder";
 
 vi.mock("../../src/lib/intelligence/engine", () => ({
   runEngineSingleIntrinsic: vi.fn(),
   runEngineSingle: vi.fn()
-}));
-vi.mock("../../src/lib/intelligence/dossier/CanonicalDossierBuilder", () => ({
-  buildCanonicalDossierPresentation: vi.fn(),
 }));
 
 const mockLeaseToken = "lease-token-123";
@@ -46,12 +42,6 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
       })
     };
     worker = new EvaluationWorker(workerId, { adapter: db as unknown as DatabaseAdapter });
-    vi.mocked(buildCanonicalDossierPresentation).mockReturnValue({
-      schemaVersion: "dossier-v1",
-      generatedAt: "2026-08-28T00:00:00Z",
-      evaluationInputHash: mockIdentity.idempotencyKey,
-      brief: {}, jobProjection: {}, executionPackage: {}, rawDimensions: [], focusTopic: null, whyRoleExists: null,
-    } as any);
   });
 
   afterEach(() => {

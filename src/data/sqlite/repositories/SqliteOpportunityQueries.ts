@@ -1026,7 +1026,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       };
       if (unavailState === "SPARSE_SPEC" || unavailState === "NOT_EVALUABLE") {
         const presentationV2 = await presentationStore.getPresentation(presentationIdentity, null);
-        if (presentationV2) unavailOpp.dossierPresentationV2 = presentationV2;
+        if (presentationV2 && presentationV2.evaluation.state === unavailState) {
+          unavailOpp.dossierPresentationV2 = presentationV2;
+        }
       }
       return unavailOpp;
     }

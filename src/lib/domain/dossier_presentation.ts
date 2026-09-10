@@ -158,10 +158,14 @@ function isValidProposition(item: unknown): boolean {
   if (typeof item.kind !== "string" || !VALID_PROPOSITION_KINDS.has(item.kind)) return false;
   if (typeof item.text !== "string" || item.text.trim().length === 0) return false;
   if (typeof item.semanticKey !== "string" || item.semanticKey.trim().length === 0) return false;
-  if (typeof item.priority !== "number") return false;
+  if (typeof item.priority !== "number" || !Number.isFinite(item.priority)) return false;
   if (!isStringArray(item.roleEvidenceIds)) return false;
   if (!isStringArray(item.candidateEvidenceIds)) return false;
   if (!isStringArray(item.canonicalSignalIds)) return false;
+  if (item.kind === "EMPLOYER_FACT") return item.roleEvidenceIds.length > 0 && item.candidateEvidenceIds.length === 0;
+  if (item.kind === "CANDIDATE_FACT") return item.candidateEvidenceIds.length > 0 && item.roleEvidenceIds.length === 0;
+  if (item.kind === "CANONICAL_EVALUATION") return item.canonicalSignalIds.length > 0;
+  if (item.kind === "RADAR_INFERENCE") return item.roleEvidenceIds.length + item.candidateEvidenceIds.length + item.canonicalSignalIds.length > 0;
   return true;
 }
 
@@ -216,7 +220,15 @@ export function isCanonicalDossierPresentationV2(value: unknown): value is Canon
   if (!isObject(value.composition)) return false;
   const comp = value.composition;
   if (comp.version !== "editorial-composition-v2") return false;
-  if (typeof comp.compositionMode !== "string") return false;
+  if (![
+    "COMMERCIAL_LEADERSHIP", "OPERATING_LEADERSHIP", "FUNCTIONAL_SPECIALIST", "PRODUCT_LEADERSHIP",
+    "TRANSFORMATION", "ADVISORY_CONSULTING", "EXECUTION_HEAVY", "SPARSE_AMBIGUOUS",
+  ].includes(String(comp.compositionMode))) return false;
+  if (!Array.isArray(comp.positioningRelations) || !comp.positioningRelations.every((relation: unknown) => isObject(relation)
+    && relation.kind === "EVALUATOR_RELATION" && relation.basis === "CANONICAL_EVALUATION"
+    && typeof relation.traceRelationshipId === "string" && isStringArray(relation.roleEvidenceIds)
+    && isStringArray(relation.candidateEvidenceIds) && isStringArray(relation.canonicalSignalIds)
+    && isStringArray(relation.sharedConcepts))) return false;
   if (!Array.isArray(comp.propositions) || !comp.propositions.every(isValidProposition)) return false;
   if (!isObject(comp.sections)) return false;
   const sections = comp.sections;
@@ -224,6 +236,8 @@ export function isCanonicalDossierPresentationV2(value: unknown): value is Canon
   for (const s of requiredSections) {
     if (!isValidSection(sections[s])) return false;
   }
+  const coverage = comp.coverage;
+  if (!isObject(coverage) || !["hasRoleMandate", "hasQualifications", "hasCandidatePositioning", "hasCanonicalEvaluation", "scalarOnly"].every((key) => typeof coverage[key] === "boolean")) return false;
 
   // GeneratedAt validation
   if (typeof value.generatedAt !== "string" || Number.isNaN(Date.parse(value.generatedAt))) return false;

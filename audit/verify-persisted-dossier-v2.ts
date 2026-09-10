@@ -4,6 +4,7 @@
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 import { getDatabaseAdapter } from "../src/data/database";
 import { isCanonicalDossierPresentationV2, type CanonicalDossierPresentationV2 } from "../src/lib/domain/dossier_presentation";
 
@@ -14,6 +15,8 @@ type Row = {
   opportunity_version: string;
   evaluation_context_fingerprint: string;
   source_evaluation_fingerprint: string | null;
+  current_evaluation_state: string | null;
+  current_evaluation_fingerprint: string | null;
   presentation_json: string;
 };
 
@@ -28,9 +31,14 @@ function parse(value: string): CanonicalDossierPresentationV2 | null {
 
 async function main() {
   const db = getDatabaseAdapter();
-  const rows = await db.many<Row>(`SELECT tenant_id, person_id, canonical_job_id, opportunity_version,
-    evaluation_context_fingerprint, source_evaluation_fingerprint, presentation_json
-    FROM materialized_dossier_presentations WHERE presentation_version = 'dossier-v2'`);
+  const rows = await db.many<Row>(`SELECT dp.tenant_id, dp.person_id, dp.canonical_job_id, dp.opportunity_version,
+    dp.evaluation_context_fingerprint, dp.source_evaluation_fingerprint, dp.presentation_json,
+    me.evaluation_state AS current_evaluation_state, me.evaluation_fingerprint AS current_evaluation_fingerprint
+    FROM materialized_dossier_presentations dp
+    LEFT JOIN materialized_evaluations me ON me.tenant_id = dp.tenant_id AND me.person_id = dp.person_id
+      AND me.canonical_job_id = dp.canonical_job_id AND me.opportunity_version = dp.opportunity_version
+      AND me.evaluation_context_fingerprint = dp.evaluation_context_fingerprint
+    WHERE dp.presentation_version = 'dossier-v2'`);
   const presentations = rows.map((row) => parse(row.presentation_json));
   const valid = presentations.filter((item): item is CanonicalDossierPresentationV2 => item !== null);
   const invalid = presentations.length - valid.length;
@@ -46,27 +54,36 @@ async function main() {
     && item.roleEvidenceIds.length + item.candidateEvidenceIds.length + item.canonicalSignalIds.length === 0).length;
   const identityMismatches = rows.filter((row, index) => {
     const presentation = presentations[index];
-    return !presentation || presentation.identity.tenantId !== row.tenant_id
+    return presentation !== null && (presentation.identity.tenantId !== row.tenant_id
       || presentation.identity.personId !== row.person_id
       || presentation.identity.canonicalJobId !== row.canonical_job_id
       || presentation.identity.opportunityVersion !== row.opportunity_version
-      || presentation.identity.evaluationContextFingerprint !== row.evaluation_context_fingerprint;
+      || presentation.identity.evaluationContextFingerprint !== row.evaluation_context_fingerprint);
   }).length;
-  const fingerprintMismatches = rows.filter((row, index) => presentations[index]?.evaluation.fingerprint !== row.source_evaluation_fingerprint).length;
+  const fingerprintMismatches = rows.filter((row, index) => presentations[index] !== null
+    && presentations[index]!.evaluation.fingerprint !== row.source_evaluation_fingerprint).length;
+  const staleStateMismatches = rows.filter((row, index) => {
+    const presentation = presentations[index];
+    if (!presentation) return false;
+    return presentation.evaluation.state === "EVALUATED"
+      ? row.current_evaluation_state !== "EVALUATED" || row.current_evaluation_fingerprint !== presentation.evaluation.fingerprint
+      : row.current_evaluation_state !== presentation.evaluation.state || row.current_evaluation_fingerprint !== null;
+  }).length;
   const lines = [
     "# Persisted Dossier V2 Readback", "",
     `Generated: ${new Date().toISOString()}`, "",
     `- Total persisted rows: ${rows.length}`,
     `- Valid V2 presentations: ${valid.length}`,
-    `- Invalid presentations: ${invalid}`,
+    `- Schema/provenance-invalid presentations: ${invalid}`,
     `- Evaluated: ${evaluated.length}`,
     `- Source-only: ${sourceOnly}`,
     `- Invalid evaluated scalar/fingerprint linkage: ${badEvaluation}`,
     `- Employer facts without role provenance: ${noLineage}`,
     `- Candidate evidence represented as employer fact: ${candidateAsEmployer}`,
     `- Untraceable RADAR inferences: ${untraceableInference}`,
-    `- Storage/embedded identity mismatches: ${identityMismatches}`,
-    `- Storage/embedded evaluation-fingerprint mismatches: ${fingerprintMismatches}`,
+    `- Identity mismatches among structurally valid rows: ${identityMismatches}`,
+    `- Evaluation-fingerprint mismatches among structurally valid rows: ${fingerprintMismatches}`,
+    `- Current evaluation stale-state mismatches among structurally valid rows: ${staleStateMismatches}`,
     "", "## Representative persisted propositions", "",
     ...valid.slice(0, 8).flatMap((item) => [
       `### ${item.identity.canonicalJobId}`,
@@ -78,8 +95,26 @@ async function main() {
   await mkdir(reportDir, { recursive: true });
   const reportPath = join(reportDir, `phase4-dossier-v2-readback-${Date.now()}.md`);
   await writeFile(reportPath, `${lines.join("\n")}\n`, "utf8");
+  const invalidRows = rows.filter((_, index) => presentations[index] === null).map((row) => ({
+    tenantId: row.tenant_id,
+    personId: row.person_id,
+    canonicalJobId: row.canonical_job_id,
+    opportunityVersion: row.opportunity_version,
+    evaluationContextFingerprint: row.evaluation_context_fingerprint,
+    sourceEvaluationFingerprint: row.source_evaluation_fingerprint,
+    generatedAt: JSON.parse(row.presentation_json).generatedAt ?? null,
+    presentationJsonSha256: createHash("sha256").update(row.presentation_json).digest("hex"),
+    presentationJson: row.presentation_json,
+  }));
+  if (invalidRows.length > 0) {
+    const snapshotPath = join(reportDir, `phase4-dossier-v2-invalid-rollback-${Date.now()}.json`);
+    await writeFile(snapshotPath, `${JSON.stringify(invalidRows, null, 2)}\n`, "utf8");
+    console.log(`Persisted dossier-v2 rollback snapshot: ${snapshotPath}`);
+  }
   console.log(`Persisted dossier-v2 readback: ${reportPath}`);
-  console.log(JSON.stringify({ total: rows.length, valid: valid.length, invalid, evaluated: evaluated.length, sourceOnly, badEvaluation, noLineage, candidateAsEmployer, untraceableInference, identityMismatches, fingerprintMismatches }));
+  const summary = { total: rows.length, valid: valid.length, invalid, evaluated: evaluated.length, sourceOnly, badEvaluation, noLineage, candidateAsEmployer, untraceableInference, identityMismatches, fingerprintMismatches, staleStateMismatches };
+  console.log(JSON.stringify(summary));
+  if (invalid || badEvaluation || noLineage || candidateAsEmployer || untraceableInference || identityMismatches || fingerprintMismatches || staleStateMismatches) process.exitCode = 1;
 }
 
 main().catch((error) => {

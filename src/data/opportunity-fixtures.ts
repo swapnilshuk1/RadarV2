@@ -168,7 +168,7 @@ export interface ApplicationAction {
  * placeholder as an external destination. A portal search is intentionally
  * labeled as such when the original posting URL was not captured.
  */
-export function applicationActionFor(o: Opportunity): ApplicationAction | undefined {
+export function applicationActionFor(o: Pick<Opportunity, "applyUrl" | "role" | "company" | "scrapedFrom">): ApplicationAction | undefined {
   if (isExternalPostingUrl(o.applyUrl)) {
     return { url: o.applyUrl, label: "Apply direct", isDirect: true };
   }

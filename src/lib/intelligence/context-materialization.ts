@@ -114,6 +114,23 @@ export async function materializeExistingCanonicalPool(
     if (gate.decision !== "CANDIDATE") continue;
     eligibleCandidates++;
 
+    const isAcquired = row.acquisition_status === "ACQUIRED";
+    const isLifecycleActive = row.lifecycle_state === "ACTIVE";
+    if (!isAcquired || !isLifecycleActive) {
+      const evaluationState = row.lifecycle_state === "EXPIRED" || row.lifecycle_state === "REMOVED_404"
+        ? "EXPIRED"
+        : row.acquisition_status === "CAPTURE_FAILED" || row.acquisition_status === "RECOVERY_FAILED"
+          ? "ACQUISITION_FAILED"
+          : "ACQUISITION_PENDING";
+      const evaluatedAt = new Date().toISOString();
+      evaluations.push(materializeCanonicalPayload(buildCanonicalUnavailablePayload(
+        row.canonical_job_id, evaluationState, prepared.context, row.canonical_job_id,
+        row.opportunity_version, evaluatedAt,
+      )));
+      // Untrusted and inactive source states deliberately have no V2 dossier.
+      continue;
+    }
+
     let source: any;
     try {
       source = JSON.parse(row.raw_content);
@@ -191,7 +208,9 @@ export async function materializeExistingCanonicalPool(
       )],
       presentationQualificationEvidence: presentationEvidence.qualifications,
     };
-    const evaluationState = (artifact.record?.verb === "SPARSE_SPEC" || row.evidence_state === "GENUINELY_SPARSE")
+    const isGenuinelySparse = artifact.record?.verb === "SPARSE_SPEC"
+      || (row.evidence_state === "GENUINELY_SPARSE" && isAcquired && row.acquisition_quality === "COMPLETE");
+    const evaluationState = isGenuinelySparse
       ? "SPARSE_SPEC"
       : resolveArtifactEvaluationState(artifact);
     const evaluatedAt = new Date().toISOString();

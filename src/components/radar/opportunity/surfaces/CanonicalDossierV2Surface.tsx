@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { applicationActionFor, type EvaluatedOpportunity, type ServedOpportunity, type DecisionVerb } from "@/data/opportunity-fixtures";
+import { applicationActionFor, type ServedOpportunity, type DecisionVerb } from "@/data/opportunity-fixtures";
 import type { CanonicalDossierPresentationV2 } from "@/lib/domain/dossier_presentation";
 import type { EditorialProposition, EditorialPropositionKind } from "@/lib/intelligence/editorial/EditorialPropositionComposer";
 import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
@@ -56,7 +56,7 @@ export function CanonicalDossierV2Surface({
   const isEvaluated = presentation.evaluation.state === "EVALUATED";
   const verdict = presentation.evaluation.verdict;
   const score = presentation.evaluation.score;
-  const applicationAction = applicationActionFor(o as EvaluatedOpportunity);
+  const applicationAction = applicationActionFor(o);
 
   // Keyboard shortcut listener: P = Pursue, C = Consider, X = Pass
   const handleKeyboard = useCallback(
@@ -190,7 +190,7 @@ export function CanonicalDossierV2Surface({
         </section>
 
         {/* 2. STRATEGIC CAREER VALUE (Permanent Landmark) */}
-        <section className="memo-card space-y-4">
+        {comp.sections.whyAttention.propositions.length > 0 && <section className="memo-card space-y-4">
           <header className="border-b border-border pb-2">
             <h2 className="label-mono text-muted-foreground tracking-widest">
               STRATEGIC CAREER VALUE
@@ -208,7 +208,7 @@ export function CanonicalDossierV2Surface({
               ))}
             </ul>
           ) : null}
-        </section>
+        </section>}
 
         {/* 3. THE CASE (Permanent Landmark) */}
         <section className="memo-card space-y-4">
@@ -253,7 +253,7 @@ export function CanonicalDossierV2Surface({
         </section>
 
         {/* 5. YOUR ADVANTAGE (Permanent Landmark) */}
-        <section className="memo-card space-y-4">
+        {comp.sections.candidatePositioning.propositions.length > 0 && <section className="memo-card space-y-4">
           <header className="border-b border-border pb-2">
             <h2 className="label-mono text-muted-foreground tracking-widest">
               YOUR ADVANTAGE
@@ -271,7 +271,7 @@ export function CanonicalDossierV2Surface({
               ))}
             </ul>
           ) : null}
-        </section>
+        </section>}
 
         {/* 6. OPEN QUESTIONS (Permanent Landmark) */}
         <section className="memo-callout space-y-4">
@@ -295,10 +295,10 @@ export function CanonicalDossierV2Surface({
         </section>
 
         {/* 7. DECISION BOUNDARIES (Permanent Landmark) */}
-        <section className="memo-card space-y-4">
+        {comp.sections.howToWin.propositions.length > 0 && <section className="memo-card space-y-4">
           <header className="border-b border-border pb-2">
             <h2 className="label-mono text-muted-foreground tracking-widest">
-              DECISION BOUNDARIES
+              HOW TO WIN
             </h2>
           </header>
           {comp.sections.howToWin.headline && (
@@ -313,7 +313,7 @@ export function CanonicalDossierV2Surface({
               ))}
             </ul>
           ) : null}
-        </section>
+        </section>}
 
 
       </main>
