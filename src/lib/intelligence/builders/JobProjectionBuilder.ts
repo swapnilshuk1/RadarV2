@@ -209,7 +209,10 @@ export class JobProjectionBuilder {
     return /^(?:about\s+(?:us|the company)|we are|our (?:company|business|mission|purpose)|founded in|we believe|our values)\b/i.test(statement)
       || /^(?:pay|salary|compensation|work location|job type|employment type|benefits?)\b/i.test(statement)
       || /^(?:our (?:marquee|active|company|business|pipeline|portfolio)|[A-Z][A-Za-z0-9&\s]+ is now (?:a|an)\b)/.test(statement)
-      || /\b(?:is (?:a|an|the) [^.]{0,160}\b(?:company|network|platform|provider|agency|group))\b/i.test(statement);
+      || /\b(?:is (?:a|an|the) [^.]{0,160}\b(?:company|network|platform|provider|agency|group))\b/i.test(statement)
+      // Employer-branding and cultural statements often use role-like verbs,
+      // but do not describe work assigned to the vacancy.
+      || /\b(?:core values|our values|life at |meaningful work|employee growth|do their best work|grow both personally|bring your best self|teamwork matters|be extraordinary|transformational creativity)\b/i.test(statement);
   }
 
   private static hasRoleAssignment(statement: string, sourceRegion: DocumentRegion): boolean {
@@ -228,6 +231,9 @@ export class JobProjectionBuilder {
     if (/\b(?:role and responsibilities|key responsibilities|what you(?:'|’)?ll own|the mandate|what this role is not|show more show less)\b/i.test(statement)) return null;
     if (/\b(?:reports? to|base location|work location|team size)\b/i.test(statement)) {
       return "ROLE_CONTEXT";
+    }
+    if (/\b(?:working style|days? (?:a week )?out of the office|working from home)\b/i.test(statement)) {
+      return null;
     }
     if (!this.hasRoleAssignment(statement, sourceRegion)) return null;
     return /\b(?:kpi|metric|target|revenue|profitability|margin|conversion|retention|achieve|improve|increase|reduce|on[- ]time|within[- ]budget)\b/i.test(statement)
@@ -275,14 +281,19 @@ export class JobProjectionBuilder {
 
     for (const span of this.roleWorkSpans(sourceText)) {
       const statement = this.normalizeSourceAtom(span.statement);
-      if (!statement || statement.length > 420 || !/^[A-Z0-9“"']/.test(statement)) continue;
-      // Reject known boundary corruption (for example, "InventoryOwn") rather
-      // than publishing a composite span whose source structure was lost.
-      if (/[a-z](?:Own|Lead|Manage|Drive|Build|Develop|Execute|Achieve|Monitor|Identify|Design|Set|Hire|Recruit|Close|Pitch|Use|Plan|Coordinate|Guide|Collaborate|Maintain|Provide|Review|Allocate|Launch)\b/.test(statement)) continue;
+      if (!statement) continue;
+
+      // The ordinal identifies this exact normalized atom's occurrence in the
+      // canonical source stream, not its rank among admitted work evidence.
+      // Interpretation changes must therefore never renumber later atoms.
       const occurrenceKey = statement.toLowerCase();
       const ordinal = (occurrences.get(occurrenceKey) || 0) + 1;
       occurrences.set(occurrenceKey, ordinal);
 
+      if (statement.length > 420 || !/^[A-Z0-9“"']/.test(statement)) continue;
+      // Reject known boundary corruption (for example, "InventoryOwn") rather
+      // than publishing a composite span whose source structure was lost.
+      if (/[a-z](?:Own|Lead|Manage|Drive|Build|Develop|Execute|Achieve|Monitor|Identify|Design|Set|Hire|Recruit|Close|Pitch|Use|Plan|Coordinate|Guide|Collaborate|Maintain|Provide|Review|Allocate|Launch)\b/.test(statement)) continue;
       if (this.isQualificationSource(statement, span.sourceRegion) || this.isCorporateSource(statement, span.sourceRegion)) continue;
       const kind = this.roleWorkKind(statement, span.sourceRegion);
       if (!kind) continue;
