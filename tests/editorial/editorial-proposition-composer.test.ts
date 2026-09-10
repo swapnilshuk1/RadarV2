@@ -134,8 +134,8 @@ describe("EditorialPropositionComposer", () => {
     const candidateFact = composed.sections.candidatePositioning.propositions[0];
     const positioning = composed.sections.howToWin.propositions[0];
 
-    expect(candidateFact?.kind).toBe("CANDIDATE_FACT");
-    expect(candidateFact?.roleEvidenceIds).toEqual([]);
+    expect(candidateFact?.kind).toBe("CANONICAL_EVALUATION");
+    expect(candidateFact?.candidateEvidenceIds).toContain("candidate:crm");
     expect(positioning?.kind).toBe("RADAR_INFERENCE");
     expect(positioning?.text).toMatch(/Position .* evaluator-linked/i);
     expect(positioning?.text).toMatch(/Confirm the employer's required scope/i);
@@ -294,6 +294,7 @@ describe("EditorialPropositionComposer", () => {
     const rendered = JSON.stringify(composed.sections.candidatePositioning);
     expect(rendered).toContain("Built lifecycle CRM");
     expect(rendered).not.toContain("Ran unrelated sales operations");
+    expect(composed.sections.candidatePositioning.propositions[0]?.kind).toBe("CANONICAL_EVALUATION");
   });
 
   it("selects one strongest resolved endpoint without fanning a trace into multiple employer relationships", () => {

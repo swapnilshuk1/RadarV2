@@ -37,6 +37,7 @@ interface CohortRow {
   job_title: string | null;
   company_name: string | null;
   lifecycle_state: string | null;
+  acquisition_status: string | null;
 }
 
 function parseArgs() {
@@ -62,7 +63,9 @@ function addReason(histogram: Map<MaterializationReason, number>, reason: Materi
 }
 
 function trustedSource(row: CohortRow): boolean {
-  return row.lifecycle_state === "ACTIVE" && Boolean(row.raw_content?.trim());
+  return row.acquisition_status === "ACQUIRED"
+    && row.lifecycle_state === "ACTIVE"
+    && Boolean(row.raw_content?.trim());
 }
 
 function evaluatedArtifactFailure(row: CohortRow, artifact: unknown): MaterializationReason | null {
@@ -122,7 +125,7 @@ async function main() {
     spc.canonical_job_id, spc.tenant_id, spc.person_id, spc.search_plan_id,
     spc.opportunity_version, aec.context_fingerprint AS active_context_fingerprint,
     me.evaluation_json, me.evaluation_fingerprint, me.evaluation_state,
-    ov.raw_content, ov.job_title, ov.company_name, ov.lifecycle_state`;
+    ov.raw_content, ov.job_title, ov.company_name, ov.lifecycle_state, ov.acquisition_status`;
   const query = all
     ? `SELECT ${selectedColumns}
        FROM search_plan_candidates spc ${activeScopeJoin} ${evaluationJoin}

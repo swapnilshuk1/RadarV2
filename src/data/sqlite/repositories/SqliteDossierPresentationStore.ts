@@ -35,6 +35,9 @@ export class SqliteDossierPresentationStore {
     if (!isCanonicalDossierPresentationV2(presentation)) {
       throw new Error("Cannot save invalid CanonicalDossierPresentationV2");
     }
+    if (sourceEvaluationFingerprint !== presentation.evaluation.fingerprint) {
+      throw new Error("Presentation source evaluation fingerprint must exactly match embedded evaluation fingerprint");
+    }
 
     const { identity } = presentation;
     const presentationVersion = presentation.schemaVersion; // "dossier-v2"

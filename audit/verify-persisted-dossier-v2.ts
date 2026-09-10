@@ -7,7 +7,15 @@ import { join } from "node:path";
 import { getDatabaseAdapter } from "../src/data/database";
 import { isCanonicalDossierPresentationV2, type CanonicalDossierPresentationV2 } from "../src/lib/domain/dossier_presentation";
 
-type Row = { presentation_json: string };
+type Row = {
+  tenant_id: string;
+  person_id: string;
+  canonical_job_id: string;
+  opportunity_version: string;
+  evaluation_context_fingerprint: string;
+  source_evaluation_fingerprint: string | null;
+  presentation_json: string;
+};
 
 function parse(value: string): CanonicalDossierPresentationV2 | null {
   try {
@@ -20,7 +28,9 @@ function parse(value: string): CanonicalDossierPresentationV2 | null {
 
 async function main() {
   const db = getDatabaseAdapter();
-  const rows = await db.many<Row>("SELECT presentation_json FROM materialized_dossier_presentations WHERE presentation_version = 'dossier-v2'");
+  const rows = await db.many<Row>(`SELECT tenant_id, person_id, canonical_job_id, opportunity_version,
+    evaluation_context_fingerprint, source_evaluation_fingerprint, presentation_json
+    FROM materialized_dossier_presentations WHERE presentation_version = 'dossier-v2'`);
   const presentations = rows.map((row) => parse(row.presentation_json));
   const valid = presentations.filter((item): item is CanonicalDossierPresentationV2 => item !== null);
   const invalid = presentations.length - valid.length;
@@ -34,6 +44,15 @@ async function main() {
   const candidateAsEmployer = propositions.filter((item) => item.kind === "EMPLOYER_FACT" && item.candidateEvidenceIds.length > 0).length;
   const untraceableInference = propositions.filter((item) => item.kind === "RADAR_INFERENCE"
     && item.roleEvidenceIds.length + item.candidateEvidenceIds.length + item.canonicalSignalIds.length === 0).length;
+  const identityMismatches = rows.filter((row, index) => {
+    const presentation = presentations[index];
+    return !presentation || presentation.identity.tenantId !== row.tenant_id
+      || presentation.identity.personId !== row.person_id
+      || presentation.identity.canonicalJobId !== row.canonical_job_id
+      || presentation.identity.opportunityVersion !== row.opportunity_version
+      || presentation.identity.evaluationContextFingerprint !== row.evaluation_context_fingerprint;
+  }).length;
+  const fingerprintMismatches = rows.filter((row, index) => presentations[index]?.evaluation.fingerprint !== row.source_evaluation_fingerprint).length;
   const lines = [
     "# Persisted Dossier V2 Readback", "",
     `Generated: ${new Date().toISOString()}`, "",
@@ -46,6 +65,8 @@ async function main() {
     `- Employer facts without role provenance: ${noLineage}`,
     `- Candidate evidence represented as employer fact: ${candidateAsEmployer}`,
     `- Untraceable RADAR inferences: ${untraceableInference}`,
+    `- Storage/embedded identity mismatches: ${identityMismatches}`,
+    `- Storage/embedded evaluation-fingerprint mismatches: ${fingerprintMismatches}`,
     "", "## Representative persisted propositions", "",
     ...valid.slice(0, 8).flatMap((item) => [
       `### ${item.identity.canonicalJobId}`,
@@ -58,7 +79,7 @@ async function main() {
   const reportPath = join(reportDir, `phase4-dossier-v2-readback-${Date.now()}.md`);
   await writeFile(reportPath, `${lines.join("\n")}\n`, "utf8");
   console.log(`Persisted dossier-v2 readback: ${reportPath}`);
-  console.log(JSON.stringify({ total: rows.length, valid: valid.length, invalid, evaluated: evaluated.length, sourceOnly, badEvaluation, noLineage, candidateAsEmployer, untraceableInference }));
+  console.log(JSON.stringify({ total: rows.length, valid: valid.length, invalid, evaluated: evaluated.length, sourceOnly, badEvaluation, noLineage, candidateAsEmployer, untraceableInference, identityMismatches, fingerprintMismatches }));
 }
 
 main().catch((error) => {

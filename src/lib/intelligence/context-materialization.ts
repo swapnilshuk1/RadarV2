@@ -179,9 +179,16 @@ export async function materializeExistingCanonicalPool(
       row.opportunity_version,
       Array.isArray(artifact.jobProjection?.capabilities) ? artifact.jobProjection.capabilities : [],
     );
+    const evaluatorRoleWorkEvidence = Array.isArray(artifact.jobProjection?.roleWorkEvidence)
+      ? artifact.jobProjection.roleWorkEvidence
+      : [];
     artifact.jobProjection = {
       ...artifact.jobProjection,
-      roleWorkEvidence: presentationEvidence.evidence,
+      // Retain exact evaluator-side IDs before adding presentation extraction;
+      // canonical decision trace references must stay resolvable.
+      roleWorkEvidence: [...evaluatorRoleWorkEvidence, ...presentationEvidence.evidence.filter((item) =>
+        !evaluatorRoleWorkEvidence.some((existing: { id?: string }) => existing.id === item.id),
+      )],
       presentationQualificationEvidence: presentationEvidence.qualifications,
     };
     const evaluationState = (artifact.record?.verb === "SPARSE_SPEC" || row.evidence_state === "GENUINELY_SPARSE")

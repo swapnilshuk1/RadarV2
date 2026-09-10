@@ -405,6 +405,19 @@ describe("Phase 4: Opportunity Version Pinning & Presentation Architecture", () 
       expect(await store.getPresentation(identity, "evaluation-b")).toBeNull();
     });
 
+    it("refuses persistence when the storage fingerprint differs from the embedded V2 fingerprint", async () => {
+      const store = new SqliteDossierPresentationStore(adapter);
+      const identity = {
+        tenantId: "tenant-a", personId: "person-a", canonicalJobId: "job-fingerprint",
+        opportunityVersion: "version-a", evaluationContextFingerprint: "context-a",
+      };
+      const presentation = buildEvaluatedPresentationV2({
+        identity, artifact: mockArtifact, candidateProjection: mockCandidate, evaluationFingerprint: "evaluation-a",
+      });
+      await expect(store.savePresentation(presentation, "different-fingerprint"))
+        .rejects.toThrow(/must exactly match/i);
+    });
+
     it("requires non-null evaluation scalars for EVALUATED dossier-v2", () => {
       const presentation = buildEvaluatedPresentationV2({
         identity: {

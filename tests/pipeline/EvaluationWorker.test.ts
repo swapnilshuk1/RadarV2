@@ -64,15 +64,16 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
       tenantId: "t-1",
       personId: "p-1",
       searchPlanId: "snap-1",
-      canonicalJobId: "job-1",
-      opportunityVersion: "v1",
+      canonicalJobId: "canonical-job-1",
+      opportunityVersion: "opportunity-version-1",
       evaluationContextFingerprint: mockContext.contextFingerprint,
       leaseToken: mockLeaseToken,
       attempts: 0,
       maxAttempts: 3
     };
 
-    const mockOppSource = { jobHash: "job-1", role: "CEO", company: "Test" };
+    const exactIdentity = computeEvaluationIdentity(job.canonicalJobId, job.opportunityVersion, mockContext.contextFingerprint);
+    const mockOppSource = { jobHash: "source-job-hash-1", role: "CEO", company: "Test" };
     
     // Auth success
     db.one.mockImplementationOnce(async (sql: string) => {
@@ -82,7 +83,7 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
     // Version query success (ACQUIRED / ACTIVE)
     db.one.mockImplementationOnce(async () => {
       return {
-        raw_content: JSON.stringify(mockOppSource),
+        raw_content: JSON.stringify({ ...mockOppSource, rawDescription: "Own commercial growth and revenue planning." }),
         job_title: "CEO",
         company_name: "Test",
         location: "Remote",
@@ -126,10 +127,16 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
       record: {
         verb: "PURSUE",
         qualityScore: 85,
-        diligenceStatus: "READY"
+        diligenceStatus: "READY",
+        trace: { evidenceMapping: [{
+          jobCapability: "COMMERCIAL_GROWTH",
+          candidateCapability: "COMMERCIAL_GROWTH",
+          jobEvidenceIds: ["role-work-1"],
+          candidateEvidenceIds: ["candidate-evidence-1"],
+        }] },
       },
-      opportunity: { jobHash: "job-1", role: "CEO", company: "Test", location: "Remote", dimensions: [] },
-      jobProjection: {}
+      opportunity: { jobHash: "source-job-hash-1", role: "CEO", company: "Test", location: "Remote", dimensions: [] },
+      jobProjection: { roleWorkEvidence: [{ id: "role-work-1", kind: "RESPONSIBILITY", statement: "Own commercial growth and revenue planning.", sourceQuote: "Own commercial growth and revenue planning.", sourceRegion: "RESPONSIBILITIES", ordinal: 1, confidence: 0.95 }] }
     } as any);
 
     // Lease check inside transaction
@@ -149,17 +156,23 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
     expect(insertCall).toBeDefined();
 
     const params = insertCall[1];
-    expect(params[0]).toBe(mockIdentity.idempotencyKey);
+    expect(params[0]).toBe(exactIdentity.idempotencyKey);
     expect(params[1]).toBe("t-1");
     expect(params[2]).toBe("p-1");
-    expect(params[3]).toBe("job-1");
-    expect(params[4]).toBe("v1");
+    expect(params[3]).toBe("canonical-job-1");
+    expect(params[4]).toBe("opportunity-version-1");
     expect(params[5]).toBe(mockContext.contextFingerprint);
-    expect(params[6]).toBe(mockIdentity.idempotencyKey); // evaluation fingerprint
+    expect(params[6]).toBe(exactIdentity.idempotencyKey); // evaluation fingerprint
     expect(params[7]).toBe("EVALUATED"); // relational evaluation_state
     expect(params[8]).toBe("PURSUE"); // relational decision
     expect(params[9]).toBe(85); // relational quality_score
-    expect(JSON.parse(params[12]).dossierPresentation.schemaVersion).toBe("dossier-v1");
+    const persisted = JSON.parse(params[12]);
+    expect(persisted.canonicalJobId).toBe("canonical-job-1");
+    expect(persisted.jobHash).toBe("source-job-hash-1");
+    expect(persisted.opportunityVersion).toBe("opportunity-version-1");
+    const traceIds = persisted.decisionTrace.relationships.flatMap((relationship: { jobEvidenceIds: string[] }) => relationship.jobEvidenceIds);
+    const exactProjectionIds = persisted.jobProjection.roleWorkEvidence.map((evidence: { id: string }) => evidence.id);
+    expect(traceIds.every((id: string) => exactProjectionIds.includes(id))).toBe(true);
   });
 
   it("persists a canonical unavailable payload for EXPIRED job", async () => {
@@ -214,7 +227,7 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
 
     const result = await worker.processJob(job);
     expect(result.status).toBe("completed");
-    expect(result.decision).toBeNull();
+    expect(result.decision ?? null).toBeNull();
 
     // Verify INSERT INTO materialized_evaluations
     const insertCall = db.execute.mock.calls.find((call: any[]) => String(call[0]).includes("INSERT INTO materialized_evaluations"));
@@ -227,10 +240,11 @@ describe("EvaluationWorker - Phase 2C Integration", () => {
     expect(params[3]).toBe("job-1");
     expect(params[4]).toBe("v1");
     expect(params[5]).toBe(mockContext.contextFingerprint);
-    expect(params[6]).toBe("EXPIRED"); // relational evaluation_state for unavailable insert shape
+    expect(params[6]).toBeNull(); // unavailable payload has no evaluation fingerprint
+    expect(params[7]).toBe("EXPIRED"); // relational evaluation_state
 
     // Verify JSON payload
-    const jsonPayload = JSON.parse(params[9]);
+    const jsonPayload = JSON.parse(params[12]);
     expect(jsonPayload.evaluationState).toBe("EXPIRED");
     expect(jsonPayload.reasonCode).toBe("EXPIRED");
   });

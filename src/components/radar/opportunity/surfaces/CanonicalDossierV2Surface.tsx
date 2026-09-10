@@ -180,9 +180,9 @@ export function CanonicalDossierV2Surface({
               {comp.sections.hero.headline}
             </h3>
           )}
-          {comp.sections.hero.propositions.length > 0 && (
+          {comp.sections.hero.propositions.some((p) => p.text !== comp.sections.hero.headline) && (
             <ul className="space-y-3 pt-2">
-              {comp.sections.hero.propositions.map((p) => (
+              {comp.sections.hero.propositions.filter((p) => p.text !== comp.sections.hero.headline).map((p) => (
                 <PropositionItem key={p.id} prop={p} />
               ))}
             </ul>
@@ -315,37 +315,6 @@ export function CanonicalDossierV2Surface({
           ) : null}
         </section>
 
-        {/* 8. SUPPORTING EVIDENCE (Permanent Landmark) */}
-        <section className="memo-card space-y-4">
-          <header className="border-b border-border pb-2 flex items-center justify-between">
-            <h2 className="label-mono text-muted-foreground tracking-widest">
-              SUPPORTING EVIDENCE
-            </h2>
-            <span className="label-mono text-muted-foreground">
-              {comp.propositions.length} TOTAL PROPOSITIONS
-            </span>
-          </header>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm font-sans pt-2">
-            <div className="p-3 bg-surface-raised rounded border border-border space-y-1">
-              <span className="label-mono text-muted-foreground">Coverage Breakdown</span>
-              <ul className="text-xs space-y-1 text-foreground">
-                <li>Role Mandate Extracted: {comp.coverage.hasRoleMandate ? "Yes" : "No"}</li>
-                <li>Qualifications Extracted: {comp.coverage.hasQualifications ? "Yes" : "No"}</li>
-                <li>Candidate Positioning: {comp.coverage.hasCandidatePositioning ? "Yes" : "No"}</li>
-                <li>Evaluation Signals: {comp.coverage.hasCanonicalEvaluation ? "Yes" : "No"}</li>
-              </ul>
-            </div>
-            <div className="p-3 bg-surface-raised rounded border border-border space-y-1">
-              <span className="label-mono text-muted-foreground">Provenance Counts</span>
-              <ul className="text-xs space-y-1 text-foreground">
-                <li>Employer Facts: {comp.propositions.filter((p) => p.kind === "EMPLOYER_FACT").length}</li>
-                <li>Candidate Facts: {comp.propositions.filter((p) => p.kind === "CANDIDATE_FACT").length}</li>
-                <li>Evaluations: {comp.propositions.filter((p) => p.kind === "CANONICAL_EVALUATION").length}</li>
-                <li>Limitations / Inferences: {comp.propositions.filter((p) => p.kind === "RADAR_INFERENCE" || p.kind === "EVIDENCE_LIMITATION").length}</li>
-              </ul>
-            </div>
-          </div>
-        </section>
 
       </main>
 

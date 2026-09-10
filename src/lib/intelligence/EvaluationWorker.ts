@@ -340,9 +340,17 @@ export class EvaluationWorker {
         job.opportunityVersion,
         Array.isArray(artifact.jobProjection?.capabilities) ? artifact.jobProjection.capabilities : [],
       );
+      const evaluatorRoleWorkEvidence = Array.isArray(artifact.jobProjection?.roleWorkEvidence)
+        ? artifact.jobProjection.roleWorkEvidence
+        : [];
       artifact.jobProjection = {
         ...artifact.jobProjection,
-        roleWorkEvidence: presentationEvidence.evidence,
+        // Never discard evidence IDs the evaluator used to produce its trace.
+        // Presentation extraction is additive, so persisted trace references
+        // continue to resolve against the exact scored projection.
+        roleWorkEvidence: [...evaluatorRoleWorkEvidence, ...presentationEvidence.evidence.filter((item) =>
+          !evaluatorRoleWorkEvidence.some((existing: { id?: string }) => existing.id === item.id),
+        )],
         presentationQualificationEvidence: presentationEvidence.qualifications,
       };
 

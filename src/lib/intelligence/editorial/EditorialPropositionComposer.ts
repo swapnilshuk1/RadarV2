@@ -426,11 +426,11 @@ function traceBackedFitExplanation(contract: EditorialIntelligenceContract): Edi
   );
   if (!candidate) return null;
   const candidateFact = candidate.statement ?? candidate.capability;
-  const matchedEvidence = relationship.jobEvidence[0];
-  const matchedWork = contract.publishedRoleWork.find((item) => relationship.jobEvidenceIds.includes(item.sourceEvidenceId));
-  const matchedRequirement = contract.qualificationRequirements.find((item) =>
-    item.sourceEvidenceIds.some((id) => relationship.jobEvidenceIds.includes(id)),
-  );
+  const resolved = rankResolvedJobEvidence(relationship, contract);
+  if (!resolved || (!resolved.work && !resolved.requirement)) return null;
+  const matchedEvidence = resolved.jobEvidence;
+  const matchedWork = resolved.work;
+  const matchedRequirement = resolved.requirement;
   const matchedConcept = (
     matchedWork?.statement
     ?? matchedRequirement?.statement
@@ -440,8 +440,8 @@ function traceBackedFitExplanation(contract: EditorialIntelligenceContract): Edi
   );
   const roleEvidenceIds = [
     ...new Set([
-      ...relationship.jobEvidenceIds,
-      ...relationship.jobEvidence.map((e) => e.id),
+      ...resolved.exactRoleEvidenceIds,
+      ...(matchedEvidence ? [matchedEvidence.id] : []),
     ]),
   ];
 
@@ -661,7 +661,11 @@ export function composeEditorialIntelligenceV2(contract: EditorialIntelligenceCo
   // Candidate evidence belongs in its own factual section. The strategy is a
   // separate RADAR inference, so a proof point is never silently re-used as a
   // mandate claim or a second copy of the same sentence.
-  const candidatePositioning = takeUnused(candidateFacts, used, 2);
+  const candidatePositioning = takeUnused(
+    traceExplanation ? [traceExplanation, ...candidateFacts] : candidateFacts,
+    used,
+    2,
+  );
   const bottomLineSection = [bottomLine];
   used.add(bottomLine.id);
   const howToWin = takeUnused([positioning ?? roleStrategy], used, 1);
