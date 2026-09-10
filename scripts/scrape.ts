@@ -493,7 +493,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             seenHeuristicKeys,
             plog,
             maxCardsPerPage,
-            runScope ? { tenantId: runScope.tenantId, personId: runScope.personId } : undefined,
+            runScope ? { tenantId: runScope.tenantId, personId: runScope.personId, searchPlanId: resolvedPlan?.searchPlanId } : undefined,
             resolvedPlan?.criteria,
           );
           if (outcome) {
@@ -540,35 +540,29 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
-      if (ingestedCount > 0) {
-        mgr.transitionTo("enriching");
-        if (runScope) {
-          try {
-            const repos = getRepositories();
-            await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
-              totalDiscovered: mgr.manifest.cards.length,
-              totalEnqueued: ingestedCount,
-              metrics: tm as any,
-            });
-            await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "enriching");
-          } catch {}
+      mgr.transitionTo("enriching");
+      if (runScope) {
+        try {
+          const repos = getRepositories();
+          await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
+            totalDiscovered: mgr.manifest.cards.length,
+            totalEnqueued: ingestedCount,
+            metrics: tm as any,
+          });
+          await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "enriching");
+        } catch {}
+      }
+      log(`[Scrape] Acquisition complete. Dispatched ${ingestedCount} cards to distributed enrichment & evaluation pipeline.`);
+      mgr.recordActivity(`Acquisition complete · ${ingestedCount} cards dispatched for enrichment`);
+
+      if (runScope) {
+        try {
+          const { RunReconciliationService } = await import("../src/lib/intelligence/RunReconciliationService");
+          const reconciler = new RunReconciliationService();
+          await reconciler.reconcileRun(mgr.runId);
+        } catch (e: any) {
+          log(`[Scrape] Initial run reconciliation deferred: ${e.message}`, "warn");
         }
-        log(`[Scrape] Acquisition complete. Dispatched ${ingestedCount} cards to distributed enrichment & evaluation pipeline.`);
-        mgr.recordActivity(`Acquisition complete · ${ingestedCount} cards dispatched for enrichment`);
-      } else {
-        mgr.finalize("completed");
-        if (runScope) {
-          try {
-            const repos = getRepositories();
-            await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
-              totalDiscovered: mgr.manifest.cards.length,
-              totalEnqueued: 0,
-              metrics: tm as any,
-            });
-            await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "completed");
-          } catch {}
-        }
-        mgr.recordActivity("Search completed · No new opportunities requiring enrichment");
       }
       const runDurationS = ((new Date().getTime() - new Date(mgr.manifest.startedAt).getTime()) / 1000).toFixed(1);
       
@@ -652,7 +646,7 @@ async function processUnit(
   seenHeuristicKeys: Set<string>,
   log: ReturnType<typeof makeLogger>,
   maxCardsPerPage?: number,
-  lineageScope?: { tenantId: string; personId: string },
+  lineageScope?: { tenantId: string; personId: string; searchPlanId?: string },
   relevanceCriteria?: { targetRoles?: string[]; customParameters?: Record<string, unknown> },
 ): Promise<ProcessOutcome> {
   const outcome: ProcessOutcome = {
@@ -1555,6 +1549,7 @@ async function processUnit(
             }, lineageScope ? {
               tenantId: lineageScope.tenantId,
               personId: lineageScope.personId,
+              searchPlanId: lineageScope.searchPlanId,
               runId: mgr.runId,
             } : { runId: mgr.runId });
             canonicalIngestionResult = ingestRes;

@@ -686,5 +686,300 @@ describe("Gate 3: Distributed Lifecycle, Version-Aware Work & Queue Decoupling C
     expect(run1Final?.status).toBe("completed");
     expect(run2Final?.status).toBe("completed");
   });
+
+  it("9. Two-Pipeline Dependency: pipeline-v1 completion does NOT release requirement requiring pipeline-v2; pipeline-v2 completion DOES", async () => {
+    const run = await runStore.createRun(scopeA, {
+      id: "run-pipe-dep-1",
+      searchPlanId: "plan_A",
+      portalTargets: ["LinkedIn"],
+    });
+
+    const ingest = await canonicalIngest.ingestOpportunity({
+      sourcePortal: "LinkedIn",
+      sourceJobId: "li-two-pipe-1",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/999001",
+      jobTitle: "VP of Data",
+      companyName: "Tech Corp",
+      location: "Bengaluru",
+      rawContent: "VP of Data leading enterprise platforms.",
+    }, {
+      tenantId: "tenant_A",
+      personId: "person_A",
+      searchPlanId: "plan_A",
+      runId: run.id,
+    });
+
+    const canonicalJobId = ingest.canonicalJobId!;
+    const opportunityVersion = ingest.opportunityVersion!;
+
+    // Explicitly set requirement to require pipeline-v2 (e.g. 2.0.0)
+    await db.execute(
+      `UPDATE evaluation_requirements
+       SET required_enrichment_pipeline_version = '2.0.0', status = 'WAITING_ENRICHMENT'
+       WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+
+    // Enqueue two enrichment jobs for same canonical/version: pipeline 1.0.0 and pipeline 2.0.0
+    const jobV1Id = "job_v1_pipe";
+    const jobV2Id = "job_v2_pipe";
+
+    await enrichmentQueue.enqueue(
+      jobV1Id,
+      "cardhash_v1",
+      "/snapshots/v1.json",
+      "1.0.0",
+      { runId: run.id },
+      10,
+      0,
+      "snapshots/v1.json",
+      canonicalJobId,
+      opportunityVersion
+    );
+
+    await enrichmentQueue.enqueue(
+      jobV2Id,
+      "cardhash_v2",
+      "/snapshots/v2.json",
+      "2.0.0",
+      { runId: run.id },
+      10,
+      0,
+      "snapshots/v2.json",
+      canonicalJobId,
+      opportunityVersion
+    );
+
+    // Both jobs exist in enrichment_jobs under different pipeline versions
+    const jobs = await db.many<any>(
+      `SELECT id, pipeline_version, status FROM enrichment_jobs WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+    expect(jobs).toHaveLength(2);
+
+    // Step 1: Complete pipeline 1.0.0
+    await enrichmentQueue.markCompleted(jobV1Id);
+
+    // Requirement requiring 2.0.0 MUST STILL BE WAITING_ENRICHMENT
+    const reqAfterV1 = await db.one<any>(
+      `SELECT status FROM evaluation_requirements WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+    expect(reqAfterV1?.status).toBe("WAITING_ENRICHMENT");
+
+    // Evaluation jobs must NOT be created/pending yet
+    const evalJobAfterV1 = await db.one<any>(
+      `SELECT status FROM evaluation_jobs WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+    expect(evalJobAfterV1).toBeNull();
+
+    // Step 2: Complete pipeline 2.0.0
+    await enrichmentQueue.markCompleted(jobV2Id);
+
+    // Requirement requiring 2.0.0 MUST NOW BE RELEASED to READY
+    const reqAfterV2 = await db.one<any>(
+      `SELECT status FROM evaluation_requirements WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+    expect(reqAfterV2?.status).toBe("READY");
+
+    // Evaluation job is created and pending
+    const evalJobAfterV2 = await db.one<any>(
+      `SELECT status FROM evaluation_jobs WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+    expect(evalJobAfterV2?.status).toBe("pending");
+  });
+
+  it("10. Dead-Letter Invariant: Dead-letter evaluation jobs are never resurrected to pending", async () => {
+    const run = await runStore.createRun(scopeA, {
+      id: "run-dead-letter-1",
+      searchPlanId: "plan_A",
+      portalTargets: ["LinkedIn"],
+    });
+
+    const ingest = await canonicalIngest.ingestOpportunity({
+      sourcePortal: "LinkedIn",
+      sourceJobId: "li-dead-letter-1",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/999002",
+      jobTitle: "VP of Security",
+      companyName: "Tech Corp",
+      location: "Bengaluru",
+      rawContent: "VP of Security leading CISO initiatives.",
+    }, {
+      tenantId: "tenant_A",
+      personId: "person_A",
+      searchPlanId: "plan_A",
+      runId: run.id,
+    });
+
+    const canonicalJobId = ingest.canonicalJobId!;
+    const opportunityVersion = ingest.opportunityVersion!;
+
+    // Release to READY and insert evaluation job in dead_letter status
+    await enrichmentQueue.releaseEvaluationRequirements(canonicalJobId, opportunityVersion, "1.0.0");
+    await db.execute(
+      `UPDATE evaluation_jobs SET status = 'dead_letter', attempts = 3
+       WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+
+    // Call releaseEvaluationRequirements again (simulating duplicate/late event)
+    await enrichmentQueue.releaseEvaluationRequirements(canonicalJobId, opportunityVersion, "1.0.0");
+
+    // Evaluation job must NOT have been resurrected to pending
+    const jobAfterRelease = await db.one<any>(
+      `SELECT status FROM evaluation_jobs WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+    expect(jobAfterRelease?.status).toBe("dead_letter");
+
+    // Reconciler repairDanglingWork must also NOT resurrect dead_letter jobs
+    await reconciler.repairDanglingWork();
+
+    const jobAfterRepair = await db.one<any>(
+      `SELECT status FROM evaluation_jobs WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+    expect(jobAfterRepair?.status).toBe("dead_letter");
+  });
+
+  it("11. Self-Healing: Dangling WAITING_ENRICHMENT requirement healed to READY across crash windows", async () => {
+    const run = await runStore.createRun(scopeA, {
+      id: "run-heal-1",
+      searchPlanId: "plan_A",
+      portalTargets: ["LinkedIn"],
+    });
+
+    const ingest = await canonicalIngest.ingestOpportunity({
+      sourcePortal: "LinkedIn",
+      sourceJobId: "li-healing-1",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/999003",
+      jobTitle: "VP of Architecture",
+      companyName: "Tech Corp",
+      location: "Bengaluru",
+      rawContent: "VP of Architecture leading global platform modernization.",
+    }, {
+      tenantId: "tenant_A",
+      personId: "person_A",
+      searchPlanId: "plan_A",
+      runId: run.id,
+    });
+
+    const canonicalJobId = ingest.canonicalJobId!;
+    const opportunityVersion = ingest.opportunityVersion!;
+
+    // Enqueue enrichment job and complete it, BUT simulate a crash window where requirement stayed WAITING_ENRICHMENT
+    const enrichId = "job_heal_1";
+    await enrichmentQueue.enqueue(
+      enrichId,
+      "cardhash_heal",
+      "/snapshots/heal.json",
+      "1.0.0",
+      { runId: run.id },
+      10,
+      0,
+      "snapshots/heal.json",
+      canonicalJobId,
+      opportunityVersion
+    );
+
+    // Complete the enrichment job directly without calling release
+    await db.execute(
+      `UPDATE enrichment_jobs SET status = 'COMPLETE', completed_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [enrichId]
+    );
+
+    // Requirement is currently dangling in WAITING_ENRICHMENT
+    const reqBefore = await db.one<any>(
+      `SELECT status FROM evaluation_requirements WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+    expect(reqBefore?.status).toBe("WAITING_ENRICHMENT");
+
+    // Reconciler repairs dangling work
+    const repaired = await reconciler.repairDanglingWork();
+    expect(repaired.requirementsHealed).toBeGreaterThanOrEqual(1);
+
+    // Invariant: requirement is now healed to READY
+    const reqAfter = await db.one<any>(
+      `SELECT status FROM evaluation_requirements WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+    expect(reqAfter?.status).toBe("READY");
+
+    // Invariant: evaluation_job is enqueued as pending
+    const evalJob = await db.one<any>(
+      `SELECT status FROM evaluation_jobs WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [canonicalJobId, opportunityVersion]
+    );
+    expect(evalJob?.status).toBe("pending");
+  });
+
+  it("12. Scraper Lifecycle: zero newly ingested opportunities but pending work transitions to enriching and reconciles properly", async () => {
+    const run = await runStore.createRun(scopeA, {
+      id: "run-zero-ingest-1",
+      searchPlanId: "plan_A",
+      portalTargets: ["LinkedIn"],
+    });
+
+    // Ingest an existing opportunity before the run
+    const ingest = await canonicalIngest.ingestOpportunity({
+      sourcePortal: "LinkedIn",
+      sourceJobId: "li-zero-ingest-1",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/999004",
+      jobTitle: "VP of Platform",
+      companyName: "Tech Corp",
+      location: "Bengaluru",
+      rawContent: "VP of Platform leading foundational infrastructure.",
+    }, {
+      tenantId: "tenant_A",
+      personId: "person_A",
+      searchPlanId: "plan_A",
+      runId: run.id,
+    });
+
+    // Run has 0 newly ingested items in this run's discovery loop, but has pending enrichment work bound
+    const enrichId = "job_zero_ingest_1";
+    await enrichmentQueue.enqueue(
+      enrichId,
+      "cardhash_zero",
+      "/snapshots/zero.json",
+      "1.0.0",
+      { runId: run.id },
+      10,
+      0,
+      "snapshots/zero.json",
+      ingest.canonicalJobId!,
+      ingest.opportunityVersion!
+    );
+
+    // Simulate scraper transitioning run to enriching even when ingestedCount === 0
+    await runStore.updateRunStatus(scopeA, run.id, "enriching");
+    const runStatus = await runStore.getRun(scopeA, run.id);
+    expect(runStatus?.status).toBe("enriching");
+
+    // Reconcile: run must NOT complete yet because enrichment is still pending
+    const recCheck = await reconciler.reconcileRun(run.id);
+    expect(recCheck.newStatus).toBe("enriching");
+
+    // Worker completes enrichment
+    await enrichmentQueue.markCompleted(enrichId);
+
+    // Reconcile: advances to completing
+    const recCompleting = await reconciler.reconcileRun(run.id);
+    expect(recCompleting.newStatus).toBe("completing");
+
+    // Complete evaluation
+    const evalWorker = new EvaluationWorker("eval_worker_zero", { adapter: db });
+    const job = await evalWorker.claimNextJob();
+    expect(job).not.toBeNull();
+    await evalWorker.processJob(job!);
+
+    // Reconcile: advances to completed
+    const recFinal = await reconciler.reconcileRun(run.id);
+    expect(recFinal.newStatus).toBe("completed");
+  });
 });
 

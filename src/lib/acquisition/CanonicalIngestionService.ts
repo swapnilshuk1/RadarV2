@@ -20,6 +20,7 @@
  *    directly from Turso/SQLite without intermediate JSON files.
  */
 
+import crypto from "crypto";
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import {
   computeCanonicalJobId,
@@ -74,6 +75,7 @@ export interface IngestOpportunityPayload {
 export interface IngestScopeFilter {
   tenantId?: string;
   personId?: string;
+  searchPlanId?: string;
   runId?: string;
 }
 
@@ -253,6 +255,10 @@ export class CanonicalIngestionService {
     if (scopeFilter?.personId) {
       planQuery += ` AND sp.person_id = ?`;
       planParams.push(scopeFilter.personId);
+    }
+    if (scopeFilter?.searchPlanId) {
+      planQuery += ` AND sp.id = ?`;
+      planParams.push(scopeFilter.searchPlanId);
     }
 
     const activePlans = await this.db.many<{
@@ -434,32 +440,48 @@ export class CanonicalIngestionService {
     // Only successful enrichment of the exact canonical opportunity/version will release it to READY/pending.
     for (const plan of activePlans) {
       if (candidateDecisions[plan.id] !== "CANDIDATE") continue;
-      try {
-        const evalContext = await this.db.one<{ context_fingerprint: string }>(
-          `SELECT aec.context_fingerprint
-           FROM active_evaluation_contexts aec
-           JOIN evaluation_contexts ec ON ec.context_fingerprint = aec.context_fingerprint
-             AND ec.tenant_id = aec.tenant_id AND ec.person_id = aec.person_id
-           WHERE aec.search_plan_id = ? AND aec.tenant_id = ? AND aec.person_id = ?
-           LIMIT 1`,
-          [plan.id, plan.tenant_id, plan.person_id]
-        );
-        if (!evalContext?.context_fingerprint) continue;
+      const evalContext = await this.db.one<{ context_fingerprint: string }>(
+        `SELECT aec.context_fingerprint
+         FROM active_evaluation_contexts aec
+         JOIN evaluation_contexts ec ON ec.context_fingerprint = aec.context_fingerprint
+           AND ec.tenant_id = aec.tenant_id AND ec.person_id = aec.person_id
+         WHERE aec.search_plan_id = ? AND aec.tenant_id = ? AND aec.person_id = ?
+         LIMIT 1`,
+        [plan.id, plan.tenant_id, plan.person_id]
+      );
+      if (!evalContext?.context_fingerprint) continue;
 
-        const reqId = `er_${plan.tenant_id}_${plan.person_id}_${canonicalJobId}_${effectiveVersionId}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const reqId = `evalreq_${crypto.createHash("sha256").update(`${plan.tenant_id}:${plan.person_id}:${plan.id}:${canonicalJobId}:${effectiveVersionId}:${evalContext.context_fingerprint}`).digest("hex").slice(0, 16)}`;
 
-        await this.db.execute(
-          `INSERT INTO evaluation_requirements (
-             id, tenant_id, person_id, search_plan_id, canonical_job_id,
-             opportunity_version, evaluation_context_fingerprint, status, created_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, 'WAITING_ENRICHMENT', CURRENT_TIMESTAMP)
-           ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-           DO UPDATE SET status = CASE 
-             WHEN evaluation_requirements.status = 'SATISFIED' THEN 'SATISFIED'
-             ELSE evaluation_requirements.status 
-           END`,
+      await this.db.execute(
+        `INSERT INTO evaluation_requirements (
+           id, tenant_id, person_id, search_plan_id, canonical_job_id,
+           opportunity_version, required_enrichment_pipeline_version,
+           evaluation_context_fingerprint, status, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'WAITING_ENRICHMENT', CURRENT_TIMESTAMP)
+         ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+         DO UPDATE SET status = CASE 
+           WHEN evaluation_requirements.status = 'SATISFIED' THEN 'SATISFIED'
+           ELSE evaluation_requirements.status 
+         END`,
+        [
+          reqId,
+          plan.tenant_id,
+          plan.person_id,
+          plan.id,
+          canonicalJobId,
+          effectiveVersionId,
+          evalContext.context_fingerprint,
+        ]
+      );
+
+      if (scopeFilter?.runId) {
+        const reqRow = await this.db.one<{ id: string }>(
+          `SELECT id FROM evaluation_requirements
+           WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
+             AND canonical_job_id = ? AND opportunity_version = ?
+             AND evaluation_context_fingerprint = ?`,
           [
-            reqId,
             plan.tenant_id,
             plan.person_id,
             plan.id,
@@ -468,34 +490,15 @@ export class CanonicalIngestionService {
             evalContext.context_fingerprint,
           ]
         );
-
-        if (scopeFilter?.runId) {
-          const reqRow = await this.db.one<{ id: string }>(
-            `SELECT id FROM evaluation_requirements
-             WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
-               AND canonical_job_id = ? AND opportunity_version = ?
-               AND evaluation_context_fingerprint = ?`,
-            [
-              plan.tenant_id,
-              plan.person_id,
-              plan.id,
-              canonicalJobId,
-              effectiveVersionId,
-              evalContext.context_fingerprint,
-            ]
+        if (reqRow) {
+          await this.db.execute(
+            `INSERT OR IGNORE INTO scrape_run_evaluation_requirements (run_id, evaluation_requirement_id)
+             VALUES (?, ?)`,
+            [scopeFilter.runId, reqRow.id]
           );
-          if (reqRow) {
-            await this.db.execute(
-              `INSERT OR IGNORE INTO scrape_run_evaluation_requirements (run_id, evaluation_requirement_id)
-               VALUES (?, ?)`,
-              [scopeFilter.runId, reqRow.id]
-            );
-          }
         }
-        jobsEnqueued++;
-      } catch (err: any) {
-        console.error("[CanonicalIngestionService] Evaluation requirement deferred:", err.message);
       }
+      jobsEnqueued++;
     }
 
     return {

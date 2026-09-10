@@ -129,19 +129,164 @@ export class RunReconciliationService {
   }
 
   /**
+   * Self-healing reconciler:
+   * 1. Heals crash windows where enrichment completed but requirement stayed WAITING_ENRICHMENT
+   * 2. Heals crash windows where requirement is READY:
+   *    - no job -> create pending evaluation job
+   *    - job in waiting_enrichment -> update to pending
+   *    - job in pending / processing -> preserve
+   *    - job completed + materialization exists -> transition requirement to SATISFIED
+   *    - job dead_letter -> transition requirement to FAILED (do NOT resurrect)
+   * 3. Heals crash windows where enrichment permanently failed -> transition requirement to FAILED
+   */
+  public async repairDanglingWork(): Promise<{ requirementsHealed: number; jobsCreated: number }> {
+    let requirementsHealed = 0;
+    let jobsCreated = 0;
+
+    // 1. WAITING_ENRICHMENT -> READY when exact matching enrichment is COMPLETE
+    const readyCandidates = await this.db.many<{
+      id: string;
+      tenant_id: string;
+      person_id: string;
+      search_plan_id: string;
+      canonical_job_id: string;
+      opportunity_version: string;
+      evaluation_context_fingerprint: string;
+    }>(
+      `SELECT er.id, er.tenant_id, er.person_id, er.search_plan_id, er.canonical_job_id,
+              er.opportunity_version, er.evaluation_context_fingerprint
+       FROM evaluation_requirements er
+       JOIN enrichment_jobs ej
+         ON er.canonical_job_id = ej.canonical_job_id
+        AND er.opportunity_version = ej.opportunity_version
+        AND er.required_enrichment_pipeline_version = ej.pipeline_version
+       WHERE er.status = 'WAITING_ENRICHMENT' AND ej.status = 'COMPLETE'`
+    );
+
+    for (const req of readyCandidates) {
+      await this.db.execute(
+        `UPDATE evaluation_requirements SET status = 'READY', ready_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'WAITING_ENRICHMENT'`,
+        [req.id]
+      );
+      requirementsHealed++;
+    }
+
+    // 2. WAITING_ENRICHMENT -> FAILED when exact matching enrichment is FAILED
+    const failedEnrichments = await this.db.many<{ id: string }>(
+      `SELECT er.id
+       FROM evaluation_requirements er
+       JOIN enrichment_jobs ej
+         ON er.canonical_job_id = ej.canonical_job_id
+        AND er.opportunity_version = ej.opportunity_version
+        AND er.required_enrichment_pipeline_version = ej.pipeline_version
+       WHERE er.status = 'WAITING_ENRICHMENT' AND ej.status = 'FAILED'`
+    );
+
+    for (const req of failedEnrichments) {
+      await this.db.execute(
+        `UPDATE evaluation_requirements SET status = 'FAILED', blocked_reason = 'ENRICHMENT_FAILED' WHERE id = ? AND status = 'WAITING_ENRICHMENT'`,
+        [req.id]
+      );
+      requirementsHealed++;
+    }
+
+    // 3. For all READY requirements, ensure evaluation job exists in appropriate state
+    const readyReqs = await this.db.many<{
+      id: string;
+      tenant_id: string;
+      person_id: string;
+      search_plan_id: string;
+      canonical_job_id: string;
+      opportunity_version: string;
+      evaluation_context_fingerprint: string;
+    }>(
+      `SELECT id, tenant_id, person_id, search_plan_id, canonical_job_id,
+              opportunity_version, evaluation_context_fingerprint
+       FROM evaluation_requirements
+       WHERE status = 'READY'`
+    );
+
+    for (const req of readyReqs) {
+      const job = await this.db.one<{ id: string; status: string }>(
+        `SELECT id, status FROM evaluation_jobs
+         WHERE tenant_id = ? AND search_plan_id = ? AND canonical_job_id = ?
+           AND opportunity_version = ? AND evaluation_context_fingerprint = ?
+         LIMIT 1`,
+        [req.tenant_id, req.search_plan_id, req.canonical_job_id, req.opportunity_version, req.evaluation_context_fingerprint]
+      );
+
+      if (!job) {
+        const evalJobId = `eval_${req.tenant_id}_${req.canonical_job_id}_${req.opportunity_version}_${req.evaluation_context_fingerprint.substring(0, 8)}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+        await this.db.execute(
+          `INSERT INTO evaluation_jobs (
+             id, tenant_id, person_id, search_plan_id, canonical_job_id,
+             opportunity_version, evaluation_context_fingerprint, status, attempts, created_at, updated_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+           DO UPDATE SET status = CASE WHEN evaluation_jobs.status = 'waiting_enrichment' THEN 'pending' ELSE evaluation_jobs.status END, updated_at = CURRENT_TIMESTAMP`,
+          [
+            evalJobId,
+            req.tenant_id,
+            req.person_id,
+            req.search_plan_id,
+            req.canonical_job_id,
+            req.opportunity_version,
+            req.evaluation_context_fingerprint,
+          ]
+        );
+        jobsCreated++;
+      } else if (job.status === "waiting_enrichment") {
+        await this.db.execute(
+          `UPDATE evaluation_jobs SET status = 'pending', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          [job.id]
+        );
+      } else if (job.status === "dead_letter") {
+        await this.db.execute(
+          `UPDATE evaluation_requirements SET status = 'FAILED', blocked_reason = 'EVALUATION_JOB_DEAD_LETTER' WHERE id = ?`,
+          [req.id]
+        );
+        requirementsHealed++;
+      } else if (job.status === "completed") {
+        const mat = await this.db.one<{ id: string }>(
+          `SELECT id FROM materialized_evaluations
+           WHERE tenant_id = ? AND person_id = ? AND canonical_job_id = ?
+             AND opportunity_version = ? AND evaluation_context_fingerprint = ?
+           LIMIT 1`,
+          [req.tenant_id, req.person_id, req.canonical_job_id, req.opportunity_version, req.evaluation_context_fingerprint]
+        );
+        if (mat) {
+          await this.db.execute(
+            `UPDATE evaluation_requirements SET status = 'SATISFIED', satisfied_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            [req.id]
+          );
+          requirementsHealed++;
+        }
+      }
+    }
+
+    return { requirementsHealed, jobsCreated };
+  }
+
+  /**
    * Targeted reconciliation for runs associated with a specific canonical job and version.
    */
   public async reconcileRunsForJob(
     canonicalJobId: string,
-    opportunityVersion: string
+    opportunityVersion: string,
+    pipelineVersion?: string
   ): Promise<void> {
-    const rows = await this.db.many<{ run_id: string }>(
-      `SELECT DISTINCT srer.run_id
-       FROM scrape_run_evaluation_requirements srer
-       JOIN evaluation_requirements er ON srer.evaluation_requirement_id = er.id
-       WHERE er.canonical_job_id = ? AND er.opportunity_version = ?`,
-      [canonicalJobId, opportunityVersion]
-    );
+    let query = `
+      SELECT DISTINCT srer.run_id
+      FROM scrape_run_evaluation_requirements srer
+      JOIN evaluation_requirements er ON srer.evaluation_requirement_id = er.id
+      WHERE er.canonical_job_id = ? AND er.opportunity_version = ?
+    `;
+    const params: unknown[] = [canonicalJobId, opportunityVersion];
+    if (pipelineVersion) {
+      query += ` AND er.required_enrichment_pipeline_version = ?`;
+      params.push(pipelineVersion);
+    }
+    const rows = await this.db.many<{ run_id: string }>(query, params);
 
     for (const row of rows) {
       await this.reconcileRun(row.run_id);
@@ -153,6 +298,9 @@ export class RunReconciliationService {
    * Uses system-level queries without requiring a forged user context.
    */
   public async reconcileActiveRuns(): Promise<number> {
+    // 1. Self-heal any dangling work across crash windows
+    await this.repairDanglingWork();
+
     const activeRuns = await this.runStore.getSystemActiveRuns();
     let transitionedCount = 0;
 

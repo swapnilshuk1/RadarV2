@@ -176,6 +176,11 @@ export async function runMigrations(
     .filter((f) => f.endsWith(".sql") && !f.endsWith("_rollback.sql"))
     .sort();
 
+const REBUILD_MIGRATIONS = new Set([
+  "042_scrape_runs_distributed_lifecycle.sql",
+  "043_distributed_work_identity.sql",
+]);
+
   const applied: string[] = [];
   const skipped: string[] = [];
 
@@ -188,27 +193,33 @@ export async function runMigrations(
     const filePath = path.join(dir, file);
     const sqlContent = fs.readFileSync(filePath, "utf-8");
     const statements = splitSqlStatements(sqlContent);
+    const isRebuild = REBUILD_MIGRATIONS.has(file);
 
-    // Apply statements within a transaction
-    await db.transaction(async (tx) => {
-      for (const stmt of statements) {
-        try {
-          await tx.execute(stmt);
-        } catch (err: any) {
-          // Historical migration compatibility: If creating an index with IF NOT EXISTS fails because a legacy table
-          // was dropped in an earlier historical migration (and recreated later), allow clean replay without mutating historical SQL files.
-          const upper = stmt.toUpperCase();
-          if (
-            (upper.includes("CREATE INDEX IF NOT EXISTS") || upper.includes("CREATE UNIQUE INDEX IF NOT EXISTS")) &&
-            err?.message?.includes("no such table")
-          ) {
-            continue;
+    if (isRebuild && db.executeMigration) {
+      await db.executeMigration(statements, { disableForeignKeys: true });
+      await db.execute("INSERT INTO _migrations (migration_name) VALUES (?)", [file]);
+    } else {
+      // Apply statements within a transaction
+      await db.transaction(async (tx) => {
+        for (const stmt of statements) {
+          try {
+            await tx.execute(stmt);
+          } catch (err: any) {
+            // Historical migration compatibility: If creating an index with IF NOT EXISTS fails because a legacy table
+            // was dropped in an earlier historical migration (and recreated later), allow clean replay without mutating historical SQL files.
+            const upper = stmt.toUpperCase();
+            if (
+              (upper.includes("CREATE INDEX IF NOT EXISTS") || upper.includes("CREATE UNIQUE INDEX IF NOT EXISTS")) &&
+              err?.message?.includes("no such table")
+            ) {
+              continue;
+            }
+            throw err;
           }
-          throw err;
         }
-      }
-      await tx.execute("INSERT INTO _migrations (migration_name) VALUES (?)", [file]);
-    });
+        await tx.execute("INSERT INTO _migrations (migration_name) VALUES (?)", [file]);
+      });
+    }
 
     applied.push(file);
   }

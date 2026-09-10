@@ -71,6 +71,7 @@ async function deploy() {
     `npm run build`,
     `pm2 restart radar-v2`,
     `pm2 restart radar-enrich || pm2 start "npx tsx scripts/enrich.ts" --name "radar-enrich"`,
+    `pm2 restart radar-evaluate || pm2 start "npx tsx scripts/run-evaluation-worker.ts" --name "radar-evaluate"`,
     `pm2 save`,
     `pm2 status`
   ].join(" && ");

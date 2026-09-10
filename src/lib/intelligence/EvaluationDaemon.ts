@@ -34,6 +34,16 @@ export class EvaluationDaemon {
         
         if (signal.aborted) return;
 
+        const now = Date.now();
+        if (now - this.lastGlobalReconcileAt >= 10000) {
+          this.lastGlobalReconcileAt = now;
+          try {
+            await this.reconciler.reconcileActiveRuns();
+          } catch (recErr: any) {
+            console.warn(`[EvaluationDaemon] Periodic active run reconciliation error:`, recErr?.message || recErr);
+          }
+        }
+
         if (result) {
           // M5.4 Observability semantics
           console.log(`[EvaluationDaemon] Processed job ${result.jobId} - Status: ${result.status}`);
@@ -45,16 +55,7 @@ export class EvaluationDaemon {
           // Immediate continuation to drain the queue if there's work
           setTimeout(loop, 0);
         } else {
-          // Idle backoff - perform periodic global active run reconciliation sweep
-          const now = Date.now();
-          if (now - this.lastGlobalReconcileAt >= 10000) {
-            this.lastGlobalReconcileAt = now;
-            try {
-              await this.reconciler.reconcileActiveRuns();
-            } catch (recErr: any) {
-              console.warn(`[EvaluationDaemon] Periodic active run reconciliation error:`, recErr?.message || recErr);
-            }
-          }
+          // Idle backoff
           setTimeout(loop, this.pollIntervalMs);
         }
       } catch (err: any) {

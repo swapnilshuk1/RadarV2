@@ -63,6 +63,7 @@ RADAR v2 Test Architecture
 | `tests/scraper/naukri-provenance.test.ts` | Explicit full-JD provenance flag validation, prevention of length-based inference, and native detail fetch routing. | Full Suite |
 | `tests/acquisition/gate2-target-depth.test.ts` | Canonical geography semantics, fail-narrow portal geo mapping, multi-location variant compilation, source-identity novelty evaluation, and structured SPA extraction. | Full Suite |
 | `tests/persistence/gate3-distributed-lifecycle.test.ts` | Distributed lifecycle transitions (`enriching`, `completing`, `completed`), version-aware enrichment work deduplication, pre-enrichment evaluation requirement gating, fail-closed failure propagation, and cross-tenant dual convergence. | **Stage 3** |
+| `tests/persistence/populated-migration.test.ts` | Populated database migration across 001-043, proving zero foreign key check violations and row identity preservation. | **Stage 3** |
 
 ---
 
@@ -295,7 +296,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/persistence/cross-instance-payload-retrieval.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 2 | 10 |
 | `tests/persistence/distributed-lease-contention.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 2 | 12 |
 | `tests/persistence/blob-store-connectivity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 4 | 14 |
-| `tests/persistence/gate3-distributed-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 8 | 35 |
+| `tests/persistence/gate3-distributed-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 12 | 45 |
+| `tests/persistence/populated-migration.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 1 | 9 |
 | `tests/persistence/m61-credential-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 54 |
 | `tests/persistence/m7-tenant-migration.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 7 | 15 |
 | `tests/persistence/migration-runner.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 5 | 19 |

@@ -446,7 +446,7 @@ export class EvaluationWorker {
     job: ClaimedJob,
     materialized: any
   ): Promise<WorkerProcessingResult> {
-    return await this.db.transaction<WorkerProcessingResult>(async (tx) => {
+    const result = await this.db.transaction<WorkerProcessingResult>(async (tx) => {
       const leaseCheck = await tx.one<{ id: string }>(
         `SELECT id FROM evaluation_jobs WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
         [job.id, this.workerId, job.leaseToken]
@@ -530,9 +530,21 @@ export class EvaluationWorker {
       return {
         status: "completed",
         jobId: job.id,
-        decision: (materialized.decision ?? null) as any,
+        decision: materialized.decision ?? undefined,
       };
     });
+
+    if (result.status === "completed") {
+      try {
+        const { RunReconciliationService } = await import("./RunReconciliationService");
+        const reconciler = new RunReconciliationService(this.db);
+        await reconciler.reconcileRunsForJob(job.canonicalJobId, job.opportunityVersion);
+      } catch (recErr: any) {
+        console.warn("[EvaluationWorker] reconcileRunsForJob deferred:", recErr?.message || recErr);
+      }
+    }
+
+    return result;
   }
 
   public async pollAndProcessNext(): Promise<WorkerProcessingResult | null> {

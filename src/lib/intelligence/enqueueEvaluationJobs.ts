@@ -102,6 +102,19 @@ export async function enqueueEvaluationJobsForPlan(
       continue;
     }
 
+    // Check whether exact canonical enrichment is pending
+    const enrichment = await db.one<{ status: string }>(
+      `SELECT status FROM enrichment_jobs 
+       WHERE canonical_job_id = ? AND opportunity_version = ? AND pipeline_version = '1.0.0'
+       LIMIT 1`,
+      [candidate.canonical_job_id, candidate.opportunity_version]
+    );
+
+    // Only gate if an enrichment job actually exists and is not yet COMPLETE
+    const isWaitingEnrichment = enrichment !== null && enrichment.status !== "COMPLETE";
+    const reqStatus = isWaitingEnrichment ? "WAITING_ENRICHMENT" : "READY";
+    const jobStatus = isWaitingEnrichment ? "waiting_enrichment" : "pending";
+
     // Deterministic Job ID using fingerprint hash to ensure unique PK across context changes
     const fpHash = createHash("sha256").update(fingerprint).digest("hex").slice(0, 12);
     const jobId = `evaljob_${tenantId}_${searchPlanId}_${candidate.canonical_job_id}_${candidate.opportunity_version}_${fpHash}`;
@@ -114,8 +127,12 @@ export async function enqueueEvaluationJobsForPlan(
        ) VALUES (
          ?, ?, ?, ?,
          ?, ?, ?,
-         'pending', 0, 3, CURRENT_TIMESTAMP
-       ) ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) DO NOTHING`,
+         ?, 0, 3, CURRENT_TIMESTAMP
+       ) ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
+       DO UPDATE SET status = CASE 
+         WHEN evaluation_jobs.status = 'waiting_enrichment' AND ? = 'pending' THEN 'pending'
+         ELSE evaluation_jobs.status 
+       END`,
       [
         jobId,
         tenantId,
@@ -123,7 +140,9 @@ export async function enqueueEvaluationJobsForPlan(
         searchPlanId,
         candidate.canonical_job_id,
         candidate.opportunity_version,
-        fingerprint
+        fingerprint,
+        jobStatus,
+        jobStatus,
       ]
     );
 
@@ -131,10 +150,15 @@ export async function enqueueEvaluationJobsForPlan(
     await db.execute(
       `INSERT INTO evaluation_requirements (
          id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
+         required_enrichment_pipeline_version,
          evaluation_context_fingerprint, status
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'READY')
+       ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, ?)
        ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-       DO UPDATE SET status = 'READY', blocked_reason = NULL`,
+       DO UPDATE SET status = CASE 
+         WHEN evaluation_requirements.status = 'SATISFIED' THEN 'SATISFIED'
+         WHEN evaluation_requirements.status = 'FAILED' THEN 'FAILED'
+         ELSE ?
+       END, blocked_reason = NULL`,
       [
         reqId,
         tenantId,
@@ -143,6 +167,8 @@ export async function enqueueEvaluationJobsForPlan(
         candidate.canonical_job_id,
         candidate.opportunity_version,
         fingerprint,
+        reqStatus,
+        reqStatus,
       ]
     );
 

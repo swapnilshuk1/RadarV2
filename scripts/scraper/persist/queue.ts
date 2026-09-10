@@ -1,5 +1,6 @@
 import type { DatabaseAdapter } from "../../../src/data/database/adapter";
 import { getDatabaseAdapter } from "../../../src/data/database";
+import crypto from "crypto";
 
 export type JobStatus = "PENDING" | "LEASED" | "RUNNING" | "FAILED" | "RETRY" | "COMPLETE";
 export type FailureType = "RATE_LIMIT" | "NETWORK" | "LLM_TIMEOUT" | "PROMPT_TOO_LONG" | "PARSE_FAILURE" | "UNKNOWN" | null;
@@ -77,26 +78,92 @@ export class EnrichmentQueue {
       const snapshotPath = snapshotPathOrPayloadKey;
 
       // 1. Version-Aware Shared Work Resolution:
-      // If canonicalJobId + opportunityVersion provided, check if matching job exists
-      let existingJob: { id: string } | null = null;
       if (canonicalJobId && opportunityVersion) {
-        existingJob = await this.db.one<{ id: string }>(
-          `SELECT id FROM enrichment_jobs 
+        // Resolve ONLY by exact canonical work identity
+        const existingJob = await this.db.one<{ id: string; status: JobStatus }>(
+          `SELECT id, status FROM enrichment_jobs 
            WHERE canonical_job_id = ? AND opportunity_version = ? AND pipeline_version = ?
            LIMIT 1`,
           [canonicalJobId, opportunityVersion, pipelineVersion]
         );
-      }
 
-      if (!existingJob) {
-        existingJob = await this.db.one<{ id: string }>(
-          `SELECT id FROM enrichment_jobs WHERE job_hash = ? LIMIT 1`,
-          [jobHash]
+        if (existingJob) {
+          // Bind run to the existing job if run exists
+          if (provenance?.runId) {
+            const runExists = await this.db.one<{ id: string }>(
+              `SELECT id FROM scrape_runs WHERE id = ? LIMIT 1`,
+              [provenance.runId]
+            );
+            if (runExists) {
+              await this.db.execute(
+                `INSERT OR IGNORE INTO scrape_run_enrichment_requirements (run_id, enrichment_job_id)
+                 VALUES (?, ?)`,
+                [provenance.runId, existingJob.id]
+              );
+            }
+          }
+
+          // Exact status resolution:
+          // COMPLETE -> immediately release/heal downstream requirements
+          if (existingJob.status === "COMPLETE") {
+            await this.releaseEvaluationRequirements(canonicalJobId, opportunityVersion, pipelineVersion);
+          } else if (existingJob.status === "FAILED") {
+            // FAILED -> fail the new dependency and fail referencing run
+            await this.failEvaluationRequirements(canonicalJobId, opportunityVersion, pipelineVersion, "ENRICHMENT_FAILED");
+            if (provenance?.runId) {
+              await this.db.execute(
+                `UPDATE scrape_runs SET status = 'failed', error_message = 'ENRICHMENT_FAILED: Reused failed enrichment', finished_at = CURRENT_TIMESTAMP
+                 WHERE id = ? AND status NOT IN ('completed', 'failed', 'aborted')`,
+                [provenance.runId]
+              );
+            }
+          }
+          return false;
+        }
+
+        // Canonical ID: Use caller-provided id if supplied, else deterministic SHA-256 ID
+        const canonicalId = id || `enrich_${crypto.createHash("sha256").update(`${canonicalJobId}:${opportunityVersion}:${pipelineVersion}`).digest("hex").slice(0, 24)}`;
+
+        const res = await this.db.execute(
+          `INSERT INTO enrichment_jobs 
+          (id, job_hash, canonical_job_id, opportunity_version, pipeline_version, snapshot_path, payload_key,
+           run_id, execution_plan_id, definition_id, family_id, portal, page,
+           catalog_version, planner_version, rule_version, search_query,
+           status, business_priority, execution_priority, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(canonical_job_id, opportunity_version, pipeline_version) WHERE canonical_job_id IS NOT NULL DO NOTHING`,
+          [
+            canonicalId,
+            jobHash,
+            canonicalJobId,
+            opportunityVersion,
+            pipelineVersion,
+            snapshotPath,
+            payloadKey,
+            provenance.runId,
+            provenance.executionPlanId,
+            provenance.definitionId,
+            provenance.familyId,
+            provenance.portal,
+            provenance.page,
+            provenance.catalogVersion,
+            provenance.plannerVersion,
+            provenance.ruleVersion,
+            provenance.searchQuery,
+            businessPriority,
+            executionPriority,
+          ]
         );
-      }
 
-      if (existingJob) {
-        // Shared work already exists: bind this run to the existing job if run exists
+        let resolvedJobId = canonicalId;
+        if (res.rowsAffected === 0) {
+          const found = await this.db.one<{ id: string }>(
+            `SELECT id FROM enrichment_jobs WHERE canonical_job_id = ? AND opportunity_version = ? AND pipeline_version = ? LIMIT 1`,
+            [canonicalJobId, opportunityVersion, pipelineVersion]
+          );
+          if (found) resolvedJobId = found.id;
+        }
+
         if (provenance?.runId) {
           const runExists = await this.db.one<{ id: string }>(
             `SELECT id FROM scrape_runs WHERE id = ? LIMIT 1`,
@@ -106,75 +173,102 @@ export class EnrichmentQueue {
             await this.db.execute(
               `INSERT OR IGNORE INTO scrape_run_enrichment_requirements (run_id, enrichment_job_id)
                VALUES (?, ?)`,
-              [provenance.runId, existingJob.id]
+              [provenance.runId, resolvedJobId]
             );
           }
         }
+
+        if (res.rowsAffected > 0) {
+          await this.logEvent(canonicalId, "JOB_QUEUED");
+          return true;
+        }
+        return false;
+      } else {
+        // Legacy / Unbound Work: Resolve ONLY by job_hash + pipeline_version where canonical_job_id IS NULL
+        const existingJob = await this.db.one<{ id: string; status: JobStatus }>(
+          `SELECT id, status FROM enrichment_jobs 
+           WHERE job_hash = ? AND pipeline_version = ? AND canonical_job_id IS NULL 
+           LIMIT 1`,
+          [jobHash, pipelineVersion]
+        );
+
+        if (existingJob) {
+          if (provenance?.runId) {
+            const runExists = await this.db.one<{ id: string }>(
+              `SELECT id FROM scrape_runs WHERE id = ? LIMIT 1`,
+              [provenance.runId]
+            );
+            if (runExists) {
+              await this.db.execute(
+                `INSERT OR IGNORE INTO scrape_run_enrichment_requirements (run_id, enrichment_job_id)
+                 VALUES (?, ?)`,
+                [provenance.runId, existingJob.id]
+              );
+            }
+          }
+          return false;
+        }
+
+        const legacyId = id || `enrich_${crypto.createHash("sha256").update(`${jobHash}:${pipelineVersion}`).digest("hex").slice(0, 24)}`;
+
+        const res = await this.db.execute(
+          `INSERT INTO enrichment_jobs 
+          (id, job_hash, canonical_job_id, opportunity_version, pipeline_version, snapshot_path, payload_key,
+           run_id, execution_plan_id, definition_id, family_id, portal, page,
+           catalog_version, planner_version, rule_version, search_query,
+           status, business_priority, execution_priority, created_at)
+          VALUES (?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(job_hash, pipeline_version) WHERE canonical_job_id IS NULL DO NOTHING`,
+          [
+            legacyId,
+            jobHash,
+            pipelineVersion,
+            snapshotPath,
+            payloadKey,
+            provenance.runId,
+            provenance.executionPlanId,
+            provenance.definitionId,
+            provenance.familyId,
+            provenance.portal,
+            provenance.page,
+            provenance.catalogVersion,
+            provenance.plannerVersion,
+            provenance.ruleVersion,
+            provenance.searchQuery,
+            businessPriority,
+            executionPriority,
+          ]
+        );
+
+        let resolvedJobId = legacyId;
+        if (res.rowsAffected === 0) {
+          const found = await this.db.one<{ id: string }>(
+            `SELECT id FROM enrichment_jobs WHERE job_hash = ? AND pipeline_version = ? AND canonical_job_id IS NULL LIMIT 1`,
+            [jobHash, pipelineVersion]
+          );
+          if (found) resolvedJobId = found.id;
+        }
+
+        if (provenance?.runId) {
+          const runExists = await this.db.one<{ id: string }>(
+            `SELECT id FROM scrape_runs WHERE id = ? LIMIT 1`,
+            [provenance.runId]
+          );
+          if (runExists) {
+            await this.db.execute(
+              `INSERT OR IGNORE INTO scrape_run_enrichment_requirements (run_id, enrichment_job_id)
+               VALUES (?, ?)`,
+              [provenance.runId, resolvedJobId]
+            );
+          }
+        }
+
+        if (res.rowsAffected > 0) {
+          await this.logEvent(legacyId, "JOB_QUEUED");
+          return true;
+        }
         return false;
       }
-
-      // 2. Insert new enrichment job
-      const res = await this.db.execute(
-        `INSERT INTO enrichment_jobs 
-        (id, job_hash, canonical_job_id, opportunity_version, pipeline_version, snapshot_path, payload_key,
-         run_id, execution_plan_id, definition_id, family_id, portal, page,
-         catalog_version, planner_version, rule_version, search_query,
-         status, business_priority, execution_priority, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(job_hash) DO NOTHING`,
-        [
-          id,
-          jobHash,
-          canonicalJobId || null,
-          opportunityVersion || null,
-          pipelineVersion,
-          snapshotPath,
-          payloadKey,
-          provenance.runId,
-          provenance.executionPlanId,
-          provenance.definitionId,
-          provenance.familyId,
-          provenance.portal,
-          provenance.page,
-          provenance.catalogVersion,
-          provenance.plannerVersion,
-          provenance.ruleVersion,
-          provenance.searchQuery,
-          businessPriority,
-          executionPriority,
-        ]
-      );
-
-      // Determine the resolved job id (either the newly inserted id or existing on conflict)
-      let resolvedJobId = id;
-      if (res.rowsAffected === 0) {
-        const found = await this.db.one<{ id: string }>(
-          `SELECT id FROM enrichment_jobs WHERE job_hash = ? LIMIT 1`,
-          [jobHash]
-        );
-        if (found) resolvedJobId = found.id;
-      }
-
-      // Bind run to the resolved enrichment job if run exists
-      if (provenance?.runId) {
-        const runExists = await this.db.one<{ id: string }>(
-          `SELECT id FROM scrape_runs WHERE id = ? LIMIT 1`,
-          [provenance.runId]
-        );
-        if (runExists) {
-          await this.db.execute(
-            `INSERT OR IGNORE INTO scrape_run_enrichment_requirements (run_id, enrichment_job_id)
-             VALUES (?, ?)`,
-            [provenance.runId, resolvedJobId]
-          );
-        }
-      }
-
-      if (res.rowsAffected > 0) {
-        await this.logEvent(id, "JOB_QUEUED");
-        return true;
-      }
-      return false; // Reused existing job
     } catch (err: any) {
       if (err.message?.includes("UNIQUE constraint failed") || err.code === "SQLITE_CONSTRAINT_UNIQUE") {
         return false; // Already enqueued
@@ -238,15 +332,19 @@ export class EnrichmentQueue {
   }
 
   public async releaseEvaluationRequirementsForJob(jobId: string): Promise<number> {
-    const job = await this.db.one<{ canonical_job_id?: string; opportunity_version?: string }>(
-      `SELECT canonical_job_id, opportunity_version FROM enrichment_jobs WHERE id = ?`,
+    const job = await this.db.one<{ canonical_job_id?: string; opportunity_version?: string; pipeline_version?: string }>(
+      `SELECT canonical_job_id, opportunity_version, pipeline_version FROM enrichment_jobs WHERE id = ?`,
       [jobId]
     );
-    if (!job || !job.canonical_job_id || !job.opportunity_version) return 0;
-    return await this.releaseEvaluationRequirements(job.canonical_job_id, job.opportunity_version);
+    if (!job || !job.canonical_job_id || !job.opportunity_version || !job.pipeline_version) return 0;
+    return await this.releaseEvaluationRequirements(job.canonical_job_id, job.opportunity_version, job.pipeline_version);
   }
 
-  public async releaseEvaluationRequirements(canonicalJobId: string, opportunityVersion: string): Promise<number> {
+  public async releaseEvaluationRequirements(
+    canonicalJobId: string,
+    opportunityVersion: string,
+    pipelineVersion: string = "1.0.0"
+  ): Promise<number> {
     const reqs = await this.db.many<{
       id: string;
       tenant_id: string;
@@ -257,8 +355,11 @@ export class EnrichmentQueue {
       evaluation_context_fingerprint: string;
     }>(
       `SELECT * FROM evaluation_requirements 
-       WHERE canonical_job_id = ? AND opportunity_version = ? AND status = 'WAITING_ENRICHMENT'`,
-      [canonicalJobId, opportunityVersion]
+       WHERE canonical_job_id = ? 
+         AND opportunity_version = ? 
+         AND required_enrichment_pipeline_version = ? 
+         AND status = 'WAITING_ENRICHMENT'`,
+      [canonicalJobId, opportunityVersion, pipelineVersion]
     );
 
     if (reqs.length === 0) return 0;
@@ -266,8 +367,11 @@ export class EnrichmentQueue {
     await this.db.execute(
       `UPDATE evaluation_requirements 
        SET status = 'READY', ready_at = CURRENT_TIMESTAMP 
-       WHERE canonical_job_id = ? AND opportunity_version = ? AND status = 'WAITING_ENRICHMENT'`,
-      [canonicalJobId, opportunityVersion]
+       WHERE canonical_job_id = ? 
+         AND opportunity_version = ? 
+         AND required_enrichment_pipeline_version = ? 
+         AND status = 'WAITING_ENRICHMENT'`,
+      [canonicalJobId, opportunityVersion, pipelineVersion]
     );
 
     for (const req of reqs) {
@@ -278,7 +382,9 @@ export class EnrichmentQueue {
            opportunity_version, evaluation_context_fingerprint, status, attempts, created_at, updated_at
          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
          ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-         DO UPDATE SET status = CASE WHEN evaluation_jobs.status = 'completed' THEN 'completed' ELSE 'pending' END, updated_at = CURRENT_TIMESTAMP`,
+         DO UPDATE SET 
+           status = CASE WHEN evaluation_jobs.status = 'waiting_enrichment' THEN 'pending' ELSE evaluation_jobs.status END,
+           updated_at = CURRENT_TIMESTAMP`,
         [
           evalJobId,
           req.tenant_id,
@@ -292,6 +398,24 @@ export class EnrichmentQueue {
     }
 
     return reqs.length;
+  }
+
+  public async failEvaluationRequirements(
+    canonicalJobId: string,
+    opportunityVersion: string,
+    pipelineVersion: string = "1.0.0",
+    reason: string = "ENRICHMENT_FAILED"
+  ): Promise<number> {
+    const res = await this.db.execute(
+      `UPDATE evaluation_requirements 
+       SET status = 'FAILED', blocked_reason = ? 
+       WHERE canonical_job_id = ? 
+         AND opportunity_version = ? 
+         AND required_enrichment_pipeline_version = ? 
+         AND status = 'WAITING_ENRICHMENT'`,
+      [reason, canonicalJobId, opportunityVersion, pipelineVersion]
+    );
+    return res.rowsAffected;
   }
 
   public async markRetry(jobId: string, failureType: FailureType, errorMsg: string, nextRetryAt: string): Promise<void> {
@@ -328,17 +452,12 @@ export class EnrichmentQueue {
     await this.logEvent(jobId, "JOB_FAILED", JSON.stringify({ errorMsg }));
 
     // Fail-Closed: mark dependent evaluation requirements FAILED
-    const job = await this.db.one<{ canonical_job_id?: string; opportunity_version?: string }>(
-      `SELECT canonical_job_id, opportunity_version FROM enrichment_jobs WHERE id = ?`,
+    const job = await this.db.one<{ canonical_job_id?: string; opportunity_version?: string; pipeline_version?: string }>(
+      `SELECT canonical_job_id, opportunity_version, pipeline_version FROM enrichment_jobs WHERE id = ?`,
       [jobId]
     );
-    if (job?.canonical_job_id && job?.opportunity_version) {
-      await this.db.execute(
-        `UPDATE evaluation_requirements 
-         SET status = 'FAILED', blocked_reason = 'ENRICHMENT_FAILED'
-         WHERE canonical_job_id = ? AND opportunity_version = ? AND status = 'WAITING_ENRICHMENT'`,
-        [job.canonical_job_id, job.opportunity_version]
-      );
+    if (job?.canonical_job_id && job?.opportunity_version && job?.pipeline_version) {
+      await this.failEvaluationRequirements(job.canonical_job_id, job.opportunity_version, job.pipeline_version, "ENRICHMENT_FAILED");
     }
 
     // Fail referencing runs
