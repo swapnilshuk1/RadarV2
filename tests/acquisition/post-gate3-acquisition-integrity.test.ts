@@ -35,7 +35,13 @@ import {
   activeRunControllers,
   activeRunSessions,
   createRunSession,
+  executeCardDetailWithPolicy,
+  finalizeUnitOutcome,
+  shutdownAllRuns,
 } from "../../scripts/scrape";
+import * as httpFetchModule from "../../scripts/scraper/utils/http-fetch";
+import { classifyFastPathResponse } from "../../scripts/scraper/utils/http-fetch";
+import { linkedinHandler } from "../../scripts/scraper/portals/linkedin";
 import { EnrichmentQueue } from "../../scripts/scraper/persist/queue";
 import { extractionPath, readExtractionIfFresh, writeExtraction, collectRecords } from "../../scripts/scraper/persist/writer";
 import { EXTRACTION_DIR, RUNS_DIR } from "../../scripts/scraper/config";
@@ -1368,6 +1374,7 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       const { raw, db, blobStore } = createInMemoryDatabase();
       raw.exec(`UPDATE scrape_runs SET status = 'waiting_for_confirmation' WHERE id = 'run-001'`);
       const service = new CanonicalIngestionService(db, blobStore);
+      const rawContent = "Leadership role driving sales.".repeat(10);
       const payload: any = {
         sourcePortal: "LinkedIn",
         sourceJobId: "job-scoped-nonrunning",
@@ -1375,7 +1382,16 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
         jobTitle: "VP Sales",
         companyName: "Acme",
         location: "Bengaluru",
-        rawContent: "Leadership role driving sales.".repeat(10),
+        rawContent,
+        enrichmentDispatch: {
+          detailedCard: {
+            title: "VP Sales",
+            company: "Acme",
+            location: "Bengaluru",
+            detail: { rawText: rawContent },
+          },
+          pipelineVersion: "v2.1",
+        },
       };
 
       await expect(
@@ -1392,6 +1408,7 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
     it("GLOBAL_MARKET evaluates zero plans", async () => {
       const { raw, db, blobStore } = createInMemoryDatabase();
       const service = new CanonicalIngestionService(db, blobStore);
+      const rawContent = "Global market opportunity text content.".repeat(10);
       const payload: any = {
         sourcePortal: "LinkedIn",
         sourceJobId: "job-gm-zeroplans",
@@ -1399,7 +1416,16 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
         jobTitle: "VP Sales",
         companyName: "Acme",
         location: "Bengaluru",
-        rawContent: "Global market opportunity text content.".repeat(10),
+        rawContent,
+        enrichmentDispatch: {
+          detailedCard: {
+            title: "VP Sales",
+            company: "Acme",
+            location: "Bengaluru",
+            detail: { rawText: rawContent },
+          },
+          pipelineVersion: "v2.1",
+        },
       };
 
       const res = await service.ingestOpportunity(payload, {
@@ -1417,6 +1443,7 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       const { raw, db, blobStore } = createInMemoryDatabase();
       raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-001'`);
       const service = new CanonicalIngestionService(db, blobStore);
+      const rawContent = "VP Growth driving expansion and commercial operations.".repeat(10);
       const payload: any = {
         sourcePortal: "LinkedIn",
         sourceJobId: "job-scoped-single-plan",
@@ -1424,7 +1451,16 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
         jobTitle: "VP Growth",
         companyName: "Acme",
         location: "Gurugram",
-        rawContent: "VP Growth driving expansion and commercial operations.".repeat(10),
+        rawContent,
+        enrichmentDispatch: {
+          detailedCard: {
+            title: "VP Growth",
+            company: "Acme",
+            location: "Gurugram",
+            detail: { rawText: rawContent },
+          },
+          pipelineVersion: "v2.1",
+        },
       };
 
       const res = await service.ingestOpportunity(payload, {
@@ -1559,6 +1595,7 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       const { raw, db, blobStore } = createInMemoryDatabase();
       const service = new CanonicalIngestionService(db, blobStore);
 
+      const rawContent1 = "Posting one content from LinkedIn.".repeat(10);
       const res1 = await service.ingestOpportunity({
         sourcePortal: "LinkedIn",
         sourceJobId: "li-job-1",
@@ -1566,9 +1603,19 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
         jobTitle: "VP Growth",
         companyName: "Corp",
         location: "Bengaluru",
-        rawContent: "Posting one content from LinkedIn.".repeat(10),
+        rawContent: rawContent1,
+        enrichmentDispatch: {
+          detailedCard: {
+            title: "VP Growth",
+            company: "Corp",
+            location: "Bengaluru",
+            detail: { rawText: rawContent1 },
+          },
+          pipelineVersion: "v2.1",
+        },
       }, { mode: "GLOBAL_MARKET" });
 
+      const rawContent2 = "Posting two content from Indeed with same ATS URL.".repeat(10);
       const res2 = await service.ingestOpportunity({
         sourcePortal: "Indeed",
         sourceJobId: "in-job-2",
@@ -1576,7 +1623,16 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
         jobTitle: "VP Growth",
         companyName: "Corp",
         location: "Bengaluru",
-        rawContent: "Posting two content from Indeed with same ATS URL.".repeat(10),
+        rawContent: rawContent2,
+        enrichmentDispatch: {
+          detailedCard: {
+            title: "VP Growth",
+            company: "Corp",
+            location: "Bengaluru",
+            detail: { rawText: rawContent2 },
+          },
+          pipelineVersion: "v2.1",
+        },
       }, { mode: "GLOBAL_MARKET" });
 
       expect(res1.canonicalJobId).not.toBe(res2.canonicalJobId);
@@ -1584,51 +1640,342 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       expect(opps.length).toBe(2);
     });
 
-    it("all REMOVED_404 cards complete the unit", () => {
-      const manifestCards: any[] = [
-        { id: "c1", status: "completed", detailAttempted: true, usableDetailDocument: false, failureClass: "REMOVED_404" },
-        { id: "c2", status: "completed", detailAttempted: true, usableDetailDocument: false, failureClass: "REMOVED_404" },
-      ];
-      const hasUnusableNonTerminal = manifestCards.some(
-        (c) => c.detailAttempted && !c.usableDetailDocument && c.failureClass !== "REMOVED_404"
+    it("actual FastPath response classifier classifies bare 403, 429, challenge 403", () => {
+      const res403 = classifyFastPathResponse(403, "Forbidden");
+      expect(res403.failureClass).toBe("FASTPATH_ACCESS_DENIED");
+      expect(res403.outcome).toBe("AUTH_ERROR");
+
+      const res429 = classifyFastPathResponse(429, "Too Many Requests");
+      expect(res429.failureClass).toBe("RATE_LIMIT_429");
+      expect(res429.outcome).toBe("ANTI_BOT");
+
+      const resChallenge = classifyFastPathResponse(403, "Attention Required! | Cloudflare verify you are human");
+      expect(resChallenge.failureClass).toBe("BOT_CHALLENGE_BLOCK");
+      expect(resChallenge.outcome).toBe("ANTI_BOT");
+    });
+
+    it("handler proves 429/challenge never reaches browser fallback", async () => {
+      const spy = vi.spyOn(httpFetchModule, "fastFetchDetail");
+      const newPageMock = vi.fn();
+      const mockCtx: any = {
+        runId: "run-test-fallback",
+        portal: "LinkedIn",
+        isHttpDisabled: () => false,
+        recordHttpFailure: vi.fn(),
+        recordTelemetry: vi.fn(),
+        logger: () => {},
+        browserContext: {
+          newPage: newPageMock,
+        },
+      };
+
+      // 1. 429 never falls back
+      spy.mockResolvedValueOnce({
+        fetched: false,
+        failureClass: "RATE_LIMIT_429",
+        fetchError: "HTTP 429",
+        fetchDurationMs: 10,
+        httpStatus: 429,
+        outcome: "ANTI_BOT",
+        rawHtml: "",
+        rawText: "",
+      });
+      const res429 = await linkedinHandler.fetchDetail(mockCtx, "https://www.linkedin.com/jobs/view/test-429");
+      expect(res429.failureClass).toBe("RATE_LIMIT_429");
+      expect(newPageMock).not.toHaveBeenCalled();
+      expect(mockCtx.recordHttpFailure).toHaveBeenCalledWith("https://www.linkedin.com/jobs/view/test-429", "RATE_LIMIT_429");
+
+      // 2. Challenge block never falls back
+      spy.mockResolvedValueOnce({
+        fetched: false,
+        failureClass: "BOT_CHALLENGE_BLOCK",
+        fetchError: "HTTP 403 (Bot Challenge)",
+        fetchDurationMs: 10,
+        httpStatus: 403,
+        outcome: "ANTI_BOT",
+        rawHtml: "",
+        rawText: "",
+      });
+      const resChallenge = await linkedinHandler.fetchDetail(mockCtx, "https://www.linkedin.com/jobs/view/test-challenge");
+      expect(resChallenge.failureClass).toBe("BOT_CHALLENGE_BLOCK");
+      expect(newPageMock).not.toHaveBeenCalled();
+
+      // 3. FASTPATH_ACCESS_DENIED allows browser fallback
+      spy.mockResolvedValueOnce({
+        fetched: false,
+        failureClass: "FASTPATH_ACCESS_DENIED",
+        fetchError: "HTTP 403 (Access Denied)",
+        fetchDurationMs: 10,
+        httpStatus: 403,
+        outcome: "AUTH_ERROR",
+        rawHtml: "",
+        rawText: "",
+      });
+      const mockPage = {
+        goto: vi.fn().mockResolvedValue({ status: () => 200 }),
+        title: vi.fn().mockResolvedValue("VP Test"),
+        content: vi.fn().mockResolvedValue("<html><body>Valid JD text</body></html>"),
+        close: vi.fn().mockResolvedValue(undefined),
+        evaluate: vi.fn().mockResolvedValue({}),
+        $: vi.fn().mockResolvedValue(null),
+        $$: vi.fn().mockResolvedValue([]),
+      };
+      newPageMock.mockResolvedValueOnce(mockPage);
+
+      await linkedinHandler.fetchDetail(mockCtx, "https://www.linkedin.com/jobs/view/test-403");
+      expect(newPageMock).toHaveBeenCalledTimes(1);
+
+      spy.mockRestore();
+    });
+
+    it("executeCardDetailWithPolicy from attempts=0 proves exact retry count", async () => {
+      const cardUnit = { id: "card-exact-retry", attempts: 0, status: "pending" } as any;
+      let fetchCalls = 0;
+      const mockMgr = {
+        updateCard: vi.fn(),
+      } as any;
+
+      const result = await executeCardDetailWithPolicy(
+        {
+          cardUnitId: "card-exact-retry",
+          cardUnit,
+          mgr: mockMgr,
+          fetchDetail: async () => {
+            fetchCalls++;
+            return {
+              fetched: false,
+              failureClass: "HTTP_TIMEOUT",
+              fetchError: "timeout",
+              rawHtml: "",
+              rawText: "",
+              fetchDurationMs: 10,
+            };
+          },
+          validateDetail: () => ({ isValid: false, failureClass: "HTTP_TIMEOUT" } as any),
+          isPortalPaused: () => false,
+          triggerPortalPause: () => {},
+        },
+        { sleep: async () => {} }
       );
-      expect(hasUnusableNonTerminal).toBe(false);
-      const unitStatus = hasUnusableNonTerminal ? "failed" : "completed";
-      expect(unitStatus).toBe("completed");
+
+      // FailurePolicyEngine for HTTP_TIMEOUT: max 2 retries (3 total attempts)
+      expect(result.ok).toBe(false);
+      expect(cardUnit.attempts).toBe(3);
+      expect(fetchCalls).toBe(3);
     });
 
-    it("all HTTP_TIMEOUT cards fail the unit", () => {
-      const manifestCards: any[] = [
-        { id: "c1", status: "failed", detailAttempted: true, usableDetailDocument: false, failureClass: "HTTP_TIMEOUT" },
-        { id: "c2", status: "failed", detailAttempted: true, usableDetailDocument: false, failureClass: "HTTP_TIMEOUT" },
-      ];
-      const hasFailedCards = manifestCards.some((c) => c.status === "failed" || (c.detailAttempted && !c.usableDetailDocument));
-      expect(hasFailedCards).toBe(true);
-      const unitStatus = hasFailedCards ? "failed" : "completed";
-      expect(unitStatus).toBe("failed");
-    });
+    it("executeCardDetailWithPolicy + production classifier: all REMOVED_404 => EXPECTED_REJECTION", async () => {
+      const cardUnit = { id: "card-404", attempts: 0, status: "pending" } as any;
+      let finalFailureKind: string | undefined;
+      const mockMgr = {
+        updateCard: vi.fn((_id: string, updates: any) => {
+          if (updates.failureKind) finalFailureKind = updates.failureKind;
+        }),
+      } as any;
 
-    it("any INTEGRITY_FAILURE fails the unit", () => {
-      const manifestCards: any[] = [
-        { id: "c1", status: "completed", detailAttempted: true, usableDetailDocument: true },
-        { id: "c2", status: "failed", detailAttempted: true, usableDetailDocument: false, failureClass: "INTEGRITY_FAILURE" },
-      ];
-      const hasIntegrityFailure = manifestCards.some((c) => c.failureClass === "INTEGRITY_FAILURE");
-      expect(hasIntegrityFailure).toBe(true);
-      const unitStatus = hasIntegrityFailure ? "failed" : "completed";
-      expect(unitStatus).toBe("failed");
-    });
-
-    it("nonterminal attempted card fails the unit", () => {
-      const manifestCards: any[] = [
-        { id: "c1", status: "completed", detailAttempted: true, usableDetailDocument: false, failureClass: "FASTPATH_ACCESS_DENIED" },
-      ];
-      const isNonTerminal = manifestCards.some(
-        (c) => c.detailAttempted && !c.usableDetailDocument && c.failureClass !== "REMOVED_404"
+      const result = await executeCardDetailWithPolicy(
+        {
+          cardUnitId: "card-404",
+          cardUnit,
+          mgr: mockMgr,
+          fetchDetail: async () => ({
+            fetched: false,
+            failureClass: "REMOVED_404",
+            rawHtml: "",
+            rawText: "",
+            fetchDurationMs: 5,
+            httpStatus: 404,
+          }),
+          validateDetail: () => ({ isValid: false, failureClass: "REMOVED_404" } as any),
+          isPortalPaused: () => false,
+          triggerPortalPause: () => {},
+        },
+        { sleep: async () => {} }
       );
-      expect(isNonTerminal).toBe(true);
-      const unitStatus = isNonTerminal ? "failed" : "completed";
-      expect(unitStatus).toBe("failed");
+
+      expect(result.ok).toBe(false);
+      expect(result.failureClass).toBe("REMOVED_404");
+      expect(finalFailureKind).toBe("EXPECTED_REJECTION");
+      expect(classifyCardFailure("REMOVED_404")).toBe("EXPECTED_REJECTION");
+    });
+
+    it("production unit finalizer: all expected rejections => completed, all HTTP_TIMEOUT => failed", () => {
+      // 1. All expected rejections complete the unit
+      const completedFinal = finalizeUnitOutcome({
+        cardsCount: 2,
+        manifestCards: [
+          { id: "c1", detailAttempted: true, usableDetailDocument: false, failureKind: "EXPECTED_REJECTION", failureClass: "REMOVED_404", status: "failed" },
+          { id: "c2", detailAttempted: true, usableDetailDocument: false, failureKind: "EXPECTED_REJECTION", failureClass: "EXPIRED", status: "failed" },
+        ] as any,
+      });
+      expect(completedFinal.status).toBe("completed");
+
+      // 2. All HTTP_TIMEOUT (SOURCE_FAILURE) fail the unit
+      const failedFinal = finalizeUnitOutcome({
+        cardsCount: 2,
+        manifestCards: [
+          { id: "c1", detailAttempted: true, usableDetailDocument: false, failureKind: "SOURCE_FAILURE", failureClass: "HTTP_TIMEOUT", status: "failed" },
+          { id: "c2", detailAttempted: true, usableDetailDocument: false, failureKind: "SOURCE_FAILURE", failureClass: "HTTP_TIMEOUT", status: "failed" },
+        ] as any,
+      });
+      expect(failedFinal.status).toBe("failed");
+    });
+
+    it("usable canonical input without enrichmentDispatch throws MISSING_ENRICHMENT_PAYLOAD", async () => {
+      const { db, blobStore } = createInMemoryDatabase();
+      const service = new CanonicalIngestionService(db, blobStore);
+      const payload: any = {
+        sourcePortal: "LinkedIn",
+        sourceJobId: "job-missing-dispatch",
+        canonicalUrl: "https://www.linkedin.com/jobs/view/job-missing-dispatch",
+        jobTitle: "VP Marketing",
+        companyName: "Acme",
+        location: "Bengaluru",
+        rawContent: "Comprehensive leadership job content description for executive marketing role.".repeat(10),
+      };
+
+      await expect(
+        service.ingestOpportunity(payload, { mode: "GLOBAL_MARKET" })
+      ).rejects.toThrow(/MISSING_ENRICHMENT_PAYLOAD/);
+    });
+
+    it("identical canonicalMaterial with different transient telemetry reuses existing blob", async () => {
+      const { db, blobStore } = createInMemoryDatabase();
+      const service = new CanonicalIngestionService(db, blobStore);
+
+      const baseCard = {
+        id: "card-telemetry",
+        title: "Chief Product Officer",
+        company: "Apex Tech",
+        location: "Bengaluru",
+        employmentType: "Full-time",
+        detailUrl: "https://www.linkedin.com/jobs/view/cpo-1",
+        rawText: "Detailed CPO responsibilities and product strategy vision at executive scale.".repeat(10),
+        detail: {
+          rawText: "Detailed CPO responsibilities and product strategy vision at executive scale.".repeat(10),
+          fetchDurationMs: 150,
+          timestamp: "2026-09-01T10:00:00Z",
+        },
+      };
+
+      const payload1: any = {
+        sourcePortal: "LinkedIn",
+        sourceJobId: "job-cpo-1",
+        canonicalUrl: "https://www.linkedin.com/jobs/view/cpo-1",
+        jobTitle: baseCard.title,
+        companyName: baseCard.company,
+        location: baseCard.location,
+        employmentType: baseCard.employmentType,
+        rawContent: baseCard.rawText,
+        enrichmentDispatch: {
+          detailedCard: { ...baseCard },
+          pipelineVersion: "v2.1",
+        },
+      };
+
+      const res1 = await service.ingestOpportunity(payload1, { mode: "GLOBAL_MARKET" });
+      expect(res1.canonicalJobId).toBeDefined();
+
+      // Submit identical canonicalMaterial with different transient telemetry
+      const payload2: any = {
+        ...payload1,
+        enrichmentDispatch: {
+          detailedCard: {
+            ...baseCard,
+            detail: {
+              rawText: baseCard.rawText,
+              fetchDurationMs: 500,
+              timestamp: "2026-09-02T18:00:00Z",
+            },
+          },
+          pipelineVersion: "v2.1",
+        },
+      };
+
+      const res2 = await service.ingestOpportunity(payload2, { mode: "GLOBAL_MARKET" });
+      expect(res2.canonicalJobId).toBe(res1.canonicalJobId);
+      expect(res2.opportunityVersion).toBe(res1.opportunityVersion);
+    });
+
+    it("employmentType participates in canonical snapshot hash", () => {
+      const hash1 = computeContentHash({
+        title: "VP Engineering",
+        companyName: "Acme",
+        location: "Bengaluru",
+        employmentType: "Full-time",
+        rawContent: "Executive engineering responsibilities",
+      });
+
+      const hash2 = computeContentHash({
+        title: "VP Engineering",
+        companyName: "Acme",
+        location: "Bengaluru",
+        employmentType: "Contract",
+        rawContent: "Executive engineering responsibilities",
+      });
+
+      const hash3 = computeContentHash({
+        title: "VP Engineering",
+        companyName: "Acme",
+        location: "Bengaluru",
+        employmentType: null,
+        rawContent: "Executive engineering responsibilities",
+      });
+
+      expect(hash1).not.toBe(hash2);
+      expect(hash1).not.toBe(hash3);
+      expect(hash2).not.toBe(hash3);
+    });
+
+    it("failed auto-confirm CAS never starts execution", async () => {
+      const { raw, db } = createInMemoryDatabase();
+      const repo = new SqliteScrapeRunStore(db);
+
+      raw.exec(`INSERT INTO scrape_runs (id, tenant_id, person_id, search_plan_id, status, portal_targets)
+                VALUES ('run-cas-test', 'tenant_A', 'person_A', 'plan_A', 'aborted', '["LinkedIn"]')`);
+
+      const runScope = { tenantId: "tenant_A", personId: "person_A", searchPlanId: "plan_A" };
+
+      // Transition should fail because current status is 'aborted', not in ['initializing', 'waiting_for_confirmation']
+      const transitioned = await repo.transitionRunStatus(
+        runScope,
+        "run-cas-test",
+        ["initializing", "waiting_for_confirmation"],
+        "running"
+      );
+      expect(transitioned).toBe(false);
+
+      const durableRun = await repo.getRun(runScope, "run-cas-test");
+      expect(durableRun?.status).not.toBe("running");
+      expect(durableRun?.status).toBe("aborted");
+    });
+
+    it("two sequential global-abort operations both work", async () => {
+      const mockMgr1: any = {
+        manifest: { status: "running" },
+        persistManifest: vi.fn(),
+        finalize: vi.fn((status: string) => { mockMgr1.manifest.status = status; }),
+      };
+      activeRunControllers.set("run-seq-1", mockMgr1);
+      expect(mockMgr1.manifest.status).toBe("running");
+
+      await shutdownAllRuns("sequential-abort-1");
+      expect(mockMgr1.manifest.status).toBe("aborted");
+      expect(activeRunControllers.size).toBe(0);
+
+      // Start second run
+      const mockMgr2: any = {
+        manifest: { status: "running" },
+        persistManifest: vi.fn(),
+        finalize: vi.fn((status: string) => { mockMgr2.manifest.status = status; }),
+      };
+      activeRunControllers.set("run-seq-2", mockMgr2);
+      expect(mockMgr2.manifest.status).toBe("running");
+
+      // Second abort operation MUST work and not be poisoned
+      await shutdownAllRuns("sequential-abort-2");
+      expect(mockMgr2.manifest.status).toBe("aborted");
+      expect(activeRunControllers.size).toBe(0);
     });
 
     it("run A health circuit cannot affect run B", () => {

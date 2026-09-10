@@ -445,6 +445,62 @@ export function extractJobFromHtml(
   };
 }
 
+export function classifyFastPathResponse(
+  statusCode: number,
+  bodyText: string = ""
+): {
+  outcome: AcquisitionOutcome;
+  failureClass: FailureClass;
+  fetchError: string;
+} {
+  const isBotChallenge =
+    /verify you are human|attention required! \| cloudflare|cf-chl|challenge-form|recaptcha|bot detection|just a moment\.\.\.|security check/i.test(
+      bodyText
+    );
+  const isLoginRequired =
+    /sign in|log in|join linkedin|sign up|session expired|authwall/i.test(
+      bodyText
+    );
+
+  if (statusCode === 429) {
+    return {
+      outcome: "ANTI_BOT",
+      failureClass: "RATE_LIMIT_429",
+      fetchError: "HTTP 429 (Rate Limited)",
+    };
+  }
+
+  if (isBotChallenge) {
+    return {
+      outcome: "ANTI_BOT",
+      failureClass: "BOT_CHALLENGE_BLOCK",
+      fetchError: `HTTP ${statusCode} (Bot Challenge)`,
+    };
+  }
+
+  if (isLoginRequired) {
+    return {
+      outcome: "AUTH_ERROR",
+      failureClass: "LOGIN_REQUIRED",
+      fetchError: `HTTP ${statusCode} (Login Required)`,
+    };
+  }
+
+  if (statusCode === 401 || statusCode === 403) {
+    return {
+      outcome: "AUTH_ERROR",
+      failureClass: "FASTPATH_ACCESS_DENIED",
+      fetchError: `HTTP ${statusCode} (Access Denied)`,
+    };
+  }
+
+  return {
+    outcome: statusCode >= 500 ? "TRANSPORT_ERROR" : "EXTRACTION_FAILURE",
+    failureClass: statusCode >= 500 ? "HTTP_SERVER_ERROR" : "UNKNOWN_FAILURE",
+    fetchError: `HTTP ${statusCode}`,
+  };
+}
+
 /**
  * Executes a robust HTTP fetch with Undici and multi-stage extraction.
  */
@@ -483,14 +539,14 @@ export async function fastFetchDetail(
     if (statusCode === 429 || statusCode === 401 || statusCode === 403) {
       let errBody = "";
       try { errBody = await body.text(); } catch {}
-      const isBotChallenge = /verify you are human|attention required! \| cloudflare|cf-chl|challenge-form|recaptcha|bot detection/i.test(errBody);
+      const classification = classifyFastPathResponse(statusCode, errBody);
       return {
         fetched: false,
-        fetchError: `HTTP ${statusCode} (${isBotChallenge ? "Bot Challenge" : "Access Denied"})`,
+        fetchError: classification.fetchError,
         fetchDurationMs: Date.now() - t0,
         httpStatus: statusCode,
-        outcome: isBotChallenge ? "ANTI_BOT" : statusCode === 429 ? "ANTI_BOT" : "AUTH_ERROR",
-        failureClass: "FASTPATH_ACCESS_DENIED",
+        outcome: classification.outcome,
+        failureClass: classification.failureClass,
       };
     }
 

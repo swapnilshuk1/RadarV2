@@ -220,10 +220,20 @@ export function normalizeFailureClass(raw: unknown): FailureClass {
 export function classifyCardFailure(
   failureClass: FailureClass,
 ): "EXPECTED_REJECTION" | "SOURCE_FAILURE" | "INTEGRITY_FAILURE" | "TERMINAL_FAILURE" | "NON_TERMINAL_FAILURE" {
-  const policy = FailurePolicyEngine.evaluate(failureClass, 1);
-  if (policy.category === "IDENTITY" || failureClass === "INVALID_SCHEMA") {
-    return "INTEGRITY_FAILURE";
+  switch (failureClass) {
+    case "REMOVED_404":
+    case "EXPIRED":
+    case "PERMANENT_FAILURE":
+    case "LISTING_DOCUMENT_IDENTITY_MISMATCH":
+      return "EXPECTED_REJECTION";
+
+    case "MISSING_JOB_ID":
+    case "AMBIGUOUS_IDENTITY":
+    case "INVALID_SCHEMA":
+      return "INTEGRITY_FAILURE";
+
+    default:
+      return "SOURCE_FAILURE";
   }
-  return "SOURCE_FAILURE";
 }
 

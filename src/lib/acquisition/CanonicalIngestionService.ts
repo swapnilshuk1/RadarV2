@@ -283,7 +283,7 @@ export class CanonicalIngestionService {
     let sourceMediaType: string | null = null;
 
     const isUsableDocument = document.usabilityState !== "UNUSABLE";
-    if (isUsableDocument && payload.enrichmentDispatch) {
+    if (isUsableDocument && !isPdfPayload) {
       if (!payload.enrichmentDispatch?.detailedCard) {
         throw new AcquisitionIntegrityError("MISSING_ENRICHMENT_PAYLOAD: Usable canonical opportunity requires an enrichment detailedCard.");
       }
@@ -291,39 +291,44 @@ export class CanonicalIngestionService {
         throw new AcquisitionIntegrityError("MISSING_PIPELINE_VERSION: Usable canonical opportunity requires an explicit enrichment pipelineVersion.");
       }
 
-      const detailedCard = payload.enrichmentDispatch.detailedCard;
-      const expectedContentHash = computeContentHash({
-        title: detailedCard.title,
-        company: detailedCard.company,
-        location: detailedCard.location,
-        descriptionText: detailedCard.detail?.rawText || detailedCard.rawText,
-        applyUrl: detailedCard.applyRedirectUrl || detailedCard.detailUrl,
-      });
+      const snapshot: any = JSON.parse(
+        JSON.stringify(payload.enrichmentDispatch.detailedCard)
+      );
 
-      if (detailedCard.evaluationEvidence?.contentHash && detailedCard.evaluationEvidence.contentHash !== expectedContentHash) {
+      const canonicalMaterial = {
+        title: snapshot.canonicalMaterial?.title ?? snapshot.title ?? snapshot.jobTitle ?? "",
+        companyName: snapshot.canonicalMaterial?.companyName ?? snapshot.canonicalMaterial?.company ?? snapshot.companyName ?? snapshot.company ?? null,
+        location: snapshot.canonicalMaterial?.location ?? snapshot.location ?? null,
+        employmentType: snapshot.canonicalMaterial?.employmentType ?? snapshot.employmentType ?? null,
+        rawContent: snapshot.canonicalMaterial?.rawContent ?? snapshot.detail?.rawText ?? snapshot.rawText ?? "",
+      };
+      snapshot.canonicalMaterial = canonicalMaterial;
+
+      const computedSnapshotHash = computeContentHash(snapshot.canonicalMaterial);
+      if (computedSnapshotHash !== contentHash) {
         throw new AcquisitionIntegrityError(
-          `IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT: detailedCard.evaluationEvidence.contentHash (${detailedCard.evaluationEvidence.contentHash}) does not match computed content hash (${expectedContentHash})`
+          `CANONICAL_ENRICHMENT_PAYLOAD_MISMATCH: Snapshot material content hash (${computedSnapshotHash}) does not match canonical document hash (${contentHash})`
         );
       }
 
-      if (expectedContentHash !== contentHash) {
+      if (snapshot.evaluationEvidence?.contentHash && snapshot.evaluationEvidence.contentHash !== contentHash) {
         throw new AcquisitionIntegrityError(
-          `CANONICAL_ENRICHMENT_PAYLOAD_MISMATCH: Snapshot material content hash (${expectedContentHash}) does not match canonical document hash (${contentHash})`
+          `IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT: detailedCard.evaluationEvidence.contentHash (${snapshot.evaluationEvidence.contentHash}) does not match computed content hash (${contentHash})`
         );
       }
 
       // Ensure the snapshot payload is explicitly bound to the authoritative canonical material
-      if (detailedCard.detail) {
-        detailedCard.detail.rawText = rawContent;
+      if (snapshot.detail) {
+        snapshot.detail.rawText = rawContent;
       }
-      detailedCard.title = title;
-      detailedCard.company = companyName;
-      detailedCard.location = location;
-      detailedCard.employmentType = employmentType;
-      detailedCard.canonicalJobId = canonicalJobId;
-      detailedCard.opportunityVersion = versionId;
+      snapshot.title = title;
+      if (companyName) snapshot.company = companyName;
+      if (location) snapshot.location = location;
+      if (employmentType) snapshot.employmentType = employmentType;
+      snapshot.canonicalJobId = canonicalJobId;
+      snapshot.opportunityVersion = versionId;
       const enrichmentPayloadKey = `acquisition/${canonicalJobId}/${versionId}/snapshot.json`;
-      detailedCard.evaluationEvidence = {
+      snapshot.evaluationEvidence = {
         canonicalJobId,
         opportunityVersion: versionId,
         contentHash,
@@ -342,19 +347,28 @@ export class CanonicalIngestionService {
           if (!existingBytes) {
             throw new AcquisitionIntegrityError(`Existing snapshot payload key '${enrichmentPayloadKey}' exists but returned null content`);
           }
-          const incomingBytes = Buffer.from(JSON.stringify(detailedCard));
-          const existingSha256 = crypto.createHash("sha256").update(existingBytes).digest("hex");
-          const incomingSha256 = crypto.createHash("sha256").update(incomingBytes).digest("hex");
-
-          if (existingSha256 !== incomingSha256) {
+          let parsed: any;
+          try {
+            parsed = JSON.parse(existingBytes.toString("utf-8"));
+          } catch (e: any) {
+            throw new AcquisitionIntegrityError(`Existing BlobStore payload at ${enrichmentPayloadKey} is not valid JSON`);
+          }
+          if (!parsed.canonicalMaterial) {
             throw new AcquisitionIntegrityError(
-              `IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT: Existing BlobStore payload at ${enrichmentPayloadKey} sha256 (${existingSha256}) does not match incoming payload (${incomingSha256})`
+              `IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT: Existing BlobStore payload at ${enrichmentPayloadKey} lacks required canonicalMaterial`
             );
           }
+          const existingMaterialHash = computeContentHash(parsed.canonicalMaterial);
+          if (existingMaterialHash !== contentHash) {
+            throw new AcquisitionIntegrityError(
+              `IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT: Existing BlobStore payload at ${enrichmentPayloadKey} canonicalMaterial hash (${existingMaterialHash}) does not match incoming content hash (${contentHash})`
+            );
+          }
+          // Matching => reuse, never overwrite!
         } else {
           await store.put(
             enrichmentPayloadKey,
-            JSON.stringify(detailedCard),
+            JSON.stringify(snapshot),
             "application/json"
           );
         }

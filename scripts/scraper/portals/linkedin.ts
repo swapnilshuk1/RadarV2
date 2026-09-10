@@ -310,8 +310,26 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           extractedCompany: httpRes.extractedCompany,
         };
       }
-      const reason = httpRes.failureClass || (httpRes.fetchError?.includes("403") ? "403" : 
-                    httpRes.fetchError?.includes("timeout") ? "Timeout" : "EmptyBody");
+      const failureClass = httpRes.failureClass;
+      if (
+        failureClass === "RATE_LIMIT_429" ||
+        failureClass === "BOT_CHALLENGE_BLOCK" ||
+        failureClass === "CAPTCHA_CHALLENGE" ||
+        failureClass === "LOGIN_REQUIRED"
+      ) {
+        ctx.recordHttpFailure?.(url, failureClass);
+        ctx.logger(`[FastPath] Immediate failure (${failureClass}) for ${url} — no browser fallback`);
+        return {
+          fetched: false,
+          fetchError: httpRes.fetchError,
+          fetchDurationMs: httpRes.fetchDurationMs,
+          httpStatus: httpRes.httpStatus,
+          failureClass,
+        };
+      }
+
+      const reason = failureClass || (httpRes.fetchError?.includes("403") ? "FASTPATH_ACCESS_DENIED" : 
+                    httpRes.fetchError?.includes("timeout") ? "HTTP_TIMEOUT" : "UNKNOWN_FAILURE");
       ctx.recordHttpFailure?.(url, reason);
       ctx.recordTelemetry?.("httpFallbacks");
       ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError || "insufficient content"} — falling back to Playwright`);

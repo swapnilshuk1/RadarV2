@@ -289,38 +289,42 @@ export async function shutdownAllRuns(reason: string): Promise<void> {
   if (shutdownStarted) return;
   shutdownStarted = true;
 
-  const controllers = [...activeRunControllers.entries()];
-  const sessions = [...activeRunSessions.entries()];
+  try {
+    const controllers = [...activeRunControllers.entries()];
+    const sessions = [...activeRunSessions.entries()];
 
-  for (const [, mgr] of controllers) {
-    try {
-      mgr.manifest.status = "stopping";
-      mgr.persistManifest();
-    } catch {}
-  }
-
-  for (const [, runtime] of sessions) {
-    for (const authSession of runtime.authSessions.values()) {
-      authSession.dispose();
+    for (const [, mgr] of controllers) {
+      try {
+        mgr.manifest.status = "stopping";
+        mgr.persistManifest();
+      } catch {}
     }
-    runtime.authSessions.clear();
+
+    for (const [, runtime] of sessions) {
+      for (const authSession of runtime.authSessions.values()) {
+        authSession.dispose();
+      }
+      runtime.authSessions.clear();
+    }
+
+    await closeAllPortalContexts();
+
+    for (const [runId] of sessions) {
+      HealthManager.clearRun(runId);
+    }
+
+    activeRunSessions.clear();
+
+    for (const [, mgr] of controllers) {
+      try {
+        mgr.finalize("aborted");
+      } catch {}
+    }
+
+    activeRunControllers.clear();
+  } finally {
+    shutdownStarted = false;
   }
-
-  await closeAllPortalContexts();
-
-  for (const [runId] of sessions) {
-    HealthManager.clearRun(runId);
-  }
-
-  activeRunSessions.clear();
-
-  for (const [, mgr] of controllers) {
-    try {
-      mgr.finalize("aborted");
-    } catch {}
-  }
-
-  activeRunControllers.clear();
 }
 
 let signalsInstalled = false;
@@ -839,19 +843,33 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           }
         }
       } else {
-        mgr.transitionTo("running");
         if (runScope) {
+          let transitioned = false;
           try {
-            await getRepositories().scrapeRuns.transitionRunStatus(
+            transitioned = await getRepositories().scrapeRuns.transitionRunStatus(
               runScope,
               mgr.runId,
               ["initializing", "waiting_for_confirmation"],
               "running"
             );
           } catch (e: any) {
-            log(`Warning transitioning to running: ${e.message}`, "warn");
+            log(`Error during auto-confirm transition to running: ${e.message}`, "error");
+            mgr.manifest.status = "failed";
+            mgr.finalize("failed");
+            throw new Error(`AUTO_CONFIRM_CAS_FAILED: ${e.message}`);
+          }
+
+          if (!transitioned) {
+            const durableRun = await getRepositories().scrapeRuns.getRun(runScope, mgr.runId);
+            if (durableRun?.status !== "running") {
+              log(`Auto-confirm CAS failed: durable run status is '${durableRun?.status}', expected 'running'`, "error");
+              mgr.manifest.status = "failed";
+              mgr.finalize("failed");
+              throw new Error(`AUTO_CONFIRM_CAS_FAILED: Durable run status is '${durableRun?.status}', not 'running'`);
+            }
           }
         }
+        mgr.transitionTo("running");
       }
 
       if (mgr.manifest.status === "aborted") {
@@ -1235,6 +1253,74 @@ export async function executeCardDetailWithPolicy(
   }
 }
 
+export function finalizeUnitOutcome(params: {
+  cardsCount: number;
+  manifestCards: CardUnit[];
+  portalPauseTriggered?: boolean;
+  pausePortalQueue?: boolean;
+  initialStatus?: ProcessOutcome["status"];
+}): { status: ProcessOutcome["status"]; warnings: string[] } {
+  const warnings: string[] = [];
+  let status: ProcessOutcome["status"] = params.initialStatus || "completed";
+
+  const attemptedCards = params.manifestCards.filter(
+    (c) => c.detailAttempted === true
+  );
+
+  const usableCards = attemptedCards.filter(
+    (c) => c.usableDetailDocument === true
+  );
+
+  const integrityFailures = attemptedCards.filter(
+    (c) => c.failureKind === "INTEGRITY_FAILURE"
+  );
+
+  const sourceFailures = attemptedCards.filter(
+    (c) => c.failureKind === "SOURCE_FAILURE"
+  );
+
+  const nonTerminalAttempted = attemptedCards.filter(
+    (c) => c.status === "pending" || c.status === "running"
+  );
+
+  const unexplainedAttempts = attemptedCards.filter(
+    (c) =>
+      !c.usableDetailDocument &&
+      !c.failureKind &&
+      c.status !== "skipped_gated"
+  );
+
+  if (status !== "aborted") {
+    if (
+      integrityFailures.length > 0 ||
+      nonTerminalAttempted.length > 0 ||
+      unexplainedAttempts.length > 0
+    ) {
+      status = "failed";
+      warnings.push(
+        `Unit failed: integrity=${integrityFailures.length}, nonTerminal=${nonTerminalAttempted.length}, unexplained=${unexplainedAttempts.length}`
+      );
+    } else if (params.portalPauseTriggered || params.pausePortalQueue) {
+      status = "failed";
+      warnings.push(`Unit failed due to portal pause condition`);
+    } else if (
+      attemptedCards.length > 0 &&
+      usableCards.length === 0 &&
+      sourceFailures.length === attemptedCards.length
+    ) {
+      status = "failed";
+      warnings.push(
+        `Unit failed: all ${attemptedCards.length} attempted cards failed with SOURCE_FAILURE`
+      );
+    } else if (usableCards.length > 0) {
+      status = "completed";
+    } else {
+      status = params.cardsCount === 0 ? "skipped_empty" : "completed";
+    }
+  }
+
+  return { status, warnings };
+}
 
 async function processUnit(
   mgr: RunController,
@@ -1454,7 +1540,7 @@ async function processUnit(
       const cardUnit = mgr.manifest.cards.find((c) => c.id === cardUnitId);
       if (!cardUnit || cardUnit.status === "done") return null;
 
-      mgr.updateCard(cardUnitId, { status: "running", attempts: cardUnit.attempts + 1 });
+      mgr.updateCard(cardUnitId, { status: "running" });
       mgr.recordActivity(`Reading JD: ${feedCard.title} (${feedCard.company})`);
 
       const recordLineage = async (
@@ -2251,6 +2337,7 @@ async function processUnit(
               location: feedCard.location || "",
               employmentType: (detail as any)?.employmentType || null,
               rawContent: detail.rawText || "",
+              contentOrigin: detail.fetched ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
               httpStatus: detail.httpStatus,
               postedAt: feedCard.postedAt,
               postedPrecision: (feedCard as any)?.postedPrecision || null,
@@ -2543,61 +2630,15 @@ async function processUnit(
       (c) => c.parentUnitId === unit.id || c.id.startsWith(`${unit.id}#`)
     );
 
-    const attemptedCards = manifestCards.filter(
-      (c) => c.detailAttempted === true
-    );
-
-    const usableCards = attemptedCards.filter(
-      (c) => c.usableDetailDocument === true
-    );
-
-    const integrityFailures = attemptedCards.filter(
-      (c) => c.failureKind === "INTEGRITY_FAILURE"
-    );
-
-    const sourceFailures = attemptedCards.filter(
-      (c) => c.failureKind === "SOURCE_FAILURE"
-    );
-
-    const nonTerminalAttempted = attemptedCards.filter(
-      (c) => c.status === "pending" || c.status === "running"
-    );
-
-    const unexplainedAttempts = attemptedCards.filter(
-      (c) =>
-        !c.usableDetailDocument &&
-        !c.failureKind &&
-        c.status !== "skipped_gated"
-    );
-
-    if (outcome.status !== "aborted") {
-      if (
-        integrityFailures.length > 0 ||
-        nonTerminalAttempted.length > 0 ||
-        unexplainedAttempts.length > 0
-      ) {
-        outcome.status = "failed";
-        outcome.warnings.push(
-          `Unit failed: integrity=${integrityFailures.length}, nonTerminal=${nonTerminalAttempted.length}, unexplained=${unexplainedAttempts.length}`
-        );
-      } else if (portalPauseTriggered || outcome.pausePortalQueue) {
-        outcome.status = "failed";
-        outcome.warnings.push(`Unit failed due to portal pause condition`);
-      } else if (
-        attemptedCards.length > 0 &&
-        usableCards.length === 0 &&
-        sourceFailures.length === attemptedCards.length
-      ) {
-        outcome.status = "failed";
-        outcome.warnings.push(
-          `Unit failed: all ${attemptedCards.length} attempted cards failed with SOURCE_FAILURE`
-        );
-      } else if (usableCards.length > 0) {
-        outcome.status = "completed";
-      } else {
-        outcome.status = cards.length === 0 ? "skipped_empty" : "completed";
-      }
-    }
+    const finalized = finalizeUnitOutcome({
+      cardsCount: cards.length,
+      manifestCards,
+      portalPauseTriggered,
+      pausePortalQueue: outcome.pausePortalQueue,
+      initialStatus: outcome.status,
+    });
+    outcome.status = finalized.status;
+    outcome.warnings.push(...finalized.warnings);
 
     const pageFailureReason = outcome.status === "failed"
       ? (primaryFailureClass || outcome.warnings[0] || "UnitExecutionFailed")
