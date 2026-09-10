@@ -197,6 +197,24 @@ export async function processJob(
       log(`[Enrich] Failed to update live-scraped.json or invalidate engine cache: ${e.message}`, "warn");
     }
     
+    // Ensure canonical_job_id and opportunity_version are set on enrichment_job before releasing requirements
+    if ((!job.canonical_job_id || !job.opportunity_version) && resolvedCanonicalId) {
+      try {
+        const oppVersion = await activeDb.one<{ id: string }>(
+          `SELECT id FROM opportunity_versions WHERE canonical_job_id = ? ORDER BY version_number DESC LIMIT 1`,
+          [resolvedCanonicalId]
+        );
+        if (oppVersion?.id) {
+          await activeDb.execute(
+            `UPDATE enrichment_jobs SET canonical_job_id = ?, opportunity_version = ? WHERE id = ?`,
+            [resolvedCanonicalId, oppVersion.id, job.id]
+          );
+        }
+      } catch (err: any) {
+        log(`[Enrich] Could not backfill canonical/version on job ${job.id}: ${err.message}`, "warn");
+      }
+    }
+
     if (isFromCache) {
       await queue.markCompleted(job.id, "skipped LLM / cached");
     } else {

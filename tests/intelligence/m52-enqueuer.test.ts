@@ -41,6 +41,8 @@ class TestSqliteAdapter implements DatabaseAdapter {
   }
 }
 
+import { runMigrations } from "@/data/sqlite/migrations/runner";
+
 describe("Sub-Phase M5.2: Work Enqueuer & Idempotent Projection Sync", () => {
   let sqliteDb: Database.Database;
   let adapter: TestSqliteAdapter;
@@ -48,29 +50,12 @@ describe("Sub-Phase M5.2: Work Enqueuer & Idempotent Projection Sync", () => {
   const authA: AuthContext = { userId: "user_A", tenantId: "tenant_A", permissions: ["manage:search_plan"] };
   const authB: AuthContext = { userId: "user_B", tenantId: "tenant_B", permissions: ["manage:search_plan"] };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     sqliteDb = new Database(":memory:");
     sqliteDb.pragma("foreign_keys = ON");
 
-    const migrationFiles = [
-      "001_initial_schema.sql",
-      "009_profile_queryable_columns.sql",
-      "018_multi_tenant_foundation.sql",
-      "019_evaluation_context_and_read_model.sql",
-      "020_canonical_acquisition.sql",
-      "021_evaluation_work_queue.sql",
-      "025_canonical_decisions.sql",
-      "026_canonical_acquisition_integrity.sql",
-      "027_materialized_evaluations_nullable_decision.sql",
-      "029_materialized_evaluations_vetoed.sql",
-    ];
-
-    for (const file of migrationFiles) {
-      const sql = fs.readFileSync(path.join(process.cwd(), "src/data/sqlite/migrations", file), "utf-8");
-      sqliteDb.exec(sql);
-    }
-
     adapter = new TestSqliteAdapter(sqliteDb);
+    await runMigrations(adapter);
 
     // Seed Tenant A, Person A, Plan A
     sqliteDb.exec("INSERT INTO tenants (id, status) VALUES ('tenant_A', 'active'), ('tenant_B', 'active')");

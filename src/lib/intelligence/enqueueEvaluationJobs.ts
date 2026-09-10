@@ -127,6 +127,25 @@ export async function enqueueEvaluationJobsForPlan(
       ]
     );
 
+    const reqId = `evalreq_${tenantId}_${searchPlanId}_${candidate.canonical_job_id}_${candidate.opportunity_version}_${fpHash}`;
+    await db.execute(
+      `INSERT INTO evaluation_requirements (
+         id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
+         evaluation_context_fingerprint, status
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'READY')
+       ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+       DO UPDATE SET status = 'READY', blocked_reason = NULL`,
+      [
+        reqId,
+        tenantId,
+        personId,
+        searchPlanId,
+        candidate.canonical_job_id,
+        candidate.opportunity_version,
+        fingerprint,
+      ]
+    );
+
     if (res.rowsAffected > 0) {
       enqueuedCount++;
       jobIds.push(jobId);

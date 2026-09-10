@@ -539,55 +539,37 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         return { success: false, count: ingestedCount, runId: mgr.runId };
       }
 
-      // Transition to enriching state so the UI tracks it in real-time
-      mgr.transitionTo("enriching");
-      try {
-        log(`[Scrape] Automatically starting inline AI enrichment for run ${mgr.runId}...`);
-        const { enrichJobsForRun } = await import("./enrich");
-        await enrichJobsForRun(mgr.runId);
-        const enrichmentStats = await enrichmentQueue.getRunStats(mgr.runId);
-        if (enrichmentStats.failed > 0) {
-          throw new Error(`Enrichment failed for ${enrichmentStats.failed}/${enrichmentStats.total} jobs; run cannot be completed.`);
-        }
-      } catch (enrichErr: any) {
-        throw new Error(`[Scrape] Enrichment phase failed: ${enrichErr.message}`);
-      }
-
-      // Rebuild JSON models
-      try {
-        const records = collectRecords();
-        writeLiveScraped(records);
-        log(`Rebuilt live-scraped.json cache with ${records.length} total records.`);
-      } catch (rebuildErr: any) {
-        log(`[Scrape] Rebuild phase failed: ${rebuildErr.message}`, "error");
-      }
-
-      // Autonomous Evaluation Queue Drain:
-      // Ensure all newly enqueued evaluation jobs are drained autonomously to completion
-      try {
-        log(`[Scrape] Automatically draining evaluation queue...`);
-        const { EvaluationWorker } = await import("../src/lib/intelligence/EvaluationWorker");
-        const worker = new EvaluationWorker("cli_scraper_drain");
-        const drainStats = await worker.drainQueue({ maxJobs: 500, timeoutMs: 60000 });
-        log(`[Scrape] Drained evaluation queue: ${drainStats.processed} processed (${drainStats.completed} completed, ${drainStats.failed} failed)`);
-      } catch (drainErr: any) {
-        log(`[Scrape] Autonomous evaluation drain warning: ${drainErr.message}`, "warn");
-      }
-
-      mgr.finalize("completed");
       const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
-      if (runScope) {
-        try {
-          const repos = getRepositories();
-          await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
-            totalDiscovered: mgr.manifest.cards.length,
-            totalEnqueued: ingestedCount,
-            metrics: tm as any,
-          });
-          await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "completed");
-        } catch {}
+      if (ingestedCount > 0) {
+        mgr.transitionTo("enriching");
+        if (runScope) {
+          try {
+            const repos = getRepositories();
+            await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
+              totalDiscovered: mgr.manifest.cards.length,
+              totalEnqueued: ingestedCount,
+              metrics: tm as any,
+            });
+            await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "enriching");
+          } catch {}
+        }
+        log(`[Scrape] Acquisition complete. Dispatched ${ingestedCount} cards to distributed enrichment & evaluation pipeline.`);
+        mgr.recordActivity(`Acquisition complete · ${ingestedCount} cards dispatched for enrichment`);
+      } else {
+        mgr.finalize("completed");
+        if (runScope) {
+          try {
+            const repos = getRepositories();
+            await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
+              totalDiscovered: mgr.manifest.cards.length,
+              totalEnqueued: 0,
+              metrics: tm as any,
+            });
+            await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "completed");
+          } catch {}
+        }
+        mgr.recordActivity("Search completed · No new opportunities requiring enrichment");
       }
-      mgr.recordActivity("Search completed · Executive shortlist updated");
       const runDurationS = ((new Date().getTime() - new Date(mgr.manifest.startedAt).getTime()) / 1000).toFixed(1);
       
       const { generateAcquisitionReport } = await import("./scraper/run/report");
@@ -1570,7 +1552,11 @@ async function processUnit(
               httpStatus: detail.httpStatus,
               postedAt: feedCard.postedAt,
               postedPrecision: (feedCard as any)?.postedPrecision || null
-            }, lineageScope);
+            }, lineageScope ? {
+              tenantId: lineageScope.tenantId,
+              personId: lineageScope.personId,
+              runId: mgr.runId,
+            } : { runId: mgr.runId });
             canonicalIngestionResult = ingestRes;
             detailedCard = bindEvaluationEvidence(detailedCard, {
               canonicalJobId: ingestRes.canonicalJobId,
@@ -1675,7 +1661,9 @@ async function processUnit(
           },
           10, // business_priority
           0,   // execution_priority
-          payloadKey
+          payloadKey,
+          canonicalIngestionResult?.canonicalJobId || detailedCard.canonicalJobId,
+          canonicalIngestionResult?.opportunityVersion || (detailedCard as any).opportunityVersion
         );
         
         mgr.updateCard(cardUnitId, { status: "done" });

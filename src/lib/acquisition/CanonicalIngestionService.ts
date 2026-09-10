@@ -74,6 +74,7 @@ export interface IngestOpportunityPayload {
 export interface IngestScopeFilter {
   tenantId?: string;
   personId?: string;
+  runId?: string;
 }
 
 export interface CanonicalIngestionResult {
@@ -428,9 +429,9 @@ export class CanonicalIngestionService {
       }
     });
 
-    // Queue work only after the canonical transaction is durable. This keeps
-    // a queue outage from poisoning the transaction and losing the discovered
-    // opportunity. The unique key makes retries idempotent.
+    // Persist evaluation obligations as WAITING_ENRICHMENT only after canonical transaction is durable.
+    // Invariant: An evaluation_jobs row is never inserted at canonical admission.
+    // Only successful enrichment of the exact canonical opportunity/version will release it to READY/pending.
     for (const plan of activePlans) {
       if (candidateDecisions[plan.id] !== "CANDIDATE") continue;
       try {
@@ -445,16 +446,20 @@ export class CanonicalIngestionService {
         );
         if (!evalContext?.context_fingerprint) continue;
 
-        const enqueueRes = await this.db.execute(
-          `INSERT INTO evaluation_jobs (
+        const reqId = `er_${plan.tenant_id}_${plan.person_id}_${canonicalJobId}_${effectiveVersionId}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+        await this.db.execute(
+          `INSERT INTO evaluation_requirements (
              id, tenant_id, person_id, search_plan_id, canonical_job_id,
-             opportunity_version, evaluation_context_fingerprint,
-             status, attempts, max_attempts, next_attempt_at, created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-           ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-           DO NOTHING`,
+             opportunity_version, evaluation_context_fingerprint, status, created_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, 'WAITING_ENRICHMENT', CURRENT_TIMESTAMP)
+           ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+           DO UPDATE SET status = CASE 
+             WHEN evaluation_requirements.status = 'SATISFIED' THEN 'SATISFIED'
+             ELSE evaluation_requirements.status 
+           END`,
           [
-            `job_${crypto.randomUUID()}`,
+            reqId,
             plan.tenant_id,
             plan.person_id,
             plan.id,
@@ -463,11 +468,33 @@ export class CanonicalIngestionService {
             evalContext.context_fingerprint,
           ]
         );
-        if (enqueueRes.rowsAffected > 0) jobsEnqueued++;
+
+        if (scopeFilter?.runId) {
+          const reqRow = await this.db.one<{ id: string }>(
+            `SELECT id FROM evaluation_requirements
+             WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
+               AND canonical_job_id = ? AND opportunity_version = ?
+               AND evaluation_context_fingerprint = ?`,
+            [
+              plan.tenant_id,
+              plan.person_id,
+              plan.id,
+              canonicalJobId,
+              effectiveVersionId,
+              evalContext.context_fingerprint,
+            ]
+          );
+          if (reqRow) {
+            await this.db.execute(
+              `INSERT OR IGNORE INTO scrape_run_evaluation_requirements (run_id, evaluation_requirement_id)
+               VALUES (?, ?)`,
+              [scopeFilter.runId, reqRow.id]
+            );
+          }
+        }
+        jobsEnqueued++;
       } catch (err: any) {
-        // Canonical rows and candidate projections are already committed. A
-        // later reconciliation pass can enqueue this idempotent job again.
-        console.error("[CanonicalIngestionService] Evaluation enqueue deferred:", err.message);
+        console.error("[CanonicalIngestionService] Evaluation requirement deferred:", err.message);
       }
     }
 

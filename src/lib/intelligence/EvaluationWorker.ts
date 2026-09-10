@@ -64,14 +64,22 @@ export class EvaluationWorker {
       attempts: number;
       max_attempts: number;
     }>(
-      `SELECT id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, attempts, max_attempts
-       FROM evaluation_jobs
-       WHERE (status = 'pending' AND next_attempt_at <= CURRENT_TIMESTAMP)
-          OR (status = 'processing' AND locked_at < datetime('now', '-300 seconds'))
+      `SELECT ej.id, ej.tenant_id, ej.person_id, ej.search_plan_id, ej.canonical_job_id, ej.opportunity_version, ej.evaluation_context_fingerprint, ej.attempts, ej.max_attempts
+       FROM evaluation_jobs ej
+       LEFT JOIN evaluation_requirements er 
+         ON er.tenant_id = ej.tenant_id 
+        AND er.person_id = ej.person_id 
+        AND er.search_plan_id = ej.search_plan_id 
+        AND er.canonical_job_id = ej.canonical_job_id 
+        AND er.opportunity_version = ej.opportunity_version 
+        AND er.evaluation_context_fingerprint = ej.evaluation_context_fingerprint
+       WHERE (er.status = 'READY' OR er.id IS NULL)
+         AND ((ej.status = 'pending' AND ej.next_attempt_at <= CURRENT_TIMESTAMP)
+          OR (ej.status = 'processing' AND ej.locked_at < datetime('now', '-300 seconds')))
        ORDER BY 
-         CASE WHEN status = 'processing' THEN 0 ELSE 1 END ASC,
-         next_attempt_at ASC, 
-         created_at ASC
+         CASE WHEN ej.status = 'processing' THEN 0 ELSE 1 END ASC,
+         ej.next_attempt_at ASC, 
+         ej.created_at ASC
        LIMIT 1`
     );
 
@@ -211,64 +219,7 @@ export class EvaluationWorker {
         );
         const materialized = materializeCanonicalPayload(unavailable);
         validateEvaluationConsistency(materialized);
-        return await this.db.transaction<WorkerProcessingResult>(async (tx) => {
-          const leaseCheck = await tx.one<{ id: string }>(
-            `SELECT id FROM evaluation_jobs WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-            [job.id, this.workerId, job.leaseToken]
-          );
-          if (!leaseCheck) {
-            return {
-              status: "stale_lease_lost",
-              jobId: job.id,
-              error: "Lease token was lost or replaced before completion",
-            };
-          }
-
-          await tx.execute(
-            `INSERT INTO materialized_evaluations (
-               id, tenant_id, person_id, canonical_job_id, opportunity_version,
-               evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
-               rationale, evidence_ids, evaluation_json, vetoed, materialized_at
-             ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP)
-             ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
-             DO UPDATE SET
-               evaluation_state = EXCLUDED.evaluation_state,
-               evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
-               decision = EXCLUDED.decision,
-               quality_score = EXCLUDED.quality_score,
-               rationale = EXCLUDED.rationale,
-               evidence_ids = EXCLUDED.evidence_ids,
-               evaluation_json = EXCLUDED.evaluation_json,
-               vetoed = EXCLUDED.vetoed,
-               materialized_at = CURRENT_TIMESTAMP`,
-            [
-              materialized.id,
-              materialized.tenantId,
-              materialized.personId,
-              materialized.canonicalJobId,
-              materialized.opportunityVersion,
-              materialized.evaluationContextFingerprint,
-              materialized.evaluationState,
-              materialized.rationale,
-              JSON.stringify(materialized.evidenceIds),
-              materialized.evaluationJson,
-            ]
-          );
-
-          await tx.execute(
-            `UPDATE evaluation_jobs
-             SET status = 'completed',
-                 completed_at = CURRENT_TIMESTAMP
-             WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-            [job.id, this.workerId, job.leaseToken]
-          );
-
-          return {
-            status: "completed",
-            jobId: job.id,
-            decision: null as any,
-          };
-        });
+        return await this.commitEvaluationMaterialization(job, materialized);
       }
       
       let oppSource: OpportunitySource;
@@ -321,39 +272,7 @@ export class EvaluationWorker {
         );
         const materialized = materializeCanonicalPayload(unavailable);
         validateEvaluationConsistency(materialized);
-        return await this.db.transaction<WorkerProcessingResult>(async (tx) => {
-          const leaseCheck = await tx.one<{ id: string }>(
-            `SELECT id FROM evaluation_jobs WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-            [job.id, this.workerId, job.leaseToken]
-          );
-          if (!leaseCheck) return { status: "stale_lease_lost", jobId: job.id, error: "Lease token was lost or replaced before completion" };
-
-          await tx.execute(
-            `INSERT INTO materialized_evaluations (
-               id, tenant_id, person_id, canonical_job_id, opportunity_version,
-               evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
-               rationale, evidence_ids, evaluation_json, vetoed, materialized_at
-             ) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, ?, ?, ?, 0, CURRENT_TIMESTAMP)
-             ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-             DO UPDATE SET evaluation_state = EXCLUDED.evaluation_state,
-                           evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
-                           decision = EXCLUDED.decision, quality_score = EXCLUDED.quality_score,
-                           rationale = EXCLUDED.rationale, evidence_ids = EXCLUDED.evidence_ids,
-                           evaluation_json = EXCLUDED.evaluation_json, vetoed = EXCLUDED.vetoed,
-                           materialized_at = CURRENT_TIMESTAMP`,
-            [materialized.id, materialized.tenantId, materialized.personId,
-             materialized.canonicalJobId, materialized.opportunityVersion,
-             materialized.evaluationContextFingerprint, materialized.evaluationState,
-             materialized.rationale, JSON.stringify(materialized.evidenceIds), materialized.evaluationJson]
-          );
-          const complete = await tx.execute(
-            `UPDATE evaluation_jobs SET status = 'completed', completed_at = CURRENT_TIMESTAMP
-             WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-            [job.id, this.workerId, job.leaseToken]
-          );
-          if (complete.rowsAffected === 0) return { status: "stale_lease_lost", jobId: job.id, error: "Lease token was lost or replaced during completion" };
-          return { status: "completed", jobId: job.id };
-        });
+        return await this.commitEvaluationMaterialization(job, materialized);
       }
       const projection = rawProjection;
 
@@ -418,78 +337,7 @@ export class EvaluationWorker {
       const isVetoed = Boolean(artifact.record?.vetoed ?? false);
       const vetoedScalar = isVetoed ? 1 : 0;
 
-      const workerResult = await this.db.transaction<WorkerProcessingResult>(async (tx) => {
-        const leaseCheck = await tx.one<{ id: string }>(
-          `SELECT id FROM evaluation_jobs WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-          [job.id, this.workerId, job.leaseToken]
-        );
-        if (!leaseCheck) {
-          return {
-            status: "stale_lease_lost",
-            jobId: job.id,
-            error: "Lease token was lost or replaced before completion",
-          };
-        }
-
-        await tx.execute(
-          `INSERT INTO materialized_evaluations (
-             id, tenant_id, person_id, canonical_job_id, opportunity_version,
-             evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
-             rationale, evidence_ids, evaluation_json, vetoed, materialized_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-           ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
-           DO UPDATE SET
-             evaluation_state = EXCLUDED.evaluation_state,
-             evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
-             decision = EXCLUDED.decision,
-             quality_score = EXCLUDED.quality_score,
-             rationale = EXCLUDED.rationale,
-             evidence_ids = EXCLUDED.evidence_ids,
-             evaluation_json = EXCLUDED.evaluation_json,
-             vetoed = EXCLUDED.vetoed,
-             materialized_at = CURRENT_TIMESTAMP`,
-          [
-            materialized.id,
-            job.tenantId,
-            job.personId,
-            job.canonicalJobId,
-            job.opportunityVersion,
-            job.evaluationContextFingerprint,
-            materialized.evaluationFingerprint,
-            materialized.evaluationState,
-            materialized.decision,
-            materialized.qualityScore,
-            materialized.rationale,
-            JSON.stringify(materialized.evidenceIds),
-            materialized.evaluationJson,
-            vetoedScalar,
-          ]
-        );
-
-        const completeRes = await tx.execute(
-          `UPDATE evaluation_jobs
-           SET status = 'completed',
-               completed_at = CURRENT_TIMESTAMP
-           WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
-          [job.id, this.workerId, job.leaseToken]
-        );
-
-        if (completeRes.rowsAffected === 0) {
-          return {
-            status: "stale_lease_lost",
-            jobId: job.id,
-            error: "Lease token was lost or replaced during completion",
-          };
-        }
-
-        return {
-          status: "completed",
-          jobId: job.id,
-          decision: materialized.decision as any,
-        };
-      });
-
-      return workerResult;
+      return await this.commitEvaluationMaterialization(job, materialized);
     } catch (err: any) {
       const errorMsg = err?.message || String(err);
       const nextAttemptNumber = job.attempts + 1;
@@ -544,6 +392,47 @@ export class EvaluationWorker {
           };
         }
 
+        // Fail-Closed: Mark evaluation_requirement FAILED and fail referencing runs
+        await this.db.execute(
+          `UPDATE evaluation_requirements
+           SET status = 'FAILED', blocked_reason = 'EVALUATION_DEAD_LETTER:' || ?
+           WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
+             AND canonical_job_id = ? AND opportunity_version = ?
+             AND evaluation_context_fingerprint = ?`,
+          [
+            errorMsg,
+            job.tenantId,
+            job.personId,
+            job.searchPlanId,
+            job.canonicalJobId,
+            job.opportunityVersion,
+            job.evaluationContextFingerprint,
+          ]
+        );
+
+        // Fail referencing scrape runs
+        await this.db.execute(
+          `UPDATE scrape_runs
+           SET status = 'failed', error_message = 'EVALUATION_DEAD_LETTER: ' || ?, finished_at = CURRENT_TIMESTAMP
+           WHERE id IN (
+             SELECT srer.run_id 
+             FROM scrape_run_evaluation_requirements srer
+             JOIN evaluation_requirements er ON srer.evaluation_requirement_id = er.id
+             WHERE er.tenant_id = ? AND er.person_id = ? AND er.search_plan_id = ?
+               AND er.canonical_job_id = ? AND er.opportunity_version = ?
+               AND er.evaluation_context_fingerprint = ?
+           ) AND status NOT IN ('completed', 'failed', 'aborted')`,
+          [
+            errorMsg,
+            job.tenantId,
+            job.personId,
+            job.searchPlanId,
+            job.canonicalJobId,
+            job.opportunityVersion,
+            job.evaluationContextFingerprint,
+          ]
+        );
+
         return {
           status: "dead_letter",
           jobId: job.id,
@@ -551,6 +440,99 @@ export class EvaluationWorker {
         };
       }
     }
+  }
+
+  private async commitEvaluationMaterialization(
+    job: ClaimedJob,
+    materialized: any
+  ): Promise<WorkerProcessingResult> {
+    return await this.db.transaction<WorkerProcessingResult>(async (tx) => {
+      const leaseCheck = await tx.one<{ id: string }>(
+        `SELECT id FROM evaluation_jobs WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
+        [job.id, this.workerId, job.leaseToken]
+      );
+      if (!leaseCheck) {
+        return {
+          status: "stale_lease_lost",
+          jobId: job.id,
+          error: "Lease token was lost or replaced before completion",
+        };
+      }
+
+      await tx.execute(
+        `INSERT INTO materialized_evaluations (
+           id, tenant_id, person_id, canonical_job_id, opportunity_version,
+           evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
+           rationale, evidence_ids, evaluation_json, vetoed, materialized_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
+         DO UPDATE SET
+           evaluation_state = EXCLUDED.evaluation_state,
+           evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
+           decision = EXCLUDED.decision,
+           quality_score = EXCLUDED.quality_score,
+           rationale = EXCLUDED.rationale,
+           evidence_ids = EXCLUDED.evidence_ids,
+           evaluation_json = EXCLUDED.evaluation_json,
+           vetoed = EXCLUDED.vetoed,
+           materialized_at = CURRENT_TIMESTAMP`,
+        [
+          materialized.id,
+          job.tenantId,
+          job.personId,
+          job.canonicalJobId,
+          job.opportunityVersion,
+          job.evaluationContextFingerprint,
+          materialized.evaluationFingerprint || null,
+          materialized.evaluationState,
+          materialized.decision || null,
+          materialized.qualityScore || null,
+          materialized.rationale || null,
+          typeof materialized.evidenceIds === "string" ? materialized.evidenceIds : JSON.stringify(materialized.evidenceIds || []),
+          materialized.evaluationJson,
+          materialized.vetoed ? 1 : 0,
+        ]
+      );
+
+      const completeRes = await tx.execute(
+        `UPDATE evaluation_jobs
+         SET status = 'completed',
+             completed_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND locked_by = ? AND lease_token = ? AND status = 'processing'`,
+        [job.id, this.workerId, job.leaseToken]
+      );
+
+      if (completeRes.rowsAffected === 0) {
+        return {
+          status: "stale_lease_lost",
+          jobId: job.id,
+          error: "Lease token was lost or replaced during completion",
+        };
+      }
+
+      // Mark requirement SATISFIED
+      await tx.execute(
+        `UPDATE evaluation_requirements
+         SET status = 'SATISFIED', satisfied_at = CURRENT_TIMESTAMP
+         WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
+           AND canonical_job_id = ? AND opportunity_version = ?
+           AND evaluation_context_fingerprint = ?`,
+        [
+          job.tenantId,
+          job.personId,
+          job.searchPlanId,
+          job.canonicalJobId,
+          job.opportunityVersion,
+          job.evaluationContextFingerprint,
+        ]
+      );
+
+      return {
+        status: "completed",
+        jobId: job.id,
+        decision: (materialized.decision ?? null) as any,
+      };
+    });
   }
 
   public async pollAndProcessNext(): Promise<WorkerProcessingResult | null> {

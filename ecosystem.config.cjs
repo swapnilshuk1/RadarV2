@@ -35,6 +35,28 @@ module.exports = {
         NODE_ENV: 'production',
         ...envVars
       }
+    },
+    {
+      name: 'radar-enrich',
+      script: 'node_modules/.bin/tsx',
+      args: 'scripts/enrich.ts',
+      cwd: '/home/ubuntu/radar-local-v2',
+      restart_delay: 5000,
+      env: {
+        NODE_ENV: 'production',
+        ...envVars
+      }
+    },
+    {
+      name: 'radar-evaluate',
+      script: 'node_modules/.bin/tsx',
+      args: 'scripts/run-evaluation-worker.ts',
+      cwd: '/home/ubuntu/radar-local-v2',
+      restart_delay: 5000,
+      env: {
+        NODE_ENV: 'production',
+        ...envVars
+      }
     }
   ]
 };
