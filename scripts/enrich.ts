@@ -84,14 +84,14 @@ export async function processJob(
       // Disk fallbacks, .scraper-artifacts, and card-hash lookups are forbidden for canonical work.
       if (!job.payload_key) {
         throw new Error(
-          `Enrichment job ${job.id} is bound to canonical opportunity (${job.canonical_job_id}/${job.opportunity_version}) but has no payload_key`
+          `ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH: Enrichment job ${job.id} is bound to canonical opportunity (${job.canonical_job_id}/${job.opportunity_version}) but has no payload_key`
         );
       }
       const { getBlobStore } = await import("../src/lib/storage/blob-store");
       const blobBuf = await getBlobStore().get(job.payload_key);
       if (!blobBuf) {
         throw new Error(
-          `Enrichment payload not found in BlobStore for bound job ${job.id} (key: ${job.payload_key})`
+          `ENRICHMENT_PAYLOAD_NOT_FOUND: Enrichment payload not found in BlobStore for bound job ${job.id} (key: ${job.payload_key})`
         );
       }
       snapStr = blobBuf.toString("utf-8");
@@ -147,17 +147,45 @@ export async function processJob(
 
     let extraction;
     let isFromCache = false;
+    const activeDb = queue.getDatabaseAdapter();
+
+    const oppVer = job.opportunity_version || detailedCard.opportunityVersion || detailedCard.evaluationEvidence?.opportunityVersion;
+    let versionCreatedAt: string | undefined;
+
+    if (oppVer) {
+      try {
+        const row = await activeDb.one<{ created_at: string }>(
+          `SELECT created_at FROM opportunity_versions WHERE id = ? LIMIT 1`,
+          [oppVer]
+        );
+        if (row?.created_at) {
+          versionCreatedAt = row.created_at;
+        }
+      } catch {
+        // Table or row may not exist in lightweight unit environments
+      }
+    }
+    if (!versionCreatedAt && job.created_at) {
+      versionCreatedAt = job.created_at;
+    }
 
     if (cachedEx && (!hasFullJd || cachedHasFullJd)) {
       log(`[Enrich] Using cached extraction for ${job.id} (skipped live LLM call)`);
       extraction = cachedEx;
       isFromCache = true;
+      if (!extraction.versionCreatedAt && versionCreatedAt) {
+        extraction.versionCreatedAt = versionCreatedAt;
+      }
+      if (!extraction.opportunityVersion && oppVer) {
+        extraction.opportunityVersion = oppVer;
+      }
     } else {
       // 1. Extract live on Full JD via Rate-Limited LLM
       const tLlm0 = Date.now();
       extraction = await rateLimitedExtract(detailedCard);
       llmMs = Date.now() - tLlm0;
-      extraction.opportunityVersion = job.opportunity_version || detailedCard.opportunityVersion || detailedCard.evaluationEvidence?.opportunityVersion;
+      extraction.opportunityVersion = oppVer;
+      extraction.versionCreatedAt = versionCreatedAt;
       extraction.canonicalJobId = job.canonical_job_id || detailedCard.canonicalJobId || detailedCard.evaluationEvidence?.canonicalJobId;
       extraction.extractedAt = new Date().toISOString();
       writeExtraction(extractionCacheKey, extraction);
@@ -169,7 +197,6 @@ export async function processJob(
     // 3. Deterministic resolver for genuinely unbound/new enrichment
     // 4. cardHash-derived o_... ONLY when no canonical identity exists
     let resolvedCanonicalId: string | undefined;
-    const activeDb = queue.getDatabaseAdapter();
 
     // 1. Persisted admitted lineage/ledger query
     try {
@@ -578,8 +605,9 @@ export async function enrichJobsForRun(
     // Recover any leases expired globally during our run
     await queue.recoverExpiredLeases();
 
-    // Lease jobs for this run (filtering by pipeline version if explicitly scoped)
-    const jobs = await queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency, 300, deps?.pipelineVersion);
+    // Lease jobs for this run (filtering by pipeline version; defaults to EXTRACTOR_VERSION)
+    const pipelineVersion = deps?.pipelineVersion ?? EXTRACTOR_VERSION;
+    const jobs = await queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency, 300, pipelineVersion);
 
     if (jobs.length === 0) {
       // Check if there are any jobs currently cooling down in retry status

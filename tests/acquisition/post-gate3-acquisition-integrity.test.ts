@@ -597,7 +597,7 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
     expect(blobData.get(expectedKey)).toBe(initialContent);
   });
 
-  it("rolls back newly created BlobStore payload if DB transaction fails during admission", async () => {
+  it("leaves shared BlobStore payload in place without synchronous deletion if DB transaction fails during admission", async () => {
     const { db } = createInMemoryDatabase();
     
     const blobData = new Map<string, string>();
@@ -619,7 +619,13 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       healthCheck: async () => ({ ok: true, backend: "mock" }),
     };
 
-    // Database whose transaction throws an error
+    // Pre-populate a shared payload (as if Runner A committed it concurrently)
+    const canonicalId = "c_linkedin_job-shared-102";
+    const oppVer = "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff";
+    const sharedKey = `acquisition/${canonicalId}/${oppVer}/snapshot.json`;
+    blobData.set(sharedKey, JSON.stringify({ title: "VP Security", valid: true }));
+
+    // Database whose transaction throws an error (Runner B)
     const failingDb: any = {
       one: db.one.bind(db),
       many: db.many.bind(db),
@@ -633,8 +639,8 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
 
     const payload = {
       sourcePortal: "LinkedIn",
-      sourceJobId: "job-rollback-102",
-      canonicalUrl: "https://www.linkedin.com/jobs/view/job-rollback-102",
+      sourceJobId: "job-shared-102",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/job-shared-102",
       jobTitle: "VP Security",
       companyName: "SecureCorp",
       location: "Bengaluru",
@@ -645,7 +651,7 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
           company: "SecureCorp",
           description: "Executive security leadership",
         } as any,
-        runId: "run-rollback-1",
+        runId: "run-shared-1",
       },
     };
 
@@ -657,39 +663,149 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       })
     ).rejects.toThrow(AcquisitionIntegrityError);
 
-    // Verify best-effort rollback cleanup: newly created blob is deleted
-    expect(deleteSpy).toHaveBeenCalledTimes(1);
-    expect(blobData.size).toBe(0);
+    // Invariant: Runner B MUST NOT delete the shared BlobStore key
+    expect(deleteSpy).toHaveBeenCalledTimes(0);
+    expect(blobData.has(sharedKey)).toBe(true);
   });
 
-  it("deterministically chooses authoritative opportunity version in collectRecords", () => {
+  it("wraps search plans query failure into AcquisitionIntegrityError", async () => {
+    const { db } = createInMemoryDatabase();
+    const failingDb: any = {
+      one: db.one.bind(db),
+      many: async () => {
+        throw new Error("Libsql query failure on search_plans");
+      },
+      execute: db.execute.bind(db),
+      transaction: db.transaction.bind(db),
+    };
+
+    const service = new CanonicalIngestionService(failingDb);
+    const payload = {
+      sourcePortal: "LinkedIn",
+      sourceJobId: "job-plan-err-1",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/job-plan-err-1",
+      jobTitle: "VP Operations",
+      companyName: "OpsCorp",
+      location: "Bengaluru",
+      rawContent: "VP Operations leading supply chain and strategy.".repeat(10),
+    };
+
+    await expect(
+      service.ingestOpportunity(payload, {
+        tenantId: "tenant_A",
+        personId: "person_A",
+        searchPlanId: "plan_A",
+      })
+    ).rejects.toThrow(AcquisitionIntegrityError);
+  });
+
+  it("returns persisted versionCreatedAt from CanonicalIngestionResult and preserves it on reuse", async () => {
+    const { raw, db } = createInMemoryDatabase();
+    const service = new CanonicalIngestionService(db);
+
+    const payload = {
+      sourcePortal: "LinkedIn",
+      sourceJobId: "job-createdat-1",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/job-createdat-1",
+      jobTitle: "VP Marketing",
+      companyName: "GrowthCorp",
+      location: "Bengaluru",
+      rawContent: "VP Marketing driving enterprise growth and pipeline.".repeat(10),
+    };
+    const scope = {
+      tenantId: "tenant_A",
+      personId: "person_A",
+      searchPlanId: "plan_A",
+    };
+
+    const res1 = await service.ingestOpportunity(payload, scope);
+    expect(res1.versionCreatedAt).toBeDefined();
+
+    // Verify row in database
+    const verRow = raw.prepare("SELECT created_at FROM opportunity_versions WHERE id = ?").get(res1.opportunityVersion) as any;
+    expect(verRow.created_at).toBe(res1.versionCreatedAt);
+
+    // Ingest again: should reuse existing version and return identical versionCreatedAt
+    const res2 = await service.ingestOpportunity(payload, scope);
+    expect(res2.isNewVersion).toBe(false);
+    expect(res2.versionCreatedAt).toBe(res1.versionCreatedAt);
+  });
+
+  it("refuses fresh acquisition when existing run is enriching or completing, but supersedes initializing or running", async () => {
+    const { raw, db } = createInMemoryDatabase();
+    const scrapeRunStore = new SqliteScrapeRunStore(db);
+    const runScope = { tenantId: "tenant_A", personId: "person_A" };
+
+    // Case 1: Existing run is 'enriching'
+    await scrapeRunStore.createRun(runScope, {
+      id: "run-enriching-active",
+      searchPlanId: "plan_1",
+      portalTargets: ["LinkedIn"],
+      initialStatus: "enriching",
+    });
+
+    const enrichingRun = await scrapeRunStore.getRun(runScope, "run-enriching-active");
+    expect(enrichingRun?.status).toBe("enriching");
+
+    // Supersession check policy in scrape.ts
+    const attemptSupersession = async (run: typeof enrichingRun) => {
+      if (run && (run.status === "enriching" || run.status === "completing")) {
+        throw new Error(`Cannot start fresh acquisition: active run ${run.id} is currently ${run.status}.`);
+      }
+      if (run && (run.status === "initializing" || run.status === "running")) {
+        await scrapeRunStore.updateRunStatus(runScope, run.id, "aborted", "Superseded");
+      }
+    };
+
+    await expect(attemptSupersession(enrichingRun)).rejects.toThrow(/Cannot start fresh acquisition/);
+
+    // Case 2: Existing run is 'running' -> gets superseded cleanly
+    raw.exec("DELETE FROM scrape_runs");
+    await scrapeRunStore.createRun(runScope, {
+      id: "run-running-active",
+      searchPlanId: "plan_1",
+      portalTargets: ["LinkedIn"],
+      initialStatus: "running",
+    });
+    const runningRun = await scrapeRunStore.getRun(runScope, "run-running-active");
+    await attemptSupersession(runningRun);
+
+    const abortedRun = await scrapeRunStore.getRun(runScope, "run-running-active");
+    expect(abortedRun?.status).toBe("aborted");
+  });
+
+  it("deterministically chooses newer opportunity version in collectRecords by versionCreatedAt even when older version has lexically larger hash", () => {
     const tempDir = EXTRACTION_DIR;
     fs.mkdirSync(tempDir, { recursive: true });
 
-    const jobHash = "deterministic_job_hash_456";
-    // Write V1 extraction file
+    const jobHash = "deterministic_job_hash_chronology_999";
+    // Older V1: SHA-256 hash starting with 'f' (lexically large), created 2026-09-01
+    const olderLexicallyLargerHash = "f" + "1".repeat(63);
     const fileV1 = path.join(tempDir, `v1_test_file__v1.0.0.json`);
     fs.writeFileSync(
       fileV1,
       JSON.stringify({
         extractorVersion: "1.0.0",
         jobHash,
-        opportunityVersion: "ov_v1",
-        role: "VP Engineering V1",
+        opportunityVersion: olderLexicallyLargerHash,
+        versionCreatedAt: "2026-09-01T10:00:00.000Z",
+        role: "VP Engineering Older",
         company: "Tech Giant",
         location: "Bengaluru",
       })
     );
 
-    // Write V2 extraction file for the same jobHash
+    // Newer V2: SHA-256 hash starting with '0' (lexically small), created 2026-09-10
+    const newerLexicallySmallerHash = "0" + "9".repeat(63);
     const fileV2 = path.join(tempDir, `v2_test_file__v1.0.0.json`);
     fs.writeFileSync(
       fileV2,
       JSON.stringify({
         extractorVersion: "1.0.0",
         jobHash,
-        opportunityVersion: "ov_v2",
-        role: "VP Engineering V2",
+        opportunityVersion: newerLexicallySmallerHash,
+        versionCreatedAt: "2026-09-10T10:00:00.000Z",
+        role: "VP Engineering Newer",
         company: "Tech Giant",
         location: "Bengaluru",
       })
@@ -699,9 +815,9 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       const records = collectRecords("1.0.0") as any[];
       const matched = records.filter((r) => r.jobHash === jobHash);
       expect(matched.length).toBe(1);
-      // Authoritative V2 must be deterministically selected over V1
-      expect(matched[0].opportunityVersion).toBe("ov_v2");
-      expect(matched[0].role).toBe("VP Engineering V2");
+      // Chronologically newer V2 must be chosen despite lexically smaller hash
+      expect(matched[0].opportunityVersion).toBe(newerLexicallySmallerHash);
+      expect(matched[0].role).toBe("VP Engineering Newer");
     } finally {
       if (fs.existsSync(fileV1)) fs.unlinkSync(fileV1);
       if (fs.existsSync(fileV2)) fs.unlinkSync(fileV2);

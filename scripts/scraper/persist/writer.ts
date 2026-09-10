@@ -103,6 +103,8 @@ export function collectRecords(targetExtractorVersion: string = EXTRACTOR_VERSIO
     record: any;
     filename: string;
     opportunityVersion: string;
+    versionCreatedAt?: string;
+    extractedAt?: string;
     mtimeMs: number;
   }
 
@@ -119,11 +121,14 @@ export function collectRecords(targetExtractorVersion: string = EXTRACTOR_VERSIO
       }
       if (!parsed.jobHash) continue;
       
-      const oppVersion = parsed.opportunityVersion || parsed.opportunity_version || "";
+      const oppVersion = parsed.opportunityVersion || parsed.opportunity_version || parsed.evaluationEvidence?.opportunityVersion || "";
+      const verCreatedAt = parsed.versionCreatedAt || parsed.opportunityCreatedAt || undefined;
       candidateRecords.push({
         record: parsed,
         filename: f,
         opportunityVersion: oppVersion,
+        versionCreatedAt: verCreatedAt,
+        extractedAt: parsed.extractedAt,
         mtimeMs: stat.mtimeMs,
       });
     } catch (err: any) { 
@@ -145,28 +150,31 @@ export function collectRecords(targetExtractorVersion: string = EXTRACTOR_VERSIO
   for (const hash of sortedHashes) {
     const candidates = recordsByJobHash.get(hash)!;
     candidates.sort((a, b) => {
-      // 1. Authoritative opportunity version (higher/newer version preferred: v2 > v1)
-      if (a.opportunityVersion && b.opportunityVersion) {
-        const vCmp = b.opportunityVersion.localeCompare(a.opportunityVersion, undefined, { numeric: true, sensitivity: "base" });
-        if (vCmp !== 0) return vCmp;
-      } else if (a.opportunityVersion && !b.opportunityVersion) {
-        return -1;
-      } else if (!a.opportunityVersion && b.opportunityVersion) {
-        return 1;
+      // 1. Authoritative opportunity version creation time (newest first)
+      const aVerTime = a.versionCreatedAt ? new Date(a.versionCreatedAt).getTime() : 0;
+      const bVerTime = b.versionCreatedAt ? new Date(b.versionCreatedAt).getTime() : 0;
+      if (aVerTime > 0 && bVerTime > 0 && aVerTime !== bVerTime) {
+        return bVerTime - aVerTime;
       }
+      if (aVerTime > 0 && (!bVerTime || bVerTime === 0)) return -1;
+      if ((!aVerTime || aVerTime === 0) && bVerTime > 0) return 1;
 
-      // 2. Version-addressed filename priority (__v... over legacy)
+      // 2. Bound opportunity version presence over unbound
+      if (a.opportunityVersion && !b.opportunityVersion) return -1;
+      if (!a.opportunityVersion && b.opportunityVersion) return 1;
+
+      // 3. Version-addressed filename priority (__v... over legacy)
       const aVersioned = a.filename.includes(`__v${targetExtractorVersion}`);
       const bVersioned = b.filename.includes(`__v${targetExtractorVersion}`);
       if (aVersioned && !bVersioned) return -1;
       if (!aVersioned && bVersioned) return 1;
 
-      // 3. Extracted timestamp or mtime (latest first)
-      const aTime = a.record.extractedAt ? new Date(a.record.extractedAt).getTime() : a.mtimeMs;
-      const bTime = b.record.extractedAt ? new Date(b.record.extractedAt).getTime() : b.mtimeMs;
+      // 4. Extracted timestamp or filesystem mtime (latest first)
+      const aTime = a.extractedAt ? new Date(a.extractedAt).getTime() : a.mtimeMs;
+      const bTime = b.extractedAt ? new Date(b.extractedAt).getTime() : b.mtimeMs;
       if (bTime !== aTime) return bTime - aTime;
 
-      // 4. Deterministic filename fallback
+      // 5. Deterministic filename fallback
       return a.filename.localeCompare(b.filename);
     });
 

@@ -204,16 +204,7 @@ export class RunController {
   }
 
   static isStatusResumable(status: RunState): boolean {
-    const nonResumableStatuses: RunState[] = [
-      "enriching",
-      "completing",
-      "completed",
-      "failed",
-      "aborted",
-      "stopping",
-      "stopped",
-    ];
-    return !nonResumableStatuses.includes(status);
+    return status === "initializing" || status === "running";
   }
 
   private markResume(): void {

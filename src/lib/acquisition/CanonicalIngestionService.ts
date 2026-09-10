@@ -113,6 +113,7 @@ export interface CanonicalIngestionResult {
   jobsEnqueued: number;
   enrichmentJobId?: string | null;
   isNewEnrichmentJob?: boolean;
+  versionCreatedAt?: string;
 }
 
 export class InvalidCanonicalUrlError extends Error {
@@ -228,7 +229,6 @@ export class CanonicalIngestionService {
     let sourcePayloadKey: string | null = null;
     let sourceMediaType: string | null = null;
 
-    let createdEnrichmentBlobKey: string | null = null;
     if (payload.enrichmentDispatch?.detailedCard) {
       const enrichmentPayloadKey = `acquisition/${canonicalJobId}/${versionId}/snapshot.json`;
       const detailedCard = payload.enrichmentDispatch.detailedCard;
@@ -253,7 +253,6 @@ export class CanonicalIngestionService {
             JSON.stringify(detailedCard),
             "application/json"
           );
-          createdEnrichmentBlobKey = enrichmentPayloadKey;
         }
       } catch (err) {
         throw new AcquisitionIntegrityError(
@@ -268,15 +267,22 @@ export class CanonicalIngestionService {
     if (isPdfPayload) {
       const sourcePayload = payload.sourcePayload ?? rawContent;
       if (!sourcePayload) {
-        throw new Error(`PDF acquisition ${source}:${sourceJobId} is missing its source payload.`);
+        throw new AcquisitionIntegrityError(`PDF acquisition ${source}:${sourceJobId} is missing its source payload.`);
       }
       const requestedKey = payload.sourcePayloadKey || `opportunity-versions/${versionId}/source`;
-      sourcePayloadKey = await (this.blobStore || getBlobStore()).put(
-        requestedKey,
-        sourcePayload,
-        payload.contentType || "application/pdf",
-      );
-      sourceMediaType = payload.contentType || "application/pdf";
+      try {
+        sourcePayloadKey = await (this.blobStore || getBlobStore()).put(
+          requestedKey,
+          sourcePayload,
+          payload.contentType || "application/pdf",
+        );
+        sourceMediaType = payload.contentType || "application/pdf";
+      } catch (err) {
+        throw new AcquisitionIntegrityError(
+          `Failed to write source payload to BlobStore for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
+          err
+        );
+      }
     }
     // PDF bytes may exist only in BlobStore; raw_content is reserved for
     // extracted readable job text and therefore remains empty pending parsing.
@@ -302,37 +308,15 @@ export class CanonicalIngestionService {
       createdAt: new Date().toISOString(),
     };
 
-    // 2. Fetch Active Search Plans (strictly joined to verified people & tenants to enforce referential integrity)
-    let planQuery = `
-      SELECT sp.id, sp.tenant_id, sp.person_id, sp.criteria_json 
-      FROM search_plans sp
-      JOIN people p ON sp.person_id = p.id AND sp.tenant_id = p.tenant_id
-      JOIN tenants t ON sp.tenant_id = t.id
-      WHERE sp.status = 'active'
-    `;
-    const planParams: unknown[] = [];
-
-    if (scopeFilter?.tenantId) {
-      planQuery += ` AND sp.tenant_id = ?`;
-      planParams.push(scopeFilter.tenantId);
-    }
-    if (scopeFilter?.personId) {
-      planQuery += ` AND sp.person_id = ?`;
-      planParams.push(scopeFilter.personId);
-    }
-    if (scopeFilter?.searchPlanId) {
-      planQuery += ` AND sp.id = ?`;
-      planParams.push(scopeFilter.searchPlanId);
-    }
-
-    const activePlans = await this.db.many<{
+    let activePlans: Array<{
       id: string;
       tenant_id: string;
       person_id: string;
       criteria_json: string | null;
-    }>(planQuery, planParams);
+    }> = [];
+    let effectiveVersionCreatedAt: string = versionRecord.createdAt;
 
-    // 3. Perform the core canonical transaction. Evaluation-job enqueueing is
+    // 3. Perform the core canonical persistence envelope. Evaluation-job enqueueing is
     // deliberately outside this transaction: a transient queue/database HTTP
     // failure must not close the transaction after canonical data is written.
     const candidateDecisions: Record<string, "CANDIDATE" | "NOT_CANDIDATE"> = {};
@@ -350,6 +334,36 @@ export class CanonicalIngestionService {
     }));
 
     try {
+      // 2. Fetch Active Search Plans (strictly joined to verified people & tenants to enforce referential integrity)
+      let planQuery = `
+        SELECT sp.id, sp.tenant_id, sp.person_id, sp.criteria_json 
+        FROM search_plans sp
+        JOIN people p ON sp.person_id = p.id AND sp.tenant_id = p.tenant_id
+        JOIN tenants t ON sp.tenant_id = t.id
+        WHERE sp.status = 'active'
+      `;
+      const planParams: unknown[] = [];
+
+      if (scopeFilter?.tenantId) {
+        planQuery += ` AND sp.tenant_id = ?`;
+        planParams.push(scopeFilter.tenantId);
+      }
+      if (scopeFilter?.personId) {
+        planQuery += ` AND sp.person_id = ?`;
+        planParams.push(scopeFilter.personId);
+      }
+      if (scopeFilter?.searchPlanId) {
+        planQuery += ` AND sp.id = ?`;
+        planParams.push(scopeFilter.searchPlanId);
+      }
+
+      activePlans = await this.db.many<{
+        id: string;
+        tenant_id: string;
+        person_id: string;
+        criteria_json: string | null;
+      }>(planQuery, planParams);
+
       await this.db.transaction(async (tx) => {
         // 3.0 Check if canonical opportunity already exists
       const existingOpp = await tx.one<{ id: string }>(
@@ -403,13 +417,14 @@ export class CanonicalIngestionService {
       );
       isNewVersion = versionRes.rowsAffected > 0;
 
-      // 3.2.1 Resolve Authoritative Version ID:
+      // 3.2.1 Resolve Authoritative Version ID & persisted creation timestamp:
       // Whether newly inserted or pre-existing from an earlier run, fetch the canonical ID that exists in the database
-      const existingVersion = await tx.one<{ id: string }>(
-        `SELECT id FROM opportunity_versions WHERE canonical_job_id = ? AND content_hash = ?`,
+      const existingVersion = await tx.one<{ id: string; created_at: string }>(
+        `SELECT id, created_at FROM opportunity_versions WHERE canonical_job_id = ? AND content_hash = ?`,
         [canonicalJobId, contentHash]
       );
       effectiveVersionId = existingVersion?.id || versionId;
+      effectiveVersionCreatedAt = existingVersion?.created_at || versionRecord.createdAt;
 
       enrichmentJobId = null;
       isNewEnrichmentJob = false;
@@ -629,18 +644,17 @@ export class CanonicalIngestionService {
       }
     });
     } catch (err) {
-      if (createdEnrichmentBlobKey) {
-        try {
-          await (this.blobStore || getBlobStore()).delete(createdEnrichmentBlobKey);
-        } catch {
-          // Best-effort cleanup; preserve original transaction error
-        }
-      }
+      // Invariant: Do NOT delete the shared BlobStore payload on database failure.
+      // In a distributed environment with concurrent admissions of the same canonical/version,
+      // deleting the shared blob upon one node's DB failure risks destroying a payload
+      // successfully referenced by another node's committed job.
+      // An orphan blob is harmless; deleting a blob referenced by another transaction is catastrophic.
+      // Bounded orphan-storage leak is accepted until decoupled listing/indexing sweep runs.
       if (err instanceof AcquisitionIntegrityError) {
         throw err;
       }
       throw new AcquisitionIntegrityError(
-        `Canonical ingestion transaction failed for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
+        `Canonical ingestion failed for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
         err
       );
     }
@@ -648,6 +662,7 @@ export class CanonicalIngestionService {
     return {
       canonicalJobId,
       opportunityVersion: effectiveVersionId,
+      versionCreatedAt: effectiveVersionCreatedAt,
       contentHash,
       sourcePayloadKey,
       sourceMediaType,

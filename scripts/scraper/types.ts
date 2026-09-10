@@ -348,6 +348,7 @@ export interface ExtractionResult {
   promptVersion: string;
   jobHash: string;
   opportunityVersion?: string;
+  versionCreatedAt?: string;
   canonicalJobId?: string;
   extractedAt?: string;
   role: string;

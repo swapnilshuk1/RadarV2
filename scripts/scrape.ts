@@ -55,6 +55,18 @@ import {
   AcquisitionIntegrityError,
 } from "../src/lib/acquisition/CanonicalIngestionService";
 
+export async function withPersistenceBoundary<T>(operationName: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err: any) {
+    if (err instanceof AcquisitionIntegrityError) throw err;
+    throw new AcquisitionIntegrityError(
+      `Persistence failure during ${operationName}: ${err?.message}`,
+      err
+    );
+  }
+}
+
 export function computeVariantsSignature(variants?: AcquisitionVariant[]): string | undefined {
   if (!variants || variants.length === 0) return undefined;
   const normalized = variants.map((v) => {
@@ -313,16 +325,31 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         if (isDurableResumable && isPlanMatching) {
           log(`Validated existing durable scrape_run for resume: ${mgr.runId} (status: ${existingDurableRun.status})`);
         } else {
+          // If the existing durable run is actively enriching or completing, DO NOT abort or supersede it.
+          // Those states mean acquisition finished successfully and distributed worker obligations are actively processing.
+          // Refuse fresh acquisition to protect the active downstream pipeline.
+          if (
+            existingDurableRun &&
+            (existingDurableRun.status === "enriching" || existingDurableRun.status === "completing")
+          ) {
+            log(
+              `Active durable run ${existingDurableRun.id} is currently in downstream state '${existingDurableRun.status}'. Refusing fresh acquisition to protect active downstream pipeline.`,
+              "error"
+            );
+            throw new Error(
+              `Cannot start fresh acquisition for (${runScope.tenantId}, ${runScope.personId}): active run ${existingDurableRun.id} is currently ${existingDurableRun.status}.`
+            );
+          }
+
           // Stale, mismatched, or finished run cannot be resumed. Force a fresh run.
+          // Supersede/abort ONLY if the existing run is in an active acquisition state (initializing or running).
           log(
             `Run ${mgr.runId} exists with non-resumable state (status='${existingDurableRun?.status || "missing"}', planMatch=${isPlanMatching}) — forcing fresh run`,
             "warn"
           );
           if (
             existingDurableRun &&
-            (existingDurableRun.status === "initializing" ||
-              existingDurableRun.status === "running" ||
-              existingDurableRun.status === "enriching")
+            (existingDurableRun.status === "initializing" || existingDurableRun.status === "running")
           ) {
             await repos.scrapeRuns.updateRunStatus(
               runScope,
@@ -330,7 +357,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
               "aborted",
               "Superseded by fresh run due to search plan identity mismatch or non-resumable state"
             );
-            log(`Superseded stale active durable run: ${existingDurableRun.id}`);
+            log(`Superseded stale active acquisition run: ${existingDurableRun.id}`);
           }
           try {
             mgr.journal?.close();
@@ -1087,26 +1114,27 @@ async function processUnit(
         seenUrls.add(identity.canonicalUrl);
         seenCanonicalIds.add(identity.canonicalJobId);
 
-        const priorLedgerItem = await repos.acquisition.getLedgerItemByCanonicalId(
-          identity.sourcePortal,
-          identity.canonicalJobId,
-        );
-        if (priorLedgerItem) historicalLedgerCardIds.add(cardUnitId);
-
-        // 3. Upsert Discovered Job into Persistent Acquisition Ledger
-        const ledgerItem = await repos.acquisition.upsertDiscoveredJob({
-          canonicalJobId: identity.canonicalJobId,
-          sourcePortal: identity.sourcePortal,
-          sourceJobId: identity.sourceJobId,
-          canonicalUrl: identity.canonicalUrl,
-          title: feedCard.title,
-          companyName: feedCard.company,
-          location: feedCard.location,
-          state: "QUEUED",
-          firstSeenAt: new Date().toISOString(),
-          lastSeenAt: new Date().toISOString(),
-          validationConfidence: identity.identityConfidence
+        const { priorLedgerItem, ledgerItem } = await withPersistenceBoundary("initial ledger discovery", async () => {
+          const prior = await repos.acquisition.getLedgerItemByCanonicalId(
+            identity.sourcePortal,
+            identity.canonicalJobId,
+          );
+          const item = await repos.acquisition.upsertDiscoveredJob({
+            canonicalJobId: identity.canonicalJobId,
+            sourcePortal: identity.sourcePortal,
+            sourceJobId: identity.sourceJobId,
+            canonicalUrl: identity.canonicalUrl,
+            title: feedCard.title,
+            companyName: feedCard.company,
+            location: feedCard.location,
+            state: "QUEUED",
+            firstSeenAt: new Date().toISOString(),
+            lastSeenAt: new Date().toISOString(),
+            validationConfidence: identity.identityConfidence
+          });
+          return { priorLedgerItem: prior, ledgerItem: item };
         });
+        if (priorLedgerItem) historicalLedgerCardIds.add(cardUnitId);
 
         const snapshotPath = path.join(SNAPSHOT_DIR, `${feedCard.cardHash}.json`);
         const isHistoricallyNew = !priorLedgerItem && !fs.existsSync(snapshotPath);
@@ -1482,20 +1510,22 @@ async function processUnit(
             ) {
               HealthManager.recordFailure(unit.portal, failureClass);
             }
-            await repos.acquisition.updateJobState(ledgerItem.id, {
-              state: detail.identityResolutionFailure ? "IDENTITY_UNRESOLVED" : "ACQUIRING",
-              terminalState: failureClass === "REMOVED_404"
-                ? "PERMANENT_FAILURE"
-                : failureClass === "REDIRECT_HOP_LIMIT"
-                  ? "REDIRECT_HOP_LIMIT"
-                  : failureClass === "UNSAFE_REDIRECT_DESTINATION"
-                    ? "UNSAFE_REDIRECT_DESTINATION"
-                    : detail.identityResolutionFailure
-                      ? "UNRESOLVED_EXTERNAL_LISTING_IDENTITY"
-                      : undefined,
-              lastFailureClass: failureClass,
-              acquisitionQuality: valResult.quality,
-              validationConfidence: valResult.confidence
+            await withPersistenceBoundary("validation failure state recording", async () => {
+              await repos.acquisition.updateJobState(ledgerItem.id, {
+                state: detail.identityResolutionFailure ? "IDENTITY_UNRESOLVED" : "ACQUIRING",
+                terminalState: failureClass === "REMOVED_404"
+                  ? "PERMANENT_FAILURE"
+                  : failureClass === "REDIRECT_HOP_LIMIT"
+                    ? "REDIRECT_HOP_LIMIT"
+                    : failureClass === "UNSAFE_REDIRECT_DESTINATION"
+                      ? "UNSAFE_REDIRECT_DESTINATION"
+                      : detail.identityResolutionFailure
+                        ? "UNRESOLVED_EXTERNAL_LISTING_IDENTITY"
+                        : undefined,
+                lastFailureClass: failureClass,
+                acquisitionQuality: valResult.quality,
+                validationConfidence: valResult.confidence
+              });
             });
             mgr.updateCard(cardUnitId, { status: "failed", error: `Validation failed: ${failureClass}` });
 
@@ -1503,15 +1533,19 @@ async function processUnit(
             // but may never create a canonical market record.  A title/card or
             // an error page is not a recoverable substitute for a validated JD.
             if (lineageScope) {
-              await recordLineage(
-                ledgerItem.id,
-                identity.sourceJobId,
-                feedCard.discoveryUrl || feedCard.detailUrl,
-                valResult,
-                undefined,
-                failureClass,
-                detail.finalUrl,
-              );
+              try {
+                await recordLineage(
+                  ledgerItem.id,
+                  identity.sourceJobId,
+                  feedCard.discoveryUrl || feedCard.detailUrl,
+                  valResult,
+                  undefined,
+                  failureClass,
+                  detail.finalUrl,
+                );
+              } catch (lineageErr: any) {
+                log(`[M10_LINEAGE_WARN] Failed to record validation failure lineage: ${lineageErr.message}`, "warn");
+              }
             }
 
             return null;
@@ -1554,20 +1588,28 @@ async function processUnit(
           const identityUrl = feedCard.detailUrl;
           const verifiedIndeedIdentity = unit.portal === "Indeed" ? parseVerifiedIndeedListingUrl(identityUrl) : undefined;
           if (unit.portal === "Indeed" && !verifiedIndeedIdentity) {
-            await repos.acquisition.updateJobState(ledgerItem.id, {
-              state: "IDENTITY_UNRESOLVED",
-              terminalState: "UNRESOLVED_EXTERNAL_LISTING_IDENTITY",
-              lastFailureClass: "IDENTITY_UNRESOLVED",
+            await withPersistenceBoundary("unresolved identity state recording", async () => {
+              await repos.acquisition.updateJobState(ledgerItem.id, {
+                state: "IDENTITY_UNRESOLVED",
+                terminalState: "UNRESOLVED_EXTERNAL_LISTING_IDENTITY",
+                lastFailureClass: "IDENTITY_UNRESOLVED",
+              });
             });
-            await recordLineage(
-              ledgerItem.id,
-              identity.sourceJobId,
-              feedCard.discoveryUrl || feedCard.detailUrl,
-              valResult,
-              undefined,
-              "IDENTITY_UNRESOLVED",
-              detail.finalUrl,
-            );
+            if (lineageScope) {
+              try {
+                await recordLineage(
+                  ledgerItem.id,
+                  identity.sourceJobId,
+                  feedCard.discoveryUrl || feedCard.detailUrl,
+                  valResult,
+                  undefined,
+                  "IDENTITY_UNRESOLVED",
+                  detail.finalUrl,
+                );
+              } catch (lineageErr: any) {
+                log(`[M10_LINEAGE_WARN] Failed to record unresolved identity lineage: ${lineageErr.message}`, "warn");
+              }
+            }
             mgr.updateCard(cardUnitId, { status: "failed", error: "Indeed listing identity could not be verified" });
             return null;
           }
@@ -1630,17 +1672,20 @@ async function processUnit(
           // provisional URL identity. Canonical admission is rebased only
           // after a stable portal identity has been verified. The original
           // ledger row remains the lineage anchor for this observation.
-          const resolvedLedgerItem = await repos.acquisition.getLedgerItemByCanonicalId(
-            resolvedIdentity.sourcePortal,
-            resolvedIdentity.canonicalJobId,
-          );
-          if (resolvedLedgerItem) historicalLedgerCardIds.add(cardUnitId);
-          const admissionLedgerItem = await repos.acquisition.rebindDiscoveredJobIdentity(ledgerItem.id, {
-            canonicalJobId: resolvedIdentity.canonicalJobId,
-            sourcePortal: resolvedIdentity.sourcePortal,
-            sourceJobId: resolvedIdentity.sourceJobId,
-            canonicalUrl: resolvedIdentity.canonicalUrl,
+          const { resolvedLedgerItem, admissionLedgerItem } = await withPersistenceBoundary("job identity rebind", async () => {
+            const resolved = await repos.acquisition.getLedgerItemByCanonicalId(
+              resolvedIdentity.sourcePortal,
+              resolvedIdentity.canonicalJobId,
+            );
+            const admission = await repos.acquisition.rebindDiscoveredJobIdentity(ledgerItem.id, {
+              canonicalJobId: resolvedIdentity.canonicalJobId,
+              sourcePortal: resolvedIdentity.sourcePortal,
+              sourceJobId: resolvedIdentity.sourceJobId,
+              canonicalUrl: resolvedIdentity.canonicalUrl,
+            });
+            return { resolvedLedgerItem: resolved, admissionLedgerItem: admission };
           });
+          if (resolvedLedgerItem) historicalLedgerCardIds.add(cardUnitId);
 
           detailedCard = {
             ...feedCard,
@@ -1662,40 +1707,42 @@ async function processUnit(
           mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: snapshotPath });
 
           // 5. Record Validated State in Ledger & Merge Opportunity in SQLite
-          await repos.acquisition.updateJobState(admissionLedgerItem.id, {
-            state: "VALIDATED",
-            lastAcquiredAt: new Date().toISOString(),
-            acquisitionQuality: valResult.quality,
-            validationConfidence: valResult.confidence,
-            lastAcquisitionMethod: acquisitionRoute
-          });
+          await withPersistenceBoundary("opportunity & company registration", async () => {
+            await repos.acquisition.updateJobState(admissionLedgerItem.id, {
+              state: "VALIDATED",
+              lastAcquiredAt: new Date().toISOString(),
+              acquisitionQuality: valResult.quality,
+              validationConfidence: valResult.confidence,
+              lastAcquisitionMethod: acquisitionRoute
+            });
 
-          await repos.companies.registerCompany({
-            id: companyId,
-            name: effectiveCompany,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            provenance: {
-              schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-              runId: mgr.runId,
-              timestamp: new Date().toISOString()
-            }
-          });
+            await repos.companies.registerCompany({
+              id: companyId,
+              name: effectiveCompany,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              provenance: {
+                schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+                runId: mgr.runId,
+                timestamp: new Date().toISOString()
+              }
+            });
 
-          await repos.opportunities.mergeOpportunity({
-            id: resolvedIdentity.canonicalJobId,
-            companyId,
-            canonicalTitle: feedCard.title,
-            location: feedCard.location,
-            fingerprint: resolvedIdentity.canonicalJobId,
-            lifecycle: "Verified",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            provenance: {
-              schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-              runId: mgr.runId,
-              timestamp: new Date().toISOString()
-            }
+            await repos.opportunities.mergeOpportunity({
+              id: resolvedIdentity.canonicalJobId,
+              companyId,
+              canonicalTitle: feedCard.title,
+              location: feedCard.location,
+              fingerprint: resolvedIdentity.canonicalJobId,
+              lifecycle: "Verified",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              provenance: {
+                schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+                runId: mgr.runId,
+                timestamp: new Date().toISOString()
+              }
+            });
           });
 
           // [M10.1] Canonical Acquisition Interceptor: Global Identity, Versioning, Attention Gate & Queue
@@ -1774,30 +1821,42 @@ async function processUnit(
             if (ingestRes.jobsEnqueued > 0) {
               mgr.recordTelemetry("evaluationJobsEnqueued", ingestRes.jobsEnqueued);
             }
-            await recordLineage(
-              ledgerItem.id,
-              resolvedIdentity.sourceJobId,
-              feedCard.discoveryUrl || feedCard.detailUrl,
-              valResult,
-              ingestRes,
-              undefined,
-              detail.finalUrl,
-            );
-          } catch (err: any) {
-            log(`[M10_CANONICAL_INGEST_WARN] Canonical acquisition error for ${feedCard.cardHash}: ${err.message}`, "warn");
-            mgr.recordTelemetry("canonicalIngestFailure");
-            if (lineageScope) {
+            await withPersistenceBoundary("canonical lineage recording", async () => {
               await recordLineage(
                 ledgerItem.id,
                 resolvedIdentity.sourceJobId,
                 feedCard.discoveryUrl || feedCard.detailUrl,
                 valResult,
+                ingestRes,
                 undefined,
-                err?.name || "CANONICAL_INGEST_FAILURE",
                 detail.finalUrl,
               );
+            });
+          } catch (err: any) {
+            log(`[M10_CANONICAL_INGEST_WARN] Canonical acquisition error for ${feedCard.cardHash}: ${err.message}`, "warn");
+            mgr.recordTelemetry("canonicalIngestFailure");
+            if (lineageScope) {
+              try {
+                await recordLineage(
+                  ledgerItem.id,
+                  resolvedIdentity.sourceJobId,
+                  feedCard.discoveryUrl || feedCard.detailUrl,
+                  valResult,
+                  undefined,
+                  err?.name || "CANONICAL_INGEST_FAILURE",
+                  detail.finalUrl,
+                );
+              } catch (lineageErr: any) {
+                log(`[M10_LINEAGE_WARN] Failed to record error lineage for ${feedCard.cardHash}: ${lineageErr.message}`, "warn");
+              }
             }
-            throw err;
+            if (err instanceof AcquisitionIntegrityError) {
+              throw err;
+            }
+            throw new AcquisitionIntegrityError(
+              `Canonical acquisition failed for ${resolvedIdentity.canonicalJobId}: ${err?.message}`,
+              err
+            );
           }
 
         mgr.updateCard(cardUnitId, {
@@ -1815,7 +1874,9 @@ async function processUnit(
         const isIntegrityFailure =
           err?.failureKind === "INTEGRITY_FAILURE" ||
           err instanceof AcquisitionIntegrityError ||
-          err?.message?.includes("ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH");
+          err?.name === "AcquisitionIntegrityError" ||
+          err?.message?.includes("ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH") ||
+          err?.message?.includes("ENRICHMENT_PAYLOAD_NOT_FOUND");
 
         if (isIntegrityFailure) {
           integrityFailuresInUnit++;
