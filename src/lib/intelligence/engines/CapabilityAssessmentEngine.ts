@@ -1,4 +1,5 @@
 import { CandidateProjection } from "../../domain/candidate_projection";
+import type { CanonicalSemanticEvidence } from "../semantic/types";
 import { EvaluationJobProjection, CapabilityTaxonomyTier } from "../../domain/job_projection";
 import { CapabilityAssessment, EvidenceMatch } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
@@ -7,6 +8,74 @@ import executiveOntology from "@/data/ontology/executive_ontology.json";
 import { RequirementEvidenceAdapter } from "../semantic/RequirementEvidenceAdapter";
 
 export class CapabilityAssessmentEngine {
+
+  private static normalized(value: unknown): string {
+    return typeof value === "string" ? value.replace(/\s+/g, " ").trim().toLowerCase() : "";
+  }
+
+  private static related(left: unknown, right: unknown): boolean {
+    const a = this.normalized(left);
+    const b = this.normalized(right);
+    return Boolean(a && b && (a === b || a.includes(b) || b.includes(a)));
+  }
+
+  /**
+   * Trace provenance must be a bounded candidate fact that downstream
+   * editorial code is allowed to resolve. This does not participate in the
+   * evaluator's score or matching decision; it only prevents a relationship
+   * trace from naming excluded, aspirational, negated, or non-factual records.
+   */
+  private static admissibleSemanticEvidenceForTrace(evidence: CanonicalSemanticEvidence): boolean {
+    const phrase = this.normalized(evidence.sourcePhrase);
+    return evidence.confidence >= 0.7
+      && !evidence.negated
+      && evidence.temporalState !== "ASPIRATIONAL"
+      && evidence.evidenceStrength !== "EXCLUDED"
+      && evidence.evidenceRelationship !== "NON_SATISFYING"
+      && evidence.evidenceRelationship !== "EXCLUDED"
+      && ["CAPABILITY", "FINANCIAL_SCOPE", "MANDATE", "PEOPLE_SCOPE"].includes(evidence.entityType)
+      && phrase.length >= 3
+      // The editorial contract's stable capability identity uses the same
+      // bounded source-phrase ceiling and rejects ontology/classifier labels.
+      // Longer or classifier-like text may be a locator/corpus, but it is not
+      // an independently resolvable candidate fact.
+      && phrase.length <= 80
+      && !/^[A-Z0-9_&|/ -]{2,80}$/.test(evidence.sourcePhrase.trim())
+      && !evidence.sourcePhrase.includes("_")
+      && !evidence.sourcePhrase.includes("|");
+  }
+
+  /** Returns only source-backed candidate evidence from the pinned projection. */
+  private static candidateEvidenceIdsForProof(candidate: CandidateProjection, proof: string): string[] {
+    const ids = new Set<string>();
+    for (const capability of candidate.inferredCapabilities ?? []) {
+      if (!this.related(capability.name, proof)) continue;
+      for (const id of [...(capability.evidenceIds ?? []), ...(capability.supportingEvidence ?? []).map((item) => item.id)]) {
+        if (typeof id === "string" && id.trim()) ids.add(id.trim());
+      }
+    }
+    for (const [index, evidence] of (candidate.semanticEvidence ?? []).entries()) {
+      if (!this.admissibleSemanticEvidenceForTrace(evidence)) continue;
+      if (!this.related(evidence.canonicalConcept, proof) && !this.related(evidence.sourcePhrase, proof)) continue;
+      const sourceId = evidence.metadata?.sourceId;
+      ids.add(typeof sourceId === "string" && sourceId.trim()
+        ? sourceId.trim()
+        : `candidate-projection:${candidate.profileVersion}:semantic:${index}`);
+    }
+    return [...ids].sort();
+  }
+
+  /** Evaluator-visible opaque job evidence references, grouped by capability. */
+  private static jobEvidenceIdsForCapability(job: EvaluationJobProjection, capability: string): string[] {
+    const ids = new Set<string>();
+    for (const reference of job.capabilityEvidence ?? []) {
+      if (!this.related(reference.capabilityKey, capability)) continue;
+      for (const id of reference.evidenceIds) {
+        if (typeof id === "string" && id.trim()) ids.add(id.trim());
+      }
+    }
+    return [...ids].sort();
+  }
 
   /**
    * Domain Operational Equivalence Lookup Map.
@@ -241,7 +310,9 @@ export class CapabilityAssessmentEngine {
           jobCapability: jobCapName,
           candidateCapability: proofResult.matchedProof,
           confidence: proofResult.score,
-          reason: proofResult.reason
+          reason: proofResult.reason,
+          jobEvidenceIds: this.jobEvidenceIdsForCapability(job, jobCapName),
+          candidateEvidenceIds: this.candidateEvidenceIdsForProof(candidate, proofResult.matchedProof),
         });
       } else {
         missingCapabilities.push(`${jobCapName} [${tier}]`);

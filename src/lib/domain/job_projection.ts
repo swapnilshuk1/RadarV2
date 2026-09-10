@@ -36,6 +36,21 @@ export interface ProjectedRoleWorkEvidence {
   confidence: number;
 }
 
+/**
+ * A bounded, source-grounded candidate qualification retained for
+ * presentation. It is deliberately separate from role work and unavailable
+ * to evaluation policy.
+ */
+export interface ProjectedQualificationEvidence {
+  id: string;
+  statement: string;
+  sourceQuote: string;
+  sourceRegion: DocumentRegion;
+  ordinal: number;
+  capabilityKeys: string[];
+  confidence: number;
+}
+
 export type CapabilityTaxonomyTier = 
   | "CORE_MANDATE" 
   | "EXECUTION_CAPABILITY" 
@@ -51,6 +66,8 @@ export interface ProjectedCapability {
   /** Canonical semantic concept, provenance, and epistemic state for auditability. */
   canonicalConcept?: string;
   sourceQuote?: string;
+  /** Stable canonical source references when an explicit capability retains a quote. */
+  evidenceIds?: string[];
   evidenceRelationship?: "DIRECT_EQUIVALENT" | "STRONG_SUPPORT" | "PARTIAL_SUPPORT" | "CONTEXTUAL_SUPPORT";
   state?: "EXPLICIT" | "INFERRED" | "UNKNOWN";
 }
@@ -68,6 +85,17 @@ export interface CapabilityRequirement {
   /** Stable references to the source phrases retained below. */
   evidenceIds: string[];
   sourceQuotes: string[];
+}
+
+/**
+ * A minimal, structured source-reference view available to evaluation.
+ * It carries capability identity and stable evidence identifiers only; it
+ * deliberately does not expose presentation statements or reclassify source
+ * material inside an evaluation engine.
+ */
+export interface EvaluationCapabilityEvidenceRef {
+  capabilityKey: string;
+  evidenceIds: string[];
 }
 
 export interface ExecutiveIdentity {
@@ -174,6 +202,9 @@ export interface JobProjection {
    */
   roleWorkEvidence?: readonly ProjectedRoleWorkEvidence[];
   roleWorkEvidenceVersion?: string;
+  /** Presentation-only qualification retention; never an evaluation input. */
+  presentationQualificationEvidence?: readonly ProjectedQualificationEvidence[];
+  presentationQualificationEvidenceVersion?: string;
   projectionVersion?: string;
   projectionFingerprint?: string;
 }
@@ -211,7 +242,10 @@ export type EvaluationJobProjection = Pick<
   | "dimensions"
   | "semanticEvidence"
   | "originalOpportunity"
->;
+> & {
+  /** Opaque evaluator-facing source references; never role-work prose. */
+  capabilityEvidence: readonly EvaluationCapabilityEvidenceRef[];
+};
 
 export function toEvaluationJobProjection(
   projection: JobProjection,
@@ -241,6 +275,36 @@ export function toEvaluationJobProjection(
     originalOpportunity,
   } = projection;
 
+  const capabilityEvidence = new Map<string, Set<string>>();
+  const addEvidence = (capabilityKey: unknown, evidenceIds: unknown) => {
+    if (typeof capabilityKey !== "string" || !capabilityKey.trim() || !Array.isArray(evidenceIds)) return;
+    const key = capabilityKey.trim();
+    const ids = capabilityEvidence.get(key) ?? new Set<string>();
+    for (const id of evidenceIds) {
+      if (typeof id === "string" && id.trim()) ids.add(id.trim());
+    }
+    if (ids.size > 0) capabilityEvidence.set(key, ids);
+  };
+
+  // Requirements are canonical capability evidence. Presentation evidence is
+  // carried only as opaque ids keyed by its already-classified capability;
+  // evaluation never reads its text or changes its classification.
+  for (const requirement of capabilityRequirements ?? []) {
+    addEvidence(requirement.capability, requirement.evidenceIds);
+  }
+  for (const capability of capabilities ?? []) {
+    if (typeof capability === "string") continue;
+    addEvidence(capability.canonicalConcept || capability.name, capability.evidenceIds);
+  }
+  for (const atom of [
+    ...(projection.roleWorkEvidence ?? []),
+    ...(projection.presentationQualificationEvidence ?? []),
+  ]) {
+    for (const capabilityKey of atom.capabilityKeys ?? []) {
+      addEvidence(capabilityKey, [atom.id]);
+    }
+  }
+
   return {
     jobHash,
     role,
@@ -263,6 +327,10 @@ export function toEvaluationJobProjection(
     capabilityExtractionStatus,
     dimensions,
     semanticEvidence,
+    capabilityEvidence: [...capabilityEvidence.entries()].map(([capabilityKey, ids]) => ({
+      capabilityKey,
+      evidenceIds: [...ids].sort(),
+    })),
     originalOpportunity,
   };
 }

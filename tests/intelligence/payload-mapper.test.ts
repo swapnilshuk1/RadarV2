@@ -62,6 +62,11 @@ describe("PayloadMapper", () => {
     expect(payload.decision).toBe("PURSUE");
     expect(payload.score).toBe(92.5);
     expect(payload.jobProjection).toBe(mockArtifact.jobProjection);
+    expect(payload.decisionTrace).toEqual({
+      version: "canonical-decision-trace/v1",
+      relationships: [],
+      components: [],
+    });
     
     const expectedIdentity = computeEvaluationIdentity("canonical-job-xyz", "opp-ver-1", mockContext.contextFingerprint);
     expect(payload.evaluationInputHash).toBe(expectedIdentity.idempotencyKey); 
@@ -69,6 +74,122 @@ describe("PayloadMapper", () => {
     expect(isCanonicalIntrinsicEvaluationV4_3(payload)).toBe(true);
     expect((payload as any).presented).toBeUndefined();
     expect((payload as any).dimensions).toBeUndefined();
+  });
+
+  test("persists only evaluator-produced relationship and factor structure without changing identity", () => {
+    const tracedArtifact = {
+      ...mockArtifact,
+      record: {
+        ...mockArtifact.record,
+        trace: {
+          ...mockArtifact.record.trace,
+          evidenceMapping: [{
+            jobCapability: "Lifecycle Marketing",
+            candidateCapability: "CRM Transformation",
+            confidence: 0.91,
+            reason: "Direct Explicit Evidence Match",
+          }],
+        },
+        decisionDrivers: [{ factor: "Identity Alignment", impact: "positive", strength: "high", evidence: "89% vector similarity" }],
+        decisionRisks: [{ factor: "Required Capability Gap", impact: "negative", strength: "high", evidence: "Missing source-grounded requirement" }],
+      },
+    } as EvaluationArtifact;
+
+    const payload = buildCanonicalEvaluatedPayload(
+      tracedArtifact, mockContext, "canonical-job-xyz", "opp-ver-1", "2026-08-28T00:00:00Z",
+    );
+
+    expect(payload.evaluationInputHash).toBe(
+      computeEvaluationIdentity("canonical-job-xyz", "opp-ver-1", mockContext.contextFingerprint).idempotencyKey,
+    );
+    expect(payload.decisionTrace).toEqual({
+      version: "canonical-decision-trace/v1",
+      relationships: [{
+        jobCapabilityKey: "Lifecycle Marketing",
+        candidateCapabilityKey: "CRM Transformation",
+        jobEvidenceIds: [],
+        candidateEvidenceIds: [],
+        relationship: "MATCH",
+        basis: "EVALUATOR",
+      }],
+      components: [
+        { dimension: "Identity Alignment", state: "STRENGTH", evidenceIds: [] },
+        { dimension: "Required Capability Gap", state: "CONSTRAINT", evidenceIds: [] },
+      ],
+    });
+    expect(JSON.stringify(payload.decisionTrace)).not.toContain("vector similarity");
+    expect(JSON.stringify(payload.decisionTrace)).not.toContain("Missing source-grounded requirement");
+  });
+
+  test("attaches existing source-backed evidence identifiers to an evaluator-produced mapping", () => {
+    const artifact: EvaluationArtifact = {
+      ...mockArtifact,
+      jobProjection: {
+        capabilityRequirements: [{ capability: "Lifecycle Marketing", evidenceIds: ["job:req:lifecycle"] }],
+        roleWorkEvidence: [{ id: "job:work:lifecycle", capabilityKeys: ["Lifecycle Marketing"], statement: "Own lifecycle marketing." }],
+        presentationQualificationEvidence: [],
+      },
+      record: {
+        ...mockArtifact.record,
+        trace: { evidenceMapping: [{
+          jobCapability: "Lifecycle Marketing",
+          candidateCapability: "CRM Transformation",
+          confidence: 0.91,
+          reason: "Direct Explicit Evidence Match",
+          jobEvidenceIds: ["job:req:lifecycle", "job:work:lifecycle"],
+          candidateEvidenceIds: ["candidate:crm"],
+        }] },
+      },
+    } as EvaluationArtifact;
+    const candidate = {
+      operatingLevel: { value: "STRATEGIC", confidence: 0.9, evidenceIds: [] },
+      workNature: { value: "STRATEGIC_WORK", confidence: 0.9, evidenceIds: [] },
+      decisionAuthority: { value: "ENTERPRISE", confidence: 0.9, evidenceIds: [] },
+      commercialScope: { value: "ENTERPRISE", confidence: 0.9, evidenceIds: [] },
+      yearsOfExperience: 15,
+      coreCapabilities: ["CRM Transformation"],
+      preferredLocations: [],
+      preferredWorkModel: "ANY" as const,
+      executiveThemes: [],
+      inferredCapabilities: [{
+        name: "CRM Transformation",
+        confidence: 0.9,
+        evidenceIds: ["candidate:crm"],
+        supportingEvidence: [{ id: "candidate:crm", quote: "Led CRM transformation.", relation: "SUPPORTS_INFERENCE" as const }],
+      }],
+    };
+
+    const payload = buildCanonicalEvaluatedPayload(
+      artifact, mockContext, "canonical-job-xyz", "opp-ver-1", "2026-08-28T00:00:00Z", candidate,
+    );
+    expect(payload.decisionTrace?.relationships[0]).toMatchObject({
+      jobEvidenceIds: ["job:req:lifecycle", "job:work:lifecycle"],
+      candidateEvidenceIds: ["candidate:crm"],
+      relationship: "MATCH",
+      basis: "EVALUATOR",
+    });
+  });
+
+  test("coalesces repeated evaluator capability pairs without losing either source reference", () => {
+    const tracedArtifact = {
+      ...mockArtifact,
+      record: {
+        ...mockArtifact.record,
+        trace: { evidenceMapping: [
+          { jobCapability: "Lifecycle Marketing", candidateCapability: "CRM", confidence: 0.9, reason: "Direct", jobEvidenceIds: ["job:one"], candidateEvidenceIds: ["candidate:one"] },
+          { jobCapability: "Lifecycle Marketing", candidateCapability: "CRM", confidence: 0.9, reason: "Direct", jobEvidenceIds: ["job:two"], candidateEvidenceIds: ["candidate:two"] },
+        ] },
+      },
+    } as EvaluationArtifact;
+
+    const payload = buildCanonicalEvaluatedPayload(
+      tracedArtifact, mockContext, "canonical-job-xyz", "opp-ver-1", "2026-08-28T00:00:00Z",
+    );
+
+    expect(payload.decisionTrace?.relationships).toEqual([expect.objectContaining({
+      jobEvidenceIds: ["job:one", "job:two"],
+      candidateEvidenceIds: ["candidate:one", "candidate:two"],
+    })]);
   });
 
   test("translates evaluated and unavailable canonical payloads losslessly", () => {

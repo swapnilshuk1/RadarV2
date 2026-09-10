@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { Opportunity } from "@/data/opportunity-fixtures";
 import type { CandidateProjection } from "@/lib/domain/candidate_projection";
 import type { EvidenceMatch } from "@/lib/domain/semantic";
@@ -59,6 +61,35 @@ function artifact(
   dimensions: Opportunity["dimensions"],
   evidenceMapping: EvidenceMatch[] = defaultMappings,
 ): EvaluationArtifact {
+  const roleWorkEvidence = (dimensions ?? [])
+    .flatMap((dimension) => {
+      if (dimension.jdEvidence?.status !== "Explicit") return [];
+      const statement = typeof dimension.jdEvidence.value === "string"
+        ? dimension.jdEvidence.value.replace(/\s+/g, " ").trim()
+        : "";
+      if (!statement || /^[A-Z0-9_]+$/.test(statement)) return [];
+      return [{
+        id: `fixture:${dimension.key}`,
+        kind: "RESPONSIBILITY" as const,
+        statement,
+        sourceQuote: statement,
+        sourceRegion: "RESPONSIBILITIES" as const,
+        ordinal: 1,
+        capabilityKeys: [],
+        confidence: 0.95,
+      }];
+    });
+  const successCondition = "Build and develop creator partnerships across priority accounts.";
+  roleWorkEvidence.push({
+    id: "fixture:success-conditions",
+    kind: "RESPONSIBILITY" as const,
+    statement: successCondition,
+    sourceQuote: successCondition,
+    sourceRegion: "RESPONSIBILITIES" as const,
+    ordinal: 1,
+    capabilityKeys: ["Creator partnerships"],
+    confidence: 0.95,
+  });
   return {
     record: { trace: { evidenceMapping } },
     opportunity: {
@@ -91,6 +122,7 @@ function artifact(
         { name: "Creator partnerships", tier: "EXECUTION_CAPABILITY" },
       ],
       executiveMission: { successConditions: ["Build and develop creator partnerships across priority accounts."] },
+      roleWorkEvidence,
     },
   };
 }
@@ -104,7 +136,20 @@ function artifactWithRoleEvidence(statement: string, evidenceMapping: EvidenceMa
     key: "functionalScope", label: "Functional scope", importance: "Core", bucket: "Matched",
     jdEvidence: { status: "Explicit", value: statement, evidence: [{ quote: statement }] },
   }], evidenceMapping);
-  evaluated.jobProjection = { capabilities: [], executiveMission: { successConditions: [] } };
+  evaluated.jobProjection = {
+    capabilities: [],
+    executiveMission: { successConditions: [] },
+    roleWorkEvidence: [{
+      id: "fixture:role-evidence",
+      kind: "RESPONSIBILITY",
+      statement,
+      sourceQuote: statement,
+      sourceRegion: "RESPONSIBILITIES",
+      ordinal: 1,
+      capabilityKeys: [],
+      confidence: 0.95,
+    }],
+  };
   return evaluated;
 }
 
@@ -133,7 +178,12 @@ describe("EditorialIntelligenceContractBuilder", () => {
       expect.objectContaining({ capability: "Creator partnerships", evidenceIds: ["semantic-candidate-1"] }),
     ]));
     expect(contract.publishedRoleOutcomes).toEqual(expect.arrayContaining([expect.objectContaining({ statement: "Build creator partnerships and analyze campaign performance." })]));
-    expect(contract.publishedRoleOutcomes).toEqual(expect.arrayContaining([expect.objectContaining({ dimensionKey: "successConditions" })]));
+    expect(contract.publishedRoleWork).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: "RESPONSIBILITY",
+        sourceEvidenceId: "fixture:success-conditions",
+      }),
+    ]));
     expect(JSON.stringify(contract)).not.toContain("Enterprise P&L Ownership");
     expect(JSON.stringify(contract)).not.toContain("ENTERPRISE");
   });
@@ -248,7 +298,7 @@ describe("EditorialIntelligenceContractBuilder", () => {
       { key: "decisionAuthority", label: "Decision authority", importance: "Core", bucket: "Missing", jdEvidence: { status: "Missing", value: "", evidence: [] } },
     ]), candidate);
     expect(contract.publishedRoleOutcomes.map((outcome) => outcome.statement)).toContain("Develop influencer campaigns across client accounts.");
-    expect(contract.decisionHinges.some((hinge) => hinge.topic === "Decision rights")).toBe(true);
+    expect(contract.decisionHinges.some((hinge) => hinge.topic === "Decision rights")).toBe(false);
   });
 
   it("routes bounded candidate precedents through the role-specific engine mapping", () => {
@@ -572,7 +622,284 @@ describe("EditorialIntelligenceContractBuilder", () => {
     const contract = buildEditorialIntelligenceContract(evaluated, makeCandidateProjection({
       inferredCapabilities: [], semanticEvidence: [],
     }));
-    expect(contract.positioningAngles[0]).toContain("Who does the");
+    expect(contract.positioningAngles[0]).toContain("What evidence would resolve this risk");
     expect(contract.positioningAngles[0]).not.toMatch(/large-scale commercial portfolios/i);
+  });
+
+  it("keeps role work, context, qualifications, and candidate facts in distinct provenance classes", () => {
+    const evaluated = artifact([], defaultMappings);
+    evaluated.jobProjection = {
+      capabilities: [{ name: "Creator partnerships", source: "explicit", tier: "CORE_MANDATE", confidence: 0.9 }],
+      roleWorkEvidence: [
+        {
+          id: "role:responsibility", kind: "RESPONSIBILITY",
+          statement: "Lead creator partnerships across priority accounts.",
+          sourceQuote: "Lead creator partnerships across priority accounts.",
+          sourceRegion: "RESPONSIBILITIES", ordinal: 1, capabilityKeys: ["Creator partnerships"], confidence: 0.95,
+        },
+        {
+          id: "role:outcome", kind: "OUTCOME",
+          statement: "Achieve creator campaign conversion targets.",
+          sourceQuote: "Achieve creator campaign conversion targets.",
+          sourceRegion: "RESPONSIBILITIES", ordinal: 1, capabilityKeys: ["Creator partnerships"], confidence: 0.95,
+        },
+        {
+          id: "role:context", kind: "ROLE_CONTEXT",
+          statement: "Reports to the Chief Commercial Officer.",
+          sourceQuote: "Reports to the Chief Commercial Officer.",
+          sourceRegion: "SUMMARY", ordinal: 1, capabilityKeys: [], confidence: 0.9,
+        },
+      ],
+      capabilityRequirements: [{
+        capability: "Performance Marketing", tier: "EXECUTION_CAPABILITY", required: true, materiality: "CORE",
+        evidenceIds: ["qualification:performance"], sourceQuotes: ["Strong experience in performance marketing and paid media."],
+      }],
+      executiveMission: { successConditions: [] },
+      operatingLevel: { value: "EXECUTIVE", confidence: 0.9, evidence: [] },
+      workNature: { value: "STRATEGIC_WORK", confidence: 0.9, evidence: [] },
+      decisionAuthority: { value: "ENTERPRISE", confidence: 0.9, evidence: [] },
+      commercialScope: { value: "ENTERPRISE", confidence: 0.9, evidence: [] },
+      dimensions: [],
+    } as any;
+
+    const contract = buildEditorialIntelligenceContract(evaluated, candidate);
+
+    expect(contract.version).toBe("editorial-intelligence-v2");
+    expect(contract.publishedRoleWork).toEqual([
+      expect.objectContaining({ kind: "RESPONSIBILITY", sourceEvidenceId: "role:responsibility" }),
+      expect.objectContaining({ kind: "OUTCOME", sourceEvidenceId: "role:outcome" }),
+    ]);
+    expect(contract.publishedRoleWork.map((item) => item.statement)).not.toContain("Reports to the Chief Commercial Officer.");
+    expect(contract.roleContext).toEqual([expect.objectContaining({ sourceEvidenceId: "role:context" })]);
+    expect(contract.qualificationRequirements).toEqual([
+      expect.objectContaining({ statement: "Strong experience in performance marketing and paid media.", sourceEvidenceIds: ["qualification:performance"] }),
+    ]);
+    expect(contract.publishedRoleWork.some((item) => /Strong experience/i.test(item.statement))).toBe(false);
+    expect(contract.candidatePrecedents.every((item) => item.provenance === "CANDIDATE_FACT")).toBe(true);
+    expect(contract.publishedRoleWork.every((item) => !/Led creator partnership programs across consumer brands/i.test(item.statement))).toBe(true);
+    expect(contract.canonicalSignals.some((signal) => signal.kind === "OPERATING_LEVEL")).toBe(true);
+    expect(contract.candidateFitEvidence).toEqual(expect.arrayContaining([
+      expect.objectContaining({ relationship: "MATCH", candidateEvidenceIds: ["semantic-candidate-1"] }),
+    ]));
+  });
+
+  it("retains exact-source presentation qualifications without promoting them into role work", () => {
+    const evaluated = artifact([], []);
+    evaluated.jobProjection = {
+      capabilities: [],
+      capabilityRequirements: [],
+      executiveMission: { successConditions: [] },
+      roleWorkEvidence: [],
+    } as any;
+
+    const contract = buildEditorialIntelligenceContract(
+      evaluated,
+      makeCandidateProjection({ inferredCapabilities: [], semanticEvidence: [] }),
+      {
+        presentationQualificationEvidence: [{
+          id: "qualification:source:1",
+          statement: "10+ years of experience in merchandising, category management and inventory planning.",
+          sourceQuote: "10+ years of experience in merchandising, category management and inventory planning.",
+          sourceRegion: "REQUIREMENTS",
+          ordinal: 1,
+          capabilityKeys: ["Merchandising and Category Management"],
+          confidence: 0.95,
+        }],
+      },
+    );
+
+    expect(contract.qualificationRequirements).toEqual([expect.objectContaining({
+      statement: "10+ years of experience in merchandising, category management and inventory planning.",
+      sourceEvidenceIds: ["qualification:source:1"],
+    })]);
+    expect(contract.publishedRoleWork).toEqual([]);
+    expect(contract.synthesisInputs.some((input) => input.type === "EMPLOYER_FACT")).toBe(false);
+  });
+
+  it("retains canonical and candidate intelligence when bounded employer work is unavailable", () => {
+    const evaluated = artifact([], []);
+    evaluated.jobProjection = {
+      capabilities: [{ name: "CRM Transformation", source: "explicit", tier: "CORE_MANDATE", confidence: 0.9 }],
+      capabilityRequirements: [{
+        capability: "CRM Transformation", tier: "CORE_MANDATE", required: true, materiality: "CORE",
+        evidenceIds: ["qualification:crm"], sourceQuotes: ["Strong experience in CRM transformation and lifecycle automation."],
+      }],
+      executiveMission: { successConditions: [] },
+      operatingLevel: { value: "EXECUTIVE", confidence: 0.9, evidence: [] },
+      workNature: { value: "STRATEGIC_WORK", confidence: 0.9, evidence: [] },
+      decisionAuthority: { value: "ENTERPRISE", confidence: 0.9, evidence: [] },
+      commercialScope: { value: "ENTERPRISE", confidence: 0.9, evidence: [] },
+      dimensions: [],
+    } as any;
+
+    const contract = buildEditorialIntelligenceContract(evaluated, candidate);
+
+    expect(contract.publishedRoleWork).toEqual([]);
+    expect(contract.qualificationRequirements).toHaveLength(1);
+    expect(contract.candidateCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ capability: "Marketing Strategy" }),
+    ]));
+    expect(contract.canonicalSignals).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "OPERATING_LEVEL", value: "EXECUTIVE" }),
+      expect.objectContaining({ kind: "CAPABILITY", value: "CRM Transformation" }),
+    ]));
+    expect(contract.synthesisInputs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "EVIDENCE_LIMITATION" }),
+      expect.objectContaining({ type: "RADAR_INFERENCE" }),
+    ]));
+  });
+
+  it("retains only bounded, admissible semantic candidate signals without turning them into employer facts", () => {
+    const evaluated = artifact([], []);
+    evaluated.jobProjection = {
+      capabilities: [],
+      capabilityRequirements: [],
+      executiveMission: { successConditions: [] },
+      roleWorkEvidence: [],
+    } as any;
+    const projection = makeCandidateProjection({
+      inferredCapabilities: [],
+      semanticEvidence: [
+        {
+          canonicalConcept: "REVENUE_ACCOUNTABILITY",
+          entityType: "FINANCIAL_SCOPE",
+          confidence: 0.91,
+          sourcePhrase: "revenue accountability",
+          context: "Candidate has revenue accountability.",
+          negated: false,
+          temporalState: "CURRENT",
+          evidenceStrength: "DIRECT_OWNERSHIP",
+          evidenceRelationship: "DIRECT_EQUIVALENT",
+          direction: "BIDIRECTIONAL_EQUIVALENT",
+          semanticRelationship: "EXACT",
+        },
+        {
+          canonicalConcept: "PNL_RESPONSIBILITY",
+          entityType: "FINANCIAL_SCOPE",
+          confidence: 0.99,
+          sourcePhrase: "A profile-wide corpus that exceeds the bounded candidate-evidence policy because it is not an independently displayable fact. ".repeat(6),
+          context: "A profile-wide corpus that exceeds the bounded candidate-evidence policy because it is not an independently displayable fact. ".repeat(6),
+          negated: false,
+          temporalState: "CURRENT",
+          evidenceStrength: "DIRECT_OWNERSHIP",
+          evidenceRelationship: "DIRECT_EQUIVALENT",
+          direction: "BIDIRECTIONAL_EQUIVALENT",
+          semanticRelationship: "EXACT",
+        },
+      ],
+    });
+
+    const contract = buildEditorialIntelligenceContract(evaluated, projection);
+
+    expect(contract.candidateCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ capability: "revenue accountability" }),
+    ]));
+    expect(contract.candidateCapabilities.some((item) => /profile-wide corpus/i.test(item.capability))).toBe(false);
+    expect(contract.publishedRoleWork).toEqual([]);
+    expect(contract.synthesisInputs.some((item) => item.type === "EMPLOYER_FACT")).toBe(false);
+    expect(contract.synthesisInputs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "EVIDENCE_LIMITATION" }),
+    ]));
+  });
+
+  it("does not mutate canonical artifact identity or scoring fields while assembling presentation intelligence", () => {
+    const evaluated = artifactWithRoleEvidence(
+      "Own lifecycle strategy and retention outcomes.",
+      [],
+    );
+    (evaluated as any).decision = "CONSIDER";
+    (evaluated as any).score = 63;
+    (evaluated as any).evaluationInputHash = "input-unchanged";
+    (evaluated as any).evaluationFingerprint = "fingerprint-unchanged";
+    const before = JSON.stringify(evaluated);
+
+    const contract = buildEditorialIntelligenceContract(evaluated, candidate);
+
+    expect(contract.verdict).toBe("CONSIDER");
+    expect(contract.qualityScore).toBe(63);
+    expect(JSON.stringify(evaluated)).toBe(before);
+  });
+
+  it("keeps scalar-only history distinct from an evaluator-produced persisted decision trace", () => {
+    const evaluated = artifact([], []);
+    const scalarOnly = buildEditorialIntelligenceContract(evaluated, candidate);
+    expect(scalarOnly.decisionDrivers).toEqual(expect.objectContaining({
+      availability: "SCALAR_ONLY",
+      strengths: [],
+      constraints: [],
+    }));
+
+    const traceBacked = {
+      ...evaluated,
+      record: undefined,
+      decisionTrace: {
+        version: "canonical-decision-trace/v1",
+        relationships: [],
+        components: [
+          { dimension: "Creator partnerships", state: "STRENGTH", evidenceIds: [] },
+          { dimension: "Inventory planning", state: "CONSTRAINT", evidenceIds: [] },
+        ],
+      },
+    } as any;
+    const detailed = buildEditorialIntelligenceContract(traceBacked, candidate);
+    expect(detailed.decisionDrivers).toEqual(expect.objectContaining({
+      availability: "PERSISTED_DRIVER_DETAIL",
+      strengths: [expect.objectContaining({ value: "Creator partnerships" })],
+      constraints: [expect.objectContaining({ value: "Inventory planning" })],
+    }));
+  });
+
+  it("resolves an evaluator trace back to the exact pinned semantic candidate fact", () => {
+    const evaluated = artifact([], []);
+    const projection = makeCandidateProjection({
+      profileVersion: "candidate-profile-v1",
+      inferredCapabilities: [],
+      semanticEvidence: [{
+        canonicalConcept: "Creator partnerships",
+        entityType: "CAPABILITY",
+        semanticRelationship: "EXACT",
+        evidenceRelationship: "DIRECT_EQUIVALENT",
+        direction: "BIDIRECTIONAL_EQUIVALENT",
+        confidence: 0.9,
+        sourcePhrase: "Creator partnerships",
+        context: "Led creator partnerships across consumer accounts.",
+        negated: false,
+        temporalState: "HISTORICAL",
+        evidenceStrength: "DIRECT_OWNERSHIP",
+      }],
+    });
+    const traceBacked = {
+      ...evaluated,
+      record: undefined,
+      decisionTrace: {
+        version: "canonical-decision-trace/v1",
+        relationships: [{
+          candidateEvidenceIds: ["candidate-projection:candidate-profile-v1:semantic:0"],
+          jobEvidenceIds: ["job:creator"],
+          candidateCapabilityKey: "Creator partnerships",
+          jobCapabilityKey: "Creator partnerships",
+          relationship: "MATCH",
+          basis: "EVALUATOR",
+        }],
+        components: [{ dimension: "Creator partnerships", state: "STRENGTH", evidenceIds: [] }],
+      },
+    } as any;
+
+    const contract = buildEditorialIntelligenceContract(traceBacked, projection);
+
+    expect(contract.candidateCapabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ evidenceIds: ["candidate-projection:candidate-profile-v1:semantic:0"] }),
+    ]));
+    expect(contract.candidateFitEvidence).toEqual(expect.arrayContaining([
+      expect.objectContaining({ candidateEvidenceIds: ["candidate-projection:candidate-profile-v1:semantic:0"] }),
+    ]));
+  });
+
+  it("does not grant downstream editorial code access to raw opportunity source", () => {
+    const source = readFileSync(
+      path.join(process.cwd(), "src/lib/intelligence/editorial/EditorialIntelligenceContractBuilder.ts"),
+      "utf8",
+    );
+    expect(source).not.toMatch(/\b(?:rawDescription|rawText|normalizedText|description)\b/);
   });
 });

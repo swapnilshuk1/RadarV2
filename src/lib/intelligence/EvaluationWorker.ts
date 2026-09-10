@@ -9,6 +9,7 @@ import { buildCanonicalDossierPresentation } from "./dossier/CanonicalDossierBui
 import type { EvaluationContext } from "@/lib/domain/evaluation_context";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
 import { resolveExactCandidateProjectionForScope } from "@/data/sqlite/repositories/profile-projection-version";
+import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
 
 export interface WorkerOptions {
   adapter?: DatabaseAdapter;
@@ -295,6 +296,21 @@ export class EvaluationWorker {
         throw new Error(`[EvaluationWorker] Intrinsic evaluation artifact missing for ${job.canonicalJobId}`);
       }
 
+      // Phase 3A: retain the already-frozen presentation evidence beside the
+      // exact intrinsic projection. It remains unavailable to evaluation
+      // engines, but lets the evaluator's existing capability mapping carry
+      // stable job-side provenance into its persisted trace.
+      const presentationEvidence = JobProjectionBuilder.extractPresentationEvidenceForPresentation(
+        versionRow.raw_content,
+        job.opportunityVersion,
+        Array.isArray(artifact.jobProjection?.capabilities) ? artifact.jobProjection.capabilities : [],
+      );
+      artifact.jobProjection = {
+        ...artifact.jobProjection,
+        roleWorkEvidence: presentationEvidence.evidence,
+        presentationQualificationEvidence: presentationEvidence.qualifications,
+      };
+
       const isGenuinelySparse =
         artifact.record?.verb === "SPARSE_SPEC" ||
         (versionRow.evidence_state === "GENUINELY_SPARSE" &&
@@ -308,7 +324,7 @@ export class EvaluationWorker {
       const canonicalPayload = evaluationState === "EVALUATED"
         ? (() => {
             const intrinsic = buildCanonicalEvaluatedPayload(
-              artifact, context, job.canonicalJobId, job.opportunityVersion, evaluatedAt,
+              artifact, context, job.canonicalJobId, job.opportunityVersion, evaluatedAt, projection,
             );
             return {
               ...intrinsic,

@@ -1,16 +1,25 @@
 import { isMeaningfulEvidenceQuote } from "@/domain/evidence";
 import type { CandidateProjection } from "@/lib/domain/candidate_projection";
 import type { EvidenceMatch } from "@/lib/domain/semantic";
+import type { CanonicalDecisionTraceV1 } from "@/lib/domain/evaluation_payloads";
+import type { ProjectedQualificationEvidence, ProjectedRoleWorkEvidence } from "@/lib/domain/job_projection";
 import type { EvaluationArtifact } from "@/lib/intelligence/engine";
 import { substantiveCandidateEvidence } from "./CandidateProofPolicy";
 import type {
   CandidatePrecedent,
+  CandidateCapabilitySignal,
+  CandidateFitEvidence,
+  CanonicalEditorialSignal,
   DecisionHinge,
+  EditorialDecisionDrivers,
   EditorialEvidenceRef,
   EditorialIntelligenceContract,
+  EditorialSynthesisInput,
+  PublishedQualificationRequirement,
+  PublishedRoleContext,
+  PublishedRoleWork,
   PublishedRoleOutcome,
 } from "./EditorialIntelligenceContract";
-import { sanitizePublishedEmployerDimensions } from "./PublishedEmployerEvidence";
 
 const GENERIC_EDITORIAL_TEXT = [
   "no material structural risk identified",
@@ -27,15 +36,22 @@ const CLASSIFIER_TOKEN_PATTERN = /^[A-Z0-9_&|/ -]{2,80}$/;
 const ACTION_ONLY_POSITIONING_PATTERN = /^(?:proceed|request an initial screening call|initiate contact|contact immediately|apply immediately)\b/i;
 const ROLE_OUTCOME_SIGNAL = /^(?:this role\s+)?(?:will\s+)?(?:lead|own|manage|deliver|drive|build|develop|execute|achieve|monitor|analy[sz]e|orchestrate|negotiate|track|conduct|enforce|protect|grow|scale|create|establish|oversee|direct|run)\b|\b(?:responsible for|accountable for|you will|this role)\b/i;
 
-type JobProjectionMissionView = {
-  executiveMission?: { successConditions?: readonly string[] };
-};
-
 type QualificationSignal = {
   capability: string;
   statement: string;
   materiality: "CORE" | "SUPPORTING";
+  sourceEvidenceIds: string[];
 };
+
+export interface EditorialIntelligenceContractOptions {
+  /**
+   * Exact-source presentation augmentation supplied by the Phase 1 boundary.
+   * The builder never reads or reconstructs raw opportunity source itself.
+   */
+  roleWorkEvidence?: readonly ProjectedRoleWorkEvidence[];
+  /** Exact-source qualification augmentation from the same Phase 1 pass. */
+  presentationQualificationEvidence?: readonly ProjectedQualificationEvidence[];
+}
 
 function normalized(value: unknown): string {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
@@ -78,7 +94,7 @@ const MAX_QUALIFICATION_EVIDENCE_CHARS = 420;
 
 function safeCapabilityLabel(value: unknown): string {
   const text = normalized(value);
-  if (!text || /^[A-Z0-9_]+$/.test(text) || text.includes("_") || text.length > 80) {
+  if (!text || /^[A-Z0-9_]+$/.test(text) || text.includes("_") || text.includes("|") || text.length > 80) {
     return "Relevant candidate precedent";
   }
   return text;
@@ -124,6 +140,52 @@ function semanticEvidenceStatement(evidence: CandidateSemanticEvidence): string 
   return null;
 }
 
+/**
+ * The candidate projection is a fact source, but not every semantic record is
+ * safe editorial material. In particular, a profile-wide `sourcePhrase` is a
+ * locator/corpus, never a candidate fact. This admission boundary is shared by
+ * the Section III precedent path and the Phase 2 candidate-capability view.
+ */
+function admissibleCandidateSemanticEvidence(evidence: CandidateSemanticEvidence): boolean {
+  return evidence.confidence >= 0.7
+    && !evidence.negated
+    && evidence.temporalState !== "ASPIRATIONAL"
+    && evidence.evidenceStrength !== "EXCLUDED"
+    && evidence.evidenceRelationship !== "NON_SATISFYING"
+    && evidence.evidenceRelationship !== "EXCLUDED"
+    && ["CAPABILITY", "FINANCIAL_SCOPE", "MANDATE", "PEOPLE_SCOPE"].includes(evidence.entityType)
+    && Boolean(semanticEvidenceStatement(evidence));
+}
+
+function boundedCandidateCapabilityIdentity(evidence: CandidateSemanticEvidence): string | null {
+  // This is a capability signal, not proof. It can preserve a concise source
+  // phrase such as "revenue accountability", but never a profile corpus and
+  // never `context` as a fallback display value.
+  const phrase = normalized(evidence.sourcePhrase);
+  if (!phrase || phrase.length < 3 || phrase.length > 80) return null;
+  return safeCapabilityLabel(phrase) === "Relevant candidate precedent" || !meaningfulEditorialText(phrase)
+    ? null
+    : phrase;
+}
+
+function admissibleCandidateSemanticCapability(evidence: CandidateSemanticEvidence): boolean {
+  return evidence.confidence >= 0.7
+    && !evidence.negated
+    && evidence.temporalState !== "ASPIRATIONAL"
+    && evidence.evidenceStrength !== "EXCLUDED"
+    && evidence.evidenceRelationship !== "NON_SATISFYING"
+    && evidence.evidenceRelationship !== "EXCLUDED"
+    && ["CAPABILITY", "FINANCIAL_SCOPE", "MANDATE", "PEOPLE_SCOPE"].includes(evidence.entityType)
+    && Boolean(boundedCandidateCapabilityIdentity(evidence));
+}
+
+function safeSemanticCapabilityLabel(evidence: CandidateSemanticEvidence): string {
+  const direct = safeCapabilityLabel(evidence.canonicalConcept);
+  if (direct !== "Relevant candidate precedent") return direct;
+
+  return boundedCandidateCapabilityIdentity(evidence) ?? "Relevant candidate precedent";
+}
+
 const SYNTHETIC_MAPPING_REASON = /\b(?:enterprise scope grounding|executive capability potential|unproven capability|functional divergence warning)\b/i;
 const SYNTHETIC_MAPPING_PROOF = /\b(?:enterprise p&l ownership|board decision authority|executive career memory|functional divergence warning)\b/i;
 
@@ -159,6 +221,15 @@ function routeSimilarity(left: unknown, right: unknown): number {
 }
 
 function roleEvidenceMappings(artifact: EvaluationArtifact): EvidenceMatch[] {
+  const persistedTrace = decisionTrace(artifact);
+  if (persistedTrace) {
+    return persistedTrace.relationships.map((relationship) => ({
+      jobCapability: relationship.jobCapabilityKey,
+      candidateCapability: relationship.candidateCapabilityKey,
+      confidence: 1,
+      reason: "Persisted evaluator relationship",
+    }));
+  }
   const record = artifact.record as { trace?: { evidenceMapping?: readonly EvidenceMatch[] } } | undefined;
   const mappings = Array.isArray(record?.trace?.evidenceMapping) ? record.trace.evidenceMapping : [];
   return mappings.filter((mapping) =>
@@ -328,6 +399,7 @@ function roleRelevantCandidatePrecedents(
       statement: precedent.statement,
       evidenceIds: precedent.evidenceIds,
       confidence: precedent.confidence,
+      provenance: "CANDIDATE_FACT" as const,
     };
   });
 }
@@ -354,16 +426,15 @@ function candidatePrecedents(
           [...capability.evidenceIds, evidence.id].filter(Boolean),
           (id) => id,
         ),
-        confidence: capability.confidence,
-        routeKeys: [capability.name],
+      confidence: capability.confidence,
+      provenance: "CANDIDATE_FACT",
+      routeKeys: [capability.name],
       });
     }
   }
 
   for (const evidence of projection.semanticEvidence ?? []) {
-    if (evidence.confidence < 0.7 || evidence.negated || evidence.temporalState === "ASPIRATIONAL") continue;
-    if (evidence.evidenceStrength === "EXCLUDED" || evidence.evidenceRelationship === "NON_SATISFYING" || evidence.evidenceRelationship === "EXCLUDED") continue;
-    if (!["CAPABILITY", "FINANCIAL_SCOPE", "MANDATE", "PEOPLE_SCOPE"].includes(evidence.entityType)) continue;
+    if (!admissibleCandidateSemanticEvidence(evidence)) continue;
     const statement = semanticEvidenceStatement(evidence);
     if (!statement) continue;
     const sourceId = typeof evidence.metadata?.sourceId === "string" ? evidence.metadata.sourceId.trim() : "";
@@ -372,6 +443,7 @@ function candidatePrecedents(
       statement,
       evidenceIds: sourceId ? [sourceId] : [],
       confidence: evidence.confidence,
+      provenance: "CANDIDATE_FACT",
       routeKeys: [evidence.canonicalConcept, evidence.sourcePhrase],
     });
   }
@@ -411,6 +483,9 @@ function qualificationSignals(artifact: EvaluationArtifact): QualificationSignal
         capability,
         statement,
         materiality: requirement.materiality === "CORE" ? "CORE" : "SUPPORTING",
+        sourceEvidenceIds: Array.isArray(requirement.evidenceIds)
+          ? requirement.evidenceIds.filter((id: unknown): id is string => typeof id === "string" && Boolean(id.trim()))
+          : [],
       });
     }
   }
@@ -421,39 +496,138 @@ function qualificationSignals(artifact: EvaluationArtifact): QualificationSignal
   ).slice(0, 3);
 }
 
-function isProjectedRoleOutcome(value: string): boolean {
-  const text = normalized(value);
-  return Boolean(text) && isMeaningfulEvidenceQuote(text) && !isClassifierLikeEvidence(text) && ROLE_OUTCOME_SIGNAL.test(text);
+function roleWorkEvidence(
+  artifact: EvaluationArtifact,
+  options?: EditorialIntelligenceContractOptions,
+): readonly ProjectedRoleWorkEvidence[] {
+  const augmented = options?.roleWorkEvidence;
+  if (Array.isArray(augmented)) return augmented;
+  const stored = artifact.jobProjection?.roleWorkEvidence;
+  return Array.isArray(stored) ? stored : [];
 }
 
-function roleOutcomeScore(statement: string): number {
-  const words = statement.split(/\s+/).filter(Boolean);
-  return (ROLE_OUTCOME_SIGNAL.test(statement) ? 4 : 0) + (words.length >= 8 ? 2 : 0) - (words.length < 5 ? 2 : 0);
+function presentationQualificationEvidence(
+  artifact: EvaluationArtifact,
+  options?: EditorialIntelligenceContractOptions,
+): readonly ProjectedQualificationEvidence[] {
+  const augmented = options?.presentationQualificationEvidence;
+  if (Array.isArray(augmented)) return augmented;
+  const stored = artifact.jobProjection?.presentationQualificationEvidence;
+  return Array.isArray(stored) ? stored : [];
 }
 
-function publishedRoleOutcomes(artifact: EvaluationArtifact): PublishedRoleOutcome[] {
-  const dimensions = sanitizePublishedEmployerDimensions(
-    Array.isArray(artifact.opportunity?.dimensions) ? artifact.opportunity.dimensions : [],
+function sourceQualificationSignals(
+  artifact: EvaluationArtifact,
+  options?: EditorialIntelligenceContractOptions,
+): QualificationSignal[] {
+  return presentationQualificationEvidence(artifact, options)
+    .map<QualificationSignal | null>((atom) => {
+      const statement = normalized(atom.statement);
+      if (!statement || statement.length > MAX_QUALIFICATION_EVIDENCE_CHARS || !isMeaningfulEvidenceQuote(statement)) return null;
+      const capability = safeCapabilityLabel(Array.isArray(atom.capabilityKeys) ? atom.capabilityKeys[0] : undefined);
+      return {
+        capability: capability === "Relevant candidate precedent" ? "Published qualification" : capability,
+        statement,
+        materiality: "CORE" as const,
+        sourceEvidenceIds: [normalized(atom.id)].filter(Boolean),
+      };
+    })
+    .filter((signal): signal is QualificationSignal => Boolean(signal));
+}
+
+function allQualificationSignals(
+  artifact: EvaluationArtifact,
+  options?: EditorialIntelligenceContractOptions,
+): QualificationSignal[] {
+  const sourceQualifications = sourceQualificationSignals(artifact, options);
+  // At the pinned-source presentation boundary, only the shared extractor is
+  // authorized to classify a requirement. Legacy projection requirement
+  // quotes remain available to canonical evaluation, but cannot reintroduce
+  // a heading, benefit, or fused blob into the editorial contract.
+  const hasSourceQualifiedEvidence =
+    options?.presentationQualificationEvidence !== undefined
+    || Array.isArray(
+      artifact.jobProjection
+        ?.presentationQualificationEvidence,
+    );
+  if (hasSourceQualifiedEvidence) {
+    return unique(
+      sourceQualifications,
+      (signal) => signal.statement.toLowerCase(),
+    ).slice(0, 5);
+  }
+  return unique(
+    // The exact-source presentation atom is authoritative when canonical
+    // capability-requirement extraction retained the same qualification too.
+    // This preserves the source evidence ID rather than allowing a legacy
+    // projection evidence id to displace it in the editorial contract.
+    [...sourceQualifications, ...qualificationSignals(artifact)],
+    (signal) => signal.statement.toLowerCase(),
+  ).slice(0, 5);
+}
+
+function publishedRoleWork(
+  artifact: EvaluationArtifact,
+  options?: EditorialIntelligenceContractOptions,
+): PublishedRoleWork[] {
+  return unique(
+    roleWorkEvidence(artifact, options)
+      .filter((atom) => atom.kind === "RESPONSIBILITY" || atom.kind === "OUTCOME")
+      .map((atom) => ({
+        kind: atom.kind as PublishedRoleWork["kind"],
+        statement: normalized(atom.statement),
+        sourceEvidenceId: normalized(atom.id),
+        capabilityKeys: Array.isArray(atom.capabilityKeys)
+          ? atom.capabilityKeys.map(safeCapabilityLabel).filter((key: string) => key !== "Relevant candidate precedent")
+          : [],
+      }))
+      .filter((atom) => Boolean(atom.statement) && Boolean(atom.sourceEvidenceId)),
+    (atom) => atom.sourceEvidenceId,
   );
-  const outcomes: PublishedRoleOutcome[] = [];
-  for (const dimension of dimensions) {
-    if (dimension.jdEvidence?.status !== "Explicit") continue;
-    const quotes = [
-      dimension.jdEvidence.value,
-      ...(dimension.jdEvidence.evidence ?? []).map((evidence) => evidence.quote),
-    ];
-    for (const quote of quotes) {
-      const statement = normalized(quote);
-      if (!isMeaningfulEvidenceQuote(statement) || isClassifierLikeEvidence(statement)) continue;
-      outcomes.push({ statement, dimensionKey: String(dimension.key) });
-    }
-  }
-  const mission = artifact.jobProjection as unknown as JobProjectionMissionView;
-  for (const condition of mission.executiveMission?.successConditions ?? []) {
-    const statement = normalized(condition);
-    if (isProjectedRoleOutcome(statement)) outcomes.push({ statement, dimensionKey: "successConditions" });
-  }
-  return unique(outcomes.sort((left, right) => roleOutcomeScore(right.statement) - roleOutcomeScore(left.statement)), (outcome) => outcome.statement).slice(0, 5);
+}
+
+/**
+ * Stored evaluations may expose an evaluator-produced trace. Its absence is
+ * meaningful historical state, not permission to reconstruct one from scalar
+ * scores or broad candidate inventory.
+ */
+function decisionTrace(artifact: EvaluationArtifact): CanonicalDecisionTraceV1 | null {
+  const trace = (artifact as EvaluationArtifact & { decisionTrace?: unknown }).decisionTrace;
+  if (!trace || typeof trace !== "object") return null;
+  const candidate = trace as Partial<CanonicalDecisionTraceV1>;
+  if (
+    candidate.version !== "canonical-decision-trace/v1"
+    || !Array.isArray(candidate.relationships)
+    || !Array.isArray(candidate.components)
+  ) return null;
+  return candidate as CanonicalDecisionTraceV1;
+}
+
+function roleContext(
+  artifact: EvaluationArtifact,
+  options?: EditorialIntelligenceContractOptions,
+): PublishedRoleContext[] {
+  return unique(
+    roleWorkEvidence(artifact, options)
+      .filter((atom) => atom.kind === "ROLE_CONTEXT")
+      .map((atom) => ({
+        kind: "ROLE_CONTEXT" as const,
+        statement: normalized(atom.statement),
+        sourceEvidenceId: normalized(atom.id),
+        capabilityKeys: Array.isArray(atom.capabilityKeys)
+          ? atom.capabilityKeys.map(safeCapabilityLabel).filter((key: string) => key !== "Relevant candidate precedent")
+          : [],
+      }))
+      .filter((atom) => Boolean(atom.statement) && Boolean(atom.sourceEvidenceId)),
+    (atom) => atom.sourceEvidenceId,
+  );
+}
+
+function legacyPublishedRoleOutcomes(work: readonly PublishedRoleWork[]): PublishedRoleOutcome[] {
+  return work.map((atom) => ({
+    statement: atom.statement,
+    dimensionKey: atom.sourceEvidenceId,
+  }));
 }
 
 function buildGroundedCareerCase(
@@ -490,17 +664,10 @@ function decisionHinges(
   principalRisk: string | null,
   careerTradeoff: string | null,
 ): DecisionHinge[] {
-  const role = normalized(artifact.opportunity?.role) || "this role";
   const published = new Set(outcomes.map((outcome) => outcome.dimensionKey));
   const hinges: DecisionHinge[] = [];
   const add = (topic: string, question: string, reason: string) => hinges.push({ topic, question, reason });
 
-  if (!published.has("reportingLine")) {
-    add("Reporting line", `Who does the ${role} role report to?`, "The published role does not establish a reporting line.");
-  }
-  if (!published.has("decisionAuthority")) {
-    add("Decision rights", `What decision rights accompany the ${role} role?`, "Published authority is not established.");
-  }
   const commercialSignals = outcomes.some((outcome) => /commercial|revenue|profit|p\s*&\s*l|budget/i.test(outcome.statement));
   if (commercialSignals && !published.has("commercialScope") && !published.has("commercialAccountability")) {
     add("Commercial ownership", "Which commercial outcome, if any, is directly owned by the role?", "The published role signal is commercially relevant but ownership is not established.");
@@ -593,15 +760,284 @@ function buildGroundedPositioningAngles(
   return unique([...generated, ...groundedLegacy], (angle) => angle.toLowerCase());
 }
 
+function candidateCapabilities(
+  projection: CandidateProjection,
+): CandidateCapabilitySignal[] {
+  const inferred = (projection.inferredCapabilities ?? [])
+    .filter((capability) => typeof capability?.confidence === "number" && capability.confidence >= 0.7)
+    .map((capability) => ({
+      capability: safeCapabilityLabel(capability.name),
+      statement: (capability.supportingEvidence ?? [])
+        .map((evidence) => boundedCandidateStatement(evidence.quote))
+        .find((statement): statement is string => Boolean(statement)) ?? null,
+      confidence: capability.confidence,
+      evidenceIds: Array.isArray(capability.evidenceIds)
+        ? capability.evidenceIds.filter((id): id is string => typeof id === "string" && Boolean(id.trim()))
+        : [],
+      provenance: "CANDIDATE_FACT" as const,
+      capabilityKeys: [normalized(capability.name)].filter(Boolean),
+    }));
+
+  const semantic = (projection.semanticEvidence ?? [])
+    .map((evidence, index) => ({ evidence, index }))
+    .filter(({ evidence }) => admissibleCandidateSemanticCapability(evidence))
+    .map(({ evidence, index }) => ({
+      capability: safeSemanticCapabilityLabel(evidence),
+      statement: semanticEvidenceStatement(evidence),
+      confidence: evidence.confidence,
+      // Canonical semantic evidence does not carry a first-class id. The
+      // immutable pinned projection plus this stable record position is the
+      // narrowest available provenance reference; the source phrase itself is
+      // never copied into the contract unless it already passed bounded-fact
+      // admission above.
+      evidenceIds: [
+        typeof evidence.metadata?.sourceId === "string" && evidence.metadata.sourceId.trim()
+          ? evidence.metadata.sourceId.trim()
+          // This is the same deterministic fallback identity used by the
+          // evaluator. Keeping the pinned profile version in the reference is
+          // essential: a persisted decision trace must resolve to the exact
+          // candidate fact that the evaluator received, never merely to an
+          // identically-positioned semantic record from another projection.
+          : `candidate-projection:${projection.profileVersion}:semantic:${index}`,
+      ],
+      provenance: "CANDIDATE_FACT" as const,
+      capabilityKeys: [normalized(evidence.canonicalConcept), normalized(evidence.sourcePhrase)].filter(Boolean),
+    }));
+
+  const byCapability = new Map<string, CandidateCapabilitySignal>();
+  for (const capability of [...inferred, ...semantic]
+    .filter((item) => item.capability !== "Relevant candidate precedent" && Boolean(meaningfulEditorialText(item.capability)))) {
+    const key = normalized(capability.capability).toLowerCase();
+    const prior = byCapability.get(key);
+    if (!prior) {
+      byCapability.set(key, capability);
+      continue;
+    }
+    // Candidate capability labels are an editorial inventory, whereas evidence
+    // IDs are provenance. Coalesce identical labels without dropping the
+    // source facts referenced by an evaluator-produced trace.
+    byCapability.set(key, {
+      ...prior,
+      statement: prior.statement ?? capability.statement,
+      confidence: Math.max(prior.confidence, capability.confidence),
+      evidenceIds: [...new Set([...prior.evidenceIds, ...capability.evidenceIds])].sort(),
+      capabilityKeys: [...new Set([...prior.capabilityKeys, ...capability.capabilityKeys])].sort(),
+    });
+  }
+  return [...byCapability.values()];
+}
+
+function candidateFitEvidence(
+  artifact: EvaluationArtifact,
+  capabilities: readonly CandidateCapabilitySignal[],
+  signals: readonly CanonicalEditorialSignal[],
+  work: readonly PublishedRoleWork[],
+  qualifications: readonly PublishedQualificationRequirement[],
+): CandidateFitEvidence[] {
+  const jobEvidenceById = new Map<string, CandidateFitEvidence["jobEvidence"][number]>();
+  for (const item of work) {
+    jobEvidenceById.set(item.sourceEvidenceId, { id: item.sourceEvidenceId, statement: item.statement, kind: "ROLE_WORK" });
+  }
+  for (const item of qualifications) {
+    for (const id of item.sourceEvidenceIds) {
+      jobEvidenceById.set(id, { id, statement: item.statement, kind: "QUALIFICATION" });
+    }
+  }
+  for (const requirement of artifact.jobProjection?.capabilityRequirements ?? []) {
+    for (const [index, id] of (requirement.evidenceIds ?? []).entries()) {
+      const statement = normalized(requirement.sourceQuotes?.[index] ?? requirement.sourceQuotes?.[0]);
+      if (typeof id === "string" && id.trim() && statement) {
+        jobEvidenceById.set(id.trim(), { id: id.trim(), statement, kind: "QUALIFICATION" });
+      }
+    }
+  }
+  for (const capability of artifact.jobProjection?.capabilities ?? []) {
+    if (typeof capability === "string" || capability.source !== "explicit") continue;
+    const statement = normalized(capability.sourceQuote);
+    if (!statement) continue;
+    for (const id of capability.evidenceIds ?? []) {
+      if (typeof id === "string" && id.trim()) {
+        jobEvidenceById.set(id.trim(), { id: id.trim(), statement, kind: "CAPABILITY_EVIDENCE" });
+      }
+    }
+  }
+  const persistedTrace = decisionTrace(artifact);
+  if (persistedTrace) {
+    return persistedTrace.relationships.map((relationship, index) => {
+      const roleSignal = signals.find((signal) =>
+        signal.kind === "CAPABILITY"
+        && (signal.capabilityKeys ?? []).some((key) => routeSimilarity(key, relationship.jobCapabilityKey) >= 0.6),
+      );
+      return {
+        id: `canonical:trace-relationship:${index}`,
+        candidateEvidenceIds: [...new Set(relationship.candidateEvidenceIds)].sort(),
+        jobEvidenceIds: [...new Set(relationship.jobEvidenceIds)].sort(),
+        jobEvidence: [...new Set(relationship.jobEvidenceIds)]
+          .map((id) => jobEvidenceById.get(id))
+          .filter((item): item is CandidateFitEvidence["jobEvidence"][number] => Boolean(item)),
+        candidateCapabilityKey: relationship.candidateCapabilityKey,
+        jobCapabilityKey: relationship.jobCapabilityKey,
+        relationship: relationship.relationship,
+        ...(roleSignal ? { canonicalSignalId: roleSignal.id } : {}),
+      };
+    });
+  }
+
+  const mappings = roleEvidenceMappings(artifact);
+  const fits: CandidateFitEvidence[] = [];
+
+  for (const [index, mapping] of mappings.entries()) {
+    const roleSignal = signals.find((signal) =>
+      signal.kind === "CAPABILITY"
+      && (signal.capabilityKeys ?? []).some((key) => routeSimilarity(key, mapping.jobCapability) >= 0.6),
+    );
+    fits.push({
+      id: `legacy:mapping:${index}`,
+      // Legacy artifacts did not persist a trace. Preserve their existing
+      // capability mapping as a single relationship with all matching
+      // source-backed candidate references; do not expand it once per ID.
+      candidateEvidenceIds: [...new Set(
+        capabilities
+          .filter((candidate) => (candidate.capabilityKeys ?? []).some((key) => routeSimilarity(key, mapping.candidateCapability) >= 0.6))
+          .flatMap((candidate) => candidate.evidenceIds),
+      )].sort(),
+      jobEvidenceIds: [],
+      jobEvidence: [],
+      candidateCapabilityKey: mapping.candidateCapability,
+      jobCapabilityKey: mapping.jobCapability,
+      relationship: "MATCH",
+      ...(roleSignal ? { canonicalSignalId: roleSignal.id } : {}),
+    });
+  }
+
+  return unique(fits, (fit) => fit.id);
+}
+
+function publishedQualificationRequirements(
+  qualifications: readonly QualificationSignal[],
+): PublishedQualificationRequirement[] {
+  return qualifications.map((qualification) => ({
+    capability: qualification.capability,
+    statement: qualification.statement,
+    materiality: qualification.materiality,
+    sourceEvidenceIds: qualification.sourceEvidenceIds,
+  }));
+}
+
+function canonicalSignals(
+  artifact: EvaluationArtifact,
+  verdict: EditorialIntelligenceContract["verdict"],
+  qualityScore: number | null,
+  principalRisk: string | null,
+  careerTradeoff: string | null,
+  hinges: readonly DecisionHinge[],
+): CanonicalEditorialSignal[] {
+  const projection = artifact.jobProjection;
+  const signals: CanonicalEditorialSignal[] = [];
+  const add = (kind: CanonicalEditorialSignal["kind"], value: unknown, id: string, capabilityKeys?: string[]) => {
+    const text = normalized(value);
+    if (text) signals.push({ id, kind, value: text, provenance: "CANONICAL_EVALUATION", ...(capabilityKeys?.length ? { capabilityKeys } : {}) });
+  };
+
+  if (verdict) signals.push({ id: "canonical:verdict", kind: "VERDICT", value: verdict, provenance: "CANONICAL_EVALUATION" });
+  if (qualityScore != null) signals.push({ id: "canonical:score", kind: "SCORE", value: String(qualityScore), provenance: "CANONICAL_EVALUATION" });
+  add("OPERATING_LEVEL", projection?.operatingLevel?.value, "canonical:operating-level");
+  add("WORK_NATURE", projection?.workNature?.value, "canonical:work-nature");
+  add("DECISION_AUTHORITY", projection?.decisionAuthority?.value, "canonical:decision-authority");
+  add("COMMERCIAL_SCOPE", projection?.commercialScope?.value, "canonical:commercial-scope");
+  for (const capability of Array.isArray(projection?.capabilities) ? projection.capabilities : []) {
+    if (typeof capability === "string") add("CAPABILITY", safeCapabilityLabel(capability), `canonical:capability:${capability}`, [normalized(capability)]);
+    else if (capability && typeof capability === "object") add("CAPABILITY", safeCapabilityLabel(capability.name), `canonical:capability:${capability.name}`, [normalized(capability.canonicalConcept), normalized(capability.name)].filter(Boolean));
+  }
+  for (const dimension of Array.isArray(projection?.dimensions) ? projection.dimensions : []) {
+    const value = typeof dimension === "object" && dimension
+      ? dimension.jdEvidence?.value
+      : undefined;
+    add("DIMENSION", value, `canonical:dimension:${typeof dimension === "object" && dimension ? dimension.key : "unknown"}`);
+  }
+  if (principalRisk) signals.push({ id: "canonical:principal-risk", kind: "RISK", value: principalRisk, provenance: "CANONICAL_EVALUATION" });
+  if (careerTradeoff) signals.push({ id: "canonical:career-tradeoff", kind: "TRADEOFF", value: careerTradeoff, provenance: "CANONICAL_EVALUATION" });
+  for (const [index, hinge] of hinges.entries()) {
+    signals.push({ id: `canonical:hinge:${index}`, kind: "HINGE", value: hinge.question, provenance: "CANONICAL_EVALUATION" });
+  }
+  return unique(signals, (signal) => signal.id);
+}
+
+function decisionDrivers(
+  artifact: EvaluationArtifact,
+  signals: readonly CanonicalEditorialSignal[],
+): EditorialDecisionDrivers {
+  const persistedTrace = decisionTrace(artifact);
+  const components = persistedTrace
+    ? persistedTrace.components
+    : [
+        ...(artifact.record?.decisionDrivers ?? []).map((driver: { factor: string }) => ({ dimension: driver.factor, state: "STRENGTH" as const })),
+        ...(artifact.record?.decisionRisks ?? []).map((driver: { factor: string }) => ({ dimension: driver.factor, state: "CONSTRAINT" as const })),
+      ];
+  const signalsFor = (state: "STRENGTH" | "CONSTRAINT" | "UNKNOWN", prefix: string) => components
+    .filter((component) => component.state === state)
+    .map((component, index) => ({
+      id: `canonical:driver:${prefix}:${index}`,
+      kind: "DIMENSION" as const,
+      value: meaningfulEditorialText(component.dimension) ?? component.dimension,
+      provenance: "CANONICAL_EVALUATION" as const,
+    }))
+    .filter((signal) => Boolean(meaningfulEditorialText(signal.value)));
+  const strengths = signalsFor("STRENGTH", "strength");
+  const constraints = signalsFor("CONSTRAINT", "constraint");
+  const unknowns = signalsFor("UNKNOWN", "unknown");
+  const hinges = signals.filter((signal) => signal.kind === "HINGE");
+
+  return {
+    strengths,
+    constraints,
+    unknowns,
+    hinges,
+    // Hinge questions are useful source-grounded decision guidance, but are
+    // not evidence that the historical canonical payload retained a scored
+    // strength or constraint. Keep that distinction visible to Phase 3.
+    availability: strengths.length || constraints.length || unknowns.length
+      ? "PERSISTED_DRIVER_DETAIL"
+      : "SCALAR_ONLY",
+  };
+}
+
+function synthesisInputs(
+  work: readonly PublishedRoleWork[],
+  precedents: readonly CandidatePrecedent[],
+  qualifications: readonly PublishedQualificationRequirement[],
+  signals: readonly CanonicalEditorialSignal[],
+): EditorialSynthesisInput[] {
+  const inputs: EditorialSynthesisInput[] = [
+    ...work.map((item) => ({ type: "EMPLOYER_FACT" as const, sourceEvidenceIds: [item.sourceEvidenceId] })),
+    ...precedents.map((item) => ({ type: "CANDIDATE_FACT" as const, candidateEvidenceIds: item.evidenceIds })),
+  ];
+  if (work.length === 0) {
+    inputs.push({ type: "EVIDENCE_LIMITATION", reason: "No bounded published responsibility or outcome is available from the exact employer source." });
+  }
+  if (signals.length > 0 || qualifications.length > 0) {
+    inputs.push({
+      type: "RADAR_INFERENCE",
+      roleEvidenceIds: work.map((item) => item.sourceEvidenceId),
+      canonicalSignalIds: signals.map((signal) => signal.id),
+    });
+  }
+  return inputs;
+}
+
 /** Builds persisted editorial material without participating in canonical evaluation truth. */
 export function buildEditorialIntelligenceContract(
   artifact: EvaluationArtifact,
   candidateProjection: CandidateProjection,
+  options?: EditorialIntelligenceContractOptions,
 ): EditorialIntelligenceContract {
   const opportunity = artifact.opportunity;
   const recommendation = opportunity?.engineRecommendation;
-  const verdict = canonicalVerdict(recommendation?.engineVerdict);
-  const qualityScore = typeof recommendation?.qualityScore === "number" ? recommendation.qualityScore : null;
+  const stored = artifact as EvaluationArtifact & { decision?: unknown; score?: unknown };
+  const verdict = canonicalVerdict(stored.decision ?? recommendation?.engineVerdict);
+  const qualityScore = typeof stored.score === "number"
+    ? stored.score
+    : typeof recommendation?.qualityScore === "number" ? recommendation.qualityScore : null;
   const careerTradeoff = meaningfulEditorialText(recommendation?.relativeDifferentiator)
     ?? meaningfulEditorialText(recommendation?.trajectoryUpside);
   const whyNow = meaningfulEditorialText(opportunity?.whyNow);
@@ -609,9 +1045,11 @@ export function buildEditorialIntelligenceContract(
     textList((opportunity?.recommendationResult as { capabilityFit?: { matchedCapabilities?: unknown } } | undefined)?.capabilityFit?.matchedCapabilities),
     (capability) => capability.toLowerCase(),
   );
-  const outcomes = publishedRoleOutcomes(artifact);
+  const work = publishedRoleWork(artifact, options);
+  const outcomes = legacyPublishedRoleOutcomes(work);
+  const contexts = roleContext(artifact, options);
+  const qualifications = allQualificationSignals(artifact, options);
   const precedents = candidatePrecedents(artifact, candidateProjection, outcomes);
-  const qualifications = qualificationSignals(artifact);
   const careerCase = buildGroundedCareerCase(
     artifact,
     meaningfulEditorialText(opportunity?.primaryDriver),
@@ -632,17 +1070,38 @@ export function buildEditorialIntelligenceContract(
     qualifications,
     hinges,
   );
+  const qualificationRequirements = publishedQualificationRequirements(qualifications);
+  const canonical = canonicalSignals(
+    artifact,
+    verdict,
+    qualityScore,
+    principalRisk,
+    careerTradeoff,
+    hinges,
+  );
+  const candidateCapabilitySignals = candidateCapabilities(candidateProjection);
+  const fitEvidence = candidateFitEvidence(
+    artifact,
+    candidateCapabilitySignals,
+    canonical,
+    work,
+    qualificationRequirements,
+  );
+  const drivers = decisionDrivers(artifact, canonical);
+  const inputs = synthesisInputs(work, precedents, qualificationRequirements, canonical);
   const provenance: EditorialEvidenceRef[] = [
     ...precedents.map((precedent) => ({ kind: "CANDIDATE_FACT" as const, text: precedent.statement, sourceId: precedent.evidenceIds[0], confidence: precedent.confidence })),
-    ...outcomes.map((outcome) => ({ kind: "EMPLOYER_FACT" as const, text: outcome.statement })),
-    ...qualifications.map((qualification) => ({ kind: "EMPLOYER_FACT" as const, text: qualification.statement })),
+    ...work.map((item) => ({ kind: "EMPLOYER_FACT" as const, text: item.statement, sourceId: item.sourceEvidenceId })),
+    ...contexts.map((item) => ({ kind: "EMPLOYER_FACT" as const, text: item.statement, sourceId: item.sourceEvidenceId })),
+    ...qualifications.map((qualification) => ({ kind: "EMPLOYER_FACT" as const, text: qualification.statement, sourceId: qualification.sourceEvidenceIds[0] })),
+    ...canonical.map((signal) => ({ kind: "CANONICAL_SIGNAL" as const, text: signal.value, sourceId: signal.id })),
     ...[careerCase, principalRisk, careerTradeoff, whyNow, recommendedAction, ...positioningAngles]
       .filter((text): text is string => Boolean(text))
       .map((text) => ({ kind: "RADAR_INFERENCE" as const, text })),
   ];
 
   return {
-    version: "editorial-intelligence-v1",
+    version: "editorial-intelligence-v2",
     verdict,
     qualityScore,
     careerCase,
@@ -650,7 +1109,15 @@ export function buildEditorialIntelligenceContract(
     careerTradeoff,
     whyNow,
     capabilityMatches,
+    candidateCapabilities: candidateCapabilitySignals,
+    candidateFitEvidence: fitEvidence,
     candidatePrecedents: precedents,
+    publishedRoleWork: work,
+    roleContext: contexts,
+    qualificationRequirements,
+    canonicalSignals: canonical,
+    decisionDrivers: drivers,
+    synthesisInputs: inputs,
     publishedRoleOutcomes: outcomes,
     decisionHinges: hinges,
     positioningAngles,

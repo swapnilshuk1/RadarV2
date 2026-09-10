@@ -9,6 +9,7 @@ import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, mater
 import { buildCanonicalDossierPresentation } from "./dossier/CanonicalDossierBuilder";
 import type { MaterializedEvaluation } from "../domain/evaluation_context";
 import { resolveExactCandidateProjectionForScope } from "../../data/sqlite/repositories/profile-projection-version";
+import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
 
 export interface ContextMaterializationResult {
   examined: number;
@@ -141,6 +142,16 @@ export async function materializeExistingCanonicalPool(
     if (!artifact) {
       throw new Error(`[ContextMaterialization] Intrinsic evaluation artifact missing for ${row.canonical_job_id}`);
     }
+    const presentationEvidence = JobProjectionBuilder.extractPresentationEvidenceForPresentation(
+      row.raw_content,
+      row.opportunity_version,
+      Array.isArray(artifact.jobProjection?.capabilities) ? artifact.jobProjection.capabilities : [],
+    );
+    artifact.jobProjection = {
+      ...artifact.jobProjection,
+      roleWorkEvidence: presentationEvidence.evidence,
+      presentationQualificationEvidence: presentationEvidence.qualifications,
+    };
     const evaluationState = (artifact.record?.verb === "SPARSE_SPEC" || row.evidence_state === "GENUINELY_SPARSE")
       ? "SPARSE_SPEC"
       : resolveArtifactEvaluationState(artifact);
@@ -153,6 +164,7 @@ export async function materializeExistingCanonicalPool(
             row.canonical_job_id,
             row.opportunity_version,
             evaluatedAt,
+            projection,
           );
           return {
             ...intrinsic,
