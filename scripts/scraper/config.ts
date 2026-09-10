@@ -85,7 +85,7 @@ export const CONFIG = {
   portalMaxCardsPerPage: {
     LinkedIn: 25,
     Naukri: 60,
-    Indeed: 15,
+    Indeed: 25,
   } as Record<string, number>,
   getMaxCardsPerPage(portalName?: string): number {
     if (portalName && this.portalMaxCardsPerPage[portalName]) {

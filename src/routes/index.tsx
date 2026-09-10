@@ -732,7 +732,7 @@ function ShortlistCardRow({
   const rowRef = useRef<HTMLLIElement>(null);
   const { rawScore, scoreDisplay } = resolveShortlistCardScore(o);
   const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
-  const evaluatedDossier = dossier && isEvaluated(dossier) ? dossier : undefined;
+  const evaluatedDossier = (dossier && isEvaluated(dossier) ? dossier : undefined) ?? o;
   const dossierBrief = evaluatedDossier?.dossierPresentation?.brief as {
     memory?: { retentionSentence?: string };
     frictionPreview?: string;

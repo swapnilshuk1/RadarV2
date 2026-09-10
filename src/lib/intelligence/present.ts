@@ -5,6 +5,7 @@ import { CapabilityEngine, type JobSlice } from "../capability/CapabilityEngine"
 import { CapabilityOntology } from "../ontology/CapabilityOntology";
 import { SemanticNaturalLanguageResolver } from "./editorial/SemanticNaturalLanguageResolver";
 import { isMeaningfulEvidenceQuote } from "@/domain/evidence";
+import { sanitizePublishedEmployerDimensions } from "./editorial/PublishedEmployerEvidence";
 
 export type Presented = {
   opportunity: Opportunity;
@@ -136,6 +137,16 @@ export function present(
         const finalEvidence: { quote: string; source: import("@/data/opportunity-fixtures").EvidenceSource }[] = isExplicit && hasValidQuote
           ? [{ quote: rawQuote.slice(0, 140), source: "snippet" }]
           : [];
+        const candidateProof = d.candidateProof as { headline?: unknown; detail?: unknown } | undefined;
+        const preservedCandidateProof = typeof candidateProof?.headline === "string"
+          && candidateProof.headline.trim().length > 0
+          && typeof candidateProof.detail === "string"
+          && candidateProof.detail.trim().length > 0
+          ? {
+              headline: candidateProof.headline.trim(),
+              detail: candidateProof.detail.trim(),
+            }
+          : undefined;
 
         return {
           key: ((d.key as string) || "mandate") as DimensionKey,
@@ -147,9 +158,11 @@ export function present(
             value: finalValue,
             evidence: finalEvidence,
           },
+          ...(preservedCandidateProof ? { candidateProof: preservedCandidateProof } : {}),
         };
       })
     : [];
+  const publishedDimensions = sanitizePublishedEmployerDimensions(cleanDimensions);
   return {
     opportunity: {
       jobHash: source.jobHash,
@@ -160,7 +173,7 @@ export function present(
       scrapedFrom: source.scrapedFrom || "LinkedIn",
       applyUrl: source.applyUrl,
       evaluationState: (source.evaluationState ?? "EVALUATED") as "EVALUATED" | "LEGACY",
-      dimensions: cleanDimensions,
+      dimensions: publishedDimensions,
       decision: record.verb,
       recommendation: finalRecommendation,
       whyNow: narrative.whyNow,
@@ -218,7 +231,7 @@ export function present(
             ? { label: "Consider", variant: "caution" as const }
             : { label: "Pass", variant: "muted" as const },
       // P1-F: Generate executive-facing recommended action based on decision + tailoring effort
-      recommendedAction: (narrative as any).recommendedAction || record.verb,
+      recommendedAction: narrative.recommendedAction || record.verb,
     },
     record,
     narrative,

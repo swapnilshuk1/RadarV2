@@ -20,6 +20,7 @@
  *    directly from Turso/SQLite without intermediate JSON files.
  */
 
+import crypto from "crypto";
 import { DatabaseAdapter, getDatabaseAdapter } from "@/data/database";
 import {
   computeCanonicalJobId,
@@ -69,11 +70,32 @@ export interface IngestOpportunityPayload {
   failureClass?: string | null;
   lifecycleState?: LifecycleState;
   evidenceState?: EvidenceState;
+  enrichmentDispatch?: EnrichmentDispatchPayload;
+}
+
+export interface EnrichmentDispatchPayload {
+  detailedCard?: any;
+  pipelineVersion?: string;
+  runId?: string;
+  executionPlanId?: string;
+  definitionId?: string;
+  familyId?: string;
+  portal?: string;
+  page?: number;
+  catalogVersion?: string;
+  plannerVersion?: string;
+  ruleVersion?: string;
+  searchQuery?: string;
+  businessPriority?: number;
+  executionPriority?: number;
+  snapshotPath?: string;
 }
 
 export interface IngestScopeFilter {
   tenantId?: string;
   personId?: string;
+  searchPlanId?: string;
+  runId?: string;
 }
 
 export interface CanonicalIngestionResult {
@@ -89,6 +111,9 @@ export interface CanonicalIngestionResult {
   candidateDecisions: Record<string, "CANDIDATE" | "NOT_CANDIDATE">;
   candidateEligibility: Record<string, "ELIGIBLE" | "REVIEW" | "INELIGIBLE">;
   jobsEnqueued: number;
+  enrichmentJobId?: string | null;
+  isNewEnrichmentJob?: boolean;
+  versionCreatedAt?: string;
 }
 
 export class InvalidCanonicalUrlError extends Error {
@@ -115,6 +140,14 @@ export class UnusableAcquisitionDocumentError extends Error {
   }
 }
 
+export class AcquisitionIntegrityError extends Error {
+  readonly failureKind: "INTEGRITY_FAILURE" = "INTEGRITY_FAILURE";
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = "AcquisitionIntegrityError";
+  }
+}
+
 export class CanonicalIngestionService {
   private db: DatabaseAdapter;
 
@@ -136,8 +169,8 @@ export class CanonicalIngestionService {
     const rawContent = payload.rawContent.trim();
     let canonicalUrl = payload.canonicalUrl.trim();
     if (source.toLowerCase() === "indeed") {
-      const identity = parseVerifiedIndeedListingUrl(payload.finalUrl || canonicalUrl);
-      if (!identity) throw new UnresolvedExternalListingIdentityError(source, sourceJobId, payload.finalUrl || canonicalUrl);
+      const identity = parseVerifiedIndeedListingUrl(canonicalUrl) || (payload.finalUrl ? parseVerifiedIndeedListingUrl(payload.finalUrl) : null);
+      if (!identity) throw new UnresolvedExternalListingIdentityError(source, sourceJobId, canonicalUrl);
       sourceJobId = identity.sourceJobId;
       canonicalUrl = identity.canonicalUrl;
     }
@@ -195,21 +228,61 @@ export class CanonicalIngestionService {
     const isPdfPayload = document.failureClass === "UNEXTRACTED_PDF";
     let sourcePayloadKey: string | null = null;
     let sourceMediaType: string | null = null;
+
+    if (payload.enrichmentDispatch?.detailedCard) {
+      const enrichmentPayloadKey = `acquisition/${canonicalJobId}/${versionId}/snapshot.json`;
+      const detailedCard = payload.enrichmentDispatch.detailedCard;
+      detailedCard.canonicalJobId = canonicalJobId;
+      detailedCard.opportunityVersion = versionId;
+      detailedCard.evaluationEvidence = {
+        canonicalJobId,
+        opportunityVersion: versionId,
+        contentHash,
+        sourcePayloadKey: enrichmentPayloadKey,
+        sourceMediaType: "application/json",
+      };
+      // Fail-safe sequencing: BlobStore write occurs BEFORE the DB transaction.
+      // If BlobStore write fails, nothing durable is admitted in the database.
+      // Immutable payload protection: do not overwrite an existing snapshot on canonical-version reuse.
+      const store = this.blobStore || getBlobStore();
+      try {
+        const exists = await store.exists(enrichmentPayloadKey);
+        if (!exists) {
+          await store.put(
+            enrichmentPayloadKey,
+            JSON.stringify(detailedCard),
+            "application/json"
+          );
+        }
+      } catch (err) {
+        throw new AcquisitionIntegrityError(
+          `Failed to write immutable enrichment snapshot to BlobStore for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
+          err
+        );
+      }
+    }
     // This key is an explicit persisted provenance field, not an implicit
     // lookup convention. A caller may provide its own key, but the persisted
     // value is always the key returned by BlobStore.
     if (isPdfPayload) {
       const sourcePayload = payload.sourcePayload ?? rawContent;
       if (!sourcePayload) {
-        throw new Error(`PDF acquisition ${source}:${sourceJobId} is missing its source payload.`);
+        throw new AcquisitionIntegrityError(`PDF acquisition ${source}:${sourceJobId} is missing its source payload.`);
       }
       const requestedKey = payload.sourcePayloadKey || `opportunity-versions/${versionId}/source`;
-      sourcePayloadKey = await (this.blobStore || getBlobStore()).put(
-        requestedKey,
-        sourcePayload,
-        payload.contentType || "application/pdf",
-      );
-      sourceMediaType = payload.contentType || "application/pdf";
+      try {
+        sourcePayloadKey = await (this.blobStore || getBlobStore()).put(
+          requestedKey,
+          sourcePayload,
+          payload.contentType || "application/pdf",
+        );
+        sourceMediaType = payload.contentType || "application/pdf";
+      } catch (err) {
+        throw new AcquisitionIntegrityError(
+          `Failed to write source payload to BlobStore for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
+          err
+        );
+      }
     }
     // PDF bytes may exist only in BlobStore; raw_content is reserved for
     // extracted readable job text and therefore remains empty pending parsing.
@@ -235,33 +308,15 @@ export class CanonicalIngestionService {
       createdAt: new Date().toISOString(),
     };
 
-    // 2. Fetch Active Search Plans (strictly joined to verified people & tenants to enforce referential integrity)
-    let planQuery = `
-      SELECT sp.id, sp.tenant_id, sp.person_id, sp.criteria_json 
-      FROM search_plans sp
-      JOIN people p ON sp.person_id = p.id AND sp.tenant_id = p.tenant_id
-      JOIN tenants t ON sp.tenant_id = t.id
-      WHERE sp.status = 'active'
-    `;
-    const planParams: unknown[] = [];
-
-    if (scopeFilter?.tenantId) {
-      planQuery += ` AND sp.tenant_id = ?`;
-      planParams.push(scopeFilter.tenantId);
-    }
-    if (scopeFilter?.personId) {
-      planQuery += ` AND sp.person_id = ?`;
-      planParams.push(scopeFilter.personId);
-    }
-
-    const activePlans = await this.db.many<{
+    let activePlans: Array<{
       id: string;
       tenant_id: string;
       person_id: string;
       criteria_json: string | null;
-    }>(planQuery, planParams);
+    }> = [];
+    let effectiveVersionCreatedAt: string = versionRecord.createdAt;
 
-    // 3. Perform the core canonical transaction. Evaluation-job enqueueing is
+    // 3. Perform the core canonical persistence envelope. Evaluation-job enqueueing is
     // deliberately outside this transaction: a transient queue/database HTTP
     // failure must not close the transaction after canonical data is written.
     const candidateDecisions: Record<string, "CANDIDATE" | "NOT_CANDIDATE"> = {};
@@ -271,13 +326,46 @@ export class CanonicalIngestionService {
     let isNewOpportunity = false;
     let isNewVersion = false;
     let effectiveVersionId = versionId;
+    let enrichmentJobId: string | null = null;
+    let isNewEnrichmentJob = false;
     const categoryIds = JSON.stringify(classifyOpportunityCategories({
       role: title,
       description: rawContentForStorage,
     }));
 
-    await this.db.transaction(async (tx) => {
-      // 3.0 Check if canonical opportunity already exists
+    try {
+      // 2. Fetch Active Search Plans (strictly joined to verified people & tenants to enforce referential integrity)
+      let planQuery = `
+        SELECT sp.id, sp.tenant_id, sp.person_id, sp.criteria_json 
+        FROM search_plans sp
+        JOIN people p ON sp.person_id = p.id AND sp.tenant_id = p.tenant_id
+        JOIN tenants t ON sp.tenant_id = t.id
+        WHERE sp.status = 'active'
+      `;
+      const planParams: unknown[] = [];
+
+      if (scopeFilter?.tenantId) {
+        planQuery += ` AND sp.tenant_id = ?`;
+        planParams.push(scopeFilter.tenantId);
+      }
+      if (scopeFilter?.personId) {
+        planQuery += ` AND sp.person_id = ?`;
+        planParams.push(scopeFilter.personId);
+      }
+      if (scopeFilter?.searchPlanId) {
+        planQuery += ` AND sp.id = ?`;
+        planParams.push(scopeFilter.searchPlanId);
+      }
+
+      activePlans = await this.db.many<{
+        id: string;
+        tenant_id: string;
+        person_id: string;
+        criteria_json: string | null;
+      }>(planQuery, planParams);
+
+      await this.db.transaction(async (tx) => {
+        // 3.0 Check if canonical opportunity already exists
       const existingOpp = await tx.one<{ id: string }>(
         `SELECT id FROM canonical_opportunities WHERE source = ? AND source_job_id = ?`,
         [source, sourceJobId]
@@ -329,13 +417,80 @@ export class CanonicalIngestionService {
       );
       isNewVersion = versionRes.rowsAffected > 0;
 
-      // 3.2.1 Resolve Authoritative Version ID:
+      // 3.2.1 Resolve Authoritative Version ID & persisted creation timestamp:
       // Whether newly inserted or pre-existing from an earlier run, fetch the canonical ID that exists in the database
-      const existingVersion = await tx.one<{ id: string }>(
-        `SELECT id FROM opportunity_versions WHERE canonical_job_id = ? AND content_hash = ?`,
+      const existingVersion = await tx.one<{ id: string; created_at: string }>(
+        `SELECT id, created_at FROM opportunity_versions WHERE canonical_job_id = ? AND content_hash = ?`,
         [canonicalJobId, contentHash]
       );
       effectiveVersionId = existingVersion?.id || versionId;
+      effectiveVersionCreatedAt = existingVersion?.created_at || versionRecord.createdAt;
+
+      enrichmentJobId = null;
+      isNewEnrichmentJob = false;
+      let enrichmentJobStatus: string | null = null;
+
+      if (payload.enrichmentDispatch) {
+        const pipelineVersion = payload.enrichmentDispatch.pipelineVersion || "1.0.0";
+        const payloadKey = `acquisition/${canonicalJobId}/${effectiveVersionId}/snapshot.json`;
+
+        const existingJob = await tx.one<{ id: string; status: string }>(
+          `SELECT id, status FROM enrichment_jobs 
+           WHERE canonical_job_id = ? AND opportunity_version = ? AND pipeline_version = ? 
+           LIMIT 1`,
+          [canonicalJobId, effectiveVersionId, pipelineVersion]
+        );
+
+        if (existingJob) {
+          enrichmentJobId = existingJob.id;
+          enrichmentJobStatus = existingJob.status;
+        } else {
+          const newJobId = `enrich_${crypto.createHash("sha256").update(`${canonicalJobId}:${effectiveVersionId}:${pipelineVersion}`).digest("hex").slice(0, 24)}`;
+          enrichmentJobId = newJobId;
+          enrichmentJobStatus = "PENDING";
+          isNewEnrichmentJob = true;
+
+          await tx.execute(
+            `INSERT INTO enrichment_jobs (
+               id, job_hash, canonical_job_id, opportunity_version, pipeline_version, snapshot_path, payload_key,
+               run_id, execution_plan_id, definition_id, family_id, portal, page,
+               catalog_version, planner_version, rule_version, search_query,
+               status, business_priority, execution_priority, created_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(canonical_job_id, opportunity_version, pipeline_version) DO NOTHING`,
+            [
+              newJobId,
+              payload.enrichmentDispatch.detailedCard?.cardHash || `${canonicalJobId}:${effectiveVersionId}`,
+              canonicalJobId,
+              effectiveVersionId,
+              pipelineVersion,
+              payload.enrichmentDispatch.snapshotPath || "",
+              payloadKey,
+              payload.enrichmentDispatch.runId || scopeFilter?.runId || null,
+              payload.enrichmentDispatch.executionPlanId || null,
+              payload.enrichmentDispatch.definitionId || null,
+              payload.enrichmentDispatch.familyId || null,
+              payload.enrichmentDispatch.portal || source,
+              payload.enrichmentDispatch.page || null,
+              payload.enrichmentDispatch.catalogVersion || null,
+              payload.enrichmentDispatch.plannerVersion || null,
+              payload.enrichmentDispatch.ruleVersion || null,
+              payload.enrichmentDispatch.searchQuery || null,
+              payload.enrichmentDispatch.businessPriority ?? 10,
+              payload.enrichmentDispatch.executionPriority ?? 0,
+            ]
+          );
+        }
+
+        const boundRunId = scopeFilter?.runId || payload.enrichmentDispatch.runId;
+        if (boundRunId && enrichmentJobId) {
+          await tx.execute(
+            `INSERT OR IGNORE INTO scrape_run_enrichment_requirements (run_id, enrichment_job_id)
+             VALUES (?, ?)`,
+            [boundRunId, enrichmentJobId]
+          );
+        }
+      }
 
       // 3.3 Recovery Queue Enqueue if capture is MINIMAL / RECOVERY_PENDING
       if (document.retryable && document.usabilityState === "UNUSABLE") {
@@ -425,55 +580,89 @@ export class CanonicalIngestionService {
         );
         candidatesProjected++;
 
+        // Persist evaluation obligations atomically with candidate projection.
+        // Invariant: Every Attention-Gate CANDIDATE creates a durable evaluation obligation.
+        // Candidate and requirement commit together or roll back together.
+        if (gateResult.decision === "CANDIDATE") {
+          const evalContext = await tx.one<{ context_fingerprint: string }>(
+            `SELECT aec.context_fingerprint
+             FROM active_evaluation_contexts aec
+             JOIN evaluation_contexts ec ON ec.context_fingerprint = aec.context_fingerprint
+               AND ec.tenant_id = aec.tenant_id AND ec.person_id = aec.person_id
+             WHERE aec.search_plan_id = ? AND aec.tenant_id = ? AND aec.person_id = ?
+             LIMIT 1`,
+            [plan.id, plan.tenant_id, plan.person_id]
+          );
+
+          if (!evalContext?.context_fingerprint) {
+            throw new AcquisitionIntegrityError(
+              `MISSING_EVALUATION_CONTEXT: candidate ${canonicalJobId}/${effectiveVersionId} ` +
+              `for plan ${plan.id} cannot create durable evaluation obligation`
+            );
+          }
+
+          const reqId = `evalreq_${crypto.createHash("sha256").update(`${plan.tenant_id}:${plan.person_id}:${plan.id}:${canonicalJobId}:${effectiveVersionId}:${evalContext.context_fingerprint}`).digest("hex").slice(0, 16)}`;
+          const pipelineVersion = payload.enrichmentDispatch?.pipelineVersion || "1.0.0";
+          const initialReqStatus = (enrichmentJobStatus === "COMPLETE") ? "READY" : "WAITING_ENRICHMENT";
+
+          await tx.execute(
+            `INSERT INTO evaluation_requirements (
+               id, tenant_id, person_id, search_plan_id, canonical_job_id,
+               opportunity_version, required_enrichment_pipeline_version,
+               evaluation_context_fingerprint, status, created_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+             DO UPDATE SET status = CASE 
+               WHEN evaluation_requirements.status = 'SATISFIED' THEN 'SATISFIED'
+               WHEN ? = 'READY' AND evaluation_requirements.status = 'WAITING_ENRICHMENT' THEN 'READY'
+               ELSE evaluation_requirements.status 
+             END`,
+            [
+              reqId,
+              plan.tenant_id,
+              plan.person_id,
+              plan.id,
+              canonicalJobId,
+              effectiveVersionId,
+              pipelineVersion,
+              evalContext.context_fingerprint,
+              initialReqStatus,
+              initialReqStatus,
+            ]
+          );
+
+          if (scopeFilter?.runId) {
+            await tx.execute(
+              `INSERT INTO scrape_run_evaluation_requirements (run_id, evaluation_requirement_id)
+               VALUES (?, ?)
+               ON CONFLICT(run_id, evaluation_requirement_id) DO NOTHING`,
+              [scopeFilter.runId, reqId]
+            );
+          }
+          jobsEnqueued++;
+        }
       }
     });
-
-    // Queue work only after the canonical transaction is durable. This keeps
-    // a queue outage from poisoning the transaction and losing the discovered
-    // opportunity. The unique key makes retries idempotent.
-    for (const plan of activePlans) {
-      if (candidateDecisions[plan.id] !== "CANDIDATE") continue;
-      try {
-        const evalContext = await this.db.one<{ context_fingerprint: string }>(
-          `SELECT aec.context_fingerprint
-           FROM active_evaluation_contexts aec
-           JOIN evaluation_contexts ec ON ec.context_fingerprint = aec.context_fingerprint
-             AND ec.tenant_id = aec.tenant_id AND ec.person_id = aec.person_id
-           WHERE aec.search_plan_id = ? AND aec.tenant_id = ? AND aec.person_id = ?
-           LIMIT 1`,
-          [plan.id, plan.tenant_id, plan.person_id]
-        );
-        if (!evalContext?.context_fingerprint) continue;
-
-        const enqueueRes = await this.db.execute(
-          `INSERT INTO evaluation_jobs (
-             id, tenant_id, person_id, search_plan_id, canonical_job_id,
-             opportunity_version, evaluation_context_fingerprint,
-             status, attempts, max_attempts, next_attempt_at, created_at, updated_at
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-           ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-           DO NOTHING`,
-          [
-            `job_${crypto.randomUUID()}`,
-            plan.tenant_id,
-            plan.person_id,
-            plan.id,
-            canonicalJobId,
-            effectiveVersionId,
-            evalContext.context_fingerprint,
-          ]
-        );
-        if (enqueueRes.rowsAffected > 0) jobsEnqueued++;
-      } catch (err: any) {
-        // Canonical rows and candidate projections are already committed. A
-        // later reconciliation pass can enqueue this idempotent job again.
-        console.error("[CanonicalIngestionService] Evaluation enqueue deferred:", err.message);
+    } catch (err) {
+      // Invariant: Do NOT delete the shared BlobStore payload on database failure.
+      // In a distributed environment with concurrent admissions of the same canonical/version,
+      // deleting the shared blob upon one node's DB failure risks destroying a payload
+      // successfully referenced by another node's committed job.
+      // An orphan blob is harmless; deleting a blob referenced by another transaction is catastrophic.
+      // Bounded orphan-storage leak is accepted until decoupled listing/indexing sweep runs.
+      if (err instanceof AcquisitionIntegrityError) {
+        throw err;
       }
+      throw new AcquisitionIntegrityError(
+        `Canonical ingestion failed for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
+        err
+      );
     }
 
     return {
       canonicalJobId,
       opportunityVersion: effectiveVersionId,
+      versionCreatedAt: effectiveVersionCreatedAt,
       contentHash,
       sourcePayloadKey,
       sourceMediaType,
@@ -484,6 +673,8 @@ export class CanonicalIngestionService {
       candidateDecisions,
       candidateEligibility,
       jobsEnqueued,
+      enrichmentJobId,
+      isNewEnrichmentJob,
     };
   }
 }

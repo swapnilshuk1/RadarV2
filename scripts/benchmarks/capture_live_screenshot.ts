@@ -19,7 +19,7 @@ async function main() {
     {
       name: "radar_session",
       value: token,
-      domain: "130.210.41.232.sslip.io",
+      domain: "161.118.175.246.sslip.io",
       path: "/",
       httpOnly: true,
       sameSite: "Lax",
@@ -27,10 +27,10 @@ async function main() {
   ]);
 
   const page = await context.newPage();
-  console.log("Navigating to http://130.210.41.232.sslip.io/ ...");
+  console.log("Navigating to http://161.118.175.246.sslip.io/ ...");
 
   const t0 = performance.now();
-  const res = await page.goto("http://130.210.41.232.sslip.io/", { waitUntil: "commit", timeout: 20000 });
+  const res = await page.goto("http://161.118.175.246.sslip.io/", { waitUntil: "commit", timeout: 20000 });
   const ttfb = performance.now() - t0;
 
   await page.waitForLoadState("domcontentloaded");

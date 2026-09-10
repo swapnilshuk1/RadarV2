@@ -111,6 +111,9 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
     sqliteDb.exec(`INSERT INTO search_plan_candidates (search_plan_id, tenant_id, person_id, canonical_job_id, opportunity_version, attention_decision) VALUES 
       ('plan_A', 'tenant_A', 'person_A', 'job_1', 'ver_1a', 'CANDIDATE')
     `);
+    sqliteDb.exec(`INSERT INTO enrichment_jobs (id, job_hash, canonical_job_id, opportunity_version, pipeline_version, status, payload_key) VALUES 
+      ('enrich_1a', 'hash_1a', 'job_1', 'ver_1a', '1.0.0', 'COMPLETE', 'k1a')
+    `);
   });
 
   test("1. Atomic Claim & Execution", async () => {
@@ -265,5 +268,52 @@ describe("Sub-Phase M5.3: Distributed Worker Runtime & Atomic Claim Lease Protoc
     const parsedEval = JSON.parse(mat.evaluationJson || mat.evaluation_json);
     
     expect(parsedEval).toBeDefined();
+  });
+
+  test("11. Strict Readiness: EvaluationWorker refuses to claim orphan evaluation job or non-READY requirement", async () => {
+    sqliteDb.exec(`INSERT INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES 
+      ('orphan_canon', 'linkedin', '999', 'https://job.999')
+    `);
+    sqliteDb.exec(`INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, raw_content) VALUES 
+      ('orphan_v1', 'orphan_canon', 'orphan_hash', 'VP', 'Acme', 'JD Content')
+    `);
+    sqliteDb.exec(`INSERT INTO search_plan_candidates (
+      tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision
+    ) VALUES (
+      'tenant_A', 'person_A', 'plan_A', 'orphan_canon', 'orphan_v1', 'CANDIDATE'
+    )`);
+
+    // Insert an evaluation job with NO requirement (orphan)
+    sqliteDb.exec(`INSERT INTO evaluation_jobs (
+      id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
+      evaluation_context_fingerprint, status, attempts, max_attempts, next_attempt_at
+    ) VALUES (
+      'orphan_job', 'tenant_A', 'person_A', 'plan_A', 'orphan_canon', 'orphan_v1',
+      'ctx_fingerprint_A1', 'pending', 0, 3, CURRENT_TIMESTAMP
+    )`);
+
+    const worker = new EvaluationWorker("worker_strict", { adapter });
+    const claimOrphan = await worker.claimNextJob();
+    // Claim should NOT return the orphan job because there is no matching READY requirement
+    expect(claimOrphan).toBeNull();
+
+    // Now insert a requirement with status WAITING_ENRICHMENT (not READY)
+    sqliteDb.exec(`INSERT INTO evaluation_requirements (
+      id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
+      required_enrichment_pipeline_version, evaluation_context_fingerprint, status
+    ) VALUES (
+      'orphan_req', 'tenant_A', 'person_A', 'plan_A', 'orphan_canon', 'orphan_v1',
+      '1.0.0', 'ctx_fingerprint_A1', 'WAITING_ENRICHMENT'
+    )`);
+
+    const claimWaiting = await worker.claimNextJob();
+    // Claim should still be null because requirement is not READY
+    expect(claimWaiting).toBeNull();
+
+    // Now update requirement to READY
+    sqliteDb.exec(`UPDATE evaluation_requirements SET status = 'READY' WHERE id = 'orphan_req'`);
+    const claimReady = await worker.claimNextJob();
+    expect(claimReady).not.toBeNull();
+    expect(claimReady!.id).toBe("orphan_job");
   });
 });

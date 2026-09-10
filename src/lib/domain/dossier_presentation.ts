@@ -5,6 +5,9 @@ export type DossierJsonObject = { readonly [key: string]: DossierJsonValue };
 /** Presentation material persisted with an evaluated artifact, never decision authority. */
 export interface CanonicalDossierPresentationV1 {
   readonly schemaVersion: "dossier-v1";
+  /** Versioned presentation intelligence; never canonical evaluation authority. */
+  readonly editorialVersion: "grounded-editorial-v1";
+  readonly editorialIntelligence: DossierJsonObject;
   /** Historical evaluation time; distinct from dossier materialization time. */
   readonly evaluatedAt?: string;
   readonly generatedAt: string;
@@ -84,6 +87,8 @@ function hasRenderSafeExecutionPackage(value: unknown): value is DossierJsonObje
 export function isCanonicalDossierPresentationV1(value: unknown): value is CanonicalDossierPresentationV1 {
   if (!isObject(value)) return false;
   return value.schemaVersion === "dossier-v1"
+    && value.editorialVersion === "grounded-editorial-v1"
+    && isObject(value.editorialIntelligence)
     && typeof value.generatedAt === "string" && !Number.isNaN(Date.parse(value.generatedAt))
     && typeof value.evaluationInputHash === "string" && value.evaluationInputHash.trim().length > 0
     && (value.evaluatedAt === undefined || (typeof value.evaluatedAt === "string" && !Number.isNaN(Date.parse(value.evaluatedAt))))

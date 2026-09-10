@@ -32,7 +32,7 @@ export interface AcquisitionVariant {
   channel?: AcquisitionChannel;
 }
 
-export type PortalSearchRequest = AcquisitionVariant & { page: number };
+export type PortalSearchRequest = AcquisitionVariant & { page: number; maxCardsPerPage?: number };
 
 export type UnitStatus =
   | "pending"
@@ -138,6 +138,30 @@ export interface PortalHealth {
   details: string;
 }
 
+export type RunTelemetry = {
+  httpAttempted: number;
+  httpSuccessful: number;
+  httpFallbacks: number;
+  duplicatePreDetail: number;
+  duplicatePostDetail: number;
+  llmCalls: number;
+  m4ShadowPathSuccess?: number;
+  m4ShadowPathFailure?: number;
+  canonicalIngestSuccess?: number;
+  canonicalIngestFailure?: number;
+  canonicalOpportunitiesIngested?: number;
+  canonicalOpportunitiesReused?: number;
+  newVersionsCreated?: number;
+  duplicateVersionsSuppressed?: number;
+  candidatesProjected?: number;
+  evaluationJobsEnqueued?: number;
+  heuristicDuplicateSuspect?: number;
+  hardFiltered?: number;
+  acquisitionIntegrityFailures?: number;
+};
+
+export type CardFailureKind = "EXPECTED_REJECTION" | "SOURCE_FAILURE" | "INTEGRITY_FAILURE";
+
 export interface RunManifest {
   runId: string;
   startedAt: string;
@@ -152,6 +176,10 @@ export interface RunManifest {
   portals: PortalName[];
   maxPages: number;
   maxCardsPerPage: number;
+  searchPlanId?: string;
+  snapshotId?: string;
+  contextFingerprint?: string;
+  variantsSignature?: string;
   opportunitiesFound?: number;
   evaluatedCount?: number;
   remainingCount?: number;
@@ -159,24 +187,7 @@ export interface RunManifest {
   sources?: Record<string, "pending" | "searching" | "completed" | "failed">;
   portalHealth?: Record<string, PortalHealth>;
   recentActivities?: string[];
-  telemetry?: {
-    httpAttempted: number;
-    httpSuccessful: number;
-    httpFallbacks: number;
-    duplicatePreDetail: number;
-    duplicatePostDetail: number;
-    llmCalls: number;
-    m4ShadowPathSuccess?: number;
-    m4ShadowPathFailure?: number;
-    canonicalIngestSuccess?: number;
-    canonicalIngestFailure?: number;
-    canonicalOpportunitiesIngested?: number;
-    canonicalOpportunitiesReused?: number;
-    newVersionsCreated?: number;
-    duplicateVersionsSuppressed?: number;
-    candidatesProjected?: number;
-    evaluationJobsEnqueued?: number;
-  };
+  telemetry?: RunTelemetry;
   pageExecutionRecords?: PageExecutionRecord[];
   units: WorkUnit[];
   cards: CardUnit[];
@@ -197,6 +208,8 @@ export type EnrichmentStatus =
 
 export interface FeedCard {
   cardHash: string;
+  /** Native portal-specific unique job identifier (e.g. Indeed 16-hex JK, Naukri numeric jobId, LinkedIn listingId) */
+  sourceJobId?: string;
   portal: PortalName;
   keyword: string;
   searchUrl: string;
@@ -216,11 +229,14 @@ export interface FeedCard {
   applyRedirectUrl?: string;
   jobApplyType?: string;
   companyApplyJob?: boolean;
+  /** Explicitly marks whether discovery payload carries authoritative full JD provenance (e.g. from API), not a search card snippet */
+  hasAuthoritativeFullDescription?: boolean;
 }
 
 // DetailedCard replaces JobSnapshot as the payload post-acquisition
 export interface DetailedCard extends FeedCard {
   canonicalJobId?: string;
+  opportunityVersion?: string;
   snapshotSchemaVersion: string;
   scraperVersion: string;
   acquisitionRoute?: AcquisitionRoute;
@@ -331,6 +347,10 @@ export interface ExtractionResult {
   extractorVersion: string;
   promptVersion: string;
   jobHash: string;
+  opportunityVersion?: string;
+  versionCreatedAt?: string;
+  canonicalJobId?: string;
+  extractedAt?: string;
   role: string;
   company: string;
   location: string;
@@ -372,7 +392,8 @@ export interface PortalContext {
   logger: (msg: string) => void;
   isHttpDisabled?: (url: string) => boolean;
   recordHttpFailure?: (url: string, reason: string) => void;
-  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure" | "canonicalIngestSuccess" | "canonicalIngestFailure" | "evaluationJobsEnqueued") => void;
+  recordHttpSuccess?: (url: string) => void;
+  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure" | "canonicalIngestSuccess" | "canonicalIngestFailure" | "evaluationJobsEnqueued" | "acquisitionIntegrityFailures") => void;
   isCancelled?: () => boolean;
 }
 

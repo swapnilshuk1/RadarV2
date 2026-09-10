@@ -153,7 +153,9 @@ export async function extract(snapshot: DetailedCard, opts: ExtractOptions = {})
   let llmCalled = false;
   let llmFallbackReason: string | undefined;
 
-  if (toFill.length > 0) {
+  const hasSubstantiveText = (snippet.trim().length >= 50) || (detailText.trim().length >= 50);
+
+  if (toFill.length > 0 && hasSubstantiveText) {
     llmCalled = true;
     llmFallbackReason = `${mode}:${toFill.map((d) => d.key).join(",")}`;
     const startWait = Date.now();
@@ -187,6 +189,8 @@ export async function extract(snapshot: DetailedCard, opts: ExtractOptions = {})
     } catch (err: any) {
       llmFallbackReason = `llm_error:${err?.message || "unknown"}`;
     }
+  } else if (toFill.length > 0) {
+    llmFallbackReason = "skipped:insufficient_text";
   }
 
 

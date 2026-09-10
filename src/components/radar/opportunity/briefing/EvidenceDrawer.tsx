@@ -1,12 +1,10 @@
 interface EvidenceDrawerProps {
   brief: any;
-  executionPkg: any;
   whyRoleExists: string | null;
 }
 
 export function EvidenceDrawer({
   brief,
-  executionPkg,
   whyRoleExists,
 }: EvidenceDrawerProps) {
   return (
@@ -27,18 +25,43 @@ export function EvidenceDrawer({
           </p>
         </div>}
 
-        {/* SECTION B: Recommendation Assumptions Checklist */}
-        <div className="space-y-2.5">
-          <p className="label-mono text-xs uppercase tracking-wider text-caution font-semibold text-[9px]">Recommendation Assumptions</p>
-          <ul className="space-y-2 text-xs text-foreground pl-0.5">
-            {(executionPkg.recommendationConditions || []).map((cond: string, i: number) => (
-              <li key={i} className="flex items-start gap-2 leading-relaxed font-normal">
-                <span className="text-signal font-bold">✓</span>
-                <span className="text-xs text-muted-foreground">{cond}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* SECTION B: Persisted Decision Hinges */}
+        {Array.isArray(brief?.rankedUnknowns)
+          && brief.rankedUnknowns.length > 0 && (
+          <div className="space-y-2.5">
+            <p className="label-mono text-xs uppercase tracking-wider text-caution font-semibold text-[9px]">
+              Decision Hinges
+            </p>
+
+            <ul className="space-y-2 text-xs text-foreground pl-0.5">
+              {brief.rankedUnknowns
+                .slice(0, 3)
+                .map(
+                  (
+                    hinge: any,
+                    index: number,
+                  ) => (
+                    <li
+                      key={index}
+                      className="flex items-start gap-2 leading-relaxed font-normal"
+                    >
+                      <span className="text-caution font-bold">
+                        •
+                      </span>
+
+                      <span className="text-xs text-muted-foreground">
+                        {hinge.question}
+                        {(hinge.reason
+                          || hinge.label)
+                          ? ` — ${hinge.reason || hinge.label}`
+                          : ""}
+                      </span>
+                    </li>
+                  ),
+                )}
+            </ul>
+          </div>
+        )}
 
         {/* SECTION C: Evidence Ledger */}
         <div className="space-y-4">

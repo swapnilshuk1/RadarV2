@@ -16,7 +16,7 @@ async function main() {
     {
       name: "radar_session",
       value: token,
-      domain: "130.210.41.232.sslip.io",
+      domain: "161.118.175.246.sslip.io",
       path: "/",
       httpOnly: true,
       sameSite: "Lax",
@@ -28,7 +28,7 @@ async function main() {
   // 1. Visit /decisions
   console.log("1. Visiting /decisions...");
   const t0 = performance.now();
-  await page.goto("http://130.210.41.232.sslip.io/decisions", { waitUntil: "commit", timeout: 15000 });
+  await page.goto("http://161.118.175.246.sslip.io/decisions", { waitUntil: "commit", timeout: 15000 });
   await page.waitForLoadState("domcontentloaded");
   await page.waitForSelector("main", { timeout: 10000 });
   const decTime = performance.now() - t0;
@@ -40,7 +40,7 @@ async function main() {
 
   // 2. Visit / and click "NEEDS MORE SIGNAL"
   console.log("\n2. Visiting / and clicking NEEDS MORE SIGNAL...");
-  await page.goto("http://130.210.41.232.sslip.io/", { waitUntil: "commit", timeout: 15000 });
+  await page.goto("http://161.118.175.246.sslip.io/", { waitUntil: "commit", timeout: 15000 });
   await page.waitForLoadState("domcontentloaded");
   await page.waitForSelector("button:has-text('NEEDS MORE SIGNAL')", { timeout: 10000 });
 

@@ -8,9 +8,18 @@ import {
   EXTRACTOR_VERSION,
   RECOMMENDATION_SCHEMA_VERSION,
 } from "../versions";
-import type { RunManifest, WorkUnit, CardUnit, PortalName, UnitStatus, AcquisitionVariant } from "../types";
+import type {
+  RunManifest,
+  WorkUnit,
+  CardUnit,
+  PortalName,
+  UnitStatus,
+  AcquisitionVariant,
+  RunState,
+} from "../types";
 import { writeJsonAtomic, readJsonSafe } from "../utils/fs-atomic";
 import { Journal } from "./journal";
+import { HealthManager } from "./health-manager";
 
 // Where "latest" points so a resume doesn't need a runId argument.
 const LATEST_POINTER = path.join(RUNS_DIR, "latest.json");
@@ -22,6 +31,12 @@ export interface RunControllerOptions {
   maxCardsPerPage: number;
   resume: boolean;
   variants?: AcquisitionVariant[];
+  adaptiveDepth?: boolean;
+  initialPages?: number;
+  searchPlanId?: string;
+  snapshotId?: string;
+  contextFingerprint?: string;
+  variantsSignature?: string;
 }
 
 export class RunController {
@@ -34,8 +49,9 @@ export class RunController {
 
   // Circuit breakers (ephemeral per-run)
   listingFailures: Map<string, number> = new Map();
-  detailFailures: Map<string, number> = new Map();
   failedHttpUrls: Map<string, string> = new Map();
+  seenSourceIdentitiesBySurface: Map<string, Set<string>> = new Map();
+  lowYieldStreaks: Map<string, number> = new Map();
   private isFinalized: boolean = false;
 
   init(opts: RunControllerOptions): { resumed: boolean } {
@@ -93,11 +109,12 @@ export class RunController {
       const variants: AcquisitionVariant[] = opts.variants && opts.variants.length > 0
         ? opts.variants
         : opts.keywords.map((query) => ({ query, channel: "search" as const }));
+      const initialPages = opts.initialPages ?? (opts.adaptiveDepth ? 1 : opts.maxPages);
       for (const portal of opts.portals) {
         for (const variant of variants.filter((v) => !v.portal || v.portal === portal)) {
           const kw = variant.query;
           const adhocId = `adhoc:${portal}:${kw.replace(/\s+/g, '-').toLowerCase()}:${variant.location || "global"}`;
-          for (let p = 1; p <= opts.maxPages; p++) {
+          for (let p = 1; p <= initialPages; p++) {
             units.push({
               id: `${portal}:${kw}:${variant.location || "global"}:${p}`,
               portal,
@@ -129,6 +146,10 @@ export class RunController {
       portals: opts.portals,
       maxPages: opts.maxPages,
       maxCardsPerPage: opts.maxCardsPerPage,
+      searchPlanId: opts.searchPlanId,
+      snapshotId: opts.snapshotId,
+      contextFingerprint: opts.contextFingerprint,
+      variantsSignature: opts.variantsSignature,
       telemetry: {
         httpAttempted: 0,
         httpSuccessful: 0,
@@ -136,6 +157,7 @@ export class RunController {
         duplicatePreDetail: 0,
         duplicatePostDetail: 0,
         llmCalls: 0,
+        acquisitionIntegrityFailures: 0,
       },
       pageExecutionRecords: [],
       units,
@@ -166,13 +188,23 @@ export class RunController {
     if (
       JSON.stringify(manifest.keywords) !== JSON.stringify(opts.keywords) ||
       JSON.stringify(manifest.portals) !== JSON.stringify(opts.portals) ||
-      manifest.maxPages !== opts.maxPages
+      manifest.maxPages !== opts.maxPages ||
+      (opts.searchPlanId && manifest.searchPlanId !== opts.searchPlanId) ||
+      (opts.snapshotId && manifest.snapshotId !== opts.snapshotId) ||
+      (opts.contextFingerprint && manifest.contextFingerprint !== opts.contextFingerprint) ||
+      (opts.variantsSignature && manifest.variantsSignature !== opts.variantsSignature)
     ) {
       // Scope changed — new run avoids stale unit set.
       return null;
     }
-    if (manifest.status === "completed") return null;
+    if (!RunController.isStatusResumable(manifest.status)) {
+      return null;
+    }
     return { runId, runDir, manifestPath, journalPath, manifest };
+  }
+
+  static isStatusResumable(status: RunState): boolean {
+    return status === "initializing" || status === "running";
   }
 
   private markResume(): void {
@@ -188,8 +220,16 @@ export class RunController {
     return this.manifest.units.find((u) => u.status === "pending");
   }
 
+  nextPendingUnitForPortal(portal: PortalName): WorkUnit | undefined {
+    return this.manifest.units.find((u) => u.portal === portal && u.status === "pending");
+  }
+
   pendingUnits(): WorkUnit[] {
     return this.manifest.units.filter((u) => u.status === "pending");
+  }
+
+  runningUnits(): WorkUnit[] {
+    return this.manifest.units.filter((u) => u.status === "running");
   }
 
   /** Add a bounded adaptive acquisition surface to the current run. */
@@ -225,6 +265,36 @@ export class RunController {
     }
     if (added.length > 0) this.persistManifest();
     return added;
+  }
+
+  /** Add a single adaptive page unit to the manifest if not already present. */
+  enqueueAdaptivePageUnit(variant: AcquisitionVariant & { page: number }): WorkUnit | null {
+    const portal = (variant.portal || "all") as PortalName;
+    const location = variant.location || "global";
+    const unitId = `${portal}:${variant.query}:${location}:${variant.page}`;
+
+    if (this.manifest.units.some((u) => u.id === unitId)) {
+      return null;
+    }
+
+    const adhocId = `adhoc:${portal}:${variant.query.replace(/\s+/g, '-').toLowerCase()}:${location}`;
+    const unit: WorkUnit = {
+      id: unitId,
+      portal,
+      keyword: variant.query,
+      page: variant.page,
+      status: "pending",
+      attempts: 0,
+      cardIds: [],
+      executionPlanId: variant.definitionId ? `plan:${variant.definitionId}` : `plan:${adhocId}`,
+      definitionId: variant.definitionId || `def:${adhocId}`,
+      familyId: variant.familyId || `fam:${adhocId}`,
+      variant: { ...variant, query: variant.query },
+    };
+
+    this.manifest.units.push(unit);
+    this.persistManifest();
+    return unit;
   }
 
   updateUnit(unitId: string, patch: Partial<WorkUnit>): void {
@@ -432,8 +502,7 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
   }
 
   recordDetailFailure(portal: PortalName, url: string, reason: string): void {
-    const fails = (this.detailFailures.get(portal) || 0) + 1;
-    this.detailFailures.set(portal, fails);
+    HealthManager.recordFastPathFailure(portal, reason);
     
     // Deterministic blockers cache immediately
     if (reason === "403" || reason === "AuthWall") {
@@ -442,11 +511,11 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
   }
 
   recordDetailSuccess(portal: PortalName): void {
-    this.detailFailures.delete(portal);
+    HealthManager.recordFastPathSuccess(portal);
   }
 
   isHttpFastPathDisabled(portal: PortalName): boolean {
-    return (this.detailFailures.get(portal) || 0) >= 10;
+    return !HealthManager.isFastPathAvailable(portal);
   }
 
   recordTelemetry(
@@ -466,7 +535,10 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
       | "newVersionsCreated"
       | "duplicateVersionsSuppressed"
       | "candidatesProjected"
-      | "evaluationJobsEnqueued",
+      | "evaluationJobsEnqueued"
+      | "heuristicDuplicateSuspect"
+      | "hardFiltered"
+      | "acquisitionIntegrityFailures",
     amount: number = 1
   ): void {
     if (!this.manifest.telemetry) {
@@ -487,9 +559,15 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
         duplicateVersionsSuppressed: 0,
         candidatesProjected: 0,
         evaluationJobsEnqueued: 0,
+        heuristicDuplicateSuspect: 0,
+        hardFiltered: 0,
       };
     }
     this.manifest.telemetry[event] = ((this.manifest.telemetry[event] as number) || 0) + amount;
     this.persistManifest();
+  }
+
+  getTelemetry(event: keyof NonNullable<RunManifest["telemetry"]>): number {
+    return (this.manifest.telemetry?.[event] as number) || 0;
   }
 }

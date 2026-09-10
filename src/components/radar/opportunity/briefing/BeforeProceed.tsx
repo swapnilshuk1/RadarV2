@@ -1,10 +1,11 @@
 interface BeforeProceedProps {
-  executionPkg: any;
+  brief: any;
 }
 
-export function BeforeProceed({ executionPkg }: BeforeProceedProps) {
-  const primaryQuestion = executionPkg.screeningQuestions[0];
-  const secondaryQuestions = executionPkg.screeningQuestions.slice(1);
+export function BeforeProceed({ brief }: BeforeProceedProps) {
+  const questions = brief?.rankedUnknowns || [];
+  const primaryQuestion = questions[0];
+  const secondaryQuestions = questions.slice(1);
 
   return (
     <div className="space-y-2.5">
@@ -14,7 +15,14 @@ export function BeforeProceed({ executionPkg }: BeforeProceedProps) {
           {primaryQuestion?.question || "No screening question was materialized for this evaluation."}
         </p>
         <p className="text-xs text-muted-foreground leading-relaxed font-mono">
-          {primaryQuestion?.whyItMatters && <><span className="text-primary font-semibold">Why it matters:</span> {primaryQuestion.whyItMatters}</>}
+          {(primaryQuestion?.reason || primaryQuestion?.label) && (
+            <>
+              <span className="text-primary font-semibold">
+                Why it matters:
+              </span>{" "}
+              {primaryQuestion.reason || primaryQuestion.label}
+            </>
+          )}
         </p>
       </div>
 
@@ -29,7 +37,10 @@ export function BeforeProceed({ executionPkg }: BeforeProceedProps) {
               <div key={idx} className="space-y-1 text-xs">
                 <p className="font-semibold text-foreground">{q.question}</p>
                 <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  <span className="text-primary font-medium">Why it matters:</span> {q.whyItMatters}
+                  <span className="text-primary font-medium">
+                    Why it matters:
+                  </span>{" "}
+                  {q.reason || q.label}
                 </p>
               </div>
             ))}

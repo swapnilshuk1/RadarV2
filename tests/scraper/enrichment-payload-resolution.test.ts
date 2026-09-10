@@ -4,6 +4,7 @@ import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { createRepositories } from "../../src/data/sqlite/provider";
 import { setBlobStore, MemoryBlobStore, supportsCrossHostEnrichment } from "../../src/lib/storage/blob-store";
 import { EnrichmentQueue } from "../../scripts/scraper/persist/queue";
+import { EXTRACTOR_VERSION } from "../../scripts/scraper/versions";
 import { setupLineageTestFixture } from "../persistence/lineage_fixture";
 import type { StorageProvider } from "../../src/domain/repositories";
 
@@ -127,7 +128,7 @@ describe("Phase 6: Acquisition Evidence Reliability & Payload Resolution", () =>
       descriptionText: "This is a valid payload."
     }));
 
-    await queue.enqueue("card-1", "hash-valid", "payloads/valid.json", "ext_v2", provenance, 10, 5, "payloads/valid.json");
+    await queue.enqueue("card-1", "hash-valid", "payloads/valid.json", EXTRACTOR_VERSION, provenance, 10, 5, "payloads/valid.json");
 
     // Run the real worker loop with explicit DI seam
     const { enrichJobsForRun } = await import("../../scripts/enrich");
@@ -170,7 +171,7 @@ describe("Phase 6: Acquisition Evidence Reliability & Payload Resolution", () =>
       documentState: "PENDING"
     });
 
-    await queue.enqueue("card-missing", "hash-missing", "payloads/missing.json", "ext_v2", provenance, 10, 5, "payloads/missing.json");
+    await queue.enqueue("card-missing", "hash-missing", "payloads/missing.json", EXTRACTOR_VERSION, provenance, 10, 5, "payloads/missing.json");
 
     const { enrichJobsForRun } = await import("../../scripts/enrich");
     await enrichJobsForRun("run-regression", { queue, repos });
@@ -249,7 +250,7 @@ describe("Phase 6: Acquisition Evidence Reliability & Payload Resolution", () =>
       documentState: "PENDING"
     });
 
-    await queue.enqueue("card-retry", "hash-retry", "payloads/valid-retry.json", "ext_v2", provenance, 10, 5, "payloads/valid-retry.json");
+    await queue.enqueue("card-retry", "hash-retry", "payloads/valid-retry.json", EXTRACTOR_VERSION, provenance, 10, 5, "payloads/valid-retry.json");
 
     const { enrichJobsForRun } = await import("../../scripts/enrich");
     await enrichJobsForRun("run-regression", { queue, repos });
@@ -284,7 +285,7 @@ describe("Phase 6: Acquisition Evidence Reliability & Payload Resolution", () =>
     expect(lineage[1]).toEqual({ ingestion_attempt: 2, document_state: "PENDING" });
 
     // Assert 5: A subsequent re-enrichment or re-enqueue run does NOT duplicate opportunity or documents
-    await queue.enqueue("card-retry", "hash-retry", "payloads/valid-retry.json", "ext_v2", provenance, 10, 5, "payloads/valid-retry.json");
+    await queue.enqueue("card-retry", "hash-retry", "payloads/valid-retry.json", EXTRACTOR_VERSION, provenance, 10, 5, "payloads/valid-retry.json");
     await enrichJobsForRun("run-regression", { queue, repos });
 
     const oppsPostRetry = await db.many<any>("SELECT * FROM opportunities WHERE id = ?", ["linkedin:test-opp-retry"]);
@@ -384,7 +385,7 @@ describe("Phase 6: Acquisition Evidence Reliability & Payload Resolution", () =>
       }
     }));
 
-    await queue.enqueue("card-distinct-1", payloadHash, "payloads/distinct.json", "ext_v2", provenance, 10, 5, "payloads/distinct.json");
+    await queue.enqueue("card-distinct-1", payloadHash, "payloads/distinct.json", EXTRACTOR_VERSION, provenance, 10, 5, "payloads/distinct.json");
 
     // 3. Run worker
     const { enrichJobsForRun } = await import("../../scripts/enrich");
@@ -415,7 +416,7 @@ describe("Phase 6: Acquisition Evidence Reliability & Payload Resolution", () =>
     expect(facts.length).toBeGreaterThan(0);
 
     // Assert retry / re-enqueue idempotency:
-    await queue.enqueue("card-distinct-1", payloadHash, "payloads/distinct.json", "ext_v2", provenance, 10, 5, "payloads/distinct.json");
+    await queue.enqueue("card-distinct-1", payloadHash, "payloads/distinct.json", EXTRACTOR_VERSION, provenance, 10, 5, "payloads/distinct.json");
     await enrichJobsForRun("run-regression", { queue, repos });
 
     const oppsPostRetry = await db.many<any>("SELECT * FROM opportunities");
@@ -521,7 +522,7 @@ describe("Phase 6: Acquisition Evidence Reliability & Payload Resolution", () =>
       }
     }));
 
-    await queue.enqueue("card-alias-1", aliasJobHash, "payloads/alias.json", "ext_v2", provenance, 10, 5, "payloads/alias.json");
+    await queue.enqueue("card-alias-1", aliasJobHash, "payloads/alias.json", EXTRACTOR_VERSION, provenance, 10, 5, "payloads/alias.json");
 
     const { enrichJobsForRun } = await import("../../scripts/enrich");
     await enrichJobsForRun("run-regression", { queue, repos });

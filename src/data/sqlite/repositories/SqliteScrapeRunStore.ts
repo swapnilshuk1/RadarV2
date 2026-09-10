@@ -19,6 +19,8 @@ export type ScrapeRunStatus =
   | "running"
   | "waiting_for_confirmation"
   | "stopping"
+  | "enriching"
+  | "completing"
   | "aborted"
   | "completed"
   | "failed";
@@ -28,6 +30,9 @@ export const ACTIVE_SCRAPE_STATUSES: readonly ScrapeRunStatus[] = [
   "initializing",
   "running",
   "waiting_for_confirmation",
+  "stopping",
+  "enriching",
+  "completing",
 ];
 
 export const TERMINAL_SCRAPE_STATUSES: readonly ScrapeRunStatus[] = [
@@ -350,6 +355,170 @@ export class SqliteScrapeRunStore {
       startedAt: row.started_at || null,
       finishedAt: row.finished_at || null,
       updatedAt: row.updated_at,
+    };
+  }
+
+  /**
+   * System-level lookup of all currently active runs across any scope.
+   * Internal daemon path - eliminates fake user scope.
+   */
+  async getSystemActiveRuns(): Promise<ScrapeRun[]> {
+    const placeholders = ACTIVE_SCRAPE_STATUSES.map(() => "?").join(", ");
+    const rows = await this.db.many<any>(
+      `SELECT * FROM scrape_runs WHERE status IN (${placeholders}) ORDER BY created_at ASC`,
+      [...ACTIVE_SCRAPE_STATUSES]
+    );
+    return rows.map((r) => this.mapRunRow(r));
+  }
+
+  /**
+   * System-level lookup of a single run by ID.
+   */
+  async systemGetRun(runId: string): Promise<ScrapeRun | null> {
+    const row = await this.db.one<any>(
+      `SELECT * FROM scrape_runs WHERE id = ?`,
+      [runId]
+    );
+    if (!row) return null;
+    return this.mapRunRow(row);
+  }
+
+  /**
+   * System-level status update for background daemons/reconcilers.
+   */
+  async systemUpdateRunStatus(
+    runId: string,
+    status: ScrapeRunStatus,
+    errorMessage?: string
+  ): Promise<boolean> {
+    const now = new Date().toISOString();
+    const isTerminal = TERMINAL_SCRAPE_STATUSES.includes(status);
+    const terminalPlaceholders = TERMINAL_SCRAPE_STATUSES.map(() => "?").join(", ");
+
+    const res = await this.db.execute(
+      `UPDATE scrape_runs 
+       SET status = ?,
+           error_message = COALESCE(?, error_message),
+           finished_at = CASE WHEN ? = 1 THEN ? ELSE finished_at END,
+           started_at = CASE WHEN ? = 'running' AND started_at IS NULL THEN ? ELSE started_at END,
+           updated_at = ?
+       WHERE id = ? AND status NOT IN (${terminalPlaceholders})`,
+      [
+        status,
+        errorMessage || null,
+        isTerminal ? 1 : 0,
+        now,
+        status,
+        now,
+        now,
+        runId,
+        ...TERMINAL_SCRAPE_STATUSES,
+      ]
+    );
+    return res.rowsAffected > 0;
+  }
+
+  /**
+   * Records a durable evaluation requirement in evaluation_requirements (shared truth)
+   * and binds it to the specified run in scrape_run_evaluation_requirements.
+   */
+  async recordEvaluationRequirement(params: {
+    runId: string;
+    tenantId: string;
+    personId: string;
+    searchPlanId: string;
+    canonicalJobId: string;
+    opportunityVersion: string;
+    evaluationContextFingerprint: string;
+  }): Promise<{ requirementId: string; status: string }> {
+    const id = `er_${params.tenantId}_${params.personId}_${params.canonicalJobId}_${params.opportunityVersion}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+    
+    // 1. Insert or preserve existing shared requirement
+    await this.db.execute(
+      `INSERT INTO evaluation_requirements (
+         id, tenant_id, person_id, search_plan_id, canonical_job_id,
+         opportunity_version, evaluation_context_fingerprint, status, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'WAITING_ENRICHMENT', CURRENT_TIMESTAMP)
+       ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+       DO UPDATE SET status = CASE 
+         WHEN evaluation_requirements.status = 'SATISFIED' THEN 'SATISFIED'
+         ELSE evaluation_requirements.status 
+       END`,
+      [
+        id,
+        params.tenantId,
+        params.personId,
+        params.searchPlanId,
+        params.canonicalJobId,
+        params.opportunityVersion,
+        params.evaluationContextFingerprint,
+      ]
+    );
+
+    // Retrieve authoritative requirement row
+    const existing = await this.db.one<{ id: string; status: string }>(
+      `SELECT id, status FROM evaluation_requirements
+       WHERE tenant_id = ? AND person_id = ? AND search_plan_id = ?
+         AND canonical_job_id = ? AND opportunity_version = ?
+         AND evaluation_context_fingerprint = ?`,
+      [
+        params.tenantId,
+        params.personId,
+        params.searchPlanId,
+        params.canonicalJobId,
+        params.opportunityVersion,
+        params.evaluationContextFingerprint,
+      ]
+    );
+
+    const authoritativeId = existing?.id || id;
+    const authoritativeStatus = existing?.status || "WAITING_ENRICHMENT";
+
+    // 2. Bind to scrape run
+    await this.db.execute(
+      `INSERT OR IGNORE INTO scrape_run_evaluation_requirements (run_id, evaluation_requirement_id)
+       VALUES (?, ?)`,
+      [params.runId, authoritativeId]
+    );
+
+    return { requirementId: authoritativeId, status: authoritativeStatus };
+  }
+
+  /**
+   * Returns evaluation requirements progress for a specific run.
+   */
+  async getRunEvaluationProgress(runId: string): Promise<{
+    total: number;
+    satisfied: number;
+    waitingEnrichment: number;
+    ready: number;
+    failed: number;
+  }> {
+    const row = await this.db.one<{
+      total: number;
+      satisfied: number;
+      waitingEnrichment: number;
+      ready: number;
+      failed: number;
+    }>(
+      `SELECT 
+         COUNT(er.id) AS total,
+         SUM(CASE WHEN er.status = 'SATISFIED' THEN 1 ELSE 0 END) AS satisfied,
+         SUM(CASE WHEN er.status = 'WAITING_ENRICHMENT' THEN 1 ELSE 0 END) AS waitingEnrichment,
+         SUM(CASE WHEN er.status = 'READY' THEN 1 ELSE 0 END) AS ready,
+         SUM(CASE WHEN er.status = 'FAILED' THEN 1 ELSE 0 END) AS failed
+       FROM scrape_run_evaluation_requirements srer
+       JOIN evaluation_requirements er ON srer.evaluation_requirement_id = er.id
+       WHERE srer.run_id = ?`,
+      [runId]
+    );
+
+    return {
+      total: Number(row?.total || 0),
+      satisfied: Number(row?.satisfied || 0),
+      waitingEnrichment: Number(row?.waitingEnrichment || 0),
+      ready: Number(row?.ready || 0),
+      failed: Number(row?.failed || 0),
     };
   }
 }

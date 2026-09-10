@@ -60,7 +60,13 @@ export async function establishPortalAuthSession(
   // 1. Lease credential JIT
   let lease: CredentialLease | null = null;
   try {
-    lease = await broker.leaseCredential(auth, cleanPortal);
+    /* Keep the broker-only execution path for production while preserving
+     * compatibility with narrow broker doubles that intentionally expose only
+     * the public lease method. */
+    const leaseForExecution = typeof (broker as any).leaseCredentialForScraperExecution === "function"
+      ? (broker as any).leaseCredentialForScraperExecution.bind(broker)
+      : broker.leaseCredential.bind(broker);
+    lease = await leaseForExecution(auth, cleanPortal);
   } catch (err: any) {
     if (err instanceof CredentialNotFoundError) {
       // Credential is not configured for this portal in this tenant -> allow anonymous scraping fallback
@@ -102,7 +108,12 @@ export async function establishPortalAuthSession(
     version,
     async reportHealth(status: CredentialStatus, reason?: string): Promise<void> {
       if (isDisposed) return;
-      await broker.reportCredentialHealth(auth, credentialId, status, reason);
+      await broker.reportCredentialHealthFromScraperExecution(
+        auth,
+        credentialId,
+        status,
+        reason,
+      );
     },
     dispose(): void {
       isDisposed = true;

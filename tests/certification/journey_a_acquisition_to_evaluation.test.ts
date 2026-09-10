@@ -132,6 +132,27 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
       );
+      CREATE TABLE evaluation_requirements (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        person_id TEXT NOT NULL,
+        search_plan_id TEXT NOT NULL,
+        canonical_job_id TEXT NOT NULL,
+        opportunity_version TEXT NOT NULL,
+        required_enrichment_pipeline_version TEXT NOT NULL DEFAULT '1.0.0',
+        evaluation_context_fingerprint TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'WAITING_ENRICHMENT',
+        blocked_reason TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME,
+        UNIQUE(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+      );
+      CREATE TABLE scrape_run_evaluation_requirements (
+        run_id TEXT NOT NULL,
+        evaluation_requirement_id TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY(run_id, evaluation_requirement_id)
+      );
       CREATE TABLE evaluation_contexts (
         context_fingerprint TEXT PRIMARY KEY,
         tenant_id TEXT NOT NULL,
@@ -176,6 +197,20 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         'sp_exec', 'tenant_prod', 'person_exec', 'active',
         '{"targetRoles":["Chief Marketing Officer","Marketing","VP"],"targetSeniority":["Chief","Officer","VP","CXO"]}'
       )
+    `);
+    await adapter.execute(`
+      INSERT INTO search_plan_snapshots VALUES (
+        'sps_exec', 'sp_exec', 'tenant_prod', 'person_exec', 'hash_exec', '{}'
+      )
+    `);
+    await adapter.execute(`
+      INSERT INTO evaluation_contexts VALUES (
+        'ctx_exec', 'tenant_prod', 'person_exec', 'sps_exec', '1.0.0', 'hash_onto', '1.0.0', '1.0.0', CURRENT_TIMESTAMP
+      )
+    `);
+    await adapter.execute(`
+      INSERT INTO active_evaluation_contexts (person_id, tenant_id, context_fingerprint, search_plan_id, activated_at)
+      VALUES ('person_exec', 'tenant_prod', 'ctx_exec', 'sp_exec', CURRENT_TIMESTAMP)
     `);
 
     ingestionService = new CanonicalIngestionService(adapter);

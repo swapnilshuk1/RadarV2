@@ -3,41 +3,16 @@ import { SNAPSHOT_SCHEMA_VERSION, SCRAPER_VERSION } from "../versions";
 import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
-import { passesHardFilter } from "../utils/hard-filter";
 import { hydrateVirtualizedList } from "../utils/scroll";
 import { normalizePostingDate } from "../utils/date";
 import * as cheerio from "cheerio";
+import {
+  LINKEDIN_GEO_INDIA,
+  LINKEDIN_GEO_BY_LOCATION,
+  resolveLinkedInGeoId,
+} from "../run/acquisition-geography";
 
-const LINKEDIN_GEO_INDIA = "102713980";
-
-/**
- * LinkedIn's search endpoint gives `geoId` precedence over the display
- * `location`. Never pair a city label with the India-wide geo ID: that makes
- * the emitted URL look city-scoped while actually searching the country.
- *
- * These NCR identifiers were resolved against LinkedIn's own public search
- * response using fully-qualified Indian place names on 04 Sep 2026. Keep the
- * mapping deliberately small and explicit; an unknown explicit location is
- * left to LinkedIn's native location resolver rather than silently widened.
- */
-export const LINKEDIN_GEO_BY_LOCATION: Readonly<Record<string, string>> = {
-  "gurugram": "106442238",
-  "gurgaon": "106442238",
-  "delhi": "106187582",
-  "noida": "104869687",
-  "faridabad": "100839447",
-  "ghaziabad": "100497616",
-};
-
-function normalizeLinkedInLocation(location: string): string {
-  return location.trim().toLowerCase().replace(/,.*$/, "");
-}
-
-/** Returns a verified portal identifier when one is known for this location. */
-export function resolveLinkedInGeoId(location?: string): string | undefined {
-  if (!location?.trim()) return LINKEDIN_GEO_INDIA;
-  return LINKEDIN_GEO_BY_LOCATION[normalizeLinkedInLocation(location)];
-}
+export { LINKEDIN_GEO_INDIA, LINKEDIN_GEO_BY_LOCATION, resolveLinkedInGeoId };
 
 export type LinkedInSessionState =
   | "AUTHENTICATED"
@@ -179,11 +154,10 @@ export const linkedinHandler: PortalHandler = {
 
       const targetMaxCards = ctx.maxCardsPerPage ?? CONFIG.getMaxCardsPerPage("LinkedIn");
       const cardSelector = [
-        "div.job-card-container",
-        "li.jobs-search-results__list-item",
-        "ul.jobs-search__results-list li",
-        "div.base-search-card",
-        "[class*='jobs-search__results-list'] li",
+        "div.job-card-container:has(a[href*='/jobs/view/'])",
+        "li.jobs-search-results__list-item:has(a[href*='/jobs/view/'])",
+        "div.base-search-card:has(a[href*='/jobs/view/'])",
+        "li:has(a.base-card[href*='/jobs/view/'])",
       ].join(", ");
       const containerSelectors = [
         ".jobs-search-results-list",
@@ -212,43 +186,70 @@ export const linkedinHandler: PortalHandler = {
 
       ctx.logger(`[LinkedIn Hydration Summary] Discovered ${hydration.finalCount} total cards (initial: ${hydration.initialCount}, passes: ${hydration.passesCompleted}, stabilized: ${hydration.stabilized})`);
 
-      const cards = await page.locator(cardSelector).all();
-      const sliced = cards.slice(0, targetMaxCards);
-      for (const card of sliced) {
+      /*
+       * Hydration proves that the listing nodes exist. Snapshot their
+       * discovery fields in one browser-context operation before any detail
+       * worker can navigate or replace this page. The former per-Locator
+       * loop re-queried a broad list after hydration and silently discarded
+       * the hydrated cards when LinkedIn recycled its virtualized DOM.
+       */
+      const hydratedCards = await page.evaluate(
+        ({ selector, maxCards }: { selector: string; maxCards: number }) => {
+          const nodes = Array.from(document.querySelectorAll(selector)).slice(0, maxCards);
+          return nodes.map((node) => {
+            const titleLink = node.querySelector(
+              "a.job-card-list__title, a.job-card-container__link, a.base-card__full-link, a[href*='/jobs/view/']"
+            ) as HTMLAnchorElement | null;
+            const compEl = node.querySelector(".job-card-container__primary-description, .artdeco-entity-lockup__subtitle, h4");
+            const locEl = node.querySelector(".job-card-container__metadata-item, .artdeco-entity-lockup__caption, .job-search-card__location");
+            const h3El = node.querySelector("h3");
+            const time = node.querySelector("time");
+
+            const jobIdMatch = (
+              node.getAttribute("data-job-id") ||
+              node.getAttribute("data-entity-urn")?.match(/jobPosting:(\d+)/)?.[1] ||
+              (titleLink && titleLink.getAttribute("href") ? titleLink.getAttribute("href")!.match(/\/jobs\/view\/(\d+)/)?.[1] : null) ||
+              (titleLink && titleLink.getAttribute("href") ? titleLink.getAttribute("href")!.match(/[?&]currentJobId=(\d+)/)?.[1] : null) ||
+              ""
+            );
+
+            return {
+              jobId: jobIdMatch ? String(jobIdMatch).trim() : "",
+              title: (titleLink && titleLink.textContent ? titleLink.textContent.trim() : "") || (h3El && h3El.textContent ? h3El.textContent.trim() : ""),
+              company: compEl && compEl.textContent ? compEl.textContent.trim() : "",
+              location: locEl && locEl.textContent ? locEl.textContent.trim() : "",
+              href: (titleLink && titleLink.getAttribute("href")) || "",
+              rawPosted: (time && (time.getAttribute("datetime") || (time.textContent ? time.textContent.trim() : null))) || null,
+              rawHtml: node.innerHTML || "",
+              rawText: (node.textContent ? node.textContent.replace(/\s+/g, " ").trim() : "") || "",
+            };
+          });
+        },
+        { selector: cardSelector, maxCards: targetMaxCards },
+      );
+
+      for (const card of hydratedCards) {
         if (ctx.isCancelled?.() || page?.isClosed?.()) break;
         try {
-          const titleEl = card.locator('a.job-card-list__title, a.job-card-container__link').first();
-          const title = ((await titleEl.textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const company = ((await card.locator(".job-card-container__primary-description, .artdeco-entity-lockup__subtitle").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const location = ((await card.locator(".job-card-container__metadata-item, .artdeco-entity-lockup__caption").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const href = ((await titleEl.getAttribute("href", { timeout: 1000 }).catch(() => "")) || "").trim();
-          
-          const timeEl = card.locator('time').first();
-          const rawDatetime = await timeEl.getAttribute("datetime", { timeout: 500 }).catch(() => null);
-          const rawTimeText = await timeEl.textContent({ timeout: 500 }).catch(() => null);
-          const rawPosted = rawDatetime || rawTimeText || null;
+          const { title, company, location, href, rawPosted } = card;
           
           if (!href || !title) continue;
 
-          const filterRes = passesHardFilter({ title, company, location }, { allowMissingCompany: true });
-          if (!filterRes.pass) {
-            ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
-            continue;
-          }
           if (!company) {
             ctx.logger(`[LinkedIn Discovery] Preserving card "${title}" without card company; deferring company resolution to detail extraction`);
           }
 
           const detailUrl = href.startsWith("http") ? href : `https://www.linkedin.com${href}`;
           const cardHash = cardHashFor("LinkedIn", detailUrl);
-          const rawHtml = await card.innerHTML().catch(() => "");
-          const rawText = ((await card.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-
           const discoveredAt = new Date().toISOString();
           const { date: postedAt, precision: postedPrecision } = normalizePostingDate(rawPosted, discoveredAt);
 
+          const rawJobId = card.jobId || href.match(/\/jobs\/view\/(\d+)/)?.[1] || href.match(/[?&]currentJobId=(\d+)/)?.[1];
+          const sourceJobId = rawJobId ? String(rawJobId).trim() : undefined;
+
           cardsOut.push({
             cardHash,
+            sourceJobId,
             portal: "LinkedIn",
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,
@@ -259,8 +260,8 @@ export const linkedinHandler: PortalHandler = {
             location,
             postedAt,
             postedPrecision,
-            rawHtml,
-            rawText,
+            rawHtml: card.rawHtml,
+            rawText: card.rawText,
           });
         } catch (err: any) {
           ctx.logger(`LinkedIn card parse skipped: ${err.message}`);
@@ -289,23 +290,33 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   const handler = linkedinHandler;
   
   if (handler.detailStrategy === "auto" || handler.detailStrategy === "http") {
-    ctx.recordTelemetry?.("httpAttempted");
-    const httpRes = await fastFetchDetail(
-      url, 
-      "h1.top-card-layout__title, h1.topcard__title, .jobs-description__content", 
-      ".jobs-description__content, .description__text, .show-more-less-html__markup"
-    );
-    if (httpRes.fetched) {
-      ctx.recordTelemetry?.("httpSuccessful");
-      ctx.logger(`[FastPath] Extracted detail from ${url}`);
-      
-      return {
-        ...httpRes,
-        extractedTitle: httpRes.extractedTitle,
-        extractedCompany: httpRes.extractedCompany,
-      };
+    const skipHttp = ctx.isHttpDisabled?.(url) ?? false;
+    if (!skipHttp) {
+      ctx.recordTelemetry?.("httpAttempted");
+      const httpRes = await fastFetchDetail(
+        url, 
+        "h1.top-card-layout__title, h1.topcard__title, .jobs-description__content", 
+        ".jobs-description__content, .description__text, .show-more-less-html__markup"
+      );
+      if (httpRes.fetched && httpRes.rawText && httpRes.rawText.length >= 200) {
+        ctx.recordHttpSuccess?.(url);
+        ctx.recordTelemetry?.("httpSuccessful");
+        ctx.logger(`[FastPath] Extracted detail from ${url}`);
+        
+        return {
+          ...httpRes,
+          extractedTitle: httpRes.extractedTitle,
+          extractedCompany: httpRes.extractedCompany,
+        };
+      }
+      const reason = httpRes.fetchError?.includes("403") ? "403" : 
+                    httpRes.fetchError?.includes("timeout") ? "Timeout" : "EmptyBody";
+      ctx.recordHttpFailure?.(url, reason);
+      ctx.recordTelemetry?.("httpFallbacks");
+      ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError || "insufficient content"} — falling back to Playwright`);
+    } else {
+      ctx.logger(`[FastPath] Bypassed for ${url} due to circuit breaker or cache`);
     }
-    ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError} — falling back to Playwright`);
   }
 
   const t0 = Date.now();

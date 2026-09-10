@@ -32,8 +32,8 @@ What this does automatically:
 
 | Property | Value | Notes |
 | :--- | :--- | :--- |
-| **Server IP** | `130.210.41.232` | Oracle Cloud VM |
-| **Domain URL** | `http://130.210.41.232.sslip.io/` | Live public application |
+| **Server IP** | `161.118.175.246` | Oracle Cloud VM |
+| **Domain URL** | `http://161.118.175.246.sslip.io/` | Live public application |
 | **SSH User** | `ubuntu` | Standard Ubuntu user |
 | **SSH Private Key** | `C:\Users\swapn\.ssh\oracle_official.key` | **Never use `.pub` file for private key!** |
 | **SSH Host Alias** | `oracle-radar` | Saved in `~/.ssh/config` |
@@ -52,7 +52,7 @@ What this does automatically:
 ssh oracle-radar
 
 # Or direct with key flag:
-ssh -o StrictHostKeyChecking=no -i "C:\Users\swapn\.ssh\oracle_official.key" ubuntu@130.210.41.232
+ssh -o StrictHostKeyChecking=no -i "C:\Users\swapn\.ssh\oracle_official.key" ubuntu@161.118.175.246
 ```
 
 ### Server PM2 Service Commands:
@@ -77,8 +77,8 @@ pm2 start radar-v2
 
 Ensure `C:\Users\swapn\.ssh\config` contains:
 ```ssh-config
-Host oracle-radar 130.210.41.232 130.210.41.232.sslip.io
-    HostName 130.210.41.232
+Host oracle-radar 161.118.175.246 161.118.175.246.sslip.io
+    HostName 161.118.175.246
     User ubuntu
     IdentityFile C:\Users\swapn\.ssh\oracle_official.key
     StrictHostKeyChecking no

@@ -60,7 +60,7 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
 
     // Must target oracle_official.key and remote repo directory
     expect(content).toContain("oracle_official.key");
-    expect(content).toContain("130.210.41.232");
+    expect(content).toContain("161.118.175.246");
     expect(content).toContain("pm2 restart radar-v2");
   });
 
@@ -69,7 +69,7 @@ describe("RADAR Stage 2C — Deployment Determinism & Production Invariants", ()
     const content = fs.readFileSync(deployTsPath, "utf-8");
 
     expect(content).toContain("oracle_official.key");
-    expect(content).toContain("130.210.41.232");
+    expect(content).toContain("161.118.175.246");
     expect(content).toContain("pm2 restart radar-v2");
   });
 

@@ -955,12 +955,23 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
          AND spc.search_plan_id = ?
          AND (co.source_job_id = ? OR co.id = ? OR spc.canonical_job_id = ?)
          AND ov.lifecycle_state = 'ACTIVE'
+       ORDER BY
+         CASE
+           WHEN spc.canonical_job_id = ? THEN 0
+           WHEN co.id = ? THEN 1
+           WHEN co.source_job_id = ? THEN 2
+           ELSE 3
+         END ASC,
+         spc.created_at DESC
        LIMIT 1`,
       [
-        scope.activeEvaluationContextId || activeContext.contextFingerprint,
+        activeContext.contextFingerprint,
         scope.tenantId,
         scope.personId,
-        scope.activeSearchPlanId || activeContext.searchPlanId,
+        activeContext.searchPlanId,
+        jobHash,
+        jobHash,
+        jobHash,
         jobHash,
         jobHash,
         jobHash,

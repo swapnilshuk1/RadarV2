@@ -27,7 +27,7 @@ function schema(db: Database.Database) {
       id TEXT PRIMARY KEY, canonical_job_id TEXT, content_hash TEXT, job_title TEXT, company_name TEXT, location TEXT,
       employment_type TEXT, posted_at TEXT, posted_precision TEXT, raw_content TEXT NOT NULL, acquisition_status TEXT,
       acquisition_quality TEXT, failure_class TEXT, lifecycle_state TEXT, evidence_state TEXT, created_at TEXT,
-      source_payload_key TEXT, source_media_type TEXT, document_extraction_state TEXT,
+      source_payload_key TEXT, source_media_type TEXT, document_extraction_state TEXT, category_ids TEXT,
       UNIQUE(canonical_job_id, content_hash)
     );
     CREATE TABLE search_plan_candidates (tenant_id TEXT, person_id TEXT, search_plan_id TEXT, canonical_job_id TEXT, opportunity_version TEXT, attention_decision TEXT, created_at TEXT);
@@ -54,8 +54,8 @@ describe("C4a source-payload provenance migration", () => {
       const db = new Database(":memory:");
       db.exec("CREATE TABLE opportunity_versions (id TEXT PRIMARY KEY, raw_content TEXT NOT NULL)");
       const adapter = new TestAdapter(db);
-      const first = await runMigrations(adapter, directory);
-      const second = await runMigrations(adapter, directory);
+      const first = await runMigrations(adapter, directory, { verifyRequiredSchema: false });
+      const second = await runMigrations(adapter, directory, { verifyRequiredSchema: false });
       expect(first.applied).toEqual(["033_opportunity_version_source_payload.sql"]);
       expect(second.skipped).toEqual(["033_opportunity_version_source_payload.sql"]);
     } finally {

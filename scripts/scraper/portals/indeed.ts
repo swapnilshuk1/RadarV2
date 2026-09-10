@@ -3,7 +3,6 @@ import { SNAPSHOT_SCHEMA_VERSION, SCRAPER_VERSION } from "../versions";
 import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
-import { passesHardFilter } from "../utils/hard-filter";
 import { normalizePostingDate } from "../utils/date";
 import { resolveIndeedListingBounded } from "../../../src/lib/acquisition/indeed-listing-identity";
 
@@ -11,6 +10,20 @@ export const indeedHandler: PortalHandler = {
   name: "Indeed",
   detailStrategy: "browser",
   async resolveListingIdentity(ctx, url) {
+    // If URL already contains a stable Indeed jk param, construct the verified viewjob URL directly
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.toLowerCase();
+      if ((host === "indeed.com" || host.endsWith(".indeed.com")) && parsed.searchParams.has("jk")) {
+        const jk = (parsed.searchParams.get("jk") || "").trim().toLowerCase();
+        if (/^[a-z0-9_-]{4,128}$/i.test(jk)) {
+          return { finalUrl: `https://in.indeed.com/viewjob?jk=${jk}` };
+        }
+      }
+    } catch {
+      // Fall through to bounded resolution
+    }
+
     const page = ctx.detailPage || ctx.searchPage || ctx.activePage;
     const resolution = await resolveIndeedListingBounded(url, async (hopUrl) => {
       const response = await page.context().request.fetch(hopUrl, {
@@ -87,6 +100,24 @@ export const indeedHandler: PortalHandler = {
 
       await humanize(page);
 
+      // Early challenge/block detection (Gate 6)
+      const isBlocked = await page.evaluate(() => {
+        const title = (document.title || "").toLowerCase();
+        const bodyText = document.body ? document.body.innerText.toLowerCase() : "";
+        return (
+          title.includes("blocked") ||
+          title.includes("just a moment") ||
+          title.includes("attention required") ||
+          bodyText.includes("cf-challenge") ||
+          Boolean(document.querySelector('iframe[src*="captcha" i], form[action*="captcha" i], #challenge-running'))
+        );
+      }).catch(() => false);
+
+      if (isBlocked === true) {
+        ctx.logger("Indeed anti-bot / challenge page detected during listCards");
+        throw new Error("Indeed search blocked by anti-bot verification (Cloudflare/CAPTCHA)");
+      }
+
       // Explicit wait for at least one card container
       ctx.logger(`Waiting for selector: ${PRIMARY_CARD_SELECTOR}`);
       const startWait = Date.now();
@@ -104,28 +135,139 @@ export const indeedHandler: PortalHandler = {
       }
 
       const maxCards = ctx.maxCardsPerPage ?? CONFIG.getMaxCardsPerPage("Indeed");
-      const cardElements = await page.locator(usedSelector).all();
-      
-      for (const card of cardElements) {
+      let extractedData: any[] = [];
+
+      if (matched) {
+        extractedData = await page.evaluate((selector: string) => {
+          const cards = Array.from(document.querySelectorAll(selector));
+          return cards.map((card) => {
+            const titleEl = card.querySelector("h2.jobTitle, .jobTitle, [class*='jobTitle']");
+            const title = (titleEl?.textContent || "").trim();
+            const compEl = card.querySelector('[data-testid="company-name"], .companyName, [class*="companyName"]');
+            const company = (compEl?.textContent || "").trim();
+            const locEl = card.querySelector('[data-testid="text-location"], .companyLocation, [class*="companyLocation"]');
+            const location = (locEl?.textContent || "").trim();
+            const salEl = card.querySelector('[data-testid="attribute_snippet_testid"], .salary-snippet, [class*="salary"]');
+            const salary = (salEl?.textContent || "").trim();
+            const urlEl = card.querySelector("h2.jobTitle a, a[data-jk], a[href*='/rc/clk'], a[href*='/jobs/view'], a[href*='viewjob']");
+            const rawHref = (urlEl?.getAttribute("href") || "").trim();
+            const jk = (card.getAttribute("data-jk") || urlEl?.getAttribute("data-jk") || "").trim();
+            const dateEl = card.querySelector('[data-testid="myJobsStateDate"], span.date, .date');
+            const rawPosted = (dateEl?.textContent || "").trim();
+            const rawHtml = card.innerHTML || "";
+            const rawText = (card.textContent || "").replace(/\s+/g, " ").trim();
+            return { title, company, location, salary, rawHref, jk, rawPosted, rawHtml, rawText };
+          });
+        }, usedSelector).catch(() => []);
+      }
+
+      // If DOM yielded 0 cards, attempt structured/embedded data extraction
+      if (extractedData.length === 0) {
+        extractedData = await page.evaluate(() => {
+          try {
+            // 1. window.mosaic provider data
+            const mosaic = (window as any).mosaic?.providerData?.["mosaic-provider-jobsearch-result"]?.metaData?.mosaicProviderJobCardsModel?.results;
+            if (Array.isArray(mosaic) && mosaic.length > 0) {
+              return mosaic.map((job: any) => ({
+                title: job.title || job.normTitle || "",
+                company: job.company || job.companyName || "",
+                location: job.formattedLocation || job.location || "",
+                salary: job.estimatedSalary?.formatted || job.salarySnippet?.text || "",
+                rawHref: job.viewJobLink || "",
+                jk: job.jobkey || job.jk || "",
+                rawPosted: job.formattedRelativeTime || job.pubDate || "",
+                rawHtml: job.snippet || "",
+                rawText: job.snippet ? job.snippet.replace(/<[^>]+>/g, " ") : "",
+              }));
+            }
+
+            // 2. script#mosaic-data or mosaic JSON
+            const mosaicScript = document.querySelector('script#mosaic-data, script[id*="mosaic"]');
+            if (mosaicScript && mosaicScript.textContent) {
+              const parsed = JSON.parse(mosaicScript.textContent);
+              const res = parsed?.metaData?.mosaicProviderJobCardsModel?.results || parsed?.results;
+              if (Array.isArray(res) && res.length > 0) {
+                return res.map((job: any) => ({
+                  title: job.title || job.normTitle || "",
+                  company: job.company || job.companyName || "",
+                  location: job.formattedLocation || job.location || "",
+                  salary: job.estimatedSalary?.formatted || job.salarySnippet?.text || "",
+                  rawHref: job.viewJobLink || "",
+                  jk: job.jobkey || job.jk || "",
+                  rawPosted: job.formattedRelativeTime || job.pubDate || "",
+                  rawHtml: job.snippet || "",
+                  rawText: job.snippet ? job.snippet.replace(/<[^>]+>/g, " ") : "",
+                }));
+              }
+            }
+
+            // 3. JSON-LD scripts
+            const jsonLdScripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
+            const jsonLdJobs: any[] = [];
+            for (const s of jsonLdScripts) {
+              try {
+                const data = JSON.parse(s.textContent || "");
+                if (data["@type"] === "JobPosting") jsonLdJobs.push(data);
+                if (Array.isArray(data["@graph"])) {
+                  for (const item of data["@graph"]) {
+                    if (item["@type"] === "JobPosting") jsonLdJobs.push(item);
+                  }
+                }
+              } catch {}
+            }
+            if (jsonLdJobs.length > 0) {
+              return jsonLdJobs.map((job: any) => {
+                let candidateJk = "";
+                if (typeof job.url === "string") {
+                  const m = job.url.match(/[?&]jk=([a-f0-9]{16})/i);
+                  if (m) candidateJk = m[1];
+                }
+                if (!candidateJk && job.identifier?.value) {
+                  const idName = String(job.identifier?.name || "").toLowerCase();
+                  const val = String(job.identifier.value).trim();
+                  if ((idName === "indeed" || idName === "indeed job id") && /^[a-f0-9]{16}$/i.test(val)) {
+                    candidateJk = val;
+                  }
+                }
+                return {
+                  title: job.title || "",
+                  company: job.hiringOrganization?.name || "",
+                  location: typeof job.jobLocation?.address === "string" ? job.jobLocation.address : (job.jobLocation?.address?.addressLocality || ""),
+                  salary: job.baseSalary?.value?.value ? String(job.baseSalary.value.value) : "",
+                  rawHref: job.url || "",
+                  jk: candidateJk,
+                  externalRequisitionId: job.identifier?.value ? String(job.identifier.value) : undefined,
+                  rawPosted: job.datePosted || "",
+                  rawHtml: job.description || "",
+                  rawText: job.description ? job.description.replace(/<[^>]+>/g, " ") : "",
+                };
+              });
+            }
+          } catch {}
+          return [];
+        }).catch(() => []);
+      }
+
+      if (!Array.isArray(extractedData)) extractedData = [];
+
+      for (const item of extractedData) {
         if (cardsOut.length >= maxCards) break;
         try {
-          const title = ((await card.locator("h2.jobTitle, .jobTitle, [class*='jobTitle']").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const company = ((await card.locator('[data-testid="company-name"], .companyName, [class*="companyName"]').first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const location = ((await card.locator('[data-testid="text-location"], .companyLocation, [class*="companyLocation"]').first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-          const salary = ((await card.locator('[data-testid="attribute_snippet_testid"], .salary-snippet, [class*="salary"]').first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
+          const title = (item.title || "").trim();
+          const company = (item.company || "").trim();
+          const location = (item.location || "").trim();
+          const salary = (item.salary || "").trim();
+          const rawHref = (item.rawHref || "").trim();
+          let candidateJk = (item.jk || "").trim();
 
-          const urlEl = card.locator("h2.jobTitle a, a[data-jk], a[href*='/rc/clk'], a[href*='/jobs/view'], a[href*='viewjob']").first();
-          const rawHref = ((await urlEl.getAttribute("href", { timeout: 1000 }).catch(() => "")) || "").trim();
+          if (!candidateJk && rawHref) {
+            const match = rawHref.match(/[?&]jk=([a-f0-9]{16})/i);
+            if (match) candidateJk = match[1];
+          }
 
-          // Extract canonical Indeed Job Key (jk) to stay on in.indeed.com and avoid off-site redirects
-          let jk = ((await card.getAttribute("data-jk").catch(() => "")) || "").trim();
-          if (!jk) {
-            jk = ((await urlEl.getAttribute("data-jk", { timeout: 500 }).catch(() => "")) || "").trim();
-          }
-          if (!jk && rawHref) {
-            const match = rawHref.match(/[?&]jk=([a-f0-9]+)/i);
-            if (match) jk = match[1];
-          }
+          // Strict format: Indeed JKs are 16-hexadecimal character hashes. Employer requisition IDs are NOT JKs.
+          const isAuthoritativeJk = Boolean(candidateJk && /^[a-f0-9]{16}$/i.test(candidateJk));
+          const jk = isAuthoritativeJk ? candidateJk.toLowerCase() : "";
 
           if (jk && seenJks.has(jk)) continue;
           if (jk) seenJks.add(jk);
@@ -134,13 +276,13 @@ export const indeedHandler: PortalHandler = {
           let applyRedirectUrl: string | undefined = undefined;
 
           const discoveryUrl = rawHref ? new URL(rawHref, "https://in.indeed.com").toString() : undefined;
-          if (discoveryUrl && /\/(?:pagead|rc)\/clk/i.test(new URL(discoveryUrl).pathname)) {
-            // Sponsored links are observations, not identities. Their
+          if (jk) {
+            detailUrl = `https://in.indeed.com/viewjob?jk=${jk}`;
+            applyRedirectUrl = discoveryUrl || `https://in.indeed.com/rc/clk?jk=${jk}`;
+          } else if (discoveryUrl && /\/(?:pagead|rc)\/clk/i.test(new URL(discoveryUrl).pathname)) {
+            // Sponsored links without an extracted jk are observations;
             // destination is resolved under the bounded detail contract.
             detailUrl = discoveryUrl;
-          } else if (jk) {
-            detailUrl = `https://in.indeed.com/viewjob?jk=${jk}`;
-            applyRedirectUrl = `https://in.indeed.com/rc/clk?jk=${jk}`;
           } else if (rawHref) {
             try {
               const parsed = new URL(rawHref, "https://in.indeed.com");
@@ -152,26 +294,17 @@ export const indeedHandler: PortalHandler = {
           }
 
           if (!detailUrl || !title) continue;
-          
-          const rawPosted = ((await card.locator('[data-testid="myJobsStateDate"], span.date, .date').first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
-
-          const filterRes = passesHardFilter({ title, company, location });
-          if (!filterRes.pass) {
-            ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
-            continue;
-          }
 
           const cardHash = cardHashFor("Indeed", detailUrl);
           if (seenHashes.has(cardHash)) continue;
           seenHashes.add(cardHash);
 
-          const rawHtml = await card.innerHTML().catch(() => "");
-          const rawText = ((await card.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
           const discoveredAt = new Date().toISOString();
-          const { date: postedAt, precision: postedPrecision } = normalizePostingDate(rawPosted, discoveredAt);
-          
+          const { date: postedAt, precision: postedPrecision } = normalizePostingDate(item.rawPosted || "", discoveredAt);
+
           cardsOut.push({
             cardHash,
+            sourceJobId: jk || undefined,
             portal: "Indeed",
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,
@@ -185,11 +318,18 @@ export const indeedHandler: PortalHandler = {
             salary,
             postedAt,
             postedPrecision,
-            rawHtml,
-            rawText,
+            rawHtml: item.rawHtml || "",
+            rawText: item.rawText || "",
           });
         } catch (err: any) {
           ctx.logger(`Indeed card parse skipped: ${err.message}`);
+        }
+      }
+
+      if (cardsOut.length === 0) {
+        const title = (await page.title().catch(() => "")) || "";
+        if (/just a moment|access denied|security check|cloudflare|recaptcha/i.test(title)) {
+          throw new Error(`Indeed blocked by challenge/verification page (Title: ${title})`);
         }
       }
     } catch (err: any) {
@@ -223,7 +363,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         "h1.jobsearch-JobInfoHeader-title, .jobsearch-JobInfoHeader-title-container, h1", 
         "#jobDescriptionText, .jobsearch-jobDescriptionText, [class*='description'], [class*='job-detail'], [data-automation-id='jobPostingDescription'], main, article"
       );
-      if (httpRes.fetched) {
+      if (httpRes.fetched && httpRes.rawText && httpRes.rawText.length >= 200) {
+        ctx.recordHttpSuccess?.(url);
         ctx.recordTelemetry?.("httpSuccessful");
         ctx.logger(`[FastPath] Extracted detail from ${url}`);
         return httpRes;

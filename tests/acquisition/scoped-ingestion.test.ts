@@ -30,6 +30,16 @@ describe("authenticated canonical ingestion scope", () => {
         next_attempt_at TEXT, created_at TEXT, updated_at TEXT,
         UNIQUE(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
       );
+      CREATE TABLE evaluation_requirements (
+        id TEXT PRIMARY KEY, tenant_id TEXT, person_id TEXT, search_plan_id TEXT, canonical_job_id TEXT,
+        opportunity_version TEXT, required_enrichment_pipeline_version TEXT,
+        evaluation_context_fingerprint TEXT, status TEXT, blocked_reason TEXT, created_at TEXT, updated_at TEXT,
+        UNIQUE(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+      );
+      CREATE TABLE scrape_run_evaluation_requirements (
+        run_id TEXT, evaluation_requirement_id TEXT,
+        PRIMARY KEY(run_id, evaluation_requirement_id)
+      );
       CREATE TABLE active_evaluation_contexts (tenant_id TEXT, person_id TEXT, search_plan_id TEXT, context_fingerprint TEXT);
       CREATE TABLE evaluation_contexts (context_fingerprint TEXT, tenant_id TEXT, person_id TEXT);
       CREATE TABLE recovery_queue (id TEXT PRIMARY KEY, tenant_id TEXT, canonical_job_id TEXT, opportunity_version_id TEXT, source TEXT, canonical_url TEXT, reason TEXT, failure_class TEXT, attempt_count INTEGER, status TEXT, next_attempt_at TEXT, created_at TEXT);
@@ -107,6 +117,8 @@ describe("authenticated canonical ingestion scope", () => {
       CREATE TABLE opportunity_versions (id TEXT PRIMARY KEY, canonical_job_id TEXT NOT NULL, content_hash TEXT NOT NULL, job_title TEXT, company_name TEXT, location TEXT, employment_type TEXT, posted_at TEXT, posted_precision TEXT, raw_content TEXT, acquisition_status TEXT, acquisition_quality TEXT, failure_class TEXT, lifecycle_state TEXT, evidence_state TEXT, source_payload_key TEXT, source_media_type TEXT, document_extraction_state TEXT, category_ids TEXT, created_at TEXT, UNIQUE(canonical_job_id, content_hash));
       CREATE TABLE search_plan_candidates (tenant_id TEXT NOT NULL, person_id TEXT NOT NULL, search_plan_id TEXT NOT NULL, canonical_job_id TEXT NOT NULL, opportunity_version TEXT NOT NULL, attention_decision TEXT NOT NULL, eligibility TEXT, eligibility_reason_codes_json TEXT, location_policy TEXT, location_evidence TEXT, created_at TEXT, PRIMARY KEY(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version));
       CREATE TABLE evaluation_jobs (id TEXT PRIMARY KEY, tenant_id TEXT, person_id TEXT, search_plan_id TEXT, canonical_job_id TEXT, opportunity_version TEXT, evaluation_context_fingerprint TEXT, status TEXT, attempts INTEGER, max_attempts INTEGER, next_attempt_at TEXT, created_at TEXT, updated_at TEXT, UNIQUE(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint));
+      CREATE TABLE evaluation_requirements (id TEXT PRIMARY KEY, tenant_id TEXT, person_id TEXT, search_plan_id TEXT, canonical_job_id TEXT, opportunity_version TEXT, required_enrichment_pipeline_version TEXT, evaluation_context_fingerprint TEXT, status TEXT, blocked_reason TEXT, created_at TEXT, updated_at TEXT, UNIQUE(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint));
+      CREATE TABLE scrape_run_evaluation_requirements (run_id TEXT, evaluation_requirement_id TEXT, PRIMARY KEY(run_id, evaluation_requirement_id));
       CREATE TABLE active_evaluation_contexts (tenant_id TEXT, person_id TEXT, search_plan_id TEXT, context_fingerprint TEXT);
       CREATE TABLE evaluation_contexts (context_fingerprint TEXT, tenant_id TEXT, person_id TEXT);
       CREATE TABLE recovery_queue (id TEXT PRIMARY KEY, tenant_id TEXT, canonical_job_id TEXT, opportunity_version_id TEXT, source TEXT, canonical_url TEXT, reason TEXT, failure_class TEXT, attempt_count INTEGER, status TEXT, next_attempt_at TEXT, created_at TEXT);

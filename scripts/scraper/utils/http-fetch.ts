@@ -150,6 +150,86 @@ export function extractValidatedJsonLd(html: string): {
 }
 
 /**
+ * Safely extracts embedded structured JSON state (e.g. Next.js __NEXT_DATA__,
+ * or known structured JSON state elements).
+ *
+ * Invariant:
+ * - Only parses pure JSON using JSON.parse.
+ * - NEVER uses eval() or executes untrusted script content.
+ */
+export function extractStructuredSpaState(html: string): {
+  rawHtml: string;
+  rawText: string;
+  title?: string;
+  company?: string;
+} | null {
+  try {
+    const $ = cheerio.load(html);
+
+    // 1. Next.js __NEXT_DATA__
+    const nextDataScript = $("script#__NEXT_DATA__[type='application/json']");
+    if (nextDataScript.length) {
+      const content = nextDataScript.html();
+      if (content) {
+        try {
+          const parsed = JSON.parse(content);
+          const pageProps = parsed?.props?.pageProps;
+          const jobData = pageProps?.job || pageProps?.jobDetails || pageProps?.jobData || pageProps?.initialJob;
+          if (jobData && typeof jobData === "object") {
+            const title = (jobData.title || jobData.jobTitle || "").trim();
+            const company = (jobData.company || jobData.companyName || "").trim();
+            const desc = (jobData.description || jobData.jobDescription || jobData.jobDetails || "").trim();
+            if (desc.length >= 100 && title.length > 0) {
+              const $desc = cheerio.load(desc);
+              const descText = $desc.text().replace(/\s+/g, " ").trim();
+              if (descText.length >= 100) {
+                return {
+                  rawHtml: desc,
+                  rawText: [title, company, descText].filter(Boolean).join("\n\n"),
+                  title,
+                  company,
+                };
+              }
+            }
+          }
+        } catch {}
+      }
+    }
+
+    // 2. Generic structured JSON scripts
+    const jsonScripts = $("script[type='application/json']");
+    for (let i = 0; i < jsonScripts.length; i++) {
+      const script = $(jsonScripts[i]);
+      if (script.attr("id") === "__NEXT_DATA__") continue;
+      const content = script.html();
+      if (!content || content.length < 100) continue;
+      try {
+        const parsed = JSON.parse(content);
+        const candidate = parsed?.jobDetails || parsed?.job || parsed?.posting;
+        if (candidate && typeof candidate === "object") {
+          const title = (candidate.title || candidate.jobTitle || "").trim();
+          const company = (candidate.company || candidate.companyName || "").trim();
+          const desc = (candidate.description || candidate.jobDescription || "").trim();
+          if (desc.length >= 100 && title.length > 0) {
+            const $desc = cheerio.load(desc);
+            const descText = $desc.text().replace(/\s+/g, " ").trim();
+            if (descText.length >= 100) {
+              return {
+                rawHtml: desc,
+                rawText: [title, company, descText].filter(Boolean).join("\n\n"),
+                title,
+                company,
+              };
+            }
+          }
+        }
+      } catch {}
+    }
+  } catch {}
+  return null;
+}
+
+/**
  * Multi-stage HTML extractor:
  * Tier 1: Validated JSON-LD JobPosting
  * Tier 2: Sanitized DOM with Targeted Cascading Selectors
@@ -183,6 +263,24 @@ export function extractJobFromHtml(
         rawText: jsonLdResult.rawText,
         extractedTitle: jsonLdResult.title,
         extractedCompany: jsonLdResult.company,
+        method: "JSON_LD",
+        quality,
+        outcome: "SUCCESS"
+      };
+    }
+  }
+
+  // --- Tier 1.5: Validated Structured SPA State ---
+  const spaResult = extractStructuredSpaState(html);
+  if (spaResult) {
+    const quality = evaluateContentQuality(spaResult.rawText, expectedTitle || spaResult.title, expectedCompany || spaResult.company);
+    if (quality.tier !== "NON_JOB") {
+      return {
+        success: true,
+        rawHtml: spaResult.rawHtml,
+        rawText: spaResult.rawText,
+        extractedTitle: spaResult.title,
+        extractedCompany: spaResult.company,
         method: "JSON_LD",
         quality,
         outcome: "SUCCESS"

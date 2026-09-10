@@ -60,6 +60,13 @@ export interface EvidenceMatch {
   candidateCapability: string;
   confidence: number;
   reason: string;
+  /**
+   * Optional source-backed references retained by the evaluator for the
+   * capability relationship it actually selected.  They are trace metadata,
+   * not matching inputs or score contributions.
+   */
+  jobEvidenceIds?: string[];
+  candidateEvidenceIds?: string[];
 }
 
 export type CapabilityEvidenceState = "SUFFICIENT" | "PARTIAL" | "UNAVAILABLE";

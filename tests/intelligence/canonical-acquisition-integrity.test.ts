@@ -286,6 +286,22 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           UNIQUE(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
         );
 
+        CREATE TABLE IF NOT EXISTS evaluation_requirements (
+          id TEXT PRIMARY KEY,
+          tenant_id TEXT,
+          person_id TEXT,
+          search_plan_id TEXT,
+          canonical_job_id TEXT,
+          opportunity_version TEXT,
+          evaluation_context_fingerprint TEXT,
+          required_enrichment_pipeline_version TEXT DEFAULT '1.0.0',
+          status TEXT DEFAULT 'READY',
+          blocked_reason TEXT,
+          created_at DATETIME,
+          ready_at DATETIME,
+          satisfied_at DATETIME
+        );
+
         CREATE TABLE materialized_evaluations (
           id TEXT PRIMARY KEY,
           tenant_id TEXT NOT NULL,
@@ -350,6 +366,13 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
         ) VALUES (
           'job_1', 't1', 'p1', 'sp1', 'co_sparse', 'ov_sparse', 'fp1', 'pending', 0, 3, CURRENT_TIMESTAMP
         );
+
+        INSERT INTO evaluation_requirements (
+          id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
+          evaluation_context_fingerprint, status
+        ) VALUES (
+          'req_1', 't1', 'p1', 'sp1', 'co_sparse', 'ov_sparse', 'fp1', 'READY'
+        );
       `);
 
       const worker = new EvaluationWorker("test_worker_1", {
@@ -397,6 +420,13 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           evaluation_context_fingerprint, status, attempts, max_attempts, next_attempt_at
         ) VALUES (
           'job_2', 't1', 'p1', 'sp1', 'co_exp', 'ov_exp', 'fp1', 'pending', 0, 3, CURRENT_TIMESTAMP
+        );
+
+        INSERT INTO evaluation_requirements (
+          id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
+          evaluation_context_fingerprint, status
+        ) VALUES (
+          'req_2', 't1', 'p1', 'sp1', 'co_exp', 'ov_exp', 'fp1', 'READY'
         );
       `);
 

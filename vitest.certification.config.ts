@@ -20,7 +20,7 @@ export default defineConfig({
     include: certificationTestFiles,
     exclude: ["tests/archive/**", "node_modules/**"],
     environment: "node",
-    pool: "threads",
+    pool: process.platform === "win32" ? "forks" : "threads",
     // Measured baseline: the host-default pool starved the integrity suite's
     // deliberate child-process failure check. Override only for benchmarks.
     maxWorkers,

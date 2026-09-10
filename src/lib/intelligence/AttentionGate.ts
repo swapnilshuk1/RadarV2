@@ -2,6 +2,7 @@
 import type { OpportunityVersion, AttentionDecision } from "@/lib/domain/canonical_acquisition";
 import type { EligibilitySpec, LocationEligibilityPolicy, SearchCriteriaPayload } from "@/lib/domain/evaluation_context";
 import type { JobProjection } from "@/lib/domain/job_projection";
+import { GeographyResolver } from "@/lib/intelligence/semantic/resolvers/GeographyResolver";
 
 export type EligibilityDecision = "ELIGIBLE" | "REVIEW" | "INELIGIBLE";
 export type EligibilityReasonCode = "ROLE_FAMILY_MATCH" | "ADJACENT_ROLE_FAMILY" | "ROLE_UNKNOWN" | "EXCLUDED_COMPANY" | "FUNCTION_CONTRADICTION" | "SENIORITY_CONTRADICTION" | "EMPLOYMENT_CONTRADICTION" | "LOCATION_CONTRADICTION" | "LOCATION_REVIEW" | "UNUSABLE_PROJECTION";
@@ -22,12 +23,14 @@ function projectionConceptText(version: OpportunityVersion, projection?: JobProj
   return [projection.role, projection.executiveIdentity?.value, ...(projection.executiveFunction || []), ...(projection.capabilities || []).map((capability) => capability.canonicalConcept || capability.name)].filter(Boolean).join(" ");
 }
 
-const NCR_TOKENS = ["gurugram", "gurgaon", "new delhi", "delhi", "noida", "greater noida", "ghaziabad", "faridabad"];
 const REMOTE_TOKENS = ["remote", "work from home", "wfh", "anywhere"];
 const isLocationKnown = (value: string) => Boolean(value.trim()) && !/^(unknown|unspecified|india)$/i.test(value.trim());
-const isNcr = (value: string) => NCR_TOKENS.some((token) => normalize(value).includes(token));
 const isRemoteCompatible = (value: string, projection?: JobProjection) =>
   projection?.workModel === "REMOTE" || projection?.workModel === "HYBRID" || REMOTE_TOKENS.some((token) => normalize(value).includes(token));
+const allowsIndiaRemote = (locations: readonly string[]) => locations.some((location) => {
+  const normalized = normalize(location);
+  return normalized.includes("remote") && normalized.includes("india");
+});
 
 /** Explicit JD requirements outrank broad lexical role-family matches. */
 function explicitExperienceRange(text: string): { min: number; max: number } | null {
@@ -65,6 +68,7 @@ function resolveLocationPolicy(
   version: OpportunityVersion,
   projection: JobProjection | undefined,
   policy: LocationEligibilityPolicy | undefined,
+  configuredLocations: readonly string[],
 ): Pick<AttentionGateResult, "decision" | "eligibility" | "reasons" | "reasonCodes" | "locationPolicy" | "locationEvidence"> | null {
   // Legacy immutable contexts retain their established behavior until a newly
   // activated context explicitly declares a serving geography.
@@ -74,14 +78,19 @@ function resolveLocationPolicy(
     return { decision: "CANDIDATE", eligibility: "REVIEW", reasons: ["Location evidence is unavailable for the configured serving geography."], reasonCodes: ["LOCATION_REVIEW"], locationPolicy: policy, locationEvidence: evidence };
   }
   const remote = isRemoteCompatible(evidence, projection);
+  const indiaRemote = remote && /\bindia\b/i.test(evidence);
+  const remoteIndiaAllowed = allowsIndiaRemote(configuredLocations);
   const accepted = policy === "GURUGRAM_ONLY"
-    ? isNcr(evidence) && /gurugram|gurgaon/i.test(evidence)
+    ? (GeographyResolver.isNcrLocation(evidence) && /gurugram|gurgaon/i.test(evidence)) || (remoteIndiaAllowed && indiaRemote)
     : policy === "NCR"
-      ? isNcr(evidence)
+      ? GeographyResolver.isNcrLocation(evidence) || (remoteIndiaAllowed && indiaRemote)
       : policy === "REMOTE_COMPATIBLE"
-        ? isNcr(evidence) || remote
+        ? GeographyResolver.isNcrLocation(evidence) || remote
         : true;
   if (accepted) return null;
+  if (remote && remoteIndiaAllowed) {
+    return { decision: "CANDIDATE", eligibility: "REVIEW", reasons: [`Remote location '${evidence}' requires confirmation against the configured Remote India target.`], reasonCodes: ["LOCATION_REVIEW"], locationPolicy: policy, locationEvidence: evidence };
+  }
   // Hybrid is a work model, not a geography override. Only an explicitly
   // remote-compatible context may retain an out-of-area remote/hybrid role
   // for review; NCR and Gurugram-only contexts reject it deterministically.
@@ -105,7 +114,7 @@ export function evaluateAttentionGate(version: OpportunityVersion, criteria: Sea
   if (["CAPTURE_FAILED", "RECOVERY_PENDING", "RECOVERY_FAILED"].includes(version.acquisitionStatus || "")) return reject("UNUSABLE_PROJECTION", "Acquisition is not usable for eligibility.");
   if (version.companyName && includesConcept(version.companyName, spec.excludedCompanies)) return reject("EXCLUDED_COMPANY", `Company '${version.companyName}' is explicitly excluded.`);
   if (criteria.targetEmploymentTypes?.length && version.employmentType && !includesConcept(version.employmentType, criteria.targetEmploymentTypes)) return reject("EMPLOYMENT_CONTRADICTION", `Employment type '${version.employmentType}' contradicts an explicit constraint.`);
-  const locationResult = resolveLocationPolicy(version, projection, spec.locationPolicy);
+  const locationResult = resolveLocationPolicy(version, projection, spec.locationPolicy, spec.locations);
   if (locationResult) return { ...locationResult, matchedConcepts };
   const junior = hasAny(title, ["intern", "assistant", "associate", "manager", "analyst", "engineer", "developer"]);
   const executive = hasAny(title, ["chief", "vice president", "vp", "director", "head", "svp", "evp"]);

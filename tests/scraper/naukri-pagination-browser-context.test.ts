@@ -13,13 +13,18 @@ vi.mock("../../scripts/scraper/utils/jitter", () => ({
 
 describe("Naukri Browser-Context Pagination Lifecycle Contract", () => {
   it("builds canonical paginated search URLs for multi-unit dispatch", () => {
+    // Default Naukri quota is 60 (3 API pages per unit)
     const urlP1 = naukriHandler.buildSearchUrl({ query: "Chief Marketing Officer", page: 1 });
     const urlP2 = naukriHandler.buildSearchUrl({ query: "Chief Marketing Officer", page: 2 });
     const urlP3 = naukriHandler.buildSearchUrl({ query: "Chief Marketing Officer", page: 3 });
 
     expect(urlP1).toBe("https://www.naukri.com/chief-marketing-officer-jobs-in-india?k=Chief+Marketing+Officer&pageNo=1");
-    expect(urlP2).toBe("https://www.naukri.com/chief-marketing-officer-jobs-in-india-2?k=Chief+Marketing+Officer&pageNo=2");
-    expect(urlP3).toBe("https://www.naukri.com/chief-marketing-officer-jobs-in-india-3?k=Chief+Marketing+Officer&pageNo=3");
+    expect(urlP2).toBe("https://www.naukri.com/chief-marketing-officer-jobs-in-india-4?k=Chief+Marketing+Officer&pageNo=4");
+    expect(urlP3).toBe("https://www.naukri.com/chief-marketing-officer-jobs-in-india-7?k=Chief+Marketing+Officer&pageNo=7");
+
+    // Explicit 20-card single-page unit quota
+    const urlP2_20 = naukriHandler.buildSearchUrl({ query: "Chief Marketing Officer", page: 2, maxCardsPerPage: 20 });
+    expect(urlP2_20).toBe("https://www.naukri.com/chief-marketing-officer-jobs-in-india-2?k=Chief+Marketing+Officer&pageNo=2");
   });
 
   it("installs response listener before navigation and removes it in finally block", async () => {
@@ -134,7 +139,7 @@ describe("Naukri Browser-Context Pagination Lifecycle Contract", () => {
         portal: "Naukri",
         keyword: "VP Platform",
         page: pageNumber,
-        searchUrl: naukriHandler.buildSearchUrl({ query: "VP Platform", page: pageNumber }),
+        searchUrl: naukriHandler.buildSearchUrl({ query: "VP Platform", page: pageNumber, maxCardsPerPage: 20 }),
         activePage: mockPage,
         logger: vi.fn(),
         maxCards: 20,

@@ -12,6 +12,7 @@ function createFixture(overrides: Partial<Opportunity> = {}): Opportunity {
     role: "Chief Commercial Officer",
     company: "Acme Global",
     location: "Bengaluru",
+    description: "Lead commercial transformation and global growth across enterprise accounts.",
     engineRecommendation: {
       engineVerdict: "PURSUE",
       qualityScore: 88,
@@ -20,9 +21,9 @@ function createFixture(overrides: Partial<Opportunity> = {}): Opportunity {
       relativeDifferentiator: "Substantial P&L Step-up",
     },
     dimensions: [
-      { key: "functionalScope", label: "GTM Leadership", jdEvidence: { status: "Explicit" } },
-      { key: "mandate", label: "Commercial Transformation", jdEvidence: { status: "Explicit" } },
-      { key: "governance", label: "Board Reporting", jdEvidence: { status: "Explicit" } },
+      { key: "functionalScope", label: "GTM Leadership", jdEvidence: { status: "Explicit", quote: "GTM leadership and enterprise growth" } },
+      { key: "mandate", label: "Commercial Transformation", jdEvidence: { status: "Explicit", quote: "Commercial transformation across enterprise accounts" } },
+      { key: "governance", label: "Board Reporting", jdEvidence: { status: "Explicit", quote: "Reports directly to the Board of Directors" } },
     ],
     ...overrides,
   } as Opportunity;
@@ -420,13 +421,19 @@ describe("RADAR V4 Phase P1.3 — Pursuit Strategy & Effort Allocation Integrity
     expect(strategy.tailoringDepth).toBe("NONE");
   });
 
-  // Case W: PURSUE + STRONG evidence + key uncertainty -> INVESTIGATE_FIRST (P3 outranks P4)
-  it("Case W: PURSUE + STRONG evidence + key uncertainty -> INVESTIGATE_FIRST (P3 outranks P4)", () => {
-    const opp = createFixture();
+  // Case W: CONSIDER + STRONG evidence + key uncertainty -> INVESTIGATE_FIRST (P3 outranks P4)
+  it("Case W: CONSIDER + STRONG evidence + key uncertainty -> INVESTIGATE_FIRST (P3 outranks P4)", () => {
+    const opp = createFixture({
+      engineRecommendation: {
+        engineVerdict: "CONSIDER",
+        qualityScore: 78,
+      },
+    });
     const ctx = EditorialContextBuilder.build(opp);
     // Construct an explanation with a key uncertainty
     const expWithUncertainty = {
       ...PrimaryReasonResolver.resolve(ctx, opp),
+      verdict: "CONSIDER" as const,
       keyUncertainty: "Requires board confirmation of P&L governance altitude.",
     };
     const strategy = PursuitStrategyResolver.resolve(expWithUncertainty, ctx);

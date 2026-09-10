@@ -159,9 +159,9 @@ export class PursuitStrategyResolver {
     // (Outranks ordinary PURSUE/CONSIDER tailoring recommendations)
     // -------------------------------------------------------------
     const isSparseSpec =
-      explanation.evidenceStrength === "INSUFFICIENT" ||
       explanation.primaryReason.includes("Sparse specification") ||
-      ruleIds.includes("SPARSE_SPECIFICATION");
+      ruleIds.includes("SPARSE_SPECIFICATION") ||
+      (verdict !== "PURSUE" && explanation.evidenceStrength === "INSUFFICIENT");
 
     if (isSparseSpec) {
       const actions: PursuitAction[] = [
@@ -196,7 +196,7 @@ export class PursuitStrategyResolver {
       };
     }
 
-    if (explanation.keyUncertainty != null) {
+    if (verdict !== "PURSUE" && explanation.keyUncertainty != null) {
       const actions: PursuitAction[] = [
         {
           type: "INVESTIGATE_ROLE",
@@ -375,31 +375,31 @@ export class PursuitStrategyResolver {
       } else {
         const actions: PursuitAction[] = [
           {
-            type: "INVESTIGATE_ROLE",
+            type: "CLARIFY_SCOPE",
             priority: "PRIMARY",
-            label: "Investigate role mandate",
-            rationale: "Verify core role parameters before full preparation.",
+            label: "Proceed with screening and clarify remaining scope",
+            rationale: "The PURSUE recommendation stands; use the initial conversation to resolve remaining role details.",
           },
         ];
         return {
           engineVerdict: "PURSUE",
-          effortLevel: "INVESTIGATE_FIRST",
-          pursuitMode: "INVESTIGATE_THEN_DECIDE",
+          effortLevel: "LIGHT",
+          pursuitMode: "CLARIFY_SCOPE",
           tailoringDepth: "NONE",
-          ruleId: "PURSUE_INVESTIGATE_LIMITED_EVIDENCE",
-          executiveLabel: "Investigate before investing",
+          ruleId: "PURSUE_CLARIFY_LIMITED_EVIDENCE",
+          executiveLabel: "Proceed with focused outreach",
           headline,
           bottomLine,
-          whyThisEffortLevel: "Limited role evidence requires verification before deep preparation.",
-          immediateNextAction: "Verify role mandate depth on introductory call.",
+          whyThisEffortLevel: "The PURSUE recommendation stands; remaining role details should be clarified during screening rather than treated as a decision blocker.",
+          immediateNextAction: "Proceed with screening and clarify the remaining role scope.",
           actions,
-          keyDependency: "Recruiter screening to confirm role depth and evidence requirements.",
-          stopCondition: "Stop investing application effort if the confirmed mandate is materially below target executive operating altitude.",
+          keyDependency: "Initial screening confirmation of remaining role details.",
+          stopCondition: "Reassess only if screening reveals a material conflict with the evaluated mandate.",
           provenance: [
             {
               source: "EVIDENCE_GATE",
-              ruleId: "PURSUE_INVESTIGATE_LIMITED_EVIDENCE",
-              signal: "LIMITED_EVIDENCE_INVESTIGATE",
+              ruleId: "PURSUE_CLARIFY_LIMITED_EVIDENCE",
+              signal: "LIMITED_EVIDENCE_CLARIFY",
             },
           ],
         };

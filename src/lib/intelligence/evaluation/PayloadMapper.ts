@@ -1,6 +1,7 @@
 import { computeEvaluationIdentity, validateEvaluationConsistency } from "../../domain/evaluation_fingerprint";
 import type { 
   CanonicalEvaluatedPayloadV4_3, 
+  CanonicalDecisionTraceV1,
   CanonicalUnavailablePayloadV4_3,
   UnavailableReasonCode,
   PersistedEvaluationPayloadV4_3
@@ -9,6 +10,79 @@ import type { EvaluationContext } from "../../domain/evaluation_context";
 import type { MaterializedEvaluation } from "../../domain/evaluation_context";
 import { isCanonicalIntrinsicEvaluationV4_3, isCanonicalUnavailablePayload } from "../../domain/evaluation_payloads";
 import type { EvaluationArtifact } from "../engine";
+import type { EvidenceMatch } from "../../domain/semantic";
+import type { DecisionDriver } from "../policy/DecisionPolicyEngine";
+import type { CandidateProjection } from "../../domain/candidate_projection";
+
+/**
+ * Projects evaluator output into a versioned persisted trace without adding
+ * rationale. Evidence identifiers are copied only from the evaluator's exact
+ * selected mapping; this mapper never infers a candidate↔job relationship.
+ */
+export function buildCanonicalDecisionTrace(
+  artifact: EvaluationArtifact,
+  _candidateProjection?: CandidateProjection,
+): CanonicalDecisionTraceV1 {
+  const evaluatorMappings = (artifact.record?.trace?.evidenceMapping ?? []) as readonly EvidenceMatch[];
+  const relationships = evaluatorMappings
+    .filter((mapping: EvidenceMatch) => (
+      typeof mapping?.jobCapability === "string"
+      && mapping.jobCapability.trim().length > 0
+      && typeof mapping.candidateCapability === "string"
+      && mapping.candidateCapability.trim().length > 0
+    ))
+    .map((mapping: EvidenceMatch) => ({
+      jobCapabilityKey: mapping.jobCapability.trim(),
+      candidateCapabilityKey: mapping.candidateCapability.trim(),
+      jobEvidenceIds: [...new Set(mapping.jobEvidenceIds ?? [])].sort(),
+      candidateEvidenceIds: [...new Set(mapping.candidateEvidenceIds ?? [])].sort(),
+      relationship: "MATCH" as const,
+      basis: "EVALUATOR" as const,
+    }));
+  const relationshipsByCapabilityPair = new Map<string, CanonicalDecisionTraceV1["relationships"][number]>();
+  for (const relationship of relationships) {
+    const key = `${relationship.relationship}\u0000${relationship.jobCapabilityKey}\u0000${relationship.candidateCapabilityKey}`;
+    const prior = relationshipsByCapabilityPair.get(key);
+    if (!prior) {
+      relationshipsByCapabilityPair.set(key, relationship);
+      continue;
+    }
+    // Multiple evaluator mappings may point to the same canonical capability
+    // pair from different source facts. They are one evaluator relationship,
+    // so preserve the union of its exact evidence references rather than
+    // emitting a fan-out or silently discarding later provenance.
+    relationshipsByCapabilityPair.set(key, {
+      ...prior,
+      jobEvidenceIds: [...new Set([...prior.jobEvidenceIds, ...relationship.jobEvidenceIds])].sort(),
+      candidateEvidenceIds: [...new Set([...prior.candidateEvidenceIds, ...relationship.candidateEvidenceIds])].sort(),
+    });
+  }
+
+  const components = [
+    ...((artifact.record?.decisionDrivers ?? []) as readonly DecisionDriver[]).map((driver: DecisionDriver) => ({
+      dimension: driver.factor,
+      state: "STRENGTH" as const,
+      evidenceIds: [] as string[],
+    })),
+    ...((artifact.record?.decisionRisks ?? []) as readonly DecisionDriver[]).map((driver: DecisionDriver) => ({
+      dimension: driver.factor,
+      state: "CONSTRAINT" as const,
+      evidenceIds: [] as string[],
+    })),
+  ].filter((component) => typeof component.dimension === "string" && component.dimension.trim().length > 0);
+  const seenComponents = new Set<string>();
+
+  return {
+    version: "canonical-decision-trace/v1",
+    relationships: [...relationshipsByCapabilityPair.values()],
+    components: components.filter((component) => {
+      const key = `${component.state}\u0000${component.dimension}`;
+      if (seenComponents.has(key)) return false;
+      seenComponents.add(key);
+      return true;
+    }),
+  };
+}
 
 export class ContractViolationError extends Error {
   constructor(message: string) {
@@ -66,7 +140,8 @@ export function buildCanonicalEvaluatedPayload(
   context: EvaluationContext,
   canonicalJobId: string,
   opportunityVersion: string,
-  evaluatedAt: string
+  evaluatedAt: string,
+  candidateProjection?: CandidateProjection,
 ): CanonicalEvaluatedPayloadV4_3 {
   assertValidString(canonicalJobId, "canonicalJobId");
   assertValidString(opportunityVersion, "opportunityVersion");
@@ -115,7 +190,8 @@ export function buildCanonicalEvaluatedPayload(
     decision: decision,
     score: score,
     diligenceStatus: diligence as "READY" | "INSUFFICIENT" | "STALE" | "FAILED" | "UNKNOWN",
-    jobProjection: artifact.jobProjection
+    jobProjection: artifact.jobProjection,
+    decisionTrace: buildCanonicalDecisionTrace(artifact, candidateProjection),
   };
 }
 

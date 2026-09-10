@@ -110,9 +110,23 @@ export class AdvisoryConstitution {
     const mandateQuotes = quotesFor("mandate");
     const functionalScopeQuotes = quotesFor("functionalScope");
     const reportingLineQuotes = quotesFor("reportingLine");
-    const commercialAccountabilityQuotes = quotesFor("commercialAccountability");
-    const decisionRightsQuotes = [...mandateQuotes, ...functionalScopeQuotes]
-      .filter((quote) => /decision|authority|accountable|approve/i.test(quote));
+    const commercialAccountabilityQuotes = [
+      ...new Set([
+        ...quotesFor("commercialAccountability"),
+        ...quotesFor("commercialScope"),
+      ]),
+    ];
+    const decisionRightsQuotes = [
+      ...new Set([
+        ...quotesFor("decisionAuthority"),
+        ...mandateQuotes.filter((quote) =>
+          /decision|authority|accountable|approve|sign[- ]?off/i.test(quote),
+        ),
+        ...functionalScopeQuotes.filter((quote) =>
+          /decision|authority|accountable|approve|sign[- ]?off/i.test(quote),
+        ),
+      ]),
+    ];
     const recommendation = asRecord(input?.engineRecommendation) || asRecord(input?.recommendationResult);
     const capabilityFit = asRecord(recommendation?.capabilityFit);
     const careerAssessment = asText(recommendation?.relativeDifferentiator)
@@ -193,7 +207,10 @@ export class AdvisoryConstitution {
 
     const hasEvaluation = Boolean(input.engineRecommendation || input.recommendationResult);
 
-    if (text.length >= 200 || (hasEvaluation && hasMandateBearingEvidence)) {
+    // Document length is transport metadata, not semantic evidence. A long JD
+    // must not unlock the legacy rich composer unless a mandate-bearing fact is
+    // explicitly grounded in the evaluated record.
+    if (hasEvaluation && hasMandateBearingEvidence) {
       return { state: "EVALUATED", isSufficient: true };
     }
 
