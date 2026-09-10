@@ -17,6 +17,8 @@ type Row = {
   source_evaluation_fingerprint: string | null;
   current_evaluation_state: string | null;
   current_evaluation_fingerprint: string | null;
+  current_decision: string | null;
+  current_quality_score: number | null;
   presentation_json: string;
 };
 
@@ -33,7 +35,8 @@ async function main() {
   const db = getDatabaseAdapter();
   const rows = await db.many<Row>(`SELECT dp.tenant_id, dp.person_id, dp.canonical_job_id, dp.opportunity_version,
     dp.evaluation_context_fingerprint, dp.source_evaluation_fingerprint, dp.presentation_json,
-    me.evaluation_state AS current_evaluation_state, me.evaluation_fingerprint AS current_evaluation_fingerprint
+    me.evaluation_state AS current_evaluation_state, me.evaluation_fingerprint AS current_evaluation_fingerprint,
+    me.decision AS current_decision, me.quality_score AS current_quality_score
     FROM materialized_dossier_presentations dp
     LEFT JOIN materialized_evaluations me ON me.tenant_id = dp.tenant_id AND me.person_id = dp.person_id
       AND me.canonical_job_id = dp.canonical_job_id AND me.opportunity_version = dp.opportunity_version
@@ -69,6 +72,11 @@ async function main() {
       ? row.current_evaluation_state !== "EVALUATED" || row.current_evaluation_fingerprint !== presentation.evaluation.fingerprint
       : row.current_evaluation_state !== presentation.evaluation.state || row.current_evaluation_fingerprint !== null;
   }).length;
+  const currentScalarMismatches = rows.filter((row, index) => {
+    const presentation = presentations[index];
+    return presentation?.evaluation.state === "EVALUATED"
+      && (presentation.evaluation.verdict !== row.current_decision || presentation.evaluation.score !== row.current_quality_score);
+  }).length;
   const lines = [
     "# Persisted Dossier V2 Readback", "",
     `Generated: ${new Date().toISOString()}`, "",
@@ -84,6 +92,7 @@ async function main() {
     `- Identity mismatches among structurally valid rows: ${identityMismatches}`,
     `- Evaluation-fingerprint mismatches among structurally valid rows: ${fingerprintMismatches}`,
     `- Current evaluation stale-state mismatches among structurally valid rows: ${staleStateMismatches}`,
+    `- Current evaluation scalar mismatches among structurally valid rows: ${currentScalarMismatches}`,
     "", "## Representative persisted propositions", "",
     ...valid.slice(0, 8).flatMap((item) => [
       `### ${item.identity.canonicalJobId}`,
@@ -95,26 +104,35 @@ async function main() {
   await mkdir(reportDir, { recursive: true });
   const reportPath = join(reportDir, `phase4-dossier-v2-readback-${Date.now()}.md`);
   await writeFile(reportPath, `${lines.join("\n")}\n`, "utf8");
-  const invalidRows = rows.filter((_, index) => presentations[index] === null).map((row) => ({
-    tenantId: row.tenant_id,
-    personId: row.person_id,
-    canonicalJobId: row.canonical_job_id,
-    opportunityVersion: row.opportunity_version,
-    evaluationContextFingerprint: row.evaluation_context_fingerprint,
-    sourceEvaluationFingerprint: row.source_evaluation_fingerprint,
-    generatedAt: JSON.parse(row.presentation_json).generatedAt ?? null,
-    presentationJsonSha256: createHash("sha256").update(row.presentation_json).digest("hex"),
-    presentationJson: row.presentation_json,
-  }));
+  const invalidRows = rows.filter((_, index) => presentations[index] === null).map((row) => {
+    let generatedAt: string | null = null;
+    try {
+      const parsed: unknown = JSON.parse(row.presentation_json);
+      if (parsed && typeof parsed === "object" && "generatedAt" in parsed && typeof parsed.generatedAt === "string") generatedAt = parsed.generatedAt;
+    } catch {
+      // The snapshot must retain malformed source JSON verbatim for rollback.
+    }
+    return {
+      tenantId: row.tenant_id,
+      personId: row.person_id,
+      canonicalJobId: row.canonical_job_id,
+      opportunityVersion: row.opportunity_version,
+      evaluationContextFingerprint: row.evaluation_context_fingerprint,
+      sourceEvaluationFingerprint: row.source_evaluation_fingerprint,
+      generatedAt,
+      presentationJsonSha256: createHash("sha256").update(row.presentation_json).digest("hex"),
+      presentationJson: row.presentation_json,
+    };
+  });
   if (invalidRows.length > 0) {
     const snapshotPath = join(reportDir, `phase4-dossier-v2-invalid-rollback-${Date.now()}.json`);
     await writeFile(snapshotPath, `${JSON.stringify(invalidRows, null, 2)}\n`, "utf8");
     console.log(`Persisted dossier-v2 rollback snapshot: ${snapshotPath}`);
   }
   console.log(`Persisted dossier-v2 readback: ${reportPath}`);
-  const summary = { total: rows.length, valid: valid.length, invalid, evaluated: evaluated.length, sourceOnly, badEvaluation, noLineage, candidateAsEmployer, untraceableInference, identityMismatches, fingerprintMismatches, staleStateMismatches };
+  const summary = { total: rows.length, valid: valid.length, invalid, evaluated: evaluated.length, sourceOnly, badEvaluation, noLineage, candidateAsEmployer, untraceableInference, identityMismatches, fingerprintMismatches, staleStateMismatches, currentScalarMismatches };
   console.log(JSON.stringify(summary));
-  if (invalid || badEvaluation || noLineage || candidateAsEmployer || untraceableInference || identityMismatches || fingerprintMismatches || staleStateMismatches) process.exitCode = 1;
+  if (invalid || badEvaluation || noLineage || candidateAsEmployer || untraceableInference || identityMismatches || fingerprintMismatches || staleStateMismatches || currentScalarMismatches) process.exitCode = 1;
 }
 
 main().catch((error) => {

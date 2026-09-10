@@ -53,7 +53,9 @@ function parseArgs() {
   const isDryRun = args.includes("--dry-run") || !isApply;
   const runIdIdx = args.indexOf("--run-id");
   const runId = runIdIdx !== -1 && args[runIdIdx + 1] ? args[runIdIdx + 1] : "run-1788945245759";
-  return { isApply, isDryRun, runId, all: args.includes("--all"), repairInvalidV2: args.includes("--repair-invalid-v2") };
+  const expectedRepairCountIndex = args.indexOf("--expected-repair-count");
+  const expectedRepairCount = expectedRepairCountIndex >= 0 ? Number(args[expectedRepairCountIndex + 1]) : null;
+  return { isApply, isDryRun, runId, all: args.includes("--all"), repairInvalidV2: args.includes("--repair-invalid-v2"), expectedRepairCount };
 }
 
 function parseJsonStrict(value: string | null): unknown | null {
@@ -121,7 +123,7 @@ function presentationArtifact(payload: CanonicalEvaluatedPayloadV4_3): Evaluatio
 }
 
 async function main() {
-  const { isApply, isDryRun, runId, all, repairInvalidV2 } = parseArgs();
+  const { isApply, isDryRun, runId, all, repairInvalidV2, expectedRepairCount } = parseArgs();
   console.log(`[materialize-dossier-v2] Mode: ${isApply ? "APPLY" : "DRY-RUN"}`);
   console.log(`[materialize-dossier-v2] Target: ${all ? "ALL active candidate cohorts" : `Run ${runId}`}`);
   const db = getDatabaseAdapter();
@@ -176,8 +178,11 @@ async function main() {
     const parsed = parseJsonStrict(row.presentation_json);
     return isCanonicalDossierPresentationV2(parsed) ? [] : [presentationKey(row)];
   }));
-  if (repairInvalidV2 && invalidPersistedKeys.size !== 56) {
-    throw new Error(`[materialize-dossier-v2] Guarded repair requires exactly 56 invalid persisted V2 rows; found ${invalidPersistedKeys.size}.`);
+  if (repairInvalidV2 && (!Number.isSafeInteger(expectedRepairCount) || expectedRepairCount! < 1)) {
+    throw new Error("[materialize-dossier-v2] Guarded repair requires --expected-repair-count N.");
+  }
+  if (repairInvalidV2 && invalidPersistedKeys.size !== expectedRepairCount) {
+    throw new Error(`[materialize-dossier-v2] Guarded repair expected ${expectedRepairCount} invalid persisted V2 rows; found ${invalidPersistedKeys.size}.`);
   }
 
   const candidateCache = new Map<string, CandidateProjection | null>();
@@ -279,8 +284,8 @@ async function main() {
     })))
     : presentations;
   if (repairInvalidV2) {
-    if (repairPresentations.length !== 56 || repairPresentations.some((presentation) => presentation.evaluation.state !== "EVALUATED")) {
-      throw new Error(`[materialize-dossier-v2] Guarded repair set is not exactly 56 evaluated presentations.`);
+    if (repairPresentations.length !== expectedRepairCount || repairPresentations.some((presentation) => presentation.evaluation.state !== "EVALUATED")) {
+      throw new Error(`[materialize-dossier-v2] Guarded repair set is not exactly ${expectedRepairCount} evaluated presentations.`);
     }
     console.log(`[materialize-dossier-v2] Guarded repair set: ${repairPresentations.length} evaluated stale V2 presentations.`);
   }

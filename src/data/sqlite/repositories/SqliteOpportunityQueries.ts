@@ -1211,7 +1211,11 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       presentationIdentity,
       row.evaluation_fingerprint,
     );
-    if (presentationV2) {
+    if (presentationV2
+      && presentationV2.evaluation.state === "EVALUATED"
+      && presentationV2.evaluation.fingerprint === row.evaluation_fingerprint
+      && presentationV2.evaluation.verdict === row.engine_decision
+      && presentationV2.evaluation.score === row.quality_score) {
       opp.dossierPresentationV2 = presentationV2;
     }
 
