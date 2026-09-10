@@ -5,7 +5,12 @@ import { runEngineSingleIntrinsic } from "./engine";
 import { validateCandidateProjection } from "../domain/candidate_projection";
 import { validateEvaluationConsistency } from "@/lib/domain/evaluation_fingerprint";
 import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
-import { buildCanonicalDossierPresentation } from "./dossier/CanonicalDossierBuilder";
+import type { CanonicalDossierPresentationV2 } from "@/lib/domain/dossier_presentation";
+import {
+  buildEvaluatedPresentationV2,
+  buildUnavailablePresentationV2,
+} from "./dossier/CanonicalDossierPresentationMaterializer";
+import { SqliteDossierPresentationStore } from "@/data/sqlite/repositories/SqliteDossierPresentationStore";
 import type { EvaluationContext } from "@/lib/domain/evaluation_context";
 import type { OpportunitySource } from "@/data/opportunity-fixtures";
 import { resolveExactCandidateProjectionForScope } from "@/data/sqlite/repositories/profile-projection-version";
@@ -236,6 +241,10 @@ export class EvaluationWorker {
         } as unknown as OpportunitySource;
       }
       oppSource.jobHash ||= job.canonicalJobId;
+      // The source payload's card identity is not the immutable opportunity
+      // version. Pin the latter before intrinsic evaluation so all downstream
+      // projection and trace evidence is bound to the exact version leased.
+      oppSource.opportunityVersion = job.opportunityVersion;
 
       const snapshotRow = await this.db.one<{ payload_json: string }>(
         `SELECT sps.payload_json
@@ -263,17 +272,43 @@ export class EvaluationWorker {
       if (!rawProjection) {
         // A missing profile is a domain state, not permission to evaluate a
         // synthetic executive. Persist an explicitly non-advisory result.
+        const evaluatedAt = new Date().toISOString();
         const unavailable = buildCanonicalUnavailablePayload(
           oppSource.jobHash || job.canonicalJobId,
           "NOT_EVALUABLE",
           context,
           job.canonicalJobId,
           job.opportunityVersion,
-          new Date().toISOString(),
+          evaluatedAt,
         );
         const materialized = materializeCanonicalPayload(unavailable);
         validateEvaluationConsistency(materialized);
-        return await this.commitEvaluationMaterialization(job, materialized);
+
+        let dossierPresentationV2: CanonicalDossierPresentationV2 | null = null;
+        const presentationEvidence = JobProjectionBuilder.extractPresentationEvidenceForPresentation(
+          versionRow.raw_content,
+          job.opportunityVersion,
+          [],
+        );
+        if (presentationEvidence.evidence.length > 0 || presentationEvidence.qualifications.length > 0) {
+          dossierPresentationV2 = buildUnavailablePresentationV2({
+            identity: {
+              tenantId: job.tenantId,
+              personId: job.personId,
+              canonicalJobId: job.canonicalJobId,
+              opportunityVersion: job.opportunityVersion,
+              evaluationContextFingerprint: job.evaluationContextFingerprint,
+            },
+            reasonCode: "NOT_EVALUABLE",
+            presentationEvidence: {
+              roleWorkEvidence: presentationEvidence.evidence,
+              presentationQualificationEvidence: presentationEvidence.qualifications,
+            },
+            generatedAt: evaluatedAt,
+          });
+        }
+
+        return await this.commitEvaluationMaterialization(job, materialized, dossierPresentationV2);
       }
       const projection = rawProjection;
 
@@ -322,21 +357,9 @@ export class EvaluationWorker {
         : resolveArtifactEvaluationState(artifact);
       const evaluatedAt = new Date().toISOString();
       const canonicalPayload = evaluationState === "EVALUATED"
-        ? (() => {
-            const intrinsic = buildCanonicalEvaluatedPayload(
-              artifact, context, job.canonicalJobId, job.opportunityVersion, evaluatedAt, projection,
-            );
-            return {
-              ...intrinsic,
-              dossierPresentation: buildCanonicalDossierPresentation(
-                artifact,
-                projection,
-                intrinsic.evaluationInputHash,
-                evaluatedAt,
-                evaluatedAt,
-              ),
-            };
-          })()
+        ? buildCanonicalEvaluatedPayload(
+            artifact, context, job.canonicalJobId, job.opportunityVersion, evaluatedAt, projection,
+          )
         : buildCanonicalUnavailablePayload(
             oppSource.jobHash || job.canonicalJobId,
             evaluationState,
@@ -353,7 +376,44 @@ export class EvaluationWorker {
       const isVetoed = Boolean(artifact.record?.vetoed ?? false);
       const vetoedScalar = isVetoed ? 1 : 0;
 
-      return await this.commitEvaluationMaterialization(job, materialized);
+      let dossierPresentationV2: CanonicalDossierPresentationV2 | null = null;
+      if (evaluationState === "EVALUATED") {
+        dossierPresentationV2 = buildEvaluatedPresentationV2({
+          identity: {
+            tenantId: job.tenantId,
+            personId: job.personId,
+            canonicalJobId: job.canonicalJobId,
+            opportunityVersion: job.opportunityVersion,
+            evaluationContextFingerprint: job.evaluationContextFingerprint,
+          },
+          artifact,
+          candidateProjection: projection,
+          presentationEvidence: {
+            roleWorkEvidence: presentationEvidence.evidence,
+            presentationQualificationEvidence: presentationEvidence.qualifications,
+          },
+          evaluationFingerprint: canonicalPayload.evaluationInputHash,
+          generatedAt: evaluatedAt,
+        });
+      } else if (presentationEvidence.evidence.length > 0 || presentationEvidence.qualifications.length > 0) {
+        dossierPresentationV2 = buildUnavailablePresentationV2({
+          identity: {
+            tenantId: job.tenantId,
+            personId: job.personId,
+            canonicalJobId: job.canonicalJobId,
+            opportunityVersion: job.opportunityVersion,
+            evaluationContextFingerprint: job.evaluationContextFingerprint,
+          },
+          reasonCode: evaluationState,
+          presentationEvidence: {
+            roleWorkEvidence: presentationEvidence.evidence,
+            presentationQualificationEvidence: presentationEvidence.qualifications,
+          },
+          generatedAt: evaluatedAt,
+        });
+      }
+
+      return await this.commitEvaluationMaterialization(job, materialized, dossierPresentationV2);
     } catch (err: any) {
       const errorMsg = err?.message || String(err);
       const nextAttemptNumber = job.attempts + 1;
@@ -460,7 +520,8 @@ export class EvaluationWorker {
 
   private async commitEvaluationMaterialization(
     job: ClaimedJob,
-    materialized: any
+    materialized: any,
+    dossierPresentationV2?: CanonicalDossierPresentationV2 | null,
   ): Promise<WorkerProcessingResult> {
     const result = await this.db.transaction<WorkerProcessingResult>(async (tx) => {
       const leaseCheck = await tx.one<{ id: string }>(
@@ -509,6 +570,11 @@ export class EvaluationWorker {
           materialized.vetoed ? 1 : 0,
         ]
       );
+
+      if (dossierPresentationV2) {
+        const presentationStore = new SqliteDossierPresentationStore(tx);
+        await presentationStore.savePresentation(dossierPresentationV2);
+      }
 
       const completeRes = await tx.execute(
         `UPDATE evaluation_jobs

@@ -158,6 +158,56 @@ describe("EditorialPropositionComposer", () => {
       "Strong experience with CRM, lifecycle measurement, and retention strategy.",
     );
     expect(composed.sections.mandate.propositions.every((item) => item.kind === "EMPLOYER_FACT")).toBe(true);
+    expect(composed.sections.hero.propositions[0]).toEqual(expect.objectContaining({
+      kind: "RADAR_INFERENCE",
+      roleEvidenceIds: ["qualification:crm"],
+    }));
+    expect(composed.sections.bottomLine.propositions[0]).toEqual(expect.objectContaining({
+      kind: "RADAR_INFERENCE",
+      roleEvidenceIds: ["qualification:crm"],
+    }));
+    expect(composed.sections.bottomLine.propositions[0]?.text).toMatch(/screening bar|role requirements/i);
+    expect(composed.sections.bottomLine.propositions[0]?.text).not.toMatch(/owns|responsibilit/i);
+  });
+
+  it("uses role context substantively without inventing an operating mandate", () => {
+    const composed = composeEditorialIntelligenceV2(contract({
+      publishedRoleWork: [],
+      qualificationRequirements: [],
+      roleContext: [{
+        kind: "ROLE_CONTEXT",
+        statement: "Reports to the regional CEO.",
+        sourceEvidenceId: "context:reports-to",
+        capabilityKeys: [],
+      }],
+      candidateCapabilities: [],
+      candidatePrecedents: [],
+    }));
+
+    expect(composed.sections.hero.propositions[0]).toEqual(expect.objectContaining({
+      kind: "RADAR_INFERENCE",
+      roleEvidenceIds: ["context:reports-to"],
+    }));
+    expect(composed.sections.bottomLine.propositions[0]).toEqual(expect.objectContaining({
+      kind: "RADAR_INFERENCE",
+      roleEvidenceIds: ["context:reports-to"],
+    }));
+    expect(composed.sections.hero.headline).toMatch(/limited concrete ownership/i);
+    expect(composed.sections.hero.headline).not.toMatch(/owns|mandate is/i);
+  });
+
+  it("uses evidence limitation only after work, qualifications, context, and trace evidence are exhausted", () => {
+    const composed = composeEditorialIntelligenceV2(contract({
+      publishedRoleWork: [],
+      qualificationRequirements: [],
+      roleContext: [],
+      candidateCapabilities: [],
+      candidatePrecedents: [],
+      candidateFitEvidence: [],
+      canonicalSignals: [],
+    }));
+
+    expect(composed.sections.hero.propositions[0]?.kind).toBe("EVIDENCE_LIMITATION");
     expect(composed.sections.bottomLine.propositions[0]?.kind).toBe("EVIDENCE_LIMITATION");
   });
 

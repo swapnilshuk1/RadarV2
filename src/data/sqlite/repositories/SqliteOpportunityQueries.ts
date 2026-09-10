@@ -53,6 +53,7 @@ import { isCanonicalIntrinsicEvaluationV4_3 } from "../../../lib/domain/evaluati
 import { isCanonicalDossierPresentationV1 } from "../../../lib/domain/dossier_presentation";
 import { classifyOpportunityCategories, type CategoryId } from "../../../lib/domain/category_taxonomy";
 import { resolveServingScope, type ActiveServingContext } from "../../../lib/security/scope-resolver";
+import { SqliteDossierPresentationStore } from "./SqliteDossierPresentationStore";
 
 function toScrapeSource(val: unknown): ScrapeSource {
   if (val === "LinkedIn" || val === "Naukri" || val === "Indeed") return val as ScrapeSource;
@@ -981,6 +982,15 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
 
     if (!row) return null;
 
+    const presentationStore = new SqliteDossierPresentationStore(this.db);
+    const presentationIdentity = {
+      tenantId: scope.tenantId,
+      personId: scope.personId,
+      canonicalJobId: row.canonical_job_id,
+      opportunityVersion: row.opportunity_version_id,
+      evaluationContextFingerprint: activeContext.contextFingerprint,
+    };
+
     const unavailState = toUnavailableState(row.evaluation_state);
     if (unavailState !== null) {
       const userDecision = row.user_action ? toUserAction(row.user_action) : null;
@@ -993,7 +1003,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         reviewedFingerprint: row.reviewed_fingerprint,
         qualityScore: null,
       });
-      return {
+      const unavailOpp: UnavailableOpportunity = {
         evaluationState: unavailState,
         jobHash: String(row.source_job_id),
         role: row.job_title || "UNKNOWN",
@@ -1013,7 +1023,12 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         } : null,
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
-      } as UnavailableOpportunity;
+      };
+      const presentationV2 = await presentationStore.getPresentation(presentationIdentity, null);
+      if (presentationV2) {
+        unavailOpp.dossierPresentationV2 = presentationV2;
+      }
+      return unavailOpp;
     }
 
     if (!row.evaluation_json) {
@@ -1064,7 +1079,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         reviewedFingerprint: row.reviewed_fingerprint,
         qualityScore: null,
       });
-      return {
+      const invalidOpp: UnavailableOpportunity = {
         evaluationState: "INVALID",
         jobHash: String(row.source_job_id),
         role: row.job_title || "UNKNOWN",
@@ -1084,7 +1099,12 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         } : null,
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
-      } as UnavailableOpportunity;
+      };
+      const presentationV2 = await presentationStore.getPresentation(presentationIdentity, null);
+      if (presentationV2) {
+        invalidOpp.dossierPresentationV2 = presentationV2;
+      }
+      return invalidOpp;
     }
 
     const userState: UserDecisionStateV4 | null = row.user_action
@@ -1121,7 +1141,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         reviewedFingerprint: row.reviewed_fingerprint,
         qualityScore: null,
       });
-      return {
+      const invalidOpp: UnavailableOpportunity = {
         evaluationState: "INVALID",
         jobHash: String(row.source_job_id),
         role: row.job_title || "UNKNOWN",
@@ -1135,7 +1155,12 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         evaluationFingerprint: readModel.evaluationFingerprint,
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
-      } as UnavailableOpportunity;
+      };
+      const presentationV2 = await presentationStore.getPresentation(presentationIdentity, null);
+      if (presentationV2) {
+        invalidOpp.dossierPresentationV2 = presentationV2;
+      }
+      return invalidOpp;
     }
 
     const opp = serveCanonicalEvaluatedPayload(rawParsed, oppSource, userState, Boolean(row.vetoed)) as EvaluatedOpportunity;
@@ -1155,7 +1180,7 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
       qualityScore: row.quality_score,
     });
     if (readModel.evaluationState !== "EVALUATED") {
-      return {
+      const invalidOpp: UnavailableOpportunity = {
         evaluationState: "INVALID",
         jobHash: String(row.source_job_id),
         role: row.job_title || "UNKNOWN",
@@ -1170,7 +1195,12 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         userDecision: userState,
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
-      } as UnavailableOpportunity;
+      };
+      const presentationV2 = await presentationStore.getPresentation(presentationIdentity, null);
+      if (presentationV2) {
+        invalidOpp.dossierPresentationV2 = presentationV2;
+      }
+      return invalidOpp;
     }
     // Persisted materialized columns, not JSON compatibility aliases, are the
     // authoritative recommendation/provenance values exposed by dossier.
@@ -1186,6 +1216,14 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
     opp.evaluationFingerprint = readModel.evaluationFingerprint;
     opp.effectiveDecision = readModel.effectiveDecision as EffectiveDecision;
     (opp as EvaluatedOpportunity & { reviewState: CanonicalReviewState }).reviewState = readModel.reviewState;
+
+    const presentationV2 = await presentationStore.getPresentation(
+      presentationIdentity,
+      row.evaluation_fingerprint,
+    );
+    if (presentationV2) {
+      opp.dossierPresentationV2 = presentationV2;
+    }
 
     return opp;
   }

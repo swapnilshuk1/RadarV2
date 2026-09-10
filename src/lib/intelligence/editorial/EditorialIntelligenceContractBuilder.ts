@@ -1,7 +1,7 @@
 import { isMeaningfulEvidenceQuote } from "@/domain/evidence";
 import type { CandidateProjection } from "@/lib/domain/candidate_projection";
 import type { EvidenceMatch } from "@/lib/domain/semantic";
-import type { CanonicalDecisionTraceV1 } from "@/lib/domain/evaluation_payloads";
+import type { CanonicalDecisionTraceV1, UnavailableReasonCode } from "@/lib/domain/evaluation_payloads";
 import type { ProjectedQualificationEvidence, ProjectedRoleWorkEvidence } from "@/lib/domain/job_projection";
 import type { EvaluationArtifact } from "@/lib/intelligence/engine";
 import { substantiveCandidateEvidence } from "./CandidateProofPolicy";
@@ -20,6 +20,19 @@ import type {
   PublishedRoleWork,
   PublishedRoleOutcome,
 } from "./EditorialIntelligenceContract";
+
+export type EditorialContractInput =
+  | {
+      state: "EVALUATED";
+      artifact: EvaluationArtifact;
+      candidateProjection: CandidateProjection;
+      presentationEvidence?: EditorialIntelligenceContractOptions;
+    }
+  | {
+      state: "UNAVAILABLE";
+      reasonCode: UnavailableReasonCode;
+      presentationEvidence?: EditorialIntelligenceContractOptions;
+    };
 
 const GENERIC_EDITORIAL_TEXT = [
   "no material structural risk identified",
@@ -912,7 +925,6 @@ function candidateFitEvidence(
 
   return unique(fits, (fit) => fit.id);
 }
-
 function publishedQualificationRequirements(
   qualifications: readonly QualificationSignal[],
 ): PublishedQualificationRequirement[] {
@@ -1025,8 +1037,112 @@ function synthesisInputs(
   return inputs;
 }
 
-/** Builds persisted editorial material without participating in canonical evaluation truth. */
-export function buildEditorialIntelligenceContract(
+function buildUnavailableContract(
+  reasonCode: UnavailableReasonCode,
+  options?: EditorialIntelligenceContractOptions,
+): EditorialIntelligenceContract {
+  const roleWork = options?.roleWorkEvidence ?? [];
+  const qualifications = options?.presentationQualificationEvidence ?? [];
+
+  const work: PublishedRoleWork[] = unique(
+    roleWork
+      .filter((atom) => atom.kind === "RESPONSIBILITY" || atom.kind === "OUTCOME")
+      .map((atom) => ({
+        kind: atom.kind as PublishedRoleWork["kind"],
+        statement: normalized(atom.statement),
+        sourceEvidenceId: normalized(atom.id),
+        capabilityKeys: Array.isArray(atom.capabilityKeys)
+          ? atom.capabilityKeys.map(safeCapabilityLabel).filter((key: string) => key !== "Relevant candidate precedent")
+          : [],
+      }))
+      .filter((atom) => Boolean(atom.statement) && Boolean(atom.sourceEvidenceId)),
+    (atom) => atom.sourceEvidenceId,
+  );
+
+  const contexts: PublishedRoleContext[] = unique(
+    roleWork
+      .filter((atom) => atom.kind === "ROLE_CONTEXT")
+      .map((atom) => ({
+        kind: "ROLE_CONTEXT" as const,
+        statement: normalized(atom.statement),
+        sourceEvidenceId: normalized(atom.id),
+        capabilityKeys: Array.isArray(atom.capabilityKeys)
+          ? atom.capabilityKeys.map(safeCapabilityLabel).filter((key: string) => key !== "Relevant candidate precedent")
+          : [],
+      }))
+      .filter((atom) => Boolean(atom.statement) && Boolean(atom.sourceEvidenceId)),
+    (atom) => atom.sourceEvidenceId,
+  );
+
+  const qualificationRequirements: PublishedQualificationRequirement[] = qualifications.map((atom) => {
+    const statement = normalized(atom.statement);
+    const capability = safeCapabilityLabel(Array.isArray(atom.capabilityKeys) ? atom.capabilityKeys[0] : undefined);
+    return {
+      capability: capability === "Relevant candidate precedent" ? "Published qualification" : capability,
+      statement,
+      materiality: "SUPPORTING" as const,
+      sourceEvidenceIds: [normalized(atom.id)].filter(Boolean),
+    };
+  }).filter((q) => Boolean(q.statement));
+
+  const outcomes = legacyPublishedRoleOutcomes(work);
+
+  const canonical: CanonicalEditorialSignal[] = [
+    {
+      id: "canonical:verdict:unavailable",
+      kind: "VERDICT",
+      value: reasonCode,
+      provenance: "CANONICAL_EVALUATION",
+    },
+  ];
+
+  const inputs: EditorialSynthesisInput[] = [
+    ...work.map((item) => ({ type: "EMPLOYER_FACT" as const, sourceEvidenceIds: [item.sourceEvidenceId] })),
+  ];
+  if (work.length === 0) {
+    inputs.push({ type: "EVIDENCE_LIMITATION", reason: "No bounded published responsibility or outcome is available from the exact employer source." });
+  }
+
+  const provenance: EditorialEvidenceRef[] = [
+    ...work.map((item) => ({ kind: "EMPLOYER_FACT" as const, text: item.statement, sourceId: item.sourceEvidenceId })),
+    ...contexts.map((item) => ({ kind: "EMPLOYER_FACT" as const, text: item.statement, sourceId: item.sourceEvidenceId })),
+    ...qualificationRequirements.map((qualification) => ({ kind: "EMPLOYER_FACT" as const, text: qualification.statement, sourceId: qualification.sourceEvidenceIds[0] })),
+    ...canonical.map((signal) => ({ kind: "CANONICAL_SIGNAL" as const, text: signal.value, sourceId: signal.id })),
+  ];
+
+  return {
+    version: "editorial-intelligence-v2",
+    verdict: null,
+    qualityScore: null,
+    careerCase: null,
+    principalRisk: null,
+    careerTradeoff: null,
+    whyNow: null,
+    capabilityMatches: [],
+    candidateCapabilities: [],
+    candidateFitEvidence: [],
+    candidatePrecedents: [],
+    publishedRoleWork: work,
+    roleContext: contexts,
+    qualificationRequirements,
+    canonicalSignals: canonical,
+    decisionDrivers: {
+      strengths: [],
+      constraints: [],
+      unknowns: [],
+      hinges: [],
+      availability: "SCALAR_ONLY",
+    },
+    synthesisInputs: inputs,
+    publishedRoleOutcomes: outcomes,
+    decisionHinges: [],
+    positioningAngles: [],
+    recommendedAction: null,
+    provenance: unique(provenance, (item) => `${item.kind}:${item.text.toLowerCase()}`),
+  };
+}
+
+function buildEvaluatedContract(
   artifact: EvaluationArtifact,
   candidateProjection: CandidateProjection,
   options?: EditorialIntelligenceContractOptions,
@@ -1124,4 +1240,25 @@ export function buildEditorialIntelligenceContract(
     recommendedAction,
     provenance: unique(provenance, (item) => `${item.kind}:${item.text.toLowerCase()}`),
   };
+}
+
+/** Builds persisted editorial material without participating in canonical evaluation truth. */
+export function buildEditorialIntelligenceContract(input: EditorialContractInput): EditorialIntelligenceContract;
+export function buildEditorialIntelligenceContract(
+  artifact: EvaluationArtifact,
+  candidateProjection: CandidateProjection,
+  options?: EditorialIntelligenceContractOptions,
+): EditorialIntelligenceContract;
+export function buildEditorialIntelligenceContract(
+  inputOrArtifact: EditorialContractInput | EvaluationArtifact,
+  maybeCandidateProjection?: CandidateProjection,
+  maybeOptions?: EditorialIntelligenceContractOptions,
+): EditorialIntelligenceContract {
+  if ("state" in inputOrArtifact && (inputOrArtifact.state === "EVALUATED" || inputOrArtifact.state === "UNAVAILABLE")) {
+    if (inputOrArtifact.state === "UNAVAILABLE") {
+      return buildUnavailableContract(inputOrArtifact.reasonCode, inputOrArtifact.presentationEvidence);
+    }
+    return buildEvaluatedContract(inputOrArtifact.artifact, inputOrArtifact.candidateProjection, inputOrArtifact.presentationEvidence);
+  }
+  return buildEvaluatedContract(inputOrArtifact as EvaluationArtifact, maybeCandidateProjection!, maybeOptions);
 }

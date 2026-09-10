@@ -37,7 +37,7 @@ export function resolveDecisionsCardScore(
   return o.engineRecommendation?.engineVerdict || "Unscored";
 }
 
-export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS" | "UNREVIEWED";
+export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS";
 
 function OpportunitiesPage() {
   const { decisions, undo, clear, hydrated, error: decisionError } = useDecisions();
@@ -69,14 +69,12 @@ function OpportunitiesPage() {
     let pursue = 0;
     let consider = 0;
     let pass = 0;
-    let unreviewed = 0;
 
     for (const o of opportunitiesList) {
       const verb = getUserVerb(o);
       if (verb === "PURSUE") pursue++;
       else if (verb === "CONSIDER") consider++;
       else if (verb === "PASS") pass++;
-      else unreviewed++;
     }
 
     return {
@@ -84,7 +82,6 @@ function OpportunitiesPage() {
       pursue,
       consider,
       pass,
-      unreviewed,
     };
   }, [opportunitiesList, decisions]);
 
@@ -101,7 +98,6 @@ function OpportunitiesPage() {
       else if (filterKey === "PURSUE") matchesFilter = verb === "PURSUE";
       else if (filterKey === "CONSIDER") matchesFilter = verb === "CONSIDER";
       else if (filterKey === "PASS") matchesFilter = verb === "PASS";
-      else if (filterKey === "UNREVIEWED") matchesFilter = !verb;
 
       if (!matchesFilter) return false;
 
@@ -201,12 +197,6 @@ function OpportunitiesPage() {
               active={filterKey === "PASS"}
               onClick={() => setFilterKey("PASS")}
               tint="pass"
-            />
-            <FilterPill
-              label="UNREVIEWED"
-              count={counts.unreviewed}
-              active={filterKey === "UNREVIEWED"}
-              onClick={() => setFilterKey("UNREVIEWED")}
             />
           </div>
         </div>

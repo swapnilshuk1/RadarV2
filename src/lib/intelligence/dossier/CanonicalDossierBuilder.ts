@@ -16,7 +16,6 @@ function focusTopic(artifact: EvaluationArtifact): string | null {
   );
   return capability?.name ?? null;
 }
-
 /** Rich dossier construction is evaluation-time only and uses the pinned projection. */
 export function buildCanonicalDossierPresentation(
   artifact: EvaluationArtifact,

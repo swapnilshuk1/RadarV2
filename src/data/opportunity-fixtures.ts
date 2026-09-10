@@ -26,9 +26,13 @@ export type DimensionKey =
 
 export type EvidenceBucket = "Matched" | "Adjacent" | "Missing" | "Contradicted";
 
-export type OpportunitySource = { evaluationState?: "LEGACY" | "EVALUATED" } & Omit<
+export type OpportunitySource = {
+  evaluationState?: "LEGACY" | "EVALUATED";
+  opportunityVersion?: string;
+} & Omit<
   EvaluatedOpportunity,
-  "evaluationState" | "decision"
+  | "evaluationState"
+  | "decision"
   | "recommendation"
   | "whyNow"
   | "positioning"
@@ -37,6 +41,8 @@ export type OpportunitySource = { evaluationState?: "LEGACY" | "EVALUATED" } & O
   | "headspaceInvestment"
   | "hiringRisk"
   | "alternativePath"
+  | "dossierPresentation"
+  | "dossierPresentationV2"
 > & {
   rawText?: string;
   normalizedText?: string;
@@ -148,6 +154,7 @@ export type EvaluatedOpportunity = {
   uiBadge?: { label: string; variant: "signal" | "caution" | "pass" | "muted" };
   /** Optional evaluation-time presentation only; canonical scalars remain authoritative. */
   dossierPresentation?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV1;
+  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
 };
 
 export interface ApplicationAction {
@@ -559,6 +566,7 @@ export type UnavailableOpportunity = {
   reviewState?: import("../domain/decision_v4").CanonicalReviewState;
   evaluationContextFingerprint?: string | null;
   evaluationFingerprint?: string | null;
+  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
 };
 
 export type UnmaterializedOpportunity = {
@@ -576,6 +584,7 @@ export type UnmaterializedOpportunity = {
   reviewState?: import("../domain/decision_v4").CanonicalReviewState;
   evaluationContextFingerprint?: string | null;
   evaluationFingerprint?: string | null;
+  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
 };
 
 export type ServedOpportunity = EvaluatedOpportunity | UnavailableOpportunity | UnmaterializedOpportunity;

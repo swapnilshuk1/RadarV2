@@ -20,29 +20,7 @@ function parse(value: unknown): Record<string, any> {
   catch { return {}; }
 }
 
-function sourceOnlyContract(row: any, evidence: any): EditorialIntelligenceContract {
-  return {
-    version: "editorial-intelligence-v2",
-    verdict: null, qualityScore: null, careerCase: null, principalRisk: null, careerTradeoff: null, whyNow: null,
-    capabilityMatches: [], candidateCapabilities: [], candidateFitEvidence: [], candidatePrecedents: [],
-    publishedRoleWork: evidence.evidence
-      .filter((atom: any) => atom.kind === "RESPONSIBILITY" || atom.kind === "OUTCOME")
-      .map((atom: any) => ({ kind: atom.kind, statement: atom.statement, sourceEvidenceId: atom.id, capabilityKeys: atom.capabilityKeys ?? [] })),
-    roleContext: evidence.evidence
-      .filter((atom: any) => atom.kind === "ROLE_CONTEXT")
-      .map((atom: any) => ({ kind: "ROLE_CONTEXT", statement: atom.statement, sourceEvidenceId: atom.id, capabilityKeys: atom.capabilityKeys ?? [] })),
-    qualificationRequirements: evidence.qualifications.map((atom: any) => ({
-      capability: atom.capabilityKeys?.[0] ?? "Published qualification",
-      statement: atom.statement,
-      materiality: "SUPPORTING",
-      sourceEvidenceIds: [atom.id],
-    })),
-    canonicalSignals: [],
-    decisionDrivers: { strengths: [], constraints: [], unknowns: [], hinges: [], availability: "SCALAR_ONLY" },
-    synthesisInputs: [], publishedRoleOutcomes: [], decisionHinges: [], positioningAngles: [], recommendedAction: null,
-    provenance: [],
-  };
-}
+
 
 function sectionText(section: { propositions: Array<{ text: string }> }): string {
   return section.propositions.map((item) => item.text).join(" ") || "—";
@@ -88,16 +66,35 @@ async function main() {
         candidateCache.set(key, candidate ?? null);
       }
       if (candidate) {
-        contract = buildEditorialIntelligenceContract(artifact, candidate, {
-          roleWorkEvidence: evidence.evidence,
-          presentationQualificationEvidence: evidence.qualifications,
+        contract = buildEditorialIntelligenceContract({
+          state: "EVALUATED",
+          artifact,
+          candidateProjection: candidate,
+          presentationEvidence: {
+            roleWorkEvidence: evidence.evidence,
+            presentationQualificationEvidence: evidence.qualifications,
+          },
         });
         evaluationState = contract.decisionDrivers.availability === "PERSISTED_DRIVER_DETAIL" ? "TRACE_AVAILABLE" : "SCALAR_ONLY";
       } else {
-        contract = sourceOnlyContract(row, evidence);
+        contract = buildEditorialIntelligenceContract({
+          state: "UNAVAILABLE",
+          reasonCode: "NOT_EVALUABLE",
+          presentationEvidence: {
+            roleWorkEvidence: evidence.evidence,
+            presentationQualificationEvidence: evidence.qualifications,
+          },
+        });
       }
     } else {
-      contract = sourceOnlyContract(row, evidence);
+      contract = buildEditorialIntelligenceContract({
+        state: "UNAVAILABLE",
+        reasonCode: "NOT_EVALUABLE",
+        presentationEvidence: {
+          roleWorkEvidence: evidence.evidence,
+          presentationQualificationEvidence: evidence.qualifications,
+        },
+      });
     }
     records.push({ row, contract, composed: composeEditorialIntelligenceV2(contract), evaluationState });
   }

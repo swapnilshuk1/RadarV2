@@ -1,6 +1,32 @@
+import type { EditorialCompositionV2 } from "../intelligence/editorial/EditorialPropositionComposer";
+
 export type DossierJsonPrimitive = string | number | boolean | null;
 export type DossierJsonValue = DossierJsonPrimitive | DossierJsonObject | readonly DossierJsonValue[];
 export type DossierJsonObject = { readonly [key: string]: DossierJsonValue };
+
+/** Canonical presentation artifact for RADAR v2. Decoupled from evaluation JSON. */
+export interface CanonicalDossierPresentationV2 {
+  readonly schemaVersion: "dossier-v2";
+  readonly editorialVersion: "editorial-composition-v2";
+
+  readonly identity: {
+    readonly tenantId: string;
+    readonly personId: string;
+    readonly canonicalJobId: string;
+    readonly opportunityVersion: string;
+    readonly evaluationContextFingerprint: string;
+  };
+
+  readonly evaluation: {
+    readonly state: "EVALUATED" | "SPARSE_SPEC" | "NOT_EVALUABLE";
+    readonly verdict: "PURSUE" | "CONSIDER" | "PASS" | null;
+    readonly score: number | null;
+    readonly fingerprint: string | null;
+  };
+
+  readonly composition: EditorialCompositionV2;
+  readonly generatedAt: string;
+}
 
 /** Presentation material persisted with an evaluated artifact, never decision authority. */
 export interface CanonicalDossierPresentationV1 {
@@ -8,7 +34,6 @@ export interface CanonicalDossierPresentationV1 {
   /** Versioned presentation intelligence; never canonical evaluation authority. */
   readonly editorialVersion: "grounded-editorial-v1";
   readonly editorialIntelligence: DossierJsonObject;
-  /** Historical evaluation time; distinct from dossier materialization time. */
   readonly evaluatedAt?: string;
   readonly generatedAt: string;
   readonly evaluationInputHash: string;
@@ -117,4 +142,91 @@ export function asDossierJsonArray(value: unknown): readonly DossierJsonValue[] 
   const parsed: unknown = JSON.parse(serialized);
   if (!Array.isArray(parsed)) throw new Error("Dossier dimensions must be a JSON array");
   return parsed as readonly DossierJsonValue[];
+}
+
+const VALID_PROPOSITION_KINDS = new Set([
+  "EMPLOYER_FACT",
+  "CANDIDATE_FACT",
+  "CANONICAL_EVALUATION",
+  "RADAR_INFERENCE",
+  "EVIDENCE_LIMITATION",
+]);
+
+function isValidProposition(item: unknown): boolean {
+  if (!isObject(item)) return false;
+  if (typeof item.id !== "string" || item.id.trim().length === 0) return false;
+  if (typeof item.kind !== "string" || !VALID_PROPOSITION_KINDS.has(item.kind)) return false;
+  if (typeof item.text !== "string" || item.text.trim().length === 0) return false;
+  if (typeof item.semanticKey !== "string" || item.semanticKey.trim().length === 0) return false;
+  if (typeof item.priority !== "number") return false;
+  if (!isStringArray(item.roleEvidenceIds)) return false;
+  if (!isStringArray(item.candidateEvidenceIds)) return false;
+  if (!isStringArray(item.canonicalSignalIds)) return false;
+  return true;
+}
+
+function isValidSection(section: unknown): boolean {
+  if (!isObject(section)) return false;
+  if (section.headline !== null && typeof section.headline !== "string") return false;
+  if (!Array.isArray(section.propositions) || !section.propositions.every(isValidProposition)) return false;
+  return true;
+}
+
+/**
+ * Authoritative runtime validator for CanonicalDossierPresentationV2.
+ * Enforces exact evaluation linkage invariants:
+ * - state === EVALUATED: verdict, score, and fingerprint MUST be present and non-null.
+ * - state !== EVALUATED: verdict, score, and fingerprint MUST be null.
+ * - every proposition must carry valid kind, non-empty identifiers, and string arrays for evidence IDs.
+ */
+export function isCanonicalDossierPresentationV2(value: unknown): value is CanonicalDossierPresentationV2 {
+  if (!isObject(value)) return false;
+  if (value.schemaVersion !== "dossier-v2") return false;
+  if (value.editorialVersion !== "editorial-composition-v2") return false;
+
+  // Identity validation
+  if (!isObject(value.identity)) return false;
+  const { tenantId, personId, canonicalJobId, opportunityVersion, evaluationContextFingerprint } = value.identity;
+  if (
+    typeof tenantId !== "string" || tenantId.trim().length === 0 ||
+    typeof personId !== "string" || personId.trim().length === 0 ||
+    typeof canonicalJobId !== "string" || canonicalJobId.trim().length === 0 ||
+    typeof opportunityVersion !== "string" || opportunityVersion.trim().length === 0 ||
+    typeof evaluationContextFingerprint !== "string" || evaluationContextFingerprint.trim().length === 0
+  ) {
+    return false;
+  }
+
+  // Evaluation validation
+  if (!isObject(value.evaluation)) return false;
+  const ev = value.evaluation;
+  if (ev.state !== "EVALUATED" && ev.state !== "SPARSE_SPEC" && ev.state !== "NOT_EVALUABLE") return false;
+
+  if (ev.state === "EVALUATED") {
+    if (ev.verdict !== "PURSUE" && ev.verdict !== "CONSIDER" && ev.verdict !== "PASS") return false;
+    if (typeof ev.score !== "number" || Number.isNaN(ev.score)) return false;
+    if (typeof ev.fingerprint !== "string" || ev.fingerprint.trim().length === 0) return false;
+  } else {
+    if (ev.verdict !== null) return false;
+    if (ev.score !== null) return false;
+    if (ev.fingerprint !== null) return false;
+  }
+
+  // Composition validation
+  if (!isObject(value.composition)) return false;
+  const comp = value.composition;
+  if (comp.version !== "editorial-composition-v2") return false;
+  if (typeof comp.compositionMode !== "string") return false;
+  if (!Array.isArray(comp.propositions) || !comp.propositions.every(isValidProposition)) return false;
+  if (!isObject(comp.sections)) return false;
+  const sections = comp.sections;
+  const requiredSections = ["hero", "whyAttention", "mandate", "candidatePositioning", "bottomLine", "howToWin", "verify"] as const;
+  for (const s of requiredSections) {
+    if (!isValidSection(sections[s])) return false;
+  }
+
+  // GeneratedAt validation
+  if (typeof value.generatedAt !== "string" || Number.isNaN(Date.parse(value.generatedAt))) return false;
+
+  return true;
 }
