@@ -35,8 +35,10 @@ import {
 } from "../../scripts/scraper/utils/http-fetch";
 import {
   probeNaukriMultiPage,
-  probeLinkedInExperienceFilter,
   evaluateLinkedInYield,
+  validateCanaryResult,
+  assertCanaryResultPass,
+  LivePortalProbeResult,
 } from "../../scripts/canary/probe-portals-readonly";
 
 describe("Gate 2: Target-Portal Depth & Coverage Expansion", () => {
@@ -351,6 +353,23 @@ describe("Gate 2: Target-Portal Depth & Coverage Expansion", () => {
       expect(obs.notes).toContain("discrete non-overlapping pagination contract");
     });
 
+    it("Indeed probe URL builder resolves string location and numeric radius without [object Object] corruption", () => {
+      const location = "Bengaluru, Karnataka";
+      const testRadius = 25;
+      const indeedResolution = resolveIndeedLocation(location, testRadius);
+      const indeedLocation = indeedResolution.location ?? location;
+      const radius = indeedResolution.radiusKm ?? testRadius;
+
+      expect(typeof indeedLocation).toBe("string");
+      expect(indeedLocation).toBe("Bengaluru, Karnataka");
+      expect(radius).toBe(25);
+
+      const url = `https://in.indeed.com/jobs?q=${encodeURIComponent("vice president engineering")}&l=${encodeURIComponent(indeedLocation)}&radius=${radius}`;
+      expect(url).not.toContain("%5Bobject%20Object%5D");
+      expect(url).toContain("l=Bengaluru%2C%20Karnataka");
+      expect(url).toContain("radius=25");
+    });
+
     it("evaluateLinkedInYield demonstrates downstream title policy requirement and detects non-executive title leakage", () => {
       // Invariant: Even if f_E=5,6 is used, downstream title policy filtering remains mandatory
       const sampleTitles = [
@@ -372,15 +391,111 @@ describe("Gate 2: Target-Portal Depth & Coverage Expansion", () => {
       expect(emptyEval.conclusion).toContain("UNKNOWN/FAIL");
     });
 
-    it("probeLinkedInExperienceFilter fails closed when zero titles are observed", async () => {
-      // Live probe without network or titles returns 0 ratio and UNKNOWN/FAIL, never synthesizes 0.8
-      const obs = await probeLinkedInExperienceFilter();
-      if (obs.filteredTitles.length === 0) {
-        expect(obs.filteredExecutiveYieldRatio).toBe(0);
-        expect(obs.conclusion).toContain("UNKNOWN/FAIL");
-      } else {
-        expect(obs.filteredExecutiveYieldRatio).toBeGreaterThanOrEqual(0);
-      }
+    it("validateCanaryResult and assertCanaryResultPass enforce aggregate fail-closed certification semantics", () => {
+      const passingResult: LivePortalProbeResult = {
+        executedAt: new Date().toISOString(),
+        scope: {
+          authenticated: true,
+          userId: "user_test",
+          tenantId: "tenant_default",
+          resolvedVia: "resolveScraperAuthContext",
+        },
+        indeed: {
+          requestedUrl: "https://in.indeed.com/jobs?q=vp&l=Bengaluru&radius=25",
+          finalUrl: "https://in.indeed.com/jobs?q=vp&l=Bengaluru&radius=25",
+          statusCode: 200,
+          radiusRetained: true,
+          radiusUnitObserved: "km",
+          filterRadiusValuesFound: ["25 km"],
+          notes: "Indeed radius preserved",
+        },
+        linkedIn: {
+          hasAuthenticatedSession: true,
+          unfilteredUrl: "https://www.linkedin.com/jobs/search?q=vp",
+          filteredUrl: "https://www.linkedin.com/jobs/search?q=vp&f_E=5%2C6",
+          unfilteredTitles: ["VP Tech"],
+          filteredTitles: ["VP Tech", "Director Product"],
+          filteredExecutiveCount: 2,
+          filteredNonExecutiveCount: 0,
+          filteredExecutiveYieldRatio: 1.0,
+          conclusion: "f_E=5,6 yields 100%",
+        },
+        naukri: {
+          page1Url: "https://www.naukri.com/page1",
+          page2Url: "https://www.naukri.com/page2",
+          page1StructureValid: true,
+          page2StructureValid: true,
+          liveBrowserObserved: true,
+          apiPagesObserved: [1, 2],
+          apiRecordsCount: 40,
+          uniqueJobIdsCount: 40,
+          pagesAreDisjoint: true,
+          notes: "Naukri pages disjoint",
+        },
+      };
+
+      // 1. Passing result validates cleanly
+      const passValidation = validateCanaryResult(passingResult);
+      expect(passValidation.passed).toBe(true);
+      expect(passValidation.failures).toEqual([]);
+      expect(() => assertCanaryResultPass(passingResult)).not.toThrow();
+
+      // 2. Unauthenticated scope fails closed
+      const unauthResult = {
+        ...passingResult,
+        scope: { ...passingResult.scope, authenticated: false },
+      };
+      const unauthValidation = validateCanaryResult(unauthResult);
+      expect(unauthValidation.passed).toBe(false);
+      expect(unauthValidation.failures).toContain("AUTH_SCOPE_NOT_RESOLVED");
+      expect(() => assertCanaryResultPass(unauthResult)).toThrow("AUTH_SCOPE_NOT_RESOLVED");
+
+      // 3. Indeed status 403 or radius not retained fails closed
+      const indeedFailResult = {
+        ...passingResult,
+        indeed: { ...passingResult.indeed, statusCode: 403, radiusRetained: false },
+      };
+      const indeedValidation = validateCanaryResult(indeedFailResult);
+      expect(indeedValidation.passed).toBe(false);
+      expect(indeedValidation.failures).toContain("INDEED_RADIUS_NOT_PROVEN");
+
+      // 4. LinkedIn zero titles fails closed
+      const linkedInFailResult = {
+        ...passingResult,
+        linkedIn: { ...passingResult.linkedIn, filteredTitles: [] },
+      };
+      const linkedInValidation = validateCanaryResult(linkedInFailResult);
+      expect(linkedInValidation.passed).toBe(false);
+      expect(linkedInValidation.failures).toContain("LINKEDIN_FILTER_NOT_OBSERVED");
+
+      // 5. Naukri missing page 2 or overlapping pages fails closed
+      const naukriOverlapResult = {
+        ...passingResult,
+        naukri: { ...passingResult.naukri, pagesAreDisjoint: false },
+      };
+      const naukriValidation = validateCanaryResult(naukriOverlapResult);
+      expect(naukriValidation.passed).toBe(false);
+      expect(naukriValidation.failures).toContain("NAUKRI_MULTIPAGE_NOT_PROVEN");
+
+      // 6. Multiple failures aggregate together
+      const multiFailResult = {
+        ...passingResult,
+        scope: { ...passingResult.scope, authenticated: false },
+        indeed: { ...passingResult.indeed, radiusRetained: false },
+        linkedIn: { ...passingResult.linkedIn, filteredTitles: [] },
+        naukri: { ...passingResult.naukri, apiPagesObserved: [1] },
+      };
+      const multiValidation = validateCanaryResult(multiFailResult);
+      expect(multiValidation.passed).toBe(false);
+      expect(multiValidation.failures).toEqual([
+        "AUTH_SCOPE_NOT_RESOLVED",
+        "INDEED_RADIUS_NOT_PROVEN",
+        "LINKEDIN_FILTER_NOT_OBSERVED",
+        "NAUKRI_MULTIPAGE_NOT_PROVEN",
+      ]);
+      expect(() => assertCanaryResultPass(multiFailResult)).toThrow(
+        "CANARY_FAILED: AUTH_SCOPE_NOT_RESOLVED, INDEED_RADIUS_NOT_PROVEN, LINKEDIN_FILTER_NOT_OBSERVED, NAUKRI_MULTIPAGE_NOT_PROVEN"
+      );
     });
   });
 });

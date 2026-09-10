@@ -141,9 +141,15 @@ export async function resolveCanaryScope(): Promise<ScopeResolutionObservation> 
 export async function probeIndeedRadius(options?: { useLiveBrowser?: boolean }): Promise<IndeedRadiusObservation> {
   const query = "vice president engineering";
   const location = "Bengaluru, Karnataka";
-  const indeedLoc = resolveIndeedLocation(location);
   const testRadius = 25;
-  const url = `https://in.indeed.com/jobs?q=${encodeURIComponent(query)}&l=${encodeURIComponent(indeedLoc)}&radius=${testRadius}`;
+  const indeedResolution = resolveIndeedLocation(location, testRadius);
+  const indeedLocation = indeedResolution.location ?? location;
+  const radius = indeedResolution.radiusKm ?? testRadius;
+
+  const url =
+    `https://in.indeed.com/jobs?q=${encodeURIComponent(query)}` +
+    `&l=${encodeURIComponent(indeedLocation)}` +
+    `&radius=${radius}`;
 
   if (options?.useLiveBrowser) {
     try {
@@ -543,9 +549,60 @@ export async function runReadOnlyPortalProbe(): Promise<LivePortalProbeResult> {
     console.log(`Notes: ${result.naukri.notes}`);
     console.log("=================================================================\n");
 
+    assertCanaryResultPass(result);
+
     return result;
   } finally {
     await closeAllPortalContexts().catch(() => {});
+  }
+}
+
+export interface CanaryValidationResult {
+  passed: boolean;
+  failures: string[];
+}
+
+/**
+ * Validates aggregate canary results across auth scope, Indeed radius retention,
+ * LinkedIn filter observation, and Naukri multi-page disjointness.
+ */
+export function validateCanaryResult(result: LivePortalProbeResult): CanaryValidationResult {
+  const failures: string[] = [];
+
+  if (!result.scope.authenticated) {
+    failures.push("AUTH_SCOPE_NOT_RESOLVED");
+  }
+
+  if (result.indeed.statusCode !== 200 || !result.indeed.radiusRetained) {
+    failures.push("INDEED_RADIUS_NOT_PROVEN");
+  }
+
+  if (result.linkedIn.filteredTitles.length === 0) {
+    failures.push("LINKEDIN_FILTER_NOT_OBSERVED");
+  }
+
+  if (
+    !result.naukri.liveBrowserObserved ||
+    !result.naukri.apiPagesObserved?.includes(1) ||
+    !result.naukri.apiPagesObserved?.includes(2) ||
+    result.naukri.pagesAreDisjoint !== true
+  ) {
+    failures.push("NAUKRI_MULTIPAGE_NOT_PROVEN");
+  }
+
+  return {
+    passed: failures.length === 0,
+    failures,
+  };
+}
+
+/**
+ * Asserts that the canary result meets all certification criteria; throws Error if any contract failed.
+ */
+export function assertCanaryResultPass(result: LivePortalProbeResult): void {
+  const { passed, failures } = validateCanaryResult(result);
+  if (!passed) {
+    throw new Error(`CANARY_FAILED: ${failures.join(", ")}`);
   }
 }
 
@@ -553,8 +610,8 @@ export async function runReadOnlyPortalProbe(): Promise<LivePortalProbeResult> {
 if (process.argv[1]?.includes("probe-portals-readonly")) {
   runReadOnlyPortalProbe()
     .then(() => process.exit(0))
-    .catch((err) => {
-      console.error("[ReadOnlyPortalProbe] Fatal error:", err);
+    .catch((err: any) => {
+      console.error("[ReadOnlyPortalProbe] Fatal error:", err?.message || err);
       process.exit(1);
     });
 }
