@@ -11,6 +11,7 @@ export interface MigrationResult {
 export interface RequiredSchemaStatus {
   readonly evaluationFingerprintColumnPresent: boolean;
   readonly categoryIdsColumnPresent: boolean;
+  readonly dossierPresentationsTablePresent: boolean;
 }
 
 const REQUIRED_COLUMNS = [
@@ -27,7 +28,11 @@ export async function getRequiredSchemaStatus(db: DatabaseAdapter): Promise<Requ
     if (required.statusKey === "evaluationFingerprintColumnPresent") evaluationFingerprintColumnPresent = present;
     else categoryIdsColumnPresent = present;
   }
-  return { evaluationFingerprintColumnPresent, categoryIdsColumnPresent };
+  const tableRow = await db.one<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'materialized_dossier_presentations'"
+  );
+  const dossierPresentationsTablePresent = Boolean(tableRow?.name);
+  return { evaluationFingerprintColumnPresent, categoryIdsColumnPresent, dossierPresentationsTablePresent };
 }
 
 /** Refuse startup when the migration ledger and physical schema diverge. */
@@ -44,6 +49,16 @@ export async function verifyRequiredSchema(db: DatabaseAdapter): Promise<Require
         : `SCHEMA_INCOMPATIBLE: required column ${required.table}.${required.column} is missing after migrations.`;
       throw new Error(`[MigrationRunner] ${drift}`);
     }
+  }
+  if (!status.dossierPresentationsTablePresent) {
+    const recorded = await db.one<{ migration_name: string }>(
+      "SELECT migration_name FROM _migrations WHERE migration_name = ?",
+      ["044_materialized_dossier_presentations.sql"],
+    );
+    const drift = recorded
+      ? "SCHEMA_DRIFT: migration 044_materialized_dossier_presentations.sql is recorded but materialized_dossier_presentations table is missing."
+      : "SCHEMA_INCOMPATIBLE: required table materialized_dossier_presentations is missing after migrations.";
+    throw new Error(`[MigrationRunner] ${drift}`);
   }
   return status;
 }

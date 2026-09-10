@@ -151,6 +151,7 @@ RADAR v2 Test Architecture
 | `tests/security/evidence-ownership-deduplication.test.ts` | Defensive evidence graph reuse never transfers ownership across candidates. | **Stage 4** |
 | `tests/ontology/tenant-ontology-compiler.test.ts` | Tenant-customized ontology definitions compile and validate within tenant sandboxes. | **Stage 4** |
 | `tests/security/m62-credential-vault.test.ts` | AES-256 envelope encryption and key rotation for portal scraper credentials. | Full Suite |
+| `tests/security/decisions-account-isolation.test.ts` | Canonical dossier presentation reads and decision updates remain isolated to the authenticated tenant/person identity. | **Stage 4** |
 
 ---
 
@@ -166,6 +167,8 @@ RADAR v2 Test Architecture
 | `tests/editorial/editorial-intelligence-contract.test.ts` | Preserves grounded candidate and published-role intelligence through the canonical dossier boundary. | **Stage 6** |
 | `tests/editorial/canonical-presentation-boundary.test.ts` | Separation of canonical evaluation from published presentation dimensions. | **Stage 6** |
 | `tests/editorial/grounded-editorial-restoration.test.ts` | Multi-fixture editorial restoration ensuring rich, diverse, evidence-grounded dossiers without boilerplate or unsupported claims. | **Stage 6** |
+| `tests/editorial/editorial-proposition-composer.test.ts` | V2 proposition composition keeps employer, candidate, canonical-evaluation, and RADAR-inference provenance distinct. | **Stage 6** |
+| `tests/intelligence/opportunity-version-pinning.test.ts` | Dossier V2 persistence and serving are pinned to the exact tenant, person, job version, context, and evaluation fingerprint. | **Stage 5** |
 
 ---
 
@@ -189,7 +192,7 @@ RADAR v2 Test Architecture
 
 ---
 
-## 3. Complete Test File Registry (222 Total Files)
+## 3. Complete Test File Registry (225 Total Files)
 
 Every test file in the repository is mechanically tracked below:
 
@@ -238,7 +241,9 @@ Every test file in the repository is mechanically tracked below:
 | `tests/editorial/shortlist-badge-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 7 | 25 |
 | `tests/editorial/ui-score-resolution.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 6 | 14 |
 | `tests/editorial/verdict-coverage.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 5 | 12 |
+| `tests/editorial/editorial-proposition-composer.test.ts` | Editorial / Verdict Governance | **KEEP** | Stage 6 | 15 | 46 |
 | `tests/intelligence/active-context-resolution.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 3 | 10 |
+| `tests/intelligence/context-materialization.test.ts` | Dossier V2 Materialization | **KEEP** | Dossier V2 Merge Gate | 4 | 4 |
 | `tests/intelligence/write-refresh-runtime-correctness.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 4 |
 | `tests/intelligence/gate4-write-refresh-edge-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 8 |
 | `tests/intelligence/architecture-contracts.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 10 | 38 |
@@ -266,6 +271,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/m52-enqueuer.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 30 |
 | `tests/intelligence/m53-worker.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 11 | 24 |
 | `tests/intelligence/m8-canonical-serving.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 55 |
+| `tests/intelligence/opportunity-version-pinning.test.ts` | Serving & Pagination | **KEEP** | Stage 5 | 9 | 40 |
 | `tests/intelligence/m9-canonical-loop.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 4 | 41 |
 | `tests/intelligence/m9_2c-posting-date.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 9 | 16 |
 | `tests/intelligence/m9_3-decision-write-path.test.ts` | Decision Persistence | **KEEP** | Full Suite | 5 | 10 |
@@ -284,6 +290,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/serving-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 2 | 13 |
 | `tests/intelligence/worker-profile-resolution.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 7 | 24 |
 | `tests/security/scraper-auth-permission-non-escalation.test.ts` | Security & Tenant Isolation | **KEEP** | Gate 0 Safety | 1 | 8 |
+| `tests/security/decisions-account-isolation.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 8 | 31 |
 | `tests/intelligence/invariant-assertions.test.ts` | Evaluation & Policy | **KEEP** | Stage 3 | 3 | 5 |
 | `tests/ontology/tenant-ontology-compiler.test.ts` | Security & Tenant Isolation | **KEEP** | Stage 4 | 10 | 55 |
 | `tests/persistence/active_pointer_precedence.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 1 | 3 |

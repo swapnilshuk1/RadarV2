@@ -134,8 +134,8 @@ describe("EditorialPropositionComposer", () => {
     const candidateFact = composed.sections.candidatePositioning.propositions[0];
     const positioning = composed.sections.howToWin.propositions[0];
 
-    expect(candidateFact?.kind).toBe("CANDIDATE_FACT");
-    expect(candidateFact?.roleEvidenceIds).toEqual([]);
+    expect(candidateFact?.kind).toBe("CANONICAL_EVALUATION");
+    expect(candidateFact?.candidateEvidenceIds).toContain("candidate:crm");
     expect(positioning?.kind).toBe("RADAR_INFERENCE");
     expect(positioning?.text).toMatch(/Position .* evaluator-linked/i);
     expect(positioning?.text).toMatch(/Confirm the employer's required scope/i);
@@ -158,6 +158,56 @@ describe("EditorialPropositionComposer", () => {
       "Strong experience with CRM, lifecycle measurement, and retention strategy.",
     );
     expect(composed.sections.mandate.propositions.every((item) => item.kind === "EMPLOYER_FACT")).toBe(true);
+    expect(composed.sections.hero.propositions[0]).toEqual(expect.objectContaining({
+      kind: "RADAR_INFERENCE",
+      roleEvidenceIds: ["qualification:crm"],
+    }));
+    expect(composed.sections.bottomLine.propositions[0]).toEqual(expect.objectContaining({
+      kind: "RADAR_INFERENCE",
+      roleEvidenceIds: ["qualification:crm"],
+    }));
+    expect(composed.sections.bottomLine.propositions[0]?.text).toMatch(/screening bar|role requirements/i);
+    expect(composed.sections.bottomLine.propositions[0]?.text).not.toMatch(/owns|responsibilit/i);
+  });
+
+  it("uses role context substantively without inventing an operating mandate", () => {
+    const composed = composeEditorialIntelligenceV2(contract({
+      publishedRoleWork: [],
+      qualificationRequirements: [],
+      roleContext: [{
+        kind: "ROLE_CONTEXT",
+        statement: "Reports to the regional CEO.",
+        sourceEvidenceId: "context:reports-to",
+        capabilityKeys: [],
+      }],
+      candidateCapabilities: [],
+      candidatePrecedents: [],
+    }));
+
+    expect(composed.sections.hero.propositions[0]).toEqual(expect.objectContaining({
+      kind: "RADAR_INFERENCE",
+      roleEvidenceIds: ["context:reports-to"],
+    }));
+    expect(composed.sections.bottomLine.propositions[0]).toEqual(expect.objectContaining({
+      kind: "RADAR_INFERENCE",
+      roleEvidenceIds: ["context:reports-to"],
+    }));
+    expect(composed.sections.hero.headline).toMatch(/limited concrete ownership/i);
+    expect(composed.sections.hero.headline).not.toMatch(/owns|mandate is/i);
+  });
+
+  it("uses evidence limitation only after work, qualifications, context, and trace evidence are exhausted", () => {
+    const composed = composeEditorialIntelligenceV2(contract({
+      publishedRoleWork: [],
+      qualificationRequirements: [],
+      roleContext: [],
+      candidateCapabilities: [],
+      candidatePrecedents: [],
+      candidateFitEvidence: [],
+      canonicalSignals: [],
+    }));
+
+    expect(composed.sections.hero.propositions[0]?.kind).toBe("EVIDENCE_LIMITATION");
     expect(composed.sections.bottomLine.propositions[0]?.kind).toBe("EVIDENCE_LIMITATION");
   });
 
@@ -228,6 +278,39 @@ describe("EditorialPropositionComposer", () => {
     expect(composed.sections.candidatePositioning.propositions).toEqual([]);
     expect(composed.sections.howToWin.propositions[0]?.text).toMatch(/Lead the conversation with the published mandate/i);
     expect(JSON.stringify(composed)).not.toMatch(/Performance Marketing as relevant operating evidence/i);
+  });
+
+  it("uses only trace-linked candidate facts in Why this reached your desk", () => {
+    const composed = composeEditorialIntelligenceV2(contract({
+      candidateFitEvidence: [{
+        id: "trace:crm", candidateEvidenceIds: ["candidate:crm"], jobEvidenceIds: ["role:lifecycle"],
+        jobEvidence: [{ id: "role:lifecycle", statement: "Own lifecycle retention and CRM execution across priority customer segments.", kind: "ROLE_WORK" }],
+        candidateCapabilityKey: "CRM", jobCapabilityKey: "CRM", relationship: "MATCH",
+      }],
+      candidatePrecedents: [{
+        capability: "Unrelated sales", statement: "Ran unrelated sales operations.", evidenceIds: ["candidate:sales"], confidence: 0.9, provenance: "CANDIDATE_FACT",
+      }],
+    }));
+    const rendered = JSON.stringify(composed.sections.candidatePositioning);
+    expect(rendered).toContain("Built lifecycle CRM");
+    expect(rendered).not.toContain("Ran unrelated sales operations");
+    expect(composed.sections.candidatePositioning.propositions[0]?.kind).toBe("CANONICAL_EVALUATION");
+  });
+
+  it("selects one strongest resolved endpoint without fanning a trace into multiple employer relationships", () => {
+    const composed = composeEditorialIntelligenceV2(contract({
+      candidateFitEvidence: [{
+        id: "trace:two-work-items", candidateEvidenceIds: ["candidate:crm"],
+        jobEvidenceIds: ["role:lifecycle", "role:retention-outcome"],
+        jobEvidence: [
+          { id: "role:lifecycle", statement: "Own lifecycle retention and CRM execution across priority customer segments.", kind: "ROLE_WORK" },
+          { id: "role:retention-outcome", statement: "Improve retention outcomes through disciplined lifecycle measurement.", kind: "ROLE_WORK" },
+        ], candidateCapabilityKey: "CRM", jobCapabilityKey: "CRM", relationship: "MATCH",
+      }],
+    }));
+    expect(composed.positioningRelations).toHaveLength(1);
+    expect(composed.positioningRelations[0]?.roleEvidenceIds).toEqual(expect.arrayContaining(["role:lifecycle", "role:retention-outcome"]));
+    expect(composed.sections.howToWin.propositions[0]?.text).toContain("Improve retention outcomes");
   });
 
   it("suppresses opaque canonical enum values from reader-facing propositions", () => {

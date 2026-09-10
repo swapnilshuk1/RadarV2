@@ -6,7 +6,12 @@ import { evaluateAttentionGate } from "./AttentionGate";
 import { runEngineSingleIntrinsic } from "./engine";
 import { validateEvaluationConsistency } from "../domain/evaluation_fingerprint";
 import { buildCanonicalEvaluatedPayload, buildCanonicalUnavailablePayload, materializeCanonicalPayload, resolveArtifactEvaluationState } from "./evaluation/PayloadMapper";
-import { buildCanonicalDossierPresentation } from "./dossier/CanonicalDossierBuilder";
+import type { CanonicalDossierPresentationV2 } from "../domain/dossier_presentation";
+import {
+  buildEvaluatedPresentationV2,
+  buildUnavailablePresentationV2,
+} from "./dossier/CanonicalDossierPresentationMaterializer";
+import { SqliteDossierPresentationStore } from "../../data/sqlite/repositories/SqliteDossierPresentationStore";
 import type { MaterializedEvaluation } from "../domain/evaluation_context";
 import { resolveExactCandidateProjectionForScope } from "../../data/sqlite/repositories/profile-projection-version";
 import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
@@ -74,6 +79,7 @@ export async function materializeExistingCanonicalPool(
   );
   const candidateRows: Array<[unknown, ...unknown[]]> = [];
   const evaluations: MaterializedEvaluation[] = [];
+  const presentations: CanonicalDossierPresentationV2[] = [];
   let eligibleCandidates = 0;
 
   for (const row of rows) {
@@ -108,6 +114,23 @@ export async function materializeExistingCanonicalPool(
     if (gate.decision !== "CANDIDATE") continue;
     eligibleCandidates++;
 
+    const isAcquired = row.acquisition_status === "ACQUIRED";
+    const isLifecycleActive = row.lifecycle_state === "ACTIVE";
+    if (!isAcquired || !isLifecycleActive) {
+      const evaluationState = row.lifecycle_state === "EXPIRED" || row.lifecycle_state === "REMOVED_404"
+        ? "EXPIRED"
+        : row.acquisition_status === "CAPTURE_FAILED" || row.acquisition_status === "RECOVERY_FAILED"
+          ? "ACQUISITION_FAILED"
+          : "ACQUISITION_PENDING";
+      const evaluatedAt = new Date().toISOString();
+      evaluations.push(materializeCanonicalPayload(buildCanonicalUnavailablePayload(
+        row.canonical_job_id, evaluationState, prepared.context, row.canonical_job_id,
+        row.opportunity_version, evaluatedAt,
+      )));
+      // Untrusted and inactive source states deliberately have no V2 dossier.
+      continue;
+    }
+
     let source: any;
     try {
       source = JSON.parse(row.raw_content);
@@ -125,17 +148,43 @@ export async function materializeExistingCanonicalPool(
     // so backfill evaluates scraped records whose source hash differs from the
     // canonical opportunity key.
     source.jobHash ||= row.canonical_job_id;
+    source.opportunityVersion = row.opportunity_version;
     if (!projection) {
+      const evaluatedAt = new Date().toISOString();
       const evaluation = materializeCanonicalPayload(buildCanonicalUnavailablePayload(
         source.jobHash,
         "NOT_EVALUABLE",
         prepared.context,
         row.canonical_job_id,
         row.opportunity_version,
-        new Date().toISOString(),
+        evaluatedAt,
       ));
       validateEvaluationConsistency(evaluation);
       evaluations.push(evaluation);
+
+      const presentationEvidence = JobProjectionBuilder.extractPresentationEvidenceForPresentation(
+        row.raw_content,
+        row.opportunity_version,
+        [],
+      );
+      if (presentationEvidence.evidence.length > 0 || presentationEvidence.qualifications.length > 0) {
+        const presentation = buildUnavailablePresentationV2({
+          identity: {
+            tenantId: scope.tenantId,
+            personId: scope.personId,
+            canonicalJobId: row.canonical_job_id,
+            opportunityVersion: row.opportunity_version,
+            evaluationContextFingerprint: prepared.context.contextFingerprint,
+          },
+          reasonCode: "NOT_EVALUABLE",
+          presentationEvidence: {
+            roleWorkEvidence: presentationEvidence.evidence,
+            presentationQualificationEvidence: presentationEvidence.qualifications,
+          },
+          generatedAt: evaluatedAt,
+        });
+        presentations.push(presentation);
+      }
       continue;
     }
     const artifact = runEngineSingleIntrinsic(source.jobHash, projection, 0, [source]);
@@ -147,36 +196,33 @@ export async function materializeExistingCanonicalPool(
       row.opportunity_version,
       Array.isArray(artifact.jobProjection?.capabilities) ? artifact.jobProjection.capabilities : [],
     );
+    const evaluatorRoleWorkEvidence = Array.isArray(artifact.jobProjection?.roleWorkEvidence)
+      ? artifact.jobProjection.roleWorkEvidence
+      : [];
     artifact.jobProjection = {
       ...artifact.jobProjection,
-      roleWorkEvidence: presentationEvidence.evidence,
+      // Retain exact evaluator-side IDs before adding presentation extraction;
+      // canonical decision trace references must stay resolvable.
+      roleWorkEvidence: [...evaluatorRoleWorkEvidence, ...presentationEvidence.evidence.filter((item) =>
+        !evaluatorRoleWorkEvidence.some((existing: { id?: string }) => existing.id === item.id),
+      )],
       presentationQualificationEvidence: presentationEvidence.qualifications,
     };
-    const evaluationState = (artifact.record?.verb === "SPARSE_SPEC" || row.evidence_state === "GENUINELY_SPARSE")
+    const isGenuinelySparse = artifact.record?.verb === "SPARSE_SPEC"
+      || (row.evidence_state === "GENUINELY_SPARSE" && isAcquired && row.acquisition_quality === "COMPLETE");
+    const evaluationState = isGenuinelySparse
       ? "SPARSE_SPEC"
       : resolveArtifactEvaluationState(artifact);
     const evaluatedAt = new Date().toISOString();
     const canonicalPayload = evaluationState === "EVALUATED"
-      ? (() => {
-          const intrinsic = buildCanonicalEvaluatedPayload(
-            artifact,
-            prepared.context,
-            row.canonical_job_id,
-            row.opportunity_version,
-            evaluatedAt,
-            projection,
-          );
-          return {
-            ...intrinsic,
-            dossierPresentation: buildCanonicalDossierPresentation(
-              artifact,
-              projection,
-              intrinsic.evaluationInputHash,
-              evaluatedAt,
-              evaluatedAt,
-            ),
-          };
-        })()
+      ? buildCanonicalEvaluatedPayload(
+          artifact,
+          prepared.context,
+          row.canonical_job_id,
+          row.opportunity_version,
+          evaluatedAt,
+          projection,
+        )
       : buildCanonicalUnavailablePayload(
           source.jobHash,
           evaluationState,
@@ -191,66 +237,111 @@ export async function materializeExistingCanonicalPool(
       : null;
     validateEvaluationConsistency(evaluation);
     evaluations.push(evaluation);
+
+    if (evaluationState === "EVALUATED") {
+      const presentation = buildEvaluatedPresentationV2({
+        identity: {
+          tenantId: scope.tenantId,
+          personId: scope.personId,
+          canonicalJobId: row.canonical_job_id,
+          opportunityVersion: row.opportunity_version,
+          evaluationContextFingerprint: prepared.context.contextFingerprint,
+        },
+        artifact,
+        candidateProjection: projection,
+        presentationEvidence: {
+          roleWorkEvidence: presentationEvidence.evidence,
+          presentationQualificationEvidence: presentationEvidence.qualifications,
+        },
+        evaluationFingerprint: canonicalPayload.evaluationInputHash,
+        generatedAt: evaluatedAt,
+      });
+      presentations.push(presentation);
+    } else if (presentationEvidence.evidence.length > 0 || presentationEvidence.qualifications.length > 0) {
+      const presentation = buildUnavailablePresentationV2({
+        identity: {
+          tenantId: scope.tenantId,
+          personId: scope.personId,
+          canonicalJobId: row.canonical_job_id,
+          opportunityVersion: row.opportunity_version,
+          evaluationContextFingerprint: prepared.context.contextFingerprint,
+        },
+        reasonCode: evaluationState,
+        presentationEvidence: {
+          roleWorkEvidence: presentationEvidence.evidence,
+          presentationQualificationEvidence: presentationEvidence.qualifications,
+        },
+        generatedAt: evaluatedAt,
+      });
+      presentations.push(presentation);
+    }
   }
 
-  for (let offset = 0; offset < candidateRows.length; offset += 100) {
-    const chunk = candidateRows.slice(offset, offset + 100);
-    const placeholders = chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)").join(",");
-    await db.execute(
-      `INSERT INTO search_plan_candidates (
-         tenant_id, person_id, search_plan_id, canonical_job_id,
-         opportunity_version, attention_decision, eligibility,
-         eligibility_reason_codes_json, location_policy, location_evidence,
-         created_at
-       ) VALUES ${placeholders}
-       ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version)
-       DO UPDATE SET attention_decision = excluded.attention_decision,
-                     eligibility = excluded.eligibility,
-                     eligibility_reason_codes_json = excluded.eligibility_reason_codes_json,
-                     location_policy = excluded.location_policy,
-                     location_evidence = excluded.location_evidence`,
-      chunk.flat()
-    );
-  }
+  await db.transaction(async (tx) => {
+    for (let offset = 0; offset < candidateRows.length; offset += 100) {
+      const chunk = candidateRows.slice(offset, offset + 100);
+      const placeholders = chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)").join(",");
+      await tx.execute(
+        `INSERT INTO search_plan_candidates (
+           tenant_id, person_id, search_plan_id, canonical_job_id,
+           opportunity_version, attention_decision, eligibility,
+           eligibility_reason_codes_json, location_policy, location_evidence,
+           created_at
+         ) VALUES ${placeholders}
+         ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version)
+         DO UPDATE SET attention_decision = excluded.attention_decision,
+                       eligibility = excluded.eligibility,
+                       eligibility_reason_codes_json = excluded.eligibility_reason_codes_json,
+                       location_policy = excluded.location_policy,
+                       location_evidence = excluded.location_evidence`,
+        chunk.flat()
+      );
+    }
 
-  for (let offset = 0; offset < evaluations.length; offset += 50) {
-    const chunk = evaluations.slice(offset, offset + 50);
-    const placeholders = chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(",");
-    const params = chunk.flatMap((evaluation) => [
-      evaluation.id,
-      evaluation.tenantId,
-      evaluation.personId,
-      evaluation.canonicalJobId,
-      evaluation.opportunityVersion,
-      evaluation.evaluationContextFingerprint,
-      evaluation.evaluationFingerprint ?? null,
-      evaluation.evaluationState,
-      evaluation.decision,
-      evaluation.qualityScore,
-      evaluation.rationale,
-      JSON.stringify(evaluation.evidenceIds || []),
-      evaluation.evaluationJson,
-      0,
-      evaluation.materializedAt,
-    ]);
-    await db.execute(
-      `INSERT INTO materialized_evaluations (
-         id, tenant_id, person_id, canonical_job_id, opportunity_version,
-         evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
-         rationale, evidence_ids, evaluation_json, vetoed, materialized_at
-       ) VALUES ${placeholders}
-       ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-       DO UPDATE SET evaluation_state = excluded.evaluation_state,
-                     evaluation_fingerprint = excluded.evaluation_fingerprint,
-                     decision = excluded.decision,
-                     quality_score = excluded.quality_score,
-                     rationale = excluded.rationale,
-                     evidence_ids = excluded.evidence_ids,
-                     evaluation_json = excluded.evaluation_json,
-                     vetoed = excluded.vetoed`,
-      params
-    );
-  }
+    for (let offset = 0; offset < evaluations.length; offset += 50) {
+      const chunk = evaluations.slice(offset, offset + 50);
+      const placeholders = chunk.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").join(",");
+      const params = chunk.flatMap((evaluation) => [
+        evaluation.id,
+        evaluation.tenantId,
+        evaluation.personId,
+        evaluation.canonicalJobId,
+        evaluation.opportunityVersion,
+        evaluation.evaluationContextFingerprint,
+        evaluation.evaluationFingerprint ?? null,
+        evaluation.evaluationState,
+        evaluation.decision,
+        evaluation.qualityScore,
+        evaluation.rationale,
+        JSON.stringify(evaluation.evidenceIds || []),
+        evaluation.evaluationJson,
+        0,
+        evaluation.materializedAt,
+      ]);
+      await tx.execute(
+        `INSERT INTO materialized_evaluations (
+           id, tenant_id, person_id, canonical_job_id, opportunity_version,
+           evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score,
+           rationale, evidence_ids, evaluation_json, vetoed, materialized_at
+         ) VALUES ${placeholders}
+         ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+         DO UPDATE SET evaluation_state = excluded.evaluation_state,
+                       evaluation_fingerprint = excluded.evaluation_fingerprint,
+                       decision = excluded.decision,
+                       quality_score = excluded.quality_score,
+                       rationale = excluded.rationale,
+                       evidence_ids = excluded.evidence_ids,
+                       evaluation_json = excluded.evaluation_json,
+                       vetoed = excluded.vetoed`,
+        params
+      );
+    }
+
+    const presentationStore = new SqliteDossierPresentationStore(tx);
+    for (const presentation of presentations) {
+      await presentationStore.savePresentation(presentation);
+    }
+  });
 
   return { examined: rows.length, candidates: eligibleCandidates, materialized: evaluations.length };
 }

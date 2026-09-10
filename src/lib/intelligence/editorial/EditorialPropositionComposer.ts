@@ -93,13 +93,17 @@ function normalized(value: string): string {
 }
 
 function semanticKey(value: string): string {
-  return normalized(value)
+  const tokens = normalized(value)
     .toLowerCase()
     .replace(/[^a-z0-9 ]/g, " ")
     .split(/\s+/)
+    .filter((token) => token.length > 0);
+  const filtered = tokens
     .filter((token) => token.length > 2 && !GENERIC_TOKENS.has(token))
     .sort()
     .join("|");
+  if (filtered.length > 0) return filtered;
+  return tokens.sort().join("|") || "proposition";
 }
 
 function proposition(
@@ -110,12 +114,13 @@ function proposition(
   suffix: string,
 ): EditorialProposition {
   const clean = normalized(text);
+  const key = semanticKey(clean);
   return {
-    id: `${kind}:${suffix}:${semanticKey(clean) || clean.toLowerCase()}`,
+    id: `${kind}:${suffix}:${key || clean.toLowerCase()}`,
     kind,
     text: clean,
     ...refs,
-    semanticKey: semanticKey(clean),
+    semanticKey: key,
     priority,
   };
 }
@@ -168,7 +173,15 @@ function signalProposition(signal: CanonicalEditorialSignal, index: number): Edi
   // Projection enum values are useful internal signals, but not executive
   // prose. A verdict is readable; other all-caps classifier tokens remain in
   // the contract/appendix but are deliberately omitted from composition.
-  if (!value || signal.kind === "SCORE" || (signal.kind !== "VERDICT" && (/^[A-Z0-9_]+$/.test(value) || value === "Relevant candidate precedent"))) return null;
+  if (
+    !value
+    || signal.kind === "SCORE"
+    // A capability-family label is a useful contract key but not a reader
+    // proposition. Employer facts and resolved evaluator evidence must carry
+    // the narrative, rather than a generic capability inventory label.
+    || signal.kind === "CAPABILITY"
+    || (signal.kind !== "VERDICT" && (/^[A-Z0-9_]+$/.test(value) || value === "Relevant candidate precedent"))
+  ) return null;
   return proposition("CANONICAL_EVALUATION", signal.value, {
     roleEvidenceIds: [],
     candidateEvidenceIds: [],
@@ -191,32 +204,82 @@ function substantiveConcepts(values: readonly string[]): string[] {
     .map((token) => token.replace(/s$/, "")))];
 }
 
+type ResolvedJobEvidence = Pick<CapabilityPositioningPair, "work" | "requirement" | "jobEvidence"> & {
+  rank: number;
+  exactRoleEvidenceIds: string[];
+  stableId: string;
+};
+
+/**
+ * Picks one resolved endpoint for one persisted evaluator relationship.  The
+ * trace may name several evidence records from a capability family, but this
+ * never turns it into several employer relationships.  All exact IDs remain
+ * attached to the selected relation for lineage.
+ */
+function rankResolvedJobEvidence(
+  fit: EditorialIntelligenceContract["candidateFitEvidence"][number],
+  contract: EditorialIntelligenceContract,
+): ResolvedJobEvidence | null {
+  const ids = new Set(fit.jobEvidenceIds ?? []);
+  const candidates: ResolvedJobEvidence[] = [
+    ...contract.publishedRoleWork
+      .filter((work) => ids.has(work.sourceEvidenceId))
+      .map((work) => ({ work, rank: work.kind === "OUTCOME" ? 400 : 300, exactRoleEvidenceIds: [work.sourceEvidenceId], stableId: work.sourceEvidenceId })),
+    ...contract.qualificationRequirements
+      .filter((requirement) => requirement.sourceEvidenceIds.some((id) => ids.has(id)))
+      .map((requirement) => ({
+        requirement,
+        rank: requirement.materiality === "CORE" ? 200 : 150,
+        exactRoleEvidenceIds: requirement.sourceEvidenceIds.filter((id) => ids.has(id)),
+        stableId: requirement.sourceEvidenceIds.filter((id) => ids.has(id)).sort()[0] ?? requirement.capability,
+      })),
+    ...(fit.jobEvidence ?? [])
+      .filter((evidence) => ids.has(evidence.id))
+      .map((jobEvidence) => ({ jobEvidence, rank: 100, exactRoleEvidenceIds: [jobEvidence.id], stableId: jobEvidence.id })),
+  ];
+  const selected = candidates.sort((left, right) => right.rank - left.rank || left.stableId.localeCompare(right.stableId))[0];
+  if (!selected) return null;
+  return {
+    ...selected,
+    exactRoleEvidenceIds: [...new Set((fit.jobEvidenceIds ?? []).filter((id) =>
+      selected.exactRoleEvidenceIds.includes(id) || (fit.jobEvidence ?? []).some((evidence) => evidence.id === id),
+    ))],
+  };
+}
+
+function rankFitEvidence(fit: EditorialIntelligenceContract["candidateFitEvidence"][number], contract: EditorialIntelligenceContract): number {
+  return rankResolvedJobEvidence(fit, contract)?.rank ?? 0;
+}
+
 function capabilityPositioningPairs(contract: EditorialIntelligenceContract): CapabilityPositioningPair[] {
   const pairs: CapabilityPositioningPair[] = [];
-  for (const fit of contract.candidateFitEvidence) {
-    if (fit.relationship !== "MATCH") continue;
+  const matches = contract.candidateFitEvidence.filter((fit) => fit.relationship === "MATCH");
+  const sortedMatches = [...matches].sort((a, b) => {
+    const diff = rankFitEvidence(b, contract) - rankFitEvidence(a, contract);
+    if (diff !== 0) return diff;
+    return a.id.localeCompare(b.id);
+  });
+
+  for (const fit of sortedMatches) {
     const candidate = contract.candidateCapabilities.find((item) =>
       item.evidenceIds.some((id) => fit.candidateEvidenceIds.includes(id)),
     );
-    const jobEvidenceIds = fit.jobEvidenceIds ?? [];
-    const work = contract.publishedRoleWork.find((item) => jobEvidenceIds.includes(item.sourceEvidenceId));
-    const requirement = contract.qualificationRequirements.find((item) => item.sourceEvidenceIds.some((id) => jobEvidenceIds.includes(id)));
-    const jobEvidence = fit.jobEvidence[0];
-    if (!candidate || (!work && !requirement && !jobEvidence)) continue;
+    const resolved = rankResolvedJobEvidence(fit, contract);
+    // Capability-evidence blobs are not an independently publishable mandate
+    // or requirement. Positioning needs a resolved role-work or qualification
+    // endpoint, not merely a shared evaluator capability family.
+    if (!candidate || !resolved || (!resolved.work && !resolved.requirement)) continue;
+
     pairs.push({
       candidate,
-      work,
-      requirement,
-      jobEvidence,
+      work: resolved.work,
+      requirement: resolved.requirement,
+      jobEvidence: resolved.jobEvidence,
       relation: {
         kind: "EVALUATOR_RELATION",
         basis: "CANONICAL_EVALUATION",
         traceRelationshipId: fit.id,
-        roleEvidenceIds: work
-          ? [work.sourceEvidenceId]
-          : requirement
-            ? requirement.sourceEvidenceIds
-            : jobEvidence ? [jobEvidence.id] : [],
+        roleEvidenceIds: resolved.exactRoleEvidenceIds,
         candidateEvidenceIds: fit.candidateEvidenceIds,
         canonicalSignalIds: [fit.id, ...(fit.canonicalSignalId ? [fit.canonicalSignalId] : [])],
         sharedConcepts: [fit.candidateCapabilityKey, fit.jobCapabilityKey].filter(Boolean),
@@ -328,9 +391,10 @@ function candidatePositioningInference(
     : requirement
       ? "published requirement"
       : "published capability evidence";
+  const employerStatement = employer.statement;
   return proposition("RADAR_INFERENCE", [
-    `Position ${candidate.statement ?? candidate.capability} as relevant operating evidence for this evaluator-linked ${scope}.`,
-    `The evaluator records a ${pair.relation.sharedConcepts[0] ?? "capability"} to ${pair.relation.sharedConcepts[1] ?? "role capability"} relationship.`,
+    `Position ${candidate.statement ?? candidate.capability} when discussing this evaluator-linked ${scope}: ${employerStatement}.`,
+    `The persisted evaluator relationship is between ${pair.relation.sharedConcepts[0] ?? "candidate capability"} and ${pair.relation.sharedConcepts[1] ?? "job capability"}.`,
     "Confirm the employer's required scope before making a direct-fit claim.",
   ].join(" "), {
     roleEvidenceIds: pair.relation.roleEvidenceIds.length
@@ -342,16 +406,47 @@ function candidatePositioningInference(
 }
 
 function traceBackedFitExplanation(contract: EditorialIntelligenceContract): EditorialProposition | null {
-  if (contract.decisionDrivers.availability !== "PERSISTED_DRIVER_DETAIL") return null;
-  const relationship = contract.candidateFitEvidence.find((item) => item.relationship === "MATCH");
-  if (!relationship) return null;
+  const eligibleMatches = contract.candidateFitEvidence.filter((fit) =>
+    fit.relationship === "MATCH"
+    && (fit.candidateEvidenceIds?.length ?? 0) > 0
+    && (fit.jobEvidenceIds?.length ?? 0) > 0
+    && rankFitEvidence(fit, contract) >= 70,
+  );
+  if (eligibleMatches.length === 0) return null;
+
+  const sortedMatches = [...eligibleMatches].sort((left, right) => {
+    const rankDiff = rankFitEvidence(right, contract) - rankFitEvidence(left, contract);
+    if (rankDiff !== 0) return rankDiff;
+    return left.id.localeCompare(right.id);
+  });
+
+  const relationship = sortedMatches[0];
   const candidate = contract.candidateCapabilities.find((item) =>
     item.evidenceIds.some((id) => relationship.candidateEvidenceIds.includes(id)),
   );
   if (!candidate) return null;
   const candidateFact = candidate.statement ?? candidate.capability;
-  return proposition("CANONICAL_EVALUATION", `The stored evaluator trace links ${candidateFact} to the employer's ${relationship.jobCapabilityKey} requirement as a ${relationship.relationship.toLowerCase()}.`, {
-    roleEvidenceIds: [],
+  const resolved = rankResolvedJobEvidence(relationship, contract);
+  if (!resolved || (!resolved.work && !resolved.requirement)) return null;
+  const matchedEvidence = resolved.jobEvidence;
+  const matchedWork = resolved.work;
+  const matchedRequirement = resolved.requirement;
+  const matchedConcept = (
+    matchedWork?.statement
+    ?? matchedRequirement?.statement
+    ?? matchedEvidence?.statement
+    ?? relationship.jobCapabilityKey
+    ?? "job evidence"
+  );
+  const roleEvidenceIds = [
+    ...new Set([
+      ...resolved.exactRoleEvidenceIds,
+      ...(matchedEvidence ? [matchedEvidence.id] : []),
+    ]),
+  ];
+
+  return proposition("CANONICAL_EVALUATION", `The stored evaluator trace links ${candidateFact} to this employer evidence: ${matchedConcept}. The relationship is recorded as ${relationship.relationship.toLowerCase()}.`, {
+    roleEvidenceIds,
     candidateEvidenceIds: relationship.candidateEvidenceIds,
     canonicalSignalIds: [relationship.id, ...(relationship.canonicalSignalId ? [relationship.canonicalSignalId] : [])],
   }, 79, "trace-backed-fit");
@@ -382,6 +477,49 @@ function verificationInference(
   }, 10, "evidence-limited");
 }
 
+/**
+ * Absence is not an employer fact.  These are bounded verification prompts
+ * derived only from the contract's established role context and canonical
+ * signals; they deliberately never inspect the source document.
+ */
+function structuralVerificationInferences(
+  contract: EditorialIntelligenceContract,
+): EditorialProposition[] {
+  const establishedContext = contract.roleContext.map((item) => item.statement).join(" ");
+  const hingeText = contract.decisionDrivers.hinges.map((item) => item.value).join(" ");
+  const reportingEstablished = /\b(?:reports?\s+(?:directly\s+)?to|reporting\s+to)\b/i.test(establishedContext);
+  const authoritySignal = contract.canonicalSignals.find((signal) =>
+    signal.kind === "DECISION_AUTHORITY"
+    && Boolean(normalized(signal.value))
+    && !/^(?:unknown|not established|none)$/i.test(normalized(signal.value)),
+  );
+  const hasReportingHinge = /\breport(?:ing)?\b/i.test(hingeText);
+  const hasAuthorityHinge = /\bdecision(?:\s+rights?|\s+authority)?\b/i.test(hingeText);
+  const propositions: EditorialProposition[] = [];
+
+  if (!reportingEstablished && !hasReportingHinge) {
+    propositions.push(proposition(
+      "EVIDENCE_LIMITATION",
+      "Reporting line is not established in the available published evidence. Ask: Who does the role report to?",
+      { roleEvidenceIds: [], candidateEvidenceIds: [], canonicalSignalIds: [] },
+      53,
+      "reporting-line-verification",
+    ));
+  }
+
+  if (!authoritySignal && !hasAuthorityHinge) {
+    propositions.push(proposition(
+      "EVIDENCE_LIMITATION",
+      "Decision authority is not established in the available published evidence. Ask: Which decisions does the role own directly?",
+      { roleEvidenceIds: [], candidateEvidenceIds: [], canonicalSignalIds: [] },
+      52,
+      "decision-authority-verification",
+    ));
+  }
+
+  return propositions;
+}
+
 function takeUnused(
   candidates: readonly EditorialProposition[],
   used: Set<string>,
@@ -402,10 +540,11 @@ export function composeEditorialIntelligenceV2(contract: EditorialIntelligenceCo
   const requirements = contract.qualificationRequirements;
   const context = contract.roleContext;
   const capabilityPairs = capabilityPositioningPairs(contract);
-  const candidateFacts = distinct([
-    ...contract.candidatePrecedents.map(precedentProposition),
-    ...capabilityPairs.map((pair, index) => capabilityProposition(pair.candidate, index)).filter((item): item is EditorialProposition => Boolean(item)),
-  ]);
+  // This section is trace-first: a candidate fact is publishable here only
+  // when its exact evidence IDs occur in a persisted evaluator relationship.
+  const candidateFacts = distinct(capabilityPairs
+    .map((pair, index) => capabilityProposition(pair.candidate, index))
+    .filter((item): item is EditorialProposition => Boolean(item)));
   const canonicalFacts = distinct(contract.canonicalSignals.map(signalProposition).filter((item): item is EditorialProposition => Boolean(item)));
   const workFacts = distinct(work.map(employerWorkProposition));
   const qualificationFacts = distinct(requirements.map(qualificationProposition));
@@ -414,7 +553,27 @@ export function composeEditorialIntelligenceV2(contract: EditorialIntelligenceCo
 
   const primaryWork = work[0];
   const primaryRequirement = requirements[0];
-  const employerSynthesis = primaryWork ? employerInference(primaryWork, mode) : null;
+  const primaryContext = context[0];
+
+  // The hierarchy distinguishes employer facts from RADAR's interpretation.
+  // A published qualification or context can make a useful statement about
+  // what the posting establishes, but never becomes an operating mandate.
+  const employerSynthesis = primaryWork
+    ? employerInference(primaryWork, mode)
+    : primaryRequirement
+      ? proposition("RADAR_INFERENCE", `The posting is clearer about the screening bar than the operating mandate: ${primaryRequirement.statement}.`, {
+        roleEvidenceIds: primaryRequirement.sourceEvidenceIds,
+        candidateEvidenceIds: [],
+        canonicalSignalIds: [],
+      }, 82, "qualification-hero")
+      : primaryContext
+        ? proposition("RADAR_INFERENCE", `The posting establishes ${primaryContext.statement}, but publishes limited concrete ownership for the role.`, {
+          roleEvidenceIds: [primaryContext.sourceEvidenceId],
+          candidateEvidenceIds: [],
+          canonicalSignalIds: [],
+        }, 80, "context-hero")
+        : null;
+
   const positioning = candidatePositioningInference(capabilityPairs[0]);
   const traceExplanation = traceBackedFitExplanation(contract);
   const roleStrategy = roleStrategyInference(primaryWork, primaryRequirement);
@@ -426,6 +585,9 @@ export function composeEditorialIntelligenceV2(contract: EditorialIntelligenceCo
   const verdict = contract.canonicalSignals.find((signal) => signal.kind === "VERDICT");
   const verdictFact = verdict ? signalProposition(verdict, 0) : null;
   const principalConstraint = contract.decisionDrivers.constraints[0];
+  const structuralVerification = structuralVerificationInferences(contract);
+
+  // 5-tier evidence hierarchy for bottom line:
   const bottomLine = primaryWork
     ? proposition("RADAR_INFERENCE", `${contract.verdict ?? "RADAR"}: this is an opportunity defined by ${modeMandateDescription(mode)}.${principalConstraint ? ` The retained evaluation constraint to test is ${principalConstraint.value}.` : " Validate the practical scope of the mandate before treating it as a direct-fit conclusion."}`, {
       roleEvidenceIds: [primaryWork.sourceEvidenceId],
@@ -435,9 +597,31 @@ export function composeEditorialIntelligenceV2(contract: EditorialIntelligenceCo
         ...(principalConstraint ? [principalConstraint.id] : []),
       ],
     }, 84, "bottom-line")
-    : proposition("EVIDENCE_LIMITATION", `${contract.verdict ?? "RADAR"}: published mandate detail is limited, so treat the first conversation as a mandate-validation step.`, {
-      roleEvidenceIds: [], candidateEvidenceIds: [], canonicalSignalIds: verdict ? [verdict.id] : [],
-    }, 18, "bottom-line-limited");
+    : primaryRequirement
+      ? proposition("RADAR_INFERENCE", `${contract.verdict ?? "RADAR"}: the posting establishes a screening bar of ${primaryRequirement.statement}, while leaving the operating mandate less explicit. Validate the practical scope before treating this as a direct-fit conclusion.`, {
+        roleEvidenceIds: primaryRequirement.sourceEvidenceIds,
+        candidateEvidenceIds: [],
+        canonicalSignalIds: [
+          ...(verdict ? [verdict.id] : []),
+          ...(principalConstraint ? [principalConstraint.id] : []),
+        ],
+      }, 35, "bottom-line-requirement-limited")
+      : primaryContext
+        ? proposition("RADAR_INFERENCE", `${contract.verdict ?? "RADAR"}: the posting establishes ${primaryContext.statement}, but does not publish enough concrete ownership to support a mandate claim. Clarify operational scope before pursuing direct-fit positioning.`, {
+          roleEvidenceIds: [primaryContext.sourceEvidenceId],
+          candidateEvidenceIds: [],
+          canonicalSignalIds: verdict ? [verdict.id] : [],
+        }, 30, "bottom-line-context-limited")
+        : traceExplanation
+          ? proposition("RADAR_INFERENCE", `${contract.verdict ?? "RADAR"}: the available canonical trace contains an evaluator-linked evidence relationship, but the posting does not publish a bounded operating mandate. Use that evidence carefully and establish the mandate directly.`, {
+            roleEvidenceIds: traceExplanation.roleEvidenceIds,
+            candidateEvidenceIds: traceExplanation.candidateEvidenceIds,
+            canonicalSignalIds: traceExplanation.canonicalSignalIds,
+          }, 28, "bottom-line-trace-limited")
+        : proposition("EVIDENCE_LIMITATION", `${contract.verdict ?? "RADAR"}: published mandate detail is limited, so treat the first conversation as a mandate-validation step.`, {
+          roleEvidenceIds: [], candidateEvidenceIds: [], canonicalSignalIds: verdict ? [verdict.id] : [],
+        }, 18, "bottom-line-limited");
+
   const evidenceLimitedHero = proposition("EVIDENCE_LIMITATION", `${contract.verdict ?? "RADAR"}: published role detail is limited, so establish the mandate before treating the evaluation as a direct-fit explanation.`, {
     roleEvidenceIds: [], candidateEvidenceIds: [], canonicalSignalIds: verdict ? [verdict.id] : [],
   }, 20, "hero-limited");
@@ -451,36 +635,41 @@ export function composeEditorialIntelligenceV2(contract: EditorialIntelligenceCo
     ...(traceExplanation ? [traceExplanation] : []),
     roleStrategy,
     verify,
+    ...structuralVerification,
     ...(verdictFact ? [verdictFact] : []),
     bottomLine,
-    ...(!primaryWork ? [evidenceLimitedHero] : []),
+    ...(!employerSynthesis ? [evidenceLimitedHero] : []),
   ]);
 
   const used = new Set<string>();
   const hero = employerSynthesis
     ? [employerSynthesis]
     : takeUnused(
-      primaryWork
-        ? [...employerFacts, ...canonicalFacts]
-        : [evidenceLimitedHero, ...canonicalFacts, ...employerFacts],
+      traceExplanation
+        ? [traceExplanation, ...employerFacts, ...canonicalFacts]
+        : [evidenceLimitedHero, ...employerFacts, ...canonicalFacts],
       used,
       1,
     );
   hero.forEach((item) => used.add(item.id));
   const mandate = [
     ...takeUnused(workFacts, used, 2),
-    ...takeUnused(qualificationFacts, used, 1),
+    ...takeUnused(qualificationFacts, used, workFacts.length === 0 ? 2 : 1),
     ...takeUnused(contextFacts, used, 1),
   ];
   const whyAttention = takeUnused([...employerFacts, ...canonicalFacts], used, 2);
   // Candidate evidence belongs in its own factual section. The strategy is a
   // separate RADAR inference, so a proof point is never silently re-used as a
   // mandate claim or a second copy of the same sentence.
-  const candidatePositioning = takeUnused(candidateFacts, used, 2);
+  const candidatePositioning = takeUnused(
+    traceExplanation ? [traceExplanation, ...candidateFacts] : candidateFacts,
+    used,
+    2,
+  );
   const bottomLineSection = [bottomLine];
   used.add(bottomLine.id);
   const howToWin = takeUnused([positioning ?? roleStrategy], used, 1);
-  const verifySection = takeUnused([verify], used, 1);
+  const verifySection = takeUnused([verify, ...structuralVerification], used, 3);
 
   return {
     version: "editorial-composition-v2",

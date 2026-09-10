@@ -29,7 +29,9 @@ describe("Populated Migration Verification (042 & 043 Rebuild Under Foreign Keys
       for (const file of pre042Files) {
         fs.copyFileSync(path.join(migrationsDir, file), path.join(tempDir, file));
       }
-      await runMigrations(db, tempDir);
+      // Constructing the deliberate pre-042 state is not a complete current
+      // schema; validate only after the official remaining migrations run.
+      await runMigrations(db, tempDir, { verifyRequiredSchema: false });
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
@@ -64,10 +66,11 @@ describe("Populated Migration Verification (042 & 043 Rebuild Under Foreign Keys
     await db.execute(`INSERT INTO evaluation_jobs (id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, status, attempts, max_attempts) VALUES ('eval_job_1', 'tenant_1', 'person_1', 'plan_1', 'can_1', 'ver_1', 'fp_1', 'pending', 0, 3)`);
     await db.execute(`INSERT INTO materialized_evaluations (id, tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint, evaluation_state, decision, quality_score, evaluation_json) VALUES ('me_1', 'tenant_1', 'person_1', 'can_1', 'ver_1', 'fp_1', 'EVALUATED', 'PURSUE', 90, '{"fit": true}')`);
 
-    // 3. Run remaining migrations (042, 043) via the official migration runner
+    // 3. Run remaining migrations (042–044) via the official migration runner
     const result = await runMigrations(db);
     expect(result.applied).toContain("042_scrape_runs_distributed_lifecycle.sql");
     expect(result.applied).toContain("043_distributed_work_identity.sql");
+    expect(result.applied).toContain("044_materialized_dossier_presentations.sql");
 
     // 4. Verify ZERO foreign key violations
     const fkViolations = rawDb.pragma("foreign_key_check");

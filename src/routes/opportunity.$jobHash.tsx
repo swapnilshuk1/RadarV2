@@ -5,6 +5,7 @@ import { useDecisions } from "../lib/decisions-store";
 import { resolveDossierDecisionState } from "../lib/intelligence/decision-state";
 import { ReadingSurface } from "@/components/radar/opportunity/surfaces/ReadingSurface";
 import { ExecutiveBriefingSurface } from "@/components/radar/opportunity/surfaces/ExecutiveBriefingSurface";
+import { CanonicalDossierV2Surface } from "@/components/radar/opportunity/surfaces/CanonicalDossierV2Surface";
 
 export const Route = createFileRoute("/opportunity/$jobHash")({
   loader: async ({ params }: { params: { jobHash: string } }) => {
@@ -22,6 +23,15 @@ export const Route = createFileRoute("/opportunity/$jobHash")({
       return { meta: [{ title: "Brief unavailable - RADAR" }, { name: "robots", content: "noindex" }] };
     }
     const o = loaderData.opportunity;
+    if (o.dossierPresentationV2) {
+      const hero = o.dossierPresentationV2.composition.sections.hero;
+      return {
+        meta: [
+          { title: `${o.role} at ${o.company} - RADAR Executive Dossier` },
+          { name: "description", content: hero.headline || `${o.role} executive dossier` },
+        ],
+      };
+    }
     if (!isEvaluated(o)) {
       return { meta: [{ title: `${o.evaluationState} - RADAR Dossier` }] };
     }
@@ -52,6 +62,31 @@ export function OpportunityBriefView() {
     );
   }
 
+  const dossierState = resolveDossierDecisionState(o, decisions[o.jobHash]);
+
+  const decide = (verb: DecisionVerb) => {
+    recordDecision(
+      o.jobHash,
+      verb,
+      dossierState.evaluationFingerprint
+    );
+    router.invalidate();
+  };
+
+  if (o.dossierPresentationV2) {
+    return (
+      <CanonicalDossierV2Surface
+        opportunity={o}
+        presentation={o.dossierPresentationV2}
+        neighbors={neighbors}
+        currentIndex={currentIndex}
+        totalCount={totalCount}
+        decide={decide}
+        dossierState={dossierState}
+      />
+    );
+  }
+
   if (isUnavailable(o)) {
     return (
       <div className="memo-container py-16 text-center">
@@ -64,16 +99,6 @@ export function OpportunityBriefView() {
   
   if (!isEvaluated(o)) { return null; }
   const evalOpp = o;
-  const dossierState = resolveDossierDecisionState(evalOpp, decisions[evalOpp.jobHash]);
-
-  const decide = (verb: DecisionVerb) => {
-    recordDecision(
-      evalOpp.jobHash,
-      verb,
-      dossierState.evaluationFingerprint
-    );
-    router.invalidate();
-  };
 
   const presentation = evalOpp.dossierPresentation;
   if (presentation) {

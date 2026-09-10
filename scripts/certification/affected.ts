@@ -4,7 +4,11 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
+import path from "node:path";
 import { certificationManifest, certificationTestFiles } from "./manifest";
+
+const require = createRequire(import.meta.url);
 
 type CertificationGroupId = (typeof certificationManifest)[number]["id"];
 
@@ -89,8 +93,11 @@ function runAffectedCertification() {
   console.log(`Logical groups: ${groups.join(", ")}`);
   console.log(`Tests selected: ${files.length}/${certificationTestFiles.length}\n`);
 
-  const executable = process.platform === "win32" ? "npx.cmd" : "npx";
-  execFileSync(executable, ["vitest", "run", "--config", "vitest.certification.config.ts", ...files], {
+  // Vitest 4 exposes its executable through package metadata rather than an
+  // exported subpath. Resolve the installed package, then invoke that CLI
+  // directly with Node to avoid Windows' npx.cmd spawn semantics.
+  const vitestCli = path.join(path.dirname(require.resolve("vitest/package.json")), "vitest.mjs");
+  execFileSync(process.execPath, [vitestCli, "run", "--config", "vitest.certification.config.ts", ...files], {
     stdio: "inherit",
   });
 }

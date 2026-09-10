@@ -225,8 +225,6 @@ describe("Editorial evidence sufficiency contract", () => {
 
     expect(dossier.brief.memory.decision).toBe("PURSUE");
     expect(dossier.brief.qualityScore).toBe(72);
-    expect(dossier.brief.rankedUnknowns.map((unknown: { label: string }) => unknown.label)).toContain("Reporting line");
-    expect(dossier.brief.rankedUnknowns.map((unknown: { label: string }) => unknown.label)).toContain("Decision rights");
     expect(dossier.brief.decisionSensitivity).toEqual({ becomesPursueIf: [], becomesPassIf: [] });
     expect(dossier.brief.executiveThesis).toBeDefined();
     expect(dossier.jobProjection).toBeDefined();

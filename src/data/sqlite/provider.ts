@@ -12,6 +12,7 @@ import { SqliteCredentialStore } from "./repositories/SqliteCredentialStore";
 import { SqliteOpportunityQueries } from "./repositories/SqliteOpportunityQueries";
 import { SqliteEvaluationContextStore } from "./repositories/SqliteEvaluationContextStore";
 import { SqliteScrapeRunStore } from "./repositories/SqliteScrapeRunStore";
+import { SqliteDossierPresentationStore } from "./repositories/SqliteDossierPresentationStore";
 import { getDatabaseAdapter, type DatabaseAdapter } from "../database";
 import type { StorageProvider } from "../../domain/repositories";
 
@@ -35,6 +36,7 @@ export function createRepositories(db: DatabaseAdapter): StorageProvider {
     canonicalServing: new SqliteOpportunityQueries(db),
     evaluationContexts: new SqliteEvaluationContextStore(db),
     scrapeRuns: new SqliteScrapeRunStore(db),
+    dossierPresentations: new SqliteDossierPresentationStore(db),
   };
 }
 
