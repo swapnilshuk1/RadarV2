@@ -204,25 +204,51 @@ function substantiveConcepts(values: readonly string[]): string[] {
     .map((token) => token.replace(/s$/, "")))];
 }
 
-function rankFitEvidence(
+type ResolvedJobEvidence = Pick<CapabilityPositioningPair, "work" | "requirement" | "jobEvidence"> & {
+  rank: number;
+  exactRoleEvidenceIds: string[];
+  stableId: string;
+};
+
+/**
+ * Picks one resolved endpoint for one persisted evaluator relationship.  The
+ * trace may name several evidence records from a capability family, but this
+ * never turns it into several employer relationships.  All exact IDs remain
+ * attached to the selected relation for lineage.
+ */
+function rankResolvedJobEvidence(
   fit: EditorialIntelligenceContract["candidateFitEvidence"][number],
   contract: EditorialIntelligenceContract,
-): number {
-  const jobEvidenceIds = fit.jobEvidenceIds ?? [];
-  const work = contract.publishedRoleWork.find((item) => jobEvidenceIds.includes(item.sourceEvidenceId));
-  if (work) {
-    return work.kind === "OUTCOME" ? 100 : 90;
-  }
-  const requirement = contract.qualificationRequirements.find((item) =>
-    item.sourceEvidenceIds.some((id) => jobEvidenceIds.includes(id)),
-  );
-  if (requirement) {
-    return requirement.materiality === "CORE" ? 80 : 70;
-  }
-  if (fit.jobEvidence && fit.jobEvidence.length > 0) {
-    return 60;
-  }
-  return 10;
+): ResolvedJobEvidence | null {
+  const ids = new Set(fit.jobEvidenceIds ?? []);
+  const candidates: ResolvedJobEvidence[] = [
+    ...contract.publishedRoleWork
+      .filter((work) => ids.has(work.sourceEvidenceId))
+      .map((work) => ({ work, rank: work.kind === "OUTCOME" ? 400 : 300, exactRoleEvidenceIds: [work.sourceEvidenceId], stableId: work.sourceEvidenceId })),
+    ...contract.qualificationRequirements
+      .filter((requirement) => requirement.sourceEvidenceIds.some((id) => ids.has(id)))
+      .map((requirement) => ({
+        requirement,
+        rank: requirement.materiality === "CORE" ? 200 : 150,
+        exactRoleEvidenceIds: requirement.sourceEvidenceIds.filter((id) => ids.has(id)),
+        stableId: requirement.sourceEvidenceIds.filter((id) => ids.has(id)).sort()[0] ?? requirement.capability,
+      })),
+    ...(fit.jobEvidence ?? [])
+      .filter((evidence) => ids.has(evidence.id))
+      .map((jobEvidence) => ({ jobEvidence, rank: 100, exactRoleEvidenceIds: [jobEvidence.id], stableId: jobEvidence.id })),
+  ];
+  const selected = candidates.sort((left, right) => right.rank - left.rank || left.stableId.localeCompare(right.stableId))[0];
+  if (!selected) return null;
+  return {
+    ...selected,
+    exactRoleEvidenceIds: [...new Set((fit.jobEvidenceIds ?? []).filter((id) =>
+      selected.exactRoleEvidenceIds.includes(id) || (fit.jobEvidence ?? []).some((evidence) => evidence.id === id),
+    ))],
+  };
+}
+
+function rankFitEvidence(fit: EditorialIntelligenceContract["candidateFitEvidence"][number], contract: EditorialIntelligenceContract): number {
+  return rankResolvedJobEvidence(fit, contract)?.rank ?? 0;
 }
 
 function capabilityPositioningPairs(contract: EditorialIntelligenceContract): CapabilityPositioningPair[] {
@@ -238,32 +264,22 @@ function capabilityPositioningPairs(contract: EditorialIntelligenceContract): Ca
     const candidate = contract.candidateCapabilities.find((item) =>
       item.evidenceIds.some((id) => fit.candidateEvidenceIds.includes(id)),
     );
-    const jobEvidenceIds = fit.jobEvidenceIds ?? [];
-    const work = contract.publishedRoleWork.find((item) => jobEvidenceIds.includes(item.sourceEvidenceId));
-    const requirement = contract.qualificationRequirements.find((item) => item.sourceEvidenceIds.some((id) => jobEvidenceIds.includes(id)));
-    const sortedJobEvidence = [...(fit.jobEvidence ?? [])].sort((a, b) => a.id.localeCompare(b.id));
-    const jobEvidence = sortedJobEvidence[0];
+    const resolved = rankResolvedJobEvidence(fit, contract);
     // Capability-evidence blobs are not an independently publishable mandate
     // or requirement. Positioning needs a resolved role-work or qualification
     // endpoint, not merely a shared evaluator capability family.
-    if (!candidate || (!work && !requirement)) continue;
-
-    const roleEvidenceIds = work
-      ? [work.sourceEvidenceId]
-      : requirement
-        ? requirement.sourceEvidenceIds
-      : [];
+    if (!candidate || !resolved || (!resolved.work && !resolved.requirement)) continue;
 
     pairs.push({
       candidate,
-      work,
-      requirement,
-      jobEvidence,
+      work: resolved.work,
+      requirement: resolved.requirement,
+      jobEvidence: resolved.jobEvidence,
       relation: {
         kind: "EVALUATOR_RELATION",
         basis: "CANONICAL_EVALUATION",
         traceRelationshipId: fit.id,
-        roleEvidenceIds,
+        roleEvidenceIds: resolved.exactRoleEvidenceIds,
         candidateEvidenceIds: fit.candidateEvidenceIds,
         canonicalSignalIds: [fit.id, ...(fit.canonicalSignalId ? [fit.canonicalSignalId] : [])],
         sharedConcepts: [fit.candidateCapabilityKey, fit.jobCapabilityKey].filter(Boolean),
@@ -524,10 +540,11 @@ export function composeEditorialIntelligenceV2(contract: EditorialIntelligenceCo
   const requirements = contract.qualificationRequirements;
   const context = contract.roleContext;
   const capabilityPairs = capabilityPositioningPairs(contract);
-  const candidateFacts = distinct([
-    ...contract.candidatePrecedents.map(precedentProposition),
-    ...capabilityPairs.map((pair, index) => capabilityProposition(pair.candidate, index)).filter((item): item is EditorialProposition => Boolean(item)),
-  ]);
+  // This section is trace-first: a candidate fact is publishable here only
+  // when its exact evidence IDs occur in a persisted evaluator relationship.
+  const candidateFacts = distinct(capabilityPairs
+    .map((pair, index) => capabilityProposition(pair.candidate, index))
+    .filter((item): item is EditorialProposition => Boolean(item)));
   const canonicalFacts = distinct(contract.canonicalSignals.map(signalProposition).filter((item): item is EditorialProposition => Boolean(item)));
   const workFacts = distinct(work.map(employerWorkProposition));
   const qualificationFacts = distinct(requirements.map(qualificationProposition));

@@ -424,6 +424,31 @@ describe("Phase 4: Opportunity Version Pinning & Presentation Architecture", () 
       })).toBe(false);
     });
 
+    it("rejects evaluated V2 materialization when canonical record scalars are not finite in range", () => {
+      expect(() => buildEvaluatedPresentationV2({
+        identity: {
+          tenantId: "tenant-a", personId: "person-a", canonicalJobId: "job-a",
+          opportunityVersion: "version-a", evaluationContextFingerprint: "ctx-a",
+        },
+        artifact: {
+          ...mockArtifact,
+          record: { ...mockArtifact.record, qualityScore: Number.POSITIVE_INFINITY },
+        } as EvaluationArtifact,
+        candidateProjection: mockCandidate,
+        evaluationFingerprint: "evaluation-a",
+      })).toThrow(/EVALUATED artifact|finite 0–100 score/i);
+    });
+
+    it("rejects unavailable V2 materialization for an unsafe unavailable state", () => {
+      expect(() => buildUnavailablePresentationV2({
+        identity: {
+          tenantId: "tenant-a", personId: "person-a", canonicalJobId: "job-a",
+          opportunityVersion: "version-a", evaluationContextFingerprint: "ctx-a",
+        },
+        reasonCode: "PROFILE_REQUIRED",
+      })).toThrow(/only supports SPARSE_SPEC or NOT_EVALUABLE/i);
+    });
+
     it("Regression 5: Source-level AST/regex boundary verifies producers and UI no longer import or invoke V1 dossier components", () => {
       const filesToCheck = [
         "src/lib/intelligence/EvaluationWorker.ts",

@@ -1024,9 +1024,9 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
       };
-      const presentationV2 = await presentationStore.getPresentation(presentationIdentity, null);
-      if (presentationV2) {
-        unavailOpp.dossierPresentationV2 = presentationV2;
+      if (unavailState === "SPARSE_SPEC" || unavailState === "NOT_EVALUABLE") {
+        const presentationV2 = await presentationStore.getPresentation(presentationIdentity, null);
+        if (presentationV2) unavailOpp.dossierPresentationV2 = presentationV2;
       }
       return unavailOpp;
     }
@@ -1100,10 +1100,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
       };
-      const presentationV2 = await presentationStore.getPresentation(presentationIdentity, null);
-      if (presentationV2) {
-        invalidOpp.dossierPresentationV2 = presentationV2;
-      }
       return invalidOpp;
     }
 
@@ -1156,10 +1152,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
       };
-      const presentationV2 = await presentationStore.getPresentation(presentationIdentity, null);
-      if (presentationV2) {
-        invalidOpp.dossierPresentationV2 = presentationV2;
-      }
       return invalidOpp;
     }
 
@@ -1196,10 +1188,6 @@ export class SqliteOpportunityQueries implements OpportunityQueries {
         effectiveDecision: readModel.effectiveDecision,
         reviewState: readModel.reviewState,
       };
-      const presentationV2 = await presentationStore.getPresentation(presentationIdentity, null);
-      if (presentationV2) {
-        invalidOpp.dossierPresentationV2 = presentationV2;
-      }
       return invalidOpp;
     }
     // Persisted materialized columns, not JSON compatibility aliases, are the

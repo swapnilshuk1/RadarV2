@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import type { ServedOpportunity, DecisionVerb } from "@/data/opportunity-fixtures";
+import { applicationActionFor, type EvaluatedOpportunity, type ServedOpportunity, type DecisionVerb } from "@/data/opportunity-fixtures";
 import type { CanonicalDossierPresentationV2 } from "@/lib/domain/dossier_presentation";
 import type { EditorialProposition, EditorialPropositionKind } from "@/lib/intelligence/editorial/EditorialPropositionComposer";
 import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
@@ -18,7 +18,7 @@ export interface CanonicalDossierV2SurfaceProps {
 function PropositionBadge({ kind }: { kind: EditorialPropositionKind }) {
   switch (kind) {
     case "EMPLOYER_FACT":
-      return <span className="label-mono px-2 py-0.5 rounded border border-border text-muted-foreground bg-surface-raised">PROJECTION EXTRACT</span>;
+      return <span className="label-mono px-2 py-0.5 rounded border border-border text-muted-foreground bg-surface-raised">PUBLISHED ROLE EVIDENCE</span>;
     case "CANDIDATE_FACT":
       return <span className="label-mono px-2 py-0.5 rounded border border-signal text-signal bg-surface-raised">CANDIDATE EVIDENCE</span>;
     case "CANONICAL_EVALUATION":
@@ -37,11 +37,6 @@ function PropositionItem({ prop }: { prop: EditorialProposition }) {
     <li className="space-y-1.5 py-2 border-b border-border last:border-b-0">
       <div className="flex items-center gap-2">
         <PropositionBadge kind={prop.kind} />
-        {prop.roleEvidenceIds.length > 0 && (
-          <span className="label-mono text-muted-foreground">
-            {prop.roleEvidenceIds.length} source ref{prop.roleEvidenceIds.length > 1 ? "s" : ""}
-          </span>
-        )}
       </div>
       <p className="text-foreground leading-relaxed font-sans">{prop.text}</p>
     </li>
@@ -61,6 +56,7 @@ export function CanonicalDossierV2Surface({
   const isEvaluated = presentation.evaluation.state === "EVALUATED";
   const verdict = presentation.evaluation.verdict;
   const score = presentation.evaluation.score;
+  const applicationAction = applicationActionFor(o as EvaluatedOpportunity);
 
   // Keyboard shortcut listener: P = Pursue, C = Consider, X = Pass
   const handleKeyboard = useCallback(
@@ -99,19 +95,19 @@ export function CanonicalDossierV2Surface({
             </Link>
             {currentIndex !== undefined && totalCount !== undefined && (
               <span className="label-mono text-muted-foreground">
-                {currentIndex + 1} of {totalCount}
+                {currentIndex} of {totalCount}
               </span>
             )}
           </div>
           <div className="flex items-center gap-3">
-            {o.applyUrl && (
+            {applicationAction && (
               <a
-                href={o.applyUrl}
+                href={applicationAction.url}
                 target="_blank"
                 rel="noreferrer noopener"
                 className="text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground px-3 py-1 rounded border border-border"
               >
-                Direct Posting ↗
+                {applicationAction.label}
               </a>
             )}
           </div>
@@ -160,7 +156,7 @@ export function CanonicalDossierV2Surface({
             {o.postedRelative && (
               <>
                 <span>·</span>
-                <span>Posted {o.postedRelative}</span>
+                <span>{o.postedRelative}</span>
               </>
             )}
             {o.scrapedFrom && (
@@ -211,11 +207,7 @@ export function CanonicalDossierV2Surface({
                 <PropositionItem key={p.id} prop={p} />
               ))}
             </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground italic font-sans">
-              No strategic career value anomalies identified in current evidence.
-            </p>
-          )}
+          ) : null}
         </section>
 
         {/* 3. THE CASE (Permanent Landmark) */}
@@ -236,11 +228,7 @@ export function CanonicalDossierV2Surface({
                 <PropositionItem key={p.id} prop={p} />
               ))}
             </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground italic font-sans">
-              No grounded bottom-line proposition is available for this dossier.
-            </p>
-          )}
+          ) : null}
         </section>
 
         {/* 4. THE ROLE (Permanent Landmark) */}
@@ -261,11 +249,7 @@ export function CanonicalDossierV2Surface({
                 <PropositionItem key={p.id} prop={p} />
               ))}
             </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground italic font-sans">
-              No additional source-grounded role requirement is available.
-            </p>
-          )}
+          ) : null}
         </section>
 
         {/* 5. YOUR ADVANTAGE (Permanent Landmark) */}
@@ -286,11 +270,7 @@ export function CanonicalDossierV2Surface({
                 <PropositionItem key={p.id} prop={p} />
               ))}
             </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground italic font-sans">
-              No evaluator-linked candidate evidence is available for this opportunity.
-            </p>
-          )}
+          ) : null}
         </section>
 
         {/* 6. OPEN QUESTIONS (Permanent Landmark) */}
@@ -311,11 +291,7 @@ export function CanonicalDossierV2Surface({
                 <PropositionItem key={p.id} prop={p} />
               ))}
             </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground italic font-sans">
-              No additional verification proposition is available.
-            </p>
-          )}
+          ) : null}
         </section>
 
         {/* 7. DECISION BOUNDARIES (Permanent Landmark) */}
@@ -336,11 +312,7 @@ export function CanonicalDossierV2Surface({
                 <PropositionItem key={p.id} prop={p} />
               ))}
             </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground italic font-sans">
-              No grounded positioning recommendation is available.
-            </p>
-          )}
+          ) : null}
         </section>
 
         {/* 8. SUPPORTING EVIDENCE (Permanent Landmark) */}
@@ -375,52 +347,6 @@ export function CanonicalDossierV2Surface({
           </div>
         </section>
 
-        {/* 9. DOSSIER LEDGER (Permanent Landmark) */}
-        <section className="memo-card space-y-4">
-          <header className="border-b border-border pb-2">
-            <h2 className="label-mono text-muted-foreground tracking-widest">
-              DOSSIER LEDGER
-            </h2>
-          </header>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs border-collapse">
-              <tbody>
-                <tr className="border-b border-border">
-                  <td className="py-2 text-muted-foreground w-1/3">TENANT ID</td>
-                  <td className="py-2 text-foreground">{presentation.identity.tenantId}</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="py-2 text-muted-foreground">PERSON ID</td>
-                  <td className="py-2 text-foreground">{presentation.identity.personId}</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="py-2 text-muted-foreground">CANONICAL JOB ID</td>
-                  <td className="py-2 text-foreground">{presentation.identity.canonicalJobId}</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="py-2 text-muted-foreground">OPPORTUNITY VERSION</td>
-                  <td className="py-2 text-foreground">{presentation.identity.opportunityVersion}</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="py-2 text-muted-foreground">CONTEXT FINGERPRINT</td>
-                  <td className="py-2 text-foreground">{presentation.identity.evaluationContextFingerprint}</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="py-2 text-muted-foreground">EVALUATION FINGERPRINT</td>
-                  <td className="py-2 text-foreground">{presentation.evaluation.fingerprint || "NONE (SOURCE-ONLY)"}</td>
-                </tr>
-                <tr className="border-b border-border">
-                  <td className="py-2 text-muted-foreground">PRESENTATION VERSION</td>
-                  <td className="py-2 text-foreground">{presentation.schemaVersion} ({presentation.editorialVersion})</td>
-                </tr>
-                <tr>
-                  <td className="py-2 text-muted-foreground">MATERIALIZED AT</td>
-                  <td className="py-2 text-foreground">{presentation.generatedAt}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
       </main>
 
       {/* Floating Action Dock (Apple/Linear Style) */}

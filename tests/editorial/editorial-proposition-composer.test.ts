@@ -280,6 +280,38 @@ describe("EditorialPropositionComposer", () => {
     expect(JSON.stringify(composed)).not.toMatch(/Performance Marketing as relevant operating evidence/i);
   });
 
+  it("uses only trace-linked candidate facts in Why this reached your desk", () => {
+    const composed = composeEditorialIntelligenceV2(contract({
+      candidateFitEvidence: [{
+        id: "trace:crm", candidateEvidenceIds: ["candidate:crm"], jobEvidenceIds: ["role:lifecycle"],
+        jobEvidence: [{ id: "role:lifecycle", statement: "Own lifecycle retention and CRM execution across priority customer segments.", kind: "ROLE_WORK" }],
+        candidateCapabilityKey: "CRM", jobCapabilityKey: "CRM", relationship: "MATCH",
+      }],
+      candidatePrecedents: [{
+        capability: "Unrelated sales", statement: "Ran unrelated sales operations.", evidenceIds: ["candidate:sales"], confidence: 0.9, provenance: "CANDIDATE_FACT",
+      }],
+    }));
+    const rendered = JSON.stringify(composed.sections.candidatePositioning);
+    expect(rendered).toContain("Built lifecycle CRM");
+    expect(rendered).not.toContain("Ran unrelated sales operations");
+  });
+
+  it("selects one strongest resolved endpoint without fanning a trace into multiple employer relationships", () => {
+    const composed = composeEditorialIntelligenceV2(contract({
+      candidateFitEvidence: [{
+        id: "trace:two-work-items", candidateEvidenceIds: ["candidate:crm"],
+        jobEvidenceIds: ["role:lifecycle", "role:retention-outcome"],
+        jobEvidence: [
+          { id: "role:lifecycle", statement: "Own lifecycle retention and CRM execution across priority customer segments.", kind: "ROLE_WORK" },
+          { id: "role:retention-outcome", statement: "Improve retention outcomes through disciplined lifecycle measurement.", kind: "ROLE_WORK" },
+        ], candidateCapabilityKey: "CRM", jobCapabilityKey: "CRM", relationship: "MATCH",
+      }],
+    }));
+    expect(composed.positioningRelations).toHaveLength(1);
+    expect(composed.positioningRelations[0]?.roleEvidenceIds).toEqual(expect.arrayContaining(["role:lifecycle", "role:retention-outcome"]));
+    expect(composed.sections.howToWin.propositions[0]?.text).toContain("Improve retention outcomes");
+  });
+
   it("suppresses opaque canonical enum values from reader-facing propositions", () => {
     const composed = composeEditorialIntelligenceV2(contract({
       canonicalSignals: [{

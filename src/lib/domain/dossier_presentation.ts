@@ -204,7 +204,7 @@ export function isCanonicalDossierPresentationV2(value: unknown): value is Canon
 
   if (ev.state === "EVALUATED") {
     if (ev.verdict !== "PURSUE" && ev.verdict !== "CONSIDER" && ev.verdict !== "PASS") return false;
-    if (typeof ev.score !== "number" || Number.isNaN(ev.score)) return false;
+    if (typeof ev.score !== "number" || !Number.isFinite(ev.score) || ev.score < 0 || ev.score > 100) return false;
     if (typeof ev.fingerprint !== "string" || ev.fingerprint.trim().length === 0) return false;
   } else {
     if (ev.verdict !== null) return false;

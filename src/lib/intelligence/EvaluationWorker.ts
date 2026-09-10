@@ -563,7 +563,7 @@ export class EvaluationWorker {
           materialized.evaluationFingerprint || null,
           materialized.evaluationState,
           materialized.decision || null,
-          materialized.qualityScore || null,
+          materialized.qualityScore ?? null,
           materialized.rationale || null,
           typeof materialized.evidenceIds === "string" ? materialized.evidenceIds : JSON.stringify(materialized.evidenceIds || []),
           materialized.evaluationJson,

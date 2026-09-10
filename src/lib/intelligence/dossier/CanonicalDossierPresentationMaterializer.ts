@@ -53,6 +53,16 @@ function buildCanonicalDossierPresentationV2(params: {
 export function buildEvaluatedPresentationV2(
   params: BuildEvaluatedPresentationV2Params,
 ): CanonicalDossierPresentationV2 {
+  const resolvedState = resolveArtifactEvaluationState(params.artifact);
+  if (resolvedState !== "EVALUATED") {
+    throw new Error(`Evaluated dossier presentation requires an EVALUATED artifact for job ${params.identity.canonicalJobId}`);
+  }
+  const verdict = params.artifact.record?.verb;
+  const score = params.artifact.record?.qualityScore;
+  if ((verdict !== "PURSUE" && verdict !== "CONSIDER" && verdict !== "PASS")
+    || typeof score !== "number" || !Number.isFinite(score) || score < 0 || score > 100) {
+    throw new Error(`Evaluated dossier presentation requires canonical verdict and finite 0–100 score for job ${params.identity.canonicalJobId}`);
+  }
   const editorialIntelligence = buildEditorialIntelligenceContract({
     state: "EVALUATED",
     artifact: params.artifact,
@@ -60,36 +70,12 @@ export function buildEvaluatedPresentationV2(
     presentationEvidence: params.presentationEvidence,
   });
 
-  const resolvedState = resolveArtifactEvaluationState(params.artifact);
-  const rawArtifact = params.artifact as any;
-  const rawOpportunity = rawArtifact?.opportunity as any;
-  const rawVerdict =
-    rawArtifact?.decision ??
-    rawOpportunity?.decision ??
-    params.artifact.record?.verb ??
-    null;
-  const rawScore =
-    typeof rawArtifact?.score === "number"
-      ? rawArtifact.score
-      : typeof rawOpportunity?.score === "number"
-      ? rawOpportunity.score
-      : typeof params.artifact.record?.qualityScore === "number"
-      ? params.artifact.record.qualityScore
-      : null;
-
-  const evaluation = resolvedState === "EVALUATED"
-    ? {
-        state: "EVALUATED" as const,
-        verdict: rawVerdict as "PURSUE" | "CONSIDER" | "PASS",
-        score: rawScore,
-        fingerprint: params.evaluationFingerprint,
-      }
-    : {
-        state: resolvedState,
-        verdict: null,
-        score: null,
-        fingerprint: null,
-      };
+  const evaluation = {
+    state: "EVALUATED" as const,
+    verdict,
+    score,
+    fingerprint: params.evaluationFingerprint,
+  };
 
   const presentation = buildCanonicalDossierPresentationV2({
     identity: params.identity,
@@ -108,6 +94,9 @@ export function buildEvaluatedPresentationV2(
 export function buildUnavailablePresentationV2(
   params: BuildUnavailablePresentationV2Params,
 ): CanonicalDossierPresentationV2 {
+  if (params.reasonCode !== "SPARSE_SPEC" && params.reasonCode !== "NOT_EVALUABLE") {
+    throw new Error(`Unavailable dossier presentation only supports SPARSE_SPEC or NOT_EVALUABLE for job ${params.identity.canonicalJobId}`);
+  }
   const editorialIntelligence = buildEditorialIntelligenceContract({
     state: "UNAVAILABLE",
     reasonCode: params.reasonCode,
