@@ -76,6 +76,22 @@ export class RunReconciliationService {
       this.runStore.getRunEvaluationProgress(runId),
     ]);
 
+    // 0. Explicit durable check: Fail closed if acquisition reported unrecovered integrity failures
+    let metrics: any = {};
+    if (run.metricsJson) {
+      try {
+        metrics = typeof run.metricsJson === "string" ? JSON.parse(run.metricsJson) : run.metricsJson;
+      } catch {}
+    }
+    if ((metrics?.acquisitionIntegrityFailures ?? 0) > 0) {
+      await this.runStore.systemUpdateRunStatus(
+        runId,
+        "failed",
+        `Acquisition integrity failure: ${metrics.acquisitionIntegrityFailures} fatal integrity failure(s) occurred during acquisition`
+      );
+      return { transitioned: true, newStatus: "failed" };
+    }
+
     // 1. Fail-closed check: Any failed enrichment or evaluation fails the run
     if (enrichmentStats.failed > 0) {
       await this.runStore.systemUpdateRunStatus(
@@ -185,6 +201,25 @@ export class RunReconciliationService {
     for (const req of failedEnrichments) {
       await this.db.execute(
         `UPDATE evaluation_requirements SET status = 'FAILED', blocked_reason = 'ENRICHMENT_FAILED' WHERE id = ? AND status = 'WAITING_ENRICHMENT'`,
+        [req.id]
+      );
+      requirementsHealed++;
+    }
+
+    // 2b. WAITING_ENRICHMENT -> FAILED when NO matching enrichment job exists at all
+    const missingEnrichments = await this.db.many<{ id: string }>(
+      `SELECT er.id
+       FROM evaluation_requirements er
+       LEFT JOIN enrichment_jobs ej
+         ON er.canonical_job_id = ej.canonical_job_id
+        AND er.opportunity_version = ej.opportunity_version
+        AND er.required_enrichment_pipeline_version = ej.pipeline_version
+       WHERE er.status = 'WAITING_ENRICHMENT' AND ej.id IS NULL`
+    );
+
+    for (const req of missingEnrichments) {
+      await this.db.execute(
+        `UPDATE evaluation_requirements SET status = 'FAILED', blocked_reason = 'MISSING_ENRICHMENT_JOB' WHERE id = ? AND status = 'WAITING_ENRICHMENT'`,
         [req.id]
       );
       requirementsHealed++;

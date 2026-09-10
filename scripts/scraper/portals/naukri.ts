@@ -486,6 +486,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         { "appid": "109", "systemid": "NWEB", "Referer": "https://www.naukri.com/" }
       );
       if (httpRes.fetched && httpRes.rawText && httpRes.rawText.length >= 300) {
+        ctx.recordHttpSuccess?.(url);
         ctx.recordTelemetry?.("httpSuccessful");
         ctx.logger(`[FastPath] Extracted detail from ${url}`);
         return {

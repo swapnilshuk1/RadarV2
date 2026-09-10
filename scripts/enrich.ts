@@ -98,9 +98,26 @@ export async function processJob(
     }
 
     const detailedCard = JSON.parse(snapStr) as DetailedCard;
+
+    // Invariant: If job specifies canonical_job_id and opportunity_version, the payload must match exactly
+    if (job.canonical_job_id && detailedCard.evaluationEvidence?.canonicalJobId) {
+      if (detailedCard.evaluationEvidence.canonicalJobId !== job.canonical_job_id) {
+        throw new Error(
+          `ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH: Job ${job.id} canonicalJobId '${job.canonical_job_id}' does not match payload '${detailedCard.evaluationEvidence.canonicalJobId}'`
+        );
+      }
+    }
+    if (job.opportunity_version && detailedCard.evaluationEvidence?.opportunityVersion) {
+      if (detailedCard.evaluationEvidence.opportunityVersion !== job.opportunity_version) {
+        throw new Error(
+          `ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH: Job ${job.id} opportunityVersion '${job.opportunity_version}' does not match payload '${detailedCard.evaluationEvidence.opportunityVersion}'`
+        );
+      }
+    }
     
-    // Check if we already have a fresh, valid-version extraction on disk that covers full JD if present
-    const cachedEx = readExtractionIfFresh(filteredCardHash(detailedCard), CONFIG.snapshotFreshHours, EXTRACTOR_VERSION);
+    // Check if we already have a fresh, valid-version extraction on disk keyed by opportunity version (or fallback to card hash)
+    const extractionCacheKey = job.opportunity_version || filteredCardHash(detailedCard);
+    const cachedEx = readExtractionIfFresh(extractionCacheKey, CONFIG.snapshotFreshHours, EXTRACTOR_VERSION);
     const hasFullJd = !!(detailedCard.detail && detailedCard.detail.rawText && detailedCard.detail.rawText.trim().length >= 200);
     const cachedHasFullJd = !!(cachedEx && cachedEx.normalizedText && cachedEx.normalizedText.trim().length >= 200);
 
@@ -116,7 +133,7 @@ export async function processJob(
       const tLlm0 = Date.now();
       extraction = await rateLimitedExtract(detailedCard);
       llmMs = Date.now() - tLlm0;
-      writeExtraction(filteredCardHash(detailedCard), extraction);
+      writeExtraction(extractionCacheKey, extraction);
     }
     
     // Resolve authoritative canonical identity following strict precedence:

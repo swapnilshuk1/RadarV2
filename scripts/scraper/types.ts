@@ -157,7 +157,10 @@ export type RunTelemetry = {
   evaluationJobsEnqueued?: number;
   heuristicDuplicateSuspect?: number;
   hardFiltered?: number;
+  acquisitionIntegrityFailures?: number;
 };
+
+export type CardFailureKind = "EXPECTED_REJECTION" | "SOURCE_FAILURE" | "INTEGRITY_FAILURE";
 
 export interface RunManifest {
   runId: string;
@@ -380,7 +383,8 @@ export interface PortalContext {
   logger: (msg: string) => void;
   isHttpDisabled?: (url: string) => boolean;
   recordHttpFailure?: (url: string, reason: string) => void;
-  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure" | "canonicalIngestSuccess" | "canonicalIngestFailure" | "evaluationJobsEnqueued") => void;
+  recordHttpSuccess?: (url: string) => void;
+  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure" | "canonicalIngestSuccess" | "canonicalIngestFailure" | "evaluationJobsEnqueued" | "acquisitionIntegrityFailures") => void;
   isCancelled?: () => boolean;
 }
 

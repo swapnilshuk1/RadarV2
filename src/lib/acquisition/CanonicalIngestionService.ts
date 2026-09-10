@@ -70,6 +70,25 @@ export interface IngestOpportunityPayload {
   failureClass?: string | null;
   lifecycleState?: LifecycleState;
   evidenceState?: EvidenceState;
+  enrichmentDispatch?: EnrichmentDispatchPayload;
+}
+
+export interface EnrichmentDispatchPayload {
+  detailedCard?: any;
+  pipelineVersion?: string;
+  runId?: string;
+  executionPlanId?: string;
+  definitionId?: string;
+  familyId?: string;
+  portal?: string;
+  page?: number;
+  catalogVersion?: string;
+  plannerVersion?: string;
+  ruleVersion?: string;
+  searchQuery?: string;
+  businessPriority?: number;
+  executionPriority?: number;
+  snapshotPath?: string;
 }
 
 export interface IngestScopeFilter {
@@ -92,6 +111,8 @@ export interface CanonicalIngestionResult {
   candidateDecisions: Record<string, "CANDIDATE" | "NOT_CANDIDATE">;
   candidateEligibility: Record<string, "ELIGIBLE" | "REVIEW" | "INELIGIBLE">;
   jobsEnqueued: number;
+  enrichmentJobId?: string | null;
+  isNewEnrichmentJob?: boolean;
 }
 
 export class InvalidCanonicalUrlError extends Error {
@@ -139,8 +160,8 @@ export class CanonicalIngestionService {
     const rawContent = payload.rawContent.trim();
     let canonicalUrl = payload.canonicalUrl.trim();
     if (source.toLowerCase() === "indeed") {
-      const identity = parseVerifiedIndeedListingUrl(payload.finalUrl || canonicalUrl);
-      if (!identity) throw new UnresolvedExternalListingIdentityError(source, sourceJobId, payload.finalUrl || canonicalUrl);
+      const identity = parseVerifiedIndeedListingUrl(canonicalUrl) || (payload.finalUrl ? parseVerifiedIndeedListingUrl(payload.finalUrl) : null);
+      if (!identity) throw new UnresolvedExternalListingIdentityError(source, sourceJobId, canonicalUrl);
       sourceJobId = identity.sourceJobId;
       canonicalUrl = identity.canonicalUrl;
     }
@@ -198,6 +219,27 @@ export class CanonicalIngestionService {
     const isPdfPayload = document.failureClass === "UNEXTRACTED_PDF";
     let sourcePayloadKey: string | null = null;
     let sourceMediaType: string | null = null;
+
+    if (payload.enrichmentDispatch?.detailedCard) {
+      const enrichmentPayloadKey = `acquisition/${canonicalJobId}/${versionId}/snapshot.json`;
+      const detailedCard = payload.enrichmentDispatch.detailedCard;
+      detailedCard.canonicalJobId = canonicalJobId;
+      detailedCard.opportunityVersion = versionId;
+      detailedCard.evaluationEvidence = {
+        canonicalJobId,
+        opportunityVersion: versionId,
+        contentHash,
+        sourcePayloadKey: enrichmentPayloadKey,
+        sourceMediaType: "application/json",
+      };
+      // Fail-safe sequencing: BlobStore write occurs BEFORE the DB transaction.
+      // If BlobStore write fails, nothing durable is admitted in the database.
+      await (this.blobStore || getBlobStore()).put(
+        enrichmentPayloadKey,
+        JSON.stringify(detailedCard),
+        "application/json"
+      );
+    }
     // This key is an explicit persisted provenance field, not an implicit
     // lookup convention. A caller may provide its own key, but the persisted
     // value is always the key returned by BlobStore.
@@ -278,6 +320,8 @@ export class CanonicalIngestionService {
     let isNewOpportunity = false;
     let isNewVersion = false;
     let effectiveVersionId = versionId;
+    let enrichmentJobId: string | null = null;
+    let isNewEnrichmentJob = false;
     const categoryIds = JSON.stringify(classifyOpportunityCategories({
       role: title,
       description: rawContentForStorage,
@@ -343,6 +387,72 @@ export class CanonicalIngestionService {
         [canonicalJobId, contentHash]
       );
       effectiveVersionId = existingVersion?.id || versionId;
+
+      enrichmentJobId = null;
+      isNewEnrichmentJob = false;
+      let enrichmentJobStatus: string | null = null;
+
+      if (payload.enrichmentDispatch) {
+        const pipelineVersion = payload.enrichmentDispatch.pipelineVersion || "1.0.0";
+        const payloadKey = `acquisition/${canonicalJobId}/${effectiveVersionId}/snapshot.json`;
+
+        const existingJob = await tx.one<{ id: string; status: string }>(
+          `SELECT id, status FROM enrichment_jobs 
+           WHERE canonical_job_id = ? AND opportunity_version = ? AND pipeline_version = ? 
+           LIMIT 1`,
+          [canonicalJobId, effectiveVersionId, pipelineVersion]
+        );
+
+        if (existingJob) {
+          enrichmentJobId = existingJob.id;
+          enrichmentJobStatus = existingJob.status;
+        } else {
+          const newJobId = `enrich_${crypto.createHash("sha256").update(`${canonicalJobId}:${effectiveVersionId}:${pipelineVersion}`).digest("hex").slice(0, 24)}`;
+          enrichmentJobId = newJobId;
+          enrichmentJobStatus = "PENDING";
+          isNewEnrichmentJob = true;
+
+          await tx.execute(
+            `INSERT INTO enrichment_jobs (
+               id, job_hash, canonical_job_id, opportunity_version, pipeline_version, snapshot_path, payload_key,
+               run_id, execution_plan_id, definition_id, family_id, portal, page,
+               catalog_version, planner_version, rule_version, search_query,
+               status, business_priority, execution_priority, created_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(canonical_job_id, opportunity_version, pipeline_version) DO NOTHING`,
+            [
+              newJobId,
+              payload.enrichmentDispatch.detailedCard?.cardHash || `${canonicalJobId}:${effectiveVersionId}`,
+              canonicalJobId,
+              effectiveVersionId,
+              pipelineVersion,
+              payload.enrichmentDispatch.snapshotPath || "",
+              payloadKey,
+              payload.enrichmentDispatch.runId || scopeFilter?.runId || null,
+              payload.enrichmentDispatch.executionPlanId || null,
+              payload.enrichmentDispatch.definitionId || null,
+              payload.enrichmentDispatch.familyId || null,
+              payload.enrichmentDispatch.portal || source,
+              payload.enrichmentDispatch.page || null,
+              payload.enrichmentDispatch.catalogVersion || null,
+              payload.enrichmentDispatch.plannerVersion || null,
+              payload.enrichmentDispatch.ruleVersion || null,
+              payload.enrichmentDispatch.searchQuery || null,
+              payload.enrichmentDispatch.businessPriority ?? 10,
+              payload.enrichmentDispatch.executionPriority ?? 0,
+            ]
+          );
+        }
+
+        const boundRunId = scopeFilter?.runId || payload.enrichmentDispatch.runId;
+        if (boundRunId && enrichmentJobId) {
+          await tx.execute(
+            `INSERT OR IGNORE INTO scrape_run_enrichment_requirements (run_id, enrichment_job_id)
+             VALUES (?, ?)`,
+            [boundRunId, enrichmentJobId]
+          );
+        }
+      }
 
       // 3.3 Recovery Queue Enqueue if capture is MINIMAL / RECOVERY_PENDING
       if (document.retryable && document.usabilityState === "UNUSABLE") {
@@ -454,16 +564,19 @@ export class CanonicalIngestionService {
           }
 
           const reqId = `evalreq_${crypto.createHash("sha256").update(`${plan.tenant_id}:${plan.person_id}:${plan.id}:${canonicalJobId}:${effectiveVersionId}:${evalContext.context_fingerprint}`).digest("hex").slice(0, 16)}`;
+          const pipelineVersion = payload.enrichmentDispatch?.pipelineVersion || "1.0.0";
+          const initialReqStatus = (enrichmentJobStatus === "COMPLETE") ? "READY" : "WAITING_ENRICHMENT";
 
           await tx.execute(
             `INSERT INTO evaluation_requirements (
                id, tenant_id, person_id, search_plan_id, canonical_job_id,
                opportunity_version, required_enrichment_pipeline_version,
                evaluation_context_fingerprint, status, created_at
-             ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'WAITING_ENRICHMENT', CURRENT_TIMESTAMP)
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
              ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
              DO UPDATE SET status = CASE 
                WHEN evaluation_requirements.status = 'SATISFIED' THEN 'SATISFIED'
+               WHEN ? = 'READY' AND evaluation_requirements.status = 'WAITING_ENRICHMENT' THEN 'READY'
                ELSE evaluation_requirements.status 
              END`,
             [
@@ -473,7 +586,10 @@ export class CanonicalIngestionService {
               plan.id,
               canonicalJobId,
               effectiveVersionId,
+              pipelineVersion,
               evalContext.context_fingerprint,
+              initialReqStatus,
+              initialReqStatus,
             ]
           );
 
@@ -503,6 +619,8 @@ export class CanonicalIngestionService {
       candidateDecisions,
       candidateEligibility,
       jobsEnqueued,
+      enrichmentJobId,
+      isNewEnrichmentJob,
     };
   }
 }

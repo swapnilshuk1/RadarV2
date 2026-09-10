@@ -290,23 +290,33 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   const handler = linkedinHandler;
   
   if (handler.detailStrategy === "auto" || handler.detailStrategy === "http") {
-    ctx.recordTelemetry?.("httpAttempted");
-    const httpRes = await fastFetchDetail(
-      url, 
-      "h1.top-card-layout__title, h1.topcard__title, .jobs-description__content", 
-      ".jobs-description__content, .description__text, .show-more-less-html__markup"
-    );
-    if (httpRes.fetched) {
-      ctx.recordTelemetry?.("httpSuccessful");
-      ctx.logger(`[FastPath] Extracted detail from ${url}`);
-      
-      return {
-        ...httpRes,
-        extractedTitle: httpRes.extractedTitle,
-        extractedCompany: httpRes.extractedCompany,
-      };
+    const skipHttp = ctx.isHttpDisabled?.(url) ?? false;
+    if (!skipHttp) {
+      ctx.recordTelemetry?.("httpAttempted");
+      const httpRes = await fastFetchDetail(
+        url, 
+        "h1.top-card-layout__title, h1.topcard__title, .jobs-description__content", 
+        ".jobs-description__content, .description__text, .show-more-less-html__markup"
+      );
+      if (httpRes.fetched && httpRes.rawText && httpRes.rawText.length >= 200) {
+        ctx.recordHttpSuccess?.(url);
+        ctx.recordTelemetry?.("httpSuccessful");
+        ctx.logger(`[FastPath] Extracted detail from ${url}`);
+        
+        return {
+          ...httpRes,
+          extractedTitle: httpRes.extractedTitle,
+          extractedCompany: httpRes.extractedCompany,
+        };
+      }
+      const reason = httpRes.fetchError?.includes("403") ? "403" : 
+                    httpRes.fetchError?.includes("timeout") ? "Timeout" : "EmptyBody";
+      ctx.recordHttpFailure?.(url, reason);
+      ctx.recordTelemetry?.("httpFallbacks");
+      ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError || "insufficient content"} — falling back to Playwright`);
+    } else {
+      ctx.logger(`[FastPath] Bypassed for ${url} due to circuit breaker or cache`);
     }
-    ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError} — falling back to Playwright`);
   }
 
   const t0 = Date.now();

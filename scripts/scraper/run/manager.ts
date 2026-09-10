@@ -39,6 +39,7 @@ export class RunController {
   listingFailures: Map<string, number> = new Map();
   failedHttpUrls: Map<string, string> = new Map();
   seenSourceIdentitiesBySurface: Map<string, Set<string>> = new Map();
+  lowYieldStreaks: Map<string, number> = new Map();
   private isFinalized: boolean = false;
 
   init(opts: RunControllerOptions): { resumed: boolean } {
@@ -175,8 +176,23 @@ export class RunController {
       // Scope changed — new run avoids stale unit set.
       return null;
     }
-    if (manifest.status === "completed") return null;
+    if (!RunController.isStatusResumable(manifest.status)) {
+      return null;
+    }
     return { runId, runDir, manifestPath, journalPath, manifest };
+  }
+
+  static isStatusResumable(status: RunStatus): boolean {
+    const nonResumableStatuses: RunStatus[] = [
+      "enriching",
+      "completing",
+      "completed",
+      "failed",
+      "aborted",
+      "stopping",
+      "stopped",
+    ];
+    return !nonResumableStatuses.includes(status);
   }
 
   private markResume(): void {

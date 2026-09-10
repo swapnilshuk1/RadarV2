@@ -27,6 +27,59 @@ export interface CanonicalIdentity {
 export { parseVerifiedIndeedListingUrl as resolveVerifiedIndeedListingIdentity } from "./indeed-listing-identity";
 
 /**
+ * Resolves the single authoritative unique source identity for a discovered card.
+ * Preserves native sourceJobId, Indeed ?jk= parameter, and cardHash.
+ */
+export function sourceIdentityForCard(card: {
+  portal?: string;
+  sourceJobId?: string | number;
+  cardHash?: string;
+  detailUrl?: string;
+  url?: string;
+}): string {
+  if (card.sourceJobId) {
+    const portalPrefix = card.portal ? `${card.portal.toLowerCase()}:` : "";
+    return `${portalPrefix}${String(card.sourceJobId).trim()}`;
+  }
+  const targetUrl = card.detailUrl || card.url;
+  if (targetUrl) {
+    const indeedMatch = targetUrl.match(/[?&]jk=([a-zA-Z0-9]+)/i);
+    if (indeedMatch && indeedMatch[1]) {
+      return `indeed:${indeedMatch[1]}`;
+    }
+    const clean = stripTrackingParams(targetUrl).toLowerCase().trim();
+    if (clean) return clean;
+  }
+  if (card.cardHash) {
+    return String(card.cardHash).trim();
+  }
+  return "";
+}
+
+/**
+ * Builds a deterministic, surface-identifying key for acquisition execution and low-yield tracking.
+ * Includes portal, query, location, freshness, industry, department, and other distinguishing attributes.
+ */
+export function acquisitionSurfaceKey(
+  variant: any,
+  fallbackPortal?: string,
+  fallbackQuery?: string
+): string {
+  const portal = (variant?.portal || fallbackPortal || "global").toLowerCase().trim();
+  const query = (variant?.query || fallbackQuery || "").toLowerCase().trim();
+  const location = (variant?.location || "any").toLowerCase().trim();
+  const postedWithinDays = variant?.postedWithinDays !== undefined ? `d${variant.postedWithinDays}` : "all";
+  const industry = (variant?.industry || "any").toLowerCase().trim();
+  const department = (variant?.department || "any").toLowerCase().trim();
+  const radius = variant?.radiusKm !== undefined ? `r${variant.radiusKm}` : "";
+
+  return [portal, query, location, postedWithinDays, industry, department, radius]
+    .filter(Boolean)
+    .join(":");
+}
+
+
+/**
  * Strips tracking parameters from job posting URLs.
  */
 export function stripTrackingParams(rawUrl: string): string {

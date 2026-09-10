@@ -363,7 +363,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         "h1.jobsearch-JobInfoHeader-title, .jobsearch-JobInfoHeader-title-container, h1", 
         "#jobDescriptionText, .jobsearch-jobDescriptionText, [class*='description'], [class*='job-detail'], [data-automation-id='jobPostingDescription'], main, article"
       );
-      if (httpRes.fetched) {
+      if (httpRes.fetched && httpRes.rawText && httpRes.rawText.length >= 200) {
+        ctx.recordHttpSuccess?.(url);
         ctx.recordTelemetry?.("httpSuccessful");
         ctx.logger(`[FastPath] Extracted detail from ${url}`);
         return httpRes;

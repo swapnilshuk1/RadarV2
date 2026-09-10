@@ -37,7 +37,7 @@ import { normalizeUrl } from "./scraper/utils/url";
 import { getDatabaseAdapter } from "../src/data/database";
 import { fastFetchDetail } from "./scraper/utils/http-fetch";
 import { EnrichmentQueue } from "./scraper/persist/queue";
-import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
+import { resolveCanonicalIdentity, sourceIdentityForCard, acquisitionSurfaceKey } from "../src/lib/acquisition/canonical-identity";
 import { parseVerifiedIndeedListingUrl } from "../src/lib/acquisition/indeed-listing-identity";
 import { FailurePolicyEngine } from "../src/lib/acquisition/failure-taxonomy";
 import { ResponseValidator } from "../src/lib/acquisition/validator";
@@ -250,16 +250,45 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     };
     try {
       const repos = getRepositories();
-      await repos.scrapeRuns.createRun(runScope, {
-        id: mgr.runId,
-        searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
-        portalTargets: portals,
-        initialStatus: "initializing",
-        config: { maxPages, keywords: resolvedKeywords },
-      });
-      log(`Created durable scrape_run in Turso Cloud: ${mgr.runId} for tenant ${runScope.tenantId}`);
+      if (resumed) {
+        const existingDurableRun = await repos.scrapeRuns.getRun(runScope, mgr.runId);
+        const isDurableResumable = existingDurableRun && (
+          existingDurableRun.status === "initializing" || existingDurableRun.status === "running"
+        );
+        if (isDurableResumable) {
+          log(`Validated existing durable scrape_run for resume: ${mgr.runId} (status: ${existingDurableRun.status})`);
+        } else {
+          // Stale or finished run cannot be resumed. Force a fresh run.
+          log(`Run ${mgr.runId} exists with non-resumable status '${existingDurableRun?.status || "missing"}' — forcing fresh run`, "warn");
+          mgr.init({
+            keywords: resolvedKeywords, portals, maxPages,
+            maxCardsPerPage: maxCardsPerPage ?? CONFIG.maxCardsPerPage,
+            resume: false,
+            variants: resolvedVariants,
+            adaptiveDepth: true,
+            initialPages: 1,
+          });
+          await repos.scrapeRuns.createRun(runScope, {
+            id: mgr.runId,
+            searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
+            portalTargets: portals,
+            initialStatus: "initializing",
+            config: { maxPages, keywords: resolvedKeywords },
+          });
+          log(`Created new durable scrape_run in Turso Cloud: ${mgr.runId}`);
+        }
+      } else {
+        await repos.scrapeRuns.createRun(runScope, {
+          id: mgr.runId,
+          searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
+          portalTargets: portals,
+          initialStatus: "initializing",
+          config: { maxPages, keywords: resolvedKeywords },
+        });
+        log(`Created durable scrape_run in Turso Cloud: ${mgr.runId} for tenant ${runScope.tenantId}`);
+      }
     } catch (e: any) {
-      log(`Failed to create durable scrape_run: ${e.message}`, "warn");
+      log(`Failed to create or validate durable scrape_run: ${e.message}`, "warn");
       throw e;
     }
   }
@@ -540,6 +569,29 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       }
 
       const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
+      const failedUnits = mgr.manifest.units.filter(u => u.status === "failed");
+      const integrityFailures = mgr.getTelemetry("acquisitionIntegrityFailures" as any) || 0;
+      if (failedUnits.length > 0 || integrityFailures > 0) {
+        log(`[Scrape] Run has ${failedUnits.length} failed units and ${integrityFailures} integrity failures. Failing run closed.`, "error");
+        mgr.finalize("failed");
+        if (runScope) {
+          const repos = getRepositories();
+          await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
+            totalDiscovered: mgr.manifest.cards.length,
+            totalEnqueued: ingestedCount,
+            metrics: tm as any,
+          });
+          await repos.scrapeRuns.updateRunStatus(
+            runScope,
+            mgr.runId,
+            "failed",
+            `Acquisition failed: ${failedUnits.length} unit(s) failed, ${integrityFailures} integrity failure(s)`
+          );
+        }
+        printAcquisitionTelemetry(mgr);
+        return { success: false, count: ingestedCount, runId: mgr.runId };
+      }
+
       mgr.transitionTo("enriching");
       if (runScope) {
         const repos = getRepositories();
@@ -634,8 +686,6 @@ export type ProcessOutcome = {
   warnings: string[];
 };
 
-// Track consecutive low-yield pages per definition
-const lowYieldTracking = new Map<string, number>();
 
 async function processUnit(
   mgr: RunController,
@@ -779,18 +829,14 @@ async function processUnit(
     }
 
     // Adaptive Depth Evaluation: evaluate live source-identity novelty
-    const surfaceKey = `${unit.portal}:${unit.keyword}:${unit.variant?.location || "global"}`;
+    const surfaceKey = acquisitionSurfaceKey(unit.variant, unit.portal, unit.keyword);
     let surfaceSeen = mgr.seenSourceIdentitiesBySurface.get(surfaceKey);
     if (!surfaceSeen) {
       surfaceSeen = new Set<string>();
       mgr.seenSourceIdentitiesBySurface.set(surfaceKey, surfaceSeen);
     }
 
-    const discoveredSourceIds: string[] = cards.map((c: any) => {
-      if (c.sourceJobId) return String(c.sourceJobId);
-      if (c.cardHash) return String(c.cardHash);
-      return c.detailUrl ? c.detailUrl.toLowerCase().trim() : "";
-    }).filter(Boolean);
+    const discoveredSourceIds: string[] = cards.map((c: any) => sourceIdentityForCard(c)).filter(Boolean);
 
     const sourceNovelty = evaluateSourceNovelty(discoveredSourceIds, surfaceSeen, 0.25);
 
@@ -836,6 +882,7 @@ async function processUnit(
      * its material source version can be reused or versioned correctly. */
     const historicalLedgerCardIds = new Set<string>();
     let pageCanonicalIngested = 0;
+    let integrityFailuresInUnit = 0;
 
     // Cards for a single unit run in parallel with a bounded pool.
     await pool(cards, CONFIG.detailConcurrency, async (feedCard) => {
@@ -915,7 +962,8 @@ async function processUnit(
           portal: unit.portal,
           url: feedCard.detailUrl,
           title: feedCard.title,
-          companyName: feedCard.company || "Confidential / Unknown"
+          companyName: feedCard.company || "Confidential / Unknown",
+          rawJobId: feedCard.sourceJobId,
         });
 
         // Pre-detail duplicate detection is intentionally current-run only.
@@ -957,19 +1005,24 @@ async function processUnit(
         let detailedCard: import("./scraper/types").DetailedCard | null = null;
         let canonicalIngestionResult: CanonicalIngestionResult | undefined;
         let snapshot = readSnapshotIfFresh(feedCard.cardHash, CONFIG.snapshotFreshHours);
-        
-        if (!snapshot) {
-          let detail: import("./scraper/types").DetailedCard["detail"] = {
-            fetched: false,
-            rawHtml: "",
-            rawText: "",
-            fetchDurationMs: 0,
-          };
-          let acquisitionRoute: import("./scraper/types").AcquisitionRoute = "DISCOVERY_RICH";
-          let enrichmentStatus: import("./scraper/types").EnrichmentStatus = "NOT_APPLICABLE";
-          let fallbackRoute: string | undefined = undefined;
-          const acquisitionAttempts: AcquisitionAttempt[] = [];
+        let detail: import("./scraper/types").DetailedCard["detail"] = {
+          fetched: false,
+          rawHtml: "",
+          rawText: "",
+          fetchDurationMs: 0,
+        };
+        let acquisitionRoute: import("./scraper/types").AcquisitionRoute = "DISCOVERY_RICH";
+        let enrichmentStatus: import("./scraper/types").EnrichmentStatus = "NOT_APPLICABLE";
+        let fallbackRoute: string | undefined = undefined;
+        const acquisitionAttempts: AcquisitionAttempt[] = [];
 
+        if (snapshot?.detail?.fetched) {
+          log(`[Snapshot] Reusing cached detail (${snapshot.detail.rawText?.length || 0} chars) for ${feedCard.cardHash}`);
+          detail = snapshot.detail;
+          acquisitionRoute = snapshot.acquisitionRoute || "DETAIL_PAGE_BROWSER";
+          enrichmentStatus = snapshot.enrichmentStatus || "NOT_APPLICABLE";
+          fallbackRoute = snapshot.fallbackRoute;
+        } else {
           if (unit.portal === "Naukri") {
             // Naukri Multi-Tier Acquisition Architecture:
             // Tier 1: Direct Rich Ingestion (ONLY when explicitly carrying authoritative full-description provenance)
@@ -1080,6 +1133,7 @@ async function processUnit(
                 logger: log,
                 isHttpDisabled: (url: string) => mgr.isHttpFastPathDisabled(unit.portal) || mgr.failedHttpUrls.has(url),
                 recordHttpFailure: (url: string, reason: string) => mgr.recordDetailFailure(unit.portal, url, reason),
+                recordHttpSuccess: (url: string) => mgr.recordDetailSuccess(unit.portal),
                 recordTelemetry: (event: any) => mgr.recordTelemetry(event),
               };
 
@@ -1278,6 +1332,7 @@ async function processUnit(
               logger: log,
               isHttpDisabled: (url: string) => mgr.isHttpFastPathDisabled(unit.portal) || mgr.failedHttpUrls.has(url),
               recordHttpFailure: (url: string, reason: string) => mgr.recordDetailFailure(unit.portal, url, reason),
+              recordHttpSuccess: (url: string) => mgr.recordDetailSuccess(unit.portal),
               recordTelemetry: (event: any) => mgr.recordTelemetry(event),
             }, feedCard.detailUrl);
             mgr.journal.append({ type: "detail_extraction_finished", cardId: cardUnitId, durationMs: detail.fetchDurationMs });
@@ -1295,6 +1350,7 @@ async function processUnit(
             }
           }
           }
+        }
           
           // 4. Standalone Response Validation
           const valResult = ResponseValidator.validate({
@@ -1386,7 +1442,8 @@ async function processUnit(
           feedCard.company = effectiveCompany;
 
           // Re-derive canonical identity with resolved company
-          const identityUrl = unit.portal === "Indeed" ? (detail.finalUrl || feedCard.detailUrl) : feedCard.detailUrl;
+          // Listing identity URL remains the verified feedCard.detailUrl
+          const identityUrl = feedCard.detailUrl;
           const verifiedIndeedIdentity = unit.portal === "Indeed" ? parseVerifiedIndeedListingUrl(identityUrl) : undefined;
           if (unit.portal === "Indeed" && !verifiedIndeedIdentity) {
             await repos.acquisition.updateJobState(ledgerItem.id, {
@@ -1411,7 +1468,8 @@ async function processUnit(
             portal: unit.portal,
             url: identityUrl,
             title: feedCard.title,
-            companyName: effectiveCompany
+            companyName: effectiveCompany,
+            rawJobId: feedCard.sourceJobId,
           });
 
           // Authoritative Post-Detail Duplicate Resolution Boundary
@@ -1548,7 +1606,24 @@ async function processUnit(
               rawContent: detail.rawText || "",
               httpStatus: detail.httpStatus,
               postedAt: feedCard.postedAt,
-              postedPrecision: (feedCard as any)?.postedPrecision || null
+              postedPrecision: (feedCard as any)?.postedPrecision || null,
+              enrichmentDispatch: {
+                detailedCard,
+                pipelineVersion: EXTRACTOR_VERSION,
+                runId: mgr.runId,
+                executionPlanId: unit.id,
+                definitionId: unit.definitionId || "unknown",
+                familyId: "unknown",
+                portal: unit.portal,
+                page: unit.page,
+                catalogVersion: CATALOG_VERSION,
+                plannerVersion: PLANNER_VERSION,
+                ruleVersion: RULE_VERSION,
+                searchQuery: unit.keyword,
+                businessPriority: 10,
+                executionPriority: 0,
+                snapshotPath,
+              },
             }, lineageScope ? {
               tenantId: lineageScope.tenantId,
               personId: lineageScope.personId,
@@ -1617,58 +1692,29 @@ async function processUnit(
             throw new Error(`[CanonicalIngestFailed] ${err.message}`);
           }
 
-        } else {
-          detailedCard = snapshot;
-        }
         mgr.updateCard(cardUnitId, {
           snapshotPath,
           isNew: canonicalIngestionResult
             ? canonicalIngestionResult.isNewOpportunity
             : isHistoricallyNew,
+          status: "done",
         });
-        
-        if (!detailedCard) return null;
-
-        const payloadKey = `snapshots/${detailedCard.cardHash}.json`;
-        try {
-          const { getBlobStore } = await import("../src/lib/storage/blob-store");
-          await getBlobStore().put(payloadKey, JSON.stringify(detailedCard), "application/json");
-        } catch (e: any) {
-          log(`Failed to write blob ${payloadKey}: ${e.message}`, "warn");
-          mgr.updateCard(cardUnitId, { status: "failed", error: `Acquisition artifact rejected: ${e.message}` });
-          mgr.journal.append({ type: "card_failed", cardId: cardUnitId, error: `Acquisition artifact rejected: ${e.message}` });
-          return null;
-        }
-
-        await enrichmentQueue.enqueue(
-          cardUnitId,
-          detailedCard.cardHash,
-          snapshotPath,
-          EXTRACTOR_VERSION, // pipeline version
-          {
-            runId: mgr.runId,
-            executionPlanId: unit.id,
-            definitionId: unit.definitionId || "unknown",
-            familyId: "unknown",
-            portal: unit.portal,
-            page: unit.page,
-            catalogVersion: CATALOG_VERSION,
-            plannerVersion: PLANNER_VERSION,
-            ruleVersion: RULE_VERSION,
-            searchQuery: unit.keyword
-          },
-          10, // business_priority
-          0,   // execution_priority
-          payloadKey,
-          canonicalIngestionResult?.canonicalJobId || detailedCard.canonicalJobId,
-          canonicalIngestionResult?.opportunityVersion || (detailedCard as any).opportunityVersion
-        );
-        
-        mgr.updateCard(cardUnitId, { status: "done" });
       } catch (err: any) {
         log(`card ${cardUnitId} failed: ${err.message}`, "error");
         mgr.updateCard(cardUnitId, { status: "failed", error: err.message });
         mgr.journal.append({ type: "card_failed", cardId: cardUnitId, error: err.message });
+
+        const isIntegrityFailure =
+          err.message?.includes("CanonicalIngestFailed") ||
+          err.message?.includes("MISSING_EVALUATION_CONTEXT") ||
+          err.message?.includes("ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH") ||
+          err.message?.includes("UNIQUE constraint") ||
+          err.message?.includes("Acquisition artifact rejected");
+
+        if (isIntegrityFailure) {
+          integrityFailuresInUnit++;
+          mgr.recordTelemetry("acquisitionIntegrityFailures" as any);
+        }
       }
       return null;
     });
@@ -1769,7 +1815,7 @@ async function processUnit(
       // Gate 4: Source discovery yield measures unique valid portal identities exposed by this source work unit
       const uniqueSourceIdentities = new Set<string>();
       for (const card of cards) {
-        const identity = (card.detailUrl ? card.detailUrl.split("?")[0].split("#")[0].toLowerCase().trim() : "") || card.cardHash;
+        const identity = sourceIdentityForCard(card);
         if (identity) {
           uniqueSourceIdentities.add(identity);
         }
@@ -1778,14 +1824,14 @@ async function processUnit(
       const currentLowYield = sourceDiscoveryYield < minSourceDiscoveryPerPage;
       // Each acquisition surface has its own yield curve. A freshness pass
       // must not inherit the coverage lane's low-yield streak.
-      const yieldKey = unit.variant?.id || unit.definitionId;
-      let streak = lowYieldTracking.get(yieldKey) || 0;
+      const yieldKey = acquisitionSurfaceKey(unit.variant, unit.portal, unit.keyword);
+      let streak = mgr.lowYieldStreaks.get(yieldKey) || 0;
       
       if (currentLowYield) {
         streak += 1;
-        lowYieldTracking.set(yieldKey, streak);
+        mgr.lowYieldStreaks.set(yieldKey, streak);
       } else {
-        lowYieldTracking.set(yieldKey, 0); // reset streak
+        mgr.lowYieldStreaks.set(yieldKey, 0); // reset streak
       }
 
       if (streak >= maxConsecutiveLowYield && unit.page >= 1) {
@@ -1919,7 +1965,12 @@ async function processUnit(
     log(`\n=== PAGE SUMMARY ===\nPortal: ${unit.portal}\nKeyword: ${unit.keyword}\nPage: ${unit.page}\n\nCards Seen ............ ${cards.length}\nCards Parsed .......... ${cardsParsed}\n  ├── Canonical Duplicates ... ${canonicalDuplicates}\n  ├── Ledger Known ........... ${ledgerKnown}\n  ├── Hard Filtered .......... ${hardFiltered}${hfBreakdownStr}\n  ├── Identity Failures ...... ${identityFailed}\n  ├── Validation Failures .... ${validationFailed}\n  └── Novel Accepted ......... ${novelAccepted} (Acquired: ${novelAcquired})\n      └── Canonical Ingested ... ${pageCanonicalIngested} (Total Run: ${mgr.getTelemetry("canonicalOpportunitiesIngested") || 0})\n\nNovelty Rate .......... ${((novelAccepted / Math.max(1, cardsParsed)) * 100).toFixed(1)}%\nDecision .............. ${decision}\nReason ................ ${reason}\n====================\n`, "info");
     
     if (outcome.status !== "aborted") {
-      outcome.status = cards.length === 0 ? "skipped_empty" : "completed";
+      if (integrityFailuresInUnit > 0) {
+        outcome.status = "failed";
+        outcome.warnings.push(`Unit failed with ${integrityFailuresInUnit} acquisition integrity failure(s)`);
+      } else {
+        outcome.status = cards.length === 0 ? "skipped_empty" : "completed";
+      }
     }
   } catch (err: any) {
     if (mgr.isCancellationRequested() || err?.message?.includes("Target page, context or browser has been closed") || err?.message?.includes("browser has been closed")) {
