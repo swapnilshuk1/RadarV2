@@ -110,10 +110,10 @@ export async function enqueueEvaluationJobsForPlan(
       [candidate.canonical_job_id, candidate.opportunity_version]
     );
 
-    // Only gate if an enrichment job actually exists and is not yet COMPLETE
-    const isWaitingEnrichment = enrichment !== null && enrichment.status !== "COMPLETE";
-    const reqStatus = isWaitingEnrichment ? "WAITING_ENRICHMENT" : "READY";
-    const jobStatus = isWaitingEnrichment ? "waiting_enrichment" : "pending";
+    // Enrichment must be COMPLETE to proceed to READY/pending; missing or non-complete is WAITING_ENRICHMENT
+    const enrichmentComplete = enrichment?.status === "COMPLETE";
+    const reqStatus = enrichmentComplete ? "READY" : "WAITING_ENRICHMENT";
+    const jobStatus = enrichmentComplete ? "pending" : "waiting_enrichment";
 
     // Deterministic Job ID using fingerprint hash to ensure unique PK across context changes
     const fpHash = createHash("sha256").update(fingerprint).digest("hex").slice(0, 12);
@@ -129,10 +129,8 @@ export async function enqueueEvaluationJobsForPlan(
          ?, ?, ?,
          ?, 0, 3, CURRENT_TIMESTAMP
        ) ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
-       DO UPDATE SET status = CASE 
-         WHEN evaluation_jobs.status = 'waiting_enrichment' AND ? = 'pending' THEN 'pending'
-         ELSE evaluation_jobs.status 
-       END`,
+       DO UPDATE SET status = 'pending'
+       WHERE evaluation_jobs.status = 'waiting_enrichment' AND ? = 'pending'`,
       [
         jobId,
         tenantId,

@@ -1,9 +1,9 @@
 import { CandidateProjection } from "../../domain/candidate_projection";
-import { JobProjection } from "../../domain/job_projection";
+import { EvaluationJobProjection } from "../../domain/job_projection";
 import { CareerValueBreakdown, DimensionHeuristic } from "../../domain/semantic";
 
 export class CareerValueEngine {
-  public static evaluate(candidate: CandidateProjection, job: JobProjection): CareerValueBreakdown {
+  public static evaluate(candidate: CandidateProjection, job: EvaluationJobProjection): CareerValueBreakdown {
     // 1. Title Progression
     let titleProgression: DimensionHeuristic = { value: 0.5, reason: "Lateral Move", status: "KNOWN" };
     const jobOperatingLevel = job.operatingLevel?.value || "UNKNOWN";

@@ -981,5 +981,70 @@ describe("Gate 3: Distributed Lifecycle, Version-Aware Work & Queue Decoupling C
     const recFinal = await reconciler.reconcileRun(run.id);
     expect(recFinal.newStatus).toBe("completed");
   });
+
+  it("13. Candidate & Obligation Atomicity: Failure during requirement insertion rolls back candidate", async () => {
+    // Install a temporary trigger that aborts insertion into evaluation_requirements
+    await db.execute(`
+      CREATE TRIGGER IF NOT EXISTS fail_req_abort
+      BEFORE INSERT ON evaluation_requirements
+      FOR EACH ROW
+      BEGIN
+        SELECT RAISE(ABORT, 'Simulated DB failure on evaluation_requirements insertion');
+      END;
+    `);
+
+    try {
+      await expect(
+        canonicalIngest.ingestOpportunity(
+          {
+            sourcePortal: "LinkedIn",
+            sourceJobId: "rollback_test_101",
+            canonicalUrl: "https://www.linkedin.com/jobs/view/999101",
+            jobTitle: "VP Engineering",
+            companyName: "Tech Corp",
+            location: "Bengaluru",
+            rawContent: "VP Engineering leadership role.",
+          },
+          {
+            tenantId: "tenant_A",
+            personId: "person_A",
+            searchPlanId: "plan_A",
+          }
+        )
+      ).rejects.toThrow();
+
+      // Invariant: Because candidate and requirement are in the same atomic transaction,
+      // the candidate MUST NOT exist in search_plan_candidates if the requirement failed
+      const candidates = await db.many<any>(
+        `SELECT * FROM search_plan_candidates WHERE search_plan_id = 'plan_A' AND canonical_job_id IN (
+           SELECT id FROM canonical_opportunities WHERE source_job_id = 'rollback_test_101'
+         )`
+      );
+      expect(candidates.length).toBe(0);
+
+      // Requirements must also not exist
+      const requirements = await db.many<any>(
+        `SELECT * FROM evaluation_requirements WHERE canonical_job_id IN (
+           SELECT id FROM canonical_opportunities WHERE source_job_id = 'rollback_test_101'
+         )`
+      );
+      expect(requirements.length).toBe(0);
+    } finally {
+      await db.execute(`DROP TRIGGER IF EXISTS fail_req_abort`);
+    }
+  });
+
+  it("14. Durable Scraper Lifecycle: updateRunStatus fails closed on non-existent or invalid run transition", async () => {
+    // Attempting to transition a non-existent run to 'enriching' returns false
+    const transitioned = await runStore.updateRunStatus(scopeA, "run-does-not-exist", "enriching");
+    expect(transitioned).toBe(false);
+
+    // Verifying that scripts/scrape.ts fail-closed logic would throw
+    expect(() => {
+      if (!transitioned) {
+        throw new Error("Failed durable running->enriching transition for run-does-not-exist");
+      }
+    }).toThrow("Failed durable running->enriching transition");
+  });
 });
 

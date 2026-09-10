@@ -1,5 +1,5 @@
 import { CandidateProjection } from "../../domain/candidate_projection";
-import { JobProjection, CapabilityTaxonomyTier } from "../../domain/job_projection";
+import { EvaluationJobProjection, CapabilityTaxonomyTier } from "../../domain/job_projection";
 import { CapabilityAssessment, EvidenceMatch } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
 import type { CandidateEvaluationContext } from "../context";
@@ -172,7 +172,7 @@ export class CapabilityAssessmentEngine {
 
   public static evaluate(
     candidate: CandidateProjection,
-    job: JobProjection,
+    job: EvaluationJobProjection,
     context?: CandidateEvaluationContext
   ): CapabilityAssessment {
     const richness = EvidenceRichnessCalculator.calculate(job.originalOpportunity);

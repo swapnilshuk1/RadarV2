@@ -197,6 +197,13 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         status, attempts, max_attempts, next_attempt_at, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(jobId, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprint);
+    sqliteDb.prepare(`
+      INSERT INTO evaluation_requirements (
+        id, tenant_id, person_id, search_plan_id, canonical_job_id,
+        opportunity_version, required_enrichment_pipeline_version,
+        evaluation_context_fingerprint, status
+      ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'READY')
+    `).run(`req_${jobId}`, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprint);
 
     const worker = new EvaluationWorker("worker_det_test", { adapter });
 
@@ -278,6 +285,13 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         status, attempts, max_attempts, next_attempt_at, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(jobId2, TENANT_ID, PERSON_ID, PLAN_ID_2, canonicalJobId, oppVersion, fingerprint2);
+    sqliteDb.prepare(`
+      INSERT INTO evaluation_requirements (
+        id, tenant_id, person_id, search_plan_id, canonical_job_id,
+        opportunity_version, required_enrichment_pipeline_version,
+        evaluation_context_fingerprint, status
+      ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'READY')
+    `).run(`req_${jobId2}`, TENANT_ID, PERSON_ID, PLAN_ID_2, canonicalJobId, oppVersion, fingerprint2);
 
     const claim2 = await worker.claimNextJob();
     expect(claim2).not.toBeNull();
@@ -328,6 +342,13 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         status, attempts, max_attempts, next_attempt_at, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(jobId, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fakeFingerprint);
+    sqliteDb.prepare(`
+      INSERT INTO evaluation_requirements (
+        id, tenant_id, person_id, search_plan_id, canonical_job_id,
+        opportunity_version, required_enrichment_pipeline_version,
+        evaluation_context_fingerprint, status
+      ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'READY')
+    `).run(`req_${jobId}`, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fakeFingerprint);
 
     const worker = new EvaluationWorker("worker_missing_test", { adapter });
     const claim = await worker.claimNextJob();
@@ -405,6 +426,13 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         status, attempts, max_attempts, next_attempt_at, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(jobIdV1, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprintV1);
+    sqliteDb.prepare(`
+      INSERT INTO evaluation_requirements (
+        id, tenant_id, person_id, search_plan_id, canonical_job_id,
+        opportunity_version, required_enrichment_pipeline_version,
+        evaluation_context_fingerprint, status
+      ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'READY')
+    `).run(`req_${jobIdV1}`, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprintV1);
 
     const worker = new EvaluationWorker("worker_replay_test", { adapter });
     const claim1 = await worker.claimNextJob();
@@ -474,6 +502,13 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         status, attempts, max_attempts, next_attempt_at, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(jobIdV2, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprintV2);
+    sqliteDb.prepare(`
+      INSERT INTO evaluation_requirements (
+        id, tenant_id, person_id, search_plan_id, canonical_job_id,
+        opportunity_version, required_enrichment_pipeline_version,
+        evaluation_context_fingerprint, status
+      ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'READY')
+    `).run(`req_${jobIdV2}`, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprintV2);
 
     const claim2 = await worker.claimNextJob();
     expect(claim2?.id).toBe(jobIdV2);

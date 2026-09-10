@@ -196,8 +196,11 @@ const REBUILD_MIGRATIONS = new Set([
     const isRebuild = REBUILD_MIGRATIONS.has(file);
 
     if (isRebuild && db.executeMigration) {
-      await db.executeMigration(statements, { disableForeignKeys: true });
-      await db.execute("INSERT INTO _migrations (migration_name) VALUES (?)", [file]);
+      const allStatements = [
+        ...statements,
+        `INSERT INTO _migrations (migration_name) VALUES ('${file.replace(/'/g, "''")}');`
+      ];
+      await db.executeMigration(allStatements, { disableForeignKeys: true });
     } else {
       // Apply statements within a transaction
       await db.transaction(async (tx) => {

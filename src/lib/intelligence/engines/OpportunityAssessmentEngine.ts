@@ -1,7 +1,7 @@
 // src/lib/intelligence/engines/OpportunityAssessmentEngine.ts
 
 import { CandidateProjection } from "../../domain/candidate_projection";
-import { JobProjection } from "../../domain/job_projection";
+import { EvaluationJobProjection } from "../../domain/job_projection";
 import { OpportunityAssessment, OperatingLevel, WorkNature, CommercialScope } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
 
@@ -185,7 +185,7 @@ export class OpportunityAssessmentEngine {
   }
   public static evaluate(
     candidate: CandidateProjection,
-    job: JobProjection
+    job: EvaluationJobProjection
   ): OpportunityAssessment {
     const richness = EvidenceRichnessCalculator.calculate(job.originalOpportunity);
 

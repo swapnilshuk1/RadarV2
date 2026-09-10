@@ -20,6 +20,7 @@ import { buildCandidateEvaluationContext } from "./context";
 // Phase 4 Semantic Imports
 import { CandidateProjectionBuilderImpl } from "./builders/CandidateProjectionBuilder";
 import { JobProjectionBuilder } from "./builders/JobProjectionBuilder";
+import { toEvaluationJobProjection } from "../domain/job_projection";
 import { IdentityAssessmentEngine } from "./engines/IdentityAssessmentEngine";
 import { CapabilityAssessmentEngine } from "./engines/CapabilityAssessmentEngine";
 import { OpportunityAssessmentEngine } from "./engines/OpportunityAssessmentEngine";
@@ -304,16 +305,18 @@ export function runEngine(
     // Non-SPARSE_SPEC: Continue with normal pipeline
     // 2. Build Job V4 Projection
     const jobProjV4 = JobProjectionBuilder.build(raw);
+    // Presentation-only role work is intentionally unavailable to evaluation.
+    const evaluationJobProj = toEvaluationJobProjection(jobProjV4);
 
     // P0-A: Compute evidence grounding for all dimensions (needed for record and downstream)
     const evidenceGrounding = computeEvidenceGroundingMap(raw.dimensions || [], rawJobText);
 
     // 3. Evaluate Isolated Assessments
-    const identity = IdentityAssessmentEngine.evaluate(candProjV4, jobProjV4, evalContext);
-    const capability = CapabilityAssessmentEngine.evaluate(candProjV4, jobProjV4, evalContext);
-    const opportunityAssess = OpportunityAssessmentEngine.evaluate(candProjV4, jobProjV4);
-    const career = CareerAssessmentEngine.evaluate(candProjV4, jobProjV4, evalContext);
-    const lifestyle = LifestyleAssessmentEngine.evaluate(candProjV4, jobProjV4);
+    const identity = IdentityAssessmentEngine.evaluate(candProjV4, evaluationJobProj, evalContext);
+    const capability = CapabilityAssessmentEngine.evaluate(candProjV4, evaluationJobProj, evalContext);
+    const opportunityAssess = OpportunityAssessmentEngine.evaluate(candProjV4, evaluationJobProj);
+    const career = CareerAssessmentEngine.evaluate(candProjV4, evaluationJobProj, evalContext);
+    const lifestyle = LifestyleAssessmentEngine.evaluate(candProjV4, evaluationJobProj);
 
     // P3-A: Calculate authoritative Shortlisting Potential BEFORE DecisionPolicyEngine
     // This breaks the circular dependency by using pre-decision assessments only
@@ -329,7 +332,7 @@ export function runEngine(
 
     // 4. Resolve Verdict via Rules-Based Decision Policy Engine
     // P3-A: Pass SP to DecisionPolicyEngine for Easy Trap rule
-    const careerValueBreakdown = CareerValueEngine.evaluate(candProjV4, jobProjV4);
+    const careerValueBreakdown = CareerValueEngine.evaluate(candProjV4, evaluationJobProj);
 
     const candProjObj = candProjV4 as unknown as Record<string, unknown>;
     const candIdentityVal = ((candProjObj.executiveIdentity as Record<string, unknown> | undefined)?.value as string) || "Commercial & Marketing Leadership";

@@ -366,6 +366,13 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
         ) VALUES (
           'job_1', 't1', 'p1', 'sp1', 'co_sparse', 'ov_sparse', 'fp1', 'pending', 0, 3, CURRENT_TIMESTAMP
         );
+
+        INSERT INTO evaluation_requirements (
+          id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
+          evaluation_context_fingerprint, status
+        ) VALUES (
+          'req_1', 't1', 'p1', 'sp1', 'co_sparse', 'ov_sparse', 'fp1', 'READY'
+        );
       `);
 
       const worker = new EvaluationWorker("test_worker_1", {
@@ -413,6 +420,13 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
           evaluation_context_fingerprint, status, attempts, max_attempts, next_attempt_at
         ) VALUES (
           'job_2', 't1', 'p1', 'sp1', 'co_exp', 'ov_exp', 'fp1', 'pending', 0, 3, CURRENT_TIMESTAMP
+        );
+
+        INSERT INTO evaluation_requirements (
+          id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
+          evaluation_context_fingerprint, status
+        ) VALUES (
+          'req_2', 't1', 'p1', 'sp1', 'co_exp', 'ov_exp', 'fp1', 'READY'
         );
       `);
 

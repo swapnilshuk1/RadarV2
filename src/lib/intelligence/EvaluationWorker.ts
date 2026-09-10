@@ -66,14 +66,14 @@ export class EvaluationWorker {
     }>(
       `SELECT ej.id, ej.tenant_id, ej.person_id, ej.search_plan_id, ej.canonical_job_id, ej.opportunity_version, ej.evaluation_context_fingerprint, ej.attempts, ej.max_attempts
        FROM evaluation_jobs ej
-       LEFT JOIN evaluation_requirements er 
+       JOIN evaluation_requirements er 
          ON er.tenant_id = ej.tenant_id 
         AND er.person_id = ej.person_id 
         AND er.search_plan_id = ej.search_plan_id 
         AND er.canonical_job_id = ej.canonical_job_id 
         AND er.opportunity_version = ej.opportunity_version 
         AND er.evaluation_context_fingerprint = ej.evaluation_context_fingerprint
-       WHERE (er.status = 'READY' OR er.id IS NULL)
+       WHERE er.status = 'READY'
          AND ((ej.status = 'pending' AND ej.next_attempt_at <= CURRENT_TIMESTAMP)
           OR (ej.status = 'processing' AND ej.locked_at < datetime('now', '-300 seconds')))
        ORDER BY 

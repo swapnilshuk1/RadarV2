@@ -11,6 +11,31 @@ export type DocumentRegion =
   | "COMPANY"
   | "BENEFITS";
 
+/**
+ * A bounded, source-grounded employer fact retained for presentation.
+ * This is deliberately separate from capability classification and candidate
+ * qualification requirements. It is not an evaluation-policy input.
+ */
+export type RoleWorkEvidenceKind =
+  | "RESPONSIBILITY"
+  | "OUTCOME"
+  | "ROLE_CONTEXT";
+
+export interface ProjectedRoleWorkEvidence {
+  /** Stable source identity: opportunity version + normalized atom + occurrence. */
+  id: string;
+  kind: RoleWorkEvidenceKind;
+  /** Whitespace-normalized exact sourceQuote; never an editorial paraphrase. */
+  statement: string;
+  sourceQuote: string;
+  /** Extractor interpretation metadata; deliberately not part of identity. */
+  sourceRegion: DocumentRegion;
+  /** One-based normalized-source occurrence of sourceQuote in the pinned source. */
+  ordinal: number;
+  capabilityKeys: string[];
+  confidence: number;
+}
+
 export type CapabilityTaxonomyTier = 
   | "CORE_MANDATE" 
   | "EXECUTION_CAPABILITY" 
@@ -143,6 +168,101 @@ export interface JobProjection {
   dimensions?: readonly GroundedOpportunityDimension[];
   // Phase 5C.2: Additive Canonical Semantic Evidence
   semanticEvidence?: readonly CanonicalSemanticEvidence[];
+  /**
+   * Presentation-only source retention. Evaluation engines receive
+   * EvaluationJobProjection, where this field is intentionally unavailable.
+   */
+  roleWorkEvidence?: readonly ProjectedRoleWorkEvidence[];
+  roleWorkEvidenceVersion?: string;
   projectionVersion?: string;
   projectionFingerprint?: string;
+}
+
+/**
+ * The only projection view evaluation engines may consume. Keep presentation
+ * evidence out of the evaluation-policy type contract, not merely out of
+ * current engine implementations.
+ *
+ * originalOpportunity remains because the established assessment engines use
+ * it for evidence-richness calculations; it must not be used to reconstruct
+ * roleWorkEvidence inside evaluation code.
+ */
+export type EvaluationJobProjection = Pick<
+  JobProjection,
+  | "jobHash"
+  | "role"
+  | "company"
+  | "executiveIdentity"
+  | "trueExecutiveMandate"
+  | "executiveMission"
+  | "operatingLevel"
+  | "workNature"
+  | "decisionAuthority"
+  | "commercialScope"
+  | "capabilities"
+  | "capabilityRequirements"
+  | "executiveFunction"
+  | "businessObjectives"
+  | "executionStyle"
+  | "operatingContext"
+  | "location"
+  | "workModel"
+  | "capabilityExtractionStatus"
+  | "dimensions"
+  | "semanticEvidence"
+  | "originalOpportunity"
+>;
+
+export function toEvaluationJobProjection(
+  projection: JobProjection,
+): EvaluationJobProjection {
+  const {
+    jobHash,
+    role,
+    company,
+    executiveIdentity,
+    trueExecutiveMandate,
+    executiveMission,
+    operatingLevel,
+    workNature,
+    decisionAuthority,
+    commercialScope,
+    capabilities,
+    capabilityRequirements,
+    executiveFunction,
+    businessObjectives,
+    executionStyle,
+    operatingContext,
+    location,
+    workModel,
+    capabilityExtractionStatus,
+    dimensions,
+    semanticEvidence,
+    originalOpportunity,
+  } = projection;
+
+  return {
+    jobHash,
+    role,
+    company,
+    executiveIdentity,
+    trueExecutiveMandate,
+    executiveMission,
+    operatingLevel,
+    workNature,
+    decisionAuthority,
+    commercialScope,
+    capabilities,
+    capabilityRequirements,
+    executiveFunction,
+    businessObjectives,
+    executionStyle,
+    operatingContext,
+    location,
+    workModel,
+    capabilityExtractionStatus,
+    dimensions,
+    semanticEvidence,
+    originalOpportunity,
+  };
 }

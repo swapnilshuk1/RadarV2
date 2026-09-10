@@ -542,15 +542,18 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
       mgr.transitionTo("enriching");
       if (runScope) {
-        try {
-          const repos = getRepositories();
-          await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
-            totalDiscovered: mgr.manifest.cards.length,
-            totalEnqueued: ingestedCount,
-            metrics: tm as any,
-          });
-          await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "enriching");
-        } catch {}
+        const repos = getRepositories();
+        await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
+          totalDiscovered: mgr.manifest.cards.length,
+          totalEnqueued: ingestedCount,
+          metrics: tm as any,
+        });
+        const transitioned = await repos.scrapeRuns.updateRunStatus(runScope, mgr.runId, "enriching");
+        if (!transitioned) {
+          throw new Error(
+            `Failed durable running->enriching transition for ${mgr.runId}`
+          );
+        }
       }
       log(`[Scrape] Acquisition complete. Dispatched ${ingestedCount} cards to distributed enrichment & evaluation pipeline.`);
       mgr.recordActivity(`Acquisition complete · ${ingestedCount} cards dispatched for enrichment`);

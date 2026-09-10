@@ -1,5 +1,5 @@
 import { CandidateProjection } from "../../domain/candidate_projection";
-import { JobProjection } from "../../domain/job_projection";
+import { EvaluationJobProjection } from "../../domain/job_projection";
 import { IdentityAssessment } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
 import { IdentityDistanceCalculator } from "../utils/IdentityDistanceCalculator";
@@ -12,7 +12,7 @@ export class IdentityAssessmentEngine {
    */
   public static evaluate(
     candidate: CandidateProjection,
-    job: JobProjection,
+    job: EvaluationJobProjection,
     context?: CandidateEvaluationContext
   ): IdentityAssessment {
     const candidateIdentityStr = context 

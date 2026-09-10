@@ -1,7 +1,7 @@
 // src/lib/intelligence/engines/LifestyleAssessmentEngine.ts
 
 import { CandidateProjection } from "../../domain/candidate_projection";
-import { JobProjection } from "../../domain/job_projection";
+import { EvaluationJobProjection } from "../../domain/job_projection";
 import { LifestyleAssessment } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
 import locationPolicy from '@/data/ontology/location_policy.json';
@@ -9,7 +9,7 @@ import locationPolicy from '@/data/ontology/location_policy.json';
 export class LifestyleAssessmentEngine {
   public static evaluate(
     candidate: CandidateProjection,
-    job: JobProjection
+    job: EvaluationJobProjection
   ): LifestyleAssessment {
     const richness = EvidenceRichnessCalculator.calculate(job.originalOpportunity);
     const jobLocLower = (job.location || "").toLowerCase().trim();
@@ -110,4 +110,3 @@ export class LifestyleAssessmentEngine {
     } as any;
   }
 }
-
