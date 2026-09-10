@@ -92,6 +92,57 @@ describe("JobProjectionBuilder role-work retention", () => {
     expect(projection.roleWorkEvidence).toEqual([]);
   });
 
+  it("fails closed on common corporate, equal-opportunity, qualification, and heading propositions", () => {
+    const projection = project(`
+      Why Neutral Employer? We are a vibrant community of solvers.
+      Equal Opportunity Employer: We celebrate diversity and are committed to inclusion.
+      The role offers excellent growth opportunities.
+      Backed by leading investors, the company is building a category-defining brand.
+      This role is ideal for someone with extensive commercial experience.
+      Excellent communication and problem-solving are essential for success.
+      What makes the role successful:
+      Demonstrated line-management experience and experience leading through influence.
+      ResponsibilitiesHOW YOU WILL MAKE AN IMPACTYour role is important.
+      What Deliverables You Will Take Ownership OfThe annual operating plan and market prioritization framework.
+      Location – this role is based in Gurgaon. Equal Opportunities: we are committed to inclusion.
+      Digital Commerce Partnership Partner with sales teams on category direction Provide strategic inputs into product pricing and assortment principles for online channels Digital-first launch planning Partner with commerce teams ensuring sharper proposition inputs and adoption across all customer journeys.
+    `);
+
+    expect(projection.roleWorkEvidence).toEqual([]);
+  });
+
+  it("distinguishes assigned duties from explicit employer success states", () => {
+    const projection = project(`
+      Key Responsibilities:
+      • Monitor revenue and retention metrics.
+      • Own the P&L and revenue forecast.
+      • Use analytics to improve conversion.
+      • Achieve a 20% revenue-growth target.
+      • Reduce churn below the agreed threshold.
+      • Deliver within the approved budget.
+    `);
+
+    const byStatement = new Map(
+      projection.roleWorkEvidence?.map((atom) => [atom.statement, atom.kind]),
+    );
+    expect(byStatement.get("Monitor revenue and retention metrics.")).toBe("RESPONSIBILITY");
+    expect(byStatement.get("Own the P&L and revenue forecast.")).toBe("RESPONSIBILITY");
+    expect(byStatement.get("Use analytics to improve conversion.")).toBe("RESPONSIBILITY");
+    expect(byStatement.get("Achieve a 20% revenue-growth target.")).toBe("OUTCOME");
+    expect(byStatement.get("Reduce churn below the agreed threshold.")).toBe("OUTCOME");
+    expect(byStatement.get("Deliver within the approved budget.")).toBe("OUTCOME");
+  });
+
+  it("retains every valid source atom instead of truncating early evidence", () => {
+    const responsibilities = Array.from(
+      { length: 14 },
+      (_, index) => `• Own operating workstream ${index + 1} and deliver the agreed service level.`,
+    );
+    const projection = project(`Key Responsibilities:\n${responsibilities.join("\n")}`);
+
+    expect(projection.roleWorkEvidence).toHaveLength(14);
+  });
+
   it("atomizes flattened headings and numbered bullets without admitting adjacent qualification text", () => {
     const projection = project(
       "Key Responsibilities:1. Own vendor performance and service-delivery escalations.2. Achieve retention and margin targets. What You Bring: Strong experience in performance marketing and paid media. Show more Show less",

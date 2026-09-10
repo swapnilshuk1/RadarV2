@@ -255,7 +255,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/for4d5_client_freshness.test.ts` | Evaluation & Policy | **REVIEW** | Full Suite | 6 | 16 |
 | `tests/intelligence/identity.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 14 | 70 |
 | `tests/intelligence/job-projection-cache.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 29 |
-| `tests/intelligence/job-projection-role-work.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 15 |
+| `tests/intelligence/job-projection-role-work.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 9 | 23 |
 | `tests/intelligence/m10-continuous-pipeline.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 13 | 118 |
 | `tests/intelligence/m42-identity-versioning.test.ts` | Identity & Candidate Projection | **KEEP** | Full Suite | 8 | 16 |
 | `tests/intelligence/m43-attention-gate.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 16 | 29 |
@@ -298,7 +298,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/persistence/cross-instance-payload-retrieval.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 2 | 10 |
 | `tests/persistence/distributed-lease-contention.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 2 | 12 |
 | `tests/persistence/blob-store-connectivity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 4 | 14 |
-| `tests/persistence/gate3-distributed-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 14 | 48 |
+| `tests/persistence/gate3-distributed-lifecycle.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 15 | 52 |
 | `tests/persistence/populated-migration.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 1 | 9 |
 | `tests/persistence/m61-credential-schema.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 54 |
 | `tests/persistence/m7-tenant-migration.test.ts` | Security & Tenant Isolation | **KEEP** | Full Suite | 7 | 15 |

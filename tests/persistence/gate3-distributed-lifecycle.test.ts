@@ -1046,5 +1046,63 @@ describe("Gate 3: Distributed Lifecycle, Version-Aware Work & Queue Decoupling C
       }
     }).toThrow("Failed durable running->enriching transition");
   });
+
+  it("15. Candidate & Obligation Atomicity: Attention-Gate CANDIDATE with missing active evaluation context throws and rolls back candidate projection", async () => {
+    // 1. Setup an active search plan that has NO active evaluation context
+    await db.execute(
+      `INSERT INTO search_plans (id, tenant_id, person_id, status, title, criteria_json)
+       VALUES (?, ?, ?, 'active', ?, ?)`,
+      [
+        "plan_no_context",
+        "tenant_A",
+        "person_A",
+        "Plan Without Context",
+        JSON.stringify({
+          targetSeniority: ["VP", "Director"],
+          targetRoles: ["Engineering"],
+          targetLocations: ["Bengaluru"],
+        }),
+      ]
+    );
+
+    // Verify there is NO entry in active_evaluation_contexts for plan_no_context
+    const activeCtx = await db.one<any>(
+      `SELECT * FROM active_evaluation_contexts WHERE search_plan_id = 'plan_no_context'`
+    );
+    expect(activeCtx).toBeNull();
+
+    // 2. Ingest an opportunity matching plan_no_context criteria (Attention Gate evaluates to CANDIDATE)
+    await expect(
+      canonicalIngest.ingestOpportunity(
+        {
+          sourcePortal: "LinkedIn",
+          sourceJobId: "no_context_test_202",
+          canonicalUrl: "https://www.linkedin.com/jobs/view/999202",
+          jobTitle: "VP of Engineering",
+          companyName: "Tech Corp",
+          location: "Bengaluru",
+          rawContent: "Executive engineering leadership role.",
+        },
+        {
+          tenantId: "tenant_A",
+          personId: "person_A",
+          searchPlanId: "plan_no_context",
+        }
+      )
+    ).rejects.toThrow(/MISSING_EVALUATION_CONTEXT: candidate.*for plan plan_no_context cannot create durable evaluation obligation/);
+
+    // 3. Invariants:
+    // a. No CANDIDATE persisted in search_plan_candidates
+    const candidates = await db.many<any>(
+      `SELECT * FROM search_plan_candidates WHERE search_plan_id = 'plan_no_context'`
+    );
+    expect(candidates).toHaveLength(0);
+
+    // b. No requirement persisted in evaluation_requirements
+    const requirements = await db.many<any>(
+      `SELECT * FROM evaluation_requirements WHERE search_plan_id = 'plan_no_context'`
+    );
+    expect(requirements).toHaveLength(0);
+  });
 });
 

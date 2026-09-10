@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { SqliteEvaluationContextStore } from "../../src/data/sqlite/repositories/SqliteEvaluationContextStore";
 import { resolveServingScope } from "../../src/lib/security/scope-resolver";
-import { setupLineageTestFixture } from "../persistence/lineage_fixture";
+import { setupLineageTestFixture, activateLineageTestContext } from "../persistence/lineage_fixture";
 import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
 import { materializeExistingCanonicalPool } from "../../src/lib/intelligence/context-materialization";
 
@@ -167,6 +167,7 @@ describe("Atomic career-intent plan activation", () => {
         "ANY",
       ],
     );
+    await activateLineageTestContext(db);
     const ingestion = new CanonicalIngestionService(db);
     const first = await ingestion.ingestOpportunity({
       sourcePortal: "LinkedIn",
@@ -176,7 +177,7 @@ describe("Atomic career-intent plan activation", () => {
       companyName: "Acme",
       location: "Bengaluru",
       rawContent: "Executive VP Growth role leading commercial growth, enterprise demand generation, revenue strategy, and a cross-functional leadership team. Own the regional P&L, define the annual growth plan, partner with product and sales executives, set measurable acquisition and retention targets, build operating cadence for funnel performance, and present strategic outcomes to the executive committee. The role requires proven commercial leadership, executive stakeholder management, scalable go-to-market execution, and accountability for sustainable revenue growth across complex customer segments.",
-    });
+    }, { tenantId: scope.tenantId, personId: scope.personId, searchPlanId: "plan_A" });
     const second = await ingestion.ingestOpportunity({
       sourcePortal: "Naukri",
       sourceJobId: "context-backfill-job-2",
@@ -185,7 +186,7 @@ describe("Atomic career-intent plan activation", () => {
       companyName: "Beta",
       location: "Bengaluru",
       rawContent: "Executive VP Growth role owning a regional P&L and commercial team.",
-    });
+    }, { tenantId: scope.tenantId, personId: scope.personId, searchPlanId: "plan_A" });
     const prepared = await store.prepareSearchPlan(scope, activationInput("profile-backfill"));
     const firstBackfill = await materializeExistingCanonicalPool(scope, prepared, {
       sourceSearchPlanId: "plan_A",
@@ -235,6 +236,7 @@ describe("Atomic career-intent plan activation", () => {
   });
 
   it("materializes only the explicit source plan when the same scope has multiple plans", async () => {
+    await activateLineageTestContext(db);
     const ingestion = new CanonicalIngestionService(db);
     const sourceA = await ingestion.ingestOpportunity({
       sourcePortal: "LinkedIn",
@@ -244,7 +246,7 @@ describe("Atomic career-intent plan activation", () => {
       companyName: "Plan A Co",
       location: "Bengaluru",
       rawContent: "Executive VP Growth role leading commercial growth and a cross-functional team.",
-    });
+    }, { tenantId: scope.tenantId, personId: scope.personId, searchPlanId: "plan_A" });
     await db.execute(
       `INSERT INTO search_plans (id, tenant_id, person_id, status, title, criteria_json)
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -258,7 +260,7 @@ describe("Atomic career-intent plan activation", () => {
       companyName: "Plan B Co",
       location: "Bengaluru",
       rawContent: "Executive VP Growth role owning a regional P&L and commercial team.",
-    });
+    }, { tenantId: scope.tenantId, personId: scope.personId, searchPlanId: "plan_A" });
     // Ingestion projects into the fixture's active plan. Move this record to
     // the second plan so the two source cohorts are genuinely disjoint.
     await db.execute(

@@ -6,6 +6,21 @@ import { CommercialScopeClassifier } from "../classifiers/CommercialScopeClassif
 import { SemanticResolutionEngine } from "../semantic/SemanticResolutionEngine";
 import type { CanonicalSemanticEvidence } from "../semantic/types";
 import type { ValidatedJobDocument } from "../../domain/canonical_acquisition";
+import { createHash } from "node:crypto";
+
+type RoleWorkRejectionReason =
+  | "empty"
+  | "oversized"
+  | "malformed"
+  | "mixed_or_meta"
+  | "qualification"
+  | "corporate_or_workplace"
+  | "not_assigned_work";
+
+type RoleWorkExtraction = {
+  evidence: ProjectedRoleWorkEvidence[];
+  rejected: Record<RoleWorkRejectionReason, number>;
+};
 
 export class JobProjectionBuilder {
 
@@ -199,53 +214,88 @@ export class JobProjectionBuilder {
     return spans;
   }
 
+  private static isMetaAtom(statement: string): boolean {
+    const normalized = this.normalizeSourceAtom(statement);
+    return !normalized
+      || /^(?:why |about |what makes |what deliverables|role overview|job summary|key competencies|how you(?:'|’)ll make an impact|what success looks like|show more show less)\b/i.test(normalized)
+      || /^(?:responsibilities|job duties|deliverables|how you will make an impact)(?:[A-Z]|\b)/i.test(normalized)
+      || /\b(?:role responsibilities|responsibilities(?:how|what|[A-Z]))\b/i.test(normalized)
+      || (/^[^.!?]{1,100}:$/.test(normalized) && normalized.split(/\s+/).length <= 12);
+  }
+
+  private static isFlattenedSubheadingBlob(statement: string): boolean {
+    // A run of title-cased words immediately followed by a work verb is a
+    // flattened subheading plus content (for example, "Channel Partnership
+    // Partner with..."). It has lost a source boundary, so fail closed.
+    return /^(?:(?:[A-Z][^\s]*|&)\s+){2,8}(?:Partner|Provide|Own|Lead|Manage|Drive|Build|Develop|Execute|Deliver|Monitor|Track|Coordinate)\b/.test(statement);
+  }
+
   private static isQualificationSource(statement: string, sourceRegion: DocumentRegion): boolean {
     if (sourceRegion === "REQUIREMENTS") return true;
-    return /\b(?:must have|required|preferred|minimum qualification|years? of experience|bachelor(?:'s)?|master(?:'s)?|degree|strong (?:experience|understanding|knowledge)|experience (?:in|with|of)|knowledge of|familiarity with|skills? in|you (?:have|bring|possess)|ideal candidate|ability to|written and verbal communication|portfolio)\b/i.test(statement);
+    return /\b(?:must have|required|preferred|minimum qualification|years? of experience|bachelor(?:'s)?|master(?:'s)?|degree|strong (?:experience|understanding|knowledge)|experience (?:in|with|of)|knowledge of|familiarity with|skills? in|you (?:have|bring|possess)|ideal candidate|ability to|written and verbal communication|portfolio)\b/i.test(statement)
+      || /^(?:demonstrated|proven|excellent|strong|exceptional|outstanding|solid|deep|extensive|relevant)\s+(?:experience|track record|communication|interpersonal|problem[- ]solving|analytical|leadership|ability|skills?|knowledge|understanding|expertise)\b/i.test(statement)
+      || /^(?:demonstrated|proven|excellent|strong|exceptional|outstanding|solid|deep|extensive|relevant)\b[^.!?]{0,80}\b(?:experience|track record|communication|interpersonal|problem[- ]solving|analytical|leadership|ability|skills?|knowledge|understanding|expertise)\b/i.test(statement)
+      || /^(?:experience|background|track record)\s+(?:in|leading|with)\b/i.test(statement)
+      || /^(?:this role is ideal for|we are looking for|the ideal candidate|you are)\b/i.test(statement);
   }
 
   private static isCorporateSource(statement: string, sourceRegion: DocumentRegion): boolean {
     if (sourceRegion === "COMPANY" || sourceRegion === "BENEFITS") return true;
     return /^(?:about\s+(?:us|the company)|we are|our (?:company|business|mission|purpose)|founded in|we believe|our values)\b/i.test(statement)
       || /^(?:pay|salary|compensation|work location|job type|employment type|benefits?)\b/i.test(statement)
+      || /^(?:backed|funded)\s+by\b/i.test(statement)
       || /^(?:our (?:marquee|active|company|business|pipeline|portfolio)|[A-Z][A-Za-z0-9&\s]+ is now (?:a|an)\b)/.test(statement)
       || /\b(?:is (?:a|an|the) [^.]{0,160}\b(?:company|network|platform|provider|agency|group))\b/i.test(statement)
       // Employer-branding and cultural statements often use role-like verbs,
       // but do not describe work assigned to the vacancy.
-      || /\b(?:core values|our values|life at |meaningful work|employee growth|do their best work|grow both personally|bring your best self|teamwork matters|be extraordinary|transformational creativity)\b/i.test(statement);
+      || /\b(?:core values|our values|life at |meaningful work|employee growth|do their best work|grow both personally|bring your best self|teamwork matters|equal (?:employment )?opportunity|equal opportunity employer|diversity,? equity|inclusive workplace)\b/i.test(statement)
+      || /^(?:why\s+\S+|an?\s+(?:exciting|unique) opportunity|the role offers)\b/i.test(statement);
   }
 
   private static hasRoleAssignment(statement: string, sourceRegion: DocumentRegion): boolean {
     if (sourceRegion === "RESPONSIBILITIES") {
-      // A structural responsibilities region is necessary but not sufficient:
-      // require an action relation anywhere in the bounded span, rather than a
-      // brittle start-of-sentence verb rule.
-      return statement.split(/\s+/).filter(Boolean).length >= 4
-        && /\b(?:lead|own|manage|deliver|drive|build|develop|execute|achieve|monitor|analy[sz]e|orchestrate|negotiate|track|conduct|enforce|protect|grow|scale|create|establish|oversee|direct|run|identify|design|set|hire|recruit|close|pitch|use|plan|coordinate|guide|collaborate|maintain|provide|review|allocate|launch)\b/i.test(statement);
+      // A structural region supplies the discourse role, while a bounded
+      // grammatical assignment opener distinguishes an assigned action from
+      // the remaining descriptive/meta fragments in flattened portal text.
+      // This is deliberately a compact, role-agnostic grammar rather than a
+      // domain vocabulary or a corpus-specific phrase list.
+      return /^(?:own|lead|manage|deliver|drive|build|develop|execute|achieve|monitor|track|analy[sz]e|improve|reduce|increase|establish|oversee|coordinate|negotiate|plan|design|create|hire|coach|direct|conduct|maintain|ensure|identify|collaborate|guide|use|provide|review|allocate|launch|close|pitch|partner)\b/i.test(statement)
+        || /^(?:be )?(?:responsible|accountable)\s+for\b/i.test(statement)
+        || /^(?:you|this (?:person|position)|the role|this role)(?:'ll| will)\b/i.test(statement);
     }
-    return /\b(?:you(?:'ll| will)|the role|this role|responsib(?:le|ility|ilities)|accountable|will own|will lead|will manage|reports? to|partner with|work closely with)\b/i.test(statement);
+    return /\b(?:you(?:'ll| will)|this (?:person|position) will|(?:the|this) role\s+(?:will|exists to|(?:is )?(?:responsible|accountable)\b|owns?\b|leads?\b|manages?\b|translates?\b|orchestrates?\b|ensures?\b)|responsible for|responsibilities include|accountable(?: for)?|will own|will lead|will manage|reports? to|reporting to|partner with|work closely with)\b/i.test(statement);
+  }
+
+  private static isExplicitOutcomeStatement(statement: string): boolean {
+    // A duty mentioning revenue, metrics, or improvement remains a
+    // responsibility. An outcome must state a required result directly.
+    return /^(?:achieve|deliver|reduce|increase|grow)\b[\s\S]*\b(?:target|targets|by|to|within|below|above|margin|revenue|retention|conversion|profitability|budget|kpi|metric|objective|outcome)s?\b/i.test(statement)
+      || /^(?:maintain|ensure)\b[\s\S]*\b(?:within|below|above|target|targets|approved budget|agreed (?:threshold|margin|target))\b/i.test(statement);
   }
 
   private static roleWorkKind(statement: string, sourceRegion: DocumentRegion): "RESPONSIBILITY" | "OUTCOME" | "ROLE_CONTEXT" | null {
     if (sourceRegion === "TITLE" || sourceRegion === "BENEFITS" || sourceRegion === "COMPANY") return null;
     if (/\b(?:role and responsibilities|key responsibilities|what you(?:'|’)?ll own|the mandate|what this role is not|show more show less)\b/i.test(statement)) return null;
-    if (/\b(?:reports? to|base location|work location|team size)\b/i.test(statement)) {
+    if (/\b(?:reports? to|reporting to|base location|work location|team size)\b/i.test(statement)) {
       return "ROLE_CONTEXT";
     }
     if (/\b(?:working style|days? (?:a week )?out of the office|working from home)\b/i.test(statement)) {
       return null;
     }
     if (!this.hasRoleAssignment(statement, sourceRegion)) return null;
-    return /\b(?:kpi|metric|target|revenue|profitability|margin|conversion|retention|achieve|improve|increase|reduce|on[- ]time|within[- ]budget)\b/i.test(statement)
+    return this.isExplicitOutcomeStatement(statement)
       ? "OUTCOME"
       : "RESPONSIBILITY";
   }
 
   private static stableRoleWorkId(opportunityVersion: string, statement: string, ordinal: number): string {
-    const input = `${opportunityVersion}|${statement.toLowerCase()}|${ordinal}`;
-    let hash = 2166136261;
-    for (let index = 0; index < input.length; index++) hash = Math.imul(hash ^ input.charCodeAt(index), 16777619);
-    return `rolework_${(hash >>> 0).toString(16)}`;
+    const input = JSON.stringify({
+      version: this.ROLE_WORK_EVIDENCE_VERSION,
+      opportunityVersion,
+      statement: statement.toLowerCase(),
+      ordinal,
+    });
+    return `rolework_${createHash("sha256").update(input, "utf8").digest("hex").slice(0, 32)}`;
   }
 
   private static capabilityKeysForRoleWork(
@@ -255,6 +305,7 @@ export class JobProjectionBuilder {
     const normalizedStatement = this.normalizeSourceAtom(statement).toLowerCase();
     const keys: string[] = [];
     for (const capability of capabilities) {
+      if (capability.source !== "explicit") continue;
       const label = this.normalizeSourceAtom(capability.canonicalConcept || capability.name);
       if (!label) continue;
       const normalizedLabel = label.toLowerCase();
@@ -275,13 +326,25 @@ export class JobProjectionBuilder {
     sourceText: string,
     opportunityVersion: string,
     capabilities: readonly ProjectedCapability[],
-  ): ProjectedRoleWorkEvidence[] {
+  ): RoleWorkExtraction {
     const occurrences = new Map<string, number>();
     const evidence: ProjectedRoleWorkEvidence[] = [];
+    const rejected: Record<RoleWorkRejectionReason, number> = {
+      empty: 0,
+      oversized: 0,
+      malformed: 0,
+      mixed_or_meta: 0,
+      qualification: 0,
+      corporate_or_workplace: 0,
+      not_assigned_work: 0,
+    };
 
     for (const span of this.roleWorkSpans(sourceText)) {
       const statement = this.normalizeSourceAtom(span.statement);
-      if (!statement) continue;
+      if (!statement) {
+        rejected.empty++;
+        continue;
+      }
 
       // The ordinal identifies this exact normalized atom's occurrence in the
       // canonical source stream, not its rank among admitted work evidence.
@@ -290,13 +353,41 @@ export class JobProjectionBuilder {
       const ordinal = (occurrences.get(occurrenceKey) || 0) + 1;
       occurrences.set(occurrenceKey, ordinal);
 
-      if (statement.length > 420 || !/^[A-Z0-9“"']/.test(statement)) continue;
+      if (statement.length > 420) {
+        rejected.oversized++;
+        continue;
+      }
+      if (!/^[A-Z0-9“"']/.test(statement)) {
+        rejected.malformed++;
+        continue;
+      }
       // Reject known boundary corruption (for example, "InventoryOwn") rather
       // than publishing a composite span whose source structure was lost.
-      if (/[a-z](?:Own|Lead|Manage|Drive|Build|Develop|Execute|Achieve|Monitor|Identify|Design|Set|Hire|Recruit|Close|Pitch|Use|Plan|Coordinate|Guide|Collaborate|Maintain|Provide|Review|Allocate|Launch)\b/.test(statement)) continue;
-      if (this.isQualificationSource(statement, span.sourceRegion) || this.isCorporateSource(statement, span.sourceRegion)) continue;
+      if (
+        this.isMetaAtom(statement)
+        || this.isFlattenedSubheadingBlob(statement)
+        // A long, punctuation-free summary is a flattened mixed blob, not an
+        // independently understandable employer fact. Do not invent internal
+        // boundaries here; a later canonical source extractor can recover it.
+        || (span.sourceRegion === "SUMMARY" && statement.length > 280 && !/[.!?;]/.test(statement))
+        || /[a-z](?:Own|Lead|Manage|Drive|Build|Develop|Execute|Achieve|Monitor|Identify|Design|Set|Hire|Recruit|Close|Pitch|Use|Plan|Coordinate|Guide|Collaborate|Maintain|Provide|Review|Allocate|Launch)\b/.test(statement)
+      ) {
+        rejected.mixed_or_meta++;
+        continue;
+      }
+      if (this.isQualificationSource(statement, span.sourceRegion)) {
+        rejected.qualification++;
+        continue;
+      }
+      if (this.isCorporateSource(statement, span.sourceRegion)) {
+        rejected.corporate_or_workplace++;
+        continue;
+      }
       const kind = this.roleWorkKind(statement, span.sourceRegion);
-      if (!kind) continue;
+      if (!kind) {
+        rejected.not_assigned_work++;
+        continue;
+      }
 
       evidence.push({
         id: this.stableRoleWorkId(opportunityVersion, statement, ordinal),
@@ -306,7 +397,11 @@ export class JobProjectionBuilder {
         sourceRegion: span.sourceRegion,
         ordinal,
         capabilityKeys: this.capabilityKeysForRoleWork(statement, capabilities),
-        confidence: 0.9,
+        confidence: span.sourceRegion === "RESPONSIBILITIES"
+          ? 0.95
+          : kind === "ROLE_CONTEXT"
+            ? 0.9
+            : 0.8,
       });
     }
 
@@ -314,7 +409,33 @@ export class JobProjectionBuilder {
     for (const atom of evidence) {
       if (!unique.has(atom.id)) unique.set(atom.id, atom);
     }
-    return Array.from(unique.values()).slice(0, 12);
+    return {
+      evidence: Array.from(unique.values()),
+      rejected,
+    };
+  }
+
+  /**
+   * Read-only extraction diagnostics for provenance review. This is not part
+   * of JobProjection and is intentionally unavailable to evaluation engines.
+   */
+  public static inspectRoleWorkEvidence(opportunity: any): RoleWorkExtraction {
+    const projection = this.build(opportunity);
+    const sourceText = opportunity.description || opportunity.normalizedText || opportunity.rawText || opportunity.rawDescription || "";
+    const sourceVersion = String(
+      opportunity.opportunityVersion
+      || opportunity.opportunityVersionId
+      || opportunity.versionId
+      || opportunity.contentHash
+      || opportunity.id
+      || opportunity.jobHash
+      || "unknown-opportunity-version",
+    );
+    return this.extractRoleWorkEvidence(
+      String(sourceText),
+      sourceVersion,
+      projection.capabilities,
+    );
   }
 
   private static assignCapabilityTier(capName: string): CapabilityTaxonomyTier {
@@ -657,11 +778,12 @@ export class JobProjectionBuilder {
       || opportunity.jobHash
       || "unknown-opportunity-version",
     );
-    const roleWorkEvidence = this.extractRoleWorkEvidence(
+    const roleWorkExtraction = this.extractRoleWorkEvidence(
       String(sourceText),
       sourceVersion,
       capabilities,
     );
+    const roleWorkEvidence = roleWorkExtraction.evidence;
 
     // Phase 5C.2: Canonical Semantic Evidence Extraction
     const semanticEvidence: CanonicalSemanticEvidence[] = [...compositional.evidenceList];

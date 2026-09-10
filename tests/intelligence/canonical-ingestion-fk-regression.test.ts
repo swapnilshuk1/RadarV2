@@ -104,6 +104,18 @@ describe("Canonical Ingestion Foreign Key & Idempotency Invariants", () => {
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
       );
+
+      INSERT OR IGNORE INTO search_plan_snapshots (id, tenant_id, person_id, search_plan_id, snapshot_hash, payload_json)
+      VALUES ('sps_${searchPlanId}', '${tenantId}', '${personId}', '${searchPlanId}', 'hash_sps', '{}');
+
+      INSERT OR IGNORE INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version)
+      VALUES ('ctx_${searchPlanId}', '${tenantId}', '${personId}', 'sps_${searchPlanId}', 'v1', 'hash_onto', 'v1', 'v1');
+
+      INSERT OR IGNORE INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
+      VALUES ('ctx_${searchPlanId}', '${tenantId}', '${personId}', '${searchPlanId}');
+
+      INSERT OR IGNORE INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
+      VALUES ('${tenantId}', '${personId}', '${searchPlanId}', 'ctx_${searchPlanId}', 'test-fixture');
     `);
   });
 

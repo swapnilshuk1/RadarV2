@@ -446,41 +446,46 @@ export class CanonicalIngestionService {
             [plan.id, plan.tenant_id, plan.person_id]
           );
 
-          if (evalContext?.context_fingerprint) {
-            const reqId = `evalreq_${crypto.createHash("sha256").update(`${plan.tenant_id}:${plan.person_id}:${plan.id}:${canonicalJobId}:${effectiveVersionId}:${evalContext.context_fingerprint}`).digest("hex").slice(0, 16)}`;
-
-            await tx.execute(
-              `INSERT INTO evaluation_requirements (
-                 id, tenant_id, person_id, search_plan_id, canonical_job_id,
-                 opportunity_version, required_enrichment_pipeline_version,
-                 evaluation_context_fingerprint, status, created_at
-               ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'WAITING_ENRICHMENT', CURRENT_TIMESTAMP)
-               ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-               DO UPDATE SET status = CASE 
-                 WHEN evaluation_requirements.status = 'SATISFIED' THEN 'SATISFIED'
-                 ELSE evaluation_requirements.status 
-               END`,
-              [
-                reqId,
-                plan.tenant_id,
-                plan.person_id,
-                plan.id,
-                canonicalJobId,
-                effectiveVersionId,
-                evalContext.context_fingerprint,
-              ]
+          if (!evalContext?.context_fingerprint) {
+            throw new Error(
+              `MISSING_EVALUATION_CONTEXT: candidate ${canonicalJobId}/${effectiveVersionId} ` +
+              `for plan ${plan.id} cannot create durable evaluation obligation`
             );
-
-            if (scopeFilter?.runId) {
-              await tx.execute(
-                `INSERT INTO scrape_run_evaluation_requirements (run_id, evaluation_requirement_id)
-                 VALUES (?, ?)
-                 ON CONFLICT(run_id, evaluation_requirement_id) DO NOTHING`,
-                [scopeFilter.runId, reqId]
-              );
-            }
-            jobsEnqueued++;
           }
+
+          const reqId = `evalreq_${crypto.createHash("sha256").update(`${plan.tenant_id}:${plan.person_id}:${plan.id}:${canonicalJobId}:${effectiveVersionId}:${evalContext.context_fingerprint}`).digest("hex").slice(0, 16)}`;
+
+          await tx.execute(
+            `INSERT INTO evaluation_requirements (
+               id, tenant_id, person_id, search_plan_id, canonical_job_id,
+               opportunity_version, required_enrichment_pipeline_version,
+               evaluation_context_fingerprint, status, created_at
+             ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'WAITING_ENRICHMENT', CURRENT_TIMESTAMP)
+             ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
+             DO UPDATE SET status = CASE 
+               WHEN evaluation_requirements.status = 'SATISFIED' THEN 'SATISFIED'
+               ELSE evaluation_requirements.status 
+             END`,
+            [
+              reqId,
+              plan.tenant_id,
+              plan.person_id,
+              plan.id,
+              canonicalJobId,
+              effectiveVersionId,
+              evalContext.context_fingerprint,
+            ]
+          );
+
+          if (scopeFilter?.runId) {
+            await tx.execute(
+              `INSERT INTO scrape_run_evaluation_requirements (run_id, evaluation_requirement_id)
+               VALUES (?, ?)
+               ON CONFLICT(run_id, evaluation_requirement_id) DO NOTHING`,
+              [scopeFilter.runId, reqId]
+            );
+          }
+          jobsEnqueued++;
         }
       }
     });
