@@ -18,6 +18,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "typecheck:scraper": "tsc -p tsconfig.scraper.json --noEmit",
     "scrape": "tsx scripts/scrape.ts",
     "enrich": "tsx scripts/enrich.ts",
     "enrich:recover": "tsx --env-file=.env scripts/recover-degraded.ts",

@@ -8,7 +8,15 @@ import {
   EXTRACTOR_VERSION,
   RECOMMENDATION_SCHEMA_VERSION,
 } from "../versions";
-import type { RunManifest, WorkUnit, CardUnit, PortalName, UnitStatus, AcquisitionVariant } from "../types";
+import type {
+  RunManifest,
+  WorkUnit,
+  CardUnit,
+  PortalName,
+  UnitStatus,
+  AcquisitionVariant,
+  RunState,
+} from "../types";
 import { writeJsonAtomic, readJsonSafe } from "../utils/fs-atomic";
 import { Journal } from "./journal";
 import { HealthManager } from "./health-manager";
@@ -25,6 +33,10 @@ export interface RunControllerOptions {
   variants?: AcquisitionVariant[];
   adaptiveDepth?: boolean;
   initialPages?: number;
+  searchPlanId?: string;
+  snapshotId?: string;
+  contextFingerprint?: string;
+  variantsSignature?: string;
 }
 
 export class RunController {
@@ -134,6 +146,10 @@ export class RunController {
       portals: opts.portals,
       maxPages: opts.maxPages,
       maxCardsPerPage: opts.maxCardsPerPage,
+      searchPlanId: opts.searchPlanId,
+      snapshotId: opts.snapshotId,
+      contextFingerprint: opts.contextFingerprint,
+      variantsSignature: opts.variantsSignature,
       telemetry: {
         httpAttempted: 0,
         httpSuccessful: 0,
@@ -141,6 +157,7 @@ export class RunController {
         duplicatePreDetail: 0,
         duplicatePostDetail: 0,
         llmCalls: 0,
+        acquisitionIntegrityFailures: 0,
       },
       pageExecutionRecords: [],
       units,
@@ -171,7 +188,11 @@ export class RunController {
     if (
       JSON.stringify(manifest.keywords) !== JSON.stringify(opts.keywords) ||
       JSON.stringify(manifest.portals) !== JSON.stringify(opts.portals) ||
-      manifest.maxPages !== opts.maxPages
+      manifest.maxPages !== opts.maxPages ||
+      (opts.searchPlanId && manifest.searchPlanId !== opts.searchPlanId) ||
+      (opts.snapshotId && manifest.snapshotId !== opts.snapshotId) ||
+      (opts.contextFingerprint && manifest.contextFingerprint !== opts.contextFingerprint) ||
+      (opts.variantsSignature && manifest.variantsSignature !== opts.variantsSignature)
     ) {
       // Scope changed — new run avoids stale unit set.
       return null;
@@ -182,8 +203,8 @@ export class RunController {
     return { runId, runDir, manifestPath, journalPath, manifest };
   }
 
-  static isStatusResumable(status: RunStatus): boolean {
-    const nonResumableStatuses: RunStatus[] = [
+  static isStatusResumable(status: RunState): boolean {
+    const nonResumableStatuses: RunState[] = [
       "enriching",
       "completing",
       "completed",
@@ -525,7 +546,8 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
       | "candidatesProjected"
       | "evaluationJobsEnqueued"
       | "heuristicDuplicateSuspect"
-      | "hardFiltered",
+      | "hardFiltered"
+      | "acquisitionIntegrityFailures",
     amount: number = 1
   ): void {
     if (!this.manifest.telemetry) {

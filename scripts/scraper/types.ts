@@ -176,6 +176,10 @@ export interface RunManifest {
   portals: PortalName[];
   maxPages: number;
   maxCardsPerPage: number;
+  searchPlanId?: string;
+  snapshotId?: string;
+  contextFingerprint?: string;
+  variantsSignature?: string;
   opportunitiesFound?: number;
   evaluatedCount?: number;
   remainingCount?: number;
@@ -232,6 +236,7 @@ export interface FeedCard {
 // DetailedCard replaces JobSnapshot as the payload post-acquisition
 export interface DetailedCard extends FeedCard {
   canonicalJobId?: string;
+  opportunityVersion?: string;
   snapshotSchemaVersion: string;
   scraperVersion: string;
   acquisitionRoute?: AcquisitionRoute;
@@ -342,6 +347,9 @@ export interface ExtractionResult {
   extractorVersion: string;
   promptVersion: string;
   jobHash: string;
+  opportunityVersion?: string;
+  canonicalJobId?: string;
+  extractedAt?: string;
   role: string;
   company: string;
   location: string;

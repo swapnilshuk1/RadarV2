@@ -47,10 +47,35 @@ import { QueryMetricsStore } from "./scraper/run/metrics";
 import { getRepositories } from "../src/data/sqlite/provider";
 import { CredentialBroker } from "../src/lib/security/CredentialBroker";
 import { establishPortalAuthSession, type PortalAuthSession } from "../src/lib/security/PortalAuthSession";
+import crypto from "crypto";
 import type { AuthContext } from "../src/lib/security/auth";
-import { CanonicalIngestionService, type CanonicalIngestionResult } from "../src/lib/acquisition/CanonicalIngestionService";
+import {
+  CanonicalIngestionService,
+  type CanonicalIngestionResult,
+  AcquisitionIntegrityError,
+} from "../src/lib/acquisition/CanonicalIngestionService";
 
-
+export function computeVariantsSignature(variants?: AcquisitionVariant[]): string | undefined {
+  if (!variants || variants.length === 0) return undefined;
+  const normalized = variants.map((v) => {
+    return {
+      channel: v.channel ?? null,
+      department: v.department ?? null,
+      industry: v.industry ?? null,
+      location: v.location ?? null,
+      portal: v.portal ?? null,
+      postedWithinDays: v.postedWithinDays ?? null,
+      query: v.query ?? null,
+      radiusKm: v.radiusKm ?? null,
+      sort: v.sort ?? null,
+    };
+  });
+  const sorted = normalized
+    .map((obj) => JSON.stringify(obj))
+    .sort()
+    .join("|");
+  return crypto.createHash("sha256").update(sorted).digest("hex");
+}
 
 import {
   readSnapshotIfFresh,
@@ -224,22 +249,23 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   
   const resolvedKeywords = keywords;
   const resolvedVariants = opts.variants || (resolvedPlan ? compileMultiLocationCoverageVariants(resolvedPlan, portals) : undefined);
+  const variantsSignature = computeVariantsSignature(resolvedVariants);
 
-  const mgr = new RunController();
+  let mgr = new RunController();
   const { resumed } = mgr.init({
-    keywords: resolvedKeywords, portals, maxPages,
+    keywords: resolvedKeywords,
+    portals,
+    maxPages,
     maxCardsPerPage: maxCardsPerPage ?? CONFIG.maxCardsPerPage,
     resume: freshRun ? false : (opts.resume !== false),
     variants: resolvedVariants,
     adaptiveDepth: true,
     initialPages: 1,
+    searchPlanId: resolvedPlan?.searchPlanId,
+    snapshotId: resolvedPlan?.snapshotId,
+    contextFingerprint: resolvedPlan?.contextFingerprint,
+    variantsSignature,
   });
-  
-  activeRunControllers.set(mgr.runId, mgr);
-  mgr.recordActivity("Building executive search schema from candidate profile...");
-  const plannedUnits = mgr.manifest.units.length;
-  log(`Run ${mgr.runId} ${resumed ? "resumed" : "started"} — portals=${mgr.manifest.portals.join(",")} units=${plannedUnits}`);
-  mgr.recordActivity(`Search schema armed: ${plannedUnits} work units across ${portals.join(", ")}`);
 
   let runScope: any = null;
   if (opts.authContext) {
@@ -252,28 +278,93 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       const repos = getRepositories();
       if (resumed) {
         const existingDurableRun = await repos.scrapeRuns.getRun(runScope, mgr.runId);
-        const isDurableResumable = existingDurableRun && (
-          existingDurableRun.status === "initializing" || existingDurableRun.status === "running"
-        );
-        if (isDurableResumable) {
+
+        let durableIdentity: any = null;
+        if (existingDurableRun?.configJson) {
+          try {
+            const parsed = JSON.parse(existingDurableRun.configJson);
+            durableIdentity = parsed?.acquisitionIdentity || parsed?.config?.acquisitionIdentity;
+          } catch {}
+        }
+
+        const isDurableResumable =
+          existingDurableRun &&
+          (existingDurableRun.status === "initializing" || existingDurableRun.status === "running");
+
+        // Resume requires agreement among all sources:
+        // current resolved plan == local manifest identity == durable scrape_runs.config_json identity
+        // plus durable searchPlanId matches
+        const isPlanMatching = resolvedPlan
+          ? existingDurableRun?.searchPlanId === resolvedPlan.searchPlanId &&
+            mgr.manifest.searchPlanId === resolvedPlan.searchPlanId &&
+            (!durableIdentity?.searchPlanId || durableIdentity.searchPlanId === resolvedPlan.searchPlanId) &&
+            (!resolvedPlan.snapshotId ||
+              (mgr.manifest.snapshotId === resolvedPlan.snapshotId &&
+                (!durableIdentity?.snapshotId || durableIdentity.snapshotId === resolvedPlan.snapshotId))) &&
+            (!resolvedPlan.contextFingerprint ||
+              (mgr.manifest.contextFingerprint === resolvedPlan.contextFingerprint &&
+                (!durableIdentity?.contextFingerprint ||
+                  durableIdentity.contextFingerprint === resolvedPlan.contextFingerprint))) &&
+            (!variantsSignature ||
+              (mgr.manifest.variantsSignature === variantsSignature &&
+                (!durableIdentity?.variantsSignature || durableIdentity.variantsSignature === variantsSignature)))
+          : true;
+
+        if (isDurableResumable && isPlanMatching) {
           log(`Validated existing durable scrape_run for resume: ${mgr.runId} (status: ${existingDurableRun.status})`);
         } else {
-          // Stale or finished run cannot be resumed. Force a fresh run.
-          log(`Run ${mgr.runId} exists with non-resumable status '${existingDurableRun?.status || "missing"}' — forcing fresh run`, "warn");
+          // Stale, mismatched, or finished run cannot be resumed. Force a fresh run.
+          log(
+            `Run ${mgr.runId} exists with non-resumable state (status='${existingDurableRun?.status || "missing"}', planMatch=${isPlanMatching}) — forcing fresh run`,
+            "warn"
+          );
+          if (
+            existingDurableRun &&
+            (existingDurableRun.status === "initializing" ||
+              existingDurableRun.status === "running" ||
+              existingDurableRun.status === "enriching")
+          ) {
+            await repos.scrapeRuns.updateRunStatus(
+              runScope,
+              existingDurableRun.id,
+              "aborted",
+              "Superseded by fresh run due to search plan identity mismatch or non-resumable state"
+            );
+            log(`Superseded stale active durable run: ${existingDurableRun.id}`);
+          }
+          try {
+            mgr.journal?.close();
+          } catch {}
+          mgr = new RunController();
           mgr.init({
-            keywords: resolvedKeywords, portals, maxPages,
+            keywords: resolvedKeywords,
+            portals,
+            maxPages,
             maxCardsPerPage: maxCardsPerPage ?? CONFIG.maxCardsPerPage,
             resume: false,
             variants: resolvedVariants,
             adaptiveDepth: true,
             initialPages: 1,
+            searchPlanId: resolvedPlan?.searchPlanId,
+            snapshotId: resolvedPlan?.snapshotId,
+            contextFingerprint: resolvedPlan?.contextFingerprint,
+            variantsSignature,
           });
           await repos.scrapeRuns.createRun(runScope, {
             id: mgr.runId,
             searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
             portalTargets: portals,
             initialStatus: "initializing",
-            config: { maxPages, keywords: resolvedKeywords },
+            config: {
+              maxPages,
+              keywords: resolvedKeywords,
+              acquisitionIdentity: {
+                searchPlanId: resolvedPlan?.searchPlanId,
+                snapshotId: resolvedPlan?.snapshotId,
+                contextFingerprint: resolvedPlan?.contextFingerprint,
+                variantsSignature,
+              },
+            },
           });
           log(`Created new durable scrape_run in Turso Cloud: ${mgr.runId}`);
         }
@@ -283,7 +374,16 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
           portalTargets: portals,
           initialStatus: "initializing",
-          config: { maxPages, keywords: resolvedKeywords },
+          config: {
+            maxPages,
+            keywords: resolvedKeywords,
+            acquisitionIdentity: {
+              searchPlanId: resolvedPlan?.searchPlanId,
+              snapshotId: resolvedPlan?.snapshotId,
+              contextFingerprint: resolvedPlan?.contextFingerprint,
+              variantsSignature,
+            },
+          },
         });
         log(`Created durable scrape_run in Turso Cloud: ${mgr.runId} for tenant ${runScope.tenantId}`);
       }
@@ -292,6 +392,14 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       throw e;
     }
   }
+
+  // Register active controller strictly AFTER resolution/replacement so activeRunControllers
+  // never holds a stale or orphaned run ID.
+  activeRunControllers.set(mgr.runId, mgr);
+  mgr.recordActivity("Building executive search schema from candidate profile...");
+  const plannedUnits = mgr.manifest.units.length;
+  log(`Run ${mgr.runId} ${resumed ? "resumed" : "started"} — portals=${mgr.manifest.portals.join(",")} units=${plannedUnits}`);
+  mgr.recordActivity(`Search schema armed: ${plannedUnits} work units across ${portals.join(", ")}`);
 
   // Graceful shutdown: checkpoints already fsync'd — just close journal + browsers.
   const shutdown = async (signal: string) => {
@@ -863,7 +971,7 @@ async function processUnit(
       log(`[Adaptive Depth] Source novelty dropped to ${(sourceNovelty.noveltyRatio * 100).toFixed(1)}% (< 25% threshold). Halting deepening for ${surfaceKey} at page ${unit.page}.`, "info");
       // Prune any pre-enqueued subsequent pages for this surface
       for (const u of mgr.manifest.units) {
-        const uKey = `${u.portal}:${u.keyword}:${u.variant?.location || "global"}`;
+        const uKey = acquisitionSurfaceKey(u.variant, u.portal, u.keyword);
         if (uKey === surfaceKey && u.status === "pending" && u.page > unit.page) {
           mgr.updateUnit(u.id, {
             status: "skipped_pruned",
@@ -1689,7 +1797,7 @@ async function processUnit(
                 detail.finalUrl,
               );
             }
-            throw new Error(`[CanonicalIngestFailed] ${err.message}`);
+            throw err;
           }
 
         mgr.updateCard(cardUnitId, {
@@ -1705,15 +1813,13 @@ async function processUnit(
         mgr.journal.append({ type: "card_failed", cardId: cardUnitId, error: err.message });
 
         const isIntegrityFailure =
-          err.message?.includes("CanonicalIngestFailed") ||
-          err.message?.includes("MISSING_EVALUATION_CONTEXT") ||
-          err.message?.includes("ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH") ||
-          err.message?.includes("UNIQUE constraint") ||
-          err.message?.includes("Acquisition artifact rejected");
+          err?.failureKind === "INTEGRITY_FAILURE" ||
+          err instanceof AcquisitionIntegrityError ||
+          err?.message?.includes("ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH");
 
         if (isIntegrityFailure) {
           integrityFailuresInUnit++;
-          mgr.recordTelemetry("acquisitionIntegrityFailures" as any);
+          mgr.recordTelemetry("acquisitionIntegrityFailures");
         }
       }
       return null;

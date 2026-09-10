@@ -45,6 +45,26 @@ async function rateLimitedExtract(card: DetailedCard) {
   }
 }
 
+export function assertCanonicalPayloadIdentity(
+  job: { canonical_job_id?: string | null; opportunity_version?: string | null },
+  detailedCard: { evaluationEvidence?: { canonicalJobId?: string | null; opportunityVersion?: string | null } }
+): void {
+  const bound = !!job.canonical_job_id || !!job.opportunity_version;
+  if (!bound) return; // legacy unbound work
+  if (
+    !job.canonical_job_id ||
+    !job.opportunity_version ||
+    !detailedCard.evaluationEvidence?.canonicalJobId ||
+    !detailedCard.evaluationEvidence?.opportunityVersion ||
+    detailedCard.evaluationEvidence.canonicalJobId !== job.canonical_job_id ||
+    detailedCard.evaluationEvidence.opportunityVersion !== job.opportunity_version
+  ) {
+    throw new Error(
+      `ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH: Job ${job.canonical_job_id}/${job.opportunity_version} does not match payload evidence ${detailedCard.evaluationEvidence?.canonicalJobId}/${detailedCard.evaluationEvidence?.opportunityVersion}`
+    );
+  }
+}
+
 export async function processJob(
   queue: EnrichmentQueue, 
   job: import("./scraper/persist/queue").EnrichmentJob,
@@ -55,66 +75,70 @@ export async function processJob(
   let llmMs = 0;
   
   try {
-    // Load payload from BlobStore (or fallback to snapshot_path for legacy unmigrated rows)
     let snapStr: string | null = null;
+    const isBound = !!(job.canonical_job_id || job.opportunity_version);
     const payloadKey = job.payload_key || (job.snapshot_path ? (job.snapshot_path.startsWith("snapshots/") ? job.snapshot_path : `snapshots/${job.job_hash}.json`) : null);
 
-    if (payloadKey) {
-      const { getBlobStore } = await import("../src/lib/storage/blob-store");
-      const blobBuf = await getBlobStore().get(payloadKey);
-      if (blobBuf) {
-        snapStr = blobBuf.toString("utf-8");
+    if (isBound) {
+      // Invariant: Bound canonical jobs MUST resolve strictly via BlobStore using job.payload_key.
+      // Disk fallbacks, .scraper-artifacts, and card-hash lookups are forbidden for canonical work.
+      if (!job.payload_key) {
+        throw new Error(
+          `Enrichment job ${job.id} is bound to canonical opportunity (${job.canonical_job_id}/${job.opportunity_version}) but has no payload_key`
+        );
       }
-    }
+      const { getBlobStore } = await import("../src/lib/storage/blob-store");
+      const blobBuf = await getBlobStore().get(job.payload_key);
+      if (!blobBuf) {
+        throw new Error(
+          `Enrichment payload not found in BlobStore for bound job ${job.id} (key: ${job.payload_key})`
+        );
+      }
+      snapStr = blobBuf.toString("utf-8");
+    } else {
+      // Legacy unbound work: fallback to snapshot_path or disk
+      if (payloadKey) {
+        const { getBlobStore } = await import("../src/lib/storage/blob-store");
+        const blobBuf = await getBlobStore().get(payloadKey);
+        if (blobBuf) {
+          snapStr = blobBuf.toString("utf-8");
+        }
+      }
 
-    if (!snapStr && job.snapshot_path) {
-      if (fs.existsSync(job.snapshot_path)) {
-        snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
-      } else {
-        const basename = path.basename(job.snapshot_path);
-        const altPaths = [
-          path.resolve(process.cwd(), ".radar", "artifacts", "blobs", "snapshots", basename),
-          path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", basename),
-          path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`),
-        ];
-        for (const alt of altPaths) {
-          if (fs.existsSync(alt)) {
-            snapStr = fs.readFileSync(alt, "utf-8");
-            break;
+      if (!snapStr && job.snapshot_path) {
+        if (fs.existsSync(job.snapshot_path)) {
+          snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
+        } else {
+          const basename = path.basename(job.snapshot_path);
+          const altPaths = [
+            path.resolve(process.cwd(), ".radar", "artifacts", "blobs", "snapshots", basename),
+            path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", basename),
+            path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`),
+          ];
+          for (const alt of altPaths) {
+            if (fs.existsSync(alt)) {
+              snapStr = fs.readFileSync(alt, "utf-8");
+              break;
+            }
           }
         }
       }
-    }
 
-    if (!snapStr) {
-      const directHashPath = path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`);
-      if (fs.existsSync(directHashPath)) {
-        snapStr = fs.readFileSync(directHashPath, "utf-8");
+      if (!snapStr) {
+        const directHashPath = path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`);
+        if (fs.existsSync(directHashPath)) {
+          snapStr = fs.readFileSync(directHashPath, "utf-8");
+        }
       }
-    }
 
-    if (!snapStr) {
-      throw new Error(`Enrichment payload not found for job ${job.id} (key: ${payloadKey}, path: ${job.snapshot_path})`);
+      if (!snapStr) {
+        throw new Error(`Enrichment payload not found for job ${job.id} (key: ${payloadKey}, path: ${job.snapshot_path})`);
+      }
     }
 
     const detailedCard = JSON.parse(snapStr) as DetailedCard;
+    assertCanonicalPayloadIdentity(job, detailedCard);
 
-    // Invariant: If job specifies canonical_job_id and opportunity_version, the payload must match exactly
-    if (job.canonical_job_id && detailedCard.evaluationEvidence?.canonicalJobId) {
-      if (detailedCard.evaluationEvidence.canonicalJobId !== job.canonical_job_id) {
-        throw new Error(
-          `ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH: Job ${job.id} canonicalJobId '${job.canonical_job_id}' does not match payload '${detailedCard.evaluationEvidence.canonicalJobId}'`
-        );
-      }
-    }
-    if (job.opportunity_version && detailedCard.evaluationEvidence?.opportunityVersion) {
-      if (detailedCard.evaluationEvidence.opportunityVersion !== job.opportunity_version) {
-        throw new Error(
-          `ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH: Job ${job.id} opportunityVersion '${job.opportunity_version}' does not match payload '${detailedCard.evaluationEvidence.opportunityVersion}'`
-        );
-      }
-    }
-    
     // Check if we already have a fresh, valid-version extraction on disk keyed by opportunity version (or fallback to card hash)
     const extractionCacheKey = job.opportunity_version || filteredCardHash(detailedCard);
     const cachedEx = readExtractionIfFresh(extractionCacheKey, CONFIG.snapshotFreshHours, EXTRACTOR_VERSION);
@@ -133,6 +157,9 @@ export async function processJob(
       const tLlm0 = Date.now();
       extraction = await rateLimitedExtract(detailedCard);
       llmMs = Date.now() - tLlm0;
+      extraction.opportunityVersion = job.opportunity_version || detailedCard.opportunityVersion || detailedCard.evaluationEvidence?.opportunityVersion;
+      extraction.canonicalJobId = job.canonical_job_id || detailedCard.canonicalJobId || detailedCard.evaluationEvidence?.canonicalJobId;
+      extraction.extractedAt = new Date().toISOString();
       writeExtraction(extractionCacheKey, extraction);
     }
     
@@ -455,9 +482,9 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
   let idleCount = 0;
   
   while (true) {
-    // Attempt to lease up to CONFIG.llmConcurrency jobs
+    // Attempt to lease up to CONFIG.llmConcurrency jobs matching this worker's pipeline version
     const tPoll = Date.now();
-    const jobs = await queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency, 300); // 5 min lease
+    const jobs = await queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency, 300, EXTRACTOR_VERSION); // 5 min lease
     workerStats.pollingMs += (Date.now() - tPoll);
     
     if (jobs.length === 0) {
@@ -521,6 +548,7 @@ export async function enrichJobsForRun(
   deps?: {
     queue?: EnrichmentQueue;
     repos?: import("../src/domain/repositories").StorageProvider;
+    pipelineVersion?: string;
   }
 ) {
   const queue = deps?.queue ?? new EnrichmentQueue();
@@ -550,8 +578,8 @@ export async function enrichJobsForRun(
     // Recover any leases expired globally during our run
     await queue.recoverExpiredLeases();
 
-    // Lease jobs only for this run!
-    const jobs = await queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency);
+    // Lease jobs for this run (filtering by pipeline version if explicitly scoped)
+    const jobs = await queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency, 300, deps?.pipelineVersion);
 
     if (jobs.length === 0) {
       // Check if there are any jobs currently cooling down in retry status

@@ -277,9 +277,31 @@ export class EnrichmentQueue {
     }
   }
 
-  public async leaseJobs(workerId: string, limit: number, leaseDurationSeconds: number = 300): Promise<EnrichmentJob[]> {
+  public async leaseJobs(
+    workerId: string,
+    limit: number,
+    leaseDurationSeconds: number = 300,
+    pipelineVersion?: string
+  ): Promise<EnrichmentJob[]> {
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + leaseDurationSeconds * 1000).toISOString();
+
+    const versionFilter = pipelineVersion
+      ? `AND (
+           pipeline_version = ?
+           OR (
+             pipeline_version IS NULL
+             AND canonical_job_id IS NULL
+             AND opportunity_version IS NULL
+           )
+         )`
+      : "";
+
+    const params: unknown[] = [workerId, expiresAt, now, now, now];
+    if (pipelineVersion) {
+      params.push(pipelineVersion);
+    }
+    params.push(limit);
 
     const leased = await this.db.many<EnrichmentJob>(
       `UPDATE enrichment_jobs
@@ -288,15 +310,16 @@ export class EnrichmentQueue {
           lease_expires_at = ?
       WHERE id IN (
         SELECT id FROM enrichment_jobs
-        WHERE (status = 'PENDING')
+        WHERE ((status = 'PENDING')
            OR (status = 'RETRY' AND (next_retry_at IS NULL OR next_retry_at <= ?))
            OR (status = 'LEASED' AND lease_expires_at < ?)
-           OR (status = 'RUNNING' AND lease_expires_at < ?)
+           OR (status = 'RUNNING' AND lease_expires_at < ?))
+           ${versionFilter}
         ORDER BY (business_priority + execution_priority) DESC, created_at ASC
         LIMIT ?
       )
       RETURNING *`,
-      [workerId, expiresAt, now, now, now, limit]
+      params
     );
 
     for (const job of leased) {
@@ -728,9 +751,32 @@ export class EnrichmentQueue {
     return (res?.count || 0) > 0;
   }
 
-  public async leaseJobsForRun(workerId: string, runId: string, limit: number, leaseDurationSeconds: number = 300): Promise<EnrichmentJob[]> {
+  public async leaseJobsForRun(
+    workerId: string,
+    runId: string,
+    limit: number,
+    leaseDurationSeconds: number = 300,
+    pipelineVersion?: string
+  ): Promise<EnrichmentJob[]> {
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + leaseDurationSeconds * 1000).toISOString();
+
+    const versionFilter = pipelineVersion
+      ? `AND (
+           pipeline_version = ?
+           OR (
+             pipeline_version IS NULL
+             AND canonical_job_id IS NULL
+             AND opportunity_version IS NULL
+           )
+         )`
+      : "";
+
+    const params: unknown[] = [workerId, expiresAt, runId, now, now, now];
+    if (pipelineVersion) {
+      params.push(pipelineVersion);
+    }
+    params.push(limit);
 
     const leased = await this.db.many<EnrichmentJob>(
       `UPDATE enrichment_jobs
@@ -745,11 +791,12 @@ export class EnrichmentQueue {
           OR (status = 'LEASED' AND lease_expires_at < ?)
           OR (status = 'RUNNING' AND lease_expires_at < ?)
         )
+        ${versionFilter}
         ORDER BY (business_priority + execution_priority) DESC, created_at ASC
         LIMIT ?
       )
       RETURNING *`,
-      [workerId, expiresAt, runId, now, now, now, limit]
+      params
     );
 
     for (const job of leased) {

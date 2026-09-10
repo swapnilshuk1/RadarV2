@@ -1,9 +1,20 @@
 import Database from "better-sqlite3";
-import { describe, expect, it } from "vitest";
-import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
+import { describe, expect, it, vi } from "vitest";
+import {
+  CanonicalIngestionService,
+  AcquisitionIntegrityError,
+} from "../../src/lib/acquisition/CanonicalIngestionService";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { sourceIdentityForCard, acquisitionSurfaceKey } from "../../src/lib/acquisition/canonical-identity";
 import { RunController } from "../../scripts/scraper/run/manager";
+import { assertCanonicalPayloadIdentity } from "../../scripts/enrich";
+import { computeVariantsSignature } from "../../scripts/scrape";
+import { EnrichmentQueue } from "../../scripts/scraper/persist/queue";
+import { extractionPath, readExtractionIfFresh, writeExtraction, collectRecords } from "../../scripts/scraper/persist/writer";
+import { EXTRACTION_DIR } from "../../scripts/scraper/config";
+import { SqliteScrapeRunStore } from "../../src/data/sqlite/repositories/SqliteScrapeRunStore";
+import path from "path";
+import fs from "fs";
 
 function createInMemoryDatabase() {
   const raw = new Database(":memory:");
@@ -26,14 +37,22 @@ function createInMemoryDatabase() {
       PRIMARY KEY(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version)
     );
     CREATE TABLE enrichment_jobs (
-      id TEXT PRIMARY KEY, job_hash TEXT NOT NULL, canonical_job_id TEXT NOT NULL,
-      opportunity_version TEXT NOT NULL, pipeline_version TEXT NOT NULL, snapshot_path TEXT NOT NULL,
+      id TEXT PRIMARY KEY, job_hash TEXT NOT NULL, canonical_job_id TEXT,
+      opportunity_version TEXT, pipeline_version TEXT, snapshot_path TEXT,
       payload_key TEXT, run_id TEXT, execution_plan_id TEXT, definition_id TEXT, family_id TEXT,
       portal TEXT, page INTEGER, catalog_version TEXT, planner_version TEXT, rule_version TEXT,
       search_query TEXT, status TEXT NOT NULL, business_priority INTEGER, execution_priority INTEGER,
-      locked_by TEXT, locked_at TEXT, lease_expires_at TEXT, attempts INTEGER DEFAULT 0,
-      max_attempts INTEGER DEFAULT 3, error_message TEXT, created_at TEXT, updated_at TEXT,
+      lease_owner TEXT, lease_expires_at TEXT, attempts INTEGER DEFAULT 0,
+      max_attempts INTEGER DEFAULT 3, last_error TEXT, failure_type TEXT, next_retry_at TEXT,
+      started_at TEXT, completed_at TEXT, created_at TEXT, updated_at TEXT,
       UNIQUE(canonical_job_id, opportunity_version, pipeline_version)
+    );
+    CREATE TABLE enrichment_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      event_payload TEXT,
+      created_at TEXT
     );
     CREATE TABLE scrape_run_enrichment_requirements (
       run_id TEXT NOT NULL, enrichment_job_id TEXT NOT NULL,
@@ -52,6 +71,25 @@ function createInMemoryDatabase() {
     CREATE TABLE active_evaluation_contexts (tenant_id TEXT, person_id TEXT, search_plan_id TEXT, context_fingerprint TEXT);
     CREATE TABLE evaluation_contexts (context_fingerprint TEXT, tenant_id TEXT, person_id TEXT);
     CREATE TABLE recovery_queue (id TEXT PRIMARY KEY, tenant_id TEXT, canonical_job_id TEXT, opportunity_version_id TEXT, source TEXT, canonical_url TEXT, reason TEXT, failure_class TEXT, attempt_count INTEGER, status TEXT, next_attempt_at TEXT, created_at TEXT);
+    CREATE TABLE scrape_runs (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL,
+      person_id TEXT NOT NULL,
+      search_plan_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      portal_targets TEXT NOT NULL,
+      config_json TEXT NOT NULL DEFAULT '{}',
+      metrics_json TEXT NOT NULL DEFAULT '{}',
+      total_discovered INTEGER NOT NULL DEFAULT 0,
+      total_enqueued INTEGER NOT NULL DEFAULT 0,
+      error_message TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      started_at TIMESTAMP,
+      finished_at TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE UNIQUE INDEX idx_scrape_runs_active_scope ON scrape_runs(tenant_id, person_id) 
+    WHERE status IN ('queued', 'initializing', 'running', 'waiting_for_confirmation', 'stopping', 'enriching', 'completing');
 
     INSERT INTO tenants VALUES ('tenant_A');
     INSERT INTO people VALUES ('person_A', 'tenant_A');
@@ -282,37 +320,392 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
     }
   });
 
-  it("asserts payload identity and rejects mismatched versions", () => {
-    const job = {
+  it("asserts payload identity using assertCanonicalPayloadIdentity", () => {
+    const boundJob: any = {
+      id: "job-1",
       canonical_job_id: "canon_123",
       opportunity_version: "v_alpha",
     };
-    const matchingPayload = {
+    const matchingPayload: any = {
       evaluationEvidence: {
         canonicalJobId: "canon_123",
         opportunityVersion: "v_alpha",
       },
     };
-    const mismatchedPayload = {
+    const mismatchedPayload: any = {
       evaluationEvidence: {
         canonicalJobId: "canon_123",
         opportunityVersion: "v_beta",
       },
     };
-
-    const validatePayload = (j: typeof job, p: typeof matchingPayload) => {
-      const payloadCanonId = p?.evaluationEvidence?.canonicalJobId;
-      const payloadVersion = p?.evaluationEvidence?.opportunityVersion;
-      if (
-        (payloadCanonId && payloadCanonId !== j.canonical_job_id) ||
-        (payloadVersion && payloadVersion !== j.opportunity_version)
-      ) {
-        throw new Error(`ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH: Job specifies ${j.canonical_job_id}@${j.opportunity_version} but payload contains ${payloadCanonId}@${payloadVersion}`);
-      }
-      return true;
+    const missingEvidencePayload: any = {};
+    const legacyUnboundJob: any = {
+      id: "job-legacy",
+      canonical_job_id: null,
+      opportunity_version: null,
     };
 
-    expect(validatePayload(job, matchingPayload)).toBe(true);
-    expect(() => validatePayload(job, mismatchedPayload)).toThrowError(/ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH/);
+    // Matching succeeds
+    expect(() => assertCanonicalPayloadIdentity(boundJob, matchingPayload)).not.toThrow();
+
+    // Mismatched version fails closed
+    expect(() => assertCanonicalPayloadIdentity(boundJob, mismatchedPayload)).toThrowError(
+      /ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH/
+    );
+
+    // Missing evidence fails closed
+    expect(() => assertCanonicalPayloadIdentity(boundJob, missingEvidencePayload)).toThrowError(
+      /ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH/
+    );
+
+    // Unbound legacy job passes safely
+    expect(() => assertCanonicalPayloadIdentity(legacyUnboundJob, mismatchedPayload)).not.toThrow();
+  });
+
+  it("computes deterministic variants signature as canonical SHA-256 digest", () => {
+    const variantA = {
+      portal: "LinkedIn" as const,
+      query: "VP Product",
+      location: "Bengaluru",
+      postedWithinDays: 7,
+    };
+    const variantB = {
+      portal: "Indeed" as const,
+      query: "VP Engineering",
+      location: "Remote",
+      postedWithinDays: 14,
+    };
+
+    // Order of variants in array must produce identical signature
+    const sig1 = computeVariantsSignature([variantA, variantB]);
+    const sig2 = computeVariantsSignature([variantB, variantA]);
+    expect(sig1).toBeDefined();
+    expect(sig1).toBe(sig2);
+
+    // Different variant parameter must produce different signature
+    const sig3 = computeVariantsSignature([
+      { ...variantA, postedWithinDays: 30 },
+      variantB,
+    ]);
+    expect(sig3).not.toBe(sig1);
+
+    // Empty or undefined variants return undefined
+    expect(computeVariantsSignature([])).toBeUndefined();
+    expect(computeVariantsSignature(undefined)).toBeUndefined();
+  });
+
+  it("strictly enforces pipeline_version predicate when leasing enrichment jobs", async () => {
+    const { raw, db } = createInMemoryDatabase();
+    const queue = new EnrichmentQueue(db);
+
+    const nowIso = new Date().toISOString();
+    // 1. Target pipeline version job
+    raw.prepare(`
+      INSERT INTO enrichment_jobs (
+        id, job_hash, canonical_job_id, opportunity_version, pipeline_version,
+        snapshot_path, status, attempts, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?)
+    `).run("job-target-v1", "hash-1", "canon-1", "ver-1", "1.0.0", "snapshots/hash-1.json", nowIso, nowIso);
+
+    // 2. Incompatible pipeline version job
+    raw.prepare(`
+      INSERT INTO enrichment_jobs (
+        id, job_hash, canonical_job_id, opportunity_version, pipeline_version,
+        snapshot_path, status, attempts, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0, ?, ?)
+    `).run("job-incompatible-v2", "hash-2", "canon-2", "ver-2", "2.0.0", "snapshots/hash-2.json", nowIso, nowIso);
+
+    // 3. Legacy unbound job (pipeline_version IS NULL and canonical_job_id IS NULL and opportunity_version IS NULL)
+    raw.prepare(`
+      INSERT INTO enrichment_jobs (
+        id, job_hash, canonical_job_id, opportunity_version, pipeline_version,
+        snapshot_path, status, attempts, created_at, updated_at
+      ) VALUES (?, ?, NULL, NULL, NULL, ?, 'PENDING', 0, ?, ?)
+    `).run("job-legacy-unbound", "hash-3", "snapshots/hash-3.json", nowIso, nowIso);
+
+    // Lease jobs requesting pipeline version 1.0.0
+    const leased = await queue.leaseJobs("worker-test", 10, 300, "1.0.0");
+    const leasedIds = leased.map((j) => j.id);
+
+    // Should include target version 1.0.0 and legacy unbound, but NOT 2.0.0
+    expect(leasedIds).toContain("job-target-v1");
+    expect(leasedIds).toContain("job-legacy-unbound");
+    expect(leasedIds).not.toContain("job-incompatible-v2");
+  });
+
+  it("preserves cause and sets failureKind in AcquisitionIntegrityError", () => {
+    const innerCause = new Error("Turso cloud transaction rolled back");
+    const err = new AcquisitionIntegrityError("Failed to persist canonical opportunity", innerCause);
+
+    expect(err.name).toBe("AcquisitionIntegrityError");
+    expect(err.failureKind).toBe("INTEGRITY_FAILURE");
+    expect(err.message).toBe("Failed to persist canonical opportunity");
+    expect(err.cause).toBe(innerCause);
+    expect(err instanceof AcquisitionIntegrityError).toBe(true);
+    expect(err instanceof Error).toBe(true);
+  });
+
+  it("generates version-addressed extraction paths", () => {
+    const pathWithVersion = extractionPath("test_card_123", "1.0.0");
+    expect(pathWithVersion).toContain("test_card_123__v1.0.0.json");
+
+    const pathWithoutVersion = extractionPath("test_card_123");
+    expect(pathWithoutVersion).toContain("test_card_123.json");
+  });
+
+  it("supersedes identity-mismatched active durable run leaving exactly one active run", async () => {
+    const { raw, db } = createInMemoryDatabase();
+    const scrapeRunStore = new SqliteScrapeRunStore(db);
+    const runScope = { tenantId: "tenant_A", personId: "person_A" };
+
+    // 1. Initial run created in 'running' state with plan_1 identity
+    await scrapeRunStore.createRun(runScope, {
+      id: "run-stale-active",
+      searchPlanId: "plan_1",
+      portalTargets: ["LinkedIn"],
+      initialStatus: "running",
+      config: {
+        acquisitionIdentity: {
+          searchPlanId: "plan_1",
+          snapshotId: "snap_1",
+          contextFingerprint: "ctx_1",
+          variantsSignature: "sig_1",
+        },
+      },
+    });
+
+    // Verify exactly one active run exists initially
+    const activeBefore = raw.prepare("SELECT * FROM scrape_runs WHERE tenant_id = 'tenant_A' AND status IN ('initializing', 'running', 'enriching')").all();
+    expect(activeBefore.length).toBe(1);
+
+    // 2. Incoming run has identity mismatch (plan_2 vs plan_1)
+    const existingDurableRun = await scrapeRunStore.getRun(runScope, "run-stale-active");
+    expect(existingDurableRun).not.toBeNull();
+
+    // Under supersession policy, if active and mismatched, supersede stale run first
+    if (
+      existingDurableRun &&
+      (existingDurableRun.status === "initializing" ||
+        existingDurableRun.status === "running" ||
+        existingDurableRun.status === "enriching")
+    ) {
+      await scrapeRunStore.updateRunStatus(
+        runScope,
+        existingDurableRun.id,
+        "aborted",
+        "Superseded by fresh run due to search plan identity mismatch or non-resumable state"
+      );
+    }
+
+    // Now create the fresh durable run
+    await scrapeRunStore.createRun(runScope, {
+      id: "run-fresh-active",
+      searchPlanId: "plan_2",
+      portalTargets: ["LinkedIn"],
+      initialStatus: "initializing",
+      config: {
+        acquisitionIdentity: {
+          searchPlanId: "plan_2",
+          snapshotId: "snap_2",
+          contextFingerprint: "ctx_2",
+          variantsSignature: "sig_2",
+        },
+      },
+    });
+
+    // 3. Verify DB state: stale run is aborted, fresh run is initializing, exactly one active run
+    const staleRun = await scrapeRunStore.getRun(runScope, "run-stale-active");
+    expect(staleRun?.status).toBe("aborted");
+    expect(staleRun?.errorMessage).toContain("Superseded");
+
+    const freshRun = await scrapeRunStore.getRun(runScope, "run-fresh-active");
+    expect(freshRun?.status).toBe("initializing");
+
+    const activeRuns = raw.prepare("SELECT * FROM scrape_runs WHERE tenant_id = 'tenant_A' AND status IN ('initializing', 'running', 'enriching')").all();
+    expect(activeRuns.length).toBe(1);
+    expect((activeRuns[0] as any).id).toBe("run-fresh-active");
+  });
+
+  it("reuses immutable BlobStore payload and skips mutation on duplicate admission of the same canonical version", async () => {
+    const { db } = createInMemoryDatabase();
+    
+    const putSpy = vi.fn();
+    const blobData = new Map<string, string>();
+    const mockBlobStore: any = {
+      put: async (key: string, data: any, contentType?: string) => {
+        putSpy(key, data, contentType);
+        blobData.set(key, typeof data === "string" ? data : data.toString());
+        return key;
+      },
+      get: async (key: string) => {
+        const val = blobData.get(key);
+        return val ? Buffer.from(val) : null;
+      },
+      exists: async (key: string) => blobData.has(key),
+      delete: async (key: string) => {
+        blobData.delete(key);
+      },
+      healthCheck: async () => ({ ok: true, backend: "mock" }),
+    };
+
+    const service = new CanonicalIngestionService(db, mockBlobStore);
+
+    const payload = {
+      sourcePortal: "LinkedIn",
+      sourceJobId: "job-immut-101",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/job-immut-101",
+      jobTitle: "VP Platform Engineering",
+      companyName: "Acme Corp",
+      location: "Bengaluru",
+      rawContent: "Executive engineering leadership responsible for global infrastructure and architecture.".repeat(10),
+      enrichmentDispatch: {
+        detailedCard: {
+          title: "VP Platform Engineering",
+          company: "Acme Corp",
+          description: "Executive engineering leadership",
+          detail: { rawText: "Full JD details for platform engineering..." },
+        } as any,
+        runId: "run-immut-1",
+      },
+    };
+
+    const scope = {
+      tenantId: "tenant_A",
+      personId: "person_A",
+      searchPlanId: "plan_A",
+      runId: "run-immut-1",
+    };
+
+    // First admission: writes blob to store
+    const res1 = await service.ingestOpportunity(payload, scope);
+    expect(putSpy).toHaveBeenCalledTimes(1);
+    const expectedKey = `acquisition/${res1.canonicalJobId}/${res1.opportunityVersion}/snapshot.json`;
+    expect(putSpy).toHaveBeenCalledWith(expectedKey, expect.any(String), "application/json");
+    expect(await mockBlobStore.exists(expectedKey)).toBe(true);
+
+    const initialContent = blobData.get(expectedKey);
+    putSpy.mockClear();
+
+    // Second admission: same canonical version admitted again
+    const res2 = await service.ingestOpportunity(payload, scope);
+    expect(res2.canonicalJobId).toBe(res1.canonicalJobId);
+    expect(res2.opportunityVersion).toBe(res1.opportunityVersion);
+
+    // Verifies: store.put was SKIPPED on duplicate admission to protect immutable worker payload
+    expect(putSpy).not.toHaveBeenCalled();
+    // Payload remains identical and unmutated
+    expect(blobData.get(expectedKey)).toBe(initialContent);
+  });
+
+  it("rolls back newly created BlobStore payload if DB transaction fails during admission", async () => {
+    const { db } = createInMemoryDatabase();
+    
+    const blobData = new Map<string, string>();
+    const deleteSpy = vi.fn();
+    const mockBlobStore: any = {
+      put: async (key: string, data: any, contentType?: string) => {
+        blobData.set(key, typeof data === "string" ? data : data.toString());
+        return key;
+      },
+      get: async (key: string) => {
+        const val = blobData.get(key);
+        return val ? Buffer.from(val) : null;
+      },
+      exists: async (key: string) => blobData.has(key),
+      delete: async (key: string) => {
+        deleteSpy(key);
+        blobData.delete(key);
+      },
+      healthCheck: async () => ({ ok: true, backend: "mock" }),
+    };
+
+    // Database whose transaction throws an error
+    const failingDb: any = {
+      one: db.one.bind(db),
+      many: db.many.bind(db),
+      execute: db.execute.bind(db),
+      transaction: async () => {
+        throw new Error("Simulated Turso connection dropped during transaction");
+      },
+    };
+
+    const service = new CanonicalIngestionService(failingDb, mockBlobStore);
+
+    const payload = {
+      sourcePortal: "LinkedIn",
+      sourceJobId: "job-rollback-102",
+      canonicalUrl: "https://www.linkedin.com/jobs/view/job-rollback-102",
+      jobTitle: "VP Security",
+      companyName: "SecureCorp",
+      location: "Bengaluru",
+      rawContent: "Executive security leadership responsible for global cybersecurity and compliance.".repeat(10),
+      enrichmentDispatch: {
+        detailedCard: {
+          title: "VP Security",
+          company: "SecureCorp",
+          description: "Executive security leadership",
+        } as any,
+        runId: "run-rollback-1",
+      },
+    };
+
+    await expect(
+      service.ingestOpportunity(payload, {
+        tenantId: "tenant_A",
+        personId: "person_A",
+        searchPlanId: "plan_A",
+      })
+    ).rejects.toThrow(AcquisitionIntegrityError);
+
+    // Verify best-effort rollback cleanup: newly created blob is deleted
+    expect(deleteSpy).toHaveBeenCalledTimes(1);
+    expect(blobData.size).toBe(0);
+  });
+
+  it("deterministically chooses authoritative opportunity version in collectRecords", () => {
+    const tempDir = EXTRACTION_DIR;
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    const jobHash = "deterministic_job_hash_456";
+    // Write V1 extraction file
+    const fileV1 = path.join(tempDir, `v1_test_file__v1.0.0.json`);
+    fs.writeFileSync(
+      fileV1,
+      JSON.stringify({
+        extractorVersion: "1.0.0",
+        jobHash,
+        opportunityVersion: "ov_v1",
+        role: "VP Engineering V1",
+        company: "Tech Giant",
+        location: "Bengaluru",
+      })
+    );
+
+    // Write V2 extraction file for the same jobHash
+    const fileV2 = path.join(tempDir, `v2_test_file__v1.0.0.json`);
+    fs.writeFileSync(
+      fileV2,
+      JSON.stringify({
+        extractorVersion: "1.0.0",
+        jobHash,
+        opportunityVersion: "ov_v2",
+        role: "VP Engineering V2",
+        company: "Tech Giant",
+        location: "Bengaluru",
+      })
+    );
+
+    try {
+      const records = collectRecords("1.0.0") as any[];
+      const matched = records.filter((r) => r.jobHash === jobHash);
+      expect(matched.length).toBe(1);
+      // Authoritative V2 must be deterministically selected over V1
+      expect(matched[0].opportunityVersion).toBe("ov_v2");
+      expect(matched[0].role).toBe("VP Engineering V2");
+    } finally {
+      if (fs.existsSync(fileV1)) fs.unlinkSync(fileV1);
+      if (fs.existsSync(fileV2)) fs.unlinkSync(fileV2);
+    }
   });
 });
+

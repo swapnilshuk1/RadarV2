@@ -139,6 +139,14 @@ export class UnusableAcquisitionDocumentError extends Error {
   }
 }
 
+export class AcquisitionIntegrityError extends Error {
+  readonly failureKind: "INTEGRITY_FAILURE" = "INTEGRITY_FAILURE";
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = "AcquisitionIntegrityError";
+  }
+}
+
 export class CanonicalIngestionService {
   private db: DatabaseAdapter;
 
@@ -220,6 +228,7 @@ export class CanonicalIngestionService {
     let sourcePayloadKey: string | null = null;
     let sourceMediaType: string | null = null;
 
+    let createdEnrichmentBlobKey: string | null = null;
     if (payload.enrichmentDispatch?.detailedCard) {
       const enrichmentPayloadKey = `acquisition/${canonicalJobId}/${versionId}/snapshot.json`;
       const detailedCard = payload.enrichmentDispatch.detailedCard;
@@ -234,11 +243,24 @@ export class CanonicalIngestionService {
       };
       // Fail-safe sequencing: BlobStore write occurs BEFORE the DB transaction.
       // If BlobStore write fails, nothing durable is admitted in the database.
-      await (this.blobStore || getBlobStore()).put(
-        enrichmentPayloadKey,
-        JSON.stringify(detailedCard),
-        "application/json"
-      );
+      // Immutable payload protection: do not overwrite an existing snapshot on canonical-version reuse.
+      const store = this.blobStore || getBlobStore();
+      try {
+        const exists = await store.exists(enrichmentPayloadKey);
+        if (!exists) {
+          await store.put(
+            enrichmentPayloadKey,
+            JSON.stringify(detailedCard),
+            "application/json"
+          );
+          createdEnrichmentBlobKey = enrichmentPayloadKey;
+        }
+      } catch (err) {
+        throw new AcquisitionIntegrityError(
+          `Failed to write immutable enrichment snapshot to BlobStore for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
+          err
+        );
+      }
     }
     // This key is an explicit persisted provenance field, not an implicit
     // lookup convention. A caller may provide its own key, but the persisted
@@ -327,8 +349,9 @@ export class CanonicalIngestionService {
       description: rawContentForStorage,
     }));
 
-    await this.db.transaction(async (tx) => {
-      // 3.0 Check if canonical opportunity already exists
+    try {
+      await this.db.transaction(async (tx) => {
+        // 3.0 Check if canonical opportunity already exists
       const existingOpp = await tx.one<{ id: string }>(
         `SELECT id FROM canonical_opportunities WHERE source = ? AND source_job_id = ?`,
         [source, sourceJobId]
@@ -557,7 +580,7 @@ export class CanonicalIngestionService {
           );
 
           if (!evalContext?.context_fingerprint) {
-            throw new Error(
+            throw new AcquisitionIntegrityError(
               `MISSING_EVALUATION_CONTEXT: candidate ${canonicalJobId}/${effectiveVersionId} ` +
               `for plan ${plan.id} cannot create durable evaluation obligation`
             );
@@ -605,6 +628,22 @@ export class CanonicalIngestionService {
         }
       }
     });
+    } catch (err) {
+      if (createdEnrichmentBlobKey) {
+        try {
+          await (this.blobStore || getBlobStore()).delete(createdEnrichmentBlobKey);
+        } catch {
+          // Best-effort cleanup; preserve original transaction error
+        }
+      }
+      if (err instanceof AcquisitionIntegrityError) {
+        throw err;
+      }
+      throw new AcquisitionIntegrityError(
+        `Canonical ingestion transaction failed for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
+        err
+      );
+    }
 
     return {
       canonicalJobId,

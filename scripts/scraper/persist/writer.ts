@@ -4,6 +4,8 @@ import type { ExtractionResult, DetailedCard } from "../types";
 import { EXTRACTION_DIR, SNAPSHOT_DIR, LIVE_SCRAPED_JSON } from "../config";
 import { writeJsonAtomic, readJsonSafe, fileAgeHours } from "../utils/fs-atomic";
 
+import { EXTRACTOR_VERSION } from "../versions";
+
 export interface CanonicalEvaluationEvidenceReference {
   canonicalJobId: string;
   opportunityVersion: string;
@@ -17,7 +19,10 @@ export interface CanonicalEvaluationEvidenceReference {
 export function snapshotPath(cardHash: string): string {
   return path.join(SNAPSHOT_DIR, `${cardHash}.json`);
 }
-export function extractionPath(cardHash: string): string {
+export function extractionPath(cardHash: string, extractorVersion?: string): string {
+  if (extractorVersion) {
+    return path.join(EXTRACTION_DIR, `${cardHash}__v${extractorVersion}.json`);
+  }
   return path.join(EXTRACTION_DIR, `${cardHash}.json`);
 }
 
@@ -57,16 +62,29 @@ export function bindEvaluationEvidence(
 }
 
 export function readExtractionIfFresh(cardHash: string, maxAgeHours: number, extractorVersion: string): ExtractionResult | null {
-  const p = extractionPath(cardHash);
-  if (!fs.existsSync(p)) return null;
-  if (fileAgeHours(p) > maxAgeHours) return null;
-  const ex = readJsonSafe<ExtractionResult>(p);
-  if (!ex || ex.extractorVersion !== extractorVersion) return null;
-  return ex;
+  // 1. Check version-addressed path first
+  const versionedPath = extractionPath(cardHash, extractorVersion);
+  if (fs.existsSync(versionedPath) && fileAgeHours(versionedPath) <= maxAgeHours) {
+    const ex = readJsonSafe<ExtractionResult>(versionedPath);
+    if (ex && ex.extractorVersion === extractorVersion) {
+      return ex;
+    }
+  }
+
+  // 2. Fall back to legacy unversioned path if valid and matching version
+  const legacyPath = extractionPath(cardHash);
+  if (fs.existsSync(legacyPath) && fileAgeHours(legacyPath) <= maxAgeHours) {
+    const ex = readJsonSafe<ExtractionResult>(legacyPath);
+    if (ex && ex.extractorVersion === extractorVersion) {
+      return ex;
+    }
+  }
+
+  return null;
 }
 
 export function writeExtraction(cardHash: string, ex: ExtractionResult): string {
-  const p = extractionPath(cardHash);
+  const p = extractionPath(cardHash, ex.extractorVersion);
   writeJsonAtomic(p, ex);
   return p;
 }
@@ -76,24 +94,84 @@ export function writeLiveScraped(records: unknown[]): void {
   writeJsonAtomic(LIVE_SCRAPED_JSON, records);
 }
 
-export function collectRecords(): unknown[] {
-  const records: unknown[] = [];
-  const seenJobHash = new Set<string>();
+export function collectRecords(targetExtractorVersion: string = EXTRACTOR_VERSION): unknown[] {
+  if (!fs.existsSync(EXTRACTION_DIR)) return [];
   
-  if (!fs.existsSync(EXTRACTION_DIR)) return records;
+  const files = fs.readdirSync(EXTRACTION_DIR).filter(f => f.endsWith(".json"));
   
-  const files = fs.readdirSync(EXTRACTION_DIR);
+  interface ExtractionCandidate {
+    record: any;
+    filename: string;
+    opportunityVersion: string;
+    mtimeMs: number;
+  }
+
+  const candidateRecords: ExtractionCandidate[] = [];
+
   for (const f of files) {
-    if (!f.endsWith(".json")) continue;
     try {
-      const ex = fs.readFileSync(path.join(EXTRACTION_DIR, f), "utf-8");
+      const fullPath = path.join(EXTRACTION_DIR, f);
+      const stat = fs.statSync(fullPath);
+      const ex = fs.readFileSync(fullPath, "utf-8");
       const parsed = JSON.parse(ex);
-      if (seenJobHash.has(parsed.jobHash)) continue;
-      seenJobHash.add(parsed.jobHash);
-      records.push(parsed);
+      if (parsed.extractorVersion && parsed.extractorVersion !== targetExtractorVersion) {
+        continue;
+      }
+      if (!parsed.jobHash) continue;
+      
+      const oppVersion = parsed.opportunityVersion || parsed.opportunity_version || "";
+      candidateRecords.push({
+        record: parsed,
+        filename: f,
+        opportunityVersion: oppVersion,
+        mtimeMs: stat.mtimeMs,
+      });
     } catch (err: any) { 
       console.error(`collectRecords error for ${f}:`, err);
     }
   }
-  return records;
+
+  // Group candidates deterministically by jobHash (listing identity)
+  const recordsByJobHash = new Map<string, ExtractionCandidate[]>();
+  for (const item of candidateRecords) {
+    const list = recordsByJobHash.get(item.record.jobHash) || [];
+    list.push(item);
+    recordsByJobHash.set(item.record.jobHash, list);
+  }
+
+  const finalRecords: unknown[] = [];
+  const sortedHashes = Array.from(recordsByJobHash.keys()).sort();
+
+  for (const hash of sortedHashes) {
+    const candidates = recordsByJobHash.get(hash)!;
+    candidates.sort((a, b) => {
+      // 1. Authoritative opportunity version (higher/newer version preferred: v2 > v1)
+      if (a.opportunityVersion && b.opportunityVersion) {
+        const vCmp = b.opportunityVersion.localeCompare(a.opportunityVersion, undefined, { numeric: true, sensitivity: "base" });
+        if (vCmp !== 0) return vCmp;
+      } else if (a.opportunityVersion && !b.opportunityVersion) {
+        return -1;
+      } else if (!a.opportunityVersion && b.opportunityVersion) {
+        return 1;
+      }
+
+      // 2. Version-addressed filename priority (__v... over legacy)
+      const aVersioned = a.filename.includes(`__v${targetExtractorVersion}`);
+      const bVersioned = b.filename.includes(`__v${targetExtractorVersion}`);
+      if (aVersioned && !bVersioned) return -1;
+      if (!aVersioned && bVersioned) return 1;
+
+      // 3. Extracted timestamp or mtime (latest first)
+      const aTime = a.record.extractedAt ? new Date(a.record.extractedAt).getTime() : a.mtimeMs;
+      const bTime = b.record.extractedAt ? new Date(b.record.extractedAt).getTime() : b.mtimeMs;
+      if (bTime !== aTime) return bTime - aTime;
+
+      // 4. Deterministic filename fallback
+      return a.filename.localeCompare(b.filename);
+    });
+
+    finalRecords.push(candidates[0].record);
+  }
+
+  return finalRecords;
 }
