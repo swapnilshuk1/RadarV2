@@ -79,6 +79,19 @@ describe("JobProjectionBuilder role-work retention", () => {
     expect(projection.roleWorkEvidence).toEqual([]);
   });
 
+  it("rejects employer culture and workplace copy that uses role-like language", () => {
+    const projection = project(`
+      In this role it will be critical to embrace our shared core values and
+      lead collectively to inspire transformational creativity.
+      Life at Neutral Employer includes investing in employee growth so people
+      can do their best work.
+      The working style for this role is four days in the office and one day
+      working from home.
+    `);
+
+    expect(projection.roleWorkEvidence).toEqual([]);
+  });
+
   it("atomizes flattened headings and numbered bullets without admitting adjacent qualification text", () => {
     const projection = project(
       "Key Responsibilities:1. Own vendor performance and service-delivery escalations.2. Achieve retention and margin targets. What You Bring: Strong experience in performance marketing and paid media. Show more Show less",
