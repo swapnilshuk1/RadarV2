@@ -160,13 +160,14 @@ describe("P0-B & P0-C & P0-D Security Regression Suite", () => {
         "INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by) VALUES (?, ?, ?, ?, ?)",
         [testTenantId, testRegularUserId, planId, fingerprint, "test"],
       );
+      const testVersionId = `ver_${Date.now()}`;
       await db.execute(
         "INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content) VALUES (?, ?, ?, ?, ?)",
-        [`ver_${Date.now()}`, testOpId, `hash_${Date.now()}`, "Test Corp", "{}"],
+        [testVersionId, testOpId, `hash_${Date.now()}`, "Test Corp", "{}"],
       );
       await db.execute(
         "INSERT INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, ?, ?)",
-        [testTenantId, testRegularUserId, planId, testOpId, `ver_${Date.now()}`, "CANDIDATE"],
+        [testTenantId, testRegularUserId, planId, testOpId, testVersionId, "CANDIDATE"],
       );
 
       // Save a decision for testRegularUserId

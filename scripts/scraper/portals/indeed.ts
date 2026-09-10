@@ -474,12 +474,25 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         finalUrl: currentUrl,
       };
     } catch (err: any) {
-      const isTimeout = err.name === "TimeoutError" || /timeout/i.test(err.message);
+      const msg = String(err?.message || "");
+      const isTimeout = err.name === "TimeoutError" || /timeout/i.test(msg);
+      const isChallenge = /challenge|captcha|cloudflare|security check/i.test(msg);
+      const isLogin = /login|authwall|sign in/i.test(msg);
+      const is404 = /404|not found|no longer available/i.test(msg);
+      const isConn = /net::ERR|ECONN|ENOTFOUND/i.test(msg);
+
+      let failureClass: FailureClass = "UNKNOWN_FAILURE";
+      if (isChallenge) failureClass = "CAPTCHA_CHALLENGE";
+      else if (isLogin) failureClass = "LOGIN_REQUIRED";
+      else if (isTimeout) failureClass = "NAVIGATION_TIMEOUT";
+      else if (is404) failureClass = "REMOVED_404";
+      else if (isConn) failureClass = "CONNECTION_ERROR";
+
       return {
         fetched: false,
-        fetchError: err.message,
+        fetchError: msg,
         fetchDurationMs: Date.now() - t0,
-        failureClass: (isTimeout ? "NAVIGATION_TIMEOUT" : "CONNECTION_ERROR") as FailureClass,
+        failureClass,
       };
     }
   };

@@ -33,10 +33,13 @@ export function computeCanonicalJobId(identity: SourceIdentity): string {
 
 export interface MaterialContent {
   title: string;
-  companyName: string | null;
-  location: string | null;
-  employmentType: string | null;
-  rawContent: string;
+  companyName?: string | null;
+  company?: string | null;
+  location?: string | null;
+  employmentType?: string | null;
+  rawContent?: string;
+  descriptionText?: string;
+  applyUrl?: string | null;
 }
 
 /**
@@ -44,12 +47,14 @@ export interface MaterialContent {
  * content_hash = SHA256(canonical serialization of material job fields)
  */
 export function computeContentHash(content: MaterialContent): string {
+  const comp = content.companyName ?? content.company ?? null;
+  const raw = content.rawContent ?? content.descriptionText ?? "";
   const normalized = canonicalNormalize({
-    title: content.title.trim(),
-    companyName: content.companyName?.trim() ?? null,
+    title: (content.title || "").trim(),
+    companyName: comp?.trim() ?? null,
     location: content.location?.trim() ?? null,
     employmentType: content.employmentType?.trim() ?? null,
-    rawContent: content.rawContent.trim()
+    rawContent: raw.trim()
   });
   return computeDeterministicHash(normalized);
 }

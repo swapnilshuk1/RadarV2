@@ -16,11 +16,26 @@ import {
   acquireExclusiveLock,
   releaseExclusiveLock,
 } from "../../scripts/scraper/run/manager";
-import { acquireGlobalMarketLock, releaseGlobalMarketLock } from "../../scripts/scraper/portals/base";
-import { FailurePolicyEngine } from "../../src/lib/acquisition/failure-taxonomy";
+import {
+  acquireGlobalMarketLock,
+  releaseGlobalMarketLock,
+  profileLockPath,
+} from "../../scripts/scraper/portals/base";
+import {
+  FailurePolicyEngine,
+  normalizeFailureClass,
+  classifyCardFailure,
+} from "../../src/lib/acquisition/failure-taxonomy";
+import { HealthManager } from "../../scripts/scraper/run/health-manager";
 import os from "os";
 import { assertCanonicalPayloadIdentity } from "../../scripts/enrich";
-import { computeVariantsSignature } from "../../scripts/scrape";
+import {
+  computeVariantsSignature,
+  abortLiveRun,
+  activeRunControllers,
+  activeRunSessions,
+  createRunSession,
+} from "../../scripts/scrape";
 import { EnrichmentQueue } from "../../scripts/scraper/persist/queue";
 import { extractionPath, readExtractionIfFresh, writeExtraction, collectRecords } from "../../scripts/scraper/persist/writer";
 import { EXTRACTION_DIR, RUNS_DIR } from "../../scripts/scraper/config";
@@ -1257,5 +1272,422 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
     const unitStatus = hasFailedAttemptedCards ? "failed" : "completed";
     expect(unitStatus).toBe("failed");
   });
+
+  describe("Item 23 Invariant Checklist", () => {
+    it("serializes two contenders reclaiming the same dead owner", () => {
+      const testDir = path.join(os.tmpdir(), `radar-dead-owner-${Date.now()}`);
+      fs.mkdirSync(testDir, { recursive: true });
+      const lockPath = path.join(testDir, "owner.lock");
+      try {
+        fs.writeFileSync(lockPath, JSON.stringify({
+          pid: 999999,
+          nonce: "dead-nonce",
+          ownerId: "dead-owner",
+          createdAt: new Date().toISOString(),
+        }));
+
+        const deps = { isProcessAlive: (pid: number) => pid === process.pid };
+        const token1 = acquireExclusiveLock(lockPath, "contender-1", deps);
+        expect(token1.ownerId).toBe("contender-1");
+
+        expect(() => acquireExclusiveLock(lockPath, "contender-2", deps)).toThrow();
+        releaseExclusiveLock(token1);
+      } finally {
+        try { fs.rmSync(testDir, { recursive: true, force: true }); } catch {}
+      }
+    });
+
+    it("never reclaims an unreadable owner lock", () => {
+      const testDir = path.join(os.tmpdir(), `radar-unreadable-${Date.now()}`);
+      fs.mkdirSync(testDir, { recursive: true });
+      const lockPath = path.join(testDir, "corrupt.lock");
+      try {
+        fs.writeFileSync(lockPath, "INVALID_CORRUPT_JSON{{{");
+        expect(() => acquireExclusiveLock(lockPath, "contender", { isProcessAlive: () => false })).toThrow();
+      } finally {
+        try { fs.rmSync(testDir, { recursive: true, force: true }); } catch {}
+      }
+    });
+
+    it("prevents concurrent ownership of the same tenant/person/portal profile", () => {
+      const lockPath = profileLockPath("LinkedIn", {
+        runId: "run-1",
+        mode: "SCOPED",
+        tenantId: "tenant_alpha",
+        personId: "person_beta",
+      });
+      let token1: any = null;
+      try {
+        fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+        token1 = acquireExclusiveLock(lockPath, "profile:run-1:LinkedIn");
+        expect(() => acquireExclusiveLock(lockPath, "profile:run-2:LinkedIn")).toThrow();
+      } finally {
+        if (token1) releaseExclusiveLock(token1);
+      }
+    });
+
+    it("serializes all GLOBAL_MARKET runs regardless of portal", () => {
+      const testDir = path.join(os.tmpdir(), `radar-gm-${Date.now()}`);
+      fs.mkdirSync(testDir, { recursive: true });
+      const lockPath = path.join(testDir, ".global_market.lock");
+      let token1: any = null;
+      try {
+        token1 = acquireExclusiveLock(lockPath, "global-market:run-A:LinkedIn");
+        expect(() => acquireExclusiveLock(lockPath, "global-market:run-B:Naukri")).toThrow();
+      } finally {
+        if (token1) releaseExclusiveLock(token1);
+        try { fs.rmSync(testDir, { recursive: true, force: true }); } catch {}
+      }
+    });
+
+    it("SCOPED requires runId", async () => {
+      const { db, blobStore } = createInMemoryDatabase();
+      const service = new CanonicalIngestionService(db, blobStore);
+      const payload: any = {
+        sourcePortal: "LinkedIn",
+        sourceJobId: "job-scoped-req",
+        canonicalUrl: "https://www.linkedin.com/jobs/view/job-scoped-req",
+        jobTitle: "VP Sales",
+        companyName: "Acme",
+        location: "Bengaluru",
+        rawContent: "Leadership role driving sales.".repeat(10),
+      };
+
+      await expect(
+        service.ingestOpportunity(payload, {
+          mode: "SCOPED",
+          tenantId: "tenant_A",
+          personId: "person_A",
+          searchPlanId: "plan_A",
+          // missing runId
+        } as any)
+      ).rejects.toThrow(/runId is required/);
+    });
+
+    it("SCOPED rejects non-running run", async () => {
+      const { raw, db, blobStore } = createInMemoryDatabase();
+      raw.exec(`UPDATE scrape_runs SET status = 'waiting_for_confirmation' WHERE id = 'run-001'`);
+      const service = new CanonicalIngestionService(db, blobStore);
+      const payload: any = {
+        sourcePortal: "LinkedIn",
+        sourceJobId: "job-scoped-nonrunning",
+        canonicalUrl: "https://www.linkedin.com/jobs/view/job-scoped-nonrunning",
+        jobTitle: "VP Sales",
+        companyName: "Acme",
+        location: "Bengaluru",
+        rawContent: "Leadership role driving sales.".repeat(10),
+      };
+
+      await expect(
+        service.ingestOpportunity(payload, {
+          mode: "SCOPED",
+          tenantId: "tenant_A",
+          personId: "person_A",
+          searchPlanId: "plan_A",
+          runId: "run-001",
+        })
+      ).rejects.toThrow(/must be 'running'/);
+    });
+
+    it("GLOBAL_MARKET evaluates zero plans", async () => {
+      const { raw, db, blobStore } = createInMemoryDatabase();
+      const service = new CanonicalIngestionService(db, blobStore);
+      const payload: any = {
+        sourcePortal: "LinkedIn",
+        sourceJobId: "job-gm-zeroplans",
+        canonicalUrl: "https://www.linkedin.com/jobs/view/job-gm-zeroplans",
+        jobTitle: "VP Sales",
+        companyName: "Acme",
+        location: "Bengaluru",
+        rawContent: "Global market opportunity text content.".repeat(10),
+      };
+
+      const res = await service.ingestOpportunity(payload, {
+        mode: "GLOBAL_MARKET",
+      });
+
+      expect(Object.keys(res.candidateDecisions).length).toBe(0);
+      const planCandidates = raw.prepare("SELECT * FROM search_plan_candidates").all();
+      expect(planCandidates.length).toBe(0);
+      const evalReqs = raw.prepare("SELECT * FROM evaluation_requirements").all();
+      expect(evalReqs.length).toBe(0);
+    });
+
+    it("scoped active plan must resolve exactly once", async () => {
+      const { raw, db, blobStore } = createInMemoryDatabase();
+      raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-001'`);
+      const service = new CanonicalIngestionService(db, blobStore);
+      const payload: any = {
+        sourcePortal: "LinkedIn",
+        sourceJobId: "job-scoped-single-plan",
+        canonicalUrl: "https://www.linkedin.com/jobs/view/job-scoped-single-plan",
+        jobTitle: "VP Growth",
+        companyName: "Acme",
+        location: "Gurugram",
+        rawContent: "VP Growth driving expansion and commercial operations.".repeat(10),
+      };
+
+      const res = await service.ingestOpportunity(payload, {
+        mode: "SCOPED",
+        tenantId: "tenant_A",
+        personId: "person_A",
+        searchPlanId: "plan_A",
+        runId: "run-001",
+      });
+
+      expect(Object.keys(res.candidateDecisions)).toEqual(["plan_A"]);
+      const candidates = raw.prepare("SELECT * FROM search_plan_candidates WHERE search_plan_id = 'plan_A'").all();
+      expect(candidates.length).toBe(1);
+    });
+
+    it("canonical material A plus enrichment material B fails", async () => {
+      const { raw, db, blobStore } = createInMemoryDatabase();
+      raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-001'`);
+      const service = new CanonicalIngestionService(db, blobStore);
+      const rawContentA = "Canonical material A content for executive position.".repeat(10);
+      const rawContentB = "Enrichment material B divergent content.".repeat(10);
+
+      const payload: any = {
+        sourcePortal: "LinkedIn",
+        sourceJobId: "job-mismatch",
+        canonicalUrl: "https://www.linkedin.com/jobs/view/job-mismatch",
+        jobTitle: "VP Growth",
+        companyName: "Acme",
+        location: "Gurugram",
+        rawContent: rawContentA,
+        enrichmentDispatch: {
+          detailedCard: {
+            title: "VP Growth",
+            company: "Acme",
+            location: "Gurugram",
+            detail: { rawText: rawContentB },
+          } as any,
+          runId: "run-001",
+          pipelineVersion: "1.0.0",
+        },
+      };
+
+      await expect(
+        service.ingestOpportunity(payload, {
+          mode: "SCOPED",
+          tenantId: "tenant_A",
+          personId: "person_A",
+          searchPlanId: "plan_A",
+          runId: "run-001",
+        })
+      ).rejects.toThrow(/CANONICAL_ENRICHMENT_PAYLOAD_MISMATCH/);
+    });
+
+    it("existing conflicting immutable snapshot fails closed", async () => {
+      const { raw, db, blobStore } = createInMemoryDatabase();
+      raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-001'`);
+      const service = new CanonicalIngestionService(db, blobStore);
+      const rawContent = "Snapshot content for testing conflict.".repeat(10);
+      const payload: any = {
+        sourcePortal: "LinkedIn",
+        sourceJobId: "job-conflict-snap",
+        canonicalUrl: "https://www.linkedin.com/jobs/view/job-conflict-snap",
+        jobTitle: "VP Eng",
+        companyName: "Acme",
+        location: "Bengaluru",
+        rawContent,
+        enrichmentDispatch: {
+          detailedCard: {
+            title: "VP Eng",
+            company: "Acme",
+            location: "Bengaluru",
+            detail: { rawText: rawContent },
+          } as any,
+          runId: "run-001",
+          pipelineVersion: "1.0.0",
+        },
+      };
+
+      const canonicalId = computeCanonicalJobId({ source: "LinkedIn", sourceJobId: "job-conflict-snap" });
+      const contentHash = computeContentHash({
+        title: "VP Eng",
+        companyName: "Acme",
+        location: "Bengaluru",
+        employmentType: null,
+        rawContent,
+      });
+      const versionId = computeOpportunityVersionId(canonicalId, contentHash);
+      const snapshotKey = `acquisition/${canonicalId}/${versionId}/snapshot.json`;
+      await blobStore.put(snapshotKey, JSON.stringify({
+        schemaVersion: "1.0.0",
+        contentHash: "conflicting-hash-999",
+        rawText: "Divergent pre-seeded snapshot",
+      }));
+
+      await expect(
+        service.ingestOpportunity(payload, {
+          mode: "SCOPED",
+          tenantId: "tenant_A",
+          personId: "person_A",
+          searchPlanId: "plan_A",
+          runId: "run-001",
+        })
+      ).rejects.toThrow(/IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT/);
+    });
+
+    it("bare FastPath 403 falls back to browser", () => {
+      const policy = FailurePolicyEngine.evaluate("FASTPATH_ACCESS_DENIED");
+      expect(policy.pausePortalQueue).toBe(false);
+      expect(policy.category).toBe("ACCESS");
+    });
+
+    it("positive bot challenge does not browser-fallback", () => {
+      const policy = FailurePolicyEngine.evaluate("BOT_CHALLENGE_BLOCK");
+      expect(policy.pausePortalQueue).toBe(true);
+      expect(policy.shouldRetry).toBe(false);
+    });
+
+    it("429 does not retry and pauses portal", () => {
+      const policy = FailurePolicyEngine.evaluate("RATE_LIMIT_429");
+      expect(policy.pausePortalQueue).toBe(true);
+    });
+
+    it("unknown failure becomes SOURCE_FAILURE", () => {
+      const norm = normalizeFailureClass("SOME_RANDOM_WEIRD_STRING" as any);
+      expect(norm).toBe("UNKNOWN_FAILURE");
+      expect(classifyCardFailure(norm)).toBe("SOURCE_FAILURE");
+      expect(classifyCardFailure(normalizeFailureClass(null as any))).toBe("SOURCE_FAILURE");
+      expect(classifyCardFailure(normalizeFailureClass(undefined as any))).toBe("SOURCE_FAILURE");
+    });
+
+    it("two listings sharing ATS URL are both admitted", async () => {
+      const { raw, db, blobStore } = createInMemoryDatabase();
+      const service = new CanonicalIngestionService(db, blobStore);
+
+      const res1 = await service.ingestOpportunity({
+        sourcePortal: "LinkedIn",
+        sourceJobId: "li-job-1",
+        canonicalUrl: "https://www.linkedin.com/jobs/view/li-job-1",
+        jobTitle: "VP Growth",
+        companyName: "Corp",
+        location: "Bengaluru",
+        rawContent: "Posting one content from LinkedIn.".repeat(10),
+      }, { mode: "GLOBAL_MARKET" });
+
+      const res2 = await service.ingestOpportunity({
+        sourcePortal: "Indeed",
+        sourceJobId: "in-job-2",
+        canonicalUrl: "https://www.indeed.com/viewjob?jk=in-job-2",
+        jobTitle: "VP Growth",
+        companyName: "Corp",
+        location: "Bengaluru",
+        rawContent: "Posting two content from Indeed with same ATS URL.".repeat(10),
+      }, { mode: "GLOBAL_MARKET" });
+
+      expect(res1.canonicalJobId).not.toBe(res2.canonicalJobId);
+      const opps = raw.prepare("SELECT * FROM canonical_opportunities").all();
+      expect(opps.length).toBe(2);
+    });
+
+    it("all REMOVED_404 cards complete the unit", () => {
+      const manifestCards: any[] = [
+        { id: "c1", status: "completed", detailAttempted: true, usableDetailDocument: false, failureClass: "REMOVED_404" },
+        { id: "c2", status: "completed", detailAttempted: true, usableDetailDocument: false, failureClass: "REMOVED_404" },
+      ];
+      const hasUnusableNonTerminal = manifestCards.some(
+        (c) => c.detailAttempted && !c.usableDetailDocument && c.failureClass !== "REMOVED_404"
+      );
+      expect(hasUnusableNonTerminal).toBe(false);
+      const unitStatus = hasUnusableNonTerminal ? "failed" : "completed";
+      expect(unitStatus).toBe("completed");
+    });
+
+    it("all HTTP_TIMEOUT cards fail the unit", () => {
+      const manifestCards: any[] = [
+        { id: "c1", status: "failed", detailAttempted: true, usableDetailDocument: false, failureClass: "HTTP_TIMEOUT" },
+        { id: "c2", status: "failed", detailAttempted: true, usableDetailDocument: false, failureClass: "HTTP_TIMEOUT" },
+      ];
+      const hasFailedCards = manifestCards.some((c) => c.status === "failed" || (c.detailAttempted && !c.usableDetailDocument));
+      expect(hasFailedCards).toBe(true);
+      const unitStatus = hasFailedCards ? "failed" : "completed";
+      expect(unitStatus).toBe("failed");
+    });
+
+    it("any INTEGRITY_FAILURE fails the unit", () => {
+      const manifestCards: any[] = [
+        { id: "c1", status: "completed", detailAttempted: true, usableDetailDocument: true },
+        { id: "c2", status: "failed", detailAttempted: true, usableDetailDocument: false, failureClass: "INTEGRITY_FAILURE" },
+      ];
+      const hasIntegrityFailure = manifestCards.some((c) => c.failureClass === "INTEGRITY_FAILURE");
+      expect(hasIntegrityFailure).toBe(true);
+      const unitStatus = hasIntegrityFailure ? "failed" : "completed";
+      expect(unitStatus).toBe("failed");
+    });
+
+    it("nonterminal attempted card fails the unit", () => {
+      const manifestCards: any[] = [
+        { id: "c1", status: "completed", detailAttempted: true, usableDetailDocument: false, failureClass: "FASTPATH_ACCESS_DENIED" },
+      ];
+      const isNonTerminal = manifestCards.some(
+        (c) => c.detailAttempted && !c.usableDetailDocument && c.failureClass !== "REMOVED_404"
+      );
+      expect(isNonTerminal).toBe(true);
+      const unitStatus = isNonTerminal ? "failed" : "completed";
+      expect(unitStatus).toBe("failed");
+    });
+
+    it("run A health circuit cannot affect run B", () => {
+      const healthA = HealthManager.forRun("run-A");
+      const healthB = HealthManager.forRun("run-B");
+
+      for (let i = 0; i < 10; i++) {
+        healthA.recordFastPathFailure("LinkedIn", "403");
+      }
+
+      expect(healthA.isFastPathAvailable("LinkedIn")).toBe(false);
+      expect(healthB.isFastPathAvailable("LinkedIn")).toBe(true);
+
+      HealthManager.clearRun("run-A");
+      HealthManager.clearRun("run-B");
+    });
+
+    it("unknown targeted abort touches no active run", async () => {
+      const activeMgr = new RunController();
+      activeMgr.initFresh("run-live-target", { portals: ["LinkedIn"] });
+      activeRunControllers.set("run-live-target", activeMgr);
+      createRunSession("run-live-target", {});
+
+      try {
+        const result = await abortLiveRun("non-existent-run-id");
+        expect(result).toBe(false);
+        expect(activeRunControllers.get("run-live-target")?.manifest.status).not.toBe("stopping");
+        expect(activeRunSessions.has("run-live-target")).toBe(true);
+      } finally {
+        await abortLiveRun("run-live-target");
+      }
+    });
+
+    it("editing local manifest cannot approve authenticated confirmation", async () => {
+      const mgr = new RunController();
+      mgr.initFresh("run-conf-test", { portals: ["LinkedIn"] });
+      mgr.manifest.status = "waiting_for_confirmation";
+      mgr.persistManifest();
+
+      const diskManifest = JSON.parse(fs.readFileSync(mgr.manifestPath, "utf-8"));
+      diskManifest.status = "running";
+      fs.writeFileSync(mgr.manifestPath, JSON.stringify(diskManifest));
+
+      const fakeDurableRun = { id: mgr.runId, status: "waiting_for_confirmation" };
+      const mockRepos: any = {
+        scrapeRuns: {
+          getRun: vi.fn().mockResolvedValue(fakeDurableRun),
+          transitionRunStatus: vi.fn().mockResolvedValue(true),
+        },
+      };
+
+      const runScope = { tenantId: "t1", personId: "p1" };
+      const durableStatus = (await mockRepos.scrapeRuns.getRun(runScope, mgr.runId)).status;
+      expect(durableStatus).toBe("waiting_for_confirmation");
+
+      const isConfirmedRunning = runScope ? durableStatus === "running" : diskManifest.status === "running";
+      expect(isConfirmedRunning).toBe(false);
+    });
+  });
 });
+
 

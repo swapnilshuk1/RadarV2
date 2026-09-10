@@ -18,7 +18,12 @@ import { CONFIG, DEFAULT_KEYWORDS, DEFAULT_PORTALS, SNAPSHOT_DIR, EXTRACTION_DIR
 import { makeLogger } from "./scraper/utils/logger";
 import { pool } from "./scraper/utils/concurrency";
 import { jitter } from "./scraper/utils/jitter";
-import { RunController, type RunControllerOptions, type ExclusiveLockToken } from "./scraper/run/manager";
+import { RunController, type RunControllerOptions } from "./scraper/run/manager";
+import {
+  acquireExclusiveLock,
+  releaseExclusiveLock,
+  type ExclusiveLockToken,
+} from "./scraper/run/exclusive-lock";
 import { linkedinHandler } from "./scraper/portals/linkedin";
 import { indeedHandler } from "./scraper/portals/indeed";
 import { naukriHandler } from "./scraper/portals/naukri";
@@ -26,11 +31,26 @@ import {
   closeAllPortalContexts,
   getPortalContext,
   closePortalContextsForRun,
-  acquireGlobalMarketLock,
-  releaseGlobalMarketLock,
 } from "./scraper/portals/base";
 import { PageManager } from "./scraper/run/page-manager";
-import type { FeedCard, PortalHandler, PortalName, WorkUnit, AcquisitionAttempt, AcquisitionOutcome, AcquisitionVariant } from "./scraper/types";
+
+const GLOBAL_MARKET_LOCK_PATH = path.join(
+  process.cwd(),
+  ".radar",
+  "runs",
+  ".global_market.lock",
+);
+import type {
+  CardUnit,
+  DetailedCard,
+  FeedCard,
+  PortalHandler,
+  PortalName,
+  WorkUnit,
+  AcquisitionAttempt,
+  AcquisitionOutcome,
+  AcquisitionVariant,
+} from "./scraper/types";
 import { sanitizeCompanyName } from "./scraper/utils/sanitize";
 import {
   compileCoverageVariants,
@@ -45,7 +65,12 @@ import { fastFetchDetail } from "./scraper/utils/http-fetch";
 import { EnrichmentQueue } from "./scraper/persist/queue";
 import { resolveCanonicalIdentity, sourceIdentityForCard, acquisitionSurfaceKey } from "../src/lib/acquisition/canonical-identity";
 import { parseVerifiedIndeedListingUrl } from "../src/lib/acquisition/indeed-listing-identity";
-import { FailurePolicyEngine, type FailureClass } from "../src/lib/acquisition/failure-taxonomy";
+import {
+  FailurePolicyEngine,
+  type FailureClass,
+  normalizeFailureClass,
+  classifyCardFailure,
+} from "../src/lib/acquisition/failure-taxonomy";
 import { ResponseValidator } from "../src/lib/acquisition/validator";
 import { passesHardFilter } from "./scraper/utils/hard-filter";
 import { HealthManager } from "./scraper/run/health-manager";
@@ -136,12 +161,37 @@ export async function syncManifestProgress(
 
   const sources: Record<string, "pending" | "searching" | "completed" | "failed"> = {};
   for (const portal of mgr.manifest.portals) {
-    const units = mgr.manifest.units.filter((u) => u.portal === portal);
-    const hasRunning = units.some((u) => u.status === "running");
-    const allDone = units.every((u) => u.status === "done" || u.status.startsWith("skipped"));
-    if (hasRunning) sources[portal] = "searching";
-    else if (allDone && units.length > 0) sources[portal] = "completed";
-    else sources[portal] = "pending";
+    const units = mgr.manifest.units.filter(
+      u => u.portal === portal
+    );
+
+    const hasRunning = units.some(
+      u => u.status === "running"
+    );
+
+    const hasFailed = units.some(
+      u => u.status === "failed"
+    );
+
+    const allTerminal =
+      units.length > 0 &&
+      units.every(
+        u =>
+          u.status === "done" ||
+          u.status === "failed" ||
+          u.status.startsWith("skipped") ||
+          u.status === "aborted"
+      );
+
+    if (hasRunning) {
+      sources[portal] = "searching";
+    } else if (hasFailed) {
+      sources[portal] = "failed";
+    } else if (allTerminal) {
+      sources[portal] = "completed";
+    } else {
+      sources[portal] = "pending";
+    }
   }
 
   mgr.updateCanonicalMetrics({
@@ -151,65 +201,6 @@ export async function syncManifestProgress(
     stage: currentStage,
     sources,
   });
-}
-
-export interface RunRuntimeSession {
-  runId: string;
-  mgr: RunController;
-  runScope?: any;
-  activeContexts: Map<PortalName, any>;
-  activePages: Map<PortalName, any>;
-  activePageManagers: Map<PortalName, PageManager>;
-  activeAuthSessions: Map<PortalName, PortalAuthSession>;
-  globalMarketLockToken?: ExclusiveLockToken | null;
-  abort: (reason?: string) => Promise<void>;
-}
-
-const activeRunSessions = new Map<string, RunRuntimeSession>();
-let shutdownListenersRegistered = false;
-
-function ensureProcessShutdownCoordinator() {
-  if (shutdownListenersRegistered) return;
-  shutdownListenersRegistered = true;
-
-  const handleSignal = async (signal: string) => {
-    console.warn(`[ProcessShutdownCoordinator] Received ${signal}, shutting down ${activeRunSessions.size} active run(s)…`);
-    const sessions = Array.from(activeRunSessions.values());
-    for (const session of sessions) {
-      try {
-        await session.abort(`Interrupted by ${signal}`);
-      } catch (err: any) {
-        console.error(`[ProcessShutdownCoordinator] Error aborting run ${session.runId}: ${err?.message}`);
-      }
-    }
-    await closeAllPortalContexts();
-    process.exit(0);
-  };
-
-  process.once("SIGINT", () => void handleSignal("SIGINT"));
-  process.once("SIGTERM", () => void handleSignal("SIGTERM"));
-}
-
-export async function abortLiveRun(runId?: string, reason = "Aborted by user"): Promise<boolean> {
-  const log = makeLogger("scrape:abort");
-  log(`Instant abort requested for run: ${runId || "active"}`);
-  
-  if (runId) {
-    const session = activeRunSessions.get(runId);
-    if (!session) {
-      log(`No active run session found for runId: ${runId}; ignoring without touching other runs`, "warn");
-      return false;
-    }
-    await session.abort(reason);
-    return true;
-  }
-
-  // If no runId provided, abort all active sessions safely
-  const sessions = Array.from(activeRunSessions.values());
-  for (const session of sessions) {
-    await session.abort(reason);
-  }
-  return true;
 }
 
 export interface RunOptions {
@@ -224,6 +215,130 @@ export interface RunOptions {
   resolvedPlan?: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan;
   variants?: AcquisitionVariant[];
 }
+
+export interface RunRuntimeSession {
+  runId: string;
+  tenantId?: string;
+  personId?: string;
+  health: import("./scraper/run/health-manager").RunHealthManager;
+  contexts: Map<PortalName, any>;
+  pages: Map<PortalName, any>;
+  pageManagers: Map<PortalName, PageManager>;
+  authSessions: Map<PortalName, PortalAuthSession>;
+}
+
+export const activeRunSessions = new Map<string, RunRuntimeSession>();
+
+export const activeRunControllers = new Map<string, RunController>();
+
+export function createRunSession(
+  runId: string,
+  opts: RunOptions,
+): RunRuntimeSession {
+  const session: RunRuntimeSession = {
+    runId,
+    tenantId: opts.authContext?.tenantId,
+    personId: opts.authContext?.userId,
+    health: HealthManager.forRun(runId),
+    contexts: new Map(),
+    pages: new Map(),
+    pageManagers: new Map(),
+    authSessions: new Map(),
+  };
+
+  activeRunSessions.set(runId, session);
+
+  return session;
+}
+
+export async function abortLiveRun(runId?: string): Promise<boolean> {
+  if (runId) {
+    const mgr = activeRunControllers.get(runId);
+    const runtime = activeRunSessions.get(runId);
+
+    if (!mgr) {
+      return false;
+    }
+
+    mgr.manifest.status = "stopping";
+    mgr.persistManifest();
+
+    if (runtime) {
+      for (const session of runtime.authSessions.values()) {
+        session.dispose();
+      }
+      runtime.authSessions.clear();
+    }
+
+    await closePortalContextsForRun(runId);
+
+    HealthManager.clearRun(runId);
+    activeRunSessions.delete(runId);
+
+    return true;
+  }
+
+  await shutdownAllRuns("explicit-global-abort");
+
+  return true;
+}
+
+let shutdownStarted = false;
+
+export async function shutdownAllRuns(reason: string): Promise<void> {
+  if (shutdownStarted) return;
+  shutdownStarted = true;
+
+  const controllers = [...activeRunControllers.entries()];
+  const sessions = [...activeRunSessions.entries()];
+
+  for (const [, mgr] of controllers) {
+    try {
+      mgr.manifest.status = "stopping";
+      mgr.persistManifest();
+    } catch {}
+  }
+
+  for (const [, runtime] of sessions) {
+    for (const authSession of runtime.authSessions.values()) {
+      authSession.dispose();
+    }
+    runtime.authSessions.clear();
+  }
+
+  await closeAllPortalContexts();
+
+  for (const [runId] of sessions) {
+    HealthManager.clearRun(runId);
+  }
+
+  activeRunSessions.clear();
+
+  for (const [, mgr] of controllers) {
+    try {
+      mgr.finalize("aborted");
+    } catch {}
+  }
+
+  activeRunControllers.clear();
+}
+
+let signalsInstalled = false;
+
+function installSignalHandlers(): void {
+  if (signalsInstalled) return;
+  signalsInstalled = true;
+
+  process.once("SIGINT", () => {
+    void shutdownAllRuns("SIGINT").finally(() => process.exit(0));
+  });
+
+  process.once("SIGTERM", () => {
+    void shutdownAllRuns("SIGTERM").finally(() => process.exit(0));
+  });
+}
+
+installSignalHandlers();
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   const log = makeLogger("scrape");
@@ -316,6 +431,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   let mgr = new RunController();
   let resumed = false;
   let runScope: any = null;
+  let globalMarketLock: ExclusiveLockToken | null = null;
 
   if (opts.authContext) {
     runScope = {
@@ -459,66 +575,23 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     }
   } else {
     // Unauthenticated mode: standard local RunController init
-    const initRes = mgr.init(runControllerOpts);
-    resumed = initRes.resumed;
-  }
+    globalMarketLock = acquireExclusiveLock(
+      GLOBAL_MARKET_LOCK_PATH,
+      `global-market:${process.pid}`,
+    );
 
-  ensureProcessShutdownCoordinator();
-
-  // For global market runs (unscoped), acquire the machine-level global market lock
-  let globalMarketLockToken: ExclusiveLockToken | null = null;
-  if (!runScope) {
     try {
-      globalMarketLockToken = acquireGlobalMarketLock(mgr.runId);
-    } catch (lockErr: any) {
-      log(`Failed to acquire global market lock: ${lockErr.message}`, "error");
-      throw lockErr;
+      const initRes = mgr.init(runControllerOpts);
+      resumed = initRes.resumed;
+    } catch (err) {
+      releaseExclusiveLock(globalMarketLock);
+      globalMarketLock = null;
+      throw err;
     }
   }
 
-  // Run-scoped browser and auth session maps
-  const activeContexts = new Map<PortalName, any>();
-  const activePages = new Map<PortalName, any>();
-  const activePageManagers = new Map<PortalName, PageManager>();
-  const activeAuthSessions = new Map<PortalName, PortalAuthSession>();
-
-  const abortSession = async (reason = "Aborted by user") => {
-    log(`Aborting run ${mgr.runId}: ${reason}`, "warn");
-    mgr.manifest.status = "stopping";
-    mgr.journal.append({ type: "signal", signal: reason });
-    mgr.finalize("aborted");
-    if (runScope) {
-      try {
-        await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "aborted", reason);
-      } catch {}
-    }
-    for (const session of activeAuthSessions.values()) {
-      session.dispose();
-    }
-    activeAuthSessions.clear();
-    await closePortalContextsForRun(mgr.runId);
-    if (globalMarketLockToken) {
-      try {
-        releaseGlobalMarketLock(globalMarketLockToken);
-        globalMarketLockToken = null;
-      } catch {}
-    }
-    HealthManager.clearRun(mgr.runId);
-    activeRunSessions.delete(mgr.runId);
-  };
-
-  const currentSession: RunRuntimeSession = {
-    runId: mgr.runId,
-    mgr,
-    runScope,
-    activeContexts,
-    activePages,
-    activePageManagers,
-    activeAuthSessions,
-    globalMarketLockToken,
-    abort: abortSession,
-  };
-  activeRunSessions.set(mgr.runId, currentSession);
+  activeRunControllers.set(mgr.runId, mgr);
+  const runtime = createRunSession(mgr.runId, opts);
 
   mgr.recordActivity("Building executive search schema from candidate profile...");
   const plannedUnits = mgr.manifest.units.length;
@@ -557,8 +630,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         try {
           browserContext = await getPortalContext(portal, {
             runId: mgr.runId,
-            tenantId: runScope?.tenantId,
-            personId: runScope?.personId,
+            mode: runScope ? "SCOPED" : "GLOBAL_MARKET",
+            tenantId: opts.authContext?.tenantId,
+            personId: opts.authContext?.userId,
           });
         }
         catch (err: any) { 
@@ -568,11 +642,11 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           return null; 
         }
         
-        activeContexts.set(portal, browserContext);
+        runtime.contexts.set(portal, browserContext);
         const pageManager = new PageManager(portal, browserContext);
-        activePageManagers.set(portal, pageManager);
+        runtime.pageManagers.set(portal, pageManager);
         const { searchPage, detailPage, searchMutex, detailMutex } = await pageManager.initialize();
-        activePages.set(portal, searchPage);
+        runtime.pages.set(portal, searchPage);
 
         // Establish JIT PortalAuthSession without retaining plaintext secrets
         let authSession: PortalAuthSession | null = null;
@@ -582,7 +656,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             const broker = new CredentialBroker(repos.credentials);
             authSession = await establishPortalAuthSession(broker, opts.authContext, portal, browserContext);
             if (authSession) {
-              activeAuthSessions.set(portal, authSession);
+              runtime.authSessions.set(portal, authSession);
               plog(`authenticated session established (source: ${authSession.source}, version: ${authSession.version})`);
             }
           } else {
@@ -605,8 +679,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           plog(`session error — skipping portal`, "warn");
           mgr.updatePortalHealth(portal, { status: "error", details: `Session error` });
           mgr.recordActivity(`Session error on ${portal}`);
-          activeContexts.delete(portal);
-          activePages.delete(portal);
+          runtime.contexts.delete(portal);
+          runtime.pages.delete(portal);
+          runtime.pageManagers.delete(portal);
+          runtime.authSessions.delete(portal);
           return null;
         }
 
@@ -647,67 +723,120 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       if (!autoConfirm) {
         mgr.transitionTo("waiting_for_confirmation");
         if (runScope) {
-          try {
-            await getRepositories().scrapeRuns.transitionRunStatus(
+          const repos = getRepositories();
+          const transitioned =
+            await repos.scrapeRuns.transitionRunStatus(
               runScope,
               mgr.runId,
               "initializing",
               "waiting_for_confirmation"
             );
-          } catch (e: any) {
-            log(`Warning transitioning to waiting_for_confirmation: ${e.message}`, "warn");
+
+          if (!transitioned) {
+            const refreshed =
+              await repos.scrapeRuns.getRun(runScope, mgr.runId);
+
+            if (
+              refreshed?.status !== "waiting_for_confirmation" &&
+              refreshed?.status !== "running"
+            ) {
+              throw new Error(
+                `WAITING_CONFIRMATION_CAS_CONFLICT: ${refreshed?.status}`
+              );
+            }
           }
         }
         log("Waiting for user confirmation. (Set AUTO_CONFIRM=true to bypass)");
         const deadline = Date.now() + 15 * 60 * 1000; // 15 mins
-        while (true) {
-          if (Date.now() > deadline) {
-             mgr.transitionTo("aborted");
-             if (runScope) {
-               try {
-                 await getRepositories().scrapeRuns.transitionRunStatus(
-                   runScope,
-                   mgr.runId,
-                   ["initializing", "waiting_for_confirmation"],
-                   "aborted",
-                   "Confirmation timeout (15 mins)"
-                 );
-               } catch {}
-             }
-             log("Run aborted due to 15-minute confirmation timeout.", "error");
-             break;
-          }
-          // Read from disk to get latest state from UI
-          let currentManifest = mgr.manifest;
-          try {
-            currentManifest = JSON.parse(fs.readFileSync(mgr.manifestPath, "utf-8"));
-          } catch {}
+        if (runScope) {
+          while (true) {
+            if (Date.now() > deadline) {
+              const repos = getRepositories();
 
-          // Also check Turso Cloud if runScope is present
-          let durableRun: any = null;
-          if (runScope) {
-            try {
-              durableRun = await getRepositories().scrapeRuns.getRun(runScope, mgr.runId);
-            } catch (err: any) {
-              log(`Warning reading durable run status: ${err.message}`, "warn");
+              const transitioned =
+                await repos.scrapeRuns.transitionRunStatus(
+                  runScope,
+                  mgr.runId,
+                  "waiting_for_confirmation",
+                  "aborted",
+                  "Confirmation timeout (15 mins)"
+                );
+
+              const refreshed =
+                await repos.scrapeRuns.getRun(
+                  runScope,
+                  mgr.runId
+                );
+
+              if (
+                !transitioned &&
+                refreshed?.status !== "aborted"
+              ) {
+                throw new Error(
+                  `CONFIRMATION_TIMEOUT_CAS_CONFLICT: durable status=${refreshed?.status}`
+                );
+              }
+
+              mgr.manifest.status = "aborted";
+              mgr.persistManifest();
+              break;
             }
-          }
 
-          // Invariant: If runScope is present, Turso Cloud is authoritative over local manifest
-          const isConfirmedRunning = runScope ? durableRun?.status === "running" : currentManifest.status === "running";
-          const isConfirmedAborted = runScope ? (durableRun?.status === "aborted" || durableRun?.status === "failed") : currentManifest.status === "aborted";
+            const durableRun =
+              await getRepositories()
+                .scrapeRuns
+                .getRun(runScope, mgr.runId);
 
-          if (isConfirmedRunning) {
-             mgr.manifest.status = "running";
-             log("Confirmation received from authoritative source! Starting execution...");
-             break;
+            if (!durableRun) {
+              throw new Error(
+                "DURABLE_RUN_DISAPPEARED_DURING_CONFIRMATION"
+              );
+            }
+
+            if (durableRun.status === "running") {
+              mgr.manifest.status = "running";
+              mgr.persistManifest();
+              break;
+            }
+
+            if (durableRun.status === "aborted") {
+              mgr.manifest.status = "aborted";
+              mgr.persistManifest();
+              break;
+            }
+
+            if (
+              durableRun.status !== "waiting_for_confirmation"
+            ) {
+              throw new Error(
+                `CONFIRMATION_STATE_CONFLICT: ${durableRun.status}`
+              );
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
-          if (isConfirmedAborted) {
-             mgr.manifest.status = "aborted";
-             log("Run aborted by authoritative source.", "error");
-             break;
+        } else {
+          // Unauthenticated / local-only confirmation polling
+          while (true) {
+            if (Date.now() > deadline) {
+              mgr.manifest.status = "aborted";
+              mgr.persistManifest();
+              break;
+            }
+            let currentManifest = mgr.manifest;
+            try {
+              currentManifest = JSON.parse(fs.readFileSync(mgr.manifestPath, "utf-8"));
+            } catch {}
+            if (currentManifest.status === "running") {
+              mgr.manifest.status = "running";
+              break;
+            }
+            if (currentManifest.status === "aborted") {
+              mgr.manifest.status = "aborted";
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
-          await new Promise(r => setTimeout(r, 1000));
         }
       } else {
         mgr.transitionTo("running");
@@ -734,8 +863,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       const poolResults = await pool(portals, CONFIG.portalConcurrency, async (portal) => {
         const plog = makeLogger(`scrape:${portal}`);
         const handler = HANDLERS[portal];
-        const browserContext = activeContexts.get(portal);
-        const activePage = activePages.get(portal);
+        const browserContext = runtime.contexts.get(portal);
+        const activePage = runtime.pages.get(portal);
         if (!browserContext || !activePage) return;
 
         mgr.updatePortalHealth(portal, { status: "ready", details: "Executing" });
@@ -780,8 +909,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             maxCardsPerPage,
             runScope ? { tenantId: runScope.tenantId, personId: runScope.personId, searchPlanId: resolvedPlan?.searchPlanId } : undefined,
             resolvedPlan?.criteria,
-            activePageManagers.get(unit.portal),
-            activeAuthSessions.get(unit.portal),
+            runtime.pageManagers.get(unit.portal),
+            runtime.authSessions.get(unit.portal),
           );
           if (outcome) {
             portalIngested += outcome.opportunities;
@@ -838,9 +967,19 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         return { success: false, count: ingestedCount, runId: mgr.runId };
       }
 
+      const manifestCards = mgr.manifest.cards;
+      const integrityFailureCards = manifestCards.filter(c => c.failureKind === "INTEGRITY_FAILURE");
+      const sourceFailureCards = manifestCards.filter(c => c.failureKind === "SOURCE_FAILURE");
+      const nonTerminalCards = manifestCards.filter(c => c.status === "pending" || c.status === "running");
+      const unexplainedAttemptCards = manifestCards.filter(
+        c => c.detailAttempted && !c.usableDetailDocument && !c.failureKind && c.status !== "skipped_gated"
+      );
+
+      mgr.recordTelemetry("acquisitionIntegrityFailures", integrityFailureCards.length);
+
       const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
       const failedUnits = mgr.manifest.units.filter(u => u.status === "failed");
-      const integrityFailures = mgr.getTelemetry("acquisitionIntegrityFailures" as any) || 0;
+      const integrityFailures = (mgr.getTelemetry("acquisitionIntegrityFailures" as any) || 0) + integrityFailureCards.length;
       if (failedUnits.length > 0 || integrityFailures > 0) {
         log(`[Scrape] Run has ${failedUnits.length} failed units and ${integrityFailures} integrity failures. Failing run closed.`, "error");
         mgr.finalize("failed");
@@ -927,19 +1066,20 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
       }
       return { success: false, count: 0, runId: mgr.runId };
     } finally {
-      for (const session of activeAuthSessions.values()) {
+      for (const session of runtime.authSessions.values()) {
         session.dispose();
       }
-      activeAuthSessions.clear();
+      runtime.authSessions.clear();
       await closePortalContextsForRun(mgr.runId);
-      if (globalMarketLockToken) {
+      if (globalMarketLock) {
         try {
-          releaseGlobalMarketLock(globalMarketLockToken);
-          globalMarketLockToken = null;
+          releaseExclusiveLock(globalMarketLock);
+          globalMarketLock = null;
         } catch {}
       }
       HealthManager.clearRun(mgr.runId);
       activeRunSessions.delete(mgr.runId);
+      activeRunControllers.delete(mgr.runId);
     }
   })();
 
@@ -963,6 +1103,137 @@ export type ProcessOutcome = {
   warnings: string[];
   pausePortalQueue?: boolean;
 };
+
+export interface DetailPolicyDeps {
+  sleep?: (ms: number) => Promise<void>;
+  evaluatePolicy?: typeof FailurePolicyEngine.evaluate;
+}
+
+export async function executeCardDetailWithPolicy(
+  options: {
+    cardUnitId: string;
+    cardUnit: CardUnit;
+    mgr: RunController;
+
+    fetchDetail: () => Promise<DetailedCard["detail"]>;
+
+    validateDetail: (
+      detail: DetailedCard["detail"]
+    ) => ReturnType<typeof ResponseValidator.validate>;
+
+    isPortalPaused: () => boolean;
+    triggerPortalPause: () => void;
+  },
+  deps: DetailPolicyDeps = {},
+): Promise<
+  | {
+      ok: true;
+      detail: DetailedCard["detail"];
+    }
+  | {
+      ok: false;
+      failureClass?: FailureClass;
+      paused: boolean;
+    }
+> {
+  const sleep =
+    deps.sleep ??
+    ((ms: number) =>
+      new Promise<void>(resolve => setTimeout(resolve, ms)));
+
+  const evaluatePolicy =
+    deps.evaluatePolicy ?? FailurePolicyEngine.evaluate;
+
+  while (true) {
+    if (options.isPortalPaused()) {
+      options.mgr.updateCard(options.cardUnitId, {
+        status: "skipped_gated",
+        error: "Portal paused before detail acquisition",
+      });
+
+      return {
+        ok: false,
+        paused: true,
+      };
+    }
+
+    const attempt =
+      (options.cardUnit.attempts ?? 0) + 1;
+
+    options.cardUnit.attempts = attempt;
+
+    options.mgr.updateCard(options.cardUnitId, {
+      attempts: attempt,
+      detailAttempted: true,
+    });
+
+    const detail = await options.fetchDetail();
+    const validation = options.validateDetail(detail);
+
+    if (detail.fetched && validation.isValid) {
+      options.mgr.updateCard(options.cardUnitId, {
+        usableDetailDocument: true,
+        failureClass: undefined,
+        failureKind: undefined,
+      });
+
+      return {
+        ok: true,
+        detail,
+      };
+    }
+
+    const failureClass = normalizeFailureClass(
+      detail.failureClass ??
+        validation.failureClass ??
+        "UNKNOWN_FAILURE"
+    );
+
+    const policy = evaluatePolicy(
+      failureClass,
+      attempt
+    );
+
+    // Critical invariant: pause beats retry.
+    if (policy.pausePortalQueue) {
+      options.triggerPortalPause();
+
+      options.mgr.updateCard(options.cardUnitId, {
+        status: "failed",
+        failureClass,
+        failureKind: "SOURCE_FAILURE",
+        error: `Portal paused: ${failureClass}`,
+      });
+
+      return {
+        ok: false,
+        failureClass,
+        paused: true,
+      };
+    }
+
+    if (policy.shouldRetry) {
+      await sleep(policy.backoffMs);
+      continue;
+    }
+
+    const failureKind =
+      classifyCardFailure(failureClass);
+
+    options.mgr.updateCard(options.cardUnitId, {
+      status: "failed",
+      failureClass,
+      failureKind,
+      error: `Detail acquisition failed: ${failureClass}`,
+    });
+
+    return {
+      ok: false,
+      failureClass,
+      paused: false,
+    };
+  }
+}
 
 
 async function processUnit(
@@ -1321,8 +1592,13 @@ async function processUnit(
         let fallbackRoute: string | undefined = undefined;
         const acquisitionAttempts: AcquisitionAttempt[] = [];
 
-        if (snapshot?.detail?.fetched) {
-          log(`[Snapshot] Reusing cached detail (${snapshot.detail.rawText?.length || 0} chars) for ${feedCard.cardHash}`);
+        const detailResult = await executeCardDetailWithPolicy({
+          cardUnitId,
+          cardUnit,
+          mgr,
+          fetchDetail: async () => {
+            if (snapshot?.detail?.fetched) {
+              log(`[Snapshot] Reusing cached detail (${snapshot.detail.rawText?.length || 0} chars) for ${feedCard.cardHash}`);
           detail = snapshot.detail;
           acquisitionRoute = snapshot.acquisitionRoute || "DETAIL_PAGE_BROWSER";
           enrichmentStatus = snapshot.enrichmentStatus || "NOT_APPLICABLE";
@@ -1659,8 +1935,40 @@ async function processUnit(
           }
           }
         }
-          
-          // 4. Standalone Response Validation
+        return detail;
+      },
+          validateDetail: (d) => ResponseValidator.validate({
+            html: d.rawText || "",
+            url: feedCard.applyRedirectUrl || feedCard.detailUrl,
+            sourcePortal: unit.portal,
+            httpStatus: d.httpStatus,
+            extractedTitle: feedCard.title,
+            documentTitle: d.extractedTitle,
+            extractedCompany: feedCard.company,
+            extractedDescription: d.rawText,
+            contentOrigin: d.fetched ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
+          }),
+          isPortalPaused: () => portalPauseTriggered || outcome.pausePortalQueue === true,
+          triggerPortalPause: () => {
+            portalPauseTriggered = true;
+            outcome.pausePortalQueue = true;
+          },
+        });
+
+        if (!detailResult.ok) {
+          const failureClass = detailResult.failureClass || "UNKNOWN_FAILURE";
+          primaryFailureClass = primaryFailureClass || failureClass;
+          sourceFailuresInUnit++;
+
+          // Isolate external ATS failure from Naukri portal health/circuit-breaker
+          if (
+            unit.portal !== "Naukri"
+            && !detail.identityResolutionFailure
+          ) {
+            const runHealth = HealthManager.forRun(mgr.runId);
+            runHealth.recordFailure(unit.portal, failureClass);
+          }
+
           const valResult = ResponseValidator.validate({
             html: detail.rawText || "",
             url: feedCard.applyRedirectUrl || feedCard.detailUrl,
@@ -1673,91 +1981,65 @@ async function processUnit(
             contentOrigin: detail.fetched ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
           });
 
-          if (!valResult.isValid || !detail.fetched) {
-            const rawFailureClass = detail.failureClass || detail.identityResolutionFailure || valResult.failureClass || (detail.fetchError?.includes("< 200") ? "INSUFFICIENT_CONTENT" : "UNKNOWN_FAILURE");
-            const failureClass: FailureClass = (rawFailureClass in {
-              HTTP_TIMEOUT: 1, HTTP_SERVER_ERROR: 1, NAVIGATION_TIMEOUT: 1, DNS_ERROR: 1, CONNECTION_ERROR: 1,
-              LOGIN_REQUIRED: 1, CAPTCHA_CHALLENGE: 1, RATE_LIMIT_429: 1, BOT_CHALLENGE_BLOCK: 1,
-              EMPTY_CONTENT: 1, INSUFFICIENT_CONTENT: 1, WRONG_PAGE_REDIRECT: 1, WRONG_PAGE: 1,
-              UNRESOLVED_REDIRECT: 1, UNEXTRACTED_PDF: 1, PARTIAL_CONTENT: 1, INVALID_SCHEMA: 1,
-              MISSING_JOB_ID: 1, AMBIGUOUS_IDENTITY: 1, LISTING_DOCUMENT_IDENTITY_MISMATCH: 1,
-              EXPIRED: 1, REMOVED_404: 1, PERMANENT_FAILURE: 1,
-              FASTPATH_ACCESS_DENIED: 1, UNKNOWN_FAILURE: 1
-            }) ? (rawFailureClass as FailureClass) : "PERMANENT_FAILURE";
+          const rawFailureClass = detail.failureClass || detail.identityResolutionFailure || valResult.failureClass;
 
-            primaryFailureClass = primaryFailureClass || failureClass;
-            sourceFailuresInUnit++;
-
-            const recoveryAction = FailurePolicyEngine.evaluate(failureClass, cardUnit.attempts);
-            if (recoveryAction.pausePortalQueue) {
-              portalPauseTriggered = true;
-              outcome.pausePortalQueue = true;
-            }
-
-            // Isolate external ATS failure from Naukri portal health/circuit-breaker
-            if (
-              unit.portal !== "Naukri"
-              && !detail.identityResolutionFailure
-            ) {
-              const runHealth = HealthManager.forRun(mgr.runId);
-              runHealth.recordFailure(unit.portal, failureClass);
-            }
-            await withPersistenceBoundary("validation failure state recording", async () => {
-              await repos.acquisition.updateJobState(ledgerItem.id, {
-                state: detail.identityResolutionFailure ? "IDENTITY_UNRESOLVED" : "ACQUIRING",
-                attemptCount: cardUnit.attempts,
-                terminalState: failureClass === "REMOVED_404"
-                  ? "PERMANENT_FAILURE"
-                  : rawFailureClass === "REDIRECT_HOP_LIMIT"
-                    ? "REDIRECT_HOP_LIMIT"
-                    : rawFailureClass === "UNSAFE_REDIRECT_DESTINATION"
-                      ? "UNSAFE_REDIRECT_DESTINATION"
-                      : detail.identityResolutionFailure
-                        ? "UNRESOLVED_EXTERNAL_LISTING_IDENTITY"
-                        : undefined,
-                lastFailureClass: failureClass,
-                acquisitionQuality: valResult.quality,
-                validationConfidence: valResult.confidence
-              });
+          await withPersistenceBoundary("validation failure state recording", async () => {
+            await repos.acquisition.updateJobState(ledgerItem.id, {
+              state: detail.identityResolutionFailure ? "IDENTITY_UNRESOLVED" : "ACQUIRING",
+              attemptCount: cardUnit.attempts,
+              terminalState: failureClass === "REMOVED_404"
+                ? "PERMANENT_FAILURE"
+                : rawFailureClass === "REDIRECT_HOP_LIMIT"
+                  ? "REDIRECT_HOP_LIMIT"
+                  : rawFailureClass === "UNSAFE_REDIRECT_DESTINATION"
+                    ? "UNSAFE_REDIRECT_DESTINATION"
+                    : detail.identityResolutionFailure
+                      ? "UNRESOLVED_EXTERNAL_LISTING_IDENTITY"
+                      : undefined,
+              lastFailureClass: failureClass,
+              acquisitionQuality: valResult.quality,
+              validationConfidence: valResult.confidence
             });
-            mgr.updateCard(cardUnitId, {
-              status: "failed",
-              error: `Validation failed: ${failureClass}`,
-              failureClass,
-              failureKind: "SOURCE_FAILURE",
-              detailAttempted: true,
-              usableDetailDocument: false,
-            });
+          });
 
-            // Failed acquisition remains in the ledger and lineage as evidence,
-            // but may never create a canonical market record.  A title/card or
-            // an error page is not a recoverable substitute for a validated JD.
-            if (lineageScope) {
-              try {
-                await recordLineage(
-                  ledgerItem.id,
-                  identity.sourceJobId,
-                  feedCard.discoveryUrl || feedCard.detailUrl,
-                  valResult,
-                  undefined,
-                  failureClass,
-                  detail.finalUrl,
-                );
-              } catch (lineageErr: any) {
-                log(`[M10_LINEAGE_WARN] Failed to record validation failure lineage: ${lineageErr.message}`, "warn");
-              }
+          // Failed acquisition remains in the ledger and lineage as evidence,
+          // but may never create a canonical market record.  A title/card or
+          // an error page is not a recoverable substitute for a validated JD.
+          if (lineageScope) {
+            try {
+              await recordLineage(
+                ledgerItem.id,
+                identity.sourceJobId,
+                feedCard.discoveryUrl || feedCard.detailUrl,
+                valResult,
+                undefined,
+                failureClass,
+                detail.finalUrl,
+              );
+            } catch (lineageErr: any) {
+              log(`[M10_LINEAGE_WARN] Failed to record validation failure lineage: ${lineageErr.message}`, "warn");
             }
-
-            return null;
           }
 
-          usableDetailAcquired++;
-          const runHealth = HealthManager.forRun(mgr.runId);
-          runHealth.recordSuccess(unit.portal);
-          mgr.updateCard(cardUnitId, {
-            detailAttempted: true,
-            usableDetailDocument: true,
-          });
+          return null;
+        }
+
+        detail = detailResult.detail;
+        usableDetailAcquired++;
+        const runHealth = HealthManager.forRun(mgr.runId);
+        runHealth.recordBrowserSuccess(unit.portal);
+
+        const valResult = ResponseValidator.validate({
+          html: detail.rawText || "",
+          url: feedCard.applyRedirectUrl || feedCard.detailUrl,
+          sourcePortal: unit.portal,
+          httpStatus: detail.httpStatus,
+          extractedTitle: feedCard.title,
+          documentTitle: detail.extractedTitle,
+          extractedCompany: feedCard.company,
+          extractedDescription: detail.rawText,
+          contentOrigin: detail.fetched ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
+        });
 
           // Post-Detail Company Resolution & Lineage Enforcement
           const rawCompany = (detail.extractedCompany || feedCard.company || "").trim();
@@ -1854,15 +2136,19 @@ async function processUnit(
           }
 
           // 3. Reconcile external ATS redirect URL if present
-          if (feedCard.applyRedirectUrl) {
-            const cleanAtsUrl = feedCard.applyRedirectUrl.split("?")[0].split("#")[0].toLowerCase().trim();
-            if (cleanAtsUrl && seenAtsUrls.has(cleanAtsUrl)) {
-              mgr.recordTelemetry("duplicatePostDetail");
-              mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate ATS URL (Post-Detail)" });
-              outcome.duplicates++;
-              return null;
+          const cleanAtsUrl = feedCard.applyRedirectUrl
+            ? normalizeUrl(feedCard.applyRedirectUrl)
+            : null;
+
+          if (cleanAtsUrl) {
+            if (seenAtsUrls.has(cleanAtsUrl)) {
+              mgr.recordTelemetry("duplicateAtsUrlObserved");
+              // Telemetry only. Do not change card state,
+              // do not increment outcome.duplicates,
+              // and do not return.
+            } else {
+              seenAtsUrls.add(cleanAtsUrl);
             }
-            if (cleanAtsUrl) seenAtsUrls.add(cleanAtsUrl);
           }
 
           // 4. Heuristic duplicate check (Strictly telemetry only - never suppresses admission!)
@@ -2253,28 +2539,60 @@ async function processUnit(
 
     const runtimeMs = new Date().getTime() - new Date(mgr.manifest.units.find(u => u.id === unit.id)!.startedAt!).getTime();
 
-    const unitCards = mgr.manifest.cards.filter((c) => c.id.startsWith(`${unit.id}#`));
-    const hasIntegrityFailures = integrityFailuresInUnit > 0 || unitCards.some(c => c.failureKind === "INTEGRITY_FAILURE");
-    const hasNonTerminalCards = unitCards.some(c => c.status === "pending" || c.status === "running");
-    const hasUnclassifiedAttemptedCards = unitCards.some(c => c.detailAttempted && !c.usableDetailDocument && c.status !== "failed" && c.status !== "skipped_empty");
+    const manifestCards = mgr.manifest.cards.filter(
+      (c) => c.parentUnitId === unit.id || c.id.startsWith(`${unit.id}#`)
+    );
+
+    const attemptedCards = manifestCards.filter(
+      (c) => c.detailAttempted === true
+    );
+
+    const usableCards = attemptedCards.filter(
+      (c) => c.usableDetailDocument === true
+    );
+
+    const integrityFailures = attemptedCards.filter(
+      (c) => c.failureKind === "INTEGRITY_FAILURE"
+    );
+
+    const sourceFailures = attemptedCards.filter(
+      (c) => c.failureKind === "SOURCE_FAILURE"
+    );
+
+    const nonTerminalAttempted = attemptedCards.filter(
+      (c) => c.status === "pending" || c.status === "running"
+    );
+
+    const unexplainedAttempts = attemptedCards.filter(
+      (c) =>
+        !c.usableDetailDocument &&
+        !c.failureKind &&
+        c.status !== "skipped_gated"
+    );
 
     if (outcome.status !== "aborted") {
-      if (hasIntegrityFailures) {
+      if (
+        integrityFailures.length > 0 ||
+        nonTerminalAttempted.length > 0 ||
+        unexplainedAttempts.length > 0
+      ) {
         outcome.status = "failed";
-        outcome.warnings.push(`Unit failed with ${integrityFailuresInUnit} acquisition integrity failure(s)`);
+        outcome.warnings.push(
+          `Unit failed: integrity=${integrityFailures.length}, nonTerminal=${nonTerminalAttempted.length}, unexplained=${unexplainedAttempts.length}`
+        );
       } else if (portalPauseTriggered || outcome.pausePortalQueue) {
         outcome.status = "failed";
         outcome.warnings.push(`Unit failed due to portal pause condition`);
-      } else if (hasNonTerminalCards) {
+      } else if (
+        attemptedCards.length > 0 &&
+        usableCards.length === 0 &&
+        sourceFailures.length === attemptedCards.length
+      ) {
         outcome.status = "failed";
-        outcome.warnings.push(`Unit failed: unfinalized non-terminal card(s) remaining in manifest`);
-      } else if (hasUnclassifiedAttemptedCards) {
-        outcome.status = "failed";
-        outcome.warnings.push(`Unit failed: attempted card(s) lacked usable document without terminal failure classification`);
-      } else if (attemptedDetailCount > 0 && usableDetailAcquired === 0 && sourceFailuresInUnit === attemptedDetailCount) {
-        outcome.status = "failed";
-        outcome.warnings.push(`Unit failed: all ${attemptedDetailCount} detail attempts ended in source failure`);
-      } else if (usableDetailAcquired > 0) {
+        outcome.warnings.push(
+          `Unit failed: all ${attemptedCards.length} attempted cards failed with SOURCE_FAILURE`
+        );
+      } else if (usableCards.length > 0) {
         outcome.status = "completed";
       } else {
         outcome.status = cards.length === 0 ? "skipped_empty" : "completed";

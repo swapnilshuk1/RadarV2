@@ -480,18 +480,7 @@ export async function fastFetchDetail(
       headers,
     });
 
-    if (statusCode === 429) {
-      return {
-        fetched: false,
-        fetchError: "HTTP 429 (Rate limited)",
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: 429,
-        outcome: "ANTI_BOT",
-        failureClass: "RATE_LIMIT_429",
-      };
-    }
-
-    if (statusCode === 401 || statusCode === 403) {
+    if (statusCode === 429 || statusCode === 401 || statusCode === 403) {
       let errBody = "";
       try { errBody = await body.text(); } catch {}
       const isBotChallenge = /verify you are human|attention required! \| cloudflare|cf-chl|challenge-form|recaptcha|bot detection/i.test(errBody);
@@ -500,17 +489,17 @@ export async function fastFetchDetail(
         fetchError: `HTTP ${statusCode} (${isBotChallenge ? "Bot Challenge" : "Access Denied"})`,
         fetchDurationMs: Date.now() - t0,
         httpStatus: statusCode,
-        outcome: isBotChallenge ? "ANTI_BOT" : "AUTH_ERROR",
-        failureClass: isBotChallenge ? "BOT_CHALLENGE_BLOCK" : "FASTPATH_ACCESS_DENIED",
+        outcome: isBotChallenge ? "ANTI_BOT" : statusCode === 429 ? "ANTI_BOT" : "AUTH_ERROR",
+        failureClass: "FASTPATH_ACCESS_DENIED",
       };
     }
 
-    if (statusCode === 404) {
+    if (statusCode === 404 || statusCode === 410) {
       return {
         fetched: false,
-        fetchError: "HTTP 404 (Not Found)",
+        fetchError: `HTTP ${statusCode} (Not Found)`,
         fetchDurationMs: Date.now() - t0,
-        httpStatus: 404,
+        httpStatus: statusCode,
         outcome: "EXTRACTION_FAILURE",
         failureClass: "REMOVED_404",
       };
@@ -555,6 +544,20 @@ export async function fastFetchDetail(
       };
     }
 
+    if (!extracted.rawText || extracted.rawText.trim().length < 200) {
+      return {
+        fetched: false,
+        fetchError: "Detail body contained insufficient text",
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: statusCode,
+        outcome: "EXTRACTION_FAILURE",
+        qualityTier: "SPARSE",
+        qualityResult: extracted.quality,
+        extractionMethod: extracted.method,
+        failureClass: "INSUFFICIENT_CONTENT",
+      };
+    }
+
     return {
       fetched: true,
       rawHtml: extracted.rawHtml,
@@ -569,7 +572,7 @@ export async function fastFetchDetail(
       extractionMethod: extracted.method
     };
   } catch (err: any) {
-    const isTimeout = err.name === "TimeoutError" || err.code === "ETIMEDOUT";
+    const isTimeout = err.name === "TimeoutError" || err.code === "ETIMEDOUT" || err.name === "AbortError";
     return {
       fetched: false,
       fetchError: err.message,

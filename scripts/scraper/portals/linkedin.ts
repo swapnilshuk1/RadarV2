@@ -1,4 +1,5 @@
 import type { FeedCard, DetailedCard, PortalContext, PortalHandler } from "../types";
+import type { FailureClass } from "../../../src/lib/acquisition/failure-taxonomy";
 import { SNAPSHOT_SCHEMA_VERSION, SCRAPER_VERSION } from "../versions";
 import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
@@ -309,18 +310,8 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           extractedCompany: httpRes.extractedCompany,
         };
       }
-      if (httpRes.failureClass === "RATE_LIMIT_429" || httpRes.failureClass === "BOT_CHALLENGE_BLOCK") {
-        ctx.logger?.(`[FastPath] Terminal anti-bot barrier (${httpRes.failureClass}) for ${url} — bubbling without browser fallback`);
-        return {
-          fetched: false,
-          fetchError: httpRes.fetchError,
-          fetchDurationMs: httpRes.fetchDurationMs,
-          httpStatus: httpRes.httpStatus,
-          failureClass: httpRes.failureClass,
-        };
-      }
-      const reason = httpRes.fetchError?.includes("403") ? "403" : 
-                    httpRes.fetchError?.includes("timeout") ? "Timeout" : "EmptyBody";
+      const reason = httpRes.failureClass || (httpRes.fetchError?.includes("403") ? "403" : 
+                    httpRes.fetchError?.includes("timeout") ? "Timeout" : "EmptyBody");
       ctx.recordHttpFailure?.(url, reason);
       ctx.recordTelemetry?.("httpFallbacks");
       ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError || "insufficient content"} — falling back to Playwright`);
@@ -426,12 +417,25 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       extractedCompany,
     };
   } catch (err: any) {
-    const isTimeout = err.name === "TimeoutError" || /timeout/i.test(err.message);
+    const msg = String(err?.message || "");
+    const isTimeout = err.name === "TimeoutError" || /timeout/i.test(msg);
+    const isChallenge = /challenge|captcha|cloudflare|security check/i.test(msg);
+    const isLogin = /login|authwall|sign in/i.test(msg);
+    const is404 = /404|not found|no longer available/i.test(msg);
+    const isConn = /net::ERR|ECONN|ENOTFOUND/i.test(msg);
+
+    let failureClass: FailureClass = "UNKNOWN_FAILURE";
+    if (isChallenge) failureClass = "CAPTCHA_CHALLENGE";
+    else if (isLogin) failureClass = "LOGIN_REQUIRED";
+    else if (isTimeout) failureClass = "NAVIGATION_TIMEOUT";
+    else if (is404) failureClass = "REMOVED_404";
+    else if (isConn) failureClass = "CONNECTION_ERROR";
+
     return {
       fetched: false,
-      fetchError: err.message,
+      fetchError: msg,
       fetchDurationMs: Date.now() - t0,
-      failureClass: isTimeout ? "NAVIGATION_TIMEOUT" : "CONNECTION_ERROR",
+      failureClass,
     };
   } finally {
     await page.close().catch(() => {});

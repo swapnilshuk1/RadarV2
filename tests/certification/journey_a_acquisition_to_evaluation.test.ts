@@ -18,6 +18,12 @@ import { CanonicalIngestionService } from "@/lib/acquisition/CanonicalIngestionS
 import { CanonicalEvaluator } from "@/lib/intelligence/evaluation/CanonicalEvaluator";
 import { CandidateProjectionBuilderImpl } from "@/lib/intelligence/builders/CandidateProjectionBuilder";
 import { candidateProfile } from "@/data/candidate-profile";
+import { MemoryBlobStore } from "@/lib/storage/blob-store";
+import {
+  EXTRACTOR_VERSION,
+  SCRAPER_VERSION,
+  SNAPSHOT_SCHEMA_VERSION,
+} from "../../scripts/scraper/versions";
 
 class TestAdapter implements DatabaseAdapter {
   constructor(public db: Database.Database) {}
@@ -55,10 +61,12 @@ class TestAdapter implements DatabaseAdapter {
 describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
   let adapter: TestAdapter;
   let ingestionService: CanonicalIngestionService;
+  let blobStore: MemoryBlobStore;
 
   beforeEach(async () => {
     const db = new Database(":memory:");
     adapter = new TestAdapter(db);
+    blobStore = new MemoryBlobStore();
 
     await adapter.execute(`
       CREATE TABLE tenants (id TEXT PRIMARY KEY, name TEXT);
@@ -172,6 +180,50 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
         activated_at TEXT,
         PRIMARY KEY(person_id, tenant_id)
       );
+      CREATE TABLE scrape_runs (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL,
+        person_id TEXT NOT NULL,
+        search_plan_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE enrichment_jobs (
+        id TEXT PRIMARY KEY,
+        job_hash TEXT NOT NULL,
+        canonical_job_id TEXT NOT NULL,
+        opportunity_version TEXT NOT NULL,
+        pipeline_version TEXT NOT NULL,
+        snapshot_path TEXT,
+        payload_key TEXT NOT NULL,
+        run_id TEXT,
+        execution_plan_id TEXT,
+        definition_id TEXT,
+        family_id TEXT,
+        portal TEXT,
+        page INTEGER,
+        catalog_version TEXT,
+        planner_version TEXT,
+        rule_version TEXT,
+        search_query TEXT,
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        business_priority INTEGER DEFAULT 10,
+        execution_priority INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(
+          canonical_job_id,
+          opportunity_version,
+          pipeline_version
+        )
+      );
+
+      CREATE TABLE scrape_run_enrichment_requirements (
+        run_id TEXT NOT NULL,
+        enrichment_job_id TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY(run_id, enrichment_job_id)
+      );
       CREATE TABLE materialized_evaluations (
         id TEXT PRIMARY KEY,
         tenant_id TEXT NOT NULL,
@@ -212,41 +264,174 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
       INSERT INTO active_evaluation_contexts (person_id, tenant_id, context_fingerprint, search_plan_id, activated_at)
       VALUES ('person_exec', 'tenant_prod', 'ctx_exec', 'sp_exec', CURRENT_TIMESTAMP)
     `);
+    await adapter.execute(`
+      INSERT INTO scrape_runs (
+        id,
+        tenant_id,
+        person_id,
+        search_plan_id,
+        status
+      )
+      VALUES (
+        'run_journey_a',
+        'tenant_prod',
+        'person_exec',
+        'sp_exec',
+        'running'
+      )
+    `);
 
-    ingestionService = new CanonicalIngestionService(adapter);
+    ingestionService = new CanonicalIngestionService(
+      adapter,
+      blobStore,
+    );
   });
 
   it("ingests raw scraped executive job, resolves version without orphan FK, and evaluates cleanly", async () => {
+    const jdText = `
+  Chief Marketing Officer (CMO) — Global Enterprise Scale
+
+  About HyperScale Tech:
+  HyperScale Tech is a premier high-growth enterprise platform.
+  We are seeking a seasoned Chief Marketing Officer (CMO)
+  to lead our global marketing strategy, brand positioning,
+  and demand generation engine.
+
+  Key Mandates:
+  - Lead Performance Marketing, GTM Strategy, and Digital
+    Transformation across global enterprise demand channels.
+  - Direct full P&L accountability for a $50M+ ARR growth budget
+    across North America, APAC, and EMEA.
+  - Drive commercial transformation, digital demand gen,
+    pipeline acceleration, and global enterprise brand positioning.
+  - Partner directly with Founder/CEO and Board of Directors.
+
+  Requirements:
+  - 15+ years of progressive commercial and executive leadership
+    experience in B2B / SaaS technology organizations.
+  - Demonstrated track record leading growth marketing,
+    brand strategy, customer lifecycle transformation,
+    and international scaling.
+`;
+
     const rawJobPayload = {
       sourcePortal: "LinkedIn" as const,
       sourceJobId: "li_cmo_998877",
-      canonicalUrl: "https://www.linkedin.com/jobs/view/998877",
+      canonicalUrl:
+        "https://www.linkedin.com/jobs/view/998877",
+
       jobTitle: "Chief Marketing Officer",
+      documentTitle: "Chief Marketing Officer",
       companyName: "HyperScale Tech Global",
-      location: "Bengaluru, Karnataka, India (Hybrid)",
-      rawContent: `
-        Chief Marketing Officer (CMO) — Global Enterprise Scale
-        About HyperScale Tech:
-        HyperScale Tech is a premier high-growth enterprise platform. We are seeking a seasoned Chief Marketing Officer (CMO)
-        to lead our global marketing strategy, brand positioning, and demand generation engine.
-        
-        Key Mandates:
-        - Lead Performance Marketing, GTM Strategy, and Digital Transformation across global enterprise demand channels.
-        - Direct full P&L accountability for a $50M+ ARR growth budget across North America, APAC, and EMEA.
-        - Drive our commercial transformation, digital demand gen, pipeline acceleration, and global enterprise brand positioning.
-        - Partner directly with Founder/CEO and Board of Directors on strategic go-to-market decisions and global corporate positioning.
-        
-        Requirements:
-        - 15+ years of progressive commercial and executive leadership experience in B2B / SaaS technology organizations.
-        - Demonstrated track record leading growth marketing, brand strategy, customer lifecycle transformation, and international scaling.
-      `,
+      location:
+        "Bengaluru, Karnataka, India (Hybrid)",
+      rawContent: jdText,
+      contentOrigin: "DETAIL_DOCUMENT" as const,
+
+      enrichmentDispatch: {
+        pipelineVersion: EXTRACTOR_VERSION,
+
+        detailedCard: {
+          cardHash: "journey-a-card",
+          sourceJobId: "li_cmo_998877",
+          portal: "LinkedIn" as const,
+          keyword: "Chief Marketing Officer",
+
+          searchUrl:
+            "https://www.linkedin.com/jobs/search/",
+          discoveryUrl:
+            "https://www.linkedin.com/jobs/view/998877",
+          detailUrl:
+            "https://www.linkedin.com/jobs/view/998877",
+          discoveredAt:
+            "2026-01-01T00:00:00.000Z",
+
+          title: "Chief Marketing Officer",
+          company: "HyperScale Tech Global",
+          location:
+            "Bengaluru, Karnataka, India (Hybrid)",
+
+          rawHtml: "",
+          rawText: jdText,
+
+          snapshotSchemaVersion:
+            SNAPSHOT_SCHEMA_VERSION,
+          scraperVersion: SCRAPER_VERSION,
+
+          detail: {
+            fetched: true,
+            rawHtml: "",
+            rawText: jdText,
+            extractedTitle:
+              "Chief Marketing Officer",
+            extractedCompany:
+              "HyperScale Tech Global",
+            finalUrl:
+              "https://www.linkedin.com/jobs/view/998877",
+          },
+
+          telemetry: {
+            cardExtractMs: 0,
+            detailExtractMs: 0,
+            totalMs: 0,
+          },
+        },
+      },
+    };
+
+    const journeyScope = {
+      mode: "SCOPED" as const,
+      tenantId: "tenant_prod",
+      personId: "person_exec",
+      searchPlanId: "sp_exec",
+      runId: "run_journey_a",
     };
 
     // 1. Ingestion Boundary
-    const ingestResult = await ingestionService.ingestOpportunity(rawJobPayload);
+    const ingestResult =
+      await ingestionService.ingestOpportunity(
+        rawJobPayload,
+        journeyScope,
+      );
     expect(ingestResult.canonicalJobId).toBeDefined();
     expect(ingestResult.opportunityVersion).toBeDefined();
     expect(ingestResult.isNewOpportunity).toBe(true);
+
+    const enrichmentJob =
+      await adapter.one<{
+        canonical_job_id: string;
+        opportunity_version: string;
+        pipeline_version: string;
+        payload_key: string;
+        run_id: string | null;
+      }>(
+        `
+        SELECT
+          canonical_job_id,
+          opportunity_version,
+          pipeline_version,
+          payload_key,
+          run_id
+        FROM enrichment_jobs
+        WHERE canonical_job_id = ?
+        `,
+        [ingestResult.canonicalJobId],
+      );
+
+    expect(enrichmentJob).toBeDefined();
+    expect(enrichmentJob?.opportunity_version)
+      .toBe(ingestResult.opportunityVersion);
+    expect(enrichmentJob?.pipeline_version)
+      .toBe(EXTRACTOR_VERSION);
+    expect(enrichmentJob?.run_id)
+      .toBe("run_journey_a");
+
+    const snapshot =
+      await blobStore.get(
+        enrichmentJob!.payload_key,
+      );
+
+    expect(snapshot).not.toBeNull();
 
     // 2. Lineage Invariant: search_plan_candidates MUST point to the real opportunity_versions.id
     const candidate = await adapter.one<{
@@ -271,8 +456,24 @@ describe("Journey A: Acquisition → Evaluation End-to-End Pipeline", () => {
       .toContain("ROLE_FAMILY_MATCH");
 
     // 3. Idempotent Ingestion Check (Re-ingestion with same content must not corrupt FK)
-    const secondIngest = await ingestionService.ingestOpportunity(rawJobPayload);
+    const secondIngest =
+      await ingestionService.ingestOpportunity(
+        rawJobPayload,
+        journeyScope,
+      );
     expect(secondIngest.opportunityVersion).toBe(ingestResult.opportunityVersion);
+
+    expect(
+      adapter.db
+        .prepare(
+          `
+          SELECT COUNT(*) AS count
+          FROM enrichment_jobs
+          WHERE canonical_job_id = ?
+          `,
+        )
+        .get(ingestResult.canonicalJobId),
+    ).toEqual({ count: 1 });
 
     const reCheckedCandidate = await adapter.one<{ opportunity_version: string }>(
       `SELECT opportunity_version FROM search_plan_candidates WHERE canonical_job_id = ?`,

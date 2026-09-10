@@ -4,7 +4,12 @@
  * Formal Failure Taxonomy & Recovery Policy Engine for RADAR v2 Acquisition.
  */
 
-export type FailureCategory = "TRANSPORT" | "ACCESS" | "CONTENT" | "IDENTITY" | "LIFECYCLE";
+export type FailureCategory =
+  | "TRANSPORT"
+  | "ACCESS"
+  | "CONTENT"
+  | "IDENTITY"
+  | "LIFECYCLE";
 
 export type FailureClass =
   // TRANSPORT (Retryable with exponential backoff)
@@ -73,7 +78,29 @@ export class FailurePolicyEngine {
           pausePortalQueue: false
         };
 
+      case "UNKNOWN_FAILURE":
+        return {
+          category: "TRANSPORT",
+          failureClass,
+          isTerminal: true,
+          shouldRetry: false,
+          backoffMs: 0,
+          resetBrowserContext: false,
+          pausePortalQueue: false,
+        };
+
       // ACCESS
+      case "FASTPATH_ACCESS_DENIED":
+        return {
+          category: "ACCESS",
+          failureClass,
+          isTerminal: true,
+          shouldRetry: false,
+          backoffMs: 0,
+          resetBrowserContext: false,
+          pausePortalQueue: false,
+        };
+
       case "RATE_LIMIT_429":
         return {
           category: "ACCESS",
@@ -96,17 +123,6 @@ export class FailurePolicyEngine {
           backoffMs: 0,
           resetBrowserContext: true,
           pausePortalQueue: true
-        };
-
-      case "FASTPATH_ACCESS_DENIED":
-        return {
-          category: "ACCESS",
-          failureClass,
-          isTerminal: true,
-          shouldRetry: false,
-          backoffMs: 0,
-          resetBrowserContext: false,
-          pausePortalQueue: false
         };
 
       // CONTENT
@@ -156,18 +172,58 @@ export class FailurePolicyEngine {
           pausePortalQueue: false
         };
 
-      // UNKNOWN / DEFAULT (Conservative Failure)
-      case "UNKNOWN_FAILURE":
-      default:
-        return {
-          category: "TRANSPORT",
-          failureClass: "UNKNOWN_FAILURE",
-          isTerminal: true,
-          shouldRetry: false,
-          backoffMs: 0,
-          resetBrowserContext: false,
-          pausePortalQueue: false
-        };
+      default: {
+        const neverFailure: never = failureClass;
+        throw new Error(
+          `Unhandled FailureClass: ${String(neverFailure)}`,
+        );
+      }
     }
   }
 }
+
+const VALID_FAILURE_CLASSES = new Set<string>([
+  "HTTP_TIMEOUT",
+  "HTTP_SERVER_ERROR",
+  "NAVIGATION_TIMEOUT",
+  "DNS_ERROR",
+  "CONNECTION_ERROR",
+  "LOGIN_REQUIRED",
+  "CAPTCHA_CHALLENGE",
+  "RATE_LIMIT_429",
+  "BOT_CHALLENGE_BLOCK",
+  "FASTPATH_ACCESS_DENIED",
+  "EMPTY_CONTENT",
+  "INSUFFICIENT_CONTENT",
+  "WRONG_PAGE_REDIRECT",
+  "WRONG_PAGE",
+  "UNRESOLVED_REDIRECT",
+  "UNEXTRACTED_PDF",
+  "PARTIAL_CONTENT",
+  "INVALID_SCHEMA",
+  "MISSING_JOB_ID",
+  "AMBIGUOUS_IDENTITY",
+  "LISTING_DOCUMENT_IDENTITY_MISMATCH",
+  "EXPIRED",
+  "REMOVED_404",
+  "PERMANENT_FAILURE",
+  "UNKNOWN_FAILURE",
+]);
+
+export function normalizeFailureClass(raw: unknown): FailureClass {
+  if (typeof raw === "string" && VALID_FAILURE_CLASSES.has(raw)) {
+    return raw as FailureClass;
+  }
+  return "UNKNOWN_FAILURE";
+}
+
+export function classifyCardFailure(
+  failureClass: FailureClass,
+): "EXPECTED_REJECTION" | "SOURCE_FAILURE" | "INTEGRITY_FAILURE" | "TERMINAL_FAILURE" | "NON_TERMINAL_FAILURE" {
+  const policy = FailurePolicyEngine.evaluate(failureClass, 1);
+  if (policy.category === "IDENTITY" || failureClass === "INVALID_SCHEMA") {
+    return "INTEGRITY_FAILURE";
+  }
+  return "SOURCE_FAILURE";
+}
+

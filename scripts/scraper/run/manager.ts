@@ -22,191 +22,78 @@ import { writeJsonAtomic, readJsonSafe } from "../utils/fs-atomic";
 import { Journal } from "./journal";
 import { HealthManager } from "./health-manager";
 
-// Where "latest" points so a resume doesn't need a runId argument.
-const LATEST_POINTER = path.join(RUNS_DIR, "latest.json");
+import {
+  acquireExclusiveLock,
+  releaseExclusiveLock,
+  readExclusiveLock,
+  defaultIsProcessAlive,
+  type ExclusiveLockToken,
+  type LockDeps,
+} from "./exclusive-lock";
 
-export interface OwnerLock {
-  pid: number;
-  runId: string;
-  startedAt: string;
-}
+export {
+  acquireExclusiveLock,
+  releaseExclusiveLock,
+  readExclusiveLock,
+  defaultIsProcessAlive,
+  type ExclusiveLockToken,
+  type LockDeps,
+};
 
-export interface ExclusiveLockToken {
-  lockPath: string;
-  pid: number;
-  nonce: string;
-  runId?: string;
-  profileKey?: string;
-  startedAt: string;
-  [key: string]: unknown;
-}
-
-export function isProcessAlive(pid: number): boolean {
-  if (pid <= 0) return false;
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err: any) {
-    return err.code === "EPERM";
-  }
-}
-
-export function acquireExclusiveLock(
-  lockPath: string,
-  ownerMetadata: { runId?: string; profileKey?: string; [key: string]: unknown },
-  deps: { isProcessAlive?: (pid: number) => boolean } = {}
-): ExclusiveLockToken {
-  const checkAlive = deps.isProcessAlive || isProcessAlive;
-  const nonce = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString("hex");
-  const lockData: ExclusiveLockToken = {
-    lockPath,
-    pid: process.pid,
-    nonce,
-    runId: ownerMetadata.runId,
-    profileKey: ownerMetadata.profileKey,
-    startedAt: new Date().toISOString(),
-    ...ownerMetadata,
-  };
-
-  const reclaimPath = `${lockPath}.reclaim`;
-  const dir = path.dirname(lockPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  // Fast path: try to atomically create the primary lock
-  try {
-    const fd = fs.openSync(lockPath, "wx");
-    fs.writeFileSync(fd, JSON.stringify(lockData, null, 2), "utf-8");
-    fs.closeSync(fd);
-    return lockData;
-  } catch (err: any) {
-    if (err.code !== "EEXIST") throw err;
-  }
-
-  // Lock exists: read content with retry backoff for in-progress writes
-  let existingContent: string = "";
-  let existingLock: any = null;
-  const maxReadRetries = 5;
-  for (let r = 0; r < maxReadRetries; r++) {
-    try {
-      existingContent = fs.readFileSync(lockPath, "utf-8").trim();
-      if (existingContent.length > 0) {
-        existingLock = JSON.parse(existingContent);
-        break;
-      }
-    } catch {
-      // transient read or parse failure while writing
-    }
-    // backoff 50ms
-    const end = Date.now() + 50;
-    while (Date.now() < end) {}
-  }
-
-  if (!existingLock || typeof existingLock.pid !== "number") {
-    throw new Error(
-      `EXCLUSIVE_LOCK_CORRUPTED: Lock at ${lockPath} is empty or unparseable after retries. Refusing ownership to prevent collision; manual operator inspection required.`
-    );
-  }
-
-  if (checkAlive(existingLock.pid)) {
-    throw new Error(
-      `EXCLUSIVE_LOCK_ACTIVE: Cannot acquire lock at ${lockPath}: owning process PID ${existingLock.pid} (runId: ${existingLock.runId || "unknown"}) is still alive. Refusing concurrent ownership.`
-    );
-  }
-
-  // Dead PID detected! Enter Serialized Stale Reclaim Protocol.
-  // 1. Atomically acquire the reclaim mutex
-  let reclaimFd: number;
-  try {
-    reclaimFd = fs.openSync(reclaimPath, "wx");
-  } catch (reclaimErr: any) {
-    if (reclaimErr.code === "EEXIST") {
-      throw new Error(
-        `EXCLUSIVE_LOCK_RECLAIM_IN_PROGRESS: Another process is currently reclaiming stale lock at ${lockPath}. Concurrent reclaim rejected.`
-      );
-    }
-    throw reclaimErr;
-  }
-
-  try {
-    // 2. Reread the primary lock under the reclaim mutex to verify it still belongs to the same dead PID
-    let verifiedPrimary: any = null;
-    try {
-      const currentPrimaryStr = fs.readFileSync(lockPath, "utf-8").trim();
-      verifiedPrimary = JSON.parse(currentPrimaryStr);
-    } catch {}
-
-    if (
-      !verifiedPrimary ||
-      verifiedPrimary.pid !== existingLock.pid ||
-      (existingLock.nonce && verifiedPrimary.nonce !== existingLock.nonce)
-    ) {
-      throw new Error(
-        `EXCLUSIVE_LOCK_RECLAIM_RACED: Primary lock at ${lockPath} changed during stale reclaim attempt (expected PID ${existingLock.pid}). Reclaim aborted.`
-      );
-    }
-
-    // 3. Stale owner verified. Atomically replace: unlink stale primary and write new primary lock
-    try {
-      fs.unlinkSync(lockPath);
-    } catch {}
-
-    const fd = fs.openSync(lockPath, "wx");
-    fs.writeFileSync(fd, JSON.stringify(lockData, null, 2), "utf-8");
-    fs.closeSync(fd);
-    return lockData;
-  } finally {
-    // 4. Release the reclaim mutex
-    try {
-      fs.closeSync(reclaimFd);
-    } catch {}
-    try {
-      fs.unlinkSync(reclaimPath);
-    } catch {}
-  }
-}
-
-export function releaseExclusiveLock(token: ExclusiveLockToken): void {
-  if (!token || !token.lockPath) return;
-  try {
-    if (fs.existsSync(token.lockPath)) {
-      const content = fs.readFileSync(token.lockPath, "utf-8");
-      const current = JSON.parse(content);
-      if (current.pid === token.pid && current.nonce === token.nonce) {
-        fs.unlinkSync(token.lockPath);
-      }
-    }
-  } catch {}
-}
+export type OwnerLock = ExclusiveLockToken;
 
 export function acquireOwnerLock(
   runDir: string,
   runId: string,
-  deps: { isProcessAlive?: (pid: number) => boolean } = {}
+  deps: LockDeps = {},
 ): OwnerLock {
-  const ownerPath = path.join(runDir, ".owner");
-  const token = acquireExclusiveLock(ownerPath, { runId }, deps);
-  return {
-    pid: token.pid,
-    runId: token.runId || runId,
-    startedAt: token.startedAt,
-  };
+  return acquireExclusiveLock(
+    path.join(runDir, ".owner"),
+    { runId },
+    deps,
+  );
 }
 
-export function releaseOwnerLock(runDir: string, runId?: string): void {
-  const ownerPath = path.join(runDir, ".owner");
+export function releaseOwnerLock(token: OwnerLock | null | undefined): void;
+export function releaseOwnerLock(runDir: string, runId?: string): void;
+
+export function releaseOwnerLock(
+  tokenOrRunDir: OwnerLock | string | null | undefined,
+  runId?: string,
+): void {
+  if (!tokenOrRunDir) return;
+  if (typeof tokenOrRunDir !== "string") {
+    releaseExclusiveLock(tokenOrRunDir);
+    return;
+  }
+
+  const lockPath = path.join(tokenOrRunDir, ".owner");
+  const existing = readExclusiveLock(lockPath);
+
+  if (!existing) return;
+
+  if (runId && existing.runId !== runId) {
+    return;
+  }
+
+  /*
+   * Compatibility cleanup only. Never delete a live owner's lock unless owned by current process.
+   */
+  const ownedByCurrentProcess =
+    existing.pid === process.pid &&
+    (!runId || existing.runId === runId);
+
+  if (!ownedByCurrentProcess && defaultIsProcessAlive(existing.pid)) {
+    return;
+  }
+
   try {
-    if (fs.existsSync(ownerPath)) {
-      const existing = JSON.parse(fs.readFileSync(ownerPath, "utf-8"));
-      if (!runId || existing.runId === runId) {
-        if (existing.pid === process.pid) {
-          fs.unlinkSync(ownerPath);
-        }
-      }
-    }
+    fs.unlinkSync(lockPath);
   } catch {}
 }
+
+// Where "latest" points so a resume doesn't need a runId argument.
+const LATEST_POINTER = path.join(RUNS_DIR, "latest.json");
 
 export interface RunControllerOptions {
   keywords: string[];
@@ -285,7 +172,7 @@ export class RunController {
     } else {
       const variants: AcquisitionVariant[] = opts.variants && opts.variants.length > 0
         ? opts.variants
-        : opts.keywords.map((query) => ({ query, channel: "search" as const }));
+        : (opts.keywords ?? []).map((query) => ({ query, channel: "search" as const }));
       const initialPages = opts.initialPages ?? (opts.adaptiveDepth ? 1 : opts.maxPages);
       for (const portal of opts.portals) {
         for (const variant of variants.filter((v) => !v.portal || v.portal === portal)) {
@@ -599,7 +486,8 @@ export class RunController {
     this.persistManifest();
     this.journal.append({ type: "run_finished", status: this.manifest.status });
     this.journal.close();
-    releaseOwnerLock(this.runDir, this.runId);
+    releaseOwnerLock(this.ownerLock);
+    this.ownerLock = undefined;
     this.printRunHealthDashboard();
   }
 
@@ -655,7 +543,7 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
 `);
   }
 
-  private persistManifest(): void {
+  persistManifest(): void {
     writeJsonAtomic(this.manifestPath, this.manifest);
   }
 

@@ -78,6 +78,13 @@ export interface WorkUnit {
   decisionRecord?: UnitDecisionRecord;
 }
 
+export type CardFailureKind =
+  | "EXPECTED_REJECTION"
+  | "SOURCE_FAILURE"
+  | "INTEGRITY_FAILURE"
+  | "TERMINAL_FAILURE"
+  | "NON_TERMINAL_FAILURE";
+
 export interface CardUnit {
   id: string;                // <parentUnit>#<cardHash>
   parentUnitId: string;
@@ -164,9 +171,11 @@ export type RunTelemetry = {
   hardFiltered?: number;
   duplicateAtsUrlObserved?: number;
   acquisitionIntegrityFailures?: number;
+  integrityFailures?: number;
+  nonTerminalAttempted?: number;
+  unexplainedAttempts?: number;
+  sourceFailures?: number;
 };
-
-export type CardFailureKind = "EXPECTED_REJECTION" | "SOURCE_FAILURE" | "INTEGRITY_FAILURE";
 
 export interface RunManifest {
   runId: string;
