@@ -11,6 +11,9 @@ import type {
 export type { AcquisitionQuality, ValidatedJobDocument };
 export type ValidationConfidence = "HIGH" | "MEDIUM" | "LOW" | "UNUSABLE";
 
+export const MIN_GENUINE_SPARSE_CHARS = 50;
+export type DocumentContentOrigin = "DETAIL_DOCUMENT" | "DISCOVERY_CARD_FALLBACK";
+
 export interface JobDocumentValidationInput {
   html?: string;
   extractedText?: string;
@@ -28,7 +31,7 @@ export interface JobDocumentValidationInput {
   expectedTitle?: string;
   expectedCompany?: string;
   /** A discovery-card fallback is not a captured JD, even when it has a title and company. */
-  contentOrigin?: "DETAIL_DOCUMENT" | "DISCOVERY_CARD_FALLBACK";
+  contentOrigin?: DocumentContentOrigin;
   provenance?: ValidatedJobDocument["provenance"];
 }
 
@@ -130,22 +133,76 @@ export function validateJobDocument(input: JobDocumentValidationInput): Validati
   if (/sign in to linkedin|login\.naukri\.com|naukri\.com\/nlogin\/login/i.test(html)) return failure("FAILED", "NOT_ATTEMPTED", "LOGIN_REQUIRED", false);
   if (scriptMatches > 0 || boilerplateMatches > 0 || (scriptRatio > 0.12 && words.length < 150)) return failure("SUCCEEDED", "FAILED", "WRONG_PAGE", true);
   if (!text) return failure("SUCCEEDED", "FAILED", "EMPTY_CONTENT", true);
-  if (input.contentOrigin === "DISCOVERY_CARD_FALLBACK") return invalid(input, {
-    transportState: "SUCCEEDED", extractionState: "FAILED", failureClass: "PARTIAL_CONTENT", retryable: true,
-    text, wordCount: words.length, boilerplateRatio, scriptRatio, quality: "MINIMAL",
-  });
+  if (text.length < MIN_GENUINE_SPARSE_CHARS) {
+    return invalid(input, {
+      transportState: "SUCCEEDED",
+      extractionState: "FAILED",
+      failureClass: "INSUFFICIENT_CONTENT",
+      retryable: true,
+      text,
+      wordCount: words.length,
+      boilerplateRatio,
+      scriptRatio,
+      quality: "MINIMAL",
+    });
+  }
+  if (input.contentOrigin === "DISCOVERY_CARD_FALLBACK") {
+    return invalid(input, {
+      transportState: "SUCCEEDED",
+      extractionState: "FAILED",
+      failureClass: "PARTIAL_CONTENT",
+      retryable: true,
+      text,
+      wordCount: words.length,
+      boilerplateRatio,
+      scriptRatio,
+      quality: "MINIMAL",
+    });
+  }
 
   const titleAgreement = agreement(input.expectedTitle, input.documentTitle);
-  if (titleAgreement === "MISMATCHED") return invalid(input, {
-    transportState: "SUCCEEDED", extractionState: "FAILED", failureClass: "LISTING_DOCUMENT_IDENTITY_MISMATCH", retryable: true,
-    text, wordCount: words.length, boilerplateRatio, scriptRatio,
-  });
+  if (titleAgreement === "MISMATCHED") {
+    return invalid(input, {
+      transportState: "SUCCEEDED",
+      extractionState: "FAILED",
+      failureClass: "LISTING_DOCUMENT_IDENTITY_MISMATCH",
+      retryable: true,
+      text,
+      wordCount: words.length,
+      boilerplateRatio,
+      scriptRatio,
+    });
+  }
   // A portal card/snippet is not a sparse job document. It is incomplete
   // acquisition and must be recovered rather than evaluated as a real JD.
-  if (/\b(search card|snippet|preview|short summary|too short)\b/i.test(text)) return invalid(input, {
-    transportState: "SUCCEEDED", extractionState: "FAILED", failureClass: "PARTIAL_CONTENT", retryable: true,
-    text, wordCount: words.length, boilerplateRatio, scriptRatio, quality: "MINIMAL",
-  });
+  if (/\b(search card|snippet|preview|short summary|too short)\b/i.test(text)) {
+    return invalid(input, {
+      transportState: "SUCCEEDED",
+      extractionState: "FAILED",
+      failureClass: "PARTIAL_CONTENT",
+      retryable: true,
+      text,
+      wordCount: words.length,
+      boilerplateRatio,
+      scriptRatio,
+      quality: "MINIMAL",
+    });
+  }
+
+  // Positive provenance verification: 50-199 chars requires positive DETAIL_DOCUMENT origin
+  if (text.length < 200 && input.contentOrigin !== "DETAIL_DOCUMENT") {
+    return invalid(input, {
+      transportState: "SUCCEEDED",
+      extractionState: "FAILED",
+      failureClass: "PARTIAL_CONTENT",
+      retryable: true,
+      text,
+      wordCount: words.length,
+      boilerplateRatio,
+      scriptRatio,
+      quality: "MINIMAL",
+    });
+  }
 
   const quality: AcquisitionQuality = text.length >= 500 ? "COMPLETE" : text.length >= 200 ? "PARTIAL" : "MINIMAL";
   const usabilityState: DocumentUsabilityState = quality === "MINIMAL" ? "GENUINELY_SPARSE" : "SUBSTANTIVE";
@@ -153,18 +210,40 @@ export function validateJobDocument(input: JobDocumentValidationInput): Validati
   const company = input.extractedCompany?.trim() || null;
   const confidence: ValidationConfidence = quality === "COMPLETE" && title && company ? "HIGH" : quality === "MINIMAL" ? "LOW" : "MEDIUM";
   const document: ValidatedJobDocument = {
-    source: input.sourcePortal, sourceJobId: input.sourceJobId, canonicalUrl: input.url,
-    finalUrl: input.finalUrl || input.url, contentType: input.contentType || null,
-    transportState: "SUCCEEDED", extractionState: "EXTRACTED", usabilityState, acquisitionQuality: quality,
-    title, company, location: input.extractedLocation?.trim() || null,
-    titleAgreement, companyAgreement: agreement(input.expectedCompany, company || undefined),
-    substantiveWordCount: words.length, substantiveCharacterCount: text.length, boilerplateRatio, scriptRatio,
-    failureClass: quality === "MINIMAL" ? "PARTIAL_CONTENT" : null, retryable: quality === "MINIMAL",
-    extractedText: text, provenance: input.provenance || "HTTP",
+    source: input.sourcePortal,
+    sourceJobId: input.sourceJobId,
+    canonicalUrl: input.url,
+    finalUrl: input.finalUrl || input.url,
+    contentType: input.contentType || null,
+    transportState: "SUCCEEDED",
+    extractionState: "EXTRACTED",
+    usabilityState,
+    acquisitionQuality: quality,
+    title,
+    company,
+    location: input.extractedLocation?.trim() || null,
+    titleAgreement,
+    companyAgreement: agreement(input.expectedCompany, company || undefined),
+    substantiveWordCount: words.length,
+    substantiveCharacterCount: text.length,
+    boilerplateRatio,
+    scriptRatio,
+    failureClass: null,
+    retryable: false,
+    extractedText: text,
+    provenance: input.provenance || "HTTP",
   };
-  return { isValid: quality !== "MINIMAL", quality, confidence, failureClass: (document.failureClass || undefined) as FailureClass | undefined,
-    extractedTitle: title || undefined, extractedCompany: company || undefined, extractedDescription: text,
-    extractedLocation: document.location || undefined, document };
+  return {
+    isValid: true,
+    quality,
+    confidence,
+    failureClass: undefined,
+    extractedTitle: title || undefined,
+    extractedCompany: company || undefined,
+    extractedDescription: text,
+    extractedLocation: document.location || undefined,
+    document,
+  };
 }
 
 /** Compatibility facade. New acquisition code uses validateJobDocument directly. */

@@ -22,6 +22,7 @@ export type FailureClass =
   
   // CONTENT (Transport Fallback / Secondary Selector Retry)
   | "EMPTY_CONTENT"
+  | "INSUFFICIENT_CONTENT"
   | "WRONG_PAGE_REDIRECT"
   | "WRONG_PAGE"
   | "UNRESOLVED_REDIRECT"
@@ -95,6 +96,7 @@ export class FailurePolicyEngine {
 
       // CONTENT
       case "EMPTY_CONTENT":
+      case "INSUFFICIENT_CONTENT":
       case "PARTIAL_CONTENT":
       case "WRONG_PAGE_REDIRECT":
       case "WRONG_PAGE":

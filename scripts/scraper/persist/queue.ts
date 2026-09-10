@@ -13,7 +13,7 @@ export interface EnrichmentJob {
   pipeline_version: string;
   snapshot_path: string;
   payload_key: string;
-  run_id: string;
+  run_id: string | null;
   execution_plan_id: string;
   definition_id: string;
   family_id: string;

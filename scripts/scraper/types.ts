@@ -5,6 +5,7 @@
 //   Persistence  -> live-scraped.json    (approved system-of-record view)
 
 import type { PortalAuthSession } from "../../src/lib/security/PortalAuthSession";
+import type { FailureClass } from "../../src/lib/acquisition/failure-taxonomy";
 
 export type PortalName = "LinkedIn" | "Indeed" | "Naukri";
 
@@ -87,6 +88,8 @@ export interface CardUnit {
   extractionPath?: string;
   error?: string;
   isNew?: boolean;
+  failureClass?: FailureClass;
+  failureKind?: CardFailureKind;
 }
 
 export interface PageExecutionRecord {
@@ -157,6 +160,7 @@ export type RunTelemetry = {
   evaluationJobsEnqueued?: number;
   heuristicDuplicateSuspect?: number;
   hardFiltered?: number;
+  duplicateAtsUrlObserved?: number;
   acquisitionIntegrityFailures?: number;
 };
 
@@ -393,7 +397,7 @@ export interface PortalContext {
   isHttpDisabled?: (url: string) => boolean;
   recordHttpFailure?: (url: string, reason: string) => void;
   recordHttpSuccess?: (url: string) => void;
-  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure" | "canonicalIngestSuccess" | "canonicalIngestFailure" | "evaluationJobsEnqueued" | "acquisitionIntegrityFailures") => void;
+  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure" | "canonicalIngestSuccess" | "canonicalIngestFailure" | "evaluationJobsEnqueued" | "duplicateAtsUrlObserved" | "acquisitionIntegrityFailures") => void;
   isCancelled?: () => boolean;
 }
 
@@ -472,7 +476,8 @@ export type AcquisitionOutcome =
   | "TIMEOUT"
   | "PARSE_ERROR"
   | "SOURCE_REDIRECT"
-  | "EXTRACTION_FAILURE";
+  | "EXTRACTION_FAILURE"
+  | "INTEGRITY_ERROR";
 
 export type ContentQualityTier = "VALID" | "SPARSE" | "NON_JOB";
 

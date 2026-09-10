@@ -279,6 +279,10 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
       fields.push("freshness_state = ?");
       params.push(updates.freshnessState);
     }
+    if (updates.attemptCount !== undefined) {
+      fields.push("attempt_count = ?");
+      params.push(updates.attemptCount);
+    }
 
     params.push(id);
     await this.db.execute(`UPDATE acquisition_ledger SET ${fields.join(", ")} WHERE id = ?`, params);

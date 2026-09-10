@@ -175,6 +175,7 @@ describe("Adversarial Portal Acquisition & Certification Suite (RADAR V4 Phase 2
         extractedCompany: value.source.company,
         extractedLocation: value.source.location,
         provenance: "BLOB",
+        contentOrigin: "DETAIL_DOCUMENT",
       });
     }
 

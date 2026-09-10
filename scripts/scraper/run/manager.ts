@@ -24,6 +24,74 @@ import { HealthManager } from "./health-manager";
 // Where "latest" points so a resume doesn't need a runId argument.
 const LATEST_POINTER = path.join(RUNS_DIR, "latest.json");
 
+export interface OwnerLock {
+  pid: number;
+  runId: string;
+  startedAt: string;
+}
+
+export function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err: any) {
+    return err.code === "EPERM";
+  }
+}
+
+export function acquireOwnerLock(runDir: string, runId: string): OwnerLock {
+  const ownerPath = path.join(runDir, ".owner");
+  const maxRetries = 3;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const fd = fs.openSync(ownerPath, "wx");
+      const lockData: OwnerLock = {
+        pid: process.pid,
+        runId,
+        startedAt: new Date().toISOString(),
+      };
+      fs.writeFileSync(fd, JSON.stringify(lockData, null, 2), "utf-8");
+      fs.closeSync(fd);
+      return lockData;
+    } catch (err: any) {
+      if (err.code === "EEXIST") {
+        let existingLock: OwnerLock | null = null;
+        try {
+          existingLock = JSON.parse(fs.readFileSync(ownerPath, "utf-8"));
+        } catch {}
+        if (existingLock?.pid) {
+          if (isProcessAlive(existingLock.pid)) {
+            throw new Error(
+              `Cannot attach to run ${runId}: owning process PID ${existingLock.pid} is still alive. Refusing concurrent ownership.`
+            );
+          }
+        }
+        // Stale owner file (PID dead or unparseable). Unlink and retry.
+        try {
+          fs.unlinkSync(ownerPath);
+        } catch {}
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error(`Failed to acquire owner lock for run ${runId} after ${maxRetries} attempts.`);
+}
+
+export function releaseOwnerLock(runDir: string, runId?: string): void {
+  const ownerPath = path.join(runDir, ".owner");
+  try {
+    if (fs.existsSync(ownerPath)) {
+      const existing = JSON.parse(fs.readFileSync(ownerPath, "utf-8"));
+      if (!runId || existing.runId === runId) {
+        if (existing.pid === process.pid) {
+          fs.unlinkSync(ownerPath);
+        }
+      }
+    }
+  } catch {}
+}
+
 export interface RunControllerOptions {
   keywords: string[];
   portals: PortalName[];
@@ -46,6 +114,7 @@ export class RunController {
   journalPath!: string;
   manifest!: RunManifest;
   journal!: Journal;
+  ownerLock?: OwnerLock;
 
   // Circuit breakers (ephemeral per-run)
   listingFailures: Map<string, number> = new Map();
@@ -54,26 +123,18 @@ export class RunController {
   lowYieldStreaks: Map<string, number> = new Map();
   private isFinalized: boolean = false;
 
-  init(opts: RunControllerOptions): { resumed: boolean } {
-    const latest = readJsonSafe<{ runId: string }>(LATEST_POINTER);
-    const resumable = opts.resume && latest?.runId
-      ? this.tryLoadForResume(latest.runId, opts)
-      : null;
+  static generateRunId(): string {
+    return `run-${Date.now()}`;
+  }
 
-    if (resumable) {
-      this.runId = resumable.runId;
-      this.runDir = resumable.runDir;
-      this.manifestPath = resumable.manifestPath;
-      this.journalPath = resumable.journalPath;
-      this.manifest = resumable.manifest;
-      this.journal = new Journal(this.journalPath);
-      this.markResume();
-      return { resumed: true };
-    }
-
-    this.runId = `run-${Date.now()}`;
+  initFresh(runId: string, opts: RunControllerOptions): { resumed: boolean } {
+    this.runId = runId;
     this.runDir = path.join(RUNS_DIR, this.runId);
     fs.mkdirSync(this.runDir, { recursive: true });
+
+    // Acquire atomic ownership lock before creating manifest or journal
+    this.ownerLock = acquireOwnerLock(this.runDir, this.runId);
+
     this.manifestPath = path.join(this.runDir, "manifest.json");
     this.journalPath = path.join(this.runDir, "journal.ndjson");
 
@@ -170,7 +231,44 @@ export class RunController {
     return { resumed: false };
   }
 
-  private tryLoadForResume(runId: string, opts: RunControllerOptions) {
+  init(opts: RunControllerOptions): { resumed: boolean } {
+    const latest = readJsonSafe<{ runId: string }>(LATEST_POINTER);
+    const resumable = opts.resume && latest?.runId
+      ? this.tryLoadForResume(latest.runId, opts)
+      : null;
+
+    if (resumable) {
+      this.attachExistingRun(resumable);
+      return { resumed: true };
+    }
+
+    return this.initFresh(RunController.generateRunId(), opts);
+  }
+
+  attachExistingRun(target: {
+    runId: string;
+    runDir: string;
+    manifestPath: string;
+    journalPath: string;
+    manifest: RunManifest;
+  }): void {
+    this.ownerLock = acquireOwnerLock(target.runDir, target.runId);
+    this.runId = target.runId;
+    this.runDir = target.runDir;
+    this.manifestPath = target.manifestPath;
+    this.journalPath = target.journalPath;
+    this.manifest = target.manifest;
+    this.journal = new Journal(this.journalPath);
+    this.markResume();
+  }
+
+  tryLoadForResume(runId: string, opts: RunControllerOptions): {
+    runId: string;
+    runDir: string;
+    manifestPath: string;
+    journalPath: string;
+    manifest: RunManifest;
+  } | null {
     const runDir = path.join(RUNS_DIR, runId);
     const manifestPath = path.join(runDir, "manifest.json");
     const journalPath = path.join(runDir, "journal.ndjson");
@@ -203,16 +301,50 @@ export class RunController {
     return { runId, runDir, manifestPath, journalPath, manifest };
   }
 
-  static isStatusResumable(status: RunState): boolean {
-    return status === "initializing" || status === "running";
+  tryLoadForConfirmationReattach(runId: string, opts: RunControllerOptions): {
+    runId: string;
+    runDir: string;
+    manifestPath: string;
+    journalPath: string;
+    manifest: RunManifest;
+  } | null {
+    const runDir = path.join(RUNS_DIR, runId);
+    const manifestPath = path.join(runDir, "manifest.json");
+    const journalPath = path.join(runDir, "journal.ndjson");
+    const manifest = readJsonSafe<RunManifest>(manifestPath);
+    if (!manifest) return null;
+
+    if (
+      manifest.scraperVersion !== SCRAPER_VERSION ||
+      manifest.snapshotSchemaVersion !== SNAPSHOT_SCHEMA_VERSION ||
+      manifest.extractorVersion !== EXTRACTOR_VERSION
+    ) {
+      return null;
+    }
+    if (
+      (opts.searchPlanId && manifest.searchPlanId !== opts.searchPlanId) ||
+      (opts.snapshotId && manifest.snapshotId !== opts.snapshotId) ||
+      (opts.contextFingerprint && manifest.contextFingerprint !== opts.contextFingerprint) ||
+      (opts.variantsSignature && manifest.variantsSignature !== opts.variantsSignature)
+    ) {
+      return null;
+    }
+    if (manifest.status !== "waiting_for_confirmation" && manifest.status !== "initializing") {
+      return null;
+    }
+    return { runId, runDir, manifestPath, journalPath, manifest };
   }
 
-  private markResume(): void {
+  static isStatusResumable(status: RunState): boolean {
+    return status === "initializing" || status === "waiting_for_confirmation" || status === "running";
+  }
+
+  markResume(): void {
     // Anything left "running" from a prior crashed process becomes "pending"
     // so it gets picked up again by the next scheduling pass.
     for (const u of this.manifest.units) if (u.status === "running") u.status = "pending";
     for (const c of this.manifest.cards) if (c.status === "running") c.status = "pending";
-    this.manifest.status = "running";
+    // NOTE: Keep prior lifecycle state intact! Do NOT force manifest.status = "running"
     this.persistManifest();
   }
 
@@ -351,6 +483,7 @@ export class RunController {
     this.persistManifest();
     this.journal.append({ type: "run_finished", status: this.manifest.status });
     this.journal.close();
+    releaseOwnerLock(this.runDir, this.runId);
     this.printRunHealthDashboard();
   }
 
@@ -538,6 +671,7 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
       | "evaluationJobsEnqueued"
       | "heuristicDuplicateSuspect"
       | "hardFiltered"
+      | "duplicateAtsUrlObserved"
       | "acquisitionIntegrityFailures",
     amount: number = 1
   ): void {

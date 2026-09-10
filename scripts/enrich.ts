@@ -605,9 +605,8 @@ export async function enrichJobsForRun(
     // Recover any leases expired globally during our run
     await queue.recoverExpiredLeases();
 
-    // Lease jobs for this run (filtering by pipeline version; defaults to EXTRACTOR_VERSION)
-    const pipelineVersion = deps?.pipelineVersion ?? EXTRACTOR_VERSION;
-    const jobs = await queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency, 300, pipelineVersion);
+    // Lease jobs for this run (filtering by pipeline version if explicitly scoped)
+    const jobs = await queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency, 300, deps?.pipelineVersion);
 
     if (jobs.length === 0) {
       // Check if there are any jobs currently cooling down in retry status

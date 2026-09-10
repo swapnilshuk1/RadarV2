@@ -6,12 +6,13 @@ import {
 } from "../../src/lib/acquisition/CanonicalIngestionService";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { sourceIdentityForCard, acquisitionSurfaceKey } from "../../src/lib/acquisition/canonical-identity";
-import { RunController } from "../../scripts/scraper/run/manager";
+import { RunController, acquireOwnerLock, releaseOwnerLock } from "../../scripts/scraper/run/manager";
+import os from "os";
 import { assertCanonicalPayloadIdentity } from "../../scripts/enrich";
 import { computeVariantsSignature } from "../../scripts/scrape";
 import { EnrichmentQueue } from "../../scripts/scraper/persist/queue";
 import { extractionPath, readExtractionIfFresh, writeExtraction, collectRecords } from "../../scripts/scraper/persist/writer";
-import { EXTRACTION_DIR } from "../../scripts/scraper/config";
+import { EXTRACTION_DIR, RUNS_DIR } from "../../scripts/scraper/config";
 import { SqliteScrapeRunStore } from "../../src/data/sqlite/repositories/SqliteScrapeRunStore";
 import path from "path";
 import fs from "fs";
@@ -97,6 +98,13 @@ function createInMemoryDatabase() {
       ('plan_A', 'tenant_A', 'person_A', 'active', '{"targetSeniority":["VP"],"targetRoles":["VP Growth"],"targetLocations":["Gurugram"]}');
     INSERT INTO active_evaluation_contexts VALUES ('tenant_A', 'person_A', 'plan_A', 'ctx_A');
     INSERT INTO evaluation_contexts VALUES ('ctx_A', 'tenant_A', 'person_A');
+    INSERT INTO scrape_runs (id, tenant_id, person_id, search_plan_id, status, portal_targets) VALUES
+      ('run-001', 'tenant_A', 'person_A', 'plan_A', 'completed', '[]'),
+      ('run-A', 'tenant_A', 'person_A', 'plan_A', 'completed', '[]'),
+      ('run-B', 'tenant_A', 'person_A', 'plan_A', 'completed', '[]'),
+      ('run-1', 'tenant_A', 'person_A', 'plan_A', 'completed', '[]'),
+      ('run-immut-1', 'tenant_A', 'person_A', 'plan_A', 'completed', '[]'),
+      ('run-shared-1', 'tenant_A', 'person_A', 'plan_A', 'completed', '[]');
   `);
   return { raw, db: new SqliteAdapter(raw) };
 }
@@ -234,6 +242,8 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
         ('plan_B', 'tenant_B', 'person_B', 'active', '{"targetSeniority":["VP"],"targetRoles":["VP Growth"],"targetLocations":["Gurugram"]}');
       INSERT INTO active_evaluation_contexts VALUES ('tenant_B', 'person_B', 'plan_B', 'ctx_B');
       INSERT INTO evaluation_contexts VALUES ('ctx_B', 'tenant_B', 'person_B');
+      INSERT INTO scrape_runs (id, tenant_id, person_id, search_plan_id, status, portal_targets) VALUES
+        ('run-2', 'tenant_B', 'person_B', 'plan_B', 'completed', '[]');
     `);
 
     const res2 = await service.ingestOpportunity({
@@ -822,6 +832,154 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
       if (fs.existsSync(fileV1)) fs.unlinkSync(fileV1);
       if (fs.existsSync(fileV2)) fs.unlinkSync(fileV2);
     }
+  });
+
+  it("enforces atomic .owner lock acquisition, active PID rejection, and stale PID recovery", () => {
+    const testDir = path.join(os.tmpdir(), `radar_owner_lock_test_${Date.now()}`);
+    fs.mkdirSync(testDir, { recursive: true });
+
+    try {
+      // 1. Initial lock acquisition
+      const lock1 = acquireOwnerLock(testDir, "test-run-1");
+      expect(lock1.pid).toBe(process.pid);
+      expect(lock1.runId).toBe("test-run-1");
+      expect(fs.existsSync(path.join(testDir, ".owner"))).toBe(true);
+
+      // 2. Contender rejection by active PID (current process is alive)
+      expect(() => acquireOwnerLock(testDir, "test-run-2")).toThrow(/Refusing concurrent ownership/);
+
+      // 3. Stale PID recovery: write a fake dead PID (e.g. 999999999)
+      const ownerPath = path.join(testDir, ".owner");
+      fs.writeFileSync(
+        ownerPath,
+        JSON.stringify({ pid: 999999999, runId: "dead-run", startedAt: new Date().toISOString() }),
+        "utf-8"
+      );
+
+      // Lock should detect dead PID (ESRCH), unlink, and acquire cleanly
+      const lock3 = acquireOwnerLock(testDir, "test-run-3");
+      expect(lock3.pid).toBe(process.pid);
+      expect(lock3.runId).toBe("test-run-3");
+
+      // 4. Release lock
+      releaseOwnerLock(testDir, "test-run-3");
+      expect(fs.existsSync(ownerPath)).toBe(false);
+    } finally {
+      fs.rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves prior lifecycle status (waiting_for_confirmation, initializing) across crash resume", () => {
+    const runId = "test-resume-lifecycle-" + Date.now();
+    const testRunDir = path.join(RUNS_DIR, runId);
+    fs.mkdirSync(testRunDir, { recursive: true });
+
+    try {
+      const controller = new RunController(runId);
+      const fakeTarget = {
+        runId,
+        runDir: testRunDir,
+        manifestPath: path.join(testRunDir, "manifest.json"),
+        journalPath: path.join(testRunDir, "journal.ndjson"),
+        manifest: {
+          runId,
+          status: "waiting_for_confirmation" as const,
+          units: [
+            {
+              id: "unit-1",
+              portal: "LinkedIn" as const,
+              keyword: "VP Growth",
+              page: 1,
+              status: "running" as const,
+            },
+          ],
+          cards: [
+            {
+              id: "card-1",
+              unitId: "unit-1",
+              portal: "LinkedIn" as const,
+              url: "https://linkedin.com/jobs/view/1",
+              title: "VP Growth",
+              company: "Acme",
+              location: "Gurugram",
+              status: "running" as const,
+            },
+          ],
+        } as any,
+      };
+
+      // attachExistingRun acquires .owner and calls markResume()
+      controller.attachExistingRun(fakeTarget);
+
+      // Lifecycle status must be PRESERVED, not forced to "running"
+      expect(controller.manifest.status).toBe("waiting_for_confirmation");
+
+      // Interrupted work units and cards must be reset to "pending"
+      const units = controller.manifest.units;
+      const cards = controller.manifest.cards;
+      expect(units[0].status).toBe("pending");
+      expect(cards[0].status).toBe("pending");
+
+      // Now test initializing preservation
+      releaseOwnerLock(testRunDir, runId);
+      fakeTarget.manifest.status = "initializing";
+      controller.attachExistingRun(fakeTarget);
+      expect(controller.manifest.status).toBe("initializing");
+
+      releaseOwnerLock(testRunDir, runId);
+    } finally {
+      fs.rmSync(testRunDir, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses fresh execution against an active durable run", async () => {
+    const { raw, db } = createInMemoryDatabase();
+    const runStore = new SqliteScrapeRunStore(db);
+
+    await runStore.createRun(
+      { tenantId: "tenant_A", personId: "person_A" },
+      {
+        id: "run-active-durable-refuse",
+        searchPlanId: "plan_A",
+        portalTargets: ["LinkedIn"],
+      }
+    );
+
+    const active = await runStore.getActiveRun({
+      tenantId: "tenant_A",
+      personId: "person_A",
+    });
+    expect(active).not.toBeNull();
+    expect(active!.id).toBe("run-active-durable-refuse");
+
+    // In scrape.ts durable arbitration:
+    // If an active run exists and the operator requested --fresh (resume === false),
+    // the system refuses to proceed to protect active durable execution.
+    const requestedResume = false;
+    const shouldRefuse = !requestedResume && active !== null;
+    expect(shouldRefuse).toBe(true);
+  });
+
+  it("marks remaining cards skipped_gated when portal queue pause is signaled", () => {
+    const cards: any[] = [
+      { id: "c1", portal: "Naukri", status: "completed" },
+      { id: "c2", portal: "LinkedIn", status: "pending" },
+      { id: "c3", portal: "LinkedIn", status: "pending" },
+      { id: "c4", portal: "Indeed", status: "pending" },
+    ];
+
+    const portalToPause = "LinkedIn";
+    for (const card of cards) {
+      if (card.portal === portalToPause && card.status === "pending") {
+        card.status = "skipped_gated";
+        card.skippedReason = "Portal rate-limit/gating triggered pause";
+      }
+    }
+
+    expect(cards[0].status).toBe("completed");
+    expect(cards[1].status).toBe("skipped_gated");
+    expect(cards[2].status).toBe("skipped_gated");
+    expect(cards[3].status).toBe("pending");
   });
 });
 

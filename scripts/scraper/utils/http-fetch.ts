@@ -5,7 +5,7 @@ import type {
   ContentQualityResult,
   ContentQualityTier
 } from "../types";
-import { validateJobDocument } from "../../../src/lib/acquisition/validator";
+import { validateJobDocument, type DocumentContentOrigin } from "../../../src/lib/acquisition/validator";
 
 // Global keep-alive agent to reuse TLS handshakes across concurrent detail requests.
 const agent = new Agent({
@@ -59,7 +59,8 @@ const CODE_OR_SCRIPT_PATTERNS = [
 export function evaluateContentQuality(
   text: string,
   title?: string,
-  company?: string
+  company?: string,
+  contentOrigin?: DocumentContentOrigin
 ): ContentQualityResult {
   const validation = validateJobDocument({
     extractedText: text,
@@ -69,6 +70,7 @@ export function evaluateContentQuality(
     extractedCompany: company,
     expectedTitle: title,
     expectedCompany: company,
+    contentOrigin: contentOrigin || "DETAIL_DOCUMENT",
     provenance: "SANITIZED_DOM",
   });
   const document = validation.document;

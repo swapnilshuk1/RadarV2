@@ -91,12 +91,25 @@ export interface EnrichmentDispatchPayload {
   snapshotPath?: string;
 }
 
-export interface IngestScopeFilter {
-  tenantId?: string;
-  personId?: string;
-  searchPlanId?: string;
-  runId?: string;
-}
+export type IngestScope =
+  | { mode: "GLOBAL_MARKET"; runId?: string }
+  | {
+      mode: "SCOPED";
+      tenantId: string;
+      personId: string;
+      searchPlanId: string;
+      runId?: string;
+    };
+
+export type IngestScopeFilter =
+  | IngestScope
+  | {
+      tenantId?: string;
+      personId?: string;
+      searchPlanId?: string;
+      runId?: string;
+      mode?: "GLOBAL_MARKET" | "SCOPED";
+    };
 
 export interface CanonicalIngestionResult {
   canonicalJobId: string;
@@ -159,6 +172,19 @@ export class CanonicalIngestionService {
     payload: IngestOpportunityPayload,
     scopeFilter?: IngestScopeFilter
   ): Promise<CanonicalIngestionResult> {
+    // Scope Validation (Fail-closed early boundary)
+    const hasTenant = Boolean(scopeFilter && "tenantId" in scopeFilter && scopeFilter.tenantId);
+    const hasPerson = Boolean(scopeFilter && "personId" in scopeFilter && scopeFilter.personId);
+    const hasPlan = Boolean(scopeFilter && "searchPlanId" in scopeFilter && scopeFilter.searchPlanId);
+    const isExplicitGlobal = scopeFilter?.mode === "GLOBAL_MARKET";
+    const isFullyScoped = hasTenant && hasPerson && hasPlan && scopeFilter?.mode !== "GLOBAL_MARKET";
+
+    if (scopeFilter && !isExplicitGlobal && !isFullyScoped) {
+      throw new AcquisitionIntegrityError(
+        `PARTIAL_SCOPE_REJECTED: Acquisition scope must be either fully qualified (tenantId, personId, searchPlanId) or explicit GLOBAL_MARKET mode. Received: tenantId=${(scopeFilter as any)?.tenantId}, personId=${(scopeFilter as any)?.personId}, searchPlanId=${(scopeFilter as any)?.searchPlanId}`
+      );
+    }
+
     const source = payload.sourcePortal.trim();
     let sourceJobId = payload.sourceJobId.trim();
     const title = payload.jobTitle.trim();
@@ -191,7 +217,7 @@ export class CanonicalIngestionService {
       expectedTitle: title,
       extractedCompany: companyName || undefined,
       extractedLocation: location || undefined,
-      contentOrigin: payload.contentOrigin,
+      contentOrigin: payload.contentOrigin || "DETAIL_DOCUMENT",
       provenance: "BLOB",
     });
     const document = documentValidation.document;
@@ -333,38 +359,35 @@ export class CanonicalIngestionService {
       description: rawContentForStorage,
     }));
 
-    try {
-      // 2. Fetch Active Search Plans (strictly joined to verified people & tenants to enforce referential integrity)
-      let planQuery = `
-        SELECT sp.id, sp.tenant_id, sp.person_id, sp.criteria_json 
-        FROM search_plans sp
-        JOIN people p ON sp.person_id = p.id AND sp.tenant_id = p.tenant_id
-        JOIN tenants t ON sp.tenant_id = t.id
-        WHERE sp.status = 'active'
-      `;
-      const planParams: unknown[] = [];
 
-      if (scopeFilter?.tenantId) {
-        planQuery += ` AND sp.tenant_id = ?`;
-        planParams.push(scopeFilter.tenantId);
-      }
-      if (scopeFilter?.personId) {
-        planQuery += ` AND sp.person_id = ?`;
-        planParams.push(scopeFilter.personId);
-      }
-      if (scopeFilter?.searchPlanId) {
-        planQuery += ` AND sp.id = ?`;
-        planParams.push(scopeFilter.searchPlanId);
-      }
 
-      activePlans = await this.db.many<{
-        id: string;
-        tenant_id: string;
-        person_id: string;
-        criteria_json: string | null;
-      }>(planQuery, planParams);
+      try {
+        if (isExplicitGlobal) {
+          activePlans = [];
+        } else {
+          let planQuery = `
+            SELECT sp.id, sp.tenant_id, sp.person_id, sp.criteria_json 
+            FROM search_plans sp
+            JOIN people p ON sp.person_id = p.id AND sp.tenant_id = p.tenant_id
+            JOIN tenants t ON sp.tenant_id = t.id
+            WHERE sp.status = 'active'
+          `;
+          const planParams: unknown[] = [];
 
-      await this.db.transaction(async (tx) => {
+          if (isFullyScoped) {
+            planQuery += ` AND sp.tenant_id = ? AND sp.person_id = ? AND sp.id = ?`;
+            planParams.push((scopeFilter as any).tenantId, (scopeFilter as any).personId, (scopeFilter as any).searchPlanId);
+          }
+
+          activePlans = await this.db.many<{
+            id: string;
+            tenant_id: string;
+            person_id: string;
+            criteria_json: string | null;
+          }>(planQuery, planParams);
+        }
+
+        await this.db.transaction(async (tx) => {
         // 3.0 Check if canonical opportunity already exists
       const existingOpp = await tx.one<{ id: string }>(
         `SELECT id FROM canonical_opportunities WHERE source = ? AND source_job_id = ?`,
@@ -426,6 +449,22 @@ export class CanonicalIngestionService {
       effectiveVersionId = existingVersion?.id || versionId;
       effectiveVersionCreatedAt = existingVersion?.created_at || versionRecord.createdAt;
 
+      // 3.2.2 Derive single trusted verifiedRunId for all canonical run references
+      let verifiedRunId: string | null = null;
+      if (isFullyScoped && scopeFilter && "runId" in scopeFilter && scopeFilter.runId) {
+        const runRow = await tx.one<{ id: string }>(
+          `SELECT id FROM scrape_runs
+           WHERE id = ? AND tenant_id = ? AND person_id = ? AND search_plan_id = ?`,
+          [scopeFilter.runId, (scopeFilter as any).tenantId, (scopeFilter as any).personId, (scopeFilter as any).searchPlanId]
+        );
+        if (!runRow) {
+          throw new AcquisitionIntegrityError(
+            `RUN_SCOPE_MISMATCH: Scrape run '${scopeFilter.runId}' does not belong to scope (${(scopeFilter as any).tenantId}, ${(scopeFilter as any).personId}, ${(scopeFilter as any).searchPlanId})`
+          );
+        }
+        verifiedRunId = runRow.id;
+      }
+
       enrichmentJobId = null;
       isNewEnrichmentJob = false;
       let enrichmentJobStatus: string | null = null;
@@ -444,6 +483,7 @@ export class CanonicalIngestionService {
         if (existingJob) {
           enrichmentJobId = existingJob.id;
           enrichmentJobStatus = existingJob.status;
+          // Note: historical run_id on existingJob is preserved; never overwritten on global or different run reuse
         } else {
           const newJobId = `enrich_${crypto.createHash("sha256").update(`${canonicalJobId}:${effectiveVersionId}:${pipelineVersion}`).digest("hex").slice(0, 24)}`;
           enrichmentJobId = newJobId;
@@ -466,7 +506,7 @@ export class CanonicalIngestionService {
               pipelineVersion,
               payload.enrichmentDispatch.snapshotPath || "",
               payloadKey,
-              payload.enrichmentDispatch.runId || scopeFilter?.runId || null,
+              verifiedRunId,
               payload.enrichmentDispatch.executionPlanId || null,
               payload.enrichmentDispatch.definitionId || null,
               payload.enrichmentDispatch.familyId || null,
@@ -482,12 +522,11 @@ export class CanonicalIngestionService {
           );
         }
 
-        const boundRunId = scopeFilter?.runId || payload.enrichmentDispatch.runId;
-        if (boundRunId && enrichmentJobId) {
+        if (verifiedRunId && enrichmentJobId) {
           await tx.execute(
             `INSERT OR IGNORE INTO scrape_run_enrichment_requirements (run_id, enrichment_job_id)
              VALUES (?, ?)`,
-            [boundRunId, enrichmentJobId]
+            [verifiedRunId, enrichmentJobId]
           );
         }
       }
@@ -631,12 +670,12 @@ export class CanonicalIngestionService {
             ]
           );
 
-          if (scopeFilter?.runId) {
+          if (verifiedRunId) {
             await tx.execute(
               `INSERT INTO scrape_run_evaluation_requirements (run_id, evaluation_requirement_id)
                VALUES (?, ?)
                ON CONFLICT(run_id, evaluation_requirement_id) DO NOTHING`,
-              [scopeFilter.runId, reqId]
+              [verifiedRunId, reqId]
             );
           }
           jobsEnqueued++;

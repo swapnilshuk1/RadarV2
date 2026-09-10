@@ -39,7 +39,7 @@ import { fastFetchDetail } from "./scraper/utils/http-fetch";
 import { EnrichmentQueue } from "./scraper/persist/queue";
 import { resolveCanonicalIdentity, sourceIdentityForCard, acquisitionSurfaceKey } from "../src/lib/acquisition/canonical-identity";
 import { parseVerifiedIndeedListingUrl } from "../src/lib/acquisition/indeed-listing-identity";
-import { FailurePolicyEngine } from "../src/lib/acquisition/failure-taxonomy";
+import { FailurePolicyEngine, type FailureClass } from "../src/lib/acquisition/failure-taxonomy";
 import { ResponseValidator } from "../src/lib/acquisition/validator";
 import { passesHardFilter } from "./scraper/utils/hard-filter";
 import { HealthManager } from "./scraper/run/health-manager";
@@ -263,8 +263,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   const resolvedVariants = opts.variants || (resolvedPlan ? compileMultiLocationCoverageVariants(resolvedPlan, portals) : undefined);
   const variantsSignature = computeVariantsSignature(resolvedVariants);
 
-  let mgr = new RunController();
-  const { resumed } = mgr.init({
+  const runControllerOpts: RunControllerOptions = {
     keywords: resolvedKeywords,
     portals,
     maxPages,
@@ -277,9 +276,12 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     snapshotId: resolvedPlan?.snapshotId,
     contextFingerprint: resolvedPlan?.contextFingerprint,
     variantsSignature,
-  });
+  };
 
+  let mgr = new RunController();
+  let resumed = false;
   let runScope: any = null;
+
   if (opts.authContext) {
     runScope = {
       tenantId: opts.authContext.tenantId,
@@ -288,116 +290,99 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     };
     try {
       const repos = getRepositories();
-      if (resumed) {
-        const existingDurableRun = await repos.scrapeRuns.getRun(runScope, mgr.runId);
+      const activeDurableRun = await repos.scrapeRuns.getActiveRun(runScope);
 
+      if (activeDurableRun) {
+        const activeStatus = activeDurableRun.status;
+
+        // Invariant: If actively in downstream pipeline, refuse fresh acquisition to protect workers
+        if (activeStatus === "enriching" || activeStatus === "completing") {
+          log(
+            `Active durable run ${activeDurableRun.id} is currently in downstream state '${activeStatus}'. Refusing fresh acquisition to protect active downstream pipeline.`,
+            "error"
+          );
+          throw new Error(
+            `Cannot start fresh acquisition for (${runScope.tenantId}, ${runScope.personId}): active run ${activeDurableRun.id} is currently ${activeStatus}.`
+          );
+        }
+
+        // Invariant: If stopping or queued, refuse concurrent start
+        if (activeStatus === "stopping") {
+          throw new Error(
+            `Cannot start acquisition for (${runScope.tenantId}, ${runScope.personId}): active run ${activeDurableRun.id} is currently stopping. Wait for it to reach a terminal state.`
+          );
+        }
+        if (activeStatus === "queued") {
+          throw new Error(
+            `Cannot start acquisition for (${runScope.tenantId}, ${runScope.personId}): run ${activeDurableRun.id} is queued. Concurrent start prohibited.`
+          );
+        }
+
+        // Invariant: If user requested fresh or resume: false, REFUSE if any active durable run exists (never supersede or overwrite ownership)
+        if (freshRun || opts.resume === false) {
+          throw new Error(
+            `Cannot start fresh acquisition for (${runScope.tenantId}, ${runScope.personId}): active durable run ${activeDurableRun.id} is currently ${activeStatus}. Clear or wait for active run before starting fresh.`
+          );
+        }
+
+        // Match durable identity against resolved plan
         let durableIdentity: any = null;
-        if (existingDurableRun?.configJson) {
+        if (activeDurableRun.configJson) {
           try {
-            const parsed = JSON.parse(existingDurableRun.configJson);
+            const parsed = JSON.parse(activeDurableRun.configJson);
             durableIdentity = parsed?.acquisitionIdentity || parsed?.config?.acquisitionIdentity;
           } catch {}
         }
 
-        const isDurableResumable =
-          existingDurableRun &&
-          (existingDurableRun.status === "initializing" || existingDurableRun.status === "running");
-
-        // Resume requires agreement among all sources:
-        // current resolved plan == local manifest identity == durable scrape_runs.config_json identity
-        // plus durable searchPlanId matches
         const isPlanMatching = resolvedPlan
-          ? existingDurableRun?.searchPlanId === resolvedPlan.searchPlanId &&
-            mgr.manifest.searchPlanId === resolvedPlan.searchPlanId &&
+          ? activeDurableRun.searchPlanId === resolvedPlan.searchPlanId &&
             (!durableIdentity?.searchPlanId || durableIdentity.searchPlanId === resolvedPlan.searchPlanId) &&
             (!resolvedPlan.snapshotId ||
-              (mgr.manifest.snapshotId === resolvedPlan.snapshotId &&
-                (!durableIdentity?.snapshotId || durableIdentity.snapshotId === resolvedPlan.snapshotId))) &&
+              (!durableIdentity?.snapshotId || durableIdentity.snapshotId === resolvedPlan.snapshotId)) &&
             (!resolvedPlan.contextFingerprint ||
-              (mgr.manifest.contextFingerprint === resolvedPlan.contextFingerprint &&
-                (!durableIdentity?.contextFingerprint ||
-                  durableIdentity.contextFingerprint === resolvedPlan.contextFingerprint))) &&
+              (!durableIdentity?.contextFingerprint ||
+                durableIdentity.contextFingerprint === resolvedPlan.contextFingerprint)) &&
             (!variantsSignature ||
-              (mgr.manifest.variantsSignature === variantsSignature &&
-                (!durableIdentity?.variantsSignature || durableIdentity.variantsSignature === variantsSignature)))
+              (!durableIdentity?.variantsSignature || durableIdentity.variantsSignature === variantsSignature))
           : true;
 
-        if (isDurableResumable && isPlanMatching) {
-          log(`Validated existing durable scrape_run for resume: ${mgr.runId} (status: ${existingDurableRun.status})`);
-        } else {
-          // If the existing durable run is actively enriching or completing, DO NOT abort or supersede it.
-          // Those states mean acquisition finished successfully and distributed worker obligations are actively processing.
-          // Refuse fresh acquisition to protect the active downstream pipeline.
-          if (
-            existingDurableRun &&
-            (existingDurableRun.status === "enriching" || existingDurableRun.status === "completing")
-          ) {
-            log(
-              `Active durable run ${existingDurableRun.id} is currently in downstream state '${existingDurableRun.status}'. Refusing fresh acquisition to protect active downstream pipeline.`,
-              "error"
-            );
-            throw new Error(
-              `Cannot start fresh acquisition for (${runScope.tenantId}, ${runScope.personId}): active run ${existingDurableRun.id} is currently ${existingDurableRun.status}.`
-            );
-          }
-
-          // Stale, mismatched, or finished run cannot be resumed. Force a fresh run.
-          // Supersede/abort ONLY if the existing run is in an active acquisition state (initializing or running).
-          log(
-            `Run ${mgr.runId} exists with non-resumable state (status='${existingDurableRun?.status || "missing"}', planMatch=${isPlanMatching}) — forcing fresh run`,
-            "warn"
+        if (!isPlanMatching) {
+          throw new Error(
+            `Cannot resume active run ${activeDurableRun.id}: search plan identity mismatch between active run and requested scope.`
           );
-          if (
-            existingDurableRun &&
-            (existingDurableRun.status === "initializing" || existingDurableRun.status === "running")
-          ) {
-            await repos.scrapeRuns.updateRunStatus(
-              runScope,
-              existingDurableRun.id,
-              "aborted",
-              "Superseded by fresh run due to search plan identity mismatch or non-resumable state"
+        }
+
+        // Check reattachment / resume based on active status
+        if (activeStatus === "waiting_for_confirmation") {
+          const reattachable = mgr.tryLoadForConfirmationReattach(activeDurableRun.id, runControllerOpts);
+          if (!reattachable) {
+            throw new Error(
+              `Cannot reattach to run ${activeDurableRun.id} in state 'waiting_for_confirmation': local manifest missing or incompatible.`
             );
-            log(`Superseded stale active acquisition run: ${existingDurableRun.id}`);
           }
-          try {
-            mgr.journal?.close();
-          } catch {}
-          mgr = new RunController();
-          mgr.init({
-            keywords: resolvedKeywords,
-            portals,
-            maxPages,
-            maxCardsPerPage: maxCardsPerPage ?? CONFIG.maxCardsPerPage,
-            resume: false,
-            variants: resolvedVariants,
-            adaptiveDepth: true,
-            initialPages: 1,
-            searchPlanId: resolvedPlan?.searchPlanId,
-            snapshotId: resolvedPlan?.snapshotId,
-            contextFingerprint: resolvedPlan?.contextFingerprint,
-            variantsSignature,
-          });
-          await repos.scrapeRuns.createRun(runScope, {
-            id: mgr.runId,
-            searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
-            portalTargets: portals,
-            initialStatus: "initializing",
-            config: {
-              maxPages,
-              keywords: resolvedKeywords,
-              acquisitionIdentity: {
-                searchPlanId: resolvedPlan?.searchPlanId,
-                snapshotId: resolvedPlan?.snapshotId,
-                contextFingerprint: resolvedPlan?.contextFingerprint,
-                variantsSignature,
-              },
-            },
-          });
-          log(`Created new durable scrape_run in Turso Cloud: ${mgr.runId}`);
+          mgr.attachExistingRun(reattachable);
+          resumed = true;
+          log(`Reattached to existing durable scrape_run in waiting_for_confirmation: ${mgr.runId}`);
+        } else if (activeStatus === "initializing" || activeStatus === "running") {
+          const resumable = mgr.tryLoadForResume(activeDurableRun.id, runControllerOpts);
+          if (!resumable) {
+            throw new Error(
+              `Cannot resume active run ${activeDurableRun.id} in state '${activeStatus}': local manifest missing or incompatible.`
+            );
+          }
+          mgr.attachExistingRun(resumable);
+          resumed = true;
+          log(`Validated existing durable scrape_run for resume: ${mgr.runId} (status: ${activeStatus})`);
+        } else {
+          throw new Error(
+            `Cannot resume run ${activeDurableRun.id}: unexpected status '${activeStatus}'.`
+          );
         }
       } else {
+        // No active durable run. Create a new one!
+        const newRunId = RunController.generateRunId();
         await repos.scrapeRuns.createRun(runScope, {
-          id: mgr.runId,
+          id: newRunId,
           searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
           portalTargets: portals,
           initialStatus: "initializing",
@@ -412,12 +397,35 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             },
           },
         });
-        log(`Created durable scrape_run in Turso Cloud: ${mgr.runId} for tenant ${runScope.tenantId}`);
+        log(`Created new durable scrape_run in Turso Cloud: ${newRunId}`);
+
+        // Now initialize local RunController with compensation if it fails
+        try {
+          mgr.initFresh(newRunId, runControllerOpts);
+        } catch (initErr: any) {
+          log(`Local initFresh failed for ${newRunId}: ${initErr.message}; compensating in Turso Cloud`, "error");
+          try {
+            await repos.scrapeRuns.transitionRunStatus(
+              runScope,
+              newRunId,
+              "initializing",
+              "aborted",
+              `Local initialization failed: ${initErr.message}`
+            );
+          } catch (compErr: any) {
+            log(`Failed to compensate aborted run ${newRunId}: ${compErr.message}`, "error");
+          }
+          throw initErr;
+        }
       }
     } catch (e: any) {
       log(`Failed to create or validate durable scrape_run: ${e.message}`, "warn");
       throw e;
     }
+  } else {
+    // Unauthenticated mode: standard local RunController init
+    const initRes = mgr.init(runControllerOpts);
+    resumed = initRes.resumed;
   }
 
   // Register active controller strictly AFTER resolution/replacement so activeRunControllers
@@ -466,11 +474,6 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     try {
       // Phase 1: Initializing
       mgr.transitionTo("initializing");
-      if (runScope) {
-        try {
-          await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "running");
-        } catch {}
-      }
 
       await pool(portals, CONFIG.portalConcurrency, async (portal) => {
         const plog = makeLogger(`scrape:${portal}`);
@@ -571,15 +574,38 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         }
       });
 
-      // Phase 2: Polling Pause
+      // Phase 2: Confirmation / Polling Pause
       const autoConfirm = opts.autoConfirm ?? CONFIG.autoConfirm;
       if (!autoConfirm) {
         mgr.transitionTo("waiting_for_confirmation");
+        if (runScope) {
+          try {
+            await getRepositories().scrapeRuns.transitionRunStatus(
+              runScope,
+              mgr.runId,
+              "initializing",
+              "waiting_for_confirmation"
+            );
+          } catch (e: any) {
+            log(`Warning transitioning to waiting_for_confirmation: ${e.message}`, "warn");
+          }
+        }
         log("Waiting for user confirmation. (Set AUTO_CONFIRM=true to bypass)");
         const deadline = Date.now() + 15 * 60 * 1000; // 15 mins
         while (true) {
           if (Date.now() > deadline) {
              mgr.transitionTo("aborted");
+             if (runScope) {
+               try {
+                 await getRepositories().scrapeRuns.transitionRunStatus(
+                   runScope,
+                   mgr.runId,
+                   ["initializing", "waiting_for_confirmation"],
+                   "aborted",
+                   "Confirmation timeout (15 mins)"
+                 );
+               } catch {}
+             }
              log("Run aborted due to 15-minute confirmation timeout.", "error");
              break;
           }
@@ -588,13 +614,43 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           try {
             currentManifest = JSON.parse(fs.readFileSync(mgr.manifestPath, "utf-8"));
           } catch {}
-          if (currentManifest.status === "running") {
-             mgr.manifest = currentManifest; // sync in-memory
+
+          // Also check Turso Cloud if runScope is present
+          let durableRun: any = null;
+          if (runScope) {
+            try {
+              durableRun = await getRepositories().scrapeRuns.getRun(runScope, mgr.runId);
+            } catch {}
+          }
+
+          if (currentManifest.status === "running" || durableRun?.status === "running") {
+             mgr.manifest.status = "running";
+             if (runScope && durableRun?.status !== "running") {
+               try {
+                 await getRepositories().scrapeRuns.transitionRunStatus(
+                   runScope,
+                   mgr.runId,
+                   ["initializing", "waiting_for_confirmation"],
+                   "running"
+                 );
+               } catch {}
+             }
              log("Confirmation received! Starting execution...");
              break;
           }
-          if (currentManifest.status === "aborted") {
-             mgr.manifest = currentManifest; // sync in-memory
+          if (currentManifest.status === "aborted" || durableRun?.status === "aborted") {
+             mgr.manifest.status = "aborted";
+             if (runScope && durableRun?.status !== "aborted") {
+               try {
+                 await getRepositories().scrapeRuns.transitionRunStatus(
+                   runScope,
+                   mgr.runId,
+                   ["initializing", "waiting_for_confirmation"],
+                   "aborted",
+                   "Aborted by user"
+                 );
+               } catch {}
+             }
              log("Run aborted by user.", "error");
              break;
           }
@@ -602,6 +658,18 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         }
       } else {
         mgr.transitionTo("running");
+        if (runScope) {
+          try {
+            await getRepositories().scrapeRuns.transitionRunStatus(
+              runScope,
+              mgr.runId,
+              ["initializing", "waiting_for_confirmation"],
+              "running"
+            );
+          } catch (e: any) {
+            log(`Warning transitioning to running: ${e.message}`, "warn");
+          }
+        }
       }
 
       if (mgr.manifest.status === "aborted") {
@@ -663,6 +731,18 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           if (outcome) {
             portalIngested += outcome.opportunities;
             portalFacts += outcome.factsCreated;
+            if (outcome.pausePortalQueue) {
+              plog(`Portal queue pause triggered for ${unit.portal}. Pruning remaining pending units for this portal.`, "warn");
+              for (const u of mgr.manifest.units) {
+                if (u.portal === unit.portal && u.status === "pending") {
+                  mgr.updateUnit(u.id, {
+                    status: "skipped_gated",
+                    error: `Pruned due to portal pause condition in ${unit.id}`
+                  });
+                }
+              }
+              break;
+            }
           }
           await syncManifestProgress(mgr, "discover");
           await jitter();
@@ -819,6 +899,7 @@ export type ProcessOutcome = {
   newJobs: number;
   duplicates: number;
   warnings: string[];
+  pausePortalQueue?: boolean;
 };
 
 
@@ -1018,12 +1099,21 @@ async function processUnit(
     const historicalLedgerCardIds = new Set<string>();
     let pageCanonicalIngested = 0;
     let integrityFailuresInUnit = 0;
+    let portalPauseTriggered = false;
+    let attemptedDetailCount = 0;
+    let usableDetailAcquired = 0;
+    let sourceFailuresInUnit = 0;
+    let primaryFailureClass: FailureClass | null = null;
 
     // Cards for a single unit run in parallel with a bounded pool.
     await pool(cards, CONFIG.detailConcurrency, async (feedCard) => {
       const cardUnitId = `${unit.id}#${feedCard.cardHash}`;
       if (mgr.isCancellationRequested()) {
         mgr.updateCard(cardUnitId, { status: "skipped_pruned", error: "Run cancelled/aborted" });
+        return null;
+      }
+      if (portalPauseTriggered) {
+        mgr.updateCard(cardUnitId, { status: "skipped_gated", error: "Portal paused due to anti-bot or access challenge" });
         return null;
       }
       const cardUnit = mgr.manifest.cards.find((c) => c.id === cardUnitId);
@@ -1088,7 +1178,11 @@ async function processUnit(
 
         if (!preQual.pass) {
           mgr.recordTelemetry("hardFiltered");
-          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: `[HardFilter:${preQual.reasonCode}] ${preQual.reason}` });
+          mgr.updateCard(cardUnitId, {
+            status: "skipped_empty",
+            error: `[HardFilter:${preQual.reasonCode}] ${preQual.reason}`,
+            failureKind: "EXPECTED_REJECTION",
+          });
           return null;
         }
 
@@ -1106,11 +1200,16 @@ async function processUnit(
         const isInMemoryDuplicate = seenUrls.has(identity.canonicalUrl) || seenCanonicalIds.has(identity.canonicalJobId);
         if (isInMemoryDuplicate) {
           mgr.recordTelemetry("duplicatePreDetail");
-          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Canonical URL (Current Run, Pre-Detail)" });
+          mgr.updateCard(cardUnitId, {
+            status: "skipped_empty",
+            error: "Duplicate Canonical URL (Current Run, Pre-Detail)",
+            failureKind: "EXPECTED_REJECTION",
+          });
           outcome.duplicates++;
           return null;
         }
 
+        attemptedDetailCount++;
         seenUrls.add(identity.canonicalUrl);
         seenCanonicalIds.add(identity.canonicalJobId);
 
@@ -1502,7 +1601,25 @@ async function processUnit(
           });
 
           if (!valResult.isValid || !detail.fetched) {
-            const failureClass = detail.identityResolutionFailure || valResult.failureClass || (detail.fetchError?.includes("< 200") ? "INSUFFICIENT_CONTENT" : "UNKNOWN_FAILURE");
+            const rawFailureClass = detail.identityResolutionFailure || valResult.failureClass || (detail.fetchError?.includes("< 200") ? "INSUFFICIENT_CONTENT" : "UNKNOWN_FAILURE");
+            const failureClass: FailureClass = (rawFailureClass in {
+              HTTP_TIMEOUT: 1, HTTP_SERVER_ERROR: 1, NAVIGATION_TIMEOUT: 1, DNS_ERROR: 1, CONNECTION_ERROR: 1,
+              LOGIN_REQUIRED: 1, CAPTCHA_CHALLENGE: 1, RATE_LIMIT_429: 1, BOT_CHALLENGE_BLOCK: 1,
+              EMPTY_CONTENT: 1, INSUFFICIENT_CONTENT: 1, WRONG_PAGE_REDIRECT: 1, WRONG_PAGE: 1,
+              UNRESOLVED_REDIRECT: 1, UNEXTRACTED_PDF: 1, PARTIAL_CONTENT: 1, INVALID_SCHEMA: 1,
+              MISSING_JOB_ID: 1, AMBIGUOUS_IDENTITY: 1, LISTING_DOCUMENT_IDENTITY_MISMATCH: 1,
+              EXPIRED: 1, REMOVED_404: 1, PERMANENT_FAILURE: 1
+            }) ? (rawFailureClass as FailureClass) : "PERMANENT_FAILURE";
+
+            primaryFailureClass = primaryFailureClass || failureClass;
+            sourceFailuresInUnit++;
+
+            const recoveryAction = FailurePolicyEngine.evaluate(failureClass, cardUnit.attempts);
+            if (recoveryAction.pausePortalQueue) {
+              portalPauseTriggered = true;
+              outcome.pausePortalQueue = true;
+            }
+
             // Isolate external ATS failure from Naukri portal health/circuit-breaker
             if (
               unit.portal !== "Naukri"
@@ -1513,11 +1630,12 @@ async function processUnit(
             await withPersistenceBoundary("validation failure state recording", async () => {
               await repos.acquisition.updateJobState(ledgerItem.id, {
                 state: detail.identityResolutionFailure ? "IDENTITY_UNRESOLVED" : "ACQUIRING",
+                attemptCount: cardUnit.attempts,
                 terminalState: failureClass === "REMOVED_404"
                   ? "PERMANENT_FAILURE"
-                  : failureClass === "REDIRECT_HOP_LIMIT"
+                  : rawFailureClass === "REDIRECT_HOP_LIMIT"
                     ? "REDIRECT_HOP_LIMIT"
-                    : failureClass === "UNSAFE_REDIRECT_DESTINATION"
+                    : rawFailureClass === "UNSAFE_REDIRECT_DESTINATION"
                       ? "UNSAFE_REDIRECT_DESTINATION"
                       : detail.identityResolutionFailure
                         ? "UNRESOLVED_EXTERNAL_LISTING_IDENTITY"
@@ -1527,7 +1645,12 @@ async function processUnit(
                 validationConfidence: valResult.confidence
               });
             });
-            mgr.updateCard(cardUnitId, { status: "failed", error: `Validation failed: ${failureClass}` });
+            mgr.updateCard(cardUnitId, {
+              status: "failed",
+              error: `Validation failed: ${failureClass}`,
+              failureClass,
+              failureKind: "SOURCE_FAILURE",
+            });
 
             // Failed acquisition remains in the ledger and lineage as evidence,
             // but may never create a canonical market record.  A title/card or
@@ -1551,6 +1674,7 @@ async function processUnit(
             return null;
           }
 
+          usableDetailAcquired++;
           HealthManager.recordSuccess(unit.portal);
 
           // Post-Detail Company Resolution & Lineage Enforcement
@@ -1868,8 +1992,6 @@ async function processUnit(
         });
       } catch (err: any) {
         log(`card ${cardUnitId} failed: ${err.message}`, "error");
-        mgr.updateCard(cardUnitId, { status: "failed", error: err.message });
-        mgr.journal.append({ type: "card_failed", cardId: cardUnitId, error: err.message });
 
         const isIntegrityFailure =
           err?.failureKind === "INTEGRITY_FAILURE" ||
@@ -1878,9 +2000,18 @@ async function processUnit(
           err?.message?.includes("ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH") ||
           err?.message?.includes("ENRICHMENT_PAYLOAD_NOT_FOUND");
 
+        mgr.updateCard(cardUnitId, {
+          status: "failed",
+          error: err.message,
+          failureKind: isIntegrityFailure ? "INTEGRITY_FAILURE" : "SOURCE_FAILURE",
+        });
+        mgr.journal.append({ type: "card_failed", cardId: cardUnitId, error: err.message });
+
         if (isIntegrityFailure) {
           integrityFailuresInUnit++;
           mgr.recordTelemetry("acquisitionIntegrityFailures");
+        } else {
+          sourceFailuresInUnit++;
         }
       }
       return null;
@@ -2037,6 +2168,27 @@ async function processUnit(
 
     const runtimeMs = new Date().getTime() - new Date(mgr.manifest.units.find(u => u.id === unit.id)!.startedAt!).getTime();
 
+    if (outcome.status !== "aborted") {
+      if (integrityFailuresInUnit > 0) {
+        outcome.status = "failed";
+        outcome.warnings.push(`Unit failed with ${integrityFailuresInUnit} acquisition integrity failure(s)`);
+      } else if (portalPauseTriggered || outcome.pausePortalQueue) {
+        outcome.status = "failed";
+        outcome.warnings.push(`Unit failed due to portal pause condition`);
+      } else if (attemptedDetailCount > 0 && usableDetailAcquired === 0 && sourceFailuresInUnit === attemptedDetailCount) {
+        outcome.status = "failed";
+        outcome.warnings.push(`Unit failed: all ${attemptedDetailCount} detail attempts ended in source failure`);
+      } else if (usableDetailAcquired > 0) {
+        outcome.status = "completed";
+      } else {
+        outcome.status = cards.length === 0 ? "skipped_empty" : "completed";
+      }
+    }
+
+    const pageFailureReason = outcome.status === "failed"
+      ? (primaryFailureClass || outcome.warnings[0] || "UnitExecutionFailed")
+      : null;
+
     // -------------------------------------------------------------
     // Emit PageExecutionRecord (The immutable telemetry record)
     // -------------------------------------------------------------
@@ -2065,18 +2217,20 @@ async function processUnit(
         latencyMs: runtimeMs,
         decision,
         decisionReason: reason,
-        failureReason: null,
+        failureReason: pageFailureReason,
         timestamp: new Date().toISOString()
       });
 
       let unitAcqOutcome: AcquisitionOutcome = "SUCCESS";
       const unitWarning = outcome.warnings.join(" ");
-      if (outcome.status === "aborted" || mgr.isCancellationRequested()) {
+      if (integrityFailuresInUnit > 0) {
+        unitAcqOutcome = "INTEGRITY_ERROR";
+      } else if (outcome.status === "aborted" || mgr.isCancellationRequested()) {
         unitAcqOutcome = "TRANSPORT_ERROR"; // Excluded from novelty degradation
-      } else if (outcome.status === "failed" || outcome.status === "skipped_gated") {
-        if (unitWarning.includes("406") || unitWarning.includes("429") || unitWarning.includes("Cloudflare") || unitWarning.includes("blocked") || unitWarning.includes("Anti-bot") || unitWarning.includes("Circuit breaker")) {
+      } else if (outcome.status === "failed") {
+        if (primaryFailureClass === "RATE_LIMIT_429" || primaryFailureClass === "BOT_CHALLENGE_BLOCK" || primaryFailureClass === "CAPTCHA_CHALLENGE" || primaryFailureClass === "LOGIN_REQUIRED" || unitWarning.includes("406") || unitWarning.includes("429") || unitWarning.includes("Cloudflare") || unitWarning.includes("blocked") || unitWarning.includes("Anti-bot") || unitWarning.includes("Circuit breaker")) {
           unitAcqOutcome = "ANTI_BOT";
-        } else if (unitWarning.includes("timeout") || unitWarning.includes("ETIMEDOUT")) {
+        } else if (primaryFailureClass === "HTTP_TIMEOUT" || primaryFailureClass === "NAVIGATION_TIMEOUT" || unitWarning.includes("timeout") || unitWarning.includes("ETIMEDOUT")) {
           unitAcqOutcome = "TIMEOUT";
         } else {
           unitAcqOutcome = "TRANSPORT_ERROR";
@@ -2115,7 +2269,7 @@ async function processUnit(
       cardsSeen: cards.length,
       cardsParsed: cards.length,
       duplicates: canonicalDuplicates,
-      extractionErrors: identityFailed + validationFailed + canonicalIngestFailed,
+      extractionErrors: identityFailed + validationFailed + canonicalIngestFailed + sourceFailuresInUnit,
       qualified: null,
       recommended: null,
       newCompanies: null,
@@ -2130,15 +2284,6 @@ async function processUnit(
       : "";
 
     log(`\n=== PAGE SUMMARY ===\nPortal: ${unit.portal}\nKeyword: ${unit.keyword}\nPage: ${unit.page}\n\nCards Seen ............ ${cards.length}\nCards Parsed .......... ${cardsParsed}\n  ├── Canonical Duplicates ... ${canonicalDuplicates}\n  ├── Ledger Known ........... ${ledgerKnown}\n  ├── Hard Filtered .......... ${hardFiltered}${hfBreakdownStr}\n  ├── Identity Failures ...... ${identityFailed}\n  ├── Validation Failures .... ${validationFailed}\n  └── Novel Accepted ......... ${novelAccepted} (Acquired: ${novelAcquired})\n      └── Canonical Ingested ... ${pageCanonicalIngested} (Total Run: ${mgr.getTelemetry("canonicalOpportunitiesIngested") || 0})\n\nNovelty Rate .......... ${((novelAccepted / Math.max(1, cardsParsed)) * 100).toFixed(1)}%\nDecision .............. ${decision}\nReason ................ ${reason}\n====================\n`, "info");
-    
-    if (outcome.status !== "aborted") {
-      if (integrityFailuresInUnit > 0) {
-        outcome.status = "failed";
-        outcome.warnings.push(`Unit failed with ${integrityFailuresInUnit} acquisition integrity failure(s)`);
-      } else {
-        outcome.status = cards.length === 0 ? "skipped_empty" : "completed";
-      }
-    }
   } catch (err: any) {
     if (mgr.isCancellationRequested() || err?.message?.includes("Target page, context or browser has been closed") || err?.message?.includes("browser has been closed")) {
       outcome.status = "aborted";
