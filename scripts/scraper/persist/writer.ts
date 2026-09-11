@@ -4,7 +4,7 @@ import type { ExtractionResult, DetailedCard } from "../types";
 import { EXTRACTION_DIR, SNAPSHOT_DIR, LIVE_SCRAPED_JSON } from "../config";
 import { writeJsonAtomic, readJsonSafe, fileAgeHours } from "../utils/fs-atomic";
 
-import { EXTRACTOR_VERSION } from "../versions";
+import { EXTRACTOR_VERSION, SCRAPER_VERSION, SNAPSHOT_SCHEMA_VERSION } from "../versions";
 
 export interface CanonicalEvaluationEvidenceReference {
   canonicalJobId: string;
@@ -30,7 +30,13 @@ export function readSnapshotIfFresh(cardHash: string, maxAgeHours: number): Deta
   const p = snapshotPath(cardHash);
   if (!fs.existsSync(p)) return null;
   if (fileAgeHours(p) > maxAgeHours) return null;
-  return readJsonSafe<DetailedCard>(p);
+  const snapshot = readJsonSafe<DetailedCard>(p);
+  if (!snapshot) return null;
+
+  if (snapshot.snapshotSchemaVersion !== SNAPSHOT_SCHEMA_VERSION) return null;
+  if (snapshot.scraperVersion !== SCRAPER_VERSION) return null;
+
+  return snapshot;
 }
 
 export function writeSnapshot(s: DetailedCard): string {

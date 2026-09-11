@@ -51,8 +51,8 @@ import * as httpFetchModule from "../../scripts/scraper/utils/http-fetch";
 import { classifyFastPathResponse } from "../../scripts/scraper/utils/http-fetch";
 import { linkedinHandler } from "../../scripts/scraper/portals/linkedin";
 import { EnrichmentQueue } from "../../scripts/scraper/persist/queue";
-import { extractionPath, readExtractionIfFresh, writeExtraction, collectRecords } from "../../scripts/scraper/persist/writer";
-import { EXTRACTION_DIR, RUNS_DIR, PROFILES_DIR } from "../../scripts/scraper/config";
+import { extractionPath, readExtractionIfFresh, writeExtraction, collectRecords, readSnapshotIfFresh } from "../../scripts/scraper/persist/writer";
+import { EXTRACTION_DIR, RUNS_DIR, PROFILES_DIR, SNAPSHOT_DIR } from "../../scripts/scraper/config";
 import { SqliteScrapeRunStore } from "../../src/data/sqlite/repositories/SqliteScrapeRunStore";
 import path from "path";
 import fs from "fs";
@@ -2184,77 +2184,215 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
         expect(scopedPath).not.toContain(path.join("global"));
       });
 
-      it("GLOBAL_MARKET mode migrates legacy profile when destination is empty and legacy exists", () => {
-        const globalDest = path.join(PROFILES_DIR, "global", "mockportal");
-        const legacySrc = path.join(PROFILES_DIR, "mockportal");
+      it("GLOBAL_MARKET mode migrates legacy profile using historical precedence (.scraper-cache preferred over .scraper-artifacts)", () => {
+        const globalDest = path.join(PROFILES_DIR, "global", "naukri");
+        const cacheSrc = path.join(process.cwd(), ".scraper-cache", "profiles", "naukri");
+        const artifactsSrc = path.join(PROFILES_DIR, "naukri");
 
-        // Clean up any test artifacts
         if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
-        if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+        if (fs.existsSync(cacheSrc)) fs.rmSync(cacheSrc, { recursive: true, force: true });
+        if (fs.existsSync(artifactsSrc)) fs.rmSync(artifactsSrc, { recursive: true, force: true });
 
         try {
-          fs.mkdirSync(legacySrc, { recursive: true });
-          fs.writeFileSync(path.join(legacySrc, "session.json"), JSON.stringify({ user: "legacy_user" }));
+          fs.mkdirSync(cacheSrc, { recursive: true });
+          fs.writeFileSync(path.join(cacheSrc, "session.json"), JSON.stringify({ source: "scraper_cache" }));
 
-          maybeMigrateLegacyGlobalProfile("MockPortal" as any);
+          fs.mkdirSync(artifactsSrc, { recursive: true });
+          fs.writeFileSync(path.join(artifactsSrc, "session.json"), JSON.stringify({ source: "scraper_artifacts" }));
+
+          maybeMigrateLegacyGlobalProfile("Naukri");
 
           expect(fs.existsSync(path.join(globalDest, "session.json"))).toBe(true);
           const migratedData = JSON.parse(fs.readFileSync(path.join(globalDest, "session.json"), "utf-8"));
-          expect(migratedData.user).toBe("legacy_user");
+          expect(migratedData.source).toBe("scraper_cache");
         } finally {
           if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
-          if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+          if (fs.existsSync(cacheSrc)) fs.rmSync(cacheSrc, { recursive: true, force: true });
+          if (fs.existsSync(artifactsSrc)) fs.rmSync(artifactsSrc, { recursive: true, force: true });
+        }
+      });
+
+      it("GLOBAL_MARKET mode respects LINKEDIN_PROFILE_DIR env override over cache and artifacts", () => {
+        const globalDest = path.join(PROFILES_DIR, "global", "linkedin");
+        const cacheSrc = path.join(process.cwd(), ".scraper-cache", "profiles", "linkedin");
+        const artifactsSrc = path.join(PROFILES_DIR, "linkedin-primary");
+        const customEnvDir = path.join(PROFILES_DIR, "custom-env-linkedin");
+
+        if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
+        if (fs.existsSync(cacheSrc)) fs.rmSync(cacheSrc, { recursive: true, force: true });
+        if (fs.existsSync(artifactsSrc)) fs.rmSync(artifactsSrc, { recursive: true, force: true });
+        if (fs.existsSync(customEnvDir)) fs.rmSync(customEnvDir, { recursive: true, force: true });
+
+        const originalEnv = process.env.LINKEDIN_PROFILE_DIR;
+        process.env.LINKEDIN_PROFILE_DIR = customEnvDir;
+
+        try {
+          fs.mkdirSync(customEnvDir, { recursive: true });
+          fs.writeFileSync(path.join(customEnvDir, "session.json"), JSON.stringify({ source: "env_override" }));
+
+          fs.mkdirSync(cacheSrc, { recursive: true });
+          fs.writeFileSync(path.join(cacheSrc, "session.json"), JSON.stringify({ source: "cache" }));
+
+          fs.mkdirSync(artifactsSrc, { recursive: true });
+          fs.writeFileSync(path.join(artifactsSrc, "session.json"), JSON.stringify({ source: "artifacts" }));
+
+          maybeMigrateLegacyGlobalProfile("LinkedIn");
+
+          expect(fs.existsSync(path.join(globalDest, "session.json"))).toBe(true);
+          const migratedData = JSON.parse(fs.readFileSync(path.join(globalDest, "session.json"), "utf-8"));
+          expect(migratedData.source).toBe("env_override");
+        } finally {
+          process.env.LINKEDIN_PROFILE_DIR = originalEnv;
+          if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
+          if (fs.existsSync(cacheSrc)) fs.rmSync(cacheSrc, { recursive: true, force: true });
+          if (fs.existsSync(artifactsSrc)) fs.rmSync(artifactsSrc, { recursive: true, force: true });
+          if (fs.existsSync(customEnvDir)) fs.rmSync(customEnvDir, { recursive: true, force: true });
         }
       });
 
       it("GLOBAL_MARKET mode does not overwrite existing destination profile", () => {
-        const globalDest = path.join(PROFILES_DIR, "global", "mockportal");
-        const legacySrc = path.join(PROFILES_DIR, "mockportal");
+        const globalDest = path.join(PROFILES_DIR, "global", "naukri");
+        const cacheSrc = path.join(process.cwd(), ".scraper-cache", "profiles", "naukri");
 
         if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
-        if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+        if (fs.existsSync(cacheSrc)) fs.rmSync(cacheSrc, { recursive: true, force: true });
 
         try {
           fs.mkdirSync(globalDest, { recursive: true });
           fs.writeFileSync(path.join(globalDest, "session.json"), JSON.stringify({ user: "existing_dest_user" }));
 
-          fs.mkdirSync(legacySrc, { recursive: true });
-          fs.writeFileSync(path.join(legacySrc, "session.json"), JSON.stringify({ user: "legacy_user" }));
+          fs.mkdirSync(cacheSrc, { recursive: true });
+          fs.writeFileSync(path.join(cacheSrc, "session.json"), JSON.stringify({ user: "legacy_user" }));
 
-          maybeMigrateLegacyGlobalProfile("MockPortal" as any);
+          maybeMigrateLegacyGlobalProfile("Naukri");
 
           const destData = JSON.parse(fs.readFileSync(path.join(globalDest, "session.json"), "utf-8"));
           expect(destData.user).toBe("existing_dest_user");
         } finally {
           if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
-          if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+          if (fs.existsSync(cacheSrc)) fs.rmSync(cacheSrc, { recursive: true, force: true });
         }
       });
 
-      it("GLOBAL_MARKET mode skips migration if legacy profile has an active lock", () => {
-        const globalDest = path.join(PROFILES_DIR, "global", "mockportal");
-        const legacySrc = path.join(PROFILES_DIR, "mockportal");
+      it("GLOBAL_MARKET mode cleans up temp directory and leaves destination absent if copy fails", () => {
+        const globalDest = path.join(PROFILES_DIR, "global", "naukri");
+        const cacheSrc = path.join(process.cwd(), ".scraper-cache", "profiles", "naukri");
 
         if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
-        if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+        if (fs.existsSync(cacheSrc)) fs.rmSync(cacheSrc, { recursive: true, force: true });
+
+        const cpSpy = vi.spyOn(fs, "cpSync").mockImplementationOnce(() => {
+          throw new Error("Simulated disk error during staging copy");
+        });
 
         try {
-          fs.mkdirSync(legacySrc, { recursive: true });
-          fs.writeFileSync(path.join(legacySrc, "session.json"), JSON.stringify({ user: "legacy_user" }));
-          fs.writeFileSync(path.join(legacySrc, ".profile.lock"), "active-process-lock");
+          fs.mkdirSync(cacheSrc, { recursive: true });
+          fs.writeFileSync(path.join(cacheSrc, "session.json"), JSON.stringify({ user: "legacy_user" }));
 
-          maybeMigrateLegacyGlobalProfile("MockPortal" as any);
+          maybeMigrateLegacyGlobalProfile("Naukri");
 
-          // Destination must not have been created or populated
-          expect(fs.existsSync(path.join(globalDest, "session.json"))).toBe(false);
+          // Destination must not exist
+          expect(fs.existsSync(globalDest)).toBe(false);
+          // And any temp directory in PROFILES_DIR/global must have been cleaned up
+          const globalChildren = fs.existsSync(path.join(PROFILES_DIR, "global"))
+            ? fs.readdirSync(path.join(PROFILES_DIR, "global"))
+            : [];
+          const tempDirs = globalChildren.filter((name) => name.startsWith(".tmp_migration_"));
+          expect(tempDirs.length).toBe(0);
         } finally {
+          cpSpy.mockRestore();
           if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
-          if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+          if (fs.existsSync(cacheSrc)) fs.rmSync(cacheSrc, { recursive: true, force: true });
         }
       });
     });
 
-    describe("Fix 4: Version Compatibility", () => {
+    describe("Fix 4: Version Compatibility & Snapshot Freshness", () => {
+      it("readSnapshotIfFresh rejects v1 fresh snapshot", () => {
+        const cardHash = `test-v1-fresh-${Date.now()}`;
+        const p = path.join(SNAPSHOT_DIR, `${cardHash}.json`);
+        fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
+        fs.writeFileSync(
+          p,
+          JSON.stringify({
+            cardHash,
+            snapshotSchemaVersion: "1.0.0", // Older version
+            scraperVersion: "1.0.0",
+            portal: "LinkedIn",
+            title: "VP Engineering",
+            company: "TechCorp",
+            location: "Bengaluru",
+            detail: { fetched: true, rawText: "Job text" },
+          })
+        );
+
+        try {
+          const loaded = readSnapshotIfFresh(cardHash, 24);
+          expect(loaded).toBeNull();
+        } finally {
+          if (fs.existsSync(p)) fs.rmSync(p, { force: true });
+        }
+      });
+
+      it("readSnapshotIfFresh accepts v2 fresh snapshot", () => {
+        const cardHash = `test-v2-fresh-${Date.now()}`;
+        const p = path.join(SNAPSHOT_DIR, `${cardHash}.json`);
+        fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
+        fs.writeFileSync(
+          p,
+          JSON.stringify({
+            cardHash,
+            snapshotSchemaVersion: SNAPSHOT_SCHEMA_VERSION, // 2.0.0
+            scraperVersion: SCRAPER_VERSION, // 2.0.0
+            portal: "LinkedIn",
+            title: "VP Engineering",
+            company: "TechCorp",
+            location: "Bengaluru",
+            detail: { fetched: true, rawText: "Job text" },
+          })
+        );
+
+        try {
+          const loaded = readSnapshotIfFresh(cardHash, 24);
+          expect(loaded).not.toBeNull();
+          expect(loaded?.cardHash).toBe(cardHash);
+          expect(loaded?.snapshotSchemaVersion).toBe("2.0.0");
+          expect(loaded?.scraperVersion).toBe("2.0.0");
+        } finally {
+          if (fs.existsSync(p)) fs.rmSync(p, { force: true });
+        }
+      });
+
+      it("readSnapshotIfFresh rejects v2 expired snapshot", () => {
+        const cardHash = `test-v2-expired-${Date.now()}`;
+        const p = path.join(SNAPSHOT_DIR, `${cardHash}.json`);
+        fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
+        fs.writeFileSync(
+          p,
+          JSON.stringify({
+            cardHash,
+            snapshotSchemaVersion: SNAPSHOT_SCHEMA_VERSION, // 2.0.0
+            scraperVersion: SCRAPER_VERSION, // 2.0.0
+            portal: "LinkedIn",
+            title: "VP Engineering",
+            company: "TechCorp",
+            location: "Bengaluru",
+            detail: { fetched: true, rawText: "Job text" },
+          })
+        );
+
+        try {
+          // Set file mtime to 25 hours ago
+          const oldTime = new Date(Date.now() - 25 * 3600 * 1000);
+          fs.utimesSync(p, oldTime, oldTime);
+
+          const loaded = readSnapshotIfFresh(cardHash, 24); // maxAgeHours = 24
+          expect(loaded).toBeNull();
+        } finally {
+          if (fs.existsSync(p)) fs.rmSync(p, { force: true });
+        }
+      });
+
       it("rejects resuming an older manifest with incompatible scraperVersion 1.0.0", () => {
         const runId = "run-v1-incompatible";
         const runDir = path.join(RUNS_DIR, runId);

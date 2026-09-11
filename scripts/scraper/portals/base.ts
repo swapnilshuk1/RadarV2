@@ -94,7 +94,9 @@ export function profileLockPath(
 }
 
 export function maybeMigrateLegacyGlobalProfile(portal: PortalName): void {
-  const destination = path.join(PROFILES_DIR, "global", portal.toLowerCase());
+  const portalLower = portal.toLowerCase();
+  const globalDir = path.join(PROFILES_DIR, "global");
+  const destination = path.join(globalDir, portalLower);
 
   // 1. Destination check: if it already exists and has files, an established profile exists -> do nothing
   if (fs.existsSync(destination)) {
@@ -104,18 +106,31 @@ export function maybeMigrateLegacyGlobalProfile(portal: PortalName): void {
     } catch {}
   }
 
-  // 2. Identify candidate legacy profile sources
+  // 2. Identify candidate legacy profile sources by historical precedence
   const candidateLegacyDirs: string[] = [];
-  if (portal.toLowerCase() === "linkedin") {
+  const scraperCacheDir = path.join(process.cwd(), ".scraper-cache", "profiles");
+
+  if (portalLower === "linkedin") {
+    if (process.env.LINKEDIN_PROFILE_DIR && process.env.LINKEDIN_PROFILE_DIR.trim().length > 0) {
+      candidateLegacyDirs.push(path.resolve(process.env.LINKEDIN_PROFILE_DIR.trim()));
+    }
+    candidateLegacyDirs.push(path.join(scraperCacheDir, "linkedin"));
+    candidateLegacyDirs.push(path.join(scraperCacheDir, "linkedin-primary"));
     candidateLegacyDirs.push(path.join(PROFILES_DIR, "linkedin-primary"));
     candidateLegacyDirs.push(path.join(PROFILES_DIR, "linkedin"));
   } else {
-    candidateLegacyDirs.push(path.join(PROFILES_DIR, portal.toLowerCase()));
+    candidateLegacyDirs.push(path.join(scraperCacheDir, portalLower));
+    candidateLegacyDirs.push(path.join(PROFILES_DIR, portalLower));
   }
 
   const legacySource = candidateLegacyDirs.find((dir) => {
     try {
-      return fs.existsSync(dir) && fs.readdirSync(dir).length > 0;
+      if (!fs.existsSync(dir)) return false;
+      if (path.resolve(dir) === path.resolve(destination)) return false;
+      const stat = fs.statSync(dir);
+      if (!stat.isDirectory()) return false;
+      const files = fs.readdirSync(dir);
+      return files.length > 0;
     } catch {
       return false;
     }
@@ -123,25 +138,63 @@ export function maybeMigrateLegacyGlobalProfile(portal: PortalName): void {
 
   if (!legacySource) return;
 
-  // 3. Never migrate a profile that is currently locked/live
-  const legacyLockFile = path.join(legacySource, ".profile.lock");
-  if (fs.existsSync(legacyLockFile)) {
-    try {
-      const lockData = fs.readFileSync(legacyLockFile, "utf-8").trim();
-      if (lockData.length > 0) {
-        console.warn(`[ProfileMigration] Legacy profile at ${legacySource} is currently locked; skipping migration.`);
+  // 3. Stage copy in a temporary sibling directory and atomically rename upon success
+  const tempDir = path.join(
+    globalDir,
+    `.tmp_migration_${portalLower}_${Date.now()}_${process.pid}`
+  );
+
+  try {
+    fs.mkdirSync(globalDir, { recursive: true });
+
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+
+    fs.mkdirSync(tempDir, { recursive: true });
+    fs.cpSync(legacySource, tempDir, { recursive: true, errorOnExist: false });
+
+    // Verify tempDir has copied files
+    const copiedFiles = fs.readdirSync(tempDir);
+    if (copiedFiles.length === 0) {
+      throw new Error(`Migration copy from ${legacySource} resulted in empty directory`);
+    }
+
+    // If destination exists but was empty, remove it before rename so rename succeeds on Windows
+    if (fs.existsSync(destination)) {
+      const existingFiles = fs.readdirSync(destination);
+      if (existingFiles.length === 0) {
+        fs.rmdirSync(destination);
+      } else {
+        // Destination became populated concurrently; discard temp and return
+        fs.rmSync(tempDir, { recursive: true, force: true });
         return;
       }
-    } catch {}
-  }
+    }
 
-  // 4. Safe one-time copy to destination
-  try {
-    fs.mkdirSync(destination, { recursive: true });
-    fs.cpSync(legacySource, destination, { recursive: true, errorOnExist: false });
-    console.log(`[ProfileMigration] Successfully migrated legacy global profile from ${legacySource} to ${destination}`);
+    fs.renameSync(tempDir, destination);
+    console.log(
+      `[ProfileMigration] Successfully migrated legacy global profile from ${legacySource} to ${destination}`
+    );
   } catch (err: any) {
-    console.warn(`[ProfileMigration] Could not migrate legacy global profile from ${legacySource} to ${destination}: ${err.message}`);
+    console.warn(
+      `[ProfileMigration] Could not migrate legacy global profile from ${legacySource} to ${destination}: ${err.message}`
+    );
+    // Cleanup temporary directory on failure so retry remains possible
+    try {
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    } catch {}
+    // Ensure final destination remains absent if failed or left empty
+    try {
+      if (fs.existsSync(destination)) {
+        const destFiles = fs.readdirSync(destination);
+        if (destFiles.length === 0) {
+          fs.rmdirSync(destination);
+        }
+      }
+    } catch {}
   }
 }
 
