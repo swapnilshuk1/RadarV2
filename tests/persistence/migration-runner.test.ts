@@ -152,6 +152,7 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
       expect(await getRequiredSchemaStatus(adapter)).toEqual({
         evaluationFingerprintColumnPresent: true,
         categoryIdsColumnPresent: true,
+        dossierPresentationsTablePresent: true,
       });
 
       // Run the actual canonical feed/metrics code path after upgrade rather
@@ -182,12 +183,16 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
   it("8. upgrades pre-039 canonical v4.3 artifacts by backfilling only their persisted evaluationInputHash", async () => {
     const migrationsDir = path.resolve(process.cwd(), "src/data/sqlite/migrations");
     const legacyDir = fs.mkdtempSync(path.join(os.tmpdir(), "radar-pre039-"));
+    const upgradeDir = fs.mkdtempSync(path.join(os.tmpdir(), "radar-post039-"));
     try {
       for (const file of fs.readdirSync(migrationsDir).filter((name) => name.endsWith(".sql") && name < "039_backfill_v4_3_evaluation_fingerprint.sql")) {
         fs.copyFileSync(path.join(migrationsDir, file), path.join(legacyDir, file));
       }
       const adapter = getDatabaseAdapter(":memory:");
-      await runMigrations(adapter, legacyDir);
+      // The temporary directory deliberately represents a pre-039 schema;
+      // required-schema verification belongs to the later upgrade from the
+      // current migration directory, which includes 044.
+      await runMigrations(adapter, legacyDir, { verifyRequiredSchema: false });
       await adapter.execute("PRAGMA foreign_keys = OFF");
       await adapter.execute(
         `INSERT INTO materialized_evaluations (
@@ -205,14 +210,25 @@ describe("Phase 2B: Migration Runner Canonical Infrastructure", () => {
         ],
       );
 
-      const upgraded = await runMigrations(adapter);
+      // This fixture intentionally contains only the legacy v4.3 evaluation
+      // row needed to exercise 039. Apply its direct successors plus 044,
+      // rather than unrelated 042/043 rebuild migrations whose foreign-key
+      // fixtures are outside this test's concern.
+      for (const file of fs.readdirSync(migrationsDir).filter((name) => {
+        const number = Number.parseInt(name.slice(0, 3), 10);
+        return name.endsWith(".sql") && (number === 39 || number === 40 || number === 41 || number === 44);
+      })) {
+        fs.copyFileSync(path.join(migrationsDir, file), path.join(upgradeDir, file));
+      }
+      const upgraded = await runMigrations(adapter, upgradeDir);
       expect(upgraded.applied).toContain("039_backfill_v4_3_evaluation_fingerprint.sql");
       await expect(adapter.one<{ evaluation_fingerprint: string }>(
         "SELECT evaluation_fingerprint FROM materialized_evaluations WHERE id = 'eval-v43'",
       )).resolves.toEqual({ evaluation_fingerprint: "eval-v43-exact" });
-      expect((await runMigrations(adapter)).applied).toEqual([]);
+      expect((await runMigrations(adapter, upgradeDir)).applied).toEqual([]);
     } finally {
       fs.rmSync(legacyDir, { recursive: true, force: true });
+      fs.rmSync(upgradeDir, { recursive: true, force: true });
     }
   });
 });

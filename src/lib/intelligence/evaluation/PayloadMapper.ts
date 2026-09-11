@@ -97,9 +97,15 @@ export class ContractViolationError extends Error {
  * score can never be persisted as a recommendation decision.
  */
 export function resolveArtifactEvaluationState(artifact: EvaluationArtifact): "EVALUATED" | "SPARSE_SPEC" | "NOT_EVALUABLE" {
-  const verb = artifact.record?.verb;
-  if (verb === "SPARSE_SPEC") return "SPARSE_SPEC";
-  const score = artifact.record?.qualityScore;
+  const untyped = artifact as {
+    record?: { verb?: string; qualityScore?: number };
+    decision?: string;
+    score?: number;
+    evaluationState?: string;
+  };
+  const verb = untyped.record?.verb ?? untyped.decision;
+  if (verb === "SPARSE_SPEC" || untyped.evaluationState === "SPARSE_SPEC") return "SPARSE_SPEC";
+  const score = untyped.record?.qualityScore ?? untyped.score;
   if (
     (verb !== "PURSUE" && verb !== "CONSIDER" && verb !== "PASS") ||
     typeof score !== "number" ||

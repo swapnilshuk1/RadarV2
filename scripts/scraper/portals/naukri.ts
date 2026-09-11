@@ -1,4 +1,5 @@
 import type { FeedCard, DetailedCard, PortalContext, PortalHandler } from "../types";
+import type { FailureClass } from "../../../src/lib/acquisition/failure-taxonomy";
 import { SNAPSHOT_SCHEMA_VERSION, SCRAPER_VERSION } from "../versions";
 import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
@@ -495,8 +496,26 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         } as any;
       }
       
-      const reason = httpRes.fetchError?.includes("403") ? "403" : 
-                    httpRes.fetchError?.includes("timeout") ? "Timeout" : "EmptyBody";
+      const failureClass = httpRes.failureClass;
+      if (
+        failureClass === "RATE_LIMIT_429" ||
+        failureClass === "BOT_CHALLENGE_BLOCK" ||
+        failureClass === "CAPTCHA_CHALLENGE" ||
+        failureClass === "LOGIN_REQUIRED"
+      ) {
+        ctx.recordHttpFailure?.(url, failureClass);
+        ctx.logger(`[FastPath] Immediate failure (${failureClass}) for ${url} — no browser fallback`);
+        return {
+          fetched: false,
+          fetchError: httpRes.fetchError,
+          fetchDurationMs: httpRes.fetchDurationMs,
+          httpStatus: httpRes.httpStatus,
+          failureClass,
+        };
+      }
+
+      const reason = failureClass || (httpRes.fetchError?.includes("403") ? "FASTPATH_ACCESS_DENIED" : 
+                    httpRes.fetchError?.includes("timeout") ? "HTTP_TIMEOUT" : "UNKNOWN_FAILURE");
       ctx.recordHttpFailure?.(url, reason);
       ctx.recordTelemetry?.("httpFallbacks");
       ctx.logger(`[FastPath] Insufficient detail (${httpRes.rawText?.length ?? 0} chars) for ${url} — falling back to Playwright`);
@@ -683,6 +702,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           rawText: "",
           fetchDurationMs: Date.now() - t0,
           extractedTitle,
+          failureClass: "EMPTY_CONTENT" as FailureClass,
         };
       }
 
@@ -700,7 +720,26 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         extractedTitle,
       };
     } catch (err: any) {
-      return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
+      const msg = String(err?.message || "");
+      const isTimeout = err.name === "TimeoutError" || /timeout/i.test(msg);
+      const isChallenge = /challenge|captcha|cloudflare|security check/i.test(msg);
+      const isLogin = /login|authwall|sign in/i.test(msg);
+      const is404 = /404|not found|no longer available/i.test(msg);
+      const isConn = /net::ERR|ECONN|ENOTFOUND/i.test(msg);
+
+      let failureClass: FailureClass = "UNKNOWN_FAILURE";
+      if (isChallenge) failureClass = "CAPTCHA_CHALLENGE";
+      else if (isLogin) failureClass = "LOGIN_REQUIRED";
+      else if (isTimeout) failureClass = "NAVIGATION_TIMEOUT";
+      else if (is404) failureClass = "REMOVED_404";
+      else if (isConn) failureClass = "CONNECTION_ERROR";
+
+      return {
+        fetched: false,
+        fetchError: msg,
+        fetchDurationMs: Date.now() - t0,
+        failureClass,
+      };
     }
   };
 

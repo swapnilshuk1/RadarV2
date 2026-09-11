@@ -1,100 +1,35 @@
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import React from 'react';
-import { BriefCompositionEngine } from '../../src/lib/intelligence/editorial/BriefCompositionEngine';
-import { OpportunityBriefView } from '../../src/routes/opportunity.$jobHash';
-import { Route } from '../../src/routes/opportunity.$jobHash';
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
-let mockLoaderData: any = {};
-vi.mock('../../src/routes/opportunity.$jobHash', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/routes/opportunity.$jobHash')>();
-  return {
-    ...actual,
-    Route: {
-      useLoaderData: () => mockLoaderData,
+function source(relativePath: string): string {
+  return readFileSync(resolve(process.cwd(), relativePath), "utf8");
+}
+
+describe("editorial composition boundary", () => {
+  it("keeps browser dossier rendering outside the legacy composer", () => {
+    const route = source("src/routes/opportunity.$jobHash.tsx");
+    expect(route).not.toMatch(/BriefCompositionEngine\.compose/);
+    expect(route).not.toMatch(/new\s+BriefCompositionEngine/);
+  });
+
+  it("keeps the V2 materializer independent of legacy narrative and evaluation engines", () => {
+    const materializer = source("src/lib/intelligence/dossier/CanonicalDossierPresentationMaterializer.ts");
+    expect(materializer).not.toMatch(/BriefCompositionEngine/);
+    expect(materializer).not.toMatch(/ExecutionEngine/);
+    expect(materializer).not.toMatch(/AdvisoryConstitution/);
+    expect(materializer).not.toMatch(/CapabilityAssessmentEngine/);
+    expect(materializer).toMatch(/composeEditorialIntelligenceV2/);
+  });
+
+  it("uses V2 materialization on both current canonical materialization paths", () => {
+    const worker = source("src/lib/intelligence/EvaluationWorker.ts");
+    const contextMaterialization = source("src/lib/intelligence/context-materialization.ts");
+    for (const implementation of [worker, contextMaterialization]) {
+      expect(implementation).toMatch(/buildEvaluatedPresentationV2/);
+      expect(implementation).toMatch(/buildUnavailablePresentationV2/);
+      expect(implementation).not.toMatch(/buildCanonicalDossierPresentation\s*\(/);
     }
-  };
-});
-
-vi.mock('../../src/lib/decisions-store', () => ({
-  useDecisions: () => ({ decisions: {}, decide: vi.fn() })
-}));
-
-vi.mock('@tanstack/react-router', () => ({
-  useRouter: () => ({ invalidate: vi.fn() }),
-  createFileRoute: () => () => ({ 
-    component: () => null,
-    useLoaderData: () => mockLoaderData
-  }),
-  notFound: () => new Error('Not found'),
-  Link: () => null
-}));
-
-const mockCompose = vi.spyOn(BriefCompositionEngine, 'compose').mockReturnValue({} as any);
-
-describe('Test F: Editorial Boundary (BriefCompositionEngine)', () => {
-  beforeEach(() => {
-    mockCompose.mockClear();
-  });
-
-  it('bypasses editorial composition for UnmaterializedOpportunity', () => {
-    mockLoaderData = {
-      opportunity: {
-        evaluationState: 'UNMATERIALIZED',
-        jobHash: 'hash-1',
-        role: 'CEO',
-        company: 'Company A'
-      },
-      neighbors: { prev: undefined, next: undefined },
-      currentIndex: 1,
-      totalCount: 1
-    };
-
-    const result = OpportunityBriefView();
-    
-    // Engine should NOT be invoked
-    expect(mockCompose).not.toHaveBeenCalled();
-    // Component should return the fallback JSX
-    expect(result).toBeDefined();
-  });
-
-  it('bypasses editorial composition for UnavailableOpportunity', () => {
-    mockLoaderData = {
-      opportunity: {
-        evaluationState: 'SPARSE_SPEC',
-        jobHash: 'hash-2',
-        role: 'CTO',
-        company: 'Company B'
-      },
-      neighbors: { prev: undefined, next: undefined },
-      currentIndex: 1,
-      totalCount: 1
-    };
-
-    const result = OpportunityBriefView();
-    expect(mockCompose).not.toHaveBeenCalled();
-    expect(result).toBeDefined();
-  });
-
-  it('invokes editorial composition for EvaluatedOpportunity', () => {
-    mockLoaderData = {
-      opportunity: {
-        evaluationState: 'EVALUATED',
-        jobHash: 'hash-3',
-        role: 'CFO',
-        company: 'Company C',
-        decision: 'PURSUE',
-        recommendation: 'Good',
-        positioning: [],
-        headspace: [],
-        dimensions: []
-      },
-      neighbors: { prev: undefined, next: undefined },
-      currentIndex: 1,
-      totalCount: 1
-    };
-
-    const result = OpportunityBriefView();
-    expect(mockCompose).toHaveBeenCalled();
   });
 });

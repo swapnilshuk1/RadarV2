@@ -216,6 +216,7 @@ import type { SqliteEvaluationStore } from "../data/sqlite/repositories/SqliteEv
 import type { SqliteOpportunityQueries } from "../data/sqlite/repositories/SqliteOpportunityQueries";
 import type { SqliteEvaluationContextStore } from "../data/sqlite/repositories/SqliteEvaluationContextStore";
 import type { SqliteScrapeRunStore } from "../data/sqlite/repositories/SqliteScrapeRunStore";
+import type { SqliteDossierPresentationStore } from "../data/sqlite/repositories/SqliteDossierPresentationStore";
 
 export interface StorageProvider {
   sources: SourceStore;
@@ -233,5 +234,6 @@ export interface StorageProvider {
   canonicalServing: SqliteOpportunityQueries;
   evaluationContexts: SqliteEvaluationContextStore;
   scrapeRuns: SqliteScrapeRunStore;
+  dossierPresentations: SqliteDossierPresentationStore;
 }
 

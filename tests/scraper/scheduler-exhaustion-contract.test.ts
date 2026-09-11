@@ -131,7 +131,10 @@ describe("Scheduler Exhaustion vs Transport Failure Contract", () => {
     expect(earlyReturnPattern.test(scrapeCode)).toBe(false);
 
     // Must persist SUCCESS_EMPTY when cards.length === 0
-    expect(scrapeCode.includes('cards.length === 0 ? "skipped_empty" : "completed"')).toBe(true);
+    expect(
+      scrapeCode.includes('params.cardsCount === 0 ? "skipped_empty" : "completed"') ||
+      scrapeCode.includes('cards.length === 0 ? "skipped_empty" : "completed"')
+    ).toBe(true);
     expect(scrapeCode.includes('cards.length === 0')).toBe(true);
     expect(scrapeCode.includes('"SUCCESS_EMPTY"')).toBe(true);
   });

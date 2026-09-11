@@ -73,7 +73,7 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
       expect(res.confidence).toBe("MEDIUM");
     });
 
-    it("classifies short job content (<200 chars) as MINIMAL", () => {
+    it("classifies short job content (<50 chars) as INSUFFICIENT_CONTENT", () => {
       const res = ResponseValidator.validate({
         html: "<div>...</div>",
         url: "https://example.com/job/3",
@@ -81,6 +81,22 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
         extractedTitle: "Chief Technology Officer",
         extractedCompany: "Gamma",
         extractedDescription: "Short preview only 40 characters.",
+      });
+
+      expect(res.isValid).toBe(false);
+      expect(res.quality).toBe("MINIMAL");
+      expect(res.confidence).toBe("LOW");
+      expect(res.failureClass).toBe("INSUFFICIENT_CONTENT");
+    });
+
+    it("classifies unprovenanced short job content (50-199 chars) as PARTIAL_CONTENT", () => {
+      const res = ResponseValidator.validate({
+        html: "<div>...</div>",
+        url: "https://example.com/job/3-partial",
+        sourcePortal: "Indeed",
+        extractedTitle: "Chief Technology Officer",
+        extractedCompany: "Gamma",
+        extractedDescription: "Short preview between fifty and two hundred characters long without detail document origin.",
       });
 
       expect(res.isValid).toBe(false);
@@ -487,16 +503,23 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
 
       const adapter = new TestSqliteAdapter(sqliteDb);
       const service = new CanonicalIngestionService(adapter);
-      await expect(service.ingestOpportunity({
-        sourcePortal: "Indeed",
-        sourceJobId: "job_short_123",
-        canonicalUrl: "https://in.indeed.com/viewjob?jk=job_short_123",
-        jobTitle: "VP of Sales",
-        companyName: "Acme",
-        location: "Remote",
-        rawContent: "Short summary only 35 chars",
-        contentOrigin: "DISCOVERY_CARD_FALLBACK",
-      })).rejects.toThrow("Cannot canonically ingest unusable document");
+      await expect(
+        service.ingestOpportunity(
+          {
+            sourcePortal: "Indeed",
+            sourceJobId: "job_short_123",
+            canonicalUrl: "https://in.indeed.com/viewjob?jk=job_short_123",
+            jobTitle: "VP of Sales",
+            companyName: "Acme",
+            location: "Remote",
+            rawContent: "Short summary only 35 chars",
+            contentOrigin: "DISCOVERY_CARD_FALLBACK",
+          },
+          {
+            mode: "GLOBAL_MARKET",
+          },
+        ),
+      ).rejects.toThrow("Cannot canonically ingest unusable document");
 
       expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM canonical_opportunities").get()).toEqual({ count: 0 });
       expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM opportunity_versions").get()).toEqual({ count: 0 });
@@ -550,10 +573,29 @@ describe("Canonical Acquisition Integrity & Provenance (V4 Phase 2)", () => {
         rawContent: "Too short 25 chars",
       };
 
-      await expect(service.ingestOpportunity({ ...payload, contentOrigin: "DISCOVERY_CARD_FALLBACK" }))
-        .rejects.toThrow("Cannot canonically ingest unusable document");
-      await expect(service.ingestOpportunity({ ...payload, contentOrigin: "DISCOVERY_CARD_FALLBACK" }))
-        .rejects.toThrow("Cannot canonically ingest unusable document");
+      const globalScope = {
+        mode: "GLOBAL_MARKET" as const,
+      };
+
+      await expect(
+        service.ingestOpportunity(
+          {
+            ...payload,
+            contentOrigin: "DISCOVERY_CARD_FALLBACK",
+          },
+          globalScope,
+        ),
+      ).rejects.toThrow("Cannot canonically ingest unusable document");
+
+      await expect(
+        service.ingestOpportunity(
+          {
+            ...payload,
+            contentOrigin: "DISCOVERY_CARD_FALLBACK",
+          },
+          globalScope,
+        ),
+      ).rejects.toThrow("Cannot canonically ingest unusable document");
 
       expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM canonical_opportunities").get()).toEqual({ count: 0 });
       expect(sqliteDb.prepare("SELECT COUNT(*) AS count FROM opportunity_versions").get()).toEqual({ count: 0 });

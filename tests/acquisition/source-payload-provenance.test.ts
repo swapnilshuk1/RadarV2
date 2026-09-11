@@ -67,23 +67,44 @@ describe("C4a source-payload provenance migration", () => {
     const db = new Database(":memory:"); schema(db);
     const blobStore = new MemoryBlobStore();
     const service = new CanonicalIngestionService(new TestAdapter(db), blobStore);
+    const globalScope = {
+      mode: "GLOBAL_MARKET" as const,
+    };
     const bytes = "%PDF-1.7\nsource bytes, not extracted text";
-    const first = await service.ingestOpportunity({
-      sourcePortal: "Naukri", sourceJobId: "pdf-1", canonicalUrl: "https://example.com/job/pdf-1",
-      jobTitle: "Vice President Sales", companyName: "Fillezy", location: "Gurugram", rawContent: bytes,
-      sourcePayload: bytes, contentType: "application/pdf",
-    });
+    const first = await service.ingestOpportunity(
+      {
+        sourcePortal: "Naukri",
+        sourceJobId: "pdf-1",
+        canonicalUrl: "https://example.com/job/pdf-1",
+        jobTitle: "Vice President Sales",
+        companyName: "Fillezy",
+        location: "Gurugram",
+        rawContent: bytes,
+        sourcePayload: bytes,
+        contentType: "application/pdf",
+      },
+      globalScope,
+    );
     const row = db.prepare("SELECT raw_content, source_payload_key, source_media_type, document_extraction_state FROM opportunity_versions WHERE id = ?").get(first.opportunityVersion) as any;
     expect(row.raw_content).toBe("");
     expect(row.source_payload_key).toBeTruthy();
     expect(row.source_media_type).toBe("application/pdf");
     expect(row.document_extraction_state).toBe("PENDING");
     await expect(loadSourcePayload(blobStore, row.source_payload_key)).resolves.toEqual(Buffer.from(bytes));
-    const replay = await service.ingestOpportunity({
-      sourcePortal: "Naukri", sourceJobId: "pdf-1", canonicalUrl: "https://example.com/job/pdf-1",
-      jobTitle: "Vice President Sales", companyName: "Fillezy", location: "Gurugram", rawContent: bytes,
-      sourcePayload: bytes, contentType: "application/pdf",
-    });
+    const replay = await service.ingestOpportunity(
+      {
+        sourcePortal: "Naukri",
+        sourceJobId: "pdf-1",
+        canonicalUrl: "https://example.com/job/pdf-1",
+        jobTitle: "Vice President Sales",
+        companyName: "Fillezy",
+        location: "Gurugram",
+        rawContent: bytes,
+        sourcePayload: bytes,
+        contentType: "application/pdf",
+      },
+      globalScope,
+    );
     expect(replay.opportunityVersion).toBe(first.opportunityVersion);
   });
 

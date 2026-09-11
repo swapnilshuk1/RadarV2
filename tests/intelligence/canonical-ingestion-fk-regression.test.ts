@@ -18,6 +18,12 @@ import { DatabaseAdapter, QueryParams } from "@/data/database/adapter";
 import { CanonicalIngestionService, InvalidCanonicalUrlError } from "@/lib/acquisition/CanonicalIngestionService";
 import { applicationActionFor } from "@/data/opportunity-fixtures";
 import { extractExternalPostingUrl } from "@/lib/acquisition/external-posting-url";
+import { MemoryBlobStore } from "@/lib/storage/blob-store";
+import {
+  EXTRACTOR_VERSION,
+  SCRAPER_VERSION,
+  SNAPSHOT_SCHEMA_VERSION,
+} from "../../scripts/scraper/versions";
 
 class StrictTestSqliteAdapter implements DatabaseAdapter {
   constructor(public db: Database.Database) {}
@@ -55,10 +61,80 @@ describe("Canonical Ingestion Foreign Key & Idempotency Invariants", () => {
   let db: Database.Database;
   let adapter: DatabaseAdapter;
   let ingestionService: CanonicalIngestionService;
+  let blobStore: MemoryBlobStore;
 
   const tenantId = "tenant_test_001";
   const personId = "person_test_001";
   const searchPlanId = "plan_test_001";
+  const runId = "run_fk_regression";
+
+  const SCOPE = {
+    mode: "SCOPED" as const,
+    tenantId,
+    personId,
+    searchPlanId,
+    runId,
+  };
+
+  const GLOBAL_SCOPE = {
+    mode: "GLOBAL_MARKET" as const,
+  };
+
+  function withEnrichment<T extends {
+    sourcePortal: string;
+    sourceJobId: string;
+    canonicalUrl: string;
+    jobTitle: string;
+    companyName: string | null;
+    location?: string | null;
+    rawContent: string;
+  }>(payload: T) {
+    return {
+      ...payload,
+      contentOrigin: "DETAIL_DOCUMENT" as const,
+
+      enrichmentDispatch: {
+        pipelineVersion: EXTRACTOR_VERSION,
+
+        detailedCard: {
+          cardHash: `fk-${payload.sourceJobId}`,
+          sourceJobId: payload.sourceJobId,
+          portal: payload.sourcePortal as any,
+          keyword: payload.jobTitle,
+
+          searchUrl: payload.canonicalUrl,
+          discoveryUrl: payload.canonicalUrl,
+          detailUrl: payload.canonicalUrl,
+          discoveredAt: "2026-01-01T00:00:00.000Z",
+
+          title: payload.jobTitle,
+          company: payload.companyName ?? "",
+          location: payload.location ?? "",
+
+          rawHtml: "",
+          rawText: payload.rawContent,
+
+          snapshotSchemaVersion: SNAPSHOT_SCHEMA_VERSION,
+          scraperVersion: SCRAPER_VERSION,
+
+          detail: {
+            fetched: true,
+            rawHtml: "",
+            rawText: payload.rawContent,
+            extractedTitle: payload.jobTitle,
+            extractedCompany: payload.companyName ?? undefined,
+            finalUrl: payload.canonicalUrl,
+          },
+
+          telemetry: {
+            cardExtractMs: 0,
+            detailExtractMs: 0,
+            totalMs: 0,
+          },
+        },
+      },
+    };
+  }
 
   beforeEach(() => {
     db = new Database(":memory:");
@@ -82,7 +158,8 @@ describe("Canonical Ingestion Foreign Key & Idempotency Invariants", () => {
     }
 
     adapter = new StrictTestSqliteAdapter(db);
-    ingestionService = new CanonicalIngestionService(adapter);
+    blobStore = new MemoryBlobStore();
+    ingestionService = new CanonicalIngestionService(adapter, blobStore);
 
     // Seed tenant, person, and active search plan with valid composite lineages
     db.exec(`
@@ -117,19 +194,42 @@ describe("Canonical Ingestion Foreign Key & Idempotency Invariants", () => {
       INSERT OR IGNORE INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
       VALUES ('${tenantId}', '${personId}', '${searchPlanId}', 'ctx_${searchPlanId}', 'test-fixture');
     `);
+
+    db.prepare(`
+      INSERT INTO scrape_runs (
+        id,
+        tenant_id,
+        person_id,
+        search_plan_id,
+        status,
+        portal_targets,
+        started_at
+      )
+      VALUES (?, ?, ?, ?, 'running', '[]', CURRENT_TIMESTAMP)
+    `).run(
+      runId,
+      tenantId,
+      personId,
+      searchPlanId,
+    );
   });
 
   it("1. Fresh Ingestion: Inserts opportunity, version, and search plan candidate with valid composite FK", async () => {
-    const res = await ingestionService.ingestOpportunity({
-      sourcePortal: "LinkedIn",
-      sourceJobId: "job_li_101",
-      canonicalUrl: "https://www.linkedin.com/jobs/view/job_li_101",
-      jobTitle: "Chief Marketing Officer",
-      companyName: "Acme Global",
-      location: "Bengaluru, India",
-      rawContent: "Seeking an executive Chief Marketing Officer to drive global growth and commercial excellence. Experience leading teams.",
-      postedAt: "2026-08-30T10:00:00Z",
-    });
+    const res = await ingestionService.ingestOpportunity(
+      withEnrichment({
+        sourcePortal: "LinkedIn",
+        sourceJobId: "job_li_101",
+        canonicalUrl:
+          "https://www.linkedin.com/jobs/view/job_li_101",
+        jobTitle: "Chief Marketing Officer",
+        companyName: "Acme Global",
+        location: "Bengaluru, India",
+        rawContent:
+          "Seeking an executive Chief Marketing Officer to drive global growth and commercial excellence. Experience leading teams.",
+        postedAt: "2026-08-30T10:00:00Z",
+      }),
+      SCOPE,
+    );
 
     expect(res.isNewOpportunity).toBe(true);
     expect(res.isNewVersion).toBe(true);
@@ -171,8 +271,23 @@ describe("Canonical Ingestion Foreign Key & Idempotency Invariants", () => {
       rawContent: "A sufficiently detailed executive marketing mandate for ingestion.",
     };
 
-    await expect(ingestionService.ingestOpportunity(payload)).rejects.toBeInstanceOf(InvalidCanonicalUrlError);
-    await expect(ingestionService.ingestOpportunity({ ...payload, canonicalUrl: "https://radar.internal/jobs/linkedin/missing-url-job" })).rejects.toBeInstanceOf(InvalidCanonicalUrlError);
+    await expect(
+      ingestionService.ingestOpportunity(
+        payload,
+        GLOBAL_SCOPE,
+      ),
+    ).rejects.toBeInstanceOf(InvalidCanonicalUrlError);
+
+    await expect(
+      ingestionService.ingestOpportunity(
+        {
+          ...payload,
+          canonicalUrl:
+            "https://radar.internal/jobs/linkedin/missing-url-job",
+        },
+        GLOBAL_SCOPE,
+      ),
+    ).rejects.toBeInstanceOf(InvalidCanonicalUrlError);
   });
 
   it("labels a historical internal URL as a portal search, never as direct application", () => {
@@ -214,12 +329,18 @@ describe("Canonical Ingestion Foreign Key & Idempotency Invariants", () => {
     };
 
     // First Ingestion
-    const firstRes = await ingestionService.ingestOpportunity(payload);
+    const firstRes = await ingestionService.ingestOpportunity(
+      withEnrichment(payload),
+      SCOPE,
+    );
     expect(firstRes.isNewOpportunity).toBe(true);
     expect(firstRes.isNewVersion).toBe(true);
 
     // Second Ingestion (Exact same payload: triggers ON CONFLICT DO NOTHING in opportunity_versions)
-    const secondRes = await ingestionService.ingestOpportunity(payload);
+    const secondRes = await ingestionService.ingestOpportunity(
+      withEnrichment(payload),
+      SCOPE,
+    );
     expect(secondRes.isNewOpportunity).toBe(false);
     expect(secondRes.isNewVersion).toBe(false);
     expect(secondRes.canonicalJobId).toBe(firstRes.canonicalJobId);
@@ -235,6 +356,14 @@ describe("Canonical Ingestion Foreign Key & Idempotency Invariants", () => {
        WHERE ov.id IS NULL`
     );
     expect(orphans.length).toBe(0);
+
+    // Verify duplicate canonical/version/pipeline ingestion preserves exactly 1 enrichment job
+    const enrichmentJobs = await adapter.many<{ id: string }>(
+      `SELECT id FROM enrichment_jobs 
+       WHERE canonical_job_id = ? AND opportunity_version = ?`,
+      [firstRes.canonicalJobId, firstRes.opportunityVersion]
+    );
+    expect(enrichmentJobs.length).toBe(1);
   });
 
   it("3. Content Update Ingestion: When JD content changes, a new version is created and candidate points to new version", async () => {
@@ -249,7 +378,10 @@ describe("Canonical Ingestion Foreign Key & Idempotency Invariants", () => {
       postedAt: "2026-08-30T09:00:00Z",
     };
 
-    const firstRes = await ingestionService.ingestOpportunity(initialPayload);
+    const firstRes = await ingestionService.ingestOpportunity(
+      withEnrichment(initialPayload),
+      SCOPE,
+    );
     expect(firstRes.isNewOpportunity).toBe(true);
     expect(firstRes.isNewVersion).toBe(true);
 
@@ -259,7 +391,10 @@ describe("Canonical Ingestion Foreign Key & Idempotency Invariants", () => {
       rawContent: "Updated and heavily enriched description with 800 characters of deep strategic remit and P&L scale.",
     };
 
-    const secondRes = await ingestionService.ingestOpportunity(updatedPayload);
+    const secondRes = await ingestionService.ingestOpportunity(
+      withEnrichment(updatedPayload),
+      SCOPE,
+    );
     expect(secondRes.isNewOpportunity).toBe(false); // Same canonical opportunity
     expect(secondRes.isNewVersion).toBe(true); // New content version
     expect(secondRes.opportunityVersion).not.toBe(firstRes.opportunityVersion);

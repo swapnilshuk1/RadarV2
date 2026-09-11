@@ -83,6 +83,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "tests/serving/active-context-dossier-boundary.test.ts",
       "tests/persistence/deployment-determinism.test.ts",
       "tests/scraper/acquisition-variant-contract.test.ts",
+      "tests/scraper/scraper-operability.test.ts",
       "tests/editorial/career-value-integrity.test.ts",
       "tests/editorial/editorial-intelligence-contract.test.ts",
       "tests/editorial/explanation-composition.test.ts",
@@ -91,6 +92,7 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "tests/editorial/ui-score-resolution.test.ts",
       "tests/editorial/verdict-coverage.test.ts",
       "tests/editorial/evidence-sufficiency-contract.test.ts",
+      "tests/intelligence/knowledge-narrative.test.ts",
       "tests/intelligence/invariant-assertions.test.ts",
       "tests/intelligence/profile-projection-version-compat.test.ts",
       "tests/intelligence/worker-profile-resolution.test.ts",
@@ -100,10 +102,15 @@ describe("Certification Gate Integrity & Anti-Regression Contract", () => {
       "tests/intelligence/m9_4_1-evaluation-determinism.test.ts",
       "tests/intelligence/m53-worker.test.ts",
       "tests/security/evaluation-context-isolation.test.ts",
+      "tests/intelligence/opportunity-version-pinning.test.ts",
+      "tests/pipeline/EvaluationWorker.test.ts",
+      "tests/intelligence/context-materialization.test.ts",
+      "tests/editorial/editorial-proposition-composer.test.ts",
+      "tests/security/decisions-account-isolation.test.ts",
     ];
 
-    expect(certificationManifest).toHaveLength(6);
-    expect(EXPECTED_CERTIFICATION_FILE_COUNT).toBe(50);
+    expect(certificationManifest).toHaveLength(7);
+    expect(EXPECTED_CERTIFICATION_FILE_COUNT).toBe(57);
     expect(certificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
     expect(uniqueCertificationTestFiles).toHaveLength(EXPECTED_CERTIFICATION_FILE_COUNT);
     expect([...certificationTestFiles].sort()).toEqual([...expectedFiles].sort());

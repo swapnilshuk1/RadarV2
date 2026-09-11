@@ -1158,12 +1158,12 @@ export class BriefCompositionEngine {
             reason: hinge.reason,
           }))
         : this.buildGroundedUnknowns(
-        opportunity,
-        inventory,
-        recordedRisk,
-        primaryRoleEvidence,
-        verdict,
-      )
+          opportunity,
+          inventory,
+          recordedRisk,
+          primaryRoleEvidence,
+          verdict,
+        )
     ).slice(0, policy.maxUnknowns ?? 3);
 
     const riskStatement =

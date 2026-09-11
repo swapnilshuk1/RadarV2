@@ -37,6 +37,7 @@ describe("Milestone M8 — Canonical Executive Serving Store & Resolution", () =
       "029_materialized_evaluations_vetoed.sql",
       "037_materialized_evaluation_fingerprint.sql",
       "038_opportunity_version_category_projection.sql",
+      "044_materialized_dossier_presentations.sql",
     ];
 
     for (const file of migrationFiles) {

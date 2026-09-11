@@ -224,10 +224,24 @@ describe("Atomic career-intent plan activation", () => {
        WHERE evaluation_context_fingerprint = ? AND canonical_job_id = ?`,
       [prepared.context.contextFingerprint, first.canonicalJobId],
     );
-    const parsedPayload = JSON.parse(evaluationPayload!.evaluation_json) as { dossierPresentation?: { schemaVersion?: string; evaluationInputHash?: string } };
+    const parsedPayload = JSON.parse(evaluationPayload!.evaluation_json) as { evaluationInputHash?: string };
     expect((parsedPayload as { evaluationState?: string }).evaluationState).toBe("EVALUATED");
-    expect(parsedPayload.dossierPresentation?.schemaVersion).toBe("dossier-v1");
-    expect(parsedPayload.dossierPresentation?.evaluationInputHash).toBeDefined();
+    const dossierPresentation = await db.one<{ presentation_json: string; source_evaluation_fingerprint: string }>(
+      `SELECT presentation_json, source_evaluation_fingerprint
+       FROM materialized_dossier_presentations
+       WHERE tenant_id = ? AND person_id = ? AND canonical_job_id = ?
+         AND opportunity_version = ? AND evaluation_context_fingerprint = ?
+         AND presentation_version = 'dossier-v2'`,
+      [
+        scope.tenantId,
+        scope.personId,
+        first.canonicalJobId,
+        first.opportunityVersion,
+        prepared.context.contextFingerprint,
+      ],
+    );
+    expect(dossierPresentation?.source_evaluation_fingerprint).toBe(parsedPayload.evaluationInputHash);
+    expect(JSON.parse(dossierPresentation!.presentation_json)).toMatchObject({ schemaVersion: "dossier-v2" });
     const secondPoolCount = await db.one<{ count: number }>(
       `SELECT COUNT(*) AS count FROM canonical_opportunities WHERE id = ?`,
       [second.canonicalJobId]

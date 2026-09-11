@@ -5,6 +5,7 @@
 //   Persistence  -> live-scraped.json    (approved system-of-record view)
 
 import type { PortalAuthSession } from "../../src/lib/security/PortalAuthSession";
+import type { FailureClass } from "../../src/lib/acquisition/failure-taxonomy";
 
 export type PortalName = "LinkedIn" | "Indeed" | "Naukri";
 
@@ -77,16 +78,27 @@ export interface WorkUnit {
   decisionRecord?: UnitDecisionRecord;
 }
 
+export type CardFailureKind =
+  | "EXPECTED_REJECTION"
+  | "SOURCE_FAILURE"
+  | "INTEGRITY_FAILURE"
+  | "TERMINAL_FAILURE"
+  | "NON_TERMINAL_FAILURE";
+
 export interface CardUnit {
   id: string;                // <parentUnit>#<cardHash>
   parentUnitId: string;
   cardHash: string;
   status: UnitStatus;
   attempts: number;
-  snapshotPath?: string;
+  snapshotPath?: string | null;
   extractionPath?: string;
   error?: string;
   isNew?: boolean;
+  failureClass?: FailureClass;
+  failureKind?: CardFailureKind;
+  detailAttempted?: boolean;
+  usableDetailDocument?: boolean;
 }
 
 export interface PageExecutionRecord {
@@ -157,10 +169,13 @@ export type RunTelemetry = {
   evaluationJobsEnqueued?: number;
   heuristicDuplicateSuspect?: number;
   hardFiltered?: number;
+  duplicateAtsUrlObserved?: number;
   acquisitionIntegrityFailures?: number;
+  integrityFailures?: number;
+  nonTerminalAttempted?: number;
+  unexplainedAttempts?: number;
+  sourceFailures?: number;
 };
-
-export type CardFailureKind = "EXPECTED_REJECTION" | "SOURCE_FAILURE" | "INTEGRITY_FAILURE";
 
 export interface RunManifest {
   runId: string;
@@ -256,6 +271,7 @@ export interface DetailedCard extends FeedCard {
     /** Exact destination observed by the portal detail request, when one occurred. */
     finalUrl?: string;
     identityResolutionFailure?: string;
+    failureClass?: FailureClass;
   };
   acquisitionAttempts?: AcquisitionAttempt[];
   /**
@@ -393,7 +409,7 @@ export interface PortalContext {
   isHttpDisabled?: (url: string) => boolean;
   recordHttpFailure?: (url: string, reason: string) => void;
   recordHttpSuccess?: (url: string) => void;
-  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure" | "canonicalIngestSuccess" | "canonicalIngestFailure" | "evaluationJobsEnqueued" | "acquisitionIntegrityFailures") => void;
+  recordTelemetry?: (event: "httpAttempted" | "httpSuccessful" | "httpFallbacks" | "duplicatePreDetail" | "duplicatePostDetail" | "llmCalls" | "m4ShadowPathSuccess" | "m4ShadowPathFailure" | "canonicalIngestSuccess" | "canonicalIngestFailure" | "evaluationJobsEnqueued" | "duplicateAtsUrlObserved" | "acquisitionIntegrityFailures") => void;
   isCancelled?: () => boolean;
 }
 
@@ -472,7 +488,8 @@ export type AcquisitionOutcome =
   | "TIMEOUT"
   | "PARSE_ERROR"
   | "SOURCE_REDIRECT"
-  | "EXTRACTION_FAILURE";
+  | "EXTRACTION_FAILURE"
+  | "INTEGRITY_ERROR";
 
 export type ContentQualityTier = "VALID" | "SPARSE" | "NON_JOB";
 

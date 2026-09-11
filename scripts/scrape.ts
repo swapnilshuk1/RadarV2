@@ -14,17 +14,46 @@
 
 import path from "path";
 import fs from "fs";
-import { CONFIG, DEFAULT_KEYWORDS, DEFAULT_PORTALS, SNAPSHOT_DIR, EXTRACTION_DIR } from "./scraper/config";
+import {
+  CONFIG,
+  DEFAULT_KEYWORDS,
+  DEFAULT_PORTALS,
+  SNAPSHOT_DIR,
+  EXTRACTION_DIR,
+  verifyArtifactStorage,
+  GLOBAL_MARKET_LOCK_PATH,
+  RUNS_DIR,
+} from "./scraper/config";
+import { resolveScraperRuntimeOptions, type ScraperRuntimeOptions } from "./scraper/options";
 import { makeLogger } from "./scraper/utils/logger";
 import { pool } from "./scraper/utils/concurrency";
 import { jitter } from "./scraper/utils/jitter";
 import { RunController, type RunControllerOptions } from "./scraper/run/manager";
+import {
+  acquireExclusiveLock,
+  releaseExclusiveLock,
+  type ExclusiveLockToken,
+} from "./scraper/run/exclusive-lock";
 import { linkedinHandler } from "./scraper/portals/linkedin";
 import { indeedHandler } from "./scraper/portals/indeed";
 import { naukriHandler } from "./scraper/portals/naukri";
-import { closeAllPortalContexts, getPortalContext } from "./scraper/portals/base";
+import {
+  closeAllPortalContexts,
+  getPortalContext,
+  closePortalContextsForRun,
+} from "./scraper/portals/base";
 import { PageManager } from "./scraper/run/page-manager";
-import type { FeedCard, PortalHandler, PortalName, WorkUnit, AcquisitionAttempt, AcquisitionOutcome, AcquisitionVariant } from "./scraper/types";
+import type {
+  CardUnit,
+  DetailedCard,
+  FeedCard,
+  PortalHandler,
+  PortalName,
+  WorkUnit,
+  AcquisitionAttempt,
+  AcquisitionOutcome,
+  AcquisitionVariant,
+} from "./scraper/types";
 import { sanitizeCompanyName } from "./scraper/utils/sanitize";
 import {
   compileCoverageVariants,
@@ -39,14 +68,23 @@ import { fastFetchDetail } from "./scraper/utils/http-fetch";
 import { EnrichmentQueue } from "./scraper/persist/queue";
 import { resolveCanonicalIdentity, sourceIdentityForCard, acquisitionSurfaceKey } from "../src/lib/acquisition/canonical-identity";
 import { parseVerifiedIndeedListingUrl } from "../src/lib/acquisition/indeed-listing-identity";
-import { FailurePolicyEngine } from "../src/lib/acquisition/failure-taxonomy";
+import {
+  FailurePolicyEngine,
+  type FailureClass,
+  normalizeFailureClass,
+  classifyCardFailure,
+} from "../src/lib/acquisition/failure-taxonomy";
 import { ResponseValidator } from "../src/lib/acquisition/validator";
 import { passesHardFilter } from "./scraper/utils/hard-filter";
 import { HealthManager } from "./scraper/run/health-manager";
 import { QueryMetricsStore } from "./scraper/run/metrics";
 import { getRepositories } from "../src/data/sqlite/provider";
 import { CredentialBroker } from "../src/lib/security/CredentialBroker";
-import { establishPortalAuthSession, type PortalAuthSession } from "../src/lib/security/PortalAuthSession";
+import {
+  establishPortalAuthSession,
+  type PortalAuthSession,
+} from "../src/lib/security/PortalAuthSession";
+export { CredentialBroker, establishPortalAuthSession };
 import crypto from "crypto";
 import type { AuthContext } from "../src/lib/security/auth";
 import {
@@ -65,6 +103,57 @@ export async function withPersistenceBoundary<T>(operationName: string, fn: () =
       err
     );
   }
+}
+
+export interface ScraperCapabilities {
+  databaseAvailable: boolean;
+  canonicalPersistenceEnabled: boolean;
+  enrichmentDispatchEnabled: boolean;
+  localArtifactPersistenceEnabled: boolean;
+}
+
+export async function resolveScraperCapabilities(
+  mode: "GLOBAL_MARKET" | "SCOPED"
+): Promise<ScraperCapabilities> {
+  let databaseAvailable = false;
+  try {
+    const db = getDatabaseAdapter();
+    await db.one("SELECT 1");
+    databaseAvailable = true;
+  } catch {
+    databaseAvailable = false;
+  }
+
+  if (mode === "SCOPED") {
+    if (!databaseAvailable) {
+      throw new Error(
+        "FATAL_DATABASE_UNAVAILABLE: SCOPED mode requires a working database connection (Turso Cloud). Execution aborted."
+      );
+    }
+    return {
+      databaseAvailable: true,
+      canonicalPersistenceEnabled: true,
+      enrichmentDispatchEnabled: true,
+      localArtifactPersistenceEnabled: true,
+    };
+  }
+
+  // GLOBAL_MARKET mode
+  if (!databaseAvailable) {
+    return {
+      databaseAvailable: false,
+      canonicalPersistenceEnabled: false,
+      enrichmentDispatchEnabled: false,
+      localArtifactPersistenceEnabled: true,
+    };
+  }
+
+  return {
+    databaseAvailable: true,
+    canonicalPersistenceEnabled: true,
+    enrichmentDispatchEnabled: true,
+    localArtifactPersistenceEnabled: true,
+  };
 }
 
 export function computeVariantsSignature(variants?: AcquisitionVariant[]): string | undefined {
@@ -103,7 +192,13 @@ const HANDLERS: Record<PortalName, PortalHandler> = {
   Naukri: naukriHandler,
 };
 
-const enrichmentQueue = new EnrichmentQueue();
+let _enrichmentQueue: EnrichmentQueue | null = null;
+function getEnrichmentQueue(): EnrichmentQueue {
+  if (!_enrichmentQueue) {
+    _enrichmentQueue = new EnrichmentQueue();
+  }
+  return _enrichmentQueue;
+}
 
 export async function syncManifestProgress(
   mgr: RunController,
@@ -111,10 +206,23 @@ export async function syncManifestProgress(
 ) {
   const cardsFound = mgr.manifest.cards.length;
   let evaluated = 0;
-  try {
-    const stats = await enrichmentQueue.getRunStats(mgr.runId);
-    evaluated = stats?.completed || 0;
-  } catch {}
+  const runSession = activeRunSessions.get(mgr.runId);
+  let enrichmentEnabled = true;
+  if (runSession?.capabilities) {
+    enrichmentEnabled = runSession.capabilities.enrichmentDispatchEnabled;
+  } else {
+    try {
+      getDatabaseAdapter();
+    } catch {
+      enrichmentEnabled = false;
+    }
+  }
+  if (enrichmentEnabled) {
+    try {
+      const stats = await getEnrichmentQueue().getRunStats(mgr.runId);
+      evaluated = stats?.completed || 0;
+    } catch {}
+  }
 
   const currentStage =
     stage ||
@@ -130,12 +238,37 @@ export async function syncManifestProgress(
 
   const sources: Record<string, "pending" | "searching" | "completed" | "failed"> = {};
   for (const portal of mgr.manifest.portals) {
-    const units = mgr.manifest.units.filter((u) => u.portal === portal);
-    const hasRunning = units.some((u) => u.status === "running");
-    const allDone = units.every((u) => u.status === "done" || u.status.startsWith("skipped"));
-    if (hasRunning) sources[portal] = "searching";
-    else if (allDone && units.length > 0) sources[portal] = "completed";
-    else sources[portal] = "pending";
+    const units = mgr.manifest.units.filter(
+      u => u.portal === portal
+    );
+
+    const hasRunning = units.some(
+      u => u.status === "running"
+    );
+
+    const hasFailed = units.some(
+      u => u.status === "failed"
+    );
+
+    const allTerminal =
+      units.length > 0 &&
+      units.every(
+        u =>
+          u.status === "done" ||
+          u.status === "failed" ||
+          u.status.startsWith("skipped") ||
+          u.status === "aborted"
+      );
+
+    if (hasRunning) {
+      sources[portal] = "searching";
+    } else if (hasFailed) {
+      sources[portal] = "failed";
+    } else if (allTerminal) {
+      sources[portal] = "completed";
+    } else {
+      sources[portal] = "pending";
+    }
   }
 
   mgr.updateCanonicalMetrics({
@@ -145,36 +278,6 @@ export async function syncManifestProgress(
     stage: currentStage,
     sources,
   });
-}
-
-const activeContexts = new Map<PortalName, any>();
-const activePages = new Map<PortalName, any>();
-const activePageManagers = new Map<PortalName, PageManager>();
-const activeAuthSessions = new Map<PortalName, PortalAuthSession>();
-const activeRunControllers = new Map<string, RunController>();
-
-export async function abortLiveRun(runId?: string): Promise<boolean> {
-  const log = makeLogger("scrape:abort");
-  log(`Instant abort requested for run: ${runId || "active"}`);
-  
-  if (runId && activeRunControllers.has(runId)) {
-    const mgr = activeRunControllers.get(runId)!;
-    mgr.manifest.status = "stopping";
-    mgr.recordActivity("Stopping search... Closing browser workers and saving records");
-  } else {
-    for (const mgr of activeRunControllers.values()) {
-      mgr.manifest.status = "stopping";
-      mgr.recordActivity("Stopping search... Closing browser workers and saving records");
-    }
-  }
-
-  // Force close all browser contexts to cancel active navigations and network calls immediately
-  try {
-    await closeAllPortalContexts();
-  } catch (err: any) {
-    log(`Warning closing contexts on abort: ${err.message}`);
-  }
-  return true;
 }
 
 export interface RunOptions {
@@ -190,72 +293,254 @@ export interface RunOptions {
   variants?: AcquisitionVariant[];
 }
 
+export interface RunRuntimeSession {
+  runId: string;
+  tenantId?: string;
+  personId?: string;
+  capabilities?: ScraperCapabilities;
+  health: import("./scraper/run/health-manager").RunHealthManager;
+  contexts: Map<PortalName, any>;
+  pages: Map<PortalName, any>;
+  pageManagers: Map<PortalName, PageManager>;
+  authSessions: Map<PortalName, PortalAuthSession>;
+}
+
+export const activeRunSessions = new Map<string, RunRuntimeSession>();
+
+export const activeRunControllers = new Map<string, RunController>();
+
+export function createRunSession(
+  runId: string,
+  opts: RunOptions,
+  capabilities?: ScraperCapabilities,
+): RunRuntimeSession {
+  const session: RunRuntimeSession = {
+    runId,
+    tenantId: opts.authContext?.tenantId,
+    personId: opts.authContext?.userId,
+    capabilities,
+    health: HealthManager.forRun(runId),
+    contexts: new Map(),
+    pages: new Map(),
+    pageManagers: new Map(),
+    authSessions: new Map(),
+  };
+
+  activeRunSessions.set(runId, session);
+
+  return session;
+}
+
+export async function abortLiveRun(runId?: string): Promise<boolean> {
+  if (runId) {
+    const mgr = activeRunControllers.get(runId);
+    const runtime = activeRunSessions.get(runId);
+
+    if (!mgr) {
+      return false;
+    }
+
+    mgr.manifest.status = "stopping";
+    mgr.persistManifest();
+
+    if (runtime) {
+      for (const session of runtime.authSessions.values()) {
+        session.dispose();
+      }
+      runtime.authSessions.clear();
+    }
+
+    await closePortalContextsForRun(runId);
+
+    HealthManager.clearRun(runId);
+    activeRunSessions.delete(runId);
+
+    return true;
+  }
+
+  await shutdownAllRuns("explicit-global-abort");
+
+  return true;
+}
+
+let shutdownStarted = false;
+
+export async function shutdownAllRuns(reason: string): Promise<void> {
+  if (shutdownStarted) return;
+  shutdownStarted = true;
+
+  try {
+    const controllers = [...activeRunControllers.entries()];
+    const sessions = [...activeRunSessions.entries()];
+
+    for (const [, mgr] of controllers) {
+      try {
+        mgr.manifest.status = "stopping";
+        mgr.persistManifest();
+      } catch {}
+    }
+
+    for (const [, runtime] of sessions) {
+      for (const authSession of runtime.authSessions.values()) {
+        authSession.dispose();
+      }
+      runtime.authSessions.clear();
+    }
+
+    await closeAllPortalContexts();
+
+    for (const [runId] of sessions) {
+      HealthManager.clearRun(runId);
+    }
+
+    activeRunSessions.clear();
+
+    for (const [, mgr] of controllers) {
+      try {
+        mgr.finalize("aborted");
+      } catch {}
+    }
+
+    activeRunControllers.clear();
+  } finally {
+    shutdownStarted = false;
+  }
+}
+
+let signalsInstalled = false;
+
+function installSignalHandlers(): void {
+  if (signalsInstalled) return;
+  signalsInstalled = true;
+
+  process.once("SIGINT", () => {
+    void shutdownAllRuns("SIGINT").finally(() => process.exit(0));
+  });
+
+  process.once("SIGTERM", () => {
+    void shutdownAllRuns("SIGTERM").finally(() => process.exit(0));
+  });
+}
+
+installSignalHandlers();
+
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   const log = makeLogger("scrape");
-  const freshRun = process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
-
-  let keywords = opts.keywords;
-  let portals = opts.portals ?? DEFAULT_PORTALS;
-  let maxPages = opts.maxPages ?? CONFIG.maxPages;
-  const maxCardsPerPage = opts.maxCardsPerPage;
-
-  // Command-line override support for agile, diverse crawl runs
-  const keywordsArg = process.argv.find(arg => arg.startsWith('--keywords=') || arg.startsWith('--keyword='));
-  if (keywordsArg) {
-    keywords = keywordsArg.split('=')[1].split(',').map(k => k.trim());
+  const storageRes = verifyArtifactStorage();
+  if (!storageRes.ok) {
+    throw new Error(`STORAGE_UNWRITABLE: ${storageRes.fatalError || "Essential artifact storage unwritable"}`);
   }
-  const portalsArg = process.argv.find(arg => arg.startsWith('--portals=') || arg.startsWith('--portal='));
-  if (portalsArg) {
-    portals = portalsArg.split('=')[1].split(',').map(p => p.trim() as PortalName);
-  }
-  const maxPagesArg = process.argv.find(arg => arg.startsWith('--max-pages=') || arg.startsWith('--maxPages=') || arg.startsWith('--pages='));
-  if (maxPagesArg) {
-    const parsed = parseInt(maxPagesArg.split('=')[1], 10);
-    if (!isNaN(parsed) && parsed > 0) maxPages = parsed;
+  if (storageRes.cacheDegraded) {
+    log(`[Storage] Non-essential cache directories degraded: ${storageRes.warnings.join("; ")}`, "warn");
   }
 
-  const cliAutoConfirm = process.argv.includes('--autoConfirm') || 
-    process.argv.includes('--auto-confirm') || 
-    process.argv.includes('--yes') ||
-    process.argv.includes('-y') ||
-    process.env.AUTO_CONFIRM === 'true';
-  if (cliAutoConfirm && opts.autoConfirm === undefined) {
-    opts.autoConfirm = true;
+  const runtimeOpts = resolveScraperRuntimeOptions(process.argv.slice(2), process.env);
+  const explicitScoped = runtimeOpts.mode === "SCOPED" || process.argv.includes("--scoped");
+  const hasTenant = Boolean(opts.authContext?.tenantId || runtimeOpts.tenantId);
+  const hasPerson = Boolean(opts.authContext?.userId || runtimeOpts.personId);
+
+  // Partial SCOPED identity must fail closed BEFORE any browser launch
+  if ((explicitScoped && (!hasTenant || !hasPerson)) || (hasTenant && !hasPerson) || (!hasTenant && hasPerson)) {
+    throw new Error(
+      `PARTIAL_SCOPED_IDENTITY: SCOPED mode requires both --tenant-id and --person-id. Provided tenantId=${opts.authContext?.tenantId || runtimeOpts.tenantId || "none"}, personId=${opts.authContext?.userId || runtimeOpts.personId || "none"}. Refusing execution before browser initialization.`
+    );
+  }
+
+  let effectiveAuthContext: any = opts.authContext;
+  if (!effectiveAuthContext && (hasTenant && hasPerson)) {
+    const { resolveScraperAuthContext } = await import("../src/lib/security/scope-resolver");
+    const db = getDatabaseAdapter();
+    const resolvedAuth = await resolveScraperAuthContext(
+      runtimeOpts.personId!,
+      runtimeOpts.tenantId!,
+      db
+    );
+    effectiveAuthContext = resolvedAuth.authContext;
+  }
+
+  const mode = effectiveAuthContext ? "SCOPED" : "GLOBAL_MARKET";
+  const effectiveSearchPlanId = opts.searchPlanId || runtimeOpts.searchPlanId;
+  const capabilities = await resolveScraperCapabilities(mode);
+
+  if (!capabilities.databaseAvailable && mode === "GLOBAL_MARKET") {
+    log(
+      "GLOBAL_MARKET running in LOCAL_ONLY mode: canonical persistence and enrichment queue are disabled.",
+      "warn"
+    );
+  }
+
+  const freshRun = runtimeOpts.fresh || process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
+
+  let keywords = opts.keywords ?? (runtimeOpts.keywords && runtimeOpts.keywords.length > 0 ? runtimeOpts.keywords : undefined);
+  let portals = opts.portals ?? (runtimeOpts.portals.length > 0 ? runtimeOpts.portals : DEFAULT_PORTALS);
+  let maxPages = opts.maxPages ?? runtimeOpts.maxPages ?? CONFIG.maxPages;
+  const maxCardsPerPage = opts.maxCardsPerPage ?? runtimeOpts.maxCardsPerPage;
+
+  const resolvedAutoConfirm = opts.autoConfirm !== undefined ? opts.autoConfirm : runtimeOpts.autoConfirm;
+  if (!resolvedAutoConfirm) {
+    if (runtimeOpts.headless || (typeof process !== "undefined" && !process.stdin.isTTY)) {
+      throw new Error(
+        "CONFIRMATION_NOT_SUPPORTED_NON_INTERACTIVE: Scraper paused for manual confirmation, but running in headless mode or non-interactive TTY. Set --auto-confirm or AUTO_CONFIRM=true."
+      );
+    }
   }
 
   let resolvedPlan: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan | undefined = opts.resolvedPlan;
+  let searchSource: "PLAN" | "SUPPLIED" | "DEFAULT" = "DEFAULT";
+  let evaluationProjection: "ACTIVE" | "DEFERRED_NO_SEARCH_PLAN" = "DEFERRED_NO_SEARCH_PLAN";
 
-  if (opts.authContext) {
-    // Authoritative resolution contract: resolve persisted search plan strictly via ScraperPlanResolver
+  if (effectiveAuthContext) {
     const { ScraperPlanResolver } = await import("../src/lib/intelligence/ScraperPlanResolver");
     const db = getDatabaseAdapter();
-    const scope = { tenantId: opts.authContext.tenantId, personId: opts.authContext.userId };
-    resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
-      scope,
-      undefined,
-      db,
-      opts.searchPlanId
-    ));
+    const scope = { tenantId: effectiveAuthContext.tenantId, personId: effectiveAuthContext.userId };
 
-    if (!resolvedPlan || resolvedPlan.queries.length === 0) {
-      const errorMsg = `[ScraperAuth] No active search plan found in Turso Cloud for tenant ${opts.authContext.tenantId} (person: ${opts.authContext.userId}). Scraper execution aborted (fallback keywords disabled for authenticated sessions).`;
-      log(errorMsg, "error");
-      throw new Error(errorMsg);
+    try {
+      resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
+        scope,
+        undefined,
+        db,
+        effectiveSearchPlanId
+      ));
+    } catch (planErr: any) {
+      if (effectiveSearchPlanId) {
+        log(`[ScraperAuth] Explicit search plan ${effectiveSearchPlanId} failed resolution: ${planErr.message}`, "error");
+        throw planErr;
+      }
+      log(`[ScraperAuth] Failed to resolve active search plan: ${planErr.message}`, "warn");
     }
 
-    keywords = resolvedPlan.queries;
-
-    log(
-      `Resolved active evaluation context:\n` +
-      `  tenant=${scope.tenantId}\n` +
-      `  person=${scope.personId}\n` +
-      `  searchPlan=${resolvedPlan.searchPlanId}\n` +
-      `  snapshot=${resolvedPlan.snapshotId || "dynamic"}\n` +
-      `  queries=${resolvedPlan.queryCount}\n\n` +
-      `Using persisted search plan; fallback keywords disabled.`
-    );
+    if (resolvedPlan && resolvedPlan.queries.length > 0) {
+      keywords = resolvedPlan.queries;
+      searchSource = "PLAN";
+      evaluationProjection = "ACTIVE";
+      log(
+        `Resolved active evaluation context:\n` +
+        `  tenant=${scope.tenantId}\n` +
+        `  person=${scope.personId}\n` +
+        `  searchPlan=${resolvedPlan.searchPlanId}\n` +
+        `  snapshot=${resolvedPlan.snapshotId || "dynamic"}\n` +
+        `  queries=${resolvedPlan.queryCount}\n\n` +
+        `Using persisted search plan.`
+      );
+    } else {
+      // Planless SCOPED execution per Amendment 1
+      if (keywords && keywords.length > 0) {
+        searchSource = "SUPPLIED";
+      } else {
+        keywords = DEFAULT_KEYWORDS;
+        searchSource = "DEFAULT";
+      }
+      evaluationProjection = "DEFERRED_NO_SEARCH_PLAN";
+      resolvedPlan = undefined;
+      log(
+        `[ScraperAuth] Running planless scoped acquisition for tenant ${effectiveAuthContext.tenantId} (person: ${effectiveAuthContext.userId}).\n` +
+        `  searchSource=${searchSource}, evaluationProjection=${evaluationProjection}. Queries: ${keywords.length}. Evaluation deferred until search plan created.`
+      );
+    }
   } else if (!keywords) {
     keywords = DEFAULT_KEYWORDS;
+    searchSource = "DEFAULT";
+    evaluationProjection = "DEFERRED_NO_SEARCH_PLAN";
     log(`Running in offline unauthenticated mode: using manual/default keywords (${keywords.length} queries).`);
   }
   
@@ -263,8 +548,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   const resolvedVariants = opts.variants || (resolvedPlan ? compileMultiLocationCoverageVariants(resolvedPlan, portals) : undefined);
   const variantsSignature = computeVariantsSignature(resolvedVariants);
 
-  let mgr = new RunController();
-  const { resumed } = mgr.init({
+  const runControllerOpts: RunControllerOptions = {
     keywords: resolvedKeywords,
     portals,
     maxPages,
@@ -277,185 +561,172 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     snapshotId: resolvedPlan?.snapshotId,
     contextFingerprint: resolvedPlan?.contextFingerprint,
     variantsSignature,
-  });
+  };
 
+  let mgr = new RunController();
+  let resumed = false;
   let runScope: any = null;
-  if (opts.authContext) {
+  let globalMarketLock: ExclusiveLockToken | null = null;
+
+  if (effectiveAuthContext) {
     runScope = {
-      tenantId: opts.authContext.tenantId,
-      personId: opts.authContext.userId,
+      tenantId: effectiveAuthContext.tenantId,
+      personId: effectiveAuthContext.userId,
       roles: [],
     };
     try {
       const repos = getRepositories();
-      if (resumed) {
-        const existingDurableRun = await repos.scrapeRuns.getRun(runScope, mgr.runId);
+      const activeDurableRun = await repos.scrapeRuns.getActiveRun(runScope);
 
-        let durableIdentity: any = null;
-        if (existingDurableRun?.configJson) {
-          try {
-            const parsed = JSON.parse(existingDurableRun.configJson);
-            durableIdentity = parsed?.acquisitionIdentity || parsed?.config?.acquisitionIdentity;
-          } catch {}
-        }
+      if (activeDurableRun) {
+        const activeStatus = activeDurableRun.status;
 
-        const isDurableResumable =
-          existingDurableRun &&
-          (existingDurableRun.status === "initializing" || existingDurableRun.status === "running");
-
-        // Resume requires agreement among all sources:
-        // current resolved plan == local manifest identity == durable scrape_runs.config_json identity
-        // plus durable searchPlanId matches
-        const isPlanMatching = resolvedPlan
-          ? existingDurableRun?.searchPlanId === resolvedPlan.searchPlanId &&
-            mgr.manifest.searchPlanId === resolvedPlan.searchPlanId &&
-            (!durableIdentity?.searchPlanId || durableIdentity.searchPlanId === resolvedPlan.searchPlanId) &&
-            (!resolvedPlan.snapshotId ||
-              (mgr.manifest.snapshotId === resolvedPlan.snapshotId &&
-                (!durableIdentity?.snapshotId || durableIdentity.snapshotId === resolvedPlan.snapshotId))) &&
-            (!resolvedPlan.contextFingerprint ||
-              (mgr.manifest.contextFingerprint === resolvedPlan.contextFingerprint &&
-                (!durableIdentity?.contextFingerprint ||
-                  durableIdentity.contextFingerprint === resolvedPlan.contextFingerprint))) &&
-            (!variantsSignature ||
-              (mgr.manifest.variantsSignature === variantsSignature &&
-                (!durableIdentity?.variantsSignature || durableIdentity.variantsSignature === variantsSignature)))
-          : true;
-
-        if (isDurableResumable && isPlanMatching) {
-          log(`Validated existing durable scrape_run for resume: ${mgr.runId} (status: ${existingDurableRun.status})`);
-        } else {
-          // If the existing durable run is actively enriching or completing, DO NOT abort or supersede it.
-          // Those states mean acquisition finished successfully and distributed worker obligations are actively processing.
-          // Refuse fresh acquisition to protect the active downstream pipeline.
-          if (
-            existingDurableRun &&
-            (existingDurableRun.status === "enriching" || existingDurableRun.status === "completing")
-          ) {
-            log(
-              `Active durable run ${existingDurableRun.id} is currently in downstream state '${existingDurableRun.status}'. Refusing fresh acquisition to protect active downstream pipeline.`,
-              "error"
-            );
-            throw new Error(
-              `Cannot start fresh acquisition for (${runScope.tenantId}, ${runScope.personId}): active run ${existingDurableRun.id} is currently ${existingDurableRun.status}.`
-            );
-          }
-
-          // Stale, mismatched, or finished run cannot be resumed. Force a fresh run.
-          // Supersede/abort ONLY if the existing run is in an active acquisition state (initializing or running).
+        // Invariant: If actively in downstream pipeline, refuse fresh acquisition to protect workers
+        if (activeStatus === "enriching" || activeStatus === "completing") {
           log(
-            `Run ${mgr.runId} exists with non-resumable state (status='${existingDurableRun?.status || "missing"}', planMatch=${isPlanMatching}) — forcing fresh run`,
-            "warn"
+            `Active durable run ${activeDurableRun.id} is currently in downstream state '${activeStatus}'. Refusing fresh acquisition to protect active downstream pipeline.`,
+            "error"
           );
-          if (
-            existingDurableRun &&
-            (existingDurableRun.status === "initializing" || existingDurableRun.status === "running")
-          ) {
-            await repos.scrapeRuns.updateRunStatus(
-              runScope,
-              existingDurableRun.id,
-              "aborted",
-              "Superseded by fresh run due to search plan identity mismatch or non-resumable state"
-            );
-            log(`Superseded stale active acquisition run: ${existingDurableRun.id}`);
-          }
-          try {
-            mgr.journal?.close();
-          } catch {}
-          mgr = new RunController();
-          mgr.init({
-            keywords: resolvedKeywords,
-            portals,
-            maxPages,
-            maxCardsPerPage: maxCardsPerPage ?? CONFIG.maxCardsPerPage,
-            resume: false,
-            variants: resolvedVariants,
-            adaptiveDepth: true,
-            initialPages: 1,
-            searchPlanId: resolvedPlan?.searchPlanId,
-            snapshotId: resolvedPlan?.snapshotId,
-            contextFingerprint: resolvedPlan?.contextFingerprint,
-            variantsSignature,
-          });
-          await repos.scrapeRuns.createRun(runScope, {
-            id: mgr.runId,
-            searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
-            portalTargets: portals,
-            initialStatus: "initializing",
-            config: {
-              maxPages,
-              keywords: resolvedKeywords,
-              acquisitionIdentity: {
-                searchPlanId: resolvedPlan?.searchPlanId,
-                snapshotId: resolvedPlan?.snapshotId,
-                contextFingerprint: resolvedPlan?.contextFingerprint,
-                variantsSignature,
-              },
-            },
-          });
-          log(`Created new durable scrape_run in Turso Cloud: ${mgr.runId}`);
+          throw new Error(
+            `Cannot start fresh acquisition for (${runScope.tenantId}, ${runScope.personId}): active run ${activeDurableRun.id} is currently ${activeStatus}.`
+          );
         }
-      } else {
+
+        const earlyRecoveryPhases = ["queued", "initializing", "waiting_for_confirmation", "running", "stopping"];
+        const isEarlyPhase = earlyRecoveryPhases.includes(activeStatus);
+
+        let tryResumed = false;
+        if (!freshRun && opts.resume !== false) {
+          // Check reattachment / resume based on active status
+          if (activeStatus === "waiting_for_confirmation") {
+            const reattachable = mgr.tryLoadForConfirmationReattach(activeDurableRun.id, runControllerOpts);
+            if (reattachable) {
+              mgr.attachExistingRun(reattachable);
+              resumed = true;
+              tryResumed = true;
+              log(`Reattached to existing durable scrape_run in waiting_for_confirmation: ${mgr.runId}`);
+            }
+          } else if (activeStatus === "initializing" || activeStatus === "running") {
+            const resumable = mgr.tryLoadForResume(activeDurableRun.id, runControllerOpts);
+            if (resumable) {
+              mgr.attachExistingRun(resumable);
+              resumed = true;
+              tryResumed = true;
+              log(`Validated existing durable scrape_run for resume: ${mgr.runId} (status: ${activeStatus})`);
+            }
+          }
+        }
+
+        if (!tryResumed) {
+          if (isEarlyPhase) {
+            log(
+              `Active durable run ${activeDurableRun.id} in state '${activeStatus}' is unresumable or fresh run requested. Transitioning to aborted (LOCAL_RUNTIME_STATE_UNRECOVERABLE).`,
+              "warn"
+            );
+            await repos.scrapeRuns.transitionRunStatus(
+              runScope,
+              activeDurableRun.id,
+              activeStatus as any,
+              "aborted",
+              "LOCAL_RUNTIME_STATE_UNRECOVERABLE: local manifest missing or incompatible"
+            );
+            await repos.scrapeRuns.recordEvent(runScope, activeDurableRun.id, {
+              stage: "recovery",
+              eventType: "RUN_ABORTED_UNRESUMABLE",
+              payload: {
+                previousStatus: activeStatus,
+                reason: "LOCAL_RUNTIME_STATE_UNRECOVERABLE",
+              },
+            });
+          } else {
+            throw new Error(
+              `Cannot resume active run ${activeDurableRun.id} in state '${activeStatus}': local manifest missing or incompatible.`
+            );
+          }
+        }
+      }
+
+      if (!resumed) {
+        // No active durable run (or previous unresumable run aborted). Create clean new run!
+        const newRunId = RunController.generateRunId();
         await repos.scrapeRuns.createRun(runScope, {
-          id: mgr.runId,
-          searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
+          id: newRunId,
+          searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : null,
           portalTargets: portals,
           initialStatus: "initializing",
           config: {
             maxPages,
             keywords: resolvedKeywords,
-            acquisitionIdentity: {
+            searchSource,
+            evaluationProjection,
+            acquisitionIdentity: resolvedPlan ? {
               searchPlanId: resolvedPlan?.searchPlanId,
               snapshotId: resolvedPlan?.snapshotId,
               contextFingerprint: resolvedPlan?.contextFingerprint,
               variantsSignature,
+            } : {
+              variantsSignature,
             },
           },
         });
-        log(`Created durable scrape_run in Turso Cloud: ${mgr.runId} for tenant ${runScope.tenantId}`);
+        log(`Created new durable scrape_run in Turso Cloud: ${newRunId}`);
+
+        // Initialize local RunController with compensation if it fails
+        try {
+          mgr.initFresh(newRunId, runControllerOpts);
+        } catch (initErr: any) {
+          log(`Local initFresh failed for ${newRunId}: ${initErr.message}; compensating in Turso Cloud`, "error");
+          try {
+            await repos.scrapeRuns.transitionRunStatus(
+              runScope,
+              newRunId,
+              "initializing",
+              "aborted",
+              `Local initialization failed: ${initErr.message}`
+            );
+          } catch (compErr: any) {
+            log(`Failed to compensate aborted run ${newRunId}: ${compErr.message}`, "error");
+          }
+          throw initErr;
+        }
       }
     } catch (e: any) {
       log(`Failed to create or validate durable scrape_run: ${e.message}`, "warn");
       throw e;
     }
+  } else {
+    // Unauthenticated mode: standard local RunController init
+    globalMarketLock = acquireExclusiveLock(
+      GLOBAL_MARKET_LOCK_PATH,
+      `global-market:${process.pid}`,
+    );
+
+    try {
+      const initRes = mgr.init(runControllerOpts);
+      resumed = initRes.resumed;
+    } catch (err) {
+      releaseExclusiveLock(globalMarketLock);
+      globalMarketLock = null;
+      throw err;
+    }
   }
 
-  // Register active controller strictly AFTER resolution/replacement so activeRunControllers
-  // never holds a stale or orphaned run ID.
   activeRunControllers.set(mgr.runId, mgr);
+  const effectiveRunOpts: RunOptions = {
+    ...opts,
+    authContext: effectiveAuthContext,
+    searchPlanId: effectiveSearchPlanId,
+    resolvedPlan,
+  };
+  const runtime = createRunSession(mgr.runId, effectiveRunOpts, capabilities);
+  if (!capabilities.canonicalPersistenceEnabled) {
+    (mgr.manifest as any).executionMode = "LOCAL_ONLY_NO_CANONICAL_PERSISTENCE";
+  }
+
   mgr.recordActivity("Building executive search schema from candidate profile...");
   const plannedUnits = mgr.manifest.units.length;
   log(`Run ${mgr.runId} ${resumed ? "resumed" : "started"} — portals=${mgr.manifest.portals.join(",")} units=${plannedUnits}`);
   mgr.recordActivity(`Search schema armed: ${plannedUnits} work units across ${portals.join(", ")}`);
-
-  // Graceful shutdown: checkpoints already fsync'd — just close journal + browsers.
-  const shutdown = async (signal: string) => {
-    log(`Received ${signal}, checkpointing…`, "warn");
-    mgr.journal.append({ type: "signal", signal });
-    mgr.finalize("aborted");
-    if (runScope) {
-      try {
-        await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "aborted", `Interrupted by ${signal}`);
-      } catch {}
-    }
-    for (const session of activeAuthSessions.values()) {
-      session.dispose();
-    }
-    activeAuthSessions.clear();
-    await closeAllPortalContexts();
-    
-    try {
-      const records = collectRecords();
-      writeLiveScraped(records);
-      log(`Rebuilt live-scraped.json with ${records.length} total records on shutdown.`);
-    } catch (e: any) {
-      log(`Failed to write live-scraped on shutdown: ${e.message}`, "error");
-    }
-    
-    process.exit(0);
-  };
-  process.once("SIGINT",  () => void shutdown("SIGINT"));
-  process.once("SIGTERM", () => void shutdown("SIGTERM"));
 
   const seenUrls = new Set<string>();           // cross-portal exact URL dedup (authoritative)
   const seenCanonicalIds = new Set<string>();   // cross-portal canonical ID dedup (authoritative)
@@ -465,11 +736,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   const completion = (async () => {
     try {
       // Phase 1: Initializing
-      mgr.transitionTo("initializing");
-      if (runScope) {
-        try {
-          await getRepositories().scrapeRuns.updateRunStatus(runScope, mgr.runId, "running");
-        } catch {}
+      if (mgr.manifest.status !== "waiting_for_confirmation" && mgr.manifest.status !== "running") {
+        mgr.transitionTo("initializing");
       }
 
       await pool(portals, CONFIG.portalConcurrency, async (portal) => {
@@ -489,29 +757,52 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         }
 
         let browserContext: any;
-        try { browserContext = await getPortalContext(portal); }
-        catch (err: any) { 
+        try {
+          browserContext = await getPortalContext(
+            portal,
+            {
+              runId: mgr.runId,
+              mode: runScope ? "SCOPED" : "GLOBAL_MARKET",
+              tenantId: effectiveAuthContext?.tenantId,
+              personId: effectiveAuthContext?.userId,
+            },
+            {},
+            {
+              headless: runtimeOpts.headless,
+            }
+          );
+        } catch (err: any) { 
           plog(`context launch failed: ${err.message}`, "error"); 
           mgr.updatePortalHealth(portal, { status: "error", details: err.message });
           mgr.recordActivity(`Error connecting to ${portal}: ${err.message}`);
+          
+          const errCode = err?.code || "PORTAL_INITIALIZATION_FAILED";
+          for (const u of mgr.manifest.units) {
+            if (u.portal === portal && (u.status === "pending" || u.status === "running")) {
+              mgr.updateUnit(u.id, {
+                status: "failed",
+                error: `[${errCode}] ${err.message}`,
+              });
+            }
+          }
           return null; 
         }
         
-        activeContexts.set(portal, browserContext);
+        runtime.contexts.set(portal, browserContext);
         const pageManager = new PageManager(portal, browserContext);
-        activePageManagers.set(portal, pageManager);
+        runtime.pageManagers.set(portal, pageManager);
         const { searchPage, detailPage, searchMutex, detailMutex } = await pageManager.initialize();
-        activePages.set(portal, searchPage);
+        runtime.pages.set(portal, searchPage);
 
         // Establish JIT PortalAuthSession without retaining plaintext secrets
         let authSession: PortalAuthSession | null = null;
         try {
-          if (opts.authContext) {
+          if (effectiveAuthContext) {
             const repos = await getRepositories();
             const broker = new CredentialBroker(repos.credentials);
-            authSession = await establishPortalAuthSession(broker, opts.authContext, portal, browserContext);
+            authSession = await establishPortalAuthSession(broker, effectiveAuthContext, portal, browserContext);
             if (authSession) {
-              activeAuthSessions.set(portal, authSession);
+              runtime.authSessions.set(portal, authSession);
               plog(`authenticated session established (source: ${authSession.source}, version: ${authSession.version})`);
             }
           } else {
@@ -534,8 +825,18 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           plog(`session error — skipping portal`, "warn");
           mgr.updatePortalHealth(portal, { status: "error", details: `Session error` });
           mgr.recordActivity(`Session error on ${portal}`);
-          activeContexts.delete(portal);
-          activePages.delete(portal);
+          for (const u of mgr.manifest.units) {
+            if (u.portal === portal && (u.status === "pending" || u.status === "running")) {
+              mgr.updateUnit(u.id, {
+                status: "failed",
+                error: `[PORTAL_INITIALIZATION_FAILED] Session error`,
+              });
+            }
+          }
+          runtime.contexts.delete(portal);
+          runtime.pages.delete(portal);
+          runtime.pageManagers.delete(portal);
+          runtime.authSessions.delete(portal);
           return null;
         }
 
@@ -568,39 +869,165 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         } else if (sessionStatus === "gated") {
           mgr.updatePortalHealth(portal, { status: "gated", details: `Waiting for manual login` });
           mgr.recordActivity(`Portal ${portal} requires authentication/captcha`);
+          if (resolvedAutoConfirm) {
+            for (const u of mgr.manifest.units) {
+              if (u.portal === portal && (u.status === "pending" || u.status === "running")) {
+                mgr.updateUnit(u.id, {
+                  status: "skipped_gated",
+                  error: `[PORTAL_SESSION_GATED] Portal requires manual authentication or captcha`,
+                });
+              }
+            }
+          }
         }
       });
 
-      // Phase 2: Polling Pause
-      const autoConfirm = opts.autoConfirm ?? CONFIG.autoConfirm;
-      if (!autoConfirm) {
+      // Phase 2: Confirmation / Polling Pause
+      if (!resolvedAutoConfirm) {
         mgr.transitionTo("waiting_for_confirmation");
+        if (runScope) {
+          const repos = getRepositories();
+          const transitioned =
+            await repos.scrapeRuns.transitionRunStatus(
+              runScope,
+              mgr.runId,
+              "initializing",
+              "waiting_for_confirmation"
+            );
+
+          if (!transitioned) {
+            const refreshed =
+              await repos.scrapeRuns.getRun(runScope, mgr.runId);
+
+            if (
+              refreshed?.status !== "waiting_for_confirmation" &&
+              refreshed?.status !== "running"
+            ) {
+              throw new Error(
+                `WAITING_CONFIRMATION_CAS_CONFLICT: ${refreshed?.status}`
+              );
+            }
+          }
+        }
         log("Waiting for user confirmation. (Set AUTO_CONFIRM=true to bypass)");
         const deadline = Date.now() + 15 * 60 * 1000; // 15 mins
-        while (true) {
-          if (Date.now() > deadline) {
-             mgr.transitionTo("aborted");
-             log("Run aborted due to 15-minute confirmation timeout.", "error");
-             break;
+        if (runScope) {
+          while (true) {
+            if (Date.now() > deadline) {
+              const repos = getRepositories();
+
+              const transitioned =
+                await repos.scrapeRuns.transitionRunStatus(
+                  runScope,
+                  mgr.runId,
+                  "waiting_for_confirmation",
+                  "aborted",
+                  "Confirmation timeout (15 mins)"
+                );
+
+              const refreshed =
+                await repos.scrapeRuns.getRun(
+                  runScope,
+                  mgr.runId
+                );
+
+              if (
+                !transitioned &&
+                refreshed?.status !== "aborted"
+              ) {
+                throw new Error(
+                  `CONFIRMATION_TIMEOUT_CAS_CONFLICT: durable status=${refreshed?.status}`
+                );
+              }
+
+              mgr.manifest.status = "aborted";
+              mgr.persistManifest();
+              break;
+            }
+
+            const durableRun =
+              await getRepositories()
+                .scrapeRuns
+                .getRun(runScope, mgr.runId);
+
+            if (!durableRun) {
+              throw new Error(
+                "DURABLE_RUN_DISAPPEARED_DURING_CONFIRMATION"
+              );
+            }
+
+            if (durableRun.status === "running") {
+              mgr.manifest.status = "running";
+              mgr.persistManifest();
+              break;
+            }
+
+            if (durableRun.status === "aborted") {
+              mgr.manifest.status = "aborted";
+              mgr.persistManifest();
+              break;
+            }
+
+            if (
+              durableRun.status !== "waiting_for_confirmation"
+            ) {
+              throw new Error(
+                `CONFIRMATION_STATE_CONFLICT: ${durableRun.status}`
+              );
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
-          // Read from disk to get latest state from UI
-          let currentManifest = mgr.manifest;
-          try {
-            currentManifest = JSON.parse(fs.readFileSync(mgr.manifestPath, "utf-8"));
-          } catch {}
-          if (currentManifest.status === "running") {
-             mgr.manifest = currentManifest; // sync in-memory
-             log("Confirmation received! Starting execution...");
-             break;
+        } else {
+          // Unauthenticated / local-only confirmation polling
+          while (true) {
+            if (Date.now() > deadline) {
+              mgr.manifest.status = "aborted";
+              mgr.persistManifest();
+              break;
+            }
+            let currentManifest = mgr.manifest;
+            try {
+              currentManifest = JSON.parse(fs.readFileSync(mgr.manifestPath, "utf-8"));
+            } catch {}
+            if (currentManifest.status === "running") {
+              mgr.manifest.status = "running";
+              break;
+            }
+            if (currentManifest.status === "aborted") {
+              mgr.manifest.status = "aborted";
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
-          if (currentManifest.status === "aborted") {
-             mgr.manifest = currentManifest; // sync in-memory
-             log("Run aborted by user.", "error");
-             break;
-          }
-          await new Promise(r => setTimeout(r, 1000));
         }
       } else {
+        if (runScope) {
+          let transitioned = false;
+          try {
+            transitioned = await getRepositories().scrapeRuns.transitionRunStatus(
+              runScope,
+              mgr.runId,
+              ["initializing", "waiting_for_confirmation"],
+              "running"
+            );
+          } catch (e: any) {
+            log(`Error during auto-confirm transition to running: ${e.message}`, "error");
+            mgr.manifest.status = "failed";
+            mgr.finalize("failed");
+            throw new Error(`AUTO_CONFIRM_CAS_FAILED: ${e.message}`);
+          }
+
+          if (!transitioned) {
+            const durableRun = await getRepositories().scrapeRuns.getRun(runScope, mgr.runId);
+            if (durableRun?.status !== "running") {
+              log(`Auto-confirm CAS failed: durable run status is '${durableRun?.status}', expected 'running'`, "error");
+              mgr.manifest.status = "failed";
+              mgr.finalize("failed");
+              throw new Error(`AUTO_CONFIRM_CAS_FAILED: Durable run status is '${durableRun?.status}', not 'running'`);
+            }
+          }
+        }
         mgr.transitionTo("running");
       }
 
@@ -613,9 +1040,19 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       const poolResults = await pool(portals, CONFIG.portalConcurrency, async (portal) => {
         const plog = makeLogger(`scrape:${portal}`);
         const handler = HANDLERS[portal];
-        const browserContext = activeContexts.get(portal);
-        const activePage = activePages.get(portal);
-        if (!browserContext || !activePage) return;
+        const browserContext = runtime.contexts.get(portal);
+        const activePage = runtime.pages.get(portal);
+        if (!browserContext || !activePage) {
+          for (const u of mgr.manifest.units) {
+            if (u.portal === portal && (u.status === "pending" || u.status === "running")) {
+              mgr.updateUnit(u.id, {
+                status: "failed",
+                error: `[PORTAL_INITIALIZATION_FAILED] Portal context unavailable`,
+              });
+            }
+          }
+          return;
+        }
 
         mgr.updatePortalHealth(portal, { status: "ready", details: "Executing" });
         plog(`Active tabs before execution: ${browserContext.pages().length}`);
@@ -657,12 +1094,26 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             seenHeuristicKeys,
             plog,
             maxCardsPerPage,
-            runScope ? { tenantId: runScope.tenantId, personId: runScope.personId, searchPlanId: resolvedPlan?.searchPlanId } : undefined,
+            runScope ? { tenantId: runScope.tenantId, personId: runScope.personId, searchPlanId: resolvedPlan?.searchPlanId || effectiveSearchPlanId } : undefined,
             resolvedPlan?.criteria,
+            runtime.pageManagers.get(unit.portal),
+            runtime.authSessions.get(unit.portal),
           );
           if (outcome) {
             portalIngested += outcome.opportunities;
             portalFacts += outcome.factsCreated;
+            if (outcome.pausePortalQueue) {
+              plog(`Portal queue pause triggered for ${unit.portal}. Pruning remaining pending units for this portal.`, "warn");
+              for (const u of mgr.manifest.units) {
+                if (u.portal === unit.portal && u.status === "pending") {
+                  mgr.updateUnit(u.id, {
+                    status: "skipped_gated",
+                    error: `Pruned due to portal pause condition in ${unit.id}`
+                  });
+                }
+              }
+              break;
+            }
           }
           await syncManifestProgress(mgr, "discover");
           await jitter();
@@ -703,11 +1154,23 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         return { success: false, count: ingestedCount, runId: mgr.runId };
       }
 
+      const manifestCards = mgr.manifest.cards;
+      const integrityFailureCards = manifestCards.filter(c => c.failureKind === "INTEGRITY_FAILURE");
+      const sourceFailureCards = manifestCards.filter(c => c.failureKind === "SOURCE_FAILURE");
+      const nonTerminalCards = manifestCards.filter(c => c.status === "pending" || c.status === "running");
+      const unexplainedAttemptCards = manifestCards.filter(
+        c => c.detailAttempted && !c.usableDetailDocument && !c.failureKind && c.status !== "skipped_gated"
+      );
+
+      mgr.recordTelemetry("acquisitionIntegrityFailures", integrityFailureCards.length);
+
       const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
       const failedUnits = mgr.manifest.units.filter(u => u.status === "failed");
-      const integrityFailures = mgr.getTelemetry("acquisitionIntegrityFailures" as any) || 0;
-      if (failedUnits.length > 0 || integrityFailures > 0) {
-        log(`[Scrape] Run has ${failedUnits.length} failed units and ${integrityFailures} integrity failures. Failing run closed.`, "error");
+      const integrityFailures = (mgr.getTelemetry("acquisitionIntegrityFailures" as any) || 0) + integrityFailureCards.length;
+      const allUnitsFailedOrGated = mgr.manifest.units.length > 0 && mgr.manifest.units.every(u => u.status === "failed" || u.status === "skipped_gated");
+
+      if (integrityFailures > 0 || allUnitsFailedOrGated) {
+        log(`[Scrape] Run failed: ${integrityFailures > 0 ? `${integrityFailures} integrity failures` : `all ${mgr.manifest.units.length} units failed or gated`}. Failing run closed.`, "error");
         mgr.finalize("failed");
         if (runScope) {
           const repos = getRepositories();
@@ -727,8 +1190,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         return { success: false, count: ingestedCount, runId: mgr.runId };
       }
 
-      mgr.transitionTo("enriching");
-      if (runScope) {
+      if (runScope && capabilities.enrichmentDispatchEnabled) {
+        mgr.transitionTo("enriching");
         const repos = getRepositories();
         await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
           totalDiscovered: mgr.manifest.cards.length,
@@ -741,11 +1204,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             `Failed durable running->enriching transition for ${mgr.runId}`
           );
         }
-      }
-      log(`[Scrape] Acquisition complete. Dispatched ${ingestedCount} cards to distributed enrichment & evaluation pipeline.`);
-      mgr.recordActivity(`Acquisition complete · ${ingestedCount} cards dispatched for enrichment`);
+        log(`[Scrape] Acquisition complete. Dispatched ${ingestedCount} cards to distributed enrichment & evaluation pipeline.`);
+        mgr.recordActivity(`Acquisition complete · ${ingestedCount} cards dispatched for enrichment`);
 
-      if (runScope) {
         try {
           const { RunReconciliationService } = await import("../src/lib/intelligence/RunReconciliationService");
           const reconciler = new RunReconciliationService();
@@ -753,6 +1214,16 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         } catch (e: any) {
           log(`[Scrape] Initial run reconciliation deferred: ${e.message}`, "warn");
         }
+      } else {
+        mgr.finalize("completed");
+        try {
+          const records = collectRecords();
+          writeLiveScraped(records);
+        } catch (err: any) {
+          log(`[Scrape] Failed writing live-scraped output: ${err.message}`, "warn");
+        }
+        log(`[Scrape] Acquisition run complete (local terminalization). Manifest marked completed.`);
+        mgr.recordActivity(`Acquisition complete · Local run finalized as completed`);
       }
       const runDurationS = ((new Date().getTime() - new Date(mgr.manifest.startedAt).getTime()) / 1000).toFixed(1);
       
@@ -792,12 +1263,20 @@ Browser-only:          ${mgr.manifest.cards.length - tm.httpAttempted}
       }
       return { success: false, count: 0, runId: mgr.runId };
     } finally {
-      activeRunControllers.delete(mgr.runId);
-      for (const session of activeAuthSessions.values()) {
+      for (const session of runtime.authSessions.values()) {
         session.dispose();
       }
-      activeAuthSessions.clear();
-      await closeAllPortalContexts();
+      runtime.authSessions.clear();
+      await closePortalContextsForRun(mgr.runId);
+      if (globalMarketLock) {
+        try {
+          releaseExclusiveLock(globalMarketLock);
+          globalMarketLock = null;
+        } catch {}
+      }
+      HealthManager.clearRun(mgr.runId);
+      activeRunSessions.delete(mgr.runId);
+      activeRunControllers.delete(mgr.runId);
     }
   })();
 
@@ -819,10 +1298,210 @@ export type ProcessOutcome = {
   newJobs: number;
   duplicates: number;
   warnings: string[];
+  pausePortalQueue?: boolean;
 };
 
+export interface DetailPolicyDeps {
+  sleep?: (ms: number) => Promise<void>;
+  evaluatePolicy?: typeof FailurePolicyEngine.evaluate;
+}
 
-async function processUnit(
+export async function executeCardDetailWithPolicy(
+  options: {
+    cardUnitId: string;
+    cardUnit: CardUnit;
+    mgr: RunController;
+
+    fetchDetail: () => Promise<DetailedCard["detail"]>;
+
+    validateDetail: (
+      detail: DetailedCard["detail"]
+    ) => ReturnType<typeof ResponseValidator.validate>;
+
+    isPortalPaused: () => boolean;
+    triggerPortalPause: () => void;
+  },
+  deps: DetailPolicyDeps = {},
+): Promise<
+  | {
+      ok: true;
+      detail: DetailedCard["detail"];
+    }
+  | {
+      ok: false;
+      failureClass?: FailureClass;
+      paused: boolean;
+    }
+> {
+  const sleep =
+    deps.sleep ??
+    ((ms: number) =>
+      new Promise<void>(resolve => setTimeout(resolve, ms)));
+
+  const evaluatePolicy =
+    deps.evaluatePolicy ?? FailurePolicyEngine.evaluate;
+
+  while (true) {
+    if (options.isPortalPaused()) {
+      options.mgr.updateCard(options.cardUnitId, {
+        status: "skipped_gated",
+        error: "Portal paused before detail acquisition",
+      });
+
+      return {
+        ok: false,
+        paused: true,
+      };
+    }
+
+    const attempt =
+      (options.cardUnit.attempts ?? 0) + 1;
+
+    options.cardUnit.attempts = attempt;
+
+    options.mgr.updateCard(options.cardUnitId, {
+      attempts: attempt,
+      detailAttempted: true,
+    });
+
+    const detail = await options.fetchDetail();
+    const validation = options.validateDetail(detail);
+
+    if (detail.fetched && validation.isValid) {
+      options.mgr.updateCard(options.cardUnitId, {
+        usableDetailDocument: true,
+        failureClass: undefined,
+        failureKind: undefined,
+      });
+
+      return {
+        ok: true,
+        detail,
+      };
+    }
+
+    const failureClass = normalizeFailureClass(
+      detail.failureClass ??
+        validation.failureClass ??
+        "UNKNOWN_FAILURE"
+    );
+
+    const policy = evaluatePolicy(
+      failureClass,
+      attempt
+    );
+
+    // Critical invariant: pause beats retry.
+    if (policy.pausePortalQueue) {
+      options.triggerPortalPause();
+
+      options.mgr.updateCard(options.cardUnitId, {
+        status: "failed",
+        failureClass,
+        failureKind: "SOURCE_FAILURE",
+        error: `Portal paused: ${failureClass}`,
+      });
+
+      return {
+        ok: false,
+        failureClass,
+        paused: true,
+      };
+    }
+
+    if (policy.shouldRetry) {
+      await sleep(policy.backoffMs);
+      continue;
+    }
+
+    const failureKind =
+      classifyCardFailure(failureClass);
+
+    options.mgr.updateCard(options.cardUnitId, {
+      status: "failed",
+      failureClass,
+      failureKind,
+      error: `Detail acquisition failed: ${failureClass}`,
+    });
+
+    return {
+      ok: false,
+      failureClass,
+      paused: false,
+    };
+  }
+}
+
+export function finalizeUnitOutcome(params: {
+  cardsCount: number;
+  manifestCards: CardUnit[];
+  portalPauseTriggered?: boolean;
+  pausePortalQueue?: boolean;
+  initialStatus?: ProcessOutcome["status"];
+}): { status: ProcessOutcome["status"]; warnings: string[] } {
+  const warnings: string[] = [];
+  let status: ProcessOutcome["status"] = params.initialStatus || "completed";
+
+  const attemptedCards = params.manifestCards.filter(
+    (c) => c.detailAttempted === true
+  );
+
+  const usableCards = attemptedCards.filter(
+    (c) => c.usableDetailDocument === true
+  );
+
+  const integrityFailures = attemptedCards.filter(
+    (c) => c.failureKind === "INTEGRITY_FAILURE"
+  );
+
+  const sourceFailures = attemptedCards.filter(
+    (c) => c.failureKind === "SOURCE_FAILURE"
+  );
+
+  const nonTerminalAttempted = attemptedCards.filter(
+    (c) => c.status === "pending" || c.status === "running"
+  );
+
+  const unexplainedAttempts = attemptedCards.filter(
+    (c) =>
+      !c.usableDetailDocument &&
+      !c.failureKind &&
+      c.status !== "skipped_gated"
+  );
+
+  if (status !== "aborted") {
+    if (
+      integrityFailures.length > 0 ||
+      nonTerminalAttempted.length > 0 ||
+      unexplainedAttempts.length > 0
+    ) {
+      status = "failed";
+      warnings.push(
+        `Unit failed: integrity=${integrityFailures.length}, nonTerminal=${nonTerminalAttempted.length}, unexplained=${unexplainedAttempts.length}`
+      );
+    } else if (params.portalPauseTriggered || params.pausePortalQueue) {
+      status = "failed";
+      warnings.push(`Unit failed due to portal pause condition`);
+    } else if (
+      attemptedCards.length > 0 &&
+      usableCards.length === 0 &&
+      sourceFailures.length === attemptedCards.length
+    ) {
+      status = "failed";
+      warnings.push(
+        `Unit failed: all ${attemptedCards.length} attempted cards failed with SOURCE_FAILURE`
+      );
+    } else if (usableCards.length > 0) {
+      status = "completed";
+    } else {
+      status = params.cardsCount === 0 ? "skipped_empty" : "completed";
+    }
+  }
+
+  return { status, warnings };
+}
+
+export async function processUnit(
   mgr: RunController,
   handler: PortalHandler,
   unit: WorkUnit,
@@ -834,8 +1513,10 @@ async function processUnit(
   seenHeuristicKeys: Set<string>,
   log: ReturnType<typeof makeLogger>,
   maxCardsPerPage?: number,
-  lineageScope?: { tenantId: string; personId: string; searchPlanId?: string },
+  lineageScope?: { tenantId: string; personId: string; searchPlanId?: string | null },
   relevanceCriteria?: { targetRoles?: string[]; customParameters?: Record<string, unknown> },
+  pageManager?: PageManager,
+  authSession?: PortalAuthSession,
 ): Promise<ProcessOutcome> {
   const outcome: ProcessOutcome = {
     status: "failed",
@@ -874,7 +1555,7 @@ async function processUnit(
       maxCardsPerPage: targetMaxCards,
     });
     let cards: FeedCard[] = [];
-    const pm = activePageManagers.get(unit.portal);
+    const pm = pageManager;
     
     try {
       cards = await handler.listCards({
@@ -887,7 +1568,7 @@ async function processUnit(
         detailMutex: pm?.getMutex("detail"),
         pageManager: pm,
         activePage: pm?.getPage("search") || activePage,
-        authSession: activeAuthSessions.get(unit.portal),
+        authSession: authSession,
         logger: log,
         isCancelled: () => mgr.isCancellationRequested(),
       });
@@ -1011,13 +1692,29 @@ async function processUnit(
     const cardMeta = cards.map((c) => ({ id: `${unit.id}#${c.cardHash}`, cardHash: c.cardHash }));
     mgr.addCards(unit.id, cardMeta);
 
-    const repos = getRepositories();
+    const runSession = activeRunSessions.get(mgr.runId);
+    let isDbAvailable = true;
+    if (runSession?.capabilities) {
+      isDbAvailable = runSession.capabilities.databaseAvailable;
+    } else {
+      try {
+        getDatabaseAdapter();
+      } catch {
+        isDbAvailable = false;
+      }
+    }
+    const repos = isDbAvailable ? getRepositories() : null;
     /* Keep historical ledger recognition distinct from same-run duplicate
      * suppression. A known listing still proceeds to canonical ingestion so
      * its material source version can be reused or versioned correctly. */
     const historicalLedgerCardIds = new Set<string>();
     let pageCanonicalIngested = 0;
     let integrityFailuresInUnit = 0;
+    let portalPauseTriggered = false;
+    let attemptedDetailCount = 0;
+    let usableDetailAcquired = 0;
+    let sourceFailuresInUnit = 0;
+    let primaryFailureClass: FailureClass | null = null;
 
     // Cards for a single unit run in parallel with a bounded pool.
     await pool(cards, CONFIG.detailConcurrency, async (feedCard) => {
@@ -1026,10 +1723,14 @@ async function processUnit(
         mgr.updateCard(cardUnitId, { status: "skipped_pruned", error: "Run cancelled/aborted" });
         return null;
       }
+      if (portalPauseTriggered) {
+        mgr.updateCard(cardUnitId, { status: "skipped_gated", error: "Portal paused due to anti-bot or access challenge" });
+        return null;
+      }
       const cardUnit = mgr.manifest.cards.find((c) => c.id === cardUnitId);
       if (!cardUnit || cardUnit.status === "done") return null;
 
-      mgr.updateCard(cardUnitId, { status: "running", attempts: cardUnit.attempts + 1 });
+      mgr.updateCard(cardUnitId, { status: "running" });
       mgr.recordActivity(`Reading JD: ${feedCard.title} (${feedCard.company})`);
 
       const recordLineage = async (
@@ -1044,7 +1745,7 @@ async function processUnit(
         // Unauthenticated local runs have no durable scrape_run scope. They are
         // intentionally outside the validation cohort; authenticated runs must
         // retain durable source-to-canonical provenance.
-        if (!lineageScope) return;
+        if (!lineageScope || !repos) return;
         await repos.acquisition.recordIngestionLineage({
           scrapeRunId: mgr.runId,
           tenantId: lineageScope.tenantId,
@@ -1088,7 +1789,11 @@ async function processUnit(
 
         if (!preQual.pass) {
           mgr.recordTelemetry("hardFiltered");
-          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: `[HardFilter:${preQual.reasonCode}] ${preQual.reason}` });
+          mgr.updateCard(cardUnitId, {
+            status: "skipped_empty",
+            error: `[HardFilter:${preQual.reasonCode}] ${preQual.reason}`,
+            failureKind: "EXPECTED_REJECTION",
+          });
           return null;
         }
 
@@ -1106,40 +1811,63 @@ async function processUnit(
         const isInMemoryDuplicate = seenUrls.has(identity.canonicalUrl) || seenCanonicalIds.has(identity.canonicalJobId);
         if (isInMemoryDuplicate) {
           mgr.recordTelemetry("duplicatePreDetail");
-          mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate Canonical URL (Current Run, Pre-Detail)" });
+          mgr.updateCard(cardUnitId, {
+            status: "skipped_empty",
+            error: "Duplicate Canonical URL (Current Run, Pre-Detail)",
+            failureKind: "EXPECTED_REJECTION",
+          });
           outcome.duplicates++;
           return null;
         }
 
+        if (portalPauseTriggered) {
+          log(`Skipping card ${cardUnitId} because portal ${unit.portal} queue is paused`, "warn");
+          return null;
+        }
+
+        attemptedDetailCount++;
+        mgr.updateCard(cardUnitId, { detailAttempted: true, usableDetailDocument: false });
         seenUrls.add(identity.canonicalUrl);
         seenCanonicalIds.add(identity.canonicalJobId);
 
-        const { priorLedgerItem, ledgerItem } = await withPersistenceBoundary("initial ledger discovery", async () => {
-          const prior = await repos.acquisition.getLedgerItemByCanonicalId(
-            identity.sourcePortal,
-            identity.canonicalJobId,
-          );
-          const item = await repos.acquisition.upsertDiscoveredJob({
-            canonicalJobId: identity.canonicalJobId,
-            sourcePortal: identity.sourcePortal,
-            sourceJobId: identity.sourceJobId,
-            canonicalUrl: identity.canonicalUrl,
-            title: feedCard.title,
-            companyName: feedCard.company,
-            location: feedCard.location,
-            state: "QUEUED",
-            firstSeenAt: new Date().toISOString(),
-            lastSeenAt: new Date().toISOString(),
-            validationConfidence: identity.identityConfidence
+        let priorLedgerItem: any = null;
+        let ledgerItem: any = {
+          id: `local:${identity.sourcePortal}:${identity.canonicalJobId}`,
+          sourceJobId: identity.sourceJobId,
+        };
+
+        if (repos) {
+          const res = await withPersistenceBoundary("initial ledger discovery", async () => {
+            const prior = await repos.acquisition.getLedgerItemByCanonicalId(
+              identity.sourcePortal,
+              identity.canonicalJobId,
+            );
+            const item = await repos.acquisition.upsertDiscoveredJob({
+              canonicalJobId: identity.canonicalJobId,
+              sourcePortal: identity.sourcePortal,
+              sourceJobId: identity.sourceJobId,
+              canonicalUrl: identity.canonicalUrl,
+              title: feedCard.title,
+              companyName: feedCard.company,
+              location: feedCard.location,
+              state: "QUEUED",
+              firstSeenAt: new Date().toISOString(),
+              lastSeenAt: new Date().toISOString(),
+              validationConfidence: identity.identityConfidence
+            });
+            return { priorLedgerItem: prior, ledgerItem: item };
           });
-          return { priorLedgerItem: prior, ledgerItem: item };
-        });
+          priorLedgerItem = res.priorLedgerItem;
+          ledgerItem = res.ledgerItem;
+        }
         if (priorLedgerItem) historicalLedgerCardIds.add(cardUnitId);
 
-        const snapshotPath = path.join(SNAPSHOT_DIR, `${feedCard.cardHash}.json`);
-        const isHistoricallyNew = !priorLedgerItem && !fs.existsSync(snapshotPath);
+        const nominalSnapshotPath = path.join(SNAPSHOT_DIR, `${feedCard.cardHash}.json`);
+        const isHistoricallyNew = !priorLedgerItem && !fs.existsSync(nominalSnapshotPath);
         let detailedCard: import("./scraper/types").DetailedCard | null = null;
         let canonicalIngestionResult: CanonicalIngestionResult | undefined;
+        let writtenSnapshotPath: string | null = null;
+        let boundSnapshotPath: string | null = null;
         let snapshot = readSnapshotIfFresh(feedCard.cardHash, CONFIG.snapshotFreshHours);
         let detail: import("./scraper/types").DetailedCard["detail"] = {
           fetched: false,
@@ -1152,17 +1880,26 @@ async function processUnit(
         let fallbackRoute: string | undefined = undefined;
         const acquisitionAttempts: AcquisitionAttempt[] = [];
 
-        if (snapshot?.detail?.fetched) {
-          log(`[Snapshot] Reusing cached detail (${snapshot.detail.rawText?.length || 0} chars) for ${feedCard.cardHash}`);
+        const detailResult = await executeCardDetailWithPolicy({
+          cardUnitId,
+          cardUnit,
+          mgr,
+          fetchDetail: async () => {
+            if (snapshot?.detail?.fetched) {
+              log(`[Snapshot] Reusing cached detail (${snapshot.detail.rawText?.length || 0} chars) for ${feedCard.cardHash}`);
           detail = snapshot.detail;
           acquisitionRoute = snapshot.acquisitionRoute || "DETAIL_PAGE_BROWSER";
           enrichmentStatus = snapshot.enrichmentStatus || "NOT_APPLICABLE";
           fallbackRoute = snapshot.fallbackRoute;
         } else {
           if (unit.portal === "Naukri") {
+            let usedNaukriRichDiscovery = false;
+            let usedNaukriAts = false;
+
             // Naukri Multi-Tier Acquisition Architecture:
             // Tier 1: Direct Rich Ingestion (ONLY when explicitly carrying authoritative full-description provenance)
             if (feedCard.hasAuthoritativeFullDescription === true && feedCard.rawText && feedCard.rawText.length >= 200 && feedCard.rawHtml) {
+              usedNaukriRichDiscovery = true;
               log(`[Naukri] Using authoritative discovery payload (${feedCard.rawText.length} chars) for ${feedCard.title} @ ${feedCard.company}`);
               acquisitionRoute = "DISCOVERY_RICH";
               enrichmentStatus = "NOT_APPLICABLE";
@@ -1185,7 +1922,7 @@ async function processUnit(
               });
             } 
             // Tier 2: External ATS Enrichment via applyRedirectUrl (< 500 chars)
-            else if (feedCard.applyRedirectUrl) {
+            if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
               log(`[Naukri] Attempting ATS enrichment via ${feedCard.applyRedirectUrl}`);
               const atsRes: import("./scraper/utils/http-fetch").HttpFetchResult = await fastFetchDetail(
                 feedCard.applyRedirectUrl,
@@ -1204,8 +1941,9 @@ async function processUnit(
                 rawText: ""
               }));
 
-              if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText) {
+              if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
                 log(`[Naukri] ATS enrichment successful (${atsRes.rawText.length} chars, quality=${atsRes.qualityTier || 'VALID'}, method=${atsRes.extractionMethod}) for ${feedCard.title} @ ${feedCard.company}`);
+                usedNaukriAts = true;
                 acquisitionRoute = "ATS_ENRICHED";
                 enrichmentStatus = "ENRICHED_SUCCESS";
                 detail = {
@@ -1214,6 +1952,7 @@ async function processUnit(
                   rawText: atsRes.rawText,
                   fetchDurationMs: atsRes.fetchDurationMs,
                   httpStatus: atsRes.httpStatus || 200,
+                  finalUrl: feedCard.applyRedirectUrl,
                 };
                 acquisitionAttempts.push({
                   method: "ATS_HTTP",
@@ -1226,7 +1965,7 @@ async function processUnit(
                   details: `Extracted ${atsRes.rawText.length} chars via ${atsRes.extractionMethod}`
                 });
               } else {
-                log(`[Naukri] ATS enrichment rejected/failed (${atsRes.fetchError || atsRes.outcome}); preserving attempt and evaluating discovery fallback`);
+                log(`[Naukri] ATS enrichment rejected/failed (${atsRes.fetchError || atsRes.outcome}); preserving attempt and evaluating native detail fallback`);
                 enrichmentStatus = "ENRICHED_FAILED";
                 fallbackRoute = "ORIGINAL_DISCOVERY_PAYLOAD";
                 acquisitionAttempts.push({
@@ -1247,13 +1986,15 @@ async function processUnit(
                   rawText: feedCard.rawText || "",
                   fetchDurationMs: 0,
                   httpStatus: atsRes.httpStatus || 200,
+                  failureClass: atsRes.failureClass,
                 };
               }
             } 
-            // Tier 3: Native Detail Acquisition (invoked for non-authoritative snippets, regardless of length)
-            else {
-              enrichmentStatus = "NOT_APPLICABLE";
-              const pmDetail = activePageManagers.get(unit.portal);
+            // Tier 3: Native Detail Acquisition (invoked when rich discovery was not used and ATS did not yield a usable JD)
+            if (!usedNaukriRichDiscovery && !usedNaukriAts && !portalPauseTriggered && outcome.pausePortalQueue !== true) {
+              enrichmentStatus = enrichmentStatus === "ENRICHED_FAILED" ? "ENRICHED_FAILED" : "NOT_APPLICABLE";
+              const pmDetail = pageManager;
+              const runHealth = HealthManager.forRun(mgr.runId);
               const detailCtx: import("./scraper/types").PortalContext = {
                 runId: mgr.runId,
                 portal: unit.portal,
@@ -1267,13 +2008,13 @@ async function processUnit(
                 detailMutex: pmDetail?.getMutex("detail"),
                 pageManager: pmDetail,
                 logger: log,
-                isHttpDisabled: (url: string) => mgr.isHttpFastPathDisabled(unit.portal) || mgr.failedHttpUrls.has(url),
-                recordHttpFailure: (url: string, reason: string) => mgr.recordDetailFailure(unit.portal, url, reason),
-                recordHttpSuccess: (url: string) => mgr.recordDetailSuccess(unit.portal),
+                isHttpDisabled: (url: string) => !runHealth.isFastPathAvailable(unit.portal) || mgr.failedHttpUrls.has(url),
+                recordHttpFailure: (url: string, reason: string) => runHealth.recordFastPathFailure(unit.portal, reason),
+                recordHttpSuccess: (url: string) => runHealth.recordFastPathSuccess(unit.portal),
                 recordTelemetry: (event: any) => mgr.recordTelemetry(event),
               };
 
-              log(`[Naukri] Discovery payload lacks authoritative provenance (${feedCard.rawText?.length || 0} chars, authoritative=${Boolean(feedCard.hasAuthoritativeFullDescription)}); invoking portal fetchDetail for ${feedCard.detailUrl}`);
+              log(`[Naukri] ${feedCard.applyRedirectUrl ? "ATS enrichment failed" : "Discovery payload lacks authoritative provenance"} (${feedCard.rawText?.length || 0} chars, authoritative=${Boolean(feedCard.hasAuthoritativeFullDescription)}); invoking portal fetchDetail for ${feedCard.detailUrl}`);
               mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId, url: feedCard.detailUrl });
               const portalDetail = await handler.fetchDetail(detailCtx, feedCard.detailUrl).catch((err: any) => ({
                 fetched: false,
@@ -1308,6 +2049,7 @@ async function processUnit(
                   rawText: portalDetail.rawText || feedCard.rawText || "",
                   fetchDurationMs: portalDetail.fetchDurationMs || 0,
                   httpStatus: portalDetail.httpStatus || 200,
+                  failureClass: (portalDetail as any).failureClass || "EXTRACTION_FAILURE",
                 };
                 acquisitionAttempts.push({
                   method: "PORTAL_DETAIL",
@@ -1356,7 +2098,8 @@ async function processUnit(
               // Rich discovery evidence may avoid a second JD extraction, but
               // it may never bypass Indeed's stable-listing identity boundary.
               if (unit.portal === "Indeed") {
-                const pmDetail = activePageManagers.get(unit.portal);
+                const pmDetail = pageManager;
+                const runHealth = HealthManager.forRun(mgr.runId);
                 const identity = await handler.resolveListingIdentity?.({
                   runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
                   searchUrl, browserContext,
@@ -1366,8 +2109,8 @@ async function processUnit(
                   detailMutex: pmDetail?.getMutex("detail"),
                   pageManager: pmDetail,
                   logger: log,
-                  isHttpDisabled: (url: string) => mgr.isHttpFastPathDisabled(unit.portal) || mgr.failedHttpUrls.has(url),
-                  recordHttpFailure: (url: string, reason: string) => mgr.recordDetailFailure(unit.portal, url, reason),
+                  isHttpDisabled: (url: string) => !runHealth.isFastPathAvailable(unit.portal) || mgr.failedHttpUrls.has(url),
+                  recordHttpFailure: (url: string, reason: string) => runHealth.recordFastPathFailure(unit.portal, reason),
                   recordTelemetry: (event: any) => mgr.recordTelemetry(event),
                 }, feedCard.detailUrl);
                 if (!identity || identity.identityResolutionFailure || !identity.finalUrl) {
@@ -1456,7 +2199,8 @@ async function processUnit(
 
           if (!usedRichDiscovery && !usedIndeedAts) {
             mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId });
-            const pmDetail = activePageManagers.get(unit.portal);
+            const pmDetail = pageManager;
+            const runHealth = HealthManager.forRun(mgr.runId);
             detail = await handler.fetchDetail({
               runId: mgr.runId, portal: unit.portal, keyword: unit.keyword, page: unit.page,
               searchUrl, browserContext,
@@ -1466,9 +2210,9 @@ async function processUnit(
               detailMutex: pmDetail?.getMutex("detail"),
               pageManager: pmDetail,
               logger: log,
-              isHttpDisabled: (url: string) => mgr.isHttpFastPathDisabled(unit.portal) || mgr.failedHttpUrls.has(url),
-              recordHttpFailure: (url: string, reason: string) => mgr.recordDetailFailure(unit.portal, url, reason),
-              recordHttpSuccess: (url: string) => mgr.recordDetailSuccess(unit.portal),
+              isHttpDisabled: (url: string) => !runHealth.isFastPathAvailable(unit.portal) || mgr.failedHttpUrls.has(url),
+              recordHttpFailure: (url: string, reason: string) => runHealth.recordFastPathFailure(unit.portal, reason),
+              recordHttpSuccess: (url: string) => runHealth.recordFastPathSuccess(unit.portal),
               recordTelemetry: (event: any) => mgr.recordTelemetry(event),
             }, feedCard.detailUrl);
             mgr.journal.append({ type: "detail_extraction_finished", cardId: cardUnitId, durationMs: detail.fetchDurationMs });
@@ -1487,8 +2231,40 @@ async function processUnit(
           }
           }
         }
-          
-          // 4. Standalone Response Validation
+        return detail;
+      },
+          validateDetail: (d) => ResponseValidator.validate({
+            html: d.rawText || "",
+            url: feedCard.applyRedirectUrl || feedCard.detailUrl,
+            sourcePortal: unit.portal,
+            httpStatus: d.httpStatus,
+            extractedTitle: feedCard.title,
+            documentTitle: d.extractedTitle,
+            extractedCompany: feedCard.company,
+            extractedDescription: d.rawText,
+            contentOrigin: d.fetched ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
+          }),
+          isPortalPaused: () => portalPauseTriggered || outcome.pausePortalQueue === true,
+          triggerPortalPause: () => {
+            portalPauseTriggered = true;
+            outcome.pausePortalQueue = true;
+          },
+        });
+
+        if (!detailResult.ok) {
+          const failureClass = detailResult.failureClass || "UNKNOWN_FAILURE";
+          primaryFailureClass = primaryFailureClass || failureClass;
+          sourceFailuresInUnit++;
+
+          // Isolate external ATS failure from Naukri portal health/circuit-breaker
+          if (
+            unit.portal !== "Naukri"
+            && !detail.identityResolutionFailure
+          ) {
+            const runHealth = HealthManager.forRun(mgr.runId);
+            runHealth.recordFailure(unit.portal, failureClass);
+          }
+
           const valResult = ResponseValidator.validate({
             html: detail.rawText || "",
             url: feedCard.applyRedirectUrl || feedCard.detailUrl,
@@ -1501,23 +2277,18 @@ async function processUnit(
             contentOrigin: detail.fetched ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
           });
 
-          if (!valResult.isValid || !detail.fetched) {
-            const failureClass = detail.identityResolutionFailure || valResult.failureClass || (detail.fetchError?.includes("< 200") ? "INSUFFICIENT_CONTENT" : "UNKNOWN_FAILURE");
-            // Isolate external ATS failure from Naukri portal health/circuit-breaker
-            if (
-              unit.portal !== "Naukri"
-              && !detail.identityResolutionFailure
-            ) {
-              HealthManager.recordFailure(unit.portal, failureClass);
-            }
+          const rawFailureClass = detail.failureClass || detail.identityResolutionFailure || valResult.failureClass;
+
+          if (repos) {
             await withPersistenceBoundary("validation failure state recording", async () => {
               await repos.acquisition.updateJobState(ledgerItem.id, {
                 state: detail.identityResolutionFailure ? "IDENTITY_UNRESOLVED" : "ACQUIRING",
+                attemptCount: cardUnit.attempts,
                 terminalState: failureClass === "REMOVED_404"
                   ? "PERMANENT_FAILURE"
-                  : failureClass === "REDIRECT_HOP_LIMIT"
+                  : rawFailureClass === "REDIRECT_HOP_LIMIT"
                     ? "REDIRECT_HOP_LIMIT"
-                    : failureClass === "UNSAFE_REDIRECT_DESTINATION"
+                    : rawFailureClass === "UNSAFE_REDIRECT_DESTINATION"
                       ? "UNSAFE_REDIRECT_DESTINATION"
                       : detail.identityResolutionFailure
                         ? "UNRESOLVED_EXTERNAL_LISTING_IDENTITY"
@@ -1527,31 +2298,46 @@ async function processUnit(
                 validationConfidence: valResult.confidence
               });
             });
-            mgr.updateCard(cardUnitId, { status: "failed", error: `Validation failed: ${failureClass}` });
-
-            // Failed acquisition remains in the ledger and lineage as evidence,
-            // but may never create a canonical market record.  A title/card or
-            // an error page is not a recoverable substitute for a validated JD.
-            if (lineageScope) {
-              try {
-                await recordLineage(
-                  ledgerItem.id,
-                  identity.sourceJobId,
-                  feedCard.discoveryUrl || feedCard.detailUrl,
-                  valResult,
-                  undefined,
-                  failureClass,
-                  detail.finalUrl,
-                );
-              } catch (lineageErr: any) {
-                log(`[M10_LINEAGE_WARN] Failed to record validation failure lineage: ${lineageErr.message}`, "warn");
-              }
-            }
-
-            return null;
           }
 
-          HealthManager.recordSuccess(unit.portal);
+          // Failed acquisition remains in the ledger and lineage as evidence,
+          // but may never create a canonical market record.  A title/card or
+          // an error page is not a recoverable substitute for a validated JD.
+          if (lineageScope) {
+            try {
+              await recordLineage(
+                ledgerItem.id,
+                identity.sourceJobId,
+                feedCard.discoveryUrl || feedCard.detailUrl,
+                valResult,
+                undefined,
+                failureClass,
+                detail.finalUrl,
+              );
+            } catch (lineageErr: any) {
+              log(`[M10_LINEAGE_WARN] Failed to record validation failure lineage: ${lineageErr.message}`, "warn");
+            }
+          }
+
+          return null;
+        }
+
+        detail = detailResult.detail;
+        usableDetailAcquired++;
+        const runHealth = HealthManager.forRun(mgr.runId);
+        runHealth.recordBrowserSuccess(unit.portal);
+
+        const valResult = ResponseValidator.validate({
+          html: detail.rawText || "",
+          url: feedCard.applyRedirectUrl || feedCard.detailUrl,
+          sourcePortal: unit.portal,
+          httpStatus: detail.httpStatus,
+          extractedTitle: feedCard.title,
+          documentTitle: detail.extractedTitle,
+          extractedCompany: feedCard.company,
+          extractedDescription: detail.rawText,
+          contentOrigin: detail.fetched ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
+        });
 
           // Post-Detail Company Resolution & Lineage Enforcement
           const rawCompany = (detail.extractedCompany || feedCard.company || "").trim();
@@ -1588,13 +2374,15 @@ async function processUnit(
           const identityUrl = feedCard.detailUrl;
           const verifiedIndeedIdentity = unit.portal === "Indeed" ? parseVerifiedIndeedListingUrl(identityUrl) : undefined;
           if (unit.portal === "Indeed" && !verifiedIndeedIdentity) {
-            await withPersistenceBoundary("unresolved identity state recording", async () => {
-              await repos.acquisition.updateJobState(ledgerItem.id, {
-                state: "IDENTITY_UNRESOLVED",
-                terminalState: "UNRESOLVED_EXTERNAL_LISTING_IDENTITY",
-                lastFailureClass: "IDENTITY_UNRESOLVED",
+            if (repos) {
+              await withPersistenceBoundary("unresolved identity state recording", async () => {
+                await repos.acquisition.updateJobState(ledgerItem.id, {
+                  state: "IDENTITY_UNRESOLVED",
+                  terminalState: "UNRESOLVED_EXTERNAL_LISTING_IDENTITY",
+                  lastFailureClass: "IDENTITY_UNRESOLVED",
+                });
               });
-            });
+            }
             if (lineageScope) {
               try {
                 await recordLineage(
@@ -1648,15 +2436,19 @@ async function processUnit(
           }
 
           // 3. Reconcile external ATS redirect URL if present
-          if (feedCard.applyRedirectUrl) {
-            const cleanAtsUrl = feedCard.applyRedirectUrl.split("?")[0].split("#")[0].toLowerCase().trim();
-            if (cleanAtsUrl && seenAtsUrls.has(cleanAtsUrl)) {
-              mgr.recordTelemetry("duplicatePostDetail");
-              mgr.updateCard(cardUnitId, { status: "skipped_empty", error: "Duplicate ATS URL (Post-Detail)" });
-              outcome.duplicates++;
-              return null;
+          const cleanAtsUrl = feedCard.applyRedirectUrl
+            ? normalizeUrl(feedCard.applyRedirectUrl)
+            : null;
+
+          if (cleanAtsUrl) {
+            if (seenAtsUrls.has(cleanAtsUrl)) {
+              mgr.recordTelemetry("duplicateAtsUrlObserved");
+              // Telemetry only. Do not change card state,
+              // do not increment outcome.duplicates,
+              // and do not return.
+            } else {
+              seenAtsUrls.add(cleanAtsUrl);
             }
-            if (cleanAtsUrl) seenAtsUrls.add(cleanAtsUrl);
           }
 
           // 4. Heuristic duplicate check (Strictly telemetry only - never suppresses admission!)
@@ -1672,19 +2464,25 @@ async function processUnit(
           // provisional URL identity. Canonical admission is rebased only
           // after a stable portal identity has been verified. The original
           // ledger row remains the lineage anchor for this observation.
-          const { resolvedLedgerItem, admissionLedgerItem } = await withPersistenceBoundary("job identity rebind", async () => {
-            const resolved = await repos.acquisition.getLedgerItemByCanonicalId(
-              resolvedIdentity.sourcePortal,
-              resolvedIdentity.canonicalJobId,
-            );
-            const admission = await repos.acquisition.rebindDiscoveredJobIdentity(ledgerItem.id, {
-              canonicalJobId: resolvedIdentity.canonicalJobId,
-              sourcePortal: resolvedIdentity.sourcePortal,
-              sourceJobId: resolvedIdentity.sourceJobId,
-              canonicalUrl: resolvedIdentity.canonicalUrl,
+          let resolvedLedgerItem: any = null;
+          let admissionLedgerItem: any = ledgerItem;
+          if (repos) {
+            const res = await withPersistenceBoundary("job identity rebind", async () => {
+              const resolved = await repos.acquisition.getLedgerItemByCanonicalId(
+                resolvedIdentity.sourcePortal,
+                resolvedIdentity.canonicalJobId,
+              );
+              const admission = await repos.acquisition.rebindDiscoveredJobIdentity(ledgerItem.id, {
+                canonicalJobId: resolvedIdentity.canonicalJobId,
+                sourcePortal: resolvedIdentity.sourcePortal,
+                sourceJobId: resolvedIdentity.sourceJobId,
+                canonicalUrl: resolvedIdentity.canonicalUrl,
+              });
+              return { resolvedLedgerItem: resolved, admissionLedgerItem: admission };
             });
-            return { resolvedLedgerItem: resolved, admissionLedgerItem: admission };
-          });
+            resolvedLedgerItem = res.resolvedLedgerItem;
+            admissionLedgerItem = res.admissionLedgerItem;
+          }
           if (resolvedLedgerItem) historicalLedgerCardIds.add(cardUnitId);
 
           detailedCard = {
@@ -1703,164 +2501,181 @@ async function processUnit(
             telemetry: { cardExtractMs: 0, detailExtractMs: detail.fetchDurationMs || 0, totalMs: detail.fetchDurationMs || 0 },
           };
           
-          writeSnapshot(detailedCard);
-          mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: snapshotPath });
+          writtenSnapshotPath = writeSnapshot(detailedCard);
+          if (writtenSnapshotPath) {
+            mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: writtenSnapshotPath });
+          }
 
           // 5. Record Validated State in Ledger & Merge Opportunity in SQLite
-          await withPersistenceBoundary("opportunity & company registration", async () => {
-            await repos.acquisition.updateJobState(admissionLedgerItem.id, {
-              state: "VALIDATED",
-              lastAcquiredAt: new Date().toISOString(),
-              acquisitionQuality: valResult.quality,
-              validationConfidence: valResult.confidence,
-              lastAcquisitionMethod: acquisitionRoute
-            });
+          if (repos) {
+            await withPersistenceBoundary("opportunity & company registration", async () => {
+              await repos.acquisition.updateJobState(admissionLedgerItem.id, {
+                state: "VALIDATED",
+                lastAcquiredAt: new Date().toISOString(),
+                acquisitionQuality: valResult.quality,
+                validationConfidence: valResult.confidence,
+                lastAcquisitionMethod: acquisitionRoute
+              });
 
-            await repos.companies.registerCompany({
-              id: companyId,
-              name: effectiveCompany,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              provenance: {
-                schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-                runId: mgr.runId,
-                timestamp: new Date().toISOString()
-              }
-            });
+              await repos.companies.registerCompany({
+                id: companyId,
+                name: effectiveCompany,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                provenance: {
+                  schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+                  runId: mgr.runId,
+                  timestamp: new Date().toISOString()
+                }
+              });
 
-            await repos.opportunities.mergeOpportunity({
-              id: resolvedIdentity.canonicalJobId,
-              companyId,
-              canonicalTitle: feedCard.title,
-              location: feedCard.location,
-              fingerprint: resolvedIdentity.canonicalJobId,
-              lifecycle: "Verified",
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              provenance: {
-                schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-                runId: mgr.runId,
-                timestamp: new Date().toISOString()
-              }
+              await repos.opportunities.mergeOpportunity({
+                id: resolvedIdentity.canonicalJobId,
+                companyId,
+                canonicalTitle: feedCard.title,
+                location: feedCard.location,
+                fingerprint: resolvedIdentity.canonicalJobId,
+                lifecycle: "Verified",
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                provenance: {
+                  schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+                  runId: mgr.runId,
+                  timestamp: new Date().toISOString()
+                }
+              });
             });
-          });
+          }
 
           // [M10.1] Canonical Acquisition Interceptor: Global Identity, Versioning, Attention Gate & Queue
-          try {
-            const canonicalIngest = new CanonicalIngestionService();
-            const ingestRes = await canonicalIngest.ingestOpportunity({
-              sourcePortal: unit.portal,
-              sourceJobId: resolvedIdentity.sourceJobId,
-              canonicalUrl: resolvedIdentity.canonicalUrl,
-              finalUrl: detail.finalUrl || (unit.portal === "Indeed" ? identityUrl : undefined),
-              jobTitle: feedCard.title,
-              documentTitle: detail.extractedTitle,
-              companyName: feedCard.company,
-              location: feedCard.location || "",
-              employmentType: (detail as any)?.employmentType || null,
-              rawContent: detail.rawText || "",
-              httpStatus: detail.httpStatus,
-              postedAt: feedCard.postedAt,
-              postedPrecision: (feedCard as any)?.postedPrecision || null,
-              enrichmentDispatch: {
-                detailedCard,
-                pipelineVersion: EXTRACTOR_VERSION,
+          const canonicalPersistenceEnabled = runSession?.capabilities
+            ? runSession.capabilities.canonicalPersistenceEnabled
+            : isDbAvailable;
+          if (!canonicalPersistenceEnabled) {
+            log(`[LocalOnly] Skipping CanonicalIngestionService for card ${feedCard.cardHash} (canonicalPersistenceEnabled=false)`, "info");
+          } else {
+            try {
+              const canonicalIngest = new CanonicalIngestionService();
+              const ingestRes = await canonicalIngest.ingestOpportunity({
+                sourcePortal: unit.portal,
+                sourceJobId: resolvedIdentity.sourceJobId,
+                canonicalUrl: resolvedIdentity.canonicalUrl,
+                finalUrl: detail.finalUrl || (unit.portal === "Indeed" ? identityUrl : undefined),
+                jobTitle: feedCard.title,
+                documentTitle: detail.extractedTitle,
+                companyName: feedCard.company,
+                location: feedCard.location || "",
+                employmentType: (detail as any)?.employmentType || null,
+                rawContent: detail.rawText || "",
+                contentOrigin: detail.fetched ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
+                httpStatus: detail.httpStatus,
+                postedAt: feedCard.postedAt,
+                postedPrecision: (feedCard as any)?.postedPrecision || null,
+                enrichmentDispatch: {
+                  detailedCard,
+                  pipelineVersion: EXTRACTOR_VERSION,
+                  runId: mgr.runId,
+                  executionPlanId: unit.id,
+                  definitionId: unit.definitionId || "unknown",
+                  familyId: "unknown",
+                  portal: unit.portal,
+                  page: unit.page,
+                  catalogVersion: CATALOG_VERSION,
+                  plannerVersion: PLANNER_VERSION,
+                  ruleVersion: RULE_VERSION,
+                  searchQuery: unit.keyword,
+                  businessPriority: 10,
+                  executionPriority: 0,
+                  snapshotPath: writtenSnapshotPath || null,
+                },
+              }, lineageScope ? {
+                mode: "SCOPED" as const,
+                tenantId: lineageScope.tenantId,
+                personId: lineageScope.personId,
+                searchPlanId: lineageScope.searchPlanId ?? null,
                 runId: mgr.runId,
-                executionPlanId: unit.id,
-                definitionId: unit.definitionId || "unknown",
-                familyId: "unknown",
-                portal: unit.portal,
-                page: unit.page,
-                catalogVersion: CATALOG_VERSION,
-                plannerVersion: PLANNER_VERSION,
-                ruleVersion: RULE_VERSION,
-                searchQuery: unit.keyword,
-                businessPriority: 10,
-                executionPriority: 0,
-                snapshotPath,
-              },
-            }, lineageScope ? {
-              tenantId: lineageScope.tenantId,
-              personId: lineageScope.personId,
-              searchPlanId: lineageScope.searchPlanId,
-              runId: mgr.runId,
-            } : { runId: mgr.runId });
-            canonicalIngestionResult = ingestRes;
-            detailedCard = bindEvaluationEvidence(detailedCard, {
-              canonicalJobId: ingestRes.canonicalJobId,
-              opportunityVersion: ingestRes.opportunityVersion,
-              contentHash: ingestRes.contentHash,
-              sourcePayloadKey: ingestRes.sourcePayloadKey,
-              sourceMediaType: ingestRes.sourceMediaType,
-            });
-            writeSnapshot(detailedCard);
-            mgr.journal.append({
-              type: "snapshot_evidence_bound",
-              cardId: cardUnitId,
-              canonicalJobId: ingestRes.canonicalJobId,
-              opportunityVersion: ingestRes.opportunityVersion,
-              contentHash: ingestRes.contentHash,
-            });
-            mgr.recordTelemetry("canonicalIngestSuccess");
-            if (ingestRes.isNewOpportunity) {
-              pageCanonicalIngested++;
-              mgr.recordTelemetry("canonicalOpportunitiesIngested");
-            } else {
-              mgr.recordTelemetry("canonicalOpportunitiesReused");
-            }
-            const admissionOutcome = ingestRes.isNewOpportunity ? "NEW_OPPORTUNITY" : "REUSED_OPPORTUNITY";
-            log(`[IngestAdmission] unit=${unit.id} portal=${unit.portal} sourceJobId=${resolvedIdentity.sourceJobId} canonicalJobId=${ingestRes.canonicalJobId} outcome=${admissionOutcome} version=${ingestRes.isNewVersion ? "NEW_VERSION" : "REUSED_VERSION"}`, "info");
-            if (ingestRes.isNewVersion) {
-              mgr.recordTelemetry("newVersionsCreated");
-            } else {
-              mgr.recordTelemetry("duplicateVersionsSuppressed");
-            }
-            if (ingestRes.candidatesProjected > 0) {
-              mgr.recordTelemetry("candidatesProjected", ingestRes.candidatesProjected);
-            }
-            if (ingestRes.jobsEnqueued > 0) {
-              mgr.recordTelemetry("evaluationJobsEnqueued", ingestRes.jobsEnqueued);
-            }
-            await withPersistenceBoundary("canonical lineage recording", async () => {
-              await recordLineage(
-                ledgerItem.id,
-                resolvedIdentity.sourceJobId,
-                feedCard.discoveryUrl || feedCard.detailUrl,
-                valResult,
-                ingestRes,
-                undefined,
-                detail.finalUrl,
-              );
-            });
-          } catch (err: any) {
-            log(`[M10_CANONICAL_INGEST_WARN] Canonical acquisition error for ${feedCard.cardHash}: ${err.message}`, "warn");
-            mgr.recordTelemetry("canonicalIngestFailure");
-            if (lineageScope) {
-              try {
+              } : {
+                mode: "GLOBAL_MARKET" as const,
+              });
+              canonicalIngestionResult = ingestRes;
+              detailedCard = bindEvaluationEvidence(detailedCard, {
+                canonicalJobId: ingestRes.canonicalJobId,
+                opportunityVersion: ingestRes.opportunityVersion,
+                contentHash: ingestRes.contentHash,
+                sourcePayloadKey: ingestRes.sourcePayloadKey,
+                sourceMediaType: ingestRes.sourceMediaType,
+              });
+              boundSnapshotPath = writeSnapshot(detailedCard);
+              if (boundSnapshotPath) {
+                mgr.journal.append({
+                  type: "snapshot_evidence_bound",
+                  cardId: cardUnitId,
+                  canonicalJobId: ingestRes.canonicalJobId,
+                  opportunityVersion: ingestRes.opportunityVersion,
+                  contentHash: ingestRes.contentHash,
+                });
+              }
+              mgr.recordTelemetry("canonicalIngestSuccess");
+              if (ingestRes.isNewOpportunity) {
+                pageCanonicalIngested++;
+                mgr.recordTelemetry("canonicalOpportunitiesIngested");
+              } else {
+                mgr.recordTelemetry("canonicalOpportunitiesReused");
+              }
+              const admissionOutcome = ingestRes.isNewOpportunity ? "NEW_OPPORTUNITY" : "REUSED_OPPORTUNITY";
+              log(`[IngestAdmission] unit=${unit.id} portal=${unit.portal} sourceJobId=${resolvedIdentity.sourceJobId} canonicalJobId=${ingestRes.canonicalJobId} outcome=${admissionOutcome} version=${ingestRes.isNewVersion ? "NEW_VERSION" : "REUSED_VERSION"}`, "info");
+              if (ingestRes.isNewVersion) {
+                mgr.recordTelemetry("newVersionsCreated");
+              } else {
+                mgr.recordTelemetry("duplicateVersionsSuppressed");
+              }
+              if (ingestRes.candidatesProjected > 0) {
+                mgr.recordTelemetry("candidatesProjected", ingestRes.candidatesProjected);
+              }
+              if (ingestRes.jobsEnqueued > 0) {
+                mgr.recordTelemetry("evaluationJobsEnqueued", ingestRes.jobsEnqueued);
+              }
+              await withPersistenceBoundary("canonical lineage recording", async () => {
                 await recordLineage(
                   ledgerItem.id,
                   resolvedIdentity.sourceJobId,
                   feedCard.discoveryUrl || feedCard.detailUrl,
                   valResult,
+                  ingestRes,
                   undefined,
-                  err?.name || "CANONICAL_INGEST_FAILURE",
                   detail.finalUrl,
                 );
-              } catch (lineageErr: any) {
-                log(`[M10_LINEAGE_WARN] Failed to record error lineage for ${feedCard.cardHash}: ${lineageErr.message}`, "warn");
+              });
+            } catch (err: any) {
+              log(`[M10_CANONICAL_INGEST_WARN] Canonical acquisition error for ${feedCard.cardHash}: ${err.message}`, "warn");
+              mgr.recordTelemetry("canonicalIngestFailure");
+              if (lineageScope) {
+                try {
+                  await recordLineage(
+                    ledgerItem.id,
+                    resolvedIdentity.sourceJobId,
+                    feedCard.discoveryUrl || feedCard.detailUrl,
+                    valResult,
+                    undefined,
+                    err?.name || "CANONICAL_INGEST_FAILURE",
+                    detail.finalUrl,
+                  );
+                } catch (lineageErr: any) {
+                  log(`[M10_LINEAGE_WARN] Failed to record error lineage for ${feedCard.cardHash}: ${lineageErr.message}`, "warn");
+                }
               }
+              if (err instanceof AcquisitionIntegrityError) {
+                throw err;
+              }
+              throw new AcquisitionIntegrityError(
+                `Canonical acquisition failed for ${resolvedIdentity.canonicalJobId}: ${err?.message}`,
+                err
+              );
             }
-            if (err instanceof AcquisitionIntegrityError) {
-              throw err;
-            }
-            throw new AcquisitionIntegrityError(
-              `Canonical acquisition failed for ${resolvedIdentity.canonicalJobId}: ${err?.message}`,
-              err
-            );
           }
 
         mgr.updateCard(cardUnitId, {
-          snapshotPath,
+          snapshotPath: boundSnapshotPath || writtenSnapshotPath || null,
           isNew: canonicalIngestionResult
             ? canonicalIngestionResult.isNewOpportunity
             : isHistoricallyNew,
@@ -1868,8 +2683,6 @@ async function processUnit(
         });
       } catch (err: any) {
         log(`card ${cardUnitId} failed: ${err.message}`, "error");
-        mgr.updateCard(cardUnitId, { status: "failed", error: err.message });
-        mgr.journal.append({ type: "card_failed", cardId: cardUnitId, error: err.message });
 
         const isIntegrityFailure =
           err?.failureKind === "INTEGRITY_FAILURE" ||
@@ -1878,9 +2691,18 @@ async function processUnit(
           err?.message?.includes("ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH") ||
           err?.message?.includes("ENRICHMENT_PAYLOAD_NOT_FOUND");
 
+        mgr.updateCard(cardUnitId, {
+          status: "failed",
+          error: err.message,
+          failureKind: isIntegrityFailure ? "INTEGRITY_FAILURE" : "SOURCE_FAILURE",
+        });
+        mgr.journal.append({ type: "card_failed", cardId: cardUnitId, error: err.message });
+
         if (isIntegrityFailure) {
           integrityFailuresInUnit++;
           mgr.recordTelemetry("acquisitionIntegrityFailures");
+        } else {
+          sourceFailuresInUnit++;
         }
       }
       return null;
@@ -2037,6 +2859,24 @@ async function processUnit(
 
     const runtimeMs = new Date().getTime() - new Date(mgr.manifest.units.find(u => u.id === unit.id)!.startedAt!).getTime();
 
+    const manifestCards = mgr.manifest.cards.filter(
+      (c) => c.parentUnitId === unit.id || c.id.startsWith(`${unit.id}#`)
+    );
+
+    const finalized = finalizeUnitOutcome({
+      cardsCount: cards.length,
+      manifestCards,
+      portalPauseTriggered,
+      pausePortalQueue: outcome.pausePortalQueue,
+      initialStatus: outcome.status,
+    });
+    outcome.status = finalized.status;
+    outcome.warnings.push(...finalized.warnings);
+
+    const pageFailureReason = outcome.status === "failed"
+      ? (primaryFailureClass || outcome.warnings[0] || "UnitExecutionFailed")
+      : null;
+
     // -------------------------------------------------------------
     // Emit PageExecutionRecord (The immutable telemetry record)
     // -------------------------------------------------------------
@@ -2065,18 +2905,20 @@ async function processUnit(
         latencyMs: runtimeMs,
         decision,
         decisionReason: reason,
-        failureReason: null,
+        failureReason: pageFailureReason,
         timestamp: new Date().toISOString()
       });
 
       let unitAcqOutcome: AcquisitionOutcome = "SUCCESS";
       const unitWarning = outcome.warnings.join(" ");
-      if (outcome.status === "aborted" || mgr.isCancellationRequested()) {
+      if (integrityFailuresInUnit > 0) {
+        unitAcqOutcome = "INTEGRITY_ERROR";
+      } else if (outcome.status === "aborted" || mgr.isCancellationRequested()) {
         unitAcqOutcome = "TRANSPORT_ERROR"; // Excluded from novelty degradation
-      } else if (outcome.status === "failed" || outcome.status === "skipped_gated") {
-        if (unitWarning.includes("406") || unitWarning.includes("429") || unitWarning.includes("Cloudflare") || unitWarning.includes("blocked") || unitWarning.includes("Anti-bot") || unitWarning.includes("Circuit breaker")) {
+      } else if (outcome.status === "failed") {
+        if (primaryFailureClass === "RATE_LIMIT_429" || primaryFailureClass === "BOT_CHALLENGE_BLOCK" || primaryFailureClass === "CAPTCHA_CHALLENGE" || primaryFailureClass === "LOGIN_REQUIRED" || unitWarning.includes("406") || unitWarning.includes("429") || unitWarning.includes("Cloudflare") || unitWarning.includes("blocked") || unitWarning.includes("Anti-bot") || unitWarning.includes("Circuit breaker")) {
           unitAcqOutcome = "ANTI_BOT";
-        } else if (unitWarning.includes("timeout") || unitWarning.includes("ETIMEDOUT")) {
+        } else if (primaryFailureClass === "HTTP_TIMEOUT" || primaryFailureClass === "NAVIGATION_TIMEOUT" || unitWarning.includes("timeout") || unitWarning.includes("ETIMEDOUT")) {
           unitAcqOutcome = "TIMEOUT";
         } else {
           unitAcqOutcome = "TRANSPORT_ERROR";
@@ -2115,7 +2957,7 @@ async function processUnit(
       cardsSeen: cards.length,
       cardsParsed: cards.length,
       duplicates: canonicalDuplicates,
-      extractionErrors: identityFailed + validationFailed + canonicalIngestFailed,
+      extractionErrors: identityFailed + validationFailed + canonicalIngestFailed + sourceFailuresInUnit,
       qualified: null,
       recommended: null,
       newCompanies: null,
@@ -2130,15 +2972,6 @@ async function processUnit(
       : "";
 
     log(`\n=== PAGE SUMMARY ===\nPortal: ${unit.portal}\nKeyword: ${unit.keyword}\nPage: ${unit.page}\n\nCards Seen ............ ${cards.length}\nCards Parsed .......... ${cardsParsed}\n  ├── Canonical Duplicates ... ${canonicalDuplicates}\n  ├── Ledger Known ........... ${ledgerKnown}\n  ├── Hard Filtered .......... ${hardFiltered}${hfBreakdownStr}\n  ├── Identity Failures ...... ${identityFailed}\n  ├── Validation Failures .... ${validationFailed}\n  └── Novel Accepted ......... ${novelAccepted} (Acquired: ${novelAcquired})\n      └── Canonical Ingested ... ${pageCanonicalIngested} (Total Run: ${mgr.getTelemetry("canonicalOpportunitiesIngested") || 0})\n\nNovelty Rate .......... ${((novelAccepted / Math.max(1, cardsParsed)) * 100).toFixed(1)}%\nDecision .............. ${decision}\nReason ................ ${reason}\n====================\n`, "info");
-    
-    if (outcome.status !== "aborted") {
-      if (integrityFailuresInUnit > 0) {
-        outcome.status = "failed";
-        outcome.warnings.push(`Unit failed with ${integrityFailuresInUnit} acquisition integrity failure(s)`);
-      } else {
-        outcome.status = cards.length === 0 ? "skipped_empty" : "completed";
-      }
-    }
   } catch (err: any) {
     if (mgr.isCancellationRequested() || err?.message?.includes("Target page, context or browser has been closed") || err?.message?.includes("browser has been closed")) {
       outcome.status = "aborted";

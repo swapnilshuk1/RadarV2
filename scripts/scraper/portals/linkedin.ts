@@ -1,4 +1,5 @@
 import type { FeedCard, DetailedCard, PortalContext, PortalHandler } from "../types";
+import type { FailureClass } from "../../../src/lib/acquisition/failure-taxonomy";
 import { SNAPSHOT_SCHEMA_VERSION, SCRAPER_VERSION } from "../versions";
 import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
@@ -309,8 +310,26 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
           extractedCompany: httpRes.extractedCompany,
         };
       }
-      const reason = httpRes.fetchError?.includes("403") ? "403" : 
-                    httpRes.fetchError?.includes("timeout") ? "Timeout" : "EmptyBody";
+      const failureClass = httpRes.failureClass;
+      if (
+        failureClass === "RATE_LIMIT_429" ||
+        failureClass === "BOT_CHALLENGE_BLOCK" ||
+        failureClass === "CAPTCHA_CHALLENGE" ||
+        failureClass === "LOGIN_REQUIRED"
+      ) {
+        ctx.recordHttpFailure?.(url, failureClass);
+        ctx.logger(`[FastPath] Immediate failure (${failureClass}) for ${url} — no browser fallback`);
+        return {
+          fetched: false,
+          fetchError: httpRes.fetchError,
+          fetchDurationMs: httpRes.fetchDurationMs,
+          httpStatus: httpRes.httpStatus,
+          failureClass,
+        };
+      }
+
+      const reason = failureClass || (httpRes.fetchError?.includes("403") ? "FASTPATH_ACCESS_DENIED" : 
+                    httpRes.fetchError?.includes("timeout") ? "HTTP_TIMEOUT" : "UNKNOWN_FAILURE");
       ctx.recordHttpFailure?.(url, reason);
       ctx.recordTelemetry?.("httpFallbacks");
       ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError || "insufficient content"} — falling back to Playwright`);
@@ -326,9 +345,48 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     const httpStatus = response?.status();
     const pageTitle = await page.title().catch(() => "");
     
-    // Some 404s might return 200 with a "Not Available" title
+    // Check for challenge, login wall, or 404
+    const isBot = /verify you are human|security check|authwall|challenge|cloudflare/i.test(pageTitle);
+    const isLogin = /sign in|log in/i.test(pageTitle);
     const isSoft404 = pageTitle.toLowerCase().includes("not available") || pageTitle.toLowerCase().includes("no longer available");
     const effectiveStatus = isSoft404 ? 404 : httpStatus;
+
+    if (isBot) {
+      return {
+        fetched: false,
+        fetchError: `Bot challenge encountered: ${pageTitle}`,
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: effectiveStatus,
+        failureClass: "BOT_CHALLENGE_BLOCK",
+      };
+    }
+    if (isLogin) {
+      return {
+        fetched: false,
+        fetchError: `Login required: ${pageTitle}`,
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: effectiveStatus,
+        failureClass: "LOGIN_REQUIRED",
+      };
+    }
+    if (effectiveStatus === 404) {
+      return {
+        fetched: false,
+        fetchError: "Job no longer available (404)",
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: 404,
+        failureClass: "REMOVED_404",
+      };
+    }
+    if (effectiveStatus === 429) {
+      return {
+        fetched: false,
+        fetchError: "Rate limited (429)",
+        fetchDurationMs: Date.now() - t0,
+        httpStatus: 429,
+        failureClass: "RATE_LIMIT_429",
+      };
+    }
 
     await jitter(600, 1400);
     await page.locator('button[aria-label*="see more" i], .show-more-less-html__button').first().click({ timeout: 1500 }).catch(() => {});
@@ -357,6 +415,7 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
         httpStatus: effectiveStatus,
         extractedTitle,
         extractedCompany,
+        failureClass: "EMPTY_CONTENT",
       };
     }
 
@@ -376,7 +435,26 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
       extractedCompany,
     };
   } catch (err: any) {
-    return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
+    const msg = String(err?.message || "");
+    const isTimeout = err.name === "TimeoutError" || /timeout/i.test(msg);
+    const isChallenge = /challenge|captcha|cloudflare|security check/i.test(msg);
+    const isLogin = /login|authwall|sign in/i.test(msg);
+    const is404 = /404|not found|no longer available/i.test(msg);
+    const isConn = /net::ERR|ECONN|ENOTFOUND/i.test(msg);
+
+    let failureClass: FailureClass = "UNKNOWN_FAILURE";
+    if (isChallenge) failureClass = "CAPTCHA_CHALLENGE";
+    else if (isLogin) failureClass = "LOGIN_REQUIRED";
+    else if (isTimeout) failureClass = "NAVIGATION_TIMEOUT";
+    else if (is404) failureClass = "REMOVED_404";
+    else if (isConn) failureClass = "CONNECTION_ERROR";
+
+    return {
+      fetched: false,
+      fetchError: msg,
+      fetchDurationMs: Date.now() - t0,
+      failureClass,
+    };
   } finally {
     await page.close().catch(() => {});
   }

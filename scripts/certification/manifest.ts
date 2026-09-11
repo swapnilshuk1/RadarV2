@@ -6,7 +6,7 @@
  * this manifest rather than maintaining independent lists.
  */
 
-export const EXPECTED_CERTIFICATION_FILE_COUNT = 50;
+export const EXPECTED_CERTIFICATION_FILE_COUNT = 57;
 
 export const certificationManifest = [
   {
@@ -40,6 +40,7 @@ export const certificationManifest = [
       "tests/persistence/distributed-lease-contention.test.ts",
       "tests/persistence/blob-store-connectivity.test.ts",
       "tests/scraper/acquisition-variant-contract.test.ts",
+      "tests/scraper/scraper-operability.test.ts",
     ],
   },
   {
@@ -88,7 +89,21 @@ export const certificationManifest = [
       "tests/editorial/verdict-coverage.test.ts",
       "tests/editorial/evidence-sufficiency-contract.test.ts",
       "tests/editorial/editorial-intelligence-contract.test.ts",
+      "tests/intelligence/knowledge-narrative.test.ts",
       "tests/intelligence/invariant-assertions.test.ts",
+    ],
+  },
+  {
+    id: "dossier-v2-merge-gate",
+    name: "Dossier V2 Merge-Gate Integrity",
+    description:
+      "Exact evaluated identity/scalar attachment, source trust, presentation provenance, and account isolation",
+    files: [
+      "tests/intelligence/opportunity-version-pinning.test.ts",
+      "tests/pipeline/EvaluationWorker.test.ts",
+      "tests/intelligence/context-materialization.test.ts",
+      "tests/editorial/editorial-proposition-composer.test.ts",
+      "tests/security/decisions-account-isolation.test.ts",
     ],
   },
   {

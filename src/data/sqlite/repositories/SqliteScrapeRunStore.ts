@@ -58,7 +58,7 @@ export interface ScrapeRun {
   id: string;
   tenantId: string;
   personId: string;
-  searchPlanId: string;
+  searchPlanId: string | null;
   status: ScrapeRunStatus;
   portalTargets: string[];
   configJson: string;
@@ -86,7 +86,7 @@ export interface ScrapeRunEvent {
 
 export interface CreateScrapeRunParams {
   id?: string;
-  searchPlanId: string;
+  searchPlanId?: string | null;
   portalTargets: string[];
   config?: Record<string, unknown>;
   initialStatus?: ScrapeRunStatus;
@@ -120,7 +120,7 @@ export class SqliteScrapeRunStore {
           runId,
           scope.tenantId,
           scope.personId,
-          params.searchPlanId,
+          params.searchPlanId ?? null,
           status,
           portalsJson,
           configJson,
@@ -237,6 +237,50 @@ export class SqliteScrapeRunStore {
   }
 
   /**
+   * Atomically transitions run status using CAS (Compare-And-Swap) predicate on current status.
+   * Only transitions if current status is in expected status list.
+   */
+  async transitionRunStatus(
+    scope: AuthorizedPersonScope,
+    runId: string,
+    expected: ScrapeRunStatus | ScrapeRunStatus[],
+    next: ScrapeRunStatus,
+    errorMessage?: string
+  ): Promise<boolean> {
+    const now = new Date().toISOString();
+    const isTerminal = TERMINAL_SCRAPE_STATUSES.includes(next);
+    const expectedList = Array.isArray(expected) ? expected : [expected];
+    if (expectedList.length === 0) return false;
+    const expectedPlaceholders = expectedList.map(() => "?").join(", ");
+
+    const res = await this.db.execute(
+      `UPDATE scrape_runs 
+       SET status = ?,
+           error_message = COALESCE(?, error_message),
+           finished_at = CASE WHEN ? = 1 THEN ? ELSE finished_at END,
+           started_at = CASE WHEN ? = 'running' AND started_at IS NULL THEN ? ELSE started_at END,
+           updated_at = ?
+       WHERE id = ? AND tenant_id = ? AND person_id = ?
+         AND status IN (${expectedPlaceholders})`,
+      [
+        next,
+        errorMessage || null,
+        isTerminal ? 1 : 0,
+        now,
+        next,
+        now,
+        now,
+        runId,
+        scope.tenantId,
+        scope.personId,
+        ...expectedList,
+      ]
+    );
+
+    return res.rowsAffected > 0;
+  }
+
+  /**
    * Updates run metrics and discovery progress.
    */
   async updateRunMetrics(
@@ -343,7 +387,7 @@ export class SqliteScrapeRunStore {
       id: row.id,
       tenantId: row.tenant_id,
       personId: row.person_id,
-      searchPlanId: row.search_plan_id,
+      searchPlanId: row.search_plan_id ?? null,
       status: row.status as ScrapeRunStatus,
       portalTargets,
       configJson: row.config_json || "{}",
