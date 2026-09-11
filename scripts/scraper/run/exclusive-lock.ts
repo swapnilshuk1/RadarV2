@@ -25,7 +25,10 @@ export type LockOwner = string | ExclusiveLockOwner;
 
 export interface LockDeps {
   isProcessAlive?: (pid: number) => boolean;
+  staleLockThresholdMs?: number;
 }
+
+export const DEFAULT_STALE_LOCK_THRESHOLD_MS = 120_000; // 2 minutes
 
 export function defaultIsProcessAlive(pid: number): boolean {
   try {
@@ -108,14 +111,6 @@ export function readExclusiveLock(
           ? parsed.startedAt
           : new Date(0).toISOString();
 
-    /*
-     * New-format locks carry a true random nonce.
-     * Historical RADAR .owner locks did not.
-     *
-     * Give a legacy lock a deterministic synthetic identity rather than
-     * assigning every legacy lock the same fake nonce. This preserves the
-     * stale-reclaim compare-before-unlink invariant.
-     */
     const nonce =
       typeof parsed.nonce === "string" && parsed.nonce
         ? parsed.nonce
@@ -203,6 +198,7 @@ export function acquireExclusiveLock(
   deps: LockDeps = {},
 ): ExclusiveLockToken {
   const isProcessAlive = deps.isProcessAlive ?? defaultIsProcessAlive;
+  const staleThreshold = deps.staleLockThresholdMs ?? DEFAULT_STALE_LOCK_THRESHOLD_MS;
   const normalized = normalizeOwner(owner);
 
   try {
@@ -213,10 +209,42 @@ export function acquireExclusiveLock(
 
   const observedOwner = readExclusiveLock(lockPath);
 
-  // Never infer stale ownership from unreadable metadata.
+  // If unreadable, determine whether it is fresh or stale
   if (!observedOwner) {
+    let stats: fs.Stats | null = null;
+    try {
+      stats = fs.statSync(lockPath);
+    } catch {
+      // File was removed in the interim; retry once
+      try {
+        return writeExclusive(lockPath, normalized);
+      } catch (retryErr: any) {
+        if (retryErr?.code !== "EEXIST") throw retryErr;
+      }
+    }
+
+    if (stats) {
+      const ageMs = Date.now() - stats.mtimeMs;
+      if (ageMs < staleThreshold) {
+        throw new Error(
+          `LOCK_METADATA_UNREADABLE_FRESH: ${lockPath} is unreadable and recently modified (age: ${Math.round(ageMs)}ms < ${staleThreshold}ms). Operator or live process active.`
+        );
+      }
+
+      // Stale unreadable lock beyond threshold: quarantine and acquire
+      const corruptPath = `${lockPath}.corrupt.${Date.now()}`;
+      try {
+        fs.renameSync(lockPath, corruptPath);
+      } catch (renameErr: any) {
+        throw new Error(
+          `LOCK_METADATA_QUARANTINE_FAILED: ${lockPath} failed to quarantine: ${renameErr?.message}`
+        );
+      }
+      return writeExclusive(lockPath, normalized);
+    }
+
     throw new Error(
-      `LOCK_METADATA_UNREADABLE: ${lockPath}. Operator recovery required.`,
+      `LOCK_METADATA_UNREADABLE: ${lockPath}. Operator recovery required.`
     );
   }
 
@@ -229,10 +257,6 @@ export function acquireExclusiveLock(
 
   /*
    * Serialized stale reclamation.
-   *
-   * Important: a dead-PID check by itself does NOT authorize a naked unlink.
-   * Two contenders can both observe the same dead owner. The reclaim mutex
-   * serializes revalidation + replacement of the primary lock.
    */
   const reclaimPath = `${lockPath}.reclaim`;
   let reclaimToken: ExclusiveLockToken;
@@ -255,6 +279,17 @@ export function acquireExclusiveLock(
     const currentOwner = readExclusiveLock(lockPath);
 
     if (!currentOwner) {
+      let stats: fs.Stats | null = null;
+      try {
+        stats = fs.statSync(lockPath);
+      } catch {}
+
+      if (stats && Date.now() - stats.mtimeMs >= staleThreshold) {
+        const corruptPath = `${lockPath}.corrupt.${Date.now()}`;
+        fs.renameSync(lockPath, corruptPath);
+        return writeExclusive(lockPath, normalized);
+      }
+
       throw new Error(
         `LOCK_METADATA_UNREADABLE_DURING_RECLAIM: ${lockPath}. Operator recovery required.`,
       );

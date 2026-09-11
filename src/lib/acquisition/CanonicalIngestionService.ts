@@ -97,7 +97,7 @@ export type IngestScope =
       mode: "SCOPED";
       tenantId: string;
       personId: string;
-      searchPlanId: string;
+      searchPlanId?: string | null;
       runId: string;
     };
 
@@ -183,7 +183,9 @@ export class CanonicalIngestionService {
       );
     }
 
-    let effectiveScope: { mode: "GLOBAL_MARKET"; runId?: string } | { mode: "SCOPED"; tenantId: string; personId: string; searchPlanId: string; runId: string };
+    let effectiveScope:
+      | { mode: "GLOBAL_MARKET"; runId?: string }
+      | { mode: "SCOPED"; tenantId: string; personId: string; searchPlanId?: string | null; runId: string };
 
     if (options.scope.mode === "GLOBAL_MARKET") {
       if ((options.scope as any).tenantId || (options.scope as any).personId || (options.scope as any).searchPlanId) {
@@ -194,16 +196,16 @@ export class CanonicalIngestionService {
       effectiveScope = { mode: "GLOBAL_MARKET", runId: options.scope.runId || options.runId };
     } else if (options.scope.mode === "SCOPED") {
       const runId = options.scope.runId || options.runId;
-      if (!options.scope.tenantId || !options.scope.personId || !options.scope.searchPlanId || !runId) {
+      if (!options.scope.tenantId || !options.scope.personId || !runId) {
         throw new AcquisitionIntegrityError(
-          "MALFORMED_SCOPE_REJECTED (PARTIAL_SCOPE_REJECTED): SCOPED mode requires tenantId, personId, searchPlanId, and runId (runId is required)."
+          "MALFORMED_SCOPE_REJECTED (PARTIAL_SCOPE_REJECTED): SCOPED mode requires tenantId, personId, and runId (runId is required)."
         );
       }
       effectiveScope = {
         mode: "SCOPED",
         tenantId: options.scope.tenantId,
         personId: options.scope.personId,
-        searchPlanId: options.scope.searchPlanId,
+        searchPlanId: options.scope.searchPlanId ?? null,
         runId,
       };
     } else {
@@ -467,7 +469,7 @@ export class CanonicalIngestionService {
       try {
         if (effectiveScope.mode === "GLOBAL_MARKET") {
           activePlans = [];
-        } else {
+        } else if (effectiveScope.searchPlanId) {
           activePlans = await this.db.many<{
             id: string;
             tenant_id: string;
@@ -486,6 +488,19 @@ export class CanonicalIngestionService {
               `SCOPED_PLAN_NOT_ACTIVE: Search plan ${effectiveScope.searchPlanId} is not active for person ${effectiveScope.personId}`
             );
           }
+        } else {
+          // SCOPED without searchPlanId: planless acquisition.
+          // Validate tenant & person exist. Candidate projection and evaluation dispatch are omitted.
+          const person = await this.db.one<{ id: string }>(
+            `SELECT p.id FROM people p JOIN tenants t ON p.tenant_id = t.id WHERE p.id = ? AND p.tenant_id = ?`,
+            [effectiveScope.personId, effectiveScope.tenantId]
+          );
+          if (!person) {
+            throw new AcquisitionIntegrityError(
+              `SCOPED_PERSON_NOT_FOUND: Person ${effectiveScope.personId} not found for tenant ${effectiveScope.tenantId}`
+            );
+          }
+          activePlans = [];
         }
 
         await this.db.transaction(async (tx) => {
@@ -553,15 +568,29 @@ export class CanonicalIngestionService {
       // 3.2.2 Derive single trusted verifiedRunId for all canonical run references
       let verifiedRunId: string | null = null;
       if (effectiveScope.mode === "SCOPED" && effectiveScope.runId) {
-        const runRow = await tx.one<{ id: string; status: string }>(
-          `SELECT id, status FROM scrape_runs
-           WHERE id = ? AND tenant_id = ? AND person_id = ? AND search_plan_id = ?`,
-          [effectiveScope.runId, effectiveScope.tenantId, effectiveScope.personId, effectiveScope.searchPlanId]
-        );
-        if (!runRow) {
-          throw new AcquisitionIntegrityError(
-            `RUN_SCOPE_MISMATCH: Scrape run '${effectiveScope.runId}' does not belong to scope (${effectiveScope.tenantId}, ${effectiveScope.personId}, ${effectiveScope.searchPlanId})`
+        let runRow: { id: string; status: string } | null = null;
+        if (effectiveScope.searchPlanId) {
+          runRow = await tx.one<{ id: string; status: string }>(
+            `SELECT id, status FROM scrape_runs
+             WHERE id = ? AND tenant_id = ? AND person_id = ? AND search_plan_id = ?`,
+            [effectiveScope.runId, effectiveScope.tenantId, effectiveScope.personId, effectiveScope.searchPlanId]
           );
+          if (!runRow) {
+            throw new AcquisitionIntegrityError(
+              `RUN_SCOPE_MISMATCH: Scrape run '${effectiveScope.runId}' does not belong to scope (${effectiveScope.tenantId}, ${effectiveScope.personId}, ${effectiveScope.searchPlanId})`
+            );
+          }
+        } else {
+          runRow = await tx.one<{ id: string; status: string }>(
+            `SELECT id, status FROM scrape_runs
+             WHERE id = ? AND tenant_id = ? AND person_id = ?`,
+            [effectiveScope.runId, effectiveScope.tenantId, effectiveScope.personId]
+          );
+          if (!runRow) {
+            throw new AcquisitionIntegrityError(
+              `RUN_SCOPE_MISMATCH: Scrape run '${effectiveScope.runId}' does not belong to scope (${effectiveScope.tenantId}, ${effectiveScope.personId})`
+            );
+          }
         }
         if (runRow.status !== "running") {
           throw new AcquisitionIntegrityError(

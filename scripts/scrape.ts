@@ -14,7 +14,8 @@
 
 import path from "path";
 import fs from "fs";
-import { CONFIG, DEFAULT_KEYWORDS, DEFAULT_PORTALS, SNAPSHOT_DIR, EXTRACTION_DIR } from "./scraper/config";
+import { CONFIG, DEFAULT_KEYWORDS, DEFAULT_PORTALS, SNAPSHOT_DIR, EXTRACTION_DIR, verifyArtifactStorage } from "./scraper/config";
+import { resolveScraperRuntimeOptions, type ScraperRuntimeOptions } from "./scraper/options";
 import { makeLogger } from "./scraper/utils/logger";
 import { pool } from "./scraper/utils/concurrency";
 import { jitter } from "./scraper/utils/jitter";
@@ -98,6 +99,57 @@ export async function withPersistenceBoundary<T>(operationName: string, fn: () =
   }
 }
 
+export interface ScraperCapabilities {
+  databaseAvailable: boolean;
+  canonicalPersistenceEnabled: boolean;
+  enrichmentDispatchEnabled: boolean;
+  localArtifactPersistenceEnabled: boolean;
+}
+
+export async function resolveScraperCapabilities(
+  mode: "GLOBAL_MARKET" | "SCOPED"
+): Promise<ScraperCapabilities> {
+  let databaseAvailable = false;
+  try {
+    const db = getDatabaseAdapter();
+    await db.one("SELECT 1");
+    databaseAvailable = true;
+  } catch {
+    databaseAvailable = false;
+  }
+
+  if (mode === "SCOPED") {
+    if (!databaseAvailable) {
+      throw new Error(
+        "FATAL_DATABASE_UNAVAILABLE: SCOPED mode requires a working database connection (Turso Cloud). Execution aborted."
+      );
+    }
+    return {
+      databaseAvailable: true,
+      canonicalPersistenceEnabled: true,
+      enrichmentDispatchEnabled: true,
+      localArtifactPersistenceEnabled: true,
+    };
+  }
+
+  // GLOBAL_MARKET mode
+  if (!databaseAvailable) {
+    return {
+      databaseAvailable: false,
+      canonicalPersistenceEnabled: false,
+      enrichmentDispatchEnabled: false,
+      localArtifactPersistenceEnabled: true,
+    };
+  }
+
+  return {
+    databaseAvailable: true,
+    canonicalPersistenceEnabled: true,
+    enrichmentDispatchEnabled: true,
+    localArtifactPersistenceEnabled: true,
+  };
+}
+
 export function computeVariantsSignature(variants?: AcquisitionVariant[]): string | undefined {
   if (!variants || variants.length === 0) return undefined;
   const normalized = variants.map((v) => {
@@ -134,7 +186,13 @@ const HANDLERS: Record<PortalName, PortalHandler> = {
   Naukri: naukriHandler,
 };
 
-const enrichmentQueue = new EnrichmentQueue();
+let _enrichmentQueue: EnrichmentQueue | null = null;
+function getEnrichmentQueue(): EnrichmentQueue {
+  if (!_enrichmentQueue) {
+    _enrichmentQueue = new EnrichmentQueue();
+  }
+  return _enrichmentQueue;
+}
 
 export async function syncManifestProgress(
   mgr: RunController,
@@ -143,7 +201,7 @@ export async function syncManifestProgress(
   const cardsFound = mgr.manifest.cards.length;
   let evaluated = 0;
   try {
-    const stats = await enrichmentQueue.getRunStats(mgr.runId);
+    const stats = await getEnrichmentQueue().getRunStats(mgr.runId);
     evaluated = stats?.completed || 0;
   } catch {}
 
@@ -220,6 +278,7 @@ export interface RunRuntimeSession {
   runId: string;
   tenantId?: string;
   personId?: string;
+  capabilities?: ScraperCapabilities;
   health: import("./scraper/run/health-manager").RunHealthManager;
   contexts: Map<PortalName, any>;
   pages: Map<PortalName, any>;
@@ -234,11 +293,13 @@ export const activeRunControllers = new Map<string, RunController>();
 export function createRunSession(
   runId: string,
   opts: RunOptions,
+  capabilities?: ScraperCapabilities,
 ): RunRuntimeSession {
   const session: RunRuntimeSession = {
     runId,
     tenantId: opts.authContext?.tenantId,
     personId: opts.authContext?.userId,
+    capabilities,
     health: HealthManager.forRun(runId),
     contexts: new Map(),
     pages: new Map(),
@@ -346,70 +407,90 @@ installSignalHandlers();
 
 export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; completion: Promise<{ success: boolean; count: number; runId: string }> }> {
   const log = makeLogger("scrape");
-  const freshRun = process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
-
-  let keywords = opts.keywords;
-  let portals = opts.portals ?? DEFAULT_PORTALS;
-  let maxPages = opts.maxPages ?? CONFIG.maxPages;
-  const maxCardsPerPage = opts.maxCardsPerPage;
-
-  // Command-line override support for agile, diverse crawl runs
-  const keywordsArg = process.argv.find(arg => arg.startsWith('--keywords=') || arg.startsWith('--keyword='));
-  if (keywordsArg) {
-    keywords = keywordsArg.split('=')[1].split(',').map(k => k.trim());
-  }
-  const portalsArg = process.argv.find(arg => arg.startsWith('--portals=') || arg.startsWith('--portal='));
-  if (portalsArg) {
-    portals = portalsArg.split('=')[1].split(',').map(p => p.trim() as PortalName);
-  }
-  const maxPagesArg = process.argv.find(arg => arg.startsWith('--max-pages=') || arg.startsWith('--maxPages=') || arg.startsWith('--pages='));
-  if (maxPagesArg) {
-    const parsed = parseInt(maxPagesArg.split('=')[1], 10);
-    if (!isNaN(parsed) && parsed > 0) maxPages = parsed;
+  const storageRes = verifyArtifactStorage();
+  if (!storageRes.ok) {
+    throw new Error(`STORAGE_UNWRITABLE: ${storageRes.fatalError || "Essential artifact storage unwritable"}`);
   }
 
-  const cliAutoConfirm = process.argv.includes('--autoConfirm') || 
-    process.argv.includes('--auto-confirm') || 
-    process.argv.includes('--yes') ||
-    process.argv.includes('-y') ||
-    process.env.AUTO_CONFIRM === 'true';
-  if (cliAutoConfirm && opts.autoConfirm === undefined) {
-    opts.autoConfirm = true;
+  const runtimeOpts = resolveScraperRuntimeOptions(process.argv.slice(2), process.env);
+  const mode = opts.authContext ? "SCOPED" : runtimeOpts.mode;
+  const capabilities = await resolveScraperCapabilities(mode);
+
+  if (!capabilities.databaseAvailable && mode === "GLOBAL_MARKET") {
+    log(
+      "GLOBAL_MARKET running in LOCAL_ONLY mode: canonical persistence and enrichment queue are disabled.",
+      "warn"
+    );
+  }
+
+  const freshRun = runtimeOpts.fresh || process.argv.includes('--fresh') || process.env.FRESH_RUN === 'true';
+
+  let keywords = opts.keywords ?? (runtimeOpts.keywords && runtimeOpts.keywords.length > 0 ? runtimeOpts.keywords : undefined);
+  let portals = opts.portals ?? (runtimeOpts.portals.length > 0 ? runtimeOpts.portals : DEFAULT_PORTALS);
+  let maxPages = opts.maxPages ?? runtimeOpts.maxPages ?? CONFIG.maxPages;
+  const maxCardsPerPage = opts.maxCardsPerPage ?? runtimeOpts.maxCardsPerPage;
+
+  const autoConfirm = opts.autoConfirm !== undefined ? opts.autoConfirm : runtimeOpts.autoConfirm;
+  if (!autoConfirm) {
+    if (runtimeOpts.headless || (typeof process !== "undefined" && !process.stdin.isTTY)) {
+      throw new Error(
+        "CONFIRMATION_NOT_SUPPORTED_NON_INTERACTIVE: Scraper paused for manual confirmation, but running in headless mode or non-interactive TTY. Set --auto-confirm or AUTO_CONFIRM=true."
+      );
+    }
   }
 
   let resolvedPlan: import("../src/lib/intelligence/ScraperPlanResolver").ResolvedScraperPlan | undefined = opts.resolvedPlan;
+  let searchSource: "PLAN" | "SUPPLIED" | "DEFAULT" = "DEFAULT";
+  let evaluationProjection: "ACTIVE" | "DEFERRED_NO_SEARCH_PLAN" = "DEFERRED_NO_SEARCH_PLAN";
 
   if (opts.authContext) {
-    // Authoritative resolution contract: resolve persisted search plan strictly via ScraperPlanResolver
     const { ScraperPlanResolver } = await import("../src/lib/intelligence/ScraperPlanResolver");
     const db = getDatabaseAdapter();
     const scope = { tenantId: opts.authContext.tenantId, personId: opts.authContext.userId };
-    resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
-      scope,
-      undefined,
-      db,
-      opts.searchPlanId
-    ));
 
-    if (!resolvedPlan || resolvedPlan.queries.length === 0) {
-      const errorMsg = `[ScraperAuth] No active search plan found in Turso Cloud for tenant ${opts.authContext.tenantId} (person: ${opts.authContext.userId}). Scraper execution aborted (fallback keywords disabled for authenticated sessions).`;
-      log(errorMsg, "error");
-      throw new Error(errorMsg);
+    try {
+      resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
+        scope,
+        undefined,
+        db,
+        opts.searchPlanId
+      ));
+    } catch (planErr: any) {
+      log(`[ScraperAuth] Failed to resolve active search plan: ${planErr.message}`, "warn");
     }
 
-    keywords = resolvedPlan.queries;
-
-    log(
-      `Resolved active evaluation context:\n` +
-      `  tenant=${scope.tenantId}\n` +
-      `  person=${scope.personId}\n` +
-      `  searchPlan=${resolvedPlan.searchPlanId}\n` +
-      `  snapshot=${resolvedPlan.snapshotId || "dynamic"}\n` +
-      `  queries=${resolvedPlan.queryCount}\n\n` +
-      `Using persisted search plan; fallback keywords disabled.`
-    );
+    if (resolvedPlan && resolvedPlan.queries.length > 0) {
+      keywords = resolvedPlan.queries;
+      searchSource = "PLAN";
+      evaluationProjection = "ACTIVE";
+      log(
+        `Resolved active evaluation context:\n` +
+        `  tenant=${scope.tenantId}\n` +
+        `  person=${scope.personId}\n` +
+        `  searchPlan=${resolvedPlan.searchPlanId}\n` +
+        `  snapshot=${resolvedPlan.snapshotId || "dynamic"}\n` +
+        `  queries=${resolvedPlan.queryCount}\n\n` +
+        `Using persisted search plan.`
+      );
+    } else {
+      // Planless SCOPED execution per Amendment 1
+      if (keywords && keywords.length > 0) {
+        searchSource = "SUPPLIED";
+      } else {
+        keywords = DEFAULT_KEYWORDS;
+        searchSource = "DEFAULT";
+      }
+      evaluationProjection = "DEFERRED_NO_SEARCH_PLAN";
+      resolvedPlan = undefined;
+      log(
+        `[ScraperAuth] Running planless scoped acquisition for tenant ${opts.authContext.tenantId} (person: ${opts.authContext.userId}).\n` +
+        `  searchSource=${searchSource}, evaluationProjection=${evaluationProjection}. Queries: ${keywords.length}. Evaluation deferred until search plan created.`
+      );
+    }
   } else if (!keywords) {
     keywords = DEFAULT_KEYWORDS;
+    searchSource = "DEFAULT";
+    evaluationProjection = "DEFERRED_NO_SEARCH_PLAN";
     log(`Running in offline unauthenticated mode: using manual/default keywords (${keywords.length} queries).`);
   }
   
@@ -461,100 +542,86 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           );
         }
 
-        // Invariant: If stopping or queued, refuse concurrent start
-        if (activeStatus === "stopping") {
-          throw new Error(
-            `Cannot start acquisition for (${runScope.tenantId}, ${runScope.personId}): active run ${activeDurableRun.id} is currently stopping. Wait for it to reach a terminal state.`
-          );
-        }
-        if (activeStatus === "queued") {
-          throw new Error(
-            `Cannot start acquisition for (${runScope.tenantId}, ${runScope.personId}): run ${activeDurableRun.id} is queued. Concurrent start prohibited.`
-          );
-        }
+        const earlyRecoveryPhases = ["queued", "initializing", "waiting_for_confirmation", "running", "stopping"];
+        const isEarlyPhase = earlyRecoveryPhases.includes(activeStatus);
 
-        // Invariant: If user requested fresh or resume: false, REFUSE if any active durable run exists (never supersede or overwrite ownership)
-        if (freshRun || opts.resume === false) {
-          throw new Error(
-            `Cannot start fresh acquisition for (${runScope.tenantId}, ${runScope.personId}): active durable run ${activeDurableRun.id} is currently ${activeStatus}. Clear or wait for active run before starting fresh.`
-          );
-        }
-
-        // Match durable identity against resolved plan
-        let durableIdentity: any = null;
-        if (activeDurableRun.configJson) {
-          try {
-            const parsed = JSON.parse(activeDurableRun.configJson);
-            durableIdentity = parsed?.acquisitionIdentity || parsed?.config?.acquisitionIdentity;
-          } catch {}
-        }
-
-        const isPlanMatching = resolvedPlan
-          ? activeDurableRun.searchPlanId === resolvedPlan.searchPlanId &&
-            (!durableIdentity?.searchPlanId || durableIdentity.searchPlanId === resolvedPlan.searchPlanId) &&
-            (!resolvedPlan.snapshotId ||
-              (!durableIdentity?.snapshotId || durableIdentity.snapshotId === resolvedPlan.snapshotId)) &&
-            (!resolvedPlan.contextFingerprint ||
-              (!durableIdentity?.contextFingerprint ||
-                durableIdentity.contextFingerprint === resolvedPlan.contextFingerprint)) &&
-            (!variantsSignature ||
-              (!durableIdentity?.variantsSignature || durableIdentity.variantsSignature === variantsSignature))
-          : true;
-
-        if (!isPlanMatching) {
-          throw new Error(
-            `Cannot resume active run ${activeDurableRun.id}: search plan identity mismatch between active run and requested scope.`
-          );
-        }
-
-        // Check reattachment / resume based on active status
-        if (activeStatus === "waiting_for_confirmation") {
-          const reattachable = mgr.tryLoadForConfirmationReattach(activeDurableRun.id, runControllerOpts);
-          if (!reattachable) {
-            throw new Error(
-              `Cannot reattach to run ${activeDurableRun.id} in state 'waiting_for_confirmation': local manifest missing or incompatible.`
-            );
+        let tryResumed = false;
+        if (!freshRun && opts.resume !== false) {
+          // Check reattachment / resume based on active status
+          if (activeStatus === "waiting_for_confirmation") {
+            const reattachable = mgr.tryLoadForConfirmationReattach(activeDurableRun.id, runControllerOpts);
+            if (reattachable) {
+              mgr.attachExistingRun(reattachable);
+              resumed = true;
+              tryResumed = true;
+              log(`Reattached to existing durable scrape_run in waiting_for_confirmation: ${mgr.runId}`);
+            }
+          } else if (activeStatus === "initializing" || activeStatus === "running") {
+            const resumable = mgr.tryLoadForResume(activeDurableRun.id, runControllerOpts);
+            if (resumable) {
+              mgr.attachExistingRun(resumable);
+              resumed = true;
+              tryResumed = true;
+              log(`Validated existing durable scrape_run for resume: ${mgr.runId} (status: ${activeStatus})`);
+            }
           }
-          mgr.attachExistingRun(reattachable);
-          resumed = true;
-          log(`Reattached to existing durable scrape_run in waiting_for_confirmation: ${mgr.runId}`);
-        } else if (activeStatus === "initializing" || activeStatus === "running") {
-          const resumable = mgr.tryLoadForResume(activeDurableRun.id, runControllerOpts);
-          if (!resumable) {
+        }
+
+        if (!tryResumed) {
+          if (isEarlyPhase) {
+            log(
+              `Active durable run ${activeDurableRun.id} in state '${activeStatus}' is unresumable or fresh run requested. Transitioning to aborted (LOCAL_RUNTIME_STATE_UNRECOVERABLE).`,
+              "warn"
+            );
+            await repos.scrapeRuns.transitionRunStatus(
+              runScope,
+              activeDurableRun.id,
+              activeStatus as any,
+              "aborted",
+              "LOCAL_RUNTIME_STATE_UNRECOVERABLE: local manifest missing or incompatible"
+            );
+            await repos.scrapeRuns.recordEvent(runScope, activeDurableRun.id, {
+              stage: "recovery",
+              eventType: "RUN_ABORTED_UNRESUMABLE",
+              payload: {
+                previousStatus: activeStatus,
+                reason: "LOCAL_RUNTIME_STATE_UNRECOVERABLE",
+              },
+            });
+          } else {
             throw new Error(
               `Cannot resume active run ${activeDurableRun.id} in state '${activeStatus}': local manifest missing or incompatible.`
             );
           }
-          mgr.attachExistingRun(resumable);
-          resumed = true;
-          log(`Validated existing durable scrape_run for resume: ${mgr.runId} (status: ${activeStatus})`);
-        } else {
-          throw new Error(
-            `Cannot resume run ${activeDurableRun.id}: unexpected status '${activeStatus}'.`
-          );
         }
-      } else {
-        // No active durable run. Create a new one!
+      }
+
+      if (!resumed) {
+        // No active durable run (or previous unresumable run aborted). Create clean new run!
         const newRunId = RunController.generateRunId();
         await repos.scrapeRuns.createRun(runScope, {
           id: newRunId,
-          searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (opts.searchPlanId || "default"),
+          searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : null,
           portalTargets: portals,
           initialStatus: "initializing",
           config: {
             maxPages,
             keywords: resolvedKeywords,
-            acquisitionIdentity: {
+            searchSource,
+            evaluationProjection,
+            acquisitionIdentity: resolvedPlan ? {
               searchPlanId: resolvedPlan?.searchPlanId,
               snapshotId: resolvedPlan?.snapshotId,
               contextFingerprint: resolvedPlan?.contextFingerprint,
+              variantsSignature,
+            } : {
               variantsSignature,
             },
           },
         });
         log(`Created new durable scrape_run in Turso Cloud: ${newRunId}`);
 
-        // Now initialize local RunController with compensation if it fails
+        // Initialize local RunController with compensation if it fails
         try {
           mgr.initFresh(newRunId, runControllerOpts);
         } catch (initErr: any) {
@@ -595,7 +662,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   }
 
   activeRunControllers.set(mgr.runId, mgr);
-  const runtime = createRunSession(mgr.runId, opts);
+  const runtime = createRunSession(mgr.runId, opts, capabilities);
+  if (!capabilities.canonicalPersistenceEnabled) {
+    (mgr.manifest as any).executionMode = "LOCAL_ONLY_NO_CANONICAL_PERSISTENCE";
+  }
 
   mgr.recordActivity("Building executive search schema from candidate profile...");
   const plannedUnits = mgr.manifest.units.length;
@@ -632,17 +702,33 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
 
         let browserContext: any;
         try {
-          browserContext = await getPortalContext(portal, {
-            runId: mgr.runId,
-            mode: runScope ? "SCOPED" : "GLOBAL_MARKET",
-            tenantId: opts.authContext?.tenantId,
-            personId: opts.authContext?.userId,
-          });
-        }
-        catch (err: any) { 
+          browserContext = await getPortalContext(
+            portal,
+            {
+              runId: mgr.runId,
+              mode: runScope ? "SCOPED" : "GLOBAL_MARKET",
+              tenantId: opts.authContext?.tenantId,
+              personId: opts.authContext?.userId,
+            },
+            {},
+            {
+              headless: runtimeOpts.headless,
+            }
+          );
+        } catch (err: any) { 
           plog(`context launch failed: ${err.message}`, "error"); 
           mgr.updatePortalHealth(portal, { status: "error", details: err.message });
           mgr.recordActivity(`Error connecting to ${portal}: ${err.message}`);
+          
+          const errCode = err?.code || "PORTAL_INITIALIZATION_FAILED";
+          for (const u of mgr.manifest.units) {
+            if (u.portal === portal && (u.status === "pending" || u.status === "running")) {
+              mgr.updateUnit(u.id, {
+                status: "failed",
+                error: `[${errCode}] ${err.message}`,
+              });
+            }
+          }
           return null; 
         }
         
@@ -683,6 +769,14 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
           plog(`session error — skipping portal`, "warn");
           mgr.updatePortalHealth(portal, { status: "error", details: `Session error` });
           mgr.recordActivity(`Session error on ${portal}`);
+          for (const u of mgr.manifest.units) {
+            if (u.portal === portal && (u.status === "pending" || u.status === "running")) {
+              mgr.updateUnit(u.id, {
+                status: "failed",
+                error: `[PORTAL_INITIALIZATION_FAILED] Session error`,
+              });
+            }
+          }
           runtime.contexts.delete(portal);
           runtime.pages.delete(portal);
           runtime.pageManagers.delete(portal);
@@ -719,6 +813,16 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         } else if (sessionStatus === "gated") {
           mgr.updatePortalHealth(portal, { status: "gated", details: `Waiting for manual login` });
           mgr.recordActivity(`Portal ${portal} requires authentication/captcha`);
+          if (autoConfirm) {
+            for (const u of mgr.manifest.units) {
+              if (u.portal === portal && (u.status === "pending" || u.status === "running")) {
+                mgr.updateUnit(u.id, {
+                  status: "skipped_gated",
+                  error: `[PORTAL_SESSION_GATED] Portal requires manual authentication or captcha`,
+                });
+              }
+            }
+          }
         }
       });
 
@@ -883,7 +987,17 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         const handler = HANDLERS[portal];
         const browserContext = runtime.contexts.get(portal);
         const activePage = runtime.pages.get(portal);
-        if (!browserContext || !activePage) return;
+        if (!browserContext || !activePage) {
+          for (const u of mgr.manifest.units) {
+            if (u.portal === portal && (u.status === "pending" || u.status === "running")) {
+              mgr.updateUnit(u.id, {
+                status: "failed",
+                error: `[PORTAL_INITIALIZATION_FAILED] Portal context unavailable`,
+              });
+            }
+          }
+          return;
+        }
 
         mgr.updatePortalHealth(portal, { status: "ready", details: "Executing" });
         plog(`Active tabs before execution: ${browserContext.pages().length}`);
@@ -998,8 +1112,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       const tm = mgr.manifest.telemetry || { httpAttempted: 0, httpSuccessful: 0, httpFallbacks: 0, llmCalls: 0 };
       const failedUnits = mgr.manifest.units.filter(u => u.status === "failed");
       const integrityFailures = (mgr.getTelemetry("acquisitionIntegrityFailures" as any) || 0) + integrityFailureCards.length;
-      if (failedUnits.length > 0 || integrityFailures > 0) {
-        log(`[Scrape] Run has ${failedUnits.length} failed units and ${integrityFailures} integrity failures. Failing run closed.`, "error");
+      const allUnitsFailedOrGated = mgr.manifest.units.length > 0 && mgr.manifest.units.every(u => u.status === "failed" || u.status === "skipped_gated");
+
+      if (integrityFailures > 0 || allUnitsFailedOrGated) {
+        log(`[Scrape] Run failed: ${integrityFailures > 0 ? `${integrityFailures} integrity failures` : `all ${mgr.manifest.units.length} units failed or gated`}. Failing run closed.`, "error");
         mgr.finalize("failed");
         if (runScope) {
           const repos = getRepositories();
@@ -1334,7 +1450,7 @@ async function processUnit(
   seenHeuristicKeys: Set<string>,
   log: ReturnType<typeof makeLogger>,
   maxCardsPerPage?: number,
-  lineageScope?: { tenantId: string; personId: string; searchPlanId?: string },
+  lineageScope?: { tenantId: string; personId: string; searchPlanId?: string | null },
   relevanceCriteria?: { targetRoles?: string[]; customParameters?: Record<string, unknown> },
   pageManager?: PageManager,
   authSession?: PortalAuthSession,
@@ -2332,121 +2448,126 @@ async function processUnit(
           });
 
           // [M10.1] Canonical Acquisition Interceptor: Global Identity, Versioning, Attention Gate & Queue
-          try {
-            const canonicalIngest = new CanonicalIngestionService();
-            const ingestRes = await canonicalIngest.ingestOpportunity({
-              sourcePortal: unit.portal,
-              sourceJobId: resolvedIdentity.sourceJobId,
-              canonicalUrl: resolvedIdentity.canonicalUrl,
-              finalUrl: detail.finalUrl || (unit.portal === "Indeed" ? identityUrl : undefined),
-              jobTitle: feedCard.title,
-              documentTitle: detail.extractedTitle,
-              companyName: feedCard.company,
-              location: feedCard.location || "",
-              employmentType: (detail as any)?.employmentType || null,
-              rawContent: detail.rawText || "",
-              contentOrigin: detail.fetched ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
-              httpStatus: detail.httpStatus,
-              postedAt: feedCard.postedAt,
-              postedPrecision: (feedCard as any)?.postedPrecision || null,
-              enrichmentDispatch: {
-                detailedCard,
-                pipelineVersion: EXTRACTOR_VERSION,
+          const runSession = activeRunSessions.get(mgr.runId);
+          if (runSession?.capabilities && !runSession.capabilities.canonicalPersistenceEnabled) {
+            log(`[LocalOnly] Skipping CanonicalIngestionService for card ${feedCard.cardHash} (canonicalPersistenceEnabled=false)`, "info");
+          } else {
+            try {
+              const canonicalIngest = new CanonicalIngestionService();
+              const ingestRes = await canonicalIngest.ingestOpportunity({
+                sourcePortal: unit.portal,
+                sourceJobId: resolvedIdentity.sourceJobId,
+                canonicalUrl: resolvedIdentity.canonicalUrl,
+                finalUrl: detail.finalUrl || (unit.portal === "Indeed" ? identityUrl : undefined),
+                jobTitle: feedCard.title,
+                documentTitle: detail.extractedTitle,
+                companyName: feedCard.company,
+                location: feedCard.location || "",
+                employmentType: (detail as any)?.employmentType || null,
+                rawContent: detail.rawText || "",
+                contentOrigin: detail.fetched ? "DETAIL_DOCUMENT" : "DISCOVERY_CARD_FALLBACK",
+                httpStatus: detail.httpStatus,
+                postedAt: feedCard.postedAt,
+                postedPrecision: (feedCard as any)?.postedPrecision || null,
+                enrichmentDispatch: {
+                  detailedCard,
+                  pipelineVersion: EXTRACTOR_VERSION,
+                  runId: mgr.runId,
+                  executionPlanId: unit.id,
+                  definitionId: unit.definitionId || "unknown",
+                  familyId: "unknown",
+                  portal: unit.portal,
+                  page: unit.page,
+                  catalogVersion: CATALOG_VERSION,
+                  plannerVersion: PLANNER_VERSION,
+                  ruleVersion: RULE_VERSION,
+                  searchQuery: unit.keyword,
+                  businessPriority: 10,
+                  executionPriority: 0,
+                  snapshotPath,
+                },
+              }, lineageScope ? {
+                mode: "SCOPED" as const,
+                tenantId: lineageScope.tenantId,
+                personId: lineageScope.personId,
+                searchPlanId: lineageScope.searchPlanId ?? null,
                 runId: mgr.runId,
-                executionPlanId: unit.id,
-                definitionId: unit.definitionId || "unknown",
-                familyId: "unknown",
-                portal: unit.portal,
-                page: unit.page,
-                catalogVersion: CATALOG_VERSION,
-                plannerVersion: PLANNER_VERSION,
-                ruleVersion: RULE_VERSION,
-                searchQuery: unit.keyword,
-                businessPriority: 10,
-                executionPriority: 0,
-                snapshotPath,
-              },
-            }, lineageScope ? {
-              mode: "SCOPED" as const,
-              tenantId: lineageScope.tenantId,
-              personId: lineageScope.personId,
-              searchPlanId: lineageScope.searchPlanId || "default",
-              runId: mgr.runId,
-            } : {
-              mode: "GLOBAL_MARKET" as const,
-            });
-            canonicalIngestionResult = ingestRes;
-            detailedCard = bindEvaluationEvidence(detailedCard, {
-              canonicalJobId: ingestRes.canonicalJobId,
-              opportunityVersion: ingestRes.opportunityVersion,
-              contentHash: ingestRes.contentHash,
-              sourcePayloadKey: ingestRes.sourcePayloadKey,
-              sourceMediaType: ingestRes.sourceMediaType,
-            });
-            writeSnapshot(detailedCard);
-            mgr.journal.append({
-              type: "snapshot_evidence_bound",
-              cardId: cardUnitId,
-              canonicalJobId: ingestRes.canonicalJobId,
-              opportunityVersion: ingestRes.opportunityVersion,
-              contentHash: ingestRes.contentHash,
-            });
-            mgr.recordTelemetry("canonicalIngestSuccess");
-            if (ingestRes.isNewOpportunity) {
-              pageCanonicalIngested++;
-              mgr.recordTelemetry("canonicalOpportunitiesIngested");
-            } else {
-              mgr.recordTelemetry("canonicalOpportunitiesReused");
-            }
-            const admissionOutcome = ingestRes.isNewOpportunity ? "NEW_OPPORTUNITY" : "REUSED_OPPORTUNITY";
-            log(`[IngestAdmission] unit=${unit.id} portal=${unit.portal} sourceJobId=${resolvedIdentity.sourceJobId} canonicalJobId=${ingestRes.canonicalJobId} outcome=${admissionOutcome} version=${ingestRes.isNewVersion ? "NEW_VERSION" : "REUSED_VERSION"}`, "info");
-            if (ingestRes.isNewVersion) {
-              mgr.recordTelemetry("newVersionsCreated");
-            } else {
-              mgr.recordTelemetry("duplicateVersionsSuppressed");
-            }
-            if (ingestRes.candidatesProjected > 0) {
-              mgr.recordTelemetry("candidatesProjected", ingestRes.candidatesProjected);
-            }
-            if (ingestRes.jobsEnqueued > 0) {
-              mgr.recordTelemetry("evaluationJobsEnqueued", ingestRes.jobsEnqueued);
-            }
-            await withPersistenceBoundary("canonical lineage recording", async () => {
-              await recordLineage(
-                ledgerItem.id,
-                resolvedIdentity.sourceJobId,
-                feedCard.discoveryUrl || feedCard.detailUrl,
-                valResult,
-                ingestRes,
-                undefined,
-                detail.finalUrl,
-              );
-            });
-          } catch (err: any) {
-            log(`[M10_CANONICAL_INGEST_WARN] Canonical acquisition error for ${feedCard.cardHash}: ${err.message}`, "warn");
-            mgr.recordTelemetry("canonicalIngestFailure");
-            if (lineageScope) {
-              try {
+              } : {
+                mode: "GLOBAL_MARKET" as const,
+              });
+              canonicalIngestionResult = ingestRes;
+              detailedCard = bindEvaluationEvidence(detailedCard, {
+                canonicalJobId: ingestRes.canonicalJobId,
+                opportunityVersion: ingestRes.opportunityVersion,
+                contentHash: ingestRes.contentHash,
+                sourcePayloadKey: ingestRes.sourcePayloadKey,
+                sourceMediaType: ingestRes.sourceMediaType,
+              });
+              writeSnapshot(detailedCard);
+              mgr.journal.append({
+                type: "snapshot_evidence_bound",
+                cardId: cardUnitId,
+                canonicalJobId: ingestRes.canonicalJobId,
+                opportunityVersion: ingestRes.opportunityVersion,
+                contentHash: ingestRes.contentHash,
+              });
+              mgr.recordTelemetry("canonicalIngestSuccess");
+              if (ingestRes.isNewOpportunity) {
+                pageCanonicalIngested++;
+                mgr.recordTelemetry("canonicalOpportunitiesIngested");
+              } else {
+                mgr.recordTelemetry("canonicalOpportunitiesReused");
+              }
+              const admissionOutcome = ingestRes.isNewOpportunity ? "NEW_OPPORTUNITY" : "REUSED_OPPORTUNITY";
+              log(`[IngestAdmission] unit=${unit.id} portal=${unit.portal} sourceJobId=${resolvedIdentity.sourceJobId} canonicalJobId=${ingestRes.canonicalJobId} outcome=${admissionOutcome} version=${ingestRes.isNewVersion ? "NEW_VERSION" : "REUSED_VERSION"}`, "info");
+              if (ingestRes.isNewVersion) {
+                mgr.recordTelemetry("newVersionsCreated");
+              } else {
+                mgr.recordTelemetry("duplicateVersionsSuppressed");
+              }
+              if (ingestRes.candidatesProjected > 0) {
+                mgr.recordTelemetry("candidatesProjected", ingestRes.candidatesProjected);
+              }
+              if (ingestRes.jobsEnqueued > 0) {
+                mgr.recordTelemetry("evaluationJobsEnqueued", ingestRes.jobsEnqueued);
+              }
+              await withPersistenceBoundary("canonical lineage recording", async () => {
                 await recordLineage(
                   ledgerItem.id,
                   resolvedIdentity.sourceJobId,
                   feedCard.discoveryUrl || feedCard.detailUrl,
                   valResult,
+                  ingestRes,
                   undefined,
-                  err?.name || "CANONICAL_INGEST_FAILURE",
                   detail.finalUrl,
                 );
-              } catch (lineageErr: any) {
-                log(`[M10_LINEAGE_WARN] Failed to record error lineage for ${feedCard.cardHash}: ${lineageErr.message}`, "warn");
+              });
+            } catch (err: any) {
+              log(`[M10_CANONICAL_INGEST_WARN] Canonical acquisition error for ${feedCard.cardHash}: ${err.message}`, "warn");
+              mgr.recordTelemetry("canonicalIngestFailure");
+              if (lineageScope) {
+                try {
+                  await recordLineage(
+                    ledgerItem.id,
+                    resolvedIdentity.sourceJobId,
+                    feedCard.discoveryUrl || feedCard.detailUrl,
+                    valResult,
+                    undefined,
+                    err?.name || "CANONICAL_INGEST_FAILURE",
+                    detail.finalUrl,
+                  );
+                } catch (lineageErr: any) {
+                  log(`[M10_LINEAGE_WARN] Failed to record error lineage for ${feedCard.cardHash}: ${lineageErr.message}`, "warn");
+                }
               }
+              if (err instanceof AcquisitionIntegrityError) {
+                throw err;
+              }
+              throw new AcquisitionIntegrityError(
+                `Canonical acquisition failed for ${resolvedIdentity.canonicalJobId}: ${err?.message}`,
+                err
+              );
             }
-            if (err instanceof AcquisitionIntegrityError) {
-              throw err;
-            }
-            throw new AcquisitionIntegrityError(
-              `Canonical acquisition failed for ${resolvedIdentity.canonicalJobId}: ${err?.message}`,
-              err
-            );
           }
 
         mgr.updateCard(cardUnitId, {

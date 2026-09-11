@@ -194,6 +194,7 @@ export async function runMigrations(
 const REBUILD_MIGRATIONS = new Set([
   "042_scrape_runs_distributed_lifecycle.sql",
   "043_distributed_work_identity.sql",
+  "046_scrape_runs_nullable_search_plan.sql",
 ]);
 
   const applied: string[] = [];

@@ -20,6 +20,7 @@
     "format": "prettier --write .",
     "typecheck:scraper": "tsc -p tsconfig.scraper.json --noEmit",
     "scrape": "tsx scripts/scrape.ts",
+    "scrape:preflight": "tsx scripts/scraper/preflight.ts",
     "enrich": "tsx scripts/enrich.ts",
     "enrich:recover": "tsx --env-file=.env scripts/recover-degraded.ts",
     "corpus:generate": "tsx scripts/corpus/pipeline.ts",

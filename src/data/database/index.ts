@@ -6,6 +6,7 @@ import path from "path";
 import fs from "fs";
 import { createHash } from "crypto";
 import { createRequire } from "module";
+import { loadUnifiedEnvironment } from "../../lib/env";
 
 export type RadarEnvironment = "dev" | "test" | "staging" | "production";
 
@@ -78,22 +79,7 @@ function readEnvFile(fileBasename: string): Record<string, string> {
  */
 export function loadDatabaseEnvironment(): void {
   if (_hasLoadedDatabaseEnvironment || typeof window !== "undefined") return;
-  const radarEnv = getRadarEnv();
-  // Shell configuration always wins. File precedence then mirrors Vite's
-  // server-mode precedence, but is resolved here once for every server entry
-  // point rather than independently by scripts and Vite.
-  const fileValues: Record<string, string> = {};
-  for (const file of ["gemini.env", "groq.env", ".env", ".env.local"]) {
-    Object.assign(fileValues, readEnvFile(file));
-  }
-  if (radarEnv === "dev") {
-    Object.assign(fileValues, readEnvFile(".env.development"), readEnvFile(".env.development.local"));
-  }
-  for (const key of ["TURSO_CONNECTION_URL", "TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN"]) {
-    if (process.env[key] === undefined && fileValues[key] !== undefined) {
-      process.env[key] = fileValues[key];
-    }
-  }
+  loadUnifiedEnvironment();
   _hasLoadedDatabaseEnvironment = true;
 }
 

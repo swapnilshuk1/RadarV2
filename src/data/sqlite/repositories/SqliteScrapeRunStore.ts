@@ -58,7 +58,7 @@ export interface ScrapeRun {
   id: string;
   tenantId: string;
   personId: string;
-  searchPlanId: string;
+  searchPlanId: string | null;
   status: ScrapeRunStatus;
   portalTargets: string[];
   configJson: string;
@@ -86,7 +86,7 @@ export interface ScrapeRunEvent {
 
 export interface CreateScrapeRunParams {
   id?: string;
-  searchPlanId: string;
+  searchPlanId?: string | null;
   portalTargets: string[];
   config?: Record<string, unknown>;
   initialStatus?: ScrapeRunStatus;
@@ -120,7 +120,7 @@ export class SqliteScrapeRunStore {
           runId,
           scope.tenantId,
           scope.personId,
-          params.searchPlanId,
+          params.searchPlanId ?? null,
           status,
           portalsJson,
           configJson,
@@ -387,7 +387,7 @@ export class SqliteScrapeRunStore {
       id: row.id,
       tenantId: row.tenant_id,
       personId: row.person_id,
-      searchPlanId: row.search_plan_id,
+      searchPlanId: row.search_plan_id ?? null,
       status: row.status as ScrapeRunStatus,
       portalTargets,
       configJson: row.config_json || "{}",
