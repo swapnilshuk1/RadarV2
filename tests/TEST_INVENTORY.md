@@ -65,7 +65,7 @@ RADAR v2 Test Architecture
 | `tests/persistence/gate3-distributed-lifecycle.test.ts` | Distributed lifecycle transitions (`enriching`, `completing`, `completed`), version-aware enrichment work deduplication, pre-enrichment evaluation requirement gating, fail-closed failure propagation, and cross-tenant dual convergence. | **Stage 3** |
 | `tests/persistence/populated-migration.test.ts` | Populated database migration across 001-043, proving zero foreign key check violations and row identity preservation. | **Stage 3** |
 | `tests/acquisition/post-gate3-acquisition-integrity.test.ts` | Atomic pre-transaction BlobStore write, unconditional enrichment job creation & run binding, complete enrichment fast-path to READY, version identity payload assertion, and authenticated resume validation. | Full Suite |
-| `tests/scraper/scraper-operability.test.ts` | Scraper Operability Patch: planless scoped runs truthful returns, migration 046 nullable search plan rebuild, active run partial unique index, machine profile mode/tenant retirement, atomic legacy migration, fresh vs stale corrupt lock handling, native Chromium UA, and portal failure isolation. | Full Suite |
+| `tests/scraper/scraper-operability.test.ts` | Scraper Operability Patch: planless scoped runs truthful returns, migration 046 nullable search plan rebuild, active run partial unique index, machine profile mode/tenant retirement, cross-scope profile isolation & fail-closed rename, atomic legacy migration, fresh vs stale corrupt lock handling, native Chromium UA, single-authority confirmation without TDZ, and DB-free GLOBAL local-only acquisition. | **Stage 3** |
 
 ---
 
@@ -374,7 +374,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/scraper/scraper-correctness-contract.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 9 | 27 |
 | `tests/scraper/scraper-acquisition-contract.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 13 | 36 |
 | `tests/scraper/acquisition-variant-contract.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 4 | 15 |
-| `tests/scraper/scraper-operability.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 22 | 22 |
+| `tests/scraper/scraper-operability.test.ts` | Ingestion & Lineage | **KEEP** | **Stage 3** | 26 | 26 |
 | `tests/scraper/naukri-state.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 10 |
 | `tests/scraper/scrape-progress.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 2 | 20 |
 | `tests/scraper/scraper-control.test.ts` | Ingestion & Lineage | **KEEP** | Full Suite | 5 | 11 |

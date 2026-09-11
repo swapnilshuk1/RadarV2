@@ -200,10 +200,23 @@ export async function syncManifestProgress(
 ) {
   const cardsFound = mgr.manifest.cards.length;
   let evaluated = 0;
-  try {
-    const stats = await getEnrichmentQueue().getRunStats(mgr.runId);
-    evaluated = stats?.completed || 0;
-  } catch {}
+  const runSession = activeRunSessions.get(mgr.runId);
+  let enrichmentEnabled = true;
+  if (runSession?.capabilities) {
+    enrichmentEnabled = runSession.capabilities.enrichmentDispatchEnabled;
+  } else {
+    try {
+      getDatabaseAdapter();
+    } catch {
+      enrichmentEnabled = false;
+    }
+  }
+  if (enrichmentEnabled) {
+    try {
+      const stats = await getEnrichmentQueue().getRunStats(mgr.runId);
+      evaluated = stats?.completed || 0;
+    } catch {}
+  }
 
   const currentStage =
     stage ||
@@ -430,8 +443,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   let maxPages = opts.maxPages ?? runtimeOpts.maxPages ?? CONFIG.maxPages;
   const maxCardsPerPage = opts.maxCardsPerPage ?? runtimeOpts.maxCardsPerPage;
 
-  const autoConfirm = opts.autoConfirm !== undefined ? opts.autoConfirm : runtimeOpts.autoConfirm;
-  if (!autoConfirm) {
+  const resolvedAutoConfirm = opts.autoConfirm !== undefined ? opts.autoConfirm : runtimeOpts.autoConfirm;
+  if (!resolvedAutoConfirm) {
     if (runtimeOpts.headless || (typeof process !== "undefined" && !process.stdin.isTTY)) {
       throw new Error(
         "CONFIRMATION_NOT_SUPPORTED_NON_INTERACTIVE: Scraper paused for manual confirmation, but running in headless mode or non-interactive TTY. Set --auto-confirm or AUTO_CONFIRM=true."
@@ -813,7 +826,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         } else if (sessionStatus === "gated") {
           mgr.updatePortalHealth(portal, { status: "gated", details: `Waiting for manual login` });
           mgr.recordActivity(`Portal ${portal} requires authentication/captcha`);
-          if (autoConfirm) {
+          if (resolvedAutoConfirm) {
             for (const u of mgr.manifest.units) {
               if (u.portal === portal && (u.status === "pending" || u.status === "running")) {
                 mgr.updateUnit(u.id, {
@@ -827,8 +840,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       });
 
       // Phase 2: Confirmation / Polling Pause
-      const autoConfirm = opts.autoConfirm ?? CONFIG.autoConfirm;
-      if (!autoConfirm) {
+      if (!resolvedAutoConfirm) {
         mgr.transitionTo("waiting_for_confirmation");
         if (runScope) {
           const repos = getRepositories();
@@ -1438,7 +1450,7 @@ export function finalizeUnitOutcome(params: {
   return { status, warnings };
 }
 
-async function processUnit(
+export async function processUnit(
   mgr: RunController,
   handler: PortalHandler,
   unit: WorkUnit,
@@ -1629,7 +1641,18 @@ async function processUnit(
     const cardMeta = cards.map((c) => ({ id: `${unit.id}#${c.cardHash}`, cardHash: c.cardHash }));
     mgr.addCards(unit.id, cardMeta);
 
-    const repos = getRepositories();
+    const runSession = activeRunSessions.get(mgr.runId);
+    let isDbAvailable = true;
+    if (runSession?.capabilities) {
+      isDbAvailable = runSession.capabilities.databaseAvailable;
+    } else {
+      try {
+        getDatabaseAdapter();
+      } catch {
+        isDbAvailable = false;
+      }
+    }
+    const repos = isDbAvailable ? getRepositories() : null;
     /* Keep historical ledger recognition distinct from same-run duplicate
      * suppression. A known listing still proceeds to canonical ingestion so
      * its material source version can be reused or versioned correctly. */
@@ -1671,7 +1694,7 @@ async function processUnit(
         // Unauthenticated local runs have no durable scrape_run scope. They are
         // intentionally outside the validation cohort; authenticated runs must
         // retain durable source-to-canonical provenance.
-        if (!lineageScope) return;
+        if (!lineageScope || !repos) return;
         await repos.acquisition.recordIngestionLineage({
           scrapeRunId: mgr.runId,
           tenantId: lineageScope.tenantId,
@@ -1756,26 +1779,36 @@ async function processUnit(
         seenUrls.add(identity.canonicalUrl);
         seenCanonicalIds.add(identity.canonicalJobId);
 
-        const { priorLedgerItem, ledgerItem } = await withPersistenceBoundary("initial ledger discovery", async () => {
-          const prior = await repos.acquisition.getLedgerItemByCanonicalId(
-            identity.sourcePortal,
-            identity.canonicalJobId,
-          );
-          const item = await repos.acquisition.upsertDiscoveredJob({
-            canonicalJobId: identity.canonicalJobId,
-            sourcePortal: identity.sourcePortal,
-            sourceJobId: identity.sourceJobId,
-            canonicalUrl: identity.canonicalUrl,
-            title: feedCard.title,
-            companyName: feedCard.company,
-            location: feedCard.location,
-            state: "QUEUED",
-            firstSeenAt: new Date().toISOString(),
-            lastSeenAt: new Date().toISOString(),
-            validationConfidence: identity.identityConfidence
+        let priorLedgerItem: any = null;
+        let ledgerItem: any = {
+          id: `local:${identity.sourcePortal}:${identity.canonicalJobId}`,
+          sourceJobId: identity.sourceJobId,
+        };
+
+        if (repos) {
+          const res = await withPersistenceBoundary("initial ledger discovery", async () => {
+            const prior = await repos.acquisition.getLedgerItemByCanonicalId(
+              identity.sourcePortal,
+              identity.canonicalJobId,
+            );
+            const item = await repos.acquisition.upsertDiscoveredJob({
+              canonicalJobId: identity.canonicalJobId,
+              sourcePortal: identity.sourcePortal,
+              sourceJobId: identity.sourceJobId,
+              canonicalUrl: identity.canonicalUrl,
+              title: feedCard.title,
+              companyName: feedCard.company,
+              location: feedCard.location,
+              state: "QUEUED",
+              firstSeenAt: new Date().toISOString(),
+              lastSeenAt: new Date().toISOString(),
+              validationConfidence: identity.identityConfidence
+            });
+            return { priorLedgerItem: prior, ledgerItem: item };
           });
-          return { priorLedgerItem: prior, ledgerItem: item };
-        });
+          priorLedgerItem = res.priorLedgerItem;
+          ledgerItem = res.ledgerItem;
+        }
         if (priorLedgerItem) historicalLedgerCardIds.add(cardUnitId);
 
         const snapshotPath = path.join(SNAPSHOT_DIR, `${feedCard.cardHash}.json`);
@@ -2193,24 +2226,26 @@ async function processUnit(
 
           const rawFailureClass = detail.failureClass || detail.identityResolutionFailure || valResult.failureClass;
 
-          await withPersistenceBoundary("validation failure state recording", async () => {
-            await repos.acquisition.updateJobState(ledgerItem.id, {
-              state: detail.identityResolutionFailure ? "IDENTITY_UNRESOLVED" : "ACQUIRING",
-              attemptCount: cardUnit.attempts,
-              terminalState: failureClass === "REMOVED_404"
-                ? "PERMANENT_FAILURE"
-                : rawFailureClass === "REDIRECT_HOP_LIMIT"
-                  ? "REDIRECT_HOP_LIMIT"
-                  : rawFailureClass === "UNSAFE_REDIRECT_DESTINATION"
-                    ? "UNSAFE_REDIRECT_DESTINATION"
-                    : detail.identityResolutionFailure
-                      ? "UNRESOLVED_EXTERNAL_LISTING_IDENTITY"
-                      : undefined,
-              lastFailureClass: failureClass,
-              acquisitionQuality: valResult.quality,
-              validationConfidence: valResult.confidence
+          if (repos) {
+            await withPersistenceBoundary("validation failure state recording", async () => {
+              await repos.acquisition.updateJobState(ledgerItem.id, {
+                state: detail.identityResolutionFailure ? "IDENTITY_UNRESOLVED" : "ACQUIRING",
+                attemptCount: cardUnit.attempts,
+                terminalState: failureClass === "REMOVED_404"
+                  ? "PERMANENT_FAILURE"
+                  : rawFailureClass === "REDIRECT_HOP_LIMIT"
+                    ? "REDIRECT_HOP_LIMIT"
+                    : rawFailureClass === "UNSAFE_REDIRECT_DESTINATION"
+                      ? "UNSAFE_REDIRECT_DESTINATION"
+                      : detail.identityResolutionFailure
+                        ? "UNRESOLVED_EXTERNAL_LISTING_IDENTITY"
+                        : undefined,
+                lastFailureClass: failureClass,
+                acquisitionQuality: valResult.quality,
+                validationConfidence: valResult.confidence
+              });
             });
-          });
+          }
 
           // Failed acquisition remains in the ledger and lineage as evidence,
           // but may never create a canonical market record.  A title/card or
@@ -2286,13 +2321,15 @@ async function processUnit(
           const identityUrl = feedCard.detailUrl;
           const verifiedIndeedIdentity = unit.portal === "Indeed" ? parseVerifiedIndeedListingUrl(identityUrl) : undefined;
           if (unit.portal === "Indeed" && !verifiedIndeedIdentity) {
-            await withPersistenceBoundary("unresolved identity state recording", async () => {
-              await repos.acquisition.updateJobState(ledgerItem.id, {
-                state: "IDENTITY_UNRESOLVED",
-                terminalState: "UNRESOLVED_EXTERNAL_LISTING_IDENTITY",
-                lastFailureClass: "IDENTITY_UNRESOLVED",
+            if (repos) {
+              await withPersistenceBoundary("unresolved identity state recording", async () => {
+                await repos.acquisition.updateJobState(ledgerItem.id, {
+                  state: "IDENTITY_UNRESOLVED",
+                  terminalState: "UNRESOLVED_EXTERNAL_LISTING_IDENTITY",
+                  lastFailureClass: "IDENTITY_UNRESOLVED",
+                });
               });
-            });
+            }
             if (lineageScope) {
               try {
                 await recordLineage(
@@ -2374,19 +2411,25 @@ async function processUnit(
           // provisional URL identity. Canonical admission is rebased only
           // after a stable portal identity has been verified. The original
           // ledger row remains the lineage anchor for this observation.
-          const { resolvedLedgerItem, admissionLedgerItem } = await withPersistenceBoundary("job identity rebind", async () => {
-            const resolved = await repos.acquisition.getLedgerItemByCanonicalId(
-              resolvedIdentity.sourcePortal,
-              resolvedIdentity.canonicalJobId,
-            );
-            const admission = await repos.acquisition.rebindDiscoveredJobIdentity(ledgerItem.id, {
-              canonicalJobId: resolvedIdentity.canonicalJobId,
-              sourcePortal: resolvedIdentity.sourcePortal,
-              sourceJobId: resolvedIdentity.sourceJobId,
-              canonicalUrl: resolvedIdentity.canonicalUrl,
+          let resolvedLedgerItem: any = null;
+          let admissionLedgerItem: any = ledgerItem;
+          if (repos) {
+            const res = await withPersistenceBoundary("job identity rebind", async () => {
+              const resolved = await repos.acquisition.getLedgerItemByCanonicalId(
+                resolvedIdentity.sourcePortal,
+                resolvedIdentity.canonicalJobId,
+              );
+              const admission = await repos.acquisition.rebindDiscoveredJobIdentity(ledgerItem.id, {
+                canonicalJobId: resolvedIdentity.canonicalJobId,
+                sourcePortal: resolvedIdentity.sourcePortal,
+                sourceJobId: resolvedIdentity.sourceJobId,
+                canonicalUrl: resolvedIdentity.canonicalUrl,
+              });
+              return { resolvedLedgerItem: resolved, admissionLedgerItem: admission };
             });
-            return { resolvedLedgerItem: resolved, admissionLedgerItem: admission };
-          });
+            resolvedLedgerItem = res.resolvedLedgerItem;
+            admissionLedgerItem = res.admissionLedgerItem;
+          }
           if (resolvedLedgerItem) historicalLedgerCardIds.add(cardUnitId);
 
           detailedCard = {
@@ -2409,47 +2452,51 @@ async function processUnit(
           mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: snapshotPath });
 
           // 5. Record Validated State in Ledger & Merge Opportunity in SQLite
-          await withPersistenceBoundary("opportunity & company registration", async () => {
-            await repos.acquisition.updateJobState(admissionLedgerItem.id, {
-              state: "VALIDATED",
-              lastAcquiredAt: new Date().toISOString(),
-              acquisitionQuality: valResult.quality,
-              validationConfidence: valResult.confidence,
-              lastAcquisitionMethod: acquisitionRoute
-            });
+          if (repos) {
+            await withPersistenceBoundary("opportunity & company registration", async () => {
+              await repos.acquisition.updateJobState(admissionLedgerItem.id, {
+                state: "VALIDATED",
+                lastAcquiredAt: new Date().toISOString(),
+                acquisitionQuality: valResult.quality,
+                validationConfidence: valResult.confidence,
+                lastAcquisitionMethod: acquisitionRoute
+              });
 
-            await repos.companies.registerCompany({
-              id: companyId,
-              name: effectiveCompany,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              provenance: {
-                schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-                runId: mgr.runId,
-                timestamp: new Date().toISOString()
-              }
-            });
+              await repos.companies.registerCompany({
+                id: companyId,
+                name: effectiveCompany,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                provenance: {
+                  schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+                  runId: mgr.runId,
+                  timestamp: new Date().toISOString()
+                }
+              });
 
-            await repos.opportunities.mergeOpportunity({
-              id: resolvedIdentity.canonicalJobId,
-              companyId,
-              canonicalTitle: feedCard.title,
-              location: feedCard.location,
-              fingerprint: resolvedIdentity.canonicalJobId,
-              lifecycle: "Verified",
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              provenance: {
-                schemaVersion: SNAPSHOT_SCHEMA_VERSION,
-                runId: mgr.runId,
-                timestamp: new Date().toISOString()
-              }
+              await repos.opportunities.mergeOpportunity({
+                id: resolvedIdentity.canonicalJobId,
+                companyId,
+                canonicalTitle: feedCard.title,
+                location: feedCard.location,
+                fingerprint: resolvedIdentity.canonicalJobId,
+                lifecycle: "Verified",
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                provenance: {
+                  schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+                  runId: mgr.runId,
+                  timestamp: new Date().toISOString()
+                }
+              });
             });
-          });
+          }
 
           // [M10.1] Canonical Acquisition Interceptor: Global Identity, Versioning, Attention Gate & Queue
-          const runSession = activeRunSessions.get(mgr.runId);
-          if (runSession?.capabilities && !runSession.capabilities.canonicalPersistenceEnabled) {
+          const canonicalPersistenceEnabled = runSession?.capabilities
+            ? runSession.capabilities.canonicalPersistenceEnabled
+            : isDbAvailable;
+          if (!canonicalPersistenceEnabled) {
             log(`[LocalOnly] Skipping CanonicalIngestionService for card ${feedCard.cardHash} (canonicalPersistenceEnabled=false)`, "info");
           } else {
             try {

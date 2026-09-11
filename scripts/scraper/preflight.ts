@@ -152,7 +152,8 @@ export async function runScraperPreflight(
   }
 
   // 5. Portal Lock Check
-  for (const portal of DEFAULT_PORTALS) {
+  const portalsToCheck = options.portals && options.portals.length > 0 ? options.portals : DEFAULT_PORTALS;
+  for (const portal of portalsToCheck) {
     const lockPath = profileLockPath(portal);
     const existing = readExclusiveLock(lockPath);
     if (!existing) {

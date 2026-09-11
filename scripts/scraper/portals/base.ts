@@ -100,22 +100,18 @@ export function writeProfileMetadata(
   targetDir: string,
   scope: PortalRuntimeScope
 ): void {
-  try {
-    fs.mkdirSync(targetDir, { recursive: true });
-    const metadata: ProfileMetadata = {
-      mode: scope.mode,
-      tenantId: scope.tenantId,
-      personId: scope.personId,
-      lastUsedAt: new Date().toISOString(),
-    };
-    fs.writeFileSync(
-      path.join(targetDir, "profile-metadata.json"),
-      JSON.stringify(metadata, null, 2),
-      "utf8"
-    );
-  } catch (err: any) {
-    console.warn(`[Profile] Could not write metadata in ${targetDir}: ${err.message}`);
-  }
+  fs.mkdirSync(targetDir, { recursive: true });
+  const metadata: ProfileMetadata = {
+    mode: scope.mode,
+    tenantId: scope.tenantId,
+    personId: scope.personId,
+    lastUsedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(
+    path.join(targetDir, "profile-metadata.json"),
+    JSON.stringify(metadata, null, 2),
+    "utf8"
+  );
 }
 
 /**
@@ -280,7 +276,9 @@ export function prepareProfileForScope(
     try {
       fs.renameSync(targetDir, retiredDir);
     } catch (err: any) {
-      console.warn(`[Profile] Failed to rename retiring profile: ${err.message}`);
+      throw new Error(
+        `PROFILE_RETIREMENT_FAILED: Failed to retire mismatched profile from ${targetDir} to ${retiredDir}: ${err.message}`
+      );
     }
     fs.mkdirSync(targetDir, { recursive: true });
     writeProfileMetadata(targetDir, scope);
@@ -360,8 +358,7 @@ export async function getPortalContext(
     process.env.VERCEL ||
     process.env.NETLIFY ||
     process.env.AWS_LAMBDA_FUNCTION_NAME ||
-    process.env.CI ||
-    process.env.NODE_ENV === "production"
+    process.env.CI
   );
 
   const isHeadless =
