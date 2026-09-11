@@ -108,6 +108,8 @@ export interface RunControllerOptions {
   snapshotId?: string;
   contextFingerprint?: string;
   variantsSignature?: string;
+  executionPlan?: { id?: string; workUnits: any[] };
+  executionPlanPath?: string;
 }
 
 export class RunController {
@@ -141,19 +143,17 @@ export class RunController {
     this.manifestPath = path.join(this.runDir, "manifest.json");
     this.journalPath = path.join(this.runDir, "journal.ndjson");
 
-    const planPath = path.join(process.cwd(), ".radar", "runs", "ExecutionPlan.json");
-    let plan = null;
-    if (fs.existsSync(planPath)) {
-      plan = readJsonSafe<any>(planPath);
+    let plan = opts.executionPlan || null;
+    if (!plan && opts.executionPlanPath && fs.existsSync(opts.executionPlanPath)) {
+      plan = readJsonSafe<any>(opts.executionPlanPath);
     }
 
     const units: WorkUnit[] = [];
     
-    // An explicit caller-supplied variant set is authoritative. In particular,
-    // a controlled validation cohort must never be expanded by a stale local
-    // ExecutionPlan artifact.
+    // An explicit caller-supplied execution plan is loaded ONLY when requested by the caller.
+    // Implicit existence of an ExecutionPlan artifact on disk must never hijack normal runs.
     if (!opts.variants?.length && plan && plan.workUnits) {
-      console.log(`Loading ${plan.workUnits.length} units from ExecutionPlan.json...`);
+      console.log(`Loading ${plan.workUnits.length} units from explicit ExecutionPlan...`);
       for (const u of plan.workUnits) {
         units.push({
           id: u.id,

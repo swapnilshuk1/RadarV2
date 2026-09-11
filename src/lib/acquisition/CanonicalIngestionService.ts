@@ -353,15 +353,25 @@ export class CanonicalIngestionService {
           } catch (e: any) {
             throw new AcquisitionIntegrityError(`Existing BlobStore payload at ${enrichmentPayloadKey} is not valid JSON`);
           }
-          if (!parsed.canonicalMaterial) {
-            throw new AcquisitionIntegrityError(
-              `IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT: Existing BlobStore payload at ${enrichmentPayloadKey} lacks required canonicalMaterial`
-            );
+          let existingMaterialHash: string;
+          if (parsed.canonicalMaterial) {
+            existingMaterialHash = computeContentHash(parsed.canonicalMaterial);
+          } else {
+            // Backward-compatible legacy immutable snapshot support:
+            // Derive canonical material semantically from the old snapshot without mutating it
+            const legacyCanonicalMaterial = {
+              title: parsed.title ?? parsed.jobTitle ?? "",
+              companyName: parsed.companyName ?? parsed.company ?? null,
+              location: parsed.location ?? null,
+              employmentType: parsed.employmentType ?? null,
+              rawContent: parsed.detail?.rawText ?? parsed.rawText ?? "",
+            };
+            existingMaterialHash = computeContentHash(legacyCanonicalMaterial);
           }
-          const existingMaterialHash = computeContentHash(parsed.canonicalMaterial);
+
           if (existingMaterialHash !== contentHash) {
             throw new AcquisitionIntegrityError(
-              `IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT: Existing BlobStore payload at ${enrichmentPayloadKey} canonicalMaterial hash (${existingMaterialHash}) does not match incoming content hash (${contentHash})`
+              `IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT: Existing BlobStore payload at ${enrichmentPayloadKey} content hash (${existingMaterialHash}) does not match incoming content hash (${contentHash})`
             );
           }
           // Matching => reuse, never overwrite!

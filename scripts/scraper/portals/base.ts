@@ -93,12 +93,68 @@ export function profileLockPath(
   );
 }
 
+export function maybeMigrateLegacyGlobalProfile(portal: PortalName): void {
+  const destination = path.join(PROFILES_DIR, "global", portal.toLowerCase());
+
+  // 1. Destination check: if it already exists and has files, an established profile exists -> do nothing
+  if (fs.existsSync(destination)) {
+    try {
+      const files = fs.readdirSync(destination);
+      if (files.length > 0) return;
+    } catch {}
+  }
+
+  // 2. Identify candidate legacy profile sources
+  const candidateLegacyDirs: string[] = [];
+  if (portal.toLowerCase() === "linkedin") {
+    candidateLegacyDirs.push(path.join(PROFILES_DIR, "linkedin-primary"));
+    candidateLegacyDirs.push(path.join(PROFILES_DIR, "linkedin"));
+  } else {
+    candidateLegacyDirs.push(path.join(PROFILES_DIR, portal.toLowerCase()));
+  }
+
+  const legacySource = candidateLegacyDirs.find((dir) => {
+    try {
+      return fs.existsSync(dir) && fs.readdirSync(dir).length > 0;
+    } catch {
+      return false;
+    }
+  });
+
+  if (!legacySource) return;
+
+  // 3. Never migrate a profile that is currently locked/live
+  const legacyLockFile = path.join(legacySource, ".profile.lock");
+  if (fs.existsSync(legacyLockFile)) {
+    try {
+      const lockData = fs.readFileSync(legacyLockFile, "utf-8").trim();
+      if (lockData.length > 0) {
+        console.warn(`[ProfileMigration] Legacy profile at ${legacySource} is currently locked; skipping migration.`);
+        return;
+      }
+    } catch {}
+  }
+
+  // 4. Safe one-time copy to destination
+  try {
+    fs.mkdirSync(destination, { recursive: true });
+    fs.cpSync(legacySource, destination, { recursive: true, errorOnExist: false });
+    console.log(`[ProfileMigration] Successfully migrated legacy global profile from ${legacySource} to ${destination}`);
+  } catch (err: any) {
+    console.warn(`[ProfileMigration] Could not migrate legacy global profile from ${legacySource} to ${destination}: ${err.message}`);
+  }
+}
+
 export async function getPortalContext(
   portal: PortalName,
   scope: PortalRuntimeScope,
   deps: LockDeps = {},
 ): Promise<any> {
   ensureStealth();
+
+  if (scope.mode === "GLOBAL_MARKET") {
+    maybeMigrateLegacyGlobalProfile(portal);
+  }
 
   const key = contextKey(scope.runId, portal);
   const cached = contextCache.get(key);

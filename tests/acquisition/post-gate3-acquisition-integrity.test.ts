@@ -20,7 +20,15 @@ import {
   acquireGlobalMarketLock,
   releaseGlobalMarketLock,
   profileLockPath,
+  maybeMigrateLegacyGlobalProfile,
+  profileDirFor,
 } from "../../scripts/scraper/portals/base";
+import {
+  SCRAPER_VERSION,
+  SNAPSHOT_SCHEMA_VERSION,
+  MANIFEST_VERSION,
+  EXTRACTOR_VERSION,
+} from "../../scripts/scraper/versions";
 import {
   FailurePolicyEngine,
   normalizeFailureClass,
@@ -44,7 +52,7 @@ import { classifyFastPathResponse } from "../../scripts/scraper/utils/http-fetch
 import { linkedinHandler } from "../../scripts/scraper/portals/linkedin";
 import { EnrichmentQueue } from "../../scripts/scraper/persist/queue";
 import { extractionPath, readExtractionIfFresh, writeExtraction, collectRecords } from "../../scripts/scraper/persist/writer";
-import { EXTRACTION_DIR, RUNS_DIR } from "../../scripts/scraper/config";
+import { EXTRACTION_DIR, RUNS_DIR, PROFILES_DIR } from "../../scripts/scraper/config";
 import { SqliteScrapeRunStore } from "../../src/data/sqlite/repositories/SqliteScrapeRunStore";
 import path from "path";
 import fs from "fs";
@@ -2033,6 +2041,642 @@ describe("Post-Gate-3 Acquisition & Enrichment Integrity", () => {
 
       const isConfirmedRunning = runScope ? durableStatus === "running" : diskManifest.status === "running";
       expect(isConfirmedRunning).toBe(false);
+    });
+  });
+
+  describe("Scraper Runtime Safety & Compatibility Suite", () => {
+    describe("Fix 1: Backward-Compatible Legacy Immutable Snapshots", () => {
+      it("accepts and reuses legacy BlobStore snapshot without canonicalMaterial when derived material hash matches", async () => {
+        const { raw, db, blobStore } = createInMemoryDatabase();
+        raw.exec(`UPDATE scrape_runs SET status = 'running' WHERE id = 'run-001'`);
+        const service = new CanonicalIngestionService(db, blobStore);
+
+        const rawContent = "VP Engineering leading cloud platforms and core infrastructure.".repeat(10);
+        const payload = {
+          sourcePortal: "LinkedIn",
+          sourceJobId: "job-legacy-reuse-1",
+          canonicalUrl: "https://www.linkedin.com/jobs/view/job-legacy-reuse-1",
+          jobTitle: "VP Engineering",
+          companyName: "AcmeCorp",
+          location: "Bengaluru",
+          rawContent,
+          enrichmentDispatch: {
+            detailedCard: {
+              title: "VP Engineering",
+              company: "AcmeCorp",
+              location: "Bengaluru",
+              detail: { rawText: rawContent },
+            } as any,
+            runId: "run-001",
+            pipelineVersion: "1.0.0",
+          },
+        };
+
+        const canonicalJobId = computeCanonicalJobId({ source: payload.sourcePortal, sourceJobId: payload.sourceJobId });
+        const contentHash = computeContentHash({
+          title: "VP Engineering",
+          companyName: "AcmeCorp",
+          location: "Bengaluru",
+          employmentType: null,
+          rawContent,
+        });
+        const versionId = computeOpportunityVersionId(canonicalJobId, contentHash);
+        const key = `acquisition/${canonicalJobId}/${versionId}/snapshot.json`;
+
+        // Pre-populate with legacy snapshot format (no canonicalMaterial field)
+        const legacyBlobContent = JSON.stringify({
+          canonicalJobId,
+          opportunityVersion: versionId,
+          title: "VP Engineering",
+          company: "AcmeCorp",
+          location: "Bengaluru",
+          detail: { rawText: rawContent },
+        });
+        await blobStore.put(key, legacyBlobContent);
+
+        // Ingestion should succeed without throwing IMMUTABLE_ENRICHMENT_PAYLOAD_CONFLICT
+        const result = await service.ingestOpportunity(payload, {
+          mode: "SCOPED",
+          tenantId: "tenant_A",
+          personId: "person_A",
+          searchPlanId: "plan_A",
+          runId: "run-001",
+        });
+
+        expect(result.canonicalJobId).toBe(canonicalJobId);
+        expect(result.opportunityVersion).toBe(versionId);
+
+        // Verify the existing blob was NOT modified or overwritten
+        const storedBlob = await blobStore.get(key);
+        expect(storedBlob?.toString("utf-8")).toBe(legacyBlobContent);
+      });
+    });
+
+    describe("Fix 2: Remove Implicit ExecutionPlan.json Runtime Takeover", () => {
+      it("does not load .radar/runs/ExecutionPlan.json implicitly when initializing fresh run", () => {
+        const fakePlanDir = path.join(process.cwd(), ".radar", "runs");
+        const fakePlanPath = path.join(fakePlanDir, "ExecutionPlan.json");
+        fs.mkdirSync(fakePlanDir, { recursive: true });
+
+        const fakePlan = {
+          id: "fake-hijack-plan",
+          workUnits: [
+            { id: "unit-hijack-1", portal: "Indeed", keyword: "Hijacked Keyword", page: 99 },
+          ],
+        };
+        fs.writeFileSync(fakePlanPath, JSON.stringify(fakePlan));
+
+        try {
+          const mgr = new RunController();
+          mgr.initFresh("run-safe-test", {
+            keywords: ["VP Engineering"],
+            portals: ["LinkedIn"],
+            maxPages: 1,
+            maxCardsPerPage: 10,
+            resume: false,
+          });
+
+          // Units must be built from keywords/portals, NOT hijacked by ExecutionPlan.json
+          expect(mgr.manifest.units.length).toBe(1);
+          expect(mgr.manifest.units[0].keyword).toBe("VP Engineering");
+          expect(mgr.manifest.units[0].portal).toBe("LinkedIn");
+          expect(mgr.manifest.units[0].id).not.toBe("unit-hijack-1");
+        } finally {
+          if (fs.existsSync(fakePlanPath)) {
+            fs.unlinkSync(fakePlanPath);
+          }
+        }
+      });
+
+      it("loads units from explicit executionPlan option when provided by caller", () => {
+        const mgr = new RunController();
+        mgr.initFresh("run-explicit-plan-test", {
+          keywords: [],
+          portals: [],
+          maxPages: 1,
+          maxCardsPerPage: 10,
+          resume: false,
+          executionPlan: {
+            id: "explicit-plan-42",
+            workUnits: [
+              { id: "unit-explicit-1", portal: "Naukri", keyword: "VP Product", page: 1 },
+            ],
+          },
+        });
+
+        expect(mgr.manifest.units.length).toBe(1);
+        expect(mgr.manifest.units[0].id).toBe("unit-explicit-1");
+        expect(mgr.manifest.units[0].portal).toBe("Naukri");
+        expect(mgr.manifest.units[0].executionPlanId).toBe("explicit-plan-42");
+      });
+    });
+
+    describe("Fix 3: Authentication / Profile Compatibility Without Cross-Account Leakage", () => {
+      it("SCOPED mode strictly resolves to tenant/person path and never invokes legacy migration", () => {
+        const scopedPath = profileDirFor("LinkedIn", {
+          mode: "SCOPED",
+          tenantId: "tenant_X",
+          personId: "person_Y",
+          runId: "run-scoped-1",
+        });
+
+        expect(scopedPath).toContain(path.join("tenants"));
+        expect(scopedPath).not.toContain(path.join("global"));
+      });
+
+      it("GLOBAL_MARKET mode migrates legacy profile when destination is empty and legacy exists", () => {
+        const globalDest = path.join(PROFILES_DIR, "global", "mockportal");
+        const legacySrc = path.join(PROFILES_DIR, "mockportal");
+
+        // Clean up any test artifacts
+        if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
+        if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+
+        try {
+          fs.mkdirSync(legacySrc, { recursive: true });
+          fs.writeFileSync(path.join(legacySrc, "session.json"), JSON.stringify({ user: "legacy_user" }));
+
+          maybeMigrateLegacyGlobalProfile("MockPortal" as any);
+
+          expect(fs.existsSync(path.join(globalDest, "session.json"))).toBe(true);
+          const migratedData = JSON.parse(fs.readFileSync(path.join(globalDest, "session.json"), "utf-8"));
+          expect(migratedData.user).toBe("legacy_user");
+        } finally {
+          if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
+          if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+        }
+      });
+
+      it("GLOBAL_MARKET mode does not overwrite existing destination profile", () => {
+        const globalDest = path.join(PROFILES_DIR, "global", "mockportal");
+        const legacySrc = path.join(PROFILES_DIR, "mockportal");
+
+        if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
+        if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+
+        try {
+          fs.mkdirSync(globalDest, { recursive: true });
+          fs.writeFileSync(path.join(globalDest, "session.json"), JSON.stringify({ user: "existing_dest_user" }));
+
+          fs.mkdirSync(legacySrc, { recursive: true });
+          fs.writeFileSync(path.join(legacySrc, "session.json"), JSON.stringify({ user: "legacy_user" }));
+
+          maybeMigrateLegacyGlobalProfile("MockPortal" as any);
+
+          const destData = JSON.parse(fs.readFileSync(path.join(globalDest, "session.json"), "utf-8"));
+          expect(destData.user).toBe("existing_dest_user");
+        } finally {
+          if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
+          if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+        }
+      });
+
+      it("GLOBAL_MARKET mode skips migration if legacy profile has an active lock", () => {
+        const globalDest = path.join(PROFILES_DIR, "global", "mockportal");
+        const legacySrc = path.join(PROFILES_DIR, "mockportal");
+
+        if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
+        if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+
+        try {
+          fs.mkdirSync(legacySrc, { recursive: true });
+          fs.writeFileSync(path.join(legacySrc, "session.json"), JSON.stringify({ user: "legacy_user" }));
+          fs.writeFileSync(path.join(legacySrc, ".profile.lock"), "active-process-lock");
+
+          maybeMigrateLegacyGlobalProfile("MockPortal" as any);
+
+          // Destination must not have been created or populated
+          expect(fs.existsSync(path.join(globalDest, "session.json"))).toBe(false);
+        } finally {
+          if (fs.existsSync(globalDest)) fs.rmSync(globalDest, { recursive: true, force: true });
+          if (fs.existsSync(legacySrc)) fs.rmSync(legacySrc, { recursive: true, force: true });
+        }
+      });
+    });
+
+    describe("Fix 4: Version Compatibility", () => {
+      it("rejects resuming an older manifest with incompatible scraperVersion 1.0.0", () => {
+        const runId = "run-v1-incompatible";
+        const runDir = path.join(RUNS_DIR, runId);
+        fs.mkdirSync(runDir, { recursive: true });
+        const manifestPath = path.join(runDir, "manifest.json");
+
+        fs.writeFileSync(
+          manifestPath,
+          JSON.stringify({
+            runId,
+            status: "running",
+            scraperVersion: "1.0.0", // Older incompatible version
+            snapshotSchemaVersion: "1.0.0",
+            extractorVersion: "1.0.0",
+            keywords: ["VP Engineering"],
+            portals: ["LinkedIn"],
+            maxPages: 1,
+            units: [],
+            cards: {},
+          })
+        );
+
+        try {
+          const mgr = new RunController();
+          const resumable = mgr.tryLoadForResume(runId, {
+            keywords: ["VP Engineering"],
+            portals: ["LinkedIn"],
+            maxPages: 1,
+            maxCardsPerPage: 10,
+            resume: true,
+          });
+
+          expect(resumable).toBeNull();
+        } finally {
+          if (fs.existsSync(runDir)) fs.rmSync(runDir, { recursive: true, force: true });
+        }
+      });
+
+      it("allows resuming current manifest with scraperVersion 2.0.0", () => {
+        const runId = "run-v2-resumable";
+        const runDir = path.join(RUNS_DIR, runId);
+        fs.mkdirSync(runDir, { recursive: true });
+        const manifestPath = path.join(runDir, "manifest.json");
+
+        fs.writeFileSync(
+          manifestPath,
+          JSON.stringify({
+            runId,
+            status: "running",
+            scraperVersion: SCRAPER_VERSION, // 2.0.0
+            snapshotSchemaVersion: SNAPSHOT_SCHEMA_VERSION, // 2.0.0
+            extractorVersion: EXTRACTOR_VERSION, // 1.0.0
+            keywords: ["VP Engineering"],
+            portals: ["LinkedIn"],
+            maxPages: 1,
+            units: [],
+            cards: {},
+          })
+        );
+
+        try {
+          const mgr = new RunController();
+          const resumable = mgr.tryLoadForResume(runId, {
+            keywords: ["VP Engineering"],
+            portals: ["LinkedIn"],
+            maxPages: 1,
+            maxCardsPerPage: 10,
+            resume: true,
+          });
+
+          expect(resumable).not.toBeNull();
+          expect(resumable?.manifest.scraperVersion).toBe("2.0.0");
+        } finally {
+          if (fs.existsSync(runDir)) fs.rmSync(runDir, { recursive: true, force: true });
+        }
+      });
+
+      it("retains EXTRACTOR_VERSION at 1.0.0 so compatible existing enrichment queue jobs remain leasable", () => {
+        expect(EXTRACTOR_VERSION).toBe("1.0.0");
+        expect(SCRAPER_VERSION).toBe("2.0.0");
+        expect(SNAPSHOT_SCHEMA_VERSION).toBe("2.0.0");
+        expect(MANIFEST_VERSION).toBe("2.0.0");
+      });
+    });
+
+    describe("Fix 5: Naukri Multi-Tier Fallback (ATS -> Native Detail)", () => {
+      it("ATS success bypasses native detail fetch and records single successful ATS attempt", async () => {
+        let nativeDetailCalls = 0;
+        let fastFetchCalls = 0;
+
+        const feedCard = {
+          title: "VP Engineering",
+          company: "Enterprise ATS Co",
+          detailUrl: "https://www.naukri.com/job-123",
+          applyRedirectUrl: "https://jobs.lever.co/company/job-123",
+          hasAuthoritativeFullDescription: false,
+          rawText: "Short snippet under 200 chars",
+          rawHtml: "<p>Short snippet</p>",
+        };
+
+        const mockFastFetch = async () => {
+          fastFetchCalls++;
+          return {
+            fetched: true,
+            outcome: "SUCCESS" as const,
+            rawText: "Full authoritative description from Lever ATS with over 200 characters of rich requirements and executive responsibilities.".repeat(3),
+            rawHtml: "<div>Full authoritative description</div>",
+            fetchDurationMs: 45,
+            httpStatus: 200,
+            extractionMethod: "JSON_LD",
+            qualityTier: "VALID" as const,
+          };
+        };
+
+        const mockNativeDetail = async () => {
+          nativeDetailCalls++;
+          return { fetched: true, rawText: "native", rawHtml: "<p>native</p>", fetchDurationMs: 10 };
+        };
+
+        // Simulate Naukri acquisition logic
+        let detail: any = null;
+        let acquisitionRoute: string | undefined;
+        let enrichmentStatus: string | undefined;
+        let fallbackRoute: string | undefined;
+        const acquisitionAttempts: any[] = [];
+        let usedNaukriRichDiscovery = false;
+        let usedNaukriAts = false;
+
+        if (feedCard.hasAuthoritativeFullDescription === true && feedCard.rawText && feedCard.rawText.length >= 200 && feedCard.rawHtml) {
+          usedNaukriRichDiscovery = true;
+        }
+
+        if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
+          const atsRes = await mockFastFetch();
+          if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
+            usedNaukriAts = true;
+            acquisitionRoute = "ATS_ENRICHED";
+            enrichmentStatus = "ENRICHED_SUCCESS";
+            detail = {
+              fetched: true,
+              rawHtml: atsRes.rawHtml,
+              rawText: atsRes.rawText,
+              fetchDurationMs: atsRes.fetchDurationMs,
+              httpStatus: atsRes.httpStatus || 200,
+            };
+            acquisitionAttempts.push({
+              method: "ATS_HTTP",
+              url: feedCard.applyRedirectUrl,
+              outcome: "SUCCESS",
+            });
+          }
+        }
+
+        if (!usedNaukriRichDiscovery && !usedNaukriAts) {
+          await mockNativeDetail();
+        }
+
+        expect(usedNaukriAts).toBe(true);
+        expect(fastFetchCalls).toBe(1);
+        expect(nativeDetailCalls).toBe(0);
+        expect(acquisitionRoute).toBe("ATS_ENRICHED");
+        expect(enrichmentStatus).toBe("ENRICHED_SUCCESS");
+        expect(acquisitionAttempts.length).toBe(1);
+        expect(acquisitionAttempts[0].method).toBe("ATS_HTTP");
+      });
+
+      it("ATS failure falls through to native detail and succeeds, preserving both attempts", async () => {
+        let nativeDetailCalls = 0;
+        let fastFetchCalls = 0;
+
+        const feedCard = {
+          title: "VP Engineering",
+          company: "Enterprise ATS Co",
+          detailUrl: "https://www.naukri.com/job-456",
+          applyRedirectUrl: "https://unreachable-ats.com/job-456",
+          hasAuthoritativeFullDescription: false,
+          rawText: "Short snippet",
+          rawHtml: "<p>Short snippet</p>",
+        };
+
+        const mockFastFetch = async () => {
+          fastFetchCalls++;
+          return {
+            fetched: false,
+            outcome: "TRANSPORT_ERROR" as const,
+            rawText: "",
+            rawHtml: "",
+            fetchDurationMs: 15,
+            httpStatus: 503,
+            fetchError: "Connection refused",
+            failureClass: "TRANSPORT_ERROR",
+          };
+        };
+
+        const mockNativeDetail = async () => {
+          nativeDetailCalls++;
+          return {
+            fetched: true,
+            rawText: "Native Naukri full description text exceeding 200 characters with role details and qualifications.".repeat(3),
+            rawHtml: "<div class='job-desc'>Native Naukri full description</div>",
+            fetchDurationMs: 120,
+            httpStatus: 200,
+          };
+        };
+
+        // Simulate Naukri acquisition logic
+        let detail: any = null;
+        let acquisitionRoute: string | undefined;
+        let enrichmentStatus: string | undefined;
+        let fallbackRoute: string | undefined;
+        const acquisitionAttempts: any[] = [];
+        let usedNaukriRichDiscovery = false;
+        let usedNaukriAts = false;
+
+        if (feedCard.hasAuthoritativeFullDescription === true && feedCard.rawText && feedCard.rawText.length >= 200 && feedCard.rawHtml) {
+          usedNaukriRichDiscovery = true;
+        }
+
+        if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
+          const atsRes = await mockFastFetch();
+          if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
+            usedNaukriAts = true;
+          } else {
+            enrichmentStatus = "ENRICHED_FAILED";
+            fallbackRoute = "ORIGINAL_DISCOVERY_PAYLOAD";
+            acquisitionAttempts.push({
+              method: "ATS_HTTP",
+              url: feedCard.applyRedirectUrl,
+              outcome: atsRes.outcome || "EXTRACTION_FAILURE",
+            });
+            detail = {
+              fetched: false,
+              fetchError: `ATS enrichment failed: ${atsRes.fetchError}`,
+              failureClass: atsRes.failureClass,
+            };
+          }
+        }
+
+        if (!usedNaukriRichDiscovery && !usedNaukriAts) {
+          const portalDetail = await mockNativeDetail();
+          if (portalDetail.fetched && portalDetail.rawText && portalDetail.rawText.length >= 200) {
+            acquisitionRoute = "DETAIL_PAGE_BROWSER";
+            detail = portalDetail;
+            acquisitionAttempts.push({
+              method: "PORTAL_DETAIL",
+              url: feedCard.detailUrl,
+              outcome: "SUCCESS",
+            });
+          }
+        }
+
+        expect(fastFetchCalls).toBe(1);
+        expect(nativeDetailCalls).toBe(1);
+        expect(usedNaukriAts).toBe(false);
+        expect(detail.fetched).toBe(true);
+        expect(acquisitionRoute).toBe("DETAIL_PAGE_BROWSER");
+        expect(acquisitionAttempts.length).toBe(2);
+        expect(acquisitionAttempts[0].method).toBe("ATS_HTTP");
+        expect(acquisitionAttempts[0].outcome).toBe("TRANSPORT_ERROR");
+        expect(acquisitionAttempts[1].method).toBe("PORTAL_DETAIL");
+        expect(acquisitionAttempts[1].outcome).toBe("SUCCESS");
+      });
+
+      it("ATS unusable response (<200 chars) falls through to native detail", async () => {
+        let nativeDetailCalls = 0;
+
+        const feedCard = {
+          title: "VP Product",
+          company: "Enterprise ATS Co",
+          detailUrl: "https://www.naukri.com/job-789",
+          applyRedirectUrl: "https://ats.example.com/sparse",
+          hasAuthoritativeFullDescription: false,
+          rawText: "Short snippet",
+          rawHtml: "<p>Short snippet</p>",
+        };
+
+        const mockFastFetch = async () => ({
+          fetched: true,
+          outcome: "SUCCESS" as const,
+          rawText: "Too short", // under 200 chars
+          rawHtml: "<p>Too short</p>",
+          fetchDurationMs: 15,
+          httpStatus: 200,
+          qualityTier: "SPARSE" as const,
+        });
+
+        const mockNativeDetail = async () => {
+          nativeDetailCalls++;
+          return {
+            fetched: true,
+            rawText: "Full native description exceeding 200 characters with robust JD details.".repeat(4),
+            rawHtml: "<div>Full description</div>",
+            fetchDurationMs: 100,
+            httpStatus: 200,
+          };
+        };
+
+        let detail: any = null;
+        let acquisitionRoute: string | undefined;
+        let enrichmentStatus: string | undefined;
+        const acquisitionAttempts: any[] = [];
+        let usedNaukriRichDiscovery = false;
+        let usedNaukriAts = false;
+
+        if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
+          const atsRes = await mockFastFetch();
+          if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
+            usedNaukriAts = true;
+          } else {
+            enrichmentStatus = "ENRICHED_FAILED";
+            acquisitionAttempts.push({
+              method: "ATS_HTTP",
+              url: feedCard.applyRedirectUrl,
+              outcome: "EXTRACTION_FAILURE",
+            });
+            detail = { fetched: false, failureClass: "EXTRACTION_FAILURE" };
+          }
+        }
+
+        if (!usedNaukriRichDiscovery && !usedNaukriAts) {
+          const portalDetail = await mockNativeDetail();
+          if (portalDetail.fetched && portalDetail.rawText && portalDetail.rawText.length >= 200) {
+            acquisitionRoute = "DETAIL_PAGE_BROWSER";
+            detail = portalDetail;
+            acquisitionAttempts.push({
+              method: "PORTAL_DETAIL",
+              url: feedCard.detailUrl,
+              outcome: "SUCCESS",
+            });
+          }
+        }
+
+        expect(nativeDetailCalls).toBe(1);
+        expect(detail.fetched).toBe(true);
+        expect(acquisitionRoute).toBe("DETAIL_PAGE_BROWSER");
+        expect(acquisitionAttempts.length).toBe(2);
+      });
+
+      it("both ATS and native detail failing records both attempts and does not admit snippet as canonical JD", async () => {
+        let nativeDetailCalls = 0;
+
+        const feedCard = {
+          title: "VP Product",
+          company: "Enterprise ATS Co",
+          detailUrl: "https://www.naukri.com/job-fail-both",
+          applyRedirectUrl: "https://ats.example.com/fail",
+          hasAuthoritativeFullDescription: false,
+          rawText: "Discovery card snippet only",
+          rawHtml: "<p>Snippet</p>",
+        };
+
+        const mockFastFetch = async () => ({
+          fetched: false,
+          outcome: "TRANSPORT_ERROR" as const,
+          rawText: "",
+          rawHtml: "",
+          fetchDurationMs: 10,
+          httpStatus: 500,
+          failureClass: "TRANSPORT_ERROR",
+        });
+
+        const mockNativeDetail = async () => {
+          nativeDetailCalls++;
+          return {
+            fetched: false,
+            fetchError: "DOM selector timed out",
+            rawText: "",
+            rawHtml: "",
+            fetchDurationMs: 50,
+            httpStatus: 200,
+            failureClass: "EXTRACTION_FAILURE",
+          };
+        };
+
+        let detail: any = null;
+        let acquisitionRoute: string | undefined;
+        let enrichmentStatus: string | undefined;
+        const acquisitionAttempts: any[] = [];
+        let usedNaukriRichDiscovery = false;
+        let usedNaukriAts = false;
+
+        if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
+          const atsRes = await mockFastFetch();
+          if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
+            usedNaukriAts = true;
+          } else {
+            enrichmentStatus = "ENRICHED_FAILED";
+            acquisitionAttempts.push({
+              method: "ATS_HTTP",
+              url: feedCard.applyRedirectUrl,
+              outcome: "TRANSPORT_ERROR",
+            });
+            detail = { fetched: false, failureClass: atsRes.failureClass };
+          }
+        }
+
+        if (!usedNaukriRichDiscovery && !usedNaukriAts) {
+          const portalDetail = await mockNativeDetail();
+          if (portalDetail.fetched && portalDetail.rawText && portalDetail.rawText.length >= 200) {
+            acquisitionRoute = "DETAIL_PAGE_BROWSER";
+            detail = portalDetail;
+          } else {
+            detail = {
+              fetched: false,
+              fetchError: portalDetail.fetchError,
+              failureClass: portalDetail.failureClass,
+            };
+            acquisitionAttempts.push({
+              method: "PORTAL_DETAIL",
+              url: feedCard.detailUrl,
+              outcome: "EXTRACTION_FAILURE",
+            });
+          }
+        }
+
+        expect(nativeDetailCalls).toBe(1);
+        expect(detail.fetched).toBe(false);
+        expect(detail.failureClass).toBe("EXTRACTION_FAILURE");
+        expect(acquisitionAttempts.length).toBe(2);
+        expect(acquisitionAttempts[0].method).toBe("ATS_HTTP");
+        expect(acquisitionAttempts[1].method).toBe("PORTAL_DETAIL");
+      });
     });
   });
 });

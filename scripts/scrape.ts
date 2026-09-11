@@ -1691,9 +1691,13 @@ async function processUnit(
           fallbackRoute = snapshot.fallbackRoute;
         } else {
           if (unit.portal === "Naukri") {
+            let usedNaukriRichDiscovery = false;
+            let usedNaukriAts = false;
+
             // Naukri Multi-Tier Acquisition Architecture:
             // Tier 1: Direct Rich Ingestion (ONLY when explicitly carrying authoritative full-description provenance)
             if (feedCard.hasAuthoritativeFullDescription === true && feedCard.rawText && feedCard.rawText.length >= 200 && feedCard.rawHtml) {
+              usedNaukriRichDiscovery = true;
               log(`[Naukri] Using authoritative discovery payload (${feedCard.rawText.length} chars) for ${feedCard.title} @ ${feedCard.company}`);
               acquisitionRoute = "DISCOVERY_RICH";
               enrichmentStatus = "NOT_APPLICABLE";
@@ -1716,7 +1720,7 @@ async function processUnit(
               });
             } 
             // Tier 2: External ATS Enrichment via applyRedirectUrl (< 500 chars)
-            else if (feedCard.applyRedirectUrl) {
+            if (!usedNaukriRichDiscovery && feedCard.applyRedirectUrl) {
               log(`[Naukri] Attempting ATS enrichment via ${feedCard.applyRedirectUrl}`);
               const atsRes: import("./scraper/utils/http-fetch").HttpFetchResult = await fastFetchDetail(
                 feedCard.applyRedirectUrl,
@@ -1735,8 +1739,9 @@ async function processUnit(
                 rawText: ""
               }));
 
-              if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText) {
+              if (atsRes.fetched && atsRes.outcome === "SUCCESS" && atsRes.rawText && atsRes.rawText.length >= 200) {
                 log(`[Naukri] ATS enrichment successful (${atsRes.rawText.length} chars, quality=${atsRes.qualityTier || 'VALID'}, method=${atsRes.extractionMethod}) for ${feedCard.title} @ ${feedCard.company}`);
+                usedNaukriAts = true;
                 acquisitionRoute = "ATS_ENRICHED";
                 enrichmentStatus = "ENRICHED_SUCCESS";
                 detail = {
@@ -1745,6 +1750,7 @@ async function processUnit(
                   rawText: atsRes.rawText,
                   fetchDurationMs: atsRes.fetchDurationMs,
                   httpStatus: atsRes.httpStatus || 200,
+                  finalUrl: feedCard.applyRedirectUrl,
                 };
                 acquisitionAttempts.push({
                   method: "ATS_HTTP",
@@ -1757,7 +1763,7 @@ async function processUnit(
                   details: `Extracted ${atsRes.rawText.length} chars via ${atsRes.extractionMethod}`
                 });
               } else {
-                log(`[Naukri] ATS enrichment rejected/failed (${atsRes.fetchError || atsRes.outcome}); preserving attempt and evaluating discovery fallback`);
+                log(`[Naukri] ATS enrichment rejected/failed (${atsRes.fetchError || atsRes.outcome}); preserving attempt and evaluating native detail fallback`);
                 enrichmentStatus = "ENRICHED_FAILED";
                 fallbackRoute = "ORIGINAL_DISCOVERY_PAYLOAD";
                 acquisitionAttempts.push({
@@ -1778,12 +1784,13 @@ async function processUnit(
                   rawText: feedCard.rawText || "",
                   fetchDurationMs: 0,
                   httpStatus: atsRes.httpStatus || 200,
+                  failureClass: atsRes.failureClass,
                 };
               }
             } 
-            // Tier 3: Native Detail Acquisition (invoked for non-authoritative snippets, regardless of length)
-            else {
-              enrichmentStatus = "NOT_APPLICABLE";
+            // Tier 3: Native Detail Acquisition (invoked when rich discovery was not used and ATS did not yield a usable JD)
+            if (!usedNaukriRichDiscovery && !usedNaukriAts && !portalPauseTriggered && outcome.pausePortalQueue !== true) {
+              enrichmentStatus = enrichmentStatus === "ENRICHED_FAILED" ? "ENRICHED_FAILED" : "NOT_APPLICABLE";
               const pmDetail = pageManager;
               const runHealth = HealthManager.forRun(mgr.runId);
               const detailCtx: import("./scraper/types").PortalContext = {
@@ -1805,7 +1812,7 @@ async function processUnit(
                 recordTelemetry: (event: any) => mgr.recordTelemetry(event),
               };
 
-              log(`[Naukri] Discovery payload lacks authoritative provenance (${feedCard.rawText?.length || 0} chars, authoritative=${Boolean(feedCard.hasAuthoritativeFullDescription)}); invoking portal fetchDetail for ${feedCard.detailUrl}`);
+              log(`[Naukri] ${feedCard.applyRedirectUrl ? "ATS enrichment failed" : "Discovery payload lacks authoritative provenance"} (${feedCard.rawText?.length || 0} chars, authoritative=${Boolean(feedCard.hasAuthoritativeFullDescription)}); invoking portal fetchDetail for ${feedCard.detailUrl}`);
               mgr.journal.append({ type: "detail_extraction_started", cardId: cardUnitId, url: feedCard.detailUrl });
               const portalDetail = await handler.fetchDetail(detailCtx, feedCard.detailUrl).catch((err: any) => ({
                 fetched: false,
@@ -1840,6 +1847,7 @@ async function processUnit(
                   rawText: portalDetail.rawText || feedCard.rawText || "",
                   fetchDurationMs: portalDetail.fetchDurationMs || 0,
                   httpStatus: portalDetail.httpStatus || 200,
+                  failureClass: (portalDetail as any).failureClass || "EXTRACTION_FAILURE",
                 };
                 acquisitionAttempts.push({
                   method: "PORTAL_DETAIL",
