@@ -14,7 +14,16 @@
 
 import path from "path";
 import fs from "fs";
-import { CONFIG, DEFAULT_KEYWORDS, DEFAULT_PORTALS, SNAPSHOT_DIR, EXTRACTION_DIR, verifyArtifactStorage } from "./scraper/config";
+import {
+  CONFIG,
+  DEFAULT_KEYWORDS,
+  DEFAULT_PORTALS,
+  SNAPSHOT_DIR,
+  EXTRACTION_DIR,
+  verifyArtifactStorage,
+  GLOBAL_MARKET_LOCK_PATH,
+  RUNS_DIR,
+} from "./scraper/config";
 import { resolveScraperRuntimeOptions, type ScraperRuntimeOptions } from "./scraper/options";
 import { makeLogger } from "./scraper/utils/logger";
 import { pool } from "./scraper/utils/concurrency";
@@ -34,13 +43,6 @@ import {
   closePortalContextsForRun,
 } from "./scraper/portals/base";
 import { PageManager } from "./scraper/run/page-manager";
-
-const GLOBAL_MARKET_LOCK_PATH = path.join(
-  process.cwd(),
-  ".radar",
-  "runs",
-  ".global_market.lock",
-);
 import type {
   CardUnit,
   DetailedCard,
@@ -424,9 +426,36 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   if (!storageRes.ok) {
     throw new Error(`STORAGE_UNWRITABLE: ${storageRes.fatalError || "Essential artifact storage unwritable"}`);
   }
+  if (storageRes.cacheDegraded) {
+    log(`[Storage] Non-essential cache directories degraded: ${storageRes.warnings.join("; ")}`, "warn");
+  }
 
   const runtimeOpts = resolveScraperRuntimeOptions(process.argv.slice(2), process.env);
-  const mode = opts.authContext ? "SCOPED" : runtimeOpts.mode;
+  const explicitScoped = runtimeOpts.mode === "SCOPED" || process.argv.includes("--scoped");
+  const hasTenant = Boolean(opts.authContext?.tenantId || runtimeOpts.tenantId);
+  const hasPerson = Boolean(opts.authContext?.userId || runtimeOpts.personId);
+
+  // Partial SCOPED identity must fail closed BEFORE any browser launch
+  if ((explicitScoped && (!hasTenant || !hasPerson)) || (hasTenant && !hasPerson) || (!hasTenant && hasPerson)) {
+    throw new Error(
+      `PARTIAL_SCOPED_IDENTITY: SCOPED mode requires both --tenant-id and --person-id. Provided tenantId=${opts.authContext?.tenantId || runtimeOpts.tenantId || "none"}, personId=${opts.authContext?.userId || runtimeOpts.personId || "none"}. Refusing execution before browser initialization.`
+    );
+  }
+
+  let effectiveAuthContext: any = opts.authContext;
+  if (!effectiveAuthContext && (hasTenant && hasPerson)) {
+    const { resolveScraperAuthContext } = await import("../src/lib/security/scope-resolver");
+    const db = getDatabaseAdapter();
+    const resolvedAuth = await resolveScraperAuthContext(
+      runtimeOpts.personId!,
+      runtimeOpts.tenantId!,
+      db
+    );
+    effectiveAuthContext = resolvedAuth.authContext;
+  }
+
+  const mode = effectiveAuthContext ? "SCOPED" : "GLOBAL_MARKET";
+  const effectiveSearchPlanId = opts.searchPlanId || runtimeOpts.searchPlanId;
   const capabilities = await resolveScraperCapabilities(mode);
 
   if (!capabilities.databaseAvailable && mode === "GLOBAL_MARKET") {
@@ -456,17 +485,17 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   let searchSource: "PLAN" | "SUPPLIED" | "DEFAULT" = "DEFAULT";
   let evaluationProjection: "ACTIVE" | "DEFERRED_NO_SEARCH_PLAN" = "DEFERRED_NO_SEARCH_PLAN";
 
-  if (opts.authContext) {
+  if (effectiveAuthContext) {
     const { ScraperPlanResolver } = await import("../src/lib/intelligence/ScraperPlanResolver");
     const db = getDatabaseAdapter();
-    const scope = { tenantId: opts.authContext.tenantId, personId: opts.authContext.userId };
+    const scope = { tenantId: effectiveAuthContext.tenantId, personId: effectiveAuthContext.userId };
 
     try {
       resolvedPlan = opts.resolvedPlan || (await ScraperPlanResolver.resolveActivePlan(
         scope,
         undefined,
         db,
-        opts.searchPlanId
+        effectiveSearchPlanId
       ));
     } catch (planErr: any) {
       log(`[ScraperAuth] Failed to resolve active search plan: ${planErr.message}`, "warn");
@@ -496,7 +525,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
       evaluationProjection = "DEFERRED_NO_SEARCH_PLAN";
       resolvedPlan = undefined;
       log(
-        `[ScraperAuth] Running planless scoped acquisition for tenant ${opts.authContext.tenantId} (person: ${opts.authContext.userId}).\n` +
+        `[ScraperAuth] Running planless scoped acquisition for tenant ${effectiveAuthContext.tenantId} (person: ${effectiveAuthContext.userId}).\n` +
         `  searchSource=${searchSource}, evaluationProjection=${evaluationProjection}. Queries: ${keywords.length}. Evaluation deferred until search plan created.`
       );
     }
@@ -520,7 +549,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     variants: resolvedVariants,
     adaptiveDepth: true,
     initialPages: 1,
-    searchPlanId: resolvedPlan?.searchPlanId,
+    searchPlanId: resolvedPlan?.searchPlanId || effectiveSearchPlanId,
     snapshotId: resolvedPlan?.snapshotId,
     contextFingerprint: resolvedPlan?.contextFingerprint,
     variantsSignature,
@@ -531,10 +560,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   let runScope: any = null;
   let globalMarketLock: ExclusiveLockToken | null = null;
 
-  if (opts.authContext) {
+  if (effectiveAuthContext) {
     runScope = {
-      tenantId: opts.authContext.tenantId,
-      personId: opts.authContext.userId,
+      tenantId: effectiveAuthContext.tenantId,
+      personId: effectiveAuthContext.userId,
       roles: [],
     };
     try {
@@ -614,7 +643,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         const newRunId = RunController.generateRunId();
         await repos.scrapeRuns.createRun(runScope, {
           id: newRunId,
-          searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : null,
+          searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (effectiveSearchPlanId || null),
           portalTargets: portals,
           initialStatus: "initializing",
           config: {
@@ -675,7 +704,13 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
   }
 
   activeRunControllers.set(mgr.runId, mgr);
-  const runtime = createRunSession(mgr.runId, opts, capabilities);
+  const effectiveRunOpts: RunOptions = {
+    ...opts,
+    authContext: effectiveAuthContext,
+    searchPlanId: effectiveSearchPlanId,
+    resolvedPlan,
+  };
+  const runtime = createRunSession(mgr.runId, effectiveRunOpts, capabilities);
   if (!capabilities.canonicalPersistenceEnabled) {
     (mgr.manifest as any).executionMode = "LOCAL_ONLY_NO_CANONICAL_PERSISTENCE";
   }
@@ -720,8 +755,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             {
               runId: mgr.runId,
               mode: runScope ? "SCOPED" : "GLOBAL_MARKET",
-              tenantId: opts.authContext?.tenantId,
-              personId: opts.authContext?.userId,
+              tenantId: effectiveAuthContext?.tenantId,
+              personId: effectiveAuthContext?.userId,
             },
             {},
             {
@@ -1051,7 +1086,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             seenHeuristicKeys,
             plog,
             maxCardsPerPage,
-            runScope ? { tenantId: runScope.tenantId, personId: runScope.personId, searchPlanId: resolvedPlan?.searchPlanId } : undefined,
+            runScope ? { tenantId: runScope.tenantId, personId: runScope.personId, searchPlanId: resolvedPlan?.searchPlanId || effectiveSearchPlanId } : undefined,
             resolvedPlan?.criteria,
             runtime.pageManagers.get(unit.portal),
             runtime.authSessions.get(unit.portal),
@@ -1147,8 +1182,8 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         return { success: false, count: ingestedCount, runId: mgr.runId };
       }
 
-      mgr.transitionTo("enriching");
-      if (runScope) {
+      if (runScope && capabilities.enrichmentDispatchEnabled) {
+        mgr.transitionTo("enriching");
         const repos = getRepositories();
         await repos.scrapeRuns.updateRunMetrics(runScope, mgr.runId, {
           totalDiscovered: mgr.manifest.cards.length,
@@ -1161,11 +1196,9 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
             `Failed durable running->enriching transition for ${mgr.runId}`
           );
         }
-      }
-      log(`[Scrape] Acquisition complete. Dispatched ${ingestedCount} cards to distributed enrichment & evaluation pipeline.`);
-      mgr.recordActivity(`Acquisition complete · ${ingestedCount} cards dispatched for enrichment`);
+        log(`[Scrape] Acquisition complete. Dispatched ${ingestedCount} cards to distributed enrichment & evaluation pipeline.`);
+        mgr.recordActivity(`Acquisition complete · ${ingestedCount} cards dispatched for enrichment`);
 
-      if (runScope) {
         try {
           const { RunReconciliationService } = await import("../src/lib/intelligence/RunReconciliationService");
           const reconciler = new RunReconciliationService();
@@ -1173,6 +1206,16 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         } catch (e: any) {
           log(`[Scrape] Initial run reconciliation deferred: ${e.message}`, "warn");
         }
+      } else {
+        mgr.finalize("completed");
+        try {
+          const records = collectRecords();
+          writeLiveScraped(records);
+        } catch (err: any) {
+          log(`[Scrape] Failed writing live-scraped output: ${err.message}`, "warn");
+        }
+        log(`[Scrape] Acquisition run complete (local terminalization). Manifest marked completed.`);
+        mgr.recordActivity(`Acquisition complete · Local run finalized as completed`);
       }
       const runDurationS = ((new Date().getTime() - new Date(mgr.manifest.startedAt).getTime()) / 1000).toFixed(1);
       
@@ -2448,8 +2491,10 @@ export async function processUnit(
             telemetry: { cardExtractMs: 0, detailExtractMs: detail.fetchDurationMs || 0, totalMs: detail.fetchDurationMs || 0 },
           };
           
-          writeSnapshot(detailedCard);
-          mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: snapshotPath });
+          const writtenSnapshotPath = writeSnapshot(detailedCard);
+          if (writtenSnapshotPath) {
+            mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: writtenSnapshotPath });
+          }
 
           // 5. Record Validated State in Ledger & Merge Opportunity in SQLite
           if (repos) {
@@ -2550,14 +2595,16 @@ export async function processUnit(
                 sourcePayloadKey: ingestRes.sourcePayloadKey,
                 sourceMediaType: ingestRes.sourceMediaType,
               });
-              writeSnapshot(detailedCard);
-              mgr.journal.append({
-                type: "snapshot_evidence_bound",
-                cardId: cardUnitId,
-                canonicalJobId: ingestRes.canonicalJobId,
-                opportunityVersion: ingestRes.opportunityVersion,
-                contentHash: ingestRes.contentHash,
-              });
+              const boundSnapshotPath = writeSnapshot(detailedCard);
+              if (boundSnapshotPath) {
+                mgr.journal.append({
+                  type: "snapshot_evidence_bound",
+                  cardId: cardUnitId,
+                  canonicalJobId: ingestRes.canonicalJobId,
+                  opportunityVersion: ingestRes.opportunityVersion,
+                  contentHash: ingestRes.contentHash,
+                });
+              }
               mgr.recordTelemetry("canonicalIngestSuccess");
               if (ingestRes.isNewOpportunity) {
                 pageCanonicalIngested++;

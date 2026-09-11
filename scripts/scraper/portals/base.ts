@@ -3,7 +3,7 @@ import fs from "fs";
 import { chromium } from "playwright-extra";
 import stealth from "puppeteer-extra-plugin-stealth";
 import type { PortalName } from "../types";
-import { PROFILES_DIR } from "../config";
+import { PROFILES_DIR, RUNS_DIR, GLOBAL_MARKET_LOCK_PATH } from "../config";
 import {
   acquireExclusiveLock,
   releaseExclusiveLock,
@@ -77,24 +77,47 @@ export function profileLockPath(
   return path.join(lockRoot, `${portal.toLowerCase()}.lock`);
 }
 
+export type ProfileMetadataInspection =
+  | { status: "missing" }
+  | { status: "valid"; metadata: ProfileMetadata }
+  | { status: "invalid"; error: string };
+
 /**
- * Reads existing profile metadata if present.
+ * Inspects existing profile metadata distinguishing missing from corrupt/invalid.
  */
-export function readProfileMetadata(targetDir: string): ProfileMetadata | null {
+export function inspectProfileMetadata(targetDir: string): ProfileMetadataInspection {
+  const metaPath = path.join(targetDir, "profile-metadata.json");
+  if (!fs.existsSync(metaPath)) {
+    return { status: "missing" };
+  }
   try {
-    const metaPath = path.join(targetDir, "profile-metadata.json");
-    if (fs.existsSync(metaPath)) {
-      const parsed = JSON.parse(fs.readFileSync(metaPath, "utf8"));
-      if (parsed && (parsed.mode === "SCOPED" || parsed.mode === "GLOBAL_MARKET")) {
-        return parsed as ProfileMetadata;
-      }
+    const raw = fs.readFileSync(metaPath, "utf8");
+    const parsed = JSON.parse(raw);
+    if (parsed && (parsed.mode === "SCOPED" || parsed.mode === "GLOBAL_MARKET")) {
+      return { status: "valid", metadata: parsed as ProfileMetadata };
     }
-  } catch {}
-  return null;
+    return {
+      status: "invalid",
+      error: `Invalid profile-metadata schema: missing or unrecognized mode '${parsed?.mode}'`,
+    };
+  } catch (err: any) {
+    return {
+      status: "invalid",
+      error: `Malformed profile-metadata JSON: ${err.message}`,
+    };
+  }
 }
 
 /**
- * Writes profile metadata to indicate mode, ownership, and last-used timestamp.
+ * Reads existing profile metadata if present and valid.
+ */
+export function readProfileMetadata(targetDir: string): ProfileMetadata | null {
+  const res = inspectProfileMetadata(targetDir);
+  return res.status === "valid" ? res.metadata : null;
+}
+
+/**
+ * Writes profile metadata atomically to indicate mode, ownership, and last-used timestamp.
  */
 export function writeProfileMetadata(
   targetDir: string,
@@ -107,11 +130,28 @@ export function writeProfileMetadata(
     personId: scope.personId,
     lastUsedAt: new Date().toISOString(),
   };
-  fs.writeFileSync(
-    path.join(targetDir, "profile-metadata.json"),
-    JSON.stringify(metadata, null, 2),
-    "utf8"
+  const finalPath = path.join(targetDir, "profile-metadata.json");
+  const tempPath = path.join(
+    targetDir,
+    `.profile-metadata.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`
   );
+
+  fs.writeFileSync(tempPath, JSON.stringify(metadata, null, 2), "utf8");
+  try {
+    fs.renameSync(tempPath, finalPath);
+  } catch (err: any) {
+    try {
+      if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
+      fs.renameSync(tempPath, finalPath);
+    } catch (renameErr: any) {
+      try {
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      } catch {}
+      throw new Error(
+        `ATOMIC_METADATA_WRITE_FAILED: Failed to write profile metadata atomically in ${targetDir}: ${err.message}`
+      );
+    }
+  }
 }
 
 /**
@@ -248,10 +288,18 @@ export function prepareProfileForScope(
   }
 
   // Profile exists: inspect metadata to decide reuse vs retirement
-  const metadata = readProfileMetadata(targetDir);
+  const metaInspection = inspectProfileMetadata(targetDir);
+
+  if (metaInspection.status === "invalid") {
+    throw new Error(
+      `CORRUPT_PROFILE_METADATA: Profile at ${targetDir} contains malformed or unreadable metadata: ${metaInspection.error}. Failing closed to prevent unsafe cross-scope adoption.`
+    );
+  }
+
   let shouldRetire = false;
 
-  if (metadata) {
+  if (metaInspection.status === "valid") {
+    const metadata = metaInspection.metadata;
     if (scope.mode === "SCOPED") {
       if (
         metadata.mode !== "SCOPED" ||
@@ -266,12 +314,16 @@ export function prepareProfileForScope(
         shouldRetire = true;
       }
     }
+  } else {
+    // metaInspection.status === "missing":
+    // Populated profile with missing metadata is a legacy pre-metadata profile.
+    // Adopt once as legacy for current scope by stamping metadata.
   }
 
   if (shouldRetire) {
     const retiredDir = `${targetDir}.retired.${Date.now()}`;
     console.log(
-      `[Profile] Retiring mismatched profile from ${targetDir} to ${retiredDir} (previous: ${JSON.stringify(metadata)}, current: ${JSON.stringify(scope)})`
+      `[Profile] Retiring mismatched profile from ${targetDir} to ${retiredDir} (previous: ${JSON.stringify(metaInspection.status === "valid" ? metaInspection.metadata : null)}, current: ${JSON.stringify(scope)})`
     );
     try {
       fs.renameSync(targetDir, retiredDir);
@@ -285,7 +337,7 @@ export function prepareProfileForScope(
     return targetDir;
   }
 
-  // Valid reuse: update last-used timestamp
+  // Valid reuse (or legacy adoption): update last-used timestamp
   writeProfileMetadata(targetDir, scope);
   return targetDir;
 }
@@ -444,7 +496,7 @@ export async function closeAllPortalContexts(): Promise<void> {
 }
 
 export function acquireGlobalMarketLock(runId: string, deps: LockDeps = {}): ExclusiveLockToken {
-  const lockPath = path.join(process.cwd(), ".radar", "runs", ".global_market.lock");
+  const lockPath = GLOBAL_MARKET_LOCK_PATH || path.join(RUNS_DIR, ".global_market.lock");
   try {
     return acquireExclusiveLock(lockPath, `global-market:${runId}`, deps);
   } catch (err: any) {

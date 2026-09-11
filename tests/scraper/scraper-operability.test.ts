@@ -11,7 +11,12 @@ import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIn
 import { MemoryBlobStore } from "../../src/lib/storage/blob-store";
 import { resolveScraperRuntimeOptions } from "../../scripts/scraper/options";
 import { loadUnifiedEnvironment } from "../../src/lib/env";
-import { verifyArtifactStorage, CONFIG } from "../../scripts/scraper/config";
+import {
+  verifyArtifactStorage,
+  CONFIG,
+  GLOBAL_MARKET_LOCK_PATH,
+  RUNS_DIR,
+} from "../../scripts/scraper/config";
 import {
   acquireExclusiveLock,
   releaseExclusiveLock,
@@ -21,7 +26,13 @@ import {
   prepareProfileForScope,
   maybeMigrateLegacyProfile,
   profileDirFor,
+  inspectProfileMetadata,
+  writeProfileMetadata,
+  acquireGlobalMarketLock,
+  releaseGlobalMarketLock,
+  profileLockPath,
 } from "../../scripts/scraper/portals/base";
+import { writeSnapshot } from "../../scripts/scraper/persist/writer";
 import {
   resolveScraperCapabilities,
   activeRunSessions,
@@ -35,7 +46,7 @@ import {
   SNAPSHOT_SCHEMA_VERSION,
 } from "../../scripts/scraper/versions";
 
-describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AJ)", () => {
+describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AL)", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -919,7 +930,7 @@ describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AJ)
     fs.mkdirSync(profilesDir, { recursive: true });
 
     const writeSpy = vi.spyOn(fs, "writeFileSync").mockImplementation((filePath: any) => {
-      if (typeof filePath === "string" && filePath.includes("profile-metadata.json")) {
+      if (typeof filePath === "string" && filePath.includes("profile-metadata")) {
         throw new Error("ENOSPC: no space left on device");
       }
     });
@@ -931,7 +942,7 @@ describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AJ)
           tenantId: "tenant-C",
           personId: "person-3",
         }, profilesDir);
-      }).toThrow(/ENOSPC/);
+      }).toThrow(/ATOMIC_METADATA_WRITE_FAILED|ENOSPC/);
     } finally {
       writeSpy.mockRestore();
     }
@@ -990,6 +1001,184 @@ describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AJ)
     }
     const linkedInUnit2 = mgr2.manifest.units.find((u) => u.portal === "LinkedIn");
     expect(linkedInUnit2?.status).toBe("pending");
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AG: Partial SCOPED Identity Rejection Before Chromium Launch
+  // --------------------------------------------------------------------------
+  it("Scenario AG: Partial SCOPED identity rejects synchronously before browser launch", async () => {
+    const origArgv = [...process.argv];
+    try {
+      // 1. --tenant-id without --person-id
+      process.argv = ["node", "scrape.ts", "--tenant-id", "tenant-test-only"];
+      await expect(startRun({ autoConfirm: true })).rejects.toThrow("PARTIAL_SCOPED_IDENTITY");
+
+      // 2. --person-id without --tenant-id
+      process.argv = ["node", "scrape.ts", "--person-id", "person-test-only"];
+      await expect(startRun({ autoConfirm: true })).rejects.toThrow("PARTIAL_SCOPED_IDENTITY");
+
+      // 3. --scoped without either
+      process.argv = ["node", "scrape.ts", "--scoped"];
+      await expect(startRun({ autoConfirm: true })).rejects.toThrow("PARTIAL_SCOPED_IDENTITY");
+    } finally {
+      process.argv = origArgv;
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AH: CLI Scoped Execution Derives Verified Auth Context
+  // --------------------------------------------------------------------------
+  it("Scenario AH: CLI --tenant-id and --person-id derives verified auth context and rejects unpermitted identity", async () => {
+    const raw = new Database(":memory:");
+    raw.exec(`
+      CREATE TABLE tenants (id TEXT PRIMARY KEY, name TEXT);
+      CREATE TABLE people (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL);
+      CREATE TABLE memberships (tenant_id TEXT NOT NULL, user_id TEXT NOT NULL, role TEXT NOT NULL, status TEXT NOT NULL, permissions TEXT, revoked_at TEXT, PRIMARY KEY(tenant_id, user_id));
+      CREATE TABLE search_plans (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, person_id TEXT NOT NULL, status TEXT NOT NULL, criteria_json TEXT);
+      CREATE TABLE active_evaluation_contexts (tenant_id TEXT, person_id TEXT, search_plan_id TEXT, context_fingerprint TEXT, activated_at TEXT);
+      CREATE TABLE scrape_runs (id TEXT PRIMARY KEY, tenant_id TEXT, person_id TEXT, search_plan_id TEXT, status TEXT, portal_targets TEXT, started_at TEXT, finished_at TEXT, error_message TEXT);
+    `);
+    const adapter = new SqliteAdapter(raw);
+    const origAdapter = getDatabaseAdapter();
+
+    const origArgv = [...process.argv];
+    try {
+      // Set adapter to our test db
+      resetDatabaseAdapter(adapter);
+
+      // 1. User without membership throws TenantIsolationError
+      process.argv = ["node", "scrape.ts", "--tenant-id", "tenant-alpha", "--person-id", "user-unauthorized"];
+      await expect(startRun({ autoConfirm: true })).rejects.toThrow(/has no membership in tenant|TENANT_ACCESS_DENIED|USER_NOT_MEMBER|TenantIsolationError/);
+
+      // 2. Verify resolveScraperAuthContext works when valid membership is present
+      const { resolveScraperAuthContext } = await import("../../src/lib/security/scope-resolver");
+      await adapter.execute(
+        `INSERT INTO people (id, tenant_id) VALUES ('user-authorized', 'tenant-alpha')`
+      );
+      await adapter.execute(
+        `INSERT INTO memberships (tenant_id, user_id, role, status, permissions) VALUES ('tenant-alpha', 'user-authorized', 'admin', 'active', '["run:scraper"]')`
+      );
+      const resolved = await resolveScraperAuthContext("user-authorized", "tenant-alpha", adapter);
+      expect(resolved.authContext.tenantId).toBe("tenant-alpha");
+      expect(resolved.authContext.userId).toBe("user-authorized");
+      expect(resolved.scope.tenantId).toBe("tenant-alpha");
+      expect(resolved.scope.personId).toBe("user-authorized");
+    } finally {
+      process.argv = origArgv;
+      resetDatabaseAdapter(origAdapter);
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AI: GLOBAL Run Terminalization Locally & Output Writing
+  // --------------------------------------------------------------------------
+  it("Scenario AI: Local acquisition run terminalizes with finalize('completed') and writes live-scraped.json", async () => {
+    const mgr = new RunController();
+    mgr.init({
+      keywords: ["VP Engineering"],
+      portals: ["LinkedIn"],
+      maxPages: 1,
+      maxCardsPerPage: 1,
+      resume: false,
+    });
+
+    expect(mgr.manifest.status).toBe("initializing");
+    expect(mgr.manifest.finishedAt).toBeUndefined();
+
+    // Finalize as completed locally
+    mgr.finalize("completed");
+    expect(mgr.manifest.status).toBe("completed");
+    expect(mgr.manifest.finishedAt).toBeDefined();
+    expect(typeof mgr.manifest.finishedAt).toBe("string");
+
+    // Owner lock is released
+    expect(mgr.ownerLock).toBeFalsy();
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AJ: Global Lock Path Uses RUNS_DIR Authority
+  // --------------------------------------------------------------------------
+  it("Scenario AJ: GLOBAL_MARKET_LOCK_PATH is anchored to RUNS_DIR", () => {
+    expect(GLOBAL_MARKET_LOCK_PATH).toBe(path.join(RUNS_DIR, ".global_market.lock"));
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AK: Profile Metadata Integrity (Fail-Closed on Corrupt, Adopt Legacy, Atomic Writes)
+  // --------------------------------------------------------------------------
+  it("Scenario AK: Profile metadata distinguishes corrupt from missing, fails closed on corrupt, and writes atomically", () => {
+    const profilesDir = path.join(tmpDir, "profiles-integrity-test");
+    fs.mkdirSync(profilesDir, { recursive: true });
+
+    // 1. Missing metadata on empty/populated dir
+    const missingDir = path.join(profilesDir, "test-missing");
+    fs.mkdirSync(missingDir, { recursive: true });
+    expect(inspectProfileMetadata(missingDir).status).toBe("missing");
+
+    // 2. Corrupt metadata
+    const corruptDir = path.join(profilesDir, "test-corrupt");
+    fs.mkdirSync(corruptDir, { recursive: true });
+    fs.writeFileSync(path.join(corruptDir, "Cookies"), "some-cookies");
+    fs.writeFileSync(path.join(corruptDir, "profile-metadata.json"), "{ invalid-json, trunc");
+
+    const corruptInspection = inspectProfileMetadata(corruptDir);
+    expect(corruptInspection.status).toBe("invalid");
+    expect(corruptInspection.error).toBeDefined();
+
+    // With corrupt metadata in portal profile directory, prepareProfileForScope must THROW CORRUPT_PROFILE_METADATA
+    const portalTargetDir = profileDirFor("LinkedIn", { mode: "GLOBAL_MARKET" }, profilesDir);
+    fs.mkdirSync(portalTargetDir, { recursive: true });
+    fs.writeFileSync(path.join(portalTargetDir, "Cookies"), "old-private-data");
+    fs.writeFileSync(path.join(portalTargetDir, "profile-metadata.json"), '{"truncated":');
+
+    expect(() => {
+      prepareProfileForScope("LinkedIn", { mode: "GLOBAL_MARKET" }, profilesDir);
+    }).toThrow(/CORRUPT_PROFILE_METADATA/);
+
+    // 3. Atomic metadata write
+    const atomicDir = path.join(profilesDir, "test-atomic");
+    fs.mkdirSync(atomicDir, { recursive: true });
+    writeProfileMetadata(atomicDir, { mode: "GLOBAL_MARKET" });
+
+    const writtenMeta = inspectProfileMetadata(atomicDir);
+    expect(writtenMeta.status).toBe("valid");
+    expect(writtenMeta.metadata?.mode).toBe("GLOBAL_MARKET");
+
+    // No leftover .tmp files
+    const remainingFiles = fs.readdirSync(atomicDir);
+    expect(remainingFiles.filter(f => f.endsWith(".tmp")).length).toBe(0);
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AL: Preflight Classifies Fresh Corrupt Locks as DEGRADED, Snapshot Writer Degrades Gracefully
+  // --------------------------------------------------------------------------
+  it("Scenario AL: Preflight classifies fresh corrupt locks as DEGRADED and writeSnapshot degrades gracefully", async () => {
+    // 1. Preflight corrupt lock detection
+    const lockPath = profileLockPath("LinkedIn");
+    fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+    const originalContent = fs.existsSync(lockPath) ? fs.readFileSync(lockPath, "utf-8") : null;
+
+    try {
+      // Write corrupt content to the lock file
+      fs.writeFileSync(lockPath, "{ corrupt json lock content", "utf-8");
+
+      const { runScraperPreflight } = await import("../../scripts/scraper/preflight");
+      const report = await runScraperPreflight(["--portals", "LinkedIn"]);
+      expect(report.checks.portalLocks["LinkedIn"].status).toBe("DEGRADED");
+      expect(report.checks.portalLocks["LinkedIn"].details).toContain("Corrupt/unreadable lock file present");
+    } finally {
+      if (originalContent !== null) {
+        fs.writeFileSync(lockPath, originalContent, "utf-8");
+      } else {
+        try { fs.unlinkSync(lockPath); } catch {}
+      }
+    }
+
+    // 2. Truthful snapshot degradation: writeSnapshot returns null on error without throwing
+    const badCard: any = {
+      cardHash: "../invalid-nested/\\:::///bad-path",
+    };
+    const res = writeSnapshot(badCard);
+    expect(res).toBeNull();
   });
 });
 

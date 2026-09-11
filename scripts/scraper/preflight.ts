@@ -6,6 +6,8 @@ import { loadUnifiedEnvironment } from "../../src/lib/env";
 import {
   ARTIFACTS_DIR,
   PROFILES_DIR,
+  RUNS_DIR,
+  GLOBAL_MARKET_LOCK_PATH,
   verifyArtifactStorage,
   DEFAULT_PORTALS,
 } from "./config";
@@ -151,16 +153,35 @@ export async function runScraperPreflight(
     } catch {}
   }
 
-  // 5. Portal Lock Check
+  // 5. Portal & Global Lock Check
   const portalsToCheck = options.portals && options.portals.length > 0 ? options.portals : DEFAULT_PORTALS;
   for (const portal of portalsToCheck) {
     const lockPath = profileLockPath(portal);
-    const existing = readExclusiveLock(lockPath);
-    if (!existing) {
+    if (!fs.existsSync(lockPath)) {
       report.checks.portalLocks[portal] = {
         status: "OK",
         details: "Free (no lock active)",
       };
+      continue;
+    }
+
+    const existing = readExclusiveLock(lockPath);
+    if (!existing) {
+      let isFresh = true;
+      try {
+        const stats = fs.statSync(lockPath);
+        isFresh = Date.now() - stats.mtimeMs < 120_000;
+      } catch {}
+
+      report.checks.portalLocks[portal] = {
+        status: isFresh ? "DEGRADED" : "OK",
+        details: isFresh
+          ? `Corrupt/unreadable lock file present (fresh: modified < 2m ago). Runtime will reject.`
+          : `Stale unreadable lock file present (will be auto-quarantined by runtime).`,
+      };
+      if (isFresh && report.overallStatus === "OK") {
+        report.overallStatus = "DEGRADED";
+      }
     } else if (defaultIsProcessAlive(existing.pid)) {
       report.checks.portalLocks[portal] = {
         status: "DEGRADED",
@@ -172,6 +193,33 @@ export async function runScraperPreflight(
         status: "OK",
         details: `Stale lock held by dead PID ${existing.pid} (will be auto-reclaimed)`,
       };
+    }
+  }
+
+  if (options.mode === "GLOBAL_MARKET") {
+    const globalLockPath = GLOBAL_MARKET_LOCK_PATH || path.join(RUNS_DIR, ".global_market.lock");
+    if (fs.existsSync(globalLockPath)) {
+      const existing = readExclusiveLock(globalLockPath);
+      if (!existing) {
+        let isFresh = true;
+        try {
+          const stats = fs.statSync(globalLockPath);
+          isFresh = Date.now() - stats.mtimeMs < 120_000;
+        } catch {}
+        if (isFresh) {
+          report.checks.portalLocks["GlobalMarket"] = {
+            status: "DEGRADED",
+            details: "Corrupt/unreadable global market lock file present (fresh). Runtime will reject.",
+          };
+          if (report.overallStatus === "OK") report.overallStatus = "DEGRADED";
+        }
+      } else if (defaultIsProcessAlive(existing.pid)) {
+        report.checks.portalLocks["GlobalMarket"] = {
+          status: "DEGRADED",
+          details: `Global market run locked by active PID ${existing.pid}`,
+        };
+        if (report.overallStatus === "OK") report.overallStatus = "DEGRADED";
+      }
     }
   }
 

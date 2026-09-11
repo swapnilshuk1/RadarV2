@@ -22,6 +22,7 @@ const defaultArtifactsDir = !isBrowser
 
 export const ARTIFACTS_DIR = (!isBrowser && process.env?.SCRAPER_ARTIFACTS_DIR) || defaultArtifactsDir;
 export const RUNS_DIR = !isBrowser ? path.join(ARTIFACTS_DIR, "runs") : "";
+export const GLOBAL_MARKET_LOCK_PATH = !isBrowser ? path.join(RUNS_DIR, ".global_market.lock") : "";
 export const PROFILES_DIR = !isBrowser ? path.join(ARTIFACTS_DIR, "profiles") : "";
 export const LINKEDIN_PROFILE_DIR = !isBrowser ? path.join(PROFILES_DIR, "linkedin-primary") : "";
 export const SNAPSHOT_DIR = !isBrowser ? path.join(ARTIFACTS_DIR, "snapshots") : "";

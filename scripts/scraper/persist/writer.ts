@@ -39,10 +39,15 @@ export function readSnapshotIfFresh(cardHash: string, maxAgeHours: number): Deta
   return snapshot;
 }
 
-export function writeSnapshot(s: DetailedCard): string {
-  const p = snapshotPath(s.cardHash);
-  writeJsonAtomic(p, s);
-  return p;
+export function writeSnapshot(s: DetailedCard): string | null {
+  try {
+    const p = snapshotPath(s.cardHash);
+    writeJsonAtomic(p, s);
+    return p;
+  } catch (err: any) {
+    console.warn(`[Snapshot] Degraded write failed for ${s.cardHash}: ${err.message}`);
+    return null;
+  }
 }
 
 /**
