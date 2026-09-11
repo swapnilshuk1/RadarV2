@@ -88,7 +88,7 @@ export interface EnrichmentDispatchPayload {
   searchQuery?: string;
   businessPriority?: number;
   executionPriority?: number;
-  snapshotPath?: string;
+  snapshotPath?: string | null;
 }
 
 export type IngestScope =

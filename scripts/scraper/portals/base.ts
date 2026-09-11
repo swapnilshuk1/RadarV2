@@ -10,6 +10,7 @@ import {
   type ExclusiveLockToken,
   type LockDeps,
 } from "../run/exclusive-lock";
+import { writeJsonAtomic } from "../utils/fs-atomic";
 
 let stealthConfigured = false;
 const chromiumExtra = chromium;
@@ -131,26 +132,12 @@ export function writeProfileMetadata(
     lastUsedAt: new Date().toISOString(),
   };
   const finalPath = path.join(targetDir, "profile-metadata.json");
-  const tempPath = path.join(
-    targetDir,
-    `.profile-metadata.${Date.now()}.${Math.random().toString(36).slice(2, 8)}.tmp`
-  );
-
-  fs.writeFileSync(tempPath, JSON.stringify(metadata, null, 2), "utf8");
   try {
-    fs.renameSync(tempPath, finalPath);
+    writeJsonAtomic(finalPath, metadata);
   } catch (err: any) {
-    try {
-      if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
-      fs.renameSync(tempPath, finalPath);
-    } catch (renameErr: any) {
-      try {
-        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-      } catch {}
-      throw new Error(
-        `ATOMIC_METADATA_WRITE_FAILED: Failed to write profile metadata atomically in ${targetDir}: ${err.message}`
-      );
-    }
+    throw new Error(
+      `ATOMIC_METADATA_WRITE_FAILED: Failed to write profile metadata atomically in ${targetDir}: ${err.message}`
+    );
   }
 }
 

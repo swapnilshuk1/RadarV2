@@ -80,7 +80,11 @@ import { HealthManager } from "./scraper/run/health-manager";
 import { QueryMetricsStore } from "./scraper/run/metrics";
 import { getRepositories } from "../src/data/sqlite/provider";
 import { CredentialBroker } from "../src/lib/security/CredentialBroker";
-import { establishPortalAuthSession, type PortalAuthSession } from "../src/lib/security/PortalAuthSession";
+import {
+  establishPortalAuthSession,
+  type PortalAuthSession,
+} from "../src/lib/security/PortalAuthSession";
+export { CredentialBroker, establishPortalAuthSession };
 import crypto from "crypto";
 import type { AuthContext } from "../src/lib/security/auth";
 import {
@@ -498,6 +502,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         effectiveSearchPlanId
       ));
     } catch (planErr: any) {
+      if (effectiveSearchPlanId) {
+        log(`[ScraperAuth] Explicit search plan ${effectiveSearchPlanId} failed resolution: ${planErr.message}`, "error");
+        throw planErr;
+      }
       log(`[ScraperAuth] Failed to resolve active search plan: ${planErr.message}`, "warn");
     }
 
@@ -549,7 +557,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
     variants: resolvedVariants,
     adaptiveDepth: true,
     initialPages: 1,
-    searchPlanId: resolvedPlan?.searchPlanId || effectiveSearchPlanId,
+    searchPlanId: resolvedPlan?.searchPlanId,
     snapshotId: resolvedPlan?.snapshotId,
     contextFingerprint: resolvedPlan?.contextFingerprint,
     variantsSignature,
@@ -643,7 +651,7 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         const newRunId = RunController.generateRunId();
         await repos.scrapeRuns.createRun(runScope, {
           id: newRunId,
-          searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : (effectiveSearchPlanId || null),
+          searchPlanId: resolvedPlan ? resolvedPlan.searchPlanId : null,
           portalTargets: portals,
           initialStatus: "initializing",
           config: {
@@ -789,10 +797,10 @@ export async function startRun(opts: RunOptions = {}): Promise<{ runId: string; 
         // Establish JIT PortalAuthSession without retaining plaintext secrets
         let authSession: PortalAuthSession | null = null;
         try {
-          if (opts.authContext) {
+          if (effectiveAuthContext) {
             const repos = await getRepositories();
             const broker = new CredentialBroker(repos.credentials);
-            authSession = await establishPortalAuthSession(broker, opts.authContext, portal, browserContext);
+            authSession = await establishPortalAuthSession(broker, effectiveAuthContext, portal, browserContext);
             if (authSession) {
               runtime.authSessions.set(portal, authSession);
               plog(`authenticated session established (source: ${authSession.source}, version: ${authSession.version})`);
@@ -1854,10 +1862,12 @@ export async function processUnit(
         }
         if (priorLedgerItem) historicalLedgerCardIds.add(cardUnitId);
 
-        const snapshotPath = path.join(SNAPSHOT_DIR, `${feedCard.cardHash}.json`);
-        const isHistoricallyNew = !priorLedgerItem && !fs.existsSync(snapshotPath);
+        const nominalSnapshotPath = path.join(SNAPSHOT_DIR, `${feedCard.cardHash}.json`);
+        const isHistoricallyNew = !priorLedgerItem && !fs.existsSync(nominalSnapshotPath);
         let detailedCard: import("./scraper/types").DetailedCard | null = null;
         let canonicalIngestionResult: CanonicalIngestionResult | undefined;
+        let writtenSnapshotPath: string | null = null;
+        let boundSnapshotPath: string | null = null;
         let snapshot = readSnapshotIfFresh(feedCard.cardHash, CONFIG.snapshotFreshHours);
         let detail: import("./scraper/types").DetailedCard["detail"] = {
           fetched: false,
@@ -2491,7 +2501,7 @@ export async function processUnit(
             telemetry: { cardExtractMs: 0, detailExtractMs: detail.fetchDurationMs || 0, totalMs: detail.fetchDurationMs || 0 },
           };
           
-          const writtenSnapshotPath = writeSnapshot(detailedCard);
+          writtenSnapshotPath = writeSnapshot(detailedCard);
           if (writtenSnapshotPath) {
             mgr.journal.append({ type: "snapshot_written", cardId: cardUnitId, path: writtenSnapshotPath });
           }
@@ -2576,7 +2586,7 @@ export async function processUnit(
                   searchQuery: unit.keyword,
                   businessPriority: 10,
                   executionPriority: 0,
-                  snapshotPath,
+                  snapshotPath: writtenSnapshotPath || null,
                 },
               }, lineageScope ? {
                 mode: "SCOPED" as const,
@@ -2595,7 +2605,7 @@ export async function processUnit(
                 sourcePayloadKey: ingestRes.sourcePayloadKey,
                 sourceMediaType: ingestRes.sourceMediaType,
               });
-              const boundSnapshotPath = writeSnapshot(detailedCard);
+              boundSnapshotPath = writeSnapshot(detailedCard);
               if (boundSnapshotPath) {
                 mgr.journal.append({
                   type: "snapshot_evidence_bound",
@@ -2665,7 +2675,7 @@ export async function processUnit(
           }
 
         mgr.updateCard(cardUnitId, {
-          snapshotPath,
+          snapshotPath: boundSnapshotPath || writtenSnapshotPath || null,
           isNew: canonicalIngestionResult
             ? canonicalIngestionResult.isNewOpportunity
             : isHistoricallyNew,

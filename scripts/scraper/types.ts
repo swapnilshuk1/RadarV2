@@ -91,7 +91,7 @@ export interface CardUnit {
   cardHash: string;
   status: UnitStatus;
   attempts: number;
-  snapshotPath?: string;
+  snapshotPath?: string | null;
   extractionPath?: string;
   error?: string;
   isNew?: boolean;

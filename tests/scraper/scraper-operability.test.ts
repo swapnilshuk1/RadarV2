@@ -6,6 +6,7 @@ import Database from "better-sqlite3";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { getDatabaseAdapter, resetDatabaseAdapter } from "../../src/data/database";
 import { runMigrations, splitSqlStatements } from "../../src/data/sqlite/migrations/runner";
+import { setStorageProvider, createRepositories } from "../../src/data/sqlite/provider";
 import { SqliteScrapeRunStore } from "../../src/data/sqlite/repositories/SqliteScrapeRunStore";
 import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
 import { MemoryBlobStore } from "../../src/lib/storage/blob-store";
@@ -38,6 +39,7 @@ import {
   activeRunSessions,
   processUnit,
   startRun,
+  CredentialBroker,
 } from "../../scripts/scrape";
 import { RunController } from "../../scripts/scraper/run/manager";
 import {
@@ -46,7 +48,7 @@ import {
   SNAPSHOT_SCHEMA_VERSION,
 } from "../../scripts/scraper/versions";
 
-describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AL)", () => {
+describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AP)", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -1179,6 +1181,269 @@ describe("Scraper Operability Patch — Invariant Suite (Scenarios A through AL)
     };
     const res = writeSnapshot(badCard);
     expect(res).toBeNull();
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AM: Explicit --search-plan-id failure is fatal and never leaks into durable execution
+  // --------------------------------------------------------------------------
+  it("Scenario AM: Explicit invalid/foreign --search-plan-id throws fatally and does not leak into durable execution", async () => {
+    const db = getDatabaseAdapter();
+    const origArgv = [...process.argv];
+    try {
+      await db.execute(`INSERT OR REPLACE INTO tenants (id, status) VALUES ('tenant-1', 'active')`);
+      await db.execute(`INSERT OR REPLACE INTO users (id, email) VALUES ('user-auth-1', 'user-auth-1@radar.test')`);
+      await db.execute(`INSERT OR REPLACE INTO people (id, email, tenant_id) VALUES ('user-auth-1', 'user-auth-1@radar.test', 'tenant-1')`);
+      await db.execute(`INSERT OR REPLACE INTO memberships (tenant_id, user_id, role, status, permissions) VALUES ('tenant-1', 'user-auth-1', 'admin', 'active', '["run:scraper"]')`);
+
+      // Explicit non-existent search-plan-id must throw, not fall back to planless
+      process.argv = [
+        "node",
+        "scrape.ts",
+        "--tenant-id",
+        "tenant-1",
+        "--person-id",
+        "user-auth-1",
+        "--search-plan-id",
+        "non-existent-plan-999",
+      ];
+
+      await expect(startRun({ autoConfirm: true })).rejects.toThrow(
+        /No active search plan found with ID 'non-existent-plan-999'/
+      );
+
+      // Verify no scrape_runs row was created with this search_plan_id
+      const runs = await db.many(`SELECT * FROM scrape_runs WHERE search_plan_id = 'non-existent-plan-999'`);
+      expect(runs.length).toBe(0);
+    } finally {
+      process.argv = origArgv;
+      try {
+        await db.execute(`DELETE FROM memberships WHERE user_id = 'user-auth-1'`);
+        await db.execute(`DELETE FROM people WHERE id = 'user-auth-1'`);
+        await db.execute(`DELETE FROM users WHERE id = 'user-auth-1'`);
+        await db.execute(`DELETE FROM tenants WHERE id = 'tenant-1'`);
+      } catch {}
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AN: CLI --tenant-id and --person-id propagates effectiveAuthContext into portal credential broker
+  // --------------------------------------------------------------------------
+  it("Scenario AN: CLI --tenant-id and --person-id propagates effectiveAuthContext into portal credential broker", async () => {
+    const db = getDatabaseAdapter();
+    const origArgv = [...process.argv];
+    try {
+      await db.execute(`INSERT OR REPLACE INTO tenants (id, status) VALUES ('tenant-1', 'active')`);
+      await db.execute(`INSERT OR REPLACE INTO users (id, email) VALUES ('user-auth-1', 'user-auth-1@radar.test')`);
+      await db.execute(`INSERT OR REPLACE INTO people (id, email, tenant_id) VALUES ('user-auth-1', 'user-auth-1@radar.test', 'tenant-1')`);
+      await db.execute(`INSERT OR REPLACE INTO memberships (tenant_id, user_id, role, status, permissions) VALUES ('tenant-1', 'user-auth-1', 'admin', 'active', '["run:scraper"]')`);
+
+      const brokerSpy = vi.spyOn(CredentialBroker.prototype, "leaseCredentialForScraperExecution");
+
+      const mockPage: any = {
+        goto: vi.fn(),
+        close: vi.fn(),
+        evaluate: vi.fn(),
+        isClosed: () => false,
+        on: vi.fn(),
+        setDefaultNavigationTimeout: vi.fn(),
+        setDefaultTimeout: vi.fn(),
+      };
+      const mockContext: any = {
+        close: vi.fn(),
+        cookies: vi.fn().mockResolvedValue([]),
+        pages: () => [mockPage],
+        newPage: vi.fn().mockResolvedValue(mockPage),
+      };
+
+      const basePortal = await import("../../scripts/scraper/portals/base");
+      const getPortalCtxSpy = vi.spyOn(basePortal, "getPortalContext").mockResolvedValue(mockContext as any);
+
+      const linkedinHandler = await import("../../scripts/scraper/portals/linkedin");
+      const ensureSessionSpy = vi.spyOn(linkedinHandler.linkedinHandler, "ensureSession").mockResolvedValue("error");
+
+      process.argv = [
+        "node",
+        "scrape.ts",
+        "--tenant-id",
+        "tenant-1",
+        "--person-id",
+        "user-auth-1",
+        "--portals",
+        "LinkedIn",
+        "--pages",
+        "1",
+        "--cards",
+        "1",
+      ];
+
+      const { completion } = await startRun({
+        autoConfirm: true,
+        portals: ["LinkedIn"],
+        maxPages: 1,
+        maxCardsPerPage: 1,
+      });
+      await completion;
+
+      expect(brokerSpy).toHaveBeenCalled();
+      const passedAuthContext = brokerSpy.mock.calls[0][0];
+      expect(passedAuthContext).toBeDefined();
+      expect(passedAuthContext.tenantId).toBe("tenant-1");
+      expect(passedAuthContext.userId).toBe("user-auth-1");
+      expect(brokerSpy.mock.calls[0][1]).toBe("linkedin");
+
+      brokerSpy.mockRestore();
+      getPortalCtxSpy.mockRestore();
+      ensureSessionSpy.mockRestore();
+    } finally {
+      process.argv = origArgv;
+      try {
+        await db.execute(`DELETE FROM memberships WHERE user_id = 'user-auth-1'`);
+        await db.execute(`DELETE FROM people WHERE id = 'user-auth-1'`);
+        await db.execute(`DELETE FROM users WHERE id = 'user-auth-1'`);
+        await db.execute(`DELETE FROM tenants WHERE id = 'tenant-1'`);
+      } catch {}
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AO: Profile metadata replacement failure preserves previous valid ownership marker
+  // --------------------------------------------------------------------------
+  it("Scenario AO: Failed profile metadata replacement preserves existing valid ownership marker and never unlinks it", () => {
+    const profilesDir = path.join(tmpDir, "profiles-preserve-test");
+    fs.mkdirSync(profilesDir, { recursive: true });
+
+    // Step 1: Write an initial valid profile metadata marker for tenant-A
+    writeProfileMetadata(profilesDir, {
+      mode: "SCOPED",
+      tenantId: "tenant-A",
+      personId: "person-1",
+      runId: "run-init",
+    });
+
+    const initialInspection = inspectProfileMetadata(profilesDir);
+    expect(initialInspection.status).toBe("valid");
+    expect(initialInspection.metadata?.tenantId).toBe("tenant-A");
+
+    // Step 2: Attempt to write a new profile metadata marker for tenant-B, but simulate rename failure
+    const renameSpy = vi.spyOn(fs, "renameSync").mockImplementation(() => {
+      const err: any = new Error("EACCES: permission denied, rename");
+      err.code = "EACCES";
+      throw err;
+    });
+
+    expect(() => {
+      writeProfileMetadata(profilesDir, {
+        mode: "SCOPED",
+        tenantId: "tenant-B",
+        personId: "person-2",
+        runId: "run-failed",
+      });
+    }).toThrow(/ATOMIC_METADATA_WRITE_FAILED/);
+
+    renameSpy.mockRestore();
+
+    // Step 3: Verify the original valid ownership marker was NEVER unlinked or corrupted
+    const metadataFile = path.join(profilesDir, "profile-metadata.json");
+    expect(fs.existsSync(metadataFile)).toBe(true);
+
+    const postInspection = inspectProfileMetadata(profilesDir);
+    expect(postInspection.status).toBe("valid");
+    expect(postInspection.metadata?.tenantId).toBe("tenant-A");
+    expect(postInspection.metadata?.personId).toBe("person-1");
+  });
+
+  // --------------------------------------------------------------------------
+  // Scenario AP: Degraded snapshot persistence truthfully records null on card
+  // --------------------------------------------------------------------------
+  it("Scenario AP: Degraded snapshot persistence truthfully records null on card", async () => {
+    const mgr = new RunController();
+    mgr.init({
+      keywords: ["VP Growth"],
+      portals: ["LinkedIn"],
+      maxPages: 1,
+      maxCardsPerPage: 1,
+      resume: false,
+    });
+    const runId = mgr.runId;
+
+    activeRunSessions.set(runId, {
+      scope: { mode: "GLOBAL_MARKET", runId },
+      capabilities: {
+        databaseAvailable: false,
+        canonicalPersistenceEnabled: false,
+        enrichmentDispatchEnabled: false,
+        localArtifactPersistenceEnabled: true,
+      },
+      pageManagers: new Map(),
+    });
+
+    const mockUnit = mgr.manifest.units[0];
+    const cardHash = `card-snap-degrade-${Date.now()}`;
+    const sampleJobText =
+      "VP Growth owns global revenue, customer acquisition, commercial partnerships, board-level strategy, and organizational leadership across scaling international markets with full enterprise accountability.";
+
+    const mockHandler: any = {
+      buildSearchUrl: () => "https://www.linkedin.com/jobs/search?keywords=VP+Growth",
+      listCards: async () => [
+        {
+          cardHash,
+          sourceJobId: "job-degrade-123",
+          portal: "LinkedIn",
+          keyword: "VP Growth",
+          searchUrl: "https://www.linkedin.com/jobs/search?keywords=VP+Growth",
+          discoveryUrl: "https://www.linkedin.com/jobs/view/job-degrade-123",
+          detailUrl: "https://www.linkedin.com/jobs/view/job-degrade-123",
+          discoveredAt: new Date().toISOString(),
+          title: "VP Growth",
+          company: "Enterprise SaaS Inc",
+          location: "Remote",
+          rawHtml: "<div>VP Growth</div>",
+          rawText: sampleJobText,
+          hasAuthoritativeFullDescription: true,
+        },
+      ],
+      fetchDetail: async () => ({
+        fetched: true,
+        rawHtml: `<div><h3>VP Growth</h3><p>${sampleJobText}</p></div>`,
+        rawText: sampleJobText,
+        extractedTitle: "VP Growth",
+        extractedCompany: "Enterprise SaaS Inc",
+        finalUrl: "https://www.linkedin.com/jobs/view/job-degrade-123",
+        httpStatus: 200,
+        fetchDurationMs: 15,
+      }),
+    };
+
+    // Force writeSnapshot to return null (simulating degraded storage)
+    const writerModule = await import("../../scripts/scraper/persist/writer");
+    const writeSnapshotSpy = vi.spyOn(writerModule, "writeSnapshot").mockReturnValue(null);
+
+    try {
+      const outcome = await processUnit(
+        mgr,
+        mockHandler,
+        mockUnit,
+        {} as any,
+        {} as any,
+        new Set(),
+        new Set(),
+        new Set(),
+        new Set(),
+        () => {},
+        1,
+        undefined
+      );
+
+      expect(outcome.status).toBe("completed");
+      const card = mgr.manifest.cards.find((c) => c.cardHash === cardHash);
+      expect(card).toBeDefined();
+      expect(card?.status).toBe("done");
+      // Snapshot path must be null, NOT the nominal non-existent file path!
+      expect(card?.snapshotPath).toBeNull();
+    } finally {
+      writeSnapshotSpy.mockRestore();
+      activeRunSessions.delete(runId);
+    }
   });
 });
 

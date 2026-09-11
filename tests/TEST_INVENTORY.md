@@ -249,6 +249,8 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/gate4-write-refresh-edge-contract.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 8 | 8 |
 | `tests/intelligence/architecture-contracts.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 10 | 38 |
 | `tests/intelligence/candidate-projection.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 23 |
+| `tests/intelligence/candidate-proof-extractor-v1.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 1 |
+| `tests/intelligence/role-intelligence-extractor-v1.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 1 |
 | `tests/intelligence/profile-projection-version-compat.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 6 | 6 |
 | `tests/intelligence/canonical-acquisition-integrity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 22 | 63 |
 | `tests/intelligence/canonical-identity.test.ts` | Identity & Candidate Projection | **KEEP** | Operator only (`RADAR_RUN_LIVE_IDENTITY_TESTS=true`) | 7 | 27 |
