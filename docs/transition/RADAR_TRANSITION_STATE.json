@@ -23,7 +23,7 @@
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "GATE_1B_BATCH_02 only — Extraction provider boundary + common mechanical verifier. Batch 03 is not authorized.",
+  "nextAuthorizedProductionWork": "NONE — GATE_1B_BATCH_02 is complete; Batch 03 requires explicit authorization before implementation begins.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,

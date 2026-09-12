@@ -5,7 +5,7 @@
   "id": "GATE_1B_BATCH_02",
   "gate": "GATE_1B",
   "title": "Extraction provider boundary + common mechanical verifier",
-  "status": "READY",
+  "status": "COMPLETE",
   "batchStartCommit": "2e774e08193167fd3bb7a85ea5a4787c0f94bd4b",
   "objective": "Create the provider seam required to compare extraction architectures without choosing deterministic versus LLM yet: place the current adbfc37 RoleIntelligence and CandidateProof deterministic extraction behind explicit provider adapters, define an equivalent non-authoritative LLM provider contract, and establish one shared fail-closed mechanical verifier for immutable source identity, exact spans, schema/ontology validity, normalization, deduplication, deterministic metric normalization where appropriate, and input/cache identity.",
   "mustNotChange": [
