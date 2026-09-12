@@ -53,6 +53,13 @@ function addLines(set, value) {
   }
 }
 
+function lines(value) {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 if (!existsSync(statePath)) {
   die("Missing docs/transition/RADAR_TRANSITION_STATE.json");
 }
@@ -207,6 +214,133 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
+if (state.requirePerCommitAcknowledgement !== true) {
+  die("Transition state must require per-commit acknowledgement before implementation begins");
+}
+
+if (typeof state.implementationLedger !== "string" || state.implementationLedger.trim() === "") {
+  die("Transition state is missing implementationLedger");
+}
+if (typeof state.agentChangeProtocol !== "string" || state.agentChangeProtocol.trim() === "") {
+  die("Transition state is missing agentChangeProtocol");
+}
+
+const ledgerPath = resolve(root, state.implementationLedger);
+const agentProtocolPath = resolve(root, state.agentChangeProtocol);
+if (!existsSync(ledgerPath)) die(`Missing implementation ledger: ${state.implementationLedger}`);
+if (!existsSync(agentProtocolPath)) die(`Missing agent change protocol: ${state.agentChangeProtocol}`);
+
+const ledger = readJson(ledgerPath);
+if (ledger.schemaVersion !== "radar-transition-implementation-ledger/v1") {
+  die(`Unsupported implementation-ledger schema: ${String(ledger.schemaVersion)}`);
+}
+if (
+  typeof ledger.enforcementStartCommit !== "string" ||
+  !/^[0-9a-f]{40}$/i.test(ledger.enforcementStartCommit)
+) {
+  die(`Invalid ledger enforcementStartCommit: ${String(ledger.enforcementStartCommit)}`);
+}
+
+git(["merge-base", "--is-ancestor", ledger.enforcementStartCommit, "HEAD"]);
+
+const governanceOnlyPrefixes = Array.isArray(ledger.governanceOnlyPathPrefixes)
+  ? ledger.governanceOnlyPathPrefixes
+  : [];
+if (governanceOnlyPrefixes.length === 0) {
+  die("Implementation ledger has no governanceOnlyPathPrefixes");
+}
+
+const acknowledgements = Array.isArray(ledger.acknowledgements) ? ledger.acknowledgements : [];
+const ackByCommit = new Map();
+for (const ack of acknowledgements) {
+  if (!ack || typeof ack !== "object") die("Implementation ledger contains a non-object acknowledgement");
+  if (typeof ack.commit !== "string" || !/^[0-9a-f]{40}$/i.test(ack.commit)) {
+    die(`Implementation ledger contains invalid commit SHA: ${String(ack.commit)}`);
+  }
+  if (ackByCommit.has(ack.commit)) {
+    die(`Implementation ledger contains duplicate acknowledgement for ${ack.commit}`);
+  }
+  git(["merge-base", "--is-ancestor", ack.commit, "HEAD"]);
+  if (typeof ack.gate !== "string" || typeof ack.batchId !== "string") {
+    die(`Acknowledgement ${ack.commit} must record gate and batchId`);
+  }
+  if (!Number.isInteger(ack.scopeRevision) || ack.scopeRevision < 1) {
+    die(`Acknowledgement ${ack.commit} must record a positive integer scopeRevision`);
+  }
+  if (typeof ack.summary !== "string" || ack.summary.trim() === "") {
+    die(`Acknowledgement ${ack.commit} must include a summary`);
+  }
+  if (!Array.isArray(ack.invariantsChecked) || ack.invariantsChecked.length === 0) {
+    die(`Acknowledgement ${ack.commit} must list invariantsChecked`);
+  }
+  if (!Array.isArray(ack.verification) || ack.verification.length === 0) {
+    die(`Acknowledgement ${ack.commit} must list verification actually performed`);
+  }
+  ackByCommit.set(ack.commit, ack);
+}
+
+const commitShas = lines(
+  git(["rev-list", "--reverse", `${ledger.enforcementStartCommit}..HEAD`], { allowFailure: true }),
+);
+const unacknowledged = [];
+for (const commitSha of commitShas) {
+  const files = lines(git(["diff-tree", "--no-commit-id", "--name-only", "-r", commitSha]));
+  const governedFiles = files.filter(
+    (file) => !governanceOnlyPrefixes.some((prefix) => pathMatchesPrefix(file, prefix)),
+  );
+  if (governedFiles.length === 0) continue;
+
+  const ack = ackByCommit.get(commitSha);
+  if (!ack) {
+    unacknowledged.push({ commitSha, governedFiles });
+    continue;
+  }
+
+  if (
+    ack.gate !== state.activeGate ||
+    ack.batchId !== state.activeBatchId ||
+    ack.scopeRevision !== state.currentBatchScopeRevision
+  ) {
+    die(
+      `Acknowledgement ${commitSha} does not match current authorization: ` +
+        `recorded ${ack.gate}/${ack.batchId}/scope-${ack.scopeRevision}, ` +
+        `current ${state.activeGate}/${state.activeBatchId}/scope-${state.currentBatchScopeRevision}`,
+    );
+  }
+}
+
+if (unacknowledged.length > 0) {
+  console.error(
+    "TRANSITION CONTROL FAIL: governed commits exist without implementation-ledger acknowledgement:",
+  );
+  for (const item of unacknowledged) {
+    console.error(`  - ${item.commitSha}`);
+    for (const file of item.governedFiles) console.error(`      ${file}`);
+  }
+  console.error(
+    `\nAdd an acknowledgement for every listed commit to ${state.implementationLedger}, ` +
+      "then rerun npm run transition:check before declaring agent completion.",
+  );
+  process.exit(1);
+}
+
+const unstagedOrStagedGoverned = [...changed].filter((file) =>
+  !governanceOnlyPrefixes.some((prefix) => pathMatchesPrefix(file, prefix)),
+);
+if (unstagedOrStagedGoverned.length > 0) {
+  const worktreeChanged = new Set();
+  addLines(worktreeChanged, git(["diff", "--name-only"], { allowFailure: true }));
+  addLines(worktreeChanged, git(["diff", "--cached", "--name-only"], { allowFailure: true }));
+  const governedWorktree = [...worktreeChanged].filter(
+    (file) => !governanceOnlyPrefixes.some((prefix) => pathMatchesPrefix(file, prefix)),
+  );
+  if (governedWorktree.length > 0) {
+    console.warn(
+      "TRANSITION CONTROL WARNING: uncommitted governed changes exist. They cannot be ledger-acknowledged until committed; agent completion is not allowed yet.",
+    );
+  }
+}
+
 const branch =
   process.env.GITHUB_HEAD_REF ||
   process.env.GITHUB_REF_NAME ||
@@ -222,4 +356,5 @@ console.log("TRANSITION CONTROL PASS");
 console.log(`  gate: ${state.activeGate}`);
 console.log(`  batch: ${batch.id} — ${batch.title}`);
 console.log(`  extraction decision: ${extractionDecision.status}`);
+console.log(`  governed commits acknowledged: ${acknowledgements.length}`);
 console.log(`  changed files since gate entry: ${changed.size}`);
