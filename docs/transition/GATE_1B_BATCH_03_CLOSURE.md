@@ -4,10 +4,10 @@
 
 **COMPLETE**
 
-Batch: `GATE_1B_BATCH_03` — Controlled LLM RoleIntelligence / CandidateProof extraction experiment  
-Scope revision: `1`  
-Batch start commit: `ccc86a7e1612e9cbf28c78eb4c565afc1024e880`  
-Implementation commit: `770a218d5c518591005d23ee8c1536c80cfbf32c`  
+Batch: `GATE_1B_BATCH_03` — Controlled LLM RoleIntelligence / CandidateProof extraction experiment
+Scope revision: `1`
+Batch start commit: `ccc86a7e1612e9cbf28c78eb4c565afc1024e880`
+Implementation commit: `770a218d5c518591005d23ee8c1536c80cfbf32c`
 Implementation acknowledgement: `3e2fea671a15475097d57ff6ff94236ee2ea26b4`
 
 Batch 04 is not authorized by this closure.
