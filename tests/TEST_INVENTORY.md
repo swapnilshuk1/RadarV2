@@ -252,6 +252,7 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/candidate-proof-extractor-v1.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 1 |
 | `tests/intelligence/role-intelligence-extractor-v1.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 1 |
 | `tests/intelligence/extraction/provider-boundary.test.ts` | Semantic Grounding | **KEEP** | Gate 1B targeted | 1 | 6 |
+| `tests/intelligence/extraction/llm-experimental-provider.test.ts` | Semantic Grounding | **KEEP** | Gate 1B Batch 03 targeted | 1 | 5 |
 | `tests/intelligence/profile-projection-version-compat.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 6 | 6 |
 | `tests/intelligence/canonical-acquisition-integrity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 22 | 63 |
 | `tests/intelligence/canonical-identity.test.ts` | Identity & Candidate Projection | **KEEP** | Operator only (`RADAR_RUN_LIVE_IDENTITY_TESTS=true`) | 7 | 27 |
