@@ -19,6 +19,7 @@
     "deterministic Extraction V1 baseline behavior"
   ],
   "allowedPathPrefixes": [
+    "AGENTS.md",
     "docs/",
     "scripts/transition/",
     ".github/workflows/transition-control.yml",
