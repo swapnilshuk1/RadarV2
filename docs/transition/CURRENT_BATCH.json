@@ -1,7 +1,7 @@
 {
   "schemaVersion": "radar-transition-batch/v1",
   "controlRevision": "2026-09-13.2",
-  "scopeRevision": 2,
+  "scopeRevision": 3,
   "id": "GATE_1B_BATCH_01",
   "gate": "GATE_1B",
   "title": "Source/provenance immutability",
@@ -33,6 +33,7 @@
     "src/data/sqlite/provider.ts",
     "src/domain/entities.ts",
     "src/domain/repositories.ts",
+    "src/lib/acquisition/CanonicalIngestionService.ts",
     "src/lib/provenance/",
     "src/lib/domain/source_provenance.ts",
     "tests/TEST_INVENTORY.md",

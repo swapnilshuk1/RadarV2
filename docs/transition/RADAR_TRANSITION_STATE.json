@@ -8,7 +8,7 @@
   "activeGateTitle": "Substrate, provenance, and extraction architecture decision",
   "activeBatchId": "GATE_1B_BATCH_01",
   "currentBatchManifest": "docs/transition/CURRENT_BATCH.json",
-  "currentBatchScopeRevision": 2,
+  "currentBatchScopeRevision": 3,
   "implementationLedger": "docs/transition/IMPLEMENTATION_LEDGER.json",
   "agentChangeProtocol": "docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md",
   "requirePerCommitAcknowledgement": true,
