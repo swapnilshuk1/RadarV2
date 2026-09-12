@@ -17,14 +17,15 @@ Read these files in this exact order before changing code:
 5. `docs/transition/CURRENT_BATCH.json`
 6. `docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md`
 7. `docs/transition/IMPLEMENTATION_LEDGER.json`
-8. `docs/gate1/GATE1A_GOVERNANCE_DRIFT_POSTMORTEM.md`
-9. `docs/gate1/GATE1A_RECON_BATCH_06A_CONTROL_RECONCILIATION.md`
-10. `docs/gate1/GATE1A_RECON_BATCH_01_EVALUATION_MATERIALIZATION.md`
-11. `docs/gate1/GATE1A_RECON_BATCH_02_ASSESSMENT_POLICY_SEMANTICS.md`
-12. `docs/gate1/GATE1A_RECON_BATCH_03_EDITORIAL_PROPOSITION_PIPELINE.md`
-13. `docs/gate1/GATE1A_RECON_BATCH_04_SERVING_READ_PATH_AND_LEGACY_COEXISTENCE.md`
-14. `docs/gate1/GATE1A_RECON_BATCH_05_EDITORIAL_INPUT_PROVENANCE_AND_V1_RETIREMENT.md`
-15. `docs/gate1/GATE1A_RECON_BATCH_06_CONTRACT_RECONCILIATION_AND_IMPLEMENTATION_SEQUENCE.md`
+8. `docs/transition/IMPLEMENTATION_ACK_TEMPLATE.json`
+9. `docs/gate1/GATE1A_GOVERNANCE_DRIFT_POSTMORTEM.md`
+10. `docs/gate1/GATE1A_RECON_BATCH_06A_CONTROL_RECONCILIATION.md`
+11. `docs/gate1/GATE1A_RECON_BATCH_01_EVALUATION_MATERIALIZATION.md`
+12. `docs/gate1/GATE1A_RECON_BATCH_02_ASSESSMENT_POLICY_SEMANTICS.md`
+13. `docs/gate1/GATE1A_RECON_BATCH_03_EDITORIAL_PROPOSITION_PIPELINE.md`
+14. `docs/gate1/GATE1A_RECON_BATCH_04_SERVING_READ_PATH_AND_LEGACY_COEXISTENCE.md`
+15. `docs/gate1/GATE1A_RECON_BATCH_05_EDITORIAL_INPUT_PROVENANCE_AND_V1_RETIREMENT.md`
+16. `docs/gate1/GATE1A_RECON_BATCH_06_CONTRACT_RECONCILIATION_AND_IMPLEMENTATION_SEQUENCE.md`
 
 If any of these files is missing, contradictory, or cannot be read, stop and report that before implementation.
 
@@ -42,10 +43,10 @@ Then state explicitly in your working notes:
 - the active batch from `docs/transition/CURRENT_BATCH.json`;
 - the current `scopeRevision`;
 - the `mustNotChange` list;
-- the `allowedPathPrefixes` relevant to your intended edits;
+- the `allowedPathPrefixes` relevant to your intended edits, including every test file you intend to change or create;
 - any still-open decision recorded in `docs/transition/RADAR_TRANSITION_STATE.json`.
 
-Do not continue if your intended edit is outside the current batch.
+Do not continue if your intended implementation **or test** edit is outside the current batch.
 
 ## Source-of-truth hierarchy
 
@@ -77,6 +78,8 @@ older planning notes / prior chat summaries / agent reports
 6. Do not enter a later gate while an earlier gate's exit conditions remain open.
 7. Preserve existing historical contracts unless the current batch explicitly authorizes migration.
 8. Do not use read-time fallbacks or presentation recomputation to hide missing canonical truth.
+9. Tests are governed changes: there is no blanket `tests/` exemption.
+10. `npm run transition:check` must fail if governed work remains uncommitted; do not report completion from a dirty governed worktree.
 
 ## Commit and acknowledgement protocol
 
@@ -86,12 +89,14 @@ Every governed implementation/test/documentation commit must follow:
 implementation/edit
 → narrow verification
 → implementation commit
-→ add exact commit SHA to `docs/transition/IMPLEMENTATION_LEDGER.json`
+→ copy `docs/transition/IMPLEMENTATION_ACK_TEMPLATE.json`
+→ add exact commit SHA + actual evidence to `docs/transition/IMPLEMENTATION_LEDGER.json`
+→ commit the ledger acknowledgement
 → run `npm run transition:check`
 → only then report completion
 ```
 
-Use `docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md` for the required acknowledgement fields and update rules.
+Use `docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md` for the update rules and `docs/transition/IMPLEMENTATION_ACK_TEMPLATE.json` for the acknowledgement shape.
 
 Do not add an implementation-ledger acknowledgement before the implementation commit exists; acknowledgements refer to exact commit SHAs.
 
@@ -116,6 +121,7 @@ A new agent must not report work complete without providing:
 - current branch HEAD;
 - exact verification commands and results;
 - confirmation that `npm run transition:check` passed after acknowledgement;
+- confirmation that there are no uncommitted governed changes;
 - any unresolved issue that remains inside the active batch;
 - whether the active batch is still open or is ready for explicit closure/certification.
 
@@ -123,7 +129,7 @@ A new agent must not report work complete without providing:
 
 A user may give the following prompt verbatim to any new agent:
 
-> Work on the RADAR transition in repository `swapnilshuk1/RadarV2`. Use the currently checked-out transition branch and do not infer scope from prior chats or the newest recon note. Before doing anything else, read these files in order: `AGENTS.md`, `docs/transition/NEXT_AGENT_HANDOFF.md`, `docs/RADAR_TRANSITION_CONTROL.md`, `docs/transition/RADAR_TRANSITION_STATE.json`, `docs/transition/CURRENT_BATCH.json`, `docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md`, `docs/transition/IMPLEMENTATION_LEDGER.json`, `docs/gate1/GATE1A_GOVERNANCE_DRIFT_POSTMORTEM.md`, `docs/gate1/GATE1A_RECON_BATCH_06A_CONTROL_RECONCILIATION.md`, `docs/gate1/GATE1A_RECON_BATCH_01_EVALUATION_MATERIALIZATION.md`, `docs/gate1/GATE1A_RECON_BATCH_02_ASSESSMENT_POLICY_SEMANTICS.md`, `docs/gate1/GATE1A_RECON_BATCH_03_EDITORIAL_PROPOSITION_PIPELINE.md`, `docs/gate1/GATE1A_RECON_BATCH_04_SERVING_READ_PATH_AND_LEGACY_COEXISTENCE.md`, `docs/gate1/GATE1A_RECON_BATCH_05_EDITORIAL_INPUT_PROVENANCE_AND_V1_RETIREMENT.md`, and `docs/gate1/GATE1A_RECON_BATCH_06_CONTRACT_RECONCILIATION_AND_IMPLEMENTATION_SEQUENCE.md`. Then run `npm run transition:check`. Treat `docs/RADAR_TRANSITION_CONTROL.md`, `docs/transition/RADAR_TRANSITION_STATE.json`, and `docs/transition/CURRENT_BATCH.json` as the governing authorization. Inspect the actual repository code relevant to the current authorized batch, execute only that batch, and do not cross into a later gate or widen semantic ownership without first updating the governing control/state/batch authorization. After each governed implementation commit, add the exact commit SHA and required evidence to `docs/transition/IMPLEMENTATION_LEDGER.json`, rerun `npm run transition:check`, and do not declare completion until it passes. Report the implementation commit SHA(s), ledger acknowledgement commit SHA, final branch HEAD, verification results, and whether the current batch is ready for explicit closure. Do not modify production behavior outside the scope authorized by `docs/transition/CURRENT_BATCH.json`.
+> Work on the RADAR transition in repository `swapnilshuk1/RadarV2`. Use the currently checked-out transition branch and do not infer scope from prior chats, commit messages, or the newest recon note. Before doing anything else, read these files in order: `AGENTS.md`, `docs/transition/NEXT_AGENT_HANDOFF.md`, `docs/RADAR_TRANSITION_CONTROL.md`, `docs/transition/RADAR_TRANSITION_STATE.json`, `docs/transition/CURRENT_BATCH.json`, `docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md`, `docs/transition/IMPLEMENTATION_LEDGER.json`, `docs/transition/IMPLEMENTATION_ACK_TEMPLATE.json`, `docs/gate1/GATE1A_GOVERNANCE_DRIFT_POSTMORTEM.md`, `docs/gate1/GATE1A_RECON_BATCH_06A_CONTROL_RECONCILIATION.md`, `docs/gate1/GATE1A_RECON_BATCH_01_EVALUATION_MATERIALIZATION.md`, `docs/gate1/GATE1A_RECON_BATCH_02_ASSESSMENT_POLICY_SEMANTICS.md`, `docs/gate1/GATE1A_RECON_BATCH_03_EDITORIAL_PROPOSITION_PIPELINE.md`, `docs/gate1/GATE1A_RECON_BATCH_04_SERVING_READ_PATH_AND_LEGACY_COEXISTENCE.md`, `docs/gate1/GATE1A_RECON_BATCH_05_EDITORIAL_INPUT_PROVENANCE_AND_V1_RETIREMENT.md`, and `docs/gate1/GATE1A_RECON_BATCH_06_CONTRACT_RECONCILIATION_AND_IMPLEMENTATION_SEQUENCE.md`. Then run `npm run transition:check`. Treat `docs/RADAR_TRANSITION_CONTROL.md`, `docs/transition/RADAR_TRANSITION_STATE.json`, and `docs/transition/CURRENT_BATCH.json` as the governing authorization. State the active gate, active batch, scope revision, `mustNotChange` constraints, authorized implementation/test paths relevant to your intended work, and every still-open decision before editing code. Inspect the actual repository code relevant to the current authorized batch and execute only that batch. Do not cross into a later gate, modify an unlisted test path, or widen semantic ownership without first updating the governing control/state/batch authorization. After each governed implementation/test/documentation commit, use `docs/transition/IMPLEMENTATION_ACK_TEMPLATE.json` to add the exact commit SHA and actual verification evidence to `docs/transition/IMPLEMENTATION_LEDGER.json`, commit that acknowledgement, and rerun `npm run transition:check`. Do not declare completion unless the check passes and there are no uncommitted governed changes. Report the implementation commit SHA(s), ledger acknowledgement commit SHA, final branch HEAD, exact verification results, unresolved issues inside the active batch, and whether the current batch is ready for explicit closure. Do not modify production behavior outside the scope authorized by `docs/transition/CURRENT_BATCH.json`.
 
 ## Server-side protection note
 
@@ -137,3 +143,5 @@ For protection against intentional or accidental weakening of the guard itself, 
 - no force pushes.
 
 `.github/CODEOWNERS` records the intended ownership. GitHub branch/ruleset configuration is the server-side enforcement layer and must be configured with repository administration privileges.
+
+At the time this handoff mechanism was installed, `phase5/gate1-architecture-recon` was not branch-protected. A future agent must not claim the in-repository mechanism is tamper-proof unless repository protection is separately verified.
