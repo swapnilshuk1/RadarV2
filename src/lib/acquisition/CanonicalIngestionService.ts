@@ -392,23 +392,58 @@ export class CanonicalIngestionService {
         );
       }
     }
-    // This key is an explicit persisted provenance field, not an implicit
-    // lookup convention. A caller may provide its own key, but the persisted
-    // value is always the key returned by BlobStore.
+    // Binary source payloads are content-addressed before canonical admission.
+    // Existing persisted keys are reused for backward-compatible replay only
+    // after exact byte equality is verified. New keys include the source SHA-256,
+    // so concurrent first writers with different bytes can never overwrite one another.
     if (isPdfPayload) {
       const sourcePayload = payload.sourcePayload ?? rawContent;
       if (!sourcePayload) {
         throw new AcquisitionIntegrityError(`PDF acquisition ${source}:${sourceJobId} is missing its source payload.`);
       }
-      const requestedKey = payload.sourcePayloadKey || `opportunity-versions/${versionId}/source`;
-      try {
-        sourcePayloadKey = await (this.blobStore || getBlobStore()).put(
-          requestedKey,
-          sourcePayload,
-          payload.contentType || "application/pdf",
+      const sourceBytes = typeof sourcePayload === "string" ? Buffer.from(sourcePayload, "utf8") : Buffer.from(sourcePayload);
+      const sourcePayloadSha256 = crypto.createHash("sha256").update(sourceBytes).digest("hex");
+      const incomingMediaType = payload.contentType || "application/pdf";
+      const priorVersion = await this.db.one<{ source_payload_key: string | null; source_media_type: string | null }>(
+        `SELECT source_payload_key, source_media_type
+         FROM opportunity_versions
+         WHERE canonical_job_id = ? AND content_hash = ?
+         LIMIT 1`,
+        [canonicalJobId, contentHash],
+      );
+      if (priorVersion?.source_media_type && priorVersion.source_media_type !== incomingMediaType) {
+        throw new AcquisitionIntegrityError(
+          `IMMUTABLE_OPPORTUNITY_SOURCE_CONFLICT: Existing opportunity version media type ${priorVersion.source_media_type} differs from incoming ${incomingMediaType}`,
         );
-        sourceMediaType = payload.contentType || "application/pdf";
+      }
+      const sourcePrefix = (payload.sourcePayloadKey || `opportunity-versions/${versionId}/source`).replace(/\/+$/, "");
+      const requestedKey = priorVersion?.source_payload_key || `${sourcePrefix}/sha256-${sourcePayloadSha256}`;
+      const store = this.blobStore || getBlobStore();
+      try {
+        const exists = await store.exists(requestedKey);
+        if (exists) {
+          const existingBytes = await store.get(requestedKey);
+          if (!existingBytes) {
+            throw new AcquisitionIntegrityError(
+              `Existing source payload key '${requestedKey}' exists but returned null content`,
+            );
+          }
+          if (!existingBytes.equals(sourceBytes)) {
+            throw new AcquisitionIntegrityError(
+              `IMMUTABLE_SOURCE_PAYLOAD_CONFLICT: Existing BlobStore payload at ${requestedKey} differs from incoming source bytes`,
+            );
+          }
+          sourcePayloadKey = requestedKey;
+        } else {
+          sourcePayloadKey = await store.put(
+            requestedKey,
+            sourceBytes,
+            incomingMediaType,
+          );
+        }
+        sourceMediaType = incomingMediaType;
       } catch (err) {
+        if (err instanceof AcquisitionIntegrityError) throw err;
         throw new AcquisitionIntegrityError(
           `Failed to write source payload to BlobStore for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
           err
@@ -556,14 +591,35 @@ export class CanonicalIngestionService {
       );
       isNewVersion = versionRes.rowsAffected > 0;
 
-      // 3.2.1 Resolve Authoritative Version ID & persisted creation timestamp:
-      // Whether newly inserted or pre-existing from an earlier run, fetch the canonical ID that exists in the database
-      const existingVersion = await tx.one<{ id: string; created_at: string }>(
-        `SELECT id, created_at FROM opportunity_versions WHERE canonical_job_id = ? AND content_hash = ?`,
+      // 3.2.1 Resolve Authoritative Version ID & persisted creation timestamp.
+      // A conflicting binary provenance key/media type for the same logical
+      // opportunity version is an integrity failure, never a replay fallback.
+      const existingVersion = await tx.one<{
+        id: string;
+        created_at: string;
+        source_payload_key: string | null;
+        source_media_type: string | null;
+      }>(
+        `SELECT id, created_at, source_payload_key, source_media_type
+         FROM opportunity_versions
+         WHERE canonical_job_id = ? AND content_hash = ?`,
         [canonicalJobId, contentHash]
       );
-      effectiveVersionId = existingVersion?.id || versionId;
-      effectiveVersionCreatedAt = existingVersion?.created_at || versionRecord.createdAt;
+      if (!existingVersion) {
+        throw new AcquisitionIntegrityError(
+          `CANONICAL_VERSION_RESOLUTION_FAILED: No opportunity version exists for ${canonicalJobId}/${contentHash}`,
+        );
+      }
+      if (
+        isPdfPayload &&
+        (existingVersion.source_payload_key !== sourcePayloadKey || existingVersion.source_media_type !== sourceMediaType)
+      ) {
+        throw new AcquisitionIntegrityError(
+          `IMMUTABLE_OPPORTUNITY_SOURCE_CONFLICT: Existing source identity for ${canonicalJobId}/${existingVersion.id} differs from incoming binary provenance`,
+        );
+      }
+      effectiveVersionId = existingVersion.id;
+      effectiveVersionCreatedAt = existingVersion.created_at || versionRecord.createdAt;
 
       // 3.2.2 Derive single trusted verifiedRunId for all canonical run references
       let verifiedRunId: string | null = null;
