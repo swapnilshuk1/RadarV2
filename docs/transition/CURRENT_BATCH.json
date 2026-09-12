@@ -5,7 +5,7 @@
   "id": "GATE_1B_BATCH_03",
   "gate": "GATE_1B",
   "title": "Controlled LLM RoleIntelligence / CandidateProof extraction experiment",
-  "status": "READY",
+  "status": "COMPLETE",
   "batchStartCommit": "ccc86a7e1612e9cbf28c78eb4c565afc1024e880",
   "objective": "Implement an experiment-only LLM RoleIntelligence and CandidateProof provider through the existing Batch 02 provider/verifier seam: schema-bound provider contracts and prompts, deterministic cache/version identity, observable fail-closed execution, and experiment-only tests against exact immutable Batch 01 source snapshots. No LLM output becomes production-authoritative in this batch.",
   "mustNotChange": [

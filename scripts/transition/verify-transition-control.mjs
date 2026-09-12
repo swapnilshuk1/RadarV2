@@ -106,7 +106,11 @@ if (state.activeGate === "GATE_1B") {
   const batchNumber = state.activeBatchId.match(/^GATE_1B_BATCH_(\d+)$/)?.[1];
   if (!batchNumber) die(`Unsupported Gate 1B batch ID: ${state.activeBatchId}`);
   requiredControlText.push(`**Gate 1B — Batch ${batchNumber}: ${batch.title}.**`);
-  requiredControlText.push("This is the only currently authorized production batch.");
+  requiredControlText.push(
+    batch.status === "COMPLETE"
+      ? "No next production batch is authorized."
+      : "This is the only currently authorized production batch.",
+  );
 }
 if (state.extractionArchitectureDecision?.status === "OPEN") {
   requiredControlText.push("**Still open:** the production extraction architecture.");

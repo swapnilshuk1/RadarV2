@@ -536,16 +536,16 @@ Gate 1A has already resolved enough of the earlier reuse/coupling and canonical 
 
 ## 16. Current Next Action
 
-Batches 01 and 02 are **COMPLETE**. Their source/provenance immutability and provider/verifier boundary guarantees remain mandatory prerequisites and must not be weakened.
+Batches 01, 02, and 03 are **COMPLETE**. Their source/provenance immutability, provider/verifier boundary, and experimental LLM isolation guarantees remain mandatory prerequisites and must not be weakened.
 
 **Gate 1B — Batch 03: Controlled LLM RoleIntelligence / CandidateProof extraction experiment.**
 
-This is the only currently authorized production batch. It must:
+Batch 03 is complete. It was the only currently authorized production batch and established:
 
-1. implement experiment-only LLM RoleIntelligence and CandidateProof providers through the exact Batch 02 provider and mechanical-verifier runner;
-2. bind LLM requests and responses to versioned schema/prompt contracts and deterministic cache identity derived from the exact immutable Batch 01 source plus provider/schema configuration;
-3. make provider execution observable and fail closed when source resolution, structured output, schema validation, or mechanical verification fails;
-4. prove LLM output remains experimental and does not become production extraction authority, canonical persisted fact, or served truth.
+1. experiment-only LLM RoleIntelligence and CandidateProof providers through the exact Batch 02 provider and mechanical-verifier runner;
+2. versioned schema/prompt contracts and deterministic cache identity derived from the exact immutable Batch 01 source plus provider/schema configuration;
+3. observable, fail-closed handling of source resolution, structured output, schema validation, and mechanical verification failure;
+4. proof that LLM output remains experimental and does not become production extraction authority, canonical persisted fact, or served truth.
 
 Do **not** change or begin:
 
@@ -566,13 +566,13 @@ UI
 
 The production extraction architecture decision remains **OPEN**.
 
-**Batch 04 is not authorized by this Batch 03 activation.** It requires a separate governance authorization after Batch 03 is closed.
+**No next production batch is authorized. Batch 04 is not authorized.** It requires a separate governance authorization after Batch 03 closure.
 
 The corrected remaining Gate 1B sequence is:
 
 ```text
 Batch 02 — extraction provider boundary + common mechanical verifier   [COMPLETE]
-Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [AUTHORIZED]
+Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [COMPLETE]
 Batch 04 — frozen + unseen/adversarial comparison                      [NOT AUTHORIZED]
 Batch 05 — extraction architecture decision                            [NOT AUTHORIZED]
 Batch 06 — canonical source-fact persistence/contracts                 [NOT AUTHORIZED]
@@ -580,4 +580,4 @@ Batch 06 — canonical source-fact persistence/contracts                 [NOT AU
 
 **EvidenceGraph remains outside Gate 1 and cannot begin until Gate 1 exit is certified.**
 
-When Batch 03 closes, update the machine-readable batch/state manifests and this section in the same governance change set. Do not infer Batch 04 authorization from the planned sequence.
+Batch 04 must be separately authorized in the machine-readable batch/state manifests and this section before implementation begins. Do not infer authorization from the planned sequence.

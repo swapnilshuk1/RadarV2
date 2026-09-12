@@ -23,7 +23,7 @@
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "GATE_1B_BATCH_03 only — Controlled LLM RoleIntelligence / CandidateProof extraction experiment. Batch 04 is not authorized.",
+  "nextAuthorizedProductionWork": "NONE — GATE_1B_BATCH_03 is complete; Batch 04 requires explicit authorization before implementation begins.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,
