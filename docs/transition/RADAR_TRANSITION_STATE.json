@@ -1,14 +1,14 @@
 {
   "schemaVersion": "radar-transition-state/v1",
-  "controlRevision": "2026-09-13.2",
+  "controlRevision": "2026-09-13.3",
   "controlDocument": "docs/RADAR_TRANSITION_CONTROL.md",
   "workingBranch": "phase5/gate1-architecture-recon",
   "gate1AStatus": "COMPLETE",
   "activeGate": "GATE_1B",
   "activeGateTitle": "Substrate, provenance, and extraction architecture decision",
-  "activeBatchId": "GATE_1B_BATCH_01",
+  "activeBatchId": "GATE_1B_BATCH_02",
   "currentBatchManifest": "docs/transition/CURRENT_BATCH.json",
-  "currentBatchScopeRevision": 4,
+  "currentBatchScopeRevision": 1,
   "implementationLedger": "docs/transition/IMPLEMENTATION_LEDGER.json",
   "agentChangeProtocol": "docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md",
   "requirePerCommitAcknowledgement": true,
@@ -23,7 +23,7 @@
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "NONE — GATE_1B_BATCH_01 is complete; Batch 02 requires explicit authorization before implementation begins.",
+  "nextAuthorizedProductionWork": "GATE_1B_BATCH_02 only — Extraction provider boundary + common mechanical verifier. Batch 03 is not authorized.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,

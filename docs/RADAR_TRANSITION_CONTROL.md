@@ -536,45 +536,46 @@ Gate 1A has already resolved enough of the earlier reuse/coupling and canonical 
 
 ## 16. Current Next Action
 
-**Gate 1B — Batch 01: Source/provenance immutability.**
+Batch 01 is **COMPLETE**. Its source/provenance immutability guarantees remain mandatory prerequisites and must not be weakened.
 
-Implement only the source/provenance prerequisite:
+**Gate 1B — Batch 02: Extraction provider boundary + common mechanical verifier.**
 
-1. make candidate source document content immutable/versioned;
-2. prove exact candidate source resolution by durable source version/hash;
-3. prove role `opportunityVersion` source snapshots cannot be silently rewritten under the same identity;
-4. establish exact source-snapshot resolver primitives reusable by deterministic and LLM extraction;
-5. add narrow proving tests.
+This is the only currently authorized production batch. It must:
 
-Do **not** change:
+1. put the current `adbfc37` RoleIntelligence and CandidateProof deterministic extraction behind explicit provider interfaces/adapters without changing output semantics;
+2. define an equivalent LLM provider contract beside it, without implementing the Batch 03 LLM experiment or making LLM output production-authoritative;
+3. establish one shared mechanical verifier for immutable source identity, exact source/span resolution, closed schema/ontology validation, normalization, deduplication, deterministic metric normalization where appropriate, input/cache identity, and fail-closed rejection;
+4. prove the deterministic adapters reproduce the existing frozen/current baseline;
+5. prove no provider/verifier path can bypass the immutable source identities established in Batch 01.
+
+Do **not** change or begin:
 
 ```text
+EvidenceGraph
 evaluation
 policy
-verdicts
-dossier content
+PURSUE / CONSIDER / PASS behavior
+canonical RoleIntelligence / CandidateProof persistence
+dossier/editorial content
 serving
+UI
+production LLM authority
 ```
 
-Then proceed immediately to:
+The production extraction architecture decision remains **OPEN**.
+
+**Batch 03 is not authorized by this Batch 02 activation.** It requires a separate governance authorization after Batch 02 is closed.
+
+The corrected remaining Gate 1B sequence is:
 
 ```text
-Gate 1B — Batch 02
-Extraction provider boundary + common mechanical verifier
-
-Gate 1B — Batch 03
-LLM RoleIntelligence / CandidateProof experiment beside adbfc37
-
-Gate 1B — Batch 04
-Frozen + unseen/adversarial comparison
-
-Gate 1B — Batch 05
-Extraction architecture decision
-
-Gate 1B — Batch 06
-Canonical source-fact persistence/contracts
+Batch 02 — extraction provider boundary + common mechanical verifier   [AUTHORIZED]
+Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [NOT AUTHORIZED]
+Batch 04 — frozen + unseen/adversarial comparison                      [NOT AUTHORIZED]
+Batch 05 — extraction architecture decision                            [NOT AUTHORIZED]
+Batch 06 — canonical source-fact persistence/contracts                 [NOT AUTHORIZED]
 ```
 
-**EvidenceGraph is not the next step after source immutability.** It begins only after Gate 1 exit is certified.
+**EvidenceGraph remains outside Gate 1 and cannot begin until Gate 1 exit is certified.**
 
-When Gate 1 closes, update `Current execution gate`, Gate 1 results, extraction architecture decisions, and the Decision Log in this file in the same change set.
+When Batch 02 closes, update the machine-readable batch/state manifests and this section in the same governance change set. Do not infer Batch 03 authorization from the planned sequence.
