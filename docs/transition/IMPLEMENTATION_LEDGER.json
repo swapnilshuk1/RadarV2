@@ -13,6 +13,27 @@
   ],
   "acknowledgements": [
     {
+      "commit": "29235fe9e454e78a9b2f1c97a2e80547727e8d68",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_02",
+      "scopeRevision": 1,
+      "summary": "Added explicit deterministic and LLM extraction-provider contracts, parity-preserving deterministic adapters, a shared fail-closed mechanical verifier, and a resolver-bound execution seam without rewiring production extraction.",
+      "invariantsChecked": [
+        "deterministic RoleIntelligence and CandidateProof adapters reproduce direct V1 output without semantic drift",
+        "provider cache identity is bound to immutable source identity and provider/schema configuration",
+        "the shared runner resolves Batch 01 immutable source snapshots before provider execution and fails when source identity changes",
+        "unresolvable spans, invalid ontology values, duplicate semantic anchors, and malformed metric normalization fail closed",
+        "no production extraction authority, evaluation, policy, dossier, serving, UI, EvidenceGraph, canonical source-fact persistence, or extraction architecture decision changed"
+      ],
+      "verification": [
+        "npx vitest run tests/intelligence/extraction/provider-boundary.test.ts tests/intelligence/role-intelligence-extractor-v1.test.ts tests/intelligence/candidate-proof-extractor-v1.test.ts — PASS (3 files, 43/43 tests)",
+        "npx tsc --noEmit — PASS",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "975520554a0e13e0f2433cb12e4f55e3d133a80a",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_01",
