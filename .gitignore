@@ -72,3 +72,40 @@ scratch/
 partial*.txt
 audit-reports/
 audit/
+
+# Local databases and WAL files
+auth
+auth-wal
+auth-shm
+*.db
+*.db-wal
+*.db-shm
+*-wal
+*-shm
+
+# Scraper dumps and DOM snapshots
+*.mhtml
+*_dump.*
+*api_hit*.json
+ats_debug.html
+search_page_dump.html
+single_card.html
+next_data.json
+
+# Scratch test scripts and logs in repo root
+/test.js
+/test*.cjs
+/temp.js
+/parser.cjs
+*trace*.txt
+*traces*.txt
+git_diff.txt
+raw.txt
+parent.txt
+response.txt
+career regression.txt
+vitest-result.json
+rejected-unsafe-artifacts.json
+
+# TypeScript build info cache
+*.tsbuildinfo
