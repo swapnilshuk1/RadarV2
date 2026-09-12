@@ -1,0 +1,6 @@
+# RADAR transition-control ownership
+/docs/RADAR_TRANSITION_CONTROL.md @swapnilshuk1
+/docs/transition/ @swapnilshuk1
+/scripts/transition/ @swapnilshuk1
+/.github/workflows/transition-control.yml @swapnilshuk1
+/.github/CODEOWNERS @swapnilshuk1
