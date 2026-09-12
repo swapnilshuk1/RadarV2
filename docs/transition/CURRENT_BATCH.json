@@ -1,7 +1,7 @@
 {
   "schemaVersion": "radar-transition-batch/v1",
   "controlRevision": "2026-09-13.2",
-  "scopeRevision": 1,
+  "scopeRevision": 2,
   "id": "GATE_1B_BATCH_01",
   "gate": "GATE_1B",
   "title": "Source/provenance immutability",
@@ -34,7 +34,12 @@
     "src/domain/entities.ts",
     "src/domain/repositories.ts",
     "src/lib/provenance/",
-    "src/lib/domain/source_provenance.ts"
+    "src/lib/domain/source_provenance.ts",
+    "tests/TEST_INVENTORY.md",
+    "tests/acquisition/ingestion-lineage.test.ts",
+    "tests/acquisition/source-payload-provenance.test.ts",
+    "tests/persistence/populated-migration.test.ts",
+    "tests/persistence/source-provenance-immutability.test.ts"
   ],
   "requiredVerification": [
     "npm run transition:check before implementation",
@@ -51,6 +56,6 @@
     "no evaluation/policy/dossier/serving behavior changes",
     "all governed commits made during the batch are acknowledged in the transition implementation ledger"
   ],
-  "agentCompletionRule": "Every committed change touching a non-governance path must be acknowledged by exact commit SHA in docs/transition/IMPLEMENTATION_LEDGER.json before the agent may report completion. Update RADAR_TRANSITION_CONTROL.md itself only when gate/scope/decision/invariant/exit criteria change.",
+  "agentCompletionRule": "Every committed change touching a non-governance path must be acknowledged by exact commit SHA in docs/transition/IMPLEMENTATION_LEDGER.json before the agent may report completion. Uncommitted governed changes fail transition control. Tests are governed changes and require explicit authorization in allowedPathPrefixes. Update RADAR_TRANSITION_CONTROL.md itself only when gate/scope/decision/invariant/exit criteria change.",
   "scopeChangeRule": "If implementation requires a path or semantic owner outside this manifest, stop first. Amend the control record/state/batch scope explicitly; do not bypass the transition verifier."
 }
