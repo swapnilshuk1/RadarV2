@@ -11,5 +11,37 @@
     ".github/workflows/transition-control.yml",
     ".github/CODEOWNERS"
   ],
-  "acknowledgements": []
+  "acknowledgements": [
+    {
+      "commit": "d48dccaadb08d96f8941092ec054c46c10fc4365",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_01",
+      "scopeRevision": 3,
+      "summary": "Adds immutable candidate/role source identities, exact source-snapshot references, content-addressed PDF source payloads, and fail-closed provenance regression coverage.",
+      "invariantsChecked": [
+        "The implementation diff is limited to the five production/test paths authorized for Gate 1B Batch 01.",
+        "New PDF source keys are content-addressed and canonical opportunity-version persistence rejects a conflicting binary source identity.",
+        "SourceSnapshotResolver binds binary role sources to the persisted payload key and exact SHA-256 digest."
+      ],
+      "verification": [
+        "GitHub compare b4b144116cf70d952650263d71fa7fba083b6795...d48dccaadb08d96f8941092ec054c46c10fc4365: PASS; exactly five authorized files changed."
+      ],
+      "authorizationChanged": false
+    },
+    {
+      "commit": "467710de2b103f5d9050faa451dd294c9a6a87d1",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_01",
+      "scopeRevision": 3,
+      "summary": "Verification-only temporary branch change that makes PR CI run the two targeted source/provenance suites before the normal certification runner.",
+      "invariantsChecked": [
+        "The verification-only package change does not alter production runtime behavior.",
+        "The package diff changes only the certify:radar command on the temporary verification branch."
+      ],
+      "verification": [
+        "Verification-only commit prepared for GitHub Actions CI; final test evidence is recorded on the governed branch acknowledgement after the run completes."
+      ],
+      "authorizationChanged": false
+    }
+  ]
 }
