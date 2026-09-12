@@ -35,7 +35,7 @@
     "certify": "npm run transition:check && tsx scripts/certify.ts",
     "certify:profile": "npm run transition:check && tsx scripts/certify.ts --profile",
     "certify:affected": "tsx scripts/certification/affected.ts",
-    "certify:radar": "npm run certify",
+    "certify:radar": "npx vitest run tests/persistence/source-provenance-immutability.test.ts tests/acquisition/source-payload-provenance.test.ts && tsx scripts/certify.ts",
     "smoke": "tsx --env-file=.env scripts/smoke_production.ts",
     "diagnose": "tsx --env-file=.env scripts/diagnose.ts",
     "repair:canonical-urls": "tsx scripts/repair-canonical-apply-urls.ts",
