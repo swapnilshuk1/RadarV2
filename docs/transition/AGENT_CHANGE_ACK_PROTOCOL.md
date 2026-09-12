@@ -47,6 +47,7 @@ and increment the relevant revision.
 Examples:
 
 - an implementation needs a path outside the current allowlist;
+- a test needs to be created or edited outside an explicitly authorized test path;
 - the batch objective changes;
 - a `mustNotChange` item must be relaxed;
 - completion evidence changes materially;
@@ -81,6 +82,7 @@ The implementation-ledger requirement does not apply to commits that modify only
 Governance-only paths are:
 
 ```text
+AGENTS.md
 docs/RADAR_TRANSITION_CONTROL.md
 docs/transition/
 docs/gate1/GATE1A_GOVERNANCE_DRIFT_POSTMORTEM.md
@@ -91,7 +93,7 @@ scripts/transition/
 
 Any commit touching any other path is a governed change and must receive an implementation-ledger acknowledgement.
 
-Tests are governed changes. Documentation outside the paths above is also a governed change. This is intentional: an agent should not be able to alter implementation claims, tests, or other project state without an explicit handoff record.
+Tests are governed changes and receive **no blanket scope exemption**. A test file must be explicitly authorized by `docs/transition/CURRENT_BATCH.json` just like production code. Documentation outside the paths above is also a governed change. This is intentional: an agent should not be able to alter implementation claims, tests, or other project state without an explicit handoff record.
 
 ## 3. Agent execution protocol
 
@@ -123,14 +125,17 @@ Therefore:
 
 ```text
 uncommitted local work
-  → may be incomplete while the agent is working
+  → may be incomplete while the agent is actively working
+  → transition:check FAILS until governed edits are committed
 
 committed governed change
   → MUST be acknowledged before the branch can return green
 
 agent completion/handoff
-  → forbidden while any governed commit is unacknowledged
+  → forbidden while governed work is dirty or any governed commit is unacknowledged
 ```
+
+This means an agent may perform normal local editing between checks, but there is no valid completion/handoff state in which governed changes are uncommitted or unacknowledged.
 
 ## 5. Main control document is not a progress diary
 
@@ -155,9 +160,10 @@ Routine within-batch implementation evidence belongs in `IMPLEMENTATION_LEDGER.j
 
 - any governed commit after ledger enforcement began lacks an acknowledgement entry;
 - an acknowledgement references a commit that is not in branch history;
-- an acknowledgement is for the wrong gate, batch, or scope revision;
+- an acknowledgement for the active batch records the wrong gate, batch, or scope revision;
 - current state/batch revisions disagree;
-- changed paths exceed the batch allowlist;
+- any changed implementation or test path exceeds the batch allowlist;
+- any governed worktree or staged change remains uncommitted at transition-check time;
 - a later gate is entered without its prerequisite certification/decision.
 
 The GitHub Actions `Transition Control` workflow runs this check on transition-branch pushes and pull requests.
@@ -168,7 +174,7 @@ The GitHub Actions `Transition Control` workflow runs this check on transition-b
 
 In-repository checks cannot cryptographically prevent an agent with repository write access from weakening the checks themselves.
 
-Therefore `.github/CODEOWNERS` marks transition-control files as owned by `@swapnilshuk1`.
+Therefore `.github/CODEOWNERS` marks transition-control files, including `AGENTS.md`, as owned by `@swapnilshuk1`.
 
 For strong server-side enforcement, GitHub branch/ruleset protection should require:
 
@@ -188,4 +194,5 @@ At the start of Gate 1B Batch 01:
 - only source/provenance immutability work is authorized;
 - EvidenceGraph is not authorized;
 - evaluation/policy/dossier/serving/UI semantic changes are not authorized;
+- only the provenance/lineage test surfaces explicitly named in `docs/transition/CURRENT_BATCH.json` are authorized;
 - every future governed commit must be acknowledged before agent completion.
