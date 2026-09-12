@@ -7,14 +7,58 @@ This document is the governing execution record for the RADAR intelligence trans
 ## 1. Current Baseline
 
 - Repository: `swapnilshuk1/RadarV2`
-- Working branch: `phase5/intelligence-narrator-platform`
+- Working branch: `phase5/gate1-architecture-recon`
 - Frozen Extraction V1 baseline commit: `adbfc375ab3f1974cb73c87bc24279f3877ac610`
 - Baseline commit message: `feat(intelligence): extraction v1 closure with frozen corpus invariants and high precision role propositions`
 - Frozen corpus source branch: `codex/candidate-corpus-100`
 - Frozen corpus commit: `e1f0a47575accedcd7fd3d681c7b084ca377b0fd`
-- Current execution gate: **Gate 1 of 3 — substrate/contracts + extraction architecture decision**
+- Current execution gate: **Gate 1 of 3 — Gate 1B substrate/provenance + extraction architecture decision**
+- Gate 1A architecture reconnaissance: **COMPLETE**
 
 The `adbfc37` extractors are a deterministic benchmark and fallback/reference implementation. They are **not assumed to be the final production extraction architecture**.
+
+### Gate 1A reconnaissance record
+
+Gate 1A completed six code-grounded reconnaissance batches before production implementation:
+
+```text
+Batch 01 — evaluation → materialization
+  36af2ebabca1c1cb023f0968d2175cef431fba18
+
+Batch 02 — assessment + policy semantics
+  2d5b1a5ffef277cb3117a3d249623e3ff8ec4729
+
+Batch 03 — V2 editorial/proposition architecture
+  2e325882a6ab5586ccc54959d2b30f8d6536077b
+
+Batch 04 — serving/read path + legacy coexistence
+  f4e1ae73d3ccc66e816cda3c44bf3738b9cca25f
+
+Batch 05 — source/provenance durability + V1 retirement prerequisites
+  edb84ea92190b3c6d430fb845da0c267e626ab89
+
+Batch 06 — contract reconciliation + migration sequence
+  cf43e43185065e866b07680e357dc224889af10e
+```
+
+The governance correction is recorded in:
+
+```text
+docs/gate1/GATE1A_RECON_BATCH_06A_CONTROL_RECONCILIATION.md
+```
+
+Gate 1A established:
+
+- the V2 persisted dossier/serving shell is reusable and should be evolved rather than discarded;
+- a parallel second `DossierPlan` stack should not be introduced;
+- the existing `EditorialIntelligenceContract` is the plan-like seam to evolve/version;
+- semantic ownership must be split among source facts, role↔candidate relationships, evaluation, decision policy, editorial planning, composition, persistence and serving;
+- source/provenance IDs must be lifetime-resolvable, not merely deterministic;
+- candidate source immutability/versioning is therefore a legitimate prerequisite;
+- v4.3 remains historical canonical truth and should receive a clean successor rather than semantic mutation;
+- V1 remains compatibility-only until exact-input backfill/cutover coverage is proven.
+
+**Still open:** the production extraction architecture. Gate 1A validated useful contracts and the deterministic baseline; it did **not** decide whether production role/candidate semantic extraction should be deterministic, LLM-first, or hybrid.
 
 ## 2. Product Goal
 
@@ -49,11 +93,13 @@ CandidateProof           │
      Fit / identity   Career value   Friction/risk
           └──────────────┼───────────────┘
                          ↓
-             Decision + Uncertainties
+              Decision Policy
+                         ↓
+       Decision Hinges / Uncertainties
                          ↓
                 PursuitStrategy
                          ↓
-                   DossierPlan
+     EditorialIntelligenceContract / DossierPlan
                          ↓
               BriefCompositionEngine
                          ↓
@@ -71,13 +117,14 @@ These are architectural constraints. A local test pass cannot override them.
 1. **Extraction discovers source facts.** It does not make candidate-role fit judgments or recommendations.
 2. **Source provenance is mechanically verifiable.** Exact quotes/spans must resolve against the designated source.
 3. **Matching establishes relationships.** It may classify the relationship between role evidence and candidate proof, but cannot invent either side.
-4. **Evaluation makes judgments.** Fit, identity, career value, trajectory, friction, risks, verdicts, and decision sensitivity belong here.
-5. **Unknowns remain unknown.** Missing reporting lines, P&L authority, compensation, team scale, etc. must not be silently filled with generic assumptions.
-6. **Composition writes; it does not discover.** `BriefCompositionEngine` may choose wording, order, compression, emphasis, and transitions. It may not discover facts, create new evaluations, invent unknowns, or change the authoritative verdict.
-7. **Persistence stores canonical evaluated truth.** Serving/presentation must not recompute advisory truth independently.
-8. **Corpus performance does not define correctness.** Production rules may not be tailored to corpus IDs, company names, benchmark literals, or one-off source phrases.
-9. **No subsystem is optimized in isolation.** Every change is evaluated for downstream effect on the final dossier and upstream truth guarantees.
-10. **Agent reports are not implementation evidence.** Review actual code/diff first, tests second, report third.
+4. **Evaluation makes policy-independent judgments.** Fit, identity, capability, career value, trajectory, friction, risks, uncertainty, intrinsic quality and confidence belong here.
+5. **Decision policy owns the final recommendation.** `PURSUE | CONSIDER | PASS`, deterministic rule consequences, decision hinges and policy-level pursuit consequences must come from versioned policy, not prose generation.
+6. **Unknowns remain unknown.** Missing reporting lines, P&L authority, compensation, team scale, etc. must not be silently filled with generic assumptions.
+7. **Composition writes; it does not discover.** `BriefCompositionEngine` may choose wording, order, compression, emphasis, and transitions. It may not discover facts, create new evaluations, invent unknowns, or change the authoritative verdict.
+8. **Persistence stores canonical evaluated truth.** Serving/presentation must not recompute advisory truth independently.
+9. **Corpus performance does not define correctness.** Production rules may not be tailored to corpus IDs, company names, benchmark literals, or one-off source phrases.
+10. **No subsystem is optimized in isolation.** Every change is evaluated for downstream effect on the final dossier and upstream truth guarantees.
+11. **Agent reports are not implementation evidence.** Review actual code/diff first, tests second, report third.
 
 ## 5. Canonical Contracts to Establish
 
@@ -96,31 +143,44 @@ For every material role atom/requirement, candidate evidence relationships such 
 - `ADJACENT`
 - `TRANSFERABLE`
 - `UNSUPPORTED`
+- `CONTRADICTED`
+- `UNKNOWN`
 
 Each edge must retain role evidence IDs, candidate proof IDs, rationale/relationship metadata, and confidence/epistemic status as appropriate.
 
 ### `EvaluationSnapshot`
-The authoritative advisory state, including at minimum:
+The authoritative **policy-independent** advisory state, including at minimum:
 
-- verdict;
+- intrinsic quality / fit score;
 - identity assessment;
 - capability assessment;
 - career value / trajectory assessment;
 - lifestyle/friction assessment;
-- decision drivers;
-- decision risks;
-- evidence strength;
-- triggered policy/rule IDs where deterministic policy remains relevant;
+- decision drivers / strengths;
+- decision risks / constraints;
+- evidence completeness;
+- decision confidence;
+- explicit unknowns;
 - provenance to graph/evidence IDs.
+
+### `DecisionPolicyOutput`
+The authoritative deterministic pursuit decision, including at minimum:
+
+- final `PURSUE | CONSIDER | PASS` verdict;
+- triggered policy/rule IDs;
+- structured reasons/effects;
+- policy version;
+- provenance to the exact EvaluationSnapshot;
+- structured decision hinges and pursuit consequences where policy-relevant.
 
 ### `DecisionHinges` / `Uncertainties`
 Explicit unresolved questions and why they matter, including what confirming/rejecting the unknown would do to the recommendation.
 
 ### `PursuitStrategy`
-Effort level, pursuit mode, tailoring depth, immediate next action, dependencies, stop conditions, and provenance to the authoritative evaluation.
+Effort level, pursuit mode, tailoring depth, immediate next action, dependencies, stop conditions, and provenance to the authoritative evaluation/policy output.
 
-### `DossierPlan`
-The immediate semantic input to composition. It selects the judgments and evidence that Sections I–IX may express. Every material item must be grounded by evidence/graph/evaluation IDs and carry epistemic status.
+### `EditorialIntelligenceContract` / `DossierPlan`
+The immediate semantic input to composition. Gate 1A found that the existing `EditorialIntelligenceContract` already occupies this architectural slot and should be evolved/versioned rather than duplicated by a second plan stack. It selects the judgments and evidence that Sections I–IX may express. Every material item must be grounded by evidence/graph/evaluation/policy IDs and carry epistemic status.
 
 Suggested epistemic labels:
 
@@ -159,7 +219,7 @@ Remove or move upstream where currently present:
 Target composition boundary:
 
 ```ts
-compose(dossierPlan, groundedContext)
+compose(editorialPlan, groundedContext)
 ```
 
 not:
@@ -232,33 +292,51 @@ The decision to switch must be based on empirical generalization and provenance 
 
 ### Gate 1 — Substrate, Contracts, Extraction Architecture
 
-Target: **1–1.5 focused engineering days**.
+Gate 1A reconnaissance is **complete**. Gate 1 remains open for Gate 1B implementation and extraction certification.
 
 Scope:
 
 - freeze `adbfc37` as deterministic baseline;
-- inspect current end-to-end RADAR code before introducing contracts;
-- define canonical contracts listed above;
-- identify existing reusable types/components and architectural conflicts;
-- implement an LLM-backed extraction path **beside** the deterministic baseline, not by deleting it;
+- inspect current end-to-end RADAR code before introducing contracts — **complete via Gate 1A recon**;
+- define/reconcile canonical contracts — **substantially complete via Gate 1A recon**;
+- identify existing reusable types/components and architectural conflicts — **complete enough to implement**;
+- harden source/provenance immutability;
+- implement an extraction provider boundary with the deterministic baseline preserved beside an LLM-backed path;
 - share the same mechanical provenance/validation layer where practical;
 - build a comparative audit harness using frozen + unseen/adversarial inputs;
-- decide whether role extraction, candidate extraction, or both should switch architectures.
+- decide whether role extraction, candidate extraction, or both should be deterministic, LLM-first, or hybrid;
+- persist the canonical source-fact contracts/implementation justified by that evidence.
+
+#### Gate 1B implementation order
+
+```text
+Batch 01 — source/provenance immutability
+Batch 02 — extraction provider boundary + common mechanical verifier
+Batch 03 — LLM RoleIntelligence / CandidateProof experiment beside adbfc37
+Batch 04 — frozen + unseen/adversarial comparison
+Batch 05 — written extraction architecture decision
+Batch 06 — canonical source-fact persistence/contracts
+```
+
+Do **not** begin EvidenceGraph implementation before the Gate 1 extraction decision and source-fact persistence are certified.
 
 Gate 1 exit criteria:
 
 - versioned contracts exist and compile;
 - existing production behavior has not been silently rewired;
+- source/evidence identities used canonically are lifetime-resolvable;
 - deterministic baseline remains reproducible;
-- LLM extraction is bounded behind an interface/adapter and is not serving production truth yet;
+- LLM extraction is bounded behind an interface/adapter and is not serving production truth during the experiment;
 - exact-source/provenance failures fail closed;
 - comparative evidence covers unseen/adversarial inputs, not just corpus recall;
-- a written extraction architecture decision is recorded with evidence;
+- a written role-extraction architecture decision is recorded with evidence;
+- a written candidate-extraction architecture decision is recorded with evidence;
+- selected canonical source-fact persistence is implemented against exact immutable source versions;
 - no new corpus-specific production semantic rules are introduced.
 
 ### Gate 2 — Intelligence Core
 
-Target: **1.5–2 focused engineering days**.
+Gate 2 does **not** begin until Gate 1 exit is certified.
 
 Scope:
 
@@ -267,18 +345,28 @@ RoleIntelligence + CandidateProof
         ↓
 RoleCandidateEvidenceGraph
         ↓
-Evaluation
+EvaluationSnapshot
+        ↓
+DecisionPolicyOutput
         ↓
 Unknowns / Decision Hinges
         ↓
 PursuitStrategy
 ```
 
+Gate 2 owns the implementation work that Batch 06 had temporarily grouped under `Gate 1B` for:
+
+- typed persistent EvidenceGraph;
+- policy-independent EvaluationSnapshot;
+- deterministic DecisionPolicyOutput;
+- structured Decision Hinges / Uncertainties;
+- PursuitStrategy.
+
 Gate 2 must structurally answer:
 
 - What does the role materially require?
 - What can the candidate actually prove?
-- What is direct, adjacent, transferable, or unsupported?
+- What is direct, adjacent, transferable, unsupported, contradicted, or unknown?
 - Is the role worth pursuing?
 - Why?
 - What are the material risks?
@@ -289,55 +377,64 @@ Gate 2 must structurally answer:
 Gate 2 exit criteria:
 
 - every material judgment traces to evidence/graph IDs;
-- unsupported facts remain unsupported;
+- unsupported, contradicted and unknown remain distinct;
 - uncertainties are explicit;
 - verdict and strategy are authoritative and non-contradictory;
 - no dossier prose is required to make the decision intelligible;
-- evaluation does not rely on presentation-layer heuristics.
+- evaluation does not rely on presentation-layer heuristics;
+- policy is deterministic for the same exact evaluation + policy + pursuit inputs.
 
 ### Gate 3 — Dossier Plan, Composition, Canonical End-to-End
 
-Target: **1.5–2 focused engineering days**.
+Gate 3 does **not** begin until Gate 2 exit is certified.
 
 Scope:
 
 ```text
-Evaluation package
+Evaluation + Policy package
       ↓
-DossierPlan
+EditorialIntelligenceContract / EditorialPlan vNext
       ↓
-BriefCompositionEngine
+BriefCompositionEngine / proposition composition
       ↓
-Canonical persisted artifact
+Successor canonical persisted dossier artifact
       ↓
-Serving
+Dual-write / exact-input backfill
+      ↓
+Serving cutover
+      ↓
+V1 retirement
       ↓
 UI
 ```
+
+Gate 3 owns the implementation work that Batch 06 had temporarily grouped under `Gate 1B` for:
+
+- evolved `EditorialIntelligenceContract` / EditorialPlan;
+- successor persisted dossier;
+- dual-write/parity work;
+- exact-input backfill;
+- serving cutover;
+- V1 retirement.
 
 Gate 3 exit criteria:
 
 - Sections I–IX are planned from grounded judgments;
 - composition cannot create new advisory facts;
-- every material dossier claim is traceable to plan/evaluation/evidence;
+- every material dossier claim is traceable to plan/evaluation/evidence/policy;
 - canonical evaluated artifact is persisted and consumed directly;
 - serving/presentation do not recompute candidate-specific advisory truth;
 - end-to-end dossiers are materially useful, not merely schema-valid;
+- 100% of reachable active legacy dossier states are classified before V1 removal;
 - regression/build/test suites pass at the integration boundary.
 
 ## 9. Execution Timebox
 
-Target: **4–6 focused engineering days total**.
+Original planning target: **4–6 focused engineering days total**.
 
-A plausible compressed path:
+The target is subordinate to the gate evidence. Gate 1A reconnaissance expanded because code inspection exposed existing V2, legacy coexistence and provenance constraints that had to be understood before safe implementation.
 
-- Day 1: repo-wide architecture inspection, contracts, LLM extraction implementation/harness begins;
-- Day 2: extraction comparison/decision + EvidenceGraph implementation begins;
-- Day 3: EvidenceGraph + Evaluation + DecisionHinges + PursuitStrategy;
-- Day 4: DossierPlan + composition integration + first end-to-end certification;
-- Days 5–6: contingency for real integration failures or architecture corrections, not scope expansion.
-
-Do not compress below what evidence supports. A green unit suite is not a reason to close a gate early.
+From this point, do not compress below what evidence supports. A green unit suite is not a reason to close a gate early.
 
 ## 10. Supervisory Review Protocol
 
@@ -366,7 +463,7 @@ Every supervisory response should begin with a compact orientation such as:
 | Evidence graph | Are role ↔ candidate relationships defensible and traceable? |
 | Evaluation / policy | Does the recommendation actually follow from grounded relationships and declared policy? |
 | Unknowns / hinges | Are unresolved facts explicit, ranked, and decision-sensitive? |
-| Pursuit strategy | Does recommended effort follow from the authoritative evaluation? |
+| Pursuit strategy | Does recommended effort follow from the authoritative evaluation/policy? |
 | Dossier planning | Is every planned statement grounded and epistemically labeled? |
 | Composition | Is it expressing rather than discovering/evaluating? |
 | Persistence | Is the canonical evaluated artifact stored without semantic loss? |
@@ -397,7 +494,9 @@ Unless required by the active gate, do not:
 - delete the deterministic Extraction V1 baseline;
 - introduce corpus/company/case-specific semantic patches;
 - treat historical fixture content as source truth;
-- allow browser/UI logic to become an alternative advisory engine.
+- allow browser/UI logic to become an alternative advisory engine;
+- implement Gate 2 EvidenceGraph/Evaluation/Policy work while Gate 1 extraction architecture remains uncertified;
+- implement Gate 3 editorial/serving cutover work before Gate 2 is certified.
 
 ## 14. Decision Log
 
@@ -408,33 +507,74 @@ Unless required by the active gate, do not:
 **Decision:** The 100 frozen cases remain a regression benchmark. Architecture must be validated against unseen/adversarial inputs and general language/structure phenomena.
 
 ### D-003 — Composition cannot discover facts
-**Decision:** The future composition boundary is `DossierPlan + grounded context`; composition is downstream of evaluation and decision planning.
+**Decision:** The future composition boundary is an evolved `EditorialIntelligenceContract` / editorial plan plus grounded context; composition is downstream of evaluation and decision policy.
 
 ### D-004 — Three-gate compressed execution
-**Decision:** Transition is supervised through three integration gates rather than six sequential component gates, with parallel work inside gates and strict boundary reviews.
+**Decision:** Transition is supervised through three integration gates rather than a single long component migration, with parallel work inside gates and strict boundary reviews.
 
-## 15. Open Questions — Gate 1 Must Resolve
+### D-005 — Gate 1A reconnaissance complete
+**Decision:** Batches 01–06 provide sufficient code-grounded whole-system reconnaissance to begin implementation. Broad architecture reconnaissance stops unless implementation exposes a concrete contradiction.
 
-1. Which existing matcher/evaluator/policy/career-value components are genuinely reusable versus coupled to legacy `Opportunity` / projection assumptions?
-2. What is the minimum stable contract for `RoleCandidateEvidenceGraph` that supports evaluation without over-modeling future needs?
-3. Which semantic extraction work should move to an LLM for role facts, candidate proofs, or both?
-4. What deterministic validator layer should be shared between deterministic and LLM extraction paths?
-5. What model/provider abstraction, cache key, retry/fail-closed behavior, and structured-output schema are practical in the current app/runtime?
-6. What unseen/adversarial evaluation set is sufficient for a credible architecture decision without turning Gate 1 into a research project?
-7. Which existing canonical persistence/serving contracts can carry the future evaluation/dossier artifact without creating another parallel truth path?
+### D-006 — Extraction architecture decision remains open
+**Decision:** Reusable Extraction V1 contracts do not imply approval of the deterministic extractor as the final production implementation. Gate 1 must still compare deterministic vs LLM-backed/hybrid extraction on frozen and unseen/adversarial inputs before canonical production adoption.
+
+### D-007 — Preserve original Gate 1 / 2 / 3 ownership
+**Decision:** Source/provenance hardening, extraction experiment/decision and canonical source-fact persistence belong to Gate 1. EvidenceGraph/Evaluation/Policy/Hinges/PursuitStrategy belong to Gate 2. Editorial plan/composition/persistence-serving cutover/V1 retirement belong to Gate 3.
+
+### D-008 — Evolve the existing V2 editorial seam
+**Decision:** Do not introduce a second parallel `DossierPlan` stack. Evolve/version `EditorialIntelligenceContract` into the target plan-like boundary after Gate 2 supplies canonical semantic inputs.
+
+## 15. Remaining Open Questions — Gate 1 Must Resolve
+
+1. Which semantic extraction work should move to an LLM for role facts, candidate proofs, or both?
+2. What deterministic validator layer should be shared between deterministic and LLM extraction paths?
+3. What model/provider abstraction, cache key, retry/fail-closed behavior, and structured-output schema are practical in the current app/runtime?
+4. What unseen/adversarial evaluation set is sufficient for a credible architecture decision without turning Gate 1 into an open-ended research project?
+5. What exact extraction quality/provenance thresholds justify `DETERMINISTIC`, `LLM_FIRST`, or `HYBRID` separately for RoleIntelligence and CandidateProof?
+
+Gate 1A has already resolved enough of the earlier reuse/coupling and canonical persistence questions to begin this experiment without further broad recon.
 
 ## 16. Current Next Action
 
-**Gate 1 starts with repository-wide inspection, not coding by assumption.**
+**Gate 1B — Batch 01: Source/provenance immutability.**
 
-The first agent must:
+Implement only the source/provenance prerequisite:
 
-1. read this control file;
-2. inspect the actual current pipeline from scrape/ingestion through extraction/evaluation/persistence/serving/presentation;
-3. inspect `adbfc37` Extraction V1 implementation and tests;
-4. identify reusable existing intelligence components and legacy coupling;
-5. propose/finalize the minimum contracts and extraction experiment design;
-6. implement only Gate 1 scope after reconciling those findings with this document;
-7. return code/diff/test evidence and unresolved risks without declaring later gates complete.
+1. make candidate source document content immutable/versioned;
+2. prove exact candidate source resolution by durable source version/hash;
+3. prove role `opportunityVersion` source snapshots cannot be silently rewritten under the same identity;
+4. establish exact source-snapshot resolver primitives reusable by deterministic and LLM extraction;
+5. add narrow proving tests.
 
-When Gate 1 closes, update `Current execution gate`, Gate 1 results, and the Decision Log in this file in the same change set.
+Do **not** change:
+
+```text
+evaluation
+policy
+verdicts
+dossier content
+serving
+```
+
+Then proceed immediately to:
+
+```text
+Gate 1B — Batch 02
+Extraction provider boundary + common mechanical verifier
+
+Gate 1B — Batch 03
+LLM RoleIntelligence / CandidateProof experiment beside adbfc37
+
+Gate 1B — Batch 04
+Frozen + unseen/adversarial comparison
+
+Gate 1B — Batch 05
+Extraction architecture decision
+
+Gate 1B — Batch 06
+Canonical source-fact persistence/contracts
+```
+
+**EvidenceGraph is not the next step after source immutability.** It begins only after Gate 1 exit is certified.
+
+When Gate 1 closes, update `Current execution gate`, Gate 1 results, extraction architecture decisions, and the Decision Log in this file in the same change set.
