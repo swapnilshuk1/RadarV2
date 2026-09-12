@@ -13,6 +13,28 @@
   ],
   "acknowledgements": [
     {
+      "commit": "770a218d5c518591005d23ee8c1536c80cfbf32c",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_03",
+      "scopeRevision": 1,
+      "summary": "Added injected-transport experimental LLM RoleIntelligence and CandidateProof providers plus an experiment-only executor that runs only through the Batch 02 resolver-bound runner and shared mechanical verifier.",
+      "invariantsChecked": [
+        "LLM providers retain the Batch 02 provider contract and produce no canonical persistence or production authority",
+        "prompt version, response schema version, model, generation parameters, provider identity, and immutable source identity determine experiment and cache identity",
+        "malformed JSON, malformed envelope/schema, foreign source binding, unresolved source, and mechanical-verifier rejection become rejected experimental outcomes without repair",
+        "no evaluator, policy, dossier, serving, UI, persistence, EvidenceGraph, or production extraction module imports the experimental LLM path"
+      ],
+      "verification": [
+        "npm run transition:check before implementation — PASS (GATE_1B_BATCH_03 READY, scope revision 1, extraction architecture decision OPEN)",
+        "npx vitest run tests/intelligence/extraction/provider-boundary.test.ts tests/intelligence/extraction/llm-experimental-provider.test.ts tests/intelligence/role-intelligence-extractor-v1.test.ts tests/intelligence/candidate-proof-extractor-v1.test.ts — PASS (4 files, 48/48 tests)",
+        "npx tsc --noEmit — PASS",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "rg -n \"ExperimentalLlm|LlmExperimental|ExperimentalLlmExtractionExecutor\" src --glob '!src/lib/intelligence/extraction/**' — PASS (no production imports)",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "29235fe9e454e78a9b2f1c97a2e80547727e8d68",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_02",
