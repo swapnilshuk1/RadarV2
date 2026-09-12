@@ -96,6 +96,11 @@ if (batch.controlRevision !== state.controlRevision) {
     `Control revision mismatch: state=${state.controlRevision}, manifest=${batch.controlRevision}`,
   );
 }
+if (typeof batch.batchStartCommit !== "string" || !/^[0-9a-f]{40}$/i.test(batch.batchStartCommit)) {
+  die(`Invalid batchStartCommit: ${String(batch.batchStartCommit)}`);
+}
+
+git(["merge-base", "--is-ancestor", batch.batchStartCommit, "HEAD"]);
 
 const requiredControlText = [
   `Working branch: \`${state.workingBranch}\``,
@@ -279,6 +284,9 @@ for (const ack of acknowledgements) {
   ackByCommit.set(ack.commit, ack);
 }
 
+const currentBatchCommits = new Set(
+  lines(git(["rev-list", "--reverse", `${batch.batchStartCommit}..HEAD`], { allowFailure: true })),
+);
 const commitShas = lines(
   git(["rev-list", "--reverse", `${ledger.enforcementStartCommit}..HEAD`], { allowFailure: true }),
 );
@@ -297,12 +305,13 @@ for (const commitSha of commitShas) {
   }
 
   if (
-    ack.gate !== state.activeGate ||
-    ack.batchId !== state.activeBatchId ||
-    ack.scopeRevision !== state.currentBatchScopeRevision
+    currentBatchCommits.has(commitSha) &&
+    (ack.gate !== state.activeGate ||
+      ack.batchId !== state.activeBatchId ||
+      ack.scopeRevision !== state.currentBatchScopeRevision)
   ) {
     die(
-      `Acknowledgement ${commitSha} does not match current authorization: ` +
+      `Acknowledgement ${commitSha} does not match active-batch authorization: ` +
         `recorded ${ack.gate}/${ack.batchId}/scope-${ack.scopeRevision}, ` +
         `current ${state.activeGate}/${state.activeBatchId}/scope-${state.currentBatchScopeRevision}`,
     );
@@ -324,21 +333,16 @@ if (unacknowledged.length > 0) {
   process.exit(1);
 }
 
-const unstagedOrStagedGoverned = [...changed].filter((file) =>
-  !governanceOnlyPrefixes.some((prefix) => pathMatchesPrefix(file, prefix)),
+const worktreeChanged = new Set();
+addLines(worktreeChanged, git(["diff", "--name-only"], { allowFailure: true }));
+addLines(worktreeChanged, git(["diff", "--cached", "--name-only"], { allowFailure: true }));
+const governedWorktree = [...worktreeChanged].filter(
+  (file) => !governanceOnlyPrefixes.some((prefix) => pathMatchesPrefix(file, prefix)),
 );
-if (unstagedOrStagedGoverned.length > 0) {
-  const worktreeChanged = new Set();
-  addLines(worktreeChanged, git(["diff", "--name-only"], { allowFailure: true }));
-  addLines(worktreeChanged, git(["diff", "--cached", "--name-only"], { allowFailure: true }));
-  const governedWorktree = [...worktreeChanged].filter(
-    (file) => !governanceOnlyPrefixes.some((prefix) => pathMatchesPrefix(file, prefix)),
+if (governedWorktree.length > 0) {
+  console.warn(
+    "TRANSITION CONTROL WARNING: uncommitted governed changes exist. They cannot be ledger-acknowledged until committed; agent completion is not allowed yet.",
   );
-  if (governedWorktree.length > 0) {
-    console.warn(
-      "TRANSITION CONTROL WARNING: uncommitted governed changes exist. They cannot be ledger-acknowledged until committed; agent completion is not allowed yet.",
-    );
-  }
 }
 
 const branch =
