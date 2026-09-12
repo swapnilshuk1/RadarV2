@@ -1,6 +1,6 @@
 {
   "schemaVersion": "radar-transition-batch/v1",
-  "controlRevision": "2026-09-13.1",
+  "controlRevision": "2026-09-13.2",
   "scopeRevision": 1,
   "id": "GATE_1B_BATCH_01",
   "gate": "GATE_1B",
@@ -21,6 +21,7 @@
     "docs/",
     "scripts/transition/",
     ".github/workflows/transition-control.yml",
+    ".github/CODEOWNERS",
     "package.json",
     "src/data/sqlite/migrations/",
     "src/data/sqlite/repositories/SqliteDocumentStore.ts",
@@ -34,16 +35,20 @@
     "src/lib/domain/source_provenance.ts"
   ],
   "requiredVerification": [
-    "npm run transition:check",
+    "npm run transition:check before implementation",
     "targeted source/provenance immutability tests",
-    "typecheck when TypeScript contracts change"
+    "typecheck when TypeScript contracts change",
+    "acknowledge every governed implementation commit in docs/transition/IMPLEMENTATION_LEDGER.json",
+    "npm run transition:check after acknowledgement and before agent completion"
   ],
   "completionEvidence": [
     "candidate source content cannot be rewritten under an existing durable source-version identity",
     "historical candidate evidence resolves to the same exact source text/hash after later uploads or extractions",
     "opportunityVersion source identity cannot be silently rewritten",
     "exact source-snapshot resolver primitives exist for later deterministic and LLM extraction paths",
-    "no evaluation/policy/dossier/serving behavior changes"
+    "no evaluation/policy/dossier/serving behavior changes",
+    "all governed commits made during the batch are acknowledged in the transition implementation ledger"
   ],
+  "agentCompletionRule": "Every committed change touching a non-governance path must be acknowledged by exact commit SHA in docs/transition/IMPLEMENTATION_LEDGER.json before the agent may report completion. Update RADAR_TRANSITION_CONTROL.md itself only when gate/scope/decision/invariant/exit criteria change.",
   "scopeChangeRule": "If implementation requires a path or semantic owner outside this manifest, stop first. Amend the control record/state/batch scope explicitly; do not bypass the transition verifier."
 }
