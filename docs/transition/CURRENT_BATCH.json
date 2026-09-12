@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "radar-transition-batch/v1",
+  "controlRevision": "2026-09-13.1",
+  "scopeRevision": 1,
+  "id": "GATE_1B_BATCH_01",
+  "gate": "GATE_1B",
+  "title": "Source/provenance immutability",
+  "status": "READY",
+  "objective": "Make canonical role/candidate source identities lifetime-resolvable and prove immutable source resolution without changing evaluation, policy, dossier, serving, or UI semantics.",
+  "mustNotChange": [
+    "evaluation semantics",
+    "policy semantics",
+    "PURSUE/CONSIDER/PASS verdict behavior",
+    "EvidenceGraph implementation",
+    "dossier/editorial content",
+    "serving behavior",
+    "UI advisory behavior",
+    "deterministic Extraction V1 baseline behavior"
+  ],
+  "allowedPathPrefixes": [
+    "docs/",
+    "scripts/transition/",
+    ".github/workflows/transition-control.yml",
+    "package.json",
+    "src/data/sqlite/migrations/",
+    "src/data/sqlite/repositories/SqliteDocumentStore.ts",
+    "src/data/sqlite/repositories/SqliteAcquisitionStore.ts",
+    "src/data/sqlite/repositories/SqliteOpportunityStore.ts",
+    "src/data/sqlite/repositories/SqliteSourceStore.ts",
+    "src/data/sqlite/provider.ts",
+    "src/domain/entities.ts",
+    "src/domain/repositories.ts",
+    "src/lib/provenance/",
+    "src/lib/domain/source_provenance.ts"
+  ],
+  "requiredVerification": [
+    "npm run transition:check",
+    "targeted source/provenance immutability tests",
+    "typecheck when TypeScript contracts change"
+  ],
+  "completionEvidence": [
+    "candidate source content cannot be rewritten under an existing durable source-version identity",
+    "historical candidate evidence resolves to the same exact source text/hash after later uploads or extractions",
+    "opportunityVersion source identity cannot be silently rewritten",
+    "exact source-snapshot resolver primitives exist for later deterministic and LLM extraction paths",
+    "no evaluation/policy/dossier/serving behavior changes"
+  ],
+  "scopeChangeRule": "If implementation requires a path or semantic owner outside this manifest, stop first. Amend the control record/state/batch scope explicitly; do not bypass the transition verifier."
+}
