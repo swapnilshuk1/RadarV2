@@ -38,14 +38,6 @@ function pathMatchesPrefix(file, prefix) {
   return file === prefix || file.startsWith(prefix);
 }
 
-function isTestPath(file) {
-  return (
-    file.startsWith("tests/") ||
-    file.includes("/__tests__/") ||
-    /\.(test|spec)\.[cm]?[jt]sx?$/.test(file)
-  );
-}
-
 function addLines(set, value) {
   for (const line of value.split(/\r?\n/)) {
     const trimmed = line.trim();
@@ -198,8 +190,6 @@ if (allowedPrefixes.length === 0) die("Current batch has no allowedPathPrefixes"
 
 const violations = [];
 for (const file of [...changed].sort()) {
-  if (isTestPath(file)) continue;
-
   const blockedBy = hardForbidden.find((prefix) => pathMatchesPrefix(file, prefix));
   if (blockedBy) {
     violations.push(`${file} — hard-blocked by ${state.activeGate} boundary (${blockedBy})`);
@@ -340,9 +330,14 @@ const governedWorktree = [...worktreeChanged].filter(
   (file) => !governanceOnlyPrefixes.some((prefix) => pathMatchesPrefix(file, prefix)),
 );
 if (governedWorktree.length > 0) {
-  console.warn(
-    "TRANSITION CONTROL WARNING: uncommitted governed changes exist. They cannot be ledger-acknowledged until committed; agent completion is not allowed yet.",
+  console.error(
+    "TRANSITION CONTROL FAIL: uncommitted governed changes exist and cannot be ledger-acknowledged:",
   );
+  for (const file of governedWorktree.sort()) console.error(`  - ${file}`);
+  console.error(
+    "\nCommit the authorized governed change, acknowledge that exact commit SHA in the implementation ledger, then rerun transition control before agent completion.",
+  );
+  process.exit(1);
 }
 
 const branch =
