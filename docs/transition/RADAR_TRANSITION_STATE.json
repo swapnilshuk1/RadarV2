@@ -1,12 +1,12 @@
 {
   "schemaVersion": "radar-transition-state/v1",
-  "controlRevision": "2026-09-13.3",
+  "controlRevision": "2026-09-13.4",
   "controlDocument": "docs/RADAR_TRANSITION_CONTROL.md",
   "workingBranch": "phase5/gate1-architecture-recon",
   "gate1AStatus": "COMPLETE",
   "activeGate": "GATE_1B",
   "activeGateTitle": "Substrate, provenance, and extraction architecture decision",
-  "activeBatchId": "GATE_1B_BATCH_02",
+  "activeBatchId": "GATE_1B_BATCH_03",
   "currentBatchManifest": "docs/transition/CURRENT_BATCH.json",
   "currentBatchScopeRevision": 1,
   "implementationLedger": "docs/transition/IMPLEMENTATION_LEDGER.json",
@@ -23,7 +23,7 @@
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "NONE — GATE_1B_BATCH_02 is complete; Batch 03 requires explicit authorization before implementation begins.",
+  "nextAuthorizedProductionWork": "GATE_1B_BATCH_03 only — Controlled LLM RoleIntelligence / CandidateProof extraction experiment. Batch 04 is not authorized.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,
