@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "radar-transition-implementation-ledger/v1",
+  "enforcementStartCommit": "68d1d42e8b62f5d03d62daf135140b0a486e0ec5",
+  "policy": "Every governed non-governance commit after enforcementStartCommit must be acknowledged here before transition control passes at agent completion.",
+  "governanceOnlyPathPrefixes": [
+    "docs/RADAR_TRANSITION_CONTROL.md",
+    "docs/transition/",
+    "docs/gate1/GATE1A_GOVERNANCE_DRIFT_POSTMORTEM.md",
+    "scripts/transition/",
+    ".github/workflows/transition-control.yml",
+    ".github/CODEOWNERS"
+  ],
+  "acknowledgements": []
+}
