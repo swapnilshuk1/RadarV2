@@ -11,5 +11,27 @@
     ".github/workflows/transition-control.yml",
     ".github/CODEOWNERS"
   ],
-  "acknowledgements": []
+  "acknowledgements": [
+    {
+      "commit": "975520554a0e13e0f2433cb12e4f55e3d133a80a",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_01",
+      "scopeRevision": 4,
+      "summary": "Bound canonical candidate and opportunity sources to immutable exact-source identities, added fail-closed source snapshot resolution, and made new binary opportunity captures content-addressed with an exact blob SHA-256 binding.",
+      "invariantsChecked": [
+        "candidate source-version content cannot be rewritten under an existing durable source identity",
+        "opportunity source_ref cannot be silently rewritten for an existing opportunity version",
+        "new binary opportunity source objects are content-addressed and the resolver verifies the exact blob SHA-256",
+        "historical candidate and opportunity source snapshots resolve by exact immutable identity with independent content-hash verification",
+        "evaluation, policy, dossier, serving, UI, EvidenceGraph, and deterministic Extraction V1 semantics are unchanged"
+      ],
+      "verification": [
+        "npx vitest run tests/acquisition/source-payload-provenance.test.ts tests/acquisition/ingestion-lineage.test.ts tests/persistence/populated-migration.test.ts — PASS (3 files, 14/14 tests)",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "npm run build — PASS",
+        "npx vitest run --config vitest.certification.config.ts — candidate: 504/506 tests passed; exact pre-implementation parent: 504/506 tests passed; both fail only scraper-operability scenarios AB and AL under Ubuntu, establishing zero new certification-manifest regressions from this commit"
+      ],
+      "authorizationChanged": false
+    }
+  ]
 }
