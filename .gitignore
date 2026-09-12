@@ -109,3 +109,22 @@ rejected-unsafe-artifacts.json
 
 # TypeScript build info cache
 *.tsbuildinfo
+
+# Root forensic reports and benchmark dumps
+/*audit*.md
+/*report*.md
+/*diagnostic*.md
+/*adjudication*.md
+/*remediation*.md
+/*evidence*.md
+/P3-*.md
+/P4-*.md
+/RADAR_V4_*.md
+/phase-p*.md
+/transition_plan*.md
+/implementation-plan*.md
+/implementation_plan.md
+cohort_39_*.json
+scraped_39_*.json
+p3a-corpus-results.json
+scripts/forensic_sparse_report.json
