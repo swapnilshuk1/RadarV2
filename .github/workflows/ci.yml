@@ -1,10 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
+    branches: [phase5/gate1-architecture-recon]
 
 jobs:
   verify:
@@ -25,6 +23,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Gate 1B source/provenance verification
+        run: npx vitest run tests/acquisition/source-payload-provenance.test.ts tests/acquisition/ingestion-lineage.test.ts tests/persistence/populated-migration.test.ts
 
       - name: Typecheck TypeScript
         run: npx tsc -p tsconfig.verify.json --noEmit
