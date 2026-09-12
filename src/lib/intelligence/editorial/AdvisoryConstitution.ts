@@ -9,81 +9,6 @@ export interface AdvisoryRuleCheck {
   reason: string;
 }
 
-export type EditorialEvidenceState = "EVALUATED" | "SPARSE_SPEC" | "UNEVALUATED" | "UNAVAILABLE";
-
-export interface EditorialSufficiency {
-  readonly state: EditorialEvidenceState;
-  readonly isSufficient: boolean;
-  readonly message?: string;
-}
-
-/**
- * A composition-only view of evidence already carried by an evaluated
- * opportunity. It does not create authority or infer missing role facts.
- */
-export interface SectionEvidenceInventory {
-  readonly hasIdentity: boolean;
-  readonly hasSourceText: boolean;
-  readonly hasCanonicalEvaluation: boolean;
-  readonly hasExplicitEvidence: boolean;
-  readonly mandateQuotes: readonly string[];
-  readonly functionalScopeQuotes: readonly string[];
-  readonly reportingLineQuotes: readonly string[];
-  readonly commercialAccountabilityQuotes: readonly string[];
-  readonly decisionRightsQuotes: readonly string[];
-  readonly sourceGroundedQuotes: readonly string[];
-  readonly hasCapabilityAssessment: boolean;
-  readonly hasCareerAssessment: boolean;
-  readonly hasUsableInformation: boolean;
-}
-
-type EditorialInput = {
-  role?: unknown;
-  canonicalTitle?: unknown;
-  company?: unknown;
-  companyName?: unknown;
-  description?: unknown;
-  normalizedText?: unknown;
-  rawText?: unknown;
-  rawDescription?: unknown;
-  dimensions?: unknown;
-  engineRecommendation?: unknown;
-  recommendationResult?: unknown;
-  evaluationState?: unknown;
-  decision?: unknown;
-};
-
-import {
-  isMeaningfulEvidenceQuote,
-  MANDATE_BEARING_DIMENSION_KEYS,
-  isMandateBearingDimensionKey,
-} from "@/domain/evidence";
-
-export {
-  isMeaningfulEvidenceQuote,
-  MANDATE_BEARING_DIMENSION_KEYS,
-  isMandateBearingDimensionKey,
-};
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === "object" ? value as Record<string, unknown> : null;
-}
-
-function asText(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function meaningfulQuotes(record: Record<string, unknown> | null): string[] {
-  const evidence = asRecord(record?.jdEvidence);
-  if (evidence?.status !== "Explicit") return [];
-  const quotes = Array.isArray(evidence.evidence)
-    ? evidence.evidence.map((item) => asText(asRecord(item)?.quote)).filter(isMeaningfulEvidenceQuote)
-    : [];
-  const singleQuote = asText(evidence.quote);
-  if (isMeaningfulEvidenceQuote(singleQuote) && !quotes.includes(singleQuote)) quotes.push(singleQuote);
-  return quotes;
-}
-
 export class AdvisoryConstitution {
   
   public static readonly PRINCIPLES = {
@@ -97,153 +22,52 @@ export class AdvisoryConstitution {
   };
 
   /**
-   * Separates evidence availability by section so a missing reporting line, for
-   * example, cannot erase an explicit mandate or recorded capability assessment.
-   */
-  public static inspectSectionEvidence(opportunity: unknown): SectionEvidenceInventory {
-    const input = asRecord(opportunity) as EditorialInput | null;
-    const dimensions = Array.isArray(input?.dimensions) ? input.dimensions : [];
-    const quotesFor = (key: string): string[] => dimensions
-      .filter((dimension) => asText(asRecord(dimension)?.key) === key)
-      .flatMap((dimension) => meaningfulQuotes(asRecord(dimension)));
-    const sourceGroundedQuotes = dimensions.flatMap((dimension) => meaningfulQuotes(asRecord(dimension)));
-    const mandateQuotes = quotesFor("mandate");
-    const functionalScopeQuotes = quotesFor("functionalScope");
-    const reportingLineQuotes = quotesFor("reportingLine");
-    const commercialAccountabilityQuotes = [
-      ...new Set([
-        ...quotesFor("commercialAccountability"),
-        ...quotesFor("commercialScope"),
-      ]),
-    ];
-    const decisionRightsQuotes = [
-      ...new Set([
-        ...quotesFor("decisionAuthority"),
-        ...mandateQuotes.filter((quote) =>
-          /decision|authority|accountable|approve|sign[- ]?off/i.test(quote),
-        ),
-        ...functionalScopeQuotes.filter((quote) =>
-          /decision|authority|accountable|approve|sign[- ]?off/i.test(quote),
-        ),
-      ]),
-    ];
-    const recommendation = asRecord(input?.engineRecommendation) || asRecord(input?.recommendationResult);
-    const capabilityFit = asRecord(recommendation?.capabilityFit);
-    const careerAssessment = asText(recommendation?.relativeDifferentiator)
-      || asText(recommendation?.trajectoryUpside)
-      || asText(recommendation?.careerValueProtection);
-    const sourceText = asText(input?.description) || asText(input?.normalizedText) || asText(input?.rawText) || asText(input?.rawDescription);
-    const hasExplicitEvidence = sourceGroundedQuotes.length > 0;
-    const hasCanonicalEvaluation = Boolean(recommendation);
-
-    return {
-      hasIdentity: Boolean(asText(input?.role) || asText(input?.canonicalTitle))
-        && Boolean(asText(input?.company) || asText(input?.companyName)),
-      hasSourceText: sourceText.length > 0,
-      hasCanonicalEvaluation,
-      hasExplicitEvidence,
-      mandateQuotes,
-      functionalScopeQuotes,
-      reportingLineQuotes,
-      commercialAccountabilityQuotes,
-      decisionRightsQuotes,
-      sourceGroundedQuotes,
-      hasCapabilityAssessment: Boolean(capabilityFit && (
-        Array.isArray(capabilityFit.matchedCapabilities)
-        || Array.isArray(capabilityFit.missingCapabilities)
-        || typeof capabilityFit.overallFit === "number"
-      )),
-      hasCareerAssessment: Boolean(careerAssessment),
-      hasUsableInformation: hasCanonicalEvaluation || hasExplicitEvidence || sourceText.length > 0,
-    };
-  }
-
-  /**
    * Enforces INV-DATA-SUFFICIENCY: Prohibits high-confidence editorial synthesis on low-evidence inputs.
    */
-  public static validateDataSufficiency(opportunity: unknown): EditorialSufficiency {
-    const input = asRecord(opportunity) as EditorialInput | null;
-    if (!input || !(asText(input.role) || asText(input.canonicalTitle)) || !(asText(input.company) || asText(input.companyName))) {
+  public static validateDataSufficiency(opportunity: any): { isSufficient: boolean; message?: string } {
+    const text = (opportunity.description || opportunity.normalizedText || "").trim();
+    
+    // Prohibit synthesis on JDs with fewer than 200 characters or missing description
+    if (!text || text.length < 200) {
       return {
-        state: "UNAVAILABLE",
-        isSufficient: false,
-        message: "The opportunity record is incomplete and cannot support an executive brief."
-      };
-    }
-
-    const declaredState = asText(input.evaluationState);
-    if (declaredState === "SPARSE_SPEC" || input.decision === "SPARSE_SPEC") {
-      return {
-        state: "SPARSE_SPEC",
-        isSufficient: false,
-        message: "The published role specification is sparse. Confirm the mandate, reporting line, and decision rights during the initial recruiter conversation."
-      };
-    }
-
-    const text = asText(input.description) || asText(input.normalizedText) || asText(input.rawText) || asText(input.rawDescription);
-    const dimensions = Array.isArray(input.dimensions) ? input.dimensions : [];
-
-    const hasExplicitMeaningfulEvidence = (record: Record<string, unknown> | null): boolean => {
-      if (!record) return false;
-      const evidence = asRecord(record.jdEvidence);
-      if (evidence?.status !== "Explicit") return false;
-      const quotes = Array.isArray(evidence.evidence)
-        ? (evidence.evidence as unknown[]).map((e) => asRecord(e)?.quote).filter(isMeaningfulEvidenceQuote)
-        : [];
-      const singleQuote = typeof evidence.quote === "string" && isMeaningfulEvidenceQuote(evidence.quote);
-      return quotes.length > 0 || singleQuote;
-    };
-
-    const explicitEvidenceCount = dimensions.filter((dimension) => {
-      const record = asRecord(dimension);
-      return hasExplicitMeaningfulEvidence(record);
-    }).length;
-
-    const hasMandateBearingEvidence = dimensions.some((dimension) => {
-      const record = asRecord(dimension);
-      const key = asText(record?.key);
-      return isMandateBearingDimensionKey(key) && hasExplicitMeaningfulEvidence(record);
-    });
-
-    const hasEvaluation = Boolean(input.engineRecommendation || input.recommendationResult);
-
-    // Document length is transport metadata, not semantic evidence. A long JD
-    // must not unlock the legacy rich composer unless a mandate-bearing fact is
-    // explicitly grounded in the evaluated record.
-    if (hasEvaluation && hasMandateBearingEvidence) {
-      return { state: "EVALUATED", isSufficient: true };
-    }
-
-    if (hasEvaluation || explicitEvidenceCount > 0 || text.length > 0) {
-      return {
-        state: "SPARSE_SPEC",
         isSufficient: false,
         message: "The available job description does not provide enough evidence to determine why the role exists. This is a useful topic to explore during the initial recruiter conversation."
       };
     }
 
-    return {
-      state: "UNEVALUATED",
-      isSufficient: false,
-      message: "No evaluated evidence is available yet. Complete the structured evaluation before drawing conclusions about the role."
-    };
+    return { isSufficient: true };
   }
 
   /**
    * Translates organizational intent and job parameters into a highly tailored, non-repetitive corporate-driver paragraph.
    */
-  public static getWhyThisRoleExistsParagraph(opportunity: unknown, jobProj: unknown, focusTopic: string): string {
-    const input = asRecord(opportunity) as EditorialInput | null;
-    const projection = asRecord(jobProj);
-    const company = asText(projection?.company) || asText(input?.company) || asText(input?.companyName) || "the company";
-    const role = asText(projection?.role) || asText(input?.role) || asText(input?.canonicalTitle) || "this role";
+  public static getWhyThisRoleExistsParagraph(opportunity: any, jobProj: any, focusTopic: string): string {
+    const company = jobProj?.company || opportunity.company || "the company";
+    const role = jobProj?.role || opportunity.role || "this role";
     const topic = focusTopic || "commercial growth & market expansion";
 
-    const sufficiency = this.validateDataSufficiency(opportunity);
-    if (!sufficiency.isSufficient) {
-      return `Published details for the ${role} seat at ${company} are limited. Confirm the ${topic} mandate, reporting line, team scope, and decision rights during the initial recruiter conversation.`;
+    // 1. Dynamic sparse data handling - premium partner tone rather than flat error message
+    const text = (opportunity.description || opportunity.normalizedText || "").trim();
+    if (!text || text.length < 200) {
+      return `Published details for the ${role} seat at ${company} remain highly sparse, suggesting either a stealth-mandate or an unformed organizational charter. Senior leadership typically creates this role to establish operational rigor where founder-led processes have reached their structural ceiling. In the absence of a detailed GTM brief, your immediate priority during screening must be to clarify if this is an active transformation mandate or a steady-state maintenance function.`;
     }
 
-    return `The published description identifies a ${topic} focus for the ${role} seat at ${company}. Use the recruiter conversation to validate the operating mandate, reporting line, and resources behind that description.`;
+    // 2. High-altitude organizational driver generation
+    const intent = jobProj?.executiveMission?.intent || "ACCELERATE_GROWTH";
+    const missionStatement = jobProj?.executiveMission?.statement || "";
+
+    const intentParagraphs: Record<string, string> = {
+      REPLACE_FAILED_LEADER: `${company} is prioritizing immediate stabilization of its ${topic} function following a period of leadership disruption. This seat is being structured with direct team oversight and clear operational metrics to repair execution bottlenecks, rather than merely maintaining existing department operations.`,
+      BUILD_NEW_CAPABILITY: `${company} is building its dedicated ${topic} capabilities from the ground up to capture unaddressed enterprise demand. This is a greenfield 0-to-1 mandate that requires an operator comfortable with establishing team structures and vendor standards from scratch, rather than managing a legacy hierarchy.`,
+      PROFESSIONALIZE_FOUNDER_COMPANY: `${company} is professionalizing its commercial operations to transition away from founder-dependent decision-making. The mandate is to establish institutional processes and standard GTM governance to ensure commercial repeatability and clean pipeline visibility.`,
+      PREPARE_IPO: `${company} is aligning its commercial systems and financial transparency for public market readiness. This seat functions as a critical governance anchor, requiring clean compliance records, auditable CRM practices, and institutional P&L maturity ahead of their upcoming listing.`,
+      INTEGRATE_ACQUISITION: `${company} is consolidating its post-merger operations to capture immediate revenue synergies across its expanded portfolio. The executive in this seat will merge legacy team cultures and align redundant software stacks onto a single commercial playbook.`,
+      REPAIR_EXECUTION: `${company} is correcting fragmented commercial delivery and rebuilding operational rigor under a consolidated leader. Success requires auditing current client delivery pipelines, pruning low-yield channels, and enforcing strict operating standards.`,
+      EXPAND_GEOGRAPHY: `${company} is launching localized commercial hubs to scale its footprint in ${opportunity.location || "new regional markets"}. This is an expansion-led mandate where regional cultural fluency and local network leverage are prioritized over corporate headquarters pedigree.`,
+      COMMERCIALIZE_TECHNOLOGY: `${company} is translating its core technology assets into distinct, high-yield commercial offerings. The mission is to transform a product-centric organization into an outbound enterprise engine with scalable pricing, clear contract governance, and proactive GTM execution.`,
+      ACCELERATE_GROWTH: `${company} is scaling its outbound velocity to sustain high growth. The mandate is to transition from opportunistic sales into a systematic, repeatable customer acquisition engine with full operational accountability.`
+    };
+
+    return intentParagraphs[intent] || `${company} is consolidating its ${topic} function under a unified leader to capture emerging market demand. This seat exists to drive immediate commercial expansion and establish predictable operating governance across the region.`;
   }
 }

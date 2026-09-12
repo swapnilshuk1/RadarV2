@@ -6,10 +6,9 @@ import {
   saveIntentFn,
   getLatestIntentFn
 } from "../lib/intelligence/document-server";
+import { triggerDeployFn } from "./api/webhooks/deploy";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
 import { useAttentionPreference } from "../lib/attention-store";
-import { PROFILE_PIPELINE_STAGES, isIntentRequiredProfileState, resolveProfilePipelineStepState } from "../lib/intelligence/profile-pipeline-presentation";
-import { resolveIntentActivationPresentation } from "../lib/intelligence/profile-intent-presentation";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -27,7 +26,7 @@ export const Route = createFileRoute("/profile")({
 
 function ProfilePage() {
   const { intent } = Route.useLoaderData();
-  const [parsing, setParsing] = useState(false);
+  const [deploying, setDeploying] = useState(false);
   const router = useRouter();
   const navigate = useNavigate();
 
@@ -38,18 +37,17 @@ function ProfilePage() {
   const isIntentStage = progress.orientationSeen && progress.evidenceStatus !== "pending" && progress.intentStatus === "pending";
 
   // Intent form state
-  const [currency, setCurrency] = useState<"" | "INR" | "USD" | "EUR" | "GBP">(
-    (intent as any)?.currency || ""
+  const [currency, setCurrency] = useState<"INR" | "USD" | "EUR" | "GBP">(
+    (intent as any)?.currency || "INR"
   );
-  const [targetSalary, setTargetSalary] = useState<string>(
-    String((intent as any)?.targetSalaryAmount || (intent as any)?.minSalaryUsd || "")
+  const [targetSalary, setTargetSalary] = useState<number>(
+    (intent as any)?.targetSalaryAmount || (intent as any)?.minSalaryUsd || 8000000
   );
-  const [locations, setLocations] = useState((intent?.preferredLocations || []).join(", "));
-  const [targetTitles, setTargetTitles] = useState((intent?.targetTitles || []).join(", "));
-  const [workModel, setWorkModel] = useState<"" | "HYBRID" | "REMOTE" | "ON_SITE" | "ANY">(intent?.preferredWorkModel || "");
+  const [locations, setLocations] = useState((intent?.preferredLocations || ["Gurugram", "Remote India"]).join(", "));
+  const [targetTitles, setTargetTitles] = useState((intent?.targetTitles || ["Vice President", "CMO", "CGO"]).join(", "));
+  const [workModel, setWorkModel] = useState<"HYBRID" | "REMOTE" | "ON_SITE" | "ANY">(intent?.preferredWorkModel || "ANY");
   const [isSavingIntent, setIsSavingIntent] = useState(false);
   const [intentSavedMsg, setIntentSavedMsg] = useState("");
-  const [intentActivationPending, setIntentActivationPending] = useState(false);
 
   // Upload & Pipeline state
   const [pasteText, setPasteText] = useState("");
@@ -167,25 +165,21 @@ function ProfilePage() {
       const locList = locations.split(",").map(s => s.trim()).filter(Boolean);
       const titleList = targetTitles.split(",").map(s => s.trim()).filter(Boolean);
 
-      const result = await saveIntentFn({
+      await saveIntentFn({
         data: {
-          currency: currency || undefined,
-          targetSalaryAmount: targetSalary.trim() ? Number(targetSalary) : undefined,
-          // Non-USD salary remains in its source currency until an explicit
-          // FX conversion record is supplied by a canonical conversion path.
-          minSalaryUsd: currency === "USD" && targetSalary.trim() ? Number(targetSalary) : undefined,
+          currency,
+          targetSalaryAmount: Number(targetSalary),
+          minSalaryUsd: currency === "USD" ? Number(targetSalary) : Math.round(Number(targetSalary) / 83),
           preferredLocations: locList,
           targetTitles: titleList,
-          preferredWorkModel: workModel || undefined
+          preferredWorkModel: workModel
         }
       });
-      const presentation = resolveIntentActivationPresentation(result);
-      setIntentSavedMsg(presentation.message);
-      setIntentActivationPending(presentation.activationPending);
-      if (!presentation.persisted) throw new Error(presentation.message);
+
+      setIntentSavedMsg("Career intent saved (new version created)!");
       markIntentSet();
       await router.invalidate();
-      if (presentation.navigateHome) navigate({ to: "/" });
+      navigate({ to: "/" });
     } catch (err: any) {
       console.error("Save intent failed:", err);
     } finally {
@@ -193,7 +187,7 @@ function ProfilePage() {
     }
   };
 
-  const stages: Array<{ id: typeof PROFILE_PIPELINE_STAGES[number]; label: string }> = [
+  const stages = [
     { id: "DOCUMENT_REGISTERED", label: "Document Registered" },
     { id: "TEXT_EXTRACTED", label: "Text Extraction & SHA-256 Hash" },
     { id: "EVIDENCE_EXTRACTED", label: "Immutable Evidence Graph Built" },
@@ -201,10 +195,16 @@ function ProfilePage() {
     { id: "ONTOLOGY_RESOLVED", label: "Hierarchical Concept Resolution (v14.2.1)" },
     { id: "PROJECTION_BUILT", label: "Candidate Projection Assembled" },
     { id: "INFERENCE_COMPLETE", label: "Executive Level & Scope Inferred" },
-    { id: "PROFILE_READY", label: "Profile Ready — Career Intent Required" },
     { id: "EVALUATED", label: "Executive Briefs & Similarity Scores Refreshed" },
     { id: "COMPLETED", label: "Complete" }
   ];
+
+  const getStageIndex = (stageId: string | null) => {
+    if (!stageId) return -1;
+    return stages.findIndex(s => s.id === stageId);
+  };
+
+  const currentStageIdx = getStageIndex(pipelineStage);
 
   let headerEyebrow = "◆ EXECUTIVE ADVISORY PROFILE";
   let headerTitle = "Executive Profile & Intent";
@@ -358,10 +358,9 @@ function ProfilePage() {
                 LIVE PIPELINE EXECUTION
               </span>
               <div className="space-y-2">
-                {stages.map((st) => {
-                  const stepState = resolveProfilePipelineStepState(pipelineStage, st.id);
-                  const isDone = stepState === "complete";
-                  const isCurrent = stepState === "current";
+                {stages.map((st, idx) => {
+                  const isDone = currentStageIdx > idx || pipelineStatus === "COMPLETED";
+                  const isCurrent = currentStageIdx === idx && pipelineStatus !== "COMPLETED";
                   return (
                     <div
                       key={st.id}
@@ -379,11 +378,38 @@ function ProfilePage() {
                   );
                 })}
               </div>
-              {isIntentRequiredProfileState(pipelineStage) && (
-                <p className="mt-3 text-sm text-caution">Profile evidence is ready. Save explicit career intent before recommendation evaluation can begin.</p>
-              )}
             </div>
           )}
+
+          <div className="mt-6 pt-5 border-t border-border/60 space-y-3">
+            <span className="mono text-[10px] tracking-[0.2em] font-bold uppercase text-foreground/80 block">
+              RENDER-STYLE GIT DEPLOYMENT
+            </span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-muted/30 border border-border/60 rounded-sm">
+              <div>
+                <p className="mono text-[11px] font-bold text-foreground">AUTO-PULL & REBUILD</p>
+                <p className="text-[11.5px] text-muted-foreground mt-0.5">Pulls latest code from GitHub & restarts live server</p>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  setDeploying(true);
+                  try {
+                    await triggerDeployFn();
+                    alert("Git pull & build initiated on server! Server will rebuild and restart in ~10 seconds.");
+                  } catch (e: any) {
+                    alert("Deploy error: " + e.message);
+                  } finally {
+                    setDeploying(false);
+                  }
+                }}
+                disabled={deploying}
+                className="mono text-[10px] tracking-[0.16em] font-bold uppercase bg-foreground text-background px-3.5 py-2 rounded-xs hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                {deploying ? "SYNCING..." : "SYNC & REBUILD"}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Career Intent Panel */}
@@ -418,11 +444,10 @@ function ProfilePage() {
                 </label>
                 <select
                   className="w-full p-2.5 text-[13px] font-mono rounded-xs border border-border/80 bg-background focus:outline-none focus:border-foreground"
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value as any)}
-              >
-                <option value="">Not specified</option>
-                <option value="INR">INR (₹)</option>
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value as any)}
+                >
+                  <option value="INR">INR (₹)</option>
                   <option value="USD">USD ($)</option>
                   <option value="EUR">EUR (€)</option>
                   <option value="GBP">GBP (£)</option>
@@ -436,8 +461,8 @@ function ProfilePage() {
                   type="number"
                   className="w-full p-2.5 text-[13px] font-mono rounded-xs border border-border/80 bg-background focus:outline-none focus:border-foreground"
                   placeholder={currency === "INR" ? "8000000 (80 Lakhs)" : "150000"}
-                value={targetSalary}
-                onChange={(e) => setTargetSalary(e.target.value)}
+                  value={targetSalary}
+                  onChange={(e) => setTargetSalary(Number(e.target.value))}
                 />
               </div>
             </div>
@@ -475,7 +500,6 @@ function ProfilePage() {
                 value={workModel}
                 onChange={(e) => setWorkModel(e.target.value as any)}
               >
-                <option value="">Not specified</option>
                 <option value="ANY">ANY (Flexible / All Models)</option>
                 <option value="HYBRID">HYBRID</option>
                 <option value="REMOTE">REMOTE</option>
@@ -529,7 +553,7 @@ function ProfilePage() {
             )}
 
             {intentSavedMsg && (
-              <p className={`mono text-[11px] font-bold text-center mt-2 ${intentActivationPending ? "text-caution" : "text-emerald-800"}`}>
+              <p className="mono text-[11px] text-emerald-800 font-bold text-center mt-2">
                 ✓ {intentSavedMsg}
               </p>
             )}

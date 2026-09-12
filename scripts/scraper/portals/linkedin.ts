@@ -1,19 +1,13 @@
 import type { FeedCard, DetailedCard, PortalContext, PortalHandler } from "../types";
-import type { FailureClass } from "../../../src/lib/acquisition/failure-taxonomy";
 import { SNAPSHOT_SCHEMA_VERSION, SCRAPER_VERSION } from "../versions";
 import { CONFIG } from "../config";
 import { cardHashFor } from "../utils/hash";
 import { humanize, jitter, sleep } from "../utils/jitter";
+import { passesHardFilter } from "../utils/hard-filter";
 import { hydrateVirtualizedList } from "../utils/scroll";
 import { normalizePostingDate } from "../utils/date";
-import * as cheerio from "cheerio";
-import {
-  LINKEDIN_GEO_INDIA,
-  LINKEDIN_GEO_BY_LOCATION,
-  resolveLinkedInGeoId,
-} from "../run/acquisition-geography";
 
-export { LINKEDIN_GEO_INDIA, LINKEDIN_GEO_BY_LOCATION, resolveLinkedInGeoId };
+const LINKEDIN_GEO_INDIA = "102713980";
 
 export type LinkedInSessionState =
   | "AUTHENTICATED"
@@ -65,24 +59,9 @@ export async function checkLinkedInSessionState(ctx: PortalContext): Promise<Lin
 export const linkedinHandler: PortalHandler = {
   name: "LinkedIn",
   detailStrategy: "auto",
-  buildSearchUrl(request, legacyPage = 1) {
-    const input = typeof request === "string" ? { query: request, page: legacyPage } : { ...request };
-    const kw = input.query;
-    const page = input.page;
+  buildSearchUrl(kw, page) {
     const start = (page - 1) * 25;
-    const location = input.location?.trim() || "India";
-    const params = new URLSearchParams({
-      keywords: kw,
-      location,
-      start: String(start),
-    });
-    const geoId = resolveLinkedInGeoId(input.location);
-    if (geoId) params.set("geoId", geoId);
-    if (input.postedWithinDays !== undefined) {
-      params.set("f_TPR", `r${input.postedWithinDays * 24 * 60 * 60}`);
-    }
-    if (input.sort === "date") params.set("sortBy", "DD");
-    return `https://www.linkedin.com/jobs/search/?${params.toString()}`;
+    return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(kw)}&location=India&geoId=${LINKEDIN_GEO_INDIA}&start=${start}`;
   },
   async ensureSession(ctx) {
     try {
@@ -139,26 +118,13 @@ export const linkedinHandler: PortalHandler = {
         throw new Error("RATE_LIMITED: LinkedIn rate limit exceeded");
       }
 
-      // Fast check for explicit zero-results indicators before entering scroll hydration
-      const isZeroResults = await page.evaluate(() => {
-        const text = document.body ? (document.body.innerText || "") : "";
-        if (text.includes("No matching jobs found") || text.includes("No matching jobs") || text.includes("No exact matches found")) {
-          return true;
-        }
-        return !!document.querySelector(".jobs-search-no-results-banner, .jobs-search-no-results, div.jobs-search-two-pane__no-results-banner");
-      }).catch(() => false);
-
-      if (isZeroResults) {
-        ctx.logger(`[LinkedIn listCards] Explicit zero-results banner detected for "${ctx.keyword}". Skipping hydration.`);
-        return [];
-      }
-
-      const targetMaxCards = ctx.maxCardsPerPage ?? CONFIG.getMaxCardsPerPage("LinkedIn");
+      const targetMaxCards = CONFIG.getMaxCardsPerPage("LinkedIn");
       const cardSelector = [
-        "div.job-card-container:has(a[href*='/jobs/view/'])",
-        "li.jobs-search-results__list-item:has(a[href*='/jobs/view/'])",
-        "div.base-search-card:has(a[href*='/jobs/view/'])",
-        "li:has(a.base-card[href*='/jobs/view/'])",
+        "div.job-card-container",
+        "li.jobs-search-results__list-item",
+        "ul.jobs-search__results-list li",
+        "div.base-search-card",
+        "[class*='jobs-search__results-list'] li",
       ].join(", ");
       const containerSelectors = [
         ".jobs-search-results-list",
@@ -169,17 +135,17 @@ export const linkedinHandler: PortalHandler = {
         "main",
       ];
 
-      // Perform stabilized virtualized scrolling (calibrated: max 10 passes, 2 stable passes)
+      // Perform hyper-patient stabilized virtualized scrolling
       const hydration = await hydrateVirtualizedList(
         page,
         {
           cardSelector,
           containerSelectors,
           targetCards: targetMaxCards,
-          maxPasses: 10,
-          consecutiveStableLimit: 2,
-          minPassDelayMs: 600,
-          maxPassDelayMs: 1200,
+          maxPasses: 25,
+          consecutiveStableLimit: 5,
+          minPassDelayMs: 1500,
+          maxPassDelayMs: 3000,
           isCancelled: ctx.isCancelled,
         },
         ctx.logger
@@ -187,70 +153,39 @@ export const linkedinHandler: PortalHandler = {
 
       ctx.logger(`[LinkedIn Hydration Summary] Discovered ${hydration.finalCount} total cards (initial: ${hydration.initialCount}, passes: ${hydration.passesCompleted}, stabilized: ${hydration.stabilized})`);
 
-      /*
-       * Hydration proves that the listing nodes exist. Snapshot their
-       * discovery fields in one browser-context operation before any detail
-       * worker can navigate or replace this page. The former per-Locator
-       * loop re-queried a broad list after hydration and silently discarded
-       * the hydrated cards when LinkedIn recycled its virtualized DOM.
-       */
-      const hydratedCards = await page.evaluate(
-        ({ selector, maxCards }: { selector: string; maxCards: number }) => {
-          const nodes = Array.from(document.querySelectorAll(selector)).slice(0, maxCards);
-          return nodes.map((node) => {
-            const titleLink = node.querySelector(
-              "a.job-card-list__title, a.job-card-container__link, a.base-card__full-link, a[href*='/jobs/view/']"
-            ) as HTMLAnchorElement | null;
-            const compEl = node.querySelector(".job-card-container__primary-description, .artdeco-entity-lockup__subtitle, h4");
-            const locEl = node.querySelector(".job-card-container__metadata-item, .artdeco-entity-lockup__caption, .job-search-card__location");
-            const h3El = node.querySelector("h3");
-            const time = node.querySelector("time");
-
-            const jobIdMatch = (
-              node.getAttribute("data-job-id") ||
-              node.getAttribute("data-entity-urn")?.match(/jobPosting:(\d+)/)?.[1] ||
-              (titleLink && titleLink.getAttribute("href") ? titleLink.getAttribute("href")!.match(/\/jobs\/view\/(\d+)/)?.[1] : null) ||
-              (titleLink && titleLink.getAttribute("href") ? titleLink.getAttribute("href")!.match(/[?&]currentJobId=(\d+)/)?.[1] : null) ||
-              ""
-            );
-
-            return {
-              jobId: jobIdMatch ? String(jobIdMatch).trim() : "",
-              title: (titleLink && titleLink.textContent ? titleLink.textContent.trim() : "") || (h3El && h3El.textContent ? h3El.textContent.trim() : ""),
-              company: compEl && compEl.textContent ? compEl.textContent.trim() : "",
-              location: locEl && locEl.textContent ? locEl.textContent.trim() : "",
-              href: (titleLink && titleLink.getAttribute("href")) || "",
-              rawPosted: (time && (time.getAttribute("datetime") || (time.textContent ? time.textContent.trim() : null))) || null,
-              rawHtml: node.innerHTML || "",
-              rawText: (node.textContent ? node.textContent.replace(/\s+/g, " ").trim() : "") || "",
-            };
-          });
-        },
-        { selector: cardSelector, maxCards: targetMaxCards },
-      );
-
-      for (const card of hydratedCards) {
-        if (ctx.isCancelled?.() || page?.isClosed?.()) break;
+      const cards = await page.locator(cardSelector).all();
+      const sliced = cards.slice(0, targetMaxCards);
+      for (const card of sliced) {
         try {
-          const { title, company, location, href, rawPosted } = card;
+          const titleEl = card.locator('a.job-card-list__title, a.job-card-container__link').first();
+          const title = ((await titleEl.textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
+          const company = ((await card.locator(".job-card-container__primary-description, .artdeco-entity-lockup__subtitle").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
+          const location = ((await card.locator(".job-card-container__metadata-item, .artdeco-entity-lockup__caption").first().textContent({ timeout: 1000 }).catch(() => "")) || "").trim();
+          const href = ((await titleEl.getAttribute("href", { timeout: 1000 }).catch(() => "")) || "").trim();
+          
+          const timeEl = card.locator('time').first();
+          const rawDatetime = await timeEl.getAttribute("datetime", { timeout: 500 }).catch(() => null);
+          const rawTimeText = await timeEl.textContent({ timeout: 500 }).catch(() => null);
+          const rawPosted = rawDatetime || rawTimeText || null;
           
           if (!href || !title) continue;
 
-          if (!company) {
-            ctx.logger(`[LinkedIn Discovery] Preserving card "${title}" without card company; deferring company resolution to detail extraction`);
+          const filterRes = passesHardFilter({ title, company, location });
+          if (!filterRes.pass) {
+            ctx.logger(`[HardFilter] Skipped "${title}" at ${company}: ${filterRes.reason}`);
+            continue;
           }
 
           const detailUrl = href.startsWith("http") ? href : `https://www.linkedin.com${href}`;
           const cardHash = cardHashFor("LinkedIn", detailUrl);
+          const rawHtml = await card.innerHTML().catch(() => "");
+          const rawText = ((await card.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
+
           const discoveredAt = new Date().toISOString();
           const { date: postedAt, precision: postedPrecision } = normalizePostingDate(rawPosted, discoveredAt);
 
-          const rawJobId = card.jobId || href.match(/\/jobs\/view\/(\d+)/)?.[1] || href.match(/[?&]currentJobId=(\d+)/)?.[1];
-          const sourceJobId = rawJobId ? String(rawJobId).trim() : undefined;
-
           cardsOut.push({
             cardHash,
-            sourceJobId,
             portal: "LinkedIn",
             keyword: ctx.keyword,
             searchUrl: ctx.searchUrl,
@@ -261,23 +196,15 @@ export const linkedinHandler: PortalHandler = {
             location,
             postedAt,
             postedPrecision,
-            rawHtml: card.rawHtml,
-            rawText: card.rawText,
+            rawHtml,
+            rawText,
           });
         } catch (err: any) {
           ctx.logger(`LinkedIn card parse skipped: ${err.message}`);
         }
       }
     } catch (err: any) {
-      const isCancelledOrClosed = ctx.isCancelled?.() || page?.isClosed?.() ||
-        err?.message?.includes("Target page, context or browser has been closed") ||
-        err?.message?.includes("browser has been closed");
-      if (isCancelledOrClosed) {
-        ctx.logger(`LinkedIn listCards cancelled cleanly during run shutdown.`);
-        return [];
-      }
       ctx.logger(`LinkedIn listCards failed: ${err.message}`);
-      throw err;
     }
     return cardsOut;
   },
@@ -291,51 +218,18 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
   const handler = linkedinHandler;
   
   if (handler.detailStrategy === "auto" || handler.detailStrategy === "http") {
-    const skipHttp = ctx.isHttpDisabled?.(url) ?? false;
-    if (!skipHttp) {
-      ctx.recordTelemetry?.("httpAttempted");
-      const httpRes = await fastFetchDetail(
-        url, 
-        "h1.top-card-layout__title, h1.topcard__title, .jobs-description__content", 
-        ".jobs-description__content, .description__text, .show-more-less-html__markup"
-      );
-      if (httpRes.fetched && httpRes.rawText && httpRes.rawText.length >= 200) {
-        ctx.recordHttpSuccess?.(url);
-        ctx.recordTelemetry?.("httpSuccessful");
-        ctx.logger(`[FastPath] Extracted detail from ${url}`);
-        
-        return {
-          ...httpRes,
-          extractedTitle: httpRes.extractedTitle,
-          extractedCompany: httpRes.extractedCompany,
-        };
-      }
-      const failureClass = httpRes.failureClass;
-      if (
-        failureClass === "RATE_LIMIT_429" ||
-        failureClass === "BOT_CHALLENGE_BLOCK" ||
-        failureClass === "CAPTCHA_CHALLENGE" ||
-        failureClass === "LOGIN_REQUIRED"
-      ) {
-        ctx.recordHttpFailure?.(url, failureClass);
-        ctx.logger(`[FastPath] Immediate failure (${failureClass}) for ${url} — no browser fallback`);
-        return {
-          fetched: false,
-          fetchError: httpRes.fetchError,
-          fetchDurationMs: httpRes.fetchDurationMs,
-          httpStatus: httpRes.httpStatus,
-          failureClass,
-        };
-      }
-
-      const reason = failureClass || (httpRes.fetchError?.includes("403") ? "FASTPATH_ACCESS_DENIED" : 
-                    httpRes.fetchError?.includes("timeout") ? "HTTP_TIMEOUT" : "UNKNOWN_FAILURE");
-      ctx.recordHttpFailure?.(url, reason);
-      ctx.recordTelemetry?.("httpFallbacks");
-      ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError || "insufficient content"} — falling back to Playwright`);
-    } else {
-      ctx.logger(`[FastPath] Bypassed for ${url} due to circuit breaker or cache`);
+    ctx.recordTelemetry?.("httpAttempted");
+    const httpRes = await fastFetchDetail(
+      url, 
+      "h1.top-card-layout__title, h1.topcard__title, .jobs-description__content", 
+      ".jobs-description__content, .description__text, .show-more-less-html__markup"
+    );
+    if (httpRes.fetched) {
+      ctx.recordTelemetry?.("httpSuccessful");
+      ctx.logger(`[FastPath] Extracted detail from ${url}`);
+      return httpRes;
     }
+    ctx.logger(`[FastPath] Failed for ${url}: ${httpRes.fetchError} — falling back to Playwright`);
   }
 
   const t0 = Date.now();
@@ -345,117 +239,21 @@ async function fetchDetail(ctx: PortalContext, url: string): Promise<DetailedCar
     const httpStatus = response?.status();
     const pageTitle = await page.title().catch(() => "");
     
-    // Check for challenge, login wall, or 404
-    const isBot = /verify you are human|security check|authwall|challenge|cloudflare/i.test(pageTitle);
-    const isLogin = /sign in|log in/i.test(pageTitle);
+    // Some 404s might return 200 with a "Not Available" title
     const isSoft404 = pageTitle.toLowerCase().includes("not available") || pageTitle.toLowerCase().includes("no longer available");
     const effectiveStatus = isSoft404 ? 404 : httpStatus;
-
-    if (isBot) {
-      return {
-        fetched: false,
-        fetchError: `Bot challenge encountered: ${pageTitle}`,
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: effectiveStatus,
-        failureClass: "BOT_CHALLENGE_BLOCK",
-      };
-    }
-    if (isLogin) {
-      return {
-        fetched: false,
-        fetchError: `Login required: ${pageTitle}`,
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: effectiveStatus,
-        failureClass: "LOGIN_REQUIRED",
-      };
-    }
-    if (effectiveStatus === 404) {
-      return {
-        fetched: false,
-        fetchError: "Job no longer available (404)",
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: 404,
-        failureClass: "REMOVED_404",
-      };
-    }
-    if (effectiveStatus === 429) {
-      return {
-        fetched: false,
-        fetchError: "Rate limited (429)",
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: 429,
-        failureClass: "RATE_LIMIT_429",
-      };
-    }
 
     await jitter(600, 1400);
     await page.locator('button[aria-label*="see more" i], .show-more-less-html__button').first().click({ timeout: 1500 }).catch(() => {});
     const container = page.locator(".jobs-description__content, .description__text, .show-more-less-html__markup").first();
     const rawHtml = await container.innerHTML().catch(() => "");
     const rawText = ((await container.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-
-    // Extract company name from topcard container
-    const companyLocator = page.locator(
-      'a.topcard__org-name-link, a.top-card-layout__first-subline-link, .job-details-jobs-unified-top-card__company-name, .topcard__flavor:first-of-type, .topcard__org-name'
-    ).first();
-    const companyText = ((await companyLocator.textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-    const extractedCompany = companyText.length > 0 ? companyText : undefined;
-    const titleText = ((await page.locator("h1.top-card-layout__title, h1.topcard__title, .job-details-jobs-unified-top-card__job-title, h1").first().textContent().catch(() => "")) || "").replace(/\s+/g, " ").trim();
-    const extractedTitle = titleText.length > 0 ? titleText : undefined;
-
-    const trimmedText = rawText.trim();
-    if (trimmedText.length === 0) {
-      ctx.logger?.(`[LinkedIn] Empty job description for ${url}`);
-      return {
-        fetched: false,
-        fetchError: "Empty job description",
-        rawHtml: "",
-        rawText: "",
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: effectiveStatus,
-        extractedTitle,
-        extractedCompany,
-        failureClass: "EMPTY_CONTENT",
-      };
-    }
-
-    const isSparse = trimmedText.length < 200;
-    if (isSparse) {
-      ctx.logger?.(`[LinkedIn] Preserving sparse description (${trimmedText.length} chars, quality=SPARSE) for ${url}`);
-    }
-
-    return {
-      fetched: true,
-      rawHtml,
-      rawText: trimmedText,
-      fetchDurationMs: Date.now() - t0,
-      httpStatus: effectiveStatus,
-      quality: isSparse ? ("SPARSE" as const) : ("VALID" as const),
-      extractedTitle,
-      extractedCompany,
-    };
+    return { fetched: true, rawHtml, rawText, fetchDurationMs: Date.now() - t0, httpStatus: effectiveStatus };
   } catch (err: any) {
-    const msg = String(err?.message || "");
-    const isTimeout = err.name === "TimeoutError" || /timeout/i.test(msg);
-    const isChallenge = /challenge|captcha|cloudflare|security check/i.test(msg);
-    const isLogin = /login|authwall|sign in/i.test(msg);
-    const is404 = /404|not found|no longer available/i.test(msg);
-    const isConn = /net::ERR|ECONN|ENOTFOUND/i.test(msg);
-
-    let failureClass: FailureClass = "UNKNOWN_FAILURE";
-    if (isChallenge) failureClass = "CAPTCHA_CHALLENGE";
-    else if (isLogin) failureClass = "LOGIN_REQUIRED";
-    else if (isTimeout) failureClass = "NAVIGATION_TIMEOUT";
-    else if (is404) failureClass = "REMOVED_404";
-    else if (isConn) failureClass = "CONNECTION_ERROR";
-
-    return {
-      fetched: false,
-      fetchError: msg,
-      fetchDurationMs: Date.now() - t0,
-      failureClass,
-    };
+    return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
   } finally {
     await page.close().catch(() => {});
   }
 }
+
+

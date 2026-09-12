@@ -8,61 +8,6 @@ export interface MigrationResult {
   skipped: string[];
 }
 
-export interface RequiredSchemaStatus {
-  readonly evaluationFingerprintColumnPresent: boolean;
-  readonly categoryIdsColumnPresent: boolean;
-  readonly dossierPresentationsTablePresent: boolean;
-}
-
-const REQUIRED_COLUMNS = [
-  { table: "materialized_evaluations", column: "evaluation_fingerprint", statusKey: "evaluationFingerprintColumnPresent" as const, migration: "037_materialized_evaluation_fingerprint.sql" },
-  { table: "opportunity_versions", column: "category_ids", statusKey: "categoryIdsColumnPresent" as const, migration: "038_opportunity_version_category_projection.sql" },
-] as const;
-
-export async function getRequiredSchemaStatus(db: DatabaseAdapter): Promise<RequiredSchemaStatus> {
-  let evaluationFingerprintColumnPresent = false;
-  let categoryIdsColumnPresent = false;
-  for (const required of REQUIRED_COLUMNS) {
-    const columns = await db.many<{ name: string }>(`PRAGMA table_info(${required.table})`);
-    const present = columns.some((column) => column.name === required.column);
-    if (required.statusKey === "evaluationFingerprintColumnPresent") evaluationFingerprintColumnPresent = present;
-    else categoryIdsColumnPresent = present;
-  }
-  const tableRow = await db.one<{ name: string }>(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'materialized_dossier_presentations'"
-  );
-  const dossierPresentationsTablePresent = Boolean(tableRow?.name);
-  return { evaluationFingerprintColumnPresent, categoryIdsColumnPresent, dossierPresentationsTablePresent };
-}
-
-/** Refuse startup when the migration ledger and physical schema diverge. */
-export async function verifyRequiredSchema(db: DatabaseAdapter): Promise<RequiredSchemaStatus> {
-  const status = await getRequiredSchemaStatus(db);
-  for (const required of REQUIRED_COLUMNS) {
-    if (!status[required.statusKey]) {
-      const recorded = await db.one<{ migration_name: string }>(
-        "SELECT migration_name FROM _migrations WHERE migration_name = ?",
-        [required.migration],
-      );
-      const drift = recorded
-        ? `SCHEMA_DRIFT: migration ${required.migration} is recorded but ${required.table}.${required.column} is missing.`
-        : `SCHEMA_INCOMPATIBLE: required column ${required.table}.${required.column} is missing after migrations.`;
-      throw new Error(`[MigrationRunner] ${drift}`);
-    }
-  }
-  if (!status.dossierPresentationsTablePresent) {
-    const recorded = await db.one<{ migration_name: string }>(
-      "SELECT migration_name FROM _migrations WHERE migration_name = ?",
-      ["044_materialized_dossier_presentations.sql"],
-    );
-    const drift = recorded
-      ? "SCHEMA_DRIFT: migration 044_materialized_dossier_presentations.sql is recorded but materialized_dossier_presentations table is missing."
-      : "SCHEMA_INCOMPATIBLE: required table materialized_dossier_presentations is missing after migrations.";
-    throw new Error(`[MigrationRunner] ${drift}`);
-  }
-  return status;
-}
-
 /**
  * Splits a SQL script into individual executable statements,
  * ignoring semicolons inside string literals and stripping comments.
@@ -73,7 +18,6 @@ export function splitSqlStatements(sql: string): string[] {
   let inString: "'" | '"' | null = null;
   let inLineComment = false;
   let inBlockComment = false;
-  let beginDepth = 0;
 
   for (let i = 0; i < sql.length; i++) {
     const char = sql[i];
@@ -125,20 +69,7 @@ export function splitSqlStatements(sql: string): string[] {
       continue;
     }
 
-    // A robust BEGIN ... END depth tracker
-    if (!/[a-zA-Z0-9_]/.test(char)) {
-      const match = /(?:^|[^a-zA-Z0-9_])([a-zA-Z0-9_]+)$/.exec(current);
-      if (match) {
-        const word = match[1].toUpperCase();
-        if (word === "BEGIN") {
-          beginDepth++;
-        } else if (word === "END") {
-          beginDepth = Math.max(0, beginDepth - 1);
-        }
-      }
-    }
-
-    if (char === ";" && beginDepth === 0) {
+    if (char === ";") {
       const trimmed = current.trim();
       if (trimmed.length > 0) {
         statements.push(trimmed);
@@ -164,8 +95,7 @@ export function splitSqlStatements(sql: string): string[] {
  */
 export async function runMigrations(
   adapter?: DatabaseAdapter,
-  migrationsDir?: string,
-  options: { verifyRequiredSchema?: boolean } = {},
+  migrationsDir?: string
 ): Promise<MigrationResult> {
   const db = adapter || getDatabaseAdapter();
 
@@ -191,12 +121,6 @@ export async function runMigrations(
     .filter((f) => f.endsWith(".sql") && !f.endsWith("_rollback.sql"))
     .sort();
 
-const REBUILD_MIGRATIONS = new Set([
-  "042_scrape_runs_distributed_lifecycle.sql",
-  "043_distributed_work_identity.sql",
-  "046_scrape_runs_nullable_search_plan.sql",
-]);
-
   const applied: string[] = [];
   const skipped: string[] = [];
 
@@ -209,43 +133,31 @@ const REBUILD_MIGRATIONS = new Set([
     const filePath = path.join(dir, file);
     const sqlContent = fs.readFileSync(filePath, "utf-8");
     const statements = splitSqlStatements(sqlContent);
-    const isRebuild = REBUILD_MIGRATIONS.has(file);
 
-    if (isRebuild && db.executeMigration) {
-      const allStatements = [
-        ...statements,
-        `INSERT INTO _migrations (migration_name) VALUES ('${file.replace(/'/g, "''")}');`
-      ];
-      await db.executeMigration(allStatements, { disableForeignKeys: true });
-    } else {
-      // Apply statements within a transaction
-      await db.transaction(async (tx) => {
-        for (const stmt of statements) {
-          try {
-            await tx.execute(stmt);
-          } catch (err: any) {
-            // Historical migration compatibility: If creating an index with IF NOT EXISTS fails because a legacy table
-            // was dropped in an earlier historical migration (and recreated later), allow clean replay without mutating historical SQL files.
-            const upper = stmt.toUpperCase();
-            if (
-              (upper.includes("CREATE INDEX IF NOT EXISTS") || upper.includes("CREATE UNIQUE INDEX IF NOT EXISTS")) &&
-              err?.message?.includes("no such table")
-            ) {
-              continue;
-            }
-            throw err;
+    // Apply statements within a transaction
+    await db.transaction(async (tx) => {
+      for (const stmt of statements) {
+        try {
+          await tx.execute(stmt);
+        } catch (err: any) {
+          // Historical migration compatibility: If creating an index with IF NOT EXISTS fails because a legacy table
+          // was dropped in an earlier historical migration (and recreated later), allow clean replay without mutating historical SQL files.
+          const upper = stmt.toUpperCase();
+          if (
+            (upper.includes("CREATE INDEX IF NOT EXISTS") || upper.includes("CREATE UNIQUE INDEX IF NOT EXISTS")) &&
+            err?.message?.includes("no such table")
+          ) {
+            continue;
           }
+          throw err;
         }
-        await tx.execute("INSERT INTO _migrations (migration_name) VALUES (?)", [file]);
-      });
-    }
+      }
+      await tx.execute("INSERT INTO _migrations (migration_name) VALUES (?)", [file]);
+    });
 
     applied.push(file);
   }
 
-  if (options.verifyRequiredSchema !== false) {
-    await verifyRequiredSchema(db);
-  }
   return { applied, skipped };
 }
 

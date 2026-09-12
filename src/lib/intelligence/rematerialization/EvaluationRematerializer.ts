@@ -424,16 +424,16 @@ export class EvaluationRematerializer {
             throw new Error("INTRINSIC_VERDICT_MISMATCH: Materialized intrinsicVerdict is not unconstrained verb0");
           }
 
-          // Serving must be presentation-context independent.
+          // Serving context independence check
           serveEvaluation(
             canonicalPayload,
-            { personId: row.person_id },
+            { personId: row.person_id, attentionWindow: 6, activePursuits: 0 },
             canonicalPayload,
             null
           );
           serveEvaluation(
             canonicalPayload,
-            { personId: row.person_id },
+            { personId: row.person_id, attentionWindow: 6, activePursuits: 6 },
             canonicalPayload,
             null
           );
@@ -723,7 +723,7 @@ export class EvaluationRematerializer {
           }
 
           const resolvedJobHash = contentObj.jobHash || row.id;
-          const oppSource: OpportunitySource = { evaluationState: "LEGACY",
+          const oppSource: OpportunitySource = {
             jobHash: resolvedJobHash,
             role: row.canonical_title || contentObj.role || "Executive Role",
             company: row.company_name || contentObj.company || "Target Company",

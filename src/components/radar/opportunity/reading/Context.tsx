@@ -1,9 +1,13 @@
+import { AdvisoryConstitution } from "@/lib/intelligence/editorial/AdvisoryConstitution";
+import { getFocusTopic } from "@/routes/opportunity.$jobHash";
+
 interface ContextProps {
+  o: any;
   brief: any;
-  whyRoleExists: string | null;
+  jobProj: any;
 }
 
-export function Context({ brief, whyRoleExists }: ContextProps) {
+export function Context({ o, brief, jobProj }: ContextProps) {
   return (
     <div className="grid gap-4 border-t border-border pt-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-10">
       <div className="lg:sticky lg:top-14 lg:self-start">
@@ -18,11 +22,11 @@ export function Context({ brief, whyRoleExists }: ContextProps) {
             {brief.structuredSections.context.thesis}
           </p>
         )}
-        {whyRoleExists && <div className="space-y-2">
+        <div className="space-y-2">
           <p className="text-sm leading-relaxed text-muted-foreground font-normal">
-            {whyRoleExists}
+            {AdvisoryConstitution.getWhyThisRoleExistsParagraph(o, jobProj, getFocusTopic(o, jobProj))}
           </p>
-        </div>}
+        </div>
 
         <div className="pt-2">
           <ul className="space-y-2">

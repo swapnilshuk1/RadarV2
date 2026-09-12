@@ -1,13 +1,49 @@
 import type { DatabaseAdapter } from "../../database/adapter";
-import type {
-  AcquisitionStore,
-  AcquisitionLedgerItem,
-  AcquisitionIngestionLineage,
-} from "../../../domain/repositories";
+import type { AcquisitionStore, AcquisitionLedgerItem } from "../../../domain/repositories";
 import type { Document } from "../../../domain/entities";
 
 export class SqliteAcquisitionStore implements AcquisitionStore {
+  private tableChecked = false;
+
   constructor(private db: DatabaseAdapter) {}
+
+  private async ensureTableExists(): Promise<void> {
+    if (this.tableChecked) return;
+    try {
+      await this.db.execute(`
+        CREATE TABLE IF NOT EXISTS acquisition_ledger (
+          id TEXT PRIMARY KEY,
+          canonical_job_id TEXT NOT NULL,
+          source_portal TEXT NOT NULL,
+          source_job_id TEXT NOT NULL,
+          canonical_url TEXT NOT NULL,
+          title TEXT NOT NULL,
+          company_name TEXT NOT NULL,
+          location TEXT,
+          state TEXT NOT NULL DEFAULT 'DISCOVERED',
+          terminal_state TEXT,
+          claimed_by TEXT,
+          claimed_at TEXT,
+          lease_expires_at TEXT,
+          attempt_count INTEGER DEFAULT 0,
+          last_failure_class TEXT,
+          last_acquisition_method TEXT,
+          acquisition_quality TEXT,
+          validation_confidence TEXT,
+          first_seen_at TEXT NOT NULL,
+          last_seen_at TEXT NOT NULL,
+          last_acquired_at TEXT,
+          freshness_state TEXT DEFAULT 'NEW',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          CONSTRAINT uq_portal_canonical UNIQUE (source_portal, canonical_job_id)
+        );
+      `);
+      this.tableChecked = true;
+    } catch (err: any) {
+      console.warn("⚠️ [SqliteAcquisitionStore] ensureTableExists warning:", err.message);
+    }
+  }
 
   async recordDocument(document: Document): Promise<void> {
     await this.db.execute(
@@ -70,6 +106,7 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
   async upsertDiscoveredJob(
     item: Omit<AcquisitionLedgerItem, "id" | "createdAt" | "updatedAt"> & { id?: string }
   ): Promise<AcquisitionLedgerItem> {
+    await this.ensureTableExists();
     const now = new Date().toISOString();
     const id = item.id || `acq-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
@@ -125,6 +162,7 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
     sourcePortal: string,
     canonicalJobId: string
   ): Promise<AcquisitionLedgerItem | undefined> {
+    await this.ensureTableExists();
     const row = await this.db.one<any>(
       `SELECT * FROM acquisition_ledger WHERE source_portal = ? AND canonical_job_id = ?`,
       [sourcePortal, canonicalJobId]
@@ -133,56 +171,12 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
     return this.mapLedgerRow(row);
   }
 
-  async rebindDiscoveredJobIdentity(
-    ledgerId: string,
-    identity: Pick<AcquisitionLedgerItem, "canonicalJobId" | "sourcePortal" | "sourceJobId" | "canonicalUrl">
-  ): Promise<AcquisitionLedgerItem> {
-    return this.db.transaction(async (tx) => {
-      const current = await tx.one<any>(`SELECT * FROM acquisition_ledger WHERE id = ?`, [ledgerId]);
-      if (!current) throw new Error(`[SqliteAcquisitionStore] acquisition ledger ${ledgerId} was not found.`);
-
-      const existing = await tx.one<any>(
-        `SELECT * FROM acquisition_ledger WHERE source_portal = ? AND canonical_job_id = ?`,
-        [identity.sourcePortal, identity.canonicalJobId]
-      );
-      const now = new Date().toISOString();
-      if (existing && existing.id !== ledgerId) {
-        await tx.execute(
-          `UPDATE acquisition_ledger
-             SET state = 'IDENTITY_RESOLVED',
-                 terminal_state = 'SUPERSEDED_BY_VERIFIED_IDENTITY',
-                 last_failure_class = NULL,
-                 updated_at = ?
-           WHERE id = ?`,
-          [now, ledgerId]
-        );
-        await tx.execute(
-          `UPDATE acquisition_ledger
-             SET last_seen_at = ?, updated_at = ?
-           WHERE id = ?`,
-          [now, now, existing.id]
-        );
-        return this.mapLedgerRow(existing);
-      }
-
-      await tx.execute(
-        `UPDATE acquisition_ledger
-           SET canonical_job_id = ?, source_portal = ?, source_job_id = ?, canonical_url = ?,
-               state = 'IDENTITY_RESOLVED', terminal_state = NULL, updated_at = ?
-         WHERE id = ?`,
-        [identity.canonicalJobId, identity.sourcePortal, identity.sourceJobId, identity.canonicalUrl, now, ledgerId]
-      );
-      const rebound = await tx.one<any>(`SELECT * FROM acquisition_ledger WHERE id = ?`, [ledgerId]);
-      if (!rebound) throw new Error(`[SqliteAcquisitionStore] acquisition ledger ${ledgerId} was not readable after identity rebind.`);
-      return this.mapLedgerRow(rebound);
-    });
-  }
-
   async claimQueuedJobs(
     workerId: string,
     limit = 10,
     leaseMs = 300000 // 5 minutes
   ): Promise<AcquisitionLedgerItem[]> {
+    await this.ensureTableExists();
     const now = new Date();
     const leaseExpiry = new Date(now.getTime() + leaseMs).toISOString();
     const nowIso = now.toISOString();
@@ -206,7 +200,7 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
     const claimedItems: AcquisitionLedgerItem[] = [];
 
     for (const row of candidateRows) {
-      const claim = await this.db.execute(
+      await this.db.execute(
         `
         UPDATE acquisition_ledger
         SET state = 'CLAIMED',
@@ -220,9 +214,8 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
         [workerId, nowIso, leaseExpiry, nowIso, row.id]
       );
 
-      if (claim.rowsAffected !== 1) continue;
-      const updated = await this.db.one<any>(`SELECT * FROM acquisition_ledger WHERE id = ? AND state = 'CLAIMED' AND claimed_by = ?`, [row.id, workerId]);
-      if (updated?.claimed_by === workerId) {
+      const updated = await this.db.one<any>(`SELECT * FROM acquisition_ledger WHERE id = ?`, [row.id]);
+      if (updated) {
         claimedItems.push(this.mapLedgerRow(updated));
       }
     }
@@ -231,6 +224,7 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
   }
 
   async updateJobState(id: string, updates: Partial<AcquisitionLedgerItem>): Promise<void> {
+    await this.ensureTableExists();
     const now = new Date().toISOString();
     const fields: string[] = ["updated_at = ?"];
     const params: any[] = [now];
@@ -279,10 +273,6 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
       fields.push("freshness_state = ?");
       params.push(updates.freshnessState);
     }
-    if (updates.attemptCount !== undefined) {
-      fields.push("attempt_count = ?");
-      params.push(updates.attemptCount);
-    }
 
     params.push(id);
     await this.db.execute(`UPDATE acquisition_ledger SET ${fields.join(", ")} WHERE id = ?`, params);
@@ -303,105 +293,6 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
       [nowIso, nowIso]
     );
     return result.rowsAffected;
-  }
-
-  async recordIngestionLineage(
-    item: Omit<AcquisitionIngestionLineage, "id" | "createdAt">
-  ): Promise<AcquisitionIngestionLineage> {
-    return this.db.transaction(async (tx) => {
-      const runScope = await tx.one<{ id: string }>(
-        `SELECT id FROM scrape_runs
-         WHERE id = ? AND tenant_id = ? AND person_id = ?`,
-        [item.scrapeRunId, item.tenantId, item.personId]
-      );
-      if (!runScope) {
-        throw new Error(
-          `[SqliteAcquisitionStore] scrape run ${item.scrapeRunId} does not belong to the supplied tenant/person scope.`
-        );
-      }
-
-      const lineageId = `ing_lineage_${crypto.randomUUID()}`;
-      await tx.execute(
-        `INSERT INTO acquisition_ingestion_lineage (
-           id, scrape_run_id, tenant_id, person_id, acquisition_ledger_id,
-           card_id, ingestion_attempt, source_portal, source_job_id, source_url, resolved_url,
-           capture_state, document_state, content_hash, canonical_job_id,
-           opportunity_version, failure_class
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(scrape_run_id, card_id, ingestion_attempt) DO NOTHING`,
-        [
-          lineageId,
-          item.scrapeRunId,
-          item.tenantId,
-          item.personId,
-          item.acquisitionLedgerId,
-          item.cardId,
-          item.ingestionAttempt,
-          item.sourcePortal,
-          item.sourceJobId,
-          item.sourceUrl,
-          item.resolvedUrl ?? null,
-          item.captureState,
-          item.documentState,
-          item.contentHash ?? null,
-          item.canonicalJobId ?? null,
-          item.opportunityVersion ?? null,
-          item.failureClass ?? null,
-        ]
-      );
-
-      const row = await tx.one<any>(
-        `SELECT * FROM acquisition_ingestion_lineage
-         WHERE scrape_run_id = ? AND card_id = ? AND ingestion_attempt = ?`,
-        [item.scrapeRunId, item.cardId, item.ingestionAttempt]
-      );
-      if (!row) {
-        throw new Error("[SqliteAcquisitionStore] ingestion lineage insert was not readable after write.");
-      }
-      const existing = this.mapIngestionLineageRow(row);
-      if (!this.matchesIngestionLineage(item, existing)) {
-        throw new Error(
-          `[SqliteAcquisitionStore] conflicting provenance for ${item.scrapeRunId}/${item.cardId} attempt ${item.ingestionAttempt}.`
-        );
-      }
-      return existing;
-    });
-  }
-
-  async listIngestionLineageForRun(
-    tenantId: string,
-    personId: string,
-    scrapeRunId: string
-  ): Promise<AcquisitionIngestionLineage[]> {
-    const rows = await this.db.many<any>(
-      `SELECT * FROM acquisition_ingestion_lineage
-       WHERE tenant_id = ? AND person_id = ? AND scrape_run_id = ?
-       ORDER BY created_at ASC, ingestion_attempt ASC`,
-      [tenantId, personId, scrapeRunId]
-    );
-    return rows.map((row) => this.mapIngestionLineageRow(row));
-  }
-
-  private matchesIngestionLineage(
-    expected: Omit<AcquisitionIngestionLineage, "id" | "createdAt">,
-    actual: AcquisitionIngestionLineage
-  ): boolean {
-    return expected.scrapeRunId === actual.scrapeRunId
-      && expected.tenantId === actual.tenantId
-      && expected.personId === actual.personId
-      && expected.acquisitionLedgerId === actual.acquisitionLedgerId
-      && expected.cardId === actual.cardId
-      && expected.ingestionAttempt === actual.ingestionAttempt
-      && expected.sourcePortal === actual.sourcePortal
-      && expected.sourceJobId === actual.sourceJobId
-      && expected.sourceUrl === actual.sourceUrl
-      && (expected.resolvedUrl ?? undefined) === actual.resolvedUrl
-      && expected.captureState === actual.captureState
-      && expected.documentState === actual.documentState
-      && (expected.contentHash ?? undefined) === actual.contentHash
-      && (expected.canonicalJobId ?? undefined) === actual.canonicalJobId
-      && (expected.opportunityVersion ?? undefined) === actual.opportunityVersion
-      && (expected.failureClass ?? undefined) === actual.failureClass;
   }
 
   private mapLedgerRow(row: any): AcquisitionLedgerItem {
@@ -432,27 +323,5 @@ export class SqliteAcquisitionStore implements AcquisitionStore {
       updatedAt: row.updated_at
     };
   }
-
-  private mapIngestionLineageRow(row: any): AcquisitionIngestionLineage {
-    return {
-      id: row.id,
-      scrapeRunId: row.scrape_run_id,
-      tenantId: row.tenant_id,
-      personId: row.person_id,
-      acquisitionLedgerId: row.acquisition_ledger_id,
-      cardId: row.card_id,
-      ingestionAttempt: row.ingestion_attempt,
-      sourcePortal: row.source_portal,
-      sourceJobId: row.source_job_id,
-      sourceUrl: row.source_url,
-      resolvedUrl: row.resolved_url ?? undefined,
-      captureState: row.capture_state,
-      documentState: row.document_state,
-      contentHash: row.content_hash ?? undefined,
-      canonicalJobId: row.canonical_job_id ?? undefined,
-      opportunityVersion: row.opportunity_version ?? undefined,
-      failureClass: row.failure_class ?? undefined,
-      createdAt: row.created_at,
-    };
-  }
 }
+

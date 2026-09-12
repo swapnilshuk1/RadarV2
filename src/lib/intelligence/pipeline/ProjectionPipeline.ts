@@ -3,7 +3,7 @@
  *
  * Resumable stage-based orchestrator for parsing candidate documents into CandidateProjections.
  * Stage Lifecycle:
- * DOCUMENT_UPLOADED -> EVIDENCE_EXTRACTED -> NORMALIZED -> ONTOLOGY_RESOLVED -> PROJECTION_BUILT -> INFERENCE_COMPLETE -> (PROFILE_READY | EVALUATED) -> COMPLETED
+ * DOCUMENT_UPLOADED -> EVIDENCE_EXTRACTED -> NORMALIZED -> ONTOLOGY_RESOLVED -> PROJECTION_BUILT -> INFERENCE_COMPLETE -> EVALUATED -> COMPLETED
  */
 
 import { getRepositories } from "../../../data/sqlite/provider";
@@ -15,12 +15,9 @@ import { CandidateProjectionBuilderImpl } from "../builders/CandidateProjectionB
 import { OperatingLevelEngine } from "../engines/OperatingLevelEngine";
 import { OpportunityService } from "../opportunity-service";
 import { EvaluationCoordinator } from "../EvaluationCoordinator";
-import { activateSearchPlanForIntent } from "../search-plan-activation";
-import { resolveServingScope } from "../../security/scope-resolver";
 import type { EvidenceGraph } from "../../../domain/evidence";
 
 import { parseDocumentText } from "../extraction/text-parser";
-import { resolveProjectionCompletionStage } from "./projection-completion-state";
 
 export type PipelineStage =
   | "DOCUMENT_REGISTERED"
@@ -30,7 +27,6 @@ export type PipelineStage =
   | "ONTOLOGY_RESOLVED"
   | "PROJECTION_BUILT"
   | "INFERENCE_COMPLETE"
-  | "PROFILE_READY"
   | "EVALUATED"
   | "COMPLETED";
 
@@ -45,20 +41,6 @@ export interface PipelineExecutionInput {
   fileBuffer?: Buffer;
 }
 
-export function reuseEvidenceGraphForOwner(
-  existingGraph: EvidenceGraph | undefined,
-  personId: string,
-  documentId: string,
-): EvidenceGraph | undefined {
-  if (!existingGraph || existingGraph.personId !== personId) return undefined;
-  return {
-    ...existingGraph,
-    id: `ev-graph-${documentId}-dedup`,
-    personId,
-    provenance: { ...existingGraph.provenance, documentId },
-  };
-}
-
 export class ProjectionPipeline {
   private repos = getRepositories();
   private extractor = new EvidenceExtractionService();
@@ -69,7 +51,6 @@ export class ProjectionPipeline {
     stage: PipelineStage;
     error?: string;
     deduplicated?: boolean;
-    intentRequired?: boolean;
   }> {
     const { documentId, personId, filename, storageUri, mimeType, documentHash } = input;
     let currentStage: PipelineStage = startStage;
@@ -123,14 +104,19 @@ export class ProjectionPipeline {
       if (currentStage === "EVIDENCE_EXTRACTED") {
         await this.repos.documents.updateDocumentStage(documentId, "EVIDENCE_EXTRACTED", "PROCESSING");
 
-        // Content can be reused only inside the same candidate identity. A hash
-        // proves identical text, never shared ownership or provenance.
+        // Check if an EvidenceGraph with identical text_hash already exists
         if (textHash) {
-          const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(textHash, personId);
-          const reusableGraph = reuseEvidenceGraphForOwner(existingGraph, personId, documentId);
-          if (reusableGraph) {
+          const existingGraph = await this.repos.documents.findExistingEvidenceGraphByTextHash(textHash);
+          if (existingGraph) {
             console.log(`[ProjectionPipeline] Instant deduplication match for textHash ${textHash.slice(0, 8)}...!`);
-            evidenceGraph = reusableGraph;
+            evidenceGraph = {
+              ...existingGraph,
+              id: `ev-graph-${documentId}-dedup`,
+              provenance: {
+                ...existingGraph.provenance,
+                documentId
+              }
+            };
             isDeduplicated = true;
           }
         }
@@ -188,27 +174,7 @@ export class ProjectionPipeline {
         await this.repos.documents.updateDocumentStage(documentId, "INFERENCE_COMPLETE", "PROCESSING");
         finalProjection = OperatingLevelEngine.evaluate(baseProjection, rawText);
         await this.repos.people.saveProjection(personId, finalProjection);
-        // A saved CV projection is a new immutable input. If a real intent
-        // exists, establish a new context and canonical refresh lineage now;
-        // cache invalidation alone is never presented as reevaluation.
-        const intent = await this.repos.documents.getLatestCareerIntent(personId);
-        if (!intent) {
-          // A projection is usable profile processing, not a recommendation
-          // refresh. No target intent means no canonical evaluation lineage.
-          await this.repos.documents.updateDocumentStage(documentId, "PROFILE_READY", "COMPLETED");
-          return { success: true, stage: "PROFILE_READY", deduplicated: isDeduplicated, intentRequired: true };
-        }
-        const completionStage = resolveProjectionCompletionStage(true);
-        const scope = (await resolveServingScope(personId)).scope;
-        await activateSearchPlanForIntent({
-          ...intent,
-          personId,
-          preferredLocations: intent.preferredLocations || [],
-          targetTitles: intent.targetTitles || [],
-          scope,
-          activatedBy: "projection-refresh",
-        });
-        currentStage = completionStage;
+        currentStage = "EVALUATED";
       }
 
       // 8. EVALUATED

@@ -9,7 +9,6 @@ import { invalidateCandidateDossierCache } from "./cip";
 import { invalidateEngineCache } from "./engine";
 import { getRepositories } from "../../data/sqlite/provider";
 import { validateSessionToken, SESSION_COOKIE_NAME } from "../auth/session";
-import { activateSearchPlanForIntent } from "./search-plan-activation";
 import { 
   type CandidateState, 
   type ExtractedFact, 
@@ -36,7 +35,7 @@ function getNodeChildProcess() {
 // ─── UTILITY: ADC TOKEN & GEMINI HELPER ──────────────────────────────────────
 let adcTokenCache: { token: string; expiresAt: number } | null = null;
 
-async function getADCToken(): Promise<string | null> {
+function getADCToken(): string | null {
   try {
     if (adcTokenCache && Date.now() < adcTokenCache.expiresAt) {
       return adcTokenCache.token;
@@ -46,55 +45,11 @@ async function getADCToken(): Promise<string | null> {
     const cp = getNodeChildProcess();
     if (!fs || !path || !cp) return null;
 
-    // 1. Direct standard ADC credentials file read
-    const candidatePaths = [
-      process.env.GOOGLE_APPLICATION_CREDENTIALS,
-      process.platform === "win32"
-        ? path.join(process.env.APPDATA || "", "gcloud", "application_default_credentials.json")
-        : path.join(process.env.HOME || "", ".config", "gcloud", "application_default_credentials.json"),
-      process.platform === "win32"
-        ? path.join(process.env.LOCALAPPDATA || "", "gcloud", "application_default_credentials.json")
-        : ""
-    ].filter(Boolean) as string[];
-
-    for (const credPath of candidatePaths) {
-      if (fs.existsSync(credPath)) {
-        try {
-          const creds = JSON.parse(fs.readFileSync(credPath, "utf-8"));
-          if (creds.client_id && creds.client_secret && creds.refresh_token) {
-            const res = await fetch("https://oauth2.googleapis.com/token", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                client_id: creds.client_id,
-                client_secret: creds.client_secret,
-                refresh_token: creds.refresh_token,
-                grant_type: "refresh_token",
-              }),
-            });
-            if (res.ok) {
-              const data = (await res.json()) as { access_token?: string; expires_in?: number };
-              if (data.access_token) {
-                const ttl = ((data.expires_in || 3600) - 300) * 1000;
-                adcTokenCache = {
-                  token: data.access_token,
-                  expiresAt: Date.now() + Math.max(ttl, 60000),
-                };
-                return data.access_token;
-              }
-            }
-          }
-        } catch {}
-      }
-    }
-
-    // 2. Fallback to gcloud CLI
     let cmd = "gcloud";
     if (process.platform === "win32") {
       const commonPaths = [
         "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
         path.join(process.env.USERPROFILE || "", "AppData\\Local\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd"),
-        path.join(process.env.USERPROFILE || "", "Downloads\\google-cloud-cli-windows-x86_64\\google-cloud-sdk\\bin\\gcloud.cmd"),
         "C:\\Program Files\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd"
       ];
       for (const p of commonPaths) {
@@ -117,7 +72,7 @@ async function getADCToken(): Promise<string | null> {
       return token;
     }
   } catch (err: any) {
-    console.warn(`[profile-server] Failed to get ADC token: ${err.message}`);
+    console.warn(`[profile-server] Failed to get ADC token from gcloud CLI: ${err.message}`);
   }
   return null;
 }
@@ -130,7 +85,7 @@ async function fetchGeminiContent(prompt: string, inlineFile?: { mimeType: strin
   if (apiKey) {
     url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   } else {
-    const adcToken = await getADCToken();
+    const adcToken = getADCToken();
     if (!adcToken) {
       throw new Error("No Gemini credentials (API Key or Google Cloud print-access-token) available.");
     }
@@ -393,23 +348,66 @@ export const updateIntentSessionFn = createServerFn({ method: "POST" })
     
     await repos.people.saveCandidateState(user.userId, currentState);
 
-    // DYNAMIC RE-PLANNING: the replacement plan, immutable snapshot, context,
-    // lineage binding, pointer and prior-plan archival commit together.
-    console.log("[profile-server] Triggering atomic Search Re-Planning for Turso Cloud...");
-    const targetTitles = (currentState.intent.targetRoles || []).map((r: any) => r?.title || String(r));
-    const preferredLocations = currentState.intent.locations || [];
-    const industries = currentState.intent.industries || [];
-    const profileFunctions = currentState.intent.functions || [];
-    const { activation, searchPlan } = await activateSearchPlanForIntent({
-      personId: user.userId,
-      targetTitles,
-      preferredLocations,
-      industries,
-      functions: profileFunctions,
-      activatedBy: "intent-update",
-    });
-
-    console.log(`[profile-server] Activated Search Plan ${activation.plan.id} into Turso with ${searchPlan.rankedQueries.length} queries.`);
+    // DYNAMIC RE-PLANNING: Invoke CareerIntent extraction and SearchPlanner!
+    try {
+      console.log("[profile-server] Triggering automatic Search Re-Planning...");
+      const path = getNodePath();
+      const fs = getNodeFs();
+      if (path && fs) {
+        // Create a temporary mock of the profile file for the scraper
+        const tempProfilePath = path.join(process.cwd(), ".radar", `temp-profile-${user.userId}.json`);
+        
+        const legacyProfileComp = {
+          identity: {
+            name: currentState.session?.name || currentState.identity.identity.archetype,
+            currentTitle: currentState.intent.targetRoles[0]?.title || "Executive Leader"
+          },
+          executiveIdentity: currentState.identity.identity,
+          experience: {
+            yearsExperience: 20,
+            teamSizeManaged: currentState.identity.leadership.largestTeam,
+            feeBookScale: currentState.identity.leadership.budgetScale,
+            plOwnership: true,
+            boardInteraction: currentState.identity.leadership.boardExposure,
+            achievements: currentState.identity.achievements
+          },
+          leadershipProfile: {
+            largestTeam: currentState.identity.leadership.largestTeam,
+            globalMarkets: currentState.identity.leadership.globalMarketsCount,
+            regions: currentState.intent.locations,
+            budgetResponsibility: currentState.identity.leadership.budgetScale,
+            commercialOwnership: true,
+            boardExposure: currentState.identity.leadership.boardExposure,
+            globalPrograms: true,
+            peopleLeadership: true,
+            matrixLeadership: true,
+            vendorManagement: true,
+            clientLeadership: true
+          },
+          evidence: currentState.identity.evidence,
+          capabilities: currentState.identity.capabilities.categories,
+          headspaceCapacityPerMonth: currentState.intent.maxMonthlyPursuits
+        };
+        fs.writeFileSync(tempProfilePath, JSON.stringify(legacyProfileComp, null, 2), "utf-8");
+        
+        const taxonomyPath = path.join(process.cwd(), "config", "ontologies", "taxonomy.json");
+        const lexiconPath = path.join(process.cwd(), "config", "ontologies", "lexicon.json");
+        const searchPlanOutputPath = path.join(process.cwd(), "src", "data", "search-plan.json");
+        
+        const { CareerIntentModel } = await import("../../../scripts/scraper/run/career-intent");
+        const intent = CareerIntentModel.extractIntent(tempProfilePath, taxonomyPath);
+        
+        const { SearchPlanner } = await import("../../../scripts/scraper/run/search-planner");
+        const searchPlan = SearchPlanner.plan(intent, taxonomyPath, lexiconPath);
+        
+        fs.writeFileSync(searchPlanOutputPath, JSON.stringify(searchPlan, null, 2), "utf-8");
+        console.log(`[profile-server] Successfully regenerated search-plan.json with ${searchPlan.rankedQueries.length} compiled queries!`);
+        
+        fs.unlinkSync(tempProfilePath);
+      }
+    } catch (e: any) {
+      console.error("[profile-server] Automated search planning failed:", e.message);
+    }
 
     return currentState;
   });

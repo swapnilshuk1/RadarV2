@@ -114,13 +114,8 @@ describe("M9.4.1 Forensic Certification: Multi-Tenant Zero-Orphan & Cross-Tenant
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(canonicalJobId, "LinkedIn", "iso-job-001", "https://linkedin.com/jobs/001", "Target Co");
 
-    // Seed an already-authorized Tenant B decision. Authorization itself is
-    // exercised by the canonical decision-write suite; this test isolates
-    // tenant-scoped reads from that separate concern.
-    sqliteDb.prepare(`
-      INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, reason, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    `).run("iso_decision_B", TENANT_B, PERSON_B, canonicalJobId, "PASS", "Not interested");
+    // Tenant B records a decision
+    await decisionStore.recordUserDecision(PERSON_B, "iso-job-001", "PASS", "Not interested", null, TENANT_B);
 
     // Tenant A queries decisions for their person
     const decisionsA = await decisionStore.getUserDecisions(PERSON_A, TENANT_A);
@@ -143,12 +138,8 @@ describe("M9.4.1 Forensic Certification: Multi-Tenant Zero-Orphan & Cross-Tenant
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(canonicalJobId, "LinkedIn", "mut-job-001", "https://linkedin.com/jobs/001", "Target Co");
 
-    // Seed an already-authorized Tenant B decision; mutation authorization is
-    // intentionally covered by the canonical decision-write suite.
-    sqliteDb.prepare(`
-      INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, reason, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    `).run("mut_decision_B", TENANT_B, PERSON_B, canonicalJobId, "PURSUE", "High strategic value");
+    // Tenant B records a decision
+    await decisionStore.recordUserDecision(PERSON_B, "mut-job-001", "PURSUE", "High strategic value", null, TENANT_B);
 
     // Tenant A attempts to delete Tenant B's decision using Tenant A scope
     await decisionStore.deleteUserDecision(PERSON_B, "mut-job-001", TENANT_A);

@@ -1,28 +1,20 @@
 interface BeforeProceedProps {
-  brief: any;
+  executionPkg: any;
 }
 
-export function BeforeProceed({ brief }: BeforeProceedProps) {
-  const questions = brief?.rankedUnknowns || [];
-  const primaryQuestion = questions[0];
-  const secondaryQuestions = questions.slice(1);
+export function BeforeProceed({ executionPkg }: BeforeProceedProps) {
+  const primaryQuestion = executionPkg.screeningQuestions[0];
+  const secondaryQuestions = executionPkg.screeningQuestions.slice(1);
 
   return (
     <div className="space-y-2.5">
       <div className="memo-callout border-l-2 border-caution bg-surface-raised p-4 space-y-2">
         <p className="label-mono text-caution font-semibold text-[10px] tracking-wider">Before You Proceed</p>
         <p className="font-display text-lg leading-relaxed text-foreground font-normal">
-          {primaryQuestion?.question || "No screening question was materialized for this evaluation."}
+          {primaryQuestion?.question || "Does this role carry genuine commercial budget authority?"}
         </p>
         <p className="text-xs text-muted-foreground leading-relaxed font-mono">
-          {(primaryQuestion?.reason || primaryQuestion?.label) && (
-            <>
-              <span className="text-primary font-semibold">
-                Why it matters:
-              </span>{" "}
-              {primaryQuestion.reason || primaryQuestion.label}
-            </>
-          )}
+          <span className="text-primary font-semibold">Why it matters:</span> {primaryQuestion?.whyItMatters || "This single answer is most likely to change today's recommendation."}
         </p>
       </div>
 
@@ -37,10 +29,7 @@ export function BeforeProceed({ brief }: BeforeProceedProps) {
               <div key={idx} className="space-y-1 text-xs">
                 <p className="font-semibold text-foreground">{q.question}</p>
                 <p className="text-muted-foreground text-[11px] leading-relaxed">
-                  <span className="text-primary font-medium">
-                    Why it matters:
-                  </span>{" "}
-                  {q.reason || q.label}
+                  <span className="text-primary font-medium">Why it matters:</span> {q.whyItMatters}
                 </p>
               </div>
             ))}

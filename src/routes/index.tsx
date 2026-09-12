@@ -1,19 +1,23 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type DecisionVerb, type EvaluatedOpportunity, type ServedOpportunity, isEvaluated, isUnavailable, isUnmaterialized } from "../data/opportunity-fixtures";
+import { type Opportunity, type DecisionVerb } from "../data/opportunity-fixtures";
 import { InlineBrief } from "../components/radar/InlineBrief";
 import { useDecisions } from "../lib/decisions-store";
-import { getOpportunitiesFn, getOpportunityDetailsFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
-import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn, getScrapePlanPreviewFn } from "../lib/intelligence/scrape-server";
+import { getOpportunitiesFn, getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
+import { triggerScrapeFn, getLiveScrapedFn, confirmScrapeFn, abortScrapeFn } from "../lib/intelligence/scrape-server";
 import { ScraperConsole } from "../components/radar/ScraperConsole";
+import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
+import { JobProjectionBuilder } from "../lib/intelligence/builders/JobProjectionBuilder";
 import { logTelemetry } from "../lib/telemetry";
 import { useOnboarding } from "../components/onboarding/OnboardingProvider";
+import { inferExecutiveMandateArchetype } from "../lib/intelligence/editorial";
 
 import { useScrapeProgress } from "../components/radar/ScrapeProgressProvider";
 import { useAttentionPreference } from "../lib/attention-store";
-import { hasMatchingEvaluationFingerprint } from "../lib/intelligence/dossier/cache-identity";
 import {
   CANONICAL_CATEGORIES,
+  classifyOpportunityCategories,
+  resolveCanonicalCategoryId,
   type CategoryId,
 } from "../lib/domain/category_taxonomy";
 
@@ -34,6 +38,14 @@ export function getTimeAwareGreeting(userName?: string): string {
 
 const VISIBLE_LIMIT = 10;
 
+function getCategoryTags(o: Opportunity): string[] {
+  const cats = classifyOpportunityCategories(o);
+  return cats.map((catId) => {
+    const def = CANONICAL_CATEGORIES.find((c) => c.id === catId);
+    return def ? def.label : catId;
+  });
+}
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -45,49 +57,28 @@ export const Route = createFileRoute("/")({
   }),
   staleTime: 0,
   loader: async () => {
-    const [opportunitiesList, metrics, searchPlanPreview] = await Promise.all([
+    const [opportunitiesList, metrics] = await Promise.all([
       getOpportunitiesFn(),
       getShortlistMetricsFn(),
-      getScrapePlanPreviewFn(),
     ]);
     return {
       opportunitiesList,
       metrics,
-      searchPlanPreview,
     };
   },
   component: Shortlist,
 });
 
-export function dossierCacheKey(opportunity: EvaluatedOpportunity): string {
-  return `${opportunity.jobHash}:${opportunity.engineRecommendation?.evaluationFingerprint ?? "unknown"}`;
-}
-
-export function isCurrentDossierResponse(
-  requested: EvaluatedOpportunity,
-  response: ServedOpportunity | null | undefined,
-): response is EvaluatedOpportunity {
-  return Boolean(response && isEvaluated(response) && hasMatchingEvaluationFingerprint(
-    requested.engineRecommendation?.evaluationFingerprint,
-    response.engineRecommendation?.evaluationFingerprint,
-  ));
-}
-
 function Shortlist() {
-  const { opportunitiesList, metrics, searchPlanPreview } = Route.useLoaderData();
-  const { decide: recordDecision } = useDecisions();
+  const { opportunitiesList, metrics } = Route.useLoaderData();
+  const { decisions, decide: recordDecision } = useDecisions();
   const { progress, markArrivalSeen } = useOnboarding();
   const [open, setOpen] = useState<string | null>(null);
   const [openedTimes, setOpenedTimes] = useState<Record<string, number>>({});
   const [selectedCategoryId, setSelectedCategoryId] = useState<CategoryId>("all");
-  const [categoryOps, setCategoryOps] = useState<ServedOpportunity[] | null>(null);
-  const [dossierByJobHash, setDossierByJobHash] = useState<Record<string, ServedOpportunity | null | undefined>>({});
+  const [categoryOps, setCategoryOps] = useState<Opportunity[] | null>(null);
   const [isLoadingCategory, setIsLoadingCategory] = useState(false);
-  const categoryCacheRef = useRef<Map<string, ServedOpportunity[]>>(new Map());
-
-  useEffect(() => {
-    categoryCacheRef.current.clear();
-  }, [opportunitiesList]);
+  const categoryCacheRef = useRef<Map<string, Opportunity[]>>(new Map());
 
   useEffect(() => {
     if (selectedCategoryId === "all") {
@@ -124,21 +115,6 @@ function Shortlist() {
 
   const activeOps = categoryOps ?? opportunitiesList;
 
-  const loadDossier = (opportunity: EvaluatedOpportunity) => {
-    const cacheKey = dossierCacheKey(opportunity);
-    if (dossierByJobHash[cacheKey] !== undefined) return;
-    setDossierByJobHash((current) => ({ ...current, [cacheKey]: null }));
-    getOpportunityDetailsFn({ data: opportunity.jobHash })
-      .then((details) => setDossierByJobHash((current) => {
-        if (!isCurrentDossierResponse(opportunity, details.opportunity)) {
-          const { [cacheKey]: _discarded, ...withoutMismatchedResponse } = current;
-          return withoutMismatchedResponse;
-        }
-        return { ...current, [cacheKey]: details.opportunity };
-      }))
-      .catch(() => setDossierByJobHash((current) => ({ ...current, [cacheKey]: null })));
-  };
-
   const showArrivalBanner = !progress.arrivalSeen;
   const isBothSkipped = progress.evidenceStatus === "skipped" && progress.intentStatus === "skipped";
 
@@ -157,10 +133,60 @@ function Shortlist() {
     return counts;
   }, [activeOps]);
 
+  const totalActivePursuits = metrics?.activePursuits ?? 0;
   const totalShortlisted = metrics?.totalShortlisted ?? 0;
-  const totalDecisionsCount = metrics?.totalDecisions ?? 0;
+  const totalSparse = metrics?.engineBreakdown?.sparse ?? 0;
+  const totalDecisionsCount = metrics?.totalDecisions ?? Object.keys(decisions).length;
   const totalScreenedCount = (metrics?.totalScreened ?? 0) + extraScraped;
   const integrity = metrics?.integrity;
+
+  const remaining = useMemo(
+    () =>
+      activeOps.filter((o) => {
+        const clientRec = decisions[o.jobHash];
+        const userVerb = clientRec?.verb || o.userDecision?.userAction;
+
+        // Explicit user decisions (PURSUE, CONSIDER, PASS) belong on decided surfaces (/decisions)
+        // and should not be treated as unresolved Shortlist items even if evaluation fingerprints are stale.
+        if (userVerb === "PURSUE" || userVerb === "CONSIDER" || userVerb === "PASS") {
+          return false;
+        }
+
+        const currentFingerprint = o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion;
+        if (clientRec && clientRec.reviewedFingerprint && clientRec.reviewedFingerprint === currentFingerprint) {
+          return false;
+        }
+
+        if (o.reviewWorkflowState === "UNREVIEWED") {
+          if (clientRec && !clientRec.reviewedFingerprint) return false;
+          return true;
+        }
+
+        if (o.reviewWorkflowState === "REVIEWED_STALE") {
+          if (clientRec && clientRec.reviewedFingerprint === currentFingerprint) return false;
+          return true;
+        }
+
+        if (o.reviewWorkflowState === "REVIEWED_UNKNOWN") {
+          if (clientRec && clientRec.reviewedFingerprint === currentFingerprint) return false;
+          const action = o.userDecision?.userAction || o.engineRecommendation?.engineVerdict;
+          return action === "PURSUE" || action === "CONSIDER";
+        }
+
+        return false;
+      }),
+    [activeOps, decisions]
+  );
+
+  const shortlistedOps = useMemo(
+    () => remaining.filter((o) => o.engineRecommendation?.engineVerdict === "PURSUE" || o.engineRecommendation?.engineVerdict === "CONSIDER"),
+    [remaining]
+  );
+
+  const sparseOps = useMemo(
+    () => remaining.filter((o) => o.decision === "SPARSE_SPEC"),
+    [remaining]
+  );
 
   const { attentionWindow } = useAttentionPreference();
   const [cursorIndex, setCursorIndex] = useState(0);
@@ -170,13 +196,22 @@ function Shortlist() {
     setGreeting(getTimeAwareGreeting("Swapnil"));
   }, []);
 
-  // `activeOps` is the canonical server-selected review queue. The browser only
-  // paginates its presentation; it never reinterprets verdicts or review state.
-  const visible = useMemo(() => {
-    return activeOps.slice(cursorIndex, cursorIndex + attentionWindow);
-  }, [activeOps, cursorIndex, attentionWindow]);
+  const filteredRemaining = useMemo(() => {
+    if (selectedCategoryId === "needs_more_signal") {
+      return sparseOps;
+    }
+    return shortlistedOps;
+  }, [selectedCategoryId, shortlistedOps, sparseOps]);
 
-  const hasNext = cursorIndex + attentionWindow < activeOps.length;
+  // Ranked Attention Queue with mid-window replenishment:
+  // Shows up to `attentionWindow` items starting from `cursorIndex`.
+  // When an item receives a decision, it leaves filteredRemaining, and the queue automatically
+  // replenishes at the bottom from the next untouched opportunity in the authoritative sequence.
+  const visible = useMemo(() => {
+    return filteredRemaining.slice(cursorIndex, cursorIndex + attentionWindow);
+  }, [filteredRemaining, cursorIndex, attentionWindow]);
+
+  const hasNext = cursorIndex + attentionWindow < filteredRemaining.length;
   const hasPrev = cursorIndex > 0;
 
   const handleNext = () => {
@@ -192,14 +227,11 @@ function Shortlist() {
   };
 
   const decide = (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => {
-    // UNKNOWN is presentation of absent evaluation, never an action to persist.
-    if (verb === "UNKNOWN") return;
     const openTime = openedTimes[jobHash];
     const duration = openTime ? Date.now() - openTime : 0;
     logTelemetry(jobHash, verb, duration);
 
     recordDecision(jobHash, verb, reviewedFingerprint);
-    void router.invalidate();
     setOpen((cur) => (cur === jobHash ? null : cur));
 
     setOpenedTimes((prev) => {
@@ -259,9 +291,9 @@ function Shortlist() {
           <dl className="flex items-center gap-6 overflow-x-auto sm:gap-8">
             <div className="border-r border-border/40 pr-6 sm:pr-8">
               <dd className="font-display text-4xl sm:text-5xl text-emerald-600 dark:text-emerald-400 tabular-nums font-normal">
-                {String(totalShortlisted).padStart(2, "0")}
+                {String(totalActivePursuits).padStart(2, "0")}
               </dd>
-              <dt className="label-mono mt-1 text-[0.68rem] text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">Shortlisted</dt>
+              <dt className="label-mono mt-1 text-[0.68rem] text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">Active Pursuits</dt>
             </div>
 
             <div className="border-r border-border/40 pr-6 sm:pr-8">
@@ -334,16 +366,12 @@ function Shortlist() {
                 {selectedCategoryId === "all"
                   ? `Sorted by Fit · ${totalShortlisted} Shortlisted`
                   : `Sorted by Fit · ${
-                      selectedCategoryId === "needs_more_signal"
-                        ? metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? (isLoadingCategory ? "..." : activeOps.length)
-                        : metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? (isLoadingCategory ? "..." : activeOps.length)
+                      metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? (isLoadingCategory ? "..." : filteredRemaining.length)
                     } ${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}`}
               </h2>
-              {selectedCategoryId === "all" && (
+              {selectedCategoryId === "all" && shortlistedOps.length > 0 && shortlistedOps.length !== totalShortlisted && (
                 <span className="label-mono text-[11px] text-muted-foreground">
-                  {metrics?.discoveryMetrics?.actionableReviewQueue !== undefined
-                    ? `${metrics.discoveryMetrics.actionableReviewQueue} remaining to review`
-                    : `${activeOps.length} on page`}
+                  {shortlistedOps.length} remaining to review
                 </span>
               )}
             </div>
@@ -356,16 +384,14 @@ function Shortlist() {
 
                 let countLabel = "";
                 if (catDef.id === "all") {
-                  const cnt = catMetric?.shortlisted ?? activeOps.length;
+                  const cnt = catMetric?.unreviewed ?? remaining.length;
                   countLabel = ` (${cnt})`;
                 } else if (catDef.id === "needs_more_signal") {
-                  // Sparse-signal membership is state-derived and is not an
-                  // evaluated shortlist count.
-                  const unrev = catMetric?.unreviewed ?? activeOps.length;
-                  const tot = catMetric?.total ?? activeOps.length;
+                  const unrev = catMetric?.unreviewed ?? sparseOps.length;
+                  const tot = catMetric?.total ?? totalSparse;
                   countLabel = ` (${unrev} / ${tot})`;
                 } else {
-                  const unrev = catMetric?.shortlisted ?? (selectedCategoryId === catDef.id ? activeOps.length : 0);
+                  const unrev = catMetric?.unreviewed ?? (selectedCategoryId === catDef.id ? filteredRemaining.length : 0);
                   countLabel = ` (${unrev})`;
                 }
 
@@ -407,7 +433,7 @@ function Shortlist() {
                 {visible.map((o, idx) => {
                   const isOpen = open === o.jobHash;
 
-                  return isEvaluated(o) ? (
+                  return (
                     <ShortlistCardRow
                       key={o.jobHash}
                       o={o}
@@ -418,22 +444,20 @@ function Shortlist() {
                       setOpen={setOpen}
                       decide={decide}
                       showArrivalBanner={showArrivalBanner}
-                      dossier={dossierByJobHash[dossierCacheKey(o)]}
-                      onExpand={loadDossier}
                     />
-                  ) : (
-                    <MinimalStateCard key={o.jobHash} o={o} />
                   );
                 })}
 
                 {visible.length === 0 && (
                   <li className="glass-card rounded-xl py-16 text-center font-display text-xl text-muted-foreground list-none">
                     {selectedCategoryId === "all" 
-                      ? (totalShortlisted > 0 && activeOps.length === 0
+                      ? (totalShortlisted > 0 && shortlistedOps.length === 0
                           ? `All ${totalShortlisted} shortlist opportunities have recorded decisions.`
                           : "No shortlist opportunities remaining to review.")
                       : selectedCategoryId === "needs_more_signal"
-                        ? "No opportunities need more signal."
+                        ? (totalSparse > 0 && sparseOps.length === 0
+                            ? `All ${totalSparse} sparse opportunities have recorded decisions.`
+                            : "No opportunities need more signal.")
                         : `No unreviewed opportunities match "${CANONICAL_CATEGORIES.find((c) => c.id === selectedCategoryId)?.label || selectedCategoryId}".`}
                   </li>
                 )}
@@ -466,75 +490,18 @@ function Shortlist() {
               </div>
 
               {/* Escape hatch: Introduce "Other matched opportunities →" after guided sequence begins extending beyond initial presentation window */}
-              {(cursorIndex > 0 || activeOps.length > attentionWindow) && (
+              {(cursorIndex > 0 || filteredRemaining.length > attentionWindow) && (
                 <Link
                   to="/decisions"
                   className="inline-flex items-center text-[11.5px] font-mono text-muted-foreground hover:text-foreground transition-colors"
                   data-testid="escape-hatch-link"
                 >
-                  Other matched opportunities ({activeOps.length}) →
+                  Other matched opportunities ({filteredRemaining.length}) →
                 </Link>
               )}
             </div>
           </div>
         </section>
-
-        <details className="memo-card mb-space-6" data-testid="active-search-plan">
-          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-space-3">
-            <span>
-              <span className="label-mono text-muted-foreground">Active search execution</span>
-              <span className="mt-1 block font-serif text-xl text-foreground">View the exact next-search plan</span>
-            </span>
-            {searchPlanPreview.status === "ready" ? (
-              <span className="memo-badge bg-signal text-signal-foreground">
-                {searchPlanPreview.postedWithinDays ? `${searchPlanPreview.postedWithinDays} days` : "No date limit"}
-                {searchPlanPreview.location ? ` · ${searchPlanPreview.location}` : ""}
-              </span>
-            ) : (
-              <span className="memo-badge bg-caution text-caution-foreground">Unavailable</span>
-            )}
-          </summary>
-
-          {searchPlanPreview.status === "ready" ? (
-            <>
-              <dl className="mt-space-3 grid gap-space-2 border-t border-border pt-space-3 sm:grid-cols-4">
-                <div>
-                  <dt className="label-mono text-muted-foreground">Freshness</dt>
-                  <dd className="mt-1 text-sm font-medium text-foreground">
-                    {searchPlanPreview.postedWithinDays ? `Last ${searchPlanPreview.postedWithinDays} days` : "No date limiter"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="label-mono text-muted-foreground">Location</dt>
-                  <dd className="mt-1 text-sm font-medium text-foreground">{searchPlanPreview.location || "No location limiter"}</dd>
-                </div>
-                <div>
-                  <dt className="label-mono text-muted-foreground">Ordering</dt>
-                  <dd className="mt-1 text-sm font-medium text-foreground">{searchPlanPreview.sort === "date" ? "Most recent first" : "Portal relevance"}</dd>
-                </div>
-                <div>
-                  <dt className="label-mono text-muted-foreground">Portals</dt>
-                  <dd className="mt-1 text-sm font-medium text-foreground">{searchPlanPreview.portals.join(" · ")}</dd>
-                </div>
-              </dl>
-
-              <div className="mt-space-3 border-t border-border pt-space-3">
-                <p className="label-mono text-muted-foreground">
-                  {searchPlanPreview.keywords.length} compiled keywords · {searchPlanPreview.executionSurfaceCount} initial portal surfaces
-                </p>
-                <ul className="mt-space-2 grid max-h-40 grid-cols-1 gap-space-1 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3" aria-label="Compiled search keywords">
-                  {searchPlanPreview.keywords.map((keyword) => (
-                    <li key={keyword} className="text-sm text-foreground">{keyword}</li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          ) : (
-            <p className="mt-space-3 border-t border-border pt-space-3 text-sm text-caution">
-              Active plan unavailable: {searchPlanPreview.error}
-            </p>
-          )}
-        </details>
       </main>
 
       {/* ────────────────────────────────────────────────────────────────────────
@@ -561,20 +528,20 @@ function Shortlist() {
           {isStarting ? "Starting..." : runState?.isActive ? "Search Active" : "Run Search"}
         </button>
         <span className="dock-text">
-          <strong>{(metrics?.portalMetrics?.total ?? totalScraped).toLocaleString()}</strong> candidates
+          <strong>{totalScraped}</strong> scraped
         </span>
         <span className="hidden md:inline-block text-border/40">|</span>
         <span className="dock-text hidden md:inline">
-          LinkedIn <strong>{(metrics?.portalMetrics?.LinkedIn ?? sourceCounts.LinkedIn).toLocaleString()}</strong>
+          LinkedIn <strong>{sourceCounts.LinkedIn}</strong>
         </span>
         <span className="dock-text hidden md:inline">
-          Naukri <strong>{(metrics?.portalMetrics?.Naukri ?? sourceCounts.Naukri).toLocaleString()}</strong>
+          Naukri <strong>{sourceCounts.Naukri}</strong>
         </span>
         <span className="dock-text hidden md:inline">
-          Indeed <strong>{(metrics?.portalMetrics?.Indeed ?? sourceCounts.Indeed).toLocaleString()}</strong>
+          Indeed <strong>{sourceCounts.Indeed}</strong>
         </span>
         <span className="dock-text text-emerald-600 dark:text-emerald-400 font-bold">
-          → {selectedCategoryId === "all" ? (metrics?.discoveryMetrics?.actionableReviewQueue ?? activeOps.length) : (metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? activeOps.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.shortlisted ?? activeOps.length)} to review
+          → {selectedCategoryId === "all" ? shortlistedOps.length : (metrics?.categoryMetrics?.[selectedCategoryId]?.unreviewed ?? filteredRemaining.length)} of {selectedCategoryId === "all" ? totalShortlisted : (metrics?.categoryMetrics?.[selectedCategoryId]?.total ?? filteredRemaining.length)} to review
         </span>
       </div>
     </div>
@@ -582,10 +549,12 @@ function Shortlist() {
 }
 
 export function resolveShortlistCardScore(
-  o: EvaluatedOpportunity,
+  o: Opportunity,
+  brief?: { qualityScore?: number | null }
 ): { rawScore: number | null | undefined; scoreDisplay: string | number } {
-  const rawScore = o.engineRecommendation?.qualityScore;
-  const scoreDisplay = rawScore === null || rawScore === undefined ? "—" : rawScore;
+  const isSparse = o.decision === "SPARSE_SPEC";
+  const rawScore = brief?.qualityScore ?? o.engineRecommendation?.qualityScore ?? o.recommendationResult?.score;
+  const scoreDisplay = isSparse || rawScore === null || rawScore === undefined ? "—" : rawScore;
   return { rawScore, scoreDisplay };
 }
 
@@ -597,37 +566,20 @@ export interface ShortlistCardBadgeState {
   previousAction: string | null;
 }
 
-export function resolveShortlistCardBadgeState(o: EvaluatedOpportunity): ShortlistCardBadgeState {
-  if ((o as any).evaluationState === "SPARSE_SPEC" || o.engineRecommendation?.engineVerdict === "SPARSE_SPEC") {
-    return {
-      primaryLabel: "needs more signal",
-      badgeClass: "badge-sparse text-amber-600 bg-amber-500/10 border border-amber-500/20",
-      isStale: false,
-      staleLabel: null,
-      previousAction: null,
-    };
-  }
-
-  if ((o as any).evaluationState === "INVALID" || (o as any).evaluationState === "NOT_EVALUABLE" || (o as any).evaluationState === "PROFILE_REQUIRED" || (o as any).evaluationState === "UNMATERIALIZED") {
-    return {
-      primaryLabel: (o as any).evaluationState === "INVALID" ? "evaluation invalid" : "not evaluated",
-      badgeClass: "badge-sparse text-amber-600 bg-amber-500/10 border border-amber-500/20",
-      isStale: false,
-      staleLabel: null,
-      previousAction: null,
-    };
-  }
-
-  const engineVerdict = o.engineRecommendation?.engineVerdict || o.decision || "UNKNOWN";
+export function resolveShortlistCardBadgeState(o: Opportunity): ShortlistCardBadgeState {
+  const isSparse = o.decision === "SPARSE_SPEC";
+  const engineVerdict = o.engineRecommendation?.engineVerdict || o.decision || "PURSUE";
   
-  const primaryLabel = engineVerdict.toLowerCase();
+  const primaryLabel = isSparse ? "needs more signal" : engineVerdict.toLowerCase();
   
   const badgeClass = 
     engineVerdict === "CONSIDER" 
-        ? "badge-consider" 
-        : engineVerdict === "PASS" 
-          ? "badge-pass" 
-        : engineVerdict === "PURSUE" ? "badge-pursue" : "badge-sparse";
+      ? "badge-consider" 
+      : engineVerdict === "PASS" 
+        ? "badge-pass" 
+        : (isSparse || engineVerdict === "SPARSE_SPEC")
+          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+          : "badge-pursue";
           
   const isStale = o.reviewWorkflowState === "REVIEWED_STALE" || o.reviewWorkflowState === "REVIEWED_UNKNOWN";
   
@@ -652,60 +604,6 @@ export function resolveShortlistCardBadgeState(o: EvaluatedOpportunity): Shortli
   };
 }
 
-
-function MinimalStateCard({ o }: { o: ServedOpportunity }) {
-  let label = "Unavailable";
-  let badgeClass = "bg-muted text-muted-foreground border-border";
-  
-  if (isUnmaterialized(o)) {
-    label = "Evaluation Pending";
-    badgeClass = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20";
-  } else if (isUnavailable(o)) {
-    switch (o.evaluationState) {
-      case "ACQUISITION_PENDING":
-        label = "Fetching Details";
-        badgeClass = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20";
-        break;
-      case "ACQUISITION_FAILED":
-      case "NOT_EVALUABLE":
-      case "PROFILE_REQUIRED":
-        label = "Cannot Evaluate";
-        badgeClass = "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20";
-        break;
-      case "INVALID":
-        label = "Evaluation Invalid";
-        badgeClass = "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20";
-        break;
-      case "EXPIRED":
-        label = "Expired";
-        badgeClass = "bg-muted text-muted-foreground border-border";
-        break;
-      default:
-        label = o.evaluationState;
-        break;
-    }
-  }
-
-  return (
-    <li className="group relative block w-full text-left transition-all bg-surface-raised border border-border/40 shadow-xs rounded-xl p-4 flex items-center justify-between opacity-80 grayscale-[30%]">
-      <span className="flex min-w-0 flex-1 flex-col gap-1.5 pl-3 border-l-2 border-border/30">
-        <span className="flex items-center gap-2">
-          <span className="font-display text-lg text-foreground font-normal">
-            {o.role}
-          </span>
-          <span className={`label-mono shrink-0 rounded-full px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider ${badgeClass}`}>
-            {label}
-          </span>
-        </span>
-        <span className="label-mono block truncate text-muted-foreground font-medium text-[0.72rem]">
-          {o.company} · {o.location} · {o.scrapedFrom}
-        </span>
-      </span>
-    </li>
-  );
-}
-
-
 function ShortlistCardRow({
   o,
   idx,
@@ -715,10 +613,8 @@ function ShortlistCardRow({
   setOpen,
   decide,
   showArrivalBanner,
-  dossier,
-  onExpand,
 }: {
-  o: EvaluatedOpportunity;
+  o: Opportunity;
   idx: number;
   isOpen: boolean;
   openedTimes: Record<string, number>;
@@ -726,18 +622,12 @@ function ShortlistCardRow({
   setOpen: React.Dispatch<React.SetStateAction<string | null>>;
   decide: (jobHash: string, verb: DecisionVerb, reviewedFingerprint?: string | null) => void;
   showArrivalBanner: boolean;
-  dossier: ServedOpportunity | null | undefined;
-  onExpand: (opportunity: EvaluatedOpportunity) => void;
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
-  const { rawScore, scoreDisplay } = resolveShortlistCardScore(o);
+  const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
+  const isSparse = o.decision === "SPARSE_SPEC";
+  const { rawScore, scoreDisplay } = resolveShortlistCardScore(o, brief);
   const { primaryLabel, badgeClass, isStale, staleLabel, previousAction } = resolveShortlistCardBadgeState(o);
-  const evaluatedDossier = (dossier && isEvaluated(dossier) ? dossier : undefined) ?? o;
-  const dossierBrief = evaluatedDossier?.dossierPresentation?.brief as {
-    memory?: { retentionSentence?: string };
-    frictionPreview?: string;
-    topUnknownPreview?: string;
-  } | undefined;
 
   useEffect(() => {
     if (isOpen && rowRef.current) {
@@ -753,11 +643,13 @@ function ShortlistCardRow({
   }, [isOpen]);
 
   const scoreClass = 
-    (typeof rawScore === "number" && rawScore >= 75)
-      ? "score-badge-high" 
-      : (typeof rawScore === "number" && rawScore >= 60)
-        ? "score-badge-mid" 
-        : "score-badge-low";
+    isSparse 
+      ? "border-amber-500/40 text-amber-600 bg-amber-500/10 dark:text-amber-400" 
+      : (typeof rawScore === "number" && rawScore >= 75)
+        ? "score-badge-high" 
+        : (typeof rawScore === "number" && rawScore >= 60)
+          ? "score-badge-mid" 
+          : "score-badge-low";
 
   return (
     <li
@@ -787,7 +679,6 @@ function ShortlistCardRow({
           } else {
             setOpenedTimes((prev) => ({ ...prev, [o.jobHash]: Date.now() }));
             logTelemetry(o.jobHash, "EXPAND", 0);
-            onExpand(o);
             setOpen(o.jobHash);
           }
         }}
@@ -814,21 +705,23 @@ function ShortlistCardRow({
                 Previously {previousAction}
               </span>
             )}
-            {o.mandateArchetype && <span className="label-mono hidden rounded-full bg-muted/80 px-2.5 py-0.5 text-[0.62rem] text-muted-foreground sm:inline font-medium">{o.mandateArchetype}</span>}
+            <span className="label-mono hidden rounded-full bg-muted/80 px-2.5 py-0.5 text-[0.62rem] text-muted-foreground sm:inline font-medium">
+              {o.mandateArchetype && o.mandateArchetype !== "Growth Marketing" ? o.mandateArchetype : inferExecutiveMandateArchetype(o.role, (o as any).rawText || (o as any).description)}
+            </span>
           </span>
 
           <span className="label-mono mt-2 block truncate text-muted-foreground font-medium text-[0.72rem]">
-            {o.company} · {o.location}{(o as { workModel?: string }).workModel ? ` (${(o as { workModel?: string }).workModel})` : ""} · {o.scrapedFrom}
+            {o.company} · {o.location} ({(o as any).workModel || "On-site"}) · {o.scrapedFrom}
           </span>
 
-          {dossierBrief?.memory?.retentionSentence && <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
-            {dossierBrief.memory.retentionSentence}
-          </span>}
+          <span className="mt-2 block max-w-2xl font-display text-base italic leading-snug text-muted-foreground font-normal">
+            {brief.memory.retentionSentence || o.whyNow}
+          </span>
 
-          {(dossierBrief?.frictionPreview || dossierBrief?.topUnknownPreview) && (
+          {(brief.frictionPreview || brief.topUnknownPreview) && (
             <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[0.68rem] text-amber-700 dark:text-amber-300 border border-amber-500/20 font-mono">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
-              Needs verification: {dossierBrief?.frictionPreview || dossierBrief?.topUnknownPreview}
+              Needs verification: {brief.frictionPreview || brief.topUnknownPreview}
             </span>
           )}
         </span>
@@ -853,12 +746,11 @@ function ShortlistCardRow({
           {isOpen && (
             <InlineBrief
               opportunity={o}
-              dossier={evaluatedDossier}
               onDecide={(verb) =>
                 decide(
                   o.jobHash,
                   verb,
-                  o.engineRecommendation?.evaluationFingerprint
+                  o.engineRecommendation?.evaluationFingerprint || (o as any).recommendationResult?.policyVersion
                 )
               }
             />

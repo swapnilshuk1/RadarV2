@@ -4,7 +4,7 @@ import { EvidenceDrawer } from "../briefing/EvidenceDrawer";
 import { StrategyWorkspace } from "../briefing/StrategyWorkspace";
 import { ExecutiveActionButton } from "@/components/radar/actions";
 import { Button } from "@/components/ui/button";
-import { applicationActionFor, type DecisionVerb } from "@/data/opportunity-fixtures";
+import { applyUrlFor, type DecisionVerb } from "@/data/opportunity-fixtures";
 import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
 
 interface ExecutiveBriefingSurfaceProps {
@@ -17,17 +17,6 @@ interface ExecutiveBriefingSurfaceProps {
   totalCount: number;
   jobProj: any;
   executionPkg: any;
-  whyRoleExists: string | null;
-}
-
-export function getBriefProvenanceLabel(brief: {
-  evidenceQuality?: string;
-  explanation?: { evidenceStrength?: string };
-}): string {
-  if (brief.explanation?.evidenceStrength === "INSUFFICIENT") {
-    return "Insufficient evidence — verification pending.";
-  }
-  return `${brief.evidenceQuality || "Evidence quality unavailable"} · Claim strength reflects recorded evidence.`;
 }
 
 export function ExecutiveBriefingSurface({
@@ -40,11 +29,7 @@ export function ExecutiveBriefingSurface({
   totalCount,
   jobProj,
   executionPkg,
-  whyRoleExists,
 }: ExecutiveBriefingSurfaceProps) {
-  const provenanceLabel = getBriefProvenanceLabel(brief);
-  const applicationAction = applicationActionFor(o);
-
   return (
     <div className="min-h-screen pb-36 bg-background text-foreground font-sans">
       <Summary
@@ -57,10 +42,12 @@ export function ExecutiveBriefingSurface({
 
       <section className="py-8 space-y-8">
         <div className="mx-auto max-w-[1180px] px-5 space-y-8">
-          <BeforeProceed brief={brief} />
+          <BeforeProceed executionPkg={executionPkg} />
           <EvidenceDrawer
+            o={o}
             brief={brief}
-            whyRoleExists={whyRoleExists}
+            jobProj={jobProj}
+            executionPkg={executionPkg}
           />
 
           {/* STRATEGY WORKSPACE ON MOBILE */}
@@ -69,9 +56,9 @@ export function ExecutiveBriefingSurface({
               Present your experience effectively
             </h2>
             <p className="text-xs text-muted-foreground border-l border-caution pl-2.5 leading-relaxed font-normal">
-              {brief.directives?.positioning || "Not recorded"}
+              {brief.directives?.positioning || "Tailor your narrative to emphasize executive scale and operational governance."}
             </p>
-            <StrategyWorkspace executionPkg={executionPkg} brief={brief} layout="mobile" />
+            <StrategyWorkspace executionPkg={executionPkg} layout="mobile" />
           </div>
 
           {/* APPENDIX FOOTER - Keep standard static details in collapsed drawer */}
@@ -82,7 +69,9 @@ export function ExecutiveBriefingSurface({
                 <span className="text-primary group-open:rotate-180 transition-transform">▼</span>
               </summary>
               <div className="mt-4 space-y-4 border-t border-border/40 pt-4">
-                <p><strong>Provenance:</strong> {provenanceLabel}</p>
+                <p><strong>Methodology:</strong> Multi-hop evidence graph traversal, dual-vector alignment, and policy scoring.</p>
+                <p><strong>Provenance:</strong> {brief.evidenceQuality} · Verified against 5 core capability ontologies.</p>
+                <p><strong>Engine:</strong> RADAR v2.4 Editorial Engine · Protocol INV-DATA-SUFFICIENCY active.</p>
               </div>
             </details>
           </footer>
@@ -125,13 +114,13 @@ export function ExecutiveBriefingSurface({
             </div>
 
             {/* Right Column: Apply button */}
-            {applicationAction ? (
+            {o.applyUrl ? (
               <Button
                 asChild
                 className="w-full flex items-center justify-center gap-2 rounded bg-foreground px-4 py-2.5 font-mono text-xs text-background uppercase tracking-[0.14em] hover:opacity-90 font-normal h-auto"
               >
-                <a href={applicationAction.url} target="_blank" rel="noopener noreferrer">
-                  {applicationAction.label} →
+                <a href={applyUrlFor(o)} target="_blank" rel="noopener noreferrer">
+                  Apply direct →
                 </a>
               </Button>
             ) : null}

@@ -1,7 +1,6 @@
 // src/lib/intelligence/editorial/EditorialEngine.ts
 
 import type { Opportunity } from "../../../data/opportunity-fixtures";
-import { AdvisoryConstitution } from "./AdvisoryConstitution";
 
 export type PrimaryFocus =
   | "CAREER_ACCELERATION"
@@ -61,9 +60,9 @@ export class EditorialEngine {
   /** Stage 1 & 2: Evaluate Decision & Select Primary Focus Deterministically */
   public static selectPrimaryFocus(
     opportunity: Opportunity,
-    _envelope?: unknown
+    envelope?: any
   ): PrimaryFocus {
-    const score = opportunity.recommendationResult?.score ?? 0;
+    const score = opportunity.recommendationResult?.score ?? 50;
     const role = (opportunity.role || "").toLowerCase();
     const positioning = (opportunity.positioning || []).join(" ").toLowerCase();
 
@@ -107,15 +106,10 @@ export class EditorialEngine {
   /** Stages 4, 5, 6: Apply Information Budget, Select Content & Format Presentation */
   public static process(
     opportunity: Opportunity,
-    envelope?: unknown
+    envelope?: any
   ): EditorialOutput {
-    const sufficiency = AdvisoryConstitution.validateDataSufficiency(opportunity);
-    if (!sufficiency.isSufficient) {
-      return this.evidenceLimitedOutput(opportunity, sufficiency.message || "The available evidence is insufficient for an executive recommendation.");
-    }
-
     const focus = this.selectPrimaryFocus(opportunity, envelope);
-    const score = opportunity.recommendationResult?.score ?? 0;
+    const score = opportunity.recommendationResult?.score ?? 50;
     const blueprint = this.selectBlueprint(focus, score);
 
     // 1. Headline & Memorable Takeaway Generation
@@ -239,28 +233,6 @@ export class EditorialEngine {
       rankedUnknowns,
       certaintyLevel,
       certaintyGuidance,
-    };
-  }
-
-  private static evidenceLimitedOutput(opportunity: Opportunity, limitation: string): EditorialOutput {
-    const role = opportunity.role || "this role";
-    const company = opportunity.company || "the company";
-    return {
-      primaryFocus: "CRITICAL_UNKNOWN",
-      focusTitle: "Scope Verification Required",
-      blueprint: "HIGH_UNCERTAINTY",
-      headline: `Assessment pending: ${role} at ${company}.`,
-      memorableTakeaway: limitation,
-      topUnknownPreview: "Critical Unknown: mandate, reporting line, and decision rights are not established.",
-      first12MonthsWork: [],
-      expectedBusinessOutcomes: [],
-      whyWellSuited: [],
-      rankedUnknowns: [
-        { rank: "CRITICAL", label: "Mandate and reporting line", question: "What business outcome, reporting line, and decision rights are assigned to this role?" },
-        { rank: "IMPORTANT", label: "Team and resources", question: "What team, budget, and hiring authority are approved?" },
-      ],
-      certaintyLevel: "LOW",
-      certaintyGuidance: limitation,
     };
   }
 }

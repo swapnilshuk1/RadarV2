@@ -12,35 +12,6 @@
 
 import type { AuthorizedPersonScope } from "../security/auth";
 
-/**
- * Explicit serving policy for the geographic scope expressed by a search plan.
- * Portal-side query parameters are discovery hints; this policy is enforced
- * against the captured job location before candidate projection.
- */
-export type LocationEligibilityPolicy =
-  | "GURUGRAM_ONLY"
-  | "NCR"
-  | "REMOTE_COMPATIBLE"
-  | "NATIONWIDE";
-
-/** Immutable semantic companion to query-oriented acquisition planning. */
-export interface EligibilitySpec {
-  version: "eligibility-spec/v1";
-  ontologyVersion: string;
-  roleFamilies: string[];
-  functions: string[];
-  seniorityRange: string[];
-  locations: string[];
-  /**
-   * Omitted only for legacy immutable contexts. New contexts must state their
-   * serving geography rather than relying on a portal query-string filter.
-   */
-  locationPolicy?: LocationEligibilityPolicy;
-  industries: string[];
-  adjacentFamilies: string[];
-  excludedCompanies: string[];
-}
-
 export interface SearchCriteriaPayload {
   targetSeniority: string[];
   targetRoles: string[];
@@ -49,7 +20,6 @@ export interface SearchCriteriaPayload {
   targetEmploymentTypes?: string[];
   excludedCompanies?: string[];
   minimumFitThreshold?: number;
-  eligibilitySpec?: EligibilitySpec;
   customParameters?: Record<string, unknown>;
 }
 
@@ -93,8 +63,6 @@ export interface EvaluationIdentity {
   idempotencyKey: string; // SHA-256 of (canonicalJobId, opportunityVersion, evaluationContextFingerprint)
 }
 
-import type { EvaluationState } from "./canonical_acquisition";
-
 export type EvaluationDecision = "PURSUE" | "CONSIDER" | "PASS";
 
 export interface MaterializedEvaluation {
@@ -104,11 +72,8 @@ export interface MaterializedEvaluation {
   canonicalJobId: string;
   opportunityVersion: string;
   evaluationContextFingerprint: string;
-  /** Exact canonical intrinsic evaluationInputHash; never substituted from context. */
-  evaluationFingerprint?: string | null;
-  evaluationState: EvaluationState;
-  decision: EvaluationDecision | null;
-  qualityScore: number | null;
+  decision: EvaluationDecision;
+  qualityScore: number;
   rationale: string;
   evidenceIds: string[];
   evaluationJson: string; // Serialized representation

@@ -1,20 +1,16 @@
 import crypto from "crypto";
 import { EvaluationWorker } from "./EvaluationWorker";
-import { RunReconciliationService } from "./RunReconciliationService";
 import type { DatabaseAdapter } from "@/data/database";
 
 export class EvaluationDaemon {
   private worker: EvaluationWorker;
-  private reconciler: RunReconciliationService;
   private isRunning: boolean = false;
   private abortController: AbortController | null = null;
   private pollIntervalMs: number;
-  private lastGlobalReconcileAt: number = 0;
 
   constructor(workerId?: string, pollIntervalMs: number = 5000, options?: { adapter?: DatabaseAdapter }) {
     const id = workerId || `daemon_${crypto.randomUUID().slice(0, 8)}`;
     this.worker = new EvaluationWorker(id, options);
-    this.reconciler = new RunReconciliationService(options?.adapter);
     this.pollIntervalMs = pollIntervalMs;
   }
 
@@ -33,16 +29,6 @@ export class EvaluationDaemon {
         const result = await this.worker.pollAndProcessNext();
         
         if (signal.aborted) return;
-
-        const now = Date.now();
-        if (now - this.lastGlobalReconcileAt >= 10000) {
-          this.lastGlobalReconcileAt = now;
-          try {
-            await this.reconciler.reconcileActiveRuns();
-          } catch (recErr: any) {
-            console.warn(`[EvaluationDaemon] Periodic active run reconciliation error:`, recErr?.message || recErr);
-          }
-        }
 
         if (result) {
           // M5.4 Observability semantics

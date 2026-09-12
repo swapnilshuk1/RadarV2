@@ -16,7 +16,7 @@ import { CareerAssessmentEngine } from "../engines/CareerAssessmentEngine";
 import { LifestyleAssessmentEngine } from "../engines/LifestyleAssessmentEngine";
 import { DecisionPolicyEngine } from "../policy/DecisionPolicyEngine";
 import { CandidateProjection } from "../../domain/candidate_projection";
-import { JobProjection, toEvaluationJobProjection } from "../../domain/job_projection";
+import { JobProjection } from "../../domain/job_projection";
 import { RecommendationRecord } from "../record";
 import type { OpportunitySource as RawScrapedOpportunity } from "@/data/opportunity-fixtures";
 
@@ -30,19 +30,19 @@ export class CanonicalEvaluator {
   public static evaluateOpportunity(
     raw: RawScrapedOpportunity,
     candidate: CandidateProjection,
+    activePursuits: number = 0,
+    headspaceCapacity?: number
   ): CanonicalEvaluationOutput {
     const jobProjection = JobProjectionBuilder.build(raw);
-    const evaluationProjection = toEvaluationJobProjection(jobProjection);
 
-    const identityResult = IdentityAssessmentEngine.evaluate(candidate, evaluationProjection);
-    const capabilityResult = CapabilityAssessmentEngine.evaluate(candidate, evaluationProjection);
-    const opportunityResult = OpportunityAssessmentEngine.evaluate(candidate, evaluationProjection);
-    const careerResult = CareerAssessmentEngine.evaluate(candidate, evaluationProjection);
-    const lifestyleResult = LifestyleAssessmentEngine.evaluate(candidate, evaluationProjection);
+    const identityResult = IdentityAssessmentEngine.evaluate(candidate, jobProjection);
+    const capabilityResult = CapabilityAssessmentEngine.evaluate(candidate, jobProjection);
+    const opportunityResult = OpportunityAssessmentEngine.evaluate(candidate, jobProjection);
+    const careerResult = CareerAssessmentEngine.evaluate(candidate, jobProjection);
+    const lifestyleResult = LifestyleAssessmentEngine.evaluate(candidate, jobProjection);
 
     const jdText = raw.normalizedText || raw.rawText || raw.description || "";
-    const groundedDimensions = jobProjection.dimensions || [];
-    const hasStructured = (Array.isArray(raw.dimensions) && raw.dimensions.length > 0) || groundedDimensions.length > 0;
+    const hasStructured = Array.isArray(raw.dimensions) && raw.dimensions.length > 0;
 
     const decisionResult = DecisionPolicyEngine.evaluate(
       identityResult,
@@ -53,11 +53,7 @@ export class CanonicalEvaluator {
       jobProjection.role,
       "Commercial & Marketing Leadership",
       jdText,
-      hasStructured,
-      undefined,
-      groundedDimensions,
-      undefined,
-      jobProjection.capabilityRequirements,
+      hasStructured
     );
 
     const record = {
@@ -76,12 +72,14 @@ export class CanonicalEvaluator {
         priority: decisionResult.verdict === "PURSUE" ? 1 : decisionResult.verdict === "CONSIDER" ? 2 : 0,
         factors: { careerValue: 0, shortlistingPotential: 0, pursuitFriction: 0 },
         verb0: decisionResult.verdict,
+        finalVerb: decisionResult.verdict,
         confidence: capabilityResult.matchingConfidence || 0.8,
         stability: "High",
         candidateProjectionHash: "v4",
         opportunityContentHash: raw.jobHash,
         pipeline: [],
         evidenceMapping: [],
+        headspace: { finalVerb: decisionResult.verdict, downgraded: false },
         missing: [],
         timestamp: new Date().toISOString()
       },
@@ -98,9 +96,11 @@ export class CanonicalEvaluator {
   public static evaluateBatch(
     opportunities: RawScrapedOpportunity[],
     candidate: CandidateProjection,
+    activePursuits: number = 0,
+    headspaceCapacity?: number
   ): CanonicalEvaluationOutput[] {
     return opportunities.map(opp =>
-      this.evaluateOpportunity(opp, candidate)
+      this.evaluateOpportunity(opp, candidate, activePursuits, headspaceCapacity)
     );
   }
 }

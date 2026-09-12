@@ -167,12 +167,6 @@ The scraping pipeline uses a stealth Playwright engine managed by `RunController
 - **Cloud Flags**: When running in cloud containers, scrapers inject `--no-sandbox`, `--disable-gpu`, `--disable-setuid-sandbox` and set `headless: true`.
 - **Session Management**: Public job search pages are prioritized to prevent login locks. For authenticated portals, session cookies are restored from local state.
 
-### Distributed Scraper & Enrichment Architecture (ADR-003 Active)
-- **Distributed Multi-Instance Execution**: Scraper and enrichment worker instances can run across decoupled host environments.
-- **Durable Multi-Tenant Scrape Runs**: Run state, event logs, and cancel/abort lifecycle reside durably in Turso Cloud (`scrape_runs`, `scrape_run_events`) with database-enforced mutex per scope.
-- **Decoupled BlobStore Payloads**: Card payloads and snapshots are stored via `BlobStore` (`payload_key` in `enrichment_jobs`), enabling remote worker nodes to retrieve payloads without shared container disks.
-- **Distributed Leasing Protocol**: Workers safely lease batches concurrently with database-enforced mutual exclusion, lease expirations, and automatic crash failover.
-
 ---
 
 ## 10. Evaluation & Qualification Pipeline
@@ -196,76 +190,24 @@ When a user swipes or makes a decision on an opportunity:
 
 ---
 
-## 12. Continuous Certification Gate & Development Commands
-
-RADAR v2 enforces a single, authoritative continuous certification workflow:
-```
-Code Change ──► Affected Contracts ──► npm run certify ──► Deploy ──► npm run smoke
-```
-
-### Invariant-First Contributor Protocol (Mandatory for all AI Agents):
-Whenever touching, modifying, or writing tests:
-1. **Identify the Invariant**: State what system behavior, data relationship, security boundary, or UI contract is being verified.
-2. **Check for Authoritative Home**: Inspect `tests/TEST_INVENTORY.md` to locate the canonical domain suite.
-3. **If Unique and Valid**: Keep and modernize the test in its proper canonical domain.
-4. **If Duplicate**: Consolidate into the authoritative suite rather than proliferating milestone-numbered files (`mXX`, `pXX`, `phaseXX`).
-5. **If Obsolete**: Archive to `tests/archive/` with explicit written justification.
-6. **Continuous Certification Gate**: Ensure `npm run certify` and `npm run smoke` pass cleanly before declaring completion.
+## 12. Development & Verification Commands
 
 ```bash
-# 1. Authoritative Continuous Certification Gate (TypeScript + 7 Deterministic Stages)
-npm run certify
-
-# 2. Production Post-Deployment Smoke Check (Live Turso Health & Feed Parity)
-npm run smoke
-
-# 3. Unified System Diagnostic Inspection
-npm run diagnose
-
-# 4. Type check TypeScript code
+# Type check TypeScript code
 npx tsc --noEmit
 
-# 5. Build production bundle (SSR + Nitro)
+# Build production bundle (SSR + Nitro)
 npm run build
+
+# Run Executive Qualification Harness (EQE)
+npm run test:eqe
+
+# Run Live Scraper Pipeline locally
+npx tsx scripts/scrape.ts
+
+# Audit Database Lineage & Health
+npx tsx scripts/audit-lineage.ts
 ```
-
-### Windows/Codex Certification Runner Limitation
-
-On this laptop, the aggregate Vitest command used by certification can terminate
-silently when launched from the Codex command runner: it may print only `RUN
-v...`, or may report several passing files before ending with queued files still
-unexecuted. If no `FAIL <file> > <test>` assertion is printed, the last `✓` test
-line is not the failure; it merely marks the last completed test before the
-aggregate process ended. This is an execution-host limitation, not evidence
-that the changed code passed or failed certification.
-
-When that signature occurs, agents must not repeatedly rerun the wrapper from
-Codex, alter the manifest, reduce workers, or interpret the partial output as
-a test failure. Ask the user to run the authoritative wrapper externally from
-this repository directory:
-
-```powershell
-Set-Location "C:\Users\swapn\Downloads\Radar V2"
-npm run certify
-```
-
-The external wrapper has completed successfully on this laptop; a final
-`CERTIFICATION PASS` covers all seven stages. If the external wrapper is also
-unavailable, the diagnostic fallback is to execute its three verification
-operations directly:
-
-```powershell
-npx tsc -p tsconfig.verify.json --noEmit
-npm run build
-npx vitest run --config vitest.certification.config.ts
-```
-
-The Vitest command is the unified Stage-3 manifest: a zero exit with its full
-48-file/366-test result verifies the logical contracts reported as Stages 3–7.
-The user should share the TypeScript result, build result, Vitest file/test
-counts, duration, and exit codes. Record an external `CERTIFICATION PASS` as
-the release-gate result; otherwise record only the direct-manifest result and
-do not deploy based on a silent Codex-runner exit.
 
 ---
 
@@ -345,14 +287,14 @@ Page (e.g. Executive Dossier, Shortlist Queue)
 Whenever deploying or pushing RADAR v2 to the live Oracle Cloud Server, AI agents MUST follow this exact, deterministic procedure without searching or guessing credentials:
 
 ### Target Infrastructure & Credentials:
-- **Server IP**: `161.118.175.246` (or hostname `161.118.175.246.sslip.io`)
+- **Server IP**: `130.210.41.232` (or hostname `130.210.41.232.sslip.io`)
 - **SSH User**: `ubuntu`
 - **SSH Private Key Location**: `C:\Users\swapn\.ssh\oracle_official.key` (or `~/.ssh/oracle_official.key`)
 - **SSH Config Alias**: `oracle-radar` (defined in `~/.ssh/config`)
 - **Remote Directory**: `/home/ubuntu/radar-local-v2`
 - **Process Manager**: `pm2` (Process Name: `radar-v2`)
 - **Git Remote**: `origin` -> `https://github.com/swapnilshuk1/RadarV2.git` (Branch: `main`)
-- **Live URL**: `http://161.118.175.246.sslip.io/`
+- **Live URL**: `http://130.210.41.232.sslip.io/`
 
 ### Automated 1-Command Deployment:
 ```bash
@@ -368,7 +310,7 @@ npm run deploy
 npx tsx scripts/deploy.ts "Your commit message"
 
 # Direct SSH command:
-ssh -o StrictHostKeyChecking=no -i "C:\Users\swapn\.ssh\oracle_official.key" ubuntu@161.118.175.246 "cd /home/ubuntu/radar-local-v2 && git fetch origin main && git reset --hard origin/main && npm install && npm run build && pm2 restart radar-v2 && pm2 status"
+ssh -o StrictHostKeyChecking=no -i "C:\Users\swapn\.ssh\oracle_official.key" ubuntu@130.210.41.232 "cd /home/ubuntu/radar-local-v2 && git fetch origin main && git reset --hard origin/main && npm install && npm run build && pm2 restart radar-v2 && pm2 status"
 ```
 
 

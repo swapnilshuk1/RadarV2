@@ -320,13 +320,13 @@ describe("Phase-0 Strong Architecture Contract Tests — Hardened", () => {
     expect(serviceContent).not.toContain("OpportunityProvider");
 
     // 4. listForUser implementation MUST NOT perform synchronous engine runs
-    const listForUserMatch = serviceContent.match(/static\s+async\s+listForUser\s*\([^)]*\)\s*:\s*Promise<[^>]+>\s*\{([\s\S]*?)\n\s*static\s+async\s+getForUser/);
+    const listForUserMatch = serviceContent.match(/static\s+async\s+listForUser\s*\([^)]*\)\s*:\s*Promise<Opportunity\[\]>\s*\{([\s\S]*?)\n\s*static\s+async\s+getForUser/);
     expect(listForUserMatch).not.toBeNull();
     const listForUserBody = listForUserMatch![1];
 
     expect(listForUserBody).not.toContain("runEngine");
     expect(listForUserBody).not.toContain("OpportunityProvider");
-    expect(listForUserBody).toMatch(/queries\.getFeed|repos\.canonicalServing\.listOpportunities|repos\.evaluations\.listEvaluationsForUser/);
+    expect(listForUserBody).toMatch(/repos\.canonicalServing\.listOpportunities|repos\.evaluations\.listEvaluationsForUser/);
   });
 
 });

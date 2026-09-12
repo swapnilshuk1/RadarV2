@@ -145,4 +145,3 @@ export function extractReportingLine(input: { title: string; snippet: string; de
 }
 
 export const reportingExtractorId = `reportingLine@${extractorVersion}`;
-export { reportingExtractorId as reportingLineExtractorId };

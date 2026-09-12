@@ -1,10 +1,9 @@
 interface OpinionProps {
   brief: any;
   engineVerdict?: string | null;
-  generatedAt: string;
 }
 
-export function Opinion({ brief, engineVerdict, generatedAt }: OpinionProps) {
+export function Opinion({ brief, engineVerdict }: OpinionProps) {
   if (!brief.structuredSections?.synthesis?.thesis) return null;
 
   const verdictBg =
@@ -14,8 +13,8 @@ export function Opinion({ brief, engineVerdict, generatedAt }: OpinionProps) {
       ? "bg-consider-soft"
       : "bg-surface-raised";
 
-  const evaluated = new Date(generatedAt);
-  const verdictDate = Number.isNaN(evaluated.valueOf()) ? "Recorded evaluation" : evaluated.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const today = new Date();
+  const verdictDate = `${String(today.getDate()).padStart(2, "0")} ${today.toLocaleString("en-GB", { month: "short" })} ${today.getFullYear()}`;
 
   return (
     <div className={`memo-opinion-box ${verdictBg}`}>

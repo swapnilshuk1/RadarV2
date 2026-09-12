@@ -45,10 +45,6 @@ import {
   formatEngagementQuality,
   type EngagementQuality,
 } from "./editorial/EngagementTypeSynthesizer";
-import {
-  candidateProofHeadline,
-  substantiveCandidateEvidence,
-} from "./editorial/CandidateProofPolicy";
 
 export type RecommendationArchetype = 
   | "Natural Fit" 
@@ -65,7 +61,6 @@ export type EditorialNarrative = {
   primaryDriver?: string;
   secondaryDriver?: string;
   primaryRisk?: string;
-  recommendedAction?: string;
   tailoringEffort?: "LOW" | "MODERATE" | "HIGH";
   capabilityAlignmentText?: string;
   whyNow?: string;
@@ -767,7 +762,9 @@ export function playbookNarrative(
     const rec = selectOpening(record, source);
     return {
       ...benchmark,
-      recommendation: rec,
+      recommendation: record.headspace.downgraded
+        ? `Saturated: ${record.headspace.reason} (High priority remains, but client capacity reached)`
+        : rec,
     };
   }
   
@@ -787,26 +784,6 @@ export function playbookNarrative(
 
   // P2-A.5: Action Intelligence - "What should I do next?"
   const recommendedAction = synthesizeAction(record, source, strategicAdvantage, principalRisk, careerValue, effort);
-  const candidateEvidenceFromMapping = (record.trace?.evidenceMapping || [])
-    .filter((entry) => entry.confidence >= 0.7)
-    .map((entry) => ({
-      jobCapability:
-        typeof entry.jobCapability === "string"
-          ? entry.jobCapability.trim()
-          : "",
-      candidateEvidence:
-        substantiveCandidateEvidence(entry.candidateCapability),
-    }))
-    .find((entry) => Boolean(entry.candidateEvidence));
-
-  const strategicCandidateEvidence = strategicAdvantage.evidence
-    .map((evidence) => substantiveCandidateEvidence(evidence))
-    .find((evidence): evidence is string => Boolean(evidence));
-
-  const recordedCandidateProof =
-    candidateEvidenceFromMapping?.candidateEvidence
-    ?? strategicCandidateEvidence
-    ?? null;
 
   // P2-B: Capability Importance - "Which requirements matter most?"
   const capabilityImportance = synthesizeCapabilityImportance(record, source);
@@ -823,7 +800,9 @@ export function playbookNarrative(
 
   return {
     ...dynamic,
-    recommendation: dynamic.recommendation,
+    recommendation: record.headspace.downgraded
+      ? `Saturated: ${record.headspace.reason} (High priority remains, but client capacity reached)`
+      : dynamic.recommendation,
     // P2-A.1: Use strategic advantage synthesis for "Why Me?"
     primaryDriver: formatStrategicAdvantage(strategicAdvantage),
     // P2-A.2: Use principal risk synthesis for authoritative risk intelligence
@@ -837,17 +816,8 @@ export function playbookNarrative(
           { action: "High preparation required", benefit: effort.statement.slice(0, 100), effort: "High" }
         ]
       : dynamic.headspace,
-    // P2-A.5: Preserve synthesized action and risk in their own fields.
-    recommendedAction: formatAction(recommendedAction),
-    hiringRisk: formatPrincipalRisk(principalRisk),
-    primaryProof: recordedCandidateProof
-      ? {
-          headline: candidateProofHeadline(
-            candidateEvidenceFromMapping?.jobCapability,
-          ),
-          detail: recordedCandidateProof,
-        }
-      : undefined,
+    // P2-A.5: Use action synthesis for recommended action
+    hiringRisk: formatAction(recommendedAction),
     // P2-B: Include capability importance in capabilityAlignmentText
     capabilityAlignmentText: formatCapabilityImportance(capabilityImportance) || dynamic.capabilityAlignmentText,
     // P2-C.2: Include shortlisting potential (as alternativePath for now)

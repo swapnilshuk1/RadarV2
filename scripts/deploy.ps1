@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $SSH_KEY = "$env:USERPROFILE\.ssh\oracle_official.key"
-$REMOTE_HOST = "ubuntu@161.118.175.246"
+$REMOTE_HOST = "ubuntu@130.210.41.232"
 $REMOTE_DIR = "/home/ubuntu/radar-local-v2"
 
 Write-Host "============================================================" -ForegroundColor Cyan
@@ -15,7 +15,7 @@ Write-Host "============================================================" -Foreg
 Write-Host "Target Host  : $REMOTE_HOST"
 Write-Host "SSH Key      : $SSH_KEY"
 Write-Host "Remote Path  : $REMOTE_DIR"
-Write-Host "Live Service : http://161.118.175.246.sslip.io/"
+Write-Host "Live Service : http://130.210.41.232.sslip.io/"
 Write-Host "────────────────────────────────────────────────────────────`n"
 
 if (!(Test-Path $SSH_KEY)) {
@@ -42,11 +42,11 @@ git push origin main
 
 # 3. Remote Server Pull & PM2 Restart
 Write-Host "`n[4/4] Deploying to Oracle Cloud Server via SSH..." -ForegroundColor Yellow
-$remoteCmd = "cd $REMOTE_DIR && git fetch origin main && git reset --hard origin/main && npm install && npm run db:migrate && npm run build && pm2 restart radar-v2 && (pm2 restart radar-enrich || pm2 start 'npx tsx scripts/enrich.ts' --name 'radar-enrich') && pm2 save && pm2 status"
+$remoteCmd = "cd $REMOTE_DIR && git fetch origin main && git reset --hard origin/main && npm install && npm run build && pm2 restart radar-v2 && pm2 status"
 
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" $REMOTE_HOST "$remoteCmd"
 
 Write-Host "`n============================================================" -ForegroundColor Green
 Write-Host "      DEPLOYMENT COMPLETE — SERVER RUNNING SUCCESSFULLY     " -ForegroundColor Green
-Write-Host "      Live URL: http://161.118.175.246.sslip.io/             " -ForegroundColor Green
+Write-Host "      Live URL: http://130.210.41.232.sslip.io/             " -ForegroundColor Green
 Write-Host "============================================================`n" -ForegroundColor Green

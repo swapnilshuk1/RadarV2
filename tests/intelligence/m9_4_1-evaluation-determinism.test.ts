@@ -4,12 +4,9 @@ import fs from "fs";
 import path from "path";
 import { DatabaseAdapter, QueryParams } from "@/data/database/DatabaseAdapter";
 import { EvaluationWorker } from "@/lib/intelligence/EvaluationWorker";
-import { SqliteOpportunityQueries } from "@/data/sqlite/repositories/SqliteOpportunityQueries";
-import { resolveServingScope } from "@/lib/security/scope-resolver";
 import { computeEvaluationContextFingerprint } from "@/lib/domain/evaluation_fingerprint";
 import { computeCanonicalJobId } from "@/lib/domain/canonical_identity";
 import type { CandidateProfile } from "@/data/candidate-profile";
-import type { CandidateProjection } from "@/lib/domain/candidate_projection";
 
 class TestSqliteAdapter implements DatabaseAdapter {
   constructor(public db: Database.Database) {}
@@ -42,8 +39,6 @@ class TestSqliteAdapter implements DatabaseAdapter {
     }
   }
 }
-
-import { runMigrations } from "@/data/sqlite/migrations/runner";
 
 describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Lineage Contract", () => {
   let sqliteDb: Database.Database;
@@ -83,48 +78,32 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
     }
   };
 
-  const authoritativeProjection: CandidateProjection = {
-    attainedTitle: "VP Marketing",
-    profileVersion: "p_v1",
-    operatingLevel: { value: "STRATEGIC", confidence: 0.95, evidenceIds: ["candidate-operating-level"] },
-    workNature: { value: "STRATEGIC_WORK", confidence: 0.95, evidenceIds: ["candidate-work-nature"] },
-    decisionAuthority: { value: "ENTERPRISE", confidence: 0.95, evidenceIds: ["candidate-decision-authority"] },
-    commercialScope: { value: "ENTERPRISE", confidence: 0.95, evidenceIds: ["candidate-commercial-scope"] },
-    yearsOfExperience: 18,
-    coreCapabilities: ["COMMERCIAL_GROWTH", "GLOBAL_GTM", "MARKETING_LEADERSHIP"],
-    preferredLocations: ["Bengaluru", "Remote"],
-    preferredWorkModel: "HYBRID",
-    executiveThemes: ["commercial_growth", "gtm_scale"],
-    attentionWindow: 6,
-    headspaceCapacityPerMonth: 4,
-  };
-
-  beforeEach(async () => {
+  beforeEach(() => {
     sqliteDb = new Database(":memory:");
     sqliteDb.pragma("foreign_keys = ON");
+
+    const migrationFiles = [
+      "001_initial_schema.sql",
+      "006_recreate_decisions.sql",
+      "009_profile_queryable_columns.sql",
+      "018_multi_tenant_foundation.sql",
+      "019_evaluation_context_and_read_model.sql",
+      "020_canonical_acquisition.sql",
+      "021_evaluation_work_queue.sql",
+      "025_canonical_decisions.sql"
+    ];
+
+    for (const file of migrationFiles) {
+      const sql = fs.readFileSync(path.join(process.cwd(), "src/data/sqlite/migrations", file), "utf-8");
+      sqliteDb.exec(sql);
+    }
+
     adapter = new TestSqliteAdapter(sqliteDb);
-    await runMigrations(adapter);
 
     // Setup tenant, person, and search plan
     sqliteDb.prepare(`INSERT INTO tenants (id, status, created_at, updated_at) VALUES (?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).run(TENANT_ID);
     sqliteDb.prepare(`INSERT INTO people (id, tenant_id, email, created_at, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).run(
       PERSON_ID, TENANT_ID, "candidate@example.com"
-    );
-    sqliteDb.prepare(`INSERT INTO users (id, email) VALUES (?, ?)`).run(PERSON_ID, "candidate@example.com");
-    sqliteDb.prepare(`INSERT INTO memberships (user_id, tenant_id, role, permissions, status) VALUES (?, ?, 'admin', '[\"*\"]', 'active')`).run(PERSON_ID, TENANT_ID);
-    sqliteDb.prepare(`
-      INSERT INTO career_profiles (
-        id, person_id, timeline, skills, projection_json, projection_generated_at,
-        current_title, years_experience, archetype, preferred_work_model, created_at, updated_at
-      ) VALUES (?, ?, '[]', '[]', ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    `).run(
-      `profile-${PERSON_ID}`,
-      PERSON_ID,
-      JSON.stringify(authoritativeProjection),
-      authoritativeProjection.attainedTitle,
-      authoritativeProjection.yearsOfExperience,
-      "Growth Executive",
-      authoritativeProjection.preferredWorkModel,
     );
     sqliteDb.prepare(`INSERT INTO search_plans (id, tenant_id, person_id, title, status, criteria_json, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', '{}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`).run(
       PLAN_ID, TENANT_ID, PERSON_ID, "Executive Search Plan"
@@ -145,12 +124,12 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
       role: "VP of Growth & Marketing",
       company: "Scale Corp",
       location: "Bengaluru",
-      rawDescription: "Looking for an experienced VP of Growth and Marketing to lead enterprise GTM, commercial expansion, global demand generation, and a 45-person team. The role owns strategic growth planning, executive stakeholder alignment, and measurable revenue outcomes."
+      rawDescription: "Looking for an experienced VP of Marketing to scale enterprise GTM."
     });
 
     sqliteDb.prepare(`
-      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, acquisition_status, lifecycle_state, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACQUIRED', 'ACTIVE', CURRENT_TIMESTAMP)
+      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(oppVersion, canonicalJobId, "hash_001", "VP of Growth & Marketing", "Scale Corp", "Bengaluru", "Full-time", rawContentJson);
 
     sqliteDb.prepare(`
@@ -180,14 +159,6 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         ontology_version, ontology_fingerprint, policy_version, profile_version, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(fingerprint, TENANT_ID, PERSON_ID, snapshotId, "3.0.0", "onto_hash_001", "v4.1", "p_v1");
-    sqliteDb.prepare(`
-      INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
-      VALUES (?, ?, ?, ?)
-    `).run(fingerprint, TENANT_ID, PERSON_ID, PLAN_ID);
-    sqliteDb.prepare(`
-      INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(TENANT_ID, PERSON_ID, PLAN_ID, fingerprint, PERSON_ID);
 
     const jobId = "job_det_001";
     sqliteDb.prepare(`
@@ -197,13 +168,6 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         status, attempts, max_attempts, next_attempt_at, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(jobId, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprint);
-    sqliteDb.prepare(`
-      INSERT INTO evaluation_requirements (
-        id, tenant_id, person_id, search_plan_id, canonical_job_id,
-        opportunity_version, required_enrichment_pipeline_version,
-        evaluation_context_fingerprint, status
-      ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'READY')
-    `).run(`req_${jobId}`, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprint);
 
     const worker = new EvaluationWorker("worker_det_test", { adapter });
 
@@ -217,31 +181,6 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
     expect(eval1).toBeDefined();
     expect(eval1.decision).toBeDefined();
     expect(eval1.quality_score).toBeGreaterThan(0);
-
-    // Regression: the artifact emitted by the real worker must be the exact
-    // artifact accepted by both canonical serving surfaces. No test-authored
-    // evaluation JSON is involved in this proof.
-    const payload = JSON.parse(eval1.evaluation_json);
-    expect(payload.schemaVersion).toBe("v4.3-intrinsic");
-    expect(eval1.evaluation_context_fingerprint).toBe(payload.contextFingerprint);
-    expect(eval1.evaluation_fingerprint).toBe(payload.evaluationInputHash);
-    const scope = (await resolveServingScope(PERSON_ID, TENANT_ID, adapter)).scope;
-    const queries = new SqliteOpportunityQueries(adapter);
-    const feed = await queries.getFeed(scope);
-    expect(feed.items).toHaveLength(1);
-    const feedItem = feed.items[0];
-    expect(feedItem.evaluationState).toBe("EVALUATED");
-    expect(feedItem.engineVerdict).toBe(payload.decision);
-    expect(feedItem.qualityScore).toBe(payload.score);
-    expect(feedItem.evaluationContextFingerprint).toBe(payload.contextFingerprint);
-    expect(feedItem.evaluationFingerprint).toBe(payload.evaluationInputHash);
-    const dossier = await queries.getDossier(scope, feedItem.jobHash);
-    expect(dossier).toBeDefined();
-    expect(dossier!.evaluationState).toBe("EVALUATED");
-    expect(dossier!.engineRecommendation?.engineVerdict).toBe(feedItem.engineVerdict);
-    expect(dossier!.engineRecommendation?.qualityScore).toBe(feedItem.qualityScore);
-    expect(dossier!.evaluationContextFingerprint).toBe(feedItem.evaluationContextFingerprint);
-    expect(dossier!.evaluationFingerprint).toBe(feedItem.evaluationFingerprint);
 
     // Re-evaluate under another search plan with the identical context snapshot to prove determinism
     const PLAN_ID_2 = "plan_det_2";
@@ -285,13 +224,6 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         status, attempts, max_attempts, next_attempt_at, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(jobId2, TENANT_ID, PERSON_ID, PLAN_ID_2, canonicalJobId, oppVersion, fingerprint2);
-    sqliteDb.prepare(`
-      INSERT INTO evaluation_requirements (
-        id, tenant_id, person_id, search_plan_id, canonical_job_id,
-        opportunity_version, required_enrichment_pipeline_version,
-        evaluation_context_fingerprint, status
-      ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'READY')
-    `).run(`req_${jobId2}`, TENANT_ID, PERSON_ID, PLAN_ID_2, canonicalJobId, oppVersion, fingerprint2);
 
     const claim2 = await worker.claimNextJob();
     expect(claim2).not.toBeNull();
@@ -300,20 +232,13 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
 
     const eval2 = sqliteDb.prepare(`SELECT * FROM materialized_evaluations WHERE canonical_job_id = ? AND evaluation_context_fingerprint = ?`).get(canonicalJobId, fingerprint2) as any;
     
-    // Distinct snapshots create distinct context and input identities. The evaluated
-    // outcome and intrinsic job projection must nevertheless be reproducible.
+    // Assert 100% deterministic reproducibility across distinct search plans with identical snapshot
     expect(eval2.decision).toBe(eval1.decision);
     expect(eval2.quality_score).toBe(eval1.quality_score);
-    const payload1 = JSON.parse(eval1.evaluation_json);
-    const payload2 = JSON.parse(eval2.evaluation_json);
-    expect(payload2.contextFingerprint).not.toBe(payload1.contextFingerprint);
-    expect(payload2.evaluationInputHash).not.toBe(payload1.evaluationInputHash);
-    expect(payload2.decision).toBe(payload1.decision);
-    expect(payload2.score).toBe(payload1.score);
-    expect(payload2.jobProjection).toEqual(payload1.jobProjection);
+    expect(eval2.evaluation_json).toBe(eval1.evaluation_json);
   });
 
-  test("Missing evaluation context throws explicit error without silent corruption", async () => {
+  test("Missing context snapshot throws explicit error without silent corruption", async () => {
     const canonicalJobId = computeCanonicalJobId({ source: "LinkedIn", sourceJobId: "det-job-missing" });
     const oppVersion = "ver_det_missing";
 
@@ -323,8 +248,8 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
     `).run(canonicalJobId, "LinkedIn", "det-job-missing", "https://linkedin.com/jobs/missing", "Missing Corp");
 
     sqliteDb.prepare(`
-      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, acquisition_status, lifecycle_state, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACQUIRED', 'ACTIVE', CURRENT_TIMESTAMP)
+      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(oppVersion, canonicalJobId, "hash_missing", "Director Marketing", "Missing Corp", "Remote", "Full-time", JSON.stringify({ jobHash: canonicalJobId, role: "Director Marketing" }));
 
     sqliteDb.prepare(`
@@ -342,13 +267,6 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         status, attempts, max_attempts, next_attempt_at, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(jobId, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fakeFingerprint);
-    sqliteDb.prepare(`
-      INSERT INTO evaluation_requirements (
-        id, tenant_id, person_id, search_plan_id, canonical_job_id,
-        opportunity_version, required_enrichment_pipeline_version,
-        evaluation_context_fingerprint, status
-      ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'READY')
-    `).run(`req_${jobId}`, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fakeFingerprint);
 
     const worker = new EvaluationWorker("worker_missing_test", { adapter });
     const claim = await worker.claimNextJob();
@@ -357,7 +275,7 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
 
     // The job should fail gracefully with retry_scheduled without creating a corrupted materialized evaluation
     expect(result.status).toBe("retry_scheduled");
-    expect(result.error).toContain("Missing evaluation context");
+    expect(result.error).toContain("Missing evaluation context snapshot");
 
     const jobRow = sqliteDb.prepare(`SELECT status, attempts FROM evaluation_jobs WHERE id = ?`).get(jobId) as any;
     expect(jobRow.status).toBe("pending"); // Retrying
@@ -385,8 +303,8 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
     });
 
     sqliteDb.prepare(`
-      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, acquisition_status, lifecycle_state, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACQUIRED', 'ACTIVE', CURRENT_TIMESTAMP)
+      INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, company_name, location, employment_type, raw_content, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(oppVersion, canonicalJobId, "hash_replay_001", "VP Marketing & Demand Gen", "Acme Growth Corp", "Bengaluru", "Full-time", rawContentJson);
 
     sqliteDb.prepare(`
@@ -426,13 +344,6 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         status, attempts, max_attempts, next_attempt_at, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(jobIdV1, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprintV1);
-    sqliteDb.prepare(`
-      INSERT INTO evaluation_requirements (
-        id, tenant_id, person_id, search_plan_id, canonical_job_id,
-        opportunity_version, required_enrichment_pipeline_version,
-        evaluation_context_fingerprint, status
-      ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'READY')
-    `).run(`req_${jobIdV1}`, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprintV1);
 
     const worker = new EvaluationWorker("worker_replay_test", { adapter });
     const claim1 = await worker.claimNextJob();
@@ -502,13 +413,6 @@ describe("M9.4.1 Forensic Certification: Evaluation Determinism & Snapshot Linea
         status, attempts, max_attempts, next_attempt_at, created_at, updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(jobIdV2, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprintV2);
-    sqliteDb.prepare(`
-      INSERT INTO evaluation_requirements (
-        id, tenant_id, person_id, search_plan_id, canonical_job_id,
-        opportunity_version, required_enrichment_pipeline_version,
-        evaluation_context_fingerprint, status
-      ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, 'READY')
-    `).run(`req_${jobIdV2}`, TENANT_ID, PERSON_ID, PLAN_ID, canonicalJobId, oppVersion, fingerprintV2);
 
     const claim2 = await worker.claimNextJob();
     expect(claim2?.id).toBe(jobIdV2);

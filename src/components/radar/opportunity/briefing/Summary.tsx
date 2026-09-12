@@ -71,7 +71,7 @@ export function Summary({
             )}
 
             <span className="label-mono font-mono text-xs font-semibold px-2 py-0.5 rounded bg-surface-raised border border-border text-foreground">
-              RADAR SCORE: {o.engineRecommendation?.qualityScore != null ? `${o.engineRecommendation.qualityScore}/100` : "N/A"}
+              RADAR SCORE: {(brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore) != null ? `${brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore}/100` : "N/A"}
             </span>
 
             <span className="label-mono font-normal text-[10px] text-muted-foreground">· Executive Briefing</span>
@@ -94,7 +94,7 @@ export function Summary({
               {brief.pursuitStrategy?.executiveLabel || "Strategy Focus"}
             </span>
             <span>
-              {brief.pursuitStrategy?.immediateNextAction || brief.explanation?.primaryReason || brief.verdictGuidance?.actionNotice}
+              {brief.pursuitStrategy?.immediateNextAction || brief.explanation?.primaryReason || brief.verdictGuidance.actionNotice}
             </span>
           </div>
 
@@ -129,18 +129,18 @@ export function Summary({
               <span className="label-mono text-[9px] text-muted-foreground">Advisory Lead</span>
             </div>
             <p className="font-display text-base leading-relaxed text-foreground font-normal">
-              {brief.executiveOpinion || "Not recorded"}
+              {brief.executiveOpinion || "Evaluating executive alignment..."}
             </p>
           </div>
 
-          {brief.directives?.observation && <div className="py-3 border-y border-border/40">
+          <div className="py-3 border-y border-border/40">
             <div className="border-l-2 border-primary pl-4 py-0.5 space-y-1">
               <span className="label-mono text-[9px] uppercase tracking-wider text-primary font-semibold">Partner Observation</span>
               <p className="text-base italic font-serif leading-relaxed text-foreground font-normal">
-                “{brief.directives.observation}”
+                “The title is less important than the operating latitude. If the commercial mandate proves genuine, this role is materially stronger than its title suggests.”
               </p>
             </div>
-          </div>}
+          </div>
         </div>
       </section>
     </>

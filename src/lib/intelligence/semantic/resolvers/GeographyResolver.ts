@@ -12,7 +12,7 @@
 
 import type { CanonicalSemanticEvidence, Directionality, EvidenceRelationship, GeographyResolutionResult, SemanticRelationship } from "../types";
 
-export interface CityAliasMapping {
+interface CityAliasMapping {
   readonly canonicalCity: string;
   readonly aliases: readonly string[];
   readonly metroCluster?: string;
@@ -20,7 +20,7 @@ export interface CityAliasMapping {
   readonly country: string;
 }
 
-export const CANONICAL_CITIES: readonly CityAliasMapping[] = [
+const CANONICAL_CITIES: readonly CityAliasMapping[] = [
   {
     canonicalCity: "BENGALURU",
     aliases: ["bangalore", "bengaluru", "electronic city", "whitefield", "koramangala", "indiranagar", "marathahalli", "bellandur", "outer ring road", "hebbal"],
@@ -50,15 +50,8 @@ export const CANONICAL_CITIES: readonly CityAliasMapping[] = [
     country: "INDIA",
   },
   {
-    canonicalCity: "GREATER_NOIDA",
-    aliases: ["greater noida", "noida extension", "gnida", "pari chowk", "knowledge park"],
-    metroCluster: "DELHI_NCR",
-    state: "UTTAR_PRADESH",
-    country: "INDIA",
-  },
-  {
     canonicalCity: "NOIDA",
-    aliases: ["noida", "noida expressway", "sector 62", "sector 125"],
+    aliases: ["noida", "greater noida", "noida expressway", "sector 62", "sector 125"],
     metroCluster: "DELHI_NCR",
     state: "UTTAR_PRADESH",
     country: "INDIA",
@@ -68,13 +61,6 @@ export const CANONICAL_CITIES: readonly CityAliasMapping[] = [
     aliases: ["faridabad"],
     metroCluster: "DELHI_NCR",
     state: "HARYANA",
-    country: "INDIA",
-  },
-  {
-    canonicalCity: "GHAZIABAD",
-    aliases: ["ghaziabad", "sahibabad", "indirapuram", "vaishali", "vasundhara"],
-    metroCluster: "DELHI_NCR",
-    state: "UTTAR_PRADESH",
     country: "INDIA",
   },
   {
@@ -106,13 +92,6 @@ export const CANONICAL_CITIES: readonly CityAliasMapping[] = [
     country: "INDIA",
   },
   {
-    canonicalCity: "AHMEDABAD",
-    aliases: ["ahmedabad", "amdavad", "sg highway", "sanand", "prahlad nagar", "gandhinagar"],
-    metroCluster: "AHMEDABAD_METRO",
-    state: "GUJARAT",
-    country: "INDIA",
-  },
-  {
     canonicalCity: "NEW_YORK_CITY",
     aliases: ["new york", "new york city", "nyc", "manhattan", "brooklyn"],
     metroCluster: "TRI_STATE_METRO",
@@ -128,50 +107,14 @@ export const CANONICAL_CITIES: readonly CityAliasMapping[] = [
   }
 ];
 
-/*
- * Serving geography is intentionally broader than city equivalence. A state
- * label from a portal cannot establish a precise city, but the active NCR
- * market accepts Haryana, Delhi, Noida, and the established NCR satellite
- * locations as its operational geography.
- */
-const NCR_LOCATION_TOKENS = [
-  "gurugram",
-  "gurgaon",
-  "haryana",
-  "new delhi",
-  "delhi",
-  "noida",
-  "greater noida",
-  "ghaziabad",
-  "faridabad",
-] as const;
-
 export class GeographyResolver {
-  public static isNcrLocation(raw: string): boolean {
-    const location = raw.toLowerCase();
-    return NCR_LOCATION_TOKENS.some((token) => location.includes(token));
-  }
-
-  /**
-   * Retrieves canonical city definition including metro cluster and state.
-   */
-  public static getCanonicalCityMapping(raw: string): CityAliasMapping | undefined {
-    const clean = this.normalizeRawLocation(raw).toLowerCase();
-    for (const city of CANONICAL_CITIES) {
-      if (city.aliases.some((alias) => clean.includes(alias) || clean === alias)) {
-        return city;
-      }
-    }
-    return undefined;
-  }
-
   /**
    * Normalizes raw location string removing boilerplate (On-site, Hybrid, State, Country).
    */
   public static normalizeRawLocation(raw: string): string {
     return raw
       .replace(/\((?:on-site|onsite|hybrid|remote|all\s+areas)\)/gi, "")
-      .replace(/,\s*(?:india|usa|united\s+states|karnataka|maharashtra|haryana|uttar\s+pradesh|tamil\s+nadu|telangana|west\s+bengal|gujarat|california|new\s+york)\b/gi, "")
+      .replace(/,\s*(?:india|usa|united\s+states|karnataka|maharashtra|haryana|uttar\s+pradesh|tamil\s+nadu|telangana|west\s+bengal|california|new\s+york)\b/gi, "")
       .replace(/[()]/g, " ")
       .trim();
   }
@@ -242,7 +185,7 @@ export class GeographyResolver {
     }
 
     // If source is a bare state name (e.g. Karnataka, Maharashtra)
-    const isStateOnly = /\b(karnataka|maharashtra|haryana|uttar\s+pradesh|tamil\s+nadu|telangana|west\s+bengal|gujarat)\b/i.test(rawSource.toLowerCase()) && !sourceMatch;
+    const isStateOnly = /\b(karnataka|maharashtra|haryana|uttar\s+pradesh|tamil\s+nadu|telangana|west\s+bengal)\b/i.test(rawSource.toLowerCase()) && !sourceMatch;
     if (isStateOnly) {
       const stateName = rawSource.toUpperCase().trim();
       const isTargetContained = targetMatch && rawSource.toLowerCase().includes(targetMatch.state.toLowerCase().replace(/_/g, " "));

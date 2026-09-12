@@ -64,8 +64,8 @@ export interface AcquisitionLedgerItem {
   title: string;
   companyName: string;
   location?: string;
-  state: "DISCOVERED" | "QUEUED" | "CLAIMED" | "ACQUIRING" | "VALIDATED" | "ENRICHED" | "EVALUATED" | "IDENTITY_UNRESOLVED" | "IDENTITY_RESOLVED";
-  terminalState?: "DUPLICATE" | "CHALLENGE" | "PERMANENT_FAILURE" | "EXPIRED" | "DISCARDED" | "UNRESOLVED_EXTERNAL_LISTING_IDENTITY" | "REDIRECT_HOP_LIMIT" | "UNSAFE_REDIRECT_DESTINATION" | "SUPERSEDED_BY_VERIFIED_IDENTITY";
+  state: "DISCOVERED" | "QUEUED" | "CLAIMED" | "ACQUIRING" | "VALIDATED" | "ENRICHED" | "EVALUATED";
+  terminalState?: "DUPLICATE" | "CHALLENGE" | "PERMANENT_FAILURE" | "EXPIRED" | "DISCARDED";
   claimedBy?: string;
   claimedAt?: string;
   leaseExpiresAt?: string;
@@ -82,33 +82,6 @@ export interface AcquisitionLedgerItem {
   updatedAt: string;
 }
 
-/**
- * Append-only provenance for one source-card ingestion attempt. It links the
- * portal's durable identity to the exact canonical job/version returned by the
- * canonical ingestion transaction. It is not a serving or evaluation record.
- */
-export interface AcquisitionIngestionLineage {
-  id: string;
-  scrapeRunId: string;
-  tenantId: string;
-  personId: string;
-  acquisitionLedgerId: string;
-  cardId: string;
-  ingestionAttempt: number;
-  sourcePortal: string;
-  sourceJobId: string;
-  sourceUrl: string;
-  /** Exact destination observed during bounded resolution; sourceUrl is never overwritten. */
-  resolvedUrl?: string;
-  captureState: string;
-  documentState: string;
-  contentHash?: string;
-  canonicalJobId?: string;
-  opportunityVersion?: string;
-  failureClass?: string;
-  createdAt: string;
-}
-
 export interface AcquisitionStore {
   recordDocument(document: Document): Promise<void>;
   logDiscovery(discovery: {
@@ -121,22 +94,10 @@ export interface AcquisitionStore {
   }): Promise<void>;
 
   upsertDiscoveredJob(item: Omit<AcquisitionLedgerItem, "id" | "createdAt" | "updatedAt"> & { id?: string }): Promise<AcquisitionLedgerItem>;
-  rebindDiscoveredJobIdentity(
-    ledgerId: string,
-    identity: Pick<AcquisitionLedgerItem, "canonicalJobId" | "sourcePortal" | "sourceJobId" | "canonicalUrl">
-  ): Promise<AcquisitionLedgerItem>;
   getLedgerItemByCanonicalId(sourcePortal: string, canonicalJobId: string): Promise<AcquisitionLedgerItem | undefined>;
   claimQueuedJobs(workerId: string, limit?: number, leaseMs?: number): Promise<AcquisitionLedgerItem[]>;
   updateJobState(id: string, updates: Partial<AcquisitionLedgerItem>): Promise<void>;
   reclaimExpiredLeases(): Promise<number>;
-  recordIngestionLineage(
-    item: Omit<AcquisitionIngestionLineage, "id" | "createdAt">
-  ): Promise<AcquisitionIngestionLineage>;
-  listIngestionLineageForRun(
-    tenantId: string,
-    personId: string,
-    scrapeRunId: string
-  ): Promise<AcquisitionIngestionLineage[]>;
 }
 
 export interface KnowledgeStore {
@@ -171,9 +132,17 @@ export interface PersonStore {
 }
 
 export interface DecisionSupportStore {
-  /** @deprecated Compatibility alias; delegates to the same authorized write authority. */
+  recordRecommendationRun(run: RecommendationRun): Promise<void>;
+  getRecommendationRun(id: string): Promise<RecommendationRun | undefined>;
+  
+  recordOpportunityAssessment(assessment: OpportunityAssessment): Promise<void>;
+  getOpportunityAssessment(id: string): Promise<OpportunityAssessment | undefined>;
+  
+  recordRecommendationRecord(record: RecommendationRecord): Promise<void>;
+  latestRecommendationRecords(personId: string, limit: number): Promise<RecommendationRecord[]>;
+  getRecommendationRecordForOpportunity(personId: string, opportunityId: string): Promise<RecommendationRecord | undefined>;
+  
   recordUserDecision(personId: string, opportunityId: string, action: string, reason?: string, reviewedFingerprint?: string | null, tenantId?: string): Promise<void>;
-  recordAuthorizedUserDecision(personId: string, tenantId: string, jobHash: string, action: "PURSUE" | "CONSIDER" | "PASS", reason?: string): Promise<{ reviewedFingerprint: string | null }>;
   getUserDecisions(personId: string, tenantId?: string): Promise<Record<string, { verb: string; updatedAt?: string; reviewedFingerprint?: string | null }>>;
   deleteUserDecision(personId: string, opportunityId: string, tenantId?: string): Promise<void>;
   clearUserDecisions(personId: string, tenantId?: string): Promise<void>;
@@ -213,10 +182,7 @@ export interface CredentialStore {
 // ============================================================================
 
 import type { SqliteEvaluationStore } from "../data/sqlite/repositories/SqliteEvaluationStore";
-import type { SqliteOpportunityQueries } from "../data/sqlite/repositories/SqliteOpportunityQueries";
-import type { SqliteEvaluationContextStore } from "../data/sqlite/repositories/SqliteEvaluationContextStore";
-import type { SqliteScrapeRunStore } from "../data/sqlite/repositories/SqliteScrapeRunStore";
-import type { SqliteDossierPresentationStore } from "../data/sqlite/repositories/SqliteDossierPresentationStore";
+import type { SqliteCanonicalServingStore } from "../data/sqlite/repositories/SqliteCanonicalServingStore";
 
 export interface StorageProvider {
   sources: SourceStore;
@@ -230,10 +196,6 @@ export interface StorageProvider {
   documents: SqliteDocumentStore;
   evaluations: SqliteEvaluationStore;
   credentials: CredentialStore;
-  /** The sole production serving read-model authority. */
-  canonicalServing: SqliteOpportunityQueries;
-  evaluationContexts: SqliteEvaluationContextStore;
-  scrapeRuns: SqliteScrapeRunStore;
-  dossierPresentations: SqliteDossierPresentationStore;
+  canonicalServing: SqliteCanonicalServingStore;
 }
 

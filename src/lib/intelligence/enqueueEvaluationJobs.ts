@@ -102,19 +102,6 @@ export async function enqueueEvaluationJobsForPlan(
       continue;
     }
 
-    // Check whether exact canonical enrichment is pending
-    const enrichment = await db.one<{ status: string }>(
-      `SELECT status FROM enrichment_jobs 
-       WHERE canonical_job_id = ? AND opportunity_version = ? AND pipeline_version = '1.0.0'
-       LIMIT 1`,
-      [candidate.canonical_job_id, candidate.opportunity_version]
-    );
-
-    // Enrichment must be COMPLETE to proceed to READY/pending; missing or non-complete is WAITING_ENRICHMENT
-    const enrichmentComplete = enrichment?.status === "COMPLETE";
-    const reqStatus = enrichmentComplete ? "READY" : "WAITING_ENRICHMENT";
-    const jobStatus = enrichmentComplete ? "pending" : "waiting_enrichment";
-
     // Deterministic Job ID using fingerprint hash to ensure unique PK across context changes
     const fpHash = createHash("sha256").update(fingerprint).digest("hex").slice(0, 12);
     const jobId = `evaljob_${tenantId}_${searchPlanId}_${candidate.canonical_job_id}_${candidate.opportunity_version}_${fpHash}`;
@@ -127,10 +114,8 @@ export async function enqueueEvaluationJobsForPlan(
        ) VALUES (
          ?, ?, ?, ?,
          ?, ?, ?,
-         ?, 0, 3, CURRENT_TIMESTAMP
-       ) ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) 
-       DO UPDATE SET status = 'pending'
-       WHERE evaluation_jobs.status = 'waiting_enrichment' AND ? = 'pending'`,
+         'pending', 0, 3, CURRENT_TIMESTAMP
+       ) ON CONFLICT(tenant_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) DO NOTHING`,
       [
         jobId,
         tenantId,
@@ -138,35 +123,7 @@ export async function enqueueEvaluationJobsForPlan(
         searchPlanId,
         candidate.canonical_job_id,
         candidate.opportunity_version,
-        fingerprint,
-        jobStatus,
-        jobStatus,
-      ]
-    );
-
-    const reqId = `evalreq_${tenantId}_${searchPlanId}_${candidate.canonical_job_id}_${candidate.opportunity_version}_${fpHash}`;
-    await db.execute(
-      `INSERT INTO evaluation_requirements (
-         id, tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version,
-         required_enrichment_pipeline_version,
-         evaluation_context_fingerprint, status
-       ) VALUES (?, ?, ?, ?, ?, ?, '1.0.0', ?, ?)
-       ON CONFLICT(tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint)
-       DO UPDATE SET status = CASE 
-         WHEN evaluation_requirements.status = 'SATISFIED' THEN 'SATISFIED'
-         WHEN evaluation_requirements.status = 'FAILED' THEN 'FAILED'
-         ELSE ?
-       END, blocked_reason = NULL`,
-      [
-        reqId,
-        tenantId,
-        personId,
-        searchPlanId,
-        candidate.canonical_job_id,
-        candidate.opportunity_version,
-        fingerprint,
-        reqStatus,
-        reqStatus,
+        fingerprint
       ]
     );
 

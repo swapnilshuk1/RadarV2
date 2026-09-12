@@ -4,8 +4,8 @@
 
 export type EvidenceSource = "title" | "snippet" | "location" | "llm";
 export type Status = "Explicit" | "Inferred" | "Missing";
-export type DecisionVerb = "PURSUE" | "CONSIDER" | "PASS" | "UNKNOWN" | "NOT_EVALUABLE" | "SPARSE_SPEC";
-export type ScrapeSource = "LinkedIn" | "Naukri" | "Indeed" | "Unknown";
+export type DecisionVerb = "PURSUE" | "CONSIDER" | "PASS" | "NOT_EVALUABLE" | "SPARSE_SPEC";
+export type ScrapeSource = "LinkedIn" | "Naukri" | "Indeed";
 
 export type Traced<T> = {
   value: T | null;
@@ -26,12 +26,8 @@ export type DimensionKey =
 
 export type EvidenceBucket = "Matched" | "Adjacent" | "Missing" | "Contradicted";
 
-export type OpportunitySource = {
-  evaluationState?: "LEGACY" | "EVALUATED";
-  opportunityVersion?: string;
-} & Omit<
-  EvaluatedOpportunity,
-  | "evaluationState"
+export type OpportunitySource = Omit<
+  Opportunity,
   | "decision"
   | "recommendation"
   | "whyNow"
@@ -41,8 +37,6 @@ export type OpportunitySource = {
   | "headspaceInvestment"
   | "hiringRisk"
   | "alternativePath"
-  | "dossierPresentation"
-  | "dossierPresentationV2"
 > & {
   rawText?: string;
   normalizedText?: string;
@@ -97,8 +91,7 @@ export interface RecommendationViewModel {
   vetoReason?: string | null;
 }
 
-export type EvaluatedOpportunity = {
-  evaluationState: "EVALUATED" | "COMPLETE" | "LEGACY";
+export type Opportunity = {
   jobHash: string;
   role: string;
   company: string;
@@ -146,46 +139,22 @@ export type EvaluatedOpportunity = {
   userDecision?: import("@/domain/decision_v4").UserDecisionStateV4 | null;
   effectiveDecision?: import("@/domain/decision_v4").EffectiveDecision;
   reviewWorkflowState?: import("@/domain/decision_v4").ReviewWorkflowState;
-  /** Canonical fingerprint freshness, independent of the legacy workflow label. */
-  reviewState?: import("@/domain/decision_v4").CanonicalReviewState;
-  evaluationContextFingerprint?: string | null;
-  evaluationFingerprint?: string | null;
   displayScore?: string;
   uiBadge?: { label: string; variant: "signal" | "caution" | "pass" | "muted" };
-  /** Optional evaluation-time presentation only; canonical scalars remain authoritative. */
-  dossierPresentation?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV1;
-  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
 };
 
-export interface ApplicationAction {
-  url: string;
-  label: "Apply direct" | "Search LinkedIn" | "Search Naukri" | "Search Indeed";
-  isDirect: boolean;
-}
-
-/**
- * Produces an application action without ever exposing an internal ingestion
- * placeholder as an external destination. A portal search is intentionally
- * labeled as such when the original posting URL was not captured.
- */
-export function applicationActionFor(o: Pick<Opportunity, "applyUrl" | "role" | "company" | "scrapedFrom">): ApplicationAction | undefined {
-  if (isExternalPostingUrl(o.applyUrl)) {
-    return { url: o.applyUrl, label: "Apply direct", isDirect: true };
-  }
+/** Derive the apply URL from the scraped source when a direct one wasn't captured. */
+export function applyUrlFor(o: Opportunity): string {
+  if (o.applyUrl) return o.applyUrl;
   const q = encodeURIComponent(`${o.role} ${o.company}`);
   switch (o.scrapedFrom) {
     case "LinkedIn":
-      return { url: `https://www.linkedin.com/jobs/search/?keywords=${q}&location=India`, label: "Search LinkedIn", isDirect: false };
+      return `https://www.linkedin.com/jobs/search/?keywords=${q}&location=India`;
     case "Naukri":
-      return { url: `https://www.naukri.com/${encodeURIComponent(o.role.toLowerCase().replace(/\s+/g, "-"))}-jobs`, label: "Search Naukri", isDirect: false };
+      return `https://www.naukri.com/${encodeURIComponent(o.role.toLowerCase().replace(/\s+/g, "-"))}-jobs`;
     case "Indeed":
-      return { url: `https://in.indeed.com/jobs?q=${q}&l=India`, label: "Search Indeed", isDirect: false };
+      return `https://in.indeed.com/jobs?q=${q}&l=India`;
   }
-}
-
-/** @deprecated Use applicationActionFor when rendering application controls. */
-export function applyUrlFor(o: Opportunity): string | undefined {
-  return applicationActionFor(o)?.url;
 }
 
 // Helpers to keep fixture rows short.
@@ -199,7 +168,6 @@ const proof = (headline: string, detail: string) => ({ headline, detail });
 export const rawOpportunities: OpportunitySource[] = [
   // 1 · PURSUE — golden: BMW India CMO, Gurugram
   {
-    evaluationState: "LEGACY",
     jobHash: "j-bmw-india-cmo",
     role: "Chief Marketing Officer (CMO)",
     company: "BMW India",
@@ -236,7 +204,6 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 2 · PURSUE — Reliance Retail CGO, Mumbai
   {
-    evaluationState: "LEGACY",
     jobHash: "j-reliance-cgo",
     role: "Chief Growth Officer, D2C",
     company: "Reliance Retail",
@@ -273,7 +240,6 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 3 · CONSIDER — golden: VML VP Performance Marketing, Gurugram (Apply This Week)
   {
-    evaluationState: "LEGACY",
     jobHash: "j-vml-vp-perf",
     role: "VP Performance Marketing",
     company: "VML India",
@@ -313,7 +279,6 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 4 · CONSIDER — golden: Acme Corp VP Digital Marketing, Mumbai (Monitor Closely — on-site)
   {
-    evaluationState: "LEGACY",
     jobHash: "j-acme-vp-mumbai",
     role: "VP Digital Marketing",
     company: "Acme Corp",
@@ -352,7 +317,6 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 5 · PASS — golden: TCS Transformation Lead, Bengaluru (level mismatch)
   {
-    evaluationState: "LEGACY",
     jobHash: "j-tcs-transformation",
     role: "Transformation Lead",
     company: "Tata Consultancy Services",
@@ -387,7 +351,6 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 6 · PASS — golden: entry-level rejection (Zestlabs — Junior Coordinator, Remote India)
   {
-    evaluationState: "LEGACY",
     jobHash: "j-zestlabs-coord",
     role: "Junior Coordinator, Marketing",
     company: "Zestlabs (Seed)",
@@ -421,7 +384,6 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 7 · PURSUE — Tata Digital, Bengaluru
   {
-    evaluationState: "LEGACY",
     jobHash: "j-tata-digital-svp",
     role: "SVP Growth & CRM",
     company: "Tata Digital",
@@ -452,7 +414,6 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 8 · CONSIDER — HUL Mumbai
   {
-    evaluationState: "LEGACY",
     jobHash: "j-hul-vp-digital",
     role: "VP Digital & E-commerce",
     company: "Hindustan Unilever",
@@ -482,7 +443,6 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 9 · CONSIDER — Flipkart Bengaluru
   {
-    evaluationState: "LEGACY",
     jobHash: "j-flipkart-vp-growth",
     role: "VP Growth Marketing",
     company: "Flipkart",
@@ -512,7 +472,6 @@ export const rawOpportunities: OpportunitySource[] = [
 
   // 10 · PASS — Snapdeal, senior in title only
   {
-    evaluationState: "LEGACY",
     jobHash: "j-snapdeal-head-perf",
     role: "Head of Performance Marketing",
     company: "Snapdeal",
@@ -550,61 +509,6 @@ for (const opp of rawOpportunities) {
   }
 }
 
-
-export type UnavailableOpportunity = {
-  evaluationState: "SPARSE_SPEC" | "NOT_EVALUABLE" | "PROFILE_REQUIRED" | "INVALID" | "ACQUISITION_PENDING" | "ACQUISITION_FAILED" | "EXPIRED";
-  jobHash: string;
-  role: string;
-  company: string;
-  location: string;
-  postedRelative: string;
-  scrapedFrom: ScrapeSource;
-  applyUrl?: string;
-  reasonCode?: string;
-  userDecision?: import("../domain/decision_v4").UserDecisionStateV4 | null;
-  effectiveDecision?: import("../domain/decision_v4").EffectiveDecision;
-  reviewState?: import("../domain/decision_v4").CanonicalReviewState;
-  evaluationContextFingerprint?: string | null;
-  evaluationFingerprint?: string | null;
-  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
-};
-
-export type UnmaterializedOpportunity = {
-  evaluationState: "UNMATERIALIZED";
-  jobHash: string;
-  role: string;
-  company: string;
-  location: string;
-  postedRelative: string;
-  scrapedFrom: ScrapeSource;
-  applyUrl?: string;
-  contextFingerprint: string;
-  userDecision?: import("../domain/decision_v4").UserDecisionStateV4 | null;
-  effectiveDecision?: import("../domain/decision_v4").EffectiveDecision;
-  reviewState?: import("../domain/decision_v4").CanonicalReviewState;
-  evaluationContextFingerprint?: string | null;
-  evaluationFingerprint?: string | null;
-  dossierPresentationV2?: import("@/lib/domain/dossier_presentation").CanonicalDossierPresentationV2;
-};
-
-export type ServedOpportunity = EvaluatedOpportunity | UnavailableOpportunity | UnmaterializedOpportunity;
-
-export function isEvaluated(opp: ServedOpportunity): opp is EvaluatedOpportunity {
-  return opp.evaluationState === "COMPLETE" || opp.evaluationState === "EVALUATED" || opp.evaluationState === "LEGACY" || !opp.evaluationState;
-}
-
-export function isUnavailable(opp: ServedOpportunity): opp is UnavailableOpportunity {
-  return opp.evaluationState === "SPARSE_SPEC" || opp.evaluationState === "NOT_EVALUABLE" || opp.evaluationState === "PROFILE_REQUIRED" || opp.evaluationState === "INVALID" || opp.evaluationState === "ACQUISITION_PENDING" || opp.evaluationState === "ACQUISITION_FAILED" || opp.evaluationState === "EXPIRED";
-}
-
-export function isUnmaterialized(opp: ServedOpportunity): opp is UnmaterializedOpportunity {
-  return opp.evaluationState === "UNMATERIALIZED";
-}
-
-// Keep Opportunity alias for components we haven't migrated yet
-export type Opportunity = EvaluatedOpportunity;
-
 export { rawOpportunities as OPPORTUNITY_SOURCES };
 
 
-import { isExternalPostingUrl } from "@/lib/acquisition/external-posting-url";

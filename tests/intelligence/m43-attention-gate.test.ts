@@ -57,11 +57,10 @@ describe("Phase M4.3: Attention Gate", () => {
       expect(res.decision).toBe("CANDIDATE");
     });
 
-    test("2. Unknown lexical role -> REVIEW / CANDIDATE", () => {
-      const res = evaluateAttentionGate({ ...baseVersion, jobTitle: "Vice President, Client Services" }, { ...baseCriteria, targetRoles: ["director of marketing"] });
-      expect(res.decision).toBe("CANDIDATE");
-      expect(res.eligibility).toBe("REVIEW");
-      expect(res.reasonCodes).toContain("ROLE_UNKNOWN");
+    test("2. Non-matching role -> NOT_CANDIDATE", () => {
+      const res = evaluateAttentionGate(baseVersion, { ...baseCriteria, targetRoles: ["director of marketing"] });
+      expect(res.decision).toBe("NOT_CANDIDATE");
+      expect(res.reasons[0]).toMatch(/Role mismatch/);
     });
 
     test("3. Matching location -> CANDIDATE", () => {
@@ -69,160 +68,22 @@ describe("Phase M4.3: Attention Gate", () => {
       expect(res.decision).toBe("CANDIDATE");
     });
 
-    test("4. A location preference alone is not a hard rejection", () => {
+    test("4. Explicitly incompatible location -> NOT_CANDIDATE", () => {
       const res = evaluateAttentionGate(baseVersion, { ...baseCriteria, targetLocations: ["new york"] });
-      expect(res.decision).toBe("CANDIDATE");
-      expect(res.eligibility).toBe("REVIEW");
-    });
-
-    test("explicit Gurugram-only policy excludes a known outside location", () => {
-      const res = evaluateAttentionGate(baseVersion, {
-        ...baseCriteria,
-        eligibilitySpec: {
-          version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: [], functions: [], seniorityRange: [],
-          locations: ["Gurugram"], locationPolicy: "GURUGRAM_ONLY", industries: [], adjacentFamilies: [], excludedCompanies: [],
-        },
-      });
       expect(res.decision).toBe("NOT_CANDIDATE");
-      expect(res.eligibility).toBe("INELIGIBLE");
-      expect(res.reasonCodes).toContain("LOCATION_CONTRADICTION");
-      expect(res.locationEvidence).toBe("San Francisco, CA");
-    });
-
-    test("explicit NCR policy accepts a Gurugram posting and records its evidence", () => {
-      const res = evaluateAttentionGate({ ...baseVersion, location: "Gurugram, Haryana, India" }, {
-        ...baseCriteria,
-        eligibilitySpec: {
-          version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: [], functions: [], seniorityRange: [],
-          locations: ["Gurugram"], locationPolicy: "NCR", industries: [], adjacentFamilies: [], excludedCompanies: [],
-        },
-      });
-      expect(res.decision).toBe("CANDIDATE");
-      expect(res.locationPolicy).toBe("NCR");
-      expect(res.locationEvidence).toBe("Gurugram, Haryana, India");
-    });
-
-    test("explicit NCR policy accepts a Haryana posting", () => {
-      const res = evaluateAttentionGate({ ...baseVersion, location: "Haryana" }, {
-        ...baseCriteria,
-        eligibilitySpec: {
-          version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: [], functions: [], seniorityRange: [],
-          locations: ["Gurugram"], locationPolicy: "NCR", industries: [], adjacentFamilies: [], excludedCompanies: [],
-        },
-      });
-      expect(res.decision).toBe("CANDIDATE");
-      expect(res.reasonCodes).not.toContain("LOCATION_CONTRADICTION");
-    });
-
-    test("an explicit Remote India target overrides an otherwise-NCR location policy for India-remote postings", () => {
-      const res = evaluateAttentionGate({ ...baseVersion, location: "India (Remote)" }, {
-        ...baseCriteria,
-        eligibilitySpec: {
-          version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: [], functions: [], seniorityRange: [],
-          locations: ["Gurugram", "Remote India"], locationPolicy: "NCR", industries: [], adjacentFamilies: [], excludedCompanies: [],
-        },
-      });
-      expect(res.decision).toBe("CANDIDATE");
-      expect(res.reasonCodes).not.toContain("LOCATION_CONTRADICTION");
-    });
-
-    test("explicit NCR policy rejects an out-of-area hybrid posting", () => {
-      const res = evaluateAttentionGate({ ...baseVersion, location: "Mumbai, Maharashtra, India (Hybrid)" }, {
-        ...baseCriteria,
-        eligibilitySpec: {
-          version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: [], functions: [], seniorityRange: [],
-          locations: ["Gurugram"], locationPolicy: "NCR", industries: [], adjacentFamilies: [], excludedCompanies: [],
-        },
-      });
-      expect(res.decision).toBe("NOT_CANDIDATE");
-      expect(res.eligibility).toBe("INELIGIBLE");
-      expect(res.reasonCodes).toEqual(["LOCATION_CONTRADICTION"]);
-    });
-
-    test("remote-compatible policy accepts explicit remote evidence without a location rejection", () => {
-      const res = evaluateAttentionGate({ ...baseVersion, location: "Remote in India" }, {
-        ...baseCriteria,
-        eligibilitySpec: {
-          version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: [], functions: [], seniorityRange: [],
-          locations: ["Gurugram"], locationPolicy: "REMOTE_COMPATIBLE", industries: [], adjacentFamilies: [], excludedCompanies: [],
-        },
-      });
-      expect(res.decision).toBe("CANDIDATE");
-      expect(res.eligibility).toBe("REVIEW");
-      expect(res.reasonCodes).not.toContain("LOCATION_CONTRADICTION");
-      expect(res.locationEvidence).toBe("Remote in India");
-    });
-
-    test("known policy with unavailable location evidence remains explicit review", () => {
-      const res = evaluateAttentionGate({ ...baseVersion, location: null }, {
-        ...baseCriteria,
-        eligibilitySpec: {
-          version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: [], functions: [], seniorityRange: [],
-          locations: ["Gurugram"], locationPolicy: "GURUGRAM_ONLY", industries: [], adjacentFamilies: [], excludedCompanies: [],
-        },
-      });
-      expect(res.decision).toBe("CANDIDATE");
-      expect(res.eligibility).toBe("REVIEW");
-      expect(res.reasonCodes).toEqual(["LOCATION_REVIEW"]);
-      expect(res.locationEvidence).toBeNull();
+      expect(res.reasons[0]).toMatch(/Location mismatch/);
     });
 
     test("5. Seniority mismatch -> NOT_CANDIDATE", () => {
       const res = evaluateAttentionGate(baseVersion, { ...baseCriteria, targetSeniority: ["vp", "vice president"] });
       expect(res.decision).toBe("NOT_CANDIDATE");
-      expect(res.reasonCodes).toContain("SENIORITY_CONTRADICTION");
-    });
-
-    test("5b. Explicit role match does not require a duplicate seniority token", () => {
-      const res = evaluateAttentionGate(
-        { ...baseVersion, jobTitle: "Chief Marketing Officer (CMO)" },
-        { ...baseCriteria, targetRoles: ["CMO"], targetSeniority: ["Chief"] },
-      );
-      expect(res.decision).toBe("CANDIDATE");
-    });
-
-    test("5c. Generic function match still honors seniority", () => {
-      const res = evaluateAttentionGate(
-        { ...baseVersion, jobTitle: "Marketing Manager" },
-        { ...baseCriteria, targetRoles: ["Marketing"], targetSeniority: ["VP"] },
-      );
-      expect(res.decision).toBe("NOT_CANDIDATE");
-    });
-
-    test("5d. Explicit junior experience requirement rejects a lexical family match before evaluation", () => {
-      const res = evaluateAttentionGate(
-        { ...baseVersion, jobTitle: "B2B Growth & Onboarding Executive", rawContent: "Sales executive role requiring 1–3 years of experience in logistics sales." },
-        { ...baseCriteria, targetRoles: ["Growth"], targetSeniority: ["VP"] },
-      );
-      expect(res).toMatchObject({ decision: "NOT_CANDIDATE", eligibility: "INELIGIBLE" });
-      expect(res.reasonCodes).toContain("SENIORITY_CONTRADICTION");
-    });
-
-    test.each([
-      "Sales executive role requiring 1–3 years of sales experience in e-commerce logistics.",
-      "Position: Marketing Executive. Salary: 30000/monthExperience: 2–3 YearsKey Responsibilities: develop business.",
-    ])("explicit junior experience wording '%s' rejects a lexical family match", (rawContent) => {
-      const res = evaluateAttentionGate(
-        { ...baseVersion, jobTitle: "Marketing Executive", rawContent },
-        { ...baseCriteria, targetRoles: ["Marketing"], targetSeniority: ["VP"] },
-      );
-      expect(res).toMatchObject({ decision: "NOT_CANDIDATE", eligibility: "INELIGIBLE" });
-      expect(res.reasonCodes).toContain("SENIORITY_CONTRADICTION");
-    });
-
-    test("an explicit 4–10 year range contradicts a Chief/VP executive target", () => {
-      const res = evaluateAttentionGate(
-        { ...baseVersion, jobTitle: "Chief of Staff", rawContent: "We require 4–10 years of strategy, consulting, or operations experience." },
-        { ...baseCriteria, targetRoles: ["Chief Marketing Officer"], targetSeniority: ["Chief", "VP"] },
-      );
-      expect(res).toMatchObject({ decision: "NOT_CANDIDATE", eligibility: "INELIGIBLE" });
-      expect(res.reasonCodes).toContain("SENIORITY_CONTRADICTION");
+      expect(res.reasons[0]).toMatch(/Seniority mismatch/);
     });
 
     test("6. Employment-type mismatch -> NOT_CANDIDATE", () => {
       const res = evaluateAttentionGate(baseVersion, { ...baseCriteria, targetEmploymentTypes: ["Contract", "Part-time"] });
       expect(res.decision).toBe("NOT_CANDIDATE");
-      expect(res.reasonCodes).toContain("EMPLOYMENT_CONTRADICTION");
+      expect(res.reasons[0]).toMatch(/Employment type mismatch/);
     });
 
     test("7. Same inputs -> identical result", () => {
@@ -235,37 +96,6 @@ describe("Phase M4.3: Attention Gate", () => {
       const res = evaluateAttentionGate(baseVersion, { ...baseCriteria, excludedCompanies: ["tech corp"] });
       expect(res.decision).toBe("NOT_CANDIDATE");
     });
-
-    test("compound strategy/transformation leadership is reviewed, not rejected by title mismatch", () => {
-      const res = evaluateAttentionGate(
-        { ...baseVersion, jobTitle: "Chief Strategy and Transformation Officer" },
-        { ...baseCriteria, eligibilitySpec: { version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: ["Chief Marketing Officer"], functions: ["Marketing"], seniorityRange: ["Chief"], locations: [], industries: [], adjacentFamilies: ["Strategy", "Transformation"], excludedCompanies: [] } },
-      );
-      expect(res.decision).toBe("CANDIDATE");
-      expect(res.eligibility).toBe("REVIEW");
-      expect(res.reasonCodes).toContain("ADJACENT_ROLE_FAMILY");
-    });
-
-    test("explicit technology contradiction is ineligible with a reason code", () => {
-      const res = evaluateAttentionGate(
-        { ...baseVersion, jobTitle: "Vice President Technology" },
-        { ...baseCriteria, eligibilitySpec: { version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: ["Chief Marketing Officer"], functions: ["Marketing", "Growth"], seniorityRange: ["VP"], locations: [], industries: [], adjacentFamilies: [], excludedCompanies: [] } },
-      );
-      expect(res.decision).toBe("NOT_CANDIDATE");
-      expect(res.eligibility).toBe("INELIGIBLE");
-      expect(res.reasonCodes).toContain("FUNCTION_CONTRADICTION");
-    });
-
-    test.each(["Principal Engineer, Java, VP", "Principal AI Engineer, Director"])(
-      "explicit technical title %s remains a function contradiction despite executive seniority", (jobTitle) => {
-        const res = evaluateAttentionGate(
-          { ...baseVersion, jobTitle },
-          { ...baseCriteria, eligibilitySpec: { version: "eligibility-spec/v1", ontologyVersion: "test", roleFamilies: ["Chief Marketing Officer"], functions: ["Marketing", "Growth"], seniorityRange: ["Chief", "VP"], locations: [], industries: [], adjacentFamilies: [], excludedCompanies: [] } },
-        );
-        expect(res).toMatchObject({ decision: "NOT_CANDIDATE", eligibility: "INELIGIBLE" });
-        expect(res.reasonCodes).toContain("FUNCTION_CONTRADICTION");
-      },
-    );
 
     test("10. Gate is purely synchronous & invokes zero LLM/extraction/policy operations", () => {
       const startTime = performance.now();
@@ -294,8 +124,7 @@ describe("Phase M4.3: Attention Gate", () => {
         "009_profile_queryable_columns.sql",
         "018_multi_tenant_foundation.sql",
         "019_evaluation_context_and_read_model.sql",
-        "020_canonical_acquisition.sql",
-        "035_search_plan_candidate_eligibility_audit.sql"
+        "020_canonical_acquisition.sql"
       ];
       
       for (const file of migrationFiles) {
@@ -329,8 +158,6 @@ describe("Phase M4.3: Attention Gate", () => {
       const saved = await adapter.one<any>("SELECT * FROM search_plan_candidates WHERE search_plan_id = 'plan_A'");
       expect(saved.opportunity_version).toBe("v1");
       expect(saved.canonical_job_id).toBe("job1");
-      expect(saved.eligibility).toBe("ELIGIBLE");
-      expect(JSON.parse(saved.eligibility_reason_codes_json)).toContain("ROLE_FAMILY_MATCH");
     });
 
     test("8. Different tenant cannot access another tenant candidate (Isolation)", async () => {

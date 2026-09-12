@@ -51,39 +51,23 @@ export class SqliteMaterializedEvaluationStore {
       evaluation.evaluationContextFingerprint
     );
 
-    const evaluationId = evaluation.id || `mat_${crypto.randomUUID()}`;
+    const evaluationId = evaluation.id || identity.idempotencyKey;
     const evidenceIdsJson = JSON.stringify(evaluation.evidenceIds || []);
     const now = evaluation.materializedAt || new Date().toISOString();
-
-    let vetoed = 0;
-    if ((evaluation as any).vetoed !== undefined) {
-      vetoed = (evaluation as any).vetoed ? 1 : 0;
-    } else if (evaluation.evaluationJson) {
-      try {
-        const p = JSON.parse(evaluation.evaluationJson);
-        const rec = p.record || p.engineRecommendation || p;
-        vetoed = Boolean(p.vetoed ?? rec.vetoed) ? 1 : 0;
-      } catch {
-        vetoed = 0;
-      }
-    }
 
     // 4. Idempotently insert into materialized_evaluations
     await this.db.execute(
       `INSERT INTO materialized_evaluations (
          id, tenant_id, person_id, canonical_job_id, opportunity_version,
-         evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, rationale,
-         evidence_ids, evaluation_json, vetoed, materialized_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(tenant_id, person_id, canonical_job_id, opportunity_version, evaluation_context_fingerprint) DO UPDATE SET
-         evaluation_state = EXCLUDED.evaluation_state,
-         evaluation_fingerprint = EXCLUDED.evaluation_fingerprint,
+         evaluation_context_fingerprint, decision, quality_score, rationale,
+         evidence_ids, evaluation_json, materialized_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(canonical_job_id, opportunity_version, evaluation_context_fingerprint) DO UPDATE SET
          quality_score = EXCLUDED.quality_score,
          decision = EXCLUDED.decision,
          rationale = EXCLUDED.rationale,
          evidence_ids = EXCLUDED.evidence_ids,
-         evaluation_json = EXCLUDED.evaluation_json,
-         vetoed = EXCLUDED.vetoed`,
+         evaluation_json = EXCLUDED.evaluation_json`,
       [
         evaluationId,
         scope.tenantId,
@@ -91,14 +75,11 @@ export class SqliteMaterializedEvaluationStore {
         evaluation.canonicalJobId,
         evaluation.opportunityVersion,
         evaluation.evaluationContextFingerprint,
-        evaluation.evaluationFingerprint ?? null,
-        evaluation.evaluationState || 'UNKNOWN',
         evaluation.decision,
         evaluation.qualityScore,
         evaluation.rationale,
         evidenceIdsJson,
         evaluation.evaluationJson,
-        vetoed,
         now,
       ]
     );
@@ -114,11 +95,11 @@ export class SqliteMaterializedEvaluationStore {
   ): Promise<MaterializedEvaluation | undefined> {
     const row = await this.db.one<any>(
       `SELECT id, tenant_id, person_id, canonical_job_id, opportunity_version,
-              evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, rationale,
+              evaluation_context_fingerprint, decision, quality_score, rationale,
               evidence_ids, evaluation_json, materialized_at
-        FROM materialized_evaluations
-        WHERE canonical_job_id = ? AND evaluation_context_fingerprint = ?
-          AND tenant_id = ? AND person_id = ?`,
+       FROM materialized_evaluations
+       WHERE canonical_job_id = ? AND evaluation_context_fingerprint = ?
+         AND tenant_id = ? AND person_id = ?`,
       [canonicalJobId, contextFingerprint, scope.tenantId, scope.personId]
     );
 
@@ -131,8 +112,6 @@ export class SqliteMaterializedEvaluationStore {
       canonicalJobId: row.canonical_job_id,
       opportunityVersion: row.opportunity_version,
       evaluationContextFingerprint: row.evaluation_context_fingerprint,
-      evaluationFingerprint: row.evaluation_fingerprint,
-      evaluationState: row.evaluation_state || 'UNKNOWN',
       decision: row.decision,
       qualityScore: row.quality_score,
       rationale: row.rationale,
@@ -149,14 +128,13 @@ export class SqliteMaterializedEvaluationStore {
     scope: AuthorizedPersonScope,
     filter?: {
       decision?: EvaluationDecision;
-      evaluationState?: string;
       contextFingerprint?: string;
       limit?: number;
     }
   ): Promise<MaterializedEvaluation[]> {
     let sql = `
       SELECT id, tenant_id, person_id, canonical_job_id, opportunity_version,
-             evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, rationale,
+             evaluation_context_fingerprint, decision, quality_score, rationale,
              evidence_ids, evaluation_json, materialized_at
       FROM materialized_evaluations
       WHERE tenant_id = ? AND person_id = ?
@@ -166,11 +144,6 @@ export class SqliteMaterializedEvaluationStore {
     if (filter?.decision) {
       sql += ` AND decision = ?`;
       params.push(filter.decision);
-    }
-
-    if (filter?.evaluationState) {
-      sql += ` AND evaluation_state = ?`;
-      params.push(filter.evaluationState);
     }
 
     if (filter?.contextFingerprint) {
@@ -194,8 +167,6 @@ export class SqliteMaterializedEvaluationStore {
       canonicalJobId: row.canonical_job_id,
       opportunityVersion: row.opportunity_version,
       evaluationContextFingerprint: row.evaluation_context_fingerprint,
-      evaluationFingerprint: row.evaluation_fingerprint,
-      evaluationState: row.evaluation_state || 'UNKNOWN',
       decision: row.decision,
       qualityScore: row.quality_score,
       rationale: row.rationale,

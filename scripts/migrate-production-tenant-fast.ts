@@ -3,7 +3,6 @@ import { computeCanonicalJobId, computeContentHash, computeOpportunityVersionId 
 import { computeSearchPlanSnapshotHash, computeEvaluationContextFingerprint } from "../src/lib/domain/evaluation_fingerprint";
 import { computeDeterministicHash } from "../src/lib/ontology/compiler/OntologyCompiler";
 import { evaluateAttentionGate } from "../src/lib/intelligence/AttentionGate";
-import { isExternalPostingUrl } from "../src/lib/acquisition/external-posting-url";
 
 import { getDatabaseAdapter } from "../src/data/database";
 
@@ -190,11 +189,7 @@ export async function runM7TenantMigrationFast() {
 
       const source = r.disc_source || parsedDoc.scrapedFrom || parsedDoc.source || "LinkedIn";
       const sourceJobId = parsedDoc.jobHash || r.opp_id;
-      const canonicalUrl = parsedDoc.applyUrl || parsedDoc.url;
-      if (!isExternalPostingUrl(canonicalUrl)) {
-        console.warn(`[M7_SKIP_NO_EXTERNAL_URL] ${r.opp_id}`);
-        continue;
-      }
+      const canonicalUrl = parsedDoc.applyUrl || parsedDoc.url || `https://radar.internal/jobs/${r.opp_id}`;
       const companyName = r.company_name || parsedDoc.company || "Executive Firm";
       const title = r.title || parsedDoc.role || "Executive Role";
       const location = r.location || parsedDoc.location || "Remote";

@@ -6,6 +6,7 @@
  * from the evaluation execution logic.
  */
 
+import { OpportunityService } from "./opportunity-service";
 import { invalidateEngineCache } from "./engine";
 import { invalidateCandidateDossierCache } from "./cip";
 
@@ -42,9 +43,10 @@ export class EvaluationCoordinator {
         invalidateEngineCache();
         invalidateCandidateDossierCache();
 
-        // Cache invalidation is intentionally not reevaluation. The write
-        // path that changed an input must create a context/job/materialization
-        // lineage explicitly before this notifier is called.
+        // Re-calculate recommendations for user if specific user provided
+        if (personId) {
+          await OpportunityService.listForUser(personId);
+        }
         break;
 
       default:
@@ -52,7 +54,7 @@ export class EvaluationCoordinator {
     }
 
     return {
-      processed: false,
+      processed: true,
       personId,
       event: payload.event
     };

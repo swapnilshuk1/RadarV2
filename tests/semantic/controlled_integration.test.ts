@@ -68,19 +68,6 @@ describe("Phase 5C.2: Controlled Semantic Integration Suite", () => {
       expect(Array.isArray(jobProj.semanticEvidence)).toBe(true);
       expect(jobProj.semanticEvidence!.length).toBeGreaterThan(0);
     });
-
-    it("does not turn asset acquisition into unsupported post-merger integration", () => {
-      const jobProj = JobProjectionBuilder.build({
-        ...mockOpportunity,
-        id: "asset-acquisition-only",
-        jobHash: "asset-acquisition-only",
-        canonicalTitle: "Business Head — Asset Acquisition",
-        description: "Lead distressed-debt acquisition, capital raising, ARC business development, and lender relationships.",
-        normalizedText: "Lead distressed-debt acquisition, capital raising, ARC business development, and lender relationships.",
-      });
-      expect(jobProj.executiveMission.intent).not.toBe("INTEGRATE_ACQUISITION");
-      expect(jobProj.executiveMission.statement).not.toMatch(/post-merger|synergy/i);
-    });
   });
 
   describe("2. Domain-by-Domain Integration Tests", () => {
@@ -224,3 +211,4 @@ describe("Phase 5C.2: Controlled Semantic Integration Suite", () => {
     });
   });
 });
+

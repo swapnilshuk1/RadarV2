@@ -40,18 +40,8 @@ export function Strategy({ brief, executionPkg }: StrategyProps) {
           </p>
         )}
 
-        {brief.structuredSections?.strategy?.body && (
-          <p className="text-sm text-muted-foreground leading-relaxed border-l-2 border-primary/40 pl-4">
-            {brief.structuredSections.strategy.body}
-          </p>
-        )}
-
         <div className="pt-2">
-          <StrategyWorkspace
-            executionPkg={executionPkg}
-            brief={brief}
-            layout="desktop"
-          />
+          <StrategyWorkspace executionPkg={executionPkg} layout="desktop" />
         </div>
       </div>
     </div>

@@ -1,8 +1,7 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { PersonStore } from "../../../domain/repositories";
 import type { Person, ResumeVersion } from "../../../domain/entities";
-import { type CandidateProjection, validateCandidateProjection } from "../../../lib/domain/candidate_projection";
-import { versionCandidateProjection } from "./profile-projection-version";
+import { type CandidateProjection, validateCandidateProjection, DEFAULT_CANDIDATE_PROJECTION } from "../../../lib/domain/candidate_projection";
 
 export class SqlitePersonStore implements PersonStore {
   constructor(private db: DatabaseAdapter) {}
@@ -84,18 +83,15 @@ export class SqlitePersonStore implements PersonStore {
       );
     }
 
-    const persistedProjection = versionCandidateProjection(projection);
-    // A projection is an immutable evaluation input. Its content-addressed
-    // version is therefore also its durable row identity.
-    const profileId = `profile-${personId}-${persistedProjection.profileVersion}`;
-    const projectionJson = JSON.stringify(persistedProjection);
+    const profileId = `profile-${personId}`; // Enforce single active profile per user for now
+    const projectionJson = JSON.stringify(projection);
     const now = new Date().toISOString();
     
     // Extract queryable scalar columns from projection
-    const currentTitle = persistedProjection.attainedTitle?.trim() || "Unknown";
-    const yearsExperience = persistedProjection.yearsOfExperience || 0;
-    const archetype = persistedProjection.archetype?.trim() || "Unknown";
-    const preferredWorkModel = persistedProjection.preferredWorkModel || "ANY";
+    const currentTitle = "Executive"; // No longer in projection, stored in identity
+    const yearsExperience = projection.yearsOfExperience || 0;
+    const archetype = projection.executiveThemes?.[0] || "";
+    const preferredWorkModel = projection.preferredWorkModel || "ANY";
 
     await this.db.execute(
       `
@@ -106,7 +102,14 @@ export class SqlitePersonStore implements PersonStore {
         created_at, updated_at
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO NOTHING
+      ON CONFLICT(id) DO UPDATE SET
+        projection_json = excluded.projection_json,
+        projection_generated_at = excluded.projection_generated_at,
+        current_title = excluded.current_title,
+        years_experience = excluded.years_experience,
+        archetype = excluded.archetype,
+        preferred_work_model = excluded.preferred_work_model,
+        updated_at = excluded.updated_at
       `,
       [
         profileId, personId, "[]", "[]", // Dummy timeline/skills for NOT NULL constraints
@@ -123,11 +126,11 @@ export class SqlitePersonStore implements PersonStore {
 
   async getLatestProjection(personId: string): Promise<CandidateProjection | undefined> {
     const row = await this.db.one<{ projection_json: string }>(
-      `SELECT projection_json FROM career_profiles WHERE person_id = ? ORDER BY projection_generated_at DESC, rowid DESC LIMIT 1`,
+      `SELECT projection_json FROM career_profiles WHERE person_id = ? ORDER BY created_at DESC LIMIT 1`,
       [personId]
     );
     if (!row || !row.projection_json) {
-      return undefined;
+      return DEFAULT_CANDIDATE_PROJECTION;
     }
     
     try {
@@ -139,7 +142,7 @@ export class SqlitePersonStore implements PersonStore {
         );
         return undefined;
       }
-      return versionCandidateProjection(parsed);
+      return parsed;
     } catch (e) {
       console.error("[SqlitePersonStore] Failed to parse projection_json:", personId);
       return undefined;

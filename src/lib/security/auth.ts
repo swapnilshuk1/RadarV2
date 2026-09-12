@@ -1,18 +1,6 @@
 import { DatabaseAdapter } from "../../data/database";
 
-/** The sole registry for permissions accepted from persisted membership grants. */
-export const PERMISSIONS = [
-  "read:evaluation",
-  "write:evaluation",
-  "manage:search_plan",
-  "run:scraper",
-  "manage:credentials",
-  "read:credentials",
-  "read:person",
-  "write:person",
-] as const;
-
-export type Permission = typeof PERMISSIONS[number];
+export type Permission = 'read:evaluation' | 'write:evaluation' | 'manage:search_plan' | 'manage:credentials' | 'read:credentials' | 'read:person' | 'write:person';
 
 // 1. Authentication context establishes who is calling
 export interface AuthContext {
@@ -25,8 +13,6 @@ export interface AuthContext {
 export interface AuthorizedPersonScope {
   tenantId: string;
   personId: string;
-  activeSearchPlanId?: string;
-  activeEvaluationContextId?: string;
 }
 
 export class TenantIsolationError extends Error {

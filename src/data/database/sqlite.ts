@@ -40,31 +40,4 @@ export class SqliteAdapter implements DatabaseAdapter {
       throw err;
     }
   }
-
-  async executeMigration(statements: readonly string[], options?: { disableForeignKeys?: boolean }): Promise<void> {
-    const disableFk = options?.disableForeignKeys ?? false;
-    if (disableFk) {
-      this.db.pragma("foreign_keys = OFF");
-    }
-    this.db.exec("BEGIN");
-    try {
-      for (const stmt of statements) {
-        this.db.prepare(stmt).run();
-      }
-      this.db.exec("COMMIT");
-    } catch (err) {
-      if (this.db.inTransaction) {
-        this.db.exec("ROLLBACK");
-      }
-      throw err;
-    } finally {
-      if (disableFk) {
-        this.db.pragma("foreign_keys = ON");
-        const violations = this.db.pragma("foreign_key_check") as any[];
-        if (violations && violations.length > 0) {
-          throw new Error(`Foreign key constraint check failed after migration: ${JSON.stringify(violations)}`);
-        }
-      }
-    }
-  }
 }

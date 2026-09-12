@@ -1,11 +1,5 @@
 import { request, Agent } from "undici";
 import * as cheerio from "cheerio";
-import type {
-  AcquisitionOutcome,
-  ContentQualityResult,
-  ContentQualityTier
-} from "../types";
-import { validateJobDocument, type DocumentContentOrigin } from "../../../src/lib/acquisition/validator";
 
 // Global keep-alive agent to reuse TLS handshakes across concurrent detail requests.
 const agent = new Agent({
@@ -14,507 +8,30 @@ const agent = new Agent({
   connections: 50,
 });
 
-import type { FailureClass } from "../../../src/lib/acquisition/failure-taxonomy";
-
 export interface HttpFetchResult {
   fetched: boolean;
   rawHtml?: string;
   rawText?: string;
-  extractedTitle?: string;
-  extractedCompany?: string;
   fetchError?: string;
   fetchDurationMs?: number;
   httpStatus?: number;
-  outcome: AcquisitionOutcome;
-  qualityTier?: ContentQualityTier;
-  extractionMethod?: "JSON_LD" | "TARGETED_DOM" | "SANITIZED_DOM" | "FALLBACK_CARD";
-  qualityResult?: ContentQualityResult;
-  failureClass?: FailureClass;
-}
-
-const NON_JOB_BOILERPLATE_PATTERNS = [
-  /job searching just got simpler/i,
-  /search jobs filters/i,
-  /we want to work with you/i,
-  /cookie information welcome to the/i,
-  /this website is based on the successfactors/i,
-  /please enable cookies/i,
-  /access denied/i,
-  /attention required! \| cloudflare/i,
-  /verify you are human/i,
-  /sign in to continue/i,
-  /log in to your account/i
-];
-
-const CODE_OR_SCRIPT_PATTERNS = [
-  /var\s+queuedSuperProps/i,
-  /window\.ub\s*=/i,
-  /\(function\(\)\s*\{/i,
-  /var\s+faviconUrl\s*=/i,
-  /<iframe\s+src=/i,
-  /googletagmanager\.com/i,
-  /rmkcdn\.successfactors\.com/i
-];
-
-/**
- * Evaluates extracted text for job-substance vs boilerplate or script remnants.
- */
-export function evaluateContentQuality(
-  text: string,
-  title?: string,
-  company?: string,
-  contentOrigin?: DocumentContentOrigin
-): ContentQualityResult {
-  const validation = validateJobDocument({
-    extractedText: text,
-    url: "about:blank",
-    sourcePortal: "HTTP_FETCH",
-    extractedTitle: title,
-    extractedCompany: company,
-    expectedTitle: title,
-    expectedCompany: company,
-    contentOrigin: contentOrigin || "DETAIL_DOCUMENT",
-    provenance: "SANITIZED_DOM",
-  });
-  const document = validation.document;
-  const clean = document.extractedText || text || "";
-  const hasResponsibilities = /responsibilities|requirements|qualifications|about the role|what you will do|impact|who you are/i.test(clean);
-  const isSparse = document.usabilityState === "GENUINELY_SPARSE" || document.substantiveWordCount < 60 || document.substantiveCharacterCount < 400;
-  return {
-    tier: document.usabilityState === "UNUSABLE" ? "NON_JOB" : isSparse ? "SPARSE" : "VALID",
-    confidence: validation.confidence === "HIGH" ? 0.9 : validation.confidence === "MEDIUM" ? 0.8 : validation.confidence === "LOW" ? 0.7 : 0.95,
-    wordCount: document.substantiveWordCount,
-    characterCount: document.substantiveCharacterCount,
-    codeRatio: document.scriptRatio,
-    hasJobTitle: document.titleAgreement === "MATCHED" || (!!title && clean.toLowerCase().includes(title.toLowerCase())),
-    hasJobDescription: hasResponsibilities || document.substantiveWordCount >= 80,
-    boilerplateDetected: document.failureClass === "WRONG_PAGE" ? [document.failureClass] : undefined,
-    reasons: document.failureClass ? [`Canonical document validator: ${document.failureClass}`] : [isSparse ? "Canonical document validator: SPARSE" : `Canonical document validator: ${document.acquisitionQuality}`],
-  };
 }
 
 /**
- * Extracts and validates schema.org JobPosting JSON-LD.
- * Returns clean content if valid, or null if missing/invalid.
- */
-export function extractValidatedJsonLd(html: string): {
-  rawHtml: string;
-  rawText: string;
-  title?: string;
-  company?: string;
-} | null {
-  try {
-    const $ = cheerio.load(html);
-    const jsonLdScripts = $("script[type='application/ld+json']");
-    if (!jsonLdScripts.length) return null;
-
-    for (let i = 0; i < jsonLdScripts.length; i++) {
-      const scriptContent = $(jsonLdScripts[i]).html();
-      if (!scriptContent) continue;
-
-      let parsed: any;
-      try {
-        parsed = JSON.parse(scriptContent);
-      } catch {
-        continue;
-      }
-
-      const items = Array.isArray(parsed)
-        ? parsed
-        : parsed["@graph"] && Array.isArray(parsed["@graph"])
-        ? parsed["@graph"]
-        : [parsed];
-
-      for (const item of items) {
-        if (item["@type"] === "JobPosting") {
-          const descHtml = item.description || "";
-          const title = (item.title || "").trim();
-          const company = (item.hiringOrganization?.name || "").trim();
-
-          // Validation: substantive description (>=100 chars), title present
-          if (descHtml.length >= 100 && title.length > 0) {
-            // Strip HTML from description for rawText
-            const $desc = cheerio.load(descHtml);
-            const descText = $desc.text().replace(/\s+/g, " ").trim();
-
-            if (descText.length >= 100) {
-              const rawText = [title, company, descText].filter(Boolean).join("\n\n");
-              return {
-                rawHtml: descHtml,
-                rawText,
-                title,
-                company
-              };
-            }
-          }
-        }
-      }
-    }
-  } catch {}
-  return null;
-}
-
-/**
- * Safely extracts embedded structured JSON state (e.g. Next.js __NEXT_DATA__,
- * or known structured JSON state elements).
- *
- * Invariant:
- * - Only parses pure JSON using JSON.parse.
- * - NEVER uses eval() or executes untrusted script content.
- */
-export function extractStructuredSpaState(html: string): {
-  rawHtml: string;
-  rawText: string;
-  title?: string;
-  company?: string;
-} | null {
-  try {
-    const $ = cheerio.load(html);
-
-    // 1. Next.js __NEXT_DATA__
-    const nextDataScript = $("script#__NEXT_DATA__[type='application/json']");
-    if (nextDataScript.length) {
-      const content = nextDataScript.html();
-      if (content) {
-        try {
-          const parsed = JSON.parse(content);
-          const pageProps = parsed?.props?.pageProps;
-          const jobData = pageProps?.job || pageProps?.jobDetails || pageProps?.jobData || pageProps?.initialJob;
-          if (jobData && typeof jobData === "object") {
-            const title = (jobData.title || jobData.jobTitle || "").trim();
-            const company = (jobData.company || jobData.companyName || "").trim();
-            const desc = (jobData.description || jobData.jobDescription || jobData.jobDetails || "").trim();
-            if (desc.length >= 100 && title.length > 0) {
-              const $desc = cheerio.load(desc);
-              const descText = $desc.text().replace(/\s+/g, " ").trim();
-              if (descText.length >= 100) {
-                return {
-                  rawHtml: desc,
-                  rawText: [title, company, descText].filter(Boolean).join("\n\n"),
-                  title,
-                  company,
-                };
-              }
-            }
-          }
-        } catch {}
-      }
-    }
-
-    // 2. Generic structured JSON scripts
-    const jsonScripts = $("script[type='application/json']");
-    for (let i = 0; i < jsonScripts.length; i++) {
-      const script = $(jsonScripts[i]);
-      if (script.attr("id") === "__NEXT_DATA__") continue;
-      const content = script.html();
-      if (!content || content.length < 100) continue;
-      try {
-        const parsed = JSON.parse(content);
-        const candidate = parsed?.jobDetails || parsed?.job || parsed?.posting;
-        if (candidate && typeof candidate === "object") {
-          const title = (candidate.title || candidate.jobTitle || "").trim();
-          const company = (candidate.company || candidate.companyName || "").trim();
-          const desc = (candidate.description || candidate.jobDescription || "").trim();
-          if (desc.length >= 100 && title.length > 0) {
-            const $desc = cheerio.load(desc);
-            const descText = $desc.text().replace(/\s+/g, " ").trim();
-            if (descText.length >= 100) {
-              return {
-                rawHtml: desc,
-                rawText: [title, company, descText].filter(Boolean).join("\n\n"),
-                title,
-                company,
-              };
-            }
-          }
-        }
-      } catch {}
-    }
-  } catch {}
-  return null;
-}
-
-/**
- * Multi-stage HTML extractor:
- * Tier 1: Validated JSON-LD JobPosting
- * Tier 2: Sanitized DOM with Targeted Cascading Selectors
- * Tier 3: Content-Quality & Boilerplate Gate
- */
-export function extractJobFromHtml(
-  html: string,
-  requiredSelector?: string,
-  customTextSelector?: string,
-  expectedTitle?: string,
-  expectedCompany?: string
-): {
-  success: boolean;
-  rawHtml: string;
-  rawText: string;
-  extractedTitle?: string;
-  extractedCompany?: string;
-  method: "JSON_LD" | "TARGETED_DOM" | "SANITIZED_DOM";
-  quality: ContentQualityResult;
-  outcome: AcquisitionOutcome;
-  error?: string;
-} {
-  // --- Tier 1: Validated JSON-LD ---
-  const jsonLdResult = extractValidatedJsonLd(html);
-  if (jsonLdResult) {
-    const quality = evaluateContentQuality(jsonLdResult.rawText, expectedTitle || jsonLdResult.title, expectedCompany || jsonLdResult.company);
-    if (quality.tier !== "NON_JOB") {
-      return {
-        success: true,
-        rawHtml: jsonLdResult.rawHtml,
-        rawText: jsonLdResult.rawText,
-        extractedTitle: jsonLdResult.title,
-        extractedCompany: jsonLdResult.company,
-        method: "JSON_LD",
-        quality,
-        outcome: "SUCCESS"
-      };
-    }
-  }
-
-  // --- Tier 1.5: Validated Structured SPA State ---
-  const spaResult = extractStructuredSpaState(html);
-  if (spaResult) {
-    const quality = evaluateContentQuality(spaResult.rawText, expectedTitle || spaResult.title, expectedCompany || spaResult.company);
-    if (quality.tier !== "NON_JOB") {
-      return {
-        success: true,
-        rawHtml: spaResult.rawHtml,
-        rawText: spaResult.rawText,
-        extractedTitle: spaResult.title,
-        extractedCompany: spaResult.company,
-        method: "JSON_LD",
-        quality,
-        outcome: "SUCCESS"
-      };
-    }
-  }
-
-  // --- Tier 2: Sanitized Cheerio DOM ---
-  const $ = cheerio.load(html);
-
-  // Extract topcard company and title before sanitization/stripping
-  const topcardCompanyText = $(
-    "a.topcard__org-name-link, a.top-card-layout__first-subline-link, .job-details-jobs-unified-top-card__company-name, .topcard__flavor:first-of-type, .topcard__org-name, [data-company-name], .company-name"
-  ).first().text().replace(/\s+/g, " ").trim();
-  const extractedCompany = topcardCompanyText || jsonLdResult?.company || undefined;
-
-  const topcardTitleText = $(
-    "h1.top-card-layout__title, h1.topcard__title, .job-details-jobs-unified-top-card__job-title, h1"
-  ).first().text().replace(/\s+/g, " ").trim();
-  const extractedTitle = topcardTitleText || jsonLdResult?.title || undefined;
-
-  if (requiredSelector) {
-    const req = $(requiredSelector);
-    if (!req.length) {
-      return {
-        success: false,
-        rawHtml: "",
-        rawText: "",
-        extractedTitle,
-        extractedCompany,
-        method: "TARGETED_DOM",
-        quality: {
-          tier: "NON_JOB",
-          confidence: 1.0,
-          wordCount: 0,
-          characterCount: 0,
-          codeRatio: 0,
-          hasJobTitle: false,
-          hasJobDescription: false,
-          reasons: [`Required selector "${requiredSelector}" not found (Auth wall / Captcha / Redirect)`]
-        },
-        outcome: "AUTH_ERROR",
-        error: `Required selector "${requiredSelector}" not found`
-      };
-    }
-  }
-
-  // MANDATORY: Remove non-content, tracking, script, style, and navigation tags
-  $("script, style, noscript, iframe, svg, nav, footer, header, [class*='cookie'], [id*='cookie'], [class*='consent'], [id*='consent'], [class*='banner'], [id*='banner']").remove();
-
-  // Targeted cascading selectors in priority order
-  const TARGETED_SELECTORS = [
-    customTextSelector,
-    "[itemprop='description']",
-    ".job-desc",
-    "#job-description",
-    ".job-description",
-    "[class*='job-desc']",
-    "[class*='jobDescription']",
-    "[id*='jobDescription']",
-    "[class*='job_description']",
-    "article",
-    "main",
-    "[role='main']",
-    "#content",
-    ".content"
-  ].filter(Boolean) as string[];
-
-  let matchedElement: cheerio.Cheerio<any> | null = null;
-  let extractionMethod: "TARGETED_DOM" | "SANITIZED_DOM" = "TARGETED_DOM";
-
-  for (const selector of TARGETED_SELECTORS) {
-    const el = $(selector);
-    if (el.length) {
-      // Find element with greatest text length among matches
-      let bestEl = el.first();
-      let bestLen = bestEl.text().replace(/\s+/g, " ").trim().length;
-
-      el.each((_, item) => {
-        const itemLen = $(item).text().replace(/\s+/g, " ").trim().length;
-        if (itemLen > bestLen) {
-          bestLen = itemLen;
-          bestEl = $(item);
-        }
-      });
-
-      if (bestLen >= 150) {
-        matchedElement = bestEl;
-        extractionMethod = "TARGETED_DOM";
-        break;
-      }
-    }
-  }
-
-  // Fallback to body ONLY after strict tag stripping and non-content removal
-  if (!matchedElement) {
-    const bodyEl = $("body");
-    const bodyText = bodyEl.text().replace(/\s+/g, " ").trim();
-    if (bodyText.length >= 150) {
-      matchedElement = bodyEl;
-      extractionMethod = "SANITIZED_DOM";
-    }
-  }
-
-  if (!matchedElement) {
-    return {
-      success: false,
-      rawHtml: "",
-      rawText: "",
-      extractedTitle,
-      extractedCompany,
-      method: "SANITIZED_DOM",
-      quality: {
-        tier: "NON_JOB",
-        confidence: 0.9,
-        wordCount: 0,
-        characterCount: 0,
-        codeRatio: 0,
-        hasJobTitle: false,
-        hasJobDescription: false,
-        reasons: ["No targeted or sanitized DOM content found with >= 150 characters"]
-      },
-      outcome: "EXTRACTION_FAILURE",
-      error: "Content too short or empty after sanitation"
-    };
-  }
-
-  const rawHtml = matchedElement.html() || "";
-  const rawText = matchedElement.text().replace(/\s+/g, " ").trim();
-
-  // --- Tier 3: Content-Quality & Boilerplate Gate ---
-  const quality = evaluateContentQuality(rawText, expectedTitle, expectedCompany);
-
-  if (quality.tier === "NON_JOB") {
-    return {
-      success: false,
-      rawHtml,
-      rawText,
-      extractedTitle,
-      extractedCompany,
-      method: extractionMethod,
-      quality,
-      outcome: "EXTRACTION_FAILURE",
-      error: `Sanitized content rejected by quality gate: ${quality.reasons.join("; ")}`
-    };
-  }
-
-  return {
-    success: true,
-    rawHtml,
-    rawText,
-    extractedTitle,
-    extractedCompany,
-    method: extractionMethod,
-    quality,
-    outcome: "SUCCESS"
-  };
-}
-
-export function classifyFastPathResponse(
-  statusCode: number,
-  bodyText: string = ""
-): {
-  outcome: AcquisitionOutcome;
-  failureClass: FailureClass;
-  fetchError: string;
-} {
-  const isBotChallenge =
-    /verify you are human|attention required! \| cloudflare|cf-chl|challenge-form|recaptcha|bot detection|just a moment\.\.\.|security check/i.test(
-      bodyText
-    );
-  const isLoginRequired =
-    /sign in|log in|join linkedin|sign up|session expired|authwall/i.test(
-      bodyText
-    );
-
-  if (statusCode === 429) {
-    return {
-      outcome: "ANTI_BOT",
-      failureClass: "RATE_LIMIT_429",
-      fetchError: "HTTP 429 (Rate Limited)",
-    };
-  }
-
-  if (isBotChallenge) {
-    return {
-      outcome: "ANTI_BOT",
-      failureClass: "BOT_CHALLENGE_BLOCK",
-      fetchError: `HTTP ${statusCode} (Bot Challenge)`,
-    };
-  }
-
-  if (isLoginRequired) {
-    return {
-      outcome: "AUTH_ERROR",
-      failureClass: "LOGIN_REQUIRED",
-      fetchError: `HTTP ${statusCode} (Login Required)`,
-    };
-  }
-
-  if (statusCode === 401 || statusCode === 403) {
-    return {
-      outcome: "AUTH_ERROR",
-      failureClass: "FASTPATH_ACCESS_DENIED",
-      fetchError: `HTTP ${statusCode} (Access Denied)`,
-    };
-  }
-
-  return {
-    outcome: statusCode >= 500 ? "TRANSPORT_ERROR" : "EXTRACTION_FAILURE",
-    failureClass: statusCode >= 500 ? "HTTP_SERVER_ERROR" : "UNKNOWN_FAILURE",
-    fetchError: `HTTP ${statusCode}`,
-  };
-}
-
-/**
- * Executes a robust HTTP fetch with Undici and multi-stage extraction.
+ * Executes a lightweight HTTP fetch with Undici and parses it with Cheerio.
+ * @param url The detail URL to fetch
+ * @param requiredSelector A CSS selector that MUST exist for the fetch to be considered successful
+ * @param textSelector A CSS selector for extracting the raw text (e.g., job description)
  */
 export async function fastFetchDetail(
   url: string,
-  requiredSelector?: string,
-  textSelector?: string,
-  customHeaders?: Record<string, string>,
-  expectedTitle?: string,
-  expectedCompany?: string
+  requiredSelector: string,
+  textSelector: string,
+  customHeaders?: Record<string, string>
 ): Promise<HttpFetchResult> {
   const t0 = Date.now();
   let attempts = 0;
-
+  
   const headers: Record<string, string> = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -530,111 +47,60 @@ export async function fastFetchDetail(
     ...(customHeaders || {})
   };
 
-  try {
-    const { statusCode, body } = await request(url, {
-      dispatcher: agent,
-      headers,
-    });
+  while (attempts < 3) {
+    attempts++;
+    try {
+      const { statusCode, body } = await request(url, {
+        dispatcher: agent,
+        headers,
+      });
 
-    if (statusCode === 429 || statusCode === 401 || statusCode === 403) {
-      let errBody = "";
-      try { errBody = await body.text(); } catch {}
-      const classification = classifyFastPathResponse(statusCode, errBody);
+      if (statusCode === 429 || statusCode >= 500) {
+        if (attempts < 3) {
+          await new Promise((r) => setTimeout(r, (attempts * 1000) + Math.random() * 500));
+          continue;
+        }
+      }
+
+      if (statusCode < 200 || statusCode >= 400) {
+        return { fetched: false, fetchError: `HTTP ${statusCode}`, fetchDurationMs: Date.now() - t0, httpStatus: statusCode };
+      }
+
+      const html = await body.text();
+      const $ = cheerio.load(html);
+
+      const requiredElement = $(requiredSelector);
+      if (!requiredElement.length) {
+        return { fetched: false, fetchError: `Required selector "${requiredSelector}" not found (Auth wall / Captcha)`, fetchDurationMs: Date.now() - t0, httpStatus: statusCode };
+      }
+
+      const textElement = $(textSelector);
+      if (!textElement.length) {
+        return { fetched: false, fetchError: `Text selector "${textSelector}" not found`, fetchDurationMs: Date.now() - t0 };
+      }
+
+      // Clean up whitespace like the Playwright fallback does
+      const rawText = textElement.text().replace(/\s+/g, " ").trim();
+      
+      // Hard validation (must have some meaningful length to count as success)
+      if (rawText.length < 500) {
+        return { fetched: false, fetchError: `Extracted text too short (${rawText.length} chars), likely blocked`, fetchDurationMs: Date.now() - t0 };
+      }
+
       return {
-        fetched: false,
-        fetchError: classification.fetchError,
+        fetched: true,
+        rawHtml: textElement.html() || "",
+        rawText,
         fetchDurationMs: Date.now() - t0,
-        httpStatus: statusCode,
-        outcome: classification.outcome,
-        failureClass: classification.failureClass,
+        httpStatus: statusCode
       };
+    } catch (err: any) {
+      if (attempts < 3 && err.code && (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT')) {
+        await new Promise((r) => setTimeout(r, (attempts * 1000) + Math.random() * 500));
+        continue;
+      }
+      return { fetched: false, fetchError: err.message, fetchDurationMs: Date.now() - t0 };
     }
-
-    if (statusCode === 404 || statusCode === 410) {
-      return {
-        fetched: false,
-        fetchError: `HTTP ${statusCode} (Not Found)`,
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: statusCode,
-        outcome: "EXTRACTION_FAILURE",
-        failureClass: "REMOVED_404",
-      };
-    }
-
-    if (statusCode >= 500) {
-      return {
-        fetched: false,
-        fetchError: `HTTP ${statusCode} (Server Error)`,
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: statusCode,
-        outcome: "TRANSPORT_ERROR",
-        failureClass: "HTTP_SERVER_ERROR",
-      };
-    }
-
-    if (statusCode < 200 || statusCode >= 400) {
-      return {
-        fetched: false,
-        fetchError: `HTTP ${statusCode}`,
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: statusCode,
-        outcome: "TRANSPORT_ERROR",
-        failureClass: "UNKNOWN_FAILURE",
-      };
-    }
-
-    const html = await body.text();
-    const extracted = extractJobFromHtml(html, requiredSelector, textSelector, expectedTitle, expectedCompany);
-
-    if (!extracted.success) {
-      return {
-        fetched: false,
-        fetchError: extracted.error,
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: statusCode,
-        outcome: extracted.outcome,
-        qualityTier: extracted.quality.tier,
-        qualityResult: extracted.quality,
-        extractionMethod: extracted.method,
-        failureClass: extracted.quality.tier === "SPARSE" ? "INSUFFICIENT_CONTENT" : "EMPTY_CONTENT",
-      };
-    }
-
-    if (!extracted.rawText || extracted.rawText.trim().length < 200) {
-      return {
-        fetched: false,
-        fetchError: "Detail body contained insufficient text",
-        fetchDurationMs: Date.now() - t0,
-        httpStatus: statusCode,
-        outcome: "EXTRACTION_FAILURE",
-        qualityTier: "SPARSE",
-        qualityResult: extracted.quality,
-        extractionMethod: extracted.method,
-        failureClass: "INSUFFICIENT_CONTENT",
-      };
-    }
-
-    return {
-      fetched: true,
-      rawHtml: extracted.rawHtml,
-      rawText: extracted.rawText,
-      extractedTitle: extracted.extractedTitle,
-      extractedCompany: extracted.extractedCompany,
-      fetchDurationMs: Date.now() - t0,
-      httpStatus: statusCode,
-      outcome: "SUCCESS",
-      qualityTier: extracted.quality.tier,
-      qualityResult: extracted.quality,
-      extractionMethod: extracted.method
-    };
-  } catch (err: any) {
-    const isTimeout = err.name === "TimeoutError" || err.code === "ETIMEDOUT" || err.name === "AbortError";
-    return {
-      fetched: false,
-      fetchError: err.message,
-      fetchDurationMs: Date.now() - t0,
-      outcome: isTimeout ? "TIMEOUT" : "TRANSPORT_ERROR",
-      failureClass: isTimeout ? "HTTP_TIMEOUT" : "CONNECTION_ERROR",
-    };
   }
+  return { fetched: false, fetchError: "Max retries exceeded", fetchDurationMs: Date.now() - t0 };
 }

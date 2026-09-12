@@ -32,8 +32,8 @@ What this does automatically:
 
 | Property | Value | Notes |
 | :--- | :--- | :--- |
-| **Server IP** | `161.118.175.246` | Oracle Cloud VM |
-| **Domain URL** | `http://161.118.175.246.sslip.io/` | Live public application |
+| **Server IP** | `130.210.41.232` | Oracle Cloud VM |
+| **Domain URL** | `http://130.210.41.232.sslip.io/` | Live public application |
 | **SSH User** | `ubuntu` | Standard Ubuntu user |
 | **SSH Private Key** | `C:\Users\swapn\.ssh\oracle_official.key` | **Never use `.pub` file for private key!** |
 | **SSH Host Alias** | `oracle-radar` | Saved in `~/.ssh/config` |
@@ -52,7 +52,7 @@ What this does automatically:
 ssh oracle-radar
 
 # Or direct with key flag:
-ssh -o StrictHostKeyChecking=no -i "C:\Users\swapn\.ssh\oracle_official.key" ubuntu@161.118.175.246
+ssh -o StrictHostKeyChecking=no -i "C:\Users\swapn\.ssh\oracle_official.key" ubuntu@130.210.41.232
 ```
 
 ### Server PM2 Service Commands:
@@ -77,21 +77,10 @@ pm2 start radar-v2
 
 Ensure `C:\Users\swapn\.ssh\config` contains:
 ```ssh-config
-Host oracle-radar 161.118.175.246 161.118.175.246.sslip.io
-    HostName 161.118.175.246
+Host oracle-radar 130.210.41.232 130.210.41.232.sslip.io
+    HostName 130.210.41.232
     User ubuntu
     IdentityFile C:\Users\swapn\.ssh\oracle_official.key
     StrictHostKeyChecking no
     IdentitiesOnly yes
 ```
-
----
-
-## 5. Operational Topology & Distributed Execution Protocol (ADR-003 Active)
-
-The distributed `scrape_runs` state machine and `BlobStore` object storage layers are deployed and production-certified:
-
-1. **Decoupled Execution**: Live scraping and background enrichment workers (`scripts/enrich.ts` / `EvaluationWorker`) can run across independent hosts and container instances.
-2. **Durable Object Storage**: Scraped card payloads and snapshots are managed via `BlobStore` and referenced by durable `payload_key` in Turso Cloud (`enrichment_jobs`), removing local disk colocation requirements.
-3. **Distributed Worker Leases**: Workers lease jobs concurrently from Turso Cloud using transactional atomic leasing with lease expiration and automatic crash failover.
-4. **Tenant Scoping & Run Ownership**: All run lifecycles, cancellations, audit events, and metrics are tenant-isolated in Turso (`scrape_runs`, `scrape_run_events`) with database-enforced per-scope mutex preventing duplicate active runs.

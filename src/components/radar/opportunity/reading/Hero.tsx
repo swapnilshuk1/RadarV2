@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { getFocusTopic } from "@/routes/opportunity.$jobHash";
 
 import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
 
@@ -8,7 +9,7 @@ interface HeroProps {
   dossierState: DossierDecisionState;
   currentIndex: number;
   totalCount: number;
-  focusTopic: string | null;
+  jobProj: any;
   readTime?: string;
 }
 
@@ -18,12 +19,12 @@ export function Hero({
   dossierState,
   currentIndex,
   totalCount,
-  focusTopic,
+  jobProj,
   readTime,
 }: HeroProps) {
   return (
     <header className="border-b border-border bg-background">
-      <div className="memo-container py-8 sm:py-9">
+      <div className="memo-container py-10">
         {/* Nav Sub-Header */}
         <div className="flex items-center justify-between gap-3">
           <Link to="/" className="label-mono hover:text-foreground transition-colors font-normal">
@@ -34,14 +35,14 @@ export function Hero({
           </span>
         </div>
 
-        <div className="mt-7 grid gap-8 lg:grid-cols-[1.35fr_1fr] lg:gap-10 items-start">
+        <div className="mt-12 grid gap-10 lg:grid-cols-[3fr_2fr]">
           {/* Left Column: Strategic Mandate & Core Advisory Thesis */}
-          <div className="space-y-5 sm:space-y-6">
-            {/* Primary Decision & Score Badges */}
+          <div className="space-y-6">
+            {/* Badges, Scores & Verbs */}
             <div className="flex flex-wrap items-center gap-2">
               {/* Primary RADAR Engine Recommendation Badge (Strict Fail-Closed) */}
               {dossierState.engineVerdict ? (
-                <span className={`label-mono rounded px-2 py-1 leading-none uppercase font-bold text-xs ${
+                <span className={`label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs ${
                   dossierState.engineVerdict === "PURSUE"
                     ? "bg-signal text-white"
                     : dossierState.engineVerdict === "CONSIDER"
@@ -51,14 +52,14 @@ export function Hero({
                   {dossierState.engineVerdict}
                 </span>
               ) : (
-                <span className="label-mono rounded px-2 py-1 leading-none uppercase font-bold text-xs bg-caution/20 text-caution border border-caution/30">
+                <span className="label-mono rounded-[3px] px-2 py-1 leading-none uppercase font-bold text-xs bg-caution/20 text-caution border border-caution/30">
                   RECOMMENDATION UNAVAILABLE
                 </span>
               )}
 
               {/* Subordinate User Choice Badge */}
               {dossierState.userDecisionState !== "NONE" && dossierState.userDecision && (
-                <span className={`label-mono text-xs px-2 py-1 rounded font-medium ${
+                <span className={`label-mono font-mono text-xs px-2 py-1 rounded font-medium ${
                   dossierState.userDecisionState === "STALE"
                     ? "bg-caution/20 text-caution border border-caution/30"
                     : dossierState.userDecisionState === "UNVERIFIABLE"
@@ -71,27 +72,24 @@ export function Hero({
                 </span>
               )}
 
-              <span className="label-mono text-xs font-semibold px-2 py-1 rounded bg-surface-raised border border-border text-foreground">
-                RADAR SCORE: {o.engineRecommendation?.qualityScore != null ? `${o.engineRecommendation.qualityScore}/100` : "N/A"}
+              <span className="label-mono font-mono text-xs font-semibold px-2 py-1 rounded bg-surface-raised border border-border text-foreground">
+                RADAR SCORE: {(brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore) != null ? `${brief.qualityScore ?? o.engineRecommendation?.qualityScore ?? brief.editorialContext?.rawScore}/100` : "N/A"}
               </span>
 
-              {/* Canonical Career-Value Signal Badge */}
+              {/* Canonical Career-Value Signal Badge (Strictly from ExecutiveThesis / ExecutiveExplanation) */}
               {(brief.explanation?.careerValueSignal || brief.executiveThesis?.careerValueSignal) && (
-                <span className="label-mono text-xs px-2 py-0.5 rounded bg-caution/20 text-caution font-medium border border-caution/30 uppercase tracking-wider">
+                <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-caution/20 text-caution font-medium border border-caution/30 uppercase tracking-wider">
                   {brief.explanation?.careerValueSignal || brief.executiveThesis?.careerValueSignal}
                 </span>
               )}
-            </div>
 
-            {/* Secondary Operational Metadata Row */}
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               {/* Freshness Badge */}
-              <span className="label-mono text-xs px-2 py-0.5 rounded bg-surface-raised border border-border text-muted-foreground font-medium">
-                {o.postedRelative || "Posting time not established"}{o.scrapedFrom ? ` · ${o.scrapedFrom}` : ""}
+              <span className="label-mono text-[0.65rem] px-1.5 py-0.5 rounded bg-surface-raised border border-border text-muted-foreground font-medium">
+                {o.postedRelative ? `${o.postedRelative} · ${o.scrapedFrom || 'Workday'}` : `Scraped ${o.scrapedAt ? 'recently' : 'via ' + (o.scrapedFrom || 'Portal')}`}
               </span>
 
               {/* Compensation Badge */}
-              <span className={`label-mono text-xs px-2 py-0.5 rounded font-medium border ${
+              <span className={`label-mono text-[0.65rem] px-1.5 py-0.5 rounded font-medium border ${
                 o.salaryBounds?.min || o.salaryBounds?.max
                   ? "bg-signal/15 text-signal border-signal/30"
                   : o.benchmarkEstimate
@@ -105,9 +103,9 @@ export function Hero({
                   : "Salary Not Disclosed"}
               </span>
 
-              <span className="label-mono font-normal text-muted-foreground">· {brief.fitLabel || 'Executive Fit'}</span>
-              <span className="label-mono font-normal text-muted-foreground">· {brief.evidenceQuality}</span>
-              {readTime && <span className="label-mono font-normal text-muted-foreground">· {readTime}</span>}
+              <span className="label-mono font-normal text-xs text-muted-foreground">· {brief.fitLabel || 'Executive Fit'}</span>
+              <span className="label-mono font-normal text-xs text-muted-foreground">· {brief.evidenceQuality}</span>
+              {readTime && <span className="label-mono font-normal text-xs text-muted-foreground">· {readTime}</span>}
             </div>
 
             {/* Stale Posting Warning Callout (if posting age > 45 days) */}
@@ -117,64 +115,49 @@ export function Hero({
               </div>
             )}
 
-            <h1 className="font-display text-3xl sm:text-4xl leading-[1.18] tracking-tight text-foreground font-normal">
-              {o.role} mandate at {o.company}{focusTopic ? ` focused on ${focusTopic}` : ""}
+            <h1 className="font-display text-5xl leading-[1.05] tracking-tight text-foreground font-normal">
+              {o.role} mandate at {o.company} focused on {getFocusTopic(o, jobProj)}
             </h1>
 
             {/* Structured Metadata Strip */}
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
-              {o.company && <span className="font-medium text-foreground">{o.company}</span>}
-              {o.location && (
-                <>
-                  <span className="text-muted-foreground/60 select-none">·</span>
-                  <span>{o.location}</span>
-                </>
-              )}
-              {o.scrapedFrom && (
-                <>
-                  <span className="text-muted-foreground/60 select-none">·</span>
-                  <span>Source: {o.scrapedFrom}</span>
-                </>
-              )}
-              {o.compensationBand && (
-                <>
-                  <span className="text-muted-foreground/60 select-none">·</span>
-                  <span className="text-foreground font-medium">{o.compensationBand}</span>
-                </>
-              )}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2">
+              {o.company && <span className="text-xs text-muted-foreground font-normal">{o.company}</span>}
+              {o.location && <span className="text-xs text-muted-foreground font-normal">{o.location}</span>}
+              {o.scrapedFrom && <span className="text-xs text-muted-foreground font-normal">Source: {o.scrapedFrom}</span>}
+              {o.compensationBand && <span className="text-xs text-foreground font-medium">{o.compensationBand}</span>}
             </div>
 
             {/* High-Altitude Strategic Thesis (The Decision Partner's Core Insight) */}
-            <div className="border-t border-border pt-4 space-y-2">
+            <div className="border-t border-border pt-5 space-y-3">
               <p className="label-mono text-xs text-primary font-normal uppercase tracking-wider">Executive Advisory Thesis</p>
-              <p className="font-serif text-xl sm:text-2xl italic leading-relaxed text-foreground font-normal">
-                “{brief.executiveThesis?.primaryReason || brief.executiveOpinion || "Not recorded"}”
+              <p className="font-serif text-2xl italic leading-relaxed text-foreground font-normal">
+                “{brief.executiveThesis?.primaryReason || brief.executiveOpinion || "Evaluating strategic executive alignment..."}”
               </p>
             </div>
           </div>
 
           {/* Right Column: Instant Action Card */}
-          <div className="memo-card bg-surface-raised p-5 sm:p-6 border border-border space-y-4">
-            <div className="flex items-baseline justify-between gap-2 border-b border-border pb-2.5">
-              <span className="label-mono text-primary font-normal">Verdict Overview</span>
-              <span className="label-mono font-normal text-muted-foreground">1-Minute TL;DR</span>
-            </div>
-            
-            <p className="font-display text-xl sm:text-2xl leading-snug text-foreground font-normal">
-              {brief.pursuitStrategy?.bottomLine || brief.explanation?.bottomLine || brief.oneMinuteTLDR?.bottomLine}
-            </p>
-            
-            <div className="text-xs leading-relaxed text-foreground font-mono border-l-2 border-primary pl-3 py-1 space-y-1 bg-surface-raised">
-              <p className="font-semibold uppercase tracking-wider text-[0.65rem] text-primary">
-                {brief.pursuitStrategy?.executiveLabel || "Advisory Strategy"}
+          <div className="memo-card bg-surface-raised p-6 flex flex-col justify-between border border-border">
+            <div>
+              <div className="flex items-baseline justify-between gap-2 border-b border-border pb-3">
+                <span className="label-mono text-primary font-normal">Verdict Overview</span>
+                <span className="label-mono font-normal text-muted-foreground">1-Minute TL;DR</span>
+              </div>
+              
+              <p className="mt-4 font-display text-3xl leading-snug text-foreground font-normal">
+                {brief.pursuitStrategy?.bottomLine || brief.explanation?.bottomLine || brief.oneMinuteTLDR.bottomLine}
               </p>
-              <p className="text-muted-foreground">
-                {brief.pursuitStrategy?.immediateNextAction || brief.verdictGuidance?.actionNotice}
-              </p>
-            </div>
+              
+              <div className="mt-3 text-xs leading-relaxed text-foreground font-mono border-l-2 border-primary pl-3 space-y-1">
+                <p className="font-semibold uppercase tracking-wider text-[0.65rem] text-primary">
+                  {brief.pursuitStrategy?.executiveLabel || "Advisory Strategy"}
+                </p>
+                <p>
+                  {brief.pursuitStrategy?.immediateNextAction || brief.verdictGuidance.actionNotice}
+                </p>
+              </div>
 
-            <div className="space-y-3 pt-2 border-t border-border">
-              {brief.oneMinuteTLDR?.whyPursue && brief.oneMinuteTLDR.whyPursue.length > 0 && (
+              <div className="mt-5 space-y-4">
                 <div className="space-y-1">
                   <p className="label-mono text-signal font-normal tracking-wider">Why this fits</p>
                   <ul className="space-y-1">
@@ -185,9 +168,7 @@ export function Hero({
                     ))}
                   </ul>
                 </div>
-              )}
 
-              {brief.oneMinuteTLDR?.watchFor && brief.oneMinuteTLDR.watchFor.length > 0 && (
                 <div className="space-y-1">
                   <p className="label-mono text-caution font-normal tracking-wider">What to verify</p>
                   <ul className="space-y-1">
@@ -199,7 +180,7 @@ export function Hero({
                     ))}
                   </ul>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { CandidateProjection } from "../../domain/candidate_projection";
-import { EvaluationJobProjection } from "../../domain/job_projection";
+import { JobProjection } from "../../domain/job_projection";
 import { CareerAssessment, OperatingLevel } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
 import { CareerValueEngine } from "./CareerValueEngine";
@@ -17,7 +17,7 @@ const LEVEL_HIERARCHY: Record<Exclude<OperatingLevel, "UNKNOWN">, number> = {
 export class CareerAssessmentEngine {
   public static evaluate(
     candidate: CandidateProjection,
-    job: EvaluationJobProjection,
+    job: JobProjection,
     context?: CandidateEvaluationContext
   ): CareerAssessment {
     const richness = EvidenceRichnessCalculator.calculate(job.originalOpportunity);

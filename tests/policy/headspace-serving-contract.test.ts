@@ -1,27 +1,14 @@
 import { describe, test, expect, beforeAll } from "vitest";
 import { OpportunityService } from "../../src/lib/intelligence/opportunity-service";
-import { serveEvaluation } from "../../src/lib/intelligence/serving/EvaluationServingEngine";
+import { serveEvaluation, adaptLegacyEvaluation } from "../../src/lib/intelligence/serving/EvaluationServingEngine";
 import type { CanonicalIntrinsicEvaluationPayload } from "../../src/lib/intelligence/serving/EvaluationServingEngine";
 import { getRepositories } from "../../src/data/sqlite/provider";
-import { getDatabaseAdapter } from "../../src/data/database";
 
 describe("Headspace Serving Contract Regression Suite", () => {
   const userId = "ms6i7e3y-4x0chy5fy";
-  const tenantId = `tenant_${userId}`;
 
   beforeAll(async () => {
     const repos = getRepositories();
-    const db = getDatabaseAdapter();
-
-    await db.execute(`INSERT OR IGNORE INTO tenants (id, status) VALUES (?, 'active')`, [tenantId]);
-    await db.execute(`INSERT OR IGNORE INTO users (id, email) VALUES (?, ?)`, [userId, `${userId}@example.com`]);
-    await db.execute(`INSERT OR IGNORE INTO people (id, email, name, role, onboarded, email_verified, tenant_id) VALUES (?, ?, 'Test', 'user', 1, 1, ?)`, [userId, `${userId}@example.com`, tenantId]);
-    await db.execute(`INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status) VALUES (?, ?, 'owner', '["read:opportunity","write:opportunity"]', 'active')`, [userId, tenantId]);
-    await db.execute(`INSERT OR IGNORE INTO search_plans (id, tenant_id, person_id, title, status, criteria_json) VALUES (?, ?, ?, 'Plan', 'active', '{}')`, [`sp_${userId}`, tenantId, userId]);
-    await db.execute(`INSERT OR IGNORE INTO search_plan_snapshots (id, search_plan_id, tenant_id, person_id, snapshot_hash, payload_json) VALUES (?, ?, ?, ?, 'hash', '{}')`, [`snap_${userId}`, `sp_${userId}`, tenantId, userId]);
-    await db.execute(`INSERT OR IGNORE INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES (?, ?, ?, ?, '3.0.0', 'of1', 'v4.1', '1.0')`, [`ctx_${userId}`, tenantId, userId, `snap_${userId}`]);
-    await db.execute(`INSERT OR IGNORE INTO evaluation_context_scopes (tenant_id, person_id, search_plan_id, context_fingerprint) VALUES (?, ?, ?, ?)`, [tenantId, userId, `sp_${userId}`, `ctx_${userId}`]);
-    await db.execute(`INSERT OR IGNORE INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by) VALUES (?, ?, ?, ?, ?)`, [tenantId, userId, `sp_${userId}`, `ctx_${userId}`, userId]);
 
     // 1. Seed candidate projection with attention window 5
     const { CandidateProjectionBuilderImpl } = await import("../../src/lib/intelligence/builders/CandidateProjectionBuilder");
@@ -31,27 +18,10 @@ describe("Headspace Serving Contract Regression Suite", () => {
       ...baseProj,
       attentionWindow: 5,
     });
-    await db.execute(`INSERT OR IGNORE INTO companies (id, name) VALUES (?, 'Headspace Fixture Co')`, [`company_${userId}`]);
 
-    // 2. Seed 6 active pursuits to saturate headspace (activePursuits = 6 >= attentionWindow = 6)
+    // 2. Seed 6 active pursuits to saturate headspace (activePursuits = 6 > attentionWindow = 5)
     for (let i = 1; i <= 6; i++) {
-      const activeJob = `j-active-${i}`;
-      await db.execute(`INSERT OR IGNORE INTO opportunities (id, company_id, canonical_title, fingerprint, lifecycle) VALUES (?, ?, 'Director', ?, 'ACTIVE')`, [activeJob, `company_${userId}`, activeJob]);
-      await db.execute(`INSERT OR IGNORE INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES (?, 'test', ?, 'http')`, [activeJob, activeJob]);
-      await db.execute(`INSERT OR IGNORE INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content, acquisition_status, lifecycle_state) VALUES (?, ?, 'ch1', 'Dir', 'raw', 'ACQUIRED', 'ACTIVE')`, [`v_${activeJob}`, activeJob]);
-      await db.execute(`INSERT OR IGNORE INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, ?, 'CANDIDATE')`, [tenantId, userId, `sp_${userId}`, activeJob, `v_${activeJob}`]);
-      const evaluationFingerprint = `fp_${activeJob}`;
-      await db.execute(`INSERT OR IGNORE INTO materialized_evaluations
-        (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, rationale, evidence_ids, evaluation_json, materialized_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'EVALUATED', 'PURSUE', 80, 'rationale', '[]', ?, CURRENT_TIMESTAMP)`,
-        [`mat_${activeJob}`, activeJob, `v_${activeJob}`, tenantId, userId, `ctx_${userId}`, evaluationFingerprint, JSON.stringify({
-          schemaVersion: 'v4.3-intrinsic', evaluationContractVersion: 'v4.3', evaluationState: 'EVALUATED',
-          canonicalJobId: activeJob, opportunityVersion: `v_${activeJob}`, jobHash: activeJob,
-          tenantId, personId: userId, evaluationInputHash: evaluationFingerprint, contextFingerprint: `ctx_${userId}`,
-          policyVersion: 'v4.3', ontologyVersion: 'v4.0', ontologyFingerprint: 'ontology_test', profileVersion: 'profile_test',
-          evaluatedAt: '2026-01-01T00:00:00.000Z', decision: 'PURSUE', score: 80, diligenceStatus: 'READY', jobProjection: { title: 'Director' },
-        })]);
-      await repos.decisions.recordUserDecision(userId, activeJob, "PURSUE", undefined, null, tenantId);
+      await repos.decisions.recordUserDecision(userId, `j-active-${i}`, "PURSUE");
     }
 
     // 3. Seed the two evaluated opportunities
@@ -61,38 +31,6 @@ describe("Headspace Serving Contract Regression Suite", () => {
     ];
 
     for (const job of jobs) {
-      await db.execute(`INSERT OR IGNORE INTO opportunities (id, company_id, canonical_title, fingerprint, lifecycle) VALUES (?, ?, 'VP Growth', ?, 'ACTIVE')`, [job.jobHash, `company_${userId}`, job.jobHash]);
-      await db.execute(`INSERT OR IGNORE INTO canonical_opportunities (id, source, source_job_id, canonical_url) VALUES (?, 'test', ?, 'http')`, [job.jobHash, job.jobHash]);
-      await db.execute(`INSERT OR IGNORE INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content, acquisition_status, lifecycle_state) VALUES (?, ?, 'ch1', 'Dir', 'raw', 'ACQUIRED', 'ACTIVE')`, [`v_${job.jobHash}`, job.jobHash]);
-      await db.execute(`INSERT OR IGNORE INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, ?, 'CANDIDATE')`, [tenantId, userId, `sp_${userId}`, job.jobHash, `v_${job.jobHash}`]);
-
-      const evalPayload = {
-        schemaVersion: "v4.3-intrinsic",
-        evaluationContractVersion: "v4.3",
-        evaluationState: "EVALUATED",
-        canonicalJobId: job.jobHash,
-        opportunityVersion: `v_${job.jobHash}`,
-        jobHash: job.jobHash,
-        tenantId,
-        personId: userId,
-        evaluationInputHash: `fp_${job.jobHash}`,
-        contextFingerprint: `ctx_${userId}`,
-        policyVersion: "v4.3",
-        ontologyVersion: "v4.0",
-        ontologyFingerprint: "ontology_test",
-        profileVersion: "profile_test",
-        evaluatedAt: new Date().toISOString(),
-        decision: "PURSUE",
-        score: job.score,
-        diligenceStatus: "READY",
-        jobProjection: { title: "Dir" },
-      };
-
-      await db.execute(`INSERT OR IGNORE INTO materialized_evaluations 
-        (id, canonical_job_id, opportunity_version, tenant_id, person_id, evaluation_context_fingerprint, evaluation_fingerprint, evaluation_state, decision, quality_score, rationale, evidence_ids, evaluation_json, materialized_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'EVALUATED', 'PURSUE', ?, 'Exceptional mandate match.', '[]', ?, CURRENT_TIMESTAMP)`,
-        [`mat_${job.jobHash}`, job.jobHash, `v_${job.jobHash}`, tenantId, userId, `ctx_${userId}`, `fp_${job.jobHash}`, job.score, JSON.stringify(evalPayload)]);
-
       await repos.evaluations.saveEvaluation({
         personId: userId,
         jobHash: job.jobHash,
@@ -101,12 +39,43 @@ describe("Headspace Serving Contract Regression Suite", () => {
         engineVerdict: "PURSUE",
         engineQualityScore: job.score,
         evaluationStatus: "COMPLETE",
-        evaluationJson: JSON.stringify(evalPayload),
+        evaluationJson: JSON.stringify({
+          schemaVersion: "v4.2-intrinsic",
+          jobHash: job.jobHash,
+          personId: userId,
+          evaluationInputHash: `fp_${job.jobHash}`,
+          policyVersion: "v4.3",
+          ontologyVersion: "v4.0",
+          evaluatedAt: new Date().toISOString(),
+          intrinsicVerdict: "PURSUE",
+          intrinsicQualityScore: job.score,
+          parsingConfidence: 0.95,
+          vetoed: false,
+          vetoReason: null,
+          triggeredRuleIds: ["R-PURSUE"],
+          decisionRisks: [],
+          decisionDrivers: [],
+          evaluationStatus: "COMPLETE",
+          dimensions: [],
+          esi: 80,
+          diligenceStatus: "VERIFIED",
+          baseNarrative: {
+            baseRecommendationProse: "Exceptional mandate match.",
+          },
+          auditTrace: {
+            verb0: "PURSUE",
+            careerValue: 80,
+            shortlistingPotential: 80,
+            pursuitFriction: 20,
+            rawScore: job.score,
+            evidenceMappingCount: 5,
+          },
+        }),
       });
     }
   });
 
-  test("A. headspace does not downgrade a persisted PURSUE verdict", async () => {
+  test("A. j-099437e80b44: Intrinsic PURSUE (79%) served as PURSUE with saturated Headspace advisory", async () => {
     const opp = await OpportunityService.getForUser(userId, "j-099437e80b44");
 
     expect(opp).toBeDefined();
@@ -117,16 +86,19 @@ describe("Headspace Serving Contract Regression Suite", () => {
     expect(opp!.engineRecommendation?.engineVerdict).toBe("PURSUE");
     expect(opp!.engineRecommendation?.verb0).toBe("PURSUE");
     expect(opp!.decision).toBe("PURSUE");
-    expect(opp!.effectiveDecision).toBe("PURSUE");
-    expect(opp!.engineRecommendation?.headspaceVerdict).toBeUndefined();
-    expect(opp!.engineRecommendation?.headspaceDowngraded).toBeUndefined();
+    expect(opp!.effectiveDecision).toBe("ENGINE_PURSUIT");
+
+    // 2. Headspace advisory metadata must be present
+    expect(opp!.engineRecommendation?.headspaceVerdict).toBe("CONSIDER");
+    expect(opp!.engineRecommendation?.headspaceDowngraded).toBe(true);
+    expect(opp!.engineRecommendation?.headspaceReason).toContain("You are at capacity");
 
     // 3. Presentation badge must reflect intrinsic PURSUE
     expect(opp!.uiBadge.label).toBe("Recommended");
     expect(opp!.uiBadge.variant).toBe("signal");
   });
 
-  test("B. pagination capacity does not alter a second PURSUE verdict", async () => {
+  test("B. j-9d2006e16aba: Intrinsic PURSUE (76%) served as PURSUE with saturated Headspace advisory", async () => {
     const opp = await OpportunityService.getForUser(userId, "j-9d2006e16aba");
 
     expect(opp).toBeDefined();
@@ -137,9 +109,12 @@ describe("Headspace Serving Contract Regression Suite", () => {
     expect(opp!.engineRecommendation?.engineVerdict).toBe("PURSUE");
     expect(opp!.engineRecommendation?.verb0).toBe("PURSUE");
     expect(opp!.decision).toBe("PURSUE");
-    expect(opp!.effectiveDecision).toBe("PURSUE");
-    expect(opp!.engineRecommendation?.headspaceVerdict).toBeUndefined();
-    expect(opp!.engineRecommendation?.headspaceDowngraded).toBeUndefined();
+    expect(opp!.effectiveDecision).toBe("ENGINE_PURSUIT");
+
+    // 2. Headspace advisory metadata must be present
+    expect(opp!.engineRecommendation?.headspaceVerdict).toBe("CONSIDER");
+    expect(opp!.engineRecommendation?.headspaceDowngraded).toBe(true);
+    expect(opp!.engineRecommendation?.headspaceReason).toContain("You are at capacity");
 
     // 3. Presentation badge must reflect intrinsic PURSUE
     expect(opp!.uiBadge.label).toBe("Recommended");
@@ -190,8 +165,8 @@ describe("Headspace Serving Contract Regression Suite", () => {
 
     expect(servedSaturated.engineRecommendation?.engineVerdict).toBe("CONSIDER");
     expect(servedSaturated.engineRecommendation?.verb0).toBe("CONSIDER");
-    expect(servedSaturated.engineRecommendation?.headspaceVerdict).toBeUndefined();
-    expect(servedSaturated.engineRecommendation?.headspaceDowngraded).toBeUndefined();
+    expect(servedSaturated.engineRecommendation?.headspaceVerdict).toBe("CONSIDER");
+    expect(servedSaturated.engineRecommendation?.headspaceDowngraded).toBe(false);
     expect(servedSaturated.uiBadge.label).toBe("Consider");
     expect(servedSaturated.uiBadge.variant).toBe("caution");
   });
@@ -240,13 +215,39 @@ describe("Headspace Serving Contract Regression Suite", () => {
 
     expect(servedUnsaturated.engineRecommendation?.engineVerdict).toBe("PURSUE");
     expect(servedUnsaturated.engineRecommendation?.verb0).toBe("PURSUE");
-    expect(servedUnsaturated.engineRecommendation?.headspaceVerdict).toBeUndefined();
-    expect(servedUnsaturated.engineRecommendation?.headspaceDowngraded).toBeUndefined();
+    expect(servedUnsaturated.engineRecommendation?.headspaceVerdict).toBe("PURSUE");
+    expect(servedUnsaturated.engineRecommendation?.headspaceDowngraded).toBe(false);
     expect(servedUnsaturated.uiBadge.label).toBe("Recommended");
     expect(servedUnsaturated.uiBadge.variant).toBe("signal");
   });
 
-  test("E. Invariance Verification: DB records and queue eligibility are unchanged", async () => {
+  test("E. adaptLegacyEvaluation follows the exact same contract", () => {
+    const legacyOpp = {
+      jobHash: "legacy-job-01",
+      decision: "PURSUE",
+      recommendationResult: { score: 80 },
+      engineRecommendation: {
+        engineVerdict: "PURSUE",
+        qualityScore: 80,
+      },
+      recommendation: "Strong candidate match.",
+    };
+
+    const adapted = adaptLegacyEvaluation(
+      legacyOpp,
+      { personId: userId, attentionWindow: 5, activePursuits: 20 }, // Saturated
+      { jobHash: "legacy-job-01", role: "Managing Director", company: "Legacy Capital" },
+      null
+    );
+
+    expect(adapted.engineRecommendation?.engineVerdict).toBe("PURSUE");
+    expect(adapted.engineRecommendation?.verb0).toBe("PURSUE");
+    expect(adapted.engineRecommendation?.headspaceVerdict).toBe("CONSIDER");
+    expect(adapted.engineRecommendation?.headspaceDowngraded).toBe(true);
+    expect(adapted.engineRecommendation?.headspaceReason).toContain("You are at capacity");
+  });
+
+  test("F. Invariance Verification: DB records and queue eligibility are unchanged", async () => {
     const repos = getRepositories();
 
     // 1. Verify candidate_evaluations table in Turso Cloud DB directly
@@ -257,7 +258,7 @@ describe("Headspace Serving Contract Regression Suite", () => {
     // 2. Verify total evaluated and unresolved count
     const list = await OpportunityService.listForUser(userId);
     const totalEvaluated = await repos.evaluations.listEvaluationsForUser(userId);
-    const userDecisionsDB = await repos.decisions.getUserDecisions(userId, tenantId);
+    const userDecisionsDB = await repos.decisions.getUserDecisions(userId);
 
     const userDecidedJobHashes = new Set(
       Object.values(userDecisionsDB)
@@ -267,9 +268,7 @@ describe("Headspace Serving Contract Regression Suite", () => {
 
     const expectedUnresolvedCount = totalEvaluated.filter((e) => !userDecidedJobHashes.has(e.jobHash)).length;
 
-    const unresolvedList = list.filter((o) => !o.userDecision || o.userDecision.userAction === "NONE");
-
-    // Unresolved list count should equal unresolved evaluated population
-    expect(unresolvedList.length).toBe(expectedUnresolvedCount);
+    // List count should equal unresolved evaluated population
+    expect(list.length).toBe(expectedUnresolvedCount);
   });
 });

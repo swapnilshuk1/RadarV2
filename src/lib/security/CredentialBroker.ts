@@ -204,40 +204,13 @@ export class CredentialBroker {
    * 9. Return transient memory-only lease
    */
   public async leaseCredential(auth: AuthContext, source: string): Promise<CredentialLease> {
-    return this.leaseCredentialInternal(auth, source, false);
-  }
-
-  /**
-   * Internal scraper-only lease path.
-   *
-   * A caller may be allowed to start an authorized scraper workflow without
-   * being allowed to read credential material elsewhere in the product. The
-   * plaintext lease remains inside PortalAuthSession long enough to inject it
-   * into Playwright and is never returned to the triggering server function.
-   */
-  public async leaseCredentialForScraperExecution(
-    auth: AuthContext,
-    source: string,
-  ): Promise<CredentialLease> {
-    return this.leaseCredentialInternal(auth, source, true);
-  }
-
-  private async leaseCredentialInternal(
-    auth: AuthContext,
-    source: string,
-    allowAuthorizedScraperWorkflow: boolean,
-  ): Promise<CredentialLease> {
     // 1. AuthContext & Tenant validation
     this.assertValidAuth(auth);
 
     // 2. RBAC permission check
     const hasReadPermission = auth.permissions.includes("read:credentials");
     const hasManagePermission = auth.permissions.includes("manage:credentials");
-    const canRunAuthorizedScraper = allowAuthorizedScraperWorkflow && (
-      auth.permissions.includes("run:scraper")
-      || auth.permissions.includes("manage:search_plan")
-    );
-    if (!hasReadPermission && !hasManagePermission && !canRunAuthorizedScraper) {
+    if (!hasReadPermission && !hasManagePermission) {
       throw new CredentialAuthorizationError(
         "Caller lacks 'read:credentials' or 'manage:credentials' permission to lease credentials",
         "PERMISSION_DENIED"
@@ -346,34 +319,10 @@ export class CredentialBroker {
     status: CredentialStatus,
     errorReason?: string
   ): Promise<void> {
-    return this.reportCredentialHealthInternal(auth, credentialId, status, errorReason, false);
-  }
-
-  /** Records portal-session health without granting a caller credential-read access. */
-  public async reportCredentialHealthFromScraperExecution(
-    auth: AuthContext,
-    credentialId: string,
-    status: CredentialStatus,
-    errorReason?: string,
-  ): Promise<void> {
-    return this.reportCredentialHealthInternal(auth, credentialId, status, errorReason, true);
-  }
-
-  private async reportCredentialHealthInternal(
-    auth: AuthContext,
-    credentialId: string,
-    status: CredentialStatus,
-    errorReason: string | undefined,
-    allowAuthorizedScraperWorkflow: boolean,
-  ): Promise<void> {
     this.assertValidAuth(auth);
     const hasReadPermission = auth.permissions.includes("read:credentials");
     const hasManagePermission = auth.permissions.includes("manage:credentials");
-    const canRunAuthorizedScraper = allowAuthorizedScraperWorkflow && (
-      auth.permissions.includes("run:scraper")
-      || auth.permissions.includes("manage:search_plan")
-    );
-    if (!hasReadPermission && !hasManagePermission && !canRunAuthorizedScraper) {
+    if (!hasReadPermission && !hasManagePermission) {
       throw new CredentialAuthorizationError(
         "Caller lacks 'read:credentials' or 'manage:credentials' permission to report credential health",
         "PERMISSION_DENIED"

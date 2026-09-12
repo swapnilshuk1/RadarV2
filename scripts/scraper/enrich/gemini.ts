@@ -30,62 +30,20 @@ function loadProfile(): string {
 // Cache the access token and its expiry to avoid spawning gcloud on every single request
 let adcTokenCache: { token: string; expiresAt: number } | null = null;
 
-async function getADCToken(): Promise<string | null> {
+function getADCToken(): string | null {
   try {
     if (adcTokenCache && Date.now() < adcTokenCache.expiresAt) {
       return adcTokenCache.token;
     }
 
-    // 1. Direct standard ADC credentials file read
-    const candidatePaths = [
-      process.env.GOOGLE_APPLICATION_CREDENTIALS,
-      process.platform === "win32"
-        ? path.join(process.env.APPDATA || "", "gcloud", "application_default_credentials.json")
-        : path.join(process.env.HOME || "", ".config", "gcloud", "application_default_credentials.json"),
-      process.platform === "win32"
-        ? path.join(process.env.LOCALAPPDATA || "", "gcloud", "application_default_credentials.json")
-        : ""
-    ].filter(Boolean) as string[];
-
-    for (const credPath of candidatePaths) {
-      if (fs.existsSync(credPath)) {
-        try {
-          const creds = JSON.parse(fs.readFileSync(credPath, "utf-8"));
-          if (creds.client_id && creds.client_secret && creds.refresh_token) {
-            const res = await fetch("https://oauth2.googleapis.com/token", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                client_id: creds.client_id,
-                client_secret: creds.client_secret,
-                refresh_token: creds.refresh_token,
-                grant_type: "refresh_token",
-              }),
-            });
-            if (res.ok) {
-              const data = (await res.json()) as { access_token?: string; expires_in?: number };
-              if (data.access_token) {
-                const ttl = ((data.expires_in || 3600) - 300) * 1000;
-                adcTokenCache = {
-                  token: data.access_token,
-                  expiresAt: Date.now() + Math.max(ttl, 60000),
-                };
-                return data.access_token;
-              }
-            }
-          }
-        } catch {}
-      }
-    }
-
-    // 2. Fallback to gcloud CLI
+    // Determine the command to run. First try standard path gcloud.
+    // If that fails, check common absolute paths on Windows.
     let cmd = "gcloud";
     
     if (process.platform === "win32") {
       const commonPaths = [
         "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
         path.join(process.env.USERPROFILE || "", "AppData\\Local\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd"),
-        path.join(process.env.USERPROFILE || "", "Downloads\\google-cloud-cli-windows-x86_64\\google-cloud-sdk\\bin\\gcloud.cmd"),
         "C:\\Program Files\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd"
       ];
       for (const p of commonPaths) {
@@ -109,7 +67,7 @@ async function getADCToken(): Promise<string | null> {
       return token;
     }
   } catch (err: any) {
-    console.warn(`[enrich:gemini] Failed to get ADC token: ${err.message}`);
+    console.warn(`[enrich:gemini] Failed to get ADC token from gcloud CLI: ${err.message}`);
   }
   return null;
 }
@@ -139,7 +97,7 @@ async function executeEnrichWithLLM(input: EnrichInput, retryCount = 0): Promise
   if (apiKey) {
     url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   } else {
-    const adcToken = await getADCToken();
+    const adcToken = getADCToken();
     if (!adcToken) {
       return null;
     }

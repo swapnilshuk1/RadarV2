@@ -1,11 +1,17 @@
-import { type ServedOpportunity, isEvaluated, isUnavailable, type EvaluatedOpportunity } from "../data/opportunity-fixtures";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
-import { applicationActionFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
-import { useDecisions } from "../lib/decisions-store";
+import { useState, useEffect, useMemo } from "react";
+import { applyUrlFor, type DecisionVerb, type Opportunity } from "../data/opportunity-fixtures";
+import { useDecisions, type DecisionRecord } from "../lib/decisions-store";
 import { DecisionBadge } from "../components/radar/DecisionBadge";
-import { getDecidedOpportunitiesFn } from "../lib/intelligence/opportunity-server";
+import { getOpportunitiesFn } from "../lib/intelligence/opportunity-server";
+import { ClientOpportunityCache } from "../lib/opportunity-cache";
 
+// Recomposition elements
+import { BriefCompositionEngine } from "../lib/intelligence/editorial/BriefCompositionEngine";
+import { JobProjectionBuilder } from "../lib/intelligence/builders/JobProjectionBuilder";
+import { CandidateProjectionBuilderImpl } from "../lib/intelligence/builders/CandidateProjectionBuilder";
+import { ExecutionEngine } from "../lib/intelligence/engines/ExecutionEngine";
+import { candidateProfile } from "../data/candidate-profile";
 
 export const Route = createFileRoute("/decisions")({
   head: () => ({
@@ -18,16 +24,44 @@ export const Route = createFileRoute("/decisions")({
   staleTime: 0,
   loader: async () => {
     return {
-      opportunitiesList: await getDecidedOpportunitiesFn()
+      opportunitiesList: await getOpportunitiesFn()
     };
   },
   component: OpportunitiesPage,
 });
 
+interface TrackingData {
+  latestConversation: string;
+  nextAction: string;
+  followUpDate: string;
+}
+
+type TrackingMap = Record<string, TrackingData>;
+
+const TRACK_KEY = "radar.opportunities.tracking.v1";
+
+function readTracking(): TrackingMap {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(TRACK_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeTracking(next: TrackingMap) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(TRACK_KEY, JSON.stringify(next));
+  } catch {}
+}
+
 export function resolveDecisionsCardScore(
   o: Opportunity,
+  brief?: { qualityScore?: number | null }
 ): string {
-  const score = o.engineRecommendation?.qualityScore;
+  const score = brief?.qualityScore ?? o.engineRecommendation?.qualityScore ?? o.recommendationResult?.score;
   if (score !== null && score !== undefined) {
     return `Fit Index ${score}%`;
   }
@@ -37,30 +71,52 @@ export function resolveDecisionsCardScore(
   return o.engineRecommendation?.engineVerdict || "Unscored";
 }
 
-export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS";
+export type FilterKey = "ALL" | "PURSUE" | "CONSIDER" | "PASS" | "UNREVIEWED";
 
 function OpportunitiesPage() {
-  const { decisions, undo, clear, hydrated, error: decisionError } = useDecisions();
-  const { opportunitiesList: loadedOpportunities } = Route.useLoaderData();
-  const rawOpportunities = loadedOpportunities as Array<Opportunity | ServedOpportunity>;
-  // Phase 4: Non-evaluated variants without decisions must not contribute to counts or enter the ledger.
-  // Explicit user decisions (including those on sparse specifications) remain preserved and represented.
-  const opportunitiesList = useMemo(
-    () => rawOpportunities.filter((o) => isEvaluated(o) || Boolean(decisions[o.jobHash]?.verb || (o as any).userDecision?.userAction)),
-    [rawOpportunities, decisions]
-  );
-  
+  const { decisions, undo, clear, hydrated } = useDecisions();
+  const { opportunitiesList } = Route.useLoaderData();
   const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterKey, setFilterKey] = useState<FilterKey>("ALL");
-  const [writeError, setWriteError] = useState<string | null>(null);
+  const [tracking, setTracking] = useState<TrackingMap>({});
+  const [activePrepare, setActivePrepare] = useState<Record<string, boolean>>({});
+  const [activeTrack, setActiveTrack] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setTracking(readTracking());
+  }, []);
+
+  useEffect(() => {
+    if (opportunitiesList) {
+      ClientOpportunityCache.setList(opportunitiesList);
+    }
+  }, [opportunitiesList]);
+
+  const updateTracking = (jobHash: string, key: keyof TrackingData, value: string) => {
+    setTracking((prev) => {
+      const current = prev[jobHash] || { latestConversation: "", nextAction: "", followUpDate: "" };
+      const updated = { ...current, [key]: value };
+      const next = { ...prev, [jobHash]: updated };
+      writeTracking(next);
+      return next;
+    });
+  };
+
+  const togglePrepare = (jobHash: string) => {
+    setActivePrepare(prev => ({ ...prev, [jobHash]: !prev[jobHash] }));
+  };
+
+  const toggleTrack = (jobHash: string) => {
+    setActiveTrack(prev => ({ ...prev, [jobHash]: !prev[jobHash] }));
+  };
 
   // Helper to get effective user decision verb for an opportunity
-  const getUserVerb = (o: Opportunity | ServedOpportunity): DecisionVerb | null => {
+  const getUserVerb = (o: Opportunity): DecisionVerb | null => {
     const recorded = decisions[o.jobHash];
     if (recorded?.verb) return recorded.verb;
-    if ((o as any).userDecision?.userAction) return (o as any).userDecision.userAction as DecisionVerb;
+    if (o.userDecision?.userAction) return o.userDecision.userAction as DecisionVerb;
     return null;
   };
 
@@ -69,12 +125,14 @@ function OpportunitiesPage() {
     let pursue = 0;
     let consider = 0;
     let pass = 0;
+    let unreviewed = 0;
 
     for (const o of opportunitiesList) {
       const verb = getUserVerb(o);
       if (verb === "PURSUE") pursue++;
       else if (verb === "CONSIDER") consider++;
       else if (verb === "PASS") pass++;
+      else unreviewed++;
     }
 
     return {
@@ -82,6 +140,7 @@ function OpportunitiesPage() {
       pursue,
       consider,
       pass,
+      unreviewed,
     };
   }, [opportunitiesList, decisions]);
 
@@ -98,6 +157,7 @@ function OpportunitiesPage() {
       else if (filterKey === "PURSUE") matchesFilter = verb === "PURSUE";
       else if (filterKey === "CONSIDER") matchesFilter = verb === "CONSIDER";
       else if (filterKey === "PASS") matchesFilter = verb === "PASS";
+      else if (filterKey === "UNREVIEWED") matchesFilter = !verb;
 
       if (!matchesFilter) return false;
 
@@ -128,14 +188,10 @@ function OpportunitiesPage() {
           {Object.keys(decisions).length > 0 && (
             <button
               type="button"
-              onClick={async () => {
+              onClick={() => {
                 if (confirm("Clear all recorded decisions? This can't be undone.")) {
-                  try {
-                    await clear();
-                    await router.invalidate();
-                  } catch (error: any) {
-                    setWriteError(error?.message || "Could not clear decisions.");
-                  }
+                  clear();
+                  router.invalidate();
                 }
               }}
               className="text-xs font-medium uppercase tracking-[0.14em] text-ink-muted hover:text-ink transition-colors self-start sm:self-auto"
@@ -143,7 +199,6 @@ function OpportunitiesPage() {
               Clear decisions
             </button>
           )}
-          {(writeError || decisionError) && <p role="alert" className="mt-2 text-sm text-decision-pass">{writeError || decisionError}</p>}
         </div>
 
         {/* Search & Filter Control Surface */}
@@ -198,6 +253,12 @@ function OpportunitiesPage() {
               onClick={() => setFilterKey("PASS")}
               tint="pass"
             />
+            <FilterPill
+              label="UNREVIEWED"
+              count={counts.unreviewed}
+              active={filterKey === "UNREVIEWED"}
+              onClick={() => setFilterKey("UNREVIEWED")}
+            />
           </div>
         </div>
       </section>
@@ -235,9 +296,36 @@ function OpportunitiesPage() {
               <span>Sorted by Pipeline Recency</span>
             </div>
 
-            {displayedOpportunities.map((o: any) => {
+            {displayedOpportunities.map((o) => {
               const verb = getUserVerb(o);
-              const applicationAction = applicationActionFor(o);
+              const applyUrl = applyUrlFor(o);
+
+              // Recompose brief models for context
+              const brief = BriefCompositionEngine.compose(o, { bypassHistory: true });
+              const jobProj = JobProjectionBuilder.build(o);
+              const candidateProj = new CandidateProjectionBuilderImpl().fromProfile(candidateProfile);
+              const executionPkg = ExecutionEngine.validateDecision(candidateProj, jobProj);
+
+              // Tracking values
+              const trackData = tracking[o.jobHash] || { latestConversation: "", nextAction: "", followUpDate: "" };
+
+              // Next action context (rendered SECONDARY below identity)
+              let secondaryActionContext = trackData.nextAction;
+              if (!secondaryActionContext) {
+                if (verb === "PURSUE") {
+                  const mandate = jobProj.trueExecutiveMandate || "COMMERCIAL_EXPANSION";
+                  if (mandate === "TRANSFORMATION" || mandate === "TURNAROUND") {
+                    secondaryActionContext = "Tailor CV for Transformation alignment";
+                  } else {
+                    secondaryActionContext = "Tailor CV for Commercial Growth alignment";
+                  }
+                } else if (verb === "CONSIDER") {
+                  secondaryActionContext = "Verify reporting line altitude on screening call";
+                }
+              }
+
+              const isPrepareOpen = !!activePrepare[o.jobHash];
+              const isTrackOpen = !!activeTrack[o.jobHash];
 
               return (
                 <div
@@ -273,10 +361,17 @@ function OpportunitiesPage() {
                         )}
                         <span className="text-hairline-strong">·</span>
                         <span className="font-mono uppercase tracking-[0.14em] text-[0.62rem] text-accent-ink/90 bg-accent-ink/5 px-2 py-0.5 rounded-sm">
-                          {resolveDecisionsCardScore(o as any)}
+                          {resolveDecisionsCardScore(o, brief)}
                         </span>
                       </div>
 
+                      {/* SECONDARY ACTION CONTEXT (Subdued, non-dominant) */}
+                      {secondaryActionContext && (
+                        <p className="mt-2 text-xs text-ink-muted/90 font-sans italic">
+                          <span className="font-mono not-italic uppercase tracking-wider text-[0.6rem] text-ink-muted mr-1.5">Focus:</span>
+                          {secondaryActionContext}
+                        </p>
+                      )}
                     </div>
 
                     {/* Right-aligned Decision Badge & Controls */}
@@ -303,13 +398,9 @@ function OpportunitiesPage() {
                       {verb && (
                         <button
                           type="button"
-                          onClick={async () => {
-                            try {
-                              await undo(o.jobHash);
-                              await router.invalidate();
-                            } catch (error: any) {
-                              setWriteError(error?.message || "Could not remove this decision.");
-                            }
+                          onClick={() => {
+                            undo(o.jobHash);
+                            router.invalidate();
                           }}
                           className="rounded-sm border border-hairline px-3 py-1 label-mono text-xs text-ink-muted hover:bg-background hover:text-ink transition-colors"
                           data-testid={`undo-btn-${o.jobHash}`}
@@ -320,16 +411,104 @@ function OpportunitiesPage() {
                     </div>
                   </div>
 
-                  {verb === "PURSUE" && applicationAction && (
+                  {/* Expandable Prepare & Track triggers for decided roles */}
+                  {verb && verb !== "PASS" && (
                     <div className="flex items-center gap-4 border-t border-hairline mt-5 pt-3">
-                      <a
-                        href={applicationAction.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-auto text-xs uppercase tracking-[0.14em] font-mono text-decision-pursue hover:underline"
+                      <button
+                        type="button"
+                        onClick={() => togglePrepare(o.jobHash)}
+                        className={`text-xs uppercase tracking-[0.14em] font-mono cursor-pointer transition-colors ${
+                          isPrepareOpen ? "text-ink font-semibold border-b border-ink" : "text-ink-muted hover:text-ink"
+                        }`}
                       >
-                        {applicationAction.label} ↗
-                      </a>
+                        Prepare
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleTrack(o.jobHash)}
+                        className={`text-xs uppercase tracking-[0.14em] font-mono cursor-pointer transition-colors ${
+                          isTrackOpen ? "text-ink font-semibold border-b border-ink" : "text-ink-muted hover:text-ink"
+                        }`}
+                      >
+                        Track
+                      </button>
+                      {verb === "PURSUE" && applyUrl && (
+                        <a
+                          href={applyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-auto text-xs uppercase tracking-[0.14em] font-mono text-decision-pursue hover:underline"
+                        >
+                          Apply directly ↗
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Expanded Prepare Drawer */}
+                  {isPrepareOpen && (
+                    <div className="mt-4 p-4 border border-hairline bg-background/50 rounded-sm animate-reveal">
+                      <div>
+                        <p className="label-mono text-[0.6rem] text-ink-muted">Resume Positioning Anchor</p>
+                        <p className="text-base text-ink mt-1 font-serif italic leading-snug">
+                          {brief.strategy.focusTitle || `Highlight multi-market commercial GTM operations and digital governance scaling.`}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 border-t border-hairline pt-3">
+                        <p className="label-mono text-[0.6rem] text-ink-muted mb-2">Questions to Validate during screening</p>
+                        <ul className="space-y-3">
+                          {executionPkg.screeningQuestions.map((q, idx) => (
+                            <li key={idx} className="text-sm">
+                              <span className="font-mono text-[0.72rem] font-semibold block text-accent-ink/90">
+                                {idx + 1}. {q.question}
+                              </span>
+                              <span className="text-[0.78rem] text-ink-muted leading-relaxed mt-0.5 block">
+                                {q.whyItMatters}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Expanded Track Drawer */}
+                  {isTrackOpen && (
+                    <div className="mt-4 p-4 border border-hairline bg-background/50 rounded-sm animate-reveal">
+                      <p className="label-mono text-[0.6rem] text-ink-muted mb-3">What happened last time?</p>
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        <div>
+                          <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Latest Conversation</label>
+                          <input
+                            type="text"
+                            value={trackData.latestConversation}
+                            onChange={(e) => updateTracking(o.jobHash, "latestConversation", e.target.value)}
+                            placeholder="e.g. Recruiter call scheduled"
+                            className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Next Action Override</label>
+                          <input
+                            type="text"
+                            value={trackData.nextAction}
+                            onChange={(e) => updateTracking(o.jobHash, "nextAction", e.target.value)}
+                            placeholder="e.g. Follow up on Thursday"
+                            className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[0.6rem] font-mono uppercase tracking-[0.12em] text-ink-muted block mb-1">Follow-up Date</label>
+                          <input
+                            type="text"
+                            value={trackData.followUpDate}
+                            onChange={(e) => updateTracking(o.jobHash, "followUpDate", e.target.value)}
+                            placeholder="e.g. 12 Aug 2026"
+                            className="w-full bg-background border border-hairline px-3 py-2 text-xs text-ink focus:outline-none focus:border-border-strong rounded-sm"
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

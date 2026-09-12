@@ -14,6 +14,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { getSessionUserFn } from "../lib/auth/server";
 import { candidateSignature } from "../lib/personalization";
+import { candidateProfile } from "../data/candidate-profile";
 import { OnboardingProvider, useOnboarding } from "../components/onboarding/OnboardingProvider";
 
 import appCss from "../styles.css?url";
@@ -41,9 +42,6 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  if (isRedirect(error)) {
-    throw error;
-  }
   console.error("[Root Error Boundary]", error);
   const router = useRouter();
 
@@ -80,8 +78,6 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-import { getShortlistMetricsFn } from "../lib/intelligence/opportunity-server";
-
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: async ({ location }) => {
     const isPublicRoute =
@@ -111,16 +107,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       } else {
         throw redirect({ to: '/login' });
       }
-    }
-  },
-  loader: async () => {
-    try {
-      const user = await getSessionUserFn();
-      if (!user) return { metrics: null };
-      const metrics = await getShortlistMetricsFn();
-      return { metrics };
-    } catch {
-      return { metrics: null };
     }
   },
   head: () => ({
@@ -165,15 +151,12 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function GlobalHeader() {
-  const data = Route.useLoaderData();
   const location = useLocation();
   const navigate = useNavigate();
   const { resetOnboarding } = useOnboarding();
   const [sessionName, setSessionName] = useState<string | null>(null);
   const [isDev, setIsDev] = useState(false);
   const [isDark, setIsDark] = useState(false);
-
-  const totalActiveCount = data?.metrics?.totalScreened ?? 3007;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -202,7 +185,7 @@ function GlobalHeader() {
     }
   };
 
-  const name = sessionName || "Executive";
+  const name = sessionName || candidateProfile.identity.name;
   const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "SS";
 
   const isSelected = (path: string) => {
@@ -220,7 +203,7 @@ function GlobalHeader() {
           </Link>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.62rem] font-mono text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            {totalActiveCount.toLocaleString()} ACTIVE
+            1,285 ACTIVE
           </span>
         </div>
 

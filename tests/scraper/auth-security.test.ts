@@ -14,27 +14,19 @@ describe("P0-B & P0-C & P0-D Security Regression Suite", () => {
   let regularToken: string;
   let adminToken: string;
 
-  const testTenantId = `tenant-${Date.now()}`;
-
   beforeAll(async () => {
-    // 0. Create test tenant
-    await db.execute(
-      `INSERT INTO tenants (id, status) VALUES (?, 'active')`,
-      [testTenantId]
-    );
-
     // 1. Create test regular user
     await db.execute(
-      `INSERT INTO people (id, email, name, role, onboarded, email_verified, tenant_id, created_at, updated_at)
-       VALUES (?, ?, ?, 'user', 1, 1, ?, datetime('now'), datetime('now'))`,
-      [testRegularUserId, `${testRegularUserId}@example.com`, "Test Regular User", testTenantId]
+      `INSERT INTO people (id, email, name, role, onboarded, email_verified, created_at, updated_at)
+       VALUES (?, ?, ?, 'user', 1, 1, datetime('now'), datetime('now'))`,
+      [testRegularUserId, `${testRegularUserId}@example.com`, "Test Regular User"]
     );
 
     // 2. Create test admin user
     await db.execute(
-      `INSERT INTO people (id, email, name, role, onboarded, email_verified, tenant_id, created_at, updated_at)
-       VALUES (?, ?, ?, 'admin', 1, 1, ?, datetime('now'), datetime('now'))`,
-      [testAdminUserId, `${testAdminUserId}@example.com`, "Test Admin User", testTenantId]
+      `INSERT INTO people (id, email, name, role, onboarded, email_verified, created_at, updated_at)
+       VALUES (?, ?, ?, 'admin', 1, 1, datetime('now'), datetime('now'))`,
+      [testAdminUserId, `${testAdminUserId}@example.com`, "Test Admin User"]
     );
 
     // 3. Create active sessions
@@ -130,60 +122,21 @@ describe("P0-B & P0-C & P0-D Security Regression Suite", () => {
       const { getRepositories } = await import("../../src/data/sqlite/provider");
       const repos = getRepositories();
 
-      // Create a test canonical opportunity first
-      const testOpId = `op-test-${Date.now()}`;
-      await db.execute(
-        `INSERT INTO canonical_opportunities (id, source, source_job_id, canonical_url, company_name)
-         VALUES (?, 'test', ?, 'https://test', 'Test Corp')`,
-        [testOpId, testOpId]
-      );
-      const snapshotId = `sps_${Date.now()}`;
-      const planId = `plan_${Date.now()}`;
-      const fingerprint = `ctx_${Date.now()}`;
-      await db.execute(
-        "INSERT INTO search_plans (id, tenant_id, person_id, title, criteria_json) VALUES (?, ?, ?, ?, ?)",
-        [planId, testTenantId, testRegularUserId, "Test Plan", "{}"],
-      );
-      await db.execute(
-        "INSERT INTO search_plan_snapshots (id, tenant_id, person_id, search_plan_id, snapshot_hash, payload_json) VALUES (?, ?, ?, ?, ?, ?)",
-        [snapshotId, testTenantId, testRegularUserId, planId, `${snapshotId}-hash`, "{}"],
-      );
-      await db.execute(
-        "INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [fingerprint, testTenantId, testRegularUserId, snapshotId, "v4.3", "ontology", "policy", "profile"],
-      );
-      await db.execute(
-        "INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id) VALUES (?, ?, ?, ?)",
-        [fingerprint, testTenantId, testRegularUserId, planId],
-      );
-      await db.execute(
-        "INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by) VALUES (?, ?, ?, ?, ?)",
-        [testTenantId, testRegularUserId, planId, fingerprint, "test"],
-      );
-      const testVersionId = `ver_${Date.now()}`;
-      await db.execute(
-        "INSERT INTO opportunity_versions (id, canonical_job_id, content_hash, job_title, raw_content) VALUES (?, ?, ?, ?, ?)",
-        [testVersionId, testOpId, `hash_${Date.now()}`, "Test Corp", "{}"],
-      );
-      await db.execute(
-        "INSERT INTO search_plan_candidates (tenant_id, person_id, search_plan_id, canonical_job_id, opportunity_version, attention_decision) VALUES (?, ?, ?, ?, ?, ?)",
-        [testTenantId, testRegularUserId, planId, testOpId, testVersionId, "CANDIDATE"],
-      );
-
       // Save a decision for testRegularUserId
-      await repos.decisions.recordUserDecision(testRegularUserId, testOpId, "PURSUE", "Strong fit", null, testTenantId);
+      const testOpId = `op-test-${Date.now()}`;
+      await repos.decisions.recordUserDecision(testRegularUserId, testOpId, "PURSUE", "Strong fit");
 
       // Verify regular user can read it
-      const userDecisions = await repos.decisions.getUserDecisions(testRegularUserId, testTenantId);
+      const userDecisions = await repos.decisions.getUserDecisions(testRegularUserId);
       expect(userDecisions[testOpId]).toBeDefined();
       expect(userDecisions[testOpId].verb).toBe("PURSUE");
 
       // Verify admin user has empty decisions (no cross-contamination)
-      const adminDecisions = await repos.decisions.getUserDecisions(testAdminUserId, testTenantId);
+      const adminDecisions = await repos.decisions.getUserDecisions(testAdminUserId);
       expect(adminDecisions[testOpId]).toBeUndefined();
 
       // Cleanup
-      await repos.decisions.deleteUserDecision(testRegularUserId, testOpId, testTenantId);
+      await repos.decisions.deleteUserDecision(testRegularUserId, testOpId);
     });
 
     it("cross-user explanation requests are rejected when not admin", async () => {

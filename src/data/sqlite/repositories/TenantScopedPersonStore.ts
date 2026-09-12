@@ -1,10 +1,9 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { PersonStore } from "../../../domain/repositories";
 import type { Person, ResumeVersion } from "../../../domain/entities";
-import { type CandidateProjection, validateCandidateProjection } from "../../../lib/domain/candidate_projection";
+import { type CandidateProjection, validateCandidateProjection, DEFAULT_CANDIDATE_PROJECTION } from "../../../lib/domain/candidate_projection";
 import type { AuthorizedPersonScope } from "../../../lib/security/auth";
 import { TenantIsolationError } from "../../../lib/security/auth";
-import { versionCandidateProjection } from "./profile-projection-version";
 
 export class TenantScopedPersonStore implements PersonStore {
   constructor(
@@ -104,17 +103,14 @@ export class TenantScopedPersonStore implements PersonStore {
       );
     }
 
-    const persistedProjection = versionCandidateProjection(projection);
-    // Do not overwrite an artifact referenced by an existing evaluation
-    // context. New content becomes a new immutable projection row.
-    const profileId = `profile-${personId}-${persistedProjection.profileVersion}`;
-    const projectionJson = JSON.stringify(persistedProjection);
+    const profileId = `profile-${personId}`; // Enforce single active profile per user for now
+    const projectionJson = JSON.stringify(projection);
     const now = new Date().toISOString();
     
-    const currentTitle = persistedProjection.attainedTitle?.trim() || "Unknown";
-    const yearsExperience = persistedProjection.yearsOfExperience || 0;
-    const archetype = persistedProjection.archetype?.trim() || "Unknown";
-    const preferredWorkModel = persistedProjection.preferredWorkModel || "ANY";
+    const currentTitle = "Executive";
+    const yearsExperience = projection.yearsOfExperience || 0;
+    const archetype = projection.executiveThemes?.[0] || "";
+    const preferredWorkModel = projection.preferredWorkModel || "ANY";
 
     // Because career_profiles doesn't have tenant_id natively, we ensure 
     // it's only linked to the scoped personId, which we validated belongs to the tenant.
@@ -133,7 +129,14 @@ export class TenantScopedPersonStore implements PersonStore {
         created_at, updated_at
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO NOTHING
+      ON CONFLICT(id) DO UPDATE SET
+        projection_json = excluded.projection_json,
+        projection_generated_at = excluded.projection_generated_at,
+        current_title = excluded.current_title,
+        years_experience = excluded.years_experience,
+        archetype = excluded.archetype,
+        preferred_work_model = excluded.preferred_work_model,
+        updated_at = excluded.updated_at
       `,
       [
         profileId, personId, "[]", "[]", // Dummy timeline/skills for NOT NULL constraints
@@ -156,11 +159,11 @@ export class TenantScopedPersonStore implements PersonStore {
     if (!validPerson) return undefined;
 
     const row = await this.db.one<{ projection_json: string }>(
-      `SELECT projection_json FROM career_profiles WHERE person_id = ? ORDER BY projection_generated_at DESC, rowid DESC LIMIT 1`,
+      `SELECT projection_json FROM career_profiles WHERE person_id = ? ORDER BY created_at DESC LIMIT 1`,
       [personId]
     );
     if (!row || !row.projection_json) {
-      return undefined;
+      return DEFAULT_CANDIDATE_PROJECTION;
     }
     
     try {
@@ -172,7 +175,7 @@ export class TenantScopedPersonStore implements PersonStore {
         );
         return undefined;
       }
-      return versionCandidateProjection(parsed);
+      return parsed;
     } catch (e) {
       console.error("[TenantScopedPersonStore] Failed to parse projection_json:", personId);
       return undefined;

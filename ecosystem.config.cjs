@@ -31,29 +31,7 @@ module.exports = {
       script: '.output/server/index.mjs',
       cwd: '/home/ubuntu/radar-local-v2',
       env: {
-        PORT: 3000,
-        NODE_ENV: 'production',
-        ...envVars
-      }
-    },
-    {
-      name: 'radar-enrich',
-      script: 'node_modules/.bin/tsx',
-      args: 'scripts/enrich.ts',
-      cwd: '/home/ubuntu/radar-local-v2',
-      restart_delay: 5000,
-      env: {
-        NODE_ENV: 'production',
-        ...envVars
-      }
-    },
-    {
-      name: 'radar-evaluate',
-      script: 'node_modules/.bin/tsx',
-      args: 'scripts/run-evaluation-worker.ts',
-      cwd: '/home/ubuntu/radar-local-v2',
-      restart_delay: 5000,
-      env: {
+        PORT: 80,
         NODE_ENV: 'production',
         ...envVars
       }

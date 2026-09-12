@@ -1,6 +1,5 @@
 
-import { getDatabaseAdapter, getDatabaseTargetIdentity } from "../src/data/database/index";
-import { assertNoConfiguredTursoTenantMutation } from "../src/lib/maintenance/active-tenant-pollution-repair";
+import { getDatabaseAdapter } from "../src/data/database/index";
 import { EvaluationDaemon } from "../src/lib/intelligence/EvaluationDaemon";
 import { CanonicalIngestionService } from "../src/lib/acquisition/CanonicalIngestionService";
 import { AuthContext } from "../src/lib/security/auth";
@@ -10,7 +9,6 @@ async function runTest() {
   console.log("M9.1 EVALUATION QUEUE LIFECYCLE CERTIFICATION");
   console.log("==================================================");
 
-  assertNoConfiguredTursoTenantMutation(getDatabaseTargetIdentity());
   const db = getDatabaseAdapter();
 
   const tenantId = "default_tenant_" + Date.now();

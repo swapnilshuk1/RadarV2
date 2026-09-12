@@ -1,5 +1,4 @@
 import { IdentityAssessment, CapabilityAssessment, OpportunityAssessment, CareerAssessment, LifestyleAssessment, DecisionVerdict, EvaluationStatus, Recommendation } from "../../domain/semantic";
-import type { CapabilityRequirement, GroundedOpportunityDimension } from "../../domain/job_projection";
 import decisionPolicy from "@/data/ontology/decision_policy.json";
 import { IdentityDistanceCalculator } from "../utils/IdentityDistanceCalculator";
 import { EvidenceGate } from "../gates/EvidenceGate";
@@ -31,7 +30,7 @@ export interface DecisionDriver {
 export interface DecisionPolicyResult {
   verdict: DecisionVerdict;
   evaluationStatus: EvaluationStatus;
-  recommendation: Recommendation | null;
+  recommendation: Recommendation;
   qualityScore: number | null; // Authoritative Model C intrinsic quality score
   rawScore: number | null;     // Legacy compatibility alias (equals qualityScore)
   priorityScore: number | null;// Legacy compatibility alias (equals qualityScore)
@@ -72,9 +71,8 @@ export class DecisionPolicyEngine {
     jobDescriptionText?: string,
     hasStructuredEvidence: boolean = false,
     evidenceGrounding?: Record<string, string>,
-    dimensions?: readonly GroundedOpportunityDimension[] | readonly { key: string; jdEvidence?: { value?: string } }[],
-    shortlistingPotentialScore?: number, // P3-A: Pre-calculated authoritative SP
-    capabilityRequirements?: readonly CapabilityRequirement[],
+    dimensions?: Array<{ key: string; jdEvidence?: { value?: string } }>,
+    shortlistingPotentialScore?: number // P3-A: Pre-calculated authoritative SP
   ): DecisionPolicyResult {
     const triggeredRuleIds: string[] = [];
     
@@ -501,78 +499,8 @@ export class DecisionPolicyEngine {
 
     const isEasyTrap = spHigh && frictionLow && careerValueLow;
     const effectiveScore = qualityScore ?? 0;
-    const missingSpecialistDomain = capability.missingCapabilities.find((capabilityName) =>
-      /\[DOMAIN_FAMILIARITY\]/.test(capabilityName) &&
-      /(distressed debt|arc operations|insolvency|asset reconstruction|merchandising|category inventory)/i.test(capabilityName),
-    );
-    const normalizeCapability = (value: string) => value
-      .toLowerCase()
-      .replace(/\s*\[[^\]]+\]/g, "")
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim();
-    const missingRequiredCapability = capabilityRequirements?.find((requirement) => {
-      if (!requirement.required || requirement.materiality !== "CORE") return false;
-      const requiredName = normalizeCapability(requirement.capability);
-      return capability.missingCapabilities.some((missing) => normalizeCapability(missing) === requiredName);
-    });
-
-    // A source-grounded specialist-domain requirement is not a hard admission
-    // veto. It does, however, prohibit an unqualified PURSUE recommendation
-    // where the candidate evidence does not establish that operating domain.
-    const specialistDomainConstraint = Boolean(missingSpecialistDomain);
-    const requiredCapabilityConstraint = Boolean(missingRequiredCapability);
 
     if (effectiveScore >= POLICY_THRESHOLDS.PURSUE && identityScore >= t.identityPursueCutoff) {
-      if (requiredCapabilityConstraint) {
-        return {
-          verdict: "CONSIDER",
-          evaluationStatus,
-          recommendation: "CONSIDER",
-          qualityScore,
-          rawScore,
-          priorityScore,
-          opportunityScoreSource,
-          opportunityScoreConfidence,
-          vetoed: false,
-          vetoReason: null,
-          claimPermissions,
-          structuralConviction: false,
-          uiLabel: "Consider",
-          confidences,
-          tailoringEffort: "HIGH",
-          trajectoryUpside,
-          relativeDifferentiator: "Senior functional overlap is present, but an explicit material qualification requirement is not established by candidate evidence.",
-          triggeredRuleIds: ["POL-D-CONSIDER-REQUIRED-CAPABILITY-GAP", "R-PURSUE-INTERACTIVE-SCORE"],
-          pipeline: [...pipeline, { stage: "RequiredCapabilityEvidence", status: "DOWNSCALED", score: qualityScore, reason: `No candidate evidence establishes required capability: ${missingRequiredCapability!.capability}.` }],
-          decisionDrivers,
-          decisionRisks: [...decisionRisks, { factor: "Required Capability Gap", impact: "negative", strength: "high", evidence: `Missing source-grounded requirement: ${missingRequiredCapability!.capability}` }],
-        };
-      }
-      if (specialistDomainConstraint) {
-        return {
-          verdict: "CONSIDER",
-          evaluationStatus,
-          recommendation: "CONSIDER",
-          qualityScore,
-          rawScore,
-          priorityScore,
-          opportunityScoreSource,
-          opportunityScoreConfidence,
-          vetoed: false,
-          vetoReason: null,
-          claimPermissions,
-          structuralConviction: false,
-          uiLabel: "Consider",
-          confidences,
-          tailoringEffort: "HIGH",
-          trajectoryUpside,
-          relativeDifferentiator: "Senior functional overlap is present, but a specialist operating-domain requirement needs validation before pursuit.",
-          triggeredRuleIds: ["POL-D-CONSIDER-SPECIALIST-DOMAIN-GAP", "R-PURSUE-INTERACTIVE-SCORE"],
-          pipeline: [...pipeline, { stage: "SpecialistDomainEvidence", status: "DOWNSCALED", score: qualityScore, reason: `No candidate evidence establishes ${missingSpecialistDomain}.` }],
-          decisionDrivers,
-          decisionRisks: [...decisionRisks, { factor: "Specialist Domain Gap", impact: "negative", strength: "high", evidence: `Missing source-grounded domain: ${missingSpecialistDomain}` }],
-        };
-      }
       if (isEasyTrap) {
         return {
           verdict: "CONSIDER",

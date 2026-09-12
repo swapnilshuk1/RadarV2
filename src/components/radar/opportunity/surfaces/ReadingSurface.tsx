@@ -9,7 +9,7 @@ import { Strategy } from "../reading/Strategy";
 import { Appendix } from "../reading/Appendix";
 import { ExecutiveActionButton } from "@/components/radar/actions";
 import { Button } from "@/components/ui/button";
-import { applicationActionFor, type DecisionVerb } from "@/data/opportunity-fixtures";
+import { applyUrlFor, type DecisionVerb } from "@/data/opportunity-fixtures";
 import { useSectionPreferences } from "@/lib/section-preferences-store";
 
 import type { DossierDecisionState } from "@/lib/intelligence/decision-state";
@@ -25,10 +25,6 @@ interface ReadingSurfaceProps {
   jobProj: any;
   executionPkg: any;
   rawDimensions: any[];
-  generatedAt: string;
-  evaluatedAt?: string;
-  focusTopic: string | null;
-  whyRoleExists: string | null;
 }
 
 /** Scroll-triggered reveal hook: observes children and adds .animate-reveal on viewport entry */
@@ -95,14 +91,9 @@ export function ReadingSurface({
   jobProj,
   executionPkg,
   rawDimensions,
-  generatedAt,
-  evaluatedAt,
-  focusTopic,
-  whyRoleExists,
 }: ReadingSurfaceProps) {
   const revealRef = useScrollReveal();
   const readTime = estimateReadTime(brief);
-  const applicationAction = applicationActionFor(o);
 
   /* Keyboard shortcuts: P = Pursue, C = Consider, X = Pass, ← = Prev, → = Next */
   const handleKeyboard = useCallback(
@@ -144,7 +135,7 @@ export function ReadingSurface({
         dossierState={dossierState}
         currentIndex={currentIndex}
         totalCount={totalCount}
-        focusTopic={focusTopic}
+        jobProj={jobProj}
         readTime={readTime}
       />
 
@@ -171,7 +162,7 @@ export function ReadingSurface({
                 {getSectionState("context") === "open" ? "Collapse ▲" : "Expand ▼"}
               </button>
             </div>
-            {getSectionState("context") === "open" && <Context brief={brief} whyRoleExists={whyRoleExists} />}
+            {getSectionState("context") === "open" && <Context o={o} brief={brief} jobProj={jobProj} />}
           </div>
 
           {/* Section II: Mandate */}
@@ -182,7 +173,7 @@ export function ReadingSurface({
                 {getSectionState("mandate") === "open" ? "Collapse ▲" : "Expand ▼"}
               </button>
             </div>
-            {getSectionState("mandate") === "open" && <Mandate brief={brief} />}
+            {getSectionState("mandate") === "open" && <Mandate o={o} jobProj={jobProj} executionPkg={executionPkg} />}
           </div>
 
           {/* Section III: Evidence */}
@@ -204,7 +195,7 @@ export function ReadingSurface({
                 {getSectionState("opinion") === "open" ? "Collapse ▲" : "Expand ▼"}
               </button>
             </div>
-            {getSectionState("opinion") === "open" && <Opinion brief={brief} engineVerdict={dossierState.engineVerdict} generatedAt={generatedAt} />}
+            {getSectionState("opinion") === "open" && <Opinion brief={brief} engineVerdict={dossierState.engineVerdict} />}
           </div>
 
           {/* Section V: Strategy */}
@@ -220,7 +211,7 @@ export function ReadingSurface({
         </div>
       </section>
 
-      <Appendix brief={brief} rawDimensions={rawDimensions} evaluatedAt={evaluatedAt} />
+      <Appendix brief={brief} rawDimensions={rawDimensions} />
 
       {/* FLOATING ACTION DOCK (APPLE/LINEAR STYLE) */}
       <div className="floating-dock justify-between gap-4 pointer-events-auto">
@@ -282,14 +273,14 @@ export function ReadingSurface({
 
         {/* Right: Next Brief + Apply */}
         <div className="flex items-center gap-2 min-w-[70px] justify-end">
-          {applicationAction ? (
+          {o.applyUrl ? (
             <a
-              href={applicationAction.url}
+              href={applyUrlFor(o)}
               target="_blank"
               rel="noopener noreferrer"
               className="dock-btn bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-xs"
             >
-              {applicationAction.label} →
+              Apply →
             </a>
           ) : neighbors?.next ? (
             <Link
@@ -307,3 +298,4 @@ export function ReadingSurface({
     </div>
   );
 }
+

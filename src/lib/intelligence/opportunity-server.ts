@@ -9,28 +9,6 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
     return OpportunityService.listForUser(user.id, { categoryId: data?.categoryId });
   });
 
-export const getFeedFn = createServerFn({ method: "GET" })
-  .validator(
-    (d?: {
-      cursor?: string;
-      categoryId?: string;
-      decisionFilter?: "all" | "unreviewed" | "decided";
-      pageSize?: number;
-    }) => d
-  )
-  .handler(async ({ data }) => {
-    const user = await requireAuthUser();
-    return OpportunityService.getFeedForUser(
-      user.id,
-      data?.cursor as any,
-      {
-        categoryId: data?.categoryId as any,
-        decisionFilter: data?.decisionFilter,
-      },
-      data?.pageSize
-    );
-  });
-
 export const getShortlistMetricsFn = createServerFn({ method: "GET" })
   .handler(async () => {
     const user = await requireAuthUser();
@@ -72,7 +50,16 @@ export const getOpportunityDetailsFn = createServerFn({ method: "GET" })
   .validator((d: string) => d)
   .handler(async ({ data: jobHash }) => {
     const user = await requireAuthUser();
-    return OpportunityService.getDetailsForUser(user.id, jobHash);
+    const [opportunity, adj] = await Promise.all([
+      OpportunityService.getForUser(user.id, jobHash),
+      OpportunityService.getAdjacentInfo(user.id, jobHash),
+    ]);
+    return {
+      opportunity,
+      currentIndex: adj.currentIndex,
+      totalCount: adj.totalCount,
+      neighbors: { prev: adj.prev, next: adj.next },
+    };
   });
 
 

@@ -149,7 +149,6 @@ export class SqliteOpportunityStore implements OpportunityStore {
 
           const jobHash = contentObj.jobHash || r.id;
           const oppSource: OpportunitySource = {
-          evaluationState: "LEGACY",
             jobHash,
             role: r.canonical_title || contentObj.role || "Executive Role",
             company: r.company_name || contentObj.company || "Target Company",

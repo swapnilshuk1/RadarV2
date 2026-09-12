@@ -7,10 +7,8 @@ import { writeExtraction, readExtractionIfFresh, writeLiveScraped, collectRecord
 import { invalidateEngineCache } from "../src/lib/intelligence/engine";
 import { EXTRACTOR_VERSION } from "./scraper/versions";
 import type { DetailedCard } from "./scraper/types";
-import { resolveCanonicalIdentity } from "../src/lib/acquisition/canonical-identity";
 import { makeLogger } from "./scraper/utils/logger";
 import { CONFIG } from "./scraper/config";
-import { getDatabaseAdapter, type DatabaseAdapter } from "../src/data/database";
 
 const log = makeLogger("enrich");
 const WORKER_ID = `worker-${process.pid}`;
@@ -22,7 +20,7 @@ let lastLlmCallTime = 0;
 let backoffMultiplierMs = 0;
 
 async function rateLimitedExtract(card: DetailedCard) {
-  const minIntervalMs = (process.env.NODE_ENV === "test" || process.env.VITEST) ? 0 : 2500 + backoffMultiplierMs; // Baseline 2.5s + dynamic backoff (0 in test)
+  const minIntervalMs = 2500 + backoffMultiplierMs; // Baseline 2.5s + dynamic backoff
   const now = Date.now();
   const elapsed = now - lastLlmCallTime;
   if (elapsed < minIntervalMs) {
@@ -45,213 +43,38 @@ async function rateLimitedExtract(card: DetailedCard) {
   }
 }
 
-export function assertCanonicalPayloadIdentity(
-  job: { canonical_job_id?: string | null; opportunity_version?: string | null },
-  detailedCard: { evaluationEvidence?: { canonicalJobId?: string | null; opportunityVersion?: string | null } }
-): void {
-  const bound = !!job.canonical_job_id || !!job.opportunity_version;
-  if (!bound) return; // legacy unbound work
-  if (
-    !job.canonical_job_id ||
-    !job.opportunity_version ||
-    !detailedCard.evaluationEvidence?.canonicalJobId ||
-    !detailedCard.evaluationEvidence?.opportunityVersion ||
-    detailedCard.evaluationEvidence.canonicalJobId !== job.canonical_job_id ||
-    detailedCard.evaluationEvidence.opportunityVersion !== job.opportunity_version
-  ) {
-    throw new Error(
-      `ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH: Job ${job.canonical_job_id}/${job.opportunity_version} does not match payload evidence ${detailedCard.evaluationEvidence?.canonicalJobId}/${detailedCard.evaluationEvidence?.opportunityVersion}`
-    );
-  }
-}
-
-export async function processJob(
-  queue: EnrichmentQueue, 
-  job: import("./scraper/persist/queue").EnrichmentJob,
-  deps?: { repos?: import("../src/domain/repositories").StorageProvider }
-): Promise<{llmMs: number; busyMs: number; dimensions?: any}> {
-  await queue.markRunning(job.id);
+async function processJob(queue: EnrichmentQueue, job: import("./scraper/persist/queue").EnrichmentJob): Promise<{llmMs: number; busyMs: number; dimensions?: any}> {
+  queue.markRunning(job.id);
   const tStart = Date.now();
   let llmMs = 0;
   
   try {
-    let snapStr: string | null = null;
-    const isBound = !!(job.canonical_job_id || job.opportunity_version);
-    const payloadKey = job.payload_key || (job.snapshot_path ? (job.snapshot_path.startsWith("snapshots/") ? job.snapshot_path : `snapshots/${job.job_hash}.json`) : null);
-
-    if (isBound) {
-      // Invariant: Bound canonical jobs MUST resolve strictly via BlobStore using job.payload_key.
-      // Disk fallbacks, .scraper-artifacts, and card-hash lookups are forbidden for canonical work.
-      if (!job.payload_key) {
-        throw new Error(
-          `ENRICHMENT_PAYLOAD_IDENTITY_MISMATCH: Enrichment job ${job.id} is bound to canonical opportunity (${job.canonical_job_id}/${job.opportunity_version}) but has no payload_key`
-        );
-      }
-      const { getBlobStore } = await import("../src/lib/storage/blob-store");
-      const blobBuf = await getBlobStore().get(job.payload_key);
-      if (!blobBuf) {
-        throw new Error(
-          `ENRICHMENT_PAYLOAD_NOT_FOUND: Enrichment payload not found in BlobStore for bound job ${job.id} (key: ${job.payload_key})`
-        );
-      }
-      snapStr = blobBuf.toString("utf-8");
-    } else {
-      // Legacy unbound work: fallback to snapshot_path or disk
-      if (payloadKey) {
-        const { getBlobStore } = await import("../src/lib/storage/blob-store");
-        const blobBuf = await getBlobStore().get(payloadKey);
-        if (blobBuf) {
-          snapStr = blobBuf.toString("utf-8");
-        }
-      }
-
-      if (!snapStr && job.snapshot_path) {
-        if (fs.existsSync(job.snapshot_path)) {
-          snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
-        } else {
-          const basename = path.basename(job.snapshot_path);
-          const altPaths = [
-            path.resolve(process.cwd(), ".radar", "artifacts", "blobs", "snapshots", basename),
-            path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", basename),
-            path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`),
-          ];
-          for (const alt of altPaths) {
-            if (fs.existsSync(alt)) {
-              snapStr = fs.readFileSync(alt, "utf-8");
-              break;
-            }
-          }
-        }
-      }
-
-      if (!snapStr) {
-        const directHashPath = path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`);
-        if (fs.existsSync(directHashPath)) {
-          snapStr = fs.readFileSync(directHashPath, "utf-8");
-        }
-      }
-
-      if (!snapStr) {
-        throw new Error(`Enrichment payload not found for job ${job.id} (key: ${payloadKey}, path: ${job.snapshot_path})`);
-      }
-    }
-
+    const snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
     const detailedCard = JSON.parse(snapStr) as DetailedCard;
-    assertCanonicalPayloadIdentity(job, detailedCard);
-
-    // Check if we already have a fresh, valid-version extraction on disk keyed by opportunity version (or fallback to card hash)
-    const extractionCacheKey = job.opportunity_version || filteredCardHash(detailedCard);
-    const cachedEx = readExtractionIfFresh(extractionCacheKey, CONFIG.snapshotFreshHours, EXTRACTOR_VERSION);
+    
+    // Check if we already have a fresh, valid-version extraction on disk that covers full JD if present
+    const cachedEx = readExtractionIfFresh(filteredCardHash(detailedCard), CONFIG.snapshotFreshHours, EXTRACTOR_VERSION);
     const hasFullJd = !!(detailedCard.detail && detailedCard.detail.rawText && detailedCard.detail.rawText.trim().length >= 200);
     const cachedHasFullJd = !!(cachedEx && cachedEx.normalizedText && cachedEx.normalizedText.trim().length >= 200);
 
     let extraction;
     let isFromCache = false;
-    const activeDb = queue.getDatabaseAdapter();
-
-    const oppVer = job.opportunity_version || detailedCard.opportunityVersion || detailedCard.evaluationEvidence?.opportunityVersion;
-    let versionCreatedAt: string | undefined;
-
-    if (oppVer) {
-      try {
-        const row = await activeDb.one<{ created_at: string }>(
-          `SELECT created_at FROM opportunity_versions WHERE id = ? LIMIT 1`,
-          [oppVer]
-        );
-        if (row?.created_at) {
-          versionCreatedAt = row.created_at;
-        }
-      } catch {
-        // Table or row may not exist in lightweight unit environments
-      }
-    }
-    if (!versionCreatedAt && job.created_at) {
-      versionCreatedAt = job.created_at;
-    }
 
     if (cachedEx && (!hasFullJd || cachedHasFullJd)) {
       log(`[Enrich] Using cached extraction for ${job.id} (skipped live LLM call)`);
       extraction = cachedEx;
       isFromCache = true;
-      if (!extraction.versionCreatedAt && versionCreatedAt) {
-        extraction.versionCreatedAt = versionCreatedAt;
-      }
-      if (!extraction.opportunityVersion && oppVer) {
-        extraction.opportunityVersion = oppVer;
-      }
     } else {
       // 1. Extract live on Full JD via Rate-Limited LLM
       const tLlm0 = Date.now();
       extraction = await rateLimitedExtract(detailedCard);
       llmMs = Date.now() - tLlm0;
-      extraction.opportunityVersion = oppVer;
-      extraction.versionCreatedAt = versionCreatedAt;
-      extraction.canonicalJobId = job.canonical_job_id || detailedCard.canonicalJobId || detailedCard.evaluationEvidence?.canonicalJobId;
-      extraction.extractedAt = new Date().toISOString();
-      writeExtraction(extractionCacheKey, extraction);
+      writeExtraction(filteredCardHash(detailedCard), extraction);
     }
     
-    // Resolve authoritative canonical identity following strict precedence:
-    // 1. Persisted admitted canonical identity from acquisition lineage / ledger
-    // 2. Explicit card.canonicalJobId on the payload
-    // 3. Deterministic resolver for genuinely unbound/new enrichment
-    // 4. cardHash-derived o_... ONLY when no canonical identity exists
-    let resolvedCanonicalId: string | undefined;
-
-    // 1. Persisted admitted lineage/ledger query
-    try {
-      const lineageRow = await activeDb.one<{ canonical_job_id?: string }>(
-        `SELECT COALESCE(al.canonical_job_id, ail.canonical_job_id) AS canonical_job_id
-         FROM acquisition_ingestion_lineage ail
-         LEFT JOIN acquisition_ledger al ON al.id = ail.acquisition_ledger_id
-         WHERE (ail.card_id = ? OR ail.card_id = ?)
-           AND COALESCE(al.canonical_job_id, ail.canonical_job_id) IS NOT NULL
-         ORDER BY ail.ingestion_attempt DESC LIMIT 1`,
-        [job.id, job.job_hash]
-      );
-      if (lineageRow?.canonical_job_id) {
-        resolvedCanonicalId = lineageRow.canonical_job_id;
-      }
-    } catch {
-      // Table may not exist in minimal environments
-    }
-
-    if (!resolvedCanonicalId) {
-      try {
-        const ledgerRow = await activeDb.one<{ canonical_job_id?: string }>(
-          `SELECT canonical_job_id FROM acquisition_ledger 
-           WHERE (id = ? OR canonical_job_id = ? OR source_job_id = ?) 
-             AND canonical_job_id IS NOT NULL
-           LIMIT 1`,
-          [job.id, detailedCard.canonicalJobId ?? "", (detailedCard as any).id ?? (detailedCard as any).jobId ?? ""]
-        );
-        if (ledgerRow?.canonical_job_id) {
-          resolvedCanonicalId = ledgerRow.canonical_job_id;
-        }
-      } catch {}
-    }
-
-    // 2. Explicit card.canonicalJobId on the payload
-    if (!resolvedCanonicalId && detailedCard.canonicalJobId) {
-      resolvedCanonicalId = detailedCard.canonicalJobId;
-    }
-
-    // 3. Deterministic resolver for genuinely unbound/new enrichment
-    if (!resolvedCanonicalId && detailedCard.portal && detailedCard.detailUrl) {
-      const resolved = resolveCanonicalIdentity({
-        portal: detailedCard.portal,
-        url: detailedCard.detailUrl,
-        title: detailedCard.title,
-        companyName: detailedCard.company
-      });
-      if (resolved?.canonicalJobId) {
-        resolvedCanonicalId = resolved.canonicalJobId;
-      }
-    }
-
     // 2. Ingest into SQLite
     const exStr = JSON.stringify(extraction);
-    const report = await ingestIntoSqlite(detailedCard, exStr, EXTRACTOR_VERSION, true, deps?.repos, resolvedCanonicalId);
+    const report = await ingestIntoSqlite(detailedCard, exStr, EXTRACTOR_VERSION, true);
     
     if (report.warnings.length > 0) {
       log(`Ingestion warnings for ${job.id}: ${report.warnings.join(", ")}`, "warn");
@@ -268,42 +91,10 @@ export async function processJob(
       log(`[Enrich] Failed to update live-scraped.json or invalidate engine cache: ${e.message}`, "warn");
     }
     
-    // Ensure canonical_job_id and opportunity_version are set on enrichment_job before releasing requirements
-    if ((!job.canonical_job_id || !job.opportunity_version) && resolvedCanonicalId) {
-      try {
-        const oppVersion = await activeDb.one<{ id: string }>(
-          `SELECT id FROM opportunity_versions WHERE canonical_job_id = ? ORDER BY version_number DESC LIMIT 1`,
-          [resolvedCanonicalId]
-        );
-        if (oppVersion?.id) {
-          await activeDb.execute(
-            `UPDATE enrichment_jobs SET canonical_job_id = ?, opportunity_version = ? WHERE id = ?`,
-            [resolvedCanonicalId, oppVersion.id, job.id]
-          );
-        }
-      } catch (err: any) {
-        log(`[Enrich] Could not backfill canonical/version on job ${job.id}: ${err.message}`, "warn");
-      }
-    }
-
     if (isFromCache) {
-      await queue.markCompleted(job.id, "skipped LLM / cached");
+      queue.markCompleted(job.id, "skipped LLM / cached");
     } else {
-      await queue.markCompleted(job.id);
-    }
-
-    // The canonical evaluation and lineage have been persisted before this
-    // point. The acquisition payload is no longer required for serving or a
-    // successful retry, so release the bounded local/remote artifact promptly.
-    if (payloadKey) {
-      try {
-        const { getBlobStore } = await import("../src/lib/storage/blob-store");
-        await getBlobStore().delete(payloadKey);
-      } catch (cleanupError: any) {
-        // Completion is canonical and must not be rolled back because an
-        // ephemeral acquisition-artifact cleanup later fails.
-        log(`[Enrich] Completed job ${job.id}, but could not delete payload ${payloadKey}: ${cleanupError.message}`, "warn");
-      }
+      queue.markCompleted(job.id);
     }
 
     return { 
@@ -333,10 +124,10 @@ export async function processJob(
       const backoffIndex = Math.min(job.attempts, BACKOFF_SECONDS.length - 1);
       const delaySec = BACKOFF_SECONDS[backoffIndex];
       const nextRetryAt = new Date(Date.now() + delaySec * 1000).toISOString();
-      await queue.markRetry(job.id, failureType, msg, nextRetryAt);
+      queue.markRetry(job.id, failureType, msg, nextRetryAt);
       log(`Job ${job.id} failed (${failureType}), retrying in ${delaySec}s`, "warn");
     } else {
-      await queue.markFailed(job.id, failureType, msg);
+      queue.markFailed(job.id, failureType, msg);
       log(`Job ${job.id} fatally failed: ${msg}`, "error");
     }
     return { llmMs, busyMs: (Date.now() - tStart) - llmMs };
@@ -347,28 +138,8 @@ function filteredCardHash(card: DetailedCard) {
   return card.cardHash;
 }
 
-async function cleanupExpiredTerminalPayloads(queue: EnrichmentQueue): Promise<void> {
-  const { getBlobStore, resolveArtifactStoreLimits } = await import("../src/lib/storage/blob-store");
-  const retentionHours = resolveArtifactStoreLimits().retentionHours;
-  const cutoffIso = new Date(Date.now() - retentionHours * 60 * 60 * 1000).toISOString();
-  const payloadKeys = await queue.getExpiredTerminalPayloadKeys(cutoffIso);
-  if (payloadKeys.length === 0) return;
-
-  const blobStore = getBlobStore();
-  let deleted = 0;
-  for (const payloadKey of payloadKeys) {
-    try {
-      await blobStore.delete(payloadKey);
-      deleted += 1;
-    } catch (error: any) {
-      log(`[Enrich] Retention cleanup could not delete ${payloadKey}: ${error.message}`, "warn");
-    }
-  }
-  log(`[Enrich] Retention cleanup removed ${deleted}/${payloadKeys.length} terminal payloads older than ${retentionHours}h.`);
-}
-
-async function printDashboard(queue: EnrichmentQueue, workerStats: any) {
-  const { counts, age, failureDistribution, throughput } = await queue.getDashboardStats();
+function printDashboard(queue: EnrichmentQueue, workerStats: any) {
+  const { counts, age, failureDistribution, throughput } = queue.getDashboardStats();
   
   const stateMap: Record<string, number> = {
     PENDING: 0, LEASED: 0, RUNNING: 0, RETRY: 0, COMPLETE: 0, FAILED: 0
@@ -440,7 +211,6 @@ Schema Errors:  ${workerStats.dimensions.schemaErrors}${failureStr}
 async function startWorker() {
   log(`Starting Enrichment Worker [${WORKER_ID}]`);
   const queue = new EnrichmentQueue();
-  await cleanupExpiredTerminalPayloads(queue);
   
   const workerStats = {
     startTime: Date.now(),
@@ -459,10 +229,10 @@ async function startWorker() {
     }
   };
 
-  process.on("SIGINT", async () => {
+  process.on("SIGINT", () => {
     console.log("\nGenerating End-of-Run Validation Report...");
     
-    const { counts, failureDistribution, throughput } = await queue.getDashboardStats();
+    const { counts, failureDistribution, throughput } = queue.getDashboardStats();
     const stateMap: Record<string, number> = { PENDING: 0, LEASED: 0, RUNNING: 0, RETRY: 0, COMPLETE: 0, FAILED: 0 };
     for (const row of counts) { stateMap[row.status] = row.count; }
     
@@ -504,21 +274,23 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
   });
 
   // Create an initial dashboard print
-  await printDashboard(queue, workerStats);
+  printDashboard(queue, workerStats);
+
+
 
   let idleCount = 0;
   
   while (true) {
-    // Attempt to lease up to CONFIG.llmConcurrency jobs matching this worker's pipeline version
+    // Attempt to lease up to CONFIG.llmConcurrency jobs
     const tPoll = Date.now();
-    const jobs = await queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency, 300, EXTRACTOR_VERSION); // 5 min lease
+    const jobs = queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency, 300); // 5 min lease
     workerStats.pollingMs += (Date.now() - tPoll);
     
     if (jobs.length === 0) {
       idleCount++;
       
       const tPollStats = Date.now();
-      const stats = await queue.getDashboardStats();
+      const stats = queue.getDashboardStats();
       workerStats.pollingMs += (Date.now() - tPollStats);
       
       const hasRetries = stats.counts.some((c: any) => c.status === "RETRY" && c.count > 0);
@@ -533,7 +305,7 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
 
       if (idleCount % 12 === 0) {
         // Print dashboard every minute if idle (5s * 12)
-        await printDashboard(queue, workerStats);
+        printDashboard(queue, workerStats);
       }
       await new Promise(r => setTimeout(r, 5000));
       continue;
@@ -565,20 +337,13 @@ Certification:     ${isHealthy ? "PASS" : "WARN (Check Failures or High Drift)"}
     workerStats.llmMs += (batchLlmMs / Math.max(1, jobs.length));
     workerStats.busyMs += (batchBusyMs / Math.max(1, jobs.length));
     
-    await printDashboard(queue, workerStats);
+    printDashboard(queue, workerStats);
   }
 }
 
 // Expose a run-scoped enricher that can be triggered programmatically inline.
-export async function enrichJobsForRun(
-  runId: string,
-  deps?: {
-    queue?: EnrichmentQueue;
-    repos?: import("../src/domain/repositories").StorageProvider;
-    pipelineVersion?: string;
-  }
-) {
-  const queue = deps?.queue ?? new EnrichmentQueue();
+export async function enrichJobsForRun(runId: string) {
+  const queue = new EnrichmentQueue();
   log(`[Enrich] Starting inline enrichment worker for run ${runId}`);
 
   // Exponential backoff for empty intervals or wait-retries
@@ -596,21 +361,21 @@ export async function enrichJobsForRun(
       }
     } catch {}
 
-    const pendingCount = await queue.getPendingCountForRun(runId);
+    const pendingCount = queue.getPendingCountForRun(runId);
     if (pendingCount === 0) {
       log(`[Enrich] All jobs for run ${runId} have been successfully processed.`);
       break;
     }
 
     // Recover any leases expired globally during our run
-    await queue.recoverExpiredLeases();
+    queue.recoverExpiredLeases();
 
-    // Lease jobs for this run (filtering by pipeline version if explicitly scoped)
-    const jobs = await queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency, 300, deps?.pipelineVersion);
+    // Lease jobs only for this run!
+    const jobs = queue.leaseJobsForRun(WORKER_ID, runId, CONFIG.llmConcurrency);
 
     if (jobs.length === 0) {
       // Check if there are any jobs currently cooling down in retry status
-      const hasRetries = await queue.hasRetriesForRun(runId);
+      const hasRetries = queue.hasRetriesForRun(runId);
       if (hasRetries) {
         log(`[Enrich] Active jobs in retry cooling-down. Sleeping for ${emptyBackoffMs}ms...`);
         await new Promise(r => setTimeout(r, emptyBackoffMs));
@@ -628,7 +393,7 @@ export async function enrichJobsForRun(
     emptyBackoffMs = 250;
 
     log(`[Enrich] Processing ${jobs.length} jobs concurrently...`);
-    await Promise.all(jobs.map(job => processJob(queue, job, deps)));
+    await Promise.all(jobs.map(job => processJob(queue, job)));
   }
 }
 
@@ -642,7 +407,7 @@ export async function enrichGlobalQueue(onJobCompleted?: () => void) {
   
   while (true) {
     // Check global pending stats (getGlobalPipelineStats returns counts)
-    const stats = await queue.getGlobalPipelineStats();
+    const stats = queue.getGlobalPipelineStats();
     if (stats.pending + stats.retry === 0 && stats.leased === 0 && stats.enriching === 0) {
       // Nothing to process. Sleep for 10 seconds to eliminate idle CPU and SQLite polling overhead.
       await new Promise(r => setTimeout(r, 10000));
@@ -650,10 +415,10 @@ export async function enrichGlobalQueue(onJobCompleted?: () => void) {
     }
 
     // Recover any leases expired globally
-    await queue.recoverExpiredLeases();
+    queue.recoverExpiredLeases();
 
     // Lease jobs globally
-    const jobs = await queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency);
+    const jobs = queue.leaseJobs(WORKER_ID, CONFIG.llmConcurrency);
 
     if (jobs.length === 0) {
       // If there are still items but we leased 0, they might be in retry status.
@@ -680,134 +445,6 @@ export async function enrichGlobalQueue(onJobCompleted?: () => void) {
   }
 }
 
-export async function recoverDegradedEnrichmentsForRun(
-  runId: string,
-  deps?: { repos?: import("../src/domain/repositories").StorageProvider }
-): Promise<{
-  scanned: number;
-  recovered: number;
-  skipped: number;
-  failed: number;
-}> {
-  const queue = new EnrichmentQueue();
-  const db: DatabaseAdapter = getDatabaseAdapter();
-
-  log(`[Enrich:Recovery] Starting run-scoped recovery for run: ${runId}`);
-
-  // Fetch completed jobs for this run
-  const completedJobs = await db.many<import("./scraper/persist/queue").EnrichmentJob>(
-    `SELECT * FROM enrichment_jobs WHERE run_id = ? AND (status = 'COMPLETE' OR status = 'COMPLETED') ORDER BY created_at ASC`,
-    [runId]
-  );
-
-  log(`[Enrich:Recovery] Found ${completedJobs.length} completed jobs for run ${runId}. Inspecting for degraded extractions...`);
-
-  let scanned = 0;
-  let recovered = 0;
-  let skipped = 0;
-  let failed = 0;
-
-  for (const job of completedJobs) {
-    scanned++;
-    try {
-      // Find snapshot
-      let snapStr: string | null = null;
-      const payloadKey = job.payload_key || (job.snapshot_path ? (job.snapshot_path.startsWith("snapshots/") ? job.snapshot_path : `snapshots/${job.job_hash}.json`) : null);
-
-      if (payloadKey) {
-        const { getBlobStore } = await import("../src/lib/storage/blob-store");
-        const blobBuf = await getBlobStore().get(payloadKey);
-        if (blobBuf) snapStr = blobBuf.toString("utf-8");
-      }
-
-      if (!snapStr && job.snapshot_path) {
-        if (fs.existsSync(job.snapshot_path)) {
-          snapStr = fs.readFileSync(job.snapshot_path, "utf-8");
-        } else {
-          const basename = path.basename(job.snapshot_path);
-          const altPaths = [
-            path.resolve(process.cwd(), ".radar", "artifacts", "blobs", "snapshots", basename),
-            path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", basename),
-            path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`),
-          ];
-          for (const alt of altPaths) {
-            if (fs.existsSync(alt)) {
-              snapStr = fs.readFileSync(alt, "utf-8");
-              break;
-            }
-          }
-        }
-      }
-
-      if (!snapStr) {
-        const directHashPath = path.resolve(process.cwd(), ".scraper-artifacts", "snapshots", `${job.job_hash}.json`);
-        if (fs.existsSync(directHashPath)) {
-          snapStr = fs.readFileSync(directHashPath, "utf-8");
-        }
-      }
-
-      if (!snapStr) {
-        skipped++;
-        continue;
-      }
-
-      const card = JSON.parse(snapStr) as DetailedCard;
-      const cardHash = filteredCardHash(card);
-
-      // Check if fresh extraction cache exists
-      const cachedEx = readExtractionIfFresh(cardHash, CONFIG.snapshotFreshHours, EXTRACTOR_VERSION);
-      if (!cachedEx) {
-        skipped++;
-        continue;
-      }
-
-      // Check if degraded: either updated during early outage or missing dimensions that cache has
-      const doc = await db.one<{ content: string }>(
-        `SELECT content FROM documents WHERE (opportunity_id = ? OR id = ?) AND payload_type = 'DIMENSION_EXTRACTION' LIMIT 1`,
-        [job.id, `doc_${card.canonicalJobId || cardHash}_extraction`]
-      );
-
-      let isDegraded = false;
-      if (job.completed_at && job.completed_at.includes("2026-09-09T04:51")) {
-        isDegraded = true;
-      } else if (doc?.content) {
-        try {
-          const parsedDoc = JSON.parse(doc.content);
-          const docMissingKeys = (parsedDoc.dimensions || [])
-            .filter((d: any) => d.jdEvidence?.status === "Missing")
-            .map((d: any) => d.key);
-          const cacheInferredKeys = (cachedEx.dimensions || [])
-            .filter((d: any) => d.jdEvidence?.status === "Inferred" || d.jdEvidence?.provenance === "llm")
-            .map((d: any) => d.key);
-          
-          if (docMissingKeys.some((k: string) => cacheInferredKeys.includes(k))) {
-            isDegraded = true;
-          }
-        } catch {
-          isDegraded = true;
-        }
-      } else {
-        isDegraded = true;
-      }
-
-      if (!isDegraded) {
-        skipped++;
-        continue;
-      }
-
-      log(`[Enrich:Recovery] Recovering degraded job ${job.id} using cached extraction (${cachedEx.dimensions?.length || 0} dims)...`);
-      await processJob(queue, job, deps);
-      recovered++;
-    } catch (err: any) {
-      log(`[Enrich:Recovery] Error recovering job ${job.id}: ${err.message}`, "error");
-      failed++;
-    }
-  }
-
-  log(`[Enrich:Recovery] Finished recovery for run ${runId}: Scanned ${scanned}, Recovered ${recovered}, Skipped ${skipped}, Failed ${failed}`);
-  return { scanned, recovered, skipped, failed };
-}
-
 // Run directly if called as main module
 const isMain = typeof process !== "undefined" && 
   process.argv && 
@@ -815,22 +452,9 @@ const isMain = typeof process !== "undefined" &&
   (process.argv[1].endsWith("enrich.ts") || process.argv[1].endsWith("enrich"));
 
 if (isMain) {
-  const recoverRunIdx = process.argv.indexOf("--recover");
-  if (recoverRunIdx !== -1 && process.argv[recoverRunIdx + 1]) {
-    const targetRun = process.argv[recoverRunIdx + 1];
-    recoverDegradedEnrichmentsForRun(targetRun)
-      .then(res => {
-        console.log("Recovery finished:", res);
-        process.exit(0);
-      })
-      .catch(err => {
-        console.error("Recovery failed:", err);
-        process.exit(1);
-      });
-  } else {
-    startWorker().catch(err => {
-      console.error("Worker crashed:", err);
-      process.exit(1);
-    });
-  }
+  startWorker().catch(err => {
+    console.error("Worker crashed:", err);
+    process.exit(1);
+  });
 }
+

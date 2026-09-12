@@ -48,7 +48,7 @@ const SPECS: Spec[] = [
     run: (i) => extractWorkModel({ snippet: i.snippet, detailText: i.detailText }),
     proofHeadline: "Work model preference", proofDetail: "Preferred work model" },
   { key: "technologyStack", label: "Technology Stack", importance: "Context", extractorId: technologyStackExtractorId,
-    run: (i) => extractTechnologyStack({ title: i.title, snippet: i.snippet, detailText: i.detailText }),
+    run: (i) => extractTechnologyStack({ snippet: i.snippet, detailText: i.detailText }),
     proofHeadline: "Platform stack", proofDetail: "Platform-native experience" },
 ];
 

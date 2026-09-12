@@ -10,7 +10,6 @@
  */
 
 import crypto from "crypto";
-import { parseVerifiedIndeedListingUrl } from "./indeed-listing-identity";
 
 export type IdentityMethod = "STABLE_JOB_ID" | "URL_FINGERPRINT" | "CONTENT_HASH";
 export type IdentityConfidence = "HIGH" | "MEDIUM" | "LOW";
@@ -23,61 +22,6 @@ export interface CanonicalIdentity {
   identityMethod: IdentityMethod;
   identityConfidence: IdentityConfidence;
 }
-
-export { parseVerifiedIndeedListingUrl as resolveVerifiedIndeedListingIdentity } from "./indeed-listing-identity";
-
-/**
- * Resolves the single authoritative unique source identity for a discovered card.
- * Preserves native sourceJobId, Indeed ?jk= parameter, and cardHash.
- */
-export function sourceIdentityForCard(card: {
-  portal?: string;
-  sourceJobId?: string | number;
-  cardHash?: string;
-  detailUrl?: string;
-  url?: string;
-}): string {
-  if (card.sourceJobId) {
-    const portalPrefix = card.portal ? `${card.portal.toLowerCase()}:` : "";
-    return `${portalPrefix}${String(card.sourceJobId).trim()}`;
-  }
-  const targetUrl = card.detailUrl || card.url;
-  if (targetUrl) {
-    const indeedMatch = targetUrl.match(/[?&]jk=([a-zA-Z0-9]+)/i);
-    if (indeedMatch && indeedMatch[1]) {
-      return `indeed:${indeedMatch[1]}`;
-    }
-    const clean = stripTrackingParams(targetUrl).toLowerCase().trim();
-    if (clean) return clean;
-  }
-  if (card.cardHash) {
-    return String(card.cardHash).trim();
-  }
-  return "";
-}
-
-/**
- * Builds a deterministic, surface-identifying key for acquisition execution and low-yield tracking.
- * Includes portal, query, location, freshness, industry, department, and other distinguishing attributes.
- */
-export function acquisitionSurfaceKey(
-  variant: any,
-  fallbackPortal?: string,
-  fallbackQuery?: string
-): string {
-  const portal = (variant?.portal || fallbackPortal || "global").toLowerCase().trim();
-  const query = (variant?.query || fallbackQuery || "").toLowerCase().trim();
-  const location = (variant?.location || "any").toLowerCase().trim();
-  const postedWithinDays = variant?.postedWithinDays !== undefined ? `d${variant.postedWithinDays}` : "all";
-  const industry = (variant?.industry || "any").toLowerCase().trim();
-  const department = (variant?.department || "any").toLowerCase().trim();
-  const radius = variant?.radiusKm !== undefined ? `r${variant.radiusKm}` : "";
-
-  return [portal, query, location, postedWithinDays, industry, department, radius]
-    .filter(Boolean)
-    .join(":");
-}
-
 
 /**
  * Strips tracking parameters from job posting URLs.
@@ -126,22 +70,8 @@ export function resolveCanonicalIdentity(input: {
   const portal = input.portal.trim();
   const cleanUrl = stripTrackingParams(input.url || "");
 
-  if (portal.toLowerCase() === "indeed") {
-    const verified = parseVerifiedIndeedListingUrl(input.url);
-    if (verified) {
-      return {
-        canonicalJobId: verified.canonicalJobId,
-        sourcePortal: "Indeed",
-        sourceJobId: verified.sourceJobId,
-        canonicalUrl: verified.canonicalUrl,
-        identityMethod: "STABLE_JOB_ID",
-        identityConfidence: "HIGH",
-      };
-    }
-  }
-
   // 1. Check for explicit rawJobId from portal card dataset
-  if (portal.toLowerCase() !== "indeed" && input.rawJobId && input.rawJobId.trim().length > 3) {
+  if (input.rawJobId && input.rawJobId.trim().length > 3) {
     const cleanId = input.rawJobId.trim().replace(/^jk_/, "");
     return {
       canonicalJobId: `${portal.toLowerCase()}:${cleanId}`,
@@ -164,6 +94,22 @@ export function resolveCanonicalIdentity(input: {
         sourcePortal: "LinkedIn",
         sourceJobId: jobId,
         canonicalUrl: `https://www.linkedin.com/jobs/view/${jobId}`,
+        identityMethod: "STABLE_JOB_ID",
+        identityConfidence: "HIGH"
+      };
+    }
+  }
+
+  if (portal.toLowerCase() === "indeed") {
+    // Matches ?jk=829c871daddf233a or /viewjob?jk=829c871daddf233a
+    const jkMatch = cleanUrl.match(/[?&]jk=([a-f0-9]+)/i) || cleanUrl.match(/\/rc\/clk\?jk=([a-f0-9]+)/i);
+    if (jkMatch && jkMatch[1]) {
+      const jobId = jkMatch[1];
+      return {
+        canonicalJobId: `indeed:jk_${jobId}`,
+        sourcePortal: "Indeed",
+        sourceJobId: jobId,
+        canonicalUrl: `https://in.indeed.com/viewjob?jk=${jobId}`,
         identityMethod: "STABLE_JOB_ID",
         identityConfidence: "HIGH"
       };

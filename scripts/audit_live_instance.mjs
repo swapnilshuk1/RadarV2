@@ -10,7 +10,7 @@ async function auditLive() {
 
   const browser = await chromium.launch({ headless: true });
 
-  const targetUrl = 'http://161.118.175.246';
+  const targetUrl = 'http://130.210.41.232';
 
   console.log(`[Audit] Auditing live production target: ${targetUrl}`);
 

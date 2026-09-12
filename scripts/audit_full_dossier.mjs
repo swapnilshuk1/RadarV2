@@ -11,7 +11,7 @@ async function auditFullDossierPage() {
     deviceScaleFactor: 1,
   });
   const desktopPage = await desktopContext.newPage();
-  await desktopPage.goto('http://161.118.175.246.sslip.io/login', { waitUntil: 'networkidle' });
+  await desktopPage.goto('http://130.210.41.232.sslip.io/login', { waitUntil: 'networkidle' });
   await desktopPage.evaluate(() => {
     sessionStorage.setItem('radar_session', JSON.stringify({
       userId: 'swapnil-shukla-dev',
@@ -21,7 +21,7 @@ async function auditFullDossierPage() {
   });
 
   console.log('Navigating Desktop to Shortlist Page...');
-  await desktopPage.goto('http://161.118.175.246.sslip.io/', { waitUntil: 'networkidle' });
+  await desktopPage.goto('http://130.210.41.232.sslip.io/', { waitUntil: 'networkidle' });
   
   // Expand first card
   const cardTitle = desktopPage.locator('button:has-text("+"), h3, h2').first();
@@ -52,7 +52,7 @@ async function auditFullDossierPage() {
     hasTouch: true,
   });
   const mobilePage = await mobileContext.newPage();
-  await mobilePage.goto('http://161.118.175.246.sslip.io/login', { waitUntil: 'networkidle' });
+  await mobilePage.goto('http://130.210.41.232.sslip.io/login', { waitUntil: 'networkidle' });
   await mobilePage.evaluate(() => {
     sessionStorage.setItem('radar_session', JSON.stringify({
       userId: 'swapnil-shukla-dev',
@@ -62,7 +62,7 @@ async function auditFullDossierPage() {
   });
 
   console.log('Navigating Mobile to Shortlist Page...');
-  await mobilePage.goto('http://161.118.175.246.sslip.io/', { waitUntil: 'networkidle' });
+  await mobilePage.goto('http://130.210.41.232.sslip.io/', { waitUntil: 'networkidle' });
   const mobileCard = mobilePage.locator('button:has-text("+"), h3, h2').first();
   if (await mobileCard.isVisible()) {
     await mobileCard.click();

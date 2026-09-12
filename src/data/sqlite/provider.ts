@@ -9,10 +9,7 @@ import { SqliteDecisionSupportStore } from "./repositories/SqliteDecisionSupport
 import { SqliteDocumentStore } from "./repositories/SqliteDocumentStore";
 import { SqliteEvaluationStore } from "./repositories/SqliteEvaluationStore";
 import { SqliteCredentialStore } from "./repositories/SqliteCredentialStore";
-import { SqliteOpportunityQueries } from "./repositories/SqliteOpportunityQueries";
-import { SqliteEvaluationContextStore } from "./repositories/SqliteEvaluationContextStore";
-import { SqliteScrapeRunStore } from "./repositories/SqliteScrapeRunStore";
-import { SqliteDossierPresentationStore } from "./repositories/SqliteDossierPresentationStore";
+import { SqliteCanonicalServingStore } from "./repositories/SqliteCanonicalServingStore";
 import { getDatabaseAdapter, type DatabaseAdapter } from "../database";
 import type { StorageProvider } from "../../domain/repositories";
 
@@ -33,10 +30,7 @@ export function createRepositories(db: DatabaseAdapter): StorageProvider {
     documents: new SqliteDocumentStore(db),
     evaluations: new SqliteEvaluationStore(db),
     credentials: new SqliteCredentialStore(db),
-    canonicalServing: new SqliteOpportunityQueries(db),
-    evaluationContexts: new SqliteEvaluationContextStore(db),
-    scrapeRuns: new SqliteScrapeRunStore(db),
-    dossierPresentations: new SqliteDossierPresentationStore(db),
+    canonicalServing: new SqliteCanonicalServingStore(db),
   };
 }
 

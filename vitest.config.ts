@@ -7,7 +7,6 @@ export default defineConfig({
   },
   test: {
     include: [
-      "tests/certification/**/*.test.ts",
       "tests/intelligence/**/*.test.ts",
       "tests/security/**/*.test.ts",
       "tests/ontology/**/*.test.ts",
@@ -16,16 +15,11 @@ export default defineConfig({
       "tests/semantic/**/*.test.ts",
       "tests/persistence/**/*.test.ts",
       "tests/scraper/**/*.test.ts",
-      "tests/acquisition/**/*.test.ts",
-      "tests/pipeline/**/*.test.ts",
-      "tests/serving/**/*.test.ts",
     ],
     exclude: [
       "tests/regression/**",
       "tests/archive/**",
       "node_modules/**",
-      "tests/scraper/integration.test.ts",
-      "tests/scraper/scrape-progress.test.ts"
     ],
     environment: "node",
     pool: "threads",

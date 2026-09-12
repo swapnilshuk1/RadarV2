@@ -1,73 +1,67 @@
 import type { DatabaseAdapter } from "../../database/adapter";
 import type { DecisionSupportStore } from "../../../domain/repositories";
+import type { RecommendationRun, OpportunityAssessment, RecommendationRecord } from "../../../domain/entities";
 
 export class SqliteDecisionSupportStore implements DecisionSupportStore {
   constructor(private db: DatabaseAdapter) {}
+
+  async recordRecommendationRun(run: RecommendationRun): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+  
+  async getRecommendationRun(id: string): Promise<RecommendationRun | undefined> {
+    throw new Error("Method not implemented.");
+  }
+  
+  async recordOpportunityAssessment(assessment: OpportunityAssessment): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+  
+  async getOpportunityAssessment(id: string): Promise<OpportunityAssessment | undefined> {
+    throw new Error("Method not implemented.");
+  }
+  
+  async recordRecommendationRecord(record: RecommendationRecord): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
+  
+  async latestRecommendationRecords(personId: string, limit: number): Promise<RecommendationRecord[]> {
+    throw new Error("Method not implemented.");
+  }
+  
+  async getRecommendationRecordForOpportunity(personId: string, opportunityId: string): Promise<RecommendationRecord | undefined> {
+    throw new Error("Method not implemented.");
+  }
 
   async recordUserDecision(personId: string, opportunityId: string, action: string, reason?: string, reviewedFingerprint?: string | null, tenantId?: string): Promise<void> {
     if (!tenantId) {
       throw new Error("tenantId is strictly required for canonical decisions");
     }
-    if (action !== "PURSUE" && action !== "CONSIDER" && action !== "PASS") {
-      throw new Error(`INVALID_DECISION_ACTION: ${action}`);
+    
+    // Resolve canonical_job_id from opportunityId (which is source_job_id/jobHash)
+    const canonical = await this.db.one<{ id: string }>(
+      `SELECT id FROM canonical_opportunities WHERE source_job_id = ?`,
+      [opportunityId]
+    );
+    
+    if (!canonical) {
+      console.warn(`[SqliteDecisionSupportStore] Could not resolve canonical_job_id for source_job_id=${opportunityId}`);
+      return;
     }
-    // Compatibility callers are not allowed to supply provenance. The
-    // canonical server-authorized population check derives it below.
-    await this.recordAuthorizedUserDecision(personId, tenantId, opportunityId, action, reason);
-  }
-
-  /**
-   * The only server-facing decision write path. It derives both the exact
-   * population membership and reviewed evaluation identity from canonical
-   * persistence; browser input is never trusted as provenance.
-   */
-  async recordAuthorizedUserDecision(
-    personId: string,
-    tenantId: string,
-    jobHash: string,
-    action: "PURSUE" | "CONSIDER" | "PASS",
-    reason?: string,
-  ): Promise<{ reviewedFingerprint: string | null }> {
-    return this.db.transaction(async (tx) => {
-      const artifact = await tx.one<{ canonical_job_id: string; evaluation_fingerprint: string | null }>(
-      `SELECT spc.canonical_job_id, me.evaluation_fingerprint
-       FROM active_evaluation_contexts aec
-       JOIN search_plan_candidates spc
-         ON spc.tenant_id = aec.tenant_id
-        AND spc.person_id = aec.person_id
-        AND spc.search_plan_id = aec.search_plan_id
-        AND spc.attention_decision = 'CANDIDATE'
-       JOIN canonical_opportunities co ON co.id = spc.canonical_job_id
-       LEFT JOIN materialized_evaluations me
-         ON me.tenant_id = aec.tenant_id
-        AND me.person_id = aec.person_id
-        AND me.canonical_job_id = spc.canonical_job_id
-        AND me.opportunity_version = spc.opportunity_version
-        AND me.evaluation_context_fingerprint = aec.context_fingerprint
-       WHERE aec.tenant_id = ?
-         AND aec.person_id = ?
-         AND co.source_job_id = ?
-       LIMIT 1`,
-        [tenantId, personId, jobHash],
-      );
-      if (!artifact) {
-        throw new Error(`OUT_OF_SCOPE_OPPORTUNITY: ${jobHash} is not in the authenticated canonical population.`);
-      }
-
-      const id = `${tenantId}_${personId}_${artifact.canonical_job_id}`;
-      await tx.execute(
-        `INSERT INTO canonical_decisions
-          (id, tenant_id, person_id, canonical_job_id, action, reason, reviewed_fingerprint, updated_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-         ON CONFLICT(tenant_id, person_id, canonical_job_id) DO UPDATE SET
-           action = EXCLUDED.action,
-           reason = EXCLUDED.reason,
-           reviewed_fingerprint = EXCLUDED.reviewed_fingerprint,
-           updated_at = CURRENT_TIMESTAMP`,
-        [id, tenantId, personId, artifact.canonical_job_id, action, reason || null, artifact.evaluation_fingerprint],
-      );
-      return { reviewedFingerprint: artifact.evaluation_fingerprint };
-    });
+    
+    const canonicalJobId = canonical.id;
+    const id = `${tenantId}_${personId}_${canonicalJobId}`;
+    
+    await this.db.execute(
+      `INSERT INTO canonical_decisions (id, tenant_id, person_id, canonical_job_id, action, reason, reviewed_fingerprint, updated_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ON CONFLICT(tenant_id, person_id, canonical_job_id) DO UPDATE SET
+         action = EXCLUDED.action,
+         reason = EXCLUDED.reason,
+         reviewed_fingerprint = EXCLUDED.reviewed_fingerprint,
+         updated_at = CURRENT_TIMESTAMP`,
+      [id, tenantId, personId, canonicalJobId, action, reason || null, reviewedFingerprint || null]
+    );
   }
 
   async getUserDecisions(personId: string, tenantId?: string): Promise<Record<string, { verb: string; updatedAt?: string; reviewedFingerprint?: string | null }>> {

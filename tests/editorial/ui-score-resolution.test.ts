@@ -46,7 +46,7 @@ describe("UI Score Resolution — Shortlist & Decisions Pages", () => {
     expect(res).toBe("Fit Index 88%");
   });
 
-  it("3. canonical engine score overrides conflicting presentation and legacy scores", () => {
+  it("3. brief.qualityScore takes precedence where appropriate", () => {
     const v4Opp: Opportunity = {
       ...baseOpportunity,
       engineRecommendation: {
@@ -56,21 +56,19 @@ describe("UI Score Resolution — Shortlist & Decisions Pages", () => {
       recommendationResult: {
         score: 60,
       } as any,
-      brief: {
-        qualityScore: 92,
-      },
-    } as any;
+    };
 
-    const shortlistRes = resolveShortlistCardScore(v4Opp as any);
-    expect(shortlistRes.rawScore).toBe(75);
-    expect(shortlistRes.scoreDisplay).toBe(75);
+    const brief = { qualityScore: 92 };
 
-    const decisionsRes = resolveDecisionsCardScore(v4Opp);
-    expect(decisionsRes).toBe("Fit Index 75%");
+    const shortlistRes = resolveShortlistCardScore(v4Opp, brief);
+    expect(shortlistRes.rawScore).toBe(92);
+    expect(shortlistRes.scoreDisplay).toBe(92);
 
+    const decisionsRes = resolveDecisionsCardScore(v4Opp, brief);
+    expect(decisionsRes).toBe("Fit Index 92%");
   });
 
-  it("4. legacy recommendationResult score is not treated as canonical score", () => {
+  it("4. Legacy recommendationResult.score works for legacy records", () => {
     const legacyOpp: Opportunity = {
       ...baseOpportunity,
       recommendationResult: {
@@ -79,29 +77,14 @@ describe("UI Score Resolution — Shortlist & Decisions Pages", () => {
     };
 
     const shortlistRes = resolveShortlistCardScore(legacyOpp);
-    expect(shortlistRes.rawScore).toBeUndefined();
-    expect(shortlistRes.scoreDisplay).toBe("—");
+    expect(shortlistRes.rawScore).toBe(81);
+    expect(shortlistRes.scoreDisplay).toBe(81);
 
     const decisionsRes = resolveDecisionsCardScore(legacyOpp);
-    expect(decisionsRes).toBe("Unscored");
+    expect(decisionsRes).toBe("Fit Index 81%");
   });
 
-  it("5. presentation and legacy scores cannot influence either resolver", () => {
-    const opportunity: Opportunity = {
-      ...baseOpportunity,
-      engineRecommendation: {
-        qualityScore: 70,
-        engineVerdict: "CONSIDER",
-      } as any,
-      recommendationResult: { score: 100 } as any,
-      brief: { qualityScore: 99 },
-    } as any;
-
-    expect(resolveShortlistCardScore(opportunity as any)).toEqual({ rawScore: 70, scoreDisplay: 70 });
-    expect(resolveDecisionsCardScore(opportunity)).toBe("Fit Index 70%");
-  });
-
-  it("6. Genuinely missing scores render '—' on Shortlist and fallback verdict on Decisions", () => {
+  it("5. Genuinely missing scores render '—' on Shortlist and fallback verdict on Decisions", () => {
     const missingScoreOpp: Opportunity = {
       ...baseOpportunity,
     };
@@ -114,13 +97,12 @@ describe("UI Score Resolution — Shortlist & Decisions Pages", () => {
     expect(decisionsRes).toBe("Unscored");
   });
 
-  it("7. Vetoed / Sparse cases preserve existing display behaviors", () => {
+  it("6. Vetoed / Sparse cases preserve existing display behaviors", () => {
     const sparseOpp: Opportunity = {
       ...baseOpportunity,
-      evaluationState: "SPARSE_SPEC" as any,
-      decision: null as any,
+      decision: "SPARSE_SPEC" as any,
       engineRecommendation: {
-        qualityScore: null,
+        qualityScore: 85,
       } as any,
     };
 

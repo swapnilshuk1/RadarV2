@@ -8,32 +8,31 @@ export const getDecisionsFn = createServerFn({ method: "GET" }).handler(async ()
   const scope = await resolveScope(user.id);
   const repos = getRepositories();
   const map = await repos.decisions.getUserDecisions(scope.personId, scope.tenantId);
-  return {
-    success: true,
-    decisions: map,
-    // Browser cache namespacing only. The server remains the sole canonical
-    // decision authority and never accepts automatic browser-cache imports.
-    cacheScope: `${scope.tenantId}:${scope.personId}`,
-  };
+  return { success: true, decisions: map };
 });
 
 export const saveDecisionFn = createServerFn({ method: "POST" })
   .validator((d: { jobHash: string; verb: string; reason?: string; reviewedFingerprint?: string | null }) => d)
   .handler(async ({ data }) => {
-    if (data.verb !== "PURSUE" && data.verb !== "CONSIDER" && data.verb !== "PASS") {
-      throw new Error(`INVALID_DECISION_VERB: ${data.verb}`);
-    }
     const user = await requireAuthUser();
     const scope = await resolveScope(user.id);
     const repos = getRepositories();
-    const acknowledgement = await repos.decisions.recordAuthorizedUserDecision(
-      scope.personId,
-      scope.tenantId,
-      data.jobHash,
-      data.verb,
-      data.reason,
-    );
-    return { success: true, reviewedFingerprint: acknowledgement.reviewedFingerprint };
+    await repos.decisions.recordUserDecision(scope.personId, data.jobHash, data.verb, data.reason, data.reviewedFingerprint, scope.tenantId);
+    return { success: true };
+  });
+
+export const syncDecisionsFn = createServerFn({ method: "POST" })
+  .validator((d: { decisions: Record<string, { verb: string; reviewedFingerprint?: string | null }> }) => d)
+  .handler(async ({ data }) => {
+    const user = await requireAuthUser();
+    const scope = await resolveScope(user.id);
+    const repos = getRepositories();
+    for (const [jobHash, entry] of Object.entries(data.decisions)) {
+      if (entry && entry.verb) {
+        await repos.decisions.recordUserDecision(scope.personId, jobHash, entry.verb, undefined, entry.reviewedFingerprint, scope.tenantId);
+      }
+    }
+    return { success: true };
   });
 
 export const undoDecisionFn = createServerFn({ method: "POST" })

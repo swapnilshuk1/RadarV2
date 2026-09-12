@@ -3,17 +3,21 @@ import path from "path";
 import fs from "fs";
 import { ARTIFACTS_DIR } from "../../../scripts/scraper/config";
 import { requireAuthUser } from "../auth/guard";
-import { getRepositories } from "../../data/sqlite/provider";
 
 let rebuildTimeout: NodeJS.Timeout | null = null;
 
-// Debounced notification after canonical ingestion; legacy JSON is not rebuilt.
+// Debounced 10-second function to rebuild SQLite read models and write live-scraped.json
 export function triggerDebouncedRebuild() {
   if (rebuildTimeout) {
     clearTimeout(rebuildTimeout);
   }
   rebuildTimeout = setTimeout(async () => {
     try {
+      const { collectRecords, writeLiveScraped } = await import("../../../scripts/scraper/persist/writer");
+      const records = collectRecords();
+      writeLiveScraped(records);
+      invalidateLiveScrapedCache();
+
       // Notify EvaluationCoordinator that corpus has expanded
       const { EvaluationCoordinator } = await import("./EvaluationCoordinator");
       await EvaluationCoordinator.notify({ event: "CORPUS_UPDATED" });
@@ -23,10 +27,8 @@ export function triggerDebouncedRebuild() {
   }, 10000);
 }
 
-// Worker startup is an explicit control-plane action. Importing a server
-// function module must never start enrichment or evaluation from a read path.
-export async function startRuntimeWorkers(): Promise<void> {
-  if (typeof globalThis === "undefined") return;
+// Vite HMR-safe singleton background daemon initialization
+if (typeof globalThis !== "undefined") {
   const g = globalThis as any;
   if (!g.__RADAR_DAEMON__) {
     g.__RADAR_DAEMON__ = {
@@ -40,24 +42,25 @@ export async function startRuntimeWorkers(): Promise<void> {
           // 1. Recover expired leases
           const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
           const queue = new EnrichmentQueue();
-          const recovered = await queue.recoverExpiredLeases();
+          const recovered = queue.recoverExpiredLeases();
           if (recovered > 0) {
             console.log(`[Daemon] Recovered ${recovered} expired leases.`);
           }
           
-          // 2. A global raw-enrichment worker can lease jobs created by a
-          // different host. Do not let a serving host consume locally stored
-          // scraper artifacts: only a shared object store makes that safe.
-          const { supportsCrossHostEnrichment } = await import("../storage/blob-store");
-          if (supportsCrossHostEnrichment()) {
-            const { enrichGlobalQueue } = await import("../../../scripts/enrich");
-            void enrichGlobalQueue(triggerDebouncedRebuild).catch(err => {
-              console.error("[Daemon] Queue loop error:", err);
-              g.__RADAR_DAEMON__.started = false; // allow restart
-            });
-          } else {
-            console.warn("[Daemon] Global raw enrichment disabled: local BlobStore payloads may only be consumed by their acquisition host.");
+          // 2. Rebuild the live-scraped.json cache if out of sync
+          const jsonPath = path.join(process.cwd(), "src", "data", "live-scraped.json");
+          if (!fs.existsSync(jsonPath)) {
+            console.log("[Daemon] live-scraped.json missing. Building on boot...");
+            const { collectRecords, writeLiveScraped } = await import("../../../scripts/scraper/persist/writer");
+            writeLiveScraped(collectRecords());
           }
+
+          // 3. Start background queue drain loop
+          const { enrichGlobalQueue } = await import("../../../scripts/enrich");
+          void enrichGlobalQueue(triggerDebouncedRebuild).catch(err => {
+            console.error("[Daemon] Queue loop error:", err);
+            g.__RADAR_DAEMON__.started = false; // allow restart
+          });
 
           // 4. Start background Evaluation Daemon singleton for evaluation_jobs
           const { EvaluationDaemon } = await import("./EvaluationDaemon");
@@ -71,49 +74,20 @@ export async function startRuntimeWorkers(): Promise<void> {
       }
     };
   }
-  await g.__RADAR_DAEMON__.start();
+  
+  // Start the singleton daemon inside the server context with a 10-second delay.
+  // This defers background database checks and loops, allowing Vite to fully load
+  // and bundle the page instantly when running 'npm run dev' or loading localhost!
+  if (typeof window === "undefined" && !g.__RADAR_DAEMON__.started) {
+    setTimeout(() => {
+      g.__RADAR_DAEMON__.start().catch((e: any) => {
+        console.error("[Daemon] Deferred start failed:", e.message);
+      });
+    }, 10000); // 10 seconds deferred delay
+  }
 }
 
 let activeScrapeRunLock: { runId: string; startedAt: number } | null = null;
-
-/**
- * Read-only execution preview for the shortlist. It deliberately resolves and
- * compiles the same active plan as triggerScrapeFn so the interface cannot
- * display a reconstructed or stale interpretation of the next search.
- */
-export const getScrapePlanPreviewFn = createServerFn({ method: "GET" })
-  .handler(async () => {
-    const user = await requireAuthUser();
-    try {
-      const { resolveScraperAuthContext } = await import("../security/scope-resolver");
-      const { scope, activeContext } = await resolveScraperAuthContext(user.id);
-      const { ScraperPlanResolver } = await import("./ScraperPlanResolver");
-      const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, activeContext);
-      const { compileCoverageVariants } = await import("../../../scripts/scraper/run/acquisition-variants");
-      const variants = compileCoverageVariants(resolvedPlan, ["LinkedIn", "Naukri", "Indeed"]);
-
-      const firstVariant = variants[0];
-      return {
-        status: "ready" as const,
-        searchPlanId: resolvedPlan.searchPlanId,
-        snapshotId: resolvedPlan.snapshotId ?? null,
-        title: resolvedPlan.title,
-        keywords: resolvedPlan.queries,
-        portals: ["LinkedIn", "Naukri", "Indeed"] as const,
-        location: firstVariant?.location ?? null,
-        postedWithinDays: firstVariant?.postedWithinDays ?? null,
-        sort: firstVariant?.sort ?? null,
-        executionSurfaceCount: variants.length,
-      };
-    } catch (error: unknown) {
-      // A broken active plan must be observable from the interface, but it must
-      // not make the shortlist unavailable. triggerScrapeFn remains fail-closed.
-      return {
-        status: "unavailable" as const,
-        error: error instanceof Error ? error.message : "Unable to resolve the active search plan.",
-      };
-    }
-  });
 
 export function getActiveScrapeLock(): { runId: string; startedAt: number } | null {
   if (!activeScrapeRunLock) return null;
@@ -130,36 +104,30 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
     // 1. Enforce Authentication
     const user = await requireAuthUser();
 
+    // 2. Enforce Single-Process Mutex
+    const activeState = getActiveScrapeState();
+    const activeLock = getActiveScrapeLock();
+    if (activeState || activeLock) {
+      const activeRunId = activeState?.runId || activeLock?.runId || "active";
+      console.warn(`[Server] triggerScrapeFn rejected: Run ${activeRunId} is already in progress.`);
+      return {
+        success: false,
+        error: `A scraping run is already in progress (${activeRunId}). Concurrent execution is rejected.`,
+        runId: activeRunId,
+        alreadyRunning: true
+      };
+    }
+
     try {
-      console.log("[Server] triggerScrapeFn: resolving verified scraper auth scope…");
-      const { resolveScraperAuthContext } = await import("../security/scope-resolver");
-      const { authContext, scope, activeContext } = await resolveScraperAuthContext(user.id);
-      const { ScraperPlanResolver } = await import("./ScraperPlanResolver");
-      const resolvedPlan = await ScraperPlanResolver.resolveActivePlan(scope, activeContext);
-      const repos = getRepositories();
-
-      // Per-tenant/person concurrency check in Turso Cloud
-      const existingActive = await repos.scrapeRuns.getActiveRun(scope);
-      if (existingActive) {
-        console.warn(`[Server] triggerScrapeFn rejected: Active run ${existingActive.id} already exists for tenant ${scope.tenantId}, person ${scope.personId}`);
-        return {
-          success: false,
-          error: `A scraping run is already in progress (${existingActive.id}). Concurrent execution for your account is rejected.`,
-          runId: existingActive.id,
-          alreadyRunning: true
-        };
-      }
-
-      console.log(`[Server] triggerScrapeFn: launching background scraper for tenant ${authContext.tenantId} (person: ${scope.personId})…`);
+      console.log("[Server] triggerScrapeFn: launching fresh live scraper in background…");
       // Dynamic import isolates Playwright/Node modules from the browser bundler.
       const { startRun } = await import("../../../scripts/scrape");
-      const { runId, completion } = await startRun({
-        resume: false,
-        autoConfirm: true,
-        authContext,
-        searchPlanId: activeContext?.searchPlanId,
-        resolvedPlan,
-      });
+      const authContext: import("../security/auth").AuthContext = {
+        tenantId: (user as any).tenantId || "default_tenant",
+        userId: user.id,
+        permissions: ["read:credentials", "manage:credentials"],
+      };
+      const { runId, completion } = await startRun({ resume: false, autoConfirm: true, authContext });
       
       activeScrapeRunLock = { runId, startedAt: Date.now() };
 
@@ -188,15 +156,8 @@ export const triggerScrapeFn = createServerFn({ method: "POST" })
 export const getRunEventsFn = createServerFn({ method: "GET" })
   .validator((d: { runId: string; afterIndex: number }) => d)
   .handler(async ({ data }) => {
-    const user = await requireAuthUser();
+    await requireAuthUser();
     const { runId, afterIndex } = data;
-    const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
-    const scopedRun = await getRepositories().scrapeRuns.getRun(scope, runId);
-    if (!scopedRun) {
-      const { TenantIsolationError } = await import("../security/auth");
-      throw new TenantIsolationError(`Scrape run '${runId}' not found or unauthorized for current tenant/person.`);
-    }
     const { Journal } = await import("../../../scripts/scraper/run/journal");
     
     const runDir = path.join(ARTIFACTS_DIR, "runs", runId);
@@ -223,13 +184,13 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
       if (e.type === "extraction_written") summary.extracted++;
     }
 
-    // Load active enrichment stats from canonical Turso operational queue
+    // Load active enrichment stats from queue.db
     let enrichmentStats: any = null;
     let isEnriching = false;
     try {
       const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
       const queue = new EnrichmentQueue();
-      enrichmentStats = await queue.getRunStats(runId);
+      enrichmentStats = queue.getRunStats(runId);
       if (enrichmentStats && enrichmentStats.total > 0 && (enrichmentStats.pending + enrichmentStats.processing > 0)) {
         isEnriching = true;
       }
@@ -252,7 +213,7 @@ export const getRunEventsFn = createServerFn({ method: "GET" })
     };
   });
 
-export function buildCanonicalRunData(runId: string, enrichmentCompleted?: number) {
+export function buildCanonicalRunData(runId: string) {
   const runDir = path.join(ARTIFACTS_DIR, "runs", runId);
   const manifestPath = path.join(runDir, "manifest.json");
 
@@ -263,9 +224,14 @@ export function buildCanonicalRunData(runId: string, enrichmentCompleted?: numbe
     const opportunitiesFound = manifest.opportunitiesFound ?? manifest.cards?.length ?? 0;
 
     let evaluatedCount = manifest.evaluatedCount ?? 0;
-    if (enrichmentCompleted !== undefined) {
-      evaluatedCount = Math.max(evaluatedCount, enrichmentCompleted);
-    }
+    try {
+      const { EnrichmentQueue } = require("../../../scripts/scraper/persist/queue");
+      const queue = new EnrichmentQueue();
+      const stats = queue.getRunStats(runId);
+      if (stats?.completed !== undefined) {
+        evaluatedCount = Math.max(evaluatedCount, stats.completed);
+      }
+    } catch {}
 
     const remainingCount = Math.max(0, opportunitiesFound - evaluatedCount);
 
@@ -364,113 +330,42 @@ export async function abortScrapeState(runId: string, force = false) {
 
 export const getActiveScrapeFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
-    return getRepositories().scrapeRuns.getLatestRun(scope);
+    await requireAuthUser();
+    return getActiveScrapeState();
   });
 
 export const getLatestRunFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
-    const repos = getRepositories();
+    await requireAuthUser();
+    try {
+      const latestPath = path.join(ARTIFACTS_DIR, "runs", "latest.json");
+      if (!fs.existsSync(latestPath)) return null;
+      const latest = JSON.parse(fs.readFileSync(latestPath, "utf-8"));
+      if (!latest?.runId) return null;
 
-    // 1. Query Turso Cloud for the caller's scoped latest run
-    const latestDbRun = await repos.scrapeRuns.getLatestRun(scope);
-    if (!latestDbRun) return null;
-
-    // 2. Hydrate canonical run data (fall back to disk manifest if available for local activity details)
-    const diskData = buildCanonicalRunData(latestDbRun.id);
-    if (diskData) {
-      return {
-        ...diskData,
-        status: latestDbRun.status,
-        opportunitiesFound: Math.max(diskData.opportunitiesFound || 0, latestDbRun.totalDiscovered),
-      };
+      return buildCanonicalRunData(latest.runId);
+    } catch {
+      return null;
     }
-
-    return {
-      runId: latestDbRun.id,
-      status: latestDbRun.status,
-      isActive: ["queued", "initializing", "running", "waiting_for_confirmation"].includes(latestDbRun.status),
-      stage: latestDbRun.status === "completed" ? "complete" : latestDbRun.status,
-      opportunitiesFound: latestDbRun.totalDiscovered,
-      evaluatedCount: latestDbRun.totalEnqueued,
-      remainingCount: 0,
-      sources: {},
-      startedAt: latestDbRun.startedAt || latestDbRun.createdAt,
-      updatedAt: latestDbRun.updatedAt,
-      finishedAt: latestDbRun.finishedAt || undefined,
-      portalHealth: {},
-      recentActivities: [],
-    };
   });
 
 export const getRunProgressFn = createServerFn({ method: "GET" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
-    const repos = getRepositories();
-
-    const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
-    if (!dbRun) {
-      const { TenantIsolationError } = await import("../security/auth");
-      throw new TenantIsolationError(`Scrape run '${data.runId}' not found or unauthorized for current tenant/person.`);
-    }
-
-    const diskData = getRunProgressState(data.runId);
-    if (diskData) {
-      return {
-        ...diskData,
-        status: dbRun.status,
-      };
-    }
-
-    return {
-      runId: dbRun.id,
-      status: dbRun.status,
-      isActive: ["queued", "initializing", "running", "waiting_for_confirmation"].includes(dbRun.status),
-      stage: dbRun.status === "completed" ? "complete" : dbRun.status,
-      opportunitiesFound: dbRun.totalDiscovered,
-      evaluatedCount: dbRun.totalEnqueued,
-      remainingCount: 0,
-      sources: {},
-      startedAt: dbRun.startedAt || dbRun.createdAt,
-      updatedAt: dbRun.updatedAt,
-      finishedAt: dbRun.finishedAt || undefined,
-      portalHealth: {},
-      recentActivities: [],
-    };
+    await requireAuthUser();
+    return getRunProgressState(data.runId);
   });
 
 export const confirmScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
-    const repos = getRepositories();
-
-    const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
-    if (!dbRun) {
-      const { TenantIsolationError } = await import("../security/auth");
-      throw new TenantIsolationError(`Cannot confirm run '${data.runId}': unauthorized or not found.`);
-    }
-
-    await repos.scrapeRuns.updateRunStatus(scope, data.runId, "running");
-
+    await requireAuthUser();
     const manifestPath = path.join(ARTIFACTS_DIR, "runs", data.runId, "manifest.json");
     try {
-      if (fs.existsSync(manifestPath)) {
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
-        if (manifest.status === "waiting_for_confirmation") {
-          manifest.status = "running";
-          fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
-        }
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+      if (manifest.status === "waiting_for_confirmation") {
+        manifest.status = "running";
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
       }
       return { success: true };
     } catch (e: any) {
@@ -481,29 +376,62 @@ export const confirmScrapeFn = createServerFn({ method: "POST" })
 export const abortScrapeFn = createServerFn({ method: "POST" })
   .validator((d: { runId: string }) => d)
   .handler(async ({ data }) => {
-    const user = await requireAuthUser();
-    const { resolveServingScope } = await import("../security/scope-resolver");
-    const { scope } = await resolveServingScope(user.id);
-    const repos = getRepositories();
-
-    const dbRun = await repos.scrapeRuns.getRun(scope, data.runId);
-    if (!dbRun) {
-      const { TenantIsolationError } = await import("../security/auth");
-      throw new TenantIsolationError(`Cannot abort run '${data.runId}': unauthorized or not found.`);
-    }
-
-    await repos.scrapeRuns.updateRunStatus(scope, data.runId, "stopping");
+    await requireAuthUser();
     const result = abortScrapeState(data.runId);
+    if (activeScrapeRunLock?.runId === data.runId) {
+      activeScrapeRunLock = null;
+    }
     return result;
   });
 
+let liveScrapedCache: { data: any[]; timestamp: number } | null = null;
+
+export function invalidateLiveScrapedCache() {
+  liveScrapedCache = null;
+}
+
 export const getLiveScrapedFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    const user = await requireAuthUser();
-    await import("../security/scope-resolver").then(({ resolveServingScope }) => resolveServingScope(user.id));
-    // Process-local scrape artifacts have no canonical person/tenant ownership.
-    // They are deliberately no longer a production serving authority.
-    return [];
+    await requireAuthUser();
+    const now = Date.now();
+    if (liveScrapedCache && (now - liveScrapedCache.timestamp < 30_000)) {
+      return liveScrapedCache.data;
+    }
+
+    try {
+      const { collectRecords } = await import("../../../scripts/scraper/persist/writer");
+      const diskRecords = collectRecords();
+      
+      const p = path.join(process.cwd(), "src", "data", "live-scraped.json");
+      let diskJsonRecords: any[] = [];
+      if (fs.existsSync(p)) {
+        try {
+          diskJsonRecords = JSON.parse(fs.readFileSync(p, "utf-8"));
+        } catch {}
+      }
+
+      const recordMap = new Map<string, any>();
+      for (const r of diskJsonRecords) {
+        if (r && (r.jobHash || r.id)) recordMap.set(r.jobHash || r.id, r);
+      }
+      for (const r of diskRecords as any[]) {
+        if (r && (r.jobHash || r.id)) recordMap.set(r.jobHash || r.id, r);
+      }
+
+      const merged = Array.from(recordMap.values());
+      const result = merged.length > 0 ? merged : diskJsonRecords;
+      
+      liveScrapedCache = { data: result, timestamp: now };
+      return result;
+    } catch {
+      const p = path.join(process.cwd(), "src", "data", "live-scraped.json");
+      if (!fs.existsSync(p)) return [];
+      try {
+        return JSON.parse(fs.readFileSync(p, "utf-8"));
+      } catch {
+        return [];
+      }
+    }
   });
 
 export interface CorpusJobState {
@@ -535,7 +463,7 @@ function getCorpusJob(): CorpusJobState {
 
 export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
   .handler(async () => {
-    await requireAuthUser({ requireAdmin: true });
+    await requireAuthUser();
     try {
       const job = getCorpusJob();
       if (job.status === "running") {
@@ -595,13 +523,13 @@ export const triggerCorpusRegenerationFn = createServerFn({ method: "POST" })
 
 export const getCorpusRegenerationStatusFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    await requireAuthUser({ requireAdmin: true });
+    await requireAuthUser();
     return getCorpusJob();
   });
 
 export const getCorpusHealthFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    await requireAuthUser({ requireAdmin: true });
+    await requireAuthUser();
     try {
       const { calculateCorpusHealth } = await import("../../../scripts/corpus/health");
       return calculateCorpusHealth();
@@ -617,7 +545,7 @@ export const getPipelineStatsFn = createServerFn({ method: "GET" })
     try {
       const { EnrichmentQueue } = await import("../../../scripts/scraper/persist/queue");
       const queue = new EnrichmentQueue();
-      const stats = await queue.getGlobalPipelineStats();
+      const stats = queue.getGlobalPipelineStats();
       
       // Compute actual database evaluation metrics via canonical serving
       const { OpportunityService } = await import("./opportunity-service");
@@ -626,9 +554,10 @@ export const getPipelineStatsFn = createServerFn({ method: "GET" })
       return {
         ...stats,
         discovered: metrics.totalScreened,
-        filtered: metrics.effectiveBreakdown.pass + metrics.effectiveBreakdown.none,
+        filtered: metrics.effectiveBreakdown.pass + metrics.effectiveBreakdown.sparse,
         shortlisted: metrics.effectiveBreakdown.pursue + metrics.effectiveBreakdown.consider,
         totalDecisions: metrics.totalDecisions,
+        activePursuits: metrics.activePursuits,
       };
     } catch (err: any) {
       console.error("[Server] getPipelineStatsFn failed:", err.message);

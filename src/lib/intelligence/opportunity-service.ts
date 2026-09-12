@@ -29,7 +29,31 @@ import {
   type AuthorizedPersonScope,
 } from "../security/auth";
 
-export type ServiceOptions = { categoryId?: string };
+export type ServiceOptions = {
+  activePursuits?: number;
+  categoryId?: string;
+};
+
+export interface OpportunityMetrics {
+  totalScreened: number;
+  activePursuits: number;
+  totalShortlisted: number;
+  totalDecisions: number;
+  remainingToReview: number;
+  breakdown: {
+    pursue: number;
+    consider: number;
+    pass: number;
+    sparse: number;
+  };
+}
+
+function ensureWorkerDaemonStarted() {
+  if (typeof window !== "undefined" || process.env.NODE_ENV === "test") return;
+  import("./EvaluationDaemon").then(({ EvaluationDaemon }) => {
+    EvaluationDaemon.startGlobalDaemon(2000);
+  }).catch(() => {});
+}
 
 /**
  * Resolves AuthorizedPersonScope strictly through authenticated database membership and person scoping.
@@ -69,88 +93,14 @@ export async function resolveScope(userId: string, requestedTenantId?: string): 
   return authorizePersonScope(authContext, userId, db);
 }
 
-import { SingleflightOpportunityQueries } from "./serving/singleflight";
-import type { FeedPage, FeedFilters, OpaqueCursor, NavigationContext } from "./opportunity-queries";
-
-/** Exhausts the canonical decided feed; the Decisions ledger is never a partial first page. */
-export async function collectDecidedFeedItems(
-  queries: Pick<SingleflightOpportunityQueries, "getFeed">,
-  scope: AuthorizedPersonScope,
-): Promise<FeedPage["items"]> {
-  const feedItems: Array<FeedPage["items"][number]> = [];
-  let cursor: OpaqueCursor | undefined;
-
-  do {
-    const feed = await queries.getFeed(scope, cursor, { decisionFilter: "decided" }, 50);
-    feedItems.push(...feed.items);
-    cursor = feed.nextCursor;
-  } while (cursor);
-
-  return feedItems;
-}
-
-/**
- * Exhausts the unreviewed canonical population before dossier hydration. The
- * Shortlist page is a review queue, not a browser-side interpretation of the
- * unreviewed feed, so it must not stop at an arbitrary first page.
- */
-async function collectUnreviewedFeedItems(
-  queries: Pick<SingleflightOpportunityQueries, "getFeed">,
-  scope: AuthorizedPersonScope,
-  categoryId?: string,
-): Promise<FeedPage["items"]> {
-  const feedItems: Array<FeedPage["items"][number]> = [];
-  let cursor: OpaqueCursor | undefined;
-
-  do {
-    const sparseSignalQueue = categoryId === "needs_more_signal";
-    const feed = await queries.getFeed(
-      scope,
-      cursor,
-      {
-        categoryId: categoryId as FeedFilters["categoryId"],
-        decisionFilter: "unreviewed",
-        // `needs_more_signal` is a dynamic SPARSE_SPEC population, not an
-        // evaluated PURSUE/CONSIDER shortlist.  The server owns both paths.
-        shortlistQueue: !sparseSignalQueue,
-      },
-      50,
-    );
-    feedItems.push(...feed.items);
-    cursor = feed.nextCursor;
-  } while (cursor);
-
-  return feedItems;
-}
-
 export class OpportunityService {
-  private static getServingQueries(): SingleflightOpportunityQueries {
-    const repos = getRepositories();
-    return SingleflightOpportunityQueries.getGlobalInstance(repos.canonicalServing);
-  }
-
   /**
-   * Computes authoritative canonical aggregate metrics across the active search plan population via SQL aggregation.
+   * Computes authoritative canonical aggregate metrics across the active search plan population.
    */
   static async getMetricsForUser(userId: string, requestedTenantId?: string): Promise<CanonicalOpportunityMetrics> {
     const scope = await resolveScope(userId, requestedTenantId);
-    const queries = this.getServingQueries();
-    return queries.getMetrics(scope);
-  }
-
-  /**
-   * Retrieves a paginated feed of lean opportunity summaries with keyset cursor pagination.
-   */
-  static async getFeedForUser(
-    userId: string,
-    cursor?: OpaqueCursor,
-    filters?: FeedFilters,
-    pageSize?: number,
-    requestedTenantId?: string
-  ): Promise<FeedPage> {
-    const scope = await resolveScope(userId, requestedTenantId);
-    const queries = this.getServingQueries();
-    return queries.getFeed(scope, cursor, filters, pageSize);
+    const repos = getRepositories();
+    return repos.canonicalServing.getOpportunityMetrics(scope);
   }
 
   /**
@@ -158,84 +108,28 @@ export class OpportunityService {
    */
   static async listDecidedForUser(userId: string, requestedTenantId?: string): Promise<Opportunity[]> {
     const scope = await resolveScope(userId, requestedTenantId);
-    const queries = this.getServingQueries();
-    const feedItems = await collectDecidedFeedItems(queries, scope);
-
-    const opportunities = await Promise.all(
-      feedItems.map((item) => queries.getDossier(scope, item.jobHash)),
-    );
-    return opportunities.filter(
-      (opportunity): opportunity is Opportunity => opportunity !== null && "decision" in opportunity,
-    );
+    const repos = getRepositories();
+    return repos.canonicalServing.listDecidedOpportunities(scope);
   }
 
   /**
-   * Lists the server-authoritative, unreviewed shortlist queue. Dossier
-   * hydration uses the canonical serving read model, so legacy/corrupt
-   * evaluated artifacts cannot become browser-defined recommendations.
+   * Lists all candidate opportunity DTOs for a specific user via the canonical joined query with dynamic contextual serving.
    */
-  static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity[]> {
+  static async listForUser(userId: string, options?: ServiceOptions, requestedTenantId?: string): Promise<Opportunity[]> {
+    ensureWorkerDaemonStarted();
     const scope = await resolveScope(userId, requestedTenantId);
-    const queries = this.getServingQueries();
-    const feedItems = await collectUnreviewedFeedItems(queries, scope, options?.categoryId);
-
-    // This legacy-shaped method remains for callers that still need full
-    // opportunity DTOs.  It must hydrate each item from the same canonical
-    // dossier projection rather than inventing scores, fingerprints, or a
-    // default verdict from the lean feed row.
-    const opportunities = await Promise.all(
-      feedItems.map((item) => queries.getDossier(scope, item.jobHash)),
-    );
-    return opportunities.filter((opportunity): opportunity is import("../../data/opportunity-fixtures").ServedOpportunity => {
-      if (!opportunity) return false;
-      if (options?.categoryId === "needs_more_signal") {
-        return opportunity.evaluationState === "SPARSE_SPEC"
-          && (opportunity.userDecision?.userAction === undefined || opportunity.userDecision?.userAction === null || opportunity.userDecision?.userAction === "NONE");
-      }
-      if (opportunity.evaluationState !== "EVALUATED") return false;
-      const verdict = opportunity.engineRecommendation?.engineVerdict;
-      const userDecision = opportunity.userDecision?.userAction;
-      return (verdict === "PURSUE" || verdict === "CONSIDER")
-        && (userDecision === undefined || userDecision === null || userDecision === "NONE");
-    });
+    const repos = getRepositories();
+    return repos.canonicalServing.listOpportunities(scope, options);
   }
 
   /**
    * Gets a single computed opportunity DTO by hash strictly within the authorized canonical population.
    * Zero fallback to legacy un-scoped evaluators.
    */
-  static async getForUser(userId: string, jobHash: string, options?: ServiceOptions, requestedTenantId?: string): Promise<import("../../data/opportunity-fixtures").ServedOpportunity | undefined> {
+  static async getForUser(userId: string, jobHash: string, options?: ServiceOptions, requestedTenantId?: string): Promise<Opportunity | undefined> {
     const scope = await resolveScope(userId, requestedTenantId);
-    const queries = this.getServingQueries();
-    const opp = await queries.getDossier(scope, jobHash);
-    return opp || undefined;
-  }
-
-  /**
-   * Gets adjacent navigation metadata (current index & total count).
-   */
-  static async getAdjacentInfo(
-    userId: string,
-    jobHash: string,
-    requestedTenantId?: string
-  ): Promise<{ currentIndex: number; totalCount: number; prev?: any; next?: any }> {
-    const scope = await resolveScope(userId, requestedTenantId);
-    const queries = this.getServingQueries();
-    const nav = await queries.getNavigation(scope, jobHash);
-    if (!nav) {
-      return {
-        currentIndex: 0,
-        totalCount: 0,
-        prev: undefined,
-        next: undefined,
-      };
-    }
-    return {
-      currentIndex: nav.currentIndex,
-      totalCount: nav.totalCount,
-      prev: nav.prevJobHash,
-      next: nav.nextJobHash,
-    };
+    const repos = getRepositories();
+    return repos.canonicalServing.getOpportunity(scope, jobHash, options);
   }
 
   /**
@@ -246,58 +140,23 @@ export class OpportunityService {
     jobHash: string,
     options?: ServiceOptions,
     requestedTenantId?: string
-  ): Promise<{ prev: any; next: any }> {
+  ): Promise<{ prev: Opportunity | undefined; next: Opportunity | undefined }> {
     const scope = await resolveScope(userId, requestedTenantId);
-    const queries = this.getServingQueries();
-    const nav = await queries.getNavigation(scope, jobHash, { categoryId: options?.categoryId as any });
-    return {
-      prev: nav?.prevJobHash,
-      next: nav?.nextJobHash,
-    };
+    const repos = getRepositories();
+    const adj = await repos.canonicalServing.getAdjacentOpportunities(scope, jobHash);
+    return { prev: adj.prev, next: adj.next };
   }
 
   /**
-   * High-performance single-request loader for executive opportunity dossier.
-   * Resolves authorized scope once and retrieves opportunity with adjacent navigation metadata.
+   * Gets adjacent navigation metadata (current index & total count).
    */
-  static async getDetailsForUser(
+  static async getAdjacentInfo(
     userId: string,
     jobHash: string,
-    options?: ServiceOptions,
     requestedTenantId?: string
-  ): Promise<{
-    opportunity: import("../../data/opportunity-fixtures").ServedOpportunity | undefined;
-    currentIndex: number;
-    totalCount: number;
-    neighbors: { prev: any; next: any };
-  }> {
+  ): Promise<{ currentIndex: number; totalCount: number; prev?: Opportunity; next?: Opportunity }> {
     const scope = await resolveScope(userId, requestedTenantId);
-    const queries = this.getServingQueries();
-    const [opp, nav] = await Promise.all([
-      queries.getDossier(scope, jobHash),
-      queries.getNavigation(scope, jobHash, { categoryId: options?.categoryId as any }),
-    ]);
-
-    if (!opp || !nav) {
-      return {
-        opportunity: undefined,
-        currentIndex: 0,
-        totalCount: 0,
-        neighbors: {
-          prev: undefined,
-          next: undefined,
-        },
-      };
-    }
-
-    return {
-      opportunity: opp,
-      currentIndex: nav.currentIndex,
-      totalCount: nav.totalCount,
-      neighbors: {
-        prev: nav.prevJobHash,
-        next: nav.nextJobHash,
-      },
-    };
+    const repos = getRepositories();
+    return repos.canonicalServing.getAdjacentOpportunities(scope, jobHash);
   }
 }

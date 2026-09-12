@@ -73,17 +73,4 @@ export class TursoAdapter implements DatabaseAdapter {
     }
     return row;
   }
-
-  async executeMigration(statements: readonly string[], options?: { disableForeignKeys?: boolean }): Promise<void> {
-    const disableFk = options?.disableForeignKeys ?? false;
-    if (disableFk) {
-      await this.client.migrate(statements as string[]);
-    } else {
-      await this.transaction(async (tx) => {
-        for (const stmt of statements) {
-          await tx.execute(stmt);
-        }
-      });
-    }
-  }
 }

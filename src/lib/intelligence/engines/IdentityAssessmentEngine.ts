@@ -1,5 +1,5 @@
 import { CandidateProjection } from "../../domain/candidate_projection";
-import { EvaluationJobProjection } from "../../domain/job_projection";
+import { JobProjection } from "../../domain/job_projection";
 import { IdentityAssessment } from "../../domain/semantic";
 import { EvidenceRichnessCalculator } from "../utils/EvidenceRichnessCalculator";
 import { IdentityDistanceCalculator } from "../utils/IdentityDistanceCalculator";
@@ -12,12 +12,12 @@ export class IdentityAssessmentEngine {
    */
   public static evaluate(
     candidate: CandidateProjection,
-    job: EvaluationJobProjection,
+    job: JobProjection,
     context?: CandidateEvaluationContext
   ): IdentityAssessment {
     const candidateIdentityStr = context 
       ? context.primaryIdentityStr 
-      : (candidate.executiveThemes?.length ? candidate.executiveThemes[0] : "UNKNOWN");
+      : (candidate.executiveThemes?.length ? candidate.executiveThemes[0] : "Commercial & Marketing Leadership");
 
     const jobIdentityStr = job.executiveIdentity?.value || "Commercial & Marketing Leadership";
     const jobText = (job.role || "") + " " + (job.originalOpportunity?.description || "");

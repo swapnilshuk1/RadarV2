@@ -38,7 +38,6 @@ bunfig.toml
 # Environment / secrets — never commit API keys or private certificates
 .env
 .env.*
-RADAR_NEW_SYSTEM_TRANSFER_2026-09-07/
 *.env
 *.key
 *.pem
@@ -47,11 +46,9 @@ groq.env
 # RADAR local data
 .scraper-artifacts/
 .scraper-cache/
-# Ephemeral scraper output; canonical live state is persisted outside Git
-src/data/live-scraped.json
-*.sqlite
-*.sqlite-shm
-*.sqlite-wal
+radar.sqlite
+radar.sqlite-shm
+radar.sqlite-wal
 *.ndjson
 
 # Scraper browser profiles (Playwright/Chrome cache — large, machine-specific)
@@ -69,6 +66,4 @@ scraper-profile-temp-*/
 # Scratch files and backups
 scratch/
 *.bak
-partial*.txt
-audit-reports/
-audit/
+

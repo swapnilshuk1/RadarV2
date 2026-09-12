@@ -10,18 +10,6 @@ function createMockOpportunity(overrides?: Partial<Opportunity>): Opportunity {
     role: "VP Growth & Marketing",
     company: "SkanAI Solutions",
     location: "Bengaluru, KA",
-    description: "Published role description covering executive growth leadership, operating priorities, commercial planning, cross-functional delivery, customer strategy, market expansion, and the responsibilities expected from the role. The candidate evaluation is based on the structured job specification and documented policy result.",
-    dimensions: [{
-      key: "functionalScope",
-      label: "Functional scope",
-      importance: "Core",
-      bucket: "Matched",
-      jdEvidence: {
-        status: "Explicit",
-        value: "executive growth leadership",
-        evidence: [{ quote: "executive growth leadership", source: "fixture" }],
-      },
-    }],
     scrapedFrom: "LinkedIn",
     scrapedAt: new Date().toISOString(),
     engineRecommendation: {

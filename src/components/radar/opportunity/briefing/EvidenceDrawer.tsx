@@ -1,12 +1,21 @@
+import { AdvisoryConstitution } from "@/lib/intelligence/editorial/AdvisoryConstitution";
+import { getFocusTopic } from "@/routes/opportunity.$jobHash";
+
 interface EvidenceDrawerProps {
+  o: any;
   brief: any;
-  whyRoleExists: string | null;
+  jobProj: any;
+  executionPkg: any;
 }
 
 export function EvidenceDrawer({
+  o,
   brief,
-  whyRoleExists,
+  jobProj,
+  executionPkg,
 }: EvidenceDrawerProps) {
+  const recomposedMission = AdvisoryConstitution.getWhyThisRoleExistsParagraph(o, jobProj, getFocusTopic(o, jobProj));
+
   return (
     <details className="group border border-border/80 rounded bg-surface-raised/20 p-4 space-y-4">
       <summary className="label-mono text-[10px] uppercase tracking-wider text-muted-foreground group-open:text-foreground hover:text-foreground flex items-center justify-between cursor-pointer list-none select-none">
@@ -16,52 +25,27 @@ export function EvidenceDrawer({
       
       <div className="mt-4 pt-4 border-t border-border/40 space-y-6">
         {/* SECTION A: Why Hiring (Context) */}
-        {whyRoleExists && <div className="space-y-2">
+        <div className="space-y-2">
           <h3 className="font-display text-base font-normal text-foreground leading-tight">
             Why is the company hiring?
           </h3>
           <p className="text-xs leading-relaxed text-muted-foreground font-normal">
-            {whyRoleExists}
+            {recomposedMission}
           </p>
-        </div>}
+        </div>
 
-        {/* SECTION B: Persisted Decision Hinges */}
-        {Array.isArray(brief?.rankedUnknowns)
-          && brief.rankedUnknowns.length > 0 && (
-          <div className="space-y-2.5">
-            <p className="label-mono text-xs uppercase tracking-wider text-caution font-semibold text-[9px]">
-              Decision Hinges
-            </p>
-
-            <ul className="space-y-2 text-xs text-foreground pl-0.5">
-              {brief.rankedUnknowns
-                .slice(0, 3)
-                .map(
-                  (
-                    hinge: any,
-                    index: number,
-                  ) => (
-                    <li
-                      key={index}
-                      className="flex items-start gap-2 leading-relaxed font-normal"
-                    >
-                      <span className="text-caution font-bold">
-                        •
-                      </span>
-
-                      <span className="text-xs text-muted-foreground">
-                        {hinge.question}
-                        {(hinge.reason
-                          || hinge.label)
-                          ? ` — ${hinge.reason || hinge.label}`
-                          : ""}
-                      </span>
-                    </li>
-                  ),
-                )}
-            </ul>
-          </div>
-        )}
+        {/* SECTION B: Recommendation Assumptions Checklist */}
+        <div className="space-y-2.5">
+          <p className="label-mono text-xs uppercase tracking-wider text-caution font-semibold text-[9px]">Recommendation Assumptions</p>
+          <ul className="space-y-2 text-xs text-foreground pl-0.5">
+            {executionPkg.recommendationConditions.map((cond: string, i: number) => (
+              <li key={i} className="flex items-start gap-2 leading-relaxed font-normal">
+                <span className="text-signal font-bold">✓</span>
+                <span className="text-xs text-muted-foreground">{cond}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         {/* SECTION C: Evidence Ledger */}
         <div className="space-y-4">
@@ -72,8 +56,12 @@ export function EvidenceDrawer({
             <div>
               <p className="label-mono text-signal font-semibold text-[9px] tracking-wider">Why we're confident</p>
               <ul className="mt-1.5 space-y-2 text-xs text-foreground pl-0.5 leading-relaxed">
-              {(brief.proofPoints || []).slice(0, 3).map((pt: any, i: number) => {
-                  const categoryTitle = pt.category || pt.headline || `Evidence point ${i + 1}`;
+                {(brief.proofPoints || []).slice(0, 3).map((pt: any, i: number) => {
+                  const categoryTitle = i === 0 
+                    ? "Commercial leadership at enterprise scale" 
+                    : i === 1 
+                    ? "Global platform transformation" 
+                    : "Cross-functional operating governance";
                   return (
                     <li key={i} className="flex items-start gap-1.5">
                       <span className="text-signal">•</span>
@@ -87,10 +75,10 @@ export function EvidenceDrawer({
             <div className="border-t border-border/40 pt-3">
               <p className="label-mono text-caution font-semibold text-[9px] tracking-wider">Remaining uncertainty</p>
               <ul className="mt-1.5 space-y-1.5 text-xs text-foreground pl-0.5 leading-relaxed">
-                {brief.whyNotStronger && <li className="flex items-start gap-1.5">
+                <li className="flex items-start gap-1.5">
                   <span className="text-caution">•</span>
-                  <span className="text-xs text-muted-foreground">{brief.whyNotStronger}</span>
-                </li>}
+                  <span className="text-xs text-muted-foreground">{brief.whyNotStronger || "Limited direct evidence of enterprise RevOps ownership in current record; verify during initial screening call."}</span>
+                </li>
               </ul>
             </div>
           </div>

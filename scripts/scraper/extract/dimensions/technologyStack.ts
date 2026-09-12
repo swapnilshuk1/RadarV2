@@ -154,4 +154,3 @@ export function extractTechnology(input: { title: string; snippet: string; detai
 }
 
 export const technologyExtractorId = `technologyStack@${extractorVersion}`;
-export { extractTechnology as extractTechnologyStack, technologyExtractorId as technologyStackExtractorId };

@@ -4,8 +4,6 @@ import { format, type Narrative } from "./narrative";
 import { CapabilityEngine, type JobSlice } from "../capability/CapabilityEngine";
 import { CapabilityOntology } from "../ontology/CapabilityOntology";
 import { SemanticNaturalLanguageResolver } from "./editorial/SemanticNaturalLanguageResolver";
-import { isMeaningfulEvidenceQuote } from "@/domain/evidence";
-import { sanitizePublishedEmployerDimensions } from "./editorial/PublishedEmployerEvidence";
 
 export type Presented = {
   opportunity: Opportunity;
@@ -101,83 +99,48 @@ export function present(
 
   // Close the loop with explainability: feed the dynamic human-focused narrative 
   // as the primary advisory recommendation, while keeping the structural explanation in the result view model
-  const finalRecommendation = narrative.recommendation;
+  const finalRecommendation = record.headspace.downgraded && narrative.headspaceLine
+    ? `${narrative.headspaceLine} ${narrative.recommendation}`
+    : narrative.recommendation;
+
+  const {
+    normalizedText,
+    html,
+    rawText,
+    payload,
+    rawDescription,
+    normalizedDescription,
+    evidenceGrounding,
+    dimensions,
+    ...cleanSource
+  } = source as Record<string, unknown>;
 
   const cleanDimensions = Array.isArray(source.dimensions)
-    ? source.dimensions.map((d: Record<string, unknown>): DimensionResult => {
-        const jdEv = d.jdEvidence as Record<string, unknown> | undefined;
-        const rawStatus = (jdEv?.status as import("@/data/opportunity-fixtures").Status | undefined) || "Missing";
-        const rawEvidenceArr = Array.isArray(jdEv?.evidence) ? (jdEv.evidence as unknown[]) : [];
-        const rawQuote = typeof (rawEvidenceArr[0] as Record<string, unknown> | undefined)?.quote === "string"
-          ? String((rawEvidenceArr[0] as Record<string, unknown>).quote)
-          : typeof jdEv?.quote === "string"
-          ? String(jdEv.quote)
-          : typeof d.quote === "string"
-          ? String(d.quote)
-          : "";
-        const rawValue = typeof jdEv?.value === "string" ? String(jdEv.value) : typeof d.value === "string" ? String(d.value) : "";
-
-        const hasValidQuote = isMeaningfulEvidenceQuote(rawQuote);
-        const hasValue = typeof rawValue === "string" && rawValue.trim().length > 0;
-
-        let finalStatus: import("@/data/opportunity-fixtures").Status = rawStatus;
-        if (rawStatus === "Explicit") {
-          if (!hasValidQuote) {
-            finalStatus = "Missing";
-          }
+    ? source.dimensions.map((d: Record<string, unknown>): DimensionResult => ({
+        key: ((d.key as string) || "mandate") as DimensionKey,
+        label: (d.label as string) || (d.key as string) || "",
+        importance: ((d.importance as string) || "Core") as "Core" | "Supporting" | "Context",
+        bucket: (d.bucket as EvidenceBucket) || "Missing",
+        jdEvidence: {
+          status: ((d.jdEvidence as Record<string, unknown> | undefined)?.status as import("@/data/opportunity-fixtures").Status) || "Explicit",
+          value: typeof (d.jdEvidence as Record<string, unknown> | undefined)?.value === "string" ? String((d.jdEvidence as Record<string, unknown>).value).slice(0, 140) : "",
+          evidence: Array.isArray((d.jdEvidence as Record<string, unknown> | undefined)?.evidence) && ((d.jdEvidence as Record<string, unknown>).evidence as unknown[]).length > 0
+            ? [{
+                quote: typeof ((d.jdEvidence as Record<string, unknown>).evidence as Record<string, unknown>[])[0]?.quote === "string" ? String(((d.jdEvidence as Record<string, unknown>).evidence as Record<string, unknown>[])[0].quote).slice(0, 140) : "",
+                source: "snippet"
+              }]
+            : []
         }
-
-        const isExplicit = finalStatus === "Explicit";
-        let finalValue = "";
-        if (isExplicit) {
-          finalValue = hasValue ? rawValue.slice(0, 140) : rawQuote.slice(0, 140);
-        } else if (finalStatus !== "Missing") {
-          finalValue = typeof rawValue === "string" ? rawValue.slice(0, 140) : "";
-        }
-        const finalEvidence: { quote: string; source: import("@/data/opportunity-fixtures").EvidenceSource }[] = isExplicit && hasValidQuote
-          ? [{ quote: rawQuote.slice(0, 140), source: "snippet" }]
-          : [];
-        const candidateProof = d.candidateProof as { headline?: unknown; detail?: unknown } | undefined;
-        const preservedCandidateProof = typeof candidateProof?.headline === "string"
-          && candidateProof.headline.trim().length > 0
-          && typeof candidateProof.detail === "string"
-          && candidateProof.detail.trim().length > 0
-          ? {
-              headline: candidateProof.headline.trim(),
-              detail: candidateProof.detail.trim(),
-            }
-          : undefined;
-
-        return {
-          key: ((d.key as string) || "mandate") as DimensionKey,
-          label: (d.label as string) || (d.key as string) || "",
-          importance: ((d.importance as string) || "Core") as "Core" | "Supporting" | "Context",
-          bucket: finalStatus === "Missing" ? "Missing" : ((d.bucket as EvidenceBucket) || "Missing"),
-          jdEvidence: {
-            status: finalStatus,
-            value: finalValue,
-            evidence: finalEvidence,
-          },
-          ...(preservedCandidateProof ? { candidateProof: preservedCandidateProof } : {}),
-        };
-      })
+      }))
     : [];
-  const publishedDimensions = sanitizePublishedEmployerDimensions(cleanDimensions);
+
   return {
     opportunity: {
-      jobHash: source.jobHash,
-      role: source.role,
-      company: source.company,
-      location: source.location,
-      postedRelative: source.postedRelative || "recently",
-      scrapedFrom: source.scrapedFrom || "LinkedIn",
-      applyUrl: source.applyUrl,
-      evaluationState: (source.evaluationState ?? "EVALUATED") as "EVALUATED" | "LEGACY",
-      dimensions: publishedDimensions,
+      ...source,
+      dimensions: cleanDimensions,
       decision: record.verb,
       recommendation: finalRecommendation,
       whyNow: narrative.whyNow,
-      primaryConcern: source.primaryConcern || null,
       positioning: narrative.positioning,
       primaryProof: narrative.primaryProof,
       headspaceInvestment: narrative.headspaceInvestment,
@@ -231,7 +194,7 @@ export function present(
             ? { label: "Consider", variant: "caution" as const }
             : { label: "Pass", variant: "muted" as const },
       // P1-F: Generate executive-facing recommended action based on decision + tailoring effort
-      recommendedAction: narrative.recommendedAction || record.verb,
+      recommendedAction: (narrative as any).recommendedAction || record.verb,
     },
     record,
     narrative,

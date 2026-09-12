@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
 import { RUNS_DIR, SNAPSHOT_DIR, SEARCH_METRICS_NDJSON } from "../config";
 import {
   MANIFEST_VERSION,
@@ -9,88 +8,9 @@ import {
   EXTRACTOR_VERSION,
   RECOMMENDATION_SCHEMA_VERSION,
 } from "../versions";
-import type {
-  RunManifest,
-  WorkUnit,
-  CardUnit,
-  PortalName,
-  UnitStatus,
-  AcquisitionVariant,
-  RunState,
-} from "../types";
+import type { RunManifest, WorkUnit, CardUnit, PortalName, UnitStatus } from "../types";
 import { writeJsonAtomic, readJsonSafe } from "../utils/fs-atomic";
 import { Journal } from "./journal";
-import { HealthManager } from "./health-manager";
-
-import {
-  acquireExclusiveLock,
-  releaseExclusiveLock,
-  readExclusiveLock,
-  defaultIsProcessAlive,
-  type ExclusiveLockToken,
-  type LockDeps,
-} from "./exclusive-lock";
-
-export {
-  acquireExclusiveLock,
-  releaseExclusiveLock,
-  readExclusiveLock,
-  defaultIsProcessAlive,
-  type ExclusiveLockToken,
-  type LockDeps,
-};
-
-export type OwnerLock = ExclusiveLockToken;
-
-export function acquireOwnerLock(
-  runDir: string,
-  runId: string,
-  deps: LockDeps = {},
-): OwnerLock {
-  return acquireExclusiveLock(
-    path.join(runDir, ".owner"),
-    { runId },
-    deps,
-  );
-}
-
-export function releaseOwnerLock(token: OwnerLock | null | undefined): void;
-export function releaseOwnerLock(runDir: string, runId?: string): void;
-
-export function releaseOwnerLock(
-  tokenOrRunDir: OwnerLock | string | null | undefined,
-  runId?: string,
-): void {
-  if (!tokenOrRunDir) return;
-  if (typeof tokenOrRunDir !== "string") {
-    releaseExclusiveLock(tokenOrRunDir);
-    return;
-  }
-
-  const lockPath = path.join(tokenOrRunDir, ".owner");
-  const existing = readExclusiveLock(lockPath);
-
-  if (!existing) return;
-
-  if (runId && existing.runId !== runId) {
-    return;
-  }
-
-  /*
-   * Compatibility cleanup only. Never delete a live owner's lock unless owned by current process.
-   */
-  const ownedByCurrentProcess =
-    existing.pid === process.pid &&
-    (!runId || existing.runId === runId);
-
-  if (!ownedByCurrentProcess && defaultIsProcessAlive(existing.pid)) {
-    return;
-  }
-
-  try {
-    fs.unlinkSync(lockPath);
-  } catch {}
-}
 
 // Where "latest" points so a resume doesn't need a runId argument.
 const LATEST_POINTER = path.join(RUNS_DIR, "latest.json");
@@ -101,15 +21,6 @@ export interface RunControllerOptions {
   maxPages: number;
   maxCardsPerPage: number;
   resume: boolean;
-  variants?: AcquisitionVariant[];
-  adaptiveDepth?: boolean;
-  initialPages?: number;
-  searchPlanId?: string;
-  snapshotId?: string;
-  contextFingerprint?: string;
-  variantsSignature?: string;
-  executionPlan?: { id?: string; workUnits: any[] };
-  executionPlanPath?: string;
 }
 
 export class RunController {
@@ -119,41 +30,45 @@ export class RunController {
   journalPath!: string;
   manifest!: RunManifest;
   journal!: Journal;
-  ownerLock?: OwnerLock;
 
   // Circuit breakers (ephemeral per-run)
   listingFailures: Map<string, number> = new Map();
+  detailFailures: Map<string, number> = new Map();
   failedHttpUrls: Map<string, string> = new Map();
-  seenSourceIdentitiesBySurface: Map<string, Set<string>> = new Map();
-  lowYieldStreaks: Map<string, number> = new Map();
-  private isFinalized: boolean = false;
 
-  static generateRunId(): string {
-    return `run-${Date.now()}`;
-  }
+  init(opts: RunControllerOptions): { resumed: boolean } {
+    const latest = readJsonSafe<{ runId: string }>(LATEST_POINTER);
+    const resumable = opts.resume && latest?.runId
+      ? this.tryLoadForResume(latest.runId, opts)
+      : null;
 
-  initFresh(runId: string, opts: RunControllerOptions): { resumed: boolean } {
-    this.runId = runId;
+    if (resumable) {
+      this.runId = resumable.runId;
+      this.runDir = resumable.runDir;
+      this.manifestPath = resumable.manifestPath;
+      this.journalPath = resumable.journalPath;
+      this.manifest = resumable.manifest;
+      this.journal = new Journal(this.journalPath);
+      this.markResume();
+      return { resumed: true };
+    }
+
+    this.runId = `run-${Date.now()}`;
     this.runDir = path.join(RUNS_DIR, this.runId);
     fs.mkdirSync(this.runDir, { recursive: true });
-
-    // Acquire atomic ownership lock before creating manifest or journal
-    this.ownerLock = acquireOwnerLock(this.runDir, this.runId);
-
     this.manifestPath = path.join(this.runDir, "manifest.json");
     this.journalPath = path.join(this.runDir, "journal.ndjson");
 
-    let plan = opts.executionPlan || null;
-    if (!plan && opts.executionPlanPath && fs.existsSync(opts.executionPlanPath)) {
-      plan = readJsonSafe<any>(opts.executionPlanPath);
+    const planPath = path.join(process.cwd(), ".radar", "runs", "ExecutionPlan.json");
+    let plan = null;
+    if (fs.existsSync(planPath)) {
+      plan = readJsonSafe<any>(planPath);
     }
 
     const units: WorkUnit[] = [];
     
-    // An explicit caller-supplied execution plan is loaded ONLY when requested by the caller.
-    // Implicit existence of an ExecutionPlan artifact on disk must never hijack normal runs.
-    if (!opts.variants?.length && plan && plan.workUnits) {
-      console.log(`Loading ${plan.workUnits.length} units from explicit ExecutionPlan...`);
+    if (plan && plan.workUnits) {
+      console.log(`Loading ${plan.workUnits.length} units from ExecutionPlan.json...`);
       for (const u of plan.workUnits) {
         units.push({
           id: u.id,
@@ -165,22 +80,16 @@ export class RunController {
           cardIds: [],
           executionPlanId: plan.id || "unknown-plan",
           definitionId: u.definitionId,
-          familyId: u.familyId,
-          variant: u.variant
+          familyId: u.familyId
         });
       }
     } else {
-      const variants: AcquisitionVariant[] = opts.variants && opts.variants.length > 0
-        ? opts.variants
-        : (opts.keywords ?? []).map((query) => ({ query, channel: "search" as const }));
-      const initialPages = opts.initialPages ?? (opts.adaptiveDepth ? 1 : opts.maxPages);
       for (const portal of opts.portals) {
-        for (const variant of variants.filter((v) => !v.portal || v.portal === portal)) {
-          const kw = variant.query;
-          const adhocId = `adhoc:${portal}:${kw.replace(/\s+/g, '-').toLowerCase()}:${variant.location || "global"}`;
-          for (let p = 1; p <= initialPages; p++) {
+        for (const kw of opts.keywords) {
+          const adhocId = `adhoc:${portal}:${kw.replace(/\s+/g, '-').toLowerCase()}`;
+          for (let p = 1; p <= opts.maxPages; p++) {
             units.push({
-              id: `${portal}:${kw}:${variant.location || "global"}:${p}`,
+              id: `${portal}:${kw}:${p}`,
               portal,
               keyword: kw,
               page: p,
@@ -188,9 +97,8 @@ export class RunController {
               attempts: 0,
               cardIds: [],
               executionPlanId: `plan:${adhocId}`,
-              definitionId: variant.definitionId || `def:${adhocId}`,
-              familyId: variant.familyId || `fam:${adhocId}`,
-              variant: { ...variant, query: kw }
+              definitionId: `def:${adhocId}`,
+              familyId: `fam:${adhocId}`
             });
           }
         }
@@ -210,10 +118,6 @@ export class RunController {
       portals: opts.portals,
       maxPages: opts.maxPages,
       maxCardsPerPage: opts.maxCardsPerPage,
-      searchPlanId: opts.searchPlanId,
-      snapshotId: opts.snapshotId,
-      contextFingerprint: opts.contextFingerprint,
-      variantsSignature: opts.variantsSignature,
       telemetry: {
         httpAttempted: 0,
         httpSuccessful: 0,
@@ -221,7 +125,6 @@ export class RunController {
         duplicatePreDetail: 0,
         duplicatePostDetail: 0,
         llmCalls: 0,
-        acquisitionIntegrityFailures: 0,
       },
       pageExecutionRecords: [],
       units,
@@ -234,44 +137,7 @@ export class RunController {
     return { resumed: false };
   }
 
-  init(opts: RunControllerOptions): { resumed: boolean } {
-    const latest = readJsonSafe<{ runId: string }>(LATEST_POINTER);
-    const resumable = opts.resume && latest?.runId
-      ? this.tryLoadForResume(latest.runId, opts)
-      : null;
-
-    if (resumable) {
-      this.attachExistingRun(resumable);
-      return { resumed: true };
-    }
-
-    return this.initFresh(RunController.generateRunId(), opts);
-  }
-
-  attachExistingRun(target: {
-    runId: string;
-    runDir: string;
-    manifestPath: string;
-    journalPath: string;
-    manifest: RunManifest;
-  }): void {
-    this.ownerLock = acquireOwnerLock(target.runDir, target.runId);
-    this.runId = target.runId;
-    this.runDir = target.runDir;
-    this.manifestPath = target.manifestPath;
-    this.journalPath = target.journalPath;
-    this.manifest = target.manifest;
-    this.journal = new Journal(this.journalPath);
-    this.markResume();
-  }
-
-  tryLoadForResume(runId: string, opts: RunControllerOptions): {
-    runId: string;
-    runDir: string;
-    manifestPath: string;
-    journalPath: string;
-    manifest: RunManifest;
-  } | null {
+  private tryLoadForResume(runId: string, opts: RunControllerOptions) {
     const runDir = path.join(RUNS_DIR, runId);
     const manifestPath = path.join(runDir, "manifest.json");
     const journalPath = path.join(runDir, "journal.ndjson");
@@ -289,65 +155,21 @@ export class RunController {
     if (
       JSON.stringify(manifest.keywords) !== JSON.stringify(opts.keywords) ||
       JSON.stringify(manifest.portals) !== JSON.stringify(opts.portals) ||
-      manifest.maxPages !== opts.maxPages ||
-      (opts.searchPlanId && manifest.searchPlanId !== opts.searchPlanId) ||
-      (opts.snapshotId && manifest.snapshotId !== opts.snapshotId) ||
-      (opts.contextFingerprint && manifest.contextFingerprint !== opts.contextFingerprint) ||
-      (opts.variantsSignature && manifest.variantsSignature !== opts.variantsSignature)
+      manifest.maxPages !== opts.maxPages
     ) {
       // Scope changed — new run avoids stale unit set.
       return null;
     }
-    if (!RunController.isStatusResumable(manifest.status)) {
-      return null;
-    }
+    if (manifest.status === "completed") return null;
     return { runId, runDir, manifestPath, journalPath, manifest };
   }
 
-  tryLoadForConfirmationReattach(runId: string, opts: RunControllerOptions): {
-    runId: string;
-    runDir: string;
-    manifestPath: string;
-    journalPath: string;
-    manifest: RunManifest;
-  } | null {
-    const runDir = path.join(RUNS_DIR, runId);
-    const manifestPath = path.join(runDir, "manifest.json");
-    const journalPath = path.join(runDir, "journal.ndjson");
-    const manifest = readJsonSafe<RunManifest>(manifestPath);
-    if (!manifest) return null;
-
-    if (
-      manifest.scraperVersion !== SCRAPER_VERSION ||
-      manifest.snapshotSchemaVersion !== SNAPSHOT_SCHEMA_VERSION ||
-      manifest.extractorVersion !== EXTRACTOR_VERSION
-    ) {
-      return null;
-    }
-    if (
-      (opts.searchPlanId && manifest.searchPlanId !== opts.searchPlanId) ||
-      (opts.snapshotId && manifest.snapshotId !== opts.snapshotId) ||
-      (opts.contextFingerprint && manifest.contextFingerprint !== opts.contextFingerprint) ||
-      (opts.variantsSignature && manifest.variantsSignature !== opts.variantsSignature)
-    ) {
-      return null;
-    }
-    if (manifest.status !== "waiting_for_confirmation" && manifest.status !== "initializing") {
-      return null;
-    }
-    return { runId, runDir, manifestPath, journalPath, manifest };
-  }
-
-  static isStatusResumable(status: RunState): boolean {
-    return status === "initializing" || status === "waiting_for_confirmation" || status === "running";
-  }
-
-  markResume(): void {
+  private markResume(): void {
     // Anything left "running" from a prior crashed process becomes "pending"
     // so it gets picked up again by the next scheduling pass.
     for (const u of this.manifest.units) if (u.status === "running") u.status = "pending";
     for (const c of this.manifest.cards) if (c.status === "running") c.status = "pending";
-    // NOTE: Keep prior lifecycle state intact! Do NOT force manifest.status = "running"
+    this.manifest.status = "running";
     this.persistManifest();
   }
 
@@ -355,81 +177,8 @@ export class RunController {
     return this.manifest.units.find((u) => u.status === "pending");
   }
 
-  nextPendingUnitForPortal(portal: PortalName): WorkUnit | undefined {
-    return this.manifest.units.find((u) => u.portal === portal && u.status === "pending");
-  }
-
   pendingUnits(): WorkUnit[] {
     return this.manifest.units.filter((u) => u.status === "pending");
-  }
-
-  runningUnits(): WorkUnit[] {
-    return this.manifest.units.filter((u) => u.status === "running");
-  }
-
-  /** Add a bounded adaptive acquisition surface to the current run. */
-  enqueueVariant(variant: AcquisitionVariant, maxPages = this.manifest.maxPages): WorkUnit[] {
-    const variantKey = variant.id || `${variant.portal || "all"}:${variant.query}:${variant.location || "global"}:${variant.postedWithinDays || "all"}`;
-    const existing = this.manifest.units.filter((u) => {
-      const key = u.variant?.id || `${u.portal}:${u.keyword}:${u.variant?.location || "global"}:${u.variant?.postedWithinDays || "all"}`;
-      return key === variantKey;
-    });
-    if (existing.length > 0) return existing;
-
-    const portals = variant.portal ? [variant.portal] : this.manifest.portals;
-    const added: WorkUnit[] = [];
-    for (const portal of portals) {
-      for (let page = 1; page <= maxPages; page++) {
-        const id = `adaptive:${variantKey}:${portal}:${page}`;
-        const unit: WorkUnit = {
-          id,
-          portal,
-          keyword: variant.query,
-          page,
-          status: "pending",
-          attempts: 0,
-          cardIds: [],
-          executionPlanId: `adaptive:${variantKey}`,
-          definitionId: variant.definitionId || `adaptive:${variantKey}`,
-          familyId: `adaptive:${variantKey}`,
-          variant: { ...variant, portal },
-        };
-        this.manifest.units.push(unit);
-        added.push(unit);
-      }
-    }
-    if (added.length > 0) this.persistManifest();
-    return added;
-  }
-
-  /** Add a single adaptive page unit to the manifest if not already present. */
-  enqueueAdaptivePageUnit(variant: AcquisitionVariant & { page: number }): WorkUnit | null {
-    const portal = (variant.portal || "all") as PortalName;
-    const location = variant.location || "global";
-    const unitId = `${portal}:${variant.query}:${location}:${variant.page}`;
-
-    if (this.manifest.units.some((u) => u.id === unitId)) {
-      return null;
-    }
-
-    const adhocId = `adhoc:${portal}:${variant.query.replace(/\s+/g, '-').toLowerCase()}:${location}`;
-    const unit: WorkUnit = {
-      id: unitId,
-      portal,
-      keyword: variant.query,
-      page: variant.page,
-      status: "pending",
-      attempts: 0,
-      cardIds: [],
-      executionPlanId: variant.definitionId ? `plan:${variant.definitionId}` : `plan:${adhocId}`,
-      definitionId: variant.definitionId || `def:${adhocId}`,
-      familyId: variant.familyId || `fam:${adhocId}`,
-      variant: { ...variant, query: variant.query },
-    };
-
-    this.manifest.units.push(unit);
-    this.persistManifest();
-    return unit;
   }
 
   updateUnit(unitId: string, patch: Partial<WorkUnit>): void {
@@ -476,9 +225,6 @@ export class RunController {
   }
 
   finalize(status: UnitStatus | "completed" | "failed" | "aborted"): void {
-    if (this.isFinalized) return;
-    this.isFinalized = true;
-
     this.manifest.status = (["completed", "failed", "aborted"].includes(status as string)
       ? status
       : "completed") as RunManifest["status"];
@@ -486,8 +232,6 @@ export class RunController {
     this.persistManifest();
     this.journal.append({ type: "run_finished", status: this.manifest.status });
     this.journal.close();
-    releaseOwnerLock(this.ownerLock);
-    this.ownerLock = undefined;
     this.printRunHealthDashboard();
   }
 
@@ -543,7 +287,7 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
 `);
   }
 
-  persistManifest(): void {
+  private persistManifest(): void {
     writeJsonAtomic(this.manifestPath, this.manifest);
   }
 
@@ -584,13 +328,6 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
   transitionTo(state: RunManifest["status"]): void {
     const oldState = this.manifest.status;
     if (oldState === state) return;
-
-    const terminalStates: RunManifest["status"][] = ["completed", "failed", "aborted", "stopped"];
-    if (terminalStates.includes(oldState)) {
-      console.warn(`[Manager] Rejecting transition from terminal state '${oldState}' to '${state}'.`);
-      return;
-    }
-
     const validTransitions: Record<RunManifest["status"], RunManifest["status"][]> = {
       queued: ["queued", "initializing", "running", "failed", "aborted", "stopping", "stopped"],
       initializing: ["initializing", "waiting_for_confirmation", "running", "failed", "aborted", "stopping", "stopped"],
@@ -599,10 +336,10 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
       enriching: ["initializing", "completing", "completed", "failed", "aborted", "stopping", "stopped"],
       stopping: ["stopping", "stopped", "aborted", "failed"],
       completing: ["completing", "completed", "failed", "aborted", "stopping", "stopped"],
-      completed: [],
-      stopped: [],
-      failed: [],
-      aborted: []
+      completed: ["initializing", "running"],
+      stopped: ["initializing", "running"],
+      failed: ["initializing", "running"],
+      aborted: ["initializing", "running"]
     };
     if (validTransitions[oldState] && !validTransitions[oldState].includes(state)) {
       console.warn(`[Manager] Unplanned transition from ${oldState} to ${state}, allowing for resilience.`);
@@ -639,7 +376,8 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
   }
 
   recordDetailFailure(portal: PortalName, url: string, reason: string): void {
-    HealthManager.recordFastPathFailure(portal, reason);
+    const fails = (this.detailFailures.get(portal) || 0) + 1;
+    this.detailFailures.set(portal, fails);
     
     // Deterministic blockers cache immediately
     if (reason === "403" || reason === "AuthWall") {
@@ -648,11 +386,11 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
   }
 
   recordDetailSuccess(portal: PortalName): void {
-    HealthManager.recordFastPathSuccess(portal);
+    this.detailFailures.delete(portal);
   }
 
   isHttpFastPathDisabled(portal: PortalName): boolean {
-    return !HealthManager.isFastPathAvailable(portal);
+    return (this.detailFailures.get(portal) || 0) >= 10;
   }
 
   recordTelemetry(
@@ -672,11 +410,7 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
       | "newVersionsCreated"
       | "duplicateVersionsSuppressed"
       | "candidatesProjected"
-      | "evaluationJobsEnqueued"
-      | "heuristicDuplicateSuspect"
-      | "hardFiltered"
-      | "duplicateAtsUrlObserved"
-      | "acquisitionIntegrityFailures",
+      | "evaluationJobsEnqueued",
     amount: number = 1
   ): void {
     if (!this.manifest.telemetry) {
@@ -697,15 +431,9 @@ Candidate & Queue  : Candidates Projected=${telemetry.candidatesProjected || 0},
         duplicateVersionsSuppressed: 0,
         candidatesProjected: 0,
         evaluationJobsEnqueued: 0,
-        heuristicDuplicateSuspect: 0,
-        hardFiltered: 0,
       };
     }
     this.manifest.telemetry[event] = ((this.manifest.telemetry[event] as number) || 0) + amount;
     this.persistManifest();
-  }
-
-  getTelemetry(event: keyof NonNullable<RunManifest["telemetry"]>): number {
-    return (this.manifest.telemetry?.[event] as number) || 0;
   }
 }

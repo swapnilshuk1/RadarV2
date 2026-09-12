@@ -66,11 +66,6 @@ describe("RADAR Stage 2A: Runtime Persistence Unification & Source-of-Truth", ()
     expect(typeof repos.opportunities.listOpportunitySources).toBe("function");
 
     const mockUser = "test-runtime-user-1";
-    const db = getDatabaseAdapter();
-    await db.execute(`INSERT OR IGNORE INTO tenants (id, status) VALUES ('tenant-runtime', 'active')`);
-    await db.execute(`INSERT OR IGNORE INTO people (id, email, tenant_id) VALUES ('${mockUser}', '${mockUser}@test.com', 'tenant-runtime')`);
-    await db.execute(`INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status) VALUES ('${mockUser}', 'tenant-runtime', 'owner', '["read:opportunity","write:opportunity"]', 'active')`);
-
     vi.spyOn(repos.people, "getLatestProjection").mockResolvedValue(mockProjection);
     vi.spyOn(repos.decisions, "getUserDecisions").mockResolvedValue({});
     vi.spyOn(repos.evaluations, "listEvaluationsForUser").mockResolvedValue([]);
@@ -194,27 +189,28 @@ describe("RADAR Stage 2A: Runtime Persistence Unification & Source-of-Truth", ()
   it("6. Single opportunity lookup (getForUser) queries repository and evaluates correctly", async () => {
     const repos = getRepositories();
     const mockUser = "test-runtime-user-single";
-    const db = getDatabaseAdapter();
-    await db.execute(`INSERT OR IGNORE INTO tenants (id, status) VALUES ('tenant-runtime', 'active')`);
-    await db.execute(`INSERT OR IGNORE INTO people (id, email, tenant_id) VALUES ('${mockUser}', '${mockUser}@test.com', 'tenant-runtime')`);
-    await db.execute(`INSERT OR IGNORE INTO memberships (user_id, tenant_id, role, permissions, status) VALUES ('${mockUser}', 'tenant-runtime', 'owner', '["read:opportunity","write:opportunity"]', 'active')`);
-
     vi.spyOn(repos.people, "getLatestProjection").mockResolvedValue(mockProjection);
     vi.spyOn(repos.decisions, "getUserDecisions").mockResolvedValue({});
 
-    const mockServedOpp: any = {
+    const mockSingleOpp: OpportunitySource = {
       jobHash: "j-single-target",
       role: "VP of Growth",
       company: "Scale Systems",
       location: "Bengaluru",
-      verdict: "CONSIDER",
+      scrapedFrom: "LinkedIn",
+      postedRelative: "Today",
+      rawText: "VP Growth to scale enterprise revenue channels.",
+      dimensions: [],
+      primaryConcern: null,
+      positioning: ["Growth"],
     };
 
-    const getOppSpy = vi.spyOn(repos.canonicalServing, "getOpportunity").mockResolvedValue(mockServedOpp);
+    vi.spyOn(repos.opportunities, "listOpportunitySources").mockResolvedValue([]);
+    const getOppSpy = vi.spyOn(repos.opportunities, "getOpportunitySource").mockResolvedValue(mockSingleOpp);
 
     const opp = await OpportunityService.getForUser(mockUser, "j-single-target");
 
-    expect(getOppSpy).toHaveBeenCalled();
+    expect(getOppSpy).toHaveBeenCalledWith("j-single-target");
     expect(opp).toBeDefined();
     expect(opp?.jobHash).toBe("j-single-target");
     expect(opp?.role).toBe("VP of Growth");

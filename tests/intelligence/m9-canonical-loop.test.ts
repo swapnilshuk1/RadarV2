@@ -10,7 +10,7 @@
  *   -> Evaluation Queue (evaluation_jobs)
  *   -> Evaluation Worker (EvaluationWorker.pollAndProcessNext)
  *   -> Materialized Evaluations (materialized_evaluations)
- *   -> Canonical Executive Serving (SqliteOpportunityQueries)
+ *   -> Canonical Executive Serving (SqliteCanonicalServingStore)
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -20,14 +20,14 @@ import path from "path";
 import { SqliteAdapter } from "../../src/data/database/sqlite";
 import { CanonicalIngestionService } from "../../src/lib/acquisition/CanonicalIngestionService";
 import { EvaluationWorker } from "../../src/lib/intelligence/EvaluationWorker";
-import { SqliteOpportunityQueries } from "../../src/data/sqlite/repositories/SqliteOpportunityQueries";
+import { SqliteCanonicalServingStore } from "../../src/data/sqlite/repositories/SqliteCanonicalServingStore";
 import { computeCanonicalJobId } from "../../src/lib/domain/canonical_identity";
 
 describe("Milestone M9 — Close Canonical Production Loop", () => {
   let sqliteDb: Database.Database;
   let db: SqliteAdapter;
   let ingestionService: CanonicalIngestionService;
-  let opportunityQueries: SqliteOpportunityQueries;
+  let servingStore: SqliteCanonicalServingStore;
   let worker: EvaluationWorker;
 
   const tenantId = "tenant_default";
@@ -39,7 +39,7 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
     sqliteDb.pragma("foreign_keys = ON");
     db = new SqliteAdapter(sqliteDb);
     ingestionService = new CanonicalIngestionService(db);
-    opportunityQueries = new SqliteOpportunityQueries(db);
+    servingStore = new SqliteCanonicalServingStore(db);
     worker = new EvaluationWorker("test_worker_1", { adapter: db });
 
     const migrationFiles = [
@@ -55,14 +55,6 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
       "024_canonical_posting_precision.sql",
       "025_canonical_decisions.sql",
       "021_evaluation_work_queue.sql",
-      "026_canonical_acquisition_integrity.sql",
-      "027_materialized_evaluations_nullable_decision.sql",
-      "028_active_evaluation_context_pointers.sql",
-      "029_materialized_evaluations_vetoed.sql",
-      "033_opportunity_version_source_payload.sql",
-      "035_search_plan_candidate_eligibility_audit.sql",
-      "037_materialized_evaluation_fingerprint.sql",
-      "038_opportunity_version_category_projection.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -88,11 +80,6 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
 
       INSERT INTO evaluation_contexts (context_fingerprint, tenant_id, person_id, search_plan_snapshot_id, ontology_version, ontology_fingerprint, policy_version, profile_version) VALUES 
         ('ctx_fp_1', '${tenantId}', '${personId}', 'sps_1', 'v2', 'ofp_1', 'v4.3', 'prof_1');
-
-      INSERT INTO evaluation_context_scopes (context_fingerprint, tenant_id, person_id, search_plan_id)
-        VALUES ('ctx_fp_1', '${tenantId}', '${personId}', 'sp_1');
-      INSERT INTO active_evaluation_contexts (tenant_id, person_id, search_plan_id, context_fingerprint, activated_by)
-        VALUES ('${tenantId}', '${personId}', 'sp_1', 'ctx_fp_1', 'test');
     `);
   });
 
@@ -181,7 +168,7 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
     expect(jobsCount?.count).toBe(0);
   });
 
-  it("3. End-to-end loop: a synthetic non-JD is materialized as unavailable and remains servable", async () => {
+  it("3. End-to-end loop: Worker processes queue -> Materialized Evaluation -> Canonical Executive Serving", async () => {
     const payload = {
       sourcePortal: "linkedin",
       sourceJobId: "job_vp_303",
@@ -231,22 +218,17 @@ describe("Milestone M9 — Close Canonical Production Loop", () => {
     expect(matEval).toBeDefined();
     expect(matEval.tenant_id).toBe(tenantId);
     expect(matEval.person_id).toBe(personId);
-    // Missing grounded evaluation prerequisites are NOT_EVALUABLE, not a
-    // genuine sparse specification. The unavailable artifact stays advisory-free.
-    expect(matEval.evaluation_state).toBe("NOT_EVALUABLE");
-    expect(matEval.decision).toBeNull();
-    expect(matEval.quality_score).toBeNull();
+    expect(matEval.quality_score).toBeGreaterThan(0);
 
-    // 5. Query the canonical serving read model — opportunity must be immediately retrievable.
-    const opportunities = (await opportunityQueries.getFeed(scope, undefined, undefined, 24)).items;
+    // 5. Query Canonical Serving Store — opportunity must be immediately retrievable!
+    const opportunities = await servingStore.listOpportunities(scope);
     expect(opportunities.length).toBe(1);
     expect(opportunities[0].jobHash).toBe("job_vp_303");
+    expect((opportunities[0] as any).canonicalJobId).toBe(ingestRes.canonicalJobId);
     expect(opportunities[0].role).toBe("VP Engineering");
     expect(opportunities[0].company).toBe("HyperScale Tech");
-    expect(opportunities[0].effectiveDecision).toBe("UNKNOWN");
-    // The public DTO preserves the absence of a user decision as null; only
-    // effectiveDecision supplies the non-advisory UNKNOWN fallback.
-    expect(opportunities[0].userAction).toBeNull();
+    expect(opportunities[0].effectiveDecision).toBeDefined();
+    expect(opportunities[0].userDecision).toBeNull();
   });
 
   it("4. Guarantees complete idempotency on repeated ingestion invocations", async () => {

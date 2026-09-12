@@ -19,15 +19,11 @@ export function writeJsonAtomic(target: string, data: unknown): void {
     } catch (e: any) {
       if (e.code === "EPERM" || e.code === "EACCES") {
         retries--;
-        if (retries === 0) {
-          try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch {}
-          throw e;
-        }
+        if (retries === 0) throw e;
         // Busy-wait 50ms to allow the lock to release (sync context)
         const start = Date.now();
         while (Date.now() - start < 50) { /* wait */ }
       } else {
-        try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch {}
         throw e;
       }
     }

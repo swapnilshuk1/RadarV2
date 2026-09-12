@@ -3,17 +3,10 @@ import { ResumeSuggestion, ExecutionPackage } from "@/lib/intelligence/execution
 
 interface StrategyWorkspaceProps {
   executionPkg: ExecutionPackage;
-  brief?: {
-    rankedUnknowns?: Array<{
-      question: string;
-      label: string;
-      reason?: string;
-    }>;
-  };
   layout?: "desktop" | "mobile";
 }
 
-export function StrategyWorkspace({ executionPkg, brief, layout = "desktop" }: StrategyWorkspaceProps) {
+export function StrategyWorkspace({ executionPkg, layout = "desktop" }: StrategyWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<"resume" | "linkedin" | "screening" | "interview">("resume");
 
   const isMobile = layout === "mobile";
@@ -113,14 +106,11 @@ export function StrategyWorkspace({ executionPkg, brief, layout = "desktop" }: S
 
       {activeTab === "screening" && (
         <div className="space-y-3 text-xs leading-relaxed">
-          {(brief?.rankedUnknowns || []).map((q, i: number) => (
+          {executionPkg.screeningQuestions.map((q, i: number) => (
             <div key={i} className="rounded border border-border bg-background p-4 space-y-1.5">
               <p className="font-semibold text-foreground">• {q.question}</p>
               <p className="text-muted-foreground text-xs">
-                <span className="text-primary font-semibold">
-                  Why it matters:
-                </span>{" "}
-                {q.reason || q.label}
+                <span className="text-primary font-semibold">Why it matters:</span> {q.whyItMatters}
               </p>
             </div>
           ))}
