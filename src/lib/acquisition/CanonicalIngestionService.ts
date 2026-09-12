@@ -401,14 +401,33 @@ export class CanonicalIngestionService {
         throw new AcquisitionIntegrityError(`PDF acquisition ${source}:${sourceJobId} is missing its source payload.`);
       }
       const requestedKey = payload.sourcePayloadKey || `opportunity-versions/${versionId}/source`;
+      const sourceBytes = typeof sourcePayload === "string" ? Buffer.from(sourcePayload, "utf8") : Buffer.from(sourcePayload);
+      const store = this.blobStore || getBlobStore();
       try {
-        sourcePayloadKey = await (this.blobStore || getBlobStore()).put(
-          requestedKey,
-          sourcePayload,
-          payload.contentType || "application/pdf",
-        );
+        const exists = await store.exists(requestedKey);
+        if (exists) {
+          const existingBytes = await store.get(requestedKey);
+          if (!existingBytes) {
+            throw new AcquisitionIntegrityError(
+              `Existing source payload key '${requestedKey}' exists but returned null content`,
+            );
+          }
+          if (!existingBytes.equals(sourceBytes)) {
+            throw new AcquisitionIntegrityError(
+              `IMMUTABLE_SOURCE_PAYLOAD_CONFLICT: Existing BlobStore payload at ${requestedKey} differs from incoming source bytes`,
+            );
+          }
+          sourcePayloadKey = requestedKey;
+        } else {
+          sourcePayloadKey = await store.put(
+            requestedKey,
+            sourceBytes,
+            payload.contentType || "application/pdf",
+          );
+        }
         sourceMediaType = payload.contentType || "application/pdf";
       } catch (err) {
+        if (err instanceof AcquisitionIntegrityError) throw err;
         throw new AcquisitionIntegrityError(
           `Failed to write source payload to BlobStore for ${canonicalJobId}/${versionId}: ${(err as Error).message}`,
           err
