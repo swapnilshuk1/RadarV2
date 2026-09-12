@@ -8,7 +8,7 @@
   "activeGateTitle": "Substrate, provenance, and extraction architecture decision",
   "activeBatchId": "GATE_1B_BATCH_01",
   "currentBatchManifest": "docs/transition/CURRENT_BATCH.json",
-  "currentBatchScopeRevision": 1,
+  "currentBatchScopeRevision": 2,
   "implementationLedger": "docs/transition/IMPLEMENTATION_LEDGER.json",
   "agentChangeProtocol": "docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md",
   "requirePerCommitAcknowledgement": true,
@@ -28,6 +28,8 @@
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,
     "gate3RequiresGate2ExitCertification": true,
-    "agentCompletionRequiresAllGovernedCommitsAcknowledged": true
+    "agentCompletionRequiresAllGovernedCommitsAcknowledged": true,
+    "uncommittedGovernedChangesFailTransitionCheck": true,
+    "testsRequireExplicitBatchAuthorization": true
   }
 }
