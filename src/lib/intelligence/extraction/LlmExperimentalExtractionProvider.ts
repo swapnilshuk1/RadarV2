@@ -10,19 +10,26 @@ import {
 import type { CandidateProofOutputV1 } from "./CandidateProofExtractorV1";
 import type { RoleIntelligenceOutputV1 } from "./RoleIntelligenceExtractorV1";
 import {
-  LLM_OUTPUT_RUNTIME_SCHEMA,
-  parseCandidateProofOutputV1,
-  parseRoleIntelligenceOutputV1,
-} from "./ExtractionRuntimeSchema";
+  CANDIDATE_SEMANTIC_PROPOSAL_JSON_SCHEMA,
+  LLM_SEMANTIC_ASSEMBLER_VERSION,
+  LLM_SEMANTIC_PROPOSAL_SCHEMA_VERSION,
+  ROLE_SEMANTIC_PROPOSAL_JSON_SCHEMA,
+  assembleCandidateSemanticProposals,
+  assembleRoleSemanticProposals,
+  parseCandidateSemanticProposals,
+  parseRoleSemanticProposals,
+} from "./ExperimentalSemanticProposal";
 
-export const LLM_EXPERIMENT_PROMPT_VERSION = "gate1b-batch03/v1";
-export const LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION = "llm-extraction-envelope/v1";
+export const LLM_EXPERIMENT_PROMPT_VERSION = "gate1b-batch03/proposals-v1";
+export const LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION = "llm-semantic-proposal-envelope/v1";
 
 export interface LlmExperimentConfiguration {
   readonly providerId: string;
   readonly model: string;
   readonly promptVersion: string;
   readonly responseSchemaVersion: string;
+  readonly proposalSchemaVersion: string;
+  readonly assemblerVersion: string;
   readonly generationParameters: Readonly<Record<string, string | number | boolean | null>>;
 }
 
@@ -123,11 +130,10 @@ export function createLlmExperimentConfigurationFingerprint(
 function envelopeSchema(kind: LlmStructuredRequest["kind"]): Readonly<Record<string, unknown>> {
   return {
   type: "object",
-  required: ["schemaVersion", "sourceIdentity", "output"],
+  required: ["schemaVersion", "output"],
   properties: {
     schemaVersion: { type: "string", const: LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION },
-    sourceIdentity: { type: "string" },
-    output: kind === "ROLE_INTELLIGENCE" ? LLM_OUTPUT_RUNTIME_SCHEMA.role : LLM_OUTPUT_RUNTIME_SCHEMA.candidate,
+    output: kind === "ROLE_INTELLIGENCE" ? ROLE_SEMANTIC_PROPOSAL_JSON_SCHEMA : CANDIDATE_SEMANTIC_PROPOSAL_JSON_SCHEMA,
   },
   additionalProperties: false,
   };
@@ -141,17 +147,14 @@ function createPrompt(
   return [
     `You are an experimental ${kind} extractor using prompt ${promptVersion}.`,
     "Return JSON only, conforming exactly to the supplied schema.",
-    "Every text field and offset must resolve exactly against the supplied source.",
+    "Return only semantic proposals with exact source quotes. Do not emit IDs, source identity, offsets, sections, collections, counts, or metrics.",
     "Do not make recommendations, evaluate fit, or introduce facts absent from the source.",
     "SOURCE:",
     sourceText,
   ].join("\n");
 }
 
-function parseEnvelope(
-  response: LlmStructuredResponse,
-  sourceIdentity: string,
-): Record<string, unknown> {
+function parseEnvelope(response: LlmStructuredResponse): Record<string, unknown> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(response.outputText);
@@ -163,15 +166,14 @@ function parseEnvelope(
   }
   const envelope = parsed as Record<string, unknown>;
   if (
-    envelope.schemaVersion !== LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION
+    Object.keys(envelope).some((key) => key !== "schemaVersion" && key !== "output")
+    || Object.keys(envelope).length !== 2
+    || envelope.schemaVersion !== LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION
     || typeof envelope.output !== "object"
     || envelope.output === null
     || Array.isArray(envelope.output)
   ) {
     throw new LlmExperimentalExtractionError("SCHEMA", "LLM response violates the experimental response schema.");
-  }
-  if (envelope.sourceIdentity !== sourceIdentity) {
-    throw new LlmExperimentalExtractionError("SOURCE_BINDING", "LLM response is bound to a different immutable source.");
   }
   return envelope;
 }
@@ -186,6 +188,8 @@ abstract class LlmExperimentalProviderBase {
     if (
       configuration.promptVersion !== LLM_EXPERIMENT_PROMPT_VERSION
       || configuration.responseSchemaVersion !== LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION
+      || configuration.proposalSchemaVersion !== LLM_SEMANTIC_PROPOSAL_SCHEMA_VERSION
+      || configuration.assemblerVersion !== LLM_SEMANTIC_ASSEMBLER_VERSION
     ) {
       throw new LlmExperimentalExtractionError(
         "SCHEMA",
@@ -213,7 +217,7 @@ abstract class LlmExperimentalProviderBase {
         generationParameters: this.configuration.generationParameters,
         store: false,
       });
-      const envelope = parseEnvelope(response, sourceIdentity);
+      const envelope = parseEnvelope(response);
       return {
         output: envelope.output as Record<string, unknown>,
         telemetry: {
@@ -270,7 +274,7 @@ export class ExperimentalLlmRoleIntelligenceProvider
       provider: this.descriptor,
       cacheIdentity,
       source: input.source,
-      output: parseRoleIntelligenceOutputV1(response.output),
+      output: assembleRoleSemanticProposals({ sourceText: input.sourceText, caseId: input.caseId, canonicalJobId: input.source.canonicalJobId, companyName: input.companyName, title: input.title, proposals: parseRoleSemanticProposals(response.output) }),
       experimentalTelemetry: response.telemetry,
     };
   }
@@ -298,7 +302,7 @@ export class ExperimentalLlmCandidateProofProvider
       provider: this.descriptor,
       cacheIdentity,
       source: input.source,
-      output: parseCandidateProofOutputV1(response.output),
+      output: assembleCandidateSemanticProposals({ sourceText: input.sourceText, sourceDocumentId: input.source.documentId, proposals: parseCandidateSemanticProposals(response.output) }),
       experimentalTelemetry: response.telemetry,
     };
   }

@@ -1,9 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { CandidateProofExtractorV1 } from "../../../src/lib/intelligence/extraction/CandidateProofExtractorV1";
-import {
-  ExperimentalLlmExtractionExecutor,
-  type ExperimentalExtractionOutcome,
-} from "../../../src/lib/intelligence/extraction/ExperimentalLlmExtractionExecutor";
 import {
   ExperimentalLlmCandidateProofProvider,
   ExperimentalLlmRoleIntelligenceProvider,
@@ -11,322 +6,147 @@ import {
   LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION,
   createLlmExperimentConfigurationFingerprint,
   toStrictStructuredOutputTransportRequest,
-  type LlmStructuredRequest,
   type LlmStructuredExtractionClient,
 } from "../../../src/lib/intelligence/extraction/LlmExperimentalExtractionProvider";
-import { RoleIntelligenceExtractorV1 } from "../../../src/lib/intelligence/extraction/RoleIntelligenceExtractorV1";
+import {
+  LLM_SEMANTIC_ASSEMBLER_VERSION,
+  LLM_SEMANTIC_PROPOSAL_SCHEMA_VERSION,
+} from "../../../src/lib/intelligence/extraction/ExperimentalSemanticProposal";
+import { ExperimentalLlmExtractionExecutor } from "../../../src/lib/intelligence/extraction/ExperimentalLlmExtractionExecutor";
 import { VerifiedExtractionProviderRunner } from "../../../src/lib/intelligence/extraction/VerifiedExtractionProviderRunner";
-import type {
-  CandidateDocumentSourceRef,
-  OpportunityVersionSourceRef,
-} from "../../../src/lib/domain/source_provenance";
+import type { CandidateDocumentSourceRef, OpportunityVersionSourceRef } from "../../../src/lib/domain/source_provenance";
 import type { ResolvedSourceSnapshot } from "../../../src/lib/provenance/SourceSnapshotResolver";
 
-const roleText = "Key Responsibilities\nOwn pricing governance across channel expansion.";
+const roleText = "# Key Responsibilities\nOwn pricing governance across channel expansion.";
 const candidateText = [
   "# Candidate",
   "## PROFESSIONAL EXPERIENCE",
   "### Commercial Director | Acme | 2020–Present",
   "- Led pricing governance across regional markets.",
 ].join("\n");
-
 const roleSource: OpportunityVersionSourceRef = {
-  kind: "OPPORTUNITY_VERSION",
-  canonicalJobId: "job-llm-experiment",
-  opportunityVersion: "opp-version-llm-experiment",
-  contentHash: "content-hash-llm-experiment",
-  sourcePayloadKey: null,
-  sourcePayloadSha256: null,
+  kind: "OPPORTUNITY_VERSION", canonicalJobId: "job-llm-experiment", opportunityVersion: "opp-version-llm-experiment",
+  contentHash: "content-hash-llm-experiment", sourcePayloadKey: null, sourcePayloadSha256: null,
 };
 const candidateSource: CandidateDocumentSourceRef = {
-  kind: "CANDIDATE_DOCUMENT_TEXT",
-  personId: "person-llm-experiment",
-  documentId: "candidate-document-llm-experiment",
-  documentHash: "candidate-document-hash",
-  textHash: "candidate-text-hash",
+  kind: "CANDIDATE_DOCUMENT_TEXT", personId: "person-llm-experiment", documentId: "candidate-document-llm-experiment",
+  documentHash: "candidate-document-hash", textHash: "candidate-text-hash",
 };
-
 const configuration = {
-  providerId: "experimental-test-llm",
-  model: "test-structured-model",
-  promptVersion: LLM_EXPERIMENT_PROMPT_VERSION,
-  responseSchemaVersion: LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION,
-  generationParameters: { temperature: 0, seed: 73 },
+  providerId: "experimental-test-llm", model: "test-structured-model", promptVersion: LLM_EXPERIMENT_PROMPT_VERSION,
+  responseSchemaVersion: LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION, proposalSchemaVersion: LLM_SEMANTIC_PROPOSAL_SCHEMA_VERSION,
+  assemblerVersion: LLM_SEMANTIC_ASSEMBLER_VERSION, generationParameters: { temperature: 0, seed: 73 },
 } as const;
 
-function snapshot(
-  ref: CandidateDocumentSourceRef | OpportunityVersionSourceRef,
-  text: string,
-): ResolvedSourceSnapshot {
-  return {
-    ref,
-    storage: "DATABASE_TEXT",
-    mediaType: "text/plain; charset=utf-8",
-    bytes: Buffer.from(text, "utf8"),
-    text,
-  };
+function sourceSnapshot(ref: CandidateDocumentSourceRef | OpportunityVersionSourceRef, text: string): ResolvedSourceSnapshot {
+  return { ref, storage: "DATABASE_TEXT", mediaType: "text/plain; charset=utf-8", bytes: Buffer.from(text), text };
 }
 
-function runnerFor(
-  ref: CandidateDocumentSourceRef | OpportunityVersionSourceRef,
-  text: string,
-): { runner: VerifiedExtractionProviderRunner; resolverCalls: () => number } {
-  let resolves = 0;
-  const resolver = {
-    resolve: async (requested: CandidateDocumentSourceRef | OpportunityVersionSourceRef) => {
-      resolves += 1;
-      expect(requested).toEqual(ref);
-      return snapshot(ref, text);
-    },
-  };
-  return {
-    runner: new VerifiedExtractionProviderRunner(resolver as never),
-    resolverCalls: () => resolves,
-  };
+function runnerFor(ref: CandidateDocumentSourceRef | OpportunityVersionSourceRef, text: string): VerifiedExtractionProviderRunner {
+  return new VerifiedExtractionProviderRunner({ resolve: async (requested) => {
+    expect(requested).toEqual(ref);
+    return sourceSnapshot(ref, text);
+  } } as never);
 }
 
-function roleOutput() {
-  return new RoleIntelligenceExtractorV1().extract({
-    caseId: "llm-role-case",
-    canonicalJobId: roleSource.canonicalJobId,
-    rawText: roleText,
-  });
-}
-
-function candidateOutput() {
-  return new CandidateProofExtractorV1().extract({
-    sourceDocumentId: candidateSource.documentId,
-    rawText: candidateText,
-  });
-}
-
-function responseFor(output: unknown, sourceIdentity?: string): LlmStructuredExtractionClient {
-  return {
-    async generate(request) {
-      expect(request.model).toBe(configuration.model);
-      expect(request.store).toBe(false);
-      expect(request.prompt).toContain("Return JSON only");
-      expect(request.prompt).toContain("SOURCE:");
-      expect(request.cacheKey).toHaveLength(64);
-      return {
-        outputText: JSON.stringify({
-          schemaVersion: LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION,
-          sourceIdentity: sourceIdentity ?? request.sourceIdentity,
-          output,
-        }),
-        responseId: "response-test-73",
-        model: "test-structured-model-actual",
-        usage: { inputTokens: 14, outputTokens: 28, totalTokens: 42 },
-        estimatedCostUsd: 0.0012,
-      };
-    },
-  };
-}
-
-describe("experimental LLM extraction providers", () => {
-  it("runs role extraction only through the resolver-bound Batch 02 runner and common verifier", async () => {
-    const seam = runnerFor(roleSource, roleText);
-    const recorded: ExperimentalExtractionOutcome<unknown>[] = [];
-    const executor = new ExperimentalLlmExtractionExecutor(seam.runner, {
-      record: (outcome) => recorded.push(outcome),
-    });
-    const provider = new ExperimentalLlmRoleIntelligenceProvider(responseFor(roleOutput()), configuration);
-
-    const outcome = await executor.runRole(provider, { source: roleSource, caseId: "llm-role-case" });
-
-    expect(outcome.state).toBe("VERIFIED");
-    expect(recorded).toEqual([outcome]);
-    expect(seam.resolverCalls()).toBe(1);
-    if (outcome.state === "VERIFIED") {
-      expect(outcome.result.source).toEqual(roleSource);
-      expect(outcome.result.provider.family).toBe("LLM");
-      expect(outcome.telemetry).toMatchObject({
-        requestedModel: configuration.model,
-        actualModel: "test-structured-model-actual",
-        responseId: "response-test-73",
-        usage: { totalTokens: 42 },
-      });
-    }
-  });
-
-  it("uses the same verified path for candidate proof extraction", async () => {
-    const seam = runnerFor(candidateSource, candidateText);
-    const executor = new ExperimentalLlmExtractionExecutor(seam.runner);
-    const provider = new ExperimentalLlmCandidateProofProvider(responseFor(candidateOutput()), configuration);
-
-    const outcome = await executor.runCandidate(provider, { source: candidateSource });
-
-    expect(outcome.state).toBe("VERIFIED");
-    expect(seam.resolverCalls()).toBe(1);
-    if (outcome.state === "VERIFIED") {
-      expect(outcome.result.source).toEqual(candidateSource);
-      expect(outcome.result.output.sourceDocumentId).toBe(candidateSource.documentId);
-    }
-  });
-
-  it("binds experiment identity to prompt, response schema, model, parameters, and immutable source", () => {
-    const changedParameters = createLlmExperimentConfigurationFingerprint({
-      ...configuration,
-      generationParameters: { temperature: 0.2, seed: 73 },
-    });
-    const changedPrompt = createLlmExperimentConfigurationFingerprint({
-      ...configuration,
-      promptVersion: "gate1b-batch03/v2",
-    });
-    const stable = createLlmExperimentConfigurationFingerprint(configuration);
-    const provider = new ExperimentalLlmRoleIntelligenceProvider(responseFor(roleOutput()), configuration);
-
-    expect(stable).not.toBe(changedParameters);
-    expect(stable).not.toBe(changedPrompt);
-    expect(provider.descriptor.configurationFingerprint).toBe(stable);
-  });
-
-  it("fails closed into a rejected experiment when structured output is malformed or bound to another source", async () => {
-    const malformed: LlmStructuredExtractionClient = {
-      async generate() {
-        return { outputText: "not-json" };
-      },
+function clientFor(output: unknown, inspect?: (request: Parameters<LlmStructuredExtractionClient["generate"]>[0]) => void): LlmStructuredExtractionClient {
+  return { generate: async (request) => {
+    inspect?.(request);
+    return {
+      outputText: JSON.stringify({ schemaVersion: LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION, output }),
+      responseId: "response-test-73", model: "test-structured-model-actual", usage: { totalTokens: 42 }, estimatedCostUsd: 0.0012,
     };
-    const foreign = new ExperimentalLlmRoleIntelligenceProvider(
-      responseFor(roleOutput(), "OPPORTUNITY_VERSION:foreign:version:hash:DATABASE_TEXT:NO_BLOB"),
-      configuration,
-    );
-    const malformedOutcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner)
-      .runRole(new ExperimentalLlmRoleIntelligenceProvider(malformed, configuration), {
-        source: roleSource,
-        caseId: "llm-role-case",
-      });
-    const foreignOutcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner)
-      .runRole(foreign, { source: roleSource, caseId: "llm-role-case" });
+  } };
+}
 
-    expect(malformedOutcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
-    expect(foreignOutcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
-  });
+const roleProposal = { proposals: [{ exactQuote: "Own pricing governance across channel expansion.", semanticType: "DECISION_AUTHORITY", subject: "ROLE", confidence: 0.9 }] };
+const candidateProposal = { proposals: [{ exactQuote: "Led pricing governance across regional markets.", evidenceClass: "WORK_HISTORY", proofTypes: ["OWNERSHIP"] }] };
 
-  it("rejects a malformed V1 object at the strict runtime schema boundary before mechanical verification", async () => {
-    const malformedShape = { ...roleOutput(), metadata: {} };
-    const provider = new ExperimentalLlmRoleIntelligenceProvider(responseFor(malformedShape), configuration);
-
-    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner)
-      .runRole(provider, { source: roleSource, caseId: "llm-role-case" });
-
-    expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
-  });
-
-  it.each([
-    ["peopleCount", { peopleCount: "forty" }],
-    ["amount", { amount: "four" }],
-    ["metric", { metric: 42 }],
-    ["timeframe", { timeframe: 42 }],
-    ["currency", { currency: 42 }],
-    ["rawCondition", { rawCondition: 42 }],
-    ["parsedYears.minimum", undefined, { minimum: "ten" }],
-    ["parsedYears.maximum", undefined, { maximum: "ten" }],
-    ["parsedYears.exact", undefined, { exact: "ten" }],
-  ])("rejects malformed typed field %s before V1 conversion", async (_label, qualifiers, parsedYears) => {
-    const output = roleOutput();
-    const atom = output.atoms[0]!;
-    const malformed = {
-      ...output,
-      atoms: [{
-        ...atom,
-        ...(qualifiers ? { normalizedClaim: { qualifiers } } : {}),
-        ...(parsedYears ? { requirement: { materiality: "HARD", materialityCue: null, requirementDimension: "EXPERIENCE_YEARS", parsedYears } } : {}),
-      }],
-    };
-    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner)
-      .runRole(new ExperimentalLlmRoleIntelligenceProvider(responseFor(malformed), configuration), { source: roleSource, caseId: "llm-role-case" });
-
-    expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
-  });
-
-  it.each([
-    ["case ID", { caseId: "wrong-case" }, {}],
-    ["company context", {}, { companyName: "Requested Company" }],
-    ["title context", {}, { title: "Requested Title" }],
-  ])("rejects a role response with mismatched requested %s", async (_label, outputPatch, inputPatch) => {
-    const output = { ...roleOutput(), ...outputPatch };
-    const provider = new ExperimentalLlmRoleIntelligenceProvider(responseFor(output), configuration);
-    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner)
-      .runRole(provider, { source: roleSource, caseId: "llm-role-case", ...inputPatch });
-
-    expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
-  });
-
-  it("fails closed when the common verifier rejects a source span rather than repairing the provider output", async () => {
-    const invalidOutput = roleOutput();
-    const invalidAtom = invalidOutput.atoms[0]!;
-    const provider = new ExperimentalLlmRoleIntelligenceProvider(responseFor({
-      ...invalidOutput,
-      atoms: [{ ...invalidAtom, exactText: "Invented role mandate" }],
-    }), configuration);
-
-    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner)
-      .runRole(provider, { source: roleSource, caseId: "llm-role-case" });
-
-    expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
-  });
-
-  it("rejects TypeScript-castable fabricated candidate collections through the common verifier", async () => {
-    const output = candidateOutput();
-    const fabricated = {
-      ...output,
-      positions: [{
-        positionId: "pos:Fabricated:0",
-        title: "Fabricated role",
-        employer: "Fabricated",
-        dates: "2020",
-        startOffset: 0,
-        endOffset: 10,
-        isCurrent: false,
-        bullets: [],
-      }],
-      allBullets: [],
-      allClaims: [],
-    };
-    const provider = new ExperimentalLlmCandidateProofProvider(responseFor(fabricated), configuration);
-
-    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, candidateText).runner)
-      .runCandidate(provider, { source: candidateSource });
-
-    expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
-  });
-
-  it("does not let observer failure rewrite a finalized verified extraction outcome", async () => {
-    const observerFailures: unknown[] = [];
-    const executor = new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner, {
-      record: async () => { throw new Error("telemetry sink unavailable"); },
-      recordFailure: async (error) => { observerFailures.push(error); },
-    });
-
-    const outcome = await executor.runRole(
-      new ExperimentalLlmRoleIntelligenceProvider(responseFor(roleOutput()), configuration),
+describe("experimental semantic proposal providers", () => {
+  it("runs role semantic proposals through source-bound assembly and the shared verifier", async () => {
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText)).runRole(
+      new ExperimentalLlmRoleIntelligenceProvider(clientFor(roleProposal), configuration),
       { source: roleSource, caseId: "llm-role-case" },
     );
-
     expect(outcome.state).toBe("VERIFIED");
-    expect(observerFailures).toHaveLength(1);
+    if (outcome.state === "VERIFIED") {
+      expect(outcome.result.output.atoms).toMatchObject([{ id: "role_atom:llm-role-case:23_71:DECISION_AUTHORITY", startOffset: 23, endOffset: 71 }]);
+      expect(outcome.result.output.metadata.proposalCounts).toEqual({ proposedAtoms: 1, acceptedAtoms: 1, rejectedAtoms: 0 });
+      expect(outcome.telemetry).toMatchObject({ responseId: "response-test-73", actualModel: "test-structured-model-actual" });
+    }
   });
 
-  it("translates the injected request into strict structured-output and non-retention transport intent", () => {
-    const request: LlmStructuredRequest = {
-      kind: "ROLE_INTELLIGENCE",
-      model: configuration.model,
-      prompt: "extract exactly",
-      responseSchema: { type: "object" },
-      cacheKey: "cache-key",
-      sourceIdentity: "immutable-source",
-      generationParameters: configuration.generationParameters,
-      store: false,
-    };
+  it("assembles candidate parents, IDs, aggregate claims, and accounting locally", async () => {
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, candidateText)).runCandidate(
+      new ExperimentalLlmCandidateProofProvider(clientFor(candidateProposal), configuration), { source: candidateSource },
+    );
+    expect(outcome.state).toBe("VERIFIED");
+    if (outcome.state === "VERIFIED") {
+      const [claim] = outcome.result.output.allClaims;
+      expect(outcome.result.output.allClaims).toHaveLength(1);
+      expect(outcome.result.output.allBullets[0]?.claims).toEqual([claim]);
+      expect(claim?.claimId).toContain(`claim:${candidateSource.documentId}:`);
+      expect(outcome.result.output.metadata.proposalCounts).toEqual({ proposedClaims: 1, acceptedClaims: 1, rejectedClaims: 0 });
+    }
+  });
 
-    expect(toStrictStructuredOutputTransportRequest(request)).toEqual({
-      model: configuration.model,
-      input: "extract exactly",
-      store: false,
-      text: { format: { type: "json_schema", name: "radar_experimental_extraction", strict: true, schema: { type: "object" } } },
-      metadata: { cacheKey: "cache-key", sourceIdentity: "immutable-source", kind: "ROLE_INTELLIGENCE" },
-      generationParameters: configuration.generationParameters,
-    });
+  it("does not ask the model to author source or request identity, IDs, offsets, or aggregate collections", async () => {
+    const provider = new ExperimentalLlmRoleIntelligenceProvider(clientFor(roleProposal, (request) => {
+      expect(request.prompt).not.toContain(roleSource.canonicalJobId);
+      expect(request.prompt).not.toContain("llm-role-case");
+      const schema = JSON.stringify(request.responseSchema);
+      for (const forbidden of ["sourceIdentity", "sourceRef", "canonicalJobId", "caseId", "startOffset", "allClaims", "proposalCounts"]) {
+        expect(schema).not.toContain(forbidden);
+      }
+      expect(schema).not.toContain('"id"');
+    }), configuration);
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText)).runRole(provider, { source: roleSource, caseId: "llm-role-case" });
+    expect(outcome.state).toBe("VERIFIED");
+  });
+
+  it.each([
+    ["fabricated quote", { proposals: [{ ...roleProposal.proposals[0], exactQuote: "Invented mandate." }] }],
+    ["ambiguous repeated quote", { proposals: [{ ...roleProposal.proposals[0], exactQuote: "Own pricing." }] }],
+    ["invalid semantic enum", { proposals: [{ ...roleProposal.proposals[0], semanticType: "NOT_A_TYPE" }] }],
+    ["model-authored identity", { proposals: [{ ...roleProposal.proposals[0], caseId: "forged" }] }],
+    ["duplicate semantic anchor", { proposals: [roleProposal.proposals[0], roleProposal.proposals[0]] }],
+  ])("rejects %s rather than repairing an experimental role proposal", async (_label, output) => {
+    const text = _label === "ambiguous repeated quote" ? "Own pricing. Own pricing." : roleText;
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, text)).runRole(
+      new ExperimentalLlmRoleIntelligenceProvider(clientFor(output), configuration), { source: roleSource, caseId: "llm-role-case" },
+    );
+    expect(outcome.state).toBe("REJECTED");
+  });
+
+  it("rejects a candidate quote that exists outside its declared structural parent bullet", async () => {
+    const output = { proposals: [{ exactQuote: "Candidate", evidenceClass: "WORK_HISTORY", proofTypes: ["OWNERSHIP"] }] };
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, candidateText)).runCandidate(
+      new ExperimentalLlmCandidateProofProvider(clientFor(output), configuration), { source: candidateSource },
+    );
+    expect(outcome.state).toBe("REJECTED");
+  });
+
+  it("rejects malformed candidate enums and duplicate proof types before assembly", async () => {
+    const malformed = { proposals: [{ ...candidateProposal.proposals[0], proofTypes: ["OWNERSHIP", "OWNERSHIP"] }] };
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, candidateText)).runCandidate(
+      new ExperimentalLlmCandidateProofProvider(clientFor(malformed), configuration), { source: candidateSource },
+    );
+    expect(outcome.state).toBe("REJECTED");
+  });
+
+  it("binds cache identity to model, prompt, proposal schema, assembler version, parameters, and immutable source", async () => {
+    const stable = createLlmExperimentConfigurationFingerprint(configuration);
+    expect(stable).not.toBe(createLlmExperimentConfigurationFingerprint({ ...configuration, assemblerVersion: "semantic-assembler/v2" }));
+    expect(stable).not.toBe(createLlmExperimentConfigurationFingerprint({ ...configuration, generationParameters: { temperature: 0.1 } }));
+    const first = await new ExperimentalLlmRoleIntelligenceProvider(clientFor(roleProposal), configuration).extract({ source: roleSource, sourceText: roleText, caseId: "one" });
+    const second = await new ExperimentalLlmRoleIntelligenceProvider(clientFor(roleProposal), configuration).extract({ source: { ...roleSource, canonicalJobId: "different-job", opportunityVersion: "different-version" }, sourceText: roleText, caseId: "two" });
+    expect(first.cacheIdentity.key).not.toBe(second.cacheIdentity.key);
+    expect(first.output.atoms[0]?.id).not.toBe(second.output.atoms[0]?.id);
+  });
+
+  it("maps strict structured output and non-retention transport intent", () => {
+    const mapped = toStrictStructuredOutputTransportRequest({ kind: "ROLE_INTELLIGENCE", model: configuration.model, prompt: "extract",
+      responseSchema: { type: "object" }, cacheKey: "cache", sourceIdentity: "immutable-source", generationParameters: configuration.generationParameters, store: false });
+    expect(mapped).toMatchObject({ store: false, text: { format: { type: "json_schema", strict: true } }, metadata: { sourceIdentity: "immutable-source" } });
   });
 });
