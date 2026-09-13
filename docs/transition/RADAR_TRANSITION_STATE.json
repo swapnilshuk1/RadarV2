@@ -23,7 +23,7 @@
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "GATE_1B_BATCH_04 scope revision 3 only — one separately identified Gemini/Vertex operational rerun after a non-scored ADC/Vertex capability probe succeeds, using the scope-revision-2 locked comparison apparatus unchanged and retaining Run 0's Vertex permission-blocked evidence. Batch 05 is not authorized.",
+  "nextAuthorizedProductionWork": "None. GATE_1B_BATCH_04 is COMPLETE under scope revision 3. The extractionArchitectureDecision remains OPEN and Batch 05 is NOT AUTHORIZED.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,

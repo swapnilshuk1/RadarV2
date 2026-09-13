@@ -5,7 +5,7 @@
   "id": "GATE_1B_BATCH_04",
   "gate": "GATE_1B",
   "title": "Frozen + unseen/adversarial extraction comparison",
-  "status": "READY",
+  "status": "COMPLETE",
   "batchStartCommit": "0d93b59518db52d7db01fdc62e25c723b80aef30",
   "objective": "Produce a reproducible, comparison-only evaluation of the frozen deterministic extraction baseline and the Batch 03 experimental LLM semantic-proposal path. Scope revision 2 corrected the non-executable role fixture reference by pinning the historical cases.jsonl Git artifact and authorized one Batch-04-only real transport adapter. Its complete locked Run 0 encountered only Vertex HTTP 403 permission failures and produced no verified semantic output. Scope revision 3 authorizes one separately identified Gemini/Vertex rerun after the same pinned model is reachable through an ADC principal and project with aiplatform.endpoints.predict permission. Batch 04 may create locked fixtures, labels, manifests, reports, and audit artifacts; it must not modify extraction semantics, provider prompts/configuration, canonical persistence, or runtime authority. Measure role and candidate quality, provenance integrity, structural/enrichment coverage, rejection causality, run-to-run stability, latency, and cost. Record evidence only; Batch 05 alone selects an architecture.",
   "mustNotChange": [

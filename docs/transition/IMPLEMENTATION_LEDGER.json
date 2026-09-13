@@ -13,6 +13,26 @@
   ],
   "acknowledgements": [
     {
+      "commit": "4f298dd840fd811a96525aef33a45f2983626985",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_04",
+      "scopeRevision": 3,
+      "summary": "Retained the complete authorized Gemini ADC Run 1 primary/repeatability result set, transport telemetry, probe artifact, and authoritative evidence-only comparison report under audit-reports/gate1b-batch04/.",
+      "invariantsChecked": [
+        "retained Run 0 artifacts are preserved under RUN_0_VERTEX_PERMISSION_BLOCKED and untouched",
+        "Run 1 artifacts are retained under RUN_1_VERTEX_AUTHORIZED with full operational provenance and transport telemetry",
+        "all 138 primary cases and 15 repeatability runs executed against the locked apparatus",
+        "no prompt, schema, assembler, verifier, normalizer, or production extractor was modified",
+        "Batch 05 remains unauthorized and the extraction architecture decision remains OPEN"
+      ],
+      "verification": [
+        "npx vitest run tests/intelligence/extraction/batch04-comparison.test.ts — PASS (1 file, 2/2 tests)",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "eb01b253aca0bfe6fdc127d94c594616d6293466",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_04",

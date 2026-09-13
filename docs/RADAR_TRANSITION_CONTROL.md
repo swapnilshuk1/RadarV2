@@ -536,26 +536,13 @@ Gate 1A has already resolved enough of the earlier reuse/coupling and canonical 
 
 ## 16. Current Next Action
 
-Batches 01, 02, and 03 are **COMPLETE**. Batch 04 scope revision 3 is now
-authorized only for a methodology-locked operational rerun of the same
-comparison after the retained scope-revision-2 Vertex permission block.
+Batches 01, 02, 03, and 04 are **COMPLETE**.
 
 **Gate 1B — Batch 04: Frozen + unseen/adversarial extraction comparison.**
 
-This is the only currently authorized production batch.
+Batch 04 execution under Scope Revision 3 is complete. All comparison evidence (retained Run 0 permission block, Run 1 authorized execution with 100% transport success and response schema verification outcomes, diagnostic proposal analysis, latency/tokens/cost telemetry, and deterministic baseline parity) is retained immutably in `audit-reports/gate1b-batch04/` and documented in `audit-reports/gate1b-batch04/reports/batch04-extraction-comparison-report.md`.
 
-Batch 04 is comparison-only: it may create locked fixtures, labels, manifests,
-reports, and audit artifacts, but cannot modify extraction semantics, provider
-prompts/configuration, canonical persistence, or runtime authority. Scope
-revision 2's complete Run 0 remains permanently retained as an operational
-Vertex permission failure (459 HTTP 403 responses; no verified semantic
-outputs). Scope revision 3 authorizes one separately identified Run 1 only
-after one non-scored capability probe verifies the same Gemini/Vertex transport
-through a Vertex-authorized ADC principal/project. It must
-lock fixture partitions, identities, gold labels, scoring/matching rules, and
-repeat policy before either provider runs; retain raw outputs, verifier
-outcomes, rejection causality, and telemetry; and report role and candidate
-quality separately. It produces evidence only.
+The extraction architecture decision remains **OPEN**. Batch 05 is **NOT AUTHORIZED**.
 
 Do **not** change or begin beyond this authorization:
 
