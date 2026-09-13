@@ -13,6 +13,24 @@
   ],
   "acknowledgements": [
     {
+      "commit": "f8d3d087002e103bf179c5acfdd48bcba49775cb",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_04",
+      "scopeRevision": 2,
+      "summary": "Corrected the Batch 04 harness before any LLM execution so its locked primary population includes all 100 pinned historical role cases, and paced the Vertex transport at the declared interval.",
+      "invariantsChecked": [
+        "the primary comparison cannot omit the authorized historical frozen role corpus",
+        "transport pacing is a declared operational behavior and does not alter Batch 03 semantic configuration",
+        "no provider output existed when this harness correction was made"
+      ],
+      "verification": [
+        "npx vitest run tests/intelligence/extraction/batch04-comparison.test.ts — PASS (1 file, 2/2 tests)",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "ca9aacd7e5ea826f1e1a2fb8ff53b8924970b2f5",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_04",
