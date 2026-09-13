@@ -4,8 +4,8 @@
 
 **COMPLETE**
 
-Batch: `GATE_1B_BATCH_03` — Controlled LLM RoleIntelligence / CandidateProof extraction experiment  
-Scope revision: `3`  
+Batch: `GATE_1B_BATCH_03` — Controlled LLM RoleIntelligence / CandidateProof extraction experiment
+Scope revision: `3`
 Corrective-scope start commit: `a4d1b98258d91fdf28fde4991580484c64a28c54`
 
 This closure preserves, rather than replaces, the earlier Batch 03 closure and
