@@ -20,6 +20,8 @@ const PINNED_COMMIT = "e1f0a47575accedcd7fd3d681c7b084ca377b0fd";
 const CORPUS_PATH = "audit-reports/phase5-100-case-corpus/cases.jsonl";
 const FIXTURES_PATH = path.join(ROOT, "tests/fixtures/extraction-comparison/batch04-fixtures.json");
 const MANIFEST_PATH = path.join(OUTPUT, "manifest/pre-provider-manifest.json");
+const RUN_1_ID = "RUN_1_VERTEX_AUTHORIZED";
+const RUN_1_ROOT = path.join(OUTPUT, "runs", RUN_1_ID);
 
 type RoleFact = readonly [string, RoleSemanticType, RoleSubject];
 type RoleFixture = { id: string; title?: string; company?: string; text: string; facts: RoleFact[]; highRiskNegatives: RoleSemanticType[]; expectedMechanicalValidity?: string };
@@ -31,6 +33,10 @@ const sha256 = (value: string | Buffer) => crypto.createHash("sha256").update(va
 const git = (spec: string) => execFileSync("git", ["show", spec], { cwd: ROOT, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
 const gitBlob = (spec: string) => execFileSync("git", ["rev-parse", spec], { cwd: ROOT, encoding: "utf8" }).trim();
 const writeJson = (file: string, value: unknown) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`); };
+const writeNewJson = (file: string, value: unknown) => {
+  if (fs.existsSync(file)) throw new Error(`Refusing to overwrite retained Batch 04 artifact: ${file}`);
+  writeJson(file, value);
+};
 
 function frozenText(pathAtCommit: string): string { return git(`${PINNED_COMMIT}:${pathAtCommit}`); }
 function sourceRole(caseId: string, canonicalJobId: string, opportunityVersion: string, text: string): OpportunityVersionSourceRef {
@@ -56,6 +62,92 @@ function candidateSources(): CandidateFixture[] {
 }
 function frozenRoleFixtures(): RoleFixture[] {
   return loadFrozenCases().map((item) => ({ id: `FROZEN_ROLE_${item.caseId}`, title: item.role, company: item.company, text: item.job.rawText, facts: [], highRiskNegatives: [] }));
+}
+
+type LockedManifest = {
+  readonly fixtureFile: { readonly sha256: string };
+  readonly identity: {
+    readonly model: string;
+    readonly promptVersion: string;
+    readonly responseSchemaVersion: string;
+    readonly proposalSchemaVersion: string;
+    readonly assemblerVersion: string;
+    readonly generationConfiguration: Record<string, string | number | boolean | null>;
+  };
+};
+
+function lockedManifest(): LockedManifest {
+  const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8")) as LockedManifest;
+  if (manifest.fixtureFile.sha256 !== sha256(fs.readFileSync(FIXTURES_PATH))) {
+    throw new Error("Fixture file changed after the pre-provider manifest was locked.");
+  }
+  return manifest;
+}
+
+function lockedConfiguration(manifest: LockedManifest): LlmExperimentConfiguration {
+  const configuration: LlmExperimentConfiguration = {
+    providerId: "gemini-adc-batch04",
+    model: manifest.identity.model,
+    promptVersion: manifest.identity.promptVersion,
+    responseSchemaVersion: manifest.identity.responseSchemaVersion,
+    proposalSchemaVersion: manifest.identity.proposalSchemaVersion,
+    assemblerVersion: manifest.identity.assemblerVersion,
+    generationParameters: manifest.identity.generationConfiguration,
+  };
+  if (
+    configuration.promptVersion !== LLM_EXPERIMENT_PROMPT_VERSION
+    || configuration.responseSchemaVersion !== LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION
+    || configuration.proposalSchemaVersion !== LLM_SEMANTIC_PROPOSAL_SCHEMA_VERSION
+    || configuration.assemblerVersion !== LLM_SEMANTIC_ASSEMBLER_VERSION
+  ) {
+    throw new Error("Locked manifest does not match the approved Batch 03 semantic experiment identity.");
+  }
+  return configuration;
+}
+
+function requiredRun1Project(): string {
+  const projectId = process.env.GCP_PROJECT_ID;
+  if (!projectId) throw new Error("RUN_1_VERTEX_AUTHORIZED requires an explicit GCP_PROJECT_ID; do not silently reuse the Run 0 fallback project.");
+  return projectId;
+}
+
+function run1Transport(): GeminiAdcStructuredExtractionClient {
+  return new GeminiAdcStructuredExtractionClient({
+    projectId: requiredRun1Project(),
+    location: process.env.BATCH04_VERTEX_LOCATION ?? "us-central1",
+    timeoutMs: 90_000,
+    maxTransportRetries: 2,
+    minimumIntervalMs: 4_200,
+  });
+}
+
+function safeGcloudActiveAccount(): string | null {
+  try {
+    const executable = process.platform === "win32" ? "gcloud.cmd" : "gcloud";
+    const account = execFileSync(executable, ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    return account || null;
+  } catch {
+    return null;
+  }
+}
+
+function run1OperationalProvenance(configuration: LlmExperimentConfiguration) {
+  return {
+    runId: RUN_1_ID,
+    provider: "Vertex AI Gemini ADC",
+    transport: GEMINI_ADC_TRANSPORT_VERSION,
+    adcMechanism: process.env.GOOGLE_APPLICATION_CREDENTIALS ? "GOOGLE_APPLICATION_CREDENTIALS" : "application_default_credentials",
+    gcloudActiveAccount: safeGcloudActiveAccount(),
+    vertexProject: requiredRun1Project(),
+    quotaProject: process.env.GOOGLE_CLOUD_QUOTA_PROJECT ?? null,
+    vertexRegion: process.env.BATCH04_VERTEX_LOCATION ?? "us-central1",
+    model: configuration.model,
+    promptVersion: configuration.promptVersion,
+    responseSchemaVersion: configuration.responseSchemaVersion,
+    proposalSchemaVersion: configuration.proposalSchemaVersion,
+    assemblerVersion: configuration.assemblerVersion,
+    generationParameters: configuration.generationParameters,
+  };
 }
 
 function preProviderManifest(): unknown {
@@ -113,26 +205,74 @@ async function executeLlmCase(kind: "ROLE" | "CANDIDATE", fixture: RoleFixture |
   return { id: candidate.id, kind, outcome, score: outcome.state === "VERIFIED" ? scoreCandidate(outcome.result.output, candidate) : null };
 }
 
-async function run(): Promise<void> {
-  const fixtures = loadFixtures(); const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8")) as { fixtureFile: { sha256: string } };
-  if (manifest.fixtureFile.sha256 !== sha256(fs.readFileSync(FIXTURES_PATH))) throw new Error("Fixture file changed after the pre-provider manifest was locked.");
-  const parityResult = await parity(); writeJson(path.join(OUTPUT, "deterministic/parity.json"), parityResult);
-  if (parityResult.nonParity.length) throw new Error(`Deterministic parity failed: ${parityResult.nonParity.join(", ")}`);
-  const configuration: LlmExperimentConfiguration = { providerId: "gemini-adc-batch04", model: process.env.BATCH04_GEMINI_MODEL ?? "gemini-2.5-flash", promptVersion: LLM_EXPERIMENT_PROMPT_VERSION, responseSchemaVersion: LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION, proposalSchemaVersion: LLM_SEMANTIC_PROPOSAL_SCHEMA_VERSION, assemblerVersion: LLM_SEMANTIC_ASSEMBLER_VERSION, generationParameters: fixtures.repeatability.generationConfiguration as Record<string, string | number | boolean | null> };
-  const transport = new GeminiAdcStructuredExtractionClient({ projectId: process.env.GCP_PROJECT_ID ?? "project-0e166cfc-e3f5-49d7-af6", location: "us-central1", timeoutMs: 90_000, maxTransportRetries: 2, minimumIntervalMs: 4_200 });
+async function runRun1(): Promise<void> {
+  const fixtures = loadFixtures();
+  const manifest = lockedManifest();
+  const configuration = lockedConfiguration(manifest);
+  const probePath = path.join(RUN_1_ROOT, "probe.json");
+  if (!fs.existsSync(probePath)) throw new Error("RUN_1_VERTEX_AUTHORIZED requires a retained successful non-scored capability probe.");
+  const probe = JSON.parse(fs.readFileSync(probePath, "utf8")) as { readonly state?: string };
+  if (probe.state !== "SUCCEEDED") throw new Error("RUN_1_VERTEX_AUTHORIZED capability probe did not succeed; refusing to send benchmark fixtures.");
+  const parityResult = JSON.parse(fs.readFileSync(path.join(OUTPUT, "deterministic/parity.json"), "utf8")) as { readonly role: { readonly matching: number; readonly total: number }; readonly candidate: { readonly matching: number; readonly total: number }; readonly nonParity: readonly string[] };
+  if (parityResult.role.matching !== 100 || parityResult.role.total !== 100 || parityResult.candidate.matching !== 2 || parityResult.candidate.total !== 2 || parityResult.nonParity.length !== 0) {
+    throw new Error("Locked deterministic parity artifact is not the required 100/100 role and 2/2 candidate baseline.");
+  }
+  writeNewJson(path.join(RUN_1_ROOT, "run-manifest.json"), {
+    runId: RUN_1_ID,
+    state: "PRIMARY_LOCKED",
+    operationalProvenance: run1OperationalProvenance(configuration),
+    lockedManifestSha256: sha256(fs.readFileSync(MANIFEST_PATH)),
+    retainedRun0: "RUN_0_VERTEX_PERMISSION_BLOCKED",
+    deterministicParity: parityResult,
+  });
+  const transport = run1Transport();
   const primary = [] as unknown[];
   for (const fixture of [...frozenRoleFixtures(), ...fixtures.unseenRoles, ...fixtures.adversarialRoles]) primary.push(await executeLlmCase("ROLE", fixture, configuration, transport));
   for (const fixture of [...candidateSources(), ...fixtures.unseenCandidates]) primary.push(await executeLlmCase("CANDIDATE", fixture, configuration, transport));
-  writeJson(path.join(OUTPUT, "llm/primary.json"), primary); writeJson(path.join(OUTPUT, "telemetry/attempts.json"), transport.attempts);
+  writeNewJson(path.join(RUN_1_ROOT, "primary.json"), primary); writeNewJson(path.join(RUN_1_ROOT, "telemetry-primary.json"), transport.attempts);
   const lookup = new Map([...fixtures.unseenRoles, ...fixtures.adversarialRoles, ...fixtures.unseenCandidates, ...candidateSources()].map((item) => [item.id, item]));
   const repeats = [] as unknown[];
   for (const id of fixtures.repeatability.fixtureIds) for (let index = 0; index < fixtures.repeatability.repeatCount; index += 1) {
     const fixture = lookup.get(id); if (!fixture) throw new Error(`Repeatability fixture missing: ${id}`);
     repeats.push(await executeLlmCase("text" in fixture ? ("facts" in fixture ? "ROLE" : "CANDIDATE") : "CANDIDATE", fixture as RoleFixture | CandidateFixture, configuration, transport));
   }
-  writeJson(path.join(OUTPUT, "repeatability/runs.json"), repeats); writeJson(path.join(OUTPUT, "telemetry/all-attempts.json"), transport.attempts);
+  writeNewJson(path.join(RUN_1_ROOT, "repeatability.json"), repeats); writeNewJson(path.join(RUN_1_ROOT, "telemetry-all-attempts.json"), transport.attempts);
+}
+
+async function probeRun1(): Promise<void> {
+  const configuration = lockedConfiguration(lockedManifest());
+  const transport = run1Transport();
+  const provenance = run1OperationalProvenance(configuration);
+  const probePath = path.join(RUN_1_ROOT, "probe.json");
+  const request = {
+    kind: "ROLE_INTELLIGENCE" as const,
+    model: configuration.model,
+    prompt: "This is a non-scored RADAR Vertex capability probe. Return only the required JSON object.",
+    responseSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["status"],
+      properties: { status: { type: "string", enum: ["READY"] } },
+    },
+    cacheKey: sha256(`${RUN_1_ID}:capability-probe:${configuration.model}:${JSON.stringify(configuration.generationParameters)}`),
+    sourceIdentity: `${RUN_1_ID}:NON_SCORED_CAPABILITY_PROBE`,
+    generationParameters: configuration.generationParameters,
+    store: false,
+  };
+  const startedAt = new Date().toISOString();
+  try {
+    const response = await transport.generate(request);
+    const parsed = JSON.parse(response.outputText) as { status?: unknown };
+    if (parsed.status !== "READY") throw new Error("Capability probe returned structured JSON that did not satisfy the probe contract.");
+    writeNewJson(probePath, { runId: RUN_1_ID, state: "SUCCEEDED", startedAt, endedAt: new Date().toISOString(), operationalProvenance: provenance, requestIdentity: transport.attempts[0]?.requestIdentity ?? null, response: { model: response.model, responseId: response.responseId, usage: response.usage ?? null }, attempts: transport.attempts });
+  } catch (error) {
+    writeNewJson(probePath, { runId: RUN_1_ID, state: "FAILED", startedAt, endedAt: new Date().toISOString(), operationalProvenance: provenance, error: error instanceof Error ? error.message : String(error), attempts: transport.attempts });
+    throw error;
+  }
 }
 
 if (process.argv.includes("--freeze")) writeJson(MANIFEST_PATH, preProviderManifest());
 else if (process.argv.includes("--parity")) parity().then((result) => { writeJson(path.join(OUTPUT, "deterministic/parity.json"), result); console.log(JSON.stringify(result)); });
-else run().catch((error) => { console.error(error); process.exitCode = 1; });
+else if (process.argv.includes("--probe")) probeRun1().catch((error) => { console.error(error); process.exitCode = 1; });
+else if (process.argv.includes("--run1")) runRun1().catch((error) => { console.error(error); process.exitCode = 1; });
+else throw new Error("Specify --freeze, --parity, --probe, or --run1.");
