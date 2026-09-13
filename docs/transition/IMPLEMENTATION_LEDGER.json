@@ -13,6 +13,26 @@
   ],
   "acknowledgements": [
     {
+      "commit": "a51f742b8e1d647d0e9b60f9c10abc1906c93232",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_03",
+      "scopeRevision": 3,
+      "summary": "Exposed typed experimental proposal-rejection causality through the resolver-bound executor and observer outcome contract without altering V1 or production provider interfaces.",
+      "invariantsChecked": [
+        "Batch 04 comparison consumers can read proposal-level rejection causality through the governed executor path without casts or bypassing the shared runner",
+        "proposal rejection sidecars remain experiment-only metadata and do not alter the frozen V1 output contract",
+        "telemetry and proposal rejections are exposed only for experimental LLM results"
+      ],
+      "verification": [
+        "npx vitest run tests/intelligence/extraction/provider-boundary.test.ts tests/intelligence/extraction/llm-experimental-provider.test.ts tests/intelligence/role-intelligence-extractor-v1.test.ts tests/intelligence/candidate-proof-extractor-v1.test.ts — PASS (4 files, 64/64 tests)",
+        "npx tsc --noEmit — PASS",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "rg -n \"ExperimentalLlm|LlmExperimental|ExperimentalLlmExtractionExecutor|ExperimentalSemanticProposal\" src --glob '!src/lib/intelligence/extraction/**' — PASS (no production imports)",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "2e51d1dd8936db75a0596c9d95c7f4b903ef6f55",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_03",
