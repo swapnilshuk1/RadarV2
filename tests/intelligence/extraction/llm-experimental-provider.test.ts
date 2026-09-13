@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { CandidateProofExtractorV1 } from "../../../src/lib/intelligence/extraction/CandidateProofExtractorV1";
 import {
   ExperimentalLlmCandidateProofProvider,
   ExperimentalLlmRoleIntelligenceProvider,
@@ -128,6 +129,33 @@ describe("experimental semantic proposal providers", () => {
     }
   });
 
+  it("retains same-span role propositions when their semantic types differ", async () => {
+    const multiLabel = { proposals: [
+      { ...roleProposal.proposals[0], semanticType: "PNL_OWNERSHIP" },
+      { ...roleProposal.proposals[0], semanticType: "REVENUE_ACCOUNTABILITY" },
+    ] };
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText)).runRole(
+      new ExperimentalLlmRoleIntelligenceProvider(clientFor(multiLabel), configuration), { source: roleSource, caseId: "llm-role-case" },
+    );
+    expect(outcome.state).toBe("VERIFIED");
+    if (outcome.state === "VERIFIED") {
+      expect(outcome.result.output.atoms).toHaveLength(2);
+      expect(outcome.result.output.metadata.proposalCounts).toEqual({ proposedAtoms: 2, acceptedAtoms: 2, rejectedAtoms: 0 });
+    }
+  });
+
+  it("preserves typed source-rejection causality in the experimental sidecar", async () => {
+    const provider = new ExperimentalLlmRoleIntelligenceProvider(clientFor({ proposals: [
+      { ...roleProposal.proposals[0], exactQuote: "Absent." },
+      { ...roleProposal.proposals[0], exactQuote: "Also absent." },
+    ] }), configuration);
+    const result = await provider.extract({ source: roleSource, sourceText: roleText, caseId: "llm-role-case" });
+    expect(result.proposalRejections).toEqual([
+      expect.objectContaining({ code: "ABSENT_QUOTE", proposalIndex: 0 }),
+      expect.objectContaining({ code: "ABSENT_QUOTE", proposalIndex: 1 }),
+    ]);
+  });
+
   it("rejects a candidate quote that exists outside its declared structural parent bullet", async () => {
     const output = { proposals: [{ exactQuote: "Candidate", evidenceClass: "WORK_HISTORY", proofTypes: ["OWNERSHIP"] }] };
     const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, candidateText)).runCandidate(
@@ -183,6 +211,20 @@ describe("experimental semantic proposal providers", () => {
     if (outcome.state === "VERIFIED") {
       expect(outcome.result.output.allClaims[0]?.metrics).toEqual(expect.arrayContaining([expect.objectContaining({ metricType: "CURRENCY_AMOUNT", normalizedValue: 8_000_000 })]));
       expect(outcome.result.output.allClaims[0]?.groundedEntities).toEqual(expect.arrayContaining([expect.objectContaining({ exactText: "APAC", category: "GEOGRAPHY" })]));
+    }
+  });
+
+  it("turns an unexpected deterministic normalizer failure into a whole-run rejection", async () => {
+    const normalizer = vi.spyOn(CandidateProofExtractorV1.prototype, "extractMetrics").mockImplementation(() => {
+      throw new Error("normalizer defect");
+    });
+    try {
+      const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, candidateText)).runCandidate(
+        new ExperimentalLlmCandidateProofProvider(clientFor(candidateProposal), configuration), { source: candidateSource },
+      );
+      expect(outcome).toMatchObject({ state: "REJECTED", rejection: { reason: expect.stringContaining("normalizer defect") } });
+    } finally {
+      normalizer.mockRestore();
     }
   });
 

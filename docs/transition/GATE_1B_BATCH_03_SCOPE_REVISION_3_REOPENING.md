@@ -48,6 +48,16 @@ Malformed envelopes and proposal-schema violations reject the response.
 Individually unresolvable, ambiguous, duplicate-anchor, or structurally
 uncontained proposals are rejected locally and represented by exact proposal
 accounting, so independently valid proposals remain measurable.
+Those local rejections retain an experiment-only typed cause
+(`ABSENT_QUOTE`, `AMBIGUOUS_QUOTE`, `DUPLICATE_SEMANTIC_ANCHOR`, or
+`STRUCTURAL_CONTAINMENT`) for later comparison analysis. Unexpected assembler
+or deterministic-normalizer faults are not downgraded to proposal rejection:
+they reject the whole experimental run.
+
+Role duplicate identity follows the canonical V1 atom convention of exact
+span plus semantic type. One source span may therefore support distinct role
+semantic types, while repeated proposals with the same span and type are
+locally rejected as duplicate semantic anchors.
 
 ## Authorized correction
 

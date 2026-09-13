@@ -18,6 +18,7 @@ import {
   assembleRoleSemanticProposals,
   parseCandidateSemanticProposals,
   parseRoleSemanticProposals,
+  type SemanticProposalRejection,
 } from "./ExperimentalSemanticProposal";
 
 export const LLM_EXPERIMENT_PROMPT_VERSION = "gate1b-batch03/proposals-v1";
@@ -250,6 +251,8 @@ export interface LlmExecutionTelemetry {
 
 export interface ExperimentalLlmProviderResult<T> extends ProviderExtractionResult<T> {
   readonly experimentalTelemetry: LlmExecutionTelemetry;
+  /** Experiment-only causality sidecar; never part of the V1 output contract. */
+  readonly proposalRejections: readonly SemanticProposalRejection[];
 }
 
 export class ExperimentalLlmRoleIntelligenceProvider
@@ -270,11 +273,16 @@ export class ExperimentalLlmRoleIntelligenceProvider
   async extract(input: RoleExtractionProviderInput): Promise<ExperimentalLlmProviderResult<RoleIntelligenceOutputV1>> {
     const cacheIdentity = createProviderCacheIdentity(input.source, this.descriptor);
     const response = await this.request("ROLE_INTELLIGENCE", input.sourceText, cacheIdentity.sourceIdentity, cacheIdentity.key);
+    const assembled = assembleRoleSemanticProposals({
+      sourceText: input.sourceText, caseId: input.caseId, canonicalJobId: input.source.canonicalJobId,
+      companyName: input.companyName, title: input.title, proposals: parseRoleSemanticProposals(response.output),
+    });
     return {
       provider: this.descriptor,
       cacheIdentity,
       source: input.source,
-      output: assembleRoleSemanticProposals({ sourceText: input.sourceText, caseId: input.caseId, canonicalJobId: input.source.canonicalJobId, companyName: input.companyName, title: input.title, proposals: parseRoleSemanticProposals(response.output) }),
+      output: assembled.output,
+      proposalRejections: assembled.proposalRejections,
       experimentalTelemetry: response.telemetry,
     };
   }
@@ -298,11 +306,16 @@ export class ExperimentalLlmCandidateProofProvider
   async extract(input: CandidateExtractionProviderInput): Promise<ExperimentalLlmProviderResult<CandidateProofOutputV1>> {
     const cacheIdentity = createProviderCacheIdentity(input.source, this.descriptor);
     const response = await this.request("CANDIDATE_PROOF", input.sourceText, cacheIdentity.sourceIdentity, cacheIdentity.key);
+    const assembled = assembleCandidateSemanticProposals({
+      sourceText: input.sourceText, sourceDocumentId: input.source.documentId,
+      proposals: parseCandidateSemanticProposals(response.output),
+    });
     return {
       provider: this.descriptor,
       cacheIdentity,
       source: input.source,
-      output: assembleCandidateSemanticProposals({ sourceText: input.sourceText, sourceDocumentId: input.source.documentId, proposals: parseCandidateSemanticProposals(response.output) }),
+      output: assembled.output,
+      proposalRejections: assembled.proposalRejections,
       experimentalTelemetry: response.telemetry,
     };
   }

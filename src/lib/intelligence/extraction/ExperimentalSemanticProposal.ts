@@ -130,43 +130,74 @@ export function parseCandidateSemanticProposals(value: unknown): CandidateSemant
 
 interface ResolvedQuote { readonly startOffset: number; readonly endOffset: number; }
 
+export type SemanticProposalRejectionCode =
+  | "ABSENT_QUOTE"
+  | "AMBIGUOUS_QUOTE"
+  | "DUPLICATE_SEMANTIC_ANCHOR"
+  | "STRUCTURAL_CONTAINMENT";
+
+export interface SemanticProposalRejection {
+  readonly proposalIndex: number;
+  readonly exactQuote: string;
+  readonly code: SemanticProposalRejectionCode;
+}
+
+class ExpectedProposalRejection extends Error {
+  constructor(readonly code: Exclude<SemanticProposalRejectionCode, "DUPLICATE_SEMANTIC_ANCHOR">) {
+    super(code);
+  }
+}
+
+export interface SemanticAssemblyResult<T> {
+  readonly output: T;
+  readonly proposalRejections: readonly SemanticProposalRejection[];
+}
+
 /** Exact only: no whitespace repair, fuzzy match, or arbitrary first occurrence. */
 function resolveUniqueQuote(text: string, exactQuote: string): ResolvedQuote {
   const startOffset = text.indexOf(exactQuote);
-  if (startOffset < 0) throw new Error("Semantic proposal quote is absent from the immutable source.");
-  if (text.indexOf(exactQuote, startOffset + 1) >= 0) throw new Error("Semantic proposal quote is ambiguous in the immutable source.");
+  if (startOffset < 0) throw new ExpectedProposalRejection("ABSENT_QUOTE");
+  if (text.indexOf(exactQuote, startOffset + 1) >= 0) throw new ExpectedProposalRejection("AMBIGUOUS_QUOTE");
   return { startOffset, endOffset: startOffset + exactQuote.length };
 }
 
-interface AcceptedProposal<T> { readonly proposal: T; readonly anchor: ResolvedQuote; }
-interface ResolutionOutcome<T> { readonly accepted: readonly AcceptedProposal<T>[]; readonly rejectedCount: number; }
+interface AcceptedProposal<T> { readonly proposal: T; readonly proposalIndex: number; readonly anchor: ResolvedQuote; }
 
 /**
  * A syntactically valid envelope may include individually bad semantic
  * proposals. Preserve valid, independently source-bound proposals; count the
  * rest as rejected. A malformed envelope remains a whole-response rejection.
  */
-function resolveProposals<T extends { exactQuote: string }>(text: string, proposals: readonly T[]): ResolutionOutcome<T> {
+function resolveProposals<T extends { exactQuote: string }>(
+  text: string,
+  proposals: readonly T[],
+  duplicateIdentity: (proposal: T, anchor: ResolvedQuote) => string,
+): { readonly accepted: readonly AcceptedProposal<T>[]; readonly rejections: readonly SemanticProposalRejection[] } {
   const candidates: Array<AcceptedProposal<T>> = [];
-  let rejectedCount = 0;
-  for (const proposal of proposals) {
+  const rejections: SemanticProposalRejection[] = [];
+  for (const [proposalIndex, proposal] of proposals.entries()) {
     try {
-      candidates.push({ proposal, anchor: resolveUniqueQuote(text, proposal.exactQuote) });
-    } catch {
-      rejectedCount += 1;
+      candidates.push({ proposal, proposalIndex, anchor: resolveUniqueQuote(text, proposal.exactQuote) });
+    } catch (error) {
+      if (!(error instanceof ExpectedProposalRejection)) throw error;
+      rejections.push({ proposalIndex, exactQuote: proposal.exactQuote, code: error.code });
     }
   }
   const byAnchor = new Map<string, Array<AcceptedProposal<T>>>();
   for (const candidate of candidates) {
-    const key = `${candidate.anchor.startOffset}:${candidate.anchor.endOffset}`;
+    const key = duplicateIdentity(candidate.proposal, candidate.anchor);
     byAnchor.set(key, [...(byAnchor.get(key) ?? []), candidate]);
   }
   const accepted: AcceptedProposal<T>[] = [];
   for (const group of byAnchor.values()) {
     if (group.length === 1) accepted.push(group[0]!);
-    else rejectedCount += group.length;
+    else for (const candidate of group) rejections.push({
+      proposalIndex: candidate.proposalIndex,
+      exactQuote: candidate.proposal.exactQuote,
+      code: "DUPLICATE_SEMANTIC_ANCHOR",
+    });
   }
-  return { accepted, rejectedCount };
+  return { accepted, rejections };
 }
 
 function canonicalProofTypes(proofTypes: readonly CandidateProofType[]): CandidateProofType[] {
@@ -211,8 +242,12 @@ function structuralRoleSection(sections: readonly DetectedSection[], quote: Reso
 export function assembleRoleSemanticProposals(input: {
   readonly sourceText: string; readonly caseId: string; readonly canonicalJobId: string;
   readonly companyName?: string; readonly title?: string; readonly proposals: readonly RoleSemanticProposal[];
-}): RoleIntelligenceOutputV1 {
-  const resolution = resolveProposals(input.sourceText, input.proposals);
+}): SemanticAssemblyResult<RoleIntelligenceOutputV1> {
+  const resolution = resolveProposals(
+    input.sourceText,
+    input.proposals,
+    (proposal, anchor) => `${anchor.startOffset}:${anchor.endOffset}:${proposal.semanticType ?? "UNCLASSIFIED"}`,
+  );
   const sections = parseRoleSections(input.sourceText);
   const atoms: RolePropositionAtom[] = resolution.accepted.map(({ proposal, anchor }) => {
     const semanticType = proposal.semanticType;
@@ -223,14 +258,15 @@ export function assembleRoleSemanticProposals(input: {
       confidence: proposal.confidence, extractionMethod: "SEMANTIC_FALLBACK", epistemicMarker: "EXACT_SOURCE_STATEMENT",
     };
   });
-  return {
+  const output: RoleIntelligenceOutputV1 = {
     caseId: input.caseId, canonicalJobId: input.canonicalJobId,
     ...(input.companyName === undefined ? {} : { companyName: input.companyName }),
     ...(input.title === undefined ? {} : { title: input.title }),
     rawTextLength: input.sourceText.length, sections, atoms,
     metadata: { extractorVersion: "RoleIntelligenceExtractorV1", hasGluedHeadings: false, hasStructuralMetaLines: false,
-      proposalCounts: { proposedAtoms: input.proposals.length, acceptedAtoms: atoms.length, rejectedAtoms: resolution.rejectedCount } },
+      proposalCounts: { proposedAtoms: input.proposals.length, acceptedAtoms: atoms.length, rejectedAtoms: resolution.rejections.length } },
   };
+  return { output, proposalRejections: resolution.rejections };
 }
 
 interface StructuralPosition {
@@ -269,7 +305,7 @@ function parentForCandidateProposal(proposal: CandidateSemanticProposal, anchor:
   const bullet = bullets.find((candidate) => anchor.startOffset >= candidate.startOffset && anchor.endOffset <= candidate.endOffset);
   const position = positions.find((candidate) => anchor.startOffset >= candidate.startOffset && anchor.endOffset <= candidate.endOffset);
   if (proposal.evidenceClass === "WORK_HISTORY" && (!bullet || !position)) {
-    throw new Error("A work-history proposal must resolve inside one structural candidate bullet and position.");
+    throw new ExpectedProposalRejection("STRUCTURAL_CONTAINMENT");
   }
   return bullet ? { bullet, position, parentText: bullet.exactText, parentStart: bullet.startOffset, parentEnd: bullet.endOffset }
     : { parentText: proposal.exactQuote, parentStart: anchor.startOffset, parentEnd: anchor.endOffset };
@@ -277,14 +313,18 @@ function parentForCandidateProposal(proposal: CandidateSemanticProposal, anchor:
 
 export function assembleCandidateSemanticProposals(input: {
   readonly sourceText: string; readonly sourceDocumentId: string; readonly proposals: readonly CandidateSemanticProposal[];
-}): CandidateProofOutputV1 {
-  const resolution = resolveProposals(input.sourceText, input.proposals);
+}): SemanticAssemblyResult<CandidateProofOutputV1> {
+  const resolution = resolveProposals(
+    input.sourceText,
+    input.proposals,
+    (_proposal, anchor) => `${anchor.startOffset}:${anchor.endOffset}`,
+  );
   const structuralPositions = parseCandidatePositions(input.sourceText);
   const allBullets = structuralPositions.flatMap((position) => parseBullets(input.sourceText, position, input.sourceDocumentId));
   const enrichment = new CandidateProofExtractorV1();
   const claims: CandidateProofClaim[] = [];
-  let rejectedCount = resolution.rejectedCount;
-  for (const { proposal, anchor } of resolution.accepted) {
+  const proposalRejections = [...resolution.rejections];
+  for (const { proposal, proposalIndex, anchor } of resolution.accepted) {
     try {
       const parent = parentForCandidateProposal(proposal, anchor, structuralPositions, allBullets);
       const proofTypes = canonicalProofTypes(proposal.proofTypes);
@@ -301,8 +341,9 @@ export function assembleCandidateSemanticProposals(input: {
       metrics: enrichment.extractMetrics(proposal.exactQuote, anchor.startOffset),
       groundedEntities: enrichment.extractEntities(proposal.exactQuote, anchor.startOffset),
       });
-    } catch {
-      rejectedCount += 1;
+    } catch (error) {
+      if (!(error instanceof ExpectedProposalRejection)) throw error;
+      proposalRejections.push({ proposalIndex, exactQuote: proposal.exactQuote, code: error.code });
     }
   }
   for (const claim of claims.filter((candidate) => candidate.evidenceClass === "WORK_HISTORY")) {
@@ -314,12 +355,13 @@ export function assembleCandidateSemanticProposals(input: {
     bullets: allBullets.filter((bullet) => bullet.startOffset >= position.startOffset && bullet.endOffset <= position.endOffset) }));
   const selfSummaries = claims.filter((claim) => claim.evidenceClass === "SELF_SUMMARY");
   const capabilityLabels = claims.filter((claim) => claim.evidenceClass === "CAPABILITY_LABEL");
-  return {
+  const output: CandidateProofOutputV1 = {
     sourceDocumentId: input.sourceDocumentId, rawDocumentLength: input.sourceText.length, positions, selfSummaries, capabilityLabels,
     education: [], allBullets, allClaims: claims,
     metadata: { extractorVersion: "CandidateProofExtractorV1", totalProfessionalExperienceBullets: allBullets.length,
       bulletsRetained: allBullets.length, bulletsWithSpecializedClaims: allBullets.filter((bullet) => bullet.claims.length > 0).length,
       bulletsWithoutSpecializedClaims: allBullets.filter((bullet) => bullet.claims.length === 0).length,
-      proposalCounts: { proposedClaims: input.proposals.length, acceptedClaims: claims.length, rejectedClaims: rejectedCount } },
+      proposalCounts: { proposedClaims: input.proposals.length, acceptedClaims: claims.length, rejectedClaims: proposalRejections.length } },
   };
+  return { output, proposalRejections };
 }
