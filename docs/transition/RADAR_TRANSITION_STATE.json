@@ -1,12 +1,12 @@
 {
   "schemaVersion": "radar-transition-state/v1",
-  "controlRevision": "2026-09-13.11",
+  "controlRevision": "2026-09-13.12",
   "controlDocument": "docs/RADAR_TRANSITION_CONTROL.md",
   "workingBranch": "phase5/gate1-architecture-recon",
   "gate1AStatus": "COMPLETE",
   "activeGate": "GATE_1B",
   "activeGateTitle": "Substrate, provenance, and extraction architecture decision",
-  "activeBatchId": "GATE_1B_BATCH_04B",
+  "activeBatchId": "GATE_1B_BATCH_04C",
   "currentBatchManifest": "docs/transition/CURRENT_BATCH.json",
   "currentBatchScopeRevision": 1,
   "implementationLedger": "docs/transition/IMPLEMENTATION_LEDGER.json",
@@ -23,7 +23,7 @@
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "GATE_1B_BATCH_04B is complete. No next production batch is authorized. The extractionArchitectureDecision remains OPEN and Batch 05 is NOT AUTHORIZED.",
+  "nextAuthorizedProductionWork": "GATE_1B_BATCH_04C is in progress. The extractionArchitectureDecision remains OPEN and Batch 05 is NOT AUTHORIZED.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,

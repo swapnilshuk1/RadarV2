@@ -13,6 +13,9 @@ This document is the governing execution record for the RADAR intelligence trans
 - Frozen corpus source branch: `codex/candidate-corpus-100`
 - Frozen corpus commit: `e1f0a47575accedcd7fd3d681c7b084ca377b0fd`
 - Current execution gate: **Gate 1 of 3 — Gate 1B substrate/provenance + extraction architecture decision**
+- **Gate 1B — Batch 04C: Rich semantic proposition generalization & architecture comparison.**
+- This is the only currently authorized production batch.
+- **Still open:** the production extraction architecture.
 - Gate 1A architecture reconnaissance: **COMPLETE**
 
 The `adbfc37` extractors are a deterministic benchmark and fallback/reference implementation. They are **not assumed to be the final production extraction architecture**.
@@ -314,6 +317,8 @@ Batch 01 — source/provenance immutability
 Batch 02 — extraction provider boundary + common mechanical verifier
 Batch 03 — LLM RoleIntelligence / CandidateProof experiment beside adbfc37
 Batch 04 — frozen + unseen/adversarial comparison
+Batch 04B — Source-ID generalization & candidate surface validation
+Batch 04C — Rich semantic proposition generalization & architecture comparison
 Batch 05 — written extraction architecture decision
 Batch 06 — canonical source-fact persistence/contracts
 ```
