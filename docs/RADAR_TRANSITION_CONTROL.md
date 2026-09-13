@@ -543,11 +543,13 @@ authorized only for a methodology-locked, read-only comparison.
 
 This is the only currently authorized production batch.
 
-Batch 04 compares the frozen deterministic baseline and the Batch 03
-experimental semantic-proposal path. It must lock fixture partitions and
-identities before either provider runs; retain raw outputs, verifier outcomes,
-rejection causality, and telemetry; and report role and candidate quality
-separately. It produces evidence only.
+Batch 04 is comparison-only: it may create locked fixtures, labels, manifests,
+reports, and audit artifacts, but cannot modify extraction semantics, provider
+prompts/configuration, canonical persistence, or runtime authority. It must
+lock fixture partitions, identities, gold labels, scoring/matching rules, and
+repeat policy before either provider runs; retain raw outputs, verifier
+outcomes, rejection causality, and telemetry; and report role and candidate
+quality separately. It produces evidence only.
 
 Do **not** change or begin beyond this authorization:
 
@@ -562,6 +564,7 @@ EvidenceGraph
 evaluation, policy, verdict, canonical persistence, dossier, serving, and UI behavior
 Batch 01 source/provenance immutability guarantees
 benchmark-specific tuning, fixture rewrites, or selective reruns without an explicit scope amendment
+Batch 05 authorization
 ```
 
 **Still open:** the production extraction architecture.

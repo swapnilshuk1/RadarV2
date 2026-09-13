@@ -1,6 +1,6 @@
 {
   "schemaVersion": "radar-transition-state/v1",
-  "controlRevision": "2026-09-13.7",
+  "controlRevision": "2026-09-13.8",
   "controlDocument": "docs/RADAR_TRANSITION_CONTROL.md",
   "workingBranch": "phase5/gate1-architecture-recon",
   "gate1AStatus": "COMPLETE",
