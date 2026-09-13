@@ -429,6 +429,28 @@
         "node verify-transition-control.mjs — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "9d3d40f9078acf33274240e2f3c17b9d7a331a07",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 2,
+      "summary": "Packaged Step 3A blind materials: 50 primary certification roles, 16 primary candidate resumes, 25 secondary remediation holdout roles, 8 secondary candidate resumes, manifests, SHA-256 hashes, completely blank annotation templates, external reviewer instructions, and prepared adjudication ingestion tooling. Enforced mandatory human-truth pause.",
+      "invariantsChecked": [
+        "Primary certification population comprises 50 roles (30 natural executive JDs from Turso DB + 20 high-risk boundary-stress roles) and 16 diverse executive resumes.",
+        "Secondary remediation holdout comprises 25 roles (15 natural executive JDs + 10 high-risk boundary-stress roles) and 8 diverse executive resumes, strictly disjoint from primary set.",
+        "All roles and resumes are fresh, authentic scraped Indian executive postings or authentic executive profiles unseen by Batch 04/04B/04C.",
+        "Blank annotation templates contain zero pre-filled facts, zero pre-filled high-risk boundaries, and blank reviewer metadata.",
+        "Candidate architecture was NOT executed against any blind document.",
+        "External reviewer instructions define dual human confirmation protocol with zero model output exposure.",
+        "Adjudication ingestion tooling prepared in scripts/transition/ingest-batch06-human-truth.ts."
+      ],
+      "verification": [
+        "npx tsx scripts/transition/assemble-gate1b-batch06-blind-materials.ts — PASS",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "node scripts/transition/verify-transition-control.mjs — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
