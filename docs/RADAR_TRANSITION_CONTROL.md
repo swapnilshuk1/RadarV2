@@ -536,7 +536,7 @@ Gate 1A has already resolved enough of the earlier reuse/coupling and canonical 
 
 ## 16. Current Next Action
 
-Batches 01, 02, and 03 are **COMPLETE**. Batch 04 scope revision 1 is now
+Batches 01, 02, and 03 are **COMPLETE**. Batch 04 scope revision 2 is now
 authorized only for a methodology-locked, read-only comparison.
 
 **Gate 1B — Batch 04: Frozen + unseen/adversarial extraction comparison.**
@@ -584,7 +584,8 @@ Batch 06 — canonical source-fact persistence/contracts                 [NOT AU
 
 **EvidenceGraph remains outside Gate 1 and cannot begin until Gate 1 exit is certified.**
 
-Batch 04 authorization, its fixed population definitions, required metrics,
-and anti-tuning rule are recorded in
+Batch 04 authorization, its corrected historical role corpus, one
+Batch-04-only experimental transport adapter, fixed population definitions,
+required metrics, and anti-tuning rule are recorded in
 `docs/transition/GATE_1B_BATCH_04_AUTHORIZATION.md` and the machine-readable
 batch/state manifests. Do not infer authorization beyond that scope.
