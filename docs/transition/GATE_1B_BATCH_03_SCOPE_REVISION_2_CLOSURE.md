@@ -2,7 +2,7 @@
 
 ## Status
 
-**COMPLETE**
+**SUPERSEDED FOR SCIENTIFIC-VALIDITY PURPOSES**
 
 Batch: `GATE_1B_BATCH_03` — Controlled LLM RoleIntelligence / CandidateProof extraction experiment
 Scope revision: `2`
@@ -10,7 +10,9 @@ Corrective-scope start commit: `9f45103425ef4901bc7e570044fef2056122ae3f`
 Implementation commit: `062afcb19771a563b80db0103e8d1d8265cf39ba`
 Implementation acknowledgement: `d4f6934e7087e198fd72400d3cd383aa7a2bb5f3`
 
-Batch 04 is not authorized by this closure.
+This closure recorded completion of Batch 03 scope revision 2 only. It is
+superseded for scientific-validity purposes by the governed reopening of
+`GATE_1B_BATCH_03` at scope revision 3. Batch 04 remains unauthorized.
 
 ## What closed
 

@@ -1,13 +1,13 @@
 {
   "schemaVersion": "radar-transition-batch/v1",
-  "controlRevision": "2026-09-13.5",
-  "scopeRevision": 2,
+  "controlRevision": "2026-09-13.6",
+  "scopeRevision": 3,
   "id": "GATE_1B_BATCH_03",
   "gate": "GATE_1B",
   "title": "Controlled LLM RoleIntelligence / CandidateProof extraction experiment",
-  "status": "COMPLETE",
-  "batchStartCommit": "9f45103425ef4901bc7e570044fef2056122ae3f",
-  "objective": "Strengthen the existing Batch 03 experiment so any result labelled VERIFIED is proven at runtime to satisfy the complete mechanically-verifiable V1 contract against the exact immutable source. Add strict LLM response shape validation, expand the shared MechanicalExtractionVerifier, isolate observer failures, retain execution telemetry, and prove strict transport-schema translation. No LLM output becomes production-authoritative in this batch.",
+  "status": "READY",
+  "batchStartCommit": "a4d1b98258d91fdf28fde4991580484c64a28c54",
+  "objective": "Correct Batch 03 scientific validity: bind non-semantic identity/context mechanically, make claim/accounting and runtime checks exact, and replace full-V1 LLM emission with LLM semantic proposals assembled deterministically against immutable source snapshots before common verification. No LLM output becomes production-authoritative in this batch.",
   "mustNotChange": [
     "deterministic Extraction V1 output semantics or frozen-baseline behavior",
     "production extraction authority remains the existing deterministic baseline",
@@ -38,10 +38,11 @@
   ],
   "requiredVerification": [
     "npm run transition:check before implementation",
-    "full runtime shape validation for RoleIntelligenceOutputV1 and CandidateProofOutputV1 before any TypeScript cast",
-    "expanded shared MechanicalExtractionVerifier tests for exact source truth, derived IDs, parent-child relationships, collection equality/accounting, and source identity",
-    "LLM provider tests proving exact Batch 01 source resolution through the Batch 02 runner and verifier",
-    "schema-bound prompt/contract, cache/version identity, observer isolation, execution telemetry, transport-schema translation, and fail-closed execution tests",
+    "mechanical binding of all non-semantic source identity and request context without requiring LLM echo",
+    "exact allClaims union and exact proposal accounting tests",
+    "complete runtime validation for every typed V1 field before TypeScript conversion where V1 schema parsing remains used",
+    "LLM semantic-proposal to deterministic V1 assembly tests proving exact source resolution through the Batch 02 runner and verifier",
+    "schema-bound proposal contracts, cache/version identity, observer isolation, execution telemetry, transport-schema translation, and fail-closed execution tests",
     "deterministic baseline remains non-authoritative experimental reference and production extraction remains unchanged",
     "typecheck when TypeScript contracts change",
     "build/certification only when required by the touched contract boundary; prefer targeted tests during development",
@@ -49,7 +50,7 @@
     "npm run transition:check after acknowledgement and before agent completion"
   ],
   "completionEvidence": [
-    "experiment-only LLM RoleIntelligence and CandidateProof providers run through the exact Batch 02 provider/verifier runner against immutable Batch 01 snapshots",
+    "experiment-only LLM semantic proposal providers run through deterministic immutable-source assembly and the exact Batch 02 provider/verifier runner",
     "any result labelled VERIFIED satisfies the complete mechanically-verifiable V1 contract at runtime against the exact immutable source, regardless of deterministic or experimental LLM provider",
     "LLM request/response contracts are schema-bound, versioned, telemetry-observable, cache-identified by exact immutable inputs, and fail closed",
     "production continues to use the existing deterministic baseline unchanged and no LLM result is persisted or served as canonical truth",
