@@ -1,0 +1,1445 @@
+{
+  "envelopeValid": true,
+  "parsedProposals": 30,
+  "validSpanIdCount": 30,
+  "invalidSpanIds": [],
+  "grounding": [
+    {
+      "index": 0,
+      "spanId": "S005",
+      "exactText": "- Executive marketing leader with 20+ years of experience driving commercial scale, digital transformation and customer-centric innovation across leading automotive, healthcare and consumer organizations.",
+      "startOffset": 216,
+      "endOffset": 420,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "SELF_SUMMARY",
+      "proofTypes": [
+        "TRANSFORMATION",
+        "DOMAIN_PRECEDENT",
+        "STAKEHOLDER_LEADERSHIP",
+        "CUSTOMER_GROWTH",
+        "REVENUE_GROWTH"
+      ]
+    },
+    {
+      "index": 1,
+      "spanId": "S006",
+      "exactText": "- Proven success building high-performing teams, leading multi-million-dollar portfolios and delivering measurable commercial outcomes through brand strategy, customer experience, enterprise MarTech and data-driven marketing.",
+      "startOffset": 422,
+      "endOffset": 647,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "SELF_SUMMARY",
+      "proofTypes": [
+        "ORGANIZATION_BUILD",
+        "FINANCIAL_SCOPE",
+        "OUTCOME",
+        "REVENUE_GROWTH",
+        "TECHNOLOGY_IMPLEMENTATION",
+        "CUSTOMER_GROWTH"
+      ]
+    },
+    {
+      "index": 2,
+      "spanId": "S008",
+      "exactText": "- Commercial Leadership: Building & Scaling GCCs, P&L Management, Strategic Pitches",
+      "startOffset": 679,
+      "endOffset": 762,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "ORGANIZATION_BUILD",
+        "FINANCIAL_SCOPE",
+        "STAKEHOLDER_LEADERSHIP"
+      ]
+    },
+    {
+      "index": 3,
+      "spanId": "S009",
+      "exactText": "- Growth & Performance Marketing: Full-Funnel Acquisition, ROAS Optimization, Conversion Strategy",
+      "startOffset": 764,
+      "endOffset": 861,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "REVENUE_GROWTH",
+        "PIPELINE_GENERATION"
+      ]
+    },
+    {
+      "index": 4,
+      "spanId": "S010",
+      "exactText": "- Brand & Customer Strategy: Integrated Marketing, PR, Consumer Insights, Content Strategy",
+      "startOffset": 863,
+      "endOffset": 953,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "CUSTOMER_GROWTH",
+        "STAKEHOLDER_LEADERSHIP"
+      ]
+    },
+    {
+      "index": 5,
+      "spanId": "S011",
+      "exactText": "- Digital Transformation & MarTech: Salesforce CDP, Adobe Experience Cloud, CRM & Customer Lifecycle",
+      "startOffset": 955,
+      "endOffset": 1055,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "TRANSFORMATION",
+        "TECHNOLOGY_IMPLEMENTATION"
+      ]
+    },
+    {
+      "index": 6,
+      "spanId": "S012",
+      "exactText": "- Analytics & Experimentation: O2O Attribution, KPI Frameworks, A/B and Multivariate Testing",
+      "startOffset": 1057,
+      "endOffset": 1149,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 7,
+      "spanId": "S013",
+      "exactText": "- Innovation & AI: GenAI Automation, Digital Commerce, Marketing Innovation",
+      "startOffset": 1151,
+      "endOffset": 1226,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "TRANSFORMATION"
+      ]
+    },
+    {
+      "index": 8,
+      "spanId": "S018",
+      "exactText": "- Accountable for commercial performance, delivery and profitability of VML India's two largest client accounts, overseeing an $8M pure agency fee book for Ford and a projected ₹36 Cr 3-year service retainer for BMW.",
+      "startOffset": 1411,
+      "endOffset": 1627,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "FINANCIAL_SCOPE",
+        "OUTCOME",
+        "OWNERSHIP"
+      ]
+    },
+    {
+      "index": 9,
+      "spanId": "S019",
+      "exactText": "- Recruited and managed a 40-member cross-functional Performance Marketing Center of Excellence (GCC) driving CRM, website & performance marketing across 13 APAC and Middle East markets for Ford.",
+      "startOffset": 1629,
+      "endOffset": 1824,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "ORGANIZATION_BUILD",
+        "PEOPLE_SCOPE",
+        "GEOGRAPHIC_SCOPE",
+        "TECHNOLOGY_IMPLEMENTATION"
+      ]
+    },
+    {
+      "index": 10,
+      "spanId": "S020",
+      "exactText": "Concurrently led a complex legacy-to-Salesforce CRM migration across these regions within a 12-month timeline.",
+      "startOffset": 1825,
+      "endOffset": 1935,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "TRANSFORMATION",
+        "TECHNOLOGY_IMPLEMENTATION",
+        "GEOGRAPHIC_SCOPE"
+      ]
+    },
+    {
+      "index": 11,
+      "spanId": "S021",
+      "exactText": "- Established a Digital Analytics & Experimentation Lab, embedding A/B testing into client and agency decision-making, enabling faster optimization and improved marketing effectiveness.",
+      "startOffset": 1937,
+      "endOffset": 2122,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "ORGANIZATION_BUILD",
+        "OUTCOME",
+        "TECHNOLOGY_IMPLEMENTATION"
+      ]
+    },
+    {
+      "index": 12,
+      "spanId": "S022",
+      "exactText": "- Redesigned customer journeys across digital platforms, improving lead quality and reducing friction in the booking and enquiry process, resulting in $14M in attributed additional revenue.",
+      "startOffset": 2124,
+      "endOffset": 2313,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "CUSTOMER_GROWTH",
+        "REVENUE_GROWTH",
+        "TRANSFORMATION"
+      ]
+    },
+    {
+      "index": 13,
+      "spanId": "S023",
+      "exactText": "- Won and led the integrated mainline, digital, and PR mandates for BMW India and 22 dealers, taking full ownership of brand architecture and integrated messaging.",
+      "startOffset": 2315,
+      "endOffset": 2478,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "MANDATE",
+        "OWNERSHIP",
+        "PEOPLE_SCOPE"
+      ]
+    },
+    {
+      "index": 14,
+      "spanId": "S024",
+      "exactText": "- Spearheaded the \"Drive Your Match\" campaign and core social strategies that supported BMW becoming India’s highest-selling Auto OEM in Q1’26, earning formal recognition from India CEO Harpreet Brar and global leadership.",
+      "startOffset": 2480,
+      "endOffset": 2702,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "PRODUCT_LAUNCH",
+        "OUTCOME",
+        "STAKEHOLDER_LEADERSHIP"
+      ]
+    },
+    {
+      "index": 15,
+      "spanId": "S025",
+      "exactText": "- Selected to lead the Centrum portfolio following WPP's 2025 global Haleon win, assuming overall strategic and commercial leadership for this high-growth mandate.",
+      "startOffset": 2704,
+      "endOffset": 2867,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "MANDATE",
+        "STAKEHOLDER_LEADERSHIP",
+        "REVENUE_GROWTH"
+      ]
+    },
+    {
+      "index": 16,
+      "spanId": "S026",
+      "exactText": "- Leading integrated marketing, social and commerce strategy for Centrum and Recharge as part of WPP's global Haleon partnership.",
+      "startOffset": 2869,
+      "endOffset": 2998,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "STAKEHOLDER_LEADERSHIP",
+        "PARTNERSHIP"
+      ]
+    },
+    {
+      "index": 17,
+      "spanId": "S029",
+      "exactText": "- Built and scaled a hyperlocal digital marketing program across 4,000+ dealerships, generating more than 400,000 additional organic qualified leads leveraging AI and NLP in regional languages.",
+      "startOffset": 3086,
+      "endOffset": 3279,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "ORGANIZATION_BUILD",
+        "PEOPLE_SCOPE",
+        "PIPELINE_GENERATION",
+        "TECHNOLOGY_IMPLEMENTATION"
+      ]
+    },
+    {
+      "index": 18,
+      "spanId": "S030",
+      "exactText": "- Engineered the implementation of Salesforce CDP to map customer journeys and optimize long-term retention across the premium and electric vehicle portfolios.",
+      "startOffset": 3281,
+      "endOffset": 3440,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "TECHNOLOGY_IMPLEMENTATION",
+        "CUSTOMER_GROWTH"
+      ]
+    },
+    {
+      "index": 19,
+      "spanId": "S031",
+      "exactText": "- Orchestrated digital-first product launches, including India’s first premium vehicle launch in the metaverse for the Rider and an exclusive e-commerce-only launch for the iQube.",
+      "startOffset": 3442,
+      "endOffset": 3621,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "PRODUCT_LAUNCH",
+        "TECHNOLOGY_IMPLEMENTATION"
+      ]
+    },
+    {
+      "index": 20,
+      "spanId": "S034",
+      "exactText": "- Grew Ford's digital revenue contribution from 3% to over 32% in five years through integrated performance marketing and digital commerce initiatives.",
+      "startOffset": 3731,
+      "endOffset": 3882,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "REVENUE_GROWTH",
+        "TRANSFORMATION"
+      ]
+    },
+    {
+      "index": 21,
+      "spanId": "S035",
+      "exactText": "- Collaborated directly with Google engineering teams to build a 'Global First' Online-to-Offline (O2O) Attribution model to quantify how digital engagement impacted physical retail transactions.",
+      "startOffset": 3884,
+      "endOffset": 4079,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "PARTNERSHIP",
+        "TECHNOLOGY_IMPLEMENTATION",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 22,
+      "spanId": "S036",
+      "exactText": "- Executed purpose-driven PR campaigns like the 'Cartesy' safety platform, which won more than 20 marketing honors and successfully shifted market perceptions on cost-of-ownership.",
+      "startOffset": 4081,
+      "endOffset": 4261,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "PRODUCT_LAUNCH",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 23,
+      "spanId": "S037",
+      "exactText": "- Introduced new digital acquisition channels, including flash sales on Amazon and online booking journeys that expanded lead generation opportunities.",
+      "startOffset": 4263,
+      "endOffset": 4414,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "PIPELINE_GENERATION",
+        "TECHNOLOGY_IMPLEMENTATION"
+      ]
+    },
+    {
+      "index": 24,
+      "spanId": "S040",
+      "exactText": "- Owned end-to-end brand-building, product marketing, and growth architecture across key internet properties, including INLEAD and iHealthcare.",
+      "startOffset": 4493,
+      "endOffset": 4636,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "OWNERSHIP",
+        "PRODUCT_LAUNCH"
+      ]
+    },
+    {
+      "index": 25,
+      "spanId": "S041",
+      "exactText": "- Outperformed baseline commercial and lead acquisition targets for 3 successive fiscal cycles by up to 14%.",
+      "startOffset": 4638,
+      "endOffset": 4746,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "OUTCOME",
+        "REVENUE_GROWTH",
+        "PIPELINE_GENERATION"
+      ]
+    },
+    {
+      "index": 26,
+      "spanId": "S042",
+      "exactText": "- Shifted marketing investments towards measurable performance channels, reducing customer acquisition costs by 70%.",
+      "startOffset": 4748,
+      "endOffset": 4864,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "COST_EFFICIENCY",
+        "TRANSFORMATION"
+      ]
+    },
+    {
+      "index": 27,
+      "spanId": "S045",
+      "exactText": "- Developed localized 360-degree digital acquisition campaigns, capturing S$1.8M in net new pipeline from corporate targets within 6 months.",
+      "startOffset": 4977,
+      "endOffset": 5117,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "PIPELINE_GENERATION",
+        "FINANCIAL_SCOPE"
+      ]
+    },
+    {
+      "index": 28,
+      "spanId": "S048",
+      "exactText": "- Managed an 80 Million INR marketing mix, leading to a 26% increase in customer conversions during an industry downturn.",
+      "startOffset": 5202,
+      "endOffset": 5323,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "FINANCIAL_SCOPE",
+        "CUSTOMER_GROWTH",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 29,
+      "spanId": "S051",
+      "exactText": "- Pioneered early organic search and optimization frameworks, executing some of the earliest Google AdWords and targeted SMS outreach campaigns in 2006.",
+      "startOffset": 5422,
+      "endOffset": 5574,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "TECHNOLOGY_IMPLEMENTATION",
+        "DOMAIN_PRECEDENT"
+      ]
+    }
+  ],
+  "assembly": {
+    "output": {
+      "sourceDocumentId": "CANDIDATE_RESUME_01",
+      "rawDocumentLength": 5681,
+      "positions": [
+        {
+          "positionId": "pos:Marketing,_Growth_&_Transformation:24",
+          "title": "Senior Vice President",
+          "employer": "Marketing, Growth & Transformation",
+          "dates": "",
+          "startOffset": 24,
+          "endOffset": 1264,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:218_420",
+              "exactText": "Executive marketing leader with 20+ years of experience driving commercial scale, digital transformation and customer-centric innovation across leading automotive, healthcare and consumer organizations.",
+              "startOffset": 218,
+              "endOffset": 420,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:424_647",
+              "exactText": "Proven success building high-performing teams, leading multi-million-dollar portfolios and delivering measurable commercial outcomes through brand strategy, customer experience, enterprise MarTech and data-driven marketing.",
+              "startOffset": 424,
+              "endOffset": 647,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:681_762",
+              "exactText": "Commercial Leadership: Building & Scaling GCCs, P&L Management, Strategic Pitches",
+              "startOffset": 681,
+              "endOffset": 762,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:766_861",
+              "exactText": "Growth & Performance Marketing: Full-Funnel Acquisition, ROAS Optimization, Conversion Strategy",
+              "startOffset": 766,
+              "endOffset": 861,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:865_953",
+              "exactText": "Brand & Customer Strategy: Integrated Marketing, PR, Consumer Insights, Content Strategy",
+              "startOffset": 865,
+              "endOffset": 953,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:957_1055",
+              "exactText": "Digital Transformation & MarTech: Salesforce CDP, Adobe Experience Cloud, CRM & Customer Lifecycle",
+              "startOffset": 957,
+              "endOffset": 1055,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:1059_1149",
+              "exactText": "Analytics & Experimentation: O2O Attribution, KPI Frameworks, A/B and Multivariate Testing",
+              "startOffset": 1059,
+              "endOffset": 1149,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:1153_1226",
+              "exactText": "Innovation & AI: GenAI Automation, Digital Commerce, Marketing Innovation",
+              "startOffset": 1153,
+              "endOffset": 1226,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:VML_(WPP_Group):1264",
+          "title": "Senior Vice President",
+          "employer": "VML (WPP Group)",
+          "dates": "",
+          "startOffset": 1264,
+          "endOffset": 3002,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):1413_1627",
+              "exactText": "Accountable for commercial performance, delivery and profitability of VML India's two largest client accounts, overseeing an $8M pure agency fee book for Ford and a projected ₹36 Cr 3-year service retainer for BMW.",
+              "startOffset": 1413,
+              "endOffset": 1627,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):1631_1935",
+              "exactText": "Recruited and managed a 40-member cross-functional Performance Marketing Center of Excellence (GCC) driving CRM, website & performance marketing across 13 APAC and Middle East markets for Ford. Concurrently led a complex legacy-to-Salesforce CRM migration across these regions within a 12-month timeline.",
+              "startOffset": 1631,
+              "endOffset": 1935,
+              "claims": [
+                {
+                  "claimId": "claim:CANDIDATE_RESUME_01:1825_1935:GEOGRAPHIC_SCOPE",
+                  "sourceDocumentId": "CANDIDATE_RESUME_01",
+                  "positionId": "pos:VML_(WPP_Group):1264",
+                  "title": "Senior Vice President",
+                  "employer": "VML (WPP Group)",
+                  "dates": "",
+                  "parentBulletExactText": "Recruited and managed a 40-member cross-functional Performance Marketing Center of Excellence (GCC) driving CRM, website & performance marketing across 13 APAC and Middle East markets for Ford. Concurrently led a complex legacy-to-Salesforce CRM migration across these regions within a 12-month timeline.",
+                  "parentBulletStartOffset": 1631,
+                  "parentBulletEndOffset": 1935,
+                  "exactText": "Concurrently led a complex legacy-to-Salesforce CRM migration across these regions within a 12-month timeline.",
+                  "startOffset": 1825,
+                  "endOffset": 1935,
+                  "evidenceClass": "WORK_HISTORY",
+                  "proofTypes": [
+                    "GEOGRAPHIC_SCOPE",
+                    "TRANSFORMATION",
+                    "TECHNOLOGY_IMPLEMENTATION"
+                  ],
+                  "metrics": [],
+                  "groundedEntities": []
+                }
+              ]
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):1939_2122",
+              "exactText": "Established a Digital Analytics & Experimentation Lab, embedding A/B testing into client and agency decision-making, enabling faster optimization and improved marketing effectiveness.",
+              "startOffset": 1939,
+              "endOffset": 2122,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):2126_2313",
+              "exactText": "Redesigned customer journeys across digital platforms, improving lead quality and reducing friction in the booking and enquiry process, resulting in $14M in attributed additional revenue.",
+              "startOffset": 2126,
+              "endOffset": 2313,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):2317_2478",
+              "exactText": "Won and led the integrated mainline, digital, and PR mandates for BMW India and 22 dealers, taking full ownership of brand architecture and integrated messaging.",
+              "startOffset": 2317,
+              "endOffset": 2478,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):2482_2702",
+              "exactText": "Spearheaded the \"Drive Your Match\" campaign and core social strategies that supported BMW becoming India’s highest-selling Auto OEM in Q1’26, earning formal recognition from India CEO Harpreet Brar and global leadership.",
+              "startOffset": 2482,
+              "endOffset": 2702,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):2706_2867",
+              "exactText": "Selected to lead the Centrum portfolio following WPP's 2025 global Haleon win, assuming overall strategic and commercial leadership for this high-growth mandate.",
+              "startOffset": 2706,
+              "endOffset": 2867,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):2871_2998",
+              "exactText": "Leading integrated marketing, social and commerce strategy for Centrum and Recharge as part of WPP's global Haleon partnership.",
+              "startOffset": 2871,
+              "endOffset": 2998,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:TVS_Motor_Company:3002",
+          "title": "AGM - Digital Marketing",
+          "employer": "TVS Motor Company",
+          "dates": "",
+          "startOffset": 3002,
+          "endOffset": 3625,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:TVS_Motor_Company:3088_3279",
+              "exactText": "Built and scaled a hyperlocal digital marketing program across 4,000+ dealerships, generating more than 400,000 additional organic qualified leads leveraging AI and NLP in regional languages.",
+              "startOffset": 3088,
+              "endOffset": 3279,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:TVS_Motor_Company:3283_3440",
+              "exactText": "Engineered the implementation of Salesforce CDP to map customer journeys and optimize long-term retention across the premium and electric vehicle portfolios.",
+              "startOffset": 3283,
+              "endOffset": 3440,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:TVS_Motor_Company:3444_3621",
+              "exactText": "Orchestrated digital-first product launches, including India’s first premium vehicle launch in the metaverse for the Rider and an exclusive e-commerce-only launch for the iQube.",
+              "startOffset": 3444,
+              "endOffset": 3621,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:GTB_(WPP_Group)_/_Ford_India:3625",
+          "title": "Associate Vice President - Digital",
+          "employer": "GTB (WPP Group) / Ford India",
+          "dates": "",
+          "startOffset": 3625,
+          "endOffset": 4418,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:GTB_(WPP_Group)_/_Ford_India:3733_3882",
+              "exactText": "Grew Ford's digital revenue contribution from 3% to over 32% in five years through integrated performance marketing and digital commerce initiatives.",
+              "startOffset": 3733,
+              "endOffset": 3882,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:GTB_(WPP_Group)_/_Ford_India:3886_4079",
+              "exactText": "Collaborated directly with Google engineering teams to build a 'Global First' Online-to-Offline (O2O) Attribution model to quantify how digital engagement impacted physical retail transactions.",
+              "startOffset": 3886,
+              "endOffset": 4079,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:GTB_(WPP_Group)_/_Ford_India:4083_4261",
+              "exactText": "Executed purpose-driven PR campaigns like the 'Cartesy' safety platform, which won more than 20 marketing honors and successfully shifted market perceptions on cost-of-ownership.",
+              "startOffset": 4083,
+              "endOffset": 4261,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:GTB_(WPP_Group)_/_Ford_India:4265_4414",
+              "exactText": "Introduced new digital acquisition channels, including flash sales on Amazon and online booking journeys that expanded lead generation opportunities.",
+              "startOffset": 4265,
+              "endOffset": 4414,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:Primordial_Systems:4418",
+          "title": "AVP Marketing",
+          "employer": "Primordial Systems",
+          "dates": "",
+          "startOffset": 4418,
+          "endOffset": 4868,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Primordial_Systems:4495_4636",
+              "exactText": "Owned end-to-end brand-building, product marketing, and growth architecture across key internet properties, including INLEAD and iHealthcare.",
+              "startOffset": 4495,
+              "endOffset": 4636,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Primordial_Systems:4640_4746",
+              "exactText": "Outperformed baseline commercial and lead acquisition targets for 3 successive fiscal cycles by up to 14%.",
+              "startOffset": 4640,
+              "endOffset": 4746,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Primordial_Systems:4750_4864",
+              "exactText": "Shifted marketing investments towards measurable performance channels, reducing customer acquisition costs by 70%.",
+              "startOffset": 4750,
+              "endOffset": 4864,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:Patt_&_Hoff_Group_(Singapore):4868",
+          "title": "Manager - Marketing & Communications",
+          "employer": "Patt & Hoff Group (Singapore)",
+          "dates": "",
+          "startOffset": 4868,
+          "endOffset": 5121,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Patt_&_Hoff_Group_(Singapore):4979_5117",
+              "exactText": "Developed localized 360-degree digital acquisition campaigns, capturing S$1.8M in net new pipeline from corporate targets within 6 months.",
+              "startOffset": 4979,
+              "endOffset": 5117,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:Transasia_Aviation:5121",
+          "title": "Manager - Marketing",
+          "employer": "Transasia Aviation",
+          "dates": "",
+          "startOffset": 5121,
+          "endOffset": 5327,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Transasia_Aviation:5204_5323",
+              "exactText": "Managed an 80 Million INR marketing mix, leading to a 26% increase in customer conversions during an industry downturn.",
+              "startOffset": 5204,
+              "endOffset": 5323,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:IMS_Learning_Resources:5327",
+          "title": "Assistant Manager - Marketing",
+          "employer": "IMS Learning Resources",
+          "dates": "",
+          "startOffset": 5327,
+          "endOffset": 5681,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_01:IMS_Learning_Resources:5424_5574",
+              "exactText": "Pioneered early organic search and optimization frameworks, executing some of the earliest Google AdWords and targeted SMS outreach campaigns in 2006.",
+              "startOffset": 5424,
+              "endOffset": 5574,
+              "claims": []
+            }
+          ]
+        }
+      ],
+      "selfSummaries": [
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:216_420:TRANSFORMATION",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Executive marketing leader with 20+ years of experience driving commercial scale, digital transformation and customer-centric innovation across leading automotive, healthcare and consumer organizations.",
+          "parentBulletStartOffset": 216,
+          "parentBulletEndOffset": 420,
+          "exactText": "- Executive marketing leader with 20+ years of experience driving commercial scale, digital transformation and customer-centric innovation across leading automotive, healthcare and consumer organizations.",
+          "startOffset": 216,
+          "endOffset": 420,
+          "evidenceClass": "SELF_SUMMARY",
+          "proofTypes": [
+            "TRANSFORMATION",
+            "CUSTOMER_GROWTH",
+            "REVENUE_GROWTH",
+            "STAKEHOLDER_LEADERSHIP",
+            "DOMAIN_PRECEDENT"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:422_647:OUTCOME",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Proven success building high-performing teams, leading multi-million-dollar portfolios and delivering measurable commercial outcomes through brand strategy, customer experience, enterprise MarTech and data-driven marketing.",
+          "parentBulletStartOffset": 422,
+          "parentBulletEndOffset": 647,
+          "exactText": "- Proven success building high-performing teams, leading multi-million-dollar portfolios and delivering measurable commercial outcomes through brand strategy, customer experience, enterprise MarTech and data-driven marketing.",
+          "startOffset": 422,
+          "endOffset": 647,
+          "evidenceClass": "SELF_SUMMARY",
+          "proofTypes": [
+            "OUTCOME",
+            "FINANCIAL_SCOPE",
+            "ORGANIZATION_BUILD",
+            "CUSTOMER_GROWTH",
+            "REVENUE_GROWTH",
+            "TECHNOLOGY_IMPLEMENTATION"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        }
+      ],
+      "capabilityLabels": [
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:679_762:FINANCIAL_SCOPE",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Commercial Leadership: Building & Scaling GCCs, P&L Management, Strategic Pitches",
+          "parentBulletStartOffset": 679,
+          "parentBulletEndOffset": 762,
+          "exactText": "- Commercial Leadership: Building & Scaling GCCs, P&L Management, Strategic Pitches",
+          "startOffset": 679,
+          "endOffset": 762,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "FINANCIAL_SCOPE",
+            "ORGANIZATION_BUILD",
+            "STAKEHOLDER_LEADERSHIP"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:764_861:REVENUE_GROWTH",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Growth & Performance Marketing: Full-Funnel Acquisition, ROAS Optimization, Conversion Strategy",
+          "parentBulletStartOffset": 764,
+          "parentBulletEndOffset": 861,
+          "exactText": "- Growth & Performance Marketing: Full-Funnel Acquisition, ROAS Optimization, Conversion Strategy",
+          "startOffset": 764,
+          "endOffset": 861,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "REVENUE_GROWTH",
+            "PIPELINE_GENERATION"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:863_953:CUSTOMER_GROWTH",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Brand & Customer Strategy: Integrated Marketing, PR, Consumer Insights, Content Strategy",
+          "parentBulletStartOffset": 863,
+          "parentBulletEndOffset": 953,
+          "exactText": "- Brand & Customer Strategy: Integrated Marketing, PR, Consumer Insights, Content Strategy",
+          "startOffset": 863,
+          "endOffset": 953,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CUSTOMER_GROWTH",
+            "STAKEHOLDER_LEADERSHIP"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:955_1055:TRANSFORMATION",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Digital Transformation & MarTech: Salesforce CDP, Adobe Experience Cloud, CRM & Customer Lifecycle",
+          "parentBulletStartOffset": 955,
+          "parentBulletEndOffset": 1055,
+          "exactText": "- Digital Transformation & MarTech: Salesforce CDP, Adobe Experience Cloud, CRM & Customer Lifecycle",
+          "startOffset": 955,
+          "endOffset": 1055,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "TRANSFORMATION",
+            "TECHNOLOGY_IMPLEMENTATION"
+          ],
+          "metrics": [],
+          "groundedEntities": [
+            {
+              "exactText": "Salesforce CDP",
+              "startOffset": 991,
+              "endOffset": 1005,
+              "category": "PLATFORM"
+            }
+          ]
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:1057_1149:OUTCOME",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Analytics & Experimentation: O2O Attribution, KPI Frameworks, A/B and Multivariate Testing",
+          "parentBulletStartOffset": 1057,
+          "parentBulletEndOffset": 1149,
+          "exactText": "- Analytics & Experimentation: O2O Attribution, KPI Frameworks, A/B and Multivariate Testing",
+          "startOffset": 1057,
+          "endOffset": 1149,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "OUTCOME"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:1151_1226:TRANSFORMATION",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Innovation & AI: GenAI Automation, Digital Commerce, Marketing Innovation",
+          "parentBulletStartOffset": 1151,
+          "parentBulletEndOffset": 1226,
+          "exactText": "- Innovation & AI: GenAI Automation, Digital Commerce, Marketing Innovation",
+          "startOffset": 1151,
+          "endOffset": 1226,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "TRANSFORMATION"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        }
+      ],
+      "education": [],
+      "allBullets": [
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:218_420",
+          "exactText": "Executive marketing leader with 20+ years of experience driving commercial scale, digital transformation and customer-centric innovation across leading automotive, healthcare and consumer organizations.",
+          "startOffset": 218,
+          "endOffset": 420,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:424_647",
+          "exactText": "Proven success building high-performing teams, leading multi-million-dollar portfolios and delivering measurable commercial outcomes through brand strategy, customer experience, enterprise MarTech and data-driven marketing.",
+          "startOffset": 424,
+          "endOffset": 647,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:681_762",
+          "exactText": "Commercial Leadership: Building & Scaling GCCs, P&L Management, Strategic Pitches",
+          "startOffset": 681,
+          "endOffset": 762,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:766_861",
+          "exactText": "Growth & Performance Marketing: Full-Funnel Acquisition, ROAS Optimization, Conversion Strategy",
+          "startOffset": 766,
+          "endOffset": 861,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:865_953",
+          "exactText": "Brand & Customer Strategy: Integrated Marketing, PR, Consumer Insights, Content Strategy",
+          "startOffset": 865,
+          "endOffset": 953,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:957_1055",
+          "exactText": "Digital Transformation & MarTech: Salesforce CDP, Adobe Experience Cloud, CRM & Customer Lifecycle",
+          "startOffset": 957,
+          "endOffset": 1055,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:1059_1149",
+          "exactText": "Analytics & Experimentation: O2O Attribution, KPI Frameworks, A/B and Multivariate Testing",
+          "startOffset": 1059,
+          "endOffset": 1149,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Marketing,_Growth_&_Transformation:1153_1226",
+          "exactText": "Innovation & AI: GenAI Automation, Digital Commerce, Marketing Innovation",
+          "startOffset": 1153,
+          "endOffset": 1226,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):1413_1627",
+          "exactText": "Accountable for commercial performance, delivery and profitability of VML India's two largest client accounts, overseeing an $8M pure agency fee book for Ford and a projected ₹36 Cr 3-year service retainer for BMW.",
+          "startOffset": 1413,
+          "endOffset": 1627,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):1631_1935",
+          "exactText": "Recruited and managed a 40-member cross-functional Performance Marketing Center of Excellence (GCC) driving CRM, website & performance marketing across 13 APAC and Middle East markets for Ford. Concurrently led a complex legacy-to-Salesforce CRM migration across these regions within a 12-month timeline.",
+          "startOffset": 1631,
+          "endOffset": 1935,
+          "claims": [
+            {
+              "claimId": "claim:CANDIDATE_RESUME_01:1825_1935:GEOGRAPHIC_SCOPE",
+              "sourceDocumentId": "CANDIDATE_RESUME_01",
+              "positionId": "pos:VML_(WPP_Group):1264",
+              "title": "Senior Vice President",
+              "employer": "VML (WPP Group)",
+              "dates": "",
+              "parentBulletExactText": "Recruited and managed a 40-member cross-functional Performance Marketing Center of Excellence (GCC) driving CRM, website & performance marketing across 13 APAC and Middle East markets for Ford. Concurrently led a complex legacy-to-Salesforce CRM migration across these regions within a 12-month timeline.",
+              "parentBulletStartOffset": 1631,
+              "parentBulletEndOffset": 1935,
+              "exactText": "Concurrently led a complex legacy-to-Salesforce CRM migration across these regions within a 12-month timeline.",
+              "startOffset": 1825,
+              "endOffset": 1935,
+              "evidenceClass": "WORK_HISTORY",
+              "proofTypes": [
+                "GEOGRAPHIC_SCOPE",
+                "TRANSFORMATION",
+                "TECHNOLOGY_IMPLEMENTATION"
+              ],
+              "metrics": [],
+              "groundedEntities": []
+            }
+          ]
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):1939_2122",
+          "exactText": "Established a Digital Analytics & Experimentation Lab, embedding A/B testing into client and agency decision-making, enabling faster optimization and improved marketing effectiveness.",
+          "startOffset": 1939,
+          "endOffset": 2122,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):2126_2313",
+          "exactText": "Redesigned customer journeys across digital platforms, improving lead quality and reducing friction in the booking and enquiry process, resulting in $14M in attributed additional revenue.",
+          "startOffset": 2126,
+          "endOffset": 2313,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):2317_2478",
+          "exactText": "Won and led the integrated mainline, digital, and PR mandates for BMW India and 22 dealers, taking full ownership of brand architecture and integrated messaging.",
+          "startOffset": 2317,
+          "endOffset": 2478,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):2482_2702",
+          "exactText": "Spearheaded the \"Drive Your Match\" campaign and core social strategies that supported BMW becoming India’s highest-selling Auto OEM in Q1’26, earning formal recognition from India CEO Harpreet Brar and global leadership.",
+          "startOffset": 2482,
+          "endOffset": 2702,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):2706_2867",
+          "exactText": "Selected to lead the Centrum portfolio following WPP's 2025 global Haleon win, assuming overall strategic and commercial leadership for this high-growth mandate.",
+          "startOffset": 2706,
+          "endOffset": 2867,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:VML_(WPP_Group):2871_2998",
+          "exactText": "Leading integrated marketing, social and commerce strategy for Centrum and Recharge as part of WPP's global Haleon partnership.",
+          "startOffset": 2871,
+          "endOffset": 2998,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:TVS_Motor_Company:3088_3279",
+          "exactText": "Built and scaled a hyperlocal digital marketing program across 4,000+ dealerships, generating more than 400,000 additional organic qualified leads leveraging AI and NLP in regional languages.",
+          "startOffset": 3088,
+          "endOffset": 3279,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:TVS_Motor_Company:3283_3440",
+          "exactText": "Engineered the implementation of Salesforce CDP to map customer journeys and optimize long-term retention across the premium and electric vehicle portfolios.",
+          "startOffset": 3283,
+          "endOffset": 3440,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:TVS_Motor_Company:3444_3621",
+          "exactText": "Orchestrated digital-first product launches, including India’s first premium vehicle launch in the metaverse for the Rider and an exclusive e-commerce-only launch for the iQube.",
+          "startOffset": 3444,
+          "endOffset": 3621,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:GTB_(WPP_Group)_/_Ford_India:3733_3882",
+          "exactText": "Grew Ford's digital revenue contribution from 3% to over 32% in five years through integrated performance marketing and digital commerce initiatives.",
+          "startOffset": 3733,
+          "endOffset": 3882,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:GTB_(WPP_Group)_/_Ford_India:3886_4079",
+          "exactText": "Collaborated directly with Google engineering teams to build a 'Global First' Online-to-Offline (O2O) Attribution model to quantify how digital engagement impacted physical retail transactions.",
+          "startOffset": 3886,
+          "endOffset": 4079,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:GTB_(WPP_Group)_/_Ford_India:4083_4261",
+          "exactText": "Executed purpose-driven PR campaigns like the 'Cartesy' safety platform, which won more than 20 marketing honors and successfully shifted market perceptions on cost-of-ownership.",
+          "startOffset": 4083,
+          "endOffset": 4261,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:GTB_(WPP_Group)_/_Ford_India:4265_4414",
+          "exactText": "Introduced new digital acquisition channels, including flash sales on Amazon and online booking journeys that expanded lead generation opportunities.",
+          "startOffset": 4265,
+          "endOffset": 4414,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Primordial_Systems:4495_4636",
+          "exactText": "Owned end-to-end brand-building, product marketing, and growth architecture across key internet properties, including INLEAD and iHealthcare.",
+          "startOffset": 4495,
+          "endOffset": 4636,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Primordial_Systems:4640_4746",
+          "exactText": "Outperformed baseline commercial and lead acquisition targets for 3 successive fiscal cycles by up to 14%.",
+          "startOffset": 4640,
+          "endOffset": 4746,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Primordial_Systems:4750_4864",
+          "exactText": "Shifted marketing investments towards measurable performance channels, reducing customer acquisition costs by 70%.",
+          "startOffset": 4750,
+          "endOffset": 4864,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Patt_&_Hoff_Group_(Singapore):4979_5117",
+          "exactText": "Developed localized 360-degree digital acquisition campaigns, capturing S$1.8M in net new pipeline from corporate targets within 6 months.",
+          "startOffset": 4979,
+          "endOffset": 5117,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:Transasia_Aviation:5204_5323",
+          "exactText": "Managed an 80 Million INR marketing mix, leading to a 26% increase in customer conversions during an industry downturn.",
+          "startOffset": 5204,
+          "endOffset": 5323,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_01:IMS_Learning_Resources:5424_5574",
+          "exactText": "Pioneered early organic search and optimization frameworks, executing some of the earliest Google AdWords and targeted SMS outreach campaigns in 2006.",
+          "startOffset": 5424,
+          "endOffset": 5574,
+          "claims": []
+        }
+      ],
+      "allClaims": [
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:216_420:TRANSFORMATION",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Executive marketing leader with 20+ years of experience driving commercial scale, digital transformation and customer-centric innovation across leading automotive, healthcare and consumer organizations.",
+          "parentBulletStartOffset": 216,
+          "parentBulletEndOffset": 420,
+          "exactText": "- Executive marketing leader with 20+ years of experience driving commercial scale, digital transformation and customer-centric innovation across leading automotive, healthcare and consumer organizations.",
+          "startOffset": 216,
+          "endOffset": 420,
+          "evidenceClass": "SELF_SUMMARY",
+          "proofTypes": [
+            "TRANSFORMATION",
+            "CUSTOMER_GROWTH",
+            "REVENUE_GROWTH",
+            "STAKEHOLDER_LEADERSHIP",
+            "DOMAIN_PRECEDENT"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:422_647:OUTCOME",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Proven success building high-performing teams, leading multi-million-dollar portfolios and delivering measurable commercial outcomes through brand strategy, customer experience, enterprise MarTech and data-driven marketing.",
+          "parentBulletStartOffset": 422,
+          "parentBulletEndOffset": 647,
+          "exactText": "- Proven success building high-performing teams, leading multi-million-dollar portfolios and delivering measurable commercial outcomes through brand strategy, customer experience, enterprise MarTech and data-driven marketing.",
+          "startOffset": 422,
+          "endOffset": 647,
+          "evidenceClass": "SELF_SUMMARY",
+          "proofTypes": [
+            "OUTCOME",
+            "FINANCIAL_SCOPE",
+            "ORGANIZATION_BUILD",
+            "CUSTOMER_GROWTH",
+            "REVENUE_GROWTH",
+            "TECHNOLOGY_IMPLEMENTATION"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:679_762:FINANCIAL_SCOPE",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Commercial Leadership: Building & Scaling GCCs, P&L Management, Strategic Pitches",
+          "parentBulletStartOffset": 679,
+          "parentBulletEndOffset": 762,
+          "exactText": "- Commercial Leadership: Building & Scaling GCCs, P&L Management, Strategic Pitches",
+          "startOffset": 679,
+          "endOffset": 762,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "FINANCIAL_SCOPE",
+            "ORGANIZATION_BUILD",
+            "STAKEHOLDER_LEADERSHIP"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:764_861:REVENUE_GROWTH",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Growth & Performance Marketing: Full-Funnel Acquisition, ROAS Optimization, Conversion Strategy",
+          "parentBulletStartOffset": 764,
+          "parentBulletEndOffset": 861,
+          "exactText": "- Growth & Performance Marketing: Full-Funnel Acquisition, ROAS Optimization, Conversion Strategy",
+          "startOffset": 764,
+          "endOffset": 861,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "REVENUE_GROWTH",
+            "PIPELINE_GENERATION"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:863_953:CUSTOMER_GROWTH",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Brand & Customer Strategy: Integrated Marketing, PR, Consumer Insights, Content Strategy",
+          "parentBulletStartOffset": 863,
+          "parentBulletEndOffset": 953,
+          "exactText": "- Brand & Customer Strategy: Integrated Marketing, PR, Consumer Insights, Content Strategy",
+          "startOffset": 863,
+          "endOffset": 953,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CUSTOMER_GROWTH",
+            "STAKEHOLDER_LEADERSHIP"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:955_1055:TRANSFORMATION",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Digital Transformation & MarTech: Salesforce CDP, Adobe Experience Cloud, CRM & Customer Lifecycle",
+          "parentBulletStartOffset": 955,
+          "parentBulletEndOffset": 1055,
+          "exactText": "- Digital Transformation & MarTech: Salesforce CDP, Adobe Experience Cloud, CRM & Customer Lifecycle",
+          "startOffset": 955,
+          "endOffset": 1055,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "TRANSFORMATION",
+            "TECHNOLOGY_IMPLEMENTATION"
+          ],
+          "metrics": [],
+          "groundedEntities": [
+            {
+              "exactText": "Salesforce CDP",
+              "startOffset": 991,
+              "endOffset": 1005,
+              "category": "PLATFORM"
+            }
+          ]
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:1057_1149:OUTCOME",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Analytics & Experimentation: O2O Attribution, KPI Frameworks, A/B and Multivariate Testing",
+          "parentBulletStartOffset": 1057,
+          "parentBulletEndOffset": 1149,
+          "exactText": "- Analytics & Experimentation: O2O Attribution, KPI Frameworks, A/B and Multivariate Testing",
+          "startOffset": 1057,
+          "endOffset": 1149,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "OUTCOME"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:1151_1226:TRANSFORMATION",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "parentBulletExactText": "- Innovation & AI: GenAI Automation, Digital Commerce, Marketing Innovation",
+          "parentBulletStartOffset": 1151,
+          "parentBulletEndOffset": 1226,
+          "exactText": "- Innovation & AI: GenAI Automation, Digital Commerce, Marketing Innovation",
+          "startOffset": 1151,
+          "endOffset": 1226,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "TRANSFORMATION"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_01:1825_1935:GEOGRAPHIC_SCOPE",
+          "sourceDocumentId": "CANDIDATE_RESUME_01",
+          "positionId": "pos:VML_(WPP_Group):1264",
+          "title": "Senior Vice President",
+          "employer": "VML (WPP Group)",
+          "dates": "",
+          "parentBulletExactText": "Recruited and managed a 40-member cross-functional Performance Marketing Center of Excellence (GCC) driving CRM, website & performance marketing across 13 APAC and Middle East markets for Ford. Concurrently led a complex legacy-to-Salesforce CRM migration across these regions within a 12-month timeline.",
+          "parentBulletStartOffset": 1631,
+          "parentBulletEndOffset": 1935,
+          "exactText": "Concurrently led a complex legacy-to-Salesforce CRM migration across these regions within a 12-month timeline.",
+          "startOffset": 1825,
+          "endOffset": 1935,
+          "evidenceClass": "WORK_HISTORY",
+          "proofTypes": [
+            "GEOGRAPHIC_SCOPE",
+            "TRANSFORMATION",
+            "TECHNOLOGY_IMPLEMENTATION"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        }
+      ],
+      "metadata": {
+        "extractorVersion": "CandidateProofExtractorV1",
+        "totalProfessionalExperienceBullets": 29,
+        "bulletsRetained": 29,
+        "bulletsWithSpecializedClaims": 1,
+        "bulletsWithoutSpecializedClaims": 28,
+        "proposalCounts": {
+          "proposedClaims": 30,
+          "acceptedClaims": 9,
+          "rejectedClaims": 21
+        }
+      }
+    },
+    "proposalRejections": [
+      {
+        "proposalIndex": 8,
+        "exactQuote": "- Accountable for commercial performance, delivery and profitability of VML India's two largest client accounts, overseeing an $8M pure agency fee book for Ford and a projected ₹36 Cr 3-year service retainer for BMW.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 9,
+        "exactQuote": "- Recruited and managed a 40-member cross-functional Performance Marketing Center of Excellence (GCC) driving CRM, website & performance marketing across 13 APAC and Middle East markets for Ford.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 11,
+        "exactQuote": "- Established a Digital Analytics & Experimentation Lab, embedding A/B testing into client and agency decision-making, enabling faster optimization and improved marketing effectiveness.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 12,
+        "exactQuote": "- Redesigned customer journeys across digital platforms, improving lead quality and reducing friction in the booking and enquiry process, resulting in $14M in attributed additional revenue.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 13,
+        "exactQuote": "- Won and led the integrated mainline, digital, and PR mandates for BMW India and 22 dealers, taking full ownership of brand architecture and integrated messaging.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 14,
+        "exactQuote": "- Spearheaded the \"Drive Your Match\" campaign and core social strategies that supported BMW becoming India’s highest-selling Auto OEM in Q1’26, earning formal recognition from India CEO Harpreet Brar and global leadership.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 15,
+        "exactQuote": "- Selected to lead the Centrum portfolio following WPP's 2025 global Haleon win, assuming overall strategic and commercial leadership for this high-growth mandate.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 16,
+        "exactQuote": "- Leading integrated marketing, social and commerce strategy for Centrum and Recharge as part of WPP's global Haleon partnership.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 17,
+        "exactQuote": "- Built and scaled a hyperlocal digital marketing program across 4,000+ dealerships, generating more than 400,000 additional organic qualified leads leveraging AI and NLP in regional languages.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 18,
+        "exactQuote": "- Engineered the implementation of Salesforce CDP to map customer journeys and optimize long-term retention across the premium and electric vehicle portfolios.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 19,
+        "exactQuote": "- Orchestrated digital-first product launches, including India’s first premium vehicle launch in the metaverse for the Rider and an exclusive e-commerce-only launch for the iQube.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 20,
+        "exactQuote": "- Grew Ford's digital revenue contribution from 3% to over 32% in five years through integrated performance marketing and digital commerce initiatives.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 21,
+        "exactQuote": "- Collaborated directly with Google engineering teams to build a 'Global First' Online-to-Offline (O2O) Attribution model to quantify how digital engagement impacted physical retail transactions.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 22,
+        "exactQuote": "- Executed purpose-driven PR campaigns like the 'Cartesy' safety platform, which won more than 20 marketing honors and successfully shifted market perceptions on cost-of-ownership.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 23,
+        "exactQuote": "- Introduced new digital acquisition channels, including flash sales on Amazon and online booking journeys that expanded lead generation opportunities.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 24,
+        "exactQuote": "- Owned end-to-end brand-building, product marketing, and growth architecture across key internet properties, including INLEAD and iHealthcare.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 25,
+        "exactQuote": "- Outperformed baseline commercial and lead acquisition targets for 3 successive fiscal cycles by up to 14%.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 26,
+        "exactQuote": "- Shifted marketing investments towards measurable performance channels, reducing customer acquisition costs by 70%.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 27,
+        "exactQuote": "- Developed localized 360-degree digital acquisition campaigns, capturing S$1.8M in net new pipeline from corporate targets within 6 months.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 28,
+        "exactQuote": "- Managed an 80 Million INR marketing mix, leading to a 26% increase in customer conversions during an industry downturn.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 29,
+        "exactQuote": "- Pioneered early organic search and optimization frameworks, executing some of the earliest Google AdWords and targeted SMS outreach campaigns in 2006.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      }
+    ]
+  },
+  "verificationError": null
+}

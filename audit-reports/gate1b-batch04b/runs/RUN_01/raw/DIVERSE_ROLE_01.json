@@ -1,0 +1,61 @@
+{
+  "status": 200,
+  "rawText": "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"role\": \"model\",\n        \"parts\": [\n          {\n            \"text\": \"{\\n  \\\"schemaVersion\\\": \\\"llm-semantic-proposal-envelope/v1\\\",\\n  \\\"output\\\": {\\n    \\\"proposals\\\": [\\n      {\\n        \\\"spanId\\\": \\\"S001\\\",\\n        \\\"subject\\\": \\\"COMPANY\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"COMPANY_CONTEXT\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S002\\\",\\n        \\\"subject\\\": \\\"COMPANY\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"COMPANY_CONTEXT\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S003\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"ROLE_PURPOSE\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S004\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"PEOPLE_LEADERSHIP\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S004\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"RESPONSIBILITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S006\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"RESPONSIBILITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S007\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"RESPONSIBILITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S008\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"RESPONSIBILITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S009\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"RESPONSIBILITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S010\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"RESPONSIBILITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S011\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"HARD_REQUIREMENT\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S012\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"PREFERRED_REQUIREMENT\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S013\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"PREFERRED_REQUIREMENT\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S014\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"PEOPLE_LEADERSHIP\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S014\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"WORK_CONDITION\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S017\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"WORK_CONDITION\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S018\\\",\\n        \\\"subject\\\": \\\"COMPANY\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"COMPANY_CONTEXT\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S019\\\",\\n        \\\"subject\\\": \\\"COMPANY\\\",\\n        \\\"confidence\\\": 1,\\n        \\\"semanticType\\\": \\\"COMPANY_CONTEXT\\\"\\n      }\\n    ]\\n  }\\n}\"\n          }\n        ]\n      },\n      \"finishReason\": \"STOP\"\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 717,\n    \"candidatesTokenCount\": 861,\n    \"totalTokenCount\": 3166,\n    \"trafficType\": \"ON_DEMAND\",\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 717\n      }\n    ],\n    \"candidatesTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 861\n      }\n    ],\n    \"thoughtsTokenCount\": 1588\n  },\n  \"modelVersion\": \"gemini-2.5-flash\",\n  \"createTime\": \"2026-09-13T05:42:36.469833Z\",\n  \"responseId\": \"zDemasnWHJOcmecP1-vzoQs\"\n}\n",
+  "parsedResponse": {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\n  \"schemaVersion\": \"llm-semantic-proposal-envelope/v1\",\n  \"output\": {\n    \"proposals\": [\n      {\n        \"spanId\": \"S001\",\n        \"subject\": \"COMPANY\",\n        \"confidence\": 1,\n        \"semanticType\": \"COMPANY_CONTEXT\"\n      },\n      {\n        \"spanId\": \"S002\",\n        \"subject\": \"COMPANY\",\n        \"confidence\": 1,\n        \"semanticType\": \"COMPANY_CONTEXT\"\n      },\n      {\n        \"spanId\": \"S003\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"ROLE_PURPOSE\"\n      },\n      {\n        \"spanId\": \"S004\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"PEOPLE_LEADERSHIP\"\n      },\n      {\n        \"spanId\": \"S004\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"RESPONSIBILITY\"\n      },\n      {\n        \"spanId\": \"S006\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"RESPONSIBILITY\"\n      },\n      {\n        \"spanId\": \"S007\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"RESPONSIBILITY\"\n      },\n      {\n        \"spanId\": \"S008\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"RESPONSIBILITY\"\n      },\n      {\n        \"spanId\": \"S009\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"RESPONSIBILITY\"\n      },\n      {\n        \"spanId\": \"S010\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"RESPONSIBILITY\"\n      },\n      {\n        \"spanId\": \"S011\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"HARD_REQUIREMENT\"\n      },\n      {\n        \"spanId\": \"S012\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"PREFERRED_REQUIREMENT\"\n      },\n      {\n        \"spanId\": \"S013\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"PREFERRED_REQUIREMENT\"\n      },\n      {\n        \"spanId\": \"S014\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"PEOPLE_LEADERSHIP\"\n      },\n      {\n        \"spanId\": \"S014\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"WORK_CONDITION\"\n      },\n      {\n        \"spanId\": \"S017\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1,\n        \"semanticType\": \"WORK_CONDITION\"\n      },\n      {\n        \"spanId\": \"S018\",\n        \"subject\": \"COMPANY\",\n        \"confidence\": 1,\n        \"semanticType\": \"COMPANY_CONTEXT\"\n      },\n      {\n        \"spanId\": \"S019\",\n        \"subject\": \"COMPANY\",\n        \"confidence\": 1,\n        \"semanticType\": \"COMPANY_CONTEXT\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        "finishReason": "STOP"
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 717,
+      "candidatesTokenCount": 861,
+      "totalTokenCount": 3166,
+      "trafficType": "ON_DEMAND",
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 717
+        }
+      ],
+      "candidatesTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 861
+        }
+      ],
+      "thoughtsTokenCount": 1588
+    },
+    "modelVersion": "gemini-2.5-flash",
+    "createTime": "2026-09-13T05:42:36.469833Z",
+    "responseId": "zDemasnWHJOcmecP1-vzoQs"
+  },
+  "usage": {
+    "promptTokenCount": 717,
+    "candidatesTokenCount": 861,
+    "totalTokenCount": 3166,
+    "trafficType": "ON_DEMAND",
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 717
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 861
+      }
+    ],
+    "thoughtsTokenCount": 1588
+  },
+  "latencyMs": 15902
+}

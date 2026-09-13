@@ -1,0 +1,355 @@
+{
+  "envelopeValid": true,
+  "parsedProposals": 12,
+  "validSpanIdCount": 12,
+  "invalidSpanIds": [],
+  "grounding": [
+    {
+      "index": 0,
+      "spanId": "S001",
+      "exactText": "# VP of Growth Marketing — Apex Global Software",
+      "startOffset": 0,
+      "endOffset": 47,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "ROLE_PURPOSE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 1,
+      "spanId": "S001",
+      "exactText": "# VP of Growth Marketing — Apex Global Software",
+      "startOffset": 0,
+      "endOffset": 47,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "COMPANY_CONTEXT",
+      "subject": "COMPANY",
+      "confidence": 1
+    },
+    {
+      "index": 2,
+      "spanId": "S003",
+      "exactText": "Apex Global Software is an enterprise B2B SaaS platform providing supply chain intelligence to Fortune 500 manufacturers across North America and Europe.",
+      "startOffset": 63,
+      "endOffset": 216,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "COMPANY_CONTEXT",
+      "subject": "COMPANY",
+      "confidence": 1
+    },
+    {
+      "index": 3,
+      "spanId": "S005",
+      "exactText": "- Own and allocate the $4.5M annual performance marketing acquisition budget across digital channels, enterprise events, and paid search.",
+      "startOffset": 243,
+      "endOffset": 380,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "RESPONSIBILITY",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 4,
+      "spanId": "S005",
+      "exactText": "- Own and allocate the $4.5M annual performance marketing acquisition budget across digital channels, enterprise events, and paid search.",
+      "startOffset": 243,
+      "endOffset": 380,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "BUDGET_SCOPE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 5,
+      "spanId": "S006",
+      "exactText": "- Note: This role does not have company P&L ownership, which resides strictly with the General Manager and BU President.",
+      "startOffset": 381,
+      "endOffset": 501,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "PNL_OWNERSHIP",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 6,
+      "spanId": "S007",
+      "exactText": "- Build and optimize multi-channel lead acquisition funnels to deliver qualified pipeline for the enterprise sales team.",
+      "startOffset": 502,
+      "endOffset": 622,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "RESPONSIBILITY",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 7,
+      "spanId": "S007",
+      "exactText": "- Build and optimize multi-channel lead acquisition funnels to deliver qualified pipeline for the enterprise sales team.",
+      "startOffset": 502,
+      "endOffset": 622,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "OUTCOME",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 8,
+      "spanId": "S008",
+      "exactText": "- Lead a high-performing digital marketing team of 6 growth specialists.",
+      "startOffset": 623,
+      "endOffset": 695,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "PEOPLE_LEADERSHIP",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 9,
+      "spanId": "S008",
+      "exactText": "- Lead a high-performing digital marketing team of 6 growth specialists.",
+      "startOffset": 623,
+      "endOffset": 695,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "PEOPLE_SCALE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 10,
+      "spanId": "S010",
+      "exactText": "- 10+ years of digital demand generation and performance marketing experience in enterprise B2B SaaS.",
+      "startOffset": 713,
+      "endOffset": 814,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "HARD_REQUIREMENT",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 11,
+      "spanId": "S011",
+      "exactText": "- Demonstrated expertise in marketing budget allocation, pipeline attribution, and ROAS optimization.",
+      "startOffset": 815,
+      "endOffset": 916,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "HARD_REQUIREMENT",
+      "subject": "ROLE",
+      "confidence": 1
+    }
+  ],
+  "assembly": {
+    "output": {
+      "caseId": "ADV_ROLE_01",
+      "canonicalJobId": "ADV_ROLE_01",
+      "rawTextLength": 916,
+      "sections": [
+        {
+          "type": "OTHER",
+          "headingText": "# VP of Growth Marketing — Apex Global Software",
+          "headingStart": 0,
+          "headingEnd": 47,
+          "contentStart": 47,
+          "contentEnd": 49,
+          "rawContent": "\n\n"
+        },
+        {
+          "type": "ABOUT_COMPANY",
+          "headingText": "## About Apex",
+          "headingStart": 49,
+          "headingEnd": 62,
+          "contentStart": 62,
+          "contentEnd": 218,
+          "rawContent": "\nApex Global Software is an enterprise B2B SaaS platform providing supply chain intelligence to Fortune 500 manufacturers across North America and Europe.\n\n"
+        },
+        {
+          "type": "RESPONSIBILITIES",
+          "headingText": "## Role Responsibilities",
+          "headingStart": 218,
+          "headingEnd": 242,
+          "contentStart": 242,
+          "contentEnd": 697,
+          "rawContent": "\n- Own and allocate the $4.5M annual performance marketing acquisition budget across digital channels, enterprise events, and paid search.\n- Note: This role does not have company P&L ownership, which resides strictly with the General Manager and BU President.\n- Build and optimize multi-channel lead acquisition funnels to deliver qualified pipeline for the enterprise sales team.\n- Lead a high-performing digital marketing team of 6 growth specialists.\n\n"
+        },
+        {
+          "type": "REQUIREMENTS",
+          "headingText": "## Requirements",
+          "headingStart": 697,
+          "headingEnd": 712,
+          "contentStart": 712,
+          "contentEnd": 916,
+          "rawContent": "\n- 10+ years of digital demand generation and performance marketing experience in enterprise B2B SaaS.\n- Demonstrated expertise in marketing budget allocation, pipeline attribution, and ROAS optimization."
+        }
+      ],
+      "atoms": [
+        {
+          "id": "role_atom:ADV_ROLE_01:0_47:ROLE_PURPOSE",
+          "exactText": "# VP of Growth Marketing — Apex Global Software",
+          "startOffset": 0,
+          "endOffset": 47,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "ROLE_PURPOSE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_01:0_47:COMPANY_CONTEXT",
+          "exactText": "# VP of Growth Marketing — Apex Global Software",
+          "startOffset": 0,
+          "endOffset": 47,
+          "section": "OTHER",
+          "subject": "COMPANY",
+          "semanticType": "COMPANY_CONTEXT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_01:63_216:COMPANY_CONTEXT",
+          "exactText": "Apex Global Software is an enterprise B2B SaaS platform providing supply chain intelligence to Fortune 500 manufacturers across North America and Europe.",
+          "startOffset": 63,
+          "endOffset": 216,
+          "section": "ABOUT_COMPANY",
+          "subject": "COMPANY",
+          "semanticType": "COMPANY_CONTEXT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_01:243_380:RESPONSIBILITY",
+          "exactText": "- Own and allocate the $4.5M annual performance marketing acquisition budget across digital channels, enterprise events, and paid search.",
+          "startOffset": 243,
+          "endOffset": 380,
+          "section": "RESPONSIBILITIES",
+          "subject": "ROLE",
+          "semanticType": "RESPONSIBILITY",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_01:243_380:BUDGET_SCOPE",
+          "exactText": "- Own and allocate the $4.5M annual performance marketing acquisition budget across digital channels, enterprise events, and paid search.",
+          "startOffset": 243,
+          "endOffset": 380,
+          "section": "RESPONSIBILITIES",
+          "subject": "ROLE",
+          "semanticType": "BUDGET_SCOPE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_01:381_501:PNL_OWNERSHIP",
+          "exactText": "- Note: This role does not have company P&L ownership, which resides strictly with the General Manager and BU President.",
+          "startOffset": 381,
+          "endOffset": 501,
+          "section": "RESPONSIBILITIES",
+          "subject": "ROLE",
+          "semanticType": "PNL_OWNERSHIP",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_01:502_622:RESPONSIBILITY",
+          "exactText": "- Build and optimize multi-channel lead acquisition funnels to deliver qualified pipeline for the enterprise sales team.",
+          "startOffset": 502,
+          "endOffset": 622,
+          "section": "RESPONSIBILITIES",
+          "subject": "ROLE",
+          "semanticType": "RESPONSIBILITY",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_01:502_622:OUTCOME",
+          "exactText": "- Build and optimize multi-channel lead acquisition funnels to deliver qualified pipeline for the enterprise sales team.",
+          "startOffset": 502,
+          "endOffset": 622,
+          "section": "RESPONSIBILITIES",
+          "subject": "ROLE",
+          "semanticType": "OUTCOME",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_01:623_695:PEOPLE_LEADERSHIP",
+          "exactText": "- Lead a high-performing digital marketing team of 6 growth specialists.",
+          "startOffset": 623,
+          "endOffset": 695,
+          "section": "RESPONSIBILITIES",
+          "subject": "ROLE",
+          "semanticType": "PEOPLE_LEADERSHIP",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_01:623_695:PEOPLE_SCALE",
+          "exactText": "- Lead a high-performing digital marketing team of 6 growth specialists.",
+          "startOffset": 623,
+          "endOffset": 695,
+          "section": "RESPONSIBILITIES",
+          "subject": "ROLE",
+          "semanticType": "PEOPLE_SCALE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_01:713_814:HARD_REQUIREMENT",
+          "exactText": "- 10+ years of digital demand generation and performance marketing experience in enterprise B2B SaaS.",
+          "startOffset": 713,
+          "endOffset": 814,
+          "section": "REQUIREMENTS",
+          "subject": "ROLE",
+          "semanticType": "HARD_REQUIREMENT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_01:815_916:HARD_REQUIREMENT",
+          "exactText": "- Demonstrated expertise in marketing budget allocation, pipeline attribution, and ROAS optimization.",
+          "startOffset": 815,
+          "endOffset": 916,
+          "section": "REQUIREMENTS",
+          "subject": "ROLE",
+          "semanticType": "HARD_REQUIREMENT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        }
+      ],
+      "metadata": {
+        "extractorVersion": "RoleIntelligenceExtractorV1",
+        "hasGluedHeadings": false,
+        "hasStructuralMetaLines": false,
+        "proposalCounts": {
+          "proposedAtoms": 12,
+          "acceptedAtoms": 12,
+          "rejectedAtoms": 0
+        }
+      }
+    },
+    "proposalRejections": []
+  },
+  "verificationError": null
+}

@@ -86,6 +86,7 @@ RADAR v2 Test Architecture
 | Authoritative Suite | Primary Invariant Protected | Certification Stage |
 | :--- | :--- | :---: |
 | `tests/intelligence/semantic-evidence-integrity-regression.test.ts` | Dimension grounding prevents false evidence vetoes on rich executive postings. | **Stage 3** |
+| `tests/intelligence/extraction/source-id-harness.test.ts` | Source-ID extraction harness wire adaptation (`const` -> singleton `enum`), spanId strict validation, offset resolution, and candidate/role extraction verification. | Full Suite |
 | `tests/semantic/ontology.test.ts` | Comprehensive executive ontology validation (roles, capabilities, industries, seniority). | Full Suite |
 | `tests/semantic/normalization.test.ts` | Currency, date, location, and seniority string normalization. | Full Suite |
 

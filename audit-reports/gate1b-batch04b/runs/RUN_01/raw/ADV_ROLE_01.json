@@ -1,0 +1,62 @@
+{
+  "status": 200,
+  "rawText": "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"role\": \"model\",\n        \"parts\": [\n          {\n            \"text\": \"{\\n  \\\"schemaVersion\\\": \\\"llm-semantic-proposal-envelope/v1\\\",\\n  \\\"output\\\": {\\n    \\\"proposals\\\": [\\n      {\\n        \\\"spanId\\\": \\\"S001\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"ROLE_PURPOSE\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S001\\\",\\n        \\\"subject\\\": \\\"COMPANY\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"COMPANY_CONTEXT\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S003\\\",\\n        \\\"subject\\\": \\\"COMPANY\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"COMPANY_CONTEXT\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S005\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"RESPONSIBILITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S005\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"BUDGET_SCOPE\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S006\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"PNL_OWNERSHIP\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S007\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"RESPONSIBILITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S007\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"OUTCOME\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S008\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"PEOPLE_LEADERSHIP\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S008\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"PEOPLE_SCALE\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S010\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"HARD_REQUIREMENT\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S011\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"HARD_REQUIREMENT\\\"\\n      }\\n    ]\\n  }\\n}\"\n          }\n        ]\n      },\n      \"finishReason\": \"STOP\",\n      \"avgLogprobs\": -0.21690475339811993\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 378,\n    \"candidatesTokenCount\": 615,\n    \"totalTokenCount\": 2913,\n    \"trafficType\": \"ON_DEMAND\",\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 378\n      }\n    ],\n    \"candidatesTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 615\n      }\n    ],\n    \"thoughtsTokenCount\": 1920\n  },\n  \"modelVersion\": \"gemini-2.5-flash\",\n  \"createTime\": \"2026-09-13T05:44:17.455105Z\",\n  \"responseId\": \"MTimasHjG_a6ld8P5NXBoA0\"\n}\n",
+  "parsedResponse": {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\n  \"schemaVersion\": \"llm-semantic-proposal-envelope/v1\",\n  \"output\": {\n    \"proposals\": [\n      {\n        \"spanId\": \"S001\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"ROLE_PURPOSE\"\n      },\n      {\n        \"spanId\": \"S001\",\n        \"subject\": \"COMPANY\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"COMPANY_CONTEXT\"\n      },\n      {\n        \"spanId\": \"S003\",\n        \"subject\": \"COMPANY\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"COMPANY_CONTEXT\"\n      },\n      {\n        \"spanId\": \"S005\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"RESPONSIBILITY\"\n      },\n      {\n        \"spanId\": \"S005\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"BUDGET_SCOPE\"\n      },\n      {\n        \"spanId\": \"S006\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"PNL_OWNERSHIP\"\n      },\n      {\n        \"spanId\": \"S007\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"RESPONSIBILITY\"\n      },\n      {\n        \"spanId\": \"S007\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"OUTCOME\"\n      },\n      {\n        \"spanId\": \"S008\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"PEOPLE_LEADERSHIP\"\n      },\n      {\n        \"spanId\": \"S008\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"PEOPLE_SCALE\"\n      },\n      {\n        \"spanId\": \"S010\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"HARD_REQUIREMENT\"\n      },\n      {\n        \"spanId\": \"S011\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"HARD_REQUIREMENT\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        "finishReason": "STOP",
+        "avgLogprobs": -0.21690475339811993
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 378,
+      "candidatesTokenCount": 615,
+      "totalTokenCount": 2913,
+      "trafficType": "ON_DEMAND",
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 378
+        }
+      ],
+      "candidatesTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 615
+        }
+      ],
+      "thoughtsTokenCount": 1920
+    },
+    "modelVersion": "gemini-2.5-flash",
+    "createTime": "2026-09-13T05:44:17.455105Z",
+    "responseId": "MTimasHjG_a6ld8P5NXBoA0"
+  },
+  "usage": {
+    "promptTokenCount": 378,
+    "candidatesTokenCount": 615,
+    "totalTokenCount": 2913,
+    "trafficType": "ON_DEMAND",
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 378
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 615
+      }
+    ],
+    "thoughtsTokenCount": 1920
+  },
+  "latencyMs": 15883
+}

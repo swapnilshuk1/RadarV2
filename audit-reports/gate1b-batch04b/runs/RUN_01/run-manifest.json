@@ -1,0 +1,343 @@
+{
+  "runId": "RUN_01",
+  "timestamp": "2026-09-13T05:47:04.154Z",
+  "harnessVersion": "gate1b-batch04b/source-id-harness-v1",
+  "segmentationVersion": "source-segmentation/v1",
+  "model": "gemini-2.5-flash",
+  "projectId": "project-423841fb-74e8-430a-84a",
+  "location": "us-central1",
+  "totalDocuments": 11,
+  "successCount": 11,
+  "results": [
+    {
+      "id": "DIVERSE_ROLE_01",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "status": "SUCCESS",
+      "parsedProposals": 18,
+      "validSpanIdCount": 18,
+      "invalidSpanIds": [],
+      "verificationError": null,
+      "latencyMs": 15902,
+      "usage": {
+        "promptTokenCount": 717,
+        "candidatesTokenCount": 861,
+        "totalTokenCount": 3166,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 717
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 861
+          }
+        ],
+        "thoughtsTokenCount": 1588
+      }
+    },
+    {
+      "id": "DIVERSE_ROLE_02",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "status": "SUCCESS",
+      "parsedProposals": 41,
+      "validSpanIdCount": 41,
+      "invalidSpanIds": [],
+      "verificationError": null,
+      "latencyMs": 24887,
+      "usage": {
+        "promptTokenCount": 1497,
+        "candidatesTokenCount": 1900,
+        "totalTokenCount": 6359,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1497
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1900
+          }
+        ],
+        "thoughtsTokenCount": 2962
+      }
+    },
+    {
+      "id": "DIVERSE_ROLE_03",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "status": "SUCCESS",
+      "parsedProposals": 37,
+      "validSpanIdCount": 37,
+      "invalidSpanIds": [],
+      "verificationError": null,
+      "latencyMs": 14875,
+      "usage": {
+        "promptTokenCount": 1246,
+        "candidatesTokenCount": 1800,
+        "totalTokenCount": 5696,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1246
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1800
+          }
+        ],
+        "thoughtsTokenCount": 2650
+      }
+    },
+    {
+      "id": "DIVERSE_ROLE_04",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "status": "SUCCESS",
+      "parsedProposals": 84,
+      "validSpanIdCount": 84,
+      "invalidSpanIds": [],
+      "verificationError": null,
+      "latencyMs": 36612,
+      "usage": {
+        "promptTokenCount": 2002,
+        "candidatesTokenCount": 4122,
+        "totalTokenCount": 13482,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 2002
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 4122
+          }
+        ],
+        "thoughtsTokenCount": 7358
+      }
+    },
+    {
+      "id": "ADV_ROLE_01",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "status": "SUCCESS",
+      "parsedProposals": 12,
+      "validSpanIdCount": 12,
+      "invalidSpanIds": [],
+      "verificationError": null,
+      "latencyMs": 15883,
+      "usage": {
+        "promptTokenCount": 378,
+        "candidatesTokenCount": 615,
+        "totalTokenCount": 2913,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 378
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 615
+          }
+        ],
+        "thoughtsTokenCount": 1920
+      }
+    },
+    {
+      "id": "ADV_ROLE_02",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "status": "SUCCESS",
+      "parsedProposals": 13,
+      "validSpanIdCount": 13,
+      "invalidSpanIds": [],
+      "verificationError": null,
+      "latencyMs": 11508,
+      "usage": {
+        "promptTokenCount": 378,
+        "candidatesTokenCount": 669,
+        "totalTokenCount": 2300,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 378
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 669
+          }
+        ],
+        "thoughtsTokenCount": 1253
+      }
+    },
+    {
+      "id": "ADV_ROLE_03",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "status": "SUCCESS",
+      "parsedProposals": 13,
+      "validSpanIdCount": 13,
+      "invalidSpanIds": [],
+      "verificationError": null,
+      "latencyMs": 9717,
+      "usage": {
+        "promptTokenCount": 355,
+        "candidatesTokenCount": 665,
+        "totalTokenCount": 3164,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 355
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 665
+          }
+        ],
+        "thoughtsTokenCount": 2144
+      }
+    },
+    {
+      "id": "ADV_ROLE_04",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "status": "SUCCESS",
+      "parsedProposals": 13,
+      "validSpanIdCount": 13,
+      "invalidSpanIds": [],
+      "verificationError": null,
+      "latencyMs": 5618,
+      "usage": {
+        "promptTokenCount": 395,
+        "candidatesTokenCount": 661,
+        "totalTokenCount": 1751,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 395
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 661
+          }
+        ],
+        "thoughtsTokenCount": 695
+      }
+    },
+    {
+      "id": "DEV_CONTROL_01",
+      "partition": "DEVELOPMENT_CONTROL",
+      "scored": false,
+      "status": "SUCCESS",
+      "parsedProposals": 102,
+      "validSpanIdCount": 102,
+      "invalidSpanIds": [],
+      "verificationError": null,
+      "latencyMs": 57870,
+      "usage": {
+        "promptTokenCount": 2622,
+        "candidatesTokenCount": 4953,
+        "totalTokenCount": 20339,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 2622
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 4953
+          }
+        ],
+        "thoughtsTokenCount": 12764
+      }
+    },
+    {
+      "id": "CANDIDATE_RESUME_01",
+      "partition": "CANDIDATE_DOCUMENT",
+      "scored": true,
+      "status": "SUCCESS",
+      "parsedProposals": 30,
+      "validSpanIdCount": 30,
+      "invalidSpanIds": [],
+      "verificationError": null,
+      "latencyMs": 17497,
+      "usage": {
+        "promptTokenCount": 1771,
+        "candidatesTokenCount": 1865,
+        "totalTokenCount": 6782,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1771
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1865
+          }
+        ],
+        "thoughtsTokenCount": 3146
+      }
+    },
+    {
+      "id": "CANDIDATE_RESUME_02",
+      "partition": "CANDIDATE_DOCUMENT",
+      "scored": true,
+      "status": "SUCCESS",
+      "parsedProposals": 27,
+      "validSpanIdCount": 27,
+      "invalidSpanIds": [],
+      "verificationError": null,
+      "latencyMs": 33665,
+      "usage": {
+        "promptTokenCount": 1882,
+        "candidatesTokenCount": 1656,
+        "totalTokenCount": 8275,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1882
+          }
+        ],
+        "candidatesTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 1656
+          }
+        ],
+        "thoughtsTokenCount": 4737
+      }
+    }
+  ]
+}

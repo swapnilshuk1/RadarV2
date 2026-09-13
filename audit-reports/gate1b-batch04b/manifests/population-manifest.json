@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "gate1b-batch04b-population/v1",
+  "created": "2026-09-13T05:24:23.835Z",
+  "totalDocuments": 11,
+  "scoredDocuments": 10,
+  "unscoredControls": 1,
+  "documents": [
+    {
+      "id": "DIVERSE_ROLE_01",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "company": "2070 Health",
+      "role": "Head of Brand & UX",
+      "sourceFile": null,
+      "historicalCaseId": "01",
+      "stressTarget": null,
+      "charLength": 2331,
+      "sha256": "bb4580fa179c3cf9665f45644e0da20fab3811b887be020a187569d340a7b425"
+    },
+    {
+      "id": "DIVERSE_ROLE_02",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "company": "Alvarez & Marsal",
+      "role": "Associate Director, Change Management, DTS - Global Capability Center",
+      "sourceFile": null,
+      "historicalCaseId": "16",
+      "stressTarget": null,
+      "charLength": 5589,
+      "sha256": "8870740093f68deb3f86688b71524a6badd565080c04f4dde6e6067d40fbdf7d"
+    },
+    {
+      "id": "DIVERSE_ROLE_03",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "company": "Spice Money",
+      "role": "Product Growth Head - Spice Money (Tier 1 Background)",
+      "sourceFile": null,
+      "historicalCaseId": "18",
+      "stressTarget": null,
+      "charLength": 4267,
+      "sha256": "201f9bca291029fc91ddafed77345420fb96c0778d7e79630a5b0a07bf794b0d"
+    },
+    {
+      "id": "DIVERSE_ROLE_04",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "company": "Zapier",
+      "role": "Director, India",
+      "sourceFile": null,
+      "historicalCaseId": "28",
+      "stressTarget": null,
+      "charLength": 7240,
+      "sha256": "358906ef8c0a72bbb057233a1e858a88fb3a2bfb180d657e26de98d5991169ba"
+    },
+    {
+      "id": "ADV_ROLE_01",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "company": "Apex Global Software",
+      "role": "VP of Growth Marketing",
+      "sourceFile": null,
+      "historicalCaseId": null,
+      "stressTarget": "Negation: budget scope vs. P&L disclaimer",
+      "charLength": 916,
+      "sha256": "8a9ae43187177b13788299daff7e0faac878b67cb508bc46eddafcd799e78b5f"
+    },
+    {
+      "id": "ADV_ROLE_02",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "company": "Crestview Holdings",
+      "role": "Executive Advisor, Strategic Initiatives",
+      "sourceFile": null,
+      "historicalCaseId": null,
+      "stressTarget": "Advisory CEO interaction vs. true COO reporting line",
+      "charLength": 1013,
+      "sha256": "299af5a3b89b05f69bd1fcbac28e35b2dbd1f611ce4c3b74a83c940b8bbd0d40"
+    },
+    {
+      "id": "ADV_ROLE_03",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "company": "Nexus Cloud Systems",
+      "role": "Director of Enterprise Engineering",
+      "sourceFile": null,
+      "historicalCaseId": null,
+      "stressTarget": "Current team scale (8) vs. future 3-year aspirational target (50+)",
+      "charLength": 857,
+      "sha256": "4f653d87894e38dcc2d8c5fac6b79691340f45c48632780dfa2ca6fbf25f4442"
+    },
+    {
+      "id": "ADV_ROLE_04",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "company": "Solaria Energy Solutions",
+      "role": "Head of Commercial Strategy",
+      "sourceFile": null,
+      "historicalCaseId": null,
+      "stressTarget": "Preferred candidate P&L qualification vs. mandatory role requirement",
+      "charLength": 1009,
+      "sha256": "553c1a8a6f2eff5a36fadbe9c4bd508b622282e23b377e98c3f8c674df0af0a7"
+    },
+    {
+      "id": "DEV_CONTROL_01",
+      "partition": "DEVELOPMENT_CONTROL",
+      "scored": false,
+      "company": "Schnell Builders Pvt. Ltd.",
+      "role": "Business Head - Sales & Transaction Advisory",
+      "sourceFile": null,
+      "historicalCaseId": "02",
+      "stressTarget": null,
+      "charLength": 8552,
+      "sha256": "aa8086bfe29be30be883b449fa05cdbd642d7903c8a2492efb1f32e8eed86056"
+    },
+    {
+      "id": "CANDIDATE_RESUME_01",
+      "partition": "CANDIDATE_DOCUMENT",
+      "scored": true,
+      "company": null,
+      "role": null,
+      "sourceFile": "Swapnil_Shukla_Resume_M.md",
+      "historicalCaseId": null,
+      "stressTarget": null,
+      "charLength": 5681,
+      "sha256": "194ccf2f02f59a823c2c9c4f1712abee25a7e4030f9cf4be82f1da12bfe58e04"
+    },
+    {
+      "id": "CANDIDATE_RESUME_02",
+      "partition": "CANDIDATE_DOCUMENT",
+      "scored": true,
+      "company": null,
+      "role": null,
+      "sourceFile": "Swapnil_Shukla_Executive_Resume_v3.md",
+      "historicalCaseId": null,
+      "stressTarget": null,
+      "charLength": 6581,
+      "sha256": "77a1bad69dc18566369c5ed60aeca7387a121d83456b28c2c283211bac91e8cc"
+    }
+  ]
+}
