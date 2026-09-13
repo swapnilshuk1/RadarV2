@@ -60,9 +60,10 @@ $$\text{Step 1: Reconcile Evaluator} \longrightarrow \text{Step 2: Build & Freez
 ## Step 1: Reconcile and Freeze the Evaluator
 
 ### A. Root-Cause Reconciliation of R1 `18` vs R2 `5` High-Risk Failures
-- **The R1 `18` Discrepancy**: In the provisional R1 evaluation, Architecture B's lack of a polarity channel was treated as 18 affirmative high-risk errors. The adapter defaulted missing polarity to `AFFIRMED`, which artificially classified 18 unrepresentable negations as active affirmative false claims.
-- **The R2 `5` Authoritative Baseline**: In R2, missing polarity was properly mapped to `POLARITY_UNREPRESENTABLE`. Architecture B had 0 false affirmative assertions, but 17 unrepresentable negations. Meanwhile, Architectures C and D emitted exactly 5 true false affirmative assertions on negative boundaries (all 5 being relationship-scope ambiguities: portfolio-company advisory engagement vs internal firm CEO reporting in `ADV_ROLE_02`, `04`, `06`, `07`, `08`).
-- **Freezing Rule**: The evaluator must preserve this strict conceptual separation between structural representation inability (`POLARITY_UNREPRESENTABLE`) and actual false claims (`WRONG_ASSERTION`).
+- **The R1 `18` Violations in Architecture C**: In the provisional R1 evaluation, Architecture C was reported with 18 high-risk violations. This was caused primarily by a defect in `evaluator-v2`: it ran an unconstrained substring search over free-text `negativeBoundaries` strings looking for substrings like `"P&L"` and `"REPORTING"`. Whenever a document mentioned these keywords in boundary descriptions (such as *"Vertical P&L does not mean whole-company P&L"* or *"No named CEO/founder proximity or reporting line is stated"*), the evaluator falsely injected `PNL_OWNERSHIP` and `REPORTING_LINE` into `highRiskNegatives` for that document—even when the posting legitimately contained Board reporting or vertical P&L responsibility. This heuristic flaw artificially generated 13 spurious violations on valid extractions (e.g. 4 on `DEV_CONTROL_01`, 2 on `DIVERSE_ROLE_03`, 2 on `DIVERSE_ROLE_04`).
+- **The R2 `5` Authoritative Baseline for Architecture C**: In R2, `evaluator-r2` eliminated this naive substring heuristic, evaluating high-risk violations strictly against explicit reference-fact negative polarity and curated negative boundaries. This stripped away the 13 spurious evaluator artifacts and isolated Architecture C's **true count of 5 semantic false affirmative errors** (relationship-scope and IC vs leadership ambiguities in `ADV_ROLE_05`, `ADV_ROLE_06`, and `ADV_ROLE_08`).
+- **Architecture B's Separate Correction (42 $\rightarrow$ 0 False Affirmatives, 17 Unrepresentable Negations)**: In R1, Architecture B had 42 violations because its adapter lacked a polarity channel and defaulted all assertions to `AFFIRMED`. In R2, missing polarity was properly mapped to `POLARITY_UNREPRESENTABLE`, revealing 0 false affirmative assertions and 17 unrepresentable negations.
+- **Freezing Rule**: The evaluator must preserve this strict conceptual separation between structural representation inability (`POLARITY_UNREPRESENTABLE`), evaluator substring parsing artifacts, and actual semantic false claims (`WRONG_ASSERTION`).
 
 ### B. Evaluator Hash Lockdown
 - Evaluator implementation (`scripts/transition/evaluator-r2.ts` or its Batch 06 successor) must be committed and hashed via SHA-256.
@@ -96,22 +97,59 @@ $$\text{Step 1: Reconcile Evaluator} \longrightarrow \text{Step 2: Build & Freez
 
 ---
 
-## Step 3: Assemble a Genuinely Blind Validation Population
+## Step 3: Assemble, Adjudicate, and Freeze a Genuinely Blind Validation Population
 
-### A. Role Validation Corpus
+The validation process follows a strict chronological order to ensure zero data leakage and guarantee that reference truth is completely decoupled from model generation:
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 1. POPULATION SELECTION: Sample unseen JDs & executive resumes.                 │
+│    - Role population: ≥50 JDs (30 natural unseen + 20 counterfactual).          │
+│    - Candidate population: 15–20 structurally diverse resumes.                  │
+└────────────────────────────────────────┬────────────────────────────────────────┘
+                                         ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 2. INDEPENDENT TRUTH ADJUDICATION: Create human reference truth.                │
+│    - Strict isolation: Adjudicators have ZERO access to model or extractor      │
+│      outputs. Annotate ground truth purely from raw source text.                │
+└────────────────────────────────────────┬────────────────────────────────────────┘
+                                         ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 3. DUAL-REVIEW OF HIGH-RISK & NEGATIVE BOUNDARIES: Second adjudicator pass.     │
+│    - Every high-risk semantic label, prerequisite constraint, and negative      │
+│      boundary must receive two independent human confirmations.                 │
+└────────────────────────────────────────┬────────────────────────────────────────┘
+                                         ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 4. CRYPTOGRAPHIC HASH LOCKDOWN: Commit SHA-256 manifests.                       │
+│    - Lock population manifests, source documents, and reference truth fixtures  │
+│      with SHA-256 hashes in `docs/transition/` BEFORE pipeline runs.            │
+└────────────────────────────────────────┬────────────────────────────────────────┘
+                                         ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ 5. FROZEN PIPELINE EXECUTION: Single execution pass.                            │
+│    - Execute frozen candidate extraction pipeline strictly once.                │
+│    - Concurrently run baseline deterministics on identical fixtures.            │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### A. Role Validation Corpus Specifications
 - **Size**: Minimum 50 documents (restoring the agreed comprehensive evaluation population).
 - **Composition**:
   - 30 Fresh, naturally occurring executive JDs across diverse portals (LinkedIn, Naukri, Workday, Lever, Greenhouse) that were never included in Batches 01–05.
   - 20 Authored counterfactual and adversarial test documents designed to rigorously stress high-risk semantic boundaries (e.g., fractional CXO roles, advisory board vs fiduciary board, client CEO contact vs internal CEO line, explicitly disclaimed P&L, subsidiary vs group scope).
 - **Stratification**: Must cover all 8 high-risk semantic areas and all 6 structural boundary failure modes across varied document lengths (<5k, 5k–20k, >20k chars).
 
-### B. Candidate Validation Corpus
+### B. Candidate Validation Corpus Specifications
 - **Size**: 15–20 structurally diverse executive resumes.
 - **Composition**:
   - Multi-page resumes with complex multi-role tenures at a single company.
   - Highly non-linear career trajectories (founder $\rightarrow$ advisor $\rightarrow$ operating partner).
   - Dense quantitative metrics (currencies across INR, USD, EUR, team scales, conversion lifts).
   - Explicit non-traditional structures (board seats, advisory positions, consulting projects).
+
+### C. Truth Freezing Invariant
+Reference truth must be cryptographically locked before execution commences. Modifying reference truth fixtures after observing model outputs constitutes an immediate invalidation of the certification run.
 
 ---
 
@@ -152,9 +190,9 @@ Before executing the blind validation suite, the following quantitative certific
 - **Candidate Metric Token Fidelity ($\ge 90.0\%$) & Chronology Binding ($\ge 90.0\%$)**:
   On tested reference resumes, Deterministic V1 achieved 7/8 metric retention and 5/9 employer bindings without span hallucinations, while direct LLM dropped numbers from 4 claims. Setting explicit $\ge 90.0\%$ numerical and chronological accuracy bars ensures that the deterministic candidate pipeline maintains strict fidelity before production certification.
 
-#### 3. Derived Operational Budgets
-- **P95 Latency ($\le 15.0\text{s}$)**: Derived directly from the RADAR distributed scraper architecture (`scripts/scraper/run/manager.ts`), where enrichment worker leases enforce a 30.0s hard execution timeout. A 15.0s P95 budget guarantees a $2\times$ safety headroom factor against worker eviction under concurrent load.
-- **Cost per Document ($\le \$0.04$)**: Derived from Gemini 2.5 Flash pricing (\$0.075 / 1M input tokens, \$0.30 / 1M output tokens). An average JD consumes ~6,000 input tokens and produces ~2,500 output tokens ($\sim\$0.0012$ direct cost). Adding the secondary verification pass (~4,000 input tokens, ~500 output tokens) brings nominal cost to $\sim\$0.0020$. A \$0.04 ceiling provides a $20\times$ headroom factor accommodating long documents, prompt expansions, retry policies, and verifier calls while preserving economic viability.
+#### 3. Operational Target Budgets (Product SLOs)
+- **P95 Latency ($\le 15.0\text{s}$)**: Classified as a **Product Ingestion SLO Target**. In asynchronous batch enrichment, maintaining a P95 extraction latency under 15.0s prevents worker queue congestion, bounds memory retention under concurrent worker execution, and ensures responsive ingestion throughput across scraped portals. It is an operational SLA target, rather than a derived runtime invariant of scraper lease parameters.
+- **Cost per Document ($\le \$0.04$)**: Classified as a **Product / Operational Target Budget (SLO)**. Current standard Gemini 2.5 Flash pricing is $\$0.30 / 1\text{M}$ input tokens and $\$2.50 / 1\text{M}$ output tokens, with internal reasoning / thought tokens billed at the output rate. In prior unbounded runs, rich proposition extraction plus thinking tokens generated ~15,000–25,000 output/thought tokens per document ($\sim\$0.04–\$0.06$ in output billing alone). Therefore, the $\$0.04/\text{doc}$ ceiling is not a passive artifact of nominal pricing, but a strict operational budget. Satisfying it requires Batch 06 implementation engineering to enforce disciplined thinking budgets (`thinkingConfig.thinkingBudget`), concise prompt structures, and payload optimization to keep per-document extraction economically viable at scale.
 
 ### C. Pre-Registered Failure Classification & Consequence Table
 
@@ -180,10 +218,11 @@ To prevent post-hoc rationalization of test results, the failure consequence is 
 
 ## Step 5: Run Once, Score Once
 
-1. **Blind Execution**: Run the frozen pipeline once across all blind role and candidate documents.
-2. **Deterministic Baseline Dual Run**: Concurrently run frozen `RoleIntelligenceExtractorV1` and `CandidateProofExtractorV1` on the identical corpus.
-3. **Scoring**: Evaluate against independent human reference truth using the hashed Step 1 evaluator.
-4. **Result Determination**:
+1. **Pre-Run Hash Verification**: Confirm that the SHA-256 hashes of the blind population manifest and independent reference truth fixtures match the frozen hashes committed in Step 3.C.
+2. **Blind Execution**: Run the frozen candidate extraction pipeline strictly once across all blind role and candidate documents.
+3. **Deterministic Baseline Dual Run**: Concurrently run frozen `RoleIntelligenceExtractorV1` and `CandidateProofExtractorV1` on the identical corpus.
+4. **Scoring**: Evaluate against the frozen independent human reference truth using the hashed Step 1 evaluator.
+5. **Result Determination**:
    - If ALL Step 4 thresholds are met $\rightarrow$ **PASS** $\rightarrow$ Proceed to Step 6.
    - If an ARCHITECTURE-FALSIFYING threshold is breached $\rightarrow$ **FAIL** $\rightarrow$ Stop immediately. Core architectural assumption is falsified. Reopen architecture decision.
    - If only IMPLEMENTATION-TUNABLE thresholds are breached $\rightarrow$ Execute the single permitted remediation cycle per Section 4.C. If remediation fails $\rightarrow$ **FAIL**. Stop and report to governance.

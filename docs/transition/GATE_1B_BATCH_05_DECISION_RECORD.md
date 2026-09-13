@@ -15,13 +15,16 @@
 ### Confidence Ladder
 $$\text{Architecture Selected} \longrightarrow \text{Implementation Frozen} \longrightarrow \text{Blind Offline Validated} \longrightarrow \text{Shadow-Mode Validated} \longrightarrow \text{Production Certified} \longrightarrow \text{Periodic / Signal Re-certification}$$
 
-RADAR has completed extensive multi-phase empirical evaluations across 21 role documents and 2 candidate documents (documented in `audit-reports/gate1b-batch04/`, `audit-reports/gate1b-batch04b/`, `audit-reports/gate1b-batch04c/`, `audit-reports/gate1b-batch04c-r1/`, and `audit-reports/gate1b-batch04c-r2/`). 
+RADAR has completed extensive multi-phase empirical evaluations across 21 role documents and 2 candidate documents (documented in the authoritative transition closure records: `docs/transition/GATE_1B_BATCH_04_CLOSURE.md`, `docs/transition/GATE_1B_BATCH_04B_CLOSURE.md`, and `docs/transition/GATE_1B_BATCH_04C_CLOSURE.md`, with complete raw benchmark runs preserved in the local evaluation workspace). 
 
 The accumulated evidence is conclusive. Architectural exploration is closed.
 
 ---
 
 ## 2. Selected Role Extraction Architecture
+
+### Architectural Identity & Model Neutrality
+The selected role extraction architecture is strictly **provider- and model-neutral**. It is defined by its semantic contract, pipeline dataflow, and structural boundaries. Specific foundation models (e.g., Gemini 2.5 Flash with 65k output capacity) serve as the **candidate model implementation** to be implemented and certified in Batch 06, while the architectural invariants reside in the five-layer semantic contract.
 
 ### Pipeline Specification
 
@@ -35,12 +38,14 @@ $$\text{Deterministic Provenance} \longrightarrow \text{Rich Grounded Semantic P
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│ 2. RICH GROUNDED SEMANTIC PROPOSITION LAYER (Gemini 2.5 Flash, 65k capacity)    │
+│ 2. RICH GROUNDED SEMANTIC PROPOSITION LAYER (Large-Context Extraction Engine)   │
 │    - Owns: Sentence/clause decomposition, semantic interpretation,              │
 │            applicability (ROLE, CANDIDATE_REQUIREMENT, CANDIDATE_PREFERENCE,     │
 │            COMPANY, RECRUITING_PROCESS), polarity (AFFIRMED, NEGATED,           │
 │            CONDITIONAL), condition description, canonical type candidates,      │
 │            multi-span grounding, unmapped material concepts.                    │
+│    - Implementation Note: Batch 06 candidate model instance: Gemini 2.5 Flash   │
+│      with calibrated 65k output capacity.                                       │
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
