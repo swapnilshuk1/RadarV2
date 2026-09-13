@@ -23,7 +23,7 @@
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "GATE_1B_BATCH_03 scope revision 3 only — experimental semantic-proposal assembly and verification rigor. Batch 04 is not authorized.",
+  "nextAuthorizedProductionWork": "NONE — GATE_1B_BATCH_03 is complete; Batch 04 requires explicit authorization before implementation begins.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,

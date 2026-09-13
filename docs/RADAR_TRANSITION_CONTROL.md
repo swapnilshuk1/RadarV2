@@ -536,24 +536,29 @@ Gate 1A has already resolved enough of the earlier reuse/coupling and canonical 
 
 ## 16. Current Next Action
 
-Batches 01 and 02 are **COMPLETE**. Batch 03 is reopened at scope revision 3 for the final scientific-validity correction only; its source/provenance immutability, provider/verifier boundary, and experimental LLM isolation guarantees remain mandatory prerequisites and must not be weakened.
+Batches 01, 02, and 03 are **COMPLETE**. Batch 03 scope revision 3 closed
+after the semantic-proposal, deterministic assembly, verifier-rigor, and
+experiment-observability corrections recorded in
+`docs/transition/GATE_1B_BATCH_03_SCOPE_REVISION_3_CLOSURE.md`.
+
+**No next production batch is authorized.**
 
 **Gate 1B — Batch 03: Controlled LLM RoleIntelligence / CandidateProof extraction experiment.**
 
-This is the only currently authorized production batch. Batch 03 scope revision 3 may correct only the experiment boundary and complete mechanically-verifiable contract rigor:
+Batch 03 is complete at scope revision 3.
 
-1. bind all non-semantic source identity and request context mechanically rather than asking the model to echo or derive it;
-2. make `allClaims` equality and proposal accounting exact, and complete runtime validation for every typed V1 field where V1 schema parsing remains used;
-3. replace full-V1 LLM emission with schema-bound LLM semantic proposals, followed by deterministic immutable-source assembly of offsets, stable IDs, source identity, aggregate collections, and mechanical normalization before the shared verifier;
-4. prove malformed semantic proposals and malformed-but-TypeScript-castable V1 outputs cannot achieve `VERIFIED`, while LLM output remains experimental and does not become production extraction authority, canonical persisted fact, or served truth.
+The completed Batch 03 experiment established an isolated semantic-proposal
+boundary with mechanically bound identity, exact source resolution,
+deterministic V1 assembly, shared verification, typed experimental rejection
+causality, and no production authority.
 
-Do **not** change or begin:
+Do **not** change or begin until a separately authorized batch says otherwise:
 
 ```text
 deterministic Extraction V1 semantics
 production extraction authority
 extraction architecture decision
-Batch 04 comparison/benchmarking
+Batch 04 comparison/benchmarking or methodology implementation
 EvidenceGraph
 evaluation
 policy
@@ -566,13 +571,15 @@ UI
 
 The production extraction architecture decision remains **OPEN**.
 
-**Batch 04 is not authorized by this Batch 03 scope-revision activation.** It requires a separate governance authorization after Batch 03 scope revision 3 closure.
+**Batch 04 is not authorized.** It requires a separate governance authorization
+after its methodology, corpus partitioning, comparison dimensions, rejection
+accounting, reproducibility, and cost/latency capture are defined.
 
 The corrected remaining Gate 1B sequence is:
 
 ```text
 Batch 02 — extraction provider boundary + common mechanical verifier   [COMPLETE]
-Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [AUTHORIZED — SCOPE REVISION 3]
+Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [COMPLETE — SCOPE REVISION 3]
 Batch 04 — frozen + unseen/adversarial comparison                      [NOT AUTHORIZED]
 Batch 05 — extraction architecture decision                            [NOT AUTHORIZED]
 Batch 06 — canonical source-fact persistence/contracts                 [NOT AUTHORIZED]
@@ -580,4 +587,6 @@ Batch 06 — canonical source-fact persistence/contracts                 [NOT AU
 
 **EvidenceGraph remains outside Gate 1 and cannot begin until Gate 1 exit is certified.**
 
-Batch 04 must be separately authorized in the machine-readable batch/state manifests and this section before implementation begins. Do not infer authorization from the planned sequence.
+Batch 04 must be separately authorized in the machine-readable batch/state
+manifests and this section before implementation begins. Do not infer
+authorization from the planned sequence.

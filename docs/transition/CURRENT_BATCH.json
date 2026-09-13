@@ -5,7 +5,7 @@
   "id": "GATE_1B_BATCH_03",
   "gate": "GATE_1B",
   "title": "Controlled LLM RoleIntelligence / CandidateProof extraction experiment",
-  "status": "READY",
+  "status": "COMPLETE",
   "batchStartCommit": "a4d1b98258d91fdf28fde4991580484c64a28c54",
   "objective": "Correct Batch 03 scientific validity: bind non-semantic identity/context mechanically, make claim/accounting and runtime checks exact, and replace full-V1 LLM emission with LLM semantic proposals assembled deterministically against immutable source snapshots before common verification. No LLM output becomes production-authoritative in this batch.",
   "mustNotChange": [
