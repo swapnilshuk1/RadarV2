@@ -451,6 +451,28 @@
         "node scripts/transition/verify-transition-control.mjs — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "361bbe432149b10e2ceac70f74bd7b75fbd71735",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 2,
+      "summary": "Completed Pre-Adjudication Integrity Pass: ran evaluator-batch06 read-only against historical Batch 04C frozen outputs demonstrating 100% bit-perfect parity with evaluator-r2 (0.0% metric drift across all 5 architectures), certified 100% synthetic provenance and zero PII for candidate resumes, harmonized taxonomy to 9 canonical high-risk families, resolved .gitignore allowlist for audit-reports/gate1b-batch06/, and committed unified integrity manifest.",
+      "invariantsChecked": [
+        "Historical evaluators evaluator-v2.ts and evaluator-r2.ts remain completely sealed and unmodified.",
+        "Evaluator compatibility verified read-only on 21 historical 04C documents across Arch A, B, C (8k), C (65k), and D (Hybrid) with zero metric drift.",
+        "All 24 candidate resumes certified as 100% synthetic with zero third-party PII or proprietary candidate records.",
+        "Taxonomy harmonized to 25 canonical RoleFactTypes and 9 canonical high-risk families (8 validation groupings).",
+        "Secondary holdout authority affirmed as 25 roles / 8 resumes, intentional and statistically powered for single remediation cycle.",
+        ".gitignore updated to explicitly allowlist !audit-reports/gate1b-batch06/ without requiring git add -f.",
+        "Zero blind documents executed through extraction pipeline; blind boundary intact."
+      ],
+      "verification": [
+        "npx tsx scripts/transition/compare-evaluators-on-historical.ts — PASS (100% parity)",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "node scripts/transition/verify-transition-control.mjs — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
