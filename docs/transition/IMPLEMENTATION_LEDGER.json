@@ -13,6 +13,24 @@
   ],
   "acknowledgements": [
     {
+      "commit": "7417e807bdb2e74aa125a80d8c4900e05bfc83c4",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_04",
+      "scopeRevision": 3,
+      "summary": "Authorized a separately identified Gemini/Vertex operational rerun after the retained scope-revision-2 permission-blocked Run 0, while preserving every locked semantic comparison input and the open architecture decision.",
+      "invariantsChecked": [
+        "Run 0 remains retained as RUN_0_VERTEX_PERMISSION_BLOCKED and cannot be overwritten or reclassified",
+        "Run 1 requires one non-scored capability probe before any benchmark fixture is sent",
+        "only Vertex endpoint project/region where required and the ADC principal/IAM binding may change operationally; model, prompt, schema, fixtures, labels, scoring, and extraction behavior remain locked",
+        "Batch 05 remains unauthorized and the extraction architecture decision remains OPEN"
+      ],
+      "verification": [
+        "npm run transition:check — PASS before the scope-amendment commit (GATE_1B_BATCH_04 READY, scope revision 3, extraction decision OPEN)",
+        "git diff --check — PASS before the scope-amendment commit"
+      ],
+      "authorizationChanged": true
+    },
+    {
       "commit": "f5621885535894989c2a871fd2a0e8ffb2259b3c",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_04",
