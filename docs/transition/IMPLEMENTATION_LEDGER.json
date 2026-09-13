@@ -382,6 +382,28 @@
         "npx vitest run --config vitest.certification.config.ts — candidate: 504/506 tests passed; exact pre-implementation parent: 504/506 tests passed; both fail only scraper-operability scenarios AB and AL under Ubuntu, establishing zero new certification-manifest regressions from this commit"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "68d4d9e4788f6ea8895e82fa74fe1d7f18faed80",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 2,
+      "summary": "Implemented and froze Batch 06 multi-architecture extraction evaluator (evaluator-batch06.ts) and test suite. Sealed historical evaluators (evaluator-v2.ts, evaluator-r2.ts), codified pre-registered failure classifications, separated polarity/applicability/representation absence scoring, and added mechanical candidate offset verification.",
+      "invariantsChecked": [
+        "Historical evaluators evaluator-v2.ts and evaluator-r2.ts remain completely unmodified and sealed.",
+        "Batch 06 evaluator implements pre-registered error taxonomy (FATAL_SAFETY_FAILURE, FATAL_DEFICIT_FAILURE, IMPLEMENTATION_TUNABLE).",
+        "Evaluator strictly separates structural absence of polarity representation from semantic false assertion.",
+        "Evaluator separates applicability domain classification from polarity verification.",
+        "High-risk false affirmatives, polarity inversions, and applicability leaks evaluated with zero tolerance.",
+        "Candidate evaluation includes mechanical offset verification against raw resume text with zero tolerance for hallucinations.",
+        "Evaluator contains no fixture IDs, company-specific branches, benchmark phrases, or case-specific exceptions."
+      ],
+      "verification": [
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "npx vitest run --config scripts/transition/vitest.evaluator.config.ts scripts/transition/evaluator-batch06.test.ts — PASS (8/8 tests passed)",
+        "node verify-transition-control.mjs — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
