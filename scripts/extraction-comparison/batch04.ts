@@ -54,6 +54,9 @@ function candidateSources(): CandidateFixture[] {
     { id: "CANDIDATE_REGRESSION_V3", documentId: "Swapnil_Shukla_Executive_Resume_v3.md", text: frozenText("audit-reports/phase5-100-case-corpus/Swapnil_Shukla_Executive_Resume_v3.md"), claims: [] },
   ];
 }
+function frozenRoleFixtures(): RoleFixture[] {
+  return loadFrozenCases().map((item) => ({ id: `FROZEN_ROLE_${item.caseId}`, title: item.role, company: item.company, text: item.job.rawText, facts: [], highRiskNegatives: [] }));
+}
 
 function preProviderManifest(): unknown {
   const corpusText = frozenText(CORPUS_PATH); const fixtures = loadFixtures(); const candidates = candidateSources(); const cases = loadFrozenCases();
@@ -116,9 +119,9 @@ async function run(): Promise<void> {
   const parityResult = await parity(); writeJson(path.join(OUTPUT, "deterministic/parity.json"), parityResult);
   if (parityResult.nonParity.length) throw new Error(`Deterministic parity failed: ${parityResult.nonParity.join(", ")}`);
   const configuration: LlmExperimentConfiguration = { providerId: "gemini-adc-batch04", model: process.env.BATCH04_GEMINI_MODEL ?? "gemini-2.5-flash", promptVersion: LLM_EXPERIMENT_PROMPT_VERSION, responseSchemaVersion: LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION, proposalSchemaVersion: LLM_SEMANTIC_PROPOSAL_SCHEMA_VERSION, assemblerVersion: LLM_SEMANTIC_ASSEMBLER_VERSION, generationParameters: fixtures.repeatability.generationConfiguration as Record<string, string | number | boolean | null> };
-  const transport = new GeminiAdcStructuredExtractionClient({ projectId: process.env.GCP_PROJECT_ID ?? "project-0e166cfc-e3f5-49d7-af6", location: "us-central1", timeoutMs: 90_000, maxTransportRetries: 2 });
+  const transport = new GeminiAdcStructuredExtractionClient({ projectId: process.env.GCP_PROJECT_ID ?? "project-0e166cfc-e3f5-49d7-af6", location: "us-central1", timeoutMs: 90_000, maxTransportRetries: 2, minimumIntervalMs: 4_200 });
   const primary = [] as unknown[];
-  for (const fixture of [...fixtures.unseenRoles, ...fixtures.adversarialRoles]) primary.push(await executeLlmCase("ROLE", fixture, configuration, transport));
+  for (const fixture of [...frozenRoleFixtures(), ...fixtures.unseenRoles, ...fixtures.adversarialRoles]) primary.push(await executeLlmCase("ROLE", fixture, configuration, transport));
   for (const fixture of [...candidateSources(), ...fixtures.unseenCandidates]) primary.push(await executeLlmCase("CANDIDATE", fixture, configuration, transport));
   writeJson(path.join(OUTPUT, "llm/primary.json"), primary); writeJson(path.join(OUTPUT, "telemetry/attempts.json"), transport.attempts);
   const lookup = new Map([...fixtures.unseenRoles, ...fixtures.adversarialRoles, ...fixtures.unseenCandidates, ...candidateSources()].map((item) => [item.id, item]));

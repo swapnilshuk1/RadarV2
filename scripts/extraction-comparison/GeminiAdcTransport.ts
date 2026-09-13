@@ -27,6 +27,7 @@ export interface GeminiAdcTransportOptions {
   readonly location: string;
   readonly timeoutMs: number;
   readonly maxTransportRetries: number;
+  readonly minimumIntervalMs?: number;
   readonly fetchImpl?: typeof fetch;
   readonly tokenProvider?: () => Promise<string>;
 }
@@ -67,6 +68,7 @@ export class GeminiAdcStructuredExtractionClient implements LlmStructuredExtract
   readonly attempts: GeminiTransportAttempt[] = [];
   private readonly fetchImpl: typeof fetch;
   private readonly tokenProvider: () => Promise<string>;
+  private lastStartedAt = 0;
 
   constructor(private readonly options: GeminiAdcTransportOptions) {
     this.fetchImpl = options.fetchImpl ?? fetch;
@@ -74,6 +76,9 @@ export class GeminiAdcStructuredExtractionClient implements LlmStructuredExtract
   }
 
   async generate(request: LlmStructuredRequest): Promise<LlmStructuredResponse> {
+    const wait = this.lastStartedAt + (this.options.minimumIntervalMs ?? 4_200) - Date.now();
+    if (wait > 0) await sleep(wait);
+    this.lastStartedAt = Date.now();
     const mapped = toStrictStructuredOutputTransportRequest(request);
     const endpoint = `https://${this.options.location}-aiplatform.googleapis.com/v1/projects/${this.options.projectId}/locations/${this.options.location}/publishers/google/models/${encodeURIComponent(request.model)}:generateContent`;
     const requestIdentity = crypto.createHash("sha256").update(`${mapped.metadata.cacheKey}\n${request.model}\n${GEMINI_ADC_TRANSPORT_VERSION}`).digest("hex");
