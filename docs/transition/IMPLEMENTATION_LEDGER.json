@@ -13,6 +13,26 @@
   ],
   "acknowledgements": [
     {
+      "commit": "713870b5b4c47d14e044d70664dd79a133bea62f",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_03",
+      "scopeRevision": 3,
+      "summary": "Corrected exact V1 verifier/runtime invariants before the proposal-only provider migration: bidirectional unique allClaims equality, exact proposal accounting, typed qualifier and parsed-years checks, and requested role-context binding.",
+      "invariantsChecked": [
+        "allClaims is an exact unique union of child, summary, and capability claims",
+        "proposal accounting is exact rather than permissive",
+        "typed role qualifier and parsed-years fields cannot cross the runtime boundary with incompatible primitive values",
+        "the resolver-bound runner rejects output whose case ID, supplied company context, or supplied title context differs from the request"
+      ],
+      "verification": [
+        "npx vitest run tests/intelligence/extraction/provider-boundary.test.ts tests/intelligence/extraction/llm-experimental-provider.test.ts tests/intelligence/role-intelligence-extractor-v1.test.ts tests/intelligence/candidate-proof-extractor-v1.test.ts — PASS (4 files, 54/54 tests)",
+        "npx tsc --noEmit — PASS",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "062afcb19771a563b80db0103e8d1d8265cf39ba",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_03",
