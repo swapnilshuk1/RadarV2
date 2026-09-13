@@ -473,6 +473,29 @@
         "node scripts/transition/verify-transition-control.mjs — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "cc1a7dc2464243f952c32296253a5b083ea337a2",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 2,
+      "summary": "Finalized pre-adjudication reviewer package: authored ROLE_MATERIALITY_RUBRIC.md (MATERIAL_SELECTED vs SUPPORTING_NON_MATERIAL, freezing certification recall denominator) and CANDIDATE_REFERENCE_TRUTH_CONTRACT.md (18 canonical proof types, 3 evidence classes, 100% span provenance, exact offsets, employer/position binding, metric fidelity >=90%), updated evaluator-batch06.ts with materiality and candidate schemas, completed 3-way historical reconciliation of 18 vs 5 false positives tracing root cause to evaluator-v2 keyword heuristics, smoke-tested HighRiskSemanticVerifier resolving historical false positives from 5 to 0, confirmed 4 architectural invariants (Gemini provider decoupling, $0.04 cost ceiling, 15s latency SLA, quantified candidate gates), and recomputed all pre-adjudication manifest hashes.",
+      "invariantsChecked": [
+        "Historical evaluators evaluator-v2.ts and evaluator-r2.ts remain completely sealed and unmodified.",
+        "Role materiality rubric authored model-blind, freezing the 50% typed recall certification gate to MATERIAL_SELECTED facts while preserving exhaustive recall as diagnostic.",
+        "Secondary Holdout sealing clarified: sealed from autonomous coding agent and model execution until remediation, but human-annotated concurrently with Primary.",
+        "Controlled candidate reference truth contract established aligning 1:1 with canonical CandidateProofClaim (zero invented ad-hoc types).",
+        "Evaluator 3-way comparison executed: evaluator-v2 (18 violations due to negative boundary keyword scan), evaluator-r2 (5 false positives), evaluator-batch06 (5 false positives, 100% bit-perfect parity).",
+        "HighRiskSemanticVerifier smoke-tested over historical fixtures: drops false affirmatives from 5 to 0 via three-valued entailment and lexical negation patterns.",
+        "Architectural confirmations recorded: ILlmInferenceClient provider neutrality, $0.04/doc pricing ceiling, 15s P95 timeout, candidate thresholds quantified.",
+        "Blank annotation templates remain 100% empty; zero blind documents executed through extraction pipeline; strict human-truth boundary maintained."
+      ],
+      "verification": [
+        "npx tsx scripts/transition/compare-evaluators-on-historical.ts — PASS (100% bit-perfect parity, 0 false affirmatives with verifier)",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "Get-FileHash SHA-256 recomputed across all modified reviewer and evaluator artifacts — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
