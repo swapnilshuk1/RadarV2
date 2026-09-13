@@ -404,6 +404,31 @@
         "node verify-transition-control.mjs — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "807e633b937c0e976d9502a0b5ded6446f4dbe44",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 2,
+      "summary": "Implemented Step 2 selected role architecture (Layers 1-5): HighRiskSemanticVerifier, StructuralAdmissionEngine, and AsymmetricHybridRoleExtractor orchestrator, accompanied by comprehensive transition unit test suite.",
+      "invariantsChecked": [
+        "Semantic verification supports ENTAILED, CONTRADICTED, and INSUFFICIENT.",
+        "High-risk verification fails closed to INSUFFICIENT on ambiguous or unsupported text; INSUFFICIENT never becomes affirmative canonical truth.",
+        "Structural admission evaluates independently from semantic entailment.",
+        "Applicability boundaries enforced: CANDIDATE_REQUIREMENT cannot become ROLE authority (mapped strictly to HARD_REQUIREMENT); CANDIDATE_PREFERENCE mapped to PREFERRED_REQUIREMENT; COMPANY mapped to COMPANY_CONTEXT; RECRUITING_PROCESS rejected from role taxonomy.",
+        "Polarity discipline enforced: NEGATED propositions admitted as boundary constraints only (project zero affirmative facts); CONDITIONAL propositions require explicit non-empty condition descriptions.",
+        "Existing 25 canonical RoleSemanticTypes strictly retained with zero additions. COMMERCIAL_ACCOUNTABILITY is validation terminology only and is never admitted as a canonical type.",
+        "Zero modification to deterministic Extraction V1 baseline (RoleIntelligenceExtractorV1.ts and CandidateProofExtractorV1.ts remain untouched).",
+        "Extractor is decoupled and not wired into production serving authority.",
+        "Mechanical text slices strictly preserved: rawSourceText.slice(startOffset, endOffset) === exactText for 100% of canonical facts."
+      ],
+      "verification": [
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "npx vitest run --config scripts/transition/vitest.evaluator.config.ts scripts/transition/hybrid-role-extractor.test.ts — PASS (11/11 tests passed)",
+        "npx vitest run --config scripts/transition/vitest.evaluator.config.ts — PASS (19/19 tests passed across evaluator and hybrid extractor suites)",
+        "node verify-transition-control.mjs — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
