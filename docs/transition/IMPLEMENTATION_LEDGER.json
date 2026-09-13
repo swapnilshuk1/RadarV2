@@ -13,6 +13,26 @@
   ],
   "acknowledgements": [
     {
+      "commit": "dc089cda3d8c06d597973495b7d05f6d25ad3cb5",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_04C",
+      "scopeRevision": 1,
+      "summary": "Implemented and froze RichSemanticPropositionContract.ts defining GroundedSemanticProposition, vertex schema, rich prompt, and canonical projection rules for Batch 04C pre-holdout freeze.",
+      "invariantsChecked": [
+        "deterministic Extraction V1 semantics and frozen-baseline behavior preserved",
+        "production extraction authority remains unchanged",
+        "pre-holdout freeze satisfied: contract, prompt, schema, and canonical projection rules frozen before fresh holdout selection/inspection",
+        "polarity and modality semantics preserved (NEGATED/CONDITIONAL)",
+        "applicability domain separation enforced (ROLE vs CANDIDATE_REQUIREMENT/PREFERENCE)",
+        "the extraction architecture decision remains OPEN"
+      ],
+      "verification": [
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "SHA-256 hashes recorded in audit-reports/gate1b-batch04c/manifests/rich-contract-freeze.json"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "77eedb5cdb819ee57641d32373e629e2b8d6a523",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_04B",
