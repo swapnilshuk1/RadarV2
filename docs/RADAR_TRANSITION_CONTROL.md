@@ -536,57 +536,52 @@ Gate 1A has already resolved enough of the earlier reuse/coupling and canonical 
 
 ## 16. Current Next Action
 
-Batches 01, 02, and 03 are **COMPLETE**. Batch 03 scope revision 3 closed
-after the semantic-proposal, deterministic assembly, verifier-rigor, and
-experiment-observability corrections recorded in
-`docs/transition/GATE_1B_BATCH_03_SCOPE_REVISION_3_CLOSURE.md`.
+Batches 01, 02, and 03 are **COMPLETE**. Batch 04 scope revision 1 is now
+authorized only for a methodology-locked, read-only comparison.
 
-**No next production batch is authorized.**
+**Gate 1B — Batch 04: Frozen + unseen/adversarial extraction comparison.**
 
-**Gate 1B — Batch 03: Controlled LLM RoleIntelligence / CandidateProof extraction experiment.**
+This is the only currently authorized production batch.
 
-Batch 03 is complete at scope revision 3.
+Batch 04 compares the frozen deterministic baseline and the Batch 03
+experimental semantic-proposal path. It must lock fixture partitions and
+identities before either provider runs; retain raw outputs, verifier outcomes,
+rejection causality, and telemetry; and report role and candidate quality
+separately. It produces evidence only.
 
-The completed Batch 03 experiment established an isolated semantic-proposal
-boundary with mechanically bound identity, exact source resolution,
-deterministic V1 assembly, shared verification, typed experimental rejection
-causality, and no production authority.
-
-Do **not** change or begin until a separately authorized batch says otherwise:
+Do **not** change or begin beyond this authorization:
 
 ```text
 deterministic Extraction V1 semantics
+experimental LLM provider, prompt, proposal schema, assembler, verifier, and normalizer behavior
 production extraction authority
 extraction architecture decision
-Batch 04 comparison/benchmarking or methodology implementation
+Batch 05 architecture decision
+Batch 06 canonical source-fact persistence
 EvidenceGraph
-evaluation
-policy
-PURSUE / CONSIDER / PASS behavior
-canonical RoleIntelligence / CandidateProof persistence
-dossier/editorial content
-serving
-UI
+evaluation, policy, verdict, canonical persistence, dossier, serving, and UI behavior
+Batch 01 source/provenance immutability guarantees
+benchmark-specific tuning, fixture rewrites, or selective reruns without an explicit scope amendment
 ```
 
-The production extraction architecture decision remains **OPEN**.
+**Still open:** the production extraction architecture.
 
-**Batch 04 is not authorized.** It requires a separate governance authorization
-after its methodology, corpus partitioning, comparison dimensions, rejection
-accounting, reproducibility, and cost/latency capture are defined.
+**Batch 05 is not authorized.** Batch 04 cannot choose an architecture or
+silently tune either extractor in response to comparison results.
 
 The corrected remaining Gate 1B sequence is:
 
 ```text
 Batch 02 — extraction provider boundary + common mechanical verifier   [COMPLETE]
 Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [COMPLETE — SCOPE REVISION 3]
-Batch 04 — frozen + unseen/adversarial comparison                      [NOT AUTHORIZED]
+Batch 04 — frozen + unseen/adversarial comparison                      [AUTHORIZED — SCOPE REVISION 1]
 Batch 05 — extraction architecture decision                            [NOT AUTHORIZED]
 Batch 06 — canonical source-fact persistence/contracts                 [NOT AUTHORIZED]
 ```
 
 **EvidenceGraph remains outside Gate 1 and cannot begin until Gate 1 exit is certified.**
 
-Batch 04 must be separately authorized in the machine-readable batch/state
-manifests and this section before implementation begins. Do not infer
-authorization from the planned sequence.
+Batch 04 authorization, its fixed population definitions, required metrics,
+and anti-tuning rule are recorded in
+`docs/transition/GATE_1B_BATCH_04_AUTHORIZATION.md` and the machine-readable
+batch/state manifests. Do not infer authorization beyond that scope.

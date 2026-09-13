@@ -1,14 +1,14 @@
 {
   "schemaVersion": "radar-transition-state/v1",
-  "controlRevision": "2026-09-13.6",
+  "controlRevision": "2026-09-13.7",
   "controlDocument": "docs/RADAR_TRANSITION_CONTROL.md",
   "workingBranch": "phase5/gate1-architecture-recon",
   "gate1AStatus": "COMPLETE",
   "activeGate": "GATE_1B",
   "activeGateTitle": "Substrate, provenance, and extraction architecture decision",
-  "activeBatchId": "GATE_1B_BATCH_03",
+  "activeBatchId": "GATE_1B_BATCH_04",
   "currentBatchManifest": "docs/transition/CURRENT_BATCH.json",
-  "currentBatchScopeRevision": 3,
+  "currentBatchScopeRevision": 1,
   "implementationLedger": "docs/transition/IMPLEMENTATION_LEDGER.json",
   "agentChangeProtocol": "docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md",
   "requirePerCommitAcknowledgement": true,
@@ -23,7 +23,7 @@
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "NONE — GATE_1B_BATCH_03 is complete; Batch 04 requires explicit authorization before implementation begins.",
+  "nextAuthorizedProductionWork": "GATE_1B_BATCH_04 scope revision 1 only — methodology-locked frozen, unseen, and adversarial extraction comparison. Batch 05 is not authorized.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,
