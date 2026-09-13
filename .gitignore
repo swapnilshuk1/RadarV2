@@ -70,5 +70,6 @@ scraper-profile-temp-*/
 scratch/
 *.bak
 partial*.txt
-audit-reports/
+audit-reports/*
+!audit-reports/gate1b-batch06
 audit/

@@ -35,8 +35,8 @@ For each discrete factual statement affirmed or negated in the text:
 ```
 
 ### B. Controlled Vocabularies
-1. **Canonical Semantic Types (25 Roles Types strictly)**:
-   `TITLE`, `SENIORITY`, `DEPARTMENT`, `REPORTING_LINE`, `PEOPLE_MANAGEMENT`, `TEAM_SIZE`, `BUDGET_RESPONSIBILITY`, `BUDGET_SIZE`, `PNL_RESPONSIBILITY`, `PNL_SIZE`, `REVENUE_RESPONSIBILITY`, `REVENUE_SIZE`, `GEOGRAPHIC_SCOPE`, `TRAVEL_REQUIREMENT`, `WORK_MODEL`, `LOCATION`, `EMPLOYMENT_TYPE`, `COMPENSATION_BASE`, `COMPENSATION_VARIABLE`, `EQUITY_OFFERING`, `EDUCATION_REQUIREMENT`, `EXPERIENCE_YEARS`, `INDUSTRY_EXPERIENCE`, `TECHNICAL_SKILL`, `SOFT_SKILL`.
+1. **Canonical Semantic Types (25 Canonical Role Types strictly)**:
+   `ROLE_PURPOSE`, `RESPONSIBILITY`, `OUTCOME`, `SUCCESS_METRIC`, `HARD_REQUIREMENT`, `PREFERRED_REQUIREMENT`, `REPORTING_LINE`, `FOUNDER_CEO_PROXIMITY`, `BOARD_EXPOSURE`, `PNL_OWNERSHIP`, `REVENUE_ACCOUNTABILITY`, `PROFITABILITY_ACCOUNTABILITY`, `BUDGET_SCOPE`, `DECISION_AUTHORITY`, `PEOPLE_LEADERSHIP`, `PEOPLE_SCALE`, `GREENFIELD_BUILD`, `TRANSFORMATION`, `GEOGRAPHIC_SCOPE`, `REGULATORY_SCOPE`, `PRODUCT_SCOPE`, `CUSTOMER_SCOPE`, `CHANNEL_SCOPE`, `COMPANY_CONTEXT`, `WORK_CONDITION`.
 
 2. **Applicability Domain**:
    - `ROLE`: Direct mandate, authority, or condition of the hiring position.
@@ -51,8 +51,8 @@ For each discrete factual statement affirmed or negated in the text:
    - `CONDITIONAL`: Contingent upon an explicit external dependency (e.g., "subject to Board approval", "requires CFO sign-off").
 
 4. **High-Risk Negative Boundaries (`highRiskNegatives`)**:
-   Enumerate any of the 10 high-risk dimensions that are explicitly absent or contradicted in the JD:
-   - `REPORTING_LINE`, `FOUNDER_CEO_PROXIMITY`, `BOARD_EXPOSURE`, `PNL_OWNERSHIP`, `COMMERCIAL_ACCOUNTABILITY`, `REVENUE_ACCOUNTABILITY`, `PROFITABILITY_ACCOUNTABILITY`, `DECISION_AUTHORITY`, `PEOPLE_LEADERSHIP`, `PEOPLE_SCALE`.
+   Enumerate any of the **9 canonical high-risk families** (representing the 8 validation groupings, where Commercial Accountability is partitioned into Revenue and Profitability) that are explicitly absent or contradicted in the JD:
+   - `REPORTING_LINE`, `FOUNDER_CEO_PROXIMITY`, `BOARD_EXPOSURE`, `PNL_OWNERSHIP`, `REVENUE_ACCOUNTABILITY`, `PROFITABILITY_ACCOUNTABILITY`, `DECISION_AUTHORITY`, `PEOPLE_LEADERSHIP`, `PEOPLE_SCALE`.
 
 ---
 
