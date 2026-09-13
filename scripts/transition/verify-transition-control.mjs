@@ -103,7 +103,7 @@ const requiredControlText = [
 ];
 if (state.activeGate === "GATE_1B") {
   requiredControlText.push("Current execution gate: **Gate 1 of 3 — Gate 1B");
-  const batchNumber = state.activeBatchId.match(/^GATE_1B_BATCH_(\d+)$/)?.[1];
+  const batchNumber = state.activeBatchId.match(/^GATE_1B_BATCH_(\d+[A-Z]?)$/)?.[1];
   if (!batchNumber) die(`Unsupported Gate 1B batch ID: ${state.activeBatchId}`);
   requiredControlText.push(`**Gate 1B — Batch ${batchNumber}: ${batch.title}.**`);
   requiredControlText.push(

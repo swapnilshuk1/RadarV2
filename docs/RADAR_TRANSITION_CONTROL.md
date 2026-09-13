@@ -538,11 +538,13 @@ Gate 1A has already resolved enough of the earlier reuse/coupling and canonical 
 
 Batches 01, 02, 03, and 04 are **COMPLETE**.
 
-**Gate 1B — Batch 04: Frozen + unseen/adversarial extraction comparison.**
+**Gate 1B — Batch 04B: Source-ID generalization & candidate surface validation.**
 
-No next production batch is authorized.
+This is the only currently authorized production batch.
 
-Batch 04 execution under Scope Revision 3 is complete. All comparison evidence (retained Run 0 permission block, Run 1 authorized execution with 100% transport success and response schema verification outcomes, diagnostic proposal analysis, latency/tokens/cost telemetry, and deterministic baseline parity) is retained immutably in `audit-reports/gate1b-batch04/` and documented in `audit-reports/gate1b-batch04/reports/batch04-extraction-comparison-report.md`.
+Batch 04 execution under Scope Revision 3 is complete and its comparison evidence is retained immutably in `audit-reports/gate1b-batch04/` and documented in `audit-reports/gate1b-batch04/reports/batch04-extraction-comparison-report.md`.
+
+Batch 04B authorizes a bounded validation batch to validate whether the frozen conservative source-ID semantic-extraction contract generalizes across diverse role JDs and candidate documents without tuning, while preserving deterministic provenance, full-surface ontology coverage, and high-risk semantic precision.
 
 The extraction architecture decision remains **OPEN**. Batch 05 is **NOT AUTHORIZED**.
 
@@ -550,7 +552,6 @@ Do **not** change or begin beyond this authorization:
 
 ```text
 deterministic Extraction V1 semantics
-experimental LLM provider, prompt, proposal schema, assembler, verifier, and normalizer behavior
 production extraction authority
 extraction architecture decision
 Batch 05 architecture decision
@@ -564,7 +565,7 @@ Batch 05 authorization
 
 **Still open:** the production extraction architecture.
 
-**Batch 05 is not authorized.** Batch 04 cannot choose an architecture or
+**Batch 05 is not authorized.** Batch 04B cannot choose an architecture or
 silently tune either extractor in response to comparison results.
 
 The corrected remaining Gate 1B sequence is:
@@ -572,17 +573,15 @@ The corrected remaining Gate 1B sequence is:
 ```text
 Batch 02 — extraction provider boundary + common mechanical verifier   [COMPLETE]
 Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [COMPLETE — SCOPE REVISION 3]
-Batch 04 — frozen + unseen/adversarial comparison                      [AUTHORIZED — SCOPE REVISION 1]
+Batch 04 — frozen + unseen/adversarial comparison                      [COMPLETE — SCOPE REVISION 3]
+Batch 04B — source-ID generalization & candidate surface validation   [AUTHORIZED — SCOPE REVISION 1]
 Batch 05 — extraction architecture decision                            [NOT AUTHORIZED]
 Batch 06 — canonical source-fact persistence/contracts                 [NOT AUTHORIZED]
 ```
 
 **EvidenceGraph remains outside Gate 1 and cannot begin until Gate 1 exit is certified.**
 
-Batch 04 authorization, its corrected historical role corpus, one
-Batch-04-only experimental transport adapter, fixed population definitions,
-required metrics, and anti-tuning rule are recorded in
-`docs/transition/GATE_1B_BATCH_04_AUTHORIZATION.md`,
-`docs/transition/GATE_1B_BATCH_04_SCOPE_REVISION_2.md`,
-`docs/transition/GATE_1B_BATCH_04_SCOPE_REVISION_3.md`, and the machine-readable
+Batch 04B authorization, its fixed 11-document population, pre-call offline segmentation review,
+author/reviewer provenance protocol, required metrics, and anti-tuning rules are recorded in
+`docs/transition/GATE_1B_BATCH_04B_AUTHORIZATION.md` and the machine-readable
 batch/state manifests. Do not infer authorization beyond that scope.
