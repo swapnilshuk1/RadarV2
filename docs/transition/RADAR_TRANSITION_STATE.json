@@ -1,6 +1,6 @@
 {
   "schemaVersion": "radar-transition-state/v1",
-  "controlRevision": "2026-09-13.9",
+  "controlRevision": "2026-09-13.10",
   "controlDocument": "docs/RADAR_TRANSITION_CONTROL.md",
   "workingBranch": "phase5/gate1-architecture-recon",
   "gate1AStatus": "COMPLETE",
@@ -8,7 +8,7 @@
   "activeGateTitle": "Substrate, provenance, and extraction architecture decision",
   "activeBatchId": "GATE_1B_BATCH_04",
   "currentBatchManifest": "docs/transition/CURRENT_BATCH.json",
-  "currentBatchScopeRevision": 2,
+  "currentBatchScopeRevision": 3,
   "implementationLedger": "docs/transition/IMPLEMENTATION_LEDGER.json",
   "agentChangeProtocol": "docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md",
   "requirePerCommitAcknowledgement": true,
@@ -23,7 +23,7 @@
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "GATE_1B_BATCH_04 scope revision 2 only — methodology-locked frozen, unseen, and adversarial extraction comparison using the pinned historical cases.jsonl artifact and one Batch-04-only experimental transport adapter. Batch 05 is not authorized.",
+  "nextAuthorizedProductionWork": "GATE_1B_BATCH_04 scope revision 3 only — one separately identified Gemini/Vertex operational rerun after a non-scored ADC/Vertex capability probe succeeds, using the scope-revision-2 locked comparison apparatus unchanged and retaining Run 0's Vertex permission-blocked evidence. Batch 05 is not authorized.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,

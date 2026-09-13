@@ -536,8 +536,9 @@ Gate 1A has already resolved enough of the earlier reuse/coupling and canonical 
 
 ## 16. Current Next Action
 
-Batches 01, 02, and 03 are **COMPLETE**. Batch 04 scope revision 2 is now
-authorized only for a methodology-locked, read-only comparison.
+Batches 01, 02, and 03 are **COMPLETE**. Batch 04 scope revision 3 is now
+authorized only for a methodology-locked operational rerun of the same
+comparison after the retained scope-revision-2 Vertex permission block.
 
 **Gate 1B — Batch 04: Frozen + unseen/adversarial extraction comparison.**
 
@@ -545,7 +546,12 @@ This is the only currently authorized production batch.
 
 Batch 04 is comparison-only: it may create locked fixtures, labels, manifests,
 reports, and audit artifacts, but cannot modify extraction semantics, provider
-prompts/configuration, canonical persistence, or runtime authority. It must
+prompts/configuration, canonical persistence, or runtime authority. Scope
+revision 2's complete Run 0 remains permanently retained as an operational
+Vertex permission failure (459 HTTP 403 responses; no verified semantic
+outputs). Scope revision 3 authorizes one separately identified Run 1 only
+after one non-scored capability probe verifies the same Gemini/Vertex transport
+through a Vertex-authorized ADC principal/project. It must
 lock fixture partitions, identities, gold labels, scoring/matching rules, and
 repeat policy before either provider runs; retain raw outputs, verifier
 outcomes, rejection causality, and telemetry; and report role and candidate
@@ -587,5 +593,7 @@ Batch 06 — canonical source-fact persistence/contracts                 [NOT AU
 Batch 04 authorization, its corrected historical role corpus, one
 Batch-04-only experimental transport adapter, fixed population definitions,
 required metrics, and anti-tuning rule are recorded in
-`docs/transition/GATE_1B_BATCH_04_AUTHORIZATION.md` and the machine-readable
+`docs/transition/GATE_1B_BATCH_04_AUTHORIZATION.md`,
+`docs/transition/GATE_1B_BATCH_04_SCOPE_REVISION_2.md`,
+`docs/transition/GATE_1B_BATCH_04_SCOPE_REVISION_3.md`, and the machine-readable
 batch/state manifests. Do not infer authorization beyond that scope.
