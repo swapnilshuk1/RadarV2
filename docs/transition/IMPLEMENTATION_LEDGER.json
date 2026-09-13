@@ -13,6 +13,28 @@
   ],
   "acknowledgements": [
     {
+      "commit": "0f0ba91f257099576e5451b7b963dcb07fa3ea37",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_03",
+      "scopeRevision": 3,
+      "summary": "Canonicalized experimental candidate proof-type order, made source-resolution and containment failures proposition-level with exact accounting, restored deterministic metric/entity normalization after quote resolution, and documented the narrow experimental structural boundary.",
+      "invariantsChecked": [
+        "candidate stable claim identity is invariant to the model's proof-type array ordering",
+        "malformed envelopes and schemas reject whole responses, while independently invalid source-bound proposals are rejected locally without erasing valid proposals",
+        "proposed equals accepted plus rejected for experimental role and candidate outputs after all resolution and containment checks",
+        "candidate metrics and grounded entities are deterministic source normalization outputs, never LLM-provided fields",
+        "the heading/pipe structural recognizer is experimental-only and comparison reporting must separate structural or enrichment coverage from semantic proposal quality"
+      ],
+      "verification": [
+        "npx vitest run tests/intelligence/extraction/provider-boundary.test.ts tests/intelligence/extraction/llm-experimental-provider.test.ts tests/intelligence/role-intelligence-extractor-v1.test.ts tests/intelligence/candidate-proof-extractor-v1.test.ts — PASS (4 files, 60/60 tests)",
+        "npx tsc --noEmit — PASS",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "rg -n \"ExperimentalLlm|LlmExperimental|ExperimentalLlmExtractionExecutor|ExperimentalSemanticProposal\" src --glob '!src/lib/intelligence/extraction/**' — PASS (no production imports)",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "2a7c59db9686806e3b269b5ce10cfa5ea7517296",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_03",
