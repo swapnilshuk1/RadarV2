@@ -536,16 +536,16 @@ Gate 1A has already resolved enough of the earlier reuse/coupling and canonical 
 
 ## 16. Current Next Action
 
-Batches 01, 02, and 03 are **COMPLETE**. Their source/provenance immutability, provider/verifier boundary, and experimental LLM isolation guarantees remain mandatory prerequisites and must not be weakened.
+Batches 01 and 02 are **COMPLETE**. Batch 03 is reopened at scope revision 2 for scientific-readiness correction only; its source/provenance immutability, provider/verifier boundary, and experimental LLM isolation guarantees remain mandatory prerequisites and must not be weakened.
 
 **Gate 1B — Batch 03: Controlled LLM RoleIntelligence / CandidateProof extraction experiment.**
 
-Batch 03 is complete. It was the only currently authorized production batch and established:
+This is the only currently authorized production batch. Batch 03 scope revision 2 may correct only the scientific rigor of the existing experiment:
 
-1. experiment-only LLM RoleIntelligence and CandidateProof providers through the exact Batch 02 provider and mechanical-verifier runner;
-2. versioned schema/prompt contracts and deterministic cache identity derived from the exact immutable Batch 01 source plus provider/schema configuration;
-3. observable, fail-closed handling of source resolution, structured output, schema validation, and mechanical verification failure;
-4. proof that LLM output remains experimental and does not become production extraction authority, canonical persisted fact, or served truth.
+1. complete strict runtime structural validation of `RoleIntelligenceOutputV1` and `CandidateProofOutputV1` at the LLM response boundary before any TypeScript cast;
+2. expansion of the shared `MechanicalExtractionVerifier` for source truth, derived IDs, containment, cross-list consistency, provenance, normalization, and relational invariants used by both deterministic and experimental providers;
+3. observer isolation, experimental execution telemetry, and strict real-transport request/schema translation tests, without placing returned execution metadata in cache identity;
+4. proof that malformed-but-TypeScript-castable output cannot achieve `VERIFIED`, while LLM output remains experimental and does not become production extraction authority, canonical persisted fact, or served truth.
 
 Do **not** change or begin:
 
@@ -566,13 +566,13 @@ UI
 
 The production extraction architecture decision remains **OPEN**.
 
-**No next production batch is authorized. Batch 04 is not authorized.** It requires a separate governance authorization after Batch 03 closure.
+**Batch 04 is not authorized by this Batch 03 scope-revision activation.** It requires a separate governance authorization after Batch 03 scope revision 2 is closed.
 
 The corrected remaining Gate 1B sequence is:
 
 ```text
 Batch 02 — extraction provider boundary + common mechanical verifier   [COMPLETE]
-Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [COMPLETE]
+Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [AUTHORIZED — SCOPE REVISION 2]
 Batch 04 — frozen + unseen/adversarial comparison                      [NOT AUTHORIZED]
 Batch 05 — extraction architecture decision                            [NOT AUTHORIZED]
 Batch 06 — canonical source-fact persistence/contracts                 [NOT AUTHORIZED]
