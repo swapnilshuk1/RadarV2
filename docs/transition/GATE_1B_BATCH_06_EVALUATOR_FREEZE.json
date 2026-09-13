@@ -3,7 +3,7 @@
   "batchId": "GATE_1B_BATCH_06",
   "scopeRevision": 2,
   "evaluatorPath": "scripts/transition/evaluator-batch06.ts",
-  "evaluatorSha256": "66d03dc3324ddddf5e5b1c667fcc58bb62deb05848c75b276892bce05f67514b",
+  "evaluatorSha256": "618ebfa1712db04e2c4a1466a491bd906e75fe604e6a8778fa0f457d69ebaac9",
   "evaluatorTestPath": "scripts/transition/evaluator-batch06.test.ts",
   "lockedAt": "2026-09-13T12:47:00Z",
   "historicalEvaluatorsSealed": [

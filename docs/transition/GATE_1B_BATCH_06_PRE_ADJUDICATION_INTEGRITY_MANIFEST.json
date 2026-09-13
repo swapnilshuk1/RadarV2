@@ -2,10 +2,10 @@
   "schemaVersion": "radar-transition-integrity-manifest/v1",
   "batchId": "GATE_1B_BATCH_06",
   "scopeRevision": 2,
-  "verifiedAt": "2026-09-13T14:15:00Z",
+  "verifiedAt": "2026-09-13T16:05:00Z",
   "evaluatorFreeze": {
     "evaluatorPath": "scripts/transition/evaluator-batch06.ts",
-    "sha256": "66d03dc3324ddddf5e5b1c667fcc58bb62deb05848c75b276892bce05f67514b",
+    "sha256": "618ebfa1712db04e2c4a1466a491bd906e75fe604e6a8778fa0f457d69ebaac9",
     "testSuitePath": "scripts/transition/evaluator-batch06.test.ts",
     "testVerdict": "8/8 PASSING",
     "historicalEvaluatorsSealed": [
@@ -36,7 +36,7 @@
   "populationManifests": {
     "primary": {
       "manifestPath": "audit-reports/gate1b-batch06/materials/primary/PRIMARY_POPULATION_MANIFEST.json",
-      "sha256": "a6c0e007042c57a3636a7f048ad03c5a21552741d29ad1cabdb2ba4d2193fa1d",
+      "sha256": "99ad9e35bd9156c9aac76d685e934fa17eecaef040cb355213ae8c407e642684",
       "roleCount": 50,
       "naturalRolesCount": 30,
       "boundaryStressRolesCount": 20,
@@ -44,7 +44,7 @@
     },
     "secondary": {
       "manifestPath": "audit-reports/gate1b-batch06/materials/secondary/SECONDARY_POPULATION_MANIFEST.json",
-      "sha256": "1076ef47e7aa8a5d355e786b6dc0329d4f54e6ee589df7ecf44504920af6336e",
+      "sha256": "23c417a396a6d3699f2b0cc9e0481ac1a184c17dfd1770c151c521bfd21671a0",
       "roleCount": 25,
       "naturalRolesCount": 15,
       "boundaryStressRolesCount": 10,
@@ -65,7 +65,11 @@
     "validationGroupingsCount": 8,
     "note": "Commercial Accountability is a validation grouping comprising REVENUE_ACCOUNTABILITY and PROFITABILITY_ACCOUNTABILITY",
     "reviewerInstructionsPath": "audit-reports/gate1b-batch06/annotation/REVIEWER_INSTRUCTIONS.md",
-    "reviewerInstructionsSha256": "147d51bc60ce54fa14d030906b125691392d28d9f64dfaf0872583b180aea43e"
+    "reviewerInstructionsSha256": "d5128de455d40563c64521eb0d9e3146acf5ad0fc63dd7642a1655c03ae582a2",
+    "roleMaterialityRubricPath": "audit-reports/gate1b-batch06/annotation/ROLE_MATERIALITY_RUBRIC.md",
+    "roleMaterialityRubricSha256": "6b2a2c5d9e3bdf31359c0f626ef704b5d173e43ed956103d5725abdeaad25e8d",
+    "candidateReferenceTruthContractPath": "audit-reports/gate1b-batch06/annotation/CANDIDATE_REFERENCE_TRUTH_CONTRACT.md",
+    "candidateReferenceTruthContractSha256": "e92b869979bbe65ff5f6b60995c22d8dfe965b17f051717868fc0b6336508a22"
   },
   "repositoryHygiene": {
     "gitignoreAllowlist": "!audit-reports/gate1b-batch06/",

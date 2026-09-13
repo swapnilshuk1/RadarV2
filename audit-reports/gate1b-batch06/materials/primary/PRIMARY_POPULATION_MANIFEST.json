@@ -1,7 +1,7 @@
 {
   "manifestVersion": "gate1b-batch06-primary-manifest/v1",
   "holdout": "PRIMARY_CERTIFICATION",
-  "createdAt": "2026-09-13T13:20:43.919Z",
+  "createdAt": "2026-09-13T15:58:21.424Z",
   "governingScopeRevision": 2,
   "summary": {
     "totalRoles": 50,

@@ -60,6 +60,39 @@ export type FailureClassification =
 // 2. Data Contracts
 // ============================================================================
 
+export type ReferenceFactMateriality = "MATERIAL_SELECTED" | "SUPPORTING_NON_MATERIAL";
+
+export const CANDIDATE_EVIDENCE_CLASSES = [
+  "WORK_HISTORY",
+  "SELF_SUMMARY",
+  "CAPABILITY_LABEL"
+] as const;
+
+export type CandidateEvidenceClass = typeof CANDIDATE_EVIDENCE_CLASSES[number];
+
+export const CANDIDATE_PROOF_TYPES = [
+  "OUTCOME",
+  "OWNERSHIP",
+  "FINANCIAL_SCOPE",
+  "PEOPLE_SCOPE",
+  "GEOGRAPHIC_SCOPE",
+  "ORGANIZATION_BUILD",
+  "TRANSFORMATION",
+  "MANDATE",
+  "PRODUCT_LAUNCH",
+  "CUSTOMER_GROWTH",
+  "REVENUE_GROWTH",
+  "COST_EFFICIENCY",
+  "PIPELINE_GENERATION",
+  "TECHNOLOGY_IMPLEMENTATION",
+  "PARTNERSHIP",
+  "STAKEHOLDER_LEADERSHIP",
+  "DOMAIN_PRECEDENT",
+  "CAPABILITY_LABEL"
+] as const;
+
+export type CandidateProofType = typeof CANDIDATE_PROOF_TYPES[number];
+
 export interface NormalizedReferenceFact {
   id: string;
   documentId: string;
@@ -69,6 +102,7 @@ export interface NormalizedReferenceFact {
   polarity: Exclude<PolarityType, "REPRESENTATION_UNAVAILABLE">;
   highRiskFamily: string | null;
   propositionText: string;
+  materiality?: ReferenceFactMateriality;
 }
 
 export interface CommonAssertion {
@@ -125,6 +159,11 @@ export interface RoleDocumentEvaluationResult {
   typedMatches: number;
   selectionRecall: number;
   typedRecall: number;
+  materialSelectedCount?: number;
+  materialSelectedTypedMatches?: number;
+  materialSelectedTypedRecall?: number;
+  exhaustiveFactCount?: number;
+  exhaustiveTypedRecall?: number;
   factBreakdowns: FactFailureClassification[];
   highRiskBreakdown: HighRiskSafetyBreakdown;
   totalAssertionsEmitted: number;
@@ -140,12 +179,16 @@ export interface CandidateReferenceFact {
   documentId: string;
   exactText: string;
   spanId?: string;
-  proofType?: string;
-  evidenceClass?: string;
+  proofType?: CandidateProofType | string;
+  proofTypes?: (CandidateProofType | string)[];
+  evidenceClass?: CandidateEvidenceClass | string;
   metric?: string;
   employer?: string;
+  title?: string;
   dates?: string;
   isCurrent?: boolean;
+  startOffset?: number;
+  endOffset?: number;
 }
 
 export interface CandidateExtractedClaim {
@@ -238,6 +281,8 @@ export interface Batch06CertificationSummary {
     totalRoleDocs: number;
     totalCandidateDocs: number;
     overallTypedRecall: number;
+    materialSelectedRecall?: number;
+    exhaustiveTypedRecall?: number;
     longDocTypedRecall: number;
     insufficientEvidenceCaptureRate: number;
     totalHighRiskFalseAffirmatives: number;
@@ -281,51 +326,63 @@ export function wordOverlapSimilarity(a: string, b: string): number {
 
 export function normalizeReferenceTruth(rawFixture: any): NormalizedReferenceFact[] {
   const norm: NormalizedReferenceFact[] = [];
-  const docId = rawFixture.documentId ?? rawFixture.id ?? "UNKNOWN_DOC";
+  const docId = rawFixture.documentId ?? rawFixture.opaqueId ?? rawFixture.id ?? "UNKNOWN_DOC";
 
-  if (Array.isArray(rawFixture.materialFacts)) {
-    for (const f of rawFixture.materialFacts) {
-      let spans: string[] = [];
-      if (Array.isArray(f.keySpanIds)) spans = [...f.keySpanIds];
-      else if (Array.isArray(f.sourceEvidence)) spans = [...f.sourceEvidence];
-      else if (f.spanId) spans = [f.spanId];
+  const rawFacts = Array.isArray(rawFixture.materialFacts)
+    ? rawFixture.materialFacts
+    : Array.isArray(rawFixture.facts)
+      ? rawFixture.facts
+      : [];
 
-      let types: string[] = [];
-      if (Array.isArray(f.canonicalTypes)) types = [...f.canonicalTypes];
-      else if (f.semanticType) types = [f.semanticType];
+  for (const f of rawFacts) {
+    let spans: string[] = [];
+    if (Array.isArray(f.keySpanIds)) spans = [...f.keySpanIds];
+    else if (Array.isArray(f.sourceEvidence)) spans = [...f.sourceEvidence];
+    else if (f.spanId) spans = [f.spanId];
 
-      let appliesTo: NormalizedReferenceFact["appliesTo"] = "ROLE";
-      if (f.appliesTo) {
-        appliesTo = f.appliesTo;
-      } else if (f.subject === "COMPANY") {
-        appliesTo = "COMPANY";
-      } else if (f.subject === "CANDIDATE" || f.subject === "CANDIDATE_REQUIREMENT") {
-        appliesTo = "CANDIDATE_REQUIREMENT";
-      } else if (f.subject === "CANDIDATE_PREFERENCE") {
-        appliesTo = "CANDIDATE_PREFERENCE";
-      } else if (f.subject === "RECRUITING_PROCESS" || f.subject === "PROCESS") {
-        appliesTo = "RECRUITING_PROCESS";
-      }
+    let types: string[] = [];
+    if (Array.isArray(f.canonicalTypes)) types = [...f.canonicalTypes];
+    else if (f.semanticType) types = [f.semanticType];
 
-      let hrFamily: string | null = null;
-      if (f.highRiskFamily) {
-        hrFamily = f.highRiskFamily;
-      } else {
-        const found = types.find(t => (HIGH_RISK_FAMILIES as readonly string[]).includes(t));
-        if (found) hrFamily = found;
-      }
-
-      norm.push({
-        id: f.id ?? crypto.randomUUID(),
-        documentId: docId,
-        sourceEvidence: spans,
-        canonicalTypes: types,
-        appliesTo,
-        polarity: f.polarity ?? "AFFIRMED",
-        highRiskFamily: hrFamily,
-        propositionText: f.proposition ?? f.exactText ?? f.context ?? ""
-      });
+    let appliesTo: NormalizedReferenceFact["appliesTo"] = "ROLE";
+    if (f.appliesTo) {
+      appliesTo = f.appliesTo;
+    } else if (f.subject === "COMPANY") {
+      appliesTo = "COMPANY";
+    } else if (f.subject === "CANDIDATE" || f.subject === "CANDIDATE_REQUIREMENT") {
+      appliesTo = "CANDIDATE_REQUIREMENT";
+    } else if (f.subject === "CANDIDATE_PREFERENCE") {
+      appliesTo = "CANDIDATE_PREFERENCE";
+    } else if (f.subject === "RECRUITING_PROCESS" || f.subject === "PROCESS") {
+      appliesTo = "RECRUITING_PROCESS";
     }
+
+    let hrFamily: string | null = null;
+    if (f.highRiskFamily) {
+      hrFamily = f.highRiskFamily;
+    } else {
+      const found = types.find(t => (HIGH_RISK_FAMILIES as readonly string[]).includes(t));
+      if (found) hrFamily = found;
+    }
+
+    let materiality: ReferenceFactMateriality = "MATERIAL_SELECTED";
+    if (f.materiality === "SUPPORTING_NON_MATERIAL") {
+      materiality = "SUPPORTING_NON_MATERIAL";
+    } else if (f.materiality === "MATERIAL_SELECTED") {
+      materiality = "MATERIAL_SELECTED";
+    }
+
+    norm.push({
+      id: f.id ?? crypto.randomUUID(),
+      documentId: docId,
+      sourceEvidence: spans,
+      canonicalTypes: types,
+      appliesTo,
+      polarity: f.polarity ?? "AFFIRMED",
+      highRiskFamily: hrFamily,
+      propositionText: f.proposition ?? f.exactText ?? f.context ?? f.propositionText ?? "",
+      materiality
+    });
   }
 
   return norm;
@@ -500,6 +557,20 @@ export function evaluateRoleDocument(
     f => f.polarityStatus === "POLARITY_UNREPRESENTABLE"
   ).length;
 
+  // Material vs Exhaustive Fact Partitioning
+  const materialFacts = refFacts.filter(f => f.materiality !== "SUPPORTING_NON_MATERIAL");
+  const materialFactIds = new Set(materialFacts.map(f => f.id));
+  const materialSelectionMatches = factBreakdowns.filter(
+    f => materialFactIds.has(f.factId) && (f.status === "RECOVERED_TYPED" || f.status === "RECOVERED_SELECTION_ONLY")
+  ).length;
+  const materialTypedMatches = factBreakdowns.filter(
+    f => materialFactIds.has(f.factId) && f.status === "RECOVERED_TYPED"
+  ).length;
+
+  const materialCount = materialFacts.length > 0 ? materialFacts.length : refFacts.length;
+  const certSelectionMatches = materialFacts.length > 0 ? materialSelectionMatches : selectionMatches;
+  const certTypedMatches = materialFacts.length > 0 ? materialTypedMatches : typedMatches;
+
   return {
     documentId: docId,
     partition,
@@ -508,8 +579,13 @@ export function evaluateRoleDocument(
     totalReferenceFacts: refFacts.length,
     selectionMatches,
     typedMatches,
-    selectionRecall: refFacts.length > 0 ? selectionMatches / refFacts.length : 0,
-    typedRecall: refFacts.length > 0 ? typedMatches / refFacts.length : 0,
+    selectionRecall: materialCount > 0 ? certSelectionMatches / materialCount : 0,
+    typedRecall: materialCount > 0 ? certTypedMatches / materialCount : 0,
+    materialSelectedCount: materialFacts.length,
+    materialSelectedTypedMatches: materialTypedMatches,
+    materialSelectedTypedRecall: materialFacts.length > 0 ? materialTypedMatches / materialFacts.length : 0,
+    exhaustiveFactCount: refFacts.length,
+    exhaustiveTypedRecall: refFacts.length > 0 ? typedMatches / refFacts.length : 0,
     factBreakdowns,
     highRiskBreakdown: {
       observedFalseAffirmatives,
@@ -704,6 +780,8 @@ export function scoreBatch06CertificationRun(
   const totalRoleDocs = roleResults.length;
   let totalRoleRefFacts = 0;
   let totalRoleTypedMatches = 0;
+  let totalExhaustiveRoleRefFacts = 0;
+  let totalExhaustiveRoleTypedMatches = 0;
   let totalHighRiskFalseAffirmatives = 0;
   let totalPolarityInversions = 0;
   let totalApplicabilityLeaks = 0;
@@ -716,15 +794,19 @@ export function scoreBatch06CertificationRun(
   let costCount = 0;
 
   for (const r of roleResults) {
-    totalRoleRefFacts += r.totalReferenceFacts;
-    totalRoleTypedMatches += r.typedMatches;
+    const roleMatCount = r.materialSelectedCount !== undefined && r.materialSelectedCount > 0 ? r.materialSelectedCount : r.totalReferenceFacts;
+    const roleMatTypedMatches = r.materialSelectedTypedMatches !== undefined && r.materialSelectedCount && r.materialSelectedCount > 0 ? r.materialSelectedTypedMatches : r.typedMatches;
+    totalRoleRefFacts += roleMatCount;
+    totalRoleTypedMatches += roleMatTypedMatches;
+    totalExhaustiveRoleRefFacts += r.totalReferenceFacts;
+    totalExhaustiveRoleTypedMatches += r.typedMatches;
     totalHighRiskFalseAffirmatives += r.highRiskBreakdown.observedFalseAffirmatives;
     totalPolarityInversions += r.factBreakdowns.filter(f => f.polarityStatus === "WRONG_POLARITY").length;
     totalApplicabilityLeaks += r.highRiskBreakdown.subjectApplicabilityErrors;
 
     if (r.rawDocLength > 20000) {
-      longDocRefFacts += r.totalReferenceFacts;
-      longDocTypedMatches += r.typedMatches;
+      longDocRefFacts += roleMatCount;
+      longDocTypedMatches += roleMatTypedMatches;
     }
 
     if (typeof r.latencyMs === "number") latencies.push(r.latencyMs);
@@ -736,6 +818,7 @@ export function scoreBatch06CertificationRun(
 
   const overallTypedRecall = totalRoleRefFacts > 0 ? totalRoleTypedMatches / totalRoleRefFacts : 0;
   const longDocTypedRecall = longDocRefFacts > 0 ? longDocTypedMatches / longDocRefFacts : 0;
+  const exhaustiveTypedRecall = totalExhaustiveRoleRefFacts > 0 ? totalExhaustiveRoleTypedMatches / totalExhaustiveRoleRefFacts : 0;
 
   // P95 Latency
   latencies.sort((a, b) => a - b);
@@ -955,6 +1038,8 @@ export function scoreBatch06CertificationRun(
       totalRoleDocs,
       totalCandidateDocs,
       overallTypedRecall,
+      materialSelectedRecall: overallTypedRecall,
+      exhaustiveTypedRecall,
       longDocTypedRecall,
       insufficientEvidenceCaptureRate,
       totalHighRiskFalseAffirmatives,
