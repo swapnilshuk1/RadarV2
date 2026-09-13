@@ -1,12 +1,12 @@
 {
   "schemaVersion": "radar-transition-state/v1",
-  "controlRevision": "2026-09-13.12",
+  "controlRevision": "2026-09-13.13",
   "controlDocument": "docs/RADAR_TRANSITION_CONTROL.md",
   "workingBranch": "phase5/gate1-architecture-recon",
   "gate1AStatus": "COMPLETE",
   "activeGate": "GATE_1B",
   "activeGateTitle": "Substrate, provenance, and extraction architecture decision",
-  "activeBatchId": "GATE_1B_BATCH_04C",
+  "activeBatchId": "GATE_1B_BATCH_05",
   "currentBatchManifest": "docs/transition/CURRENT_BATCH.json",
   "currentBatchScopeRevision": 1,
   "implementationLedger": "docs/transition/IMPLEMENTATION_LEDGER.json",
@@ -14,16 +14,17 @@
   "requirePerCommitAcknowledgement": true,
   "gateEntryCommit": "f87313258025f0888573400886eee2646b92bb5e",
   "extractionArchitectureDecision": {
-    "status": "OPEN",
-    "roleExtraction": null,
-    "candidateExtraction": null,
-    "decisionRecord": null
+    "status": "DECIDED",
+    "roleExtraction": "ASYMMETRIC_HYBRID_RICH_PROPOSITION_VERIFIED",
+    "candidateExtraction": "DETERMINISTIC_FOR_CURRENT_TRANSITION",
+    "decisionRecord": "docs/transition/GATE_1B_BATCH_05_DECISION_RECORD.md",
+    "validationRunbook": "docs/transition/GATE_1B_BATCH_06_VALIDATION_RUNBOOK.md"
   },
   "gateExitCertifications": {
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "GATE_1B_BATCH_04C is in progress. The extractionArchitectureDecision remains OPEN and Batch 05 is NOT AUTHORIZED.",
+  "nextAuthorizedProductionWork": "GATE_1B_BATCH_05 is COMPLETE. The extractionArchitectureDecision is DECIDED. Production certification is PENDING. Batch 06 is NOT AUTHORIZED.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,

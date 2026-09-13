@@ -13,10 +13,11 @@ This document is the governing execution record for the RADAR intelligence trans
 - Frozen corpus source branch: `codex/candidate-corpus-100`
 - Frozen corpus commit: `e1f0a47575accedcd7fd3d681c7b084ca377b0fd`
 - Current execution gate: **Gate 1 of 3 — Gate 1B substrate/provenance + extraction architecture decision**
-- **Gate 1B — Batch 04C: Rich semantic proposition generalization & architecture comparison.**
-- This is the only currently authorized production batch.
-- **Still open:** the production extraction architecture.
+- **Gate 1B — Batch 05: Extraction architecture decision & acceptance contract.**
+No next production batch is authorized.
 - Gate 1A architecture reconnaissance: **COMPLETE**
+- **Extraction Architecture Decision:** DECIDED (Role: Asymmetric Hybrid; Candidate: Deterministic for current transition)
+- **Production Certification:** PENDING (Batch 06 NOT AUTHORIZED)
 
 The `adbfc37` extractors are a deterministic benchmark and fallback/reference implementation. They are **not assumed to be the final production extraction architecture**.
 
@@ -543,7 +544,7 @@ Gate 1A has already resolved enough of the earlier reuse/coupling and canonical 
 
 Batches 01, 02, 03, and 04 are **COMPLETE**.
 
-**Gate 1B — Batch 04B: Source-ID generalization & candidate surface validation.**
+**Gate 1B — Batch 05: Extraction architecture decision & acceptance contract.**
 
 No next production batch is authorized.
 
@@ -551,42 +552,36 @@ Batch 04 execution under Scope Revision 3 is complete and its comparison evidenc
 
 Batch 04B execution under Scope Revision 1 is complete. Its generalization validation evidence is retained immutably in `audit-reports/gate1b-batch04b/` and documented in `audit-reports/gate1b-batch04b/reports/batch04b-generalization-report.md`.
 
-The extraction architecture decision remains **OPEN**. Batch 05 is **NOT AUTHORIZED**.
+Batch 04C execution across 04C, R1, and R2 is complete. Its comprehensive comparative evidence is retained immutably in `audit-reports/gate1b-batch04c/`, `audit-reports/gate1b-batch04c-r1/`, and `audit-reports/gate1b-batch04c-r2/`, and formally reconciled and closed in `docs/transition/GATE_1B_BATCH_04C_CLOSURE.md`.
+
+Batch 05 execution is complete. The extraction architecture decision is formally recorded in `docs/transition/GATE_1B_BATCH_05_DECISION_RECORD.md` and the validation runbook is recorded in `docs/transition/GATE_1B_BATCH_06_VALIDATION_RUNBOOK.md`.
+
+The extraction architecture decision is **DECIDED**. Production certification is **PENDING**. Batch 06 is **NOT AUTHORIZED**.
 
 Do **not** change or begin beyond this authorization:
 
 ```text
 deterministic Extraction V1 semantics
 production extraction authority
-extraction architecture decision
-Batch 05 architecture decision
-Batch 06 canonical source-fact persistence
+Batch 06 implementation or execution
 EvidenceGraph
 evaluation, policy, verdict, canonical persistence, dossier, serving, and UI behavior
 Batch 01 source/provenance immutability guarantees
-benchmark-specific tuning, fixture rewrites, or selective reruns without an explicit scope amendment
-Batch 05 authorization
+Batch 06 authorization
 ```
 
-**Still open:** the production extraction architecture.
-
-**Batch 05 is not authorized.** Batch 04B cannot choose an architecture or
-silently tune either extractor in response to comparison results.
-
-The corrected remaining Gate 1B sequence is:
+The updated Gate 1B sequence is:
 
 ```text
 Batch 02 — extraction provider boundary + common mechanical verifier   [COMPLETE]
 Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [COMPLETE — SCOPE REVISION 3]
 Batch 04 — frozen + unseen/adversarial comparison                      [COMPLETE — SCOPE REVISION 3]
 Batch 04B — source-ID generalization & candidate surface validation   [COMPLETE — SCOPE REVISION 1]
-Batch 05 — extraction architecture decision                            [NOT AUTHORIZED]
-Batch 06 — canonical source-fact persistence/contracts                 [NOT AUTHORIZED]
+Batch 04C — rich semantic proposition comparison (04C, R1, R2)         [COMPLETE]
+Batch 05 — extraction architecture decision                            [COMPLETE — DECIDED]
+Batch 06 — implementation & production certification                  [NOT AUTHORIZED]
 ```
 
 **EvidenceGraph remains outside Gate 1 and cannot begin until Gate 1 exit is certified.**
 
-Batch 04B authorization, its fixed 11-document population, pre-call offline segmentation review,
-author/reviewer provenance protocol, required metrics, and anti-tuning rules are recorded in
-`docs/transition/GATE_1B_BATCH_04B_AUTHORIZATION.md` and the machine-readable
-batch/state manifests. Do not infer authorization beyond that scope.
+Batch 05 decision record, shared taxonomies, validation runbook, and pre-registered certification thresholds are recorded in `docs/transition/GATE_1B_BATCH_05_DECISION_RECORD.md`, `docs/transition/GATE_1B_BATCH_06_VALIDATION_RUNBOOK.md`, and the machine-readable batch/state manifests. Do not infer authorization beyond that scope.
