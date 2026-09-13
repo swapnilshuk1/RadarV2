@@ -9,6 +9,11 @@ import {
 } from "./ExtractionProvider";
 import type { CandidateProofOutputV1 } from "./CandidateProofExtractorV1";
 import type { RoleIntelligenceOutputV1 } from "./RoleIntelligenceExtractorV1";
+import {
+  LLM_OUTPUT_RUNTIME_SCHEMA,
+  parseCandidateProofOutputV1,
+  parseRoleIntelligenceOutputV1,
+} from "./ExtractionRuntimeSchema";
 
 export const LLM_EXPERIMENT_PROMPT_VERSION = "gate1b-batch03/v1";
 export const LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION = "llm-extraction-envelope/v1";
@@ -37,11 +42,55 @@ export interface LlmStructuredResponse {
   readonly outputText: string;
   readonly responseId?: string;
   readonly model?: string;
+  readonly usage?: { readonly inputTokens?: number; readonly outputTokens?: number; readonly totalTokens?: number };
+  readonly estimatedCostUsd?: number;
 }
 
 /** Transport is injected so Batch 03 has no provider SDK, credential, or serving dependency. */
 export interface LlmStructuredExtractionClient {
   generate(request: LlmStructuredRequest): Promise<LlmStructuredResponse>;
+}
+
+/** Provider-SDK-neutral representation of a Responses-style strict JSON request. */
+export interface StrictStructuredOutputTransportRequest {
+  readonly model: string;
+  readonly input: string;
+  readonly store: false;
+  readonly text: {
+    readonly format: {
+      readonly type: "json_schema";
+      readonly name: "radar_experimental_extraction";
+      readonly strict: true;
+      readonly schema: Readonly<Record<string, unknown>>;
+    };
+  };
+  readonly metadata: Readonly<{ cacheKey: string; sourceIdentity: string; kind: LlmStructuredRequest["kind"] }>;
+  readonly generationParameters: LlmStructuredRequest["generationParameters"];
+}
+
+/**
+ * The real transport adapter must use this mapping verbatim. It makes strict
+ * structured output and non-retention explicit without coupling Batch 03 to a
+ * provider SDK or credential.
+ */
+export function toStrictStructuredOutputTransportRequest(
+  request: LlmStructuredRequest,
+): StrictStructuredOutputTransportRequest {
+  return {
+    model: request.model,
+    input: request.prompt,
+    store: false,
+    text: {
+      format: {
+        type: "json_schema",
+        name: "radar_experimental_extraction",
+        strict: true,
+        schema: request.responseSchema,
+      },
+    },
+    metadata: { cacheKey: request.cacheKey, sourceIdentity: request.sourceIdentity, kind: request.kind },
+    generationParameters: request.generationParameters,
+  };
 }
 
 export class LlmExperimentalExtractionError extends Error {
@@ -71,16 +120,18 @@ export function createLlmExperimentConfigurationFingerprint(
   return crypto.createHash("sha256").update(stableJson(configuration)).digest("hex");
 }
 
-const ENVELOPE_SCHEMA: Readonly<Record<string, unknown>> = {
+function envelopeSchema(kind: LlmStructuredRequest["kind"]): Readonly<Record<string, unknown>> {
+  return {
   type: "object",
   required: ["schemaVersion", "sourceIdentity", "output"],
   properties: {
     schemaVersion: { type: "string", const: LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION },
     sourceIdentity: { type: "string" },
-    output: { type: "object" },
+    output: kind === "ROLE_INTELLIGENCE" ? LLM_OUTPUT_RUNTIME_SCHEMA.role : LLM_OUTPUT_RUNTIME_SCHEMA.candidate,
   },
   additionalProperties: false,
-};
+  };
+}
 
 function createPrompt(
   kind: LlmStructuredRequest["kind"],
@@ -149,19 +200,31 @@ abstract class LlmExperimentalProviderBase {
     sourceText: string,
     sourceIdentity: string,
     cacheKey: string,
-  ): Promise<Record<string, unknown>> {
+  ): Promise<{ output: Record<string, unknown>; telemetry: LlmExecutionTelemetry }> {
     try {
+      const startedAt = performance.now();
       const response = await this.client.generate({
         kind,
         model: this.configuration.model,
         prompt: createPrompt(kind, this.configuration.promptVersion, sourceText),
-        responseSchema: ENVELOPE_SCHEMA,
+        responseSchema: envelopeSchema(kind),
         cacheKey,
         sourceIdentity,
         generationParameters: this.configuration.generationParameters,
         store: false,
       });
-      return parseEnvelope(response, sourceIdentity);
+      const envelope = parseEnvelope(response, sourceIdentity);
+      return {
+        output: envelope.output as Record<string, unknown>,
+        telemetry: {
+          requestedModel: this.configuration.model,
+          actualModel: response.model,
+          responseId: response.responseId,
+          latencyMs: performance.now() - startedAt,
+          usage: response.usage,
+          estimatedCostUsd: response.estimatedCostUsd,
+        },
+      };
     } catch (error) {
       if (error instanceof LlmExperimentalExtractionError) throw error;
       throw new LlmExperimentalExtractionError(
@@ -170,6 +233,19 @@ abstract class LlmExperimentalProviderBase {
       );
     }
   }
+}
+
+export interface LlmExecutionTelemetry {
+  readonly requestedModel: string;
+  readonly actualModel?: string;
+  readonly responseId?: string;
+  readonly latencyMs: number;
+  readonly usage?: { readonly inputTokens?: number; readonly outputTokens?: number; readonly totalTokens?: number };
+  readonly estimatedCostUsd?: number;
+}
+
+export interface ExperimentalLlmProviderResult<T> extends ProviderExtractionResult<T> {
+  readonly experimentalTelemetry: LlmExecutionTelemetry;
 }
 
 export class ExperimentalLlmRoleIntelligenceProvider
@@ -187,14 +263,15 @@ export class ExperimentalLlmRoleIntelligenceProvider
     };
   }
 
-  async extract(input: RoleExtractionProviderInput): Promise<ProviderExtractionResult<RoleIntelligenceOutputV1>> {
+  async extract(input: RoleExtractionProviderInput): Promise<ExperimentalLlmProviderResult<RoleIntelligenceOutputV1>> {
     const cacheIdentity = createProviderCacheIdentity(input.source, this.descriptor);
-    const envelope = await this.request("ROLE_INTELLIGENCE", input.sourceText, cacheIdentity.sourceIdentity, cacheIdentity.key);
+    const response = await this.request("ROLE_INTELLIGENCE", input.sourceText, cacheIdentity.sourceIdentity, cacheIdentity.key);
     return {
       provider: this.descriptor,
       cacheIdentity,
       source: input.source,
-      output: envelope.output as RoleIntelligenceOutputV1,
+      output: parseRoleIntelligenceOutputV1(response.output),
+      experimentalTelemetry: response.telemetry,
     };
   }
 }
@@ -214,14 +291,15 @@ export class ExperimentalLlmCandidateProofProvider
     };
   }
 
-  async extract(input: CandidateExtractionProviderInput): Promise<ProviderExtractionResult<CandidateProofOutputV1>> {
+  async extract(input: CandidateExtractionProviderInput): Promise<ExperimentalLlmProviderResult<CandidateProofOutputV1>> {
     const cacheIdentity = createProviderCacheIdentity(input.source, this.descriptor);
-    const envelope = await this.request("CANDIDATE_PROOF", input.sourceText, cacheIdentity.sourceIdentity, cacheIdentity.key);
+    const response = await this.request("CANDIDATE_PROOF", input.sourceText, cacheIdentity.sourceIdentity, cacheIdentity.key);
     return {
       provider: this.descriptor,
       cacheIdentity,
       source: input.source,
-      output: envelope.output as CandidateProofOutputV1,
+      output: parseCandidateProofOutputV1(response.output),
+      experimentalTelemetry: response.telemetry,
     };
   }
 }

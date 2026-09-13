@@ -10,6 +10,8 @@ import {
   LLM_EXPERIMENT_PROMPT_VERSION,
   LLM_EXPERIMENT_RESPONSE_SCHEMA_VERSION,
   createLlmExperimentConfigurationFingerprint,
+  toStrictStructuredOutputTransportRequest,
+  type LlmStructuredRequest,
   type LlmStructuredExtractionClient,
 } from "../../../src/lib/intelligence/extraction/LlmExperimentalExtractionProvider";
 import { RoleIntelligenceExtractorV1 } from "../../../src/lib/intelligence/extraction/RoleIntelligenceExtractorV1";
@@ -112,6 +114,10 @@ function responseFor(output: unknown, sourceIdentity?: string): LlmStructuredExt
           sourceIdentity: sourceIdentity ?? request.sourceIdentity,
           output,
         }),
+        responseId: "response-test-73",
+        model: "test-structured-model-actual",
+        usage: { inputTokens: 14, outputTokens: 28, totalTokens: 42 },
+        estimatedCostUsd: 0.0012,
       };
     },
   };
@@ -134,6 +140,12 @@ describe("experimental LLM extraction providers", () => {
     if (outcome.state === "VERIFIED") {
       expect(outcome.result.source).toEqual(roleSource);
       expect(outcome.result.provider.family).toBe("LLM");
+      expect(outcome.telemetry).toMatchObject({
+        requestedModel: configuration.model,
+        actualModel: "test-structured-model-actual",
+        responseId: "response-test-73",
+        usage: { totalTokens: 42 },
+      });
     }
   });
 
@@ -191,6 +203,16 @@ describe("experimental LLM extraction providers", () => {
     expect(foreignOutcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
   });
 
+  it("rejects a malformed V1 object at the strict runtime schema boundary before mechanical verification", async () => {
+    const malformedShape = { ...roleOutput(), metadata: {} };
+    const provider = new ExperimentalLlmRoleIntelligenceProvider(responseFor(malformedShape), configuration);
+
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner)
+      .runRole(provider, { source: roleSource, caseId: "llm-role-case" });
+
+    expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
+  });
+
   it("fails closed when the common verifier rejects a source span rather than repairing the provider output", async () => {
     const invalidOutput = roleOutput();
     const invalidAtom = invalidOutput.atoms[0]!;
@@ -203,5 +225,68 @@ describe("experimental LLM extraction providers", () => {
       .runRole(provider, { source: roleSource, caseId: "llm-role-case" });
 
     expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
+  });
+
+  it("rejects TypeScript-castable fabricated candidate collections through the common verifier", async () => {
+    const output = candidateOutput();
+    const fabricated = {
+      ...output,
+      positions: [{
+        positionId: "pos:Fabricated:0",
+        title: "Fabricated role",
+        employer: "Fabricated",
+        dates: "2020",
+        startOffset: 0,
+        endOffset: 10,
+        isCurrent: false,
+        bullets: [],
+      }],
+      allBullets: [],
+      allClaims: [],
+    };
+    const provider = new ExperimentalLlmCandidateProofProvider(responseFor(fabricated), configuration);
+
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, candidateText).runner)
+      .runCandidate(provider, { source: candidateSource });
+
+    expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
+  });
+
+  it("does not let observer failure rewrite a finalized verified extraction outcome", async () => {
+    const observerFailures: unknown[] = [];
+    const executor = new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner, {
+      record: async () => { throw new Error("telemetry sink unavailable"); },
+      recordFailure: async (error) => { observerFailures.push(error); },
+    });
+
+    const outcome = await executor.runRole(
+      new ExperimentalLlmRoleIntelligenceProvider(responseFor(roleOutput()), configuration),
+      { source: roleSource, caseId: "llm-role-case" },
+    );
+
+    expect(outcome.state).toBe("VERIFIED");
+    expect(observerFailures).toHaveLength(1);
+  });
+
+  it("translates the injected request into strict structured-output and non-retention transport intent", () => {
+    const request: LlmStructuredRequest = {
+      kind: "ROLE_INTELLIGENCE",
+      model: configuration.model,
+      prompt: "extract exactly",
+      responseSchema: { type: "object" },
+      cacheKey: "cache-key",
+      sourceIdentity: "immutable-source",
+      generationParameters: configuration.generationParameters,
+      store: false,
+    };
+
+    expect(toStrictStructuredOutputTransportRequest(request)).toEqual({
+      model: configuration.model,
+      input: "extract exactly",
+      store: false,
+      text: { format: { type: "json_schema", name: "radar_experimental_extraction", strict: true, schema: { type: "object" } } },
+      metadata: { cacheKey: "cache-key", sourceIdentity: "immutable-source", kind: "ROLE_INTELLIGENCE" },
+      generationParameters: configuration.generationParameters,
+    });
   });
 });

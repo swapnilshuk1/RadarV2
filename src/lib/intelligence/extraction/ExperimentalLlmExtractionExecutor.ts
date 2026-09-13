@@ -6,11 +6,12 @@ import {
 } from "./ExtractionProvider";
 import { type CandidateProofOutputV1 } from "./CandidateProofExtractorV1";
 import { type RoleIntelligenceOutputV1 } from "./RoleIntelligenceExtractorV1";
+import type { LlmExecutionTelemetry } from "./LlmExperimentalExtractionProvider";
 import { VerifiedExtractionProviderRunner } from "./VerifiedExtractionProviderRunner";
 import type { CandidateDocumentSourceRef, OpportunityVersionSourceRef } from "@/lib/domain/source_provenance";
 
 export type ExperimentalExtractionOutcome<T> =
-  | { readonly state: "VERIFIED"; readonly result: ProviderExtractionResult<T> }
+  | { readonly state: "VERIFIED"; readonly result: ProviderExtractionResult<T>; readonly telemetry?: LlmExecutionTelemetry }
   | { readonly state: "REJECTED"; readonly rejection: ExperimentalExtractionRejection };
 
 export interface ExperimentalExtractionRejection {
@@ -22,6 +23,7 @@ export interface ExperimentalExtractionRejection {
 
 export interface ExperimentalExtractionObserver {
   record(outcome: ExperimentalExtractionOutcome<unknown>): void | Promise<void>;
+  recordFailure?(error: unknown, outcome: ExperimentalExtractionOutcome<unknown>): void | Promise<void>;
 }
 
 /**
@@ -44,7 +46,9 @@ export class ExperimentalLlmExtractionExecutor {
         state: "VERIFIED",
         result: await this.runner.runRole(provider, input),
       };
-      await this.observer?.record(outcome);
+      const telemetry = experimentalTelemetry(outcome.result);
+      if (telemetry) Object.assign(outcome, { telemetry });
+      await this.notify(outcome);
       return outcome;
     } catch (error) {
       return this.reject(provider, input.source, error);
@@ -60,7 +64,9 @@ export class ExperimentalLlmExtractionExecutor {
         state: "VERIFIED",
         result: await this.runner.runCandidate(provider, input),
       };
-      await this.observer?.record(outcome);
+      const telemetry = experimentalTelemetry(outcome.result);
+      if (telemetry) Object.assign(outcome, { telemetry });
+      await this.notify(outcome);
       return outcome;
     } catch (error) {
       return this.reject(provider, input.source, error);
@@ -82,7 +88,26 @@ export class ExperimentalLlmExtractionExecutor {
         reason: error instanceof Error ? error.message : String(error),
       },
     };
-    await this.observer?.record(outcome);
+    await this.notify(outcome);
     return outcome;
   }
+
+  /** Observation is best effort; it must not rewrite a finalized extraction outcome. */
+  private async notify(outcome: ExperimentalExtractionOutcome<unknown>): Promise<void> {
+    if (!this.observer) return;
+    try {
+      await this.observer.record(outcome);
+    } catch (error) {
+      try {
+        await this.observer.recordFailure?.(error, outcome);
+      } catch {
+        // Deliberately isolated: telemetry failure cannot affect experiment truth.
+      }
+    }
+  }
+}
+
+function experimentalTelemetry(value: ProviderExtractionResult<unknown>): LlmExecutionTelemetry | undefined {
+  const candidate = value as ProviderExtractionResult<unknown> & { experimentalTelemetry?: LlmExecutionTelemetry };
+  return candidate.experimentalTelemetry;
 }
