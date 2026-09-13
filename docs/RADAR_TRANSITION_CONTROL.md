@@ -13,11 +13,11 @@ This document is the governing execution record for the RADAR intelligence trans
 - Frozen corpus source branch: `codex/candidate-corpus-100`
 - Frozen corpus commit: `e1f0a47575accedcd7fd3d681c7b084ca377b0fd`
 - Current execution gate: **Gate 1 of 3 — Gate 1B substrate/provenance + extraction architecture decision**
-- **Gate 1B — Batch 05: Extraction architecture decision & acceptance contract.**
-No next production batch is authorized.
+- **Gate 1B — Batch 06: Extraction architecture implementation & blind pre-certification.**
+This is the only currently authorized production batch.
 - Gate 1A architecture reconnaissance: **COMPLETE**
 - **Extraction Architecture Decision:** DECIDED (Role: Asymmetric Hybrid; Candidate: Deterministic for current transition)
-- **Production Certification:** PENDING (Batch 06 NOT AUTHORIZED)
+- **Production Certification:** PENDING (Batch 06 ACTIVE — Steps 1–5 authorized)
 
 The `adbfc37` extractors are a deterministic benchmark and fallback/reference implementation. They are **not assumed to be the final production extraction architecture**.
 

@@ -1,12 +1,12 @@
 {
   "schemaVersion": "radar-transition-state/v1",
-  "controlRevision": "2026-09-13.13",
+  "controlRevision": "2026-09-13.14",
   "controlDocument": "docs/RADAR_TRANSITION_CONTROL.md",
   "workingBranch": "phase5/gate1-architecture-recon",
   "gate1AStatus": "COMPLETE",
   "activeGate": "GATE_1B",
   "activeGateTitle": "Substrate, provenance, and extraction architecture decision",
-  "activeBatchId": "GATE_1B_BATCH_05",
+  "activeBatchId": "GATE_1B_BATCH_06",
   "currentBatchManifest": "docs/transition/CURRENT_BATCH.json",
   "currentBatchScopeRevision": 1,
   "implementationLedger": "docs/transition/IMPLEMENTATION_LEDGER.json",
@@ -24,7 +24,7 @@
     "gate1": null,
     "gate2": null
   },
-  "nextAuthorizedProductionWork": "GATE_1B_BATCH_05 is COMPLETE. The extractionArchitectureDecision is DECIDED. Production certification is PENDING. Batch 06 is NOT AUTHORIZED.",
+  "nextAuthorizedProductionWork": "GATE_1B_BATCH_06 is ACTIVE. Program executes Steps 1-5 uninterrupted (Evaluator freeze -> Verifier/Structural Admission -> Blind Population/Reference Truth Hash Freeze -> Pre-Registered Gates -> Blind Validation Execution). Step 6 shadow mode deployment remains a deliberate checkpoint requiring explicit governance approval.",
   "transitionRules": {
     "gate2RequiresExtractionDecision": true,
     "gate2RequiresGate1ExitCertification": true,

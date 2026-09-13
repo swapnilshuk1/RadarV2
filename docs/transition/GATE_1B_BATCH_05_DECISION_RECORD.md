@@ -17,7 +17,7 @@ $$\text{Architecture Selected} \longrightarrow \text{Implementation Frozen} \lon
 
 RADAR has completed extensive multi-phase empirical evaluations across 21 role documents and 2 candidate documents (documented in the authoritative transition closure records: `docs/transition/GATE_1B_BATCH_04_CLOSURE.md`, `docs/transition/GATE_1B_BATCH_04B_CLOSURE.md`, and `docs/transition/GATE_1B_BATCH_04C_CLOSURE.md`, with complete raw benchmark runs preserved in the local evaluation workspace). 
 
-The accumulated evidence is conclusive. Architectural exploration is closed.
+The accumulated evidence is sufficient to select the architecture. Architectural experimentation is closed; production certification remains pending.
 
 ---
 
