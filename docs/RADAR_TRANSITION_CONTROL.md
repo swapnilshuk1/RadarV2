@@ -540,7 +540,7 @@ Batches 01 and 02 are **COMPLETE**. Batch 03 is reopened at scope revision 2 for
 
 **Gate 1B — Batch 03: Controlled LLM RoleIntelligence / CandidateProof extraction experiment.**
 
-This is the only currently authorized production batch. Batch 03 scope revision 2 may correct only the scientific rigor of the existing experiment:
+Batch 03 scope revision 2 is complete. It corrected only the scientific rigor of the existing experiment:
 
 1. complete strict runtime structural validation of `RoleIntelligenceOutputV1` and `CandidateProofOutputV1` at the LLM response boundary before any TypeScript cast;
 2. expansion of the shared `MechanicalExtractionVerifier` for source truth, derived IDs, containment, cross-list consistency, provenance, normalization, and relational invariants used by both deterministic and experimental providers;
@@ -566,13 +566,13 @@ UI
 
 The production extraction architecture decision remains **OPEN**.
 
-**Batch 04 is not authorized by this Batch 03 scope-revision activation.** It requires a separate governance authorization after Batch 03 scope revision 2 is closed.
+**No next production batch is authorized. Batch 04 is not authorized.** It requires a separate governance authorization after Batch 03 scope revision 2 closure.
 
 The corrected remaining Gate 1B sequence is:
 
 ```text
 Batch 02 — extraction provider boundary + common mechanical verifier   [COMPLETE]
-Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [AUTHORIZED — SCOPE REVISION 2]
+Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [COMPLETE — SCOPE REVISION 2]
 Batch 04 — frozen + unseen/adversarial comparison                      [NOT AUTHORIZED]
 Batch 05 — extraction architecture decision                            [NOT AUTHORIZED]
 Batch 06 — canonical source-fact persistence/contracts                 [NOT AUTHORIZED]
