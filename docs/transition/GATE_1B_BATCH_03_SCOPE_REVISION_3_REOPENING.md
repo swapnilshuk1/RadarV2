@@ -53,6 +53,9 @@ Those local rejections retain an experiment-only typed cause
 `STRUCTURAL_CONTAINMENT`) for later comparison analysis. Unexpected assembler
 or deterministic-normalizer faults are not downgraded to proposal rejection:
 they reject the whole experimental run.
+The governed experimental executor and observer contract expose that typed
+sidecar on verified outcomes, so a future comparison does not need to cast a
+provider result or bypass the resolver-bound runner to inspect causality.
 
 Role duplicate identity follows the canonical V1 atom convention of exact
 span plus semantic type. One source span may therefore support distinct role

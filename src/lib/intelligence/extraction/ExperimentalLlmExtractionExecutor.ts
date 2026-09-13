@@ -7,11 +7,18 @@ import {
 import { type CandidateProofOutputV1 } from "./CandidateProofExtractorV1";
 import { type RoleIntelligenceOutputV1 } from "./RoleIntelligenceExtractorV1";
 import type { LlmExecutionTelemetry } from "./LlmExperimentalExtractionProvider";
+import type { SemanticProposalRejection } from "./ExperimentalSemanticProposal";
 import { VerifiedExtractionProviderRunner } from "./VerifiedExtractionProviderRunner";
 import type { CandidateDocumentSourceRef, OpportunityVersionSourceRef } from "@/lib/domain/source_provenance";
 
 export type ExperimentalExtractionOutcome<T> =
-  | { readonly state: "VERIFIED"; readonly result: ProviderExtractionResult<T>; readonly telemetry?: LlmExecutionTelemetry }
+  | {
+      readonly state: "VERIFIED";
+      readonly result: ProviderExtractionResult<T>;
+      readonly telemetry?: LlmExecutionTelemetry;
+      /** Experiment-only causality retained for Batch 04 comparison analysis. */
+      readonly proposalRejections?: readonly SemanticProposalRejection[];
+    }
   | { readonly state: "REJECTED"; readonly rejection: ExperimentalExtractionRejection };
 
 export interface ExperimentalExtractionRejection {
@@ -48,6 +55,8 @@ export class ExperimentalLlmExtractionExecutor {
       };
       const telemetry = experimentalTelemetry(outcome.result);
       if (telemetry) Object.assign(outcome, { telemetry });
+      const proposalRejections = experimentalProposalRejections(outcome.result);
+      if (proposalRejections) Object.assign(outcome, { proposalRejections });
       await this.notify(outcome);
       return outcome;
     } catch (error) {
@@ -66,6 +75,8 @@ export class ExperimentalLlmExtractionExecutor {
       };
       const telemetry = experimentalTelemetry(outcome.result);
       if (telemetry) Object.assign(outcome, { telemetry });
+      const proposalRejections = experimentalProposalRejections(outcome.result);
+      if (proposalRejections) Object.assign(outcome, { proposalRejections });
       await this.notify(outcome);
       return outcome;
     } catch (error) {
@@ -110,4 +121,14 @@ export class ExperimentalLlmExtractionExecutor {
 function experimentalTelemetry(value: ProviderExtractionResult<unknown>): LlmExecutionTelemetry | undefined {
   const candidate = value as ProviderExtractionResult<unknown> & { experimentalTelemetry?: LlmExecutionTelemetry };
   return candidate.experimentalTelemetry;
+}
+
+function experimentalProposalRejections(
+  value: ProviderExtractionResult<unknown>,
+): readonly SemanticProposalRejection[] | undefined {
+  const candidate = value as ProviderExtractionResult<unknown> & {
+    experimentalTelemetry?: LlmExecutionTelemetry;
+    proposalRejections?: readonly SemanticProposalRejection[];
+  };
+  return candidate.experimentalTelemetry === undefined ? undefined : candidate.proposalRejections;
 }

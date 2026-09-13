@@ -156,6 +156,23 @@ describe("experimental semantic proposal providers", () => {
     ]);
   });
 
+  it("exposes proposal rejection causality through the governed executor and runner path", async () => {
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText)).runRole(
+      new ExperimentalLlmRoleIntelligenceProvider(clientFor({ proposals: [
+        roleProposal.proposals[0],
+        { ...roleProposal.proposals[0], exactQuote: "Absent from immutable source." },
+      ] }), configuration),
+      { source: roleSource, caseId: "llm-role-case" },
+    );
+    expect(outcome.state).toBe("VERIFIED");
+    if (outcome.state === "VERIFIED") {
+      expect(outcome.proposalRejections).toEqual([
+        expect.objectContaining({ code: "ABSENT_QUOTE", proposalIndex: 1 }),
+      ]);
+      expect(outcome.result.output.metadata.proposalCounts).toEqual({ proposedAtoms: 2, acceptedAtoms: 1, rejectedAtoms: 1 });
+    }
+  });
+
   it("rejects a candidate quote that exists outside its declared structural parent bullet", async () => {
     const output = { proposals: [{ exactQuote: "Candidate", evidenceClass: "WORK_HISTORY", proofTypes: ["OWNERSHIP"] }] };
     const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, candidateText)).runCandidate(
