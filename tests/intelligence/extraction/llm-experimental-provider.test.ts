@@ -213,6 +213,23 @@ describe("experimental LLM extraction providers", () => {
     expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
   });
 
+  it("rejects malformed typed qualifiers and parsedYears exact values before V1 conversion", async () => {
+    const output = roleOutput();
+    const atom = output.atoms[0]!;
+    const malformed = {
+      ...output,
+      atoms: [{
+        ...atom,
+        normalizedClaim: { qualifiers: { peopleCount: "forty" } },
+        requirement: { materiality: "HARD", materialityCue: null, requirementDimension: "EXPERIENCE_YEARS", parsedYears: { exact: "ten" } },
+      }],
+    };
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner)
+      .runRole(new ExperimentalLlmRoleIntelligenceProvider(responseFor(malformed), configuration), { source: roleSource, caseId: "llm-role-case" });
+
+    expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
+  });
+
   it("fails closed when the common verifier rejects a source span rather than repairing the provider output", async () => {
     const invalidOutput = roleOutput();
     const invalidAtom = invalidOutput.atoms[0]!;

@@ -249,6 +249,19 @@ describe("extraction provider boundary and mechanical verifier", () => {
       .toThrow(MechanicalExtractionVerificationError);
   });
 
+  it("requires allClaims to be the exact unique union of child, summary, and capability claims", () => {
+    const output = new CandidateProofExtractorV1().extract({
+      sourceDocumentId: candidateSource.documentId,
+      rawText: candidateText,
+    });
+    const claim = output.allClaims[0];
+    expect(claim).toBeDefined();
+    expect(() => verifier.verifyCandidate(candidateSource, textSnapshot(candidateSource, candidateText), {
+      ...output,
+      allClaims: [claim!, claim!],
+    })).toThrow(MechanicalExtractionVerificationError);
+  });
+
   it("keeps the LLM path as a contract only, not a Batch 02 implementation", () => {
     const consumesContract = (_provider: LlmRoleIntelligenceExtractionProvider): void => undefined;
     expect(consumesContract).toBeTypeOf("function");

@@ -236,10 +236,17 @@ export class MechanicalExtractionVerifier {
       ...output.selfSummaries,
       ...output.capabilityLabels,
     ];
-    if (expected.length !== output.allClaims.length || verifiedClaimIds.size !== output.allClaims.length) {
+    const actualIds = new Set<string>();
+    for (const claim of output.allClaims) {
+      if (actualIds.has(claim.claimId)) this.fail("allClaims contains a duplicate claim ID.");
+      actualIds.add(claim.claimId);
+    }
+    if (expected.length !== output.allClaims.length || verifiedClaimIds.size !== output.allClaims.length || actualIds.size !== output.allClaims.length) {
       this.fail("allClaims does not account for every extracted claim exactly once.");
     }
     const expectedById = new Map(expected.map((claim) => [claim.claimId, claim]));
+    if (expectedById.size !== expected.length) this.fail("Source claim collections contain a duplicate claim ID.");
+    for (const claim of expected) if (!actualIds.has(claim.claimId)) this.fail("allClaims omits a source claim.");
     for (const claim of output.allClaims) {
       const expectedClaim = expectedById.get(claim.claimId);
       if (!expectedClaim || JSON.stringify(expectedClaim) !== JSON.stringify(claim)) {
@@ -259,7 +266,7 @@ export class MechanicalExtractionVerifier {
     if (![proposed, acceptedCount, rejected].every((value) => Number.isInteger(value) && value! >= 0)) {
       this.fail(`Invalid ${label} proposal counts.`);
     }
-    if (acceptedCount !== accepted || proposed! < acceptedCount! + rejected!) {
+    if (acceptedCount !== accepted || proposed !== acceptedCount! + rejected!) {
       this.fail(`${label} proposal counts do not account for accepted output.`);
     }
   }
@@ -268,6 +275,11 @@ export class MechanicalExtractionVerifier {
     if (atom.normalizedClaim) {
       if (atom.normalizedClaim.predicate !== undefined && typeof atom.normalizedClaim.predicate !== "string") this.fail("Role normalized predicate must be a string.");
       if (atom.normalizedClaim.object !== undefined && typeof atom.normalizedClaim.object !== "string") this.fail("Role normalized object must be a string.");
+      const qualifiers = atom.normalizedClaim.qualifiers;
+      if (qualifiers) {
+        for (const key of ["peopleCount", "amount"] as const) if (qualifiers[key] !== undefined && !Number.isFinite(qualifiers[key])) this.fail("Invalid normalized numeric qualifier.");
+        for (const key of ["metric", "timeframe", "currency", "rawCondition"] as const) if (qualifiers[key] !== undefined && typeof qualifiers[key] !== "string") this.fail("Invalid normalized string qualifier.");
+      }
     }
     if (atom.requirement) {
       if (!["HARD", "PREFERRED", "UNSTATED"].includes(atom.requirement.materiality)) this.fail("Invalid requirement materiality.");

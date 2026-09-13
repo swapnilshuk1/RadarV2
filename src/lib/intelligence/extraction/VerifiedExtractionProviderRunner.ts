@@ -36,6 +36,15 @@ export class VerifiedExtractionProviderRunner {
     const sourceText = this.requireText(snapshot.text);
     const result = await provider.extract({ ...input, sourceText });
     this.assertReturnedSource(input.source, result.source);
+    if (result.output.caseId !== input.caseId) {
+      throw new Error("Extraction provider returned a role output for a different requested case ID.");
+    }
+    if (input.companyName !== undefined && result.output.companyName !== input.companyName) {
+      throw new Error("Extraction provider returned a role output for a different requested company context.");
+    }
+    if (input.title !== undefined && result.output.title !== input.title) {
+      throw new Error("Extraction provider returned a role output for a different requested title context.");
+    }
     this.verifier.verifyRole(input.source, snapshot, result.output);
     return result;
   }
