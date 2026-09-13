@@ -13,6 +13,26 @@
   ],
   "acknowledgements": [
     {
+      "commit": "f5621885535894989c2a871fd2a0e8ffb2259b3c",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_04",
+      "scopeRevision": 2,
+      "summary": "Retained the complete first locked Gemini ADC primary/repeatability result set, transport telemetry, deterministic parity artifact, and an explicit operational permission-block report after Vertex denied every generation request.",
+      "invariantsChecked": [
+        "primary semantic results were never replaced by a retry or alternate provider result",
+        "transport failures remain distinct from semantic extraction outcomes",
+        "the raw evidence records 459 HTTP 403 attempts, 138 primary rejections, 15 repeatability rejections, and zero verified LLM outputs",
+        "deterministic parity remains role 100/100 and candidate 2/2 without non-parity cases",
+        "no extraction semantics, labels, prompt/configuration, production authority, evaluator, policy, dossier, serving, UI, or architecture decision changed"
+      ],
+      "verification": [
+        "npm run batch04:run — completed locked first run; Vertex IAM denied aiplatform.endpoints.predict on all 459 retained transport attempts",
+        "PowerShell artifact count check — primary 138 rejected/0 verified; repeatability 15 rejected/0 verified; attempts 459 all HTTP 403",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "f8d3d087002e103bf179c5acfdd48bcba49775cb",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_04",
