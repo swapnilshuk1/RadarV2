@@ -540,6 +540,8 @@ Batches 01, 02, 03, and 04 are **COMPLETE**.
 
 **Gate 1B — Batch 04: Frozen + unseen/adversarial extraction comparison.**
 
+No next production batch is authorized.
+
 Batch 04 execution under Scope Revision 3 is complete. All comparison evidence (retained Run 0 permission block, Run 1 authorized execution with 100% transport success and response schema verification outcomes, diagnostic proposal analysis, latency/tokens/cost telemetry, and deterministic baseline parity) is retained immutably in `audit-reports/gate1b-batch04/` and documented in `audit-reports/gate1b-batch04/reports/batch04-extraction-comparison-report.md`.
 
 The extraction architecture decision remains **OPEN**. Batch 05 is **NOT AUTHORIZED**.
