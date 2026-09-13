@@ -13,6 +13,27 @@
   ],
   "acknowledgements": [
     {
+      "commit": "2e51d1dd8936db75a0596c9d95c7f4b903ef6f55",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_03",
+      "scopeRevision": 3,
+      "summary": "Added typed experiment-only proposal rejection causality, preserved unexpected assembler failures as whole-run rejections, and aligned role duplicate identity with canonical span-plus-semantic-type V1 atom identity.",
+      "invariantsChecked": [
+        "local rejection accounting retains absent-quote, ambiguous-quote, duplicate-semantic-anchor, and structural-containment causes without changing the frozen V1 output contract",
+        "unexpected deterministic metric/entity normalization errors propagate to the executor as whole-run REJECTED outcomes",
+        "a role source span may produce distinct canonical atoms for distinct semantic types, while same span and type remains a duplicate rejection",
+        "experimental imports remain isolated from production paths and the extraction architecture decision remains OPEN"
+      ],
+      "verification": [
+        "npx vitest run tests/intelligence/extraction/provider-boundary.test.ts tests/intelligence/extraction/llm-experimental-provider.test.ts tests/intelligence/role-intelligence-extractor-v1.test.ts tests/intelligence/candidate-proof-extractor-v1.test.ts — PASS (4 files, 63/63 tests)",
+        "npx tsc --noEmit — PASS",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "rg -n \"ExperimentalLlm|LlmExperimental|ExperimentalLlmExtractionExecutor|ExperimentalSemanticProposal\" src --glob '!src/lib/intelligence/extraction/**' — PASS (no production imports)",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "0f0ba91f257099576e5451b7b963dcb07fa3ea37",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_03",
