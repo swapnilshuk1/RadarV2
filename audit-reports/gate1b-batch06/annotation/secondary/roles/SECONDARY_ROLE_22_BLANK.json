@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-annotation/v1",
+  "holdout": "SECONDARY_REMEDIATION_HOLDOUT",
+  "opaqueId": "SECONDARY_ROLE_22",
+  "documentType": "ROLE_JD",
+  "scenario": "Cost center leadership vs commercial revenue generation",
+  "sha256": "59f8201395e2186533bd634b676369cd6cac3a97d61d162a0465f4c3ff689bb7",
+  "sourceText": "HEAD OF GLOBAL SHARED SERVICES IT\nCompany: Global Pharma Logistics\nLocation: Hyderabad, India (On-site)\n\nOPERATIONAL MANDATE:\nLead the internal IT shared services center supporting 8,000 corporate employees worldwide with helpdesk, laptop provisioning, and ERP access administration.\nFINANCIAL CLASSIFICATION: This shared service organization operates strictly as an internal cost center. The position carries zero external client revenue targets, commercial quota, or sales objectives.",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "highRiskNegatives": [],
+  "adjudicationNotes": ""
+}

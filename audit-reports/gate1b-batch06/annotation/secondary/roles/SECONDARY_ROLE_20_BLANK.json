@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-annotation/v1",
+  "holdout": "SECONDARY_REMEDIATION_HOLDOUT",
+  "opaqueId": "SECONDARY_ROLE_20",
+  "documentType": "ROLE_JD",
+  "scenario": "Risk advisory committee seat without individual veto authority",
+  "sha256": "e89b6a67f3324ecaa949ba9a6fe611c84a02fff7bc23a16302d86f7e3bbce2aa",
+  "sourceText": "SENIOR RISK ADVISOR - CREDIT RISK\nCompany: CapitalTrust NBFC\nLocation: Mumbai, India (On-site)\n\nFUNCTION:\nConduct portfolio credit risk stress tests and present delinquency trend forecasts to the Executive Credit Committee.\nAUTHORITY CONSTRAINT: The Senior Risk Advisor participates as an advisory member of the committee. Final credit policy decisions, underwriting policy changes, and loan write-off approvals require the affirmative majority vote of the Credit Committee.",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "highRiskNegatives": [],
+  "adjudicationNotes": ""
+}

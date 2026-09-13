@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-candidate-annotation/v1",
+  "holdout": "SECONDARY_REMEDIATION_HOLDOUT",
+  "opaqueId": "SECONDARY_CANDIDATE_02",
+  "documentType": "CANDIDATE_RESUME",
+  "persona": "Head of Investor Relations & Capital Markets (Listed Tech Unicorn)",
+  "sha256": "37cf30963d86c4c0bd8f51c4e461422c491e89d79829d4d2645dc3f847321057",
+  "sourceText": "# **RASHMI KULKARNI**\n\n### Head of Investor Relations & Capital Markets | Institutional Equity, Earnings & Disclosures\n\nMumbai, MH • (+91) 98202 33441 • rashmi.k@example.com • linkedin.com/in/rashmikulkarni-ir\n\n## **EXECUTIVE PROFILE**\n\n- Investor Relations and Capital Markets leader with 17 years of experience steering corporate disclosures, institutional shareholder engagement, and equity analyst relationships for publicly listed technology companies on NSE and BSE.\n- Successfully orchestrated 32 quarterly earnings calls, 14 international institutional investor roadshows, and a $250M Qualified Institutional Placement (QIP).\n\n## **CORE COMPETENCIES**\n\n- Investor Relations: Earnings Call Scripts, Investor Decks, Analyst Financial Consensus Modeling, Guidance Management\n- Capital Markets: Institutional Roadshows, QIP Execution, Shareholder Registry Analysis (FII/DII)\n- Regulatory Compliance: SEBI (LODR) Regulations, Insider Trading Regulations, Fair Disclosure Guidelines\n- Executive Interface: Daily partnership with CEO, CFO, and Board Chairman\n\n## **PROFESSIONAL EXPERIENCE**\n\n### **Head of Investor Relations** | **InfoEdge Technology Enterprises**\n\n_Sep 2020 – Present_\n\n- Manage institutional investor engagement with 120+ domestic and international mutual funds, sovereign wealth funds, and private equity investors holding a ₹35,000 Cr market capitalization.\n- Author all quarterly earnings press releases, investor presentations, and CEO shareholder letters.\n- Led the investor outreach for a ₹1,800 Cr QIP offering, achieving 4.5x book subscription from top global long-only funds.\n- Monitor sell-side consensus estimates and manage earnings communication cadence to maintain high credibility.\n\n### **VP Investor Relations** | **Wipro Limited**\n\n_Jul 2014 – Aug 2020_\n\n- Supported global investor relations across NYSE and BSE listings, hosting quarterly earnings conferences and roadshows in New York, London, and Mumbai.\n- Modeled institutional shareholder base transitions and analyzed peer valuation multiples.\n\n## **EDUCATION**\n\n**Master of Science (M.Sc) in Finance** | London School of Economics (LSE)\n\n_2007_",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "adjudicationNotes": ""
+}

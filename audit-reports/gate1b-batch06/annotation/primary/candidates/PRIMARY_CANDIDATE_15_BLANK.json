@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-candidate-annotation/v1",
+  "holdout": "PRIMARY_CERTIFICATION",
+  "opaqueId": "PRIMARY_CANDIDATE_15",
+  "documentType": "CANDIDATE_RESUME",
+  "persona": "Chief Data & AI Officer (Financial Services & Predictive Analytics)",
+  "sha256": "966ccc94d83dd9fe8992d71d8327a5765ee0ce524c98b78742f94a71f859f734",
+  "sourceText": "# **NITIN AGRAWAL**\n\n### Chief Data & AI Officer | Enterprise Data Platforms, LLM Engineering & Predictive Risk\n\nGurugram, HR • (+91) 98180 55667 • nitin.agrawal@example.com • linkedin.com/in/nitinagrawal-cdo\n\n## **EXECUTIVE PROFILE**\n\n- Data and Artificial Intelligence executive with 19 years of leadership delivering data architectures, machine learning platforms, and generative AI applications for commercial banking and financial services.\n- Architected unified enterprise data lakehouse processing 4 billion events daily, powering automated credit underwriting models approving ₹1,200 Cr in monthly consumer disbursements.\n\n## **CORE COMPETENCIES**\n\n- Data & AI Strategy: Enterprise Lakehouse (Snowflake, Databricks), Real-Time ML Feature Stores\n- Predictive Modeling: Credit Underwriting, Fraud Detection Models, Churn Prediction, Alternative Data Scoring\n- Generative AI & LLMs: Enterprise RAG Architecture, Private LLM Fine-Tuning, Guardrails & Responsible AI\n- Organization Leadership: 70 data engineers, data scientists, and MLOps professionals\n\n## **PROFESSIONAL EXPERIENCE**\n\n### **Chief Data & AI Officer** | **OneFin Financial Corporation**\n\n_Aug 2021 – Present_\n\n- Lead all enterprise data governance, business intelligence, machine learning engineering, and generative AI initiatives across consumer banking operations.\n- Built the automated credit decisioning engine that reduced personal loan approval turnaround time from 24 hours to 4 minutes.\n- Reduced transaction fraud losses by 42% through deployment of graph neural network (GNN) fraud ring detection algorithms.\n- Governed data security, DPDP regulatory compliance, and model explainability standards across 80+ production algorithms.\n\n### **Head of Data Science & Machine Learning** | **Axis Bank Digital**\n\n_Nov 2015 – Jul 2021_\n\n- Led a 35-person data science team building predictive models for cross-sell recommendations and branch cash forecasting.\n- Implemented real-time customer transaction categorization powering the mobile banking app for 12M users.\n\n## **EDUCATION**\n\n**Ph.D. in Computer Science (Machine Learning)** | Indian Institute of Technology (IIT) Delhi\n\n_2005_",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "adjudicationNotes": ""
+}

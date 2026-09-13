@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-annotation/v1",
+  "holdout": "PRIMARY_CERTIFICATION",
+  "opaqueId": "PRIMARY_ROLE_39",
+  "documentType": "ROLE_JD",
+  "scenario": "Recruiting process and interview stages",
+  "sha256": "ce99e82ac2cc88aebb10c0c8964d348b317012d1ba08ffe9cbb00c81f14026ed",
+  "sourceText": "EXECUTIVE RECRUITMENT SPECIFICATION: VP DATA SCIENCE\nCompany: FinEdge Analytics India\nLocation: Gurugram, India (Hybrid)\n\nHIRING PROCESS & PROTOCOL:\nStage 1: Initial 45-minute confidential telephone interview with Talent Acquisition Partner.\nStage 2: 60-minute technical architecture discussion with Chief Data Officer.\nStage 3: Offline executive case study presentation (take-home strategic brief evaluating credit default predictive modeling).\nStage 4: Culture and leadership panel with Managing Director and HR Head.\nBackground Verification: Candidate must provide 3 professional reference contacts from previous direct managers prior to offer issuance.\n\nROLE HIGHLIGHT:\nDirect the 25-person quantitative modeling team building machine learning scoring engines for micro-lending products.",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "highRiskNegatives": [],
+  "adjudicationNotes": ""
+}

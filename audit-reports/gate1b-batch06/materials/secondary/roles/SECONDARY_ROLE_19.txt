@@ -1,0 +1,10 @@
+HEAD OF DEVELOPER RELATIONS
+Company: HyperChain Labs
+Location: Bengaluru, India (Remote)
+
+ABOUT HYPERCHAIN:
+HyperChain is a venture-backed infrastructure protocol valued at $750M following a Series B funding round led by global tier-1 venture firms.
+
+YOUR MISSION:
+Drive developer adoption of our open-source SDK through hackathons, technical documentation, and community discord channels.
+NOTE: This community engagement role carries no balance sheet or treasury management responsibilities.

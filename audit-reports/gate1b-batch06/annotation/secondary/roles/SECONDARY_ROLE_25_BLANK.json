@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-annotation/v1",
+  "holdout": "SECONDARY_REMEDIATION_HOLDOUT",
+  "opaqueId": "SECONDARY_ROLE_25",
+  "documentType": "ROLE_JD",
+  "scenario": "Conditional product launch subject to central bank license",
+  "sha256": "b16335fe57948c4f65a7f52d20e1fc024d623feb0a9ce157112921bc2ff7f84e",
+  "sourceText": "HEAD OF DIGITAL PAYMENTS PRODUCT\nCompany: NeoBank Bharat\nLocation: Bengaluru, India (Hybrid)\n\nMISSION:\nLead product strategy and UX specification for NeoBank's planned UPI payment aggregator and credit line features.\nREGULATORY CONDITION: Full commercial rollout of the consumer credit line feature is contingent upon receipt of the final Payment Aggregator (PA) license from the Reserve Bank of India (RBI). Initial work focuses on sandbox testing.",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "highRiskNegatives": [],
+  "adjudicationNotes": ""
+}

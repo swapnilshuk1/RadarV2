@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-annotation/v1",
+  "holdout": "PRIMARY_CERTIFICATION",
+  "opaqueId": "PRIMARY_ROLE_49",
+  "documentType": "ROLE_JD",
+  "scenario": "Structural repetition and noise (Testing proposal deduplication)",
+  "sha256": "e7d04f25d79d98df29c6581e2046367114b411b5d123c5c4fd88b55454b4d861",
+  "sourceText": "CHIEF OF STAFF - OPERATIONS\nCompany: Apex Alpha Holdings\nLocation: Mumbai, India (On-site)\n\nCORE MANDATE:\nSupport the Managing Director across strategic planning initiatives.\nSupport the Managing Director across strategic planning initiatives.\nCoordinate quarterly executive performance reviews across business units.\nCoordinate quarterly executive performance reviews across business units.\nTrack milestone progress on special enterprise projects.\nTrack milestone progress on special enterprise projects.",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "highRiskNegatives": [],
+  "adjudicationNotes": ""
+}

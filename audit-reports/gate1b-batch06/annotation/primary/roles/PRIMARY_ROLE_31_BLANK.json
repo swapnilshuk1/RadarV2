@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-annotation/v1",
+  "holdout": "PRIMARY_CERTIFICATION",
+  "opaqueId": "PRIMARY_ROLE_31",
+  "documentType": "ROLE_JD",
+  "scenario": "Budget ownership without P&L ownership",
+  "sha256": "9b9754bf89d8ecb06f20f66c836d00c40b8c7e52f7eb82614c439c5b908e66b3",
+  "sourceText": "SENIOR DIRECTOR, GLOBAL MARKETING OPERATIONS\nCompany: CloudPoint Global Solutions\nLocation: Bengaluru, India (Hybrid)\n\nABOUT THE ROLE:\nWe are seeking an experienced Senior Director of Global Marketing Operations to lead operational planning, MarTech stack consolidation, and fiscal budget governance.\nIn this role, you will manage an annual marketing program budget of $6,500,000 across digital acquisition, agency retainers, and tooling.\nNOTE ON FISCAL ACCOUNTABILITY: While you hold full signatory authority over marketing operational expenses and vendor disbursements, company P&L ownership and business unit bottom-line profit/loss reside strictly with the Chief Operating Officer and Business Unit General Managers. You will not carry commercial P&L accountability.\n\nKEY RESPONSIBILITIES:\n- Oversee allocation and monthly pacing of the $6.5M marketing department operational budget.\n- Establish vendor SLA monitoring and negotiate enterprise software licensing agreements.\n- Report quarterly variance analysis to the Finance Director.\n\nREQUIREMENTS:\n- 14+ years in B2B technology operations.\n- Demonstrated experience managing marketing budgets exceeding $5M.",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "highRiskNegatives": [],
+  "adjudicationNotes": ""
+}

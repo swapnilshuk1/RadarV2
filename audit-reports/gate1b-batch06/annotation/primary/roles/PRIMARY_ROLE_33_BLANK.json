@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-annotation/v1",
+  "holdout": "PRIMARY_CERTIFICATION",
+  "opaqueId": "PRIMARY_ROLE_33",
+  "documentType": "ROLE_JD",
+  "scenario": "Matrix leadership without direct people management",
+  "sha256": "898d61d618907eb6922acb92e3352d9a8cd454eeee8d362a5559ae9866c26dba",
+  "sourceText": "PRINCIPAL ENTERPRISE ARCHITECT - CLOUD TRANSFORMATION\nCompany: Nexus Enterprise Systems\nLocation: Hyderabad, India (Hybrid)\n\nROLE CONTEXT:\nNexus Enterprise Systems is looking for a Principal Enterprise Architect to steer our global microservices migration.\nPEOPLE MANAGEMENT SPECIFICATION: This is a dedicated Individual Contributor (IC) leadership position. You will lead cross-functional transformation squads through matrix influence and architectural authority. This position carries ZERO direct line-management reports and has no supervisory responsibility for hiring, performance appraisals, or payroll approvals.\n\nKEY DELIVERABLES:\n- Define target-state microservices architectures and domain boundaries for core policy administration systems.\n- Influence and guide technical decisions across 14 agile engineering pods without direct management authority.\n- Establish architectural principles and review Architecture Decision Records (ADRs).\n\nEXPERIENCE:\n- 16+ years of distributed systems engineering.\n- Deep expertise in AWS, Kubernetes, and event-driven architecture.",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "highRiskNegatives": [],
+  "adjudicationNotes": ""
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-annotation/v1",
+  "holdout": "PRIMARY_CERTIFICATION",
+  "opaqueId": "PRIMARY_ROLE_37",
+  "documentType": "ROLE_JD",
+  "scenario": "Founder proximity negation in regional subsidiary",
+  "sha256": "03e30fe57f346b14fcdd80dff5b7e19971d8c8f17bfa8161c63cdf21a264c9ae",
+  "sourceText": "REGIONAL COMMERCIAL OPERATIONS HEAD - INDIA\nCompany: Nordic Wind Energy Systems (India Pvt Ltd)\nLocation: Chennai, India (On-site)\n\nROLE OVERVIEW:\nLead commercial operations, grid tender submissions, and contract tracking for Nordic Wind's subsidiary in India.\n\nGOVERNANCE AND REPORTING ALIGNMENT:\nThis position reports to the Managing Director of India Operations.\nFOUNDER INTERACTION BOUNDARY: Nordic Wind Energy Systems was founded in Denmark in 1982. The founders have exited operational leadership, and there is zero direct interaction or alignment with company founders. Furthermore, all strategic escalations are resolved through the APAC regional committee, with no direct access to the European Global CEO.\n\nESSENTIAL DUTIES:\n- Coordinate tender preparation for state electricity board auctions.\n- Track milestone billings and performance bank guarantee releases.\n- Ensure compliance with central renewable energy regulatory guidelines.",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "highRiskNegatives": [],
+  "adjudicationNotes": ""
+}

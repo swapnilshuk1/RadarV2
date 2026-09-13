@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-annotation/v1",
+  "holdout": "PRIMARY_CERTIFICATION",
+  "opaqueId": "PRIMARY_ROLE_44",
+  "documentType": "ROLE_JD",
+  "scenario": "Greenfield vs Brownfield (Maintenance only, no zero-to-one build)",
+  "sha256": "4196b52030ed234e54fa76c7991594e66d241c624d5731aa283cb423098b69e3",
+  "sourceText": "DIRECTOR OF CORE APPLICATIONS & SUSTENANCE ENGINEERING\nCompany: LegacyCore Banking Software\nLocation: Chennai, India (On-site)\n\nENGINEERING MANDATE:\nMaintain, patch, and support our core COBOL/Java banking platform installed across 40 regional rural banks.\n\nSCOPE BOUNDARY:\nThis is a legacy sustenance and maintenance mandate. This role does NOT involve greenfield architecture, zero-to-one platform builds, or next-generation product innovation. All engineering activity focuses strictly on regulatory compliance updates, defect remediation, and batch job stabilization.",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "highRiskNegatives": [],
+  "adjudicationNotes": ""
+}

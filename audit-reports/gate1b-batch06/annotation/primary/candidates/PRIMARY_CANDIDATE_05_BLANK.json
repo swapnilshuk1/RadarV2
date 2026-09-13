@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-candidate-annotation/v1",
+  "holdout": "PRIMARY_CERTIFICATION",
+  "opaqueId": "PRIMARY_CANDIDATE_05",
+  "documentType": "CANDIDATE_RESUME",
+  "persona": "Chief Operating Officer (Quick Commerce & Omnichannel Supply Chain)",
+  "sha256": "120e6f3277bcb46f7f7cf2a7bedb79feecbd6493327f404f65d52811574b6b48",
+  "sourceText": "# **AMITAV MUKHERJEE**\n\n### Chief Operating Officer | Quick Commerce & Omnichannel Supply Chain\n\nGurugram, HR • (+91) 98105 67890 • amitav.m@example.com • linkedin.com/in/amitav-mukherjee-coo\n\n## **EXECUTIVE PROFILE**\n\n- Operations executive with 21 years of experience designing and scaling high-velocity supply chain networks, dark store fulfillment networks, and last-mile delivery fleets across India.\n- Managed 14,000+ delivery partners and 280 fulfillment micro-warehouses delivering 450,000 orders daily with 98.4% on-time SLA compliance.\n\n## **CORE COMPETENCIES**\n\n- High-Velocity Fulfillment: Dark Store Network Planning, Micro-Fulfillment Operations, Fleet Management\n- Operations P&L: ₹650 Cr Annual Operations Budget, Unit Economics & Delivery Cost Compression\n- Safety & Compliance: Gig Workforce Welfare, Labor Compliance, Cold Chain Governance\n- Scale Leadership: 180 corporate operations managers and 12,000+ logistics field partners\n\n## **PROFESSIONAL EXPERIENCE**\n\n### **Chief Operating Officer** | **SwiftBlink Retail**\n\n_Mar 2022 – Present_\n\n- Lead end-to-end national warehousing, dark store fulfillment, and 10-minute delivery fleet across 18 metro cities.\n- Scaled active dark store count from 65 to 310 hubs while reducing average order picking time from 3.8 minutes to 1.9 minutes.\n- Compressed last-mile cost per order by 24% through dynamic route bundling and algorithmic courier dispatch.\n- Accountable for an annual operational expenditure budget of ₹480 Cr with direct P&L responsibility for fulfillment unit economics.\n\n### **VP Operations** | **MetroLogix Express**\n\n_Jan 2017 – Feb 2022_\n\n- Supervised 14 regional distribution centers and 45 hub facilities covering 1,800 pin codes across North and Western India.\n- Implemented warehouse management automation (WMS) that decreased inventory shrinkage by 65%.\n\n## **EDUCATION**\n\n**B.Tech - Production Engineering** | National Institute of Technology (NIT) Rourkela\n\n_2003_",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "adjudicationNotes": ""
+}

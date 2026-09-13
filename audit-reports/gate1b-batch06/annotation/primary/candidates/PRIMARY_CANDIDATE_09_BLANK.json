@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "gate1b-batch06-blank-candidate-annotation/v1",
+  "holdout": "PRIMARY_CERTIFICATION",
+  "opaqueId": "PRIMARY_CANDIDATE_09",
+  "documentType": "CANDIDATE_RESUME",
+  "persona": "Chief Information Security Officer (Cybersecurity & Banking)",
+  "sha256": "db33bdcb46ac9a0837606b2c155f3d72c7bd19a6399f784e3a073a4b45f1484a",
+  "sourceText": "# **ARVIND SUBRAMANIAN**\n\n### Chief Information Security Officer | Enterprise Cybersecurity, Cloud Sec & SOC Operations\n\nChennai, TN • (+91) 98400 33445 • arvind.subramanian@example.com • linkedin.com/in/arvind-ciso\n\n## **EXECUTIVE PROFILE**\n\n- CISO with 21 years of information security leadership in commercial banking, digital payments, and cloud security architectures.\n- Built and commanded 24/7 Security Operations Centers (SOC) defending assets handling $25B in annual financial transactions.\n\n## **CORE COMPETENCIES**\n\n- Information Security: ISO 27001, SOC 2 Type II, RBI Cybersecurity Framework, NIST Cybersecurity Framework\n- SOC Operations: SIEM/SOAR Automation, Incident Response, Threat Intelligence, Penetration Testing\n- Cloud Security: Zero Trust Architecture, IAM Governance, DevSecOps CI/CD Pipelines, Kubernetes Security\n- Budget & Risk Management: $14M Security Budget, Cyber Insurance, Executive Risk Reporting\n\n## **PROFESSIONAL EXPERIENCE**\n\n### **Chief Information Security Officer** | **Bharat Commercial Bank**\n\n_Jun 2020 – Present_\n\n- Accountable for all cyber defense, application security, identity governance, and regulatory compliance across 600 branches and mobile banking platforms.\n- Managed a 45-member internal security engineering team and 24/7 managed detection SOC provider.\n- Defended against 1.2M automated daily cyber threats with zero data breaches or ransomware compromises.\n- Report cyber risk metrics and threat posture quarterly to the Board Information Technology Strategy Committee.\n\n### **Head of Cybersecurity** | **SafePay Systems India**\n\n_Sep 2014 – May 2020_\n\n- Established security operations for high-velocity payment gateway processing 15M transactions per month.\n- Achieved PCI-DSS 3.2.1 certification with zero non-conformity findings over five consecutive annual audits.\n\n## **EDUCATION**\n\n**B.E. - Electronics and Communication** | College of Engineering, Guindy (Anna University)\n\n_2002_",
+  "reviewerId": "",
+  "reviewTimestamp": "",
+  "facts": [],
+  "adjudicationNotes": ""
+}
