@@ -13,6 +13,30 @@
   ],
   "acknowledgements": [
     {
+      "commit": "062afcb19771a563b80db0103e8d1d8265cf39ba",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_03",
+      "scopeRevision": 2,
+      "summary": "Added strict experimental V1 runtime shape gates, expanded the shared provider-neutral mechanical verifier with source and relational invariants, isolated observer failure, retained experimental execution telemetry, and added strict structured-output transport translation.",
+      "invariantsChecked": [
+        "experimental provider output is runtime-validated before TypeScript conversion while relational/source truth remains owned by the shared MechanicalExtractionVerifier",
+        "deterministic and experimental outputs share derived-ID, containment, cross-list equality, claim-source, grounded-entity, and metadata-accounting checks",
+        "a finalized VERIFIED or REJECTED extraction outcome cannot be changed by observer failure",
+        "actual response model, response ID, latency, token usage, and estimated cost are experimental telemetry only and do not enter cache identity",
+        "strict structured-output mapping carries store false intent and no production module imports the experimental path"
+      ],
+      "verification": [
+        "npm run transition:check before implementation — PASS (GATE_1B_BATCH_03 READY, scope revision 2, extraction architecture decision OPEN)",
+        "npx vitest run tests/intelligence/extraction/provider-boundary.test.ts tests/intelligence/extraction/llm-experimental-provider.test.ts tests/intelligence/role-intelligence-extractor-v1.test.ts tests/intelligence/candidate-proof-extractor-v1.test.ts — PASS (4 files, 52/52 tests)",
+        "npx vitest run tests/intelligence/extraction — PASS (2 files, 16/16 tests)",
+        "npx tsc --noEmit — PASS",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "rg -n \"ExperimentalLlm|LlmExperimental|ExperimentalLlmExtractionExecutor\" src --glob '!src/lib/intelligence/extraction/**' — PASS (no production imports)",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "770a218d5c518591005d23ee8c1536c80cfbf32c",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_03",
