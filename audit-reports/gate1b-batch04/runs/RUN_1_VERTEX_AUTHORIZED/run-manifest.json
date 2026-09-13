@@ -1,0 +1,36 @@
+{
+  "runId": "RUN_1_VERTEX_AUTHORIZED",
+  "state": "PRIMARY_LOCKED",
+  "operationalProvenance": {
+    "runId": "RUN_1_VERTEX_AUTHORIZED",
+    "provider": "Vertex AI Gemini ADC",
+    "transport": "gate1b-batch04/gemini-adc-transport-v1",
+    "adcMechanism": "application_default_credentials",
+    "gcloudActiveAccount": null,
+    "vertexProject": "project-423841fb-74e8-430a-84a",
+    "quotaProject": null,
+    "vertexRegion": "us-central1",
+    "model": "gemini-2.5-flash",
+    "promptVersion": "gate1b-batch03/proposals-v1",
+    "responseSchemaVersion": "llm-semantic-proposal-envelope/v1",
+    "proposalSchemaVersion": "semantic-proposal/v1",
+    "assemblerVersion": "semantic-assembler/v2",
+    "generationParameters": {
+      "temperature": 0,
+      "topP": 1
+    }
+  },
+  "lockedManifestSha256": "11acb7b6843d184db2a3f91319fae039100fd4b2d468c891fc4e955c89e05667",
+  "retainedRun0": "RUN_0_VERTEX_PERMISSION_BLOCKED",
+  "deterministicParity": {
+    "role": {
+      "matching": 100,
+      "total": 100
+    },
+    "candidate": {
+      "matching": 2,
+      "total": 2
+    },
+    "nonParity": []
+  }
+}

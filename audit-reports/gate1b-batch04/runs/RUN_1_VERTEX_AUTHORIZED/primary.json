@@ -1,0 +1,1934 @@
+[
+  {
+    "id": "FROZEN_ROLE_01",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_01:batch04:FROZEN_ROLE_01:bb4580fa179c3cf9665f45644e0da20fab3811b887be020a187569d340a7b425:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "1a6ec2011c1bafa5c0889ffc5bb99f229fde34612ea0273096a63c584eb91b86",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_02",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_02:batch04:FROZEN_ROLE_02:aa8086bfe29be30be883b449fa05cdbd642d7903c8a2492efb1f32e8eed86056:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "0d43b472c9b97433b8fbfdbcda8c0ac4df516f4d3c76a4fafe47c00f5d7ed0b6",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_03",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_03:batch04:FROZEN_ROLE_03:89f0a710800183e54634c31d9f3af3029950760e00c2608c7f860b3e35bf1b3f:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "0cd15d9d628209db9f7298f7aba85abc3ee0abd1d708849692b385ecf4d52388",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_04",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_04:batch04:FROZEN_ROLE_04:88650fa01c589ae76ee00d1292acd479fb9b4903cd7e3525032dfd34f1809ba6:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "a7113efd11fbf794fb757dd22e06aa2b181842d2044d7e88a8ffb337c80a6a1a",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_05",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_05:batch04:FROZEN_ROLE_05:2ba329759f1aeca57e9066fcafef7a5aefe55691e880711807293e5543abdc2b:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "ebb5d589d3f37dd442e41362789066de84c6bd8b88d630450d7e88aedf4fc711",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_06",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_06:batch04:FROZEN_ROLE_06:939a06b16e5ce4fe0cd742d4112b70275217a5edca7bbbf34ec1947760636354:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "7ed03efb4574733b51c344d6f97f86b82fa97436064fe9bbe1da4a81bc76956e",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_07",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_07:batch04:FROZEN_ROLE_07:8792b2c25a8bc0f604a5be593ac29ac42c00460cd5b994a141baa073018411eb:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "2854880d828e462fc400506c417ba375e0e3c792fd4cf8ed14621240136dee2d",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_08",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_08:batch04:FROZEN_ROLE_08:991c1156e8292ca1d1cb76bc96f7b0d377db077ad2589f2c194306bb3f7be5b2:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "f46450573806c22c62a6a1a15fc603f5c50083e9071ba7a3e1d44ba9d6955083",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_09",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_09:batch04:FROZEN_ROLE_09:d4d19eb50215e23c415f5c198eec568035129a9e7fb1209b47048541e513b817:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "cd8e89ba80641f3019eee71b0fa1171db9e4d7a2069aa879f2ff78d2df1aad73",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_10",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_10:batch04:FROZEN_ROLE_10:eef5c0a620df96097c68937b95723cc1681f961709132ccdf7af1078d30f5ff7:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "09051bee206f6fe4e70cb3916b78badf6488f5fed8acc00156fd96b216417d65",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_11",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_11:batch04:FROZEN_ROLE_11:5a4c23f1ca219202c9445fc4b1098092962aee78c9883b80b70015ab72518128:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "b4e782869a3bfbfcc35fe258bfcdfe5b99e03fc769ff9e60794978b50e16af55",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_12",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_12:batch04:FROZEN_ROLE_12:8a39fd1c12ed67b198fbb0dc667aed7288fbc1d53c40f3c37afa67d360e5c5be:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "cfdc241abc1cae73db3398ed65be6b8b7efe1d5882f38f7a434c9ab0adce9366",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_13",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_13:batch04:FROZEN_ROLE_13:dbcd2360460dc66318e9a855e4cbb9c3a94b7aba2f5d23af8dd63b2e8df74a33:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "e738615027bf74104711d8d499f953dcb8aff1e2c450dd61c78f14d2de83d9a1",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_14",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_14:batch04:FROZEN_ROLE_14:d6bcc0e658a5748af1b2457d03e4c0e30df6deaaef3cc6b1b4ef327686b290d5:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "2a4fc1f369daec0db7624dd67793c62b3391b5fcc70c7b59033129c5274f66a2",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_15",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_15:batch04:FROZEN_ROLE_15:aa397eb1c7059974f01eb4a9468d8d386601d9be772c8adceda401c745c408e8:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "43abaa1b88168702e4fddc1d3d6be26a3c40a224a1c597faae8c14947e053c3c",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_16",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_16:batch04:FROZEN_ROLE_16:8870740093f68deb3f86688b71524a6badd565080c04f4dde6e6067d40fbdf7d:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "611c85aaf517131c39121e54398b5eebae94323f421fcb0a2e9ca7009abb571a",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_17",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_17:batch04:FROZEN_ROLE_17:c28d870cdcd937028ff79520194ca496a12b3b848d7a96720a7371d79fc948b5:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "fdb72890a0304542dc0d580a068666ee0897ccdbb55fa7cea3d09a65226630be",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_18",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_18:batch04:FROZEN_ROLE_18:201f9bca291029fc91ddafed77345420fb96c0778d7e79630a5b0a07bf794b0d:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "4316cd9b2279a835b50812376b195a25b65a1bdc9f142d1d7e2426faf605c3c2",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_19",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_19:batch04:FROZEN_ROLE_19:6cbe0dcb8f4a50b219733c9b778ed54c8ff0ce04cd18cf4d3deafb152deb56cb:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "09357d68e68802bab18cd5d366e290fb7d37ee2dfa49184bb017ac3830cb771b",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_20",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_20:batch04:FROZEN_ROLE_20:181c835c04211c0eafb631c5f7ad71f762677a4c28b1d51a8d8d1b2f556d7aaf:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "e19ae0d3407e846cc9dace95e69a4b5b522ae0225cefcc00884e77a805f2aafc",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_21",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_21:batch04:FROZEN_ROLE_21:03af81fff7dc16171e5a0564de82db98bf13cabb5fa329d756c0b7ced9482ebc:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "08d7d0ca4d600d15791eec450bf4accfe7803143a0e98a263551f5c4992d2e82",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_22",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_22:batch04:FROZEN_ROLE_22:6e8d6c1010a621254f20897fef11043b8e7b63571c30121a6aa2518dd99c745a:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "2cf4bfedc35e9217d8a33e05979308126cde1ad2de5bb8979341d183ef45af03",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_23",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_23:batch04:FROZEN_ROLE_23:ae0efea8444b13ea414435ac1cbf5b016b4cb34468823805eb928ccda085cfea:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "7116183aee993d16874e3d104986aa9c5388f68dc14b081e659ebf94d9369e3d",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_24",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_24:batch04:FROZEN_ROLE_24:ad3a923a0589b23d34de17a9b2c0b6f4d8489c1b3bdbf45c86c2954bf55a5dc1:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "f1e7e8b9ad61ac59712d28c502250c2f5c8237a652d6f97144beaadd3576a663",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_25",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_25:batch04:FROZEN_ROLE_25:c9fa16bd85ecc053fcb160d30f1b48dfc7b096a9d24ea8c6730db7c492ce3c8f:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "7830a08b48a45c2071c9507d212fe57f1fd883423b7285013f33d3fcdb6ef681",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_26",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_26:batch04:FROZEN_ROLE_26:fe7c315a408b2417096f968d3953ec82220568f0e9879588b379ed37b2309b9a:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "ea912938770915ef6f6c85b06512c55c675c02a387a47922e5f2e13dc8e3bb56",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_27",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_27:batch04:FROZEN_ROLE_27:441a95bcc2bc39e1d74411efd2ce65477e87e5ff8270646c10c6f162cd0c607d:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "b88cc8da4adea5232c9cfe2031c7cd95ee94c0a66b559294e0fff460d8fa9da7",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_28",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_28:batch04:FROZEN_ROLE_28:358906ef8c0a72bbb057233a1e858a88fb3a2bfb180d657e26de98d5991169ba:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "9952be4da09d4ad7343a124f87ce014a2709447daacbf94e5329f0ca051585ac",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_29",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_29:batch04:FROZEN_ROLE_29:417ac02bb2b62607b37a9b1be8baeef1ae962a6ff9555b4979652fd51772d818:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "b9967c611d36fbfeef96e185786afca80048be3675427b007144d19f16d2c3ca",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_30",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_30:batch04:FROZEN_ROLE_30:c09ee2ad1b83b3abd5001064fa73dae2df0583b94e5b8a61579cb83ae7cddb29:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "e90f87f860d46ba799f01f7c662258119f96e66126571c72ac1e852414dbf131",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_31",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_31:batch04:FROZEN_ROLE_31:5e41bf33002d4b3d8a3dd5e2287e32b5ab61fba99285dfcf8d2fd11434fe03e4:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "33fd54846c1b365e59b0db01aefe14078daddce0c4307f01366fa0e414ed8e76",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_32",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_32:batch04:FROZEN_ROLE_32:12c0a240c1dd17aaea46bab403688af7e4ef6c81bb778d562e4b2d24fd3ed37c:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "e7839f89e53c4a92ed1fcfaa08e36ebc902221c435f49bf30396cb857df181d2",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_33",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_33:batch04:FROZEN_ROLE_33:c8aa5830c3a0e3a4d3aab54da2ccad8b14c0b3c11680fe77f249da9901364ed9:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "70eccf86d7afe7057a29020f8dbec22dfe33db7d58762becdbb53c821bd08fb8",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_34",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_34:batch04:FROZEN_ROLE_34:a0cc707265b4142354a554b52fd6ec65e435e7f7f4023181ec5fd7874321cc97:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "063e083ee47ff923a21a5892e889dd8b441e59a664a48cc67df91d18e0527997",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_35",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_35:batch04:FROZEN_ROLE_35:c306cfbb9fc6256c367ee52d8723b17b3834312cff8591e7561ffede3f92d649:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "6822f4808aa38749083857b5b79b8807f1a44e8062de33c35af02477ea8f2210",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_36",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_36:batch04:FROZEN_ROLE_36:e7817d557472a1498cfef4a3807fa49999ed56afc38525abe34ff8931b0f5799:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "bc853f2f25be1c53828e1f5e34395569eab6be8726b20f09503ca5b89ceb534e",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_37",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_37:batch04:FROZEN_ROLE_37:d883c64f28d37afff1bd6942e58fe886a17eb8efb94c4a8bde02c68c0986bd7a:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "7b58a182bd1efa978bfd4fcd61277dca4736ba64700e1bdddab9b9e0f223fa9a",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_38",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_38:batch04:FROZEN_ROLE_38:8556ae3714a171f6ac6af8efbfe1772905b3f3d4c2e8080365a965dc1f8f502b:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "179452848a4532d4357f7851091f4c1d0d16fd29d9dad00856532e046cf454c4",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_39",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_39:batch04:FROZEN_ROLE_39:70215604f1e66c3ad7290c312d66c63aad7bf0c31fa34c6c97f3bd9c1dca0432:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "619a1314eab476d08f7dc434fa2c37b747eb2d826fe15303dd54f5a9d96407bb",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_40",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_40:batch04:FROZEN_ROLE_40:0ea82bcf765e61e0fc4bb334ef00937febad83a4c5b60eff1083637c25ba2320:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "8caa7f7f69bba1d22c69d2fe515feed352eafbe9892289d676e8218fb76403d2",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_41",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_41:batch04:FROZEN_ROLE_41:6ff0e4a9b3a9b1bed55464345a8733612ff3b7e6e13ad712a27fc0803afc4d7a:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "2f7e6dcd5669753bcb7f1837c1bcf36aefae7a52e17663359636c94bcde233be",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_42",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_42:batch04:FROZEN_ROLE_42:dc75351316d6e7acbb2cf8712717934e847eac240cbc2503db67d98fddde4d26:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "bb60a53e5b3cb52c68e765cdbdc199c25ff7d278078d5ef1aaa6438467fe1021",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_43",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_43:batch04:FROZEN_ROLE_43:9bd08b9cad5741e3e54cf0b23c8917e028efc334cddc6c38de3751f1c6e6b26c:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "589289332c17f2a55375d47915886c58a8f988d710aa24351e26a8412e0b6270",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_44",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_44:batch04:FROZEN_ROLE_44:dba9ba1483bb1a42816fc15e8636a152ed6a8e46a835493ecd748bceacab2692:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "3509008ca158ee4ff30741e464893eaf286dc3690d992658451d1c5fdf17c464",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_45",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_45:batch04:FROZEN_ROLE_45:c43c3e5bd3921ec68b63778ad7d03dd95206a272f2ca10fce5f3a56d8d756b06:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "87dcbd52c310b683bd57a1146d6fe0257d980bcd41ceca3a2b07694fbac68480",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_46",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_46:batch04:FROZEN_ROLE_46:dff99fdc536cc6c794a1b4fdb593ecf95f579d8bbe6ca9413439b1dd21099121:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "754d6ceb01e9f9ddbfaf06143ab507285fe2183c8359c07a0f090675969baffd",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_47",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_47:batch04:FROZEN_ROLE_47:20f6fa293828d496f253d4b93d7a070e493a16fc61b899626143d9ec84fd2a5f:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "a5dcb1f8ea4a72660be4d55f65ab7794eaa548d8b2f81b8f287375f9e244661e",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_48",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_48:batch04:FROZEN_ROLE_48:ccf96d64fe9b27fccfe61fe267429c22239a18dbba377267482240592f7ba02b:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "fc1e2a8ef515e848eeeb909bfd74eda62cdd73b2ff1bf8bfb77ab4449d56f544",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_49",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_49:batch04:FROZEN_ROLE_49:706ad175f535e94091f502a63a33c3606066d29895074d423be24b848050747f:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "fc001a9260eed53f29867756b0319c7dd9f35ec586f770c2ee896944ba23b4ed",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_50",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_50:batch04:FROZEN_ROLE_50:60393fa8e9344feecb0a95a34a0ba2caec3ee7c5b7126b63dd71f52cfd5e6f02:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "80ba15bbceaac294721836bbb5e4aba7c734901b609109548351acd21301f404",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_51",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_51:batch04:FROZEN_ROLE_51:0121f57b41faf5d8f71c786a59b84b2bc8abe28394f515a5f26aa186dd1f416e:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "88cb7ffb144bae943169da16938f687312876d8f997c01bb3e3986de9b9a11d3",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_52",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_52:batch04:FROZEN_ROLE_52:e6bb655c02695a8122b5e6f2eeaaab835755e2473b4c4907afac333ae79ee67d:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "f9b274e7939c66b0b619f49fbf54377df8519d670549d97117cf88f10f7179dd",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_53",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_53:batch04:FROZEN_ROLE_53:c9bba3168d7fd8c73860447e6efaa5119e2f5374fb61a75478645eb38c2c4f14:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "fff75f083583d466b5570652a65131b6a1a6fe5833261a8f764a82edb0b8907c",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_54",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_54:batch04:FROZEN_ROLE_54:c306cfbb9fc6256c367ee52d8723b17b3834312cff8591e7561ffede3f92d649:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "3f1947de34b9f6805599f8ab767fc76eb29cbab4a39b7dba316bc3c25747656c",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_55",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_55:batch04:FROZEN_ROLE_55:7cc1fd7fed667283387162b5bffcfe3b6ce928f70f0068f22c2ce648f938a284:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "d359f00217235a699e72f2e104b2f58b9a9cccd9654f016d39e96553620075ec",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_56",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_56:batch04:FROZEN_ROLE_56:07fbe1150ee997b6ae836aee891fefed861e79e93d176eda8856cc24699c38f1:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "f9fe5ae3b1fbb05688c7ece53d66e8f14e87d0f99b427694df51736bb36b52b7",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_57",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_57:batch04:FROZEN_ROLE_57:5d407c60e9ac7208fb4827a673642dddab89a3ffe92cc66a084dc378d6ac73f8:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "63b58750de5e53e620f39bf85ef8bd1757b36a6764a88a08237e080faa45dc93",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_58",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_58:batch04:FROZEN_ROLE_58:3e42141bee49dcabf1ce9face328f1e6412b8c0472533a49a9ced4205f0cf43b:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "9ba76494a8ed4403b2c3365997ff3b84798582b0eb12de7aad5eebc658ff9b4b",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_59",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_59:batch04:FROZEN_ROLE_59:31704de9f413831174e3b6eaa92dd2f2748a6de7b3a9900caeb5387ab28104c7:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "3aa3a81cf43dffc7282c98c20bc6455c231d5978b5206177f5269151bd6a77c6",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_60",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_60:batch04:FROZEN_ROLE_60:beee8f507d13472cf593922ea666a058c9caa52f9d864bd08a32e6d1afc9ff86:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "19fc6ff2738265b7bf0b911179d8b84ea8bcb714df4a81199fae37a465fc8a57",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_61",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_61:batch04:FROZEN_ROLE_61:c829fbcf14158dc8620ad0100c47c873a0b470d6e816bfa651661bb4c48bd8f8:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "fe47f445d5cfb104a7388e36c387efd5a30bbe43cfaa0611ae02f2413f883bf7",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_62",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_62:batch04:FROZEN_ROLE_62:825eab7926761581822b453edfc2f384f76e17fb866a699fa18545c88e0b90fc:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "6ebcb221df079d45c7bacfda0c1e7dfef2da9962c57959acce86f8cc33e34370",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_63",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_63:batch04:FROZEN_ROLE_63:ec1dcaf797c7d02e3dc8c524ec95d1e4dfcec8938bc5bc928b89e54cd230ad15:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "9eeecbae8ec3bb4e46e05f4abaf3ff844118c9939f4c58111f75265ca5f38e56",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_64",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_64:batch04:FROZEN_ROLE_64:01411ef4226b257dfe1b0a92fcbe0b6d4c0f744509f6c08be00e46373641ba37:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "5503f91bb0b8d09bbabf89200d262a5ef958fe8361422cdee493734d12fadb0b",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_65",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_65:batch04:FROZEN_ROLE_65:8787056808400df2ceba58b3827bb89be5394a89d69567885c94ab46e8dfab1a:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "f82229c83d57a05e63c8fafaba3f09b5245e2316896a6a0c1dbc0a80b592ba81",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_66",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_66:batch04:FROZEN_ROLE_66:0ab3c07a43c272cb6022b5ff0eae884bf5a92e86c5d0ff225c855884aef75f38:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "e0052cca4a7eaf3dd7d779dde5910b0661b9f63a9aa234abc2ae3d6cd7d97c7c",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_67",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_67:batch04:FROZEN_ROLE_67:f4038619a8565f786c77a3e37654943c0d3039f6356817884cd0eaa94708ad36:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "2069cc17445c4f7da44680f382ada9f7bd76f2027f011765d074525ef9cb56d3",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_68",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_68:batch04:FROZEN_ROLE_68:40672828ec007e6fefa4e50c26d48b49a708d70aa6f9e0b1fc0295e6cfe327e5:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "18fd19d6e82fdf4e6b50310bee3ac18c74df93538fa0ca3da44e09a0caa04370",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_69",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_69:batch04:FROZEN_ROLE_69:f055adbebdb9fd208e43ce362aea8c9584d6e2057559b818e172489608ef20e3:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "0b0c0d07d69930149373970c7cc9df130e6979b28205f933802668f53d14caa7",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_70",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_70:batch04:FROZEN_ROLE_70:15fcf26ae1bddee395f77909643d3fd73ac47b2fefa856525bffebad4aea2d3e:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "8196fe7403edc9a7f083af041158484dd721f54049a75cb98997cfbfa679a173",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_71",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_71:batch04:FROZEN_ROLE_71:8a505f3586f81e326322aaf51d2f6157ee17a2385b99749ecc9f2d1220330594:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "e93f1d04b8c3c7704fba3c71d7dcbeed9505231e087e3300d5def1d73b841a89",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_72",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_72:batch04:FROZEN_ROLE_72:512a2ca45c034a4e506af6ec96529f49e1caf3795b49bb081cd5195a066cb8b9:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "33d00886e2189b0c1d995399204057e07680d94f3098d2d0d035fef81e498acf",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_73",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_73:batch04:FROZEN_ROLE_73:f601299406666e92c8dc3b526a80996d1104b31a9183ea070474698b00f44837:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "43d16ecfe68e212999b0143af203c71c1f2ab71901170ad42cbff38cd72e7272",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_74",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_74:batch04:FROZEN_ROLE_74:34d667ede7e9c56849af7f63aebfc4de5fd0aa15d1e1c496bd534fc6f87e1629:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "c33d105ae011840bad3b26d27df4526152e4642136fa3c5a0be0965e1e2ca257",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_75",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_75:batch04:FROZEN_ROLE_75:a010e375b6330c8691cf4de1946fb3dc30e50f9e8c8fae68f73c8bada7b9a689:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "903f753c00e9fb40df452cb7ce45030e85572ca3a3f989b48ab635f9814f66c4",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_76",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_76:batch04:FROZEN_ROLE_76:ae5a863e51d445634796d36560265c1ed7fef9b0a37c198a6f4a96c152e88aed:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "30890d699878b194b845207731852d6ec3bdfe16cce86d4e6e8881a5e6de464b",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_77",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_77:batch04:FROZEN_ROLE_77:893398b19936dc4ba1a2ada323e28951d6ae233dad429631cab624bf01b3e06e:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "8aa6caff76aad3abb46013caee255d3185fb22b40d0689f166bfc7fc60e48725",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_78",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_78:batch04:FROZEN_ROLE_78:f6f1ee9ba38ac1b549602c2e1e77d2a0f65c8140b0e4aac03310b9168e9431c1:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "607a3010c753ddef17b317dbe27017b4b594de1eba683facd6e7bb846ae2f14e",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_79",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_79:batch04:FROZEN_ROLE_79:21a58397eb1cb2e32503700234816f50c5fa849a6c77c24096b038cdf2ae71a5:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "07e7a83b0e6f5c03f1cf572daeb85eaa246772f1fb3328c81c3cd6fa40723fa8",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_80",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_80:batch04:FROZEN_ROLE_80:1094ae90bbfb47dcde964c5c326f23a10ce32f9512ff7daa7fc47ce35c9cad4c:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "ec57485af0f7e05ef342515758d6f06b14491760d21ba94b93344af4b41a2a06",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_81",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_81:batch04:FROZEN_ROLE_81:c533ad0ef83c655fbfa23d23bf9e1839346922fa8887006f539dd1e925b6cf25:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "ce2cfaab649669cd931122a9695b12eea16ee57cf42713e274b49d1a1b3d1080",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_82",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_82:batch04:FROZEN_ROLE_82:99cbf945f9c655ce92cb70509cb7a022971fdfbb66f5f1e02824080760bb38ba:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "6a487ca997479c2aed0e031459e0cc9dd7fc9d800a2025e8dcb9b8478d5654cf",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_83",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_83:batch04:FROZEN_ROLE_83:4841f361df50a3e10b681a3c8090bd01b6a596f4722bdc55fb30d3c500216a7b:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "c46366e9672893b7875fce7007629272cfd341680c8386829683b3de3db0e0d5",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_84",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_84:batch04:FROZEN_ROLE_84:aea5351fb3b7cf4d5ea87056773cf0356c25aa0428ce01d8473924c50e4783d5:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "0287aa9c416dc1ea3ce1efd28e3d31136e203a4892abe3e3db43d85ccd808756",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_85",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_85:batch04:FROZEN_ROLE_85:77327a23da36bf0c88802a53bcb9b12847a08411d87c7fb294b00b76a9276422:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "9e782a85854ecb7d9948754ced1f7338e73710f51976eb53242b3c8376e9809a",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_86",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_86:batch04:FROZEN_ROLE_86:507d540e1b0a530d79b01b8574e6b9f94e65b701a6c266b18fd05267c68e8b98:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "a3ae71bb2c1c45f2859c2f7cd7f8323d82ad9f337e98b8ead97e59eec702a5af",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_87",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_87:batch04:FROZEN_ROLE_87:243265ff5e95a20dc5338b460c18f14e32491fa5bedffaf08b80ff311869ae84:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "6f719ca26b092eed6c6592dee0a34dd726574c09df4caaa00190d40d40ce37dc",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_88",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_88:batch04:FROZEN_ROLE_88:0cf9b8b04d5b2ef4ec060839546c54ed22f0b1c180846d6de04a3f37a6be2e03:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "a9e596f1c44ff986fae95aeda1ce7ab65e8371e8ae68f300462eddd95576ceb2",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_89",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_89:batch04:FROZEN_ROLE_89:8184560c5dcc66da9981431931f63b6d0b0c4754b061848d88d42ad3ff36b5f9:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "6df137dfbc7040b31c8493b278dd7c91ff796ac6bf8d6723c8e8f430fa2b35f4",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_90",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_90:batch04:FROZEN_ROLE_90:dbd260a3a5206a166de23c6ecf2665ca0e8c93653c7a0c885e2fae812ccc795b:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "802829e2fd9562df88208c03a68b8c67811da3e6a8c4ae39149b3f9a8031cd97",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_91",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_91:batch04:FROZEN_ROLE_91:45f43df7c4659bd3babb3713fb3ddd2c772b54b73ecdf4818987da6c7e800b31:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "30689ded3f75ed650c48240ae2aae77936e71ab739763e09148e01049653e5ac",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_92",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_92:batch04:FROZEN_ROLE_92:e6b8af2b7fee69022394dae7b9a94819c16738bdfd660ffdc013431c7297a655:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "6d27f43941cee94b16e189e81493aafaadef384d35481a19faf81d3d3f752f5f",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_93",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_93:batch04:FROZEN_ROLE_93:ca4fc524ed5ceb1439871b150180e785c9106f8057482ebc88c7244a2cd9d71b:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "7d21c006886619935225c674d48df41765276b8e84ad74969c68fb6b6b311615",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_94",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_94:batch04:FROZEN_ROLE_94:2f8788d285de7b4f416bbd4ddb414131c0ff84ffe018ad7aa0014ebe4d312a16:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "ec2313c8fb2e0226d25ed76b16984372596fb543caa575f0ffe497b6ef8a5ff1",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_95",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_95:batch04:FROZEN_ROLE_95:b6debc8bc96951304c2cca304170255fab618f3ec5fd637dc7729b345ad6b248:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "d59932b5c0aa3b3086cda10cceb17ff3085d4085f6accfa70245bc401ff91cce",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_96",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_96:batch04:FROZEN_ROLE_96:6da95220640ebaaf3d362b53a60170aa41555217a1777a8d9ccae8604167ceca:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "5fa4532c24342d1a14cc1c8a43a254b5dc15576acd023b5df37e69cd70d1088e",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_97",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_97:batch04:FROZEN_ROLE_97:622647c53a2ad11ba29b654a4bfe7d4cdef96cab0acec5179858ad9eb0b7bf63:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "8f7c815e8faac706c8d5ed34a2844188bce71c0d17fab8b68d5de6f266b0677d",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_98",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_98:batch04:FROZEN_ROLE_98:aa463cbe8f7b3b8a76c12e72d6ea0f9b7575d30682081a52125d66deb07d1f4f:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "ef01e88d070b61c4927157bb1e908b84d2a826b2c2ec2688bb0557766ebefe47",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_99",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_99:batch04:FROZEN_ROLE_99:cb493558615a3f64639d92e233a0a67e6a8e28b71ce7f26f1b128b5b109cae21:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "b6ce02ee07d496495439ab8f284886d7097cbd95e102520cf459059b14a48630",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "FROZEN_ROLE_100",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:FROZEN_ROLE_100:batch04:FROZEN_ROLE_100:dc4c5a7b3ddb4218f4de622a3ec5561685971181f5fef809732f2975c9ebf06c:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "d2019af75951f1f904640eb1fde962e8d4457efd8c36fd13533278d3387608ee",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_01",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_01:batch04:UNSEEN_ROLE_01:9b88e872f0689efe5a8a5c8c35cfe8c1e247f4eb37f64b65eb3de7a684e8bdbd:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "f7b7a10ff139bea00dbdcc5cf81723e1b6e9ce30626a4e71469cd4912f59f9ff",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_02",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_02:batch04:UNSEEN_ROLE_02:62344e2a7172a64bab439def1dba178c031f633a2778007ad444a22a499676a9:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "7788ed1f651838881a161ee8e21ab0f6984e224ab0aa9415adfb53fcaa1fea6e",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_03",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_03:batch04:UNSEEN_ROLE_03:3456f832a4dba5852125e7030e81bdadcaf1c0bc929e306661b26fdefc330edb:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "9fd8804015f3fcb833011bc421dff5c494e8eddf3693415284249f3441a8848e",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_04",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_04:batch04:UNSEEN_ROLE_04:f9eb8e7f9e2862cdd8fb81e847253e3d3686645677ed845c046acf5871f41d05:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "421226b6a0c4ba985245cbcdd42731e0c2fe0b659eaa9b87379fb3dcebfa10d4",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_05",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_05:batch04:UNSEEN_ROLE_05:e54b5f4740703b08da2f7dd95b4146d5c09b6af421034a8e789afcd39ea82ae8:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "b925444f7b274d06979836075ed747b9d14cff25e37be9e63a478086da9e0f59",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_06",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_06:batch04:UNSEEN_ROLE_06:db22b187717d465d934c4b6fe794e442f34ebeec2b5b089f6cc6d75bc4419d18:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "9549d89190225cd622ee14c7d422fea7e4b16145d7987d863d537269f8ab8a1e",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_07",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_07:batch04:UNSEEN_ROLE_07:ef71f8c49cceac55a31d33f35246ccb68905beb6bbbdfb8ca89416cba812ec11:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "27f6e11feca2846fae79513ff60b29c63e14c73cbbfe31b4e32669060804ce21",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_08",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_08:batch04:UNSEEN_ROLE_08:ba20e335ca49efecd5ddedaac547df7e6538e67aef9ed050cfc6cc7407cdc73a:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "ddb12b12cc5ef963b9385bdc21105192396f495ba16808b58094b523a5f3d179",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_09",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_09:batch04:UNSEEN_ROLE_09:022a9dfce02bce0a5043a23ee6ffbf97ff0351295167eff7cc58461a02d9472a:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "17c6a704a2386a6e58740626ec8f087179a9ab5e53f778d875fc26d0c75e0a08",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_10",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_10:batch04:UNSEEN_ROLE_10:8199d607a174a1c4aff0967b78142f45018a79c951d4c546c4d94526c37dccd9:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "dd46987af7d3b314a3a984e9909b49664e8aef85208d276875ae46fc58e619c5",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_11",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_11:batch04:UNSEEN_ROLE_11:0e50f0de7a536c9658280e8b64f0a3bdb209f6d4926ed610433a7a76ce10b542:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "8485ad6ce4b35828dbcbb2b0b14f28f038b16b099b3ffb094af9f224dab3c8c7",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_ROLE_12",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:UNSEEN_ROLE_12:batch04:UNSEEN_ROLE_12:43beb4309915ae7fb3031304b02ae31862bb84326af4d0406b9b78622fa593b9:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "ebc7a3027906d086bf0b64802fd4a2e67fe7af6d79a4a1f745108437b869f59e",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_01",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_01:batch04:ADV_01:23676bc159841f0c819b2445611dd2aeca881bf0afe21e5e7a52e59fa1523bfe:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "f0fe01da3185336437c217db49eb49d61b318444db677accd79a951b233c8201",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_02",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_02:batch04:ADV_02:72defde7977b2835fcb17cc9ae574faf9ab37d4a4e79f5f94584ff50a00a4ca9:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "6fb785c8c3335b0c219fe2b00a0af65ff9dd8540cf550fe7f1734f5cabede9d6",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_03",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_03:batch04:ADV_03:1b5741757dd12ae5c03a55e4cd6884b4fc37e715a024b56ab390616967916b08:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "9ac9e7ba121453ed39310f4e51c8db6303170b4d84dac99596800ab3e661a22e",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_04",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_04:batch04:ADV_04:49122fb87f14d0f1fdb05b9e6711ca95e067a276f9bf791dc69ca5d5130ac1ef:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "6cf45d26d1f55596f83beff02ce87d95e3c8dfcdc83d12b947ded6cc04090baf",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_05",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_05:batch04:ADV_05:fc7486cf9c2e7618014b770779010e2b6125fdd62e0cdf75ab915d529b59278e:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "2f03b097045be886b03eadc828237b4c4ba273e31a6c403d2cd3a134d65f627f",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_06",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_06:batch04:ADV_06:e70fb1badaa522d70f45076d677109d5f5165ea48979bbde391e06ecde646c87:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "9578e5df85ca33b917fba4c23f99f7a5053b710c59744cddf35aaef4cb3a7dfe",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_07",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_07:batch04:ADV_07:4c80a2288629911092325a9d7a93ca2c769b6cce3c2e3e1e29183447fda8ea1e:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "ce67059578ae7be00d138abd88da66af0b2d0de5f247ae70ae45d3c2979efdfa",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_08",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_08:batch04:ADV_08:79243644f07af702aad70b0cd2e8d94f2c89d38693526cb916d5c7da2900bab2:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "90d6603080947efdf537766b503dbb412e8bdfd58ed0f617540ced4f6f5676cc",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_09",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_09:batch04:ADV_09:72549e0aaae22c6ee1bf6b1f6877394a1f6f895a63bc4fe38fc6bcb41b0f66c1:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "ff627396ec12b518d4bbf667d29c4295dd21c076ddbda8ee9ced01e028dde8e4",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_10",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_10:batch04:ADV_10:0ea20c494603bb14babf410f6ac8eef06c4774067a838df34a8286cde8587b07:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "918556240d05581c3f7c135c72cd3f2b64171bb75ff8e73206ee2472bc925d37",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_11",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_11:batch04:ADV_11:511a3d1ccd818e481d3b716f367d524b0868b385c7a4b8a0070c1ab41e4feb92:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "1f9a17a3e3339776902db8b66af098b3fafb439e29f6758517ac887cc49892fc",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_12",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_12:batch04:ADV_12:b58d27f7a0702df73099ddff64936e24dc0a61b0b00743a7edf1807bd49fb719:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "2a3d1f37eb37f87041dad6d5996e1d2ef705a93c66ce6abe1ddc632634cd27ff",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_13",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_13:batch04:ADV_13:26b7aab0525abe8179ed8981291fea85119647240ad636744aab0ffc765ceed3:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "893f3d5f41ac5a8fe92c3046f7b488c04e511341a5acc2d35ecfed91529f8739",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_14",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_14:batch04:ADV_14:4637baa4c58de39596061cd412c6267835c056ad2dd71224612a44bcd2ec6b28:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "df40e62dc3c4c992638339ad5f72112da757709f995ad3ad2f7fc1d3981b6f7d",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_15",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_15:batch04:ADV_15:50b9ad3508871ceefbde7c5672085b1e692e5595c428fed19b80c3835757d558:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "59651223e28e9b295f87b6ef72f003fa86c20c955ee520b3bfdfe4e3d7efb0a6",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "ADV_16",
+    "kind": "ROLE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "OPPORTUNITY_VERSION:batch04:ADV_16:batch04:ADV_16:3081e11521b661e9f020f252b7bacd27b87897eaa9e02ffc34863f11e17f4118:DATABASE_TEXT:NO_BLOB",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "715b400efce76016af0b92fb55460ec6d67dbf8da370072cb0b69be0dca80e0f",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "CANDIDATE_REGRESSION_M",
+    "kind": "CANDIDATE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "CANDIDATE_DOCUMENT_TEXT:batch04-candidate:Swapnil_Shukla_Resume_M.md:18879cb63ea5ac20b8697d33f90d6cc89653230b094557d5891a149942389924:18879cb63ea5ac20b8697d33f90d6cc89653230b094557d5891a149942389924",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "f86b33db5ab4fa77d398243056e590c3e345257c00bc37d7dda112282301ffa9",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "CANDIDATE_REGRESSION_V3",
+    "kind": "CANDIDATE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "CANDIDATE_DOCUMENT_TEXT:batch04-candidate:Swapnil_Shukla_Executive_Resume_v3.md:47c5fae3cc60fc8692a1e80dd21fb7205d6faa734d77fa9224dcd74869ad714c:47c5fae3cc60fc8692a1e80dd21fb7205d6faa734d77fa9224dcd74869ad714c",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "76c3d5dc3a32e89514638d8ec5bdfa8d021221b096b028c53c424b47704cbb93",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_CANDIDATE_01",
+    "kind": "CANDIDATE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "CANDIDATE_DOCUMENT_TEXT:batch04-candidate:unseen-candidate-01:1e204442360545f473447885dcb1afd75689cfe33178f604c7ee5188ea0bb945:1e204442360545f473447885dcb1afd75689cfe33178f604c7ee5188ea0bb945",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "49d630c744241d4e16ff8c64c5157836c33bec9aae972eb5f5058e655e7e7402",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_CANDIDATE_02",
+    "kind": "CANDIDATE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "CANDIDATE_DOCUMENT_TEXT:batch04-candidate:unseen-candidate-02:347dc1d2fb4a881c7bcecc0ed6c2b9e63efeb596755b567a65b86e7030b1e004:347dc1d2fb4a881c7bcecc0ed6c2b9e63efeb596755b567a65b86e7030b1e004",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "da5c1987ea169a713d80c86e7da92ef40cc7b1a84fd8caacc1cb1a82924359fd",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_CANDIDATE_03",
+    "kind": "CANDIDATE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "CANDIDATE_DOCUMENT_TEXT:batch04-candidate:unseen-candidate-03:7e6da570b4b6908acb70b1f5c2ef972fd09db096e5fc255a9fa2f1b50d63197a:7e6da570b4b6908acb70b1f5c2ef972fd09db096e5fc255a9fa2f1b50d63197a",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "832c8e21597f612735fd2f3a8a5799b54ba602f90c18b6321940553d7867b628",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_CANDIDATE_04",
+    "kind": "CANDIDATE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "CANDIDATE_DOCUMENT_TEXT:batch04-candidate:unseen-candidate-04:fba8d04515e5b8016ee673b941e1c39649358ca221f931a9f4b722d73c148420:fba8d04515e5b8016ee673b941e1c39649358ca221f931a9f4b722d73c148420",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "ef07403596d2b076faa9cd776883da3e81f5d9103f684e725c423510c8439b0f",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_CANDIDATE_05",
+    "kind": "CANDIDATE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "CANDIDATE_DOCUMENT_TEXT:batch04-candidate:unseen-candidate-05:298091934565cc628b47735fa3358f87c2cc287aa2bd6382060e21f481e16cab:298091934565cc628b47735fa3358f87c2cc287aa2bd6382060e21f481e16cab",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "135702ef282aff77075f5e96aa7ec73822763c95706cafa25c609ed8517dc62a",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_CANDIDATE_06",
+    "kind": "CANDIDATE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "CANDIDATE_DOCUMENT_TEXT:batch04-candidate:unseen-candidate-06:2414185bf82376899d0834bb42a11370695cf8c067be17ce7e4396a20dbb613c:2414185bf82376899d0834bb42a11370695cf8c067be17ce7e4396a20dbb613c",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "9cf617d768d802797f9ab9b9545ce34dbaaa5a055db00b1d63fd4ae54f36e20d",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_CANDIDATE_07",
+    "kind": "CANDIDATE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "CANDIDATE_DOCUMENT_TEXT:batch04-candidate:unseen-candidate-07:ee0f244cff5d91c301d8cbedd5e5c734e57f36a60ad3cf095a69c45b3dad9d05:ee0f244cff5d91c301d8cbedd5e5c734e57f36a60ad3cf095a69c45b3dad9d05",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "b8f3203bfa98107345401981ed9be9ad23aac848111893a3b43766f46a2c3b61",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  },
+  {
+    "id": "UNSEEN_CANDIDATE_08",
+    "kind": "CANDIDATE",
+    "outcome": {
+      "state": "REJECTED",
+      "rejection": {
+        "sourceIdentity": "CANDIDATE_DOCUMENT_TEXT:batch04-candidate:unseen-candidate-08:86c4fcc826486a418645cfb2de7e85acd81e89e14f54fd4a13d3b1b70fd1acba:86c4fcc826486a418645cfb2de7e85acd81e89e14f54fd4a13d3b1b70fd1acba",
+        "providerId": "gemini-adc-batch04",
+        "cacheKey": "1f6198b573667ec201d6205e5d99b2d027086068b475db34ac96f732cc2281f4",
+        "reason": "LLM response violates the experimental response schema."
+      }
+    },
+    "score": null
+  }
+]
