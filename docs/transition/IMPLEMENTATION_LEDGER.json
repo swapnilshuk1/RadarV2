@@ -13,6 +13,29 @@
   ],
   "acknowledgements": [
     {
+      "commit": "ca9aacd7e5ea826f1e1a2fb8ff53b8924970b2f5",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_04",
+      "scopeRevision": 2,
+      "summary": "Added the pre-provider Batch 04 comparison apparatus: a pinned historical Git-object corpus manifest, provider-independent unseen/adversarial fixtures and labels, deterministic direct-V1 versus adapter parity harness, and an isolated Gemini ADC transport implementing the existing experimental client contract.",
+      "invariantsChecked": [
+        "the frozen role corpus is loaded from the exact e1f0a475 Git object and every case rawText identity is pinned before LLM execution",
+        "fixture labels, high-risk negatives, repeatability slice, and aggregation rules are committed before provider output",
+        "the Batch-04-only transport maps the existing strict structured-output request and records transport attempts without retaining credentials",
+        "deterministic direct V1 and Batch 02 adapters have exact parity on 100 role cases and two candidate sources",
+        "no production extractor, prompt, semantic proposal schema, assembler, verifier, normalizer, persistence, evaluator, policy, dossier, serving, or UI behavior changed"
+      ],
+      "verification": [
+        "npm run transition:check before implementation — PASS (GATE_1B_BATCH_04 READY, scope revision 2, extraction architecture decision OPEN)",
+        "npx vitest run tests/intelligence/extraction/batch04-comparison.test.ts — PASS (1 file, 2/2 tests)",
+        "npx tsx scripts/extraction-comparison/batch04.ts --freeze — PASS (pre-provider manifest created; no LLM call)",
+        "npx tsx scripts/extraction-comparison/batch04.ts --parity — PASS (role 100/100; candidate 2/2; no non-parity cases)",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "a51f742b8e1d647d0e9b60f9c10abc1906c93232",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_03",
