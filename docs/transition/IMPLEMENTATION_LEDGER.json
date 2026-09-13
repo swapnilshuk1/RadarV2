@@ -13,6 +13,26 @@
   ],
   "acknowledgements": [
     {
+      "commit": "eb01b253aca0bfe6fdc127d94c594616d6293466",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_04",
+      "scopeRevision": 3,
+      "summary": "Isolated the Batch 04 authorized rerun harness: added an explicit capability probe, separated Run 1 artifact storage from retained Run 0, and exposed npm scripts for probe and run1.",
+      "invariantsChecked": [
+        "retained Run 0 artifacts are preserved under their existing path and cannot be overwritten",
+        "Run 1 artifacts are written to a distinct directory under audit-reports/gate1b-batch04/runs/run-1-vertex-authorized/",
+        "run1 refuses to send benchmark fixtures unless a successful non-scored capability probe is retained",
+        "no prompt, proposal schema, assembler, verifier, normalizer, or production extractor was modified",
+        "Batch 05 remains unauthorized and extraction decision remains OPEN"
+      ],
+      "verification": [
+        "npx vitest run tests/intelligence/extraction/batch04-comparison.test.ts — PASS (1 file, 2/2 tests)",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "7417e807bdb2e74aa125a80d8c4900e05bfc83c4",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_04",
