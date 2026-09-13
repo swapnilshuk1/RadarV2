@@ -105,17 +105,27 @@ describe("experimental semantic proposal providers", () => {
   });
 
   it.each([
-    ["fabricated quote", { proposals: [{ ...roleProposal.proposals[0], exactQuote: "Invented mandate." }] }],
-    ["ambiguous repeated quote", { proposals: [{ ...roleProposal.proposals[0], exactQuote: "Own pricing." }] }],
-    ["invalid semantic enum", { proposals: [{ ...roleProposal.proposals[0], semanticType: "NOT_A_TYPE" }] }],
+    ["malformed semantic enum", { proposals: [{ ...roleProposal.proposals[0], semanticType: "NOT_A_TYPE" }] }],
     ["model-authored identity", { proposals: [{ ...roleProposal.proposals[0], caseId: "forged" }] }],
-    ["duplicate semantic anchor", { proposals: [roleProposal.proposals[0], roleProposal.proposals[0]] }],
-  ])("rejects %s rather than repairing an experimental role proposal", async (_label, output) => {
-    const text = _label === "ambiguous repeated quote" ? "Own pricing. Own pricing." : roleText;
-    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, text)).runRole(
+  ])("rejects a malformed response envelope for %s", async (_label, output) => {
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText)).runRole(
       new ExperimentalLlmRoleIntelligenceProvider(clientFor(output), configuration), { source: roleSource, caseId: "llm-role-case" },
     );
     expect(outcome.state).toBe("REJECTED");
+  });
+
+  it.each([
+    ["fabricated quote", { proposals: [{ ...roleProposal.proposals[0], exactQuote: "Invented mandate." }] }, roleText, 1],
+    ["ambiguous repeated quote", { proposals: [{ ...roleProposal.proposals[0], exactQuote: "Own pricing." }] }, "Own pricing. Own pricing.", 1],
+    ["duplicate semantic anchor", { proposals: [roleProposal.proposals[0], roleProposal.proposals[0]] }, roleText, 2],
+  ])("counts %s as a proposition-level source rejection while retaining a valid V1 result", async (_label, output, text, rejectedAtoms) => {
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, text)).runRole(
+      new ExperimentalLlmRoleIntelligenceProvider(clientFor(output), configuration), { source: roleSource, caseId: "llm-role-case" },
+    );
+    expect(outcome.state).toBe("VERIFIED");
+    if (outcome.state === "VERIFIED") {
+      expect(outcome.result.output.metadata.proposalCounts).toEqual({ proposedAtoms: output.proposals.length, acceptedAtoms: 0, rejectedAtoms });
+    }
   });
 
   it("rejects a candidate quote that exists outside its declared structural parent bullet", async () => {
@@ -123,7 +133,10 @@ describe("experimental semantic proposal providers", () => {
     const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, candidateText)).runCandidate(
       new ExperimentalLlmCandidateProofProvider(clientFor(output), configuration), { source: candidateSource },
     );
-    expect(outcome.state).toBe("REJECTED");
+    expect(outcome.state).toBe("VERIFIED");
+    if (outcome.state === "VERIFIED") {
+      expect(outcome.result.output.metadata.proposalCounts).toEqual({ proposedClaims: 1, acceptedClaims: 0, rejectedClaims: 1 });
+    }
   });
 
   it("rejects malformed candidate enums and duplicate proof types before assembly", async () => {
@@ -134,9 +147,48 @@ describe("experimental semantic proposal providers", () => {
     expect(outcome.state).toBe("REJECTED");
   });
 
+  it("canonicalizes proof-type order before deriving candidate claim identity", async () => {
+    const first = { proposals: [{ ...candidateProposal.proposals[0], proofTypes: ["OWNERSHIP", "FINANCIAL_SCOPE"] }] };
+    const second = { proposals: [{ ...candidateProposal.proposals[0], proofTypes: ["FINANCIAL_SCOPE", "OWNERSHIP"] }] };
+    const executor = new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, candidateText));
+    const firstOutcome = await executor.runCandidate(new ExperimentalLlmCandidateProofProvider(clientFor(first), configuration), { source: candidateSource });
+    const secondOutcome = await executor.runCandidate(new ExperimentalLlmCandidateProofProvider(clientFor(second), configuration), { source: candidateSource });
+    expect(firstOutcome.state).toBe("VERIFIED");
+    expect(secondOutcome.state).toBe("VERIFIED");
+    if (firstOutcome.state === "VERIFIED" && secondOutcome.state === "VERIFIED") {
+      expect(firstOutcome.result.output.allClaims[0]?.claimId).toBe(secondOutcome.result.output.allClaims[0]?.claimId);
+      expect(firstOutcome.result.output.allClaims[0]?.proofTypes).toEqual(secondOutcome.result.output.allClaims[0]?.proofTypes);
+    }
+  });
+
+  it("retains valid candidate proposals while accounting for invalid source anchors", async () => {
+    const mixed = { proposals: [candidateProposal.proposals[0], { ...candidateProposal.proposals[0], exactQuote: "Absent from this document." }] };
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, candidateText)).runCandidate(
+      new ExperimentalLlmCandidateProofProvider(clientFor(mixed), configuration), { source: candidateSource },
+    );
+    expect(outcome.state).toBe("VERIFIED");
+    if (outcome.state === "VERIFIED") {
+      expect(outcome.result.output.allClaims).toHaveLength(1);
+      expect(outcome.result.output.metadata.proposalCounts).toEqual({ proposedClaims: 2, acceptedClaims: 1, rejectedClaims: 1 });
+    }
+  });
+
+  it("applies deterministic metric and source-grounded-entity enrichment after semantic proposal resolution", async () => {
+    const text = ["## PROFESSIONAL EXPERIENCE", "### Commercial Director | Acme | 2020–Present", "- Led APAC pricing governance with $8M revenue accountability."].join("\n");
+    const proposal = { proposals: [{ exactQuote: "Led APAC pricing governance with $8M revenue accountability.", evidenceClass: "WORK_HISTORY", proofTypes: ["FINANCIAL_SCOPE"] }] };
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(candidateSource, text)).runCandidate(
+      new ExperimentalLlmCandidateProofProvider(clientFor(proposal), configuration), { source: candidateSource },
+    );
+    expect(outcome.state).toBe("VERIFIED");
+    if (outcome.state === "VERIFIED") {
+      expect(outcome.result.output.allClaims[0]?.metrics).toEqual(expect.arrayContaining([expect.objectContaining({ metricType: "CURRENCY_AMOUNT", normalizedValue: 8_000_000 })]));
+      expect(outcome.result.output.allClaims[0]?.groundedEntities).toEqual(expect.arrayContaining([expect.objectContaining({ exactText: "APAC", category: "GEOGRAPHY" })]));
+    }
+  });
+
   it("binds cache identity to model, prompt, proposal schema, assembler version, parameters, and immutable source", async () => {
     const stable = createLlmExperimentConfigurationFingerprint(configuration);
-    expect(stable).not.toBe(createLlmExperimentConfigurationFingerprint({ ...configuration, assemblerVersion: "semantic-assembler/v2" }));
+    expect(stable).not.toBe(createLlmExperimentConfigurationFingerprint({ ...configuration, assemblerVersion: "semantic-assembler/v3" }));
     expect(stable).not.toBe(createLlmExperimentConfigurationFingerprint({ ...configuration, generationParameters: { temperature: 0.1 } }));
     const first = await new ExperimentalLlmRoleIntelligenceProvider(clientFor(roleProposal), configuration).extract({ source: roleSource, sourceText: roleText, caseId: "one" });
     const second = await new ExperimentalLlmRoleIntelligenceProvider(clientFor(roleProposal), configuration).extract({ source: { ...roleSource, canonicalJobId: "different-job", opportunityVersion: "different-version" }, sourceText: roleText, caseId: "two" });

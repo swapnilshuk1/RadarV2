@@ -28,6 +28,27 @@ The experiment measures semantic extraction quality. It does not measure an
 LLM's ability to recreate V1 serialization, offsets, stable IDs, duplicate
 collections, or accounting bookkeeping.
 
+## Experimental structural and enrichment boundary
+
+The Batch 03 candidate assembler uses only deterministic Markdown
+heading/pipe position and bullet recognition where those forms are present.
+That narrow structural recognizer is experimental assembly infrastructure,
+not a replacement candidate-document normalization architecture and not a
+production parser. A source that does not establish a reliable position/bullet
+container cannot yield a `WORK_HISTORY` claim from this experiment.
+
+After a semantic quote is accepted and structurally contained, the assembler
+may invoke existing deterministic source-normalization helpers for metrics and
+grounded entities. The model does not propose their values. Education and
+other structural-only V1 collections are intentionally not a semantic-experiment
+quality signal; a future comparison must report structural/enrichment coverage
+separately from semantic proposal quality.
+
+Malformed envelopes and proposal-schema violations reject the response.
+Individually unresolvable, ambiguous, duplicate-anchor, or structurally
+uncontained proposals are rejected locally and represented by exact proposal
+accounting, so independently valid proposals remain measurable.
+
 ## Authorized correction
 
 Scope revision 3 may change only:

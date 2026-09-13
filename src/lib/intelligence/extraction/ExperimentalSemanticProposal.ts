@@ -12,6 +12,7 @@ import type {
   CandidateProofType,
   CandidateSourceBullet,
 } from "./CandidateProofExtractorV1";
+import { CandidateProofExtractorV1 } from "./CandidateProofExtractorV1";
 import type {
   RoleIntelligenceOutputV1,
   DetectedSection,
@@ -22,7 +23,7 @@ import type {
 } from "./RoleIntelligenceExtractorV1";
 
 export const LLM_SEMANTIC_PROPOSAL_SCHEMA_VERSION = "semantic-proposal/v1";
-export const LLM_SEMANTIC_ASSEMBLER_VERSION = "semantic-assembler/v1";
+export const LLM_SEMANTIC_ASSEMBLER_VERSION = "semantic-assembler/v2";
 
 export interface RoleSemanticProposal {
   readonly exactQuote: string;
@@ -137,17 +138,39 @@ function resolveUniqueQuote(text: string, exactQuote: string): ResolvedQuote {
   return { startOffset, endOffset: startOffset + exactQuote.length };
 }
 
-function resolveProposals<T extends { exactQuote: string }>(text: string, proposals: readonly T[]): Map<T, ResolvedQuote> {
-  const resolved = new Map<T, ResolvedQuote>();
-  const anchors = new Set<string>();
+interface AcceptedProposal<T> { readonly proposal: T; readonly anchor: ResolvedQuote; }
+interface ResolutionOutcome<T> { readonly accepted: readonly AcceptedProposal<T>[]; readonly rejectedCount: number; }
+
+/**
+ * A syntactically valid envelope may include individually bad semantic
+ * proposals. Preserve valid, independently source-bound proposals; count the
+ * rest as rejected. A malformed envelope remains a whole-response rejection.
+ */
+function resolveProposals<T extends { exactQuote: string }>(text: string, proposals: readonly T[]): ResolutionOutcome<T> {
+  const candidates: Array<AcceptedProposal<T>> = [];
+  let rejectedCount = 0;
   for (const proposal of proposals) {
-    const anchor = resolveUniqueQuote(text, proposal.exactQuote);
-    const identity = `${anchor.startOffset}:${anchor.endOffset}`;
-    if (anchors.has(identity)) throw new Error("Duplicate semantic proposals resolve to the same immutable source anchor.");
-    anchors.add(identity);
-    resolved.set(proposal, anchor);
+    try {
+      candidates.push({ proposal, anchor: resolveUniqueQuote(text, proposal.exactQuote) });
+    } catch {
+      rejectedCount += 1;
+    }
   }
-  return resolved;
+  const byAnchor = new Map<string, Array<AcceptedProposal<T>>>();
+  for (const candidate of candidates) {
+    const key = `${candidate.anchor.startOffset}:${candidate.anchor.endOffset}`;
+    byAnchor.set(key, [...(byAnchor.get(key) ?? []), candidate]);
+  }
+  const accepted: AcceptedProposal<T>[] = [];
+  for (const group of byAnchor.values()) {
+    if (group.length === 1) accepted.push(group[0]!);
+    else rejectedCount += group.length;
+  }
+  return { accepted, rejectedCount };
+}
+
+function canonicalProofTypes(proofTypes: readonly CandidateProofType[]): CandidateProofType[] {
+  return [...proofTypes].sort((left, right) => PROOF_TYPES.indexOf(left) - PROOF_TYPES.indexOf(right));
 }
 
 /** Heading-only structural parsing; it never invokes a semantic extractor. */
@@ -189,10 +212,9 @@ export function assembleRoleSemanticProposals(input: {
   readonly sourceText: string; readonly caseId: string; readonly canonicalJobId: string;
   readonly companyName?: string; readonly title?: string; readonly proposals: readonly RoleSemanticProposal[];
 }): RoleIntelligenceOutputV1 {
-  const resolved = resolveProposals(input.sourceText, input.proposals);
+  const resolution = resolveProposals(input.sourceText, input.proposals);
   const sections = parseRoleSections(input.sourceText);
-  const atoms: RolePropositionAtom[] = input.proposals.map((proposal) => {
-    const anchor = resolved.get(proposal)!;
+  const atoms: RolePropositionAtom[] = resolution.accepted.map(({ proposal, anchor }) => {
     const semanticType = proposal.semanticType;
     return {
       id: `role_atom:${input.caseId}:${anchor.startOffset}_${anchor.endOffset}:${semanticType ?? "UNCLASSIFIED"}`,
@@ -207,7 +229,7 @@ export function assembleRoleSemanticProposals(input: {
     ...(input.title === undefined ? {} : { title: input.title }),
     rawTextLength: input.sourceText.length, sections, atoms,
     metadata: { extractorVersion: "RoleIntelligenceExtractorV1", hasGluedHeadings: false, hasStructuralMetaLines: false,
-      proposalCounts: { proposedAtoms: input.proposals.length, acceptedAtoms: atoms.length, rejectedAtoms: 0 } },
+      proposalCounts: { proposedAtoms: input.proposals.length, acceptedAtoms: atoms.length, rejectedAtoms: resolution.rejectedCount } },
   };
 }
 
@@ -256,23 +278,33 @@ function parentForCandidateProposal(proposal: CandidateSemanticProposal, anchor:
 export function assembleCandidateSemanticProposals(input: {
   readonly sourceText: string; readonly sourceDocumentId: string; readonly proposals: readonly CandidateSemanticProposal[];
 }): CandidateProofOutputV1 {
-  const resolved = resolveProposals(input.sourceText, input.proposals);
+  const resolution = resolveProposals(input.sourceText, input.proposals);
   const structuralPositions = parseCandidatePositions(input.sourceText);
   const allBullets = structuralPositions.flatMap((position) => parseBullets(input.sourceText, position, input.sourceDocumentId));
-  const claims: CandidateProofClaim[] = input.proposals.map((proposal) => {
-    const anchor = resolved.get(proposal)!;
-    const parent = parentForCandidateProposal(proposal, anchor, structuralPositions, allBullets);
-    const proofTypes = [...proposal.proofTypes];
-    return {
+  const enrichment = new CandidateProofExtractorV1();
+  const claims: CandidateProofClaim[] = [];
+  let rejectedCount = resolution.rejectedCount;
+  for (const { proposal, anchor } of resolution.accepted) {
+    try {
+      const parent = parentForCandidateProposal(proposal, anchor, structuralPositions, allBullets);
+      const proofTypes = canonicalProofTypes(proposal.proofTypes);
+      claims.push({
       claimId: `claim:${input.sourceDocumentId}:${anchor.startOffset}_${anchor.endOffset}:${proofTypes[0]}`,
       sourceDocumentId: input.sourceDocumentId,
       ...(parent.position === undefined ? {} : { positionId: parent.position.positionId, title: parent.position.title,
         employer: parent.position.employer, dates: parent.position.dates }),
       parentBulletExactText: parent.parentText, parentBulletStartOffset: parent.parentStart, parentBulletEndOffset: parent.parentEnd,
       exactText: proposal.exactQuote, startOffset: anchor.startOffset, endOffset: anchor.endOffset,
-      evidenceClass: proposal.evidenceClass, proofTypes, metrics: [], groundedEntities: [],
-    };
-  });
+      evidenceClass: proposal.evidenceClass, proofTypes,
+      // These existing public helpers are deterministic source normalization,
+      // not semantic extraction. They are deliberately shared for parity.
+      metrics: enrichment.extractMetrics(proposal.exactQuote, anchor.startOffset),
+      groundedEntities: enrichment.extractEntities(proposal.exactQuote, anchor.startOffset),
+      });
+    } catch {
+      rejectedCount += 1;
+    }
+  }
   for (const claim of claims.filter((candidate) => candidate.evidenceClass === "WORK_HISTORY")) {
     const bullet = allBullets.find((candidate) => candidate.startOffset === claim.parentBulletStartOffset && candidate.endOffset === claim.parentBulletEndOffset);
     if (!bullet) throw new Error("A work-history proposal did not retain its structural parent bullet.");
@@ -288,6 +320,6 @@ export function assembleCandidateSemanticProposals(input: {
     metadata: { extractorVersion: "CandidateProofExtractorV1", totalProfessionalExperienceBullets: allBullets.length,
       bulletsRetained: allBullets.length, bulletsWithSpecializedClaims: allBullets.filter((bullet) => bullet.claims.length > 0).length,
       bulletsWithoutSpecializedClaims: allBullets.filter((bullet) => bullet.claims.length === 0).length,
-      proposalCounts: { proposedClaims: input.proposals.length, acceptedClaims: claims.length, rejectedClaims: 0 } },
+      proposalCounts: { proposedClaims: input.proposals.length, acceptedClaims: claims.length, rejectedClaims: rejectedCount } },
   };
 }
