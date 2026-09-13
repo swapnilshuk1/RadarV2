@@ -1,0 +1,11 @@
+{
+  "role": {
+    "matching": 100,
+    "total": 100
+  },
+  "candidate": {
+    "matching": 2,
+    "total": 2
+  },
+  "nonParity": []
+}
