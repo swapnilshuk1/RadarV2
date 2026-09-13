@@ -262,6 +262,24 @@ describe("extraction provider boundary and mechanical verifier", () => {
     })).toThrow(MechanicalExtractionVerificationError);
   });
 
+  it("requires proposal accounting to reconcile exactly", () => {
+    const output = new RoleIntelligenceExtractorV1().extract({
+      caseId: "case-1",
+      canonicalJobId: roleSource.canonicalJobId,
+      rawText: roleText,
+    });
+    expect(() => verifier.verifyRole(roleSource, textSnapshot(roleSource, roleText), {
+      ...output,
+      metadata: {
+        ...output.metadata,
+        proposalCounts: {
+          ...output.metadata.proposalCounts,
+          proposedAtoms: output.metadata.proposalCounts.proposedAtoms + 1,
+        },
+      },
+    })).toThrow(MechanicalExtractionVerificationError);
+  });
+
   it("keeps the LLM path as a contract only, not a Batch 02 implementation", () => {
     const consumesContract = (_provider: LlmRoleIntelligenceExtractionProvider): void => undefined;
     expect(consumesContract).toBeTypeOf("function");

@@ -213,19 +213,42 @@ describe("experimental LLM extraction providers", () => {
     expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
   });
 
-  it("rejects malformed typed qualifiers and parsedYears exact values before V1 conversion", async () => {
+  it.each([
+    ["peopleCount", { peopleCount: "forty" }],
+    ["amount", { amount: "four" }],
+    ["metric", { metric: 42 }],
+    ["timeframe", { timeframe: 42 }],
+    ["currency", { currency: 42 }],
+    ["rawCondition", { rawCondition: 42 }],
+    ["parsedYears.minimum", undefined, { minimum: "ten" }],
+    ["parsedYears.maximum", undefined, { maximum: "ten" }],
+    ["parsedYears.exact", undefined, { exact: "ten" }],
+  ])("rejects malformed typed field %s before V1 conversion", async (_label, qualifiers, parsedYears) => {
     const output = roleOutput();
     const atom = output.atoms[0]!;
     const malformed = {
       ...output,
       atoms: [{
         ...atom,
-        normalizedClaim: { qualifiers: { peopleCount: "forty" } },
-        requirement: { materiality: "HARD", materialityCue: null, requirementDimension: "EXPERIENCE_YEARS", parsedYears: { exact: "ten" } },
+        ...(qualifiers ? { normalizedClaim: { qualifiers } } : {}),
+        ...(parsedYears ? { requirement: { materiality: "HARD", materialityCue: null, requirementDimension: "EXPERIENCE_YEARS", parsedYears } } : {}),
       }],
     };
     const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner)
       .runRole(new ExperimentalLlmRoleIntelligenceProvider(responseFor(malformed), configuration), { source: roleSource, caseId: "llm-role-case" });
+
+    expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
+  });
+
+  it.each([
+    ["case ID", { caseId: "wrong-case" }, {}],
+    ["company context", {}, { companyName: "Requested Company" }],
+    ["title context", {}, { title: "Requested Title" }],
+  ])("rejects a role response with mismatched requested %s", async (_label, outputPatch, inputPatch) => {
+    const output = { ...roleOutput(), ...outputPatch };
+    const provider = new ExperimentalLlmRoleIntelligenceProvider(responseFor(output), configuration);
+    const outcome = await new ExperimentalLlmExtractionExecutor(runnerFor(roleSource, roleText).runner)
+      .runRole(provider, { source: roleSource, caseId: "llm-role-case", ...inputPatch });
 
     expect(outcome).toMatchObject({ state: "REJECTED", rejection: { providerId: configuration.providerId } });
   });
