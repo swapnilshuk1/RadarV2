@@ -37,10 +37,10 @@ $$\text{Deterministic Provenance} \longrightarrow \text{Rich Grounded Semantic P
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │ 2. RICH GROUNDED SEMANTIC PROPOSITION LAYER (Gemini 2.5 Flash, 65k capacity)    │
 │    - Owns: Sentence/clause decomposition, semantic interpretation,              │
-│            applicability (ROLE, CANDIDATE_REQ, CANDIDATE_PREF, COMPANY,         │
-│            RECRUITING_PROCESS), polarity (AFFIRMED, NEGATED, CONDITIONAL),      │
-│            condition description, canonical type candidates, multi-span         │
-│            grounding, unmapped material concepts.                               │
+│            applicability (ROLE, CANDIDATE_REQUIREMENT, CANDIDATE_PREFERENCE,     │
+│            COMPANY, RECRUITING_PROCESS), polarity (AFFIRMED, NEGATED,           │
+│            CONDITIONAL), condition description, canonical type candidates,      │
+│            multi-span grounding, unmapped material concepts.                    │
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -115,7 +115,7 @@ $$\text{Deterministic Provenance} \longrightarrow \text{Rich Grounded Semantic P
   - Source byte/character offsets and exact text provenance
   - Quantitative metric tokens, currencies, and numeric normalization
 - **REJECT**: Direct candidate LLM extraction as the canonical replacement.
-- **Empirical Grounding**: On N=2 structurally diverse resumes against 13 reference controls, `CandidateProofExtractorV1` achieved 100% precision on metrics (`$250M ARR`, `140-person team`, `ROAS 4.2x`) and career positions, whereas the direct LLM dropped numbers from 4 claims, hallucinated span boundaries, and severed employer bindings.
+- **Empirical Grounding & Rationale**: Deterministic `CandidateProof` currently leads the tested direct-LLM alternative and retains stronger structural and provenance guarantees; final production certification remains pending. On the tested reference resumes, it preserved core quantitative anchors and employer bindings without span boundary hallucinations, whereas the direct LLM dropped metrics from multiple claims and severed employer associations.
 - **Scope Limit**: Deterministic `CandidateProof` is not claimed to be permanently optimal for all future semantic tasks. Future LLM enrichment remains permitted only as a separately versioned and validated architecture.
 
 ---
@@ -126,7 +126,7 @@ To eliminate competing definitions across documents, the following taxonomies ar
 
 ### A. High-Risk Semantic Areas
 1. `PNL_OWNERSHIP`
-2. `COMMERCIAL_ACCOUNTABILITY` (spanning `REVENUE_ACCOUNTABILITY` & `PROFITABILITY_ACCOUNTABILITY`)
+2. `COMMERCIAL_ACCOUNTABILITY` *(Validation umbrella grouping spanning `REVENUE_ACCOUNTABILITY` & `PROFITABILITY_ACCOUNTABILITY`. NOTE: This is strictly a validation taxonomy grouping and NOT a new `RoleSemanticType`; it must NEVER appear in canonical artifacts or schemas).*
 3. `REPORTING_LINE`
 4. `FOUNDER_CEO_PROXIMITY`
 5. `BOARD_EXPOSURE`

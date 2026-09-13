@@ -74,6 +74,7 @@ $$\text{Step 1: Reconcile Evaluator} \longrightarrow \text{Step 2: Build & Freez
 
 ### A. High-Risk Semantic Verifier Design
 - Must evaluate proposed propositions targeting high-risk semantic areas (`PNL_OWNERSHIP`, `COMMERCIAL_ACCOUNTABILITY`, `REPORTING_LINE`, `FOUNDER_CEO_PROXIMITY`, `BOARD_EXPOSURE`, `DECISION_AUTHORITY`, `PEOPLE_LEADERSHIP`, `PEOPLE_SCALE`).
+- *Note on Commercial Accountability*: `COMMERCIAL_ACCOUNTABILITY` is an umbrella validation grouping spanning `REVENUE_ACCOUNTABILITY` and `PROFITABILITY_ACCOUNTABILITY`. It is strictly a validation taxonomy grouping and NOT a new `RoleSemanticType`; it must NEVER appear in canonical artifacts or schemas.
 - Built from the **general high-risk taxonomy**, never fine-tuned or hardcoded against the 5 known R2 failure instances.
 - Must emit one of three explicit states:
   1. `ENTAILED`: Claim is logically supported by cited source spans $\rightarrow$ proceeds to structural admission.
@@ -114,22 +115,40 @@ $$\text{Step 1: Reconcile Evaluator} \longrightarrow \text{Step 2: Build & Freez
 
 ---
 
-## Step 4: Pre-Register Pass/Fail Thresholds
+## Step 4: Pre-Register Pass/Fail Thresholds & Explicit Rationales
 
-Before executing the blind validation suite, the following quantitative certification gates must be committed immutably to `docs/transition/CURRENT_BATCH.json`:
+Before executing the blind validation suite, the following quantitative certification gates must be committed immutably to `docs/transition/CURRENT_BATCH.json`.
 
-| Metric Category | Target Invariant | Certification Threshold |
-| :--- | :--- | :--- |
-| **High-Risk False Affirmatives** | Zero tolerance on refuted high-risk claims | **$\le 1$ across entire blind role population** |
-| **Typed Reference Recall** | Substantial superiority over Deterministic V1 | **$\ge 50.0\%$ overall** ($>15\%$ gain over V1) |
-| **Long-Document Typed Recall** | Robustness on long documents ($>20\text{k}$ chars) | **$\ge 35.0\%$ on long-document stratum** |
-| **Subject / Applicability Errors** | Zero candidate prerequisites leaked to role authority | **$0$ prerequisite-to-authority violations** |
-| **Polarity Inversion Errors** | Zero negated claims asserted as affirmative | **$0$ negated-to-affirmative promotions** |
-| **Explicit UNKNOWN Rate** | Missing authority must be explicit, not invented | **$\ge 90\%$ explicit capture of omitted high-risk areas** |
-| **Candidate Metric Preservation** | Exact numerical token retention | **$\ge 95\%$ numeric/currency fidelity** |
-| **Candidate Chronology Binding** | Correct position-to-employer attribution | **$\ge 95\%$ employer-role binding accuracy** |
-| **End-to-End Extraction Latency** | Production cloud container SLA | **$\le 15.0\text{s}$ per document (P95)** |
-| **Token Cost Economy** | Cloud operational budget | **$\le \$0.04$ per processed document** |
+### A. Certification Thresholds Table
+
+| Metric Category | Target Invariant | Certification Threshold | Requirement Class |
+| :--- | :--- | :--- | :--- |
+| **High-Risk False Affirmatives** | Suppress unentailed/refuted claims | **$\le 1$ across entire blind role population** | Safety Requirement |
+| **Polarity Inversion Errors** | Zero negated claims asserted as affirmative | **$0$ negated-to-affirmative promotions** | Safety Requirement |
+| **Subject / Applicability Errors** | Zero candidate prerequisites leaked to role authority | **$0$ prerequisite-to-authority violations** | Safety Requirement |
+| **Typed Reference Recall** | Substantial superiority over Deterministic V1 | **$\ge 50.0\%$ overall** ($>15\%$ gain over V1) | Comparative Requirement |
+| **Long-Document Typed Recall** | Robustness on long documents ($>20\text{k}$ chars) | **$\ge 35.0\%$ on long-document stratum** | Comparative Requirement |
+| **Explicit UNKNOWN Rate** | Missing authority must be explicit, not invented | **$\ge 90\%$ explicit capture of omitted high-risk areas** | Comparative Requirement |
+| **Candidate Metric & Chronology Lead** | Outperform tested direct-LLM alternative | **Maintain deterministic structural lead (0 hallucinated spans/bindings)** | Comparative Requirement |
+| **End-to-End Extraction Latency** | Production cloud container SLA | **$\le 15.0\text{s}$ per document (P95)** | Operational Budget |
+| **Token Cost Economy** | Cloud operational budget | **$\le \$0.04$ per processed document** | Operational Budget |
+
+### B. Explicit Threshold Derivation & Rationale
+
+#### 1. Normative Safety Requirements
+- **Polarity Inversions ($0$)**: Asserting an explicitly negated constraint (e.g., *"Does not hold P&L responsibility"* or *"No board interaction"*) as an affirmative executive mandate directly corrupts executive matching decisions. Zero-tolerance is a non-negotiable safety invariant.
+- **Subject / Applicability Errors ($0$)**: Promoting a candidate requirement (e.g., *"Must have managed \$50M budget in prior roles"*) into an affirmative role authority (e.g., *"Role commands \$50M budget"*) manufactures phantom scale and distorts role seniority. Zero-tolerance preserves the structural prerequisite wall.
+- **High-Risk False Affirmatives ($\le 1$)**: Across $\ge 30$ documents containing 15 adversarial edge cases, unverified propositions previously produced 5 relationship-scope false positives in R2. With the High-Risk Semantic Verifier active, false positives must be suppressed. Allowing at most 1 accommodates a possible single, isolated, non-systemic linguistic edge dispute in manual reference labeling, while strictly prohibiting systematic verifier leakage.
+
+#### 2. Empirical Comparative Requirements (vs Deterministic V1 Baseline)
+- **Typed Reference Recall ($\ge 50.0\%$)**: In Gate 1B empirical benchmarking across 21 documents, Deterministic V1 achieved 32.4% typed recall, whereas rich proposition architectures (C and D) achieved 51.4%–52.7%. The $\ge 50.0\%$ threshold requires an absolute $\ge +17.6\%$ recall lift over V1, ensuring the hybrid architecture delivers its empirical value proposition on unseen text.
+- **Long-Document Typed Recall ($\ge 35.0\%$)**: On documents exceeding 20,000 characters, Deterministic V1 collapsed to 22.2% recall, and 8k-capacity LLM collapsed to 5.6%. Expanding output capacity to 65k restored recall to 38.9%. The $\ge 35.0\%$ threshold empirically verifies that token truncation and long-document degradation remain permanently solved.
+- **Explicit UNKNOWN Rate ($\ge 90.0\%$)**: Downstream executive decision policies require certainty boundaries. Omitting an unstated dimension silently is dangerous; explicitly marking it `UNKNOWN` prevents hallucinated inference.
+- **Candidate Structural Lead**: Deterministic `CandidateProof` currently leads the tested direct-LLM alternative by preserving numeric tokens and chronology without hallucinating span boundaries. Batch 06 must verify that this structural lead is sustained across 15–20 blind resumes.
+
+#### 3. Derived Operational Budgets
+- **P95 Latency ($\le 15.0\text{s}$)**: Derived directly from the RADAR distributed scraper architecture (`scripts/scraper/run/manager.ts`), where enrichment worker leases enforce a 30.0s hard execution timeout. A 15.0s P95 budget guarantees a $2\times$ safety headroom factor against worker eviction under concurrent load.
+- **Cost per Document ($\le \$0.04$)**: Derived from Gemini 2.5 Flash pricing (\$0.075 / 1M input tokens, \$0.30 / 1M output tokens). An average JD consumes ~6,000 input tokens and produces ~2,500 output tokens ($\sim\$0.0012$ direct cost). Adding the secondary verification pass (~4,000 input tokens, ~500 output tokens) brings nominal cost to $\sim\$0.0020$. A \$0.04 ceiling provides a $20\times$ headroom factor accommodating long documents, prompt expansions, retry policies, and verifier calls while preserving economic viability.
 
 *Rule: No post-result threshold relaxation or selective rerun is permitted.*
 

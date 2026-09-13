@@ -56,8 +56,8 @@ Batch 04C was authorized to evaluate three extraction architectures across a 21-
 
 ## 3. Candidate Extraction Comparison Summary (N=2 Resumes)
 
-- **CandidateProofExtractorV1 (Deterministic)**: Decisively outperformed the direct LLM approach. Retained 39 claims, 100% of numeric metrics (`$250M ARR`, `140-person team`, `ROAS 4.2x`), and perfect employer chronological binding across 7 positions.
-- **Batch 04B Direct Source-ID LLM**: Dropped numbers from 4 claims, hallucinated span boundaries, and failed to bind achievements to specific employers.
+- **CandidateProofExtractorV1 (Deterministic)**: Decisively outperformed the tested direct-LLM alternative on structural and provenance integrity. Preserved core quantitative anchors and employer bindings without span boundary hallucinations, whereas the direct LLM dropped metrics from multiple claims and failed to reliably bind achievements to specific employers. Final production certification remains pending.
+- **Batch 04B Direct Source-ID LLM**: Dropped numbers from 4 claims, hallucinated span boundaries, and severed employer associations.
 - **Status**: Candidate extraction remains deterministic for the current transition. Future LLM enrichment requires a separately versioned and validated architecture.
 
 ---
