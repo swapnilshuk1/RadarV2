@@ -13,6 +13,25 @@
   ],
   "acknowledgements": [
     {
+      "commit": "8417b0220a2331901e7928c218f3194265846013",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_03",
+      "scopeRevision": 3,
+      "summary": "Added direct adversarial coverage for exact proposal accounting, runner request-context binding, and each typed qualifier/parsed-years runtime rejection branch.",
+      "invariantsChecked": [
+        "proposed output accounting must reconcile exactly",
+        "case ID, supplied company context, and supplied title context are bound to the resolver-run request",
+        "each typed qualifier and parsed-years field rejects independently when malformed"
+      ],
+      "verification": [
+        "npx vitest run tests/intelligence/extraction/provider-boundary.test.ts tests/intelligence/extraction/llm-experimental-provider.test.ts — PASS (2 files, 31/31 tests)",
+        "npx tsc --noEmit — PASS",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "713870b5b4c47d14e044d70664dd79a133bea62f",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_03",
