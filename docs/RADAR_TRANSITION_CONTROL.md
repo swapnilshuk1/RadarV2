@@ -17,7 +17,7 @@ This document is the governing execution record for the RADAR intelligence trans
 This is the only currently authorized production batch.
 - Gate 1A architecture reconnaissance: **COMPLETE**
 - **Extraction Architecture Decision:** DECIDED (Role: Asymmetric Hybrid; Candidate: Deterministic for current transition)
-- **Production Certification:** PENDING (Batch 06 ACTIVE — Steps 1–5 authorized)
+- **Production Certification:** PENDING (Batch 06 ACTIVE — Scope Revision 2: Steps 1–5 authorized)
 
 The `adbfc37` extractors are a deterministic benchmark and fallback/reference implementation. They are **not assumed to be the final production extraction architecture**.
 

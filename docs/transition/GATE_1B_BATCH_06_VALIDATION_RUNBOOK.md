@@ -66,8 +66,10 @@ $$\text{Step 1: Reconcile Evaluator} \longrightarrow \text{Step 2: Build & Freez
 - **Epistemic Provenance Statement**: The R1→R2 reconciliation is a reconstruction from retained local Batch 04C/R1/R2 evidence. To guarantee that certification is independently reproducible and auditable, Batch 06 must establish a newly committed, independently auditable evaluator from the frozen error taxonomy before any blind population is executed.
 - **Freezing Rule**: The evaluator must preserve this strict conceptual separation between structural representation inability (`POLARITY_UNREPRESENTABLE`), evaluator substring parsing artifacts, and actual semantic false claims (`WRONG_ASSERTION`).
 
-### B. Evaluator Hash Lockdown
-- Evaluator implementation (`scripts/transition/evaluator-r2.ts` or its Batch 06 successor) must be committed and hashed via SHA-256.
+### B. Evaluator Immutability & Hash Lockdown
+- **Historical Evaluator Immutability**: The historical evaluator artifacts (`scripts/transition/evaluator-v2.ts` and `scripts/transition/evaluator-r2.ts`) are permanently sealed as immutable historical evidence. They must not be modified.
+- **Batch 06 Evaluator Creation**: Batch 06 must create a new, independently auditable evaluator artifact (e.g. `scripts/transition/evaluator-batch06.ts`) directly derived from the frozen error taxonomy.
+- **Hash Lockdown**: The new evaluator must be committed and hashed via SHA-256 before Step 3.
 - **Invariant**: Once the blind validation corpus is assembled, **ZERO** modifications to the evaluator code, text matching thresholds, or failure categorization logic are permitted.
 
 ---
@@ -98,59 +100,73 @@ $$\text{Step 1: Reconcile Evaluator} \longrightarrow \text{Step 2: Build & Freez
 
 ---
 
-## Step 3: Assemble, Adjudicate, and Freeze a Genuinely Blind Validation Population
+## Step 3: Assemble, Adjudicate, and Freeze Genuinely Blind Validation Populations
 
-The validation process follows a strict chronological order to ensure zero data leakage and guarantee that reference truth is completely decoupled from model generation:
+The validation process follows a strict chronological order to ensure zero data leakage, guarantee that reference truth is completely decoupled from model generation, and enforce human truth boundaries:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│ 1. POPULATION SELECTION: Sample unseen JDs & executive resumes.                 │
-│    - Role population: ≥50 JDs (30 natural unseen + 20 counterfactual).          │
-│    - Candidate population: 15–20 structurally diverse resumes.                  │
+│ 1. POPULATION PACKAGING: Agent collects & packages raw unseen source documents. │
+│    - PRIMARY SET: ≥50 roles (30 natural + 20 adversarial) + 15–20 resumes.      │
+│    - SECONDARY HOLDOUT: Disjoint set matching identical stratification.         │
+│    - Agent formats blank annotation templates & schema guides.                  │
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│ 2. INDEPENDENT TRUTH ADJUDICATION: Create human reference truth.                │
-│    - Strict isolation: Adjudicators have ZERO access to model or extractor      │
-│      outputs. Annotate ground truth purely from raw source text.                │
+│ 2. INDEPENDENT HUMAN TRUTH ADJUDICATION (MANDATORY AGENT STOP BOUNDARY):        │
+│    - Autonomous coding agent MUST NOT author or adjudicate reference truth.     │
+│    - If human labels are unavailable, agent STOPS at the adjudication boundary. │
+│    - Primary human reviewer annotates truth with ZERO model/pipeline visibility.│
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│ 3. DUAL-REVIEW OF HIGH-RISK & NEGATIVE BOUNDARIES: Second adjudicator pass.     │
-│    - Every high-risk semantic label, prerequisite constraint, and negative      │
-│      boundary must receive two independent human confirmations.                 │
+│ 3. DUAL HUMAN REVIEW OF HIGH-RISK & BOUNDARY CONSTRAINTS:                       │
+│    - Every high-risk semantic label, negative disclaimer, polarity tag, and    │
+│      applicability boundary must receive independent second human confirmation. │
+│    - Record reviewer provenance metadata (anonymized reviewer IDs/timestamps).  │
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│ 4. CRYPTOGRAPHIC HASH LOCKDOWN: Commit SHA-256 manifests.                       │
-│    - Lock population manifests, source documents, and reference truth fixtures  │
-│      with SHA-256 hashes in `docs/transition/` BEFORE pipeline runs.            │
+│ 4. CRYPTOGRAPHIC HASH LOCKDOWN OF BOTH SETS: Commit SHA-256 manifests.          │
+│    - Lock Primary Set fixtures & Secondary Holdout fixtures simultaneously      │
+│      with SHA-256 hashes in `docs/transition/` BEFORE any pipeline execution.   │
+│    - Secondary holdout remains sealed; unopened during primary execution.       │
 └────────────────────────────────────────┬────────────────────────────────────────┘
                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│ 5. FROZEN PIPELINE EXECUTION: Single execution pass.                            │
+│ 5. FROZEN PIPELINE EXECUTION: Single execution pass on Primary Set.             │
 │    - Execute frozen candidate extraction pipeline strictly once.                │
 │    - Concurrently run baseline deterministics on identical fixtures.            │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### A. Role Validation Corpus Specifications
-- **Size**: Minimum 50 documents (restoring the agreed comprehensive evaluation population).
-- **Composition**:
-  - 30 Fresh, naturally occurring executive JDs across diverse portals (LinkedIn, Naukri, Workday, Lever, Greenhouse) that were never included in Batches 01–05.
-  - 20 Authored counterfactual and adversarial test documents designed to rigorously stress high-risk semantic boundaries (e.g., fractional CXO roles, advisory board vs fiduciary board, client CEO contact vs internal CEO line, explicitly disclaimed P&L, subsidiary vs group scope).
-- **Stratification**: Must cover all 8 high-risk semantic areas and all 6 structural boundary failure modes across varied document lengths (<5k, 5k–20k, >20k chars).
+### A. Human Truth Ownership Invariant
+- **Strict Prohibition**: The implementation agent **MUST NOT** author, synthesize, or self-adjudicate final reference truth.
+- **Agent Scope**: Restricted to collecting raw JD/resume text, verifying formatting, and generating structured blank annotation templates.
+- **External Human Adjudication**: Reference truth must be supplied by an independent human reviewer who has never observed extractor, prompt, or model outputs.
+- **Mandatory Dual Human Review**: Every high-risk semantic assertion (`PNL_OWNERSHIP`, `COMMERCIAL_ACCOUNTABILITY`, `REPORTING_LINE`, `FOUNDER_CEO_PROXIMITY`, `BOARD_EXPOSURE`, `DECISION_AUTHORITY`, `PEOPLE_LEADERSHIP`, `PEOPLE_SCALE`), negative boundary disclaimer, polarity label (`AFFIRMED` vs `NEGATED`), and applicability boundary (`ROLE` vs `CANDIDATE_REQUIREMENT`) must be confirmed independently by a second human reviewer.
+- **Provenance Recording**: Adjudication provenance (reviewer IDs/hashes, timestamps) must be recorded alongside truth fixtures.
+- **Mandatory Stop Condition**: If independent human annotations are unavailable, the agent **MUST STOP** at the adjudication boundary rather than fabricating "human" review.
 
-### B. Candidate Validation Corpus Specifications
-- **Size**: 15–20 structurally diverse executive resumes.
-- **Composition**:
-  - Multi-page resumes with complex multi-role tenures at a single company.
-  - Highly non-linear career trajectories (founder $\rightarrow$ advisor $\rightarrow$ operating partner).
-  - Dense quantitative metrics (currencies across INR, USD, EUR, team scales, conversion lifts).
-  - Explicit non-traditional structures (board seats, advisory positions, consulting projects).
+### B. Two Disjoint Pre-Frozen Holdout Populations
+Before any pipeline execution commences, two completely disjoint sets must be assembled, human-adjudicated, and SHA-256 hash locked:
+
+1. **Primary Certification Set**:
+   - **Role JDs ($\ge 50$)**:
+     - 30 Fresh, naturally occurring executive JDs across diverse portals (LinkedIn, Naukri, Workday, Lever, Greenhouse) that were never included in Batches 01–05.
+     - 20 Authored counterfactual and adversarial test documents designed to rigorously stress high-risk semantic boundaries (e.g., fractional CXO roles, advisory board vs fiduciary board, client CEO contact vs internal CEO line, explicitly disclaimed P&L, subsidiary vs group scope).
+     - Document length stratification: <5k chars, 5k–20k chars, >20k chars.
+   - **Candidate Resumes (15–20)**:
+     - Structurally diverse executive resumes with multi-role tenures at single companies, non-linear career paths (founder $\rightarrow$ advisor), dense currency/metric tokens (INR, USD, EUR), and non-traditional structures.
+2. **Secondary Remediation Holdout Set**:
+   - An independently sampled, completely disjoint holdout population matching the exact stratification of the primary set.
+   - Independently human-adjudicated and dual-reviewed under identical blind rules.
+   - Cryptographically hashed and committed simultaneously with the primary set prior to any pipeline execution.
+   - **Sealed Holdout Invariant**: The secondary set remains strictly sealed and uninspected unless an `IMPLEMENTATION-TUNABLE` failure in Step 5 triggers the single permitted remediation cycle.
+3. **No Retesting on Primary**: Under no circumstances may an agent tune prompts or canonical projection rules on the primary set and then re-score the primary set as certification evidence.
 
 ### C. Truth Freezing Invariant
-Reference truth must be cryptographically locked before execution commences. Modifying reference truth fixtures after observing model outputs constitutes an immediate invalidation of the certification run.
+Reference truth for both primary and secondary sets must be cryptographically locked before execution commences. Modifying reference truth fixtures after observing model outputs constitutes an immediate invalidation of the certification run.
 
 ---
 
@@ -197,36 +213,39 @@ Before executing the blind validation suite, the following quantitative certific
 
 ### C. Pre-Registered Failure Classification & Consequence Table
 
-To prevent post-hoc rationalization of test results, the failure consequence is classified upfront:
+To prevent post-hoc rationalization of test results, failure consequences are classified upfront:
 
 | Failure Category | Specific Metric Trigger | Classification | Governing Action / Consequence |
 | :--- | :--- | :--- | :--- |
-| **Fatal High-Risk Assertion** | $> 0$ High-Risk False Affirmatives | **ARCHITECTURE-FALSIFYING** | Immediate Halt. Falsifies assumption that semantic verifier can prevent ungrounded executive claims. Reopen architecture decision. |
-| **Fatal Polarity Leak** | $> 0$ Polarity Inversions (Negated $\rightarrow$ Affirmed) | **ARCHITECTURE-FALSIFYING** | Immediate Halt. Falsifies multi-channel polarity architecture. Reopen architecture decision. |
-| **Fatal Boundary Leak** | $> 0$ Applicability Inversions (`CANDIDATE_REQUIREMENT` $\rightarrow$ `ROLE`) | **ARCHITECTURE-FALSIFYING** | Immediate Halt. Falsifies structural admission prerequisite wall. Reopen architecture decision. |
-| **Fatal Provenance Failure** | $< 100\%$ Candidate Span Provenance (any hallucinated span) | **ARCHITECTURE-FALSIFYING** | Immediate Halt. Falsifies zero-hallucination provenance invariant. Reopen architecture decision. |
-| **Recall Catastrophe** | Overall Typed Recall $< 40.0\%$ | **ARCHITECTURE-FALSIFYING** | Immediate Halt. Falsifies assumption that rich propositions unlock executive recall over deterministic baseline ($32.4\%$). Reopen architecture decision. |
-| **Long-Doc Truncation** | Long-Doc Typed Recall $< 25.0\%$ | **ARCHITECTURE-FALSIFYING** | Immediate Halt. Falsifies output capacity / segmentation scaling on realistic postings. Reopen architecture decision. |
-| **Candidate Integrity Collapse** | Candidate Metric Fidelity $< 80\%$ OR Binding $< 80\%$ | **ARCHITECTURE-FALSIFYING** | Immediate Halt. Falsifies integrity of candidate deterministic lineage. Reopen candidate architecture decision. |
-| **Marginal Recall Deficit** | $40.0\% \le \text{Typed Recall} < 50.0\%$ | **IMPLEMENTATION-TUNABLE** | Permitted 1 bounded tuning cycle: calibrate canonical type projection rules or prompt few-shots. Re-evaluate once on secondary holdout set. |
-| **Insufficient-Evidence Slump** | $80.0\% \le \text{Insufficient-Evidence Rate} < 90.0\%$ | **IMPLEMENTATION-TUNABLE** | Permitted 1 bounded tuning cycle: adjust verifier entailment sensitivity or default fallback rules. |
-| **Marginal Candidate Variance** | $80.0\% \le \text{Metric / Chronology Accuracy} < 90.0\%$ | **IMPLEMENTATION-TUNABLE** | Permitted 1 regex/pattern refinement cycle in deterministic candidate extractor. |
-| **Operational Budget Exceeded** | P95 Latency $> 15.0\text{s}$ OR Cost $> \$0.04$/doc | **IMPLEMENTATION-TUNABLE** | Permitted 1 engineering remediation cycle: optimize parallelization, payload compression, or batch chunking. |
+| **Fatal High-Risk Assertion** | $> 0$ High-Risk False Affirmatives | **FATAL SAFETY FAILURE** | Immediate Halt. Step 5 = FAIL. No promotion to shadow mode. Architecture review mandatory to determine whether verifier implementation or architecture class failed. |
+| **Fatal Polarity Leak** | $> 0$ Polarity Inversions (Negated $\rightarrow$ Affirmed) | **FATAL SAFETY FAILURE** | Immediate Halt. Step 5 = FAIL. No promotion to shadow mode. Architecture review mandatory. |
+| **Fatal Boundary Leak** | $> 0$ Applicability Inversions (`CANDIDATE_REQUIREMENT` $\rightarrow$ `ROLE`) | **FATAL SAFETY FAILURE** | Immediate Halt. Step 5 = FAIL. No promotion to shadow mode. Architecture review mandatory. |
+| **Fatal Provenance Failure** | $< 100\%$ Candidate Span Provenance (any hallucinated span) | **FATAL SAFETY FAILURE** | Immediate Halt. Step 5 = FAIL. No promotion to shadow mode. Architecture review mandatory. |
+| **Recall Catastrophe** | Overall Typed Recall $< 40.0\%$ | **FATAL DEFICIT FAILURE** | Immediate Halt. Step 5 = FAIL. No promotion to shadow mode. Architecture review mandatory. |
+| **Long-Doc Truncation** | Long-Doc Typed Recall $< 25.0\%$ | **FATAL DEFICIT FAILURE** | Immediate Halt. Step 5 = FAIL. No promotion to shadow mode. Architecture review mandatory. |
+| **Candidate Integrity Collapse** | Candidate Metric Fidelity $< 80\%$ OR Binding $< 80\%$ | **FATAL DEFICIT FAILURE** | Immediate Halt. Step 5 = FAIL. No promotion to shadow mode. Architecture review mandatory. |
+| **Marginal Recall Deficit** | $40.0\% \le \text{Typed Recall} < 50.0\%$ | **IMPLEMENTATION-TUNABLE** | Permitted 1 bounded tuning cycle: calibrate canonical type projection rules or prompt few-shots. Re-evaluate strictly once on pre-frozen secondary holdout set. |
+| **Insufficient-Evidence Slump** | $80.0\% \le \text{Insufficient-Evidence Rate} < 90.0\%$ | **IMPLEMENTATION-TUNABLE** | Permitted 1 bounded tuning cycle: adjust verifier entailment sensitivity or default fallback rules. Re-evaluate strictly once on secondary holdout. |
+| **Marginal Candidate Variance** | $80.0\% \le \text{Metric / Chronology Accuracy} < 90.0\%$ | **IMPLEMENTATION-TUNABLE** | Permitted 1 regex/pattern refinement cycle in deterministic candidate extractor. Re-evaluate strictly once on secondary holdout. |
+| **Operational Budget Exceeded** | P95 Latency $> 15.0\text{s}$ OR Cost $> \$0.04$/doc | **IMPLEMENTATION-TUNABLE** | Permitted 1 engineering remediation cycle: optimize parallelization, payload compression, or batch chunking. Re-evaluate strictly once on secondary holdout. |
 
-*Rule: An architecture-falsifying failure terminates Batch 06 immediately. Implementation-tunable failures permit exactly ONE documented remediation cycle before final certification vote.*
+*Failure Semantics Governing Rules*:
+1. **Fatal Safety & Deficit Failures**: Any zero-tolerance safety breach or severe deficit breach terminates Batch 06 certification immediately (Step 5 = FAIL). No promotion to shadow mode is permitted.
+2. **Non-Conflation of Implementation Defect vs Architectural Disproof**: An observed safety failure does not automatically prove that the architecture class (propositions $\rightarrow$ verifier $\rightarrow$ admission $\rightarrow$ projection) is mathematically impossible. A flawed verifier prompt, bugged regex, or incomplete parser can emit a false affirmative. Architecture review is mandatory. Architecture reopening or replacement occurs only after review determines that a core architectural invariant, rather than the specific software implementation, has been falsified.
+3. **Remediation on Secondary Holdout Only**: Implementation-tunable failures permit exactly ONE documented remediation cycle evaluated strictly on the pre-frozen, independently adjudicated secondary holdout set. Under no circumstances may an agent tune and re-test on the primary certification set.
 
 ---
 
 ## Step 5: Run Once, Score Once
 
-1. **Pre-Run Hash Verification**: Confirm that the SHA-256 hashes of the blind population manifest and independent reference truth fixtures match the frozen hashes committed in Step 3.C.
-2. **Blind Execution**: Run the frozen candidate extraction pipeline strictly once across all blind role and candidate documents.
-3. **Deterministic Baseline Dual Run**: Concurrently run frozen `RoleIntelligenceExtractorV1` and `CandidateProofExtractorV1` on the identical corpus.
-4. **Scoring**: Evaluate against the frozen independent human reference truth using the hashed Step 1 evaluator.
+1. **Pre-Run Hash Verification**: Confirm that the SHA-256 hashes of both the Primary Certification Set and Secondary Remediation Holdout match the frozen hashes committed in Step 3.C.
+2. **Blind Execution**: Run the frozen candidate extraction pipeline strictly once across all blind role and candidate documents in the Primary Certification Set.
+3. **Deterministic Baseline Dual Run**: Concurrently run frozen `RoleIntelligenceExtractorV1` and `CandidateProofExtractorV1` on the identical primary corpus.
+4. **Scoring**: Evaluate against the frozen independent human reference truth using the locked Batch 06 evaluator.
 5. **Result Determination**:
-   - If ALL Step 4 thresholds are met $\rightarrow$ **PASS** $\rightarrow$ Proceed to Step 6.
-   - If an ARCHITECTURE-FALSIFYING threshold is breached $\rightarrow$ **FAIL** $\rightarrow$ Stop immediately. Core architectural assumption is falsified. Reopen architecture decision.
-   - If only IMPLEMENTATION-TUNABLE thresholds are breached $\rightarrow$ Execute the single permitted remediation cycle per Section 4.C. If remediation fails $\rightarrow$ **FAIL**. Stop and report to governance.
+   - If ALL Step 4 thresholds are met on the Primary Set $\rightarrow$ **PASS** $\rightarrow$ Proceed to Step 6 (Checkpoint Boundary).
+   - If a FATAL SAFETY or FATAL DEFICIT failure occurs $\rightarrow$ **FAIL** $\rightarrow$ Stop immediately. Halt and invoke mandatory architecture review.
+   - If only IMPLEMENTATION-TUNABLE thresholds are breached $\rightarrow$ Execute the single permitted remediation cycle per Section 4.C. Re-evaluate strictly once against the unopened **Secondary Remediation Holdout Set**. If secondary evaluation passes all thresholds $\rightarrow$ **PASS** (with recorded remediation variance). If secondary evaluation fails $\rightarrow$ **FAIL**. Stop and report to governance.
 
 ---
 
