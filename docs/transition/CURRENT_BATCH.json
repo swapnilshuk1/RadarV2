@@ -5,7 +5,7 @@
   "id": "GATE_1B_BATCH_04B",
   "gate": "GATE_1B",
   "title": "Source-ID generalization & candidate surface validation",
-  "status": "READY",
+  "status": "COMPLETE",
   "batchStartCommit": "33720292d4c29231a0fad47a1e7fe0181ba67cb6",
   "objective": "Validate whether the frozen conservative source-ID semantic-extraction contract generalizes across diverse role JDs and candidate documents without tuning, while preserving deterministic provenance, full-surface ontology coverage, and high-risk semantic precision.",
   "mustNotChange": [

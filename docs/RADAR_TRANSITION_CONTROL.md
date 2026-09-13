@@ -540,11 +540,11 @@ Batches 01, 02, 03, and 04 are **COMPLETE**.
 
 **Gate 1B — Batch 04B: Source-ID generalization & candidate surface validation.**
 
-This is the only currently authorized production batch.
+No next production batch is authorized.
 
 Batch 04 execution under Scope Revision 3 is complete and its comparison evidence is retained immutably in `audit-reports/gate1b-batch04/` and documented in `audit-reports/gate1b-batch04/reports/batch04-extraction-comparison-report.md`.
 
-Batch 04B authorizes a bounded validation batch to validate whether the frozen conservative source-ID semantic-extraction contract generalizes across diverse role JDs and candidate documents without tuning, while preserving deterministic provenance, full-surface ontology coverage, and high-risk semantic precision.
+Batch 04B execution under Scope Revision 1 is complete. Its generalization validation evidence is retained immutably in `audit-reports/gate1b-batch04b/` and documented in `audit-reports/gate1b-batch04b/reports/batch04b-generalization-report.md`.
 
 The extraction architecture decision remains **OPEN**. Batch 05 is **NOT AUTHORIZED**.
 
@@ -574,7 +574,7 @@ The corrected remaining Gate 1B sequence is:
 Batch 02 — extraction provider boundary + common mechanical verifier   [COMPLETE]
 Batch 03 — LLM RoleIntelligence / CandidateProof experiment           [COMPLETE — SCOPE REVISION 3]
 Batch 04 — frozen + unseen/adversarial comparison                      [COMPLETE — SCOPE REVISION 3]
-Batch 04B — source-ID generalization & candidate surface validation   [AUTHORIZED — SCOPE REVISION 1]
+Batch 04B — source-ID generalization & candidate surface validation   [COMPLETE — SCOPE REVISION 1]
 Batch 05 — extraction architecture decision                            [NOT AUTHORIZED]
 Batch 06 — canonical source-fact persistence/contracts                 [NOT AUTHORIZED]
 ```

@@ -13,6 +13,26 @@
   ],
   "acknowledgements": [
     {
+      "commit": "77eedb5cdb819ee57641d32373e629e2b8d6a523",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_04B",
+      "scopeRevision": 1,
+      "summary": "Implemented source-segmentation/v1 and experimental source-ID extraction harness with mechanical verifier; executed locked single-call Vertex AI validation across 11 frozen documents; evaluated and retained authoritative report under audit-reports/gate1b-batch04b/.",
+      "invariantsChecked": [
+        "deterministic Extraction V1 semantics and frozen-baseline behavior preserved",
+        "production extraction authority remains unchanged",
+        "100% mechanical grounding achieved across all 11 documents with zero invalid span IDs",
+        "all 4 adversarial cases and 2 candidate documents independently evaluated",
+        "Batch 05 remains unauthorized and the extraction architecture decision remains OPEN"
+      ],
+      "verification": [
+        "npx vitest run tests/intelligence/extraction/source-id-harness.test.ts — PASS (1 file, 6/6 tests)",
+        "npx tsc --noEmit — PASS",
+        "npx tsx scripts/transition/evaluate-batch04b.ts — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "4f298dd840fd811a96525aef33a45f2983626985",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_04",
