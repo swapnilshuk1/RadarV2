@@ -13,6 +13,28 @@
   ],
   "acknowledgements": [
     {
+      "commit": "2a7c59db9686806e3b269b5ce10cfa5ea7517296",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_03",
+      "scopeRevision": 3,
+      "summary": "Replaced experimental full-V1 LLM emission with strict role/candidate semantic proposals, deterministic exact-source assembly, locally derived V1 identity/structure/accounting, and proposal-bound cache identity.",
+      "invariantsChecked": [
+        "the experimental response schema and prompt contain semantic quotes and classifications only; model output cannot carry source/request identity, offsets, stable IDs, parent IDs, aggregate collections, or accounting",
+        "each quote resolves exactly once against the immutable source; absent, repeated, duplicate-anchor, malformed, and structurally uncontained proposals fail closed",
+        "deterministic assembly derives V1 spans, IDs, role section containment, candidate bullet/position parentage, aggregate claim collections, and exact proposal accounting before the shared Batch 02 verifier",
+        "experimental assembly does not invoke deterministic role or candidate semantic extraction, while production deterministic V1 behavior remains unchanged",
+        "the experiment cache configuration includes the proposal schema and assembler versions; execution telemetry remains outside cache identity"
+      ],
+      "verification": [
+        "npx vitest run tests/intelligence/extraction/provider-boundary.test.ts tests/intelligence/extraction/llm-experimental-provider.test.ts tests/intelligence/role-intelligence-extractor-v1.test.ts tests/intelligence/candidate-proof-extractor-v1.test.ts — PASS (4 files, 57/57 tests)",
+        "npx tsc --noEmit — PASS",
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "rg -n \"ExperimentalLlm|LlmExperimental|ExperimentalLlmExtractionExecutor|ExperimentalSemanticProposal\" src --glob '!src/lib/intelligence/extraction/**' — PASS (no production imports)",
+        "git diff --check — PASS"
+      ],
+      "authorizationChanged": false
+    },
+    {
       "commit": "8417b0220a2331901e7928c218f3194265846013",
       "gate": "GATE_1B",
       "batchId": "GATE_1B_BATCH_03",
