@@ -1,0 +1,640 @@
+{
+  "schemaVersion": "gate1b-batch04b-reference-truth/v1",
+  "createdAt": "2026-09-13T05:34:02.483Z",
+  "governance": {
+    "author": "PRE_PROVIDER_SPEC_AUTHOR",
+    "reviewer": "PRE_PROVIDER_METHODOLOGY_REVIEWER",
+    "status": "FROZEN_PRE_PROVIDER",
+    "frozenBeforeProviderCalls": true
+  },
+  "highRiskSemanticFamilies": [
+    "REPORTING_LINE",
+    "FOUNDER_CEO_PROXIMITY",
+    "PNL_OWNERSHIP",
+    "DECISION_AUTHORITY",
+    "PEOPLE_LEADERSHIP",
+    "PEOPLE_SCALE",
+    "BOARD_EXPOSURE"
+  ],
+  "documents": [
+    {
+      "documentId": "ADV_ROLE_01",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "negativeBoundaries": [
+        "No company P&L ownership: marketing budget allocation ($4.5M) is strictly an expenditure ceiling, not corporate or BU P&L ownership.",
+        "P&L ownership resides strictly with General Manager and BU President.",
+        "Team leadership is 6 growth specialists (PEOPLE_SCALE=6), not an executive GM scope."
+      ],
+      "materialFacts": [
+        {
+          "id": "ADV01_F01",
+          "spanId": "S005",
+          "exactText": "- Own and allocate the $4.5M annual performance marketing acquisition budget across digital channels, enterprise events, and paid search.",
+          "semanticType": "BUDGET_SCOPE",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Marketing acquisition budget of $4.5M; strictly an expense allocation, not P&L."
+        },
+        {
+          "id": "ADV01_F02",
+          "spanId": "S008",
+          "exactText": "- Lead a high-performing digital marketing team of 6 growth specialists.",
+          "semanticType": "PEOPLE_LEADERSHIP",
+          "subject": "ROLE",
+          "highRiskFamily": "PEOPLE_LEADERSHIP",
+          "context": "Direct leadership of 6 growth specialists."
+        },
+        {
+          "id": "ADV01_F03",
+          "spanId": "S008",
+          "exactText": "- Lead a high-performing digital marketing team of 6 growth specialists.",
+          "semanticType": "PEOPLE_SCALE",
+          "subject": "ROLE",
+          "highRiskFamily": "PEOPLE_SCALE",
+          "context": "Team scale of 6."
+        },
+        {
+          "id": "ADV01_F04",
+          "spanId": "S010",
+          "exactText": "- 10+ years of digital demand generation and performance marketing experience in enterprise B2B SaaS.",
+          "semanticType": "HARD_REQUIREMENT",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "10+ years experience requirement."
+        }
+      ]
+    },
+    {
+      "documentId": "ADV_ROLE_02",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "negativeBoundaries": [
+        "Reporting line is COO (Chief Operating Officer), NOT Chief Executive Officer.",
+        "Collaboration with CEO and Executive Committee is an advisory/preparation boundary, not a reporting line.",
+        "No direct line management over operational staff across 4 entities; coordination only."
+      ],
+      "materialFacts": [
+        {
+          "id": "ADV02_F01",
+          "spanId": "S006",
+          "exactText": "- Collaborate closely with the Chief Executive Officer and Executive Committee to prepare quarterly board presentations, strategic memos, and market expansion analyses.",
+          "semanticType": "BOARD_EXPOSURE",
+          "subject": "ROLE",
+          "highRiskFamily": "BOARD_EXPOSURE",
+          "context": "Prepare quarterly board presentations and strategic memos for CEO and Exec Committee."
+        },
+        {
+          "id": "ADV02_F02",
+          "spanId": "S007",
+          "exactText": "- Reports directly to the Chief Operating Officer for daily operational execution, governance cadence, and formal review.",
+          "semanticType": "REPORTING_LINE",
+          "subject": "ROLE",
+          "highRiskFamily": "REPORTING_LINE",
+          "context": "Reports directly to the Chief Operating Officer. Strictly COO, not CEO."
+        },
+        {
+          "id": "ADV02_F03",
+          "spanId": "S011",
+          "exactText": "- Master's degree in Business Administration, Finance, or equivalent.",
+          "semanticType": "HARD_REQUIREMENT",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Master's degree requirement."
+        },
+        {
+          "id": "ADV02_F04",
+          "spanId": "S012",
+          "exactText": "- 12+ years of senior corporate strategy, advisory, or chief of staff experience.",
+          "semanticType": "HARD_REQUIREMENT",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "12+ years experience requirement."
+        }
+      ]
+    },
+    {
+      "documentId": "ADV_ROLE_03",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "negativeBoundaries": [
+        "Current team scale is 8 developers/architects (PEOPLE_SCALE=8).",
+        "50+ engineers is an aspirational 3-year strategic scaling target, NOT the current team scale.",
+        "Monthly cost ceilings for AWS/GCP are infrastructure expense limits, not company P&L."
+      ],
+      "materialFacts": [
+        {
+          "id": "ADV03_F01",
+          "spanId": "S005",
+          "exactText": "- Lead and mentor an agile engineering pod of 8 senior developers and architects based in Bengaluru.",
+          "semanticType": "PEOPLE_LEADERSHIP",
+          "subject": "ROLE",
+          "highRiskFamily": "PEOPLE_LEADERSHIP",
+          "context": "Lead and mentor agile pod of 8 developers."
+        },
+        {
+          "id": "ADV03_F02",
+          "spanId": "S005",
+          "exactText": "- Lead and mentor an agile engineering pod of 8 senior developers and architects based in Bengaluru.",
+          "semanticType": "PEOPLE_SCALE",
+          "subject": "ROLE",
+          "highRiskFamily": "PEOPLE_SCALE",
+          "context": "Current team scale of 8."
+        },
+        {
+          "id": "ADV03_F03",
+          "spanId": "S010",
+          "exactText": "- 12+ years in distributed systems engineering with at least 4 years managing technical teams.",
+          "semanticType": "HARD_REQUIREMENT",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "12+ years distributed systems, 4+ managing teams."
+        }
+      ]
+    },
+    {
+      "documentId": "ADV_ROLE_04",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "negativeBoundaries": [
+        "Prior regional division P&L experience is explicitly a PREFERRED qualification, NOT a mandatory prerequisite.",
+        "Role does not hold direct company P&L ownership; it formulates commercial pricing frameworks."
+      ],
+      "materialFacts": [
+        {
+          "id": "ADV04_F01",
+          "spanId": "S005",
+          "exactText": "- Formulate commercial pricing frameworks and long-term power purchase agreement (PPA) deal structures.",
+          "semanticType": "RESPONSIBILITY",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Formulate commercial pricing frameworks and PPA deal structures."
+        },
+        {
+          "id": "ADV04_F02",
+          "spanId": "S009",
+          "exactText": "- 10+ years of commercial strategy, enterprise sales enablement, or financial modeling experience in clean energy or infrastructure.",
+          "semanticType": "HARD_REQUIREMENT",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "10+ years commercial strategy experience."
+        },
+        {
+          "id": "ADV04_F03",
+          "spanId": "S012",
+          "exactText": "- Prior experience managing a regional division P&L is preferred, but strictly not a mandatory prerequisite for this appointment.",
+          "semanticType": "PREFERRED_REQUIREMENT",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Prior division P&L experience is preferred, strictly not mandatory."
+        }
+      ]
+    },
+    {
+      "documentId": "DIVERSE_ROLE_01",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "negativeBoundaries": [
+        "Individual contributor role; explicitly leads through craft and judgment rather than headcount.",
+        "No direct team headcount to manage.",
+        "No reporting line or P&L ownership stated."
+      ],
+      "materialFacts": [
+        {
+          "id": "DIV01_F01",
+          "spanId": "S003",
+          "exactText": "The RoleWe're looking for a senior, hands-on brand and UX leader to shape how the company shows up — visually, verbally, and experientially — across product and marketing.",
+          "semanticType": "ROLE_PURPOSE",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Senior, hands-on brand and UX leader."
+        },
+        {
+          "id": "DIV01_F02",
+          "spanId": "S004",
+          "exactText": "This is an individual contributor role for someone who wants to lead through craft and judgment rather than headcount: setting the brand vision and design direction, then rolling up their sleeves to execute at a high bar.",
+          "semanticType": "WORK_CONDITION",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Individual contributor role; lead through craft and judgment rather than headcount."
+        },
+        {
+          "id": "DIV01_F03",
+          "spanId": "S005",
+          "exactText": "Requirements",
+          "semanticType": "RESPONSIBILITY",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Own end-to-end brand identity across app, website, marketing."
+        },
+        {
+          "id": "DIV01_F04",
+          "spanId": "S010",
+          "exactText": "Bring an external point of view on category trends in consumer health, wellness, and behavior-change design",
+          "semanticType": "HARD_REQUIREMENT",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "10+ years experience spanning brand and UX/product design."
+        }
+      ]
+    },
+    {
+      "documentId": "DIVERSE_ROLE_02",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "negativeBoundaries": [
+        "Consulting change management role; does not own corporate P&L or executive line authority.",
+        "No CEO/founder proximity stated."
+      ],
+      "materialFacts": [
+        {
+          "id": "DIV02_F01",
+          "spanId": "S005",
+          "exactText": "Our culture celebrates independent thinkers and doers who positively impact our clients and shape our industry.",
+          "semanticType": "ROLE_PURPOSE",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Change Manager enabling human and operational side of tech transformations."
+        },
+        {
+          "id": "DIV02_F02",
+          "spanId": "S006",
+          "exactText": "The collaborative environment and engaging work-guided by A&M's core values of Integrity, Quality, Objectivity, Fun, Personal Reward, and Inclusive Diversity - are why our people love working at A&M.The Team",
+          "semanticType": "ORGANIZATIONAL_SCOPE",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Sitting within DTS, partners with tech, data, AI and business leaders."
+        },
+        {
+          "id": "DIV02_F03",
+          "spanId": "S008",
+          "exactText": "Data & Applied Intelligence - Helping clients in harnessing the power of data and cutting-edge analytics to drive intelligent decision-making and transform businesses",
+          "semanticType": "RESPONSIBILITY",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Lead end-to-end change management for DTS-led transformations."
+        }
+      ]
+    },
+    {
+      "documentId": "DIVERSE_ROLE_03",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "negativeBoundaries": [
+        "Growth head for B2B product; no corporate board exposure or statutory director status.",
+        "No company-wide P&L ownership."
+      ],
+      "materialFacts": [
+        {
+          "id": "DIV03_F01",
+          "spanId": "S006",
+          "exactText": "The company is driven by a strong mission to accelerate financial inclusion and empower the underserved “Bharat” through technology-enabled financial services.",
+          "semanticType": "ROLE_PURPOSE",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Growth Head - B2B acting as digital business driver."
+        },
+        {
+          "id": "DIV03_F02",
+          "spanId": "S007",
+          "exactText": "With a network of 1.6+ million Adhikaris across India, the company enables last-mile access to essential services including AEPS cash withdrawal and deposits, domestic money transfer, bill payments, insurance, micro-ATM services, credit solutions, travel bookings, account opening, and UPI-led digital payments.",
+          "semanticType": "RESPONSIBILITY",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Business-first role responsible for agent engagement, retention, transaction frequency."
+        },
+        {
+          "id": "DIV03_F03",
+          "spanId": "S009",
+          "exactText": "Operating across 95%+ pincodes with a team of 1,000+ employees, Spice Money combines the agility of a high-growth fintech with the scale and impact of a nationwide distribution network—creating meaningful economic opportunities and driving the next phase of financial inclusion in India.",
+          "semanticType": "REVENUE_ACCOUNTABILITY",
+          "subject": "ROLE",
+          "highRiskFamily": "PNL_OWNERSHIP",
+          "context": "Improved revenue, agent active rate, transaction frequency."
+        }
+      ]
+    },
+    {
+      "documentId": "DIVERSE_ROLE_04",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "negativeBoundaries": [
+        "Reports to Ryan Roccon (COO and CFO), NOT CEO.",
+        "Statutory Board Director of India entity, not global parent board.",
+        "No corporate parent P&L ownership; owns local India entity operational delivery."
+      ],
+      "materialFacts": [
+        {
+          "id": "DIV04_F01",
+          "spanId": "S007",
+          "exactText": "We're looking for a Director, India to serve as the senior-most, India-based leader of Zapier's India entity, acting as both a statutory Board Director and General Manager.",
+          "semanticType": "ROLE_PURPOSE",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "Director, India serving as senior-most India leader, statutory Board Director and GM."
+        },
+        {
+          "id": "DIV04_F02",
+          "spanId": "S009",
+          "exactText": "You'll report to Ryan Roccon, our Chief Operating Officer and Chief Financial Officer, and partner closely with our India-based managers, our Operating Committee, and our external advisors at Deloitte.",
+          "semanticType": "REPORTING_LINE",
+          "subject": "ROLE",
+          "highRiskFamily": "REPORTING_LINE",
+          "context": "Reports to Ryan Roccon, COO and CFO."
+        },
+        {
+          "id": "DIV04_F03",
+          "spanId": "S017",
+          "exactText": "About YouYou have 15-20+ years of experience, including 5+ years in India site leadership, GM, COO, or country-head-type roles for multinational companies.",
+          "semanticType": "HARD_REQUIREMENT",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "15-20+ years experience, including 5+ years in India site leadership / GM / COO."
+        },
+        {
+          "id": "DIV04_F04",
+          "spanId": "S028",
+          "exactText": "Act as a statutory Board Director for Zapier India: attend board meetings, approve minutes and resolutions and sign statutory filings.",
+          "semanticType": "BOARD_EXPOSURE",
+          "subject": "ROLE",
+          "highRiskFamily": "BOARD_EXPOSURE",
+          "context": "Act as statutory Board Director for Zapier India: attend board meetings, sign filings."
+        },
+        {
+          "id": "DIV04_F05",
+          "spanId": "S031",
+          "exactText": "Own all India people decisions: hiring, compensation, performance, and terminations, while functional managers continue to run day-to-day work for their teams.",
+          "semanticType": "PEOPLE_LEADERSHIP",
+          "subject": "ROLE",
+          "highRiskFamily": "PEOPLE_LEADERSHIP",
+          "context": "Own all India people decisions: hiring, compensation, performance, terminations."
+        },
+        {
+          "id": "DIV04_F06",
+          "spanId": "S031",
+          "exactText": "Own all India people decisions: hiring, compensation, performance, and terminations, while functional managers continue to run day-to-day work for their teams.",
+          "semanticType": "DECISION_AUTHORITY",
+          "subject": "ROLE",
+          "highRiskFamily": "DECISION_AUTHORITY",
+          "context": "Autonomous decision authority over India people decisions."
+        }
+      ]
+    },
+    {
+      "documentId": "CANDIDATE_RESUME_01",
+      "partition": "CANDIDATE_DOCUMENT",
+      "scored": true,
+      "negativeBoundaries": [
+        "Fee book of $8M and retainer of ₹36 Cr are candidate agency portfolio scopes at VML, NOT candidate personal corporate P&L ownership.",
+        "40-member team is a CoE at VML, not whole-company headcount."
+      ],
+      "materialFacts": [
+        {
+          "id": "CAND01_F01",
+          "spanId": "S002",
+          "exactText": "### Senior Vice President | Marketing, Growth & Transformation",
+          "proofType": "ROLE_TITLE",
+          "evidenceClass": "SELF_SUMMARY",
+          "employer": null,
+          "metric": null,
+          "highRiskFamily": null,
+          "context": "Senior Vice President | Marketing, Growth & Transformation header."
+        },
+        {
+          "id": "CAND01_F02",
+          "spanId": "S005",
+          "exactText": "- Executive marketing leader with 20+ years of experience driving commercial scale, digital transformation and customer-centric innovation across leading automotive, healthcare and consumer organizations.",
+          "proofType": "SCALE",
+          "evidenceClass": "SELF_SUMMARY",
+          "employer": null,
+          "metric": "20+ years",
+          "highRiskFamily": null,
+          "context": "20+ years of executive marketing experience."
+        },
+        {
+          "id": "CAND01_F03",
+          "spanId": "S015",
+          "exactText": "### **Senior Vice President** | **VML (WPP Group)**",
+          "proofType": "ROLE_TITLE",
+          "evidenceClass": "WORK_HISTORY",
+          "employer": "VML (WPP Group)",
+          "metric": null,
+          "highRiskFamily": null,
+          "context": "Senior Vice President at VML."
+        },
+        {
+          "id": "CAND01_F04",
+          "spanId": "S016",
+          "exactText": "_Apr 2023 – June 2026_",
+          "proofType": "DATES",
+          "evidenceClass": "WORK_HISTORY",
+          "employer": "VML (WPP Group)",
+          "metric": "Apr 2023 – June 2026",
+          "highRiskFamily": null,
+          "context": "Tenure dates at VML."
+        },
+        {
+          "id": "CAND01_F05",
+          "spanId": "S018",
+          "exactText": "- Accountable for commercial performance, delivery and profitability of VML India's two largest client accounts, overseeing an $8M pure agency fee book for Ford and a projected ₹36 Cr 3-year service retainer for BMW.",
+          "proofType": "SCALE",
+          "evidenceClass": "WORK_HISTORY",
+          "employer": "VML (WPP Group)",
+          "metric": "$8M fee book, ₹36 Cr retainer",
+          "highRiskFamily": "PNL_OWNERSHIP",
+          "context": "Accountable for $8M fee book for Ford and ₹36 Cr retainer for BMW."
+        },
+        {
+          "id": "CAND01_F06",
+          "spanId": "S019",
+          "exactText": "- Recruited and managed a 40-member cross-functional Performance Marketing Center of Excellence (GCC) driving CRM, website & performance marketing across 13 APAC and Middle East markets for Ford.",
+          "proofType": "LEADERSHIP",
+          "evidenceClass": "WORK_HISTORY",
+          "employer": "VML (WPP Group)",
+          "metric": "40-member, 13 APAC markets",
+          "highRiskFamily": "PEOPLE_LEADERSHIP",
+          "context": "Recruited and managed 40-member CoE across 13 APAC & Middle East markets."
+        },
+        {
+          "id": "CAND01_F07",
+          "spanId": "S022",
+          "exactText": "- Redesigned customer journeys across digital platforms, improving lead quality and reducing friction in the booking and enquiry process, resulting in $14M in attributed additional revenue.",
+          "proofType": "IMPACT",
+          "evidenceClass": "WORK_HISTORY",
+          "employer": "VML (WPP Group)",
+          "metric": "$14M additional revenue",
+          "highRiskFamily": null,
+          "context": "Resulting in $14M in attributed additional revenue."
+        }
+      ]
+    },
+    {
+      "documentId": "CANDIDATE_RESUME_02",
+      "partition": "CANDIDATE_DOCUMENT",
+      "scored": true,
+      "negativeBoundaries": [
+        "₹300+ Cr is a portfolio scale managed, not personal company P&L ownership.",
+        "TVS dealer matrix (4,000+ points of sale) is distribution scale, not direct employees."
+      ],
+      "materialFacts": [
+        {
+          "id": "CAND02_F01",
+          "spanId": "S002",
+          "exactText": "## **Head of Marketing & Digital Growth | Strategic Transformation Leader**",
+          "proofType": "ROLE_TITLE",
+          "evidenceClass": "SELF_SUMMARY",
+          "employer": null,
+          "metric": null,
+          "highRiskFamily": null,
+          "context": "Head of Marketing & Digital Growth title."
+        },
+        {
+          "id": "CAND02_F02",
+          "spanId": "S006",
+          "exactText": "Master strategist with deep competence in scaling digital business revenue share (from 3% to 32%), managing multi-million dollar portfolios (₹300+ Cr), and implementing next-gen MarTech platforms (Salesforce CDP, Adobe Experience Cloud) to maximize consumer lifetime value (LTV) and compress client acquisition costs (CAC).",
+          "proofType": "SCALE",
+          "evidenceClass": "SELF_SUMMARY",
+          "employer": null,
+          "metric": "₹300+ Cr, 3% to 32%",
+          "highRiskFamily": "PNL_OWNERSHIP",
+          "context": "Scaling digital revenue share 3% to 32%, managing ₹300+ Cr portfolios."
+        },
+        {
+          "id": "CAND02_F03",
+          "spanId": "S016",
+          "exactText": "#### Senior Vice President | **VML (WPP Group)**",
+          "proofType": "ROLE_TITLE",
+          "evidenceClass": "WORK_HISTORY",
+          "employer": "VML (WPP Group)",
+          "metric": null,
+          "highRiskFamily": null,
+          "context": "Senior Vice President at VML."
+        },
+        {
+          "id": "CAND02_F04",
+          "spanId": "S019",
+          "exactText": "- **Global Digital CoE Infrastructure:** Command a high-performing 40-member cross-functional digital Center of Excellence across intensive international growth regions (APAC and Middle East), owning full performance marketing, CRM, and platform management.",
+          "proofType": "LEADERSHIP",
+          "evidenceClass": "WORK_HISTORY",
+          "employer": "VML (WPP Group)",
+          "metric": "40-member",
+          "highRiskFamily": "PEOPLE_LEADERSHIP",
+          "context": "Command 40-member cross-functional digital CoE."
+        },
+        {
+          "id": "CAND02_F05",
+          "spanId": "S023",
+          "exactText": "#### AGM – Digital Marketing | **TVS Motor Company**",
+          "proofType": "ROLE_TITLE",
+          "evidenceClass": "WORK_HISTORY",
+          "employer": "TVS Motor Company",
+          "metric": null,
+          "highRiskFamily": null,
+          "context": "AGM – Digital Marketing at TVS Motor Company."
+        },
+        {
+          "id": "CAND02_F06",
+          "spanId": "S025",
+          "exactText": "- **Hyperlocal Scale Architecture:** Architected and systematically deployed a data-driven hyperlocal digital growth matrix across 4,000+ points of sale, generating over 400,000 organic, high-intent consumer leads to lift dealership retail metrics.",
+          "proofType": "SCALE",
+          "evidenceClass": "WORK_HISTORY",
+          "employer": "TVS Motor Company",
+          "metric": "4,000+ POS, 400,000 leads",
+          "highRiskFamily": null,
+          "context": "Deployed matrix across 4,000+ points of sale generating 400,000 leads."
+        }
+      ]
+    },
+    {
+      "documentId": "DEV_CONTROL_01",
+      "partition": "DEVELOPMENT_CONTROL",
+      "scored": false,
+      "negativeBoundaries": [
+        "No named CEO/founder proximity or reporting line is stated.",
+        "Existing team/process/mandates/network explicitly do not exist; 6–12 is a future target.",
+        "Candidate's prior 5+ team is a qualification, not this job's team size.",
+        "Company project acres/villas are COMPANY context, not personal delivered outcomes.",
+        "Board approval and with Directors limit decision authority.",
+        "Vertical P&L does not mean whole-company P&L.",
+        "Incentives on cash realised, explicitly not bookings signed.",
+        "Preferred qualifications are not disqualifying, except explicit bachelor's requirement.",
+        "No application covering note means no review; RECRUITING_PROCESS only.",
+        "Show more Show less is scraper UI residue, not a role fact."
+      ],
+      "materialFacts": [
+        {
+          "id": "DEV_F01",
+          "spanId": "S002",
+          "exactText": "You are being hired to build a new business line, not to join an existing one.",
+          "semanticType": "GREENFIELD_BUILD",
+          "subject": "ROLE",
+          "highRiskFamily": null,
+          "context": "You are being hired to build a new business line, not to join an existing one."
+        },
+        {
+          "id": "DEV_F02",
+          "spanId": "S003",
+          "exactText": "Reports To: Board of Directors, Schnell Builders Pvt. Ltd. Base Location: Gurugram (with travel to Goa, Bangalore & mandate locations) Team: Build from zero.",
+          "semanticType": "REPORTING_LINE",
+          "subject": "ROLE",
+          "highRiskFamily": "REPORTING_LINE",
+          "context": "Reports To: Board of Directors, Schnell Builders Pvt. Ltd."
+        },
+        {
+          "id": "DEV_F03",
+          "spanId": "S003",
+          "exactText": "Reports To: Board of Directors, Schnell Builders Pvt. Ltd. Base Location: Gurugram (with travel to Goa, Bangalore & mandate locations) Team: Build from zero.",
+          "semanticType": "PEOPLE_SCALE",
+          "subject": "ROLE",
+          "highRiskFamily": "PEOPLE_SCALE",
+          "context": "Team: Build from zero."
+        },
+        {
+          "id": "DEV_F04",
+          "spanId": "S014",
+          "exactText": "Own the sales number for all Schnell inventory: luxury villas in Goa, builder floors at DLF Phase 2, and future launches.",
+          "semanticType": "REVENUE_ACCOUNTABILITY",
+          "subject": "ROLE",
+          "highRiskFamily": "PNL_OWNERSHIP",
+          "context": "Own the sales number for all Schnell inventory."
+        },
+        {
+          "id": "DEV_F05",
+          "spanId": "S015",
+          "exactText": "Set launch strategy, pricing ladders, inventory phasing and payment plan design with the Directors.",
+          "semanticType": "DECISION_AUTHORITY",
+          "subject": "ROLE",
+          "highRiskFamily": "DECISION_AUTHORITY",
+          "context": "Set launch strategy, pricing ladders, inventory phasing and payment plan design with the Directors."
+        },
+        {
+          "id": "DEV_F06",
+          "spanId": "S021",
+          "exactText": "Negotiate mandate terms: exclusivity, brokerage rate, minimum guaranteed offtake, marketing cost sharing, price protection and termination.",
+          "semanticType": "PNL_OWNERSHIP",
+          "subject": "ROLE",
+          "highRiskFamily": "PNL_OWNERSHIP",
+          "context": "Run the vertical as a P&L — own revenue, cost base, break-even and margin."
+        },
+        {
+          "id": "DEV_F07",
+          "spanId": "S027",
+          "exactText": "Pitch at promoter/CXO level.",
+          "semanticType": "PEOPLE_LEADERSHIP",
+          "subject": "ROLE",
+          "highRiskFamily": "PEOPLE_LEADERSHIP",
+          "context": "Recruit, onboard, ramp the team."
+        },
+        {
+          "id": "DEV_F08",
+          "spanId": "S028",
+          "exactText": "Conduct pre-mandate diligence and walk away from mandates that will fail.",
+          "semanticType": "BOARD_EXPOSURE",
+          "subject": "ROLE",
+          "highRiskFamily": "BOARD_EXPOSURE",
+          "context": "Deliver a weekly MIS to the Board."
+        }
+      ]
+    }
+  ]
+}

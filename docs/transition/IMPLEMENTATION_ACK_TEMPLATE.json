@@ -1,0 +1,14 @@
+{
+  "commit": "<40-character implementation commit SHA>",
+  "gate": "<copy activeGate from docs/transition/RADAR_TRANSITION_STATE.json>",
+  "batchId": "<copy id from docs/transition/CURRENT_BATCH.json>",
+  "scopeRevision": "<copy numeric scopeRevision from docs/transition/CURRENT_BATCH.json>",
+  "summary": "<concise description of what this exact commit changed>",
+  "invariantsChecked": [
+    "<invariant actually checked>"
+  ],
+  "verification": [
+    "<exact command or concrete verification actually performed and its result>"
+  ],
+  "authorizationChanged": false
+}

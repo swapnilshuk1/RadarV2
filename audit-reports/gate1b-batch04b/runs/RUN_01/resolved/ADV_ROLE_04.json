@@ -1,0 +1,388 @@
+{
+  "envelopeValid": true,
+  "parsedProposals": 13,
+  "validSpanIdCount": 13,
+  "invalidSpanIds": [],
+  "grounding": [
+    {
+      "index": 0,
+      "spanId": "S001",
+      "exactText": "# Head of Commercial Strategy — Solaria Energy Solutions",
+      "startOffset": 0,
+      "endOffset": 56,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "ROLE_PURPOSE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 1,
+      "spanId": "S001",
+      "exactText": "# Head of Commercial Strategy — Solaria Energy Solutions",
+      "startOffset": 0,
+      "endOffset": 56,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "COMPANY_CONTEXT",
+      "subject": "COMPANY",
+      "confidence": 1
+    },
+    {
+      "index": 2,
+      "spanId": "S003",
+      "exactText": "Solaria Energy Solutions is a renewable energy infrastructure provider deploying industrial-scale solar installations across Asia Pacific.",
+      "startOffset": 75,
+      "endOffset": 213,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "COMPANY_CONTEXT",
+      "subject": "COMPANY",
+      "confidence": 1
+    },
+    {
+      "index": 3,
+      "spanId": "S003",
+      "exactText": "Solaria Energy Solutions is a renewable energy infrastructure provider deploying industrial-scale solar installations across Asia Pacific.",
+      "startOffset": 75,
+      "endOffset": 213,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "GEOGRAPHIC_SCOPE",
+      "subject": "COMPANY",
+      "confidence": 1
+    },
+    {
+      "index": 4,
+      "spanId": "S005",
+      "exactText": "- Formulate commercial pricing frameworks and long-term power purchase agreement (PPA) deal structures.",
+      "startOffset": 239,
+      "endOffset": 342,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "RESPONSIBILITY",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 5,
+      "spanId": "S006",
+      "exactText": "- Partner with regional sales heads to close multi-megawatt commercial rooftop installations.",
+      "startOffset": 343,
+      "endOffset": 436,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "RESPONSIBILITY",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 6,
+      "spanId": "S007",
+      "exactText": "- Lead market intelligence research to monitor tariff fluctuations and regulatory incentives.",
+      "startOffset": 437,
+      "endOffset": 530,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "RESPONSIBILITY",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 7,
+      "spanId": "S009",
+      "exactText": "- 10+ years of commercial strategy, enterprise sales enablement, or financial modeling experience in clean energy or infrastructure.",
+      "startOffset": 558,
+      "endOffset": 690,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "HARD_REQUIREMENT",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 8,
+      "spanId": "S010",
+      "exactText": "- Bachelor's degree in Engineering, Economics, or related quantitative field.",
+      "startOffset": 691,
+      "endOffset": 768,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "HARD_REQUIREMENT",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 9,
+      "spanId": "S012",
+      "exactText": "- Prior experience managing a regional division P&L is preferred, but strictly not a mandatory prerequisite for this appointment.",
+      "startOffset": 794,
+      "endOffset": 923,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "PREFERRED_REQUIREMENT",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 10,
+      "spanId": "S012",
+      "exactText": "- Prior experience managing a regional division P&L is preferred, but strictly not a mandatory prerequisite for this appointment.",
+      "startOffset": 794,
+      "endOffset": 923,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "PNL_OWNERSHIP",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 11,
+      "spanId": "S013",
+      "exactText": "- Familiarity with project finance models and regulatory filing processes in SE Asia.",
+      "startOffset": 924,
+      "endOffset": 1009,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "PREFERRED_REQUIREMENT",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 12,
+      "spanId": "S013",
+      "exactText": "- Familiarity with project finance models and regulatory filing processes in SE Asia.",
+      "startOffset": 924,
+      "endOffset": 1009,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "REGULATORY_SCOPE",
+      "subject": "ROLE",
+      "confidence": 1
+    }
+  ],
+  "assembly": {
+    "output": {
+      "caseId": "ADV_ROLE_04",
+      "canonicalJobId": "ADV_ROLE_04",
+      "rawTextLength": 1009,
+      "sections": [
+        {
+          "type": "OTHER",
+          "headingText": "# Head of Commercial Strategy — Solaria Energy Solutions",
+          "headingStart": 0,
+          "headingEnd": 56,
+          "contentStart": 56,
+          "contentEnd": 58,
+          "rawContent": "\n\n"
+        },
+        {
+          "type": "ABOUT_COMPANY",
+          "headingText": "## About Solaria",
+          "headingStart": 58,
+          "headingEnd": 74,
+          "contentStart": 74,
+          "contentEnd": 215,
+          "rawContent": "\nSolaria Energy Solutions is a renewable energy infrastructure provider deploying industrial-scale solar installations across Asia Pacific.\n\n"
+        },
+        {
+          "type": "RESPONSIBILITIES",
+          "headingText": "## Key Responsibilities",
+          "headingStart": 215,
+          "headingEnd": 238,
+          "contentStart": 238,
+          "contentEnd": 532,
+          "rawContent": "\n- Formulate commercial pricing frameworks and long-term power purchase agreement (PPA) deal structures.\n- Partner with regional sales heads to close multi-megawatt commercial rooftop installations.\n- Lead market intelligence research to monitor tariff fluctuations and regulatory incentives.\n\n"
+        },
+        {
+          "type": "REQUIREMENTS",
+          "headingText": "## Mandatory Requirements",
+          "headingStart": 532,
+          "headingEnd": 557,
+          "contentStart": 557,
+          "contentEnd": 770,
+          "rawContent": "\n- 10+ years of commercial strategy, enterprise sales enablement, or financial modeling experience in clean energy or infrastructure.\n- Bachelor's degree in Engineering, Economics, or related quantitative field.\n\n"
+        },
+        {
+          "type": "OTHER",
+          "headingText": "## Preferred Experience",
+          "headingStart": 770,
+          "headingEnd": 793,
+          "contentStart": 793,
+          "contentEnd": 1009,
+          "rawContent": "\n- Prior experience managing a regional division P&L is preferred, but strictly not a mandatory prerequisite for this appointment.\n- Familiarity with project finance models and regulatory filing processes in SE Asia."
+        }
+      ],
+      "atoms": [
+        {
+          "id": "role_atom:ADV_ROLE_04:0_56:ROLE_PURPOSE",
+          "exactText": "# Head of Commercial Strategy — Solaria Energy Solutions",
+          "startOffset": 0,
+          "endOffset": 56,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "ROLE_PURPOSE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:0_56:COMPANY_CONTEXT",
+          "exactText": "# Head of Commercial Strategy — Solaria Energy Solutions",
+          "startOffset": 0,
+          "endOffset": 56,
+          "section": "OTHER",
+          "subject": "COMPANY",
+          "semanticType": "COMPANY_CONTEXT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:75_213:COMPANY_CONTEXT",
+          "exactText": "Solaria Energy Solutions is a renewable energy infrastructure provider deploying industrial-scale solar installations across Asia Pacific.",
+          "startOffset": 75,
+          "endOffset": 213,
+          "section": "ABOUT_COMPANY",
+          "subject": "COMPANY",
+          "semanticType": "COMPANY_CONTEXT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:75_213:GEOGRAPHIC_SCOPE",
+          "exactText": "Solaria Energy Solutions is a renewable energy infrastructure provider deploying industrial-scale solar installations across Asia Pacific.",
+          "startOffset": 75,
+          "endOffset": 213,
+          "section": "ABOUT_COMPANY",
+          "subject": "COMPANY",
+          "semanticType": "GEOGRAPHIC_SCOPE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:239_342:RESPONSIBILITY",
+          "exactText": "- Formulate commercial pricing frameworks and long-term power purchase agreement (PPA) deal structures.",
+          "startOffset": 239,
+          "endOffset": 342,
+          "section": "RESPONSIBILITIES",
+          "subject": "ROLE",
+          "semanticType": "RESPONSIBILITY",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:343_436:RESPONSIBILITY",
+          "exactText": "- Partner with regional sales heads to close multi-megawatt commercial rooftop installations.",
+          "startOffset": 343,
+          "endOffset": 436,
+          "section": "RESPONSIBILITIES",
+          "subject": "ROLE",
+          "semanticType": "RESPONSIBILITY",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:437_530:RESPONSIBILITY",
+          "exactText": "- Lead market intelligence research to monitor tariff fluctuations and regulatory incentives.",
+          "startOffset": 437,
+          "endOffset": 530,
+          "section": "RESPONSIBILITIES",
+          "subject": "ROLE",
+          "semanticType": "RESPONSIBILITY",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:558_690:HARD_REQUIREMENT",
+          "exactText": "- 10+ years of commercial strategy, enterprise sales enablement, or financial modeling experience in clean energy or infrastructure.",
+          "startOffset": 558,
+          "endOffset": 690,
+          "section": "REQUIREMENTS",
+          "subject": "ROLE",
+          "semanticType": "HARD_REQUIREMENT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:691_768:HARD_REQUIREMENT",
+          "exactText": "- Bachelor's degree in Engineering, Economics, or related quantitative field.",
+          "startOffset": 691,
+          "endOffset": 768,
+          "section": "REQUIREMENTS",
+          "subject": "ROLE",
+          "semanticType": "HARD_REQUIREMENT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:794_923:PREFERRED_REQUIREMENT",
+          "exactText": "- Prior experience managing a regional division P&L is preferred, but strictly not a mandatory prerequisite for this appointment.",
+          "startOffset": 794,
+          "endOffset": 923,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "PREFERRED_REQUIREMENT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:794_923:PNL_OWNERSHIP",
+          "exactText": "- Prior experience managing a regional division P&L is preferred, but strictly not a mandatory prerequisite for this appointment.",
+          "startOffset": 794,
+          "endOffset": 923,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "PNL_OWNERSHIP",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:924_1009:PREFERRED_REQUIREMENT",
+          "exactText": "- Familiarity with project finance models and regulatory filing processes in SE Asia.",
+          "startOffset": 924,
+          "endOffset": 1009,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "PREFERRED_REQUIREMENT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_04:924_1009:REGULATORY_SCOPE",
+          "exactText": "- Familiarity with project finance models and regulatory filing processes in SE Asia.",
+          "startOffset": 924,
+          "endOffset": 1009,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "REGULATORY_SCOPE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        }
+      ],
+      "metadata": {
+        "extractorVersion": "RoleIntelligenceExtractorV1",
+        "hasGluedHeadings": false,
+        "hasStructuralMetaLines": false,
+        "proposalCounts": {
+          "proposedAtoms": 13,
+          "acceptedAtoms": 13,
+          "rejectedAtoms": 0
+        }
+      }
+    },
+    "proposalRejections": []
+  },
+  "verificationError": null
+}

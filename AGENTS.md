@@ -2,6 +2,41 @@
 
 This document provides context, domain model guidelines, architectural invariants, maturity classifications, and key operational procedures for all AI coding agents working on RADAR v2.
 
+## 0. Mandatory Transition Handoff — Read Before Any Transition Work
+
+When working on the active RADAR architecture transition, **do not begin from a prior chat summary, the latest recon document, or your own inferred next step**.
+
+Before inspecting or modifying implementation code, read:
+
+```text
+docs/transition/NEXT_AGENT_HANDOFF.md
+```
+
+and follow its complete mandatory read order and execution protocol.
+
+Then run:
+
+```bash
+npm run transition:check
+```
+
+The governing authorization lives in:
+
+```text
+docs/RADAR_TRANSITION_CONTROL.md
+docs/transition/RADAR_TRANSITION_STATE.json
+docs/transition/CURRENT_BATCH.json
+```
+
+Every governed implementation commit must subsequently be acknowledged according to:
+
+```text
+docs/transition/AGENT_CHANGE_ACK_PROTOCOL.md
+docs/transition/IMPLEMENTATION_LEDGER.json
+```
+
+An agent must not report transition work complete while `npm run transition:check` is failing or while a governed commit remains unacknowledged.
+
 ---
 
 ## 1. System Purpose & Domain Scope

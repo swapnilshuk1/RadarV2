@@ -1,0 +1,379 @@
+{
+  "envelopeValid": true,
+  "parsedProposals": 13,
+  "validSpanIdCount": 13,
+  "invalidSpanIds": [],
+  "grounding": [
+    {
+      "index": 0,
+      "spanId": "S001",
+      "exactText": "# Executive Advisor, Strategic Initiatives — Crestview Holdings",
+      "startOffset": 0,
+      "endOffset": 63,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "ROLE_PURPOSE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 1,
+      "spanId": "S003",
+      "exactText": "Crestview Holdings operates diversified commercial real estate and logistics infrastructure assets across South Asia.",
+      "startOffset": 86,
+      "endOffset": 203,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "COMPANY_CONTEXT",
+      "subject": "COMPANY",
+      "confidence": 1
+    },
+    {
+      "index": 2,
+      "spanId": "S004",
+      "exactText": "We are seeking an Executive Advisor to coordinate cross-division strategic priorities.",
+      "startOffset": 204,
+      "endOffset": 290,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "ROLE_PURPOSE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 3,
+      "spanId": "S006",
+      "exactText": "- Collaborate closely with the Chief Executive Officer and Executive Committee to prepare quarterly board presentations, strategic memos, and market expansion analyses.",
+      "startOffset": 316,
+      "endOffset": 484,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "RESPONSIBILITY",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 4,
+      "spanId": "S006",
+      "exactText": "- Collaborate closely with the Chief Executive Officer and Executive Committee to prepare quarterly board presentations, strategic memos, and market expansion analyses.",
+      "startOffset": 316,
+      "endOffset": 484,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "FOUNDER_CEO_PROXIMITY",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 5,
+      "spanId": "S006",
+      "exactText": "- Collaborate closely with the Chief Executive Officer and Executive Committee to prepare quarterly board presentations, strategic memos, and market expansion analyses.",
+      "startOffset": 316,
+      "endOffset": 484,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "BOARD_EXPOSURE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 6,
+      "spanId": "S007",
+      "exactText": "- Reports directly to the Chief Operating Officer for daily operational execution, governance cadence, and formal review.",
+      "startOffset": 485,
+      "endOffset": 606,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "REPORTING_LINE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 7,
+      "spanId": "S008",
+      "exactText": "- Coordinate with division managing directors across 4 regional operating entities without holding direct line management over operational staff.",
+      "startOffset": 607,
+      "endOffset": 752,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "RESPONSIBILITY",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 8,
+      "spanId": "S008",
+      "exactText": "- Coordinate with division managing directors across 4 regional operating entities without holding direct line management over operational staff.",
+      "startOffset": 607,
+      "endOffset": 752,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "PEOPLE_LEADERSHIP",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 9,
+      "spanId": "S008",
+      "exactText": "- Coordinate with division managing directors across 4 regional operating entities without holding direct line management over operational staff.",
+      "startOffset": 607,
+      "endOffset": 752,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "GEOGRAPHIC_SCOPE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 10,
+      "spanId": "S009",
+      "exactText": "- Ensure seamless cross-functional alignment on capital expenditure deployment schedules.",
+      "startOffset": 753,
+      "endOffset": 842,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "RESPONSIBILITY",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 11,
+      "spanId": "S011",
+      "exactText": "- Master's degree in Business Administration, Finance, or equivalent.",
+      "startOffset": 862,
+      "endOffset": 931,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "HARD_REQUIREMENT",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 12,
+      "spanId": "S012",
+      "exactText": "- 12+ years of senior corporate strategy, advisory, or chief of staff experience.",
+      "startOffset": 932,
+      "endOffset": 1013,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "HARD_REQUIREMENT",
+      "subject": "ROLE",
+      "confidence": 1
+    }
+  ],
+  "assembly": {
+    "output": {
+      "caseId": "ADV_ROLE_02",
+      "canonicalJobId": "ADV_ROLE_02",
+      "rawTextLength": 1013,
+      "sections": [
+        {
+          "type": "OTHER",
+          "headingText": "# Executive Advisor, Strategic Initiatives — Crestview Holdings",
+          "headingStart": 0,
+          "headingEnd": 63,
+          "contentStart": 63,
+          "contentEnd": 65,
+          "rawContent": "\n\n"
+        },
+        {
+          "type": "OTHER",
+          "headingText": "## Position Overview",
+          "headingStart": 65,
+          "headingEnd": 85,
+          "contentStart": 85,
+          "contentEnd": 292,
+          "rawContent": "\nCrestview Holdings operates diversified commercial real estate and logistics infrastructure assets across South Asia. We are seeking an Executive Advisor to coordinate cross-division strategic priorities.\n\n"
+        },
+        {
+          "type": "OTHER",
+          "headingText": "## Key Accountabilities",
+          "headingStart": 292,
+          "headingEnd": 315,
+          "contentStart": 315,
+          "contentEnd": 844,
+          "rawContent": "\n- Collaborate closely with the Chief Executive Officer and Executive Committee to prepare quarterly board presentations, strategic memos, and market expansion analyses.\n- Reports directly to the Chief Operating Officer for daily operational execution, governance cadence, and formal review.\n- Coordinate with division managing directors across 4 regional operating entities without holding direct line management over operational staff.\n- Ensure seamless cross-functional alignment on capital expenditure deployment schedules.\n\n"
+        },
+        {
+          "type": "REQUIREMENTS",
+          "headingText": "## Qualifications",
+          "headingStart": 844,
+          "headingEnd": 861,
+          "contentStart": 861,
+          "contentEnd": 1013,
+          "rawContent": "\n- Master's degree in Business Administration, Finance, or equivalent.\n- 12+ years of senior corporate strategy, advisory, or chief of staff experience."
+        }
+      ],
+      "atoms": [
+        {
+          "id": "role_atom:ADV_ROLE_02:0_63:ROLE_PURPOSE",
+          "exactText": "# Executive Advisor, Strategic Initiatives — Crestview Holdings",
+          "startOffset": 0,
+          "endOffset": 63,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "ROLE_PURPOSE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:86_203:COMPANY_CONTEXT",
+          "exactText": "Crestview Holdings operates diversified commercial real estate and logistics infrastructure assets across South Asia.",
+          "startOffset": 86,
+          "endOffset": 203,
+          "section": "OTHER",
+          "subject": "COMPANY",
+          "semanticType": "COMPANY_CONTEXT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:204_290:ROLE_PURPOSE",
+          "exactText": "We are seeking an Executive Advisor to coordinate cross-division strategic priorities.",
+          "startOffset": 204,
+          "endOffset": 290,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "ROLE_PURPOSE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:316_484:RESPONSIBILITY",
+          "exactText": "- Collaborate closely with the Chief Executive Officer and Executive Committee to prepare quarterly board presentations, strategic memos, and market expansion analyses.",
+          "startOffset": 316,
+          "endOffset": 484,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "RESPONSIBILITY",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:316_484:FOUNDER_CEO_PROXIMITY",
+          "exactText": "- Collaborate closely with the Chief Executive Officer and Executive Committee to prepare quarterly board presentations, strategic memos, and market expansion analyses.",
+          "startOffset": 316,
+          "endOffset": 484,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "FOUNDER_CEO_PROXIMITY",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:316_484:BOARD_EXPOSURE",
+          "exactText": "- Collaborate closely with the Chief Executive Officer and Executive Committee to prepare quarterly board presentations, strategic memos, and market expansion analyses.",
+          "startOffset": 316,
+          "endOffset": 484,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "BOARD_EXPOSURE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:485_606:REPORTING_LINE",
+          "exactText": "- Reports directly to the Chief Operating Officer for daily operational execution, governance cadence, and formal review.",
+          "startOffset": 485,
+          "endOffset": 606,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "REPORTING_LINE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:607_752:RESPONSIBILITY",
+          "exactText": "- Coordinate with division managing directors across 4 regional operating entities without holding direct line management over operational staff.",
+          "startOffset": 607,
+          "endOffset": 752,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "RESPONSIBILITY",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:607_752:PEOPLE_LEADERSHIP",
+          "exactText": "- Coordinate with division managing directors across 4 regional operating entities without holding direct line management over operational staff.",
+          "startOffset": 607,
+          "endOffset": 752,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "PEOPLE_LEADERSHIP",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:607_752:GEOGRAPHIC_SCOPE",
+          "exactText": "- Coordinate with division managing directors across 4 regional operating entities without holding direct line management over operational staff.",
+          "startOffset": 607,
+          "endOffset": 752,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "GEOGRAPHIC_SCOPE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:753_842:RESPONSIBILITY",
+          "exactText": "- Ensure seamless cross-functional alignment on capital expenditure deployment schedules.",
+          "startOffset": 753,
+          "endOffset": 842,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "RESPONSIBILITY",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:862_931:HARD_REQUIREMENT",
+          "exactText": "- Master's degree in Business Administration, Finance, or equivalent.",
+          "startOffset": 862,
+          "endOffset": 931,
+          "section": "REQUIREMENTS",
+          "subject": "ROLE",
+          "semanticType": "HARD_REQUIREMENT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_02:932_1013:HARD_REQUIREMENT",
+          "exactText": "- 12+ years of senior corporate strategy, advisory, or chief of staff experience.",
+          "startOffset": 932,
+          "endOffset": 1013,
+          "section": "REQUIREMENTS",
+          "subject": "ROLE",
+          "semanticType": "HARD_REQUIREMENT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        }
+      ],
+      "metadata": {
+        "extractorVersion": "RoleIntelligenceExtractorV1",
+        "hasGluedHeadings": false,
+        "hasStructuralMetaLines": false,
+        "proposalCounts": {
+          "proposedAtoms": 13,
+          "acceptedAtoms": 13,
+          "rejectedAtoms": 0
+        }
+      }
+    },
+    "proposalRejections": []
+  },
+  "verificationError": null
+}

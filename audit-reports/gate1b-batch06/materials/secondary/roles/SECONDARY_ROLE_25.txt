@@ -1,0 +1,7 @@
+HEAD OF DIGITAL PAYMENTS PRODUCT
+Company: NeoBank Bharat
+Location: Bengaluru, India (Hybrid)
+
+MISSION:
+Lead product strategy and UX specification for NeoBank's planned UPI payment aggregator and credit line features.
+REGULATORY CONDITION: Full commercial rollout of the consumer credit line feature is contingent upon receipt of the final Payment Aggregator (PA) license from the Reserve Bank of India (RBI). Initial work focuses on sandbox testing.

@@ -1,0 +1,366 @@
+{
+  "envelopeValid": true,
+  "parsedProposals": 13,
+  "validSpanIdCount": 13,
+  "invalidSpanIds": [],
+  "grounding": [
+    {
+      "index": 0,
+      "spanId": "S001",
+      "exactText": "# Director of Enterprise Engineering — Nexus Cloud Systems",
+      "startOffset": 0,
+      "endOffset": 58,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "ROLE_PURPOSE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 1,
+      "spanId": "S001",
+      "exactText": "# Director of Enterprise Engineering — Nexus Cloud Systems",
+      "startOffset": 0,
+      "endOffset": 58,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "COMPANY_CONTEXT",
+      "subject": "COMPANY",
+      "confidence": 1
+    },
+    {
+      "index": 2,
+      "spanId": "S003",
+      "exactText": "Nexus Cloud Systems provides high-throughput data integration infrastructure for banking and financial services.",
+      "startOffset": 78,
+      "endOffset": 190,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "COMPANY_CONTEXT",
+      "subject": "COMPANY",
+      "confidence": 1
+    },
+    {
+      "index": 3,
+      "spanId": "S005",
+      "exactText": "- Lead and mentor an agile engineering pod of 8 senior developers and architects based in Bengaluru.",
+      "startOffset": 214,
+      "endOffset": 314,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "PEOPLE_LEADERSHIP",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 4,
+      "spanId": "S005",
+      "exactText": "- Lead and mentor an agile engineering pod of 8 senior developers and architects based in Bengaluru.",
+      "startOffset": 214,
+      "endOffset": 314,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "PEOPLE_SCALE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 5,
+      "spanId": "S005",
+      "exactText": "- Lead and mentor an agile engineering pod of 8 senior developers and architects based in Bengaluru.",
+      "startOffset": 214,
+      "endOffset": 314,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "GEOGRAPHIC_SCOPE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 6,
+      "spanId": "S006",
+      "exactText": "- Drive engineering excellence, code review standards, and CI/CD deployment reliability.",
+      "startOffset": 315,
+      "endOffset": 403,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "RESPONSIBILITY",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 7,
+      "spanId": "S007",
+      "exactText": "- Strategic target: scale the engineering organization to 50+ engineers over the next 3 years as the product suite expands internationally.",
+      "startOffset": 404,
+      "endOffset": 543,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "PEOPLE_SCALE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 8,
+      "spanId": "S007",
+      "exactText": "- Strategic target: scale the engineering organization to 50+ engineers over the next 3 years as the product suite expands internationally.",
+      "startOffset": 404,
+      "endOffset": 543,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "GEOGRAPHIC_SCOPE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 9,
+      "spanId": "S008",
+      "exactText": "- Manage infrastructure spend across AWS and Google Cloud environments within approved monthly cost ceilings.",
+      "startOffset": 544,
+      "endOffset": 653,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "BUDGET_SCOPE",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 10,
+      "spanId": "S010",
+      "exactText": "- 12+ years in distributed systems engineering with at least 4 years managing technical teams.",
+      "startOffset": 671,
+      "endOffset": 765,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "HARD_REQUIREMENT",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 11,
+      "spanId": "S010",
+      "exactText": "- 12+ years in distributed systems engineering with at least 4 years managing technical teams.",
+      "startOffset": 671,
+      "endOffset": 765,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "HARD_REQUIREMENT",
+      "subject": "ROLE",
+      "confidence": 1
+    },
+    {
+      "index": 12,
+      "spanId": "S011",
+      "exactText": "- Proven track record scaling microservices architectures in mission-critical environments.",
+      "startOffset": 766,
+      "endOffset": 857,
+      "validSpanId": true,
+      "unique": true,
+      "semanticType": "HARD_REQUIREMENT",
+      "subject": "ROLE",
+      "confidence": 1
+    }
+  ],
+  "assembly": {
+    "output": {
+      "caseId": "ADV_ROLE_03",
+      "canonicalJobId": "ADV_ROLE_03",
+      "rawTextLength": 857,
+      "sections": [
+        {
+          "type": "OTHER",
+          "headingText": "# Director of Enterprise Engineering — Nexus Cloud Systems",
+          "headingStart": 0,
+          "headingEnd": 58,
+          "contentStart": 58,
+          "contentEnd": 60,
+          "rawContent": "\n\n"
+        },
+        {
+          "type": "ABOUT_COMPANY",
+          "headingText": "## About The Role",
+          "headingStart": 60,
+          "headingEnd": 77,
+          "contentStart": 77,
+          "contentEnd": 192,
+          "rawContent": "\nNexus Cloud Systems provides high-throughput data integration infrastructure for banking and financial services.\n\n"
+        },
+        {
+          "type": "OTHER",
+          "headingText": "## Leadership & Scope",
+          "headingStart": 192,
+          "headingEnd": 213,
+          "contentStart": 213,
+          "contentEnd": 655,
+          "rawContent": "\n- Lead and mentor an agile engineering pod of 8 senior developers and architects based in Bengaluru.\n- Drive engineering excellence, code review standards, and CI/CD deployment reliability.\n- Strategic target: scale the engineering organization to 50+ engineers over the next 3 years as the product suite expands internationally.\n- Manage infrastructure spend across AWS and Google Cloud environments within approved monthly cost ceilings.\n\n"
+        },
+        {
+          "type": "REQUIREMENTS",
+          "headingText": "## Requirements",
+          "headingStart": 655,
+          "headingEnd": 670,
+          "contentStart": 670,
+          "contentEnd": 857,
+          "rawContent": "\n- 12+ years in distributed systems engineering with at least 4 years managing technical teams.\n- Proven track record scaling microservices architectures in mission-critical environments."
+        }
+      ],
+      "atoms": [
+        {
+          "id": "role_atom:ADV_ROLE_03:0_58:ROLE_PURPOSE",
+          "exactText": "# Director of Enterprise Engineering — Nexus Cloud Systems",
+          "startOffset": 0,
+          "endOffset": 58,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "ROLE_PURPOSE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_03:0_58:COMPANY_CONTEXT",
+          "exactText": "# Director of Enterprise Engineering — Nexus Cloud Systems",
+          "startOffset": 0,
+          "endOffset": 58,
+          "section": "OTHER",
+          "subject": "COMPANY",
+          "semanticType": "COMPANY_CONTEXT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_03:78_190:COMPANY_CONTEXT",
+          "exactText": "Nexus Cloud Systems provides high-throughput data integration infrastructure for banking and financial services.",
+          "startOffset": 78,
+          "endOffset": 190,
+          "section": "ABOUT_COMPANY",
+          "subject": "COMPANY",
+          "semanticType": "COMPANY_CONTEXT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_03:214_314:PEOPLE_LEADERSHIP",
+          "exactText": "- Lead and mentor an agile engineering pod of 8 senior developers and architects based in Bengaluru.",
+          "startOffset": 214,
+          "endOffset": 314,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "PEOPLE_LEADERSHIP",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_03:214_314:PEOPLE_SCALE",
+          "exactText": "- Lead and mentor an agile engineering pod of 8 senior developers and architects based in Bengaluru.",
+          "startOffset": 214,
+          "endOffset": 314,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "PEOPLE_SCALE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_03:214_314:GEOGRAPHIC_SCOPE",
+          "exactText": "- Lead and mentor an agile engineering pod of 8 senior developers and architects based in Bengaluru.",
+          "startOffset": 214,
+          "endOffset": 314,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "GEOGRAPHIC_SCOPE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_03:315_403:RESPONSIBILITY",
+          "exactText": "- Drive engineering excellence, code review standards, and CI/CD deployment reliability.",
+          "startOffset": 315,
+          "endOffset": 403,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "RESPONSIBILITY",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_03:404_543:PEOPLE_SCALE",
+          "exactText": "- Strategic target: scale the engineering organization to 50+ engineers over the next 3 years as the product suite expands internationally.",
+          "startOffset": 404,
+          "endOffset": 543,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "PEOPLE_SCALE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_03:404_543:GEOGRAPHIC_SCOPE",
+          "exactText": "- Strategic target: scale the engineering organization to 50+ engineers over the next 3 years as the product suite expands internationally.",
+          "startOffset": 404,
+          "endOffset": 543,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "GEOGRAPHIC_SCOPE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_03:544_653:BUDGET_SCOPE",
+          "exactText": "- Manage infrastructure spend across AWS and Google Cloud environments within approved monthly cost ceilings.",
+          "startOffset": 544,
+          "endOffset": 653,
+          "section": "OTHER",
+          "subject": "ROLE",
+          "semanticType": "BUDGET_SCOPE",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        },
+        {
+          "id": "role_atom:ADV_ROLE_03:766_857:HARD_REQUIREMENT",
+          "exactText": "- Proven track record scaling microservices architectures in mission-critical environments.",
+          "startOffset": 766,
+          "endOffset": 857,
+          "section": "REQUIREMENTS",
+          "subject": "ROLE",
+          "semanticType": "HARD_REQUIREMENT",
+          "confidence": 1,
+          "extractionMethod": "SEMANTIC_FALLBACK",
+          "epistemicMarker": "EXACT_SOURCE_STATEMENT"
+        }
+      ],
+      "metadata": {
+        "extractorVersion": "RoleIntelligenceExtractorV1",
+        "hasGluedHeadings": false,
+        "hasStructuralMetaLines": false,
+        "proposalCounts": {
+          "proposedAtoms": 13,
+          "acceptedAtoms": 11,
+          "rejectedAtoms": 2
+        }
+      }
+    },
+    "proposalRejections": [
+      {
+        "proposalIndex": 10,
+        "exactQuote": "- 12+ years in distributed systems engineering with at least 4 years managing technical teams.",
+        "code": "DUPLICATE_SEMANTIC_ANCHOR"
+      },
+      {
+        "proposalIndex": 11,
+        "exactQuote": "- 12+ years in distributed systems engineering with at least 4 years managing technical teams.",
+        "code": "DUPLICATE_SEMANTIC_ANCHOR"
+      }
+    ]
+  },
+  "verificationError": null
+}

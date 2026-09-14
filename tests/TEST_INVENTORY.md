@@ -86,6 +86,7 @@ RADAR v2 Test Architecture
 | Authoritative Suite | Primary Invariant Protected | Certification Stage |
 | :--- | :--- | :---: |
 | `tests/intelligence/semantic-evidence-integrity-regression.test.ts` | Dimension grounding prevents false evidence vetoes on rich executive postings. | **Stage 3** |
+| `tests/intelligence/extraction/source-id-harness.test.ts` | Source-ID extraction harness wire adaptation (`const` -> singleton `enum`), spanId strict validation, offset resolution, and candidate/role extraction verification. | Full Suite |
 | `tests/semantic/ontology.test.ts` | Comprehensive executive ontology validation (roles, capabilities, industries, seniority). | Full Suite |
 | `tests/semantic/normalization.test.ts` | Currency, date, location, and seniority string normalization. | Full Suite |
 
@@ -251,6 +252,9 @@ Every test file in the repository is mechanically tracked below:
 | `tests/intelligence/candidate-projection.test.ts` | Evaluation & Policy | **KEEP** | Full Suite | 6 | 23 |
 | `tests/intelligence/candidate-proof-extractor-v1.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 1 |
 | `tests/intelligence/role-intelligence-extractor-v1.test.ts` | Semantic Grounding | **KEEP** | Full Suite | 1 | 1 |
+| `tests/intelligence/extraction/provider-boundary.test.ts` | Semantic Grounding | **KEEP** | Gate 1B targeted | 1 | 8 |
+| `tests/intelligence/extraction/llm-experimental-provider.test.ts` | Semantic Grounding | **KEEP** | Gate 1B Batch 03 targeted | 1 | 19 |
+| `tests/intelligence/extraction/batch04-comparison.test.ts` | Semantic Grounding | **KEEP** | Gate 1B Batch 04 targeted | 1 | 2 |
 | `tests/intelligence/profile-projection-version-compat.test.ts` | Identity & Candidate Projection | **KEEP** | Gate 0 Safety | 6 | 6 |
 | `tests/intelligence/canonical-acquisition-integrity.test.ts` | Ingestion & Lineage | **KEEP** | Stage 3 | 22 | 63 |
 | `tests/intelligence/canonical-identity.test.ts` | Identity & Candidate Projection | **KEEP** | Operator only (`RADAR_RUN_LIVE_IDENTITY_TESTS=true`) | 7 | 27 |

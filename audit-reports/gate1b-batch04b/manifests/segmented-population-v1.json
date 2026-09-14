@@ -1,0 +1,2461 @@
+{
+  "schemaVersion": "gate1b-batch04b-segmented-population/v1",
+  "segmentationVersion": "source-segmentation/v1",
+  "createdAt": "2026-09-13T05:31:37.144Z",
+  "documents": [
+    {
+      "id": "DIVERSE_ROLE_01",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "sha256": "bb4580fa179c3cf9665f45644e0da20fab3811b887be020a187569d340a7b425",
+      "charLength": 2331,
+      "unitCount": 19,
+      "minUnitLength": 8,
+      "maxUnitLength": 334,
+      "units": [
+        {
+          "spanId": "S001",
+          "exactText": "About The CompanyA fast-growing digital health platform focused on diabetes and weight management, helping hundreds of thousands of members manage chronic conditions through connected devices, coaching, and a consumer app.",
+          "startOffset": 0,
+          "endOffset": 222
+        },
+        {
+          "spanId": "S002",
+          "exactText": "Backed by leading healthcare-focused investors, the company is scaling its consumer experience across India and international markets.",
+          "startOffset": 223,
+          "endOffset": 357
+        },
+        {
+          "spanId": "S003",
+          "exactText": "The RoleWe're looking for a senior, hands-on brand and UX leader to shape how the company shows up — visually, verbally, and experientially — across product and marketing.",
+          "startOffset": 357,
+          "endOffset": 528
+        },
+        {
+          "spanId": "S004",
+          "exactText": "This is an individual contributor role for someone who wants to lead through craft and judgment rather than headcount: setting the brand vision and design direction, then rolling up their sleeves to execute at a high bar.",
+          "startOffset": 529,
+          "endOffset": 750
+        },
+        {
+          "spanId": "S005",
+          "exactText": "Requirements",
+          "startOffset": 750,
+          "endOffset": 762
+        },
+        {
+          "spanId": "S006",
+          "exactText": "What You'll DoOwn end-to-end brand identity — voice, visual language, and positioning — across the app, website, and marketing channels",
+          "startOffset": 762,
+          "endOffset": 897
+        },
+        {
+          "spanId": "S007",
+          "exactText": "Lead UX strategy and design for key consumer journeys, from onboarding to chronic care engagement, balancing clinical trust with everyday usability",
+          "startOffset": 897,
+          "endOffset": 1044
+        },
+        {
+          "spanId": "S008",
+          "exactText": "Partner closely with product, marketing, and clinical teams to translate business and health outcomes into intuitive, well-designed experiences",
+          "startOffset": 1044,
+          "endOffset": 1187
+        },
+        {
+          "spanId": "S009",
+          "exactText": "Establish and evolve design systems, brand guidelines, and UX standards as the company scales",
+          "startOffset": 1187,
+          "endOffset": 1280
+        },
+        {
+          "spanId": "S010",
+          "exactText": "Bring an external point of view on category trends in consumer health, wellness, and behavior-change design",
+          "startOffset": 1280,
+          "endOffset": 1387
+        },
+        {
+          "spanId": "S011",
+          "exactText": "What We're Looking For10+ years of experience spanning brand and UX/product design, ideally with senior individual-contributor experience at a consumer tech, D2C, or digital health companyA strong portfolio demonstrating both brand craft (identity, storytelling, visual systems) and UX rigor (research-informed, outcome-driven design)",
+          "startOffset": 1387,
+          "endOffset": 1721
+        },
+        {
+          "spanId": "S012",
+          "exactText": "Comfort operating at both strategic and execution levels — equally at ease presenting a brand vision to leadership and shipping a redesigned flow",
+          "startOffset": 1721,
+          "endOffset": 1866
+        },
+        {
+          "spanId": "S013",
+          "exactText": "Experience in healthcare, wellness, or behavior-change products is a strong plus, but not mandatory",
+          "startOffset": 1866,
+          "endOffset": 1965
+        },
+        {
+          "spanId": "S014",
+          "exactText": "Someone who wants ownership and impact without managing a large team",
+          "startOffset": 1965,
+          "endOffset": 2033
+        },
+        {
+          "spanId": "S015",
+          "exactText": "Benefits",
+          "startOffset": 2033,
+          "endOffset": 2041
+        },
+        {
+          "spanId": "S016",
+          "exactText": "Why Join",
+          "startOffset": 2041,
+          "endOffset": 2049
+        },
+        {
+          "spanId": "S017",
+          "exactText": "High-ownership IC role with direct influence on product and brand direction",
+          "startOffset": 2049,
+          "endOffset": 2124
+        },
+        {
+          "spanId": "S018",
+          "exactText": "Work on a mission-driven product improving health outcomes for a large, underserved population",
+          "startOffset": 2124,
+          "endOffset": 2218
+        },
+        {
+          "spanId": "S019",
+          "exactText": "Backed by healthcare-focused investors with a strong founder-market fit and growth trajectory Show more Show less",
+          "startOffset": 2218,
+          "endOffset": 2331
+        }
+      ]
+    },
+    {
+      "id": "DIVERSE_ROLE_02",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "sha256": "8870740093f68deb3f86688b71524a6badd565080c04f4dde6e6067d40fbdf7d",
+      "charLength": 5589,
+      "unitCount": 44,
+      "minUnitLength": 11,
+      "maxUnitLength": 271,
+      "units": [
+        {
+          "spanId": "S001",
+          "exactText": "Description",
+          "startOffset": 0,
+          "endOffset": 11
+        },
+        {
+          "spanId": "S002",
+          "exactText": "About Alvarez & Marsal",
+          "startOffset": 11,
+          "endOffset": 33
+        },
+        {
+          "spanId": "S003",
+          "exactText": "Alvarez & Marsal (A&M) is a global consulting firm with over 10,000 entrepreneurial, action and results-oriented professionals in over 40 countries.",
+          "startOffset": 33,
+          "endOffset": 181
+        },
+        {
+          "spanId": "S004",
+          "exactText": "We take a hands-on approach to solving our clients' problems and assisting them in reaching their potential.",
+          "startOffset": 182,
+          "endOffset": 290
+        },
+        {
+          "spanId": "S005",
+          "exactText": "Our culture celebrates independent thinkers and doers who positively impact our clients and shape our industry.",
+          "startOffset": 291,
+          "endOffset": 402
+        },
+        {
+          "spanId": "S006",
+          "exactText": "The collaborative environment and engaging work-guided by A&M's core values of Integrity, Quality, Objectivity, Fun, Personal Reward, and Inclusive Diversity - are why our people love working at A&M.The Team",
+          "startOffset": 403,
+          "endOffset": 610
+        },
+        {
+          "spanId": "S007",
+          "exactText": "Our DTS Team Provides Following Services To Clients",
+          "startOffset": 610,
+          "endOffset": 661
+        },
+        {
+          "spanId": "S008",
+          "exactText": "Data & Applied Intelligence - Helping clients in harnessing the power of data and cutting-edge analytics to drive intelligent decision-making and transform businesses",
+          "startOffset": 661,
+          "endOffset": 827
+        },
+        {
+          "spanId": "S009",
+          "exactText": "Product and Innovation - Empowering clients to innovate, develop, and launch products that drives growth and competitive advantage",
+          "startOffset": 827,
+          "endOffset": 957
+        },
+        {
+          "spanId": "S010",
+          "exactText": "Technology M&A and Strategy - Assist clients to manage the technology aspects and business enablement of complex M&A, integrations and carve-outs",
+          "startOffset": 957,
+          "endOffset": 1102
+        },
+        {
+          "spanId": "S011",
+          "exactText": "Technology Transformation - A&M helps clients create a scalable, cost-effective IT function that delivers the company's strategic vision and priorities.",
+          "startOffset": 1102,
+          "endOffset": 1254
+        },
+        {
+          "spanId": "S012",
+          "exactText": "How You Will Contribute",
+          "startOffset": 1254,
+          "endOffset": 1277
+        },
+        {
+          "spanId": "S013",
+          "exactText": "The Change Manager will play a critical role in enabling end to end change management for Digital & Technology initiatives across A&M client engagements.",
+          "startOffset": 1277,
+          "endOffset": 1430
+        },
+        {
+          "spanId": "S014",
+          "exactText": "Sitting within DTS, this role partners closely with technology, data, AI, and business teams to translate complex digital transformations into practical, adoptable change - driving value realization and sustained outcomes.",
+          "startOffset": 1431,
+          "endOffset": 1653
+        },
+        {
+          "spanId": "S015",
+          "exactText": "This role is particularly relevant to A&M’s growing work across enterprise digital transformation, AI-led solutions, platform modernization, and technology-enabled operating model changes",
+          "startOffset": 1654,
+          "endOffset": 1841
+        },
+        {
+          "spanId": "S016",
+          "exactText": "Key Responsibilities Change Leadership within DTS Engagements",
+          "startOffset": 1841,
+          "endOffset": 1902
+        },
+        {
+          "spanId": "S017",
+          "exactText": "Lead end-to-end change management for DTS-led transformations, including digital platforms, analytics, AI solutions, and operating model redesigns Embed change management into tech delivery lifecycles, ensuring adoption is planned alongside build, not post-implementation",
+          "startOffset": 1902,
+          "endOffset": 2173
+        },
+        {
+          "spanId": "S018",
+          "exactText": "Act as the bridge between business, technology, and leadership, translating technical change into business-relevant narratives Enable Digital & AI-Driven Adoption",
+          "startOffset": 2173,
+          "endOffset": 2335
+        },
+        {
+          "spanId": "S019",
+          "exactText": "Support adoption of AI-enabled tools and digital solutions such as intelligent workflows, agentic or decision-support systems",
+          "startOffset": 2335,
+          "endOffset": 2460
+        },
+        {
+          "spanId": "S020",
+          "exactText": "Design user-centric adoption strategies covering communications, enablement, risk management, and behavioural change",
+          "startOffset": 2460,
+          "endOffset": 2576
+        },
+        {
+          "spanId": "S021",
+          "exactText": "Partner with product owners and tech teams to ensure solutions are usable, explainable, and responsibly adopted Stakeholder & Leadership Engagement",
+          "startOffset": 2576,
+          "endOffset": 2723
+        },
+        {
+          "spanId": "S022",
+          "exactText": "Partner with client leadership, DTS engagement leads, and internal stakeholders to shape change strategies aligned to value and outcomes",
+          "startOffset": 2723,
+          "endOffset": 2859
+        },
+        {
+          "spanId": "S023",
+          "exactText": "Develop leadership-ready materials (change roadmaps, adoption dashboards, rollout approaches) tailored to senior audiences Operating Model & Capability Change",
+          "startOffset": 2859,
+          "endOffset": 3017
+        },
+        {
+          "spanId": "S024",
+          "exactText": "Support digital operating model shifts, including ways of working, role changes, governance, and capability uplift",
+          "startOffset": 3017,
+          "endOffset": 3131
+        },
+        {
+          "spanId": "S025",
+          "exactText": "Design practical enablement approaches that help business users work differently from Day 1 Measurement & Sustainment",
+          "startOffset": 3131,
+          "endOffset": 3248
+        },
+        {
+          "spanId": "S026",
+          "exactText": "Define and track adoption and change metrics tied to business value, not just activity completion",
+          "startOffset": 3248,
+          "endOffset": 3345
+        },
+        {
+          "spanId": "S027",
+          "exactText": "Put in place sustainment mechanisms to ensure changes hold post go-live Skills & Capabilities (Must-Have) Change & Transformation5–10 years of experience in Change Management, preferably in technology-led or digital transformation programs",
+          "startOffset": 3345,
+          "endOffset": 3584
+        },
+        {
+          "spanId": "S028",
+          "exactText": "Strong grounding in change frameworks (Prosci, ADKAR, or equivalent) with the ability to apply pragmatically, not theoretically Digital & Technology Orientation",
+          "startOffset": 3584,
+          "endOffset": 3744
+        },
+        {
+          "spanId": "S029",
+          "exactText": "Proven experience working with DTS, Digital, Data, or Technology teams",
+          "startOffset": 3744,
+          "endOffset": 3814
+        },
+        {
+          "spanId": "S030",
+          "exactText": "Strong comfort engaging with technical concepts (digital platforms, AI, automation, analytics) and translating them for business audiences",
+          "startOffset": 3814,
+          "endOffset": 3952
+        },
+        {
+          "spanId": "S031",
+          "exactText": "Experience integrating change into agile / product-based delivery models Stakeholder & Consulting Skills",
+          "startOffset": 3952,
+          "endOffset": 4056
+        },
+        {
+          "spanId": "S032",
+          "exactText": "Consulting-grade communication and storytelling skills, especially for leadership and senior stakeholders",
+          "startOffset": 4056,
+          "endOffset": 4161
+        },
+        {
+          "spanId": "S033",
+          "exactText": "Ability to operate in complex, fast-moving, ambiguous environments typical of A&M engagements",
+          "startOffset": 4161,
+          "endOffset": 4254
+        },
+        {
+          "spanId": "S034",
+          "exactText": "Strong facilitation, problem-solving, and influencing skills",
+          "startOffset": 4254,
+          "endOffset": 4314
+        },
+        {
+          "spanId": "S035",
+          "exactText": "Exposure to Tech-enabled M&A (technology separation, integration, or value creation) Experience supporting adoption of AI, GenAI, or Agentic AQualifications",
+          "startOffset": 4314,
+          "endOffset": 4470
+        },
+        {
+          "spanId": "S036",
+          "exactText": "Master’s degree in business, Change Management, Organizational Psychology, HR, Technology Management, or a related field",
+          "startOffset": 4470,
+          "endOffset": 4590
+        },
+        {
+          "spanId": "S037",
+          "exactText": "Change certifications (Prosci, APMG, etc.) preferred but not mandatory",
+          "startOffset": 4590,
+          "endOffset": 4660
+        },
+        {
+          "spanId": "S038",
+          "exactText": "Prior experience in consulting or transformation-heavy environments strongly preferred",
+          "startOffset": 4660,
+          "endOffset": 4746
+        },
+        {
+          "spanId": "S039",
+          "exactText": "Your journey at A&M We recognize that our people are the driving force behind our success, which is why we prioritize an employee experience that fosters each person’s unique professional and personal development.",
+          "startOffset": 4746,
+          "endOffset": 4959
+        },
+        {
+          "spanId": "S040",
+          "exactText": "Our robust performance development process promotes continuous learning, rewards your contributions, and fosters a culture of meritocracy.",
+          "startOffset": 4960,
+          "endOffset": 5098
+        },
+        {
+          "spanId": "S041",
+          "exactText": "With top-notch training and on-the-job learning opportunities, you can acquire new skills and advance your career.",
+          "startOffset": 5099,
+          "endOffset": 5213
+        },
+        {
+          "spanId": "S042",
+          "exactText": "We prioritize your well-being, providing benefits and resources to support you on your personal journey.",
+          "startOffset": 5214,
+          "endOffset": 5318
+        },
+        {
+          "spanId": "S043",
+          "exactText": "Our people consistently highlight the growth opportunities, our unique, entrepreneurial culture, and the fun we have together as their favorite aspects of working at A&M. The possibilities are endless for high-performing and passionate professionals.",
+          "startOffset": 5319,
+          "endOffset": 5569
+        },
+        {
+          "spanId": "S044",
+          "exactText": "Show more Show less",
+          "startOffset": 5570,
+          "endOffset": 5589
+        }
+      ]
+    },
+    {
+      "id": "DIVERSE_ROLE_03",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "sha256": "201f9bca291029fc91ddafed77345420fb96c0778d7e79630a5b0a07bf794b0d",
+      "charLength": 4267,
+      "unitCount": 36,
+      "minUnitLength": 15,
+      "maxUnitLength": 311,
+      "units": [
+        {
+          "spanId": "S001",
+          "exactText": "Job Title: Producr Growth Head - Spice Money",
+          "startOffset": 0,
+          "endOffset": 44
+        },
+        {
+          "spanId": "S002",
+          "exactText": "Location: Noida",
+          "startOffset": 44,
+          "endOffset": 59
+        },
+        {
+          "spanId": "S003",
+          "exactText": "Experience: 5 to 8 Years",
+          "startOffset": 59,
+          "endOffset": 83
+        },
+        {
+          "spanId": "S004",
+          "exactText": "Education: B.Tech/Post Graduate from Top Tier Institute",
+          "startOffset": 83,
+          "endOffset": 138
+        },
+        {
+          "spanId": "S005",
+          "exactText": "Our Story:Founded in 2000 by Dilip Modi, Spice Money Limited is India’s leading rural fintech company, headquartered in Noida and operating as a subsidiary of DiGiSPICE Technologies Limited, a publicly listed entity.",
+          "startOffset": 138,
+          "endOffset": 354
+        },
+        {
+          "spanId": "S006",
+          "exactText": "The company is driven by a strong mission to accelerate financial inclusion and empower the underserved “Bharat” through technology-enabled financial services.",
+          "startOffset": 355,
+          "endOffset": 514
+        },
+        {
+          "spanId": "S007",
+          "exactText": "With a network of 1.6+ million Adhikaris across India, the company enables last-mile access to essential services including AEPS cash withdrawal and deposits, domestic money transfer, bill payments, insurance, micro-ATM services, credit solutions, travel bookings, account opening, and UPI-led digital payments.",
+          "startOffset": 514,
+          "endOffset": 825
+        },
+        {
+          "spanId": "S008",
+          "exactText": "Spice Money has consistently introduced industry-first innovations such as a zero-cost Adhikari platform, one of India’s largest assisted payments networks, a rural credit marketplace, and Spice Money UPI & Spice Pay wallet to accelerate digital adoption in smaller towns and villages.",
+          "startOffset": 826,
+          "endOffset": 1111
+        },
+        {
+          "spanId": "S009",
+          "exactText": "Operating across 95%+ pincodes with a team of 1,000+ employees, Spice Money combines the agility of a high-growth fintech with the scale and impact of a nationwide distribution network—creating meaningful economic opportunities and driving the next phase of financial inclusion in India.",
+          "startOffset": 1111,
+          "endOffset": 1398
+        },
+        {
+          "spanId": "S010",
+          "exactText": "The Impact You'll Create:The Growth Head– B2B (Spice Money) will act as the digital business manager for the company’s core assisted financial services.",
+          "startOffset": 1398,
+          "endOffset": 1550
+        },
+        {
+          "spanId": "S011",
+          "exactText": "This is a business-first role responsible for managing agent engagement, retention, cross-product penetration and satisfaction through digital levers such as communication, incentive design, structured lifecycle programs and sentiment monitoring.",
+          "startOffset": 1551,
+          "endOffset": 1797
+        },
+        {
+          "spanId": "S012",
+          "exactText": "You will work closely with the product, business, CRM, creative and analytics teams to identify friction points, drive usage and scale partner contribution to revenue through structured and data-backed initiatives.",
+          "startOffset": 1798,
+          "endOffset": 2012
+        },
+        {
+          "spanId": "S013",
+          "exactText": "Success in this role is characterized by the following milestones:Improved revenue contribution per active Adhikari (month-on-month growth)",
+          "startOffset": 2013,
+          "endOffset": 2152
+        },
+        {
+          "spanId": "S014",
+          "exactText": "Activation of >3 products per agent within 90 days of onboarding",
+          "startOffset": 2152,
+          "endOffset": 2216
+        },
+        {
+          "spanId": "S015",
+          "exactText": "Net Retention Rate (NRR) uplift through structured lifecycle management",
+          "startOffset": 2216,
+          "endOffset": 2287
+        },
+        {
+          "spanId": "S016",
+          "exactText": "Reduction in inactive agents by >30% over 2 quarters",
+          "startOffset": 2287,
+          "endOffset": 2339
+        },
+        {
+          "spanId": "S017",
+          "exactText": "Measurable improvement in partner NPS/SAT scores within 6 months",
+          "startOffset": 2339,
+          "endOffset": 2403
+        },
+        {
+          "spanId": "S018",
+          "exactText": "High adoption of VIP/Loyalty programs with >50% participation from top agents",
+          "startOffset": 2403,
+          "endOffset": 2480
+        },
+        {
+          "spanId": "S019",
+          "exactText": "How Will You Contribute:Build and manage the digital growth roadmap for AEPS, DMT, BBPS, CMS and other revenue-generating verticals within Spice Money",
+          "startOffset": 2480,
+          "endOffset": 2630
+        },
+        {
+          "spanId": "S020",
+          "exactText": "Own digital engagement with SMAs (Spice Money Adhikaris), their retention, productivity metrics and GTV and revenue across core services",
+          "startOffset": 2630,
+          "endOffset": 2766
+        },
+        {
+          "spanId": "S021",
+          "exactText": "Design and deploy structured lifecycle programs (SMS, Whats",
+          "startOffset": 2766,
+          "endOffset": 2825
+        },
+        {
+          "spanId": "S022",
+          "exactText": "App, product journeys (along with product teams) in-app nudges, notifications) to improve product usage and cross-adoption",
+          "startOffset": 2825,
+          "endOffset": 2947
+        },
+        {
+          "spanId": "S023",
+          "exactText": "Improve penetration of VIP loyalty program for high-performing agents to increase stickiness and lifetime value",
+          "startOffset": 2947,
+          "endOffset": 3058
+        },
+        {
+          "spanId": "S024",
+          "exactText": "Own the NPS/SAT feedback loop, run monthly sentiment trackers and drive continuous improvement",
+          "startOffset": 3058,
+          "endOffset": 3152
+        },
+        {
+          "spanId": "S025",
+          "exactText": "Partner with analytics to build product usage cohorts and lifecycle drop-off reports and course correct",
+          "startOffset": 3152,
+          "endOffset": 3255
+        },
+        {
+          "spanId": "S026",
+          "exactText": "Optimize pricing and commission structures using feedback and data to increase adoption",
+          "startOffset": 3255,
+          "endOffset": 3342
+        },
+        {
+          "spanId": "S027",
+          "exactText": "Create monthly growth dashboards and market intelligence bulletins for internal stakeholders",
+          "startOffset": 3342,
+          "endOffset": 3434
+        },
+        {
+          "spanId": "S028",
+          "exactText": "You're A Great Fit If You: Deep understanding of B2B growth and lifecycle marketing in digitally assisted ecosystems",
+          "startOffset": 3434,
+          "endOffset": 3550
+        },
+        {
+          "spanId": "S029",
+          "exactText": "Experience with agent-led or distribution-based models, ideally in fintech, payments, or rural.",
+          "startOffset": 3550,
+          "endOffset": 3645
+        },
+        {
+          "spanId": "S030",
+          "exactText": "Strong command over digital communication tools, user segmentation and campaign management",
+          "startOffset": 3645,
+          "endOffset": 3735
+        },
+        {
+          "spanId": "S031",
+          "exactText": "Ability to translate on-ground feedback into structured product or pricing interventions",
+          "startOffset": 3735,
+          "endOffset": 3823
+        },
+        {
+          "spanId": "S032",
+          "exactText": "Proficiency in data-driven growth: Google Sheets, Tableau, CRM dashboards, Excel-based modeling",
+          "startOffset": 3823,
+          "endOffset": 3918
+        },
+        {
+          "spanId": "S033",
+          "exactText": "Strong stakeholder management, structured thinking, and execution bias",
+          "startOffset": 3918,
+          "endOffset": 3988
+        },
+        {
+          "spanId": "S034",
+          "exactText": "This role is for someone who understands Bharat deeply and can build scalable, structured, and data-led growth programs for a distributed, digitally assisted ecosystem.",
+          "startOffset": 3988,
+          "endOffset": 4156
+        },
+        {
+          "spanId": "S035",
+          "exactText": "If you’re passionate about solving for India’s next 500 million users—this is your canvas.",
+          "startOffset": 4157,
+          "endOffset": 4247
+        },
+        {
+          "spanId": "S036",
+          "exactText": "Show more Show less",
+          "startOffset": 4248,
+          "endOffset": 4267
+        }
+      ]
+    },
+    {
+      "id": "DIVERSE_ROLE_04",
+      "partition": "DIVERSE_ROLE",
+      "scored": true,
+      "sha256": "358906ef8c0a72bbb057233a1e858a88fb3a2bfb180d657e26de98d5991169ba",
+      "charLength": 7240,
+      "unitCount": 56,
+      "minUnitLength": 19,
+      "maxUnitLength": 243,
+      "units": [
+        {
+          "spanId": "S001",
+          "exactText": "AI at ZapierAt Zapier, we build and use automation every day to make work more efficient, creative, and human.",
+          "startOffset": 0,
+          "endOffset": 110
+        },
+        {
+          "spanId": "S002",
+          "exactText": "So if you’re using AI tools while applying here - that’s great!",
+          "startOffset": 111,
+          "endOffset": 174
+        },
+        {
+          "spanId": "S003",
+          "exactText": "We just ask that you use them responsibly and transparently.",
+          "startOffset": 175,
+          "endOffset": 235
+        },
+        {
+          "spanId": "S004",
+          "exactText": "Check out our guidance on How to Collaborate with AI During Zapier’s Hiring Process, including how to use AI tools like ChatGPT, Claude, Gemini, or others during our hiring process - and when not to.",
+          "startOffset": 235,
+          "endOffset": 434
+        },
+        {
+          "spanId": "S005",
+          "exactText": "Job Posted: September 2026",
+          "startOffset": 434,
+          "endOffset": 460
+        },
+        {
+          "spanId": "S006",
+          "exactText": "Location: IndiaHi there!",
+          "startOffset": 460,
+          "endOffset": 484
+        },
+        {
+          "spanId": "S007",
+          "exactText": "We're looking for a Director, India to serve as the senior-most, India-based leader of Zapier's India entity, acting as both a statutory Board Director and General Manager.",
+          "startOffset": 484,
+          "endOffset": 656
+        },
+        {
+          "spanId": "S008",
+          "exactText": "This is a pivotal role at a formative stage of our India presence: you'll ensure full legal, tax, and regulatory compliance for our India entity while also serving as the bridge between Zapier's global strategy and its execution on the ground.",
+          "startOffset": 657,
+          "endOffset": 900
+        },
+        {
+          "spanId": "S009",
+          "exactText": "You'll report to Ryan Roccon, our Chief Operating Officer and Chief Financial Officer, and partner closely with our India-based managers, our Operating Committee, and our external advisors at Deloitte.",
+          "startOffset": 900,
+          "endOffset": 1101
+        },
+        {
+          "spanId": "S010",
+          "exactText": "You'll own India operations as the accountable local leader, drive delivery and performance across India-based functions, and represent the entity to auditors and regulators.",
+          "startOffset": 1102,
+          "endOffset": 1276
+        },
+        {
+          "spanId": "S011",
+          "exactText": "If you're looking for a role where you can build governance rhythms and operating discipline from the ground up while being the trusted face of a company's India presence, this is it.",
+          "startOffset": 1277,
+          "endOffset": 1460
+        },
+        {
+          "spanId": "S012",
+          "exactText": "Our Commitment to Applicants",
+          "startOffset": 1460,
+          "endOffset": 1488
+        },
+        {
+          "spanId": "S013",
+          "exactText": "Culture and Values at Zapier",
+          "startOffset": 1488,
+          "endOffset": 1516
+        },
+        {
+          "spanId": "S014",
+          "exactText": "Zapier Guide to Remote Work",
+          "startOffset": 1516,
+          "endOffset": 1543
+        },
+        {
+          "spanId": "S015",
+          "exactText": "Zapier Code of Conduct",
+          "startOffset": 1543,
+          "endOffset": 1565
+        },
+        {
+          "spanId": "S016",
+          "exactText": "Diversity and Inclusivity at Zapier",
+          "startOffset": 1565,
+          "endOffset": 1600
+        },
+        {
+          "spanId": "S017",
+          "exactText": "About YouYou have 15-20+ years of experience, including 5+ years in India site leadership, GM, COO, or country-head-type roles for multinational companies.",
+          "startOffset": 1600,
+          "endOffset": 1755
+        },
+        {
+          "spanId": "S018",
+          "exactText": "You have strong business acumen and the ability to manage stakeholders in a global, matrix organization, where functional teams report to global leaders while maintaining a dotted-line relationship to you.",
+          "startOffset": 1755,
+          "endOffset": 1960
+        },
+        {
+          "spanId": "S019",
+          "exactText": "You have strong knowledge of and exposure to financial, legal entity, and statutory compliance, audit, tax, and transfer pricing, gained through demonstrated experience working with Big 4 firms and/or legal counsel on India entity matters.",
+          "startOffset": 1960,
+          "endOffset": 2199
+        },
+        {
+          "spanId": "S020",
+          "exactText": "You have strong people leadership and hiring instincts, with experience across hiring, performance management, employee relations, and exits in an Indian context.",
+          "startOffset": 2199,
+          "endOffset": 2361
+        },
+        {
+          "spanId": "S021",
+          "exactText": "You're comfortable taking on statutory director responsibilities and signing off on board and compliance documents, including the personal liability that comes with it.",
+          "startOffset": 2361,
+          "endOffset": 2529
+        },
+        {
+          "spanId": "S022",
+          "exactText": "You build positive working relationships and trust quickly with India-based teams, delivery managers, and the global executive team, and develop a deep understanding of the business, strategy, operations, and priorities.",
+          "startOffset": 2529,
+          "endOffset": 2749
+        },
+        {
+          "spanId": "S023",
+          "exactText": "You're an effective communicator who can drive results and hold your ground in a complex, matrixed environment while remaining people-focused.",
+          "startOffset": 2749,
+          "endOffset": 2891
+        },
+        {
+          "spanId": "S024",
+          "exactText": "Nice to have: prior experience setting up or scaling a Global Capability Center in India.",
+          "startOffset": 2891,
+          "endOffset": 2980
+        },
+        {
+          "spanId": "S025",
+          "exactText": "Things You'll DoServe as the primary liaison between Zapier's India operations and global leadership, ensuring alignment and coordination and escalating key issues to the executive team.",
+          "startOffset": 2980,
+          "endOffset": 3166
+        },
+        {
+          "spanId": "S026",
+          "exactText": "Lead overall India operations, translating global strategy into local execution and providing regular updates to US leadership.",
+          "startOffset": 3166,
+          "endOffset": 3293
+        },
+        {
+          "spanId": "S027",
+          "exactText": "Serve as the senior-most site leader for all India-based employees, establishing governance rhythms and driving a high-performance, high-autonomy, values-driven 100% remote team.",
+          "startOffset": 3293,
+          "endOffset": 3471
+        },
+        {
+          "spanId": "S028",
+          "exactText": "Act as a statutory Board Director for Zapier India: attend board meetings, approve minutes and resolutions and sign statutory filings.",
+          "startOffset": 3471,
+          "endOffset": 3605
+        },
+        {
+          "spanId": "S029",
+          "exactText": "Ensure full statutory, tax, and financial compliance of the Indian legal entity, and serve as the primary point of contact for external auditors and Indian regulatory authorities.",
+          "startOffset": 3605,
+          "endOffset": 3784
+        },
+        {
+          "spanId": "S030",
+          "exactText": "Partner with Deloitte and internal finance on tax filings, audits, transfer pricing, and other regulatory matters.",
+          "startOffset": 3784,
+          "endOffset": 3898
+        },
+        {
+          "spanId": "S031",
+          "exactText": "Own all India people decisions: hiring, compensation, performance, and terminations, while functional managers continue to run day-to-day work for their teams.",
+          "startOffset": 3898,
+          "endOffset": 4057
+        },
+        {
+          "spanId": "S032",
+          "exactText": "Partner with HR on people strategy, talent decisions, employee relations, and local policy implementation, and ensure compliance with Indian labor law, including POSH and state-specific requirements.",
+          "startOffset": 4057,
+          "endOffset": 4256
+        },
+        {
+          "spanId": "S033",
+          "exactText": "Manage local vendor relationships for Zapier's India presence.",
+          "startOffset": 4256,
+          "endOffset": 4318
+        },
+        {
+          "spanId": "S034",
+          "exactText": "Identify, monitor, and mitigate key risks to Zapier's India operations.",
+          "startOffset": 4318,
+          "endOffset": 4389
+        },
+        {
+          "spanId": "S035",
+          "exactText": "How To ApplyAt Zapier, we believe that diverse perspectives and experiences make us better, which is why we have a non-standard application process designed to promote inclusion and equity.",
+          "startOffset": 4389,
+          "endOffset": 4578
+        },
+        {
+          "spanId": "S036",
+          "exactText": "We're looking for the best fit for each of our roles, regardless of the type of companies in your background, so we encourage you to apply even if your skills and experiences don’t exactly match the job description.",
+          "startOffset": 4579,
+          "endOffset": 4794
+        },
+        {
+          "spanId": "S037",
+          "exactText": "All we ask is that you answer a few in-depth questions in our application that would typically be asked at the start of an interview process.",
+          "startOffset": 4795,
+          "endOffset": 4936
+        },
+        {
+          "spanId": "S038",
+          "exactText": "This helps speed things up by letting us get to know you and your skillset a bit better right out of the gate.",
+          "startOffset": 4937,
+          "endOffset": 5047
+        },
+        {
+          "spanId": "S039",
+          "exactText": "Please be sure to answer each question; the resume and CV fields are optional.",
+          "startOffset": 5048,
+          "endOffset": 5126
+        },
+        {
+          "spanId": "S040",
+          "exactText": "Education is not a requirement for our roles; however, if you receive an offer, you will need to include your most recent educational experience as part of our background check process.",
+          "startOffset": 5126,
+          "endOffset": 5311
+        },
+        {
+          "spanId": "S041",
+          "exactText": "After you apply, you are going to hear back from us—even if we don’t see an immediate fit with our team.",
+          "startOffset": 5311,
+          "endOffset": 5415
+        },
+        {
+          "spanId": "S042",
+          "exactText": "In fact, throughout the process, we strive to never go more than seven days without letting you know the status of your application.",
+          "startOffset": 5416,
+          "endOffset": 5548
+        },
+        {
+          "spanId": "S043",
+          "exactText": "We know we’ll make mistakes from time to time, so if you ever have questions about where you stand or about the process, just ask your recruiter!",
+          "startOffset": 5549,
+          "endOffset": 5694
+        },
+        {
+          "spanId": "S044",
+          "exactText": "Zapier is an equal-opportunity employer and we're excited to work with talented and empathetic people of all identities.",
+          "startOffset": 5694,
+          "endOffset": 5814
+        },
+        {
+          "spanId": "S045",
+          "exactText": "Zapier does not discriminate based on someone's identity in any aspect of hiring or employment as required by law and in line with our commitment to Diversity, Inclusion, Belonging and Equity.",
+          "startOffset": 5815,
+          "endOffset": 6007
+        },
+        {
+          "spanId": "S046",
+          "exactText": "Our code of conduct provides a beacon for the kind of company we strive to be, and we celebrate our differences because those differences are what allow us to make a product that serves a global user base.",
+          "startOffset": 6008,
+          "endOffset": 6213
+        },
+        {
+          "spanId": "S047",
+          "exactText": "Zapier will consider all qualified applicants, including those with criminal histories, consistent with applicable laws.",
+          "startOffset": 6214,
+          "endOffset": 6334
+        },
+        {
+          "spanId": "S048",
+          "exactText": "Zapier prioritizes the security of our customers' information and is dedicated to adhering to all applicable data privacy laws.",
+          "startOffset": 6334,
+          "endOffset": 6461
+        },
+        {
+          "spanId": "S049",
+          "exactText": "You can review our privacy policy here.",
+          "startOffset": 6462,
+          "endOffset": 6501
+        },
+        {
+          "spanId": "S050",
+          "exactText": "Zapier is committed to inclusion.",
+          "startOffset": 6501,
+          "endOffset": 6534
+        },
+        {
+          "spanId": "S051",
+          "exactText": "As part of this commitment, Zapier welcomes applications from individuals with disabilities and will work to provide reasonable accommodations.",
+          "startOffset": 6535,
+          "endOffset": 6678
+        },
+        {
+          "spanId": "S052",
+          "exactText": "If reasonable accommodations are needed to participate in the job application or interview process, please contact jobs@zapier.com.Application Deadline",
+          "startOffset": 6679,
+          "endOffset": 6830
+        },
+        {
+          "spanId": "S053",
+          "exactText": "The anticipated application window is 30 days from the date job is posted, unless the number of applicants requires it to close sooner or later, or if the position is filled.",
+          "startOffset": 6830,
+          "endOffset": 7004
+        },
+        {
+          "spanId": "S054",
+          "exactText": "Even though we’re an all-remote company, we still need to be thoughtful about where we have Zapiens working.",
+          "startOffset": 7004,
+          "endOffset": 7112
+        },
+        {
+          "spanId": "S055",
+          "exactText": "Check out this resource for a list of countries where we currently cannot have Zapiens permanently working.",
+          "startOffset": 7113,
+          "endOffset": 7220
+        },
+        {
+          "spanId": "S056",
+          "exactText": "Show more Show less",
+          "startOffset": 7221,
+          "endOffset": 7240
+        }
+      ]
+    },
+    {
+      "id": "ADV_ROLE_01",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "sha256": "8a9ae43187177b13788299daff7e0faac878b67cb508bc46eddafcd799e78b5f",
+      "charLength": 916,
+      "unitCount": 11,
+      "minUnitLength": 13,
+      "maxUnitLength": 153,
+      "units": [
+        {
+          "spanId": "S001",
+          "exactText": "# VP of Growth Marketing — Apex Global Software",
+          "startOffset": 0,
+          "endOffset": 47
+        },
+        {
+          "spanId": "S002",
+          "exactText": "## About Apex",
+          "startOffset": 49,
+          "endOffset": 62
+        },
+        {
+          "spanId": "S003",
+          "exactText": "Apex Global Software is an enterprise B2B SaaS platform providing supply chain intelligence to Fortune 500 manufacturers across North America and Europe.",
+          "startOffset": 63,
+          "endOffset": 216
+        },
+        {
+          "spanId": "S004",
+          "exactText": "## Role Responsibilities",
+          "startOffset": 218,
+          "endOffset": 242
+        },
+        {
+          "spanId": "S005",
+          "exactText": "- Own and allocate the $4.5M annual performance marketing acquisition budget across digital channels, enterprise events, and paid search.",
+          "startOffset": 243,
+          "endOffset": 380
+        },
+        {
+          "spanId": "S006",
+          "exactText": "- Note: This role does not have company P&L ownership, which resides strictly with the General Manager and BU President.",
+          "startOffset": 381,
+          "endOffset": 501
+        },
+        {
+          "spanId": "S007",
+          "exactText": "- Build and optimize multi-channel lead acquisition funnels to deliver qualified pipeline for the enterprise sales team.",
+          "startOffset": 502,
+          "endOffset": 622
+        },
+        {
+          "spanId": "S008",
+          "exactText": "- Lead a high-performing digital marketing team of 6 growth specialists.",
+          "startOffset": 623,
+          "endOffset": 695
+        },
+        {
+          "spanId": "S009",
+          "exactText": "## Requirements",
+          "startOffset": 697,
+          "endOffset": 712
+        },
+        {
+          "spanId": "S010",
+          "exactText": "- 10+ years of digital demand generation and performance marketing experience in enterprise B2B SaaS.",
+          "startOffset": 713,
+          "endOffset": 814
+        },
+        {
+          "spanId": "S011",
+          "exactText": "- Demonstrated expertise in marketing budget allocation, pipeline attribution, and ROAS optimization.",
+          "startOffset": 815,
+          "endOffset": 916
+        }
+      ]
+    },
+    {
+      "id": "ADV_ROLE_02",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "sha256": "299af5a3b89b05f69bd1fcbac28e35b2dbd1f611ce4c3b74a83c940b8bbd0d40",
+      "charLength": 1013,
+      "unitCount": 12,
+      "minUnitLength": 17,
+      "maxUnitLength": 168,
+      "units": [
+        {
+          "spanId": "S001",
+          "exactText": "# Executive Advisor, Strategic Initiatives — Crestview Holdings",
+          "startOffset": 0,
+          "endOffset": 63
+        },
+        {
+          "spanId": "S002",
+          "exactText": "## Position Overview",
+          "startOffset": 65,
+          "endOffset": 85
+        },
+        {
+          "spanId": "S003",
+          "exactText": "Crestview Holdings operates diversified commercial real estate and logistics infrastructure assets across South Asia.",
+          "startOffset": 86,
+          "endOffset": 203
+        },
+        {
+          "spanId": "S004",
+          "exactText": "We are seeking an Executive Advisor to coordinate cross-division strategic priorities.",
+          "startOffset": 204,
+          "endOffset": 290
+        },
+        {
+          "spanId": "S005",
+          "exactText": "## Key Accountabilities",
+          "startOffset": 292,
+          "endOffset": 315
+        },
+        {
+          "spanId": "S006",
+          "exactText": "- Collaborate closely with the Chief Executive Officer and Executive Committee to prepare quarterly board presentations, strategic memos, and market expansion analyses.",
+          "startOffset": 316,
+          "endOffset": 484
+        },
+        {
+          "spanId": "S007",
+          "exactText": "- Reports directly to the Chief Operating Officer for daily operational execution, governance cadence, and formal review.",
+          "startOffset": 485,
+          "endOffset": 606
+        },
+        {
+          "spanId": "S008",
+          "exactText": "- Coordinate with division managing directors across 4 regional operating entities without holding direct line management over operational staff.",
+          "startOffset": 607,
+          "endOffset": 752
+        },
+        {
+          "spanId": "S009",
+          "exactText": "- Ensure seamless cross-functional alignment on capital expenditure deployment schedules.",
+          "startOffset": 753,
+          "endOffset": 842
+        },
+        {
+          "spanId": "S010",
+          "exactText": "## Qualifications",
+          "startOffset": 844,
+          "endOffset": 861
+        },
+        {
+          "spanId": "S011",
+          "exactText": "- Master's degree in Business Administration, Finance, or equivalent.",
+          "startOffset": 862,
+          "endOffset": 931
+        },
+        {
+          "spanId": "S012",
+          "exactText": "- 12+ years of senior corporate strategy, advisory, or chief of staff experience.",
+          "startOffset": 932,
+          "endOffset": 1013
+        }
+      ]
+    },
+    {
+      "id": "ADV_ROLE_03",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "sha256": "4f653d87894e38dcc2d8c5fac6b79691340f45c48632780dfa2ca6fbf25f4442",
+      "charLength": 857,
+      "unitCount": 11,
+      "minUnitLength": 15,
+      "maxUnitLength": 139,
+      "units": [
+        {
+          "spanId": "S001",
+          "exactText": "# Director of Enterprise Engineering — Nexus Cloud Systems",
+          "startOffset": 0,
+          "endOffset": 58
+        },
+        {
+          "spanId": "S002",
+          "exactText": "## About The Role",
+          "startOffset": 60,
+          "endOffset": 77
+        },
+        {
+          "spanId": "S003",
+          "exactText": "Nexus Cloud Systems provides high-throughput data integration infrastructure for banking and financial services.",
+          "startOffset": 78,
+          "endOffset": 190
+        },
+        {
+          "spanId": "S004",
+          "exactText": "## Leadership & Scope",
+          "startOffset": 192,
+          "endOffset": 213
+        },
+        {
+          "spanId": "S005",
+          "exactText": "- Lead and mentor an agile engineering pod of 8 senior developers and architects based in Bengaluru.",
+          "startOffset": 214,
+          "endOffset": 314
+        },
+        {
+          "spanId": "S006",
+          "exactText": "- Drive engineering excellence, code review standards, and CI/CD deployment reliability.",
+          "startOffset": 315,
+          "endOffset": 403
+        },
+        {
+          "spanId": "S007",
+          "exactText": "- Strategic target: scale the engineering organization to 50+ engineers over the next 3 years as the product suite expands internationally.",
+          "startOffset": 404,
+          "endOffset": 543
+        },
+        {
+          "spanId": "S008",
+          "exactText": "- Manage infrastructure spend across AWS and Google Cloud environments within approved monthly cost ceilings.",
+          "startOffset": 544,
+          "endOffset": 653
+        },
+        {
+          "spanId": "S009",
+          "exactText": "## Requirements",
+          "startOffset": 655,
+          "endOffset": 670
+        },
+        {
+          "spanId": "S010",
+          "exactText": "- 12+ years in distributed systems engineering with at least 4 years managing technical teams.",
+          "startOffset": 671,
+          "endOffset": 765
+        },
+        {
+          "spanId": "S011",
+          "exactText": "- Proven track record scaling microservices architectures in mission-critical environments.",
+          "startOffset": 766,
+          "endOffset": 857
+        }
+      ]
+    },
+    {
+      "id": "ADV_ROLE_04",
+      "partition": "ADVERSARIAL_ROLE",
+      "scored": true,
+      "sha256": "553c1a8a6f2eff5a36fadbe9c4bd508b622282e23b377e98c3f8c674df0af0a7",
+      "charLength": 1009,
+      "unitCount": 13,
+      "minUnitLength": 16,
+      "maxUnitLength": 138,
+      "units": [
+        {
+          "spanId": "S001",
+          "exactText": "# Head of Commercial Strategy — Solaria Energy Solutions",
+          "startOffset": 0,
+          "endOffset": 56
+        },
+        {
+          "spanId": "S002",
+          "exactText": "## About Solaria",
+          "startOffset": 58,
+          "endOffset": 74
+        },
+        {
+          "spanId": "S003",
+          "exactText": "Solaria Energy Solutions is a renewable energy infrastructure provider deploying industrial-scale solar installations across Asia Pacific.",
+          "startOffset": 75,
+          "endOffset": 213
+        },
+        {
+          "spanId": "S004",
+          "exactText": "## Key Responsibilities",
+          "startOffset": 215,
+          "endOffset": 238
+        },
+        {
+          "spanId": "S005",
+          "exactText": "- Formulate commercial pricing frameworks and long-term power purchase agreement (PPA) deal structures.",
+          "startOffset": 239,
+          "endOffset": 342
+        },
+        {
+          "spanId": "S006",
+          "exactText": "- Partner with regional sales heads to close multi-megawatt commercial rooftop installations.",
+          "startOffset": 343,
+          "endOffset": 436
+        },
+        {
+          "spanId": "S007",
+          "exactText": "- Lead market intelligence research to monitor tariff fluctuations and regulatory incentives.",
+          "startOffset": 437,
+          "endOffset": 530
+        },
+        {
+          "spanId": "S008",
+          "exactText": "## Mandatory Requirements",
+          "startOffset": 532,
+          "endOffset": 557
+        },
+        {
+          "spanId": "S009",
+          "exactText": "- 10+ years of commercial strategy, enterprise sales enablement, or financial modeling experience in clean energy or infrastructure.",
+          "startOffset": 558,
+          "endOffset": 690
+        },
+        {
+          "spanId": "S010",
+          "exactText": "- Bachelor's degree in Engineering, Economics, or related quantitative field.",
+          "startOffset": 691,
+          "endOffset": 768
+        },
+        {
+          "spanId": "S011",
+          "exactText": "## Preferred Experience",
+          "startOffset": 770,
+          "endOffset": 793
+        },
+        {
+          "spanId": "S012",
+          "exactText": "- Prior experience managing a regional division P&L is preferred, but strictly not a mandatory prerequisite for this appointment.",
+          "startOffset": 794,
+          "endOffset": 923
+        },
+        {
+          "spanId": "S013",
+          "exactText": "- Familiarity with project finance models and regulatory filing processes in SE Asia.",
+          "startOffset": 924,
+          "endOffset": 1009
+        }
+      ]
+    },
+    {
+      "id": "DEV_CONTROL_01",
+      "partition": "DEVELOPMENT_CONTROL",
+      "scored": false,
+      "sha256": "aa8086bfe29be30be883b449fa05cdbd642d7903c8a2492efb1f32e8eed86056",
+      "charLength": 8552,
+      "unitCount": 81,
+      "minUnitLength": 26,
+      "maxUnitLength": 405,
+      "units": [
+        {
+          "spanId": "S001",
+          "exactText": "Designation: Business Head — Sales & Transaction Advisory Nature of Role: Vertical head.",
+          "startOffset": 0,
+          "endOffset": 88
+        },
+        {
+          "spanId": "S002",
+          "exactText": "You are being hired to build a new business line, not to join an existing one.",
+          "startOffset": 89,
+          "endOffset": 167
+        },
+        {
+          "spanId": "S003",
+          "exactText": "Reports To: Board of Directors, Schnell Builders Pvt. Ltd. Base Location: Gurugram (with travel to Goa, Bangalore & mandate locations) Team: Build from zero.",
+          "startOffset": 168,
+          "endOffset": 325
+        },
+        {
+          "spanId": "S004",
+          "exactText": "Target 6–12 in Year 1, scaling with mandate wins.",
+          "startOffset": 326,
+          "endOffset": 375
+        },
+        {
+          "spanId": "S005",
+          "exactText": "Experience: Minimum 10 years in real estate / property sales Employment Type: Full-time, on-roll Compensation: Best in industry — market-benchmarked fixed CTC + uncapped sales incentive + profit share on the verticalABOUT SCHNELL BUILDERSSchnell Builders is an EPC and pre-engineered buildings company with a delivered portfolio across airports, institutional, commercial, residential and office projects.",
+          "startOffset": 376,
+          "endOffset": 781
+        },
+        {
+          "spanId": "S006",
+          "exactText": "Our marquee execution credential is the Ayodhya Airport, delivered under contract with the Airports Authority of India.",
+          "startOffset": 782,
+          "endOffset": 901
+        },
+        {
+          "spanId": "S007",
+          "exactText": "Schnell is now a developer.",
+          "startOffset": 901,
+          "endOffset": 928
+        },
+        {
+          "spanId": "S008",
+          "exactText": "Our active pipeline includes Corgao Private Estates (a 40-villa luxury township on approx. 42 acres in North Goa near Mopa Airport), Schnell Sucorro (a boutique stacked-villa community in Bardez, North Goa), and premium builder floors at DLF Phase 2, Gurugram.",
+          "startOffset": 929,
+          "endOffset": 1189
+        },
+        {
+          "spanId": "S009",
+          "exactText": "We are now establishing a dedicated Sales & Transaction Advisory vertical as a standalone business line — selling Schnell's own inventory and securing exclusive sales mandates for third-party developers and land owners.",
+          "startOffset": 1189,
+          "endOffset": 1408
+        },
+        {
+          "spanId": "S010",
+          "exactText": "This role is being created to build and lead that vertical.",
+          "startOffset": 1409,
+          "endOffset": 1468
+        },
+        {
+          "spanId": "S011",
+          "exactText": "THE MANDATE A two-part role.",
+          "startOffset": 1468,
+          "endOffset": 1496
+        },
+        {
+          "spanId": "S012",
+          "exactText": "Both parts matter equally.",
+          "startOffset": 1497,
+          "endOffset": 1523
+        },
+        {
+          "spanId": "S013",
+          "exactText": "Mandate A — Sell Schnell's Own Inventory",
+          "startOffset": 1523,
+          "endOffset": 1563
+        },
+        {
+          "spanId": "S014",
+          "exactText": "Own the sales number for all Schnell inventory: luxury villas in Goa, builder floors at DLF Phase 2, and future launches.",
+          "startOffset": 1563,
+          "endOffset": 1684
+        },
+        {
+          "spanId": "S015",
+          "exactText": "Set launch strategy, pricing ladders, inventory phasing and payment plan design with the Directors.",
+          "startOffset": 1684,
+          "endOffset": 1783
+        },
+        {
+          "spanId": "S016",
+          "exactText": "Personally close high-value transactions with HNI, UHNI, NRI and institutional buyers.",
+          "startOffset": 1783,
+          "endOffset": 1869
+        },
+        {
+          "spanId": "S017",
+          "exactText": "Own absorption velocity, realised price per sq. ft., collections and receivable ageing.",
+          "startOffset": 1869,
+          "endOffset": 1956
+        },
+        {
+          "spanId": "S018",
+          "exactText": "Mandate B — Build the Sales & Transaction Advisory Vertical",
+          "startOffset": 1956,
+          "endOffset": 2015
+        },
+        {
+          "spanId": "S019",
+          "exactText": "Write the charter for the vertical — what we sell, for whom, at what commercials — and execute it after Board approval.",
+          "startOffset": 2015,
+          "endOffset": 2134
+        },
+        {
+          "spanId": "S020",
+          "exactText": "Originate and win exclusive sales mandates from third-party developers, land owners and asset holders across residential, villa, plotted, commercial and land transactions.",
+          "startOffset": 2134,
+          "endOffset": 2305
+        },
+        {
+          "spanId": "S021",
+          "exactText": "Negotiate mandate terms: exclusivity, brokerage rate, minimum guaranteed offtake, marketing cost sharing, price protection and termination.",
+          "startOffset": 2305,
+          "endOffset": 2444
+        },
+        {
+          "spanId": "S022",
+          "exactText": "Protect Schnell's downside in every mandate.",
+          "startOffset": 2445,
+          "endOffset": 2489
+        },
+        {
+          "spanId": "S023",
+          "exactText": "Run the vertical as a P&L — own revenue, cost base, break-even and margin.",
+          "startOffset": 2489,
+          "endOffset": 2563
+        },
+        {
+          "spanId": "S024",
+          "exactText": "Build the unit economics: brokerage income per mandate, cost per qualified site visit, cost of sale as % of booking value, payback per hire.",
+          "startOffset": 2563,
+          "endOffset": 2703
+        },
+        {
+          "spanId": "S025",
+          "exactText": "Secure and maintain RERA agent registration in every state the vertical transacts (Haryana, Goa, Karnataka and others as required).Design and enforce the internal wall between Schnell's own inventory and third-party mandate inventory — a governance obligation, not a formality.",
+          "startOffset": 2703,
+          "endOffset": 2980
+        },
+        {
+          "spanId": "S026",
+          "exactText": "KEY RESPONSIBILITIESExclusive Mandate Origination — Build a target list of developers, land owners and slow-moving projects across NCR, Goa, Bangalore and select secondary markets.",
+          "startOffset": 2980,
+          "endOffset": 3160
+        },
+        {
+          "spanId": "S027",
+          "exactText": "Pitch at promoter/CXO level.",
+          "startOffset": 3161,
+          "endOffset": 3189
+        },
+        {
+          "spanId": "S028",
+          "exactText": "Conduct pre-mandate diligence and walk away from mandates that will fail.",
+          "startOffset": 3190,
+          "endOffset": 3263
+        },
+        {
+          "spanId": "S029",
+          "exactText": "Own delivery of every mandate signed.",
+          "startOffset": 3264,
+          "endOffset": 3301
+        },
+        {
+          "spanId": "S030",
+          "exactText": "Team Building & Vertical Leadership — Design the org structure from first principles, justify every hire against a revenue or margin line.",
+          "startOffset": 3301,
+          "endOffset": 3439
+        },
+        {
+          "spanId": "S031",
+          "exactText": "Recruit, onboard, ramp the team.",
+          "startOffset": 3440,
+          "endOffset": 3472
+        },
+        {
+          "spanId": "S032",
+          "exactText": "Set the operating cadence — daily huddles, weekly pipeline reviews, monthly business reviews, quarterly resets.",
+          "startOffset": 3473,
+          "endOffset": 3584
+        },
+        {
+          "spanId": "S033",
+          "exactText": "Build the incentive plan that retains top performers.",
+          "startOffset": 3585,
+          "endOffset": 3638
+        },
+        {
+          "spanId": "S034",
+          "exactText": "Build a bench of two credible successors.",
+          "startOffset": 3639,
+          "endOffset": 3680
+        },
+        {
+          "spanId": "S035",
+          "exactText": "High-Value Deal Closure — Personally originate, negotiate and close large-ticket transactions across Schnell and mandated inventory through to registration.",
+          "startOffset": 3680,
+          "endOffset": 3836
+        },
+        {
+          "spanId": "S036",
+          "exactText": "Structure tranche-based payments, buyback/assured-return propositions and portfolio exits.",
+          "startOffset": 3837,
+          "endOffset": 3927
+        },
+        {
+          "spanId": "S037",
+          "exactText": "Be the person a stuck ₹5 Cr+ deal escalates to — and stops at.",
+          "startOffset": 3928,
+          "endOffset": 3990
+        },
+        {
+          "spanId": "S038",
+          "exactText": "Channel Partner & Distribution Network — Build and formalise a channel partner network across NCR, Mumbai, Bangalore and Goa.",
+          "startOffset": 3990,
+          "endOffset": 4115
+        },
+        {
+          "spanId": "S039",
+          "exactText": "Establish relationships with organised broking houses and national channel platforms.",
+          "startOffset": 4116,
+          "endOffset": 4201
+        },
+        {
+          "spanId": "S040",
+          "exactText": "Own NRI and outstation lead channels for Goa.",
+          "startOffset": 4202,
+          "endOffset": 4247
+        },
+        {
+          "spanId": "S041",
+          "exactText": "Presales, CRM & Process — Enforce CRM discipline (Salesforce, Zoho, Sell.Do or equivalent).",
+          "startOffset": 4247,
+          "endOffset": 4338
+        },
+        {
+          "spanId": "S042",
+          "exactText": "Build the presales engine: qualification scripts, response SLAs, site-visit conversion tracking, lead-source ROI.",
+          "startOffset": 4339,
+          "endOffset": 4452
+        },
+        {
+          "spanId": "S043",
+          "exactText": "Deliver a weekly MIS to the Board.",
+          "startOffset": 4453,
+          "endOffset": 4487
+        },
+        {
+          "spanId": "S044",
+          "exactText": "Compliance & Cross-Functional Coordination — Ensure RERA disclosure compliance.",
+          "startOffset": 4487,
+          "endOffset": 4566
+        },
+        {
+          "spanId": "S045",
+          "exactText": "Coordinate with Projects/EPC teams and Finance on collections and payouts.",
+          "startOffset": 4567,
+          "endOffset": 4641
+        },
+        {
+          "spanId": "S046",
+          "exactText": "Represent Schnell at industry forums and expos.",
+          "startOffset": 4642,
+          "endOffset": 4689
+        },
+        {
+          "spanId": "S047",
+          "exactText": "MANDATORY REQUIREMENTS Candidates who do not meet every criterion will not be shortlisted.",
+          "startOffset": 4689,
+          "endOffset": 4779
+        },
+        {
+          "spanId": "S048",
+          "exactText": "Minimum 10 years full-time real estate/property sales experience, with at least 4 years in a leadership capacity carrying a team target.",
+          "startOffset": 4779,
+          "endOffset": 4915
+        },
+        {
+          "spanId": "S049",
+          "exactText": "Demonstrable experience leading a sales team of 5+, with direct ownership of targets, reviews, incentives and outcomes.",
+          "startOffset": 4915,
+          "endOffset": 5034
+        },
+        {
+          "spanId": "S050",
+          "exactText": "Verifiable track record of personally closing high-ticket transactions — units of ₹3 Cr+, or bulk/commercial deals of ₹10 Cr+ — with substantial cumulative booking value.",
+          "startOffset": 5034,
+          "endOffset": 5204
+        },
+        {
+          "spanId": "S051",
+          "exactText": "Meaningful tenure (ideally 3+ years) with a recognised Grade-A developer (DLF, Godrej Properties, Sobha, Prestige, Embassy, Lodha, Hiranandani, M3M, Signature Global, Emaar or comparable) OR a top-tier consultancy (JLL, CBRE, Knight Frank, Colliers, Cushman & Wakefield, Anarock or comparable).Experience building a sales team from a standing start — not only inheriting one.",
+          "startOffset": 5204,
+          "endOffset": 5579
+        },
+        {
+          "spanId": "S052",
+          "exactText": "Experience running a sales business as a P&L, or credible readiness on the cost side.",
+          "startOffset": 5579,
+          "endOffset": 5664
+        },
+        {
+          "spanId": "S053",
+          "exactText": "Experience originating, negotiating or delivering exclusive sales mandates for third-party developers or asset owners.",
+          "startOffset": 5664,
+          "endOffset": 5782
+        },
+        {
+          "spanId": "S054",
+          "exactText": "PREFERRED (NOT DISQUALIFYING)",
+          "startOffset": 5782,
+          "endOffset": 5811
+        },
+        {
+          "spanId": "S055",
+          "exactText": "Luxury villa/second-home/resort-residential exposure (Goa, Alibaug, Kasauli or comparable);",
+          "startOffset": 5811,
+          "endOffset": 5902
+        },
+        {
+          "spanId": "S056",
+          "exactText": "An established NRI/HNI buyer network; relationships into developer promoters and land owners;",
+          "startOffset": 5902,
+          "endOffset": 5995
+        },
+        {
+          "spanId": "S057",
+          "exactText": "Experience with an EPC-to-developer transition;",
+          "startOffset": 5996,
+          "endOffset": 6043
+        },
+        {
+          "spanId": "S058",
+          "exactText": "MBA in Marketing/Sales/General Management (bachelor's required regardless);",
+          "startOffset": 6044,
+          "endOffset": 6119
+        },
+        {
+          "spanId": "S059",
+          "exactText": "Working knowledge of RERA and TCP Goa zoning;",
+          "startOffset": 6120,
+          "endOffset": 6165
+        },
+        {
+          "spanId": "S060",
+          "exactText": "Fluency in English and Hindi.",
+          "startOffset": 6166,
+          "endOffset": 6195
+        },
+        {
+          "spanId": "S061",
+          "exactText": "KEY PERFORMANCE INDICATORS Scorecard A (Schnell Inventory): bookings value, collections, realised price per sq. ft., absorption velocity.",
+          "startOffset": 6195,
+          "endOffset": 6332
+        },
+        {
+          "spanId": "S062",
+          "exactText": "Scorecard B (The Vertical): mandates won (number and GDV), brokerage income, vertical margin, break-even timeline, mandate delivery vs. commitment, cost of sale as % of booking value, team health, channel strength.",
+          "startOffset": 6333,
+          "endOffset": 6547
+        },
+        {
+          "spanId": "S063",
+          "exactText": "COMPENSATION & BENEFITSMarket rate, benchmarked against published 2026 VP/Head-of-Sales data for Indian real estate and Delhi-NCR sales leadership.",
+          "startOffset": 6547,
+          "endOffset": 6694
+        },
+        {
+          "spanId": "S064",
+          "exactText": "Fixed CTC: ₹30,00,000–₹45,00,000 p.a.Sales Incentive (Schnell inventory): 0.15%–0.30% of booking value, paid on collection, uncapped with accelerators.",
+          "startOffset": 6694,
+          "endOffset": 6845
+        },
+        {
+          "spanId": "S065",
+          "exactText": "Mandate Incentive: 5%–10% of realised brokerage income.",
+          "startOffset": 6845,
+          "endOffset": 6900
+        },
+        {
+          "spanId": "S066",
+          "exactText": "Vertical Profit Share: 10%–15% of vertical PBT, post break-even.",
+          "startOffset": 6900,
+          "endOffset": 6964
+        },
+        {
+          "spanId": "S067",
+          "exactText": "On-Target Earnings: ₹50,00,000–₹70,00,000 p.a. at 100% plan achievement.",
+          "startOffset": 6964,
+          "endOffset": 7036
+        },
+        {
+          "spanId": "S068",
+          "exactText": "Benefits: travel, communication reimbursement, statutory benefits, annual review.",
+          "startOffset": 7036,
+          "endOffset": 7117
+        },
+        {
+          "spanId": "S069",
+          "exactText": "Roughly 40% of on-plan earnings sit in variable — deliberate by design.",
+          "startOffset": 7117,
+          "endOffset": 7188
+        },
+        {
+          "spanId": "S070",
+          "exactText": "Incentives are paid on cash realised, not bookings signed; cancellations/defaults are subject to clawback.",
+          "startOffset": 7189,
+          "endOffset": 7295
+        },
+        {
+          "spanId": "S071",
+          "exactText": "The band is a guide, not a ceiling — an exceptional candidate with a demonstrable HNI book or live mandate leads will be considered above it.",
+          "startOffset": 7296,
+          "endOffset": 7437
+        },
+        {
+          "spanId": "S072",
+          "exactText": "This is the founding hire for a business line, positioned to grow into a Business Head mandate with long-term participation as the vertical scales.",
+          "startOffset": 7438,
+          "endOffset": 7585
+        },
+        {
+          "spanId": "S073",
+          "exactText": "WHAT THIS ROLE IS NOT FORNot a role where pre-qualified leads and a brand name close deals for you.",
+          "startOffset": 7585,
+          "endOffset": 7684
+        },
+        {
+          "spanId": "S074",
+          "exactText": "Not a role where the process, team, mandates and channel network already exist — none of them do. Not for someone who has managed a team on paper without carrying the consequence of the number.",
+          "startOffset": 7685,
+          "endOffset": 7878
+        },
+        {
+          "spanId": "S075",
+          "exactText": "It is a role for someone who wants to build a sales business, own its economics, and be paid on what it earns.",
+          "startOffset": 7878,
+          "endOffset": 7988
+        },
+        {
+          "spanId": "S076",
+          "exactText": "HOW TO APPLY Share your CV with a one-page note covering:The largest single transaction you have personally closed — project, value, your role.",
+          "startOffset": 7988,
+          "endOffset": 8131
+        },
+        {
+          "spanId": "S077",
+          "exactText": "The largest team you have built and led, the target it carried, and what it delivered.",
+          "startOffset": 8131,
+          "endOffset": 8217
+        },
+        {
+          "spanId": "S078",
+          "exactText": "Any experience winning or delivering an exclusive third-party sales mandate.",
+          "startOffset": 8217,
+          "endOffset": 8293
+        },
+        {
+          "spanId": "S079",
+          "exactText": "A first view (3–4 lines) on how you would win Schnell's first exclusive mandate.",
+          "startOffset": 8293,
+          "endOffset": 8373
+        },
+        {
+          "spanId": "S080",
+          "exactText": "Applications without the covering note will not be reviewed.",
+          "startOffset": 8373,
+          "endOffset": 8433
+        },
+        {
+          "spanId": "S081",
+          "exactText": "Apply to: hr@schnellbuilder.com Subject: Business Head, Sales — [Your Name] — [Years of Experience] Show more Show less",
+          "startOffset": 8433,
+          "endOffset": 8552
+        }
+      ]
+    },
+    {
+      "id": "CANDIDATE_RESUME_01",
+      "partition": "CANDIDATE_DOCUMENT",
+      "scored": true,
+      "sha256": "194ccf2f02f59a823c2c9c4f1712abee25a7e4030f9cf4be82f1da12bfe58e04",
+      "charLength": 5681,
+      "unitCount": 54,
+      "minUnitLength": 6,
+      "maxUnitLength": 225,
+      "units": [
+        {
+          "spanId": "S001",
+          "exactText": "# **SWAPNIL SHUKLA**",
+          "startOffset": 0,
+          "endOffset": 20
+        },
+        {
+          "spanId": "S002",
+          "exactText": "### Senior Vice President | Marketing, Growth & Transformation",
+          "startOffset": 24,
+          "endOffset": 86
+        },
+        {
+          "spanId": "S003",
+          "exactText": "Gurugram, HR  •  (+91) 99997 98174  •  swapnilshuk@gmail.com  •  linkedin.com/in/swapnilshukla",
+          "startOffset": 90,
+          "endOffset": 184
+        },
+        {
+          "spanId": "S004",
+          "exactText": "## **EXECUTIVE PROFILE**",
+          "startOffset": 188,
+          "endOffset": 212
+        },
+        {
+          "spanId": "S005",
+          "exactText": "- Executive marketing leader with 20+ years of experience driving commercial scale, digital transformation and customer-centric innovation across leading automotive, healthcare and consumer organizations.",
+          "startOffset": 216,
+          "endOffset": 420
+        },
+        {
+          "spanId": "S006",
+          "exactText": "- Proven success building high-performing teams, leading multi-million-dollar portfolios and delivering measurable commercial outcomes through brand strategy, customer experience, enterprise MarTech and data-driven marketing.",
+          "startOffset": 422,
+          "endOffset": 647
+        },
+        {
+          "spanId": "S007",
+          "exactText": "## **CORE COMPETENCIES**",
+          "startOffset": 651,
+          "endOffset": 675
+        },
+        {
+          "spanId": "S008",
+          "exactText": "- Commercial Leadership: Building & Scaling GCCs, P&L Management, Strategic Pitches",
+          "startOffset": 679,
+          "endOffset": 762
+        },
+        {
+          "spanId": "S009",
+          "exactText": "- Growth & Performance Marketing: Full-Funnel Acquisition, ROAS Optimization, Conversion Strategy",
+          "startOffset": 764,
+          "endOffset": 861
+        },
+        {
+          "spanId": "S010",
+          "exactText": "- Brand & Customer Strategy: Integrated Marketing, PR, Consumer Insights, Content Strategy",
+          "startOffset": 863,
+          "endOffset": 953
+        },
+        {
+          "spanId": "S011",
+          "exactText": "- Digital Transformation & MarTech: Salesforce CDP, Adobe Experience Cloud, CRM & Customer Lifecycle",
+          "startOffset": 955,
+          "endOffset": 1055
+        },
+        {
+          "spanId": "S012",
+          "exactText": "- Analytics & Experimentation: O2O Attribution, KPI Frameworks, A/B and Multivariate Testing",
+          "startOffset": 1057,
+          "endOffset": 1149
+        },
+        {
+          "spanId": "S013",
+          "exactText": "- Innovation & AI: GenAI Automation, Digital Commerce, Marketing Innovation",
+          "startOffset": 1151,
+          "endOffset": 1226
+        },
+        {
+          "spanId": "S014",
+          "exactText": "## **PROFESSIONAL EXPERIENCE**",
+          "startOffset": 1230,
+          "endOffset": 1260
+        },
+        {
+          "spanId": "S015",
+          "exactText": "### **Senior Vice President** | **VML (WPP Group)**",
+          "startOffset": 1264,
+          "endOffset": 1315
+        },
+        {
+          "spanId": "S016",
+          "exactText": "_Apr 2023 – June 2026_",
+          "startOffset": 1319,
+          "endOffset": 1341
+        },
+        {
+          "spanId": "S017",
+          "exactText": "**Key Clients: Ford International Markets, BMW India, Haleon**",
+          "startOffset": 1345,
+          "endOffset": 1407
+        },
+        {
+          "spanId": "S018",
+          "exactText": "- Accountable for commercial performance, delivery and profitability of VML India's two largest client accounts, overseeing an $8M pure agency fee book for Ford and a projected ₹36 Cr 3-year service retainer for BMW.",
+          "startOffset": 1411,
+          "endOffset": 1627
+        },
+        {
+          "spanId": "S019",
+          "exactText": "- Recruited and managed a 40-member cross-functional Performance Marketing Center of Excellence (GCC) driving CRM, website & performance marketing across 13 APAC and Middle East markets for Ford.",
+          "startOffset": 1629,
+          "endOffset": 1824
+        },
+        {
+          "spanId": "S020",
+          "exactText": "Concurrently led a complex legacy-to-Salesforce CRM migration across these regions within a 12-month timeline.",
+          "startOffset": 1825,
+          "endOffset": 1935
+        },
+        {
+          "spanId": "S021",
+          "exactText": "- Established a Digital Analytics & Experimentation Lab, embedding A/B testing into client and agency decision-making, enabling faster optimization and improved marketing effectiveness.",
+          "startOffset": 1937,
+          "endOffset": 2122
+        },
+        {
+          "spanId": "S022",
+          "exactText": "- Redesigned customer journeys across digital platforms, improving lead quality and reducing friction in the booking and enquiry process, resulting in $14M in attributed additional revenue.",
+          "startOffset": 2124,
+          "endOffset": 2313
+        },
+        {
+          "spanId": "S023",
+          "exactText": "- Won and led the integrated mainline, digital, and PR mandates for BMW India and 22 dealers, taking full ownership of brand architecture and integrated messaging.",
+          "startOffset": 2315,
+          "endOffset": 2478
+        },
+        {
+          "spanId": "S024",
+          "exactText": "- Spearheaded the \"Drive Your Match\" campaign and core social strategies that supported BMW becoming India’s highest-selling Auto OEM in Q1’26, earning formal recognition from India CEO Harpreet Brar and global leadership.",
+          "startOffset": 2480,
+          "endOffset": 2702
+        },
+        {
+          "spanId": "S025",
+          "exactText": "- Selected to lead the Centrum portfolio following WPP's 2025 global Haleon win, assuming overall strategic and commercial leadership for this high-growth mandate.",
+          "startOffset": 2704,
+          "endOffset": 2867
+        },
+        {
+          "spanId": "S026",
+          "exactText": "- Leading integrated marketing, social and commerce strategy for Centrum and Recharge as part of WPP's global Haleon partnership.",
+          "startOffset": 2869,
+          "endOffset": 2998
+        },
+        {
+          "spanId": "S027",
+          "exactText": "### **AGM - Digital Marketing** | **TVS Motor Company**",
+          "startOffset": 3002,
+          "endOffset": 3057
+        },
+        {
+          "spanId": "S028",
+          "exactText": "_Feb 2022 – Mar 2023_",
+          "startOffset": 3061,
+          "endOffset": 3082
+        },
+        {
+          "spanId": "S029",
+          "exactText": "- Built and scaled a hyperlocal digital marketing program across 4,000+ dealerships, generating more than 400,000 additional organic qualified leads leveraging AI and NLP in regional languages.",
+          "startOffset": 3086,
+          "endOffset": 3279
+        },
+        {
+          "spanId": "S030",
+          "exactText": "- Engineered the implementation of Salesforce CDP to map customer journeys and optimize long-term retention across the premium and electric vehicle portfolios.",
+          "startOffset": 3281,
+          "endOffset": 3440
+        },
+        {
+          "spanId": "S031",
+          "exactText": "- Orchestrated digital-first product launches, including India’s first premium vehicle launch in the metaverse for the Rider and an exclusive e-commerce-only launch for the iQube.",
+          "startOffset": 3442,
+          "endOffset": 3621
+        },
+        {
+          "spanId": "S032",
+          "exactText": "### **Associate Vice President - Digital** | **GTB (WPP Group) / Ford India**",
+          "startOffset": 3625,
+          "endOffset": 3702
+        },
+        {
+          "spanId": "S033",
+          "exactText": "_Jul 2016 – Feb 2022_",
+          "startOffset": 3706,
+          "endOffset": 3727
+        },
+        {
+          "spanId": "S034",
+          "exactText": "- Grew Ford's digital revenue contribution from 3% to over 32% in five years through integrated performance marketing and digital commerce initiatives.",
+          "startOffset": 3731,
+          "endOffset": 3882
+        },
+        {
+          "spanId": "S035",
+          "exactText": "- Collaborated directly with Google engineering teams to build a 'Global First' Online-to-Offline (O2O) Attribution model to quantify how digital engagement impacted physical retail transactions.",
+          "startOffset": 3884,
+          "endOffset": 4079
+        },
+        {
+          "spanId": "S036",
+          "exactText": "- Executed purpose-driven PR campaigns like the 'Cartesy' safety platform, which won more than 20 marketing honors and successfully shifted market perceptions on cost-of-ownership.",
+          "startOffset": 4081,
+          "endOffset": 4261
+        },
+        {
+          "spanId": "S037",
+          "exactText": "- Introduced new digital acquisition channels, including flash sales on Amazon and online booking journeys that expanded lead generation opportunities.",
+          "startOffset": 4263,
+          "endOffset": 4414
+        },
+        {
+          "spanId": "S038",
+          "exactText": "### **AVP Marketing** | **Primordial Systems**",
+          "startOffset": 4418,
+          "endOffset": 4464
+        },
+        {
+          "spanId": "S039",
+          "exactText": "_Feb 2011 – Jun 2016_",
+          "startOffset": 4468,
+          "endOffset": 4489
+        },
+        {
+          "spanId": "S040",
+          "exactText": "- Owned end-to-end brand-building, product marketing, and growth architecture across key internet properties, including INLEAD and iHealthcare.",
+          "startOffset": 4493,
+          "endOffset": 4636
+        },
+        {
+          "spanId": "S041",
+          "exactText": "- Outperformed baseline commercial and lead acquisition targets for 3 successive fiscal cycles by up to 14%.",
+          "startOffset": 4638,
+          "endOffset": 4746
+        },
+        {
+          "spanId": "S042",
+          "exactText": "- Shifted marketing investments towards measurable performance channels, reducing customer acquisition costs by 70%.",
+          "startOffset": 4748,
+          "endOffset": 4864
+        },
+        {
+          "spanId": "S043",
+          "exactText": "### **Manager - Marketing & Communications** | **Patt & Hoff Group (Singapore)**",
+          "startOffset": 4868,
+          "endOffset": 4948
+        },
+        {
+          "spanId": "S044",
+          "exactText": "_Mar 2010 – Jan 2011_",
+          "startOffset": 4952,
+          "endOffset": 4973
+        },
+        {
+          "spanId": "S045",
+          "exactText": "- Developed localized 360-degree digital acquisition campaigns, capturing S$1.8M in net new pipeline from corporate targets within 6 months.",
+          "startOffset": 4977,
+          "endOffset": 5117
+        },
+        {
+          "spanId": "S046",
+          "exactText": "### **Manager - Marketing** | **Transasia Aviation**",
+          "startOffset": 5121,
+          "endOffset": 5173
+        },
+        {
+          "spanId": "S047",
+          "exactText": "_Mar 2008 – Feb 2010_",
+          "startOffset": 5177,
+          "endOffset": 5198
+        },
+        {
+          "spanId": "S048",
+          "exactText": "- Managed an 80 Million INR marketing mix, leading to a 26% increase in customer conversions during an industry downturn.",
+          "startOffset": 5202,
+          "endOffset": 5323
+        },
+        {
+          "spanId": "S049",
+          "exactText": "### **Assistant Manager - Marketing** | **IMS Learning Resources**",
+          "startOffset": 5327,
+          "endOffset": 5393
+        },
+        {
+          "spanId": "S050",
+          "exactText": "_Dec 2004 – Feb 2008_",
+          "startOffset": 5397,
+          "endOffset": 5418
+        },
+        {
+          "spanId": "S051",
+          "exactText": "- Pioneered early organic search and optimization frameworks, executing some of the earliest Google AdWords and targeted SMS outreach campaigns in 2006.",
+          "startOffset": 5422,
+          "endOffset": 5574
+        },
+        {
+          "spanId": "S052",
+          "exactText": "## **EDUCATION**",
+          "startOffset": 5578,
+          "endOffset": 5594
+        },
+        {
+          "spanId": "S053",
+          "exactText": "**Bachelor of Engineering (BE) - Mechanical Engineering** | IME, Mumbai",
+          "startOffset": 5598,
+          "endOffset": 5669
+        },
+        {
+          "spanId": "S054",
+          "exactText": "_2002_",
+          "startOffset": 5673,
+          "endOffset": 5679
+        }
+      ]
+    },
+    {
+      "id": "CANDIDATE_RESUME_02",
+      "partition": "CANDIDATE_DOCUMENT",
+      "scored": true,
+      "sha256": "77a1bad69dc18566369c5ed60aeca7387a121d83456b28c2c283211bac91e8cc",
+      "charLength": 6581,
+      "unitCount": 50,
+      "minUnitLength": 8,
+      "maxUnitLength": 323,
+      "units": [
+        {
+          "spanId": "S001",
+          "exactText": "# **SWAPNIL SHUKLA**",
+          "startOffset": 0,
+          "endOffset": 20
+        },
+        {
+          "spanId": "S002",
+          "exactText": "## **Head of Marketing & Digital Growth | Strategic Transformation Leader**",
+          "startOffset": 24,
+          "endOffset": 99
+        },
+        {
+          "spanId": "S003",
+          "exactText": "Gurugram, HR  |  (+91) 99997 98174  |  swapnilshuk@gmail.com  |  linkedin.com/in/swapnilshukla",
+          "startOffset": 103,
+          "endOffset": 197
+        },
+        {
+          "spanId": "S004",
+          "exactText": "### **EXECUTIVE PROFILE**",
+          "startOffset": 201,
+          "endOffset": 226
+        },
+        {
+          "spanId": "S005",
+          "exactText": "Entrepreneurial, analytical, and execution-focused Growth Marketing & Brand Leader with over 20 years of verifiable success driving consumer acquisition, brand equity, and commercial turnaround across highly competitive digital and enterprise landscapes.",
+          "startOffset": 230,
+          "endOffset": 484
+        },
+        {
+          "spanId": "S006",
+          "exactText": "Master strategist with deep competence in scaling digital business revenue share (from 3% to 32%), managing multi-million dollar portfolios (₹300+ Cr), and implementing next-gen MarTech platforms (Salesforce CDP, Adobe Experience Cloud) to maximize consumer lifetime value (LTV) and compress client acquisition costs (CAC).",
+          "startOffset": 485,
+          "endOffset": 808
+        },
+        {
+          "spanId": "S007",
+          "exactText": "Adept at operating within high-velocity ecosystems, blending rigorous full-funnel analytics with disruptive creative storytelling to scale brands seamlessly from early-stage scale-up phases to definitive market leadership.",
+          "startOffset": 809,
+          "endOffset": 1031
+        },
+        {
+          "spanId": "S008",
+          "exactText": "### **CORE LEADERSHIP COMPETENCIES**",
+          "startOffset": 1035,
+          "endOffset": 1071
+        },
+        {
+          "spanId": "S009",
+          "exactText": "- **Growth & Performance Marketing:** Full-Funnel Digital Acquisition, ROAS Optimization, Conversion Funnels.",
+          "startOffset": 1075,
+          "endOffset": 1184
+        },
+        {
+          "spanId": "S010",
+          "exactText": "- **Brand Strategy & Identity:** 360° Integrated Campaigns, PR, Consumer Insights, Content Marketing.",
+          "startOffset": 1186,
+          "endOffset": 1287
+        },
+        {
+          "spanId": "S011",
+          "exactText": "- **MarTech & Lifecycle Architecture:** Salesforce CDP Implementation, Adobe Experience Cloud, CRM Data Unification.",
+          "startOffset": 1289,
+          "endOffset": 1405
+        },
+        {
+          "spanId": "S012",
+          "exactText": "- **Business & P&L Ownership:** Scaling Cross-Functional Teams (40+), Stakeholder Management, ROI Frameworks.",
+          "startOffset": 1407,
+          "endOffset": 1516
+        },
+        {
+          "spanId": "S013",
+          "exactText": "- **Digital Innovation & E-commerce:** Online-to-Offline (O2O) Attribution, Metaverse Launch Frameworks, GenAI Automation.",
+          "startOffset": 1518,
+          "endOffset": 1640
+        },
+        {
+          "spanId": "S014",
+          "exactText": "- **Operational Scaling:** Leading Agility-driven Analytics Labs, Strategic Resource Allocation, Founder Alignment.",
+          "startOffset": 1642,
+          "endOffset": 1757
+        },
+        {
+          "spanId": "S015",
+          "exactText": "### **PROFESSIONAL EXPERIENCE**",
+          "startOffset": 1761,
+          "endOffset": 1792
+        },
+        {
+          "spanId": "S016",
+          "exactText": "#### Senior Vice President | **VML (WPP Group)**",
+          "startOffset": 1796,
+          "endOffset": 1844
+        },
+        {
+          "spanId": "S017",
+          "exactText": "**Apr 2023 – Present**",
+          "startOffset": 1848,
+          "endOffset": 1870
+        },
+        {
+          "spanId": "S018",
+          "exactText": "- **Full-Funnel Brand Mandate:** Lead integrated mainline, digital, and public relations mandates for market-leading luxury portfolios, including BMW India, driving brand architecture, messaging, and community retention programs.",
+          "startOffset": 1874,
+          "endOffset": 2103
+        },
+        {
+          "spanId": "S019",
+          "exactText": "- **Global Digital CoE Infrastructure:** Command a high-performing 40-member cross-functional digital Center of Excellence across intensive international growth regions (APAC and Middle East), owning full performance marketing, CRM, and platform management.",
+          "startOffset": 2105,
+          "endOffset": 2362
+        },
+        {
+          "spanId": "S020",
+          "exactText": "- **E-commerce Innovation:** Re-engineered conversion paths and deployed cutting-edge web experiences, initiating friction-free booking ecosystems that materially accelerated transactional velocity and qualified leads.",
+          "startOffset": 2364,
+          "endOffset": 2582
+        },
+        {
+          "spanId": "S021",
+          "exactText": "- **Enterprise CRM Migration:** Masterminded the rapid turnaround and complete strategic migration from monolithic legacy architectures to Salesforce across 12 core markets within an aggressive 12-month operational window.",
+          "startOffset": 2584,
+          "endOffset": 2806
+        },
+        {
+          "spanId": "S022",
+          "exactText": "- **Analytics Lab & Generative AI:** Founded an internal 'Analytics & Experimentation Lab' to baseline strict A/B testing standards; applied operational GenAI models to achieve asset brand compliance while reducing content cycle times.",
+          "startOffset": 2808,
+          "endOffset": 3043
+        },
+        {
+          "spanId": "S023",
+          "exactText": "#### AGM – Digital Marketing | **TVS Motor Company**",
+          "startOffset": 3047,
+          "endOffset": 3099
+        },
+        {
+          "spanId": "S024",
+          "exactText": "**Feb 2022 – Mar 2023**",
+          "startOffset": 3103,
+          "endOffset": 3126
+        },
+        {
+          "spanId": "S025",
+          "exactText": "- **Hyperlocal Scale Architecture:** Architected and systematically deployed a data-driven hyperlocal digital growth matrix across 4,000+ points of sale, generating over 400,000 organic, high-intent consumer leads to lift dealership retail metrics.",
+          "startOffset": 3130,
+          "endOffset": 3378
+        },
+        {
+          "spanId": "S026",
+          "exactText": "- **Metaverse & First-to-Market Campaigns:** Directed trend-setting digital-only multi-channel asset reveals, including an industry-first premium vehicle rollout inside the metaverse to maximize brand recall across younger consumer cohorts.",
+          "startOffset": 3380,
+          "endOffset": 3620
+        },
+        {
+          "spanId": "S027",
+          "exactText": "- **Customer Data Unification:** Engineered the deployment of Salesforce CDP to map clear customer journeys across the premium and electric vehicle portfolios, optimizing long-term user retention metrics and precision cross-selling.",
+          "startOffset": 3622,
+          "endOffset": 3854
+        },
+        {
+          "spanId": "S028",
+          "exactText": "#### Associate Vice President – Digital (Ford India) | **GTB (WPP Group)**",
+          "startOffset": 3858,
+          "endOffset": 3932
+        },
+        {
+          "spanId": "S029",
+          "exactText": "**Jul 2016 – Feb 2022**",
+          "startOffset": 3936,
+          "endOffset": 3959
+        },
+        {
+          "spanId": "S030",
+          "exactText": "- **Digital Contribution Growth:** Scaled digital ecosystem revenue contribution aggressively from an initial 3% base to over 32% of total national enterprise business value over a highly optimized 5-year growth window.",
+          "startOffset": 3963,
+          "endOffset": 4182
+        },
+        {
+          "spanId": "S031",
+          "exactText": "- **Advanced O2O Analytical Attribution:** Collaborated exclusively with Google engineering teams to create a 'Global First' Online-to-Offline (O2O) Attribution model, effectively quantifying digital engagement impact on actual offline retail transactions.",
+          "startOffset": 4184,
+          "endOffset": 4440
+        },
+        {
+          "spanId": "S032",
+          "exactText": "- **Award-Winning Narrative & PR:** Designed and executed purpose-driven public relationship campaigns, including the critically acclaimed 'Cartesy' safety platform, capturing more than 20 top-tier marketing honors and completely flipping entrenched cost-of-ownership market concerns.",
+          "startOffset": 4442,
+          "endOffset": 4726
+        },
+        {
+          "spanId": "S033",
+          "exactText": "- **Digital Retail Platforms:** Pioneered novel consumer acquisition funnels including flash sales on e-commerce platforms like Amazon, personalized digital booking tools, and fast-response structures to optimize end-to-end customer acquisition cost (CAC).",
+          "startOffset": 4728,
+          "endOffset": 4984
+        },
+        {
+          "spanId": "S034",
+          "exactText": "#### AVP Marketing | **Primordial Systems**",
+          "startOffset": 4988,
+          "endOffset": 5031
+        },
+        {
+          "spanId": "S035",
+          "exactText": "**Feb 2011 – Jun 2016**",
+          "startOffset": 5035,
+          "endOffset": 5058
+        },
+        {
+          "spanId": "S036",
+          "exactText": "- **Multi-Vertical Portfolio Strategy:** Owned end-to-end brand-building, product marketing, and growth architecture across the group’s key internet and consumer properties, notably spanning INLEAD (Edtech) and iHealthcare (Consumer KPO).",
+          "startOffset": 5062,
+          "endOffset": 5300
+        },
+        {
+          "spanId": "S037",
+          "exactText": "- **Sustained Revenue Overperformance:** Outperformed baseline commercial and lead acquisition targets for 3 successive fiscal cycles by up to 14% through aggressive digital repositioning.",
+          "startOffset": 5302,
+          "endOffset": 5490
+        },
+        {
+          "spanId": "S038",
+          "exactText": "- **Drastic CAC Reduction:** Migrated legacy traditional media budgets systematically into highly segmented performance-driven channels, driving a comprehensive 70% reduction in net corporate customer acquisition costs.",
+          "startOffset": 5492,
+          "endOffset": 5711
+        },
+        {
+          "spanId": "S039",
+          "exactText": "#### Manager – Marketing & Communications | **Patt & Hoff Group (Singapore)**",
+          "startOffset": 5715,
+          "endOffset": 5792
+        },
+        {
+          "spanId": "S040",
+          "exactText": "**Mar 2010 – Jan 2011**",
+          "startOffset": 5796,
+          "endOffset": 5819
+        },
+        {
+          "spanId": "S041",
+          "exactText": "- Produced localized 360-degree digital acquisition campaigns, capturing S$1.8M in net new pipeline from premium corporate target groups inside of 6 months.",
+          "startOffset": 5823,
+          "endOffset": 5979
+        },
+        {
+          "spanId": "S042",
+          "exactText": "#### Manager – Marketing | **Transasia Aviation**",
+          "startOffset": 5983,
+          "endOffset": 6032
+        },
+        {
+          "spanId": "S043",
+          "exactText": "**Mar 2008 – Feb 2010**",
+          "startOffset": 6036,
+          "endOffset": 6059
+        },
+        {
+          "spanId": "S044",
+          "exactText": "- Administered an 80 Million INR digital-heavy marketing mix, capturing a 26% uptick in customer conversions amid a macro sector retraction.",
+          "startOffset": 6063,
+          "endOffset": 6203
+        },
+        {
+          "spanId": "S045",
+          "exactText": "#### Assistant Manager – Marketing | **IMS Learning Resources**",
+          "startOffset": 6207,
+          "endOffset": 6270
+        },
+        {
+          "spanId": "S046",
+          "exactText": "**Dec 2004 – Feb 2008**",
+          "startOffset": 6274,
+          "endOffset": 6297
+        },
+        {
+          "spanId": "S047",
+          "exactText": "- Early-stage pioneer in organic search and text optimization frameworks, executing some of the market's earliest Google AdWords and targeted SMS outreach models in 2006.",
+          "startOffset": 6301,
+          "endOffset": 6471
+        },
+        {
+          "spanId": "S048",
+          "exactText": "### **EDUCATION**",
+          "startOffset": 6475,
+          "endOffset": 6492
+        },
+        {
+          "spanId": "S049",
+          "exactText": "**Bachelor of Engineering (BE) – Mechanical Engineering | IME, Mumbai**",
+          "startOffset": 6496,
+          "endOffset": 6567
+        },
+        {
+          "spanId": "S050",
+          "exactText": "**2002**",
+          "startOffset": 6571,
+          "endOffset": 6579
+        }
+      ]
+    }
+  ]
+}

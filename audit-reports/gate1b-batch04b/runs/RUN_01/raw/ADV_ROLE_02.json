@@ -1,0 +1,62 @@
+{
+  "status": 200,
+  "rawText": "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"role\": \"model\",\n        \"parts\": [\n          {\n            \"text\": \"{\\n  \\\"schemaVersion\\\": \\\"llm-semantic-proposal-envelope/v1\\\",\\n  \\\"output\\\": {\\n    \\\"proposals\\\": [\\n      {\\n        \\\"spanId\\\": \\\"S001\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"ROLE_PURPOSE\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S003\\\",\\n        \\\"subject\\\": \\\"COMPANY\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"COMPANY_CONTEXT\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S004\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"ROLE_PURPOSE\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S006\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"RESPONSIBILITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S006\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"FOUNDER_CEO_PROXIMITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S006\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"BOARD_EXPOSURE\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S007\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"REPORTING_LINE\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S008\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"RESPONSIBILITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S008\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"PEOPLE_LEADERSHIP\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S008\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"GEOGRAPHIC_SCOPE\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S009\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"RESPONSIBILITY\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S011\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"HARD_REQUIREMENT\\\"\\n      },\\n      {\\n        \\\"spanId\\\": \\\"S012\\\",\\n        \\\"subject\\\": \\\"ROLE\\\",\\n        \\\"confidence\\\": 1.0,\\n        \\\"semanticType\\\": \\\"HARD_REQUIREMENT\\\"\\n      }\\n    ]\\n  }\\n}\"\n          }\n        ]\n      },\n      \"finishReason\": \"STOP\",\n      \"avgLogprobs\": -0.14917277291929418\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 378,\n    \"candidatesTokenCount\": 669,\n    \"totalTokenCount\": 2300,\n    \"trafficType\": \"ON_DEMAND\",\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 378\n      }\n    ],\n    \"candidatesTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 669\n      }\n    ],\n    \"thoughtsTokenCount\": 1253\n  },\n  \"modelVersion\": \"gemini-2.5-flash\",\n  \"createTime\": \"2026-09-13T05:44:35.818604Z\",\n  \"responseId\": \"Qzimaqz7MdzBm9IP-LHRsQw\"\n}\n",
+  "parsedResponse": {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "{\n  \"schemaVersion\": \"llm-semantic-proposal-envelope/v1\",\n  \"output\": {\n    \"proposals\": [\n      {\n        \"spanId\": \"S001\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"ROLE_PURPOSE\"\n      },\n      {\n        \"spanId\": \"S003\",\n        \"subject\": \"COMPANY\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"COMPANY_CONTEXT\"\n      },\n      {\n        \"spanId\": \"S004\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"ROLE_PURPOSE\"\n      },\n      {\n        \"spanId\": \"S006\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"RESPONSIBILITY\"\n      },\n      {\n        \"spanId\": \"S006\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"FOUNDER_CEO_PROXIMITY\"\n      },\n      {\n        \"spanId\": \"S006\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"BOARD_EXPOSURE\"\n      },\n      {\n        \"spanId\": \"S007\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"REPORTING_LINE\"\n      },\n      {\n        \"spanId\": \"S008\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"RESPONSIBILITY\"\n      },\n      {\n        \"spanId\": \"S008\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"PEOPLE_LEADERSHIP\"\n      },\n      {\n        \"spanId\": \"S008\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"GEOGRAPHIC_SCOPE\"\n      },\n      {\n        \"spanId\": \"S009\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"RESPONSIBILITY\"\n      },\n      {\n        \"spanId\": \"S011\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"HARD_REQUIREMENT\"\n      },\n      {\n        \"spanId\": \"S012\",\n        \"subject\": \"ROLE\",\n        \"confidence\": 1.0,\n        \"semanticType\": \"HARD_REQUIREMENT\"\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        "finishReason": "STOP",
+        "avgLogprobs": -0.14917277291929418
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 378,
+      "candidatesTokenCount": 669,
+      "totalTokenCount": 2300,
+      "trafficType": "ON_DEMAND",
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 378
+        }
+      ],
+      "candidatesTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 669
+        }
+      ],
+      "thoughtsTokenCount": 1253
+    },
+    "modelVersion": "gemini-2.5-flash",
+    "createTime": "2026-09-13T05:44:35.818604Z",
+    "responseId": "Qzimaqz7MdzBm9IP-LHRsQw"
+  },
+  "usage": {
+    "promptTokenCount": 378,
+    "candidatesTokenCount": 669,
+    "totalTokenCount": 2300,
+    "trafficType": "ON_DEMAND",
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 378
+      }
+    ],
+    "candidatesTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 669
+      }
+    ],
+    "thoughtsTokenCount": 1253
+  },
+  "latencyMs": 11508
+}

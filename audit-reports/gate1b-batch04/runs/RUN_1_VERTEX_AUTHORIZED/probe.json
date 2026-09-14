@@ -1,0 +1,46 @@
+{
+  "runId": "RUN_1_VERTEX_AUTHORIZED",
+  "state": "SUCCEEDED",
+  "startedAt": "2026-09-13T03:26:11.253Z",
+  "endedAt": "2026-09-13T03:26:13.907Z",
+  "operationalProvenance": {
+    "runId": "RUN_1_VERTEX_AUTHORIZED",
+    "provider": "Vertex AI Gemini ADC",
+    "transport": "gate1b-batch04/gemini-adc-transport-v1",
+    "adcMechanism": "application_default_credentials",
+    "gcloudActiveAccount": null,
+    "vertexProject": "project-423841fb-74e8-430a-84a",
+    "quotaProject": null,
+    "vertexRegion": "us-central1",
+    "model": "gemini-2.5-flash",
+    "promptVersion": "gate1b-batch03/proposals-v1",
+    "responseSchemaVersion": "llm-semantic-proposal-envelope/v1",
+    "proposalSchemaVersion": "semantic-proposal/v1",
+    "assemblerVersion": "semantic-assembler/v2",
+    "generationParameters": {
+      "temperature": 0,
+      "topP": 1
+    }
+  },
+  "requestIdentity": "6d43713fcd866fd4c4521cf1b7049d48e6cac7635b30466e28a747e995cf9f8f",
+  "response": {
+    "model": "gemini-2.5-flash",
+    "responseId": "6d43713fcd866fd4c4521cf1b7049d48e6cac7635b30466e28a747e995cf9f8f",
+    "usage": {
+      "inputTokens": 19,
+      "outputTokens": 6,
+      "totalTokens": 63
+    }
+  },
+  "attempts": [
+    {
+      "attemptId": "6d43713fcd866fd4c4521cf1b7049d48e6cac7635b30466e28a747e995cf9f8f:0",
+      "requestIdentity": "6d43713fcd866fd4c4521cf1b7049d48e6cac7635b30466e28a747e995cf9f8f",
+      "startedAt": "2026-09-13T03:26:11.254Z",
+      "endedAt": "2026-09-13T03:26:13.907Z",
+      "status": 200,
+      "transportRetry": 0,
+      "rawResponseText": "{\n  \"candidates\": [\n    {\n      \"content\": {\n        \"role\": \"model\",\n        \"parts\": [\n          {\n            \"text\": \"{\\\"status\\\": \\\"READY\\\"}\"\n          }\n        ]\n      },\n      \"finishReason\": \"STOP\"\n    }\n  ],\n  \"usageMetadata\": {\n    \"promptTokenCount\": 19,\n    \"candidatesTokenCount\": 6,\n    \"totalTokenCount\": 63,\n    \"trafficType\": \"ON_DEMAND\",\n    \"promptTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 19\n      }\n    ],\n    \"candidatesTokensDetails\": [\n      {\n        \"modality\": \"TEXT\",\n        \"tokenCount\": 6\n      }\n    ],\n    \"thoughtsTokenCount\": 38\n  },\n  \"modelVersion\": \"gemini-2.5-flash\",\n  \"createTime\": \"2026-09-13T03:26:13.276766Z\",\n  \"responseId\": \"1Remap7yEOSnr8kPtsWW-AM\"\n}\n"
+    }
+  ]
+}

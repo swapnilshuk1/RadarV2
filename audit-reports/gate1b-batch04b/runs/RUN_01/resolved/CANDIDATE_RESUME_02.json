@@ -1,0 +1,1239 @@
+{
+  "envelopeValid": true,
+  "parsedProposals": 27,
+  "validSpanIdCount": 27,
+  "invalidSpanIds": [],
+  "grounding": [
+    {
+      "index": 0,
+      "spanId": "S005",
+      "exactText": "Entrepreneurial, analytical, and execution-focused Growth Marketing & Brand Leader with over 20 years of verifiable success driving consumer acquisition, brand equity, and commercial turnaround across highly competitive digital and enterprise landscapes.",
+      "startOffset": 230,
+      "endOffset": 484,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "SELF_SUMMARY",
+      "proofTypes": [
+        "OUTCOME",
+        "CUSTOMER_GROWTH",
+        "TRANSFORMATION"
+      ]
+    },
+    {
+      "index": 1,
+      "spanId": "S006",
+      "exactText": "Master strategist with deep competence in scaling digital business revenue share (from 3% to 32%), managing multi-million dollar portfolios (₹300+ Cr), and implementing next-gen MarTech platforms (Salesforce CDP, Adobe Experience Cloud) to maximize consumer lifetime value (LTV) and compress client acquisition costs (CAC).",
+      "startOffset": 485,
+      "endOffset": 808,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "SELF_SUMMARY",
+      "proofTypes": [
+        "REVENUE_GROWTH",
+        "FINANCIAL_SCOPE",
+        "TECHNOLOGY_IMPLEMENTATION",
+        "COST_EFFICIENCY",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 2,
+      "spanId": "S007",
+      "exactText": "Adept at operating within high-velocity ecosystems, blending rigorous full-funnel analytics with disruptive creative storytelling to scale brands seamlessly from early-stage scale-up phases to definitive market leadership.",
+      "startOffset": 809,
+      "endOffset": 1031,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "SELF_SUMMARY",
+      "proofTypes": [
+        "OUTCOME",
+        "TRANSFORMATION"
+      ]
+    },
+    {
+      "index": 3,
+      "spanId": "S009",
+      "exactText": "- **Growth & Performance Marketing:** Full-Funnel Digital Acquisition, ROAS Optimization, Conversion Funnels.",
+      "startOffset": 1075,
+      "endOffset": 1184,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "CAPABILITY_LABEL"
+      ]
+    },
+    {
+      "index": 4,
+      "spanId": "S010",
+      "exactText": "- **Brand Strategy & Identity:** 360° Integrated Campaigns, PR, Consumer Insights, Content Marketing.",
+      "startOffset": 1186,
+      "endOffset": 1287,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "CAPABILITY_LABEL"
+      ]
+    },
+    {
+      "index": 5,
+      "spanId": "S011",
+      "exactText": "- **MarTech & Lifecycle Architecture:** Salesforce CDP Implementation, Adobe Experience Cloud, CRM Data Unification.",
+      "startOffset": 1289,
+      "endOffset": 1405,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "CAPABILITY_LABEL"
+      ]
+    },
+    {
+      "index": 6,
+      "spanId": "S012",
+      "exactText": "- **Business & P&L Ownership:** Scaling Cross-Functional Teams (40+), Stakeholder Management, ROI Frameworks.",
+      "startOffset": 1407,
+      "endOffset": 1516,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "CAPABILITY_LABEL"
+      ]
+    },
+    {
+      "index": 7,
+      "spanId": "S013",
+      "exactText": "- **Digital Innovation & E-commerce:** Online-to-Offline (O2O) Attribution, Metaverse Launch Frameworks, GenAI Automation.",
+      "startOffset": 1518,
+      "endOffset": 1640,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "CAPABILITY_LABEL"
+      ]
+    },
+    {
+      "index": 8,
+      "spanId": "S014",
+      "exactText": "- **Operational Scaling:** Leading Agility-driven Analytics Labs, Strategic Resource Allocation, Founder Alignment.",
+      "startOffset": 1642,
+      "endOffset": 1757,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "CAPABILITY_LABEL",
+      "proofTypes": [
+        "CAPABILITY_LABEL"
+      ]
+    },
+    {
+      "index": 9,
+      "spanId": "S018",
+      "exactText": "- **Full-Funnel Brand Mandate:** Lead integrated mainline, digital, and public relations mandates for market-leading luxury portfolios, including BMW India, driving brand architecture, messaging, and community retention programs.",
+      "startOffset": 1874,
+      "endOffset": 2103,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "MANDATE",
+        "OWNERSHIP",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 10,
+      "spanId": "S019",
+      "exactText": "- **Global Digital CoE Infrastructure:** Command a high-performing 40-member cross-functional digital Center of Excellence across intensive international growth regions (APAC and Middle East), owning full performance marketing, CRM, and platform management.",
+      "startOffset": 2105,
+      "endOffset": 2362,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "OWNERSHIP",
+        "PEOPLE_SCOPE",
+        "GEOGRAPHIC_SCOPE",
+        "ORGANIZATION_BUILD"
+      ]
+    },
+    {
+      "index": 11,
+      "spanId": "S020",
+      "exactText": "- **E-commerce Innovation:** Re-engineered conversion paths and deployed cutting-edge web experiences, initiating friction-free booking ecosystems that materially accelerated transactional velocity and qualified leads.",
+      "startOffset": 2364,
+      "endOffset": 2582,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "TRANSFORMATION",
+        "TECHNOLOGY_IMPLEMENTATION",
+        "CUSTOMER_GROWTH",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 12,
+      "spanId": "S021",
+      "exactText": "- **Enterprise CRM Migration:** Masterminded the rapid turnaround and complete strategic migration from monolithic legacy architectures to Salesforce across 12 core markets within an aggressive 12-month operational window.",
+      "startOffset": 2584,
+      "endOffset": 2806,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "TRANSFORMATION",
+        "TECHNOLOGY_IMPLEMENTATION",
+        "GEOGRAPHIC_SCOPE",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 13,
+      "spanId": "S022",
+      "exactText": "- **Analytics Lab & Generative AI:** Founded an internal 'Analytics & Experimentation Lab' to baseline strict A/B testing standards; applied operational GenAI models to achieve asset brand compliance while reducing content cycle times.",
+      "startOffset": 2808,
+      "endOffset": 3043,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "ORGANIZATION_BUILD",
+        "TECHNOLOGY_IMPLEMENTATION",
+        "COST_EFFICIENCY",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 14,
+      "spanId": "S025",
+      "exactText": "- **Hyperlocal Scale Architecture:** Architected and systematically deployed a data-driven hyperlocal digital growth matrix across 4,000+ points of sale, generating over 400,000 organic, high-intent consumer leads to lift dealership retail metrics.",
+      "startOffset": 3130,
+      "endOffset": 3378,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "CUSTOMER_GROWTH",
+        "GEOGRAPHIC_SCOPE",
+        "OUTCOME",
+        "TECHNOLOGY_IMPLEMENTATION",
+        "PIPELINE_GENERATION"
+      ]
+    },
+    {
+      "index": 15,
+      "spanId": "S026",
+      "exactText": "- **Metaverse & First-to-Market Campaigns:** Directed trend-setting digital-only multi-channel asset reveals, including an industry-first premium vehicle rollout inside the metaverse to maximize brand recall across younger consumer cohorts.",
+      "startOffset": 3380,
+      "endOffset": 3620,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "PRODUCT_LAUNCH",
+        "DOMAIN_PRECEDENT",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 16,
+      "spanId": "S027",
+      "exactText": "- **Customer Data Unification:** Engineered the deployment of Salesforce CDP to map clear customer journeys across the premium and electric vehicle portfolios, optimizing long-term user retention metrics and precision cross-selling.",
+      "startOffset": 3622,
+      "endOffset": 3854,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "TECHNOLOGY_IMPLEMENTATION",
+        "CUSTOMER_GROWTH",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 17,
+      "spanId": "S030",
+      "exactText": "- **Digital Contribution Growth:** Scaled digital ecosystem revenue contribution aggressively from an initial 3% base to over 32% of total national enterprise business value over a highly optimized 5-year growth window.",
+      "startOffset": 3963,
+      "endOffset": 4182,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "REVENUE_GROWTH",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 18,
+      "spanId": "S031",
+      "exactText": "- **Advanced O2O Analytical Attribution:** Collaborated exclusively with Google engineering teams to create a 'Global First' Online-to-Offline (O2O) Attribution model, effectively quantifying digital engagement impact on actual offline retail transactions.",
+      "startOffset": 4184,
+      "endOffset": 4440,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "DOMAIN_PRECEDENT",
+        "PARTNERSHIP",
+        "TECHNOLOGY_IMPLEMENTATION",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 19,
+      "spanId": "S032",
+      "exactText": "- **Award-Winning Narrative & PR:** Designed and executed purpose-driven public relationship campaigns, including the critically acclaimed 'Cartesy' safety platform, capturing more than 20 top-tier marketing honors and completely flipping entrenched cost-of-ownership market concerns.",
+      "startOffset": 4442,
+      "endOffset": 4726,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "OUTCOME",
+        "TRANSFORMATION"
+      ]
+    },
+    {
+      "index": 20,
+      "spanId": "S033",
+      "exactText": "- **Digital Retail Platforms:** Pioneered novel consumer acquisition funnels including flash sales on e-commerce platforms like Amazon, personalized digital booking tools, and fast-response structures to optimize end-to-end customer acquisition cost (CAC).",
+      "startOffset": 4728,
+      "endOffset": 4984,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "DOMAIN_PRECEDENT",
+        "CUSTOMER_GROWTH",
+        "COST_EFFICIENCY",
+        "TECHNOLOGY_IMPLEMENTATION"
+      ]
+    },
+    {
+      "index": 21,
+      "spanId": "S036",
+      "exactText": "- **Multi-Vertical Portfolio Strategy:** Owned end-to-end brand-building, product marketing, and growth architecture across the group’s key internet and consumer properties, notably spanning INLEAD (Edtech) and iHealthcare (Consumer KPO).",
+      "startOffset": 5062,
+      "endOffset": 5300,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "OWNERSHIP",
+        "MANDATE"
+      ]
+    },
+    {
+      "index": 22,
+      "spanId": "S037",
+      "exactText": "- **Sustained Revenue Overperformance:** Outperformed baseline commercial and lead acquisition targets for 3 successive fiscal cycles by up to 14% through aggressive digital repositioning.",
+      "startOffset": 5302,
+      "endOffset": 5490,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "REVENUE_GROWTH",
+        "CUSTOMER_GROWTH",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 23,
+      "spanId": "S038",
+      "exactText": "- **Drastic CAC Reduction:** Migrated legacy traditional media budgets systematically into highly segmented performance-driven channels, driving a comprehensive 70% reduction in net corporate customer acquisition costs.",
+      "startOffset": 5492,
+      "endOffset": 5711,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "COST_EFFICIENCY",
+        "TRANSFORMATION",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 24,
+      "spanId": "S041",
+      "exactText": "- Produced localized 360-degree digital acquisition campaigns, capturing S$1.8M in net new pipeline from premium corporate target groups inside of 6 months.",
+      "startOffset": 5823,
+      "endOffset": 5979,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "PIPELINE_GENERATION",
+        "FINANCIAL_SCOPE",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 25,
+      "spanId": "S044",
+      "exactText": "- Administered an 80 Million INR digital-heavy marketing mix, capturing a 26% uptick in customer conversions amid a macro sector retraction.",
+      "startOffset": 6063,
+      "endOffset": 6203,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "FINANCIAL_SCOPE",
+        "CUSTOMER_GROWTH",
+        "OUTCOME"
+      ]
+    },
+    {
+      "index": 26,
+      "spanId": "S047",
+      "exactText": "- Early-stage pioneer in organic search and text optimization frameworks, executing some of the market's earliest Google AdWords and targeted SMS outreach models in 2006.",
+      "startOffset": 6301,
+      "endOffset": 6471,
+      "validSpanId": true,
+      "unique": true,
+      "evidenceClass": "WORK_HISTORY",
+      "proofTypes": [
+        "DOMAIN_PRECEDENT",
+        "TECHNOLOGY_IMPLEMENTATION"
+      ]
+    }
+  ],
+  "assembly": {
+    "output": {
+      "sourceDocumentId": "CANDIDATE_RESUME_02",
+      "rawDocumentLength": 6581,
+      "positions": [
+        {
+          "positionId": "pos:VML_(WPP_Group):1796",
+          "title": "Senior Vice President",
+          "employer": "VML (WPP Group)",
+          "dates": "",
+          "startOffset": 1796,
+          "endOffset": 3047,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:VML_(WPP_Group):1876_2103",
+              "exactText": "**Full-Funnel Brand Mandate:** Lead integrated mainline, digital, and public relations mandates for market-leading luxury portfolios, including BMW India, driving brand architecture, messaging, and community retention programs.",
+              "startOffset": 1876,
+              "endOffset": 2103,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:VML_(WPP_Group):2107_2362",
+              "exactText": "**Global Digital CoE Infrastructure:** Command a high-performing 40-member cross-functional digital Center of Excellence across intensive international growth regions (APAC and Middle East), owning full performance marketing, CRM, and platform management.",
+              "startOffset": 2107,
+              "endOffset": 2362,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:VML_(WPP_Group):2366_2582",
+              "exactText": "**E-commerce Innovation:** Re-engineered conversion paths and deployed cutting-edge web experiences, initiating friction-free booking ecosystems that materially accelerated transactional velocity and qualified leads.",
+              "startOffset": 2366,
+              "endOffset": 2582,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:VML_(WPP_Group):2586_2806",
+              "exactText": "**Enterprise CRM Migration:** Masterminded the rapid turnaround and complete strategic migration from monolithic legacy architectures to Salesforce across 12 core markets within an aggressive 12-month operational window.",
+              "startOffset": 2586,
+              "endOffset": 2806,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:VML_(WPP_Group):2810_3043",
+              "exactText": "**Analytics Lab & Generative AI:** Founded an internal 'Analytics & Experimentation Lab' to baseline strict A/B testing standards; applied operational GenAI models to achieve asset brand compliance while reducing content cycle times.",
+              "startOffset": 2810,
+              "endOffset": 3043,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:TVS_Motor_Company:3047",
+          "title": "AGM – Digital Marketing",
+          "employer": "TVS Motor Company",
+          "dates": "",
+          "startOffset": 3047,
+          "endOffset": 3858,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:TVS_Motor_Company:3132_3378",
+              "exactText": "**Hyperlocal Scale Architecture:** Architected and systematically deployed a data-driven hyperlocal digital growth matrix across 4,000+ points of sale, generating over 400,000 organic, high-intent consumer leads to lift dealership retail metrics.",
+              "startOffset": 3132,
+              "endOffset": 3378,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:TVS_Motor_Company:3382_3620",
+              "exactText": "**Metaverse & First-to-Market Campaigns:** Directed trend-setting digital-only multi-channel asset reveals, including an industry-first premium vehicle rollout inside the metaverse to maximize brand recall across younger consumer cohorts.",
+              "startOffset": 3382,
+              "endOffset": 3620,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:TVS_Motor_Company:3624_3854",
+              "exactText": "**Customer Data Unification:** Engineered the deployment of Salesforce CDP to map clear customer journeys across the premium and electric vehicle portfolios, optimizing long-term user retention metrics and precision cross-selling.",
+              "startOffset": 3624,
+              "endOffset": 3854,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:GTB_(WPP_Group):3858",
+          "title": "Associate Vice President – Digital (Ford India)",
+          "employer": "GTB (WPP Group)",
+          "dates": "",
+          "startOffset": 3858,
+          "endOffset": 4988,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:GTB_(WPP_Group):3965_4182",
+              "exactText": "**Digital Contribution Growth:** Scaled digital ecosystem revenue contribution aggressively from an initial 3% base to over 32% of total national enterprise business value over a highly optimized 5-year growth window.",
+              "startOffset": 3965,
+              "endOffset": 4182,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:GTB_(WPP_Group):4186_4440",
+              "exactText": "**Advanced O2O Analytical Attribution:** Collaborated exclusively with Google engineering teams to create a 'Global First' Online-to-Offline (O2O) Attribution model, effectively quantifying digital engagement impact on actual offline retail transactions.",
+              "startOffset": 4186,
+              "endOffset": 4440,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:GTB_(WPP_Group):4444_4726",
+              "exactText": "**Award-Winning Narrative & PR:** Designed and executed purpose-driven public relationship campaigns, including the critically acclaimed 'Cartesy' safety platform, capturing more than 20 top-tier marketing honors and completely flipping entrenched cost-of-ownership market concerns.",
+              "startOffset": 4444,
+              "endOffset": 4726,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:GTB_(WPP_Group):4730_4984",
+              "exactText": "**Digital Retail Platforms:** Pioneered novel consumer acquisition funnels including flash sales on e-commerce platforms like Amazon, personalized digital booking tools, and fast-response structures to optimize end-to-end customer acquisition cost (CAC).",
+              "startOffset": 4730,
+              "endOffset": 4984,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:Primordial_Systems:4988",
+          "title": "AVP Marketing",
+          "employer": "Primordial Systems",
+          "dates": "",
+          "startOffset": 4988,
+          "endOffset": 5715,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:Primordial_Systems:5064_5300",
+              "exactText": "**Multi-Vertical Portfolio Strategy:** Owned end-to-end brand-building, product marketing, and growth architecture across the group’s key internet and consumer properties, notably spanning INLEAD (Edtech) and iHealthcare (Consumer KPO).",
+              "startOffset": 5064,
+              "endOffset": 5300,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:Primordial_Systems:5304_5490",
+              "exactText": "**Sustained Revenue Overperformance:** Outperformed baseline commercial and lead acquisition targets for 3 successive fiscal cycles by up to 14% through aggressive digital repositioning.",
+              "startOffset": 5304,
+              "endOffset": 5490,
+              "claims": []
+            },
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:Primordial_Systems:5494_5711",
+              "exactText": "**Drastic CAC Reduction:** Migrated legacy traditional media budgets systematically into highly segmented performance-driven channels, driving a comprehensive 70% reduction in net corporate customer acquisition costs.",
+              "startOffset": 5494,
+              "endOffset": 5711,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:Patt_&_Hoff_Group_(Singapore):5715",
+          "title": "Manager – Marketing & Communications",
+          "employer": "Patt & Hoff Group (Singapore)",
+          "dates": "",
+          "startOffset": 5715,
+          "endOffset": 5983,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:Patt_&_Hoff_Group_(Singapore):5825_5979",
+              "exactText": "Produced localized 360-degree digital acquisition campaigns, capturing S$1.8M in net new pipeline from premium corporate target groups inside of 6 months.",
+              "startOffset": 5825,
+              "endOffset": 5979,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:Transasia_Aviation:5983",
+          "title": "Manager – Marketing",
+          "employer": "Transasia Aviation",
+          "dates": "",
+          "startOffset": 5983,
+          "endOffset": 6207,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:Transasia_Aviation:6065_6203",
+              "exactText": "Administered an 80 Million INR digital-heavy marketing mix, capturing a 26% uptick in customer conversions amid a macro sector retraction.",
+              "startOffset": 6065,
+              "endOffset": 6203,
+              "claims": []
+            }
+          ]
+        },
+        {
+          "positionId": "pos:IMS_Learning_Resources:6207",
+          "title": "Assistant Manager – Marketing",
+          "employer": "IMS Learning Resources",
+          "dates": "",
+          "startOffset": 6207,
+          "endOffset": 6581,
+          "isCurrent": false,
+          "bullets": [
+            {
+              "bulletId": "bullet:pos:CANDIDATE_RESUME_02:IMS_Learning_Resources:6303_6471",
+              "exactText": "Early-stage pioneer in organic search and text optimization frameworks, executing some of the market's earliest Google AdWords and targeted SMS outreach models in 2006.",
+              "startOffset": 6303,
+              "endOffset": 6471,
+              "claims": []
+            }
+          ]
+        }
+      ],
+      "selfSummaries": [
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:230_484:OUTCOME",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "Entrepreneurial, analytical, and execution-focused Growth Marketing & Brand Leader with over 20 years of verifiable success driving consumer acquisition, brand equity, and commercial turnaround across highly competitive digital and enterprise landscapes.",
+          "parentBulletStartOffset": 230,
+          "parentBulletEndOffset": 484,
+          "exactText": "Entrepreneurial, analytical, and execution-focused Growth Marketing & Brand Leader with over 20 years of verifiable success driving consumer acquisition, brand equity, and commercial turnaround across highly competitive digital and enterprise landscapes.",
+          "startOffset": 230,
+          "endOffset": 484,
+          "evidenceClass": "SELF_SUMMARY",
+          "proofTypes": [
+            "OUTCOME",
+            "TRANSFORMATION",
+            "CUSTOMER_GROWTH"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:485_808:OUTCOME",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "Master strategist with deep competence in scaling digital business revenue share (from 3% to 32%), managing multi-million dollar portfolios (₹300+ Cr), and implementing next-gen MarTech platforms (Salesforce CDP, Adobe Experience Cloud) to maximize consumer lifetime value (LTV) and compress client acquisition costs (CAC).",
+          "parentBulletStartOffset": 485,
+          "parentBulletEndOffset": 808,
+          "exactText": "Master strategist with deep competence in scaling digital business revenue share (from 3% to 32%), managing multi-million dollar portfolios (₹300+ Cr), and implementing next-gen MarTech platforms (Salesforce CDP, Adobe Experience Cloud) to maximize consumer lifetime value (LTV) and compress client acquisition costs (CAC).",
+          "startOffset": 485,
+          "endOffset": 808,
+          "evidenceClass": "SELF_SUMMARY",
+          "proofTypes": [
+            "OUTCOME",
+            "FINANCIAL_SCOPE",
+            "REVENUE_GROWTH",
+            "COST_EFFICIENCY",
+            "TECHNOLOGY_IMPLEMENTATION"
+          ],
+          "metrics": [
+            {
+              "exactText": "from 3% to 32%",
+              "startOffset": 567,
+              "endOffset": 581,
+              "metricType": "PERCENTAGE_CHANGE",
+              "rawValue": "from 3% to 32%",
+              "normalizedValue": 32,
+              "comparator": "EXACT",
+              "unit": "%",
+              "direction": "INCREASE",
+              "changeValue": 29,
+              "baselineValue": 3,
+              "endValue": 32
+            },
+            {
+              "exactText": "₹300",
+              "startOffset": 626,
+              "endOffset": 630,
+              "metricType": "CURRENCY_AMOUNT",
+              "rawValue": "₹300",
+              "normalizedValue": 300,
+              "comparator": "EXACT",
+              "currency": "INR",
+              "scale": "UNIT"
+            }
+          ],
+          "groundedEntities": [
+            {
+              "exactText": "Salesforce CDP",
+              "startOffset": 682,
+              "endOffset": 696,
+              "category": "PLATFORM"
+            }
+          ]
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:809_1031:OUTCOME",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "Adept at operating within high-velocity ecosystems, blending rigorous full-funnel analytics with disruptive creative storytelling to scale brands seamlessly from early-stage scale-up phases to definitive market leadership.",
+          "parentBulletStartOffset": 809,
+          "parentBulletEndOffset": 1031,
+          "exactText": "Adept at operating within high-velocity ecosystems, blending rigorous full-funnel analytics with disruptive creative storytelling to scale brands seamlessly from early-stage scale-up phases to definitive market leadership.",
+          "startOffset": 809,
+          "endOffset": 1031,
+          "evidenceClass": "SELF_SUMMARY",
+          "proofTypes": [
+            "OUTCOME",
+            "TRANSFORMATION"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        }
+      ],
+      "capabilityLabels": [
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1075_1184:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **Growth & Performance Marketing:** Full-Funnel Digital Acquisition, ROAS Optimization, Conversion Funnels.",
+          "parentBulletStartOffset": 1075,
+          "parentBulletEndOffset": 1184,
+          "exactText": "- **Growth & Performance Marketing:** Full-Funnel Digital Acquisition, ROAS Optimization, Conversion Funnels.",
+          "startOffset": 1075,
+          "endOffset": 1184,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1186_1287:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **Brand Strategy & Identity:** 360° Integrated Campaigns, PR, Consumer Insights, Content Marketing.",
+          "parentBulletStartOffset": 1186,
+          "parentBulletEndOffset": 1287,
+          "exactText": "- **Brand Strategy & Identity:** 360° Integrated Campaigns, PR, Consumer Insights, Content Marketing.",
+          "startOffset": 1186,
+          "endOffset": 1287,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1289_1405:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **MarTech & Lifecycle Architecture:** Salesforce CDP Implementation, Adobe Experience Cloud, CRM Data Unification.",
+          "parentBulletStartOffset": 1289,
+          "parentBulletEndOffset": 1405,
+          "exactText": "- **MarTech & Lifecycle Architecture:** Salesforce CDP Implementation, Adobe Experience Cloud, CRM Data Unification.",
+          "startOffset": 1289,
+          "endOffset": 1405,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": [
+            {
+              "exactText": "Salesforce CDP",
+              "startOffset": 1329,
+              "endOffset": 1343,
+              "category": "PLATFORM"
+            }
+          ]
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1407_1516:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **Business & P&L Ownership:** Scaling Cross-Functional Teams (40+), Stakeholder Management, ROI Frameworks.",
+          "parentBulletStartOffset": 1407,
+          "parentBulletEndOffset": 1516,
+          "exactText": "- **Business & P&L Ownership:** Scaling Cross-Functional Teams (40+), Stakeholder Management, ROI Frameworks.",
+          "startOffset": 1407,
+          "endOffset": 1516,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1518_1640:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **Digital Innovation & E-commerce:** Online-to-Offline (O2O) Attribution, Metaverse Launch Frameworks, GenAI Automation.",
+          "parentBulletStartOffset": 1518,
+          "parentBulletEndOffset": 1640,
+          "exactText": "- **Digital Innovation & E-commerce:** Online-to-Offline (O2O) Attribution, Metaverse Launch Frameworks, GenAI Automation.",
+          "startOffset": 1518,
+          "endOffset": 1640,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1642_1757:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **Operational Scaling:** Leading Agility-driven Analytics Labs, Strategic Resource Allocation, Founder Alignment.",
+          "parentBulletStartOffset": 1642,
+          "parentBulletEndOffset": 1757,
+          "exactText": "- **Operational Scaling:** Leading Agility-driven Analytics Labs, Strategic Resource Allocation, Founder Alignment.",
+          "startOffset": 1642,
+          "endOffset": 1757,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        }
+      ],
+      "education": [],
+      "allBullets": [
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:VML_(WPP_Group):1876_2103",
+          "exactText": "**Full-Funnel Brand Mandate:** Lead integrated mainline, digital, and public relations mandates for market-leading luxury portfolios, including BMW India, driving brand architecture, messaging, and community retention programs.",
+          "startOffset": 1876,
+          "endOffset": 2103,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:VML_(WPP_Group):2107_2362",
+          "exactText": "**Global Digital CoE Infrastructure:** Command a high-performing 40-member cross-functional digital Center of Excellence across intensive international growth regions (APAC and Middle East), owning full performance marketing, CRM, and platform management.",
+          "startOffset": 2107,
+          "endOffset": 2362,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:VML_(WPP_Group):2366_2582",
+          "exactText": "**E-commerce Innovation:** Re-engineered conversion paths and deployed cutting-edge web experiences, initiating friction-free booking ecosystems that materially accelerated transactional velocity and qualified leads.",
+          "startOffset": 2366,
+          "endOffset": 2582,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:VML_(WPP_Group):2586_2806",
+          "exactText": "**Enterprise CRM Migration:** Masterminded the rapid turnaround and complete strategic migration from monolithic legacy architectures to Salesforce across 12 core markets within an aggressive 12-month operational window.",
+          "startOffset": 2586,
+          "endOffset": 2806,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:VML_(WPP_Group):2810_3043",
+          "exactText": "**Analytics Lab & Generative AI:** Founded an internal 'Analytics & Experimentation Lab' to baseline strict A/B testing standards; applied operational GenAI models to achieve asset brand compliance while reducing content cycle times.",
+          "startOffset": 2810,
+          "endOffset": 3043,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:TVS_Motor_Company:3132_3378",
+          "exactText": "**Hyperlocal Scale Architecture:** Architected and systematically deployed a data-driven hyperlocal digital growth matrix across 4,000+ points of sale, generating over 400,000 organic, high-intent consumer leads to lift dealership retail metrics.",
+          "startOffset": 3132,
+          "endOffset": 3378,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:TVS_Motor_Company:3382_3620",
+          "exactText": "**Metaverse & First-to-Market Campaigns:** Directed trend-setting digital-only multi-channel asset reveals, including an industry-first premium vehicle rollout inside the metaverse to maximize brand recall across younger consumer cohorts.",
+          "startOffset": 3382,
+          "endOffset": 3620,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:TVS_Motor_Company:3624_3854",
+          "exactText": "**Customer Data Unification:** Engineered the deployment of Salesforce CDP to map clear customer journeys across the premium and electric vehicle portfolios, optimizing long-term user retention metrics and precision cross-selling.",
+          "startOffset": 3624,
+          "endOffset": 3854,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:GTB_(WPP_Group):3965_4182",
+          "exactText": "**Digital Contribution Growth:** Scaled digital ecosystem revenue contribution aggressively from an initial 3% base to over 32% of total national enterprise business value over a highly optimized 5-year growth window.",
+          "startOffset": 3965,
+          "endOffset": 4182,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:GTB_(WPP_Group):4186_4440",
+          "exactText": "**Advanced O2O Analytical Attribution:** Collaborated exclusively with Google engineering teams to create a 'Global First' Online-to-Offline (O2O) Attribution model, effectively quantifying digital engagement impact on actual offline retail transactions.",
+          "startOffset": 4186,
+          "endOffset": 4440,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:GTB_(WPP_Group):4444_4726",
+          "exactText": "**Award-Winning Narrative & PR:** Designed and executed purpose-driven public relationship campaigns, including the critically acclaimed 'Cartesy' safety platform, capturing more than 20 top-tier marketing honors and completely flipping entrenched cost-of-ownership market concerns.",
+          "startOffset": 4444,
+          "endOffset": 4726,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:GTB_(WPP_Group):4730_4984",
+          "exactText": "**Digital Retail Platforms:** Pioneered novel consumer acquisition funnels including flash sales on e-commerce platforms like Amazon, personalized digital booking tools, and fast-response structures to optimize end-to-end customer acquisition cost (CAC).",
+          "startOffset": 4730,
+          "endOffset": 4984,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:Primordial_Systems:5064_5300",
+          "exactText": "**Multi-Vertical Portfolio Strategy:** Owned end-to-end brand-building, product marketing, and growth architecture across the group’s key internet and consumer properties, notably spanning INLEAD (Edtech) and iHealthcare (Consumer KPO).",
+          "startOffset": 5064,
+          "endOffset": 5300,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:Primordial_Systems:5304_5490",
+          "exactText": "**Sustained Revenue Overperformance:** Outperformed baseline commercial and lead acquisition targets for 3 successive fiscal cycles by up to 14% through aggressive digital repositioning.",
+          "startOffset": 5304,
+          "endOffset": 5490,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:Primordial_Systems:5494_5711",
+          "exactText": "**Drastic CAC Reduction:** Migrated legacy traditional media budgets systematically into highly segmented performance-driven channels, driving a comprehensive 70% reduction in net corporate customer acquisition costs.",
+          "startOffset": 5494,
+          "endOffset": 5711,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:Patt_&_Hoff_Group_(Singapore):5825_5979",
+          "exactText": "Produced localized 360-degree digital acquisition campaigns, capturing S$1.8M in net new pipeline from premium corporate target groups inside of 6 months.",
+          "startOffset": 5825,
+          "endOffset": 5979,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:Transasia_Aviation:6065_6203",
+          "exactText": "Administered an 80 Million INR digital-heavy marketing mix, capturing a 26% uptick in customer conversions amid a macro sector retraction.",
+          "startOffset": 6065,
+          "endOffset": 6203,
+          "claims": []
+        },
+        {
+          "bulletId": "bullet:pos:CANDIDATE_RESUME_02:IMS_Learning_Resources:6303_6471",
+          "exactText": "Early-stage pioneer in organic search and text optimization frameworks, executing some of the market's earliest Google AdWords and targeted SMS outreach models in 2006.",
+          "startOffset": 6303,
+          "endOffset": 6471,
+          "claims": []
+        }
+      ],
+      "allClaims": [
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:230_484:OUTCOME",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "Entrepreneurial, analytical, and execution-focused Growth Marketing & Brand Leader with over 20 years of verifiable success driving consumer acquisition, brand equity, and commercial turnaround across highly competitive digital and enterprise landscapes.",
+          "parentBulletStartOffset": 230,
+          "parentBulletEndOffset": 484,
+          "exactText": "Entrepreneurial, analytical, and execution-focused Growth Marketing & Brand Leader with over 20 years of verifiable success driving consumer acquisition, brand equity, and commercial turnaround across highly competitive digital and enterprise landscapes.",
+          "startOffset": 230,
+          "endOffset": 484,
+          "evidenceClass": "SELF_SUMMARY",
+          "proofTypes": [
+            "OUTCOME",
+            "TRANSFORMATION",
+            "CUSTOMER_GROWTH"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:485_808:OUTCOME",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "Master strategist with deep competence in scaling digital business revenue share (from 3% to 32%), managing multi-million dollar portfolios (₹300+ Cr), and implementing next-gen MarTech platforms (Salesforce CDP, Adobe Experience Cloud) to maximize consumer lifetime value (LTV) and compress client acquisition costs (CAC).",
+          "parentBulletStartOffset": 485,
+          "parentBulletEndOffset": 808,
+          "exactText": "Master strategist with deep competence in scaling digital business revenue share (from 3% to 32%), managing multi-million dollar portfolios (₹300+ Cr), and implementing next-gen MarTech platforms (Salesforce CDP, Adobe Experience Cloud) to maximize consumer lifetime value (LTV) and compress client acquisition costs (CAC).",
+          "startOffset": 485,
+          "endOffset": 808,
+          "evidenceClass": "SELF_SUMMARY",
+          "proofTypes": [
+            "OUTCOME",
+            "FINANCIAL_SCOPE",
+            "REVENUE_GROWTH",
+            "COST_EFFICIENCY",
+            "TECHNOLOGY_IMPLEMENTATION"
+          ],
+          "metrics": [
+            {
+              "exactText": "from 3% to 32%",
+              "startOffset": 567,
+              "endOffset": 581,
+              "metricType": "PERCENTAGE_CHANGE",
+              "rawValue": "from 3% to 32%",
+              "normalizedValue": 32,
+              "comparator": "EXACT",
+              "unit": "%",
+              "direction": "INCREASE",
+              "changeValue": 29,
+              "baselineValue": 3,
+              "endValue": 32
+            },
+            {
+              "exactText": "₹300",
+              "startOffset": 626,
+              "endOffset": 630,
+              "metricType": "CURRENCY_AMOUNT",
+              "rawValue": "₹300",
+              "normalizedValue": 300,
+              "comparator": "EXACT",
+              "currency": "INR",
+              "scale": "UNIT"
+            }
+          ],
+          "groundedEntities": [
+            {
+              "exactText": "Salesforce CDP",
+              "startOffset": 682,
+              "endOffset": 696,
+              "category": "PLATFORM"
+            }
+          ]
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:809_1031:OUTCOME",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "Adept at operating within high-velocity ecosystems, blending rigorous full-funnel analytics with disruptive creative storytelling to scale brands seamlessly from early-stage scale-up phases to definitive market leadership.",
+          "parentBulletStartOffset": 809,
+          "parentBulletEndOffset": 1031,
+          "exactText": "Adept at operating within high-velocity ecosystems, blending rigorous full-funnel analytics with disruptive creative storytelling to scale brands seamlessly from early-stage scale-up phases to definitive market leadership.",
+          "startOffset": 809,
+          "endOffset": 1031,
+          "evidenceClass": "SELF_SUMMARY",
+          "proofTypes": [
+            "OUTCOME",
+            "TRANSFORMATION"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1075_1184:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **Growth & Performance Marketing:** Full-Funnel Digital Acquisition, ROAS Optimization, Conversion Funnels.",
+          "parentBulletStartOffset": 1075,
+          "parentBulletEndOffset": 1184,
+          "exactText": "- **Growth & Performance Marketing:** Full-Funnel Digital Acquisition, ROAS Optimization, Conversion Funnels.",
+          "startOffset": 1075,
+          "endOffset": 1184,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1186_1287:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **Brand Strategy & Identity:** 360° Integrated Campaigns, PR, Consumer Insights, Content Marketing.",
+          "parentBulletStartOffset": 1186,
+          "parentBulletEndOffset": 1287,
+          "exactText": "- **Brand Strategy & Identity:** 360° Integrated Campaigns, PR, Consumer Insights, Content Marketing.",
+          "startOffset": 1186,
+          "endOffset": 1287,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1289_1405:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **MarTech & Lifecycle Architecture:** Salesforce CDP Implementation, Adobe Experience Cloud, CRM Data Unification.",
+          "parentBulletStartOffset": 1289,
+          "parentBulletEndOffset": 1405,
+          "exactText": "- **MarTech & Lifecycle Architecture:** Salesforce CDP Implementation, Adobe Experience Cloud, CRM Data Unification.",
+          "startOffset": 1289,
+          "endOffset": 1405,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": [
+            {
+              "exactText": "Salesforce CDP",
+              "startOffset": 1329,
+              "endOffset": 1343,
+              "category": "PLATFORM"
+            }
+          ]
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1407_1516:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **Business & P&L Ownership:** Scaling Cross-Functional Teams (40+), Stakeholder Management, ROI Frameworks.",
+          "parentBulletStartOffset": 1407,
+          "parentBulletEndOffset": 1516,
+          "exactText": "- **Business & P&L Ownership:** Scaling Cross-Functional Teams (40+), Stakeholder Management, ROI Frameworks.",
+          "startOffset": 1407,
+          "endOffset": 1516,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1518_1640:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **Digital Innovation & E-commerce:** Online-to-Offline (O2O) Attribution, Metaverse Launch Frameworks, GenAI Automation.",
+          "parentBulletStartOffset": 1518,
+          "parentBulletEndOffset": 1640,
+          "exactText": "- **Digital Innovation & E-commerce:** Online-to-Offline (O2O) Attribution, Metaverse Launch Frameworks, GenAI Automation.",
+          "startOffset": 1518,
+          "endOffset": 1640,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        },
+        {
+          "claimId": "claim:CANDIDATE_RESUME_02:1642_1757:CAPABILITY_LABEL",
+          "sourceDocumentId": "CANDIDATE_RESUME_02",
+          "parentBulletExactText": "- **Operational Scaling:** Leading Agility-driven Analytics Labs, Strategic Resource Allocation, Founder Alignment.",
+          "parentBulletStartOffset": 1642,
+          "parentBulletEndOffset": 1757,
+          "exactText": "- **Operational Scaling:** Leading Agility-driven Analytics Labs, Strategic Resource Allocation, Founder Alignment.",
+          "startOffset": 1642,
+          "endOffset": 1757,
+          "evidenceClass": "CAPABILITY_LABEL",
+          "proofTypes": [
+            "CAPABILITY_LABEL"
+          ],
+          "metrics": [],
+          "groundedEntities": []
+        }
+      ],
+      "metadata": {
+        "extractorVersion": "CandidateProofExtractorV1",
+        "totalProfessionalExperienceBullets": 18,
+        "bulletsRetained": 18,
+        "bulletsWithSpecializedClaims": 0,
+        "bulletsWithoutSpecializedClaims": 18,
+        "proposalCounts": {
+          "proposedClaims": 27,
+          "acceptedClaims": 9,
+          "rejectedClaims": 18
+        }
+      }
+    },
+    "proposalRejections": [
+      {
+        "proposalIndex": 9,
+        "exactQuote": "- **Full-Funnel Brand Mandate:** Lead integrated mainline, digital, and public relations mandates for market-leading luxury portfolios, including BMW India, driving brand architecture, messaging, and community retention programs.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 10,
+        "exactQuote": "- **Global Digital CoE Infrastructure:** Command a high-performing 40-member cross-functional digital Center of Excellence across intensive international growth regions (APAC and Middle East), owning full performance marketing, CRM, and platform management.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 11,
+        "exactQuote": "- **E-commerce Innovation:** Re-engineered conversion paths and deployed cutting-edge web experiences, initiating friction-free booking ecosystems that materially accelerated transactional velocity and qualified leads.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 12,
+        "exactQuote": "- **Enterprise CRM Migration:** Masterminded the rapid turnaround and complete strategic migration from monolithic legacy architectures to Salesforce across 12 core markets within an aggressive 12-month operational window.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 13,
+        "exactQuote": "- **Analytics Lab & Generative AI:** Founded an internal 'Analytics & Experimentation Lab' to baseline strict A/B testing standards; applied operational GenAI models to achieve asset brand compliance while reducing content cycle times.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 14,
+        "exactQuote": "- **Hyperlocal Scale Architecture:** Architected and systematically deployed a data-driven hyperlocal digital growth matrix across 4,000+ points of sale, generating over 400,000 organic, high-intent consumer leads to lift dealership retail metrics.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 15,
+        "exactQuote": "- **Metaverse & First-to-Market Campaigns:** Directed trend-setting digital-only multi-channel asset reveals, including an industry-first premium vehicle rollout inside the metaverse to maximize brand recall across younger consumer cohorts.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 16,
+        "exactQuote": "- **Customer Data Unification:** Engineered the deployment of Salesforce CDP to map clear customer journeys across the premium and electric vehicle portfolios, optimizing long-term user retention metrics and precision cross-selling.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 17,
+        "exactQuote": "- **Digital Contribution Growth:** Scaled digital ecosystem revenue contribution aggressively from an initial 3% base to over 32% of total national enterprise business value over a highly optimized 5-year growth window.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 18,
+        "exactQuote": "- **Advanced O2O Analytical Attribution:** Collaborated exclusively with Google engineering teams to create a 'Global First' Online-to-Offline (O2O) Attribution model, effectively quantifying digital engagement impact on actual offline retail transactions.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 19,
+        "exactQuote": "- **Award-Winning Narrative & PR:** Designed and executed purpose-driven public relationship campaigns, including the critically acclaimed 'Cartesy' safety platform, capturing more than 20 top-tier marketing honors and completely flipping entrenched cost-of-ownership market concerns.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 20,
+        "exactQuote": "- **Digital Retail Platforms:** Pioneered novel consumer acquisition funnels including flash sales on e-commerce platforms like Amazon, personalized digital booking tools, and fast-response structures to optimize end-to-end customer acquisition cost (CAC).",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 21,
+        "exactQuote": "- **Multi-Vertical Portfolio Strategy:** Owned end-to-end brand-building, product marketing, and growth architecture across the group’s key internet and consumer properties, notably spanning INLEAD (Edtech) and iHealthcare (Consumer KPO).",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 22,
+        "exactQuote": "- **Sustained Revenue Overperformance:** Outperformed baseline commercial and lead acquisition targets for 3 successive fiscal cycles by up to 14% through aggressive digital repositioning.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 23,
+        "exactQuote": "- **Drastic CAC Reduction:** Migrated legacy traditional media budgets systematically into highly segmented performance-driven channels, driving a comprehensive 70% reduction in net corporate customer acquisition costs.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 24,
+        "exactQuote": "- Produced localized 360-degree digital acquisition campaigns, capturing S$1.8M in net new pipeline from premium corporate target groups inside of 6 months.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 25,
+        "exactQuote": "- Administered an 80 Million INR digital-heavy marketing mix, capturing a 26% uptick in customer conversions amid a macro sector retraction.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      },
+      {
+        "proposalIndex": 26,
+        "exactQuote": "- Early-stage pioneer in organic search and text optimization frameworks, executing some of the market's earliest Google AdWords and targeted SMS outreach models in 2006.",
+        "code": "STRUCTURAL_CONTAINMENT"
+      }
+    ]
+  },
+  "verificationError": null
+}

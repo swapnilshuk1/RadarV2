@@ -1,0 +1,720 @@
+{
+  "schemaVersion": "gate1b-batch04-manifest/v1",
+  "state": "PRE_PROVIDER_LOCKED",
+  "createdAt": "2026-09-13T02:36:55.988Z",
+  "historicalRoleCorpus": {
+    "gitCommit": "e1f0a47575accedcd7fd3d681c7b084ca377b0fd",
+    "repositoryPath": "audit-reports/phase5-100-case-corpus/cases.jsonl",
+    "gitBlobSha": "0ce84bfc49fae6502d8f1031df82e25c52c2bf32",
+    "byteLength": 2134830,
+    "sha256": "ff844cf3aa8378d18695b57d2f6dd4374476b7cbe5b0200a33472ff8fb92c37c",
+    "caseCount": 100,
+    "cases": [
+      {
+        "caseId": "01",
+        "canonicalJobId": "b4a8bc7406dc41937dba73ba058c0e4307f64a7f25271fcf713f80754ad9eeb1",
+        "rawTextByteLength": 2341,
+        "rawTextSha256": "bb4580fa179c3cf9665f45644e0da20fab3811b887be020a187569d340a7b425"
+      },
+      {
+        "caseId": "02",
+        "canonicalJobId": "cc312ec056c8ea83af3b89ccc405ccd77603b788b7ea462da92b8ec2ac6e7f33",
+        "rawTextByteLength": 8632,
+        "rawTextSha256": "aa8086bfe29be30be883b449fa05cdbd642d7903c8a2492efb1f32e8eed86056"
+      },
+      {
+        "caseId": "03",
+        "canonicalJobId": "1f1904c58f284923dbf313b0c2ae83e354cf32ce4d192fce451306e0ea036c3d",
+        "rawTextByteLength": 4534,
+        "rawTextSha256": "89f0a710800183e54634c31d9f3af3029950760e00c2608c7f860b3e35bf1b3f"
+      },
+      {
+        "caseId": "04",
+        "canonicalJobId": "1fcaaa76446047f7160579a7ce637ae83ad18826a5de1386eda7bfb040fc28ca",
+        "rawTextByteLength": 3245,
+        "rawTextSha256": "88650fa01c589ae76ee00d1292acd479fb9b4903cd7e3525032dfd34f1809ba6"
+      },
+      {
+        "caseId": "05",
+        "canonicalJobId": "1bb50b00722a2bc58816d4049cd7ec04bd7b90b3eb510857d3646171e9afcab0",
+        "rawTextByteLength": 4101,
+        "rawTextSha256": "2ba329759f1aeca57e9066fcafef7a5aefe55691e880711807293e5543abdc2b"
+      },
+      {
+        "caseId": "06",
+        "canonicalJobId": "3345dd0b3a7fa0ae4f738b8381bb7a887a1d5eb09390d4218e888aaf44ff4f39",
+        "rawTextByteLength": 2059,
+        "rawTextSha256": "939a06b16e5ce4fe0cd742d4112b70275217a5edca7bbbf34ec1947760636354"
+      },
+      {
+        "caseId": "07",
+        "canonicalJobId": "0d14e8655e217c0f655584042730dba73590a8cab04605453be7f707bf2b4370",
+        "rawTextByteLength": 2714,
+        "rawTextSha256": "8792b2c25a8bc0f604a5be593ac29ac42c00460cd5b994a141baa073018411eb"
+      },
+      {
+        "caseId": "08",
+        "canonicalJobId": "7ed3d8224728b73eb094f8f19a1ddd826bdfb4c08c4eef29f879eedf725d6f9f",
+        "rawTextByteLength": 2840,
+        "rawTextSha256": "991c1156e8292ca1d1cb76bc96f7b0d377db077ad2589f2c194306bb3f7be5b2"
+      },
+      {
+        "caseId": "09",
+        "canonicalJobId": "0790b99e515da51b9ad44dd9d513bbc1a3267c9cd5d77f8dc38a6b56b5ba962b",
+        "rawTextByteLength": 2342,
+        "rawTextSha256": "d4d19eb50215e23c415f5c198eec568035129a9e7fb1209b47048541e513b817"
+      },
+      {
+        "caseId": "10",
+        "canonicalJobId": "09421323bb5c680b3b55be75f0c97c5369ac9db542963dca88a59611fb55c8ac",
+        "rawTextByteLength": 2954,
+        "rawTextSha256": "eef5c0a620df96097c68937b95723cc1681f961709132ccdf7af1078d30f5ff7"
+      },
+      {
+        "caseId": "11",
+        "canonicalJobId": "09424218e8ee80e243b1740867e468f9415dca97ac4e4d1fcd159f7a5bee4f75",
+        "rawTextByteLength": 1986,
+        "rawTextSha256": "5a4c23f1ca219202c9445fc4b1098092962aee78c9883b80b70015ab72518128"
+      },
+      {
+        "caseId": "12",
+        "canonicalJobId": "0b47ca6435fee5778debbf050d7e5a3a13f1ad721a26fb02ac2282a7967d1578",
+        "rawTextByteLength": 2607,
+        "rawTextSha256": "8a39fd1c12ed67b198fbb0dc667aed7288fbc1d53c40f3c37afa67d360e5c5be"
+      },
+      {
+        "caseId": "13",
+        "canonicalJobId": "17874024ae8aa7c4177256bc30e402c3c39588c7c4e0e2ab4f7a9d191eac1969",
+        "rawTextByteLength": 1807,
+        "rawTextSha256": "dbcd2360460dc66318e9a855e4cbb9c3a94b7aba2f5d23af8dd63b2e8df74a33"
+      },
+      {
+        "caseId": "14",
+        "canonicalJobId": "1a8b664971578f60f02c33a16fd23c793cd9bfb8f4d0a8b127886c1aa69c7ca4",
+        "rawTextByteLength": 735,
+        "rawTextSha256": "d6bcc0e658a5748af1b2457d03e4c0e30df6deaaef3cc6b1b4ef327686b290d5"
+      },
+      {
+        "caseId": "15",
+        "canonicalJobId": "04e5d72ede7c9d3a6fd2843ea63340b193a5d3792acb9f7f125c4855d8bef172",
+        "rawTextByteLength": 331,
+        "rawTextSha256": "aa397eb1c7059974f01eb4a9468d8d386601d9be772c8adceda401c745c408e8"
+      },
+      {
+        "caseId": "16",
+        "canonicalJobId": "0b3b761ed55ecb2720f197203d2b0b1e8e0e7489860403e9fa2537b0e86136c9",
+        "rawTextByteLength": 5597,
+        "rawTextSha256": "8870740093f68deb3f86688b71524a6badd565080c04f4dde6e6067d40fbdf7d"
+      },
+      {
+        "caseId": "17",
+        "canonicalJobId": "0b89bdc3153c026ffc168370a9106f15ceaf2c777e60f10b32e2ac7240228b9a",
+        "rawTextByteLength": 3201,
+        "rawTextSha256": "c28d870cdcd937028ff79520194ca496a12b3b848d7a96720a7371d79fc948b5"
+      },
+      {
+        "caseId": "18",
+        "canonicalJobId": "0324d299f63029cb6ea39f33fd4d3d36325bdcdd5cb9c654cbe59a5022bca919",
+        "rawTextByteLength": 4287,
+        "rawTextSha256": "201f9bca291029fc91ddafed77345420fb96c0778d7e79630a5b0a07bf794b0d"
+      },
+      {
+        "caseId": "19",
+        "canonicalJobId": "06d0d80ea8b1aa5d7b27a0b3027dc8d748002568e574da51cdcd7207a28a3184",
+        "rawTextByteLength": 2636,
+        "rawTextSha256": "6cbe0dcb8f4a50b219733c9b778ed54c8ff0ce04cd18cf4d3deafb152deb56cb"
+      },
+      {
+        "caseId": "20",
+        "canonicalJobId": "0b73521125eb63516ca3b26241a26fdc1a17803580617317ac21fe3528bb22d1",
+        "rawTextByteLength": 1951,
+        "rawTextSha256": "181c835c04211c0eafb631c5f7ad71f762677a4c28b1d51a8d8d1b2f556d7aaf"
+      },
+      {
+        "caseId": "21",
+        "canonicalJobId": "0bdbe1907c4a923c7e6e6bba67169678bdccfc6091cbd5dfb353759e1906f730",
+        "rawTextByteLength": 665,
+        "rawTextSha256": "03af81fff7dc16171e5a0564de82db98bf13cabb5fa329d756c0b7ced9482ebc"
+      },
+      {
+        "caseId": "22",
+        "canonicalJobId": "0bfeab92f3e928581425609a34e8f769b49c6b492bb71fe21f6c365c3be4949b",
+        "rawTextByteLength": 875,
+        "rawTextSha256": "6e8d6c1010a621254f20897fef11043b8e7b63571c30121a6aa2518dd99c745a"
+      },
+      {
+        "caseId": "23",
+        "canonicalJobId": "0d12264ac799c245c7359f058a71667d7c56c67a82160a0b5873a068c7a47139",
+        "rawTextByteLength": 6984,
+        "rawTextSha256": "ae0efea8444b13ea414435ac1cbf5b016b4cb34468823805eb928ccda085cfea"
+      },
+      {
+        "caseId": "24",
+        "canonicalJobId": "0d1428cc1956f8aff5eaa26296451dd43cb7978adb0eb713b965d8f383d3bcb4",
+        "rawTextByteLength": 7168,
+        "rawTextSha256": "ad3a923a0589b23d34de17a9b2c0b6f4d8489c1b3bdbf45c86c2954bf55a5dc1"
+      },
+      {
+        "caseId": "25",
+        "canonicalJobId": "0f66769f394aa4e1b866800f0dff58426ede377d08b4a92e3015654a3d440ada",
+        "rawTextByteLength": 2995,
+        "rawTextSha256": "c9fa16bd85ecc053fcb160d30f1b48dfc7b096a9d24ea8c6730db7c492ce3c8f"
+      },
+      {
+        "caseId": "26",
+        "canonicalJobId": "1009acfde21c3fb5f9ba00828f3d052a67a16ab25d65e3fbe0eda23e525e59ff",
+        "rawTextByteLength": 5571,
+        "rawTextSha256": "fe7c315a408b2417096f968d3953ec82220568f0e9879588b379ed37b2309b9a"
+      },
+      {
+        "caseId": "27",
+        "canonicalJobId": "106ddf2e7c4617d6c10f731b98509a13d1b9dcf6457f0e6fa822e09eb9a0629e",
+        "rawTextByteLength": 7710,
+        "rawTextSha256": "441a95bcc2bc39e1d74411efd2ce65477e87e5ff8270646c10c6f162cd0c607d"
+      },
+      {
+        "caseId": "28",
+        "canonicalJobId": "10aa44ca3e69779ad3f7cbe533e59f421db1cab92c8702f2c8ce00a634dc1dd2",
+        "rawTextByteLength": 7256,
+        "rawTextSha256": "358906ef8c0a72bbb057233a1e858a88fb3a2bfb180d657e26de98d5991169ba"
+      },
+      {
+        "caseId": "29",
+        "canonicalJobId": "11e199cb6807324034bfb3c702b51bdd5af53fdf2da670388401d473eb834db8",
+        "rawTextByteLength": 2422,
+        "rawTextSha256": "417ac02bb2b62607b37a9b1be8baeef1ae962a6ff9555b4979652fd51772d818"
+      },
+      {
+        "caseId": "30",
+        "canonicalJobId": "1485388e6afad057cd33cfd45d507a43b8b199b58a7a6fab1f0ae9a443efaf0d",
+        "rawTextByteLength": 5054,
+        "rawTextSha256": "c09ee2ad1b83b3abd5001064fa73dae2df0583b94e5b8a61579cb83ae7cddb29"
+      },
+      {
+        "caseId": "31",
+        "canonicalJobId": "15b61edf67a9a5a67b863bda6e605bcaa8fd0e721cbb356ded44b26c83c01b25",
+        "rawTextByteLength": 12348,
+        "rawTextSha256": "5e41bf33002d4b3d8a3dd5e2287e32b5ab61fba99285dfcf8d2fd11434fe03e4"
+      },
+      {
+        "caseId": "32",
+        "canonicalJobId": "175f9da259155c667bcc23f7742a97afe5e252afd60b7fb4e35c346d5dc9e21c",
+        "rawTextByteLength": 1689,
+        "rawTextSha256": "12c0a240c1dd17aaea46bab403688af7e4ef6c81bb778d562e4b2d24fd3ed37c"
+      },
+      {
+        "caseId": "33",
+        "canonicalJobId": "190fe93ada1d6301748c58eba390ddaef59f5aa2a853144a654ea90f5616d8c2",
+        "rawTextByteLength": 1313,
+        "rawTextSha256": "c8aa5830c3a0e3a4d3aab54da2ccad8b14c0b3c11680fe77f249da9901364ed9"
+      },
+      {
+        "caseId": "34",
+        "canonicalJobId": "1a2b6b9c0d0d93b71f39bcf381f707bc7aff3424312034add1b0b12c33da63eb",
+        "rawTextByteLength": 1420,
+        "rawTextSha256": "a0cc707265b4142354a554b52fd6ec65e435e7f7f4023181ec5fd7874321cc97"
+      },
+      {
+        "caseId": "35",
+        "canonicalJobId": "1b5027500aad1a4d17333f5f2c25e18a5ea1a0bdcec97fcd29d0924377b1c9d5",
+        "rawTextByteLength": 987,
+        "rawTextSha256": "c306cfbb9fc6256c367ee52d8723b17b3834312cff8591e7561ffede3f92d649"
+      },
+      {
+        "caseId": "36",
+        "canonicalJobId": "1e2094734976356b460ff24586760228e7025a8e82a602f2acb42cbb092be55e",
+        "rawTextByteLength": 3088,
+        "rawTextSha256": "e7817d557472a1498cfef4a3807fa49999ed56afc38525abe34ff8931b0f5799"
+      },
+      {
+        "caseId": "37",
+        "canonicalJobId": "1fc7ef722d4b4d745f1b0faf1cd4580260988dc260f6a81a860d12cb4ce5c62b",
+        "rawTextByteLength": 2247,
+        "rawTextSha256": "d883c64f28d37afff1bd6942e58fe886a17eb8efb94c4a8bde02c68c0986bd7a"
+      },
+      {
+        "caseId": "38",
+        "canonicalJobId": "1ff9bd2c53866cfbdf0c5154f33cb07d5766c92c929f49a1be91c562d2796dce",
+        "rawTextByteLength": 3670,
+        "rawTextSha256": "8556ae3714a171f6ac6af8efbfe1772905b3f3d4c2e8080365a965dc1f8f502b"
+      },
+      {
+        "caseId": "39",
+        "canonicalJobId": "20089987583e017effb6ea71d45a31695b72ca59cad868ef6be88da725fab275",
+        "rawTextByteLength": 5438,
+        "rawTextSha256": "70215604f1e66c3ad7290c312d66c63aad7bf0c31fa34c6c97f3bd9c1dca0432"
+      },
+      {
+        "caseId": "40",
+        "canonicalJobId": "20d6401fa558ada9034b51e464becc3acfca444c8d54c4c535589e90d1c58282",
+        "rawTextByteLength": 1987,
+        "rawTextSha256": "0ea82bcf765e61e0fc4bb334ef00937febad83a4c5b60eff1083637c25ba2320"
+      },
+      {
+        "caseId": "41",
+        "canonicalJobId": "2101f2ae4f3aae7bb109e8faccd70db2f43fa2ddb89036714ac5cc3a71cfddab",
+        "rawTextByteLength": 361,
+        "rawTextSha256": "6ff0e4a9b3a9b1bed55464345a8733612ff3b7e6e13ad712a27fc0803afc4d7a"
+      },
+      {
+        "caseId": "42",
+        "canonicalJobId": "21a997b493cf68b84f9fbc0d0e65d40abfe24f5e428631d6b119200fb2104077",
+        "rawTextByteLength": 2651,
+        "rawTextSha256": "dc75351316d6e7acbb2cf8712717934e847eac240cbc2503db67d98fddde4d26"
+      },
+      {
+        "caseId": "43",
+        "canonicalJobId": "23039cdb08f9eb2d0bc9be1fe3b2c2fa9bb313120c5233980019ef2d6b832b0a",
+        "rawTextByteLength": 2471,
+        "rawTextSha256": "9bd08b9cad5741e3e54cf0b23c8917e028efc334cddc6c38de3751f1c6e6b26c"
+      },
+      {
+        "caseId": "44",
+        "canonicalJobId": "2319b0d84651ffa229c1821268744c34b1a69fcc5b02eff63facdb26da9d5789",
+        "rawTextByteLength": 569,
+        "rawTextSha256": "dba9ba1483bb1a42816fc15e8636a152ed6a8e46a835493ecd748bceacab2692"
+      },
+      {
+        "caseId": "45",
+        "canonicalJobId": "233339b7e9158a15821463d45ec86d310dc237c81a837def5e6ad1c5078693a0",
+        "rawTextByteLength": 4206,
+        "rawTextSha256": "c43c3e5bd3921ec68b63778ad7d03dd95206a272f2ca10fce5f3a56d8d756b06"
+      },
+      {
+        "caseId": "46",
+        "canonicalJobId": "23d58a035cc32f28f0ab1f1587ba7c075e683cf35a64b0a31927e98de413a0ac",
+        "rawTextByteLength": 5587,
+        "rawTextSha256": "dff99fdc536cc6c794a1b4fdb593ecf95f579d8bbe6ca9413439b1dd21099121"
+      },
+      {
+        "caseId": "47",
+        "canonicalJobId": "25d79e775516ea52573fd4c992eafd4c87a26d3bf9827152be580561fbd1f417",
+        "rawTextByteLength": 7427,
+        "rawTextSha256": "20f6fa293828d496f253d4b93d7a070e493a16fc61b899626143d9ec84fd2a5f"
+      },
+      {
+        "caseId": "48",
+        "canonicalJobId": "25ff3c0187d5e6df56cea7b42b79658c89db42ced389a87bc9548e01566f2ece",
+        "rawTextByteLength": 7255,
+        "rawTextSha256": "ccf96d64fe9b27fccfe61fe267429c22239a18dbba377267482240592f7ba02b"
+      },
+      {
+        "caseId": "49",
+        "canonicalJobId": "26e7be03df7aa0ecbff99a72b360f9e2023c6f133afc612307c6d50bfe557636",
+        "rawTextByteLength": 1683,
+        "rawTextSha256": "706ad175f535e94091f502a63a33c3606066d29895074d423be24b848050747f"
+      },
+      {
+        "caseId": "50",
+        "canonicalJobId": "271b0aa3a5cd9d65fdfb30bf191de472d5fe8c2772d2da0a9924297597ea124e",
+        "rawTextByteLength": 1873,
+        "rawTextSha256": "60393fa8e9344feecb0a95a34a0ba2caec3ee7c5b7126b63dd71f52cfd5e6f02"
+      },
+      {
+        "caseId": "51",
+        "canonicalJobId": "27c1c997492466b1b2ebfdc7e3b54253359d8ddc4ee9463c01677e9c6e6322ef",
+        "rawTextByteLength": 4752,
+        "rawTextSha256": "0121f57b41faf5d8f71c786a59b84b2bc8abe28394f515a5f26aa186dd1f416e"
+      },
+      {
+        "caseId": "52",
+        "canonicalJobId": "284899993561bf05e7c79d5764b2a51a0eafd81dc70db724f6bd57f01ffcfdea",
+        "rawTextByteLength": 1728,
+        "rawTextSha256": "e6bb655c02695a8122b5e6f2eeaaab835755e2473b4c4907afac333ae79ee67d"
+      },
+      {
+        "caseId": "53",
+        "canonicalJobId": "287ca6307835f4d4fd026daf1171ae6a6d4cf4ece5eaa4e2b344a48339135710",
+        "rawTextByteLength": 4329,
+        "rawTextSha256": "c9bba3168d7fd8c73860447e6efaa5119e2f5374fb61a75478645eb38c2c4f14"
+      },
+      {
+        "caseId": "54",
+        "canonicalJobId": "29999496b2631d1cbf924394981566c6545ac860503adc1900fdfd46c4fe98a1",
+        "rawTextByteLength": 987,
+        "rawTextSha256": "c306cfbb9fc6256c367ee52d8723b17b3834312cff8591e7561ffede3f92d649"
+      },
+      {
+        "caseId": "55",
+        "canonicalJobId": "2af4e61533632c38d4a0045a783937adf34a92cd72ba5d2b5f321b1323563ca1",
+        "rawTextByteLength": 2370,
+        "rawTextSha256": "7cc1fd7fed667283387162b5bffcfe3b6ce928f70f0068f22c2ce648f938a284"
+      },
+      {
+        "caseId": "56",
+        "canonicalJobId": "2b84c2b17db3ad540153099fed32f48336cd4db4ad5acdb046bc8cca76f65cbf",
+        "rawTextByteLength": 5913,
+        "rawTextSha256": "07fbe1150ee997b6ae836aee891fefed861e79e93d176eda8856cc24699c38f1"
+      },
+      {
+        "caseId": "57",
+        "canonicalJobId": "2eb590506763f357e736c018181d8238e578ab4ef2d8b2ad8e83ea582b1781d5",
+        "rawTextByteLength": 2067,
+        "rawTextSha256": "5d407c60e9ac7208fb4827a673642dddab89a3ffe92cc66a084dc378d6ac73f8"
+      },
+      {
+        "caseId": "58",
+        "canonicalJobId": "310ec092ac524066adb62537cd81b3e82174b172b79c824230621d8b22bfd2eb",
+        "rawTextByteLength": 2675,
+        "rawTextSha256": "3e42141bee49dcabf1ce9face328f1e6412b8c0472533a49a9ced4205f0cf43b"
+      },
+      {
+        "caseId": "59",
+        "canonicalJobId": "31b2cf1206a23bf0fa24fcc5a2f93db95836d5e0134e5c00765cd34b56c450bc",
+        "rawTextByteLength": 2903,
+        "rawTextSha256": "31704de9f413831174e3b6eaa92dd2f2748a6de7b3a9900caeb5387ab28104c7"
+      },
+      {
+        "caseId": "60",
+        "canonicalJobId": "323258aa0779cf48c07f56ad64bf859150285075517890316224c6c75d789b90",
+        "rawTextByteLength": 4094,
+        "rawTextSha256": "beee8f507d13472cf593922ea666a058c9caa52f9d864bd08a32e6d1afc9ff86"
+      },
+      {
+        "caseId": "61",
+        "canonicalJobId": "327a5a079fb66900230754d75177d4276fe3d4eaee953d42fecef942e850e6a5",
+        "rawTextByteLength": 3212,
+        "rawTextSha256": "c829fbcf14158dc8620ad0100c47c873a0b470d6e816bfa651661bb4c48bd8f8"
+      },
+      {
+        "caseId": "62",
+        "canonicalJobId": "3282dccd62689ce2661dc9ee18b9ba5b2d17ebaa3d1de720678c410b8f33e5e9",
+        "rawTextByteLength": 2494,
+        "rawTextSha256": "825eab7926761581822b453edfc2f384f76e17fb866a699fa18545c88e0b90fc"
+      },
+      {
+        "caseId": "63",
+        "canonicalJobId": "3544f91a769a4854b1f3b8c6df2d1f5a036a7191354a9afc4eb935daee7efd47",
+        "rawTextByteLength": 3143,
+        "rawTextSha256": "ec1dcaf797c7d02e3dc8c524ec95d1e4dfcec8938bc5bc928b89e54cd230ad15"
+      },
+      {
+        "caseId": "64",
+        "canonicalJobId": "35b8f9eebcc97520ec28adaf7adb13a9f04b65aefefe9e078a82e87f40e1113f",
+        "rawTextByteLength": 10114,
+        "rawTextSha256": "01411ef4226b257dfe1b0a92fcbe0b6d4c0f744509f6c08be00e46373641ba37"
+      },
+      {
+        "caseId": "65",
+        "canonicalJobId": "360e1152495201ef1a076fee707c9a949d70ab1bc3b32a0a6a65b03e2948049d",
+        "rawTextByteLength": 6243,
+        "rawTextSha256": "8787056808400df2ceba58b3827bb89be5394a89d69567885c94ab46e8dfab1a"
+      },
+      {
+        "caseId": "66",
+        "canonicalJobId": "376e9ef4877246e5ab20ccab47eccc54da3400b20618c89c06a1b55e310ea607",
+        "rawTextByteLength": 7096,
+        "rawTextSha256": "0ab3c07a43c272cb6022b5ff0eae884bf5a92e86c5d0ff225c855884aef75f38"
+      },
+      {
+        "caseId": "67",
+        "canonicalJobId": "37c63885cc0d9534af95ac7b1af99426984e9109f1327da7b07a2835d1b60760",
+        "rawTextByteLength": 2202,
+        "rawTextSha256": "f4038619a8565f786c77a3e37654943c0d3039f6356817884cd0eaa94708ad36"
+      },
+      {
+        "caseId": "68",
+        "canonicalJobId": "37de059a3e771122452fbe936d39872f85ecdca971908b81fb999814343a5ee9",
+        "rawTextByteLength": 4739,
+        "rawTextSha256": "40672828ec007e6fefa4e50c26d48b49a708d70aa6f9e0b1fc0295e6cfe327e5"
+      },
+      {
+        "caseId": "69",
+        "canonicalJobId": "37edae003c9443ee9b0471d7cb539b38123fc14cc6090a50f05fc05a2ed3b34f",
+        "rawTextByteLength": 4083,
+        "rawTextSha256": "f055adbebdb9fd208e43ce362aea8c9584d6e2057559b818e172489608ef20e3"
+      },
+      {
+        "caseId": "70",
+        "canonicalJobId": "38fe786bca3ea43f8978c2d5814f04aeab187420857a1b848e6e1df039e3cd8d",
+        "rawTextByteLength": 3976,
+        "rawTextSha256": "15fcf26ae1bddee395f77909643d3fd73ac47b2fefa856525bffebad4aea2d3e"
+      },
+      {
+        "caseId": "71",
+        "canonicalJobId": "396810e815b9c65f335918d3c9505fda1fea66c43897e0bf034c4f0fe38cf3c7",
+        "rawTextByteLength": 3722,
+        "rawTextSha256": "8a505f3586f81e326322aaf51d2f6157ee17a2385b99749ecc9f2d1220330594"
+      },
+      {
+        "caseId": "72",
+        "canonicalJobId": "39d049cc2d6dc181d1c4971690a86de3c44eb5b9a7a50d2e481e3ebc97980e42",
+        "rawTextByteLength": 1529,
+        "rawTextSha256": "512a2ca45c034a4e506af6ec96529f49e1caf3795b49bb081cd5195a066cb8b9"
+      },
+      {
+        "caseId": "73",
+        "canonicalJobId": "3a2782be31df950fde3c31ae0aabd8e87ae7cdf48efd225d31bba37596d3784f",
+        "rawTextByteLength": 1625,
+        "rawTextSha256": "f601299406666e92c8dc3b526a80996d1104b31a9183ea070474698b00f44837"
+      },
+      {
+        "caseId": "74",
+        "canonicalJobId": "3b79e28c5c78da40f65ad67c9d3215d72b2717625aa7905549c70a6104081496",
+        "rawTextByteLength": 2013,
+        "rawTextSha256": "34d667ede7e9c56849af7f63aebfc4de5fd0aa15d1e1c496bd534fc6f87e1629"
+      },
+      {
+        "caseId": "75",
+        "canonicalJobId": "3bb7c66a19d52e0a4a0ff586571e972deecde98f39afa05139135fa315ca714a",
+        "rawTextByteLength": 2073,
+        "rawTextSha256": "a010e375b6330c8691cf4de1946fb3dc30e50f9e8c8fae68f73c8bada7b9a689"
+      },
+      {
+        "caseId": "76",
+        "canonicalJobId": "3c17a01130c4a2002033668316e8a0212e15d0b33691f7f1c77209e3cca95460",
+        "rawTextByteLength": 2177,
+        "rawTextSha256": "ae5a863e51d445634796d36560265c1ed7fef9b0a37c198a6f4a96c152e88aed"
+      },
+      {
+        "caseId": "77",
+        "canonicalJobId": "3c8d0abf4e8dba8522105d8e79f2f7b052502a2c953b83f01b8d559885deb30a",
+        "rawTextByteLength": 1380,
+        "rawTextSha256": "893398b19936dc4ba1a2ada323e28951d6ae233dad429631cab624bf01b3e06e"
+      },
+      {
+        "caseId": "78",
+        "canonicalJobId": "3ea9f9e1111d037942c3ab9594cd02437adfeaddd231e4bd4f0698380cf07ef2",
+        "rawTextByteLength": 1698,
+        "rawTextSha256": "f6f1ee9ba38ac1b549602c2e1e77d2a0f65c8140b0e4aac03310b9168e9431c1"
+      },
+      {
+        "caseId": "79",
+        "canonicalJobId": "3fbca6c64ef6e62c7af77e8db08ebd561b09a8413f43dbdc947e2ba9fb11d01f",
+        "rawTextByteLength": 1184,
+        "rawTextSha256": "21a58397eb1cb2e32503700234816f50c5fa849a6c77c24096b038cdf2ae71a5"
+      },
+      {
+        "caseId": "80",
+        "canonicalJobId": "3ff3638ba11a7b2b59ed0cde286f7e6512e4956ac581be1c95726a4cc917023b",
+        "rawTextByteLength": 6316,
+        "rawTextSha256": "1094ae90bbfb47dcde964c5c326f23a10ce32f9512ff7daa7fc47ce35c9cad4c"
+      },
+      {
+        "caseId": "81",
+        "canonicalJobId": "4142a3b353824053323f3d5b55d39c1feec34e676479aa7692b02c26a9e494f3",
+        "rawTextByteLength": 1855,
+        "rawTextSha256": "c533ad0ef83c655fbfa23d23bf9e1839346922fa8887006f539dd1e925b6cf25"
+      },
+      {
+        "caseId": "82",
+        "canonicalJobId": "41438b2725d0f0b39a2700863dc969b41ec635e60fe81343bc564902a027f67d",
+        "rawTextByteLength": 8453,
+        "rawTextSha256": "99cbf945f9c655ce92cb70509cb7a022971fdfbb66f5f1e02824080760bb38ba"
+      },
+      {
+        "caseId": "83",
+        "canonicalJobId": "41b2566124ad4230ab5fc9f39fe82aee9c4a7f508af63b91cbb18d504f5a491f",
+        "rawTextByteLength": 6275,
+        "rawTextSha256": "4841f361df50a3e10b681a3c8090bd01b6a596f4722bdc55fb30d3c500216a7b"
+      },
+      {
+        "caseId": "84",
+        "canonicalJobId": "435d6790b0c45f61f1729c3318b0c41960c8596b01ef453f2f4b41eb578374f3",
+        "rawTextByteLength": 1297,
+        "rawTextSha256": "aea5351fb3b7cf4d5ea87056773cf0356c25aa0428ce01d8473924c50e4783d5"
+      },
+      {
+        "caseId": "85",
+        "canonicalJobId": "43b90209806c3e5800d5252ce9e54e7ab5aff3ff1645e08aac62221c33734ede",
+        "rawTextByteLength": 2035,
+        "rawTextSha256": "77327a23da36bf0c88802a53bcb9b12847a08411d87c7fb294b00b76a9276422"
+      },
+      {
+        "caseId": "86",
+        "canonicalJobId": "443ea507fc0865284642124cacb80eb37b4ecf605797a13fed621b3db68dbdb6",
+        "rawTextByteLength": 5030,
+        "rawTextSha256": "507d540e1b0a530d79b01b8574e6b9f94e65b701a6c266b18fd05267c68e8b98"
+      },
+      {
+        "caseId": "87",
+        "canonicalJobId": "4498cbae5dd64de33882e6742289508d119ec9ede82211bbb5329c52f912649a",
+        "rawTextByteLength": 4249,
+        "rawTextSha256": "243265ff5e95a20dc5338b460c18f14e32491fa5bedffaf08b80ff311869ae84"
+      },
+      {
+        "caseId": "88",
+        "canonicalJobId": "44baf02771eb45f8e68e100362b00fd330f82e1362558598e6871f57ccfa6f58",
+        "rawTextByteLength": 1629,
+        "rawTextSha256": "0cf9b8b04d5b2ef4ec060839546c54ed22f0b1c180846d6de04a3f37a6be2e03"
+      },
+      {
+        "caseId": "89",
+        "canonicalJobId": "44d233205afaa5863da15390554a2d18dc523c6072c2b6340d47e138580f1296",
+        "rawTextByteLength": 4652,
+        "rawTextSha256": "8184560c5dcc66da9981431931f63b6d0b0c4754b061848d88d42ad3ff36b5f9"
+      },
+      {
+        "caseId": "90",
+        "canonicalJobId": "44e600f8a4d74dc86cc9aaa4d5e3d2567f80910c7f0ec8ffda4fe89cd9db49c8",
+        "rawTextByteLength": 3929,
+        "rawTextSha256": "dbd260a3a5206a166de23c6ecf2665ca0e8c93653c7a0c885e2fae812ccc795b"
+      },
+      {
+        "caseId": "91",
+        "canonicalJobId": "44f20f53353356f6c8094fffe7eb543a7ce3d983f46a892c60b43b7ed92b9489",
+        "rawTextByteLength": 2369,
+        "rawTextSha256": "45f43df7c4659bd3babb3713fb3ddd2c772b54b73ecdf4818987da6c7e800b31"
+      },
+      {
+        "caseId": "92",
+        "canonicalJobId": "4547d18f13d163993c5352ca791fc764ab811ae01fda7efde2f68cc0a27345df",
+        "rawTextByteLength": 643,
+        "rawTextSha256": "e6b8af2b7fee69022394dae7b9a94819c16738bdfd660ffdc013431c7297a655"
+      },
+      {
+        "caseId": "93",
+        "canonicalJobId": "46bbb6b6fd35a6cc221d3853165614c4dbe60c0e955ffe0c7b628618722dfc91",
+        "rawTextByteLength": 2077,
+        "rawTextSha256": "ca4fc524ed5ceb1439871b150180e785c9106f8057482ebc88c7244a2cd9d71b"
+      },
+      {
+        "caseId": "94",
+        "canonicalJobId": "46e9537d903923ef773b6308e291f421c11db1bc0b5113949ce69bbdd36a47c5",
+        "rawTextByteLength": 2957,
+        "rawTextSha256": "2f8788d285de7b4f416bbd4ddb414131c0ff84ffe018ad7aa0014ebe4d312a16"
+      },
+      {
+        "caseId": "95",
+        "canonicalJobId": "4804d6c425e69980e08543cf202da35ca81942ceb6cc93b29e429e3b998758a4",
+        "rawTextByteLength": 2422,
+        "rawTextSha256": "b6debc8bc96951304c2cca304170255fab618f3ec5fd637dc7729b345ad6b248"
+      },
+      {
+        "caseId": "96",
+        "canonicalJobId": "48894a1921e261c7df3614e8d7be134a69c9b68e25fb6031a3c50e7dbcff3093",
+        "rawTextByteLength": 2409,
+        "rawTextSha256": "6da95220640ebaaf3d362b53a60170aa41555217a1777a8d9ccae8604167ceca"
+      },
+      {
+        "caseId": "97",
+        "canonicalJobId": "48a6089bc6153b43176fda5f7d2790383a7316890535894a0b0b3e06ea603a07",
+        "rawTextByteLength": 3533,
+        "rawTextSha256": "622647c53a2ad11ba29b654a4bfe7d4cdef96cab0acec5179858ad9eb0b7bf63"
+      },
+      {
+        "caseId": "98",
+        "canonicalJobId": "4959d41ccdd17b80971b9719469314064bcd4df6129bcf12696aff08b1d428b8",
+        "rawTextByteLength": 569,
+        "rawTextSha256": "aa463cbe8f7b3b8a76c12e72d6ea0f9b7575d30682081a52125d66deb07d1f4f"
+      },
+      {
+        "caseId": "99",
+        "canonicalJobId": "49dc852307248dfbf943aee169b23245911a44d464e6da1cf3b60ab7def99e9d",
+        "rawTextByteLength": 2497,
+        "rawTextSha256": "cb493558615a3f64639d92e233a0a67e6a8e28b71ce7f26f1b128b5b109cae21"
+      },
+      {
+        "caseId": "100",
+        "canonicalJobId": "4b866c0cc1c434a7655fdda915e1c6bccfca73d5901e537ee3e552a800f4589e",
+        "rawTextByteLength": 567,
+        "rawTextSha256": "dc4c5a7b3ddb4218f4de622a3ec5561685971181f5fef809732f2975c9ebf06c"
+      }
+    ]
+  },
+  "candidateRegression": [
+    {
+      "id": "CANDIDATE_REGRESSION_M",
+      "gitCommit": "e1f0a47575accedcd7fd3d681c7b084ca377b0fd",
+      "repositoryPath": "audit-reports/phase5-100-case-corpus/Swapnil_Shukla_Resume_M.md",
+      "gitBlobSha": "3f944170716016b8c4fa1c95b69ee7a937e3245c",
+      "byteLength": 5624,
+      "sha256": "18879cb63ea5ac20b8697d33f90d6cc89653230b094557d5891a149942389924",
+      "BMAcceptanceFacts": "BM-01 through BM-13 are asserted by tests/intelligence/candidate-proof-extractor-v1.test.ts"
+    },
+    {
+      "id": "CANDIDATE_REGRESSION_V3",
+      "gitCommit": "e1f0a47575accedcd7fd3d681c7b084ca377b0fd",
+      "repositoryPath": "audit-reports/phase5-100-case-corpus/Swapnil_Shukla_Executive_Resume_v3.md",
+      "gitBlobSha": "d9a6313eb25a5b7242b2b8e2051193b8c49f5c4d",
+      "byteLength": 6533,
+      "sha256": "47c5fae3cc60fc8692a1e80dd21fb7205d6faa734d77fa9224dcd74869ad714c",
+      "BMAcceptanceFacts": "BM-01 through BM-13 are asserted by tests/intelligence/candidate-proof-extractor-v1.test.ts"
+    }
+  ],
+  "fixtureFile": {
+    "repositoryPath": "tests/fixtures/extraction-comparison/batch04-fixtures.json",
+    "sha256": "e3fbc1881a312b0e8eba9fb580424d996cfbb81dd4ad19b904fc65fad8299b06",
+    "labelSchemaVersion": "gate1b-batch04-labels/v1",
+    "authoringReviewStatus": "PRE_PROVIDER_REVIEWED",
+    "unseenRoleIds": [
+      "UNSEEN_ROLE_01",
+      "UNSEEN_ROLE_02",
+      "UNSEEN_ROLE_03",
+      "UNSEEN_ROLE_04",
+      "UNSEEN_ROLE_05",
+      "UNSEEN_ROLE_06",
+      "UNSEEN_ROLE_07",
+      "UNSEEN_ROLE_08",
+      "UNSEEN_ROLE_09",
+      "UNSEEN_ROLE_10",
+      "UNSEEN_ROLE_11",
+      "UNSEEN_ROLE_12"
+    ],
+    "unseenCandidateIds": [
+      "UNSEEN_CANDIDATE_01",
+      "UNSEEN_CANDIDATE_02",
+      "UNSEEN_CANDIDATE_03",
+      "UNSEEN_CANDIDATE_04",
+      "UNSEEN_CANDIDATE_05",
+      "UNSEEN_CANDIDATE_06",
+      "UNSEEN_CANDIDATE_07",
+      "UNSEEN_CANDIDATE_08"
+    ],
+    "adversarialRoleIds": [
+      "ADV_01",
+      "ADV_02",
+      "ADV_03",
+      "ADV_04",
+      "ADV_05",
+      "ADV_06",
+      "ADV_07",
+      "ADV_08",
+      "ADV_09",
+      "ADV_10",
+      "ADV_11",
+      "ADV_12",
+      "ADV_13",
+      "ADV_14",
+      "ADV_15",
+      "ADV_16"
+    ],
+    "repeatability": {
+      "fixtureIds": [
+        "UNSEEN_ROLE_04",
+        "UNSEEN_ROLE_07",
+        "ADV_03",
+        "ADV_09",
+        "UNSEEN_CANDIDATE_03"
+      ],
+      "repeatCount": 3,
+      "generationConfiguration": {
+        "temperature": 0,
+        "topP": 1
+      },
+      "seedSupport": "UNSUPPORTED_BY_VERTEX_GENERATE_CONTENT"
+    }
+  },
+  "identity": {
+    "deterministicExtractor": "RoleIntelligenceExtractorV1/CandidateProofExtractorV1",
+    "deterministicAdapter": "adbfc37 providers",
+    "llmProviderImplementation": "ExperimentalLlm*Provider",
+    "transport": "gate1b-batch04/gemini-adc-transport-v1",
+    "provider": "Vertex AI Gemini ADC",
+    "model": "gemini-2.5-flash",
+    "promptVersion": "gate1b-batch03/proposals-v1",
+    "promptHash": "2c8bf1e497f294251c1e3ec667d39bcdac05de341ea7c6c0ef99a716eff2068f",
+    "responseSchemaVersion": "llm-semantic-proposal-envelope/v1",
+    "proposalSchemaVersion": "semantic-proposal/v1",
+    "assemblerVersion": "semantic-assembler/v2",
+    "verifier": "MechanicalExtractionVerifier",
+    "normalizer": "CandidateProofExtractorV1.extractMetrics/extractEntities",
+    "generationConfiguration": {
+      "temperature": 0,
+      "topP": 1
+    },
+    "seedSupport": "UNSUPPORTED_BY_VERTEX_GENERATE_CONTENT",
+    "matchingRules": "exact source quote plus semantic type/subject for role; exact claim quote for candidate",
+    "aggregationRules": "per-population metrics only; no composite winner"
+  }
+}
