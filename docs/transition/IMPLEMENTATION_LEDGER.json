@@ -621,6 +621,23 @@
         "npx tsc -p tsconfig.verify.json --noEmit — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "557eee95d0573058b7aaa36308710e2d58bb217b",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 3,
+      "summary": "Fixed ESM compatibility for CLI entry check in scripts/transition/ingest-batch06-human-truth.ts by replacing require.main check with fileURLToPath ESM import check, enabling seamless import of validator functions in adjudication-server.ts.",
+      "invariantsChecked": [
+        "Historical evaluators evaluator-v2.ts and evaluator-r2.ts remain sealed and untouched.",
+        "Zero blind documents executed through extraction pipeline; strict human-truth boundary maintained.",
+        "Validator functions remain bit-for-bit identical in verification logic.",
+        "Type verification passes cleanly via npx tsc -p tsconfig.verify.json --noEmit."
+      ],
+      "verification": [
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
