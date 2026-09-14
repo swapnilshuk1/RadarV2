@@ -550,6 +550,33 @@
         "SHA-256 hashes recomputed across all reviewer, population, and evaluator artifacts in GATE_1B_BATCH_06_PRE_ADJUDICATION_INTEGRITY_MANIFEST.json — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "b2ee90d127a8df61094faa33e208fad5bce8ca2c",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 3,
+      "summary": "Executed complete Scope Revision 3 reviewer-release correction and strictness repairs: enforced dual-review triplet ingestion compiling exclusively authoritative *_RECONCILIATION.json with reviewer mapping/provenance and cryptographic check of REV1/REV2; added duplicate quote disambiguation with mandatory explicit offsets and fail-closed syntax; strict canonical StructuredMetric schema matching eliminating string regex and text containment fallbacks; strict Gate 9 normalized exact equality for employer, title, startDate, endDate, isCurrent eliminating substring containment; corrected UNKNOWN semantics so negated facts are boundaries and conditionals are conditional; removed caller-controlled Gate 7 overrides deriving metrics strictly from document aggregations; restored CURRENT_BATCH.json batchStartCommit; and recomputed pre-adjudication integrity manifest hashes.",
+      "invariantsChecked": [
+        "Historical evaluators evaluator-v2.ts and evaluator-r2.ts remain completely sealed and unmodified.",
+        "100% bit-perfect scoring parity verified against historical fixtures (zero delta across all 5 architectures and 21 documents).",
+        "Authoritative reconciliation triplet protocol enforced: ingestion compiles only complete _RECONCILIATION.json, preventing document triple-counting.",
+        "Duplicate role quotes without explicit offsets strictly fail; unique quotes resolve mechanically.",
+        "Strict canonical StructuredMetric schema matching enforced for candidate metrics; text-contains-number fallback eliminated.",
+        "Gate 9 chronology evaluation enforces normalized exact equality for employer, title, and dates with zero substring tolerance.",
+        "UNKNOWN semantics correctly distinguish negated boundaries and conditional facts from silent dimensions.",
+        "Gate 7 silent dimension metrics derived solely from document aggregations with zero caller override.",
+        "Synthetic test suite 100% passing across 31 evaluator and hybrid extractor tests (31/31 passing).",
+        "Type verification passes cleanly via npx tsc -p tsconfig.verify.json --noEmit.",
+        "Zero blind documents executed through extraction pipeline; strict human-truth boundary maintained."
+      ],
+      "verification": [
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "npx vitest run --config scripts/transition/vitest.evaluator.config.ts — PASS (2 files, 31/31 tests passing)",
+        "npx tsx scripts/transition/compare-evaluators-on-historical.ts — PASS (100% bit-perfect parity across 21 historical fixtures and 5 architectures)",
+        "SHA-256 hashes recomputed across all reviewer, population, and evaluator artifacts in GATE_1B_BATCH_06_PRE_ADJUDICATION_INTEGRITY_MANIFEST.json — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
