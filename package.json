@@ -29,6 +29,7 @@
     "eval:seed": "tsx scripts/golden/seed-from-fixtures.ts",
     "eval": "tsx scripts/eval/run.ts",
     "eval:viewer": "tsx scripts/eval/viewer/server.ts",
+    "adjudication:app": "tsx scripts/transition/adjudication-server.ts",
     "test:regression": "vitest run --config vitest.regression.config.ts",
     "test:full": "vitest run --config vitest.full.config.ts",
     "transition:check": "node scripts/transition/verify-transition-control.mjs",

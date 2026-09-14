@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RADAR v2 — Human Adjudication Portal</title>
+  <style>
+    :root {
+      --bg: #0f141c;
+      --card-bg: #18202c;
+      --card-border: #283548;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --tag-bg: #1e293b;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-family);
+      background: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Top Navigation Header */
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--card-border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge-role {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+    .role-rev1 { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; }
+    .role-rev2 { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #c084fc; }
+    .role-rec  { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #4ade80; }
+
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    select, input[type="text"] {
+      background: #0b0f17;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+    select:focus, input[type="text"]:focus {
+      border-color: var(--primary);
+    }
+
+    .btn {
+      background: #222f3e;
+      border: 1px solid var(--card-border);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { background: #2d3e52; }
+    .btn-primary { background: #0284c7; border-color: #38bdf8; color: #fff; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-success { background: #16a34a; border-color: #22c55e; color: #fff; }
+    .btn-success:hover { background: #15803d; }
+    .btn-danger { background: #dc2626; border-color: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+
+    /* Instructions Banner */
+    .instructions-bar {
+      background: #111827;
+      border-bottom: 1px solid #1f2937;
+      padding: 8px 20px;
+      font-size: 0.82rem;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Main Workspace: 2-column split */
+    .workspace {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 105px);
+      overflow: hidden;
+    }
+
+    /* Left panel: Raw Source Text */
+    .left-panel {
+      flex: 1;
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      background: #090d14;
+    }
+
+    .panel-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--card-border);
+      background: var(--card-bg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .doc-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .doc-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .source-text-view {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.9rem;
+      line-height: 1.65;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      user-select: text;
+    }
+    .source-text-view::selection {
+      background: #0369a1;
+      color: #ffffff;
+    }
+
+    /* Right panel: Form & Added Facts */
+    .right-panel {
+      flex: 1.15;
+      display: flex;
+      flex-direction: column;
+      background: var(--card-bg);
+      overflow: hidden;
+    }
+
+    .form-scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: #111827;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .field-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    .field-group textarea {
+      background: #0b0f17;
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+      resize: vertical;
+      min-height: 50px;
+      font-family: inherit;
+    }
+    .field-group textarea:focus { border-color: var(--primary); }
+
+    .radio-row {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .radio-label {
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .fact-item {
+      background: #0b0f17;
+      border: 1px solid #1f2937;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .fact-details {
+      flex: 1;
+      font-size: 0.85rem;
+    }
+    .fact-prop { font-weight: 600; color: #fff; margin-bottom: 4px; }
+    .fact-quote { color: #94a3b8; font-style: italic; font-size: 0.8rem; margin-bottom: 6px; }
+    .fact-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--tag-bg);
+      color: #94a3b8;
+      border: 1px solid #334155;
+    }
+    .tag-type { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    .tag-neg { color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
+
+    .bottom-bar {
+      padding: 14px 20px;
+      border-top: 1px solid var(--card-border);
+      background: #0d131d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    /* Reconciliation Side-by-Side */
+    .reconciliation-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .rec-column {
+      background: #0b0f17;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 12px;
+    }
+    .rec-col-header {
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #94a3b8;
+      border-bottom: 1px solid #1f2937;
+      padding-bottom: 6px;
+    }
+
+    .toast {
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: none;
+    }
+    .toast-success { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
+    .toast-error { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand-title">
+      <span>RADAR v2</span>
+      <span style="color: #64748b; font-weight: 400;">|</span>
+      <span id="role-badge" class="badge-role role-rev1">Reviewer 1</span>
+    </div>
+
+    <div class="nav-controls">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <label style="font-size: 0.78rem; color: #94a3b8;">Your Name / ID:</label>
+        <input type="text" id="reviewer-id-input" placeholder="e.g. ALICE" style="width: 120px;" oninput="saveReviewerId(this.value)">
+      </div>
+
+      <select id="holdout-select" onchange="changeHoldout(this.value)">
+        <option value="primary">Primary Holdout (50 Roles, 16 Candidates)</option>
+        <option value="secondary">Secondary Holdout (25 Roles, 8 Candidates)</option>
+      </select>
+
+      <select id="type-select" onchange="changeType(this.value)">
+        <option value="roles">Role JDs</option>
+        <option value="candidates">Candidate Resumes</option>
+      </select>
+
+      <button class="btn" onclick="navigateDoc(-1)">◀ Prev</button>
+      <select id="doc-select" onchange="loadSelectedDoc(this.value)" style="max-width: 280px;"></select>
+      <button class="btn" onclick="navigateDoc(1)">Next ▶</button>
+    </div>
+  </header>
+
+  <!-- Instructions Bar -->
+  <div class="instructions-bar">
+    <div id="instructions-text">
+      <strong>How to use:</strong> 1. Read source text on left. 2. Highlight any quote with mouse to auto-fill. 3. Pick category & options. 4. Click "+ Add Fact". 5. Click "Save & Next".
+    </div>
+    <div>
+      <span id="save-status" class="toast"></span>
+    </div>
+  </div>
+
+  <!-- Workspace -->
+  <div class="workspace">
+    <!-- Left Column: Source Text -->
+    <div class="left-panel">
+      <div class="panel-header">
+        <div>
+          <div class="doc-title" id="doc-title-display">Loading...</div>
+          <div class="doc-subtitle" id="doc-company-display"></div>
+        </div>
+        <button class="btn btn-sm" onclick="copyHighlight()">Use Selected Text</button>
+      </div>
+      <div class="source-text-view" id="source-text-view" onmouseup="handleTextSelection()"></div>
+    </div>
+
+    <!-- Right Column: Reviewer Form or Reconciler View -->
+    <div class="right-panel">
+      <div class="form-scroll-area" id="right-panel-content">
+        <!-- Dynamically populated based on mode (Reviewer vs Reconciler) -->
+      </div>
+
+      <!-- Bottom Bar -->
+      <div class="bottom-bar">
+        <div id="facts-counter" style="font-size: 0.85rem; color: #94a3b8;">0 facts recorded</div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn" onclick="saveCurrentDoc(false)">Save Progress</button>
+          <button class="btn btn-primary" onclick="saveCurrentDoc(true)">Save & Go Next ➔</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let currentRole = "REV1"; // "REV1" | "REV2" | "REC"
+    let currentHoldout = "primary";
+    let currentType = "roles";
+    let currentDocId = "";
+    let documentsList = [];
+    let currentDocData = null;
+    let localFacts = [];
+    let localHighRiskNegatives = [];
+
+    // Role detection from URL
+    const pathname = window.location.pathname.toLowerCase();
+    if (pathname.includes("reviewer2")) currentRole = "REV2";
+    else if (pathname.includes("reconcile")) currentRole = "REC";
+    else currentRole = "REV1";
+
+    // Canonical lists
+    const CANONICAL_ROLE_TYPES = [
+      { id: "ROLE_PURPOSE", label: "Role Purpose / Mission" },
+      { id: "RESPONSIBILITY", label: "Core Responsibility" },
+      { id: "OUTCOME", label: "Expected Milestone / Outcome" },
+      { id: "REPORTING_LINE", label: "Reporting Line (Reports to COO, VP, etc.)" },
+      { id: "FOUNDER_CEO_PROXIMITY", label: "Reports to or works with Founder / CEO" },
+      { id: "BOARD_EXPOSURE", label: "Direct Board Exposure / Presentations" },
+      { id: "PNL_OWNERSHIP", label: "Full P&L Responsibility" },
+      { id: "REVENUE_ACCOUNTABILITY", label: "Revenue Target / Quota" },
+      { id: "BUDGET_SCOPE", label: "Budget Managed / Owned" },
+      { id: "DECISION_AUTHORITY", label: "Autonomous Decision / Sign-off Authority" },
+      { id: "PEOPLE_LEADERSHIP", label: "People Leadership / Direct Reports" },
+      { id: "PEOPLE_SCALE", label: "Headcount Managed / Team Size" },
+      { id: "GREENFIELD_BUILD", label: "0-to-1 Build / Establishing New Unit" },
+      { id: "TRANSFORMATION", label: "Enterprise Transformation / Turnaround" },
+      { id: "HARD_REQUIREMENT", label: "Mandatory Prerequisite (Years, Degree, etc.)" },
+      { id: "PREFERRED_REQUIREMENT", label: "Preferred / Nice-to-Have" },
+      { id: "SUCCESS_METRIC", label: "KPI / Measurable Goal" },
+      { id: "GEOGRAPHIC_SCOPE", label: "Geographic Scope (Global, APAC, India)" },
+      { id: "PRODUCT_SCOPE", label: "Product / Platform Scope" },
+      { id: "COMPANY_CONTEXT", label: "Company Size / Valuation / Funding" },
+      { id: "WORK_CONDITION", label: "Hybrid / Onsite / Travel" }
+    ];
+
+    const CANONICAL_CANDIDATE_TYPES = [
+      { id: "PEOPLE_SCOPE", label: "People Scope (Org size, team managed)" },
+      { id: "REVENUE_GROWTH", label: "Revenue Growth / Sales Acceleration" },
+      { id: "OUTCOME", label: "Business Outcome / Delivered Result" },
+      { id: "FINANCIAL_SCOPE", label: "Financial Scope / P&L Managed" },
+      { id: "COST_EFFICIENCY", label: "Cost Efficiency / Optimization" },
+      { id: "ORGANIZATION_BUILD", label: "Organization Build (0-to-1 or scaling team)" },
+      { id: "TRANSFORMATION", label: "Transformation / Restructuring" },
+      { id: "MANDATE", label: "Executive Mandate" },
+      { id: "PRODUCT_LAUNCH", label: "Product Launch" },
+      { id: "PIPELINE_GENERATION", label: "Pipeline Generation" },
+      { id: "TECHNOLOGY_IMPLEMENTATION", label: "Tech Architecture / Cloud Migration" },
+      { id: "PARTNERSHIP", label: "Strategic Partnerships" },
+      { id: "STAKEHOLDER_LEADERSHIP", label: "Board / Executive Leadership" }
+    ];
+
+    // Initialize UI
+    window.onload = async () => {
+      // Update role badge
+      const badge = document.getElementById("role-badge");
+      if (currentRole === "REV1") {
+        badge.className = "badge-role role-rev1";
+        badge.textContent = "Reviewer 1 Portal";
+      } else if (currentRole === "REV2") {
+        badge.className = "badge-role role-rev2";
+        badge.textContent = "Reviewer 2 Portal";
+      } else {
+        badge.className = "badge-role role-rec";
+        badge.textContent = "Adjudication & Reconciliation";
+      }
+
+      // Restore reviewer ID from localStorage
+      const savedId = localStorage.getItem(`radar_reviewer_id_${currentRole}`);
+      if (savedId) {
+        document.getElementById("reviewer-id-input").value = savedId;
+      }
+
+      await loadDocumentsList();
+    };
+
+    function saveReviewerId(val) {
+      localStorage.setItem(`radar_reviewer_id_${currentRole}`, val.trim());
+    }
+
+    async function loadDocumentsList() {
+      const res = await fetch(`/api/documents?holdout=${currentHoldout}&type=${currentType}`);
+      const data = await res.json();
+      documentsList = data.documents || [];
+
+      const select = document.getElementById("doc-select");
+      select.innerHTML = "";
+
+      documentsList.forEach(doc => {
+        const opt = document.createElement("option");
+        opt.value = doc.opaqueId;
+
+        let status = "○";
+        if (currentRole === "REV1" && doc.hasRev1) status = "✓";
+        if (currentRole === "REV2" && doc.hasRev2) status = "✓";
+        if (currentRole === "REC") {
+          if (doc.hasReconciliation) status = "★ Reconciled";
+          else if (doc.hasRev1 && doc.hasRev2) status = "✓ Ready";
+          else status = "Waiting";
+        }
+
+        opt.textContent = `[${status}] ${doc.opaqueId} - ${doc.title.slice(0, 30)}...`;
+        select.appendChild(opt);
+      });
+
+      if (documentsList.length > 0) {
+        currentDocId = documentsList[0].opaqueId;
+        await loadDocumentDetail(currentDocId);
+      }
+    }
+
+    async function changeHoldout(val) {
+      currentHoldout = val;
+      await loadDocumentsList();
+    }
+
+    async function changeType(val) {
+      currentType = val;
+      await loadDocumentsList();
+    }
+
+    async function loadSelectedDoc(id) {
+      currentDocId = id;
+      await loadDocumentDetail(id);
+    }
+
+    function navigateDoc(delta) {
+      const idx = documentsList.findIndex(d => d.opaqueId === currentDocId);
+      if (idx !== -1) {
+        const nextIdx = idx + delta;
+        if (nextIdx >= 0 && nextIdx < documentsList.length) {
+          const nextId = documentsList[nextIdx].opaqueId;
+          document.getElementById("doc-select").value = nextId;
+          loadSelectedDoc(nextId);
+        }
+      }
+    }
+
+    async function loadDocumentDetail(id) {
+      const res = await fetch(`/api/document?holdout=${currentHoldout}&type=${currentType}&id=${id}`);
+      currentDocData = await res.json();
+
+      document.getElementById("doc-title-display").textContent = currentDocData.blank.title || currentDocData.blank.targetRole || id;
+      document.getElementById("doc-company-display").textContent = currentDocData.blank.company || currentDocData.blank.targetCompany || "";
+      document.getElementById("source-text-view").textContent = currentDocData.sourceText;
+
+      // Populate facts based on role
+      if (currentRole === "REV1") {
+        localFacts = currentDocData.rev1 ? [...currentDocData.rev1.facts] : [];
+        localHighRiskNegatives = currentDocData.rev1 ? [...(currentDocData.rev1.highRiskNegatives || [])] : [];
+      } else if (currentRole === "REV2") {
+        localFacts = currentDocData.rev2 ? [...currentDocData.rev2.facts] : [];
+        localHighRiskNegatives = currentDocData.rev2 ? [...(currentDocData.rev2.highRiskNegatives || [])] : [];
+      } else {
+        // Reconciler mode
+        localFacts = currentDocData.reconciliation ? [...currentDocData.reconciliation.facts] : [];
+        localHighRiskNegatives = currentDocData.reconciliation ? [...(currentDocData.reconciliation.highRiskNegatives || [])] : [];
+      }
+
+      renderRightPanel();
+    }
+
+    // Text selection helper
+    let selectedQuoteText = "";
+    let selectedStartOffset = null;
+    let selectedEndOffset = null;
+
+    function handleTextSelection() {
+      const selection = window.getSelection();
+      const text = selection.toString().trim();
+      if (text.length > 0) {
+        selectedQuoteText = text;
+        const fullText = currentDocData.sourceText;
+        const idx = fullText.indexOf(text);
+        if (idx !== -1) {
+          selectedStartOffset = idx;
+          selectedEndOffset = idx + text.length;
+        }
+        const quoteInput = document.getElementById("quote-input");
+        if (quoteInput) quoteInput.value = text;
+      }
+    }
+
+    function copyHighlight() {
+      handleTextSelection();
+    }
+
+    // Render Right Panel
+    function renderRightPanel() {
+      const container = document.getElementById("right-panel-content");
+      container.innerHTML = "";
+
+      if (currentRole === "REC") {
+        renderReconciliationView(container);
+      } else {
+        renderReviewerView(container);
+      }
+
+      document.getElementById("facts-counter").textContent = `${localFacts.length} facts recorded`;
+    }
+
+    function renderReviewerView(container) {
+      const isRole = currentType === "roles";
+
+      // Card 1: Add Fact Form
+      const formCard = document.createElement("div");
+      formCard.className = "card";
+      formCard.innerHTML = `
+        <div class="card-title">+ Add New Fact</div>
+        <div class="field-group">
+          <label>1. Selected Text / Quote from Document (highlight text on left to fill):</label>
+          <textarea id="quote-input" placeholder="Select text on the left panel..."></textarea>
+        </div>
+
+        <div class="field-group">
+          <label>2. Plain English Statement (What does this prove?):</label>
+          <input type="text" id="prop-input" placeholder="e.g. Manages $5M global marketing budget">
+        </div>
+
+        <div class="field-group">
+          <label>3. Category / Fact Type:</label>
+          <select id="cat-select">
+            ${(isRole ? CANONICAL_ROLE_TYPES : CANONICAL_CANDIDATE_TYPES)
+              .map(t => `<option value="${t.id}">${t.label} (${t.id})</option>`).join("")}
+          </select>
+        </div>
+
+        ${isRole ? `
+          <div class="field-group">
+            <label>4. Is this Affirmed or Negated?</label>
+            <div class="radio-row">
+              <label class="radio-label"><input type="radio" name="polarity" value="AFFIRMED" checked> <strong>Affirmed</strong> (Role does this)</label>
+              <label class="radio-label"><input type="radio" name="polarity" value="NEGATED"> <strong>Negated</strong> (Explicitly DOES NOT do this)</label>
+              <label class="radio-label"><input type="radio" name="polarity" value="CONDITIONAL"> <strong>Conditional</strong> (Subject to sign-off)</label>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label>5. Executive Importance:</label>
+            <div class="radio-row">
+              <label class="radio-label"><input type="radio" name="materiality" value="MATERIAL_SELECTED" checked> <strong>Material Executive Factor</strong></label>
+              <label class="radio-label"><input type="radio" name="materiality" value="SUPPORTING_NON_MATERIAL"> Supporting / Routine Boilerplate</label>
+            </div>
+          </div>
+        ` : `
+          <div class="field-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label>Employer:</label>
+              <input type="text" id="employer-input" placeholder="e.g. Acme Corp">
+            </div>
+            <div>
+              <label>Executive Title:</label>
+              <input type="text" id="title-input" placeholder="e.g. VP Engineering">
+            </div>
+          </div>
+          <div class="field-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label>Tenure / Dates:</label>
+              <input type="text" id="dates-input" placeholder="e.g. 2020-2024">
+            </div>
+            <div>
+              <label>Metric Value (if applicable):</label>
+              <input type="text" id="metric-input" placeholder="e.g. 45 engineers or $50M">
+            </div>
+          </div>
+        `}
+
+        <button class="btn btn-primary" style="margin-top: 10px; width: 100%; justify-content: center;" onclick="addFact()">
+          + Add Fact
+        </button>
+      `;
+      container.appendChild(formCard);
+
+      // Card 2: List of Recorded Facts
+      const listCard = document.createElement("div");
+      listCard.className = "card";
+      listCard.innerHTML = `<div class="card-title">Recorded Facts (${localFacts.length})</div>`;
+
+      if (localFacts.length === 0) {
+        listCard.innerHTML += `<div style="font-size: 0.85rem; color: #64748b; padding: 10px 0;">No facts added yet. Highlight sentences from the text above and click "+ Add Fact".</div>`;
+      } else {
+        localFacts.forEach((f, idx) => {
+          const item = document.createElement("div");
+          item.className = "fact-item";
+          const quote = Array.isArray(f.sourceEvidence) ? f.sourceEvidence[0] : (f.exactText || "");
+          const type = (f.canonicalTypes && f.canonicalTypes[0]) || (f.proofTypes && f.proofTypes[0]) || "";
+
+          item.innerHTML = `
+            <div class="fact-details">
+              <div class="fact-prop">${f.propositionText || f.exactText}</div>
+              <div class="fact-quote">"${quote}"</div>
+              <div class="fact-tags">
+                <span class="tag tag-type">${type}</span>
+                <span class="tag ${f.polarity === 'NEGATED' ? 'tag-neg' : ''}">${f.polarity || f.evidenceClass || 'AFFIRMED'}</span>
+                ${f.materiality ? `<span class="tag">${f.materiality}</span>` : ''}
+              </div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="removeFact(${idx})">✕</button>
+          `;
+          listCard.appendChild(item);
+        });
+      }
+      container.appendChild(listCard);
+    }
+
+    function addFact() {
+      const quote = document.getElementById("quote-input").value.trim();
+      const isRole = currentType === "roles";
+
+      if (!quote) {
+        alert("Please highlight or enter a quote from the document.");
+        return;
+      }
+
+      if (isRole) {
+        const prop = document.getElementById("prop-input").value.trim() || quote;
+        const cat = document.getElementById("cat-select").value;
+        const polarity = document.querySelector('input[name="polarity"]:checked').value;
+        const materiality = document.querySelector('input[name="materiality"]:checked').value;
+
+        const factId = `fact_${Date.now()}_${localFacts.length + 1}`;
+        localFacts.push({
+          id: factId,
+          propositionText: prop,
+          sourceEvidence: [quote],
+          canonicalTypes: [cat],
+          appliesTo: "ROLE",
+          polarity: polarity,
+          materiality: materiality,
+          highRiskFamily: null
+        });
+      } else {
+        const employer = document.getElementById("employer-input").value.trim() || "Unknown";
+        const title = document.getElementById("title-input").value.trim() || "";
+        const cat = document.getElementById("cat-select").value;
+        const metricStr = document.getElementById("metric-input").value.trim();
+
+        const factId = `cand_fact_${Date.now()}_${localFacts.length + 1}`;
+        const fullText = currentDocData.sourceText;
+        const sIdx = fullText.indexOf(quote);
+        const eIdx = sIdx !== -1 ? sIdx + quote.length : 0;
+
+        const newCandFact = {
+          id: factId,
+          title: title,
+          employer: employer,
+          startDate: "2020",
+          endDate: null,
+          isCurrent: true,
+          proofTypes: [cat],
+          evidenceClass: "WORK_HISTORY",
+          exactText: quote,
+          startOffset: sIdx !== -1 ? sIdx : 0,
+          endOffset: eIdx !== -1 ? eIdx : quote.length,
+          metrics: []
+        };
+
+        if (metricStr) {
+          const mIdx = quote.indexOf(metricStr);
+          newCandFact.metrics.push({
+            exactText: metricStr,
+            startOffset: sIdx !== -1 && mIdx !== -1 ? sIdx + mIdx : newCandFact.startOffset,
+            endOffset: sIdx !== -1 && mIdx !== -1 ? sIdx + mIdx + metricStr.length : newCandFact.endOffset,
+            metricType: "COUNT",
+            rawValue: metricStr,
+            normalizedValue: parseFloat(metricStr) || 1,
+            comparator: "EXACT",
+            unit: "units"
+          });
+        }
+
+        localFacts.push(newCandFact);
+      }
+
+      // Reset form fields
+      document.getElementById("quote-input").value = "";
+      if (document.getElementById("prop-input")) document.getElementById("prop-input").value = "";
+
+      renderRightPanel();
+    }
+
+    function removeFact(idx) {
+      localFacts.splice(idx, 1);
+      renderRightPanel();
+    }
+
+    // Reconciliation View
+    function renderReconciliationView(container) {
+      const rev1 = currentDocData.rev1;
+      const rev2 = currentDocData.rev2;
+
+      if (!rev1 || !rev2) {
+        container.innerHTML = `
+          <div class="card" style="border-color: #f59e0b; background: rgba(245, 158, 11, 0.1);">
+            <div class="card-title" style="color: #fbbf24;">Waiting for Both Reviewers</div>
+            <div style="font-size: 0.88rem; color: #cbd5e1; line-height: 1.6;">
+              This document cannot be reconciled yet because both independent reviewers have not submitted their annotations.<br><br>
+              <strong>Reviewer 1:</strong> ${rev1 ? '✓ Completed (' + rev1.reviewerId + ')' : '○ NOT SUBMITTED'}<br>
+              <strong>Reviewer 2:</strong> ${rev2 ? '✓ Completed (' + rev2.reviewerId + ')' : '○ NOT SUBMITTED'}
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // Reconciliation Side-by-Side Card
+      const compCard = document.createElement("div");
+      compCard.className = "card";
+      compCard.innerHTML = `
+        <div class="card-title">Side-by-Side Reviewer Comparison</div>
+        <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 12px;">
+          Reviewer 1: <strong>${rev1.reviewerId}</strong> (${rev1.facts.length} facts) &nbsp;|&nbsp;
+          Reviewer 2: <strong>${rev2.reviewerId}</strong> (${rev2.facts.length} facts)
+        </div>
+
+        <div class="reconciliation-grid">
+          <div class="rec-column">
+            <div class="rec-col-header">Reviewer 1 Facts</div>
+            ${rev1.facts.map((f, i) => `
+              <div style="font-size: 0.8rem; margin-bottom: 8px; padding: 6px; background: #111827; border-radius: 4px;">
+                <strong>${f.id}:</strong> ${f.propositionText || f.exactText}<br>
+                <span class="tag tag-type">${(f.canonicalTypes || f.proofTypes || [])[0]}</span>
+                <button class="btn btn-sm" style="margin-top: 4px;" onclick="acceptRev1Fact(${i})">+ Use REV1 Fact</button>
+              </div>
+            `).join("")}
+          </div>
+
+          <div class="rec-column">
+            <div class="rec-col-header">Reviewer 2 Facts</div>
+            ${rev2.facts.map((f, i) => `
+              <div style="font-size: 0.8rem; margin-bottom: 8px; padding: 6px; background: #111827; border-radius: 4px;">
+                <strong>${f.id}:</strong> ${f.propositionText || f.exactText}<br>
+                <span class="tag tag-type">${(f.canonicalTypes || f.proofTypes || [])[0]}</span>
+                <button class="btn btn-sm" style="margin-top: 4px;" onclick="acceptRev2Fact(${i})">+ Use REV2 Fact</button>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="autoMergeAgreedFacts()" style="width: 100%; justify-content: center;">
+          ⚡ Auto-Pair All Matching Facts as AGREED
+        </button>
+      `;
+      container.appendChild(compCard);
+
+      // Card 2: Reconciled Facts
+      const recListCard = document.createElement("div");
+      recListCard.className = "card";
+      recListCard.innerHTML = `<div class="card-title">Curated Reconciled Facts (${localFacts.length})</div>`;
+
+      if (localFacts.length === 0) {
+        recListCard.innerHTML += `<div style="font-size: 0.85rem; color: #64748b; padding: 10px 0;">No reconciled facts added yet. Use the comparison above or click Auto-Pair.</div>`;
+      } else {
+        localFacts.forEach((f, idx) => {
+          const item = document.createElement("div");
+          item.className = "fact-item";
+          const quote = Array.isArray(f.sourceEvidence) ? f.sourceEvidence[0] : (f.exactText || "");
+          const type = (f.canonicalTypes && f.canonicalTypes[0]) || (f.proofTypes && f.proofTypes[0]) || "";
+
+          item.innerHTML = `
+            <div class="fact-details">
+              <div class="fact-prop">${f.propositionText || f.exactText}</div>
+              <div class="fact-quote">"${quote}"</div>
+              <div class="fact-tags">
+                <span class="tag tag-type">${type}</span>
+                <span class="tag" style="color: #4ade80;">${f.resolution || 'AGREED'}</span>
+                <span class="tag">REV1: [${(f.rev1FactIds || []).join(",")}]</span>
+                <span class="tag">REV2: [${(f.rev2FactIds || []).join(",")}]</span>
+              </div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="removeFact(${idx})">✕</button>
+          `;
+          recListCard.appendChild(item);
+        });
+      }
+      container.appendChild(recListCard);
+    }
+
+    function autoMergeAgreedFacts() {
+      const rev1 = currentDocData.rev1;
+      const rev2 = currentDocData.rev2;
+      if (!rev1 || !rev2) return;
+
+      localFacts = [];
+      const adjudicatorId = document.getElementById("reviewer-id-input").value.trim() || "ADJ_CONSENSUS";
+
+      rev1.facts.forEach(f1 => {
+        const q1 = Array.isArray(f1.sourceEvidence) ? f1.sourceEvidence[0] : f1.exactText;
+        // Find matching fact in rev2
+        const match2 = rev2.facts.find(f2 => {
+          const q2 = Array.isArray(f2.sourceEvidence) ? f2.sourceEvidence[0] : f2.exactText;
+          return q1.includes(q2) || q2.includes(q1);
+        });
+
+        if (match2) {
+          localFacts.push({
+            ...f1,
+            id: `rec_${f1.id}`,
+            rev1FactIds: [f1.id],
+            rev2FactIds: [match2.id],
+            resolution: "AGREED"
+          });
+        } else {
+          // REV1 only -> ADJUDICATED
+          localFacts.push({
+            ...f1,
+            id: `rec_${f1.id}`,
+            rev1FactIds: [f1.id],
+            rev2FactIds: [rev2.facts[0] ? rev2.facts[0].id : f1.id],
+            resolution: "ADJUDICATED",
+            adjudicatorId: adjudicatorId
+          });
+        }
+      });
+
+      renderRightPanel();
+    }
+
+    function acceptRev1Fact(idx) {
+      const rev1 = currentDocData.rev1;
+      const rev2 = currentDocData.rev2;
+      const f1 = rev1.facts[idx];
+      const adjudicatorId = document.getElementById("reviewer-id-input").value.trim() || "ADJ_LEAD";
+
+      localFacts.push({
+        ...f1,
+        id: `rec_${f1.id}_${Date.now()}`,
+        rev1FactIds: [f1.id],
+        rev2FactIds: [rev2 && rev2.facts[0] ? rev2.facts[0].id : f1.id],
+        resolution: "ADJUDICATED",
+        adjudicatorId: adjudicatorId
+      });
+      renderRightPanel();
+    }
+
+    function acceptRev2Fact(idx) {
+      const rev1 = currentDocData.rev1;
+      const rev2 = currentDocData.rev2;
+      const f2 = rev2.facts[idx];
+      const adjudicatorId = document.getElementById("reviewer-id-input").value.trim() || "ADJ_LEAD";
+
+      localFacts.push({
+        ...f2,
+        id: `rec_${f2.id}_${Date.now()}`,
+        rev1FactIds: [rev1 && rev1.facts[0] ? rev1.facts[0].id : f2.id],
+        rev2FactIds: [f2.id],
+        resolution: "ADJUDICATED",
+        adjudicatorId: adjudicatorId
+      });
+      renderRightPanel();
+    }
+
+    // Save current document
+    async function saveCurrentDoc(goNext) {
+      const reviewerId = document.getElementById("reviewer-id-input").value.trim();
+      if (!reviewerId) {
+        alert("Please enter your Reviewer Name / ID in the top bar before saving.");
+        document.getElementById("reviewer-id-input").focus();
+        return;
+      }
+
+      const statusEl = document.getElementById("save-status");
+      statusEl.style.display = "inline-block";
+      statusEl.className = "toast";
+      statusEl.textContent = "Saving...";
+
+      try {
+        let endpoint = "/api/save-review";
+        let payload = {};
+
+        if (currentRole === "REC") {
+          endpoint = "/api/save-reconciliation";
+          payload = {
+            holdout: currentHoldout,
+            type: currentType,
+            id: currentDocId,
+            adjudicatorId: reviewerId,
+            facts: localFacts,
+            highRiskNegatives: localHighRiskNegatives,
+            notes: "Reconciled via portal"
+          };
+        } else {
+          payload = {
+            holdout: currentHoldout,
+            type: currentType,
+            id: currentDocId,
+            role: currentRole,
+            reviewerId: reviewerId,
+            facts: localFacts,
+            highRiskNegatives: localHighRiskNegatives,
+            notes: "Annotated via portal"
+          };
+        }
+
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          if (result.valid) {
+            statusEl.className = "toast toast-success";
+            statusEl.textContent = `✓ Saved & Validated (${result.factCount} facts)!`;
+          } else {
+            statusEl.className = "toast toast-error";
+            statusEl.textContent = `Saved with warnings: ${result.errors.slice(0, 2).join(", ")}`;
+          }
+
+          // Reload documents list to update checkmark
+          await loadDocumentsList();
+
+          if (goNext) {
+            setTimeout(() => {
+              navigateDoc(1);
+            }, 500);
+          }
+        } else {
+          statusEl.className = "toast toast-error";
+          statusEl.textContent = `Error: ${result.error || "Save failed"}`;
+        }
+      } catch (err) {
+        statusEl.className = "toast toast-error";
+        statusEl.textContent = `Network error: ${err.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
