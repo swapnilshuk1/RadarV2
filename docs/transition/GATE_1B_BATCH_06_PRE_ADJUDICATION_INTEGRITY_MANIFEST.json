@@ -1,11 +1,11 @@
 {
   "schemaVersion": "radar-transition-integrity-manifest/v1",
   "batchId": "GATE_1B_BATCH_06",
-  "scopeRevision": 2,
-  "verifiedAt": "2026-09-13T16:05:00Z",
+  "scopeRevision": 3,
+  "verifiedAt": "2026-09-14T07:15:00Z",
   "evaluatorFreeze": {
     "evaluatorPath": "scripts/transition/evaluator-batch06.ts",
-    "sha256": "618ebfa1712db04e2c4a1466a491bd906e75fe604e6a8778fa0f457d69ebaac9",
+    "sha256": "71522322f2c56f2e263890db049abbff37c2cc1224f0c139d748619257139766",
     "testSuitePath": "scripts/transition/evaluator-batch06.test.ts",
     "testVerdict": "8/8 PASSING",
     "historicalEvaluatorsSealed": [
@@ -14,6 +14,7 @@
     ],
     "historicalCompatibilityVerification": {
       "reportPath": "audit-reports/gate1b-batch06/EVALUATOR_COMPATIBILITY_REPORT.md",
+      "sha256": "07ebc760fbcb28b8092704239f517117372ed6ebce89afd4a0bf7a36453d9898",
       "verdict": "100% BIT-PERFECT SCORING PARITY",
       "documentsTested": 21,
       "architecturesTested": [
@@ -50,7 +51,17 @@
       "boundaryStressRolesCount": 10,
       "candidateResumeCount": 8,
       "authority": "Intentional sample size sufficient for one single remediation cycle without redundant human annotation cost",
-      "status": "SEALED_HOLDOUT"
+      "status": "SEALED_HOLDOUT",
+      "sealingClarification": {
+        "sealedFrom": [
+          "implementation agent inspection of completed truth",
+          "model/extractor execution",
+          "tuning",
+          "scoring"
+        ],
+        "unsealedFor": "independent human adjudicators",
+        "freezeCondition": "Both Primary and Secondary must be human-annotated, dual-reviewed where required, and cryptographically frozen before the Primary model run"
+      }
     }
   },
   "candidateDataProvenance": {
@@ -65,11 +76,11 @@
     "validationGroupingsCount": 8,
     "note": "Commercial Accountability is a validation grouping comprising REVENUE_ACCOUNTABILITY and PROFITABILITY_ACCOUNTABILITY",
     "reviewerInstructionsPath": "audit-reports/gate1b-batch06/annotation/REVIEWER_INSTRUCTIONS.md",
-    "reviewerInstructionsSha256": "d5128de455d40563c64521eb0d9e3146acf5ad0fc63dd7642a1655c03ae582a2",
+    "reviewerInstructionsSha256": "69af0b3a093db78843e9082d61b3137188d25af56b36beef2c499d0be08bb4d5",
     "roleMaterialityRubricPath": "audit-reports/gate1b-batch06/annotation/ROLE_MATERIALITY_RUBRIC.md",
-    "roleMaterialityRubricSha256": "6b2a2c5d9e3bdf31359c0f626ef704b5d173e43ed956103d5725abdeaad25e8d",
+    "roleMaterialityRubricSha256": "79be4f6946f6900889b30d3969148ef8f82b45f07abff0068d67f5ba284440f4",
     "candidateReferenceTruthContractPath": "audit-reports/gate1b-batch06/annotation/CANDIDATE_REFERENCE_TRUTH_CONTRACT.md",
-    "candidateReferenceTruthContractSha256": "e92b869979bbe65ff5f6b60995c22d8dfe965b17f051717868fc0b6336508a22"
+    "candidateReferenceTruthContractSha256": "7d75e16a89a641365ce5315aefa059fa3ba2858c3309557a9ae0fc93e4487dc5"
   },
   "repositoryHygiene": {
     "gitignoreAllowlist": "!audit-reports/gate1b-batch06/",

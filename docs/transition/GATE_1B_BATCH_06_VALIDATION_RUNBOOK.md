@@ -162,7 +162,14 @@ Before any pipeline execution commences, two completely disjoint sets must be as
    - An independently sampled, completely disjoint holdout population matching the exact stratification of the primary set.
    - Independently human-adjudicated and dual-reviewed under identical blind rules.
    - Cryptographically hashed and committed simultaneously with the primary set prior to any pipeline execution.
-   - **Sealed Holdout Invariant**: The secondary set remains strictly sealed and uninspected unless an `IMPLEMENTATION-TUNABLE` failure in Step 5 triggers the single permitted remediation cycle.
+   - **Crucial Secondary Holdout Sealing Clarification**:
+     Secondary is SEALED FROM:
+     - implementation agent inspection of completed truth
+     - model/extractor execution
+     - tuning
+     - scoring
+     until the permitted remediation condition occurs.
+     Secondary is NOT sealed from independent human adjudicators. Both Primary and Secondary must be human-annotated, dual-reviewed where required, and cryptographically frozen before the Primary model run.
 3. **No Retesting on Primary**: Under no circumstances may an agent tune prompts or canonical projection rules on the primary set and then re-score the primary set as certification evidence.
 
 ### C. Truth Freezing Invariant

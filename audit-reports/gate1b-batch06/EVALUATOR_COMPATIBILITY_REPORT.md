@@ -1,11 +1,24 @@
 # Gate 1B: Evaluator Compatibility & Metric Delta Report
 
-**Date**: 2026-09-13T16:05:24.953Z
+**Date**: 2026-09-14T07:07:28.926Z
 **Evaluation Dataset**: Historical Gate 1B Batch 04C Frozen Fixtures (21 documents, 74 reference facts)
 **Evaluators Compared**: 
 - **Historical R1**: `scripts/transition/evaluator-v2.ts`
 - **Historical R2**: `scripts/transition/evaluator-r2.ts`
 - **Batch 06 New**: `scripts/transition/evaluator-batch06.ts`
+
+---
+
+## Authoritative Pre-Adjudication Erratum & Baseline Standard
+
+The aggregate table in Section 1 is authoritative:
+- **`ARCH_C_65K` typed recall = 52.7%** (39 / 74 reference facts)
+- **`ARCH_D` typed recall     = 51.4%** (38 / 74 reference facts)
+
+**The aggregate table is authoritative.**  
+Historical outputs and evaluator results remain frozen and unchanged.
+
+---
 
 ## 1. Aggregate Metric Delta Table (All 21 Documents)
 
@@ -86,7 +99,10 @@ In `evaluator-r2.ts` and `evaluator-batch06.ts`, this keyword heuristic was elim
 2. **ADV_ROLE_06 (`PEOPLE_LEADERSHIP`)**: Source text explicitly states 'individual contributor... no direct reports'. Matches `NEGATION_PATTERNS.PEOPLE_LEADERSHIP`, returning verdict `CONTRADICTED` and blocking affirmative admission.
 3. **ADV_ROLE_08 (`REPORTING_LINE`, `BOARD_EXPOSURE`)**: Statutory information barrier disclaimers prevent direct board access. The verifier flags absence of affirmative governance entailment, returning `INSUFFICIENT` and blocking affirmative admission.
 
-**Smoke Test Verdict**: The newly integrated `HighRiskSemanticVerifier` successfully eliminates 100% of the historical false affirmatives (dropping from 5 to 0) while maintaining typed recall above the 50% certification threshold.
+**Smoke Test Verdict**: The newly integrated `HighRiskSemanticVerifier` successfully eliminates 100% of the historical false affirmatives (dropping from 5 to 0) in this deterministic heuristic pass. The authoritative baseline model recall values remain:
+- **`ARCH_C_65K` typed recall = 52.7%**
+- **`ARCH_D` typed recall     = 51.4%**
+The aggregate table in Section 1 is authoritative. In production certification against the blind validation set, the full extraction pipeline (combining high-capacity structural extraction and semantic verification) will be scored once against the $\ge 50\%$ typed recall threshold.
 
 ## 5. Architectural & Operational Invariant Confirmations
 

@@ -18,8 +18,16 @@ Human truth adjudication must be strictly external and independent of the autono
    - 8 Candidate Resumes (`SECONDARY_CANDIDATE_01` to `SECONDARY_CANDIDATE_08`)
 
 ### Crucial Secondary Holdout Sealing Clarification
-- **Sealed FROM**: The autonomous coding agent, model/extractor execution, prompt engineering, tuning, and scoring. The implementation agent MUST NOT inspect completed secondary ground truth or execute extractions against secondary documents until a permitted remediation condition occurs.
-- **NOT Sealed FROM Independent Adjudicators**: Both Primary and Secondary populations MUST be human-annotated, dual-reviewed where required, and cryptographically frozen together BEFORE the Primary model certification run begins.
+Secondary is SEALED FROM:
+- implementation agent inspection of completed truth
+- model/extractor execution
+- tuning
+- scoring
+until the permitted remediation condition occurs.
+
+Secondary is NOT sealed from independent human adjudicators.
+
+Both Primary and Secondary must be human-annotated, dual-reviewed where required, and cryptographically frozen before the Primary model run.
 
 ---
 
@@ -44,8 +52,18 @@ For each discrete factual statement affirmed or negated in the text:
 
 ### B. Controlled Vocabularies
 1. **Materiality Class** (Governed by [`ROLE_MATERIALITY_RUBRIC.md`](./ROLE_MATERIALITY_RUBRIC.md)):
-   - `MATERIAL_SELECTED`: Core executive dimensions (role purpose, responsibilities, qualifications, authority, reporting, scope, work conditions). The certification threshold (>=50% typed recall) is computed strictly against this denominator, preserving exact historical comparability with Batch 04C/R2.
-   - `SUPPORTING_NON_MATERIAL`: Generic workplace boilerplate, standard office tools, routine administrative perks. Recorded for diagnostic reporting only.
+   - `MATERIAL_SELECTED`: Facts that materially characterize any of the 9 executive dimensions:
+     - role mandate/purpose
+     - material responsibilities/outcomes
+     - requirements/preferences
+     - authority/accountability
+     - reporting/governance
+     - people scope
+     - financial/commercial scope
+     - geographic/regulatory/product/customer/channel scope
+     - material work conditions
+     **Invariant**: Do not select facts based on what the extractor emits or misses. Certification Typed Reference Recall >= 50% must be computed against `MATERIAL_SELECTED` facts.
+   - `SUPPORTING_NON_MATERIAL`: Corporate boilerplate, standard office tools, routine administrative perks, generic non-differentiating prose. Recorded for diagnostic reporting only; must not silently replace the historically comparable certification denominator.
 
 2. **Canonical Semantic Types (25 Canonical Types Strictly)**:
    `ROLE_PURPOSE`, `RESPONSIBILITY`, `OUTCOME`, `SUCCESS_METRIC`, `HARD_REQUIREMENT`, `PREFERRED_REQUIREMENT`, `REPORTING_LINE`, `FOUNDER_CEO_PROXIMITY`, `BOARD_EXPOSURE`, `PNL_OWNERSHIP`, `REVENUE_ACCOUNTABILITY`, `PROFITABILITY_ACCOUNTABILITY`, `BUDGET_SCOPE`, `DECISION_AUTHORITY`, `PEOPLE_LEADERSHIP`, `PEOPLE_SCALE`, `GREENFIELD_BUILD`, `TRANSFORMATION`, `GEOGRAPHIC_SCOPE`, `REGULATORY_SCOPE`, `PRODUCT_SCOPE`, `CUSTOMER_SCOPE`, `CHANNEL_SCOPE`, `COMPANY_CONTEXT`, `WORK_CONDITION`.
@@ -70,19 +88,19 @@ For each discrete factual statement affirmed or negated in the text:
 
 ## 4. CANDIDATE RESUME ANNOTATION PROTOCOL (`*_BLANK.json`)
 
-Reviewers must extract candidate career milestones and executive proof points strictly adhering to [`CANDIDATE_REFERENCE_TRUTH_CONTRACT.md`](./CANDIDATE_REFERENCE_TRUTH_CONTRACT.md), aligning 1:1 with the canonical `CandidateProofClaim` contract.
+Reviewers must extract candidate career milestones and executive proof points strictly adhering to [`CANDIDATE_REFERENCE_TRUTH_CONTRACT.md`](./CANDIDATE_REFERENCE_TRUTH_CONTRACT.md), aligning 1:1 with the canonical `CandidateProofClaim` contract from `CandidateProofExtractorV1.ts`.
 
 ### A. Proof Claim Record Structure
 ```json
 {
   "id": "cand_fact_01",
-  "title": "VP of Engineering",
+  "title": "Chief Technology Officer",
   "employer": "CloudScale Technologies",
   "startDate": "2021-01",
   "endDate": null,
   "isCurrent": true,
-  "proofTypes": ["HEADCOUNT_SCALE"],
-  "evidenceClass": "ORGANIZATIONAL_SCOPE",
+  "proofTypes": ["PEOPLE_SCOPE"],
+  "evidenceClass": "WORK_HISTORY",
   "exactText": "Directed global engineering and infrastructure org of 420 engineers across Bengaluru, Pune, and Seattle.",
   "startOffset": 1240,
   "endOffset": 1345,
@@ -95,22 +113,22 @@ Reviewers must extract candidate career milestones and executive proof points st
 ```
 
 ### B. Controlled Candidate Vocabularies
-1. **Candidate Proof Types (18 Canonical Types strictly)**:
-   `REVENUE_SCALE`, `HEADCOUNT_SCALE`, `BUDGET_SCALE`, `EFFICIENCY_IMPROVEMENT`, `DEAL_TRANSACTION`, `TRANSFORMATION_SCOPE`, `STRATEGIC_INITIATIVE`, `BOARD_INTERACTION`, `FOUNDER_INTERACTION`, `GLOBAL_REACH`, `TECHNICAL_INNOVATION`, `CULTURE_TRANSFORMATION`, `REPORTING_LINE`, `DECISION_AUTHORITY`, `PROFITABILITY_METRIC`, `COST_REDUCTION`, `MARKET_SHARE`, `EQUITY_FINANCING`.
+1. **Candidate Proof Types (18 Canonical Types strictly from `CandidateProofExtractorV1.ts`)**:
+   `OUTCOME`, `OWNERSHIP`, `FINANCIAL_SCOPE`, `PEOPLE_SCOPE`, `GEOGRAPHIC_SCOPE`, `ORGANIZATION_BUILD`, `TRANSFORMATION`, `MANDATE`, `PRODUCT_LAUNCH`, `CUSTOMER_GROWTH`, `REVENUE_GROWTH`, `COST_EFFICIENCY`, `PIPELINE_GENERATION`, `TECHNOLOGY_IMPLEMENTATION`, `PARTNERSHIP`, `STAKEHOLDER_LEADERSHIP`, `DOMAIN_PRECEDENT`, `CAPABILITY_LABEL`.
 
-2. **Candidate Evidence Classes (3 Canonical Classes strictly)**:
-   - `QUANTITATIVE_METRIC`: Verifiable numerical claim (e.g., "$120M ARR", "420 engineers", "35% reduction").
-   - `ORGANIZATIONAL_SCOPE`: Structural, reporting, or geographic footprint (e.g., "Reported to CEO", "Managed 4 global sites").
-   - `QUALITATIVE_IMPACT`: Strategic or transformation achievements without a standalone metric (e.g., "Led cloud migration across core banking").
+2. **Candidate Evidence Classes (3 Canonical Classes strictly from `CandidateProofExtractorV1.ts`)**:
+   - `WORK_HISTORY`: Bullet-level accomplishments or responsibilities tied directly to an employer tenure.
+   - `SELF_SUMMARY`: High-level executive profile or career summary assertions preceding work history.
+   - `CAPABILITY_LABEL`: Skills, certifications, or tool competencies listed in standalone lists.
 
 ### C. Candidate Scoring Rules & Invariants
-1. **Exact-Text / Source-Span Invariant**: `exactText` must match character-for-character as an exact substring of the resume text, with exact `startOffset` and `endOffset`. Hallucinated or loosely paraphrased spans fail Gate 4 (`candidateSpanProvenanceMin: 1.0`).
-2. **Employer Binding**: Each claim must bind strictly to the verified `employer` entity where the work occurred.
+1. **Exact-Text / Source-Span Invariant**: `exactText` must match character-for-character as an exact substring of the resume text, with exact `startOffset` and `endOffset` satisfying `sourceText.slice(startOffset, endOffset) === exactText`. Hallucinated or loosely paraphrased spans fail Gate 4 (`candidateSpanProvenanceMin: 1.0`).
+2. **Employer Binding**: Each claim must bind strictly to the verified `employer` entity where the work occurred. Evaluated by Gate 9 (`candidateEmployerBindingMin: 0.90`).
 3. **Position / Title Binding**: Each claim must bind to the specific executive title held during that tenure.
-4. **Date / Tenure Binding**: Each claim must bind to verified employment dates (`startDate`, `endDate`).
-5. **Metric & Token Fidelity**: Numbers, percentages, currency symbols, and units must be preserved without distortion. Evaluated by Gate 8 (>=90% fidelity).
+4. **Date / Tenure Binding**: Each claim must bind to verified employment dates (`startDate`, `endDate`) in `YYYY-MM` or `YYYY` format.
+5. **Metric, Value, Unit & Currency Fidelity**: Numbers, percentages, currency symbols, and units must be preserved without distortion. Evaluated by Gate 8 (`candidateMetricFidelityMin: 0.90`).
 6. **Current-Role Status**: Correctly identify whether the role is active (`isCurrent: true`) or historical (`false`).
-7. **Zero Cross-Position Leakage**: Attributing accomplishments achieved at Company A to Company B is a fatal contamination error.
+7. **Zero Cross-Position Leakage**: Attributing accomplishments achieved at Position A to Position B is a fatal contamination error.
 8. **Zero Cross-Document Leakage**: Candidate claims must never reference facts from other candidate resumes or job postings.
 
 ---

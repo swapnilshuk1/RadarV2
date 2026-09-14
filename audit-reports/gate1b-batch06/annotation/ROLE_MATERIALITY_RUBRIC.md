@@ -34,8 +34,12 @@ To preserve the richer, higher-density annotation workflow of Batch 06 while mai
 
 Reviewers must classify facts based **strictly on the plain text of the job description**, completely blind to any extractor capabilities, model behaviors, or engineering preferences.
 
+> [!IMPORTANT]
+> **MODEL-BLIND SELECTION INVARIANT**:
+> Do not select facts based on what the extractor emits or misses. Annotators must never attempt to accommodate, anticipate, or penalize extractor behavior. Materiality is an intrinsic property of the executive role as documented in the source job posting.
+
 ### A. Criteria for `MATERIAL_SELECTED`
-A reference fact MUST be tagged as `MATERIAL_SELECTED` if it satisfies ANY of the following 9 executive dimensions:
+A reference fact MUST be tagged as `MATERIAL_SELECTED` if it materially characterizes any of the following 9 executive dimensions:
 
 1. **Role Mandate & Purpose**: The core reason the position exists and its primary organizational mission (e.g. "Lead global process transitions and build GSS center").
 2. **Material Responsibilities & Outcomes**: Primary business outcomes, deliverables, or mission-critical accountability (e.g. "Deliver $20M net ARR expansion in FY27").
@@ -60,19 +64,34 @@ A fact should be tagged as `SUPPORTING_NON_MATERIAL` if it represents:
 
 1. **Certification Denominator**:
    ```text
-   Typed Reference Recall = (Typed Matches on MATERIAL_SELECTED facts) / (Total MATERIAL_SELECTED facts)
+   Certification Typed Reference Recall = (Typed Matches on MATERIAL_SELECTED facts) / (Total MATERIAL_SELECTED facts)
    ```
-   - The Gate 1B passing threshold (>= 50%) is strictly evaluated against this metric.
+   - Certification Typed Reference Recall >= 50% must be computed against `MATERIAL_SELECTED` facts.
+   - Preserves exact historical comparability with the Batch 04C/R2 Selected Material Reference Fact set.
 
-2. **Diagnostic Denominator**:
+2. **Diagnostic Metric**:
    ```text
-   Exhaustive Fact Recall = (Typed Matches on All Reference Facts) / (Total Reference Facts)
+   Full / Exhaustive Fact Recall = (Typed Matches on All Reference Facts) / (Total Reference Facts)
    ```
-   - Exhaustive Fact Recall will be audited and reported in the validation report for architectural diagnostics, but will **not** replace the certification denominator.
+   - Full/exhaustive fact recall may be reported separately as a diagnostic metric but must not silently replace the historically comparable certification denominator.
 
 ---
 
-## 4. Annotation Template Syntax
+## 4. Population Sealing Semantics
+
+- **Primary Certification Set**: Annotated, dual-reviewed, and cryptographically frozen before model certification runs.
+- **Secondary Remediation Holdout Set**:
+  Secondary is SEALED FROM:
+  - implementation agent inspection of completed truth
+  - model/extractor execution
+  - tuning
+  - scoring
+  until the permitted remediation condition occurs.
+  Secondary is NOT sealed from independent human adjudicators. Both Primary and Secondary must be human-annotated, dual-reviewed where required, and cryptographically frozen before the Primary model run.
+
+---
+
+## 5. Annotation Template Syntax
 
 In the `*_BLANK.json` role annotation files, every fact in the `"facts"` array must explicitly include the `"materiality"` key:
 
