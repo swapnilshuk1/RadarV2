@@ -521,6 +521,35 @@
         "SHA-256 hashes recomputed across all modified reviewer and evaluator artifacts in GATE_1B_BATCH_06_PRE_ADJUDICATION_INTEGRITY_MANIFEST.json — PASS"
       ],
       "authorizationChanged": false
+    },
+    {
+      "commit": "447ec440f4447b7f60b56638efc5a689633a0a75",
+      "gate": "GATE_1B",
+      "batchId": "GATE_1B_BATCH_06",
+      "scopeRevision": 3,
+      "summary": "Completed Scope Revision 3 pre-adjudication contract, schema, and evaluator tooling repairs: frozen HighRiskSemanticVerifier to 9 canonical families eliminating COMMERCIAL_ACCOUNTABILITY and narrowing commercial cues to explicit revenue/ARR/quota; added explicit unknownHighRiskDimensions evaluation in StructuralAdmissionEngine; implemented resolveEvidenceQuotesToSpanIds() via MechanicalSourceSegmenter and strict dual-review/materiality/candidate validation in ingest-batch06-human-truth.ts; upgraded evaluator-batch06.ts with canonical StructuredMetric[] and plural proofTypes[] evaluation, literal offset provenance with zero whitespace/substring fallback, exact Gate 9 chronology formula, and Gate 7 silent-dimension capture rate; re-assembled primary (50 roles, 16 resumes) and secondary (25 roles, 8 resumes) blind validation materials with updated blank templates; recomputed pre-adjudication integrity manifest SHA-256 hashes.",
+      "invariantsChecked": [
+        "No blind model execution performed; zero blind documents executed through extraction pipeline; strict human-truth boundary maintained.",
+        "Architecture class remains Asymmetric Hybrid (Layers 1-5) and deterministic Extraction V1 baseline remains untouched.",
+        "High-risk semantic families strictly frozen to 9 canonical types; non-canonical COMMERCIAL_ACCOUNTABILITY alias completely eliminated.",
+        "Structural admission explicitly computes unknownHighRiskDimensions for post-admission capture.",
+        "Role reference truth quotes mechanically resolve to frozen MechanicalSourceSegmenter span IDs.",
+        "Candidate reference truth strictly conforms to canonical CandidateProofClaim schema with StructuredMetric[] and plural proofTypes[].",
+        "Dual-review enforcement requires distinct reviewer IDs and confirmation proofs.",
+        "Gate 9 Chronology Binding evaluates exact employer AND title AND tenure/isCurrent formula.",
+        "Candidate literal provenance evaluates exact character offset match (slice === exactText) with zero tolerance for whitespace normalization or substring containment.",
+        "100% bit-perfect scoring parity confirmed against evaluator-r2.ts on historical fixtures (0 delta across all 5 architectures and 21 documents).",
+        "Synthetic test suite passes cleanly across all 26 evaluator and hybrid extractor tests.",
+        "Type verification passes cleanly via npx tsc -p tsconfig.verify.json --noEmit."
+      ],
+      "verification": [
+        "npx tsc -p tsconfig.verify.json --noEmit — PASS",
+        "npx vitest run --config scripts/transition/vitest.evaluator.config.ts — PASS (2 files, 26/26 tests passing)",
+        "npx tsx scripts/transition/compare-evaluators-on-historical.ts — PASS (100% bit-perfect parity across 21 historical fixtures and 5 architectures)",
+        "node scripts/transition/assemble-gate1b-batch06-blind-materials.ts — PASS (exited 0; manifests and blank templates written)",
+        "SHA-256 hashes recomputed across all reviewer, population, and evaluator artifacts in GATE_1B_BATCH_06_PRE_ADJUDICATION_INTEGRITY_MANIFEST.json — PASS"
+      ],
+      "authorizationChanged": false
     }
   ]
 }
