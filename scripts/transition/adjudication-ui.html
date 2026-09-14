@@ -477,6 +477,20 @@
         document.getElementById("reviewer-id-input").value = savedId;
       }
 
+      // Auto-copy text on selection in the left panel
+      const sourceView = document.getElementById("source-text-view");
+      if (sourceView) {
+        sourceView.addEventListener("mouseup", handleTextSelection);
+        sourceView.addEventListener("touchend", handleTextSelection);
+      }
+      document.addEventListener("selectionchange", () => {
+        const selection = window.getSelection();
+        const container = document.getElementById("source-text-view");
+        if (container && selection && selection.rangeCount > 0 && container.contains(selection.anchorNode)) {
+          handleTextSelection();
+        }
+      });
+
       await loadDocumentsList();
     };
 
@@ -484,7 +498,7 @@
       localStorage.setItem(`radar_reviewer_id_${currentRole}`, val.trim());
     }
 
-    async function loadDocumentsList() {
+    async function updateDocListStatus() {
       const res = await fetch(`/api/documents?holdout=${currentHoldout}&type=${currentType}`);
       const data = await res.json();
       documentsList = data.documents || [];
@@ -509,19 +523,34 @@
         select.appendChild(opt);
       });
 
+      if (currentDocId && documentsList.some(d => d.opaqueId === currentDocId)) {
+        select.value = currentDocId;
+      }
+    }
+
+    async function loadDocumentsList(targetId) {
+      await updateDocListStatus();
+
       if (documentsList.length > 0) {
-        currentDocId = documentsList[0].opaqueId;
+        if (targetId && documentsList.some(d => d.opaqueId === targetId)) {
+          currentDocId = targetId;
+        } else if (!currentDocId || !documentsList.some(d => d.opaqueId === currentDocId)) {
+          currentDocId = documentsList[0].opaqueId;
+        }
+        document.getElementById("doc-select").value = currentDocId;
         await loadDocumentDetail(currentDocId);
       }
     }
 
     async function changeHoldout(val) {
       currentHoldout = val;
+      currentDocId = null;
       await loadDocumentsList();
     }
 
     async function changeType(val) {
       currentType = val;
+      currentDocId = null;
       await loadDocumentsList();
     }
 
@@ -538,6 +567,13 @@
           const nextId = documentsList[nextIdx].opaqueId;
           document.getElementById("doc-select").value = nextId;
           loadSelectedDoc(nextId);
+        } else if (nextIdx >= documentsList.length) {
+          const statusEl = document.getElementById("save-status");
+          if (statusEl) {
+            statusEl.style.display = "inline-block";
+            statusEl.className = "toast toast-success";
+            statusEl.textContent = "🎉 You have completed all documents in this list!";
+          }
         }
       }
     }
@@ -1115,13 +1151,11 @@
             statusEl.textContent = `Saved with warnings: ${result.errors.slice(0, 2).join(", ")}`;
           }
 
-          // Reload documents list to update checkmark
-          await loadDocumentsList();
+          // Update checkmark in dropdown without resetting active document view
+          await updateDocListStatus();
 
           if (goNext) {
-            setTimeout(() => {
-              navigateDoc(1);
-            }, 500);
+            navigateDoc(1);
           }
         } else {
           statusEl.className = "toast toast-error";

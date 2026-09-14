@@ -168,6 +168,19 @@ export function resolveEvidenceQuotesToSpanIds(
       errors.push("Empty or invalid quote string in sourceEvidence");
       continue;
     }
+
+    // Direct check: Did the reviewer provide a MechanicalSourceSegmenter Span ID (e.g. "S005", "S024")?
+    const spanMatch = exactText.trim().match(/^S(\d{1,4})$/i);
+    if (spanMatch) {
+      const canonicalSpanId = `S${String(spanMatch[1]).padStart(3, "0")}`;
+      const matchingUnit = units.find(u => u.spanId === canonicalSpanId);
+      if (matchingUnit) {
+        resolvedSpanIds.add(matchingUnit.spanId);
+        extractedQuotes.push(matchingUnit.exactText);
+        continue;
+      }
+    }
+
     extractedQuotes.push(exactText);
 
     // Find all verbatim occurrences in rawSourceText
@@ -318,10 +331,18 @@ export function validateRoleDocument(
     }
 
     // Evidence quotes & mechanical span resolution
-    if (!Array.isArray(f.sourceEvidence) || f.sourceEvidence.length === 0) {
+    const evidenceInputs = (Array.isArray(f.sourceEvidence) && f.sourceEvidence.length > 0)
+      ? f.sourceEvidence
+      : (Array.isArray(f.sourceEvidenceQuotes) && f.sourceEvidenceQuotes.length > 0)
+        ? f.sourceEvidenceQuotes
+        : (Array.isArray(f.sourceEvidenceSpanIds) && f.sourceEvidenceSpanIds.length > 0)
+          ? f.sourceEvidenceSpanIds
+          : [];
+
+    if (evidenceInputs.length === 0) {
       errors.push(`[${opaqueId} / ${factId}] Fact sourceEvidence must be a non-empty array of verbatim quotes`);
     } else {
-      const resolution = resolveEvidenceQuotesToSpanIds(f.sourceEvidence, rawSourceText, sourceUnits);
+      const resolution = resolveEvidenceQuotesToSpanIds(evidenceInputs, rawSourceText, sourceUnits);
       if (resolution.errors.length > 0) {
         resolution.errors.forEach(e => errors.push(`[${opaqueId} / ${factId}] ${e}`));
       }
